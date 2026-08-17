@@ -157,7 +157,7 @@ export function stayNights(checkInIso, checkOutIso) {
 
 export function Section({ title, accent, count, children }) {
   return (
-    <Card radius="md" className="ev-sec" style={accent ? { '--hl': accent } : undefined}>
+    <Card radius="btn" className="ev-sec" style={accent ? { '--hl': accent } : undefined}>
       {/* Канон тот же, что у заголовка раздела в форме (`.acc__title`) — раздел
           один объект, и подпись на нём одна. Тип события несёт планка-акцент. */}
       <div className="ev-sec-lbl t-label">
@@ -218,7 +218,7 @@ function HotelBody({ entity, docs = [] }) {
   return (
     <div className="col col--g7">
       {/* Name card */}
-      <Card radius="md" className="hv-namecard">
+      <Card radius="btn" className="hv-namecard">
         <div className="hv-name t-title">{entity.name}</div>
         {entity.address && (
           <div className="hv-addr t-meta"><MapIcon size={13} /><span>{entity.address}</span></div>
@@ -260,7 +260,7 @@ function HotelBody({ entity, docs = [] }) {
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.cost')}</div>
-          <Card radius="md" className="hv-card row row--g6">
+          <Card radius="btn" className="hv-card row row--g6">
             <div className="grow--fit">
               <div className="hv-price t-heading">{priceText}</div>
               {perNight && <div className="hv-pernight t-meta">{perNight} / {t('view.nights_one')}</div>}
@@ -286,7 +286,7 @@ function HotelBody({ entity, docs = [] }) {
       {(entity.booking_reference || entity.phone || entity.email) && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.booking_details')}</div>
-          <Card radius="md" pad="none" className="hv-rows">
+          <Card radius="btn" pad="none" className="hv-rows">
             {entity.booking_reference && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Hash /></span>
@@ -327,7 +327,7 @@ function HotelBody({ entity, docs = [] }) {
       {notes && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('activity.view_notes')}</div>
-          <Card recessed radius="md" className="hv-notes t-body">{notes}</Card>
+          <Card recessed radius="btn" className="hv-notes t-body">{notes}</Card>
         </div>
       )}
     </div>
@@ -364,7 +364,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   return (
     <div className="col col--g7">
       {/* Route rail */}
-      <Card radius="md" className="tv-card">
+      <Card radius="btn" className="tv-card">
         <div className="row row--wrap row--g3 tv-eyebrows">
           <span className="badge badge--sm tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
           {night && <span className="badge badge--sm tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
@@ -410,7 +410,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.cost')}</div>
-          <Card radius="md" className="hv-card row row--g6">
+          <Card radius="btn" className="hv-card row row--g6">
             <div className="grow--fit">
               <div className="hv-price t-heading">{priceText}</div>
               <div className="hv-pernight t-meta">{t('event.for_whole_transfer')}</div>
@@ -424,7 +424,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {hasDetails && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.booking_details')}</div>
-          <Card radius="md" pad="none" className="hv-rows">
+          <Card radius="btn" pad="none" className="hv-rows">
             {entity.booking_reference && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Hash /></span>
@@ -465,7 +465,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {notes && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('activity.view_notes')}</div>
-          <Card recessed radius="md" className="hv-notes t-body">{notes}</Card>
+          <Card recessed radius="btn" className="hv-notes t-body">{notes}</Card>
         </div>
       )}
     </div>
@@ -506,7 +506,7 @@ function ActivityBody({ entity, docs = [] }) {
       {entity.location_address && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.meeting_point')}</div>
-          <Card radius="md" pad="none" className="hv-rows">
+          <Card radius="btn" pad="none" className="hv-rows">
             <div className="hv-row row row--g6">
               <span className="hv-row__ic"><MapIcon /></span>
               <span className="hv-row__v t-strong" style={{ textAlign: 'left', maxWidth: 'none', whiteSpace: 'normal' }}>{entity.location_address}</span>
@@ -518,7 +518,7 @@ function ActivityBody({ entity, docs = [] }) {
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('activity.price')}</div>
-          <Card radius="md" className="hv-card row row--g6">
+          <Card radius="btn" className="hv-card row row--g6">
             <div className="grow--fit"><div className="hv-price t-heading">{priceText}</div></div>
           </Card>
         </div>
@@ -534,7 +534,7 @@ function ActivityBody({ entity, docs = [] }) {
       {notes && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('activity.view_notes')}</div>
-          <Card recessed radius="md" className="hv-notes t-body">{notes}</Card>
+          <Card recessed radius="btn" className="hv-notes t-body">{notes}</Card>
         </div>
       )}
     </div>

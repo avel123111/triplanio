@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Person, Btn, Card, IconBtn, RoleBadge, Skeleton } from '@/design/index';
+import { Person, Badge, Btn, Card, IconBtn, RoleBadge, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
@@ -114,12 +114,7 @@ export default function MembersSummaryCard({
                 // Invite STATE (pending/offline) is not a role — it keeps the quiet
                 // status chip; an actual role goes through the shared RoleBadge.
                 trailing={isPending || isOffline
-                  ? (
-                    <span className="badge badge--quiet">
-                      {isPending && <span className="dot" style={{ background: 'var(--warning)' }} />}
-                      {isPending ? t('trip.member_pending') : t('trip.member_offline')}
-                    </span>
-                  )
+                  ? <Badge variant="quiet">{isPending ? t('trip.member_pending') : t('trip.member_offline')}</Badge>
                   : <RoleBadge role={m.role} />}
               />
             );

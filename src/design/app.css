@@ -446,7 +446,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    visual-diff-move: .tm-manage -> card card--r-lg
    visual-diff-move: .tm-account -> card card--r-lg
    visual-diff-move: .tm-cell -> card card--r-md
-   visual-diff-move: .s22f-panel -> card card--r-lg
+   visual-diff-move: .s22f-panel -> card card--r-btn
    visual-diff-exempt: .eroute border-radius — на .card--r-card (24), значение то же
    visual-diff-exempt: .eroute box-shadow — СНЯТА: eroute плоский как все карточки; статичная тень --sh-1 на одном пустом экране = дрейф, вариант ради одного вызывателя не заводим (апрув Pavel) */
 .card,
@@ -1805,7 +1805,11 @@ button.app-side__item:hover { background: var(--wash); }
 .card--parsed { background: var(--success-soft); border-color: var(--success); border-radius: var(--r-btn); }
 
 /* Пунктир/добавить - «создать ещё». Прозрачный, пунктирная рамка. */
-.card--add { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); }
+/* Фон через канал --add-bg (дефолт transparent — все add-аффордансы без изменений).
+   Точка расхождения: зона загрузки документа кормит --surface (решение Pavel,
+   TRIP-337), пунктир и ховер остаются каноном.
+   visual-diff-exempt: .card--add background — transparent → var(--add-bg, transparent): дефолт тот же, канал для белого dropzone, апрув Pavel */
+.card--add { background: var(--add-bg, transparent); border: 1px dashed var(--line-strong); color: var(--muted); }
 
 /* Утопленная - фон отступает назад от несущей карточки (заметки/адрес/строка). */
 .card--recessed { background: var(--surface-3); }
@@ -2461,7 +2465,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    умел переноситься. */
 .sev {
  padding: 13px 15px;
- border-radius: var(--r-md);
+ /* Радиус контрола (--r-btn 10) — паритет с карточками event-view и полями:
+    все контейнеры одной панели несут один радиус (решение Pavel, TRIP-337).
+    visual-diff-exempt: .sev border-radius — секция → контрол (--r-md 16 → --r-btn 10), паритет радиусов внутри панели, апрув Pavel */
+ border-radius: var(--r-btn);
  border: 1px solid;
  color: var(--ink-2);
 }
@@ -2958,11 +2965,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (`--warning`/`--success`) перекрашивает и градиент, и тень одним каналом. */
 .icon-btn--fab {
   width: 56px; height: 56px; border-radius: var(--r-pill); border: 0; color: #fff;
-  background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--fab-tint, var(--brand)) 82%, #fff) 0%, var(--fab-tint, var(--brand)) 46%, var(--fab-tint, var(--brand)) 100%);
+  --fab-bg: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--fab-tint, var(--brand)) 82%, #fff) 0%, var(--fab-tint, var(--brand)) 46%, var(--fab-tint, var(--brand)) 100%);
+  background: var(--fab-bg);
   box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--fab-tint, var(--brand)) 72%, transparent),
               0 4px 10px -2px rgba(15, 23, 42, .3), inset 0 1px 0 rgba(255, 255, 255, .4);
 }
-.icon-btn--fab:hover { filter: brightness(1.05); color: #fff; }
+/* Ховер ПЕРЕОБЪЯВЛЯЕТ свой фон-градиент: базовое `.icon-btn:hover` (выше) красит
+   фон в `--wash` при равной специфичности, и без этой строки FAB на ховере
+   становился бледно-белым (иконка #fff на --wash). Как у соседей --solid/--soft/
+   --outline: залитый вариант держит свой фон на ховере, яркость даёт brightness.
+   Градиент вынесен в канал --fab-bg (вариант-скоуп, не :root), чтобы база и ховер
+   несли один источник, а не дублировали 3-строчный radial-gradient.
+   visual-diff-exempt: .icon-btn--fab --fab-bg — градиент вынесен в канал (то же значение, что было инлайн в background)
+   visual-diff-exempt: .icon-btn--fab background — литерал градиента → var(--fab-bg), вычисленное значение то же
+   visual-diff-exempt: .icon-btn--fab:hover background — фикс протечки base .icon-btn:hover (--wash) на залитый FAB: фон = свой градиент --fab-bg, как у --solid/--soft */
+.icon-btn--fab:hover { background: var(--fab-bg); filter: brightness(1.05); color: #fff; }
 .icon-btn--fab > svg { width: 24px; height: 24px; }
 
 /* Ступени - НЕ ряд «+6», к которому потом подложили замер. Каждая стоит в
@@ -6093,7 +6110,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* Chip for "Совместный" and role — lives on top of a photo with a dark scrim.
    TRIP-326: backdrop-filter убран; тонкий белый фон оставлен — на фото нужен,
-   иначе белый непрозрачный чип режет любое изображение. */
+   иначе белый непрозрачный чип режет любое изображение.
+   ★ Бейдж роли на обложке рендерится ЭТИМ ЖЕ чипом: `<RoleBadge glass>` эмитит
+   `.tc__glass` вместо тонального `.badge` (решение Pavel, TRIP-337) — soft-тон
+   роли на фото не читался. Только над фото; список участников/чат/список-строка
+   берут тональный RoleBadge как прежде. */
 .tc__glass {
  background: rgba(255,255,255,.22); color: #fff;
  border: 1px solid rgba(255,255,255,.32); border-radius: var(--r-pill);
@@ -7189,7 +7210,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .pcard__price { flex: 0 1 auto; min-width: 0; gap: 5px; white-space: nowrap; }
 .pcard__price b { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
 .pcard__price span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
-.pcard__go { flex: none; border-radius: var(--r-pill); }
+/* Радиус снят: кнопка-ссылка партнёра = канон `.btn` (--r-btn 10), не пилюля
+   (решение Pavel, TRIP-337: партнёрские CTA в форке эвентов/сервисов на радиус 10).
+   visual-diff-exempt: .pcard__go border-radius — pill-оверрайд снят, наследует канон .btn (--r-btn 10), апрув Pavel */
+.pcard__go { flex: none; }
 @media (prefers-reduced-motion: reduce) { .pcard, .pcard__thumb img { transition: none; } .pcard:active { transform: none; } }
 
 /* ─── Trips home + statistics: greeting, stat-bar, map hero, rail ─────────────
