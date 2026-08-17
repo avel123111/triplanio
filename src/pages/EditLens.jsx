@@ -154,6 +154,52 @@
  * -> .ts-grid, живой класс и тоже только редакторский, значения те же.
  * visual-diff-move: .ts-screen .te-row -> ts-grid
  * visual-diff-move: .ts-screen .te-cell--act -> ts-grid
+ *
+ * ── TRIP-337 (батч из 8 UI-фиксов) — намеренный дрейф, апрув Pavel. Маркеры 2p
+ *    лежат тут, а не в app.css: медиа-маркер `.tile {@media …}` в CSS-комментарии
+ *    гард разбирает как правило (см. шапку выше).
+ * visual-diff-exempt: .seg button font — `font: inherit` снят, кегль из канона .t-label
+ * visual-diff-exempt: .seg button font-size — сегмент снят с .t-meta на канон .t-label (кегль label 13px)
+ * visual-diff-exempt: .seg button font-weight — то же, вес label 600
+ * visual-diff-exempt: .seg button font-variant-numeric — то же (label без tabular-nums)
+ * visual-diff-exempt: .fpill--tone:hover background — ховер плашки переезда возвращён тинтом канала (мой непрозрачный surface убил дефолтный ховер)
+ * visual-diff-exempt: .trips-toolbar .seg--filter button font-family — экранный патч снят, типографика на канон .seg button/.t-label
+ * visual-diff-exempt: .trips-toolbar .seg--filter button font-size — то же
+ * visual-diff-exempt: .trips-toolbar .seg--filter button font-weight — то же
+ * visual-diff-exempt: .trips-toolbar .seg--filter button letter-spacing — то же
+ * visual-diff-exempt: .trips-toolbar .seg--filter button line-height — то же
+ * visual-diff-exempt: .te-cityname font-family — название города Subheading→Label
+ * visual-diff-exempt: .te-cityname font-size — то же
+ * visual-diff-exempt: .te-cityname line-height — то же
+ * visual-diff-exempt: .te-endlabel font-size — СТАРТ/ФИНИШ Micro→Tiny Caps
+ * visual-diff-exempt: .te-wptag background — класс снят, тег «ПЕРЕСАДКА» на DS <Badge size="tiny">
+ * visual-diff-exempt: .te-wptag border-radius — то же
+ * visual-diff-exempt: .te-wptag flex — то же
+ * visual-diff-exempt: .te-wptag font-family — то же
+ * visual-diff-exempt: .te-wptag font-size — то же
+ * visual-diff-exempt: .te-wptag font-weight — то же
+ * visual-diff-exempt: .te-wptag letter-spacing — то же
+ * visual-diff-exempt: .te-wptag line-height — то же
+ * visual-diff-exempt: .te-wptag padding — то же
+ * visual-diff-exempt: .te-wptag text-transform — то же
+ * visual-diff-exempt: .te-wptag white-space — то же
+ * visual-diff-exempt: .badge background — тон бейджа «ПЕРЕСАДКА» = ev-transfer (scoped .te-dts .badge)
+ * visual-diff-exempt: .badge color — то же
+ * visual-diff-exempt: .te-dts background — то же (атрибуция правила .te-dts .badge)
+ * visual-diff-exempt: .te-dts color — то же
+ * visual-diff-exempt: .fpill--square border-radius — чип отеля/активности в ячейке r-sm→r-btn
+ * visual-diff-exempt: .te-cell--act border-radius — то же (scoped-правило радиуса)
+ * visual-diff-exempt: .te-cell--hotel border-radius — то же
+ * visual-diff-exempt: .fpill--tone background — плашка наличия переезда: непрозрачный surface вместо тинта
+ * visual-diff-exempt: .te-seam background — то же (scoped surface плашки переезда)
+ * visual-diff-exempt: .te-seam border-color — плашка переезда: цветная рамка --hl
+ * visual-diff-exempt: .te-seam color — плашка переезда: цветной текст --hl-ink
+ * visual-diff-exempt: .map-route background — surface-роль ушла на <Card>, .map-route только раскладка
+ * visual-diff-exempt: .map-route border — то же
+ * visual-diff-exempt: .map-route__head margin-bottom — гашу margin канона PageHead в панели маршрута
+ * visual-diff-exempt: .tile {@media (hover: hover) and (pointer: fine)} color — иконка плейсхолдера красится в тон ховера --a
+ * visual-diff-exempt: .pop-flush border-radius — контейнер search/select (города/адреса/язык/валюта) на радиус поля --r-btn (10); был --r-card (24) от базы .pop
+ * visual-diff-exempt: .menu border-radius — канон action-меню на --r-btn (10, попап аккаунта и все меню); был --r-md (16)
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -1221,8 +1267,8 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         lead={<Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>}
         name={seg.city_name}
         conf={<Conf n={cityConf} />}
-        dates={<><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</>}>
-        <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled />
+        dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>
+        <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled variant="bare" />
         <div className="te-cell te-cell--hotel" />
         <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
       </CityRow>
@@ -1235,7 +1281,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       name={seg.city_name}
       conf={<Conf n={cityConf} />}
       dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
-      <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} />
+      <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} variant="bare" />
       <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
       <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
     </CityRow>
@@ -1256,7 +1302,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
     return (
       <Row justify="j-center" className="te-seam">
         <Chip variant="placeholder" icon="plus" disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-          {tx('tse.add_transfer')}
+          <span className="t-meta">{tx('tse.add_transfer')}</span>
         </Chip>
       </Row>
     );

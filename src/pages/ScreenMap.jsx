@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Icon } from '../design/icons';
+import { Card, PageHead } from '../design/index';
 import MapView from '@/components/views/MapView';
 import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useTheme } from '@/lib/ThemeContext';
 import { DateTime } from 'luxon';
 import { sortVisits } from '@/lib/validation';
 import { uniqueCityCount } from '@/lib/trip-cities';
@@ -49,7 +51,11 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
     if (selectedIdx != null && selectedIdx >= route.length) setSelectedIdx(null);
   }, [route.length, selectedIdx]);
 
-  const isDark = document.documentElement.dataset.theme === 'dark';
+  // Тема — из контекста (React-state), НЕ прямым чтением dataset: контекст
+  // ре-рендерит потребителя на каждом переключении, поэтому colorScheme карты
+  // обновляется. Прямой DOM-read этого не давал — компонент не подписан на смену
+  // темы и оставался со старой схемой (TRIP-337 фикс).
+  const { isDark } = useTheme();
   const selectedVisit = selectedIdx != null ? route[selectedIdx] || null : null;
 
   // Unified select/deselect for BOTH the list rows and the map pins: clicking a
@@ -149,9 +155,11 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
   const pick = (i) => { onSelect(i); setExpanded(false); };
 
   const head = (
-    <div className="map-route__head">
-      <span className="t-label tp-caption">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
-    </div>
+    <PageHead
+      className="map-route__head"
+      title={t('trip.sidebar_route')}
+      subtitle={`${nCities} ${citiesWord}`}
+    />
   );
   const list = (
     <div className="map-route__list scrollbar-thin">
@@ -170,7 +178,7 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
               {row.glyph ? <Icon name={row.glyph} size={13} /> : <span className="num t-meta">{row.number}</span>}
             </span>
             <span className="map-route__body">
-              <span className="map-route__name t-subheading trunc">{c.city_name}</span>
+              <span className="map-route__name t-label trunc">{c.city_name}</span>
               {dates && <span className="map-route__dates num t-meta">{dates}</span>}
             </span>
           </button>
@@ -200,13 +208,14 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
     );
   }
 
-  // Desktop: панель поверх карты, слева сверху. Скин даёт роль поверхности,
-  // в co-селектор которой `.map-route` входит своим именем; «стекла» (блюра и
-  // тени) нет с TRIP-326, вместе с ним ушло и имя `.surface-glass`.
+  // Desktop: панель поверх карты, слева сверху. Поверхность (грунт + рамка +
+  // скругление) несёт компонент <Card> (TRIP-337); `.map-route` теперь только
+  // раскладка. «Стекла» (блюра и тени) нет с TRIP-326, вместе с ним ушло и имя
+  // `.surface-glass`.
   return (
-    <aside className="map-route">
+    <Card as="aside" className="map-route" radius="md" pad="none">
       {empty ? emptyState : (<>{head}{list}</>)}
-    </aside>
+    </Card>
   );
 }
 

@@ -124,6 +124,7 @@ export default function CityPanel({
           <span className="t-meta">{rangeText(node.start_date, node.end_date) || '—'}</span>
         </div>
         <Stepper
+          variant="bare"
           title={t('tse.nights_label')}
           value={nights}
           onMinus={onNightsMinus} minusDisabled={nights <= 0} minusLabel={t('tse.nights_remove')}

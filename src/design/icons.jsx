@@ -8,7 +8,7 @@ import {
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus, AtSign,
   Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair, SlidersHorizontal,
-  Footprints, Headset,
+  Footprints, Headset, LogOut, Mail,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ const LUCIDE = {
   cam: Camera, wallet: Wallet, trash: Trash2, external: ExternalLink, calendar: Calendar,
   bed: BedDouble, users: Users, edit: Pencil, arrowR: ArrowRight, spark: Sparkle,
   more: Ellipsis, map: Map, link: Link, flag: Flag, chat: MessageCircle, bell: Bell,
-  at: AtSign, headset: Headset,
+  at: AtSign, headset: Headset, logout: LogOut, mail: Mail,
   user: User, share: Share2, send: Send, search: Search, pro: ProStar, plane: Plane,
   paperclip: Paperclip, moon: Moon, list: List, grid: LayoutGrid, globe: Globe,
   drag: GripVertical, crown: Crown, arrowSwap: ArrowRightLeft, arrowRight: ArrowRight,
