@@ -27,7 +27,7 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, Skeleton, Seg, Tile, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, Skeleton, Seg, Tile, Dialog as DSDialog, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -160,22 +160,23 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   ];
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent aria-describedby={undefined}>
-        {/* sr-only a11y title — visible h2 is inside dlg__head */}
-        <DialogTitle className="sr-only">{t('doc.dialog_new')}</DialogTitle>
-
-        {/* ── Header ── */}
-        <div className="dlg__head">
-          <Tile as="span" style={{ '--tile': '36px' }}>
-            <Icon name="file" size={17} />
-          </Tile>
-          <h2>{t('doc.dialog_new')}</h2>
-          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
-        </div>
-
-        {/* ── Body ── */}
-        <div className="dlg__body">
+    <DSDialog
+      title={t('doc.dialog_new')}
+      icon="file"
+      open={open}
+      onOpenChange={handleOpenChange}
+      foot={<>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn
+          variant="primary"
+          loading={saving}
+          disabled={uploading}
+          aria-disabled={!v.canSubmit}
+          onClick={() => v.attemptSubmit(save)}>
+          {t('trip.form_save')}
+        </Btn>
+      </>}
+    >
           <IssuesPanel issues={v.panelIssues} style={{ marginBottom: 12 }} />
           {err && (
             <div style={{ marginBottom: 12 }}>
@@ -321,22 +322,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               </Card>
             </div>
           </div>
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="dlg__foot">
-          <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
-          <Btn
-            variant="primary"
-            loading={saving}
-            disabled={uploading}
-            aria-disabled={!v.canSubmit}
-            onClick={() => v.attemptSubmit(save)}>
-            {t('trip.form_save')}
-          </Btn>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DSDialog>
   );
 }
 
@@ -381,21 +367,21 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
-        <DialogTitle className="sr-only">{doc.title}</DialogTitle>
-
-        {/* ── Header ── */}
-        <div className="dlg__head">
-          <Tile as="span" style={{ '--tile': '36px' }}>
-            <Icon name="file" size={17} />
-          </Tile>
-          <h2>{doc.title}</h2>
-          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
-        </div>
-
-        {/* ── Body ── */}
-        <div className="dlg__body">
+    <DSDialog
+      title={doc.title}
+      icon="file"
+      open={open}
+      onOpenChange={onOpenChange}
+      foot={<>
+        {!readOnly && (
+          <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>
+            {t('trip.delete')}
+          </Btn>
+        )}
+        <Grow />
+        <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
+      </>}
+    >
           {doc.notes && (
             <p className="dl-dview-note">{doc.notes}</p>
           )}
@@ -435,20 +421,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               {formatDate(doc.created_at)}
             </Row>
           )}
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="dlg__foot">
-          {!readOnly && (
-            <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>
-              {t('trip.delete')}
-            </Btn>
-          )}
-          <Grow />
-          <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DSDialog>
   );
 }
 
