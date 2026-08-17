@@ -179,15 +179,17 @@ export function useNotificationActions() {
       if (error || data?.error) throw error || new Error(data?.error || 'Failed');
     },
     // Optimistically flip the row: accept→active (accepted badge), decline→declined,
-    // and mark it read — the deterministic server outcome, so no inbox refetch.
-    onMutate: ({ memberId, action }) => begin((inbox) => respondInList(inbox, memberId, action === 'accept' ? 'active' : 'declined')),
-    onError: (_e, _v, ctx) => rollback(ctx),
-    onSuccess: (_d, { action }) => {
-      // Accepting joins the trip → the trips list gains it (a different cache).
-      qc.invalidateQueries({ queryKey: ['trips'] });
-      // One toast on the outcome: shared success title + accept/decline subtitle.
+    // and mark it read — the deterministic server outcome, so no inbox refetch. The
+    // toast fires HERE too (T0), in sync with the row flip the user sees — not on the
+    // server round-trip 2s later. Shared success title + accept/decline subtitle.
+    onMutate: ({ memberId, action }) => {
+      const ctx = begin((inbox) => respondInList(inbox, memberId, action === 'accept' ? 'active' : 'declined'));
       successToast(t, action === 'accept' ? 'invite_accepted' : 'invite_declined');
+      return ctx;
     },
+    onError: (_e, _v, ctx) => rollback(ctx),
+    // Accepting joins the trip → the trips list gains it (a different cache).
+    onSuccess: (_d, { action }) => { if (action === 'accept') qc.invalidateQueries({ queryKey: ['trips'] }); },
   });
 
   return { markAllRead, markOneRead, respondInvite };

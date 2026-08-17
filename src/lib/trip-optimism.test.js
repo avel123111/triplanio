@@ -62,6 +62,20 @@ test('trip-content add: tmp row appears, then reconciles to the returned real ro
   assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'real-9'], 'tmp swapped for real id in place');
 });
 
+test('withOptimism onOptimistic: fires in onMutate AFTER the patch (T0 — close UI in sync with the dim)', async () => {
+  const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1' }] } });
+  const events = [];
+  const life = withOptimism(tripContentBinding(qc, TRIP, 'hotels'), {
+    op: 'remove',
+    onOptimistic: () => events.push(`optimistic:${qc.get(CONTENT).hotels.length}`), // sees the post-patch cache
+    onSuccess: () => events.push('success'),
+  });
+  await life.onMutate({ id: 'h1' });
+  life.onSuccess(undefined, { id: 'h1' }, {});
+  // onOptimistic ran at T0 with the row already removed (len 0); success ran later.
+  assert.deepEqual(events, ['optimistic:0', 'success'], 'onOptimistic at T0 after patch, then success');
+});
+
 test('cancelQueries runs BEFORE the optimistic patch (flicker guard)', async () => {
   const qc = makeQC({ [k(CONTENT)]: { hotels: [] } });
   const life = withOptimism(tripContentBinding(qc, TRIP, 'hotels'), { op: 'add' });

@@ -210,7 +210,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
       price={actualMoney || monthlyPrice}
       per={t('account.per_month_short')}
       action={(
-        <Btn variant="primary" icon="refresh" disabled={portalLoading} onClick={onManage}>
+        <Btn variant="primary" icon="refresh" loading={portalLoading} disabled={portalLoading} onClick={onManage}>
           {portalLoading ? t('account.opening') : t('account.resume')}
         </Btn>
       )}

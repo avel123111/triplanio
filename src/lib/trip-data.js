@@ -258,15 +258,23 @@ function restoreSnapshot({ qc }, snapshot) {
  * narrow backstop invalidate at its call site — it is NOT the default, so one
  * edit never re-pulls (and re-renders) the whole trip.
  *
+ * `onOptimistic` fires in onMutate, RIGHT AFTER the optimistic patch lands — the T0
+ * moment the user sees the change. Close the dialog/modal/panel here (not in
+ * onSuccess), so the UI dismisses in sync with the dim; the success TOAST stays in
+ * onSuccess so it lands together with the row settling/removing. This is what keeps
+ * "toast synchronous with the visual": dim + close at T0, remove + toast at confirm.
+ *
  * @param {{ qc: any, keys: any[], add: Function, update: Function, remove: Function, swap: Function }} binding
  * @param {{ op: 'add'|'update'|'remove', reconcile?: boolean,
+ *           onOptimistic?: (vars:any)=>void,
  *           onSuccess?: (data:any, vars:any)=>void, onError?: (err:any, vars:any)=>void }} [opts]
  */
-export function withOptimism(binding, { op, reconcile = true, onSuccess, onError } = {}) {
+export function withOptimism(binding, { op, reconcile = true, onOptimistic, onSuccess, onError } = {}) {
   return {
     onMutate: async (vars) => {
       const snapshot = await cancelAndSnapshot(binding);
       applyOptimistic(binding, op, vars);
+      onOptimistic?.(vars);
       return { snapshot };
     },
     onSuccess: (data, vars) => {

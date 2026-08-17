@@ -116,7 +116,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
         </Btn>
       )}
       <Btn variant="secondary" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
-      <Btn variant="primary" icon="check" onClick={submit} disabled={saving}>
+      <Btn variant="primary" icon="check" onClick={submit} loading={saving} disabled={saving}>
         {isEdit ? t('stats.save_btn') : t('stats.add_btn')}
       </Btn>
     </div>
