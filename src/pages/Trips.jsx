@@ -221,7 +221,7 @@ const TripCard = ({ trip, onClick }) => {
             <span className="tc__glass">
               <Icon name="users" /> {t('trips.shared_badge')}
             </span>
-            <RoleBadge role={trip.role} />
+            <RoleBadge role={trip.role} glass />
             <TripAvatars members={trip.members} maxShow={3} white />
           </div>
         )}

@@ -270,7 +270,7 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
             сразу за подписью, а не за подсказкой, и не попадает под `gap`
             флекс-лейбла (см. `[data-required]` в app.css). */}
         <span data-required={required || undefined}>{label}</span>
-        {hint && <span className="muted t-meta" style={{ marginLeft: 4 }}>· {hint}</span>}
+        {hint && <span className="muted t-meta">{hint}</span>}
       </label>
     )}
     <FieldRequired value={required}>{children}</FieldRequired>
@@ -417,16 +417,23 @@ export const UnreadBadge = ({ count = 0 }) =>
 // просьбе Pavel: у остальных ролей иконки нет, у Наблюдателя тоже). `viewer` — единственная явная
 // ветка; всё остальное (admin и несуществующая в схеме роль `member`) читается
 // как admin, повторяя прежний fallback карточек трипов.
-/** @param {{ role?: string }} p */
-export const RoleBadge = ({ role }) => {
+/** @param {{ role?: string, glass?: boolean }} p */
+export const RoleBadge = ({ role, glass }) => {
   const t = useT();
   // RoleBadge рисует ЯРЛЫК роли — это показ, не гейт права редактирования.
   // Ступень `tiny` (TRIP-337, апрув Pavel): ярлык роли — самый мелкий чип, на
   // кегль ниже статуса; та же ступень, что у тариф-плашек. Один проп на канон —
   // все площадки (Trips · Chat · Members · Overview) садятся ровно.
-  if (role === "owner")  return <Badge variant="warning" size="tiny">{t("trips.role_owner")}</Badge>; // role-gate-exempt: показ
-  if (role === "viewer") return <Badge variant="outline" size="tiny">{t("trips.role_viewer")}</Badge>; // role-gate-exempt: показ
-  return <Badge variant="brand" size="tiny">{t("trips.role_admin")}</Badge>;
+  // Одна ветвь по роли на пару (ярлык + тон), чтобы они не разъезжались.
+  let label, variant;
+  if (role === "owner")       { label = t("trips.role_owner");  variant = "warning"; } // role-gate-exempt: показ
+  else if (role === "viewer") { label = t("trips.role_viewer"); variant = "outline"; } // role-gate-exempt: показ
+  else                        { label = t("trips.role_admin");  variant = "brand"; }
+  // `glass` — роль НА ОБЛОЖКЕ трипа (над фото): soft-тон (warning/brand/outline)
+  // на изображении не читался, поэтому там роль эмитится тем же «стеклянным»
+  // чипом `.tc__glass`, что и «Совместный» рядом (решение Pavel, TRIP-337).
+  if (glass) return <span className="tc__glass">{label}</span>;
+  return <Badge variant={variant} size="tiny">{label}</Badge>;
 };
 
 // ----- Card -----
@@ -649,8 +656,8 @@ export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 // iconTone swaps the header-icon tint to an existing tile tone (default = brand).
 // Whitelist the tones the header supports — an unknown value falls back to brand.
 const DLG_ICON_TONES = { activity: 'activity' };
-/** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any }} p */
-export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
+/** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any, busy?: boolean }} p */
+export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange, busy }) => {
   const t = useT();
   // The dialog OWNS its footer: on mobile it hides it while the keyboard is up
   // (it would otherwise rise above the keyboard and cover the autofill bar).
@@ -685,7 +692,9 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
           {/* Крестик диалога — тот самый «канон» из разбора облика: тон quiet,
               сторона --ctl-h. Он же был безымянным для скринридера, пока
               `ariaLabel` не стал обязательным пропом примитива. */}
-          <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} />
+          {/* `busy` блокирует крест на время необратимой операции (напр. создание
+              документа): та же защита, что раньше вешали на хендролл-крест. */}
+          <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} disabled={busy} />
         </div>
         <div className="dlg__body">{children}</div>
         {foot && !kbOpen && <div className="dlg__foot">{foot}</div>}

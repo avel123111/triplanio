@@ -117,7 +117,7 @@ export default function EventModal(props) {
                 : (hdr.sub && <span className="t-meta">{hdr.sub}</span>)}
             </div>
           </div>
-          <IconBtn icon="close" tone="soft" round onClick={() => setOpen(false)} ariaLabel={t('common.close')} />
+          <IconBtn icon="close" onClick={() => setOpen(false)} ariaLabel={t('common.close')} />
         </div>
 
         {/* Body */}

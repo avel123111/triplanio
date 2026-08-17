@@ -448,7 +448,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
               <div className="mbrow__meta row row--g6">
                 {m.status === 'offline'
-                  ? <Badge variant="quiet" icon="user">{t('trip.member_offline')}</Badge>
+                  ? <Badge variant="quiet" size="tiny">{t('trip.member_offline')}</Badge>
                   : <RoleBadge role={m.role} />}
                 <StatusDot status={m.status} />
               </div>
