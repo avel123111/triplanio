@@ -317,7 +317,7 @@ export default function ForkPartnerModal({
     return (
       <div className="lp lp--wide" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}>
         <div className="lp-h lp-h--ev">
-          <IconBtn icon="back" tone="soft" round onClick={() => onOpenChange(false)} title={t('fork.cancel')} ariaLabel={t('fork.cancel')} />
+          <IconBtn icon="close" onClick={() => onOpenChange(false)} ariaLabel={t('fork.cancel')} />
           <Tile as="span" className="lp-ic" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}><ManualIcon size={16} /></Tile>
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>

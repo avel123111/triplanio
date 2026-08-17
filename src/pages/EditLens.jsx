@@ -1312,7 +1312,7 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
   return (
     <div className="lp lp--wide">
       <div className="lp-h lp-h--ev">
-        <IconBtn icon="back" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
+        <IconBtn icon="close" onClick={onBack} ariaLabel={t('common.close')} />
         <Tile as="span" className="lp-ic" style={{ '--hl-soft': 'var(--brand)', '--hl-ink': '#fff' }}><Icon name="pin" size={17} /></Tile>
         <div className="lp-ti">
           <b>{t('tse.add_point')}</b>
