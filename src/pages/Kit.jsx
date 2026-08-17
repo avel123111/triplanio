@@ -33,7 +33,7 @@ import { useParams, Link } from 'react-router-dom';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
-  FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet,
+  FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
@@ -394,7 +394,7 @@ const RECIPES = {
       label: 'форма (icon-btn--round) · метка · нажато · счётчик', items: [
         it('round tone="soft"', <IconBtn icon="arrow" round tone="soft" ariaLabel="Форма" />),
         it('tone="outline" round', <IconBtn icon="close" tone="outline" round ariaLabel={TX.close} />),
-        it('icon-btn__dot', <IconBtn icon="bell" ariaLabel="Непрочитанное"><span aria-hidden className="icon-btn__dot" /></IconBtn>),
+        it('непрочитанное (.badge--unread)', <IconBtn icon="bell" ariaLabel="Непрочитанное"><UnreadBadge count={7} /></IconBtn>),
         it('disabled', <IconBtn icon="close" disabled ariaLabel={TX.close} />),
         it('aria-pressed', <IconBtn icon="globe" ariaPressed ariaLabel="Нажато" />),
         it('sliders · outline · .badge--count', <IconBtn icon="sliders" tone="outline" ariaLabel="Фильтры"><Badge variant="count">2</Badge></IconBtn>),
@@ -468,6 +468,17 @@ const RECIPES = {
       // в редакторе трансфера), а не свой тинтованный бокс.
       label: 'с иконкой (icon) — признак-отметка', items: [
         it('variant="brand" icon="moon"', <Badge variant="brand" icon="moon">{TX.overnight}</Badge>),
+      ],
+    },
+    {
+      // Канон НЕПРОЧИТАННОГО (TRIP-354): красный `<UnreadBadge count>` — единый
+      // счётчик для уведомлений и чата (колокольчик, FAB чата, пункты дока, шит,
+      // аккаунт). Число, свыше 99 → «99+», 0 → ничего. Оверлеем садится
+      // ко-селектором владельца (`.icon-btn > .badge--unread`).
+      label: 'непрочитанное — <UnreadBadge count> (красный канон)', items: [
+        it('count={3}', <UnreadBadge count={3} />),
+        it('count={128} → 99+', <UnreadBadge count={128} />),
+        it('на кнопке-иконке (оверлей)', <IconBtn icon="bell" tone="outline" ariaLabel="Уведомления"><UnreadBadge count={5} /></IconBtn>),
       ],
     },
   ],

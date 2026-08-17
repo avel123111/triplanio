@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, useToast,
+  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, UnreadBadge, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -876,9 +876,7 @@ export default function ScreenAccount() {
                     count is spoken as part of the row. (The old markup carried an
                     aria-label on a bare <span> — a generic role takes no
                     name-from-author, so it was never announced.) */}
-                {unreadCount > 0 && (
-                  <Badge variant="count">{unreadCount > 99 ? '99+' : unreadCount}</Badge>
-                )}
+                <UnreadBadge count={unreadCount} />
                 <Icon name="arrowR" size={16} className="muted-2" />
               </button>
             </div>

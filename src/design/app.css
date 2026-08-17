@@ -873,7 +873,6 @@ h4,
 .field__hint,
 .app-header__trip-meta,
 .app-header__pro,
-.app-side__item-badge,
 .err, .wrn,
 .pro-up p,
 .sev,
@@ -892,7 +891,6 @@ h4,
 .chat-msg__err,       /* TRIP-296: «Не отправлено» / ассистент не ответил */
 .chat-composer__hint, /* TRIP-296: подсказка Enter / Shift+Enter */
 .chat-member__rl,
-.dock__count,
 .dock-panel__head .nm,
 .fpill,
 .fpill__c,
@@ -1289,12 +1287,9 @@ h4,
    в кавычках — говорить о ней словами.
    Ни один гард этого не ловит: 2p сравнивает РАЗОБРАННЫЙ CSS, а для него
    правила просто нет с обеих сторон; доказывается только рендером. */
-.icon-btn__dot {
-  position: absolute; top: 4px; right: 4px;
-  width: 11px; height: 11px; border-radius: var(--r-pill);
-  background: var(--danger); border: 2px solid var(--surface);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--danger) 30%, transparent);
-}
+/* Колокольчик уведомлений несёт красный `.badge--unread` С ЧИСЛОМ (TRIP-354,
+   апрув Pavel: единый канон вместо прежней точки-`.icon-btn__dot` без числа);
+   позиция — ко-селектор `.icon-btn > .badge--unread`. */
 /* Header override — keep the 38px round shape; colours fall back to the neutral
    .icon-btn base (theme-aware) now that the bar is glass, not brand-gradient.
    ★TRIP-344: исключение ОСТАЛОСЬ (38px круг — апрув Pavel: диаметр совпадает с
@@ -1364,12 +1359,10 @@ button.app-side__item { cursor: pointer; }
 button.app-side__item:active { transform: scale(.985); }
 button.app-side__item:hover { background: var(--wash); }
 .app-side__item.active { background: var(--brand-soft); color: var(--brand); }
-.app-side__item-badge {
- margin-left: auto;
- min-width: 18px; height: 18px; padding: 0 6px;
- border-radius: var(--r-pill); background: var(--warm); color: white;
- display: grid; place-items: center;
-}
+/* Бейдж непрочитанного чата в пункте сайдбара — красный канон `.badge--unread`,
+   позиция ко-селектором (ряд флексовый, толкаем вправо). TRIP-354: свой класс
+   `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
+.app-side__item > .badge--unread { margin-left: auto; }
 
 
 .app-main {
@@ -2448,6 +2441,93 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--brand-soft); color: var(--brand); }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
+/* Красный бейдж НЕПРОЧИТАННОГО (TRIP-354, апрув Pavel) — единый облик для чата и
+   уведомлений. Форма-пилюля и типографика приходят из базы `.badge`; здесь только
+   красная заливка --danger и белый текст. Литерал #fff, а не --primary-fg: в
+   тёмной теме тот темнеет, а на красном (--danger в обеих темах тёмный) нужен
+   белый. 18px — компактнее нейтрального счётчика 20px, садится оверлеем на
+   иконку/пункт дока/плитку.
+   floor-exempt: reach +3 — оверлей-бейдж позиционирует ВЛАДЕЛЕЦ ко-селектором
+   (`.app-side__item`/`.tm-cell`/`.mbnav__ico` > `.badge--unread`), тот же приём,
+   что у существующего `.icon-btn > .badge--count`; сведение 4 счётчиков в один
+   красный канон, апрув Pavel (TRIP-354). */
+.badge--unread { background: var(--danger); color: #fff; min-width: 18px; height: 18px; padding: 0 5px; justify-content: center; letter-spacing: 0; }
+/* TRIP-354 · ярус 2p: намеренная замена 4 самодельных счётчиков одним красным каноном .badge--unread.
+   visual-diff-exempt: .tm-cell__badge align-items — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge border-radius — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge display — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge justify-content — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge min-width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge padding — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge border-radius — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge display — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge font-family — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge font-size — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge font-variant-numeric — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge font-weight — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge letter-spacing — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge line-height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge margin-left — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge min-width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge padding — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge place-items — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item margin-left — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread {@media (max-width: 640px)} position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread {@media (max-width: 640px)} right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread {@media (max-width: 640px)} top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread {@media (max-width: 640px)} z-index — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread color — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread justify-content — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread letter-spacing — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread margin-left — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread min-width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread padding — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count border — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count border-radius — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count display — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count min-width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count padding — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count place-items — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot border — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot border-radius — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot box-shadow — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .mbnav__ico {@media (max-width: 640px)} position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .mbnav__ico {@media (max-width: 640px)} right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .mbnav__ico {@media (max-width: 640px)} top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .mbnav__ico {@media (max-width: 640px)} z-index — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count font-family — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count font-size — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count font-variant-numeric — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count font-weight — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count letter-spacing — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count line-height — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+*/
 /* orphan-exempt: badge--outline — эмитится <Badge variant="outline"> композицией
    badge--${variant} (RoleBadge, роль «Наблюдатель»); литерала в разметке нет по построению (TRIP-409) */
 .badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
@@ -2919,8 +2999,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .icon-btn[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
 .icon-btn[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
 /* Счётчик активных на кнопке-иконке — реюз `.badge--count` (тоггл фильтров форк-
-   панели), позиция ко-селектором, НОВОГО КЛАССА НЕТ (`.icon-btn` position:relative). */
-.icon-btn > .badge--count { position: absolute; top: -6px; right: -6px; }
+   панели), позиция ко-селектором, НОВОГО КЛАССА НЕТ (`.icon-btn` position:relative).
+   Тот же оверлей несёт красный `.badge--unread` (колокольчик уведомлений, FAB
+   чата) — TRIP-354: одно правило позиционирует оба счётчика на кнопке-иконке. */
+.icon-btn > .badge--count, .icon-btn > .badge--unread { position: absolute; top: -6px; right: -6px; }
 .icon-btn--sm { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
 .icon-btn--round { border-radius: var(--r-pill); }
 .icon-btn--soft { background: var(--secondary); border-color: var(--line); color: var(--ink-2); }
@@ -3223,6 +3305,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .mbnav__item.is-active { color: var(--brand); }
   .mbnav__ico { position: relative; display: grid; place-items: center; width: 30px; height: 26px; }
   .mbnav__ico > * { position: relative; z-index: 1; }
+  /* Красный бейдж непрочитанного на пункте дока («Ещё» в трипе, «Профиль» вне) —
+     оверлей у правого-верхнего угла иконки (TRIP-354). Специфичнее правила
+     `.mbnav__ico > *` выше, поэтому берёт position:absolute. */
+  .mbnav__ico > .badge--unread { position: absolute; top: -6px; right: -8px; z-index: 2; }
   .mbnav__item.is-active .mbnav__ico::before {
     content: ''; position: absolute; inset: -3px -7px; border-radius: var(--r-sm); background: var(--brand-soft); z-index: 0;
   }
@@ -4230,13 +4316,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    действия), не поверхности; удержан числом (translateY(-2px) scale(1.04) / .95). */
 .dock:hover { transform: translateY(-2px) scale(1.04); }
 .dock:active { transform: scale(.95); }
-.dock__count {
- position: absolute; top: -4px; right: -4px;
- background: var(--warm); color: #fff;
- min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--r-pill);
- display: grid; place-items: center;
- border: 2px solid var(--bg);
-}
+/* Счётчик непрочитанного на FAB чата = красный `.badge--unread`, позиционируется
+   ко-селектором `.icon-btn > .badge--unread` (`.dock` — это `.icon-btn`).
+   TRIP-354: свой класс `.dock__count` (--warm 22px) свёрнут в общий бейдж. */
 .dock-panel {
   position: fixed; right: 24px; bottom: 24px;
   width: 396px; max-width: calc(100vw - 32px);
@@ -5908,7 +5990,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tm-cell__ico { width: 30px; height: 30px; flex: none; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--wash); color: var(--muted); }
 .tm-cell.is-active .tm-cell__ico { background: var(--surface); color: var(--brand); }
 .tm-cell__lbl { display: block; }
-.tm-cell__badge { position: absolute; top: 10px; right: 10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill); background: var(--warm); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+/* Бейдж непрочитанного чата на плитке-линзе шита = красный `.badge--unread`,
+   оверлей ко-селектором (`.tm-cell` position:relative). TRIP-354: свой класс
+   `.tm-cell__badge` (--warm) свёрнут в общий бейдж. */
+.tm-cell > .badge--unread { position: absolute; top: 10px; right: 10px; }
 
 .tm-caption { padding: 2px 8px 8px; }
 .tm-manage { overflow: hidden; }
