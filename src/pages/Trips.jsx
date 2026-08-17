@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invokeFn } from '@/lib/invokeFn';
+import { goPro } from '@/lib/goPro';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
@@ -419,7 +420,7 @@ export default function Trips() {
     const id = requestAnimationFrame(() => setShowMap(true));
     return () => cancelAnimationFrame(id);
   }, []);
-  const openUpgrade = () => nav('/pro?hidePerTrip=1');
+  const openUpgrade = () => goPro(nav, { hidePerTrip: true });
 
   React.useEffect(() => {
     try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }

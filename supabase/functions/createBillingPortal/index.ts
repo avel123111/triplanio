@@ -12,22 +12,16 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv } from '../_shared/payments/catalog.ts';
 import { getProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
+import { originGuard } from '../_shared/originGuard.ts';
 
 Deno.serve(withHandler('createBillingPortal', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
     // ---------- Origin validation ----------
-    const publicAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
-    if (!publicAppUrl) {
-      console.error('PUBLIC_APP_URL not configured');
-      return Response.json({ error: 'Server misconfigured: PUBLIC_APP_URL missing' }, { status: 500, headers: corsHeaders });
-    }
-    const reqOrigin = (req.headers.get('origin') || '').replace(/\/+$/, '');
-    if (reqOrigin && reqOrigin !== publicAppUrl) {
-      console.error('Origin mismatch:', reqOrigin, 'vs', publicAppUrl);
-      return Response.json({ error: 'Origin not allowed' }, { status: 400, headers: corsHeaders });
-    }
+    const origin = originGuard(req, corsHeaders);
+    if (origin instanceof Response) return origin;
+    const { publicAppUrl } = origin;
 
     const { returnPath } = await req.json().catch(() => ({}));
     const safeReturn = (returnPath && returnPath.startsWith('/')) ? returnPath : '/settings';

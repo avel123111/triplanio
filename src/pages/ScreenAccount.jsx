@@ -9,6 +9,7 @@ import {
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
+import { goPro } from '@/lib/goPro';
 import { useTheme } from '@/lib/ThemeContext';
 import { useProStatus } from '@/lib/useProStatus';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
@@ -395,7 +396,7 @@ export default function ScreenAccount() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [activeSec, setActiveSec] = useState('profile');
-  const openUpgrade = () => nav('/pro?hidePerTrip=1');
+  const openUpgrade = () => goPro(nav, { hidePerTrip: true });
   const [errorMsg, setErrorMsg] = useState(null);
 
   // Delete account flow: null | 'confirm' | 'blocked'

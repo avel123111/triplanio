@@ -129,6 +129,8 @@ function makeSegment(defCur = 'EUR') {
 }
 
 import { invokeFn } from '@/lib/invokeFn';
+import { goPro } from '@/lib/goPro';
+import { useTripProStatus } from '@/lib/subscription';
 import { errorText } from '@/lib/errorText';
 import { refusalError } from '@/lib/refusalError';
 import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
@@ -591,11 +593,13 @@ export default function EventEditDialog({
   // This prevents a non-Pro user from opening/using the parser during the gap.
   const [aiState, setAiState] = useState('checking');
 
-  // Pro state: null = checking, true/false = resolved. isOwner tells whether the
-  // caller owns this trip - only the owner may be sent to checkout; a participant
-  // is shown the "ask the owner" info dialog instead.
-  const [isPro, setIsPro] = useState(null);
-  const [isOwner, setIsOwner] = useState(false);
+  // Pro verdict from the shared owner-Pro cache (same key ['trip-owner-pro', tripId]
+  // TripView populates → warm cache, no extra network). This block is a витрина;
+  // the real refusal is server-side (parseBookingWithAi → requireTripPro, 402).
+  // `proResolved` is the "still checking" signal (the old code used isPro===null);
+  // `isOwner` decides who may be sent to checkout (a participant can't unlock
+  // someone else's trip by paying → "ask the owner" info dialog).
+  const { isPro, isOwner, resolved: proResolved } = useTripProStatus(tripId);
   const { openProUpsell } = useProUpsell();
   // Право редактировать план — из единого контекста доступа (TRIP-274 Ф2.2).
   // Это движок записи для эвентов/сервисов: наблюдатель видит форму (fork), но
@@ -641,26 +645,18 @@ export default function EventEditDialog({
     setAiState('checking'); // re-gate the parser on every open until Pro is re-checked
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pro check - runs whenever the dialog opens with a tripId we can verify.
-  useEffect(() => {
-    if (!open) { setIsPro(null); return; }
-    if (!tripId) { setIsPro(false); return; }
-    let cancelled = false;
-    setIsPro(null);
-    invokeFn('checkSubscriptionStatus', { body: { tripId } })
-      .then((res) => { if (!cancelled) { setIsPro(!!res.data?.isPro); setIsOwner(!!res.data?.isOwner); } })
-      .catch((e) => { console.error(e); if (!cancelled) { setIsPro(false); setIsOwner(false); } });
-    return () => { cancelled = true; };
-  }, [open, tripId]);
-
   // Sync AI block to Pro state - only when not mid-flow (idle/uploaded/parsing/parsed).
+  // "Still checking" is `!proResolved` (was isPro===null). Hold at 'checking' while
+  // unresolved so a cold cache (a generic loader that never mounted TripView) does not
+  // flash 'locked' on a Pro trip before the query settles. With no tripId the query is
+  // disabled (never resolves) → treat as resolved so the parser locks as before.
   useEffect(() => {
-    if (isPro === null) return;
+    if (tripId && !proResolved) return;
     setAiState((prev) => {
       if (prev === 'idle' || prev === 'uploaded' || prev === 'parsing' || prev === 'parsed') return prev;
       return isPro ? 'available' : 'locked';
     });
-  }, [isPro]);
+  }, [tripId, proResolved, isPro]);
 
   // Map a form key to its canonical validation field token (for touched-state).
   const FIELD_TOKEN = {
@@ -700,7 +696,7 @@ export default function EventEditDialog({
     // Апселл рендерит app-level ProUpsellProvider (не вложенная модаль) — TRIP-225.
     if (!isOwner) { openProUpsell({ mode: 'info' }); return; }
     onOpenChange?.(false);
-    nav(`/pro?tripId=${tripId || ''}&from=paywall&feature=event_pro`);
+    goPro(nav, { tripId, from: 'paywall', feature: 'event_pro' });
   };
 
   // ── Unified validation (Ф2): one engine, emits CODES; text via t('validation.'+code).
