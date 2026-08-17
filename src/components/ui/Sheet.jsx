@@ -44,8 +44,9 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
               <Drawer.Title asChild><h3>{title}</h3></Drawer.Title>
               {/* ★TRIP-344: крестик - тот же объект, что в диалоге, и рисуется
                   тем же примитивом. `asChild` нужен, чтобы vaul повесил свои
-                  обработчики на САМУ кнопку, а не на лишнюю обёртку. Ховера у
-                  него не было вовсе - теперь приходит с тоном. */}
+                  обработчики на САМУ кнопку, а не на лишнюю обёртку. Тон quiet
+                  (без tone) — единый крест закрытия, как в канон-диалоге (TRIP-337);
+                  ховер приходит от базового `.icon-btn`. */}
               <Drawer.Close asChild>
                 <IconBtn icon="close" ariaLabel={t('common.close')} />
               </Drawer.Close>
