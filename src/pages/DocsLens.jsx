@@ -297,7 +297,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               onClick={() => !uploading && fileInputRef.current?.click()}
               onDragOver={e => e.preventDefault()}
               onDrop={e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}>
-              <Card variant="add" radius="md" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
+              <Card variant="add" radius="btn" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
                 <input
                   ref={fileInputRef}
                   type="file"

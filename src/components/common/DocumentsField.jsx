@@ -131,7 +131,7 @@ export default function DocumentsField({
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
         >
-          <Card variant="add" radius="md" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
+          <Card variant="add" radius="btn" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
             <input
               ref={inputRef}
               type="file"

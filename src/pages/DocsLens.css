@@ -249,13 +249,14 @@
    visual-diff-exempt: .dl-dropzone border-radius — СВЕДЕНО к канону add: --r-sm → --r-md (апрув Pavel)
    visual-diff-exempt: .dl-dropzone:hover {@media (hover: hover)} border-color — ховер на канон card--add:hover (--brand, тождественно)
    visual-diff-exempt: .dl-dropzone:hover {@media (hover: hover)} background — ховер на канон card--add:hover (--brand-soft, тождественно) */
-/* Белый фон зоны загрузки — ТОЛЬКО в светлой теме (решение Pavel, TRIP-337: на
-   серой странице прозрачный dropzone читался серым, нужен белый как фон карточек).
-   В тёмной теме канал сбрасывается в transparent — тёмный вид не трогаем, там
-   dropzone остаётся прозрачным каноном add. Пунктир и ховер brand — канон add.
-   visual-diff-exempt: .dl-dropzone --add-bg — канал фона зоны загрузки: светлая = var(--surface) белый, тёмная сброшена в transparent (тёмный вид не трогаем); санкц. точка расхождения, апрув Pavel */
+/* Фон зоны загрузки 1:1 как у полей ввода (решение Pavel, TRIP-337): светлая =
+   var(--surface) (белый, как карточки), тёмная = var(--bg) (как основной фон) —
+   ровно логика `.input`/`.textarea` (app.css: light --surface, dark --bg). Радиус
+   тоже полевой — --r-btn 10 несёт <Card radius="btn">. Пунктир и ховер brand —
+   канон add.
+   visual-diff-exempt: .dl-dropzone --add-bg — канал фона зоны загрузки: светлая = var(--surface), тёмная = var(--bg); логика полей ввода, апрув Pavel */
 .dl-dropzone { --add-bg: var(--surface); align-items: center; padding: 22px; cursor: pointer; text-align: center; transition: border-color .16s, background .16s; }
-[data-theme="dark"] .dl-dropzone { --add-bg: transparent; }
+[data-theme="dark"] .dl-dropzone { --add-bg: var(--bg); }
 .dl-dropzone b     { color: var(--ink-2); }
 .dl-dropzone span  { color: var(--muted); }
 .dl-dropzone svg   { color: var(--muted-2); transition: color .16s; }
