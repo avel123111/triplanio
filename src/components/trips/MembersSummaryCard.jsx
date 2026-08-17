@@ -114,7 +114,7 @@ export default function MembersSummaryCard({
                 // Invite STATE (pending/offline) is not a role — it keeps the quiet
                 // status chip; an actual role goes through the shared RoleBadge.
                 trailing={isPending || isOffline
-                  ? <Badge variant="quiet">{isPending ? t('trip.member_pending') : t('trip.member_offline')}</Badge>
+                  ? <Badge variant="quiet" size="tiny">{isPending ? t('trip.member_pending') : t('trip.member_offline')}</Badge>
                   : <RoleBadge role={m.role} />}
               />
             );

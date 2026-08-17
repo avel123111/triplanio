@@ -198,7 +198,7 @@ export default function ForkPartnerModal({
         <Tooltip block content={canEdit ? '' : t('trip.viewer_locked')}>
         <Card
           as="button"
-          radius="md"
+          radius="btn"
           pad="none"
           className="fork-manual"
           locked={!canEdit}
@@ -227,7 +227,7 @@ export default function ForkPartnerModal({
                 <Card
                   key={p.key}
                   as="a"
-                  radius="md"
+                  radius="btn"
                   interactive
                   pad="none"
                   href={p.url}
@@ -268,7 +268,7 @@ export default function ForkPartnerModal({
   const styleTag = (
     <style>{`
       /* TRIP-343 объект 2: ПОВЕРХНОСТЬ (фон+рамка+радиус) и лифт УБРАНЫ из этого
-         теневого style — их несёт Card radius=md (manual + партнёр). Здесь остаётся
+         теневого style — их несёт Card radius=btn (manual + партнёр). Здесь остаётся
          ТОЛЬКО раскладка и АКЦЕНТ вилки (--fk рамка/кольцо, тинт по типу брони
          поверх нейтральной рамки Card) — не поверхность (нет фона/радиуса), поэтому
          под замер поверхности не попадает и гардом скина-в-style не краснеет. Ховер
