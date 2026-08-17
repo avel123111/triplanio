@@ -2286,6 +2286,7 @@ export type Database = {
         Returns: boolean
       }
       _trip_anchor_date: { Args: { p_trip: string }; Returns: string }
+      _trip_city_chain: { Args: { p_trip: string }; Returns: Json }
       _trip_file_not_others_private: {
         Args: { p_object_name: string; p_trip: string }
         Returns: boolean
@@ -2305,7 +2306,7 @@ export type Database = {
           p_index?: number
           p_trip: string
         }
-        Returns: string
+        Returns: Json
       }
       add_layover_transfer: {
         Args: {
@@ -2504,7 +2505,7 @@ export type Database = {
       }
       remove_city: {
         Args: { p_actor: string; p_city: string; p_trip: string }
-        Returns: undefined
+        Returns: Json
       }
       remove_trip_member: {
         Args: { p_actor: string; p_member: string; p_trip: string }
@@ -2512,7 +2513,7 @@ export type Database = {
       }
       reorder_cities: {
         Args: { p_actor: string; p_order: string[]; p_trip: string }
-        Returns: undefined
+        Returns: Json
       }
       respond_trip_invite: {
         Args: {
@@ -2617,11 +2618,11 @@ export type Database = {
           p_nights: number
           p_trip: string
         }
-        Returns: undefined
+        Returns: Json
       }
       set_trip_start_date: {
         Args: { p_actor: string; p_date: string; p_trip: string }
-        Returns: undefined
+        Returns: Json
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
