@@ -40,10 +40,11 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
     tripId, open, onError: () => onOpenChange(false),
   });
 
-  // Delete on the seam (canon): dim the row + CLOSE the modal at T0 (onOptimistic),
-  // then the row drops and the toast lands TOGETHER on confirm; on refusal the seam
-  // rolls the dim back. No modal-refetch, no toast/vanish desync. Defined before the
-  // early return; id + orphan keys travel via mutate vars.
+  // Delete on the seam — INSTANT (SourceViewLoader stays mounted, so onError can roll
+  // back): the row drops, the modal closes and the success toast fire TOGETHER at T0
+  // (onOptimistic). On the rare refusal the seam restores the row and an error toast
+  // supersedes. No dim-that-never-renders, no lingering card, no lagging toast.
+  // Defined before the early return; id + orphan keys travel via mutate vars.
   const delBinding = tripContentBinding(qc, tripId, CACHE_KIND[kind]);
   const deleteMut = useMutation({
     mutationFn: async (/** @type {any} */ { id: rowId, tripId: tId, orphanPaths }) => {
@@ -52,10 +53,8 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
     },
     ...withOptimism(delBinding, {
-      op: 'update',        // dim (`_pending`) at T0
-      reconcile: false,
-      onOptimistic: () => onOpenChange(false),  // close the modal in sync with the dim
-      onSuccess: (/** @type {any} */ _d, /** @type {any} */ { id: rowId }) => { delBinding.remove(rowId); successToast(t, 'booking_deleted'); },
+      op: 'remove',
+      onOptimistic: () => { onOpenChange(false); successToast(t, 'booking_deleted'); },
       onError: (/** @type {any} */ e) => toast({ description: e?.code ? errorText(t, e.code) : t('event.delete_failed'), variant: 'destructive' }),
     }),
   });
@@ -109,7 +108,7 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
     // Capture attachment object keys before delete; deleteSourceEntity sweeps
     // best-effort only after the row is actually gone (TRIP-117).
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
-    deleteMut.mutate({ id: data.id, tripId: data.trip_id, orphanPaths, row: { id: data.id, _pending: true } });
+    deleteMut.mutate({ id: data.id, tripId: data.trip_id, orphanPaths });
   };
 
   // All kinds edit inline via EventEditDialog (live-edit model, TRIP-126).

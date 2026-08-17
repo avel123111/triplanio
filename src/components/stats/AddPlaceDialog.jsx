@@ -35,11 +35,12 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const [picking, setPicking] = useState(true);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // (Re)initialise whenever the dialog opens (add vs edit).
   useEffect(() => {
     if (!open) return;
-    setErr(''); setSaving(false);
+    setErr(''); setSaving(false); setDeleting(false);
     if (editing) {
       setCity({ geonameid: editing.geonameid ?? null, name_i18n: editing.name_i18n || null, city_name: editing.city_name, country_code: editing.country_code, latitude: editing.lat, longitude: editing.lng });
       setFrom(editing.start_date || todayISO());
@@ -92,16 +93,16 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
 
   const remove = async () => {
     if (!isEdit) return;
-    setSaving(true); setErr('');
+    setSaving(true); setDeleting(true); setErr('');
     // Удаление той же дверью (шов user-place/place/delete): match {id, user_id:actor}
     // ставит buildPlan — чужую строку не удалить. id строкой (см. submit).
     const { error, code } = await invokeFn('user-place/place/delete', { body: { id: String(editing.id) } });
     if (error || code) {
-      setSaving(false);
+      setSaving(false); setDeleting(false);
       setErr(errorText(t, code));
       return;
     }
-    setSaving(false);
+    setSaving(false); setDeleting(false);
     refresh();
     successToast(t, 'visit_deleted');
     onSaved?.();
@@ -111,12 +112,12 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const foot = (
     <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
       {isEdit && (
-        <Btn variant="danger" onClick={remove} disabled={saving} style={{ marginRight: 'auto' }}>
+        <Btn variant="danger" onClick={remove} loading={deleting} disabled={saving} style={{ marginRight: 'auto' }}>
           {t('stats.delete_btn')}
         </Btn>
       )}
       <Btn variant="secondary" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
-      <Btn variant="primary" icon="check" onClick={submit} loading={saving} disabled={saving}>
+      <Btn variant="primary" icon="check" onClick={submit} loading={saving && !deleting} disabled={saving}>
         {isEdit ? t('stats.save_btn') : t('stats.add_btn')}
       </Btn>
     </div>

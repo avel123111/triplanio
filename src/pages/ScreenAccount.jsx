@@ -955,7 +955,7 @@ export default function ScreenAccount() {
                   <div className="row__t">{t('settings.delete_account')}</div>
                   <div className="row__s">{t('account.delete_desc')}</div>
                 </Grow>
-                <Btn variant="danger" disabled={deletingAccount} onClick={handleDeleteAccount}>{t('settings.delete_account')}</Btn>
+                <Btn variant="danger" loading={deletingAccount} disabled={deletingAccount} onClick={handleDeleteAccount}>{t('settings.delete_account')}</Btn>
               </Row>
 
               {deleteState === 'blocked' && (

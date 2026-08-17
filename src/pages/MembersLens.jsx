@@ -104,7 +104,7 @@ export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
     },
     ...formWrite({
       reconcile: (/** @type {any} */ data) => reconcileWriteRow(membersBinding, 'add', data),
-      onDone: () => { track('member_invited', { role: 'offline', trip_id: tripId }); close(); },
+      onDone: () => { track('member_invited', { role: 'offline', trip_id: tripId }); successToast(t, 'member_added'); close(); },
       onFail: showErr,
     }),
   });
@@ -313,22 +313,19 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // contentData.members) — one slice, so one binding, like budget/documents.
   const membersBinding = tripContentBinding(qc, tripId, 'members');
 
-  // Remove (canon): dim the row at T0 (`_pending` → mbrow--busy), then it DROPS and
-  // the toast lands TOGETHER on confirm — not an instant vanish with a toast trailing
-  // 2s later. On refusal the seam rolls the dim back.
+  // Remove — INSTANT (MembersLens stays mounted, so onError can roll back): the row
+  // DROPS and the success toast fire TOGETHER at T0 (onOptimistic), in sync with the
+  // vanish — not an instant vanish with a toast trailing 2s later. On refusal the seam
+  // restores the row and an error toast supersedes. pending row = an invite being
+  // cancelled; anything else = a member removed.
   const removeMut = useMutation({
     mutationFn: async (/** @type {any} */ { id }) => {
       const { error, code } = await invokeFn('trip-member/remove', { body: { id, trip_id: tripId } });
       if (error) throw refusalError(code);
     },
     ...withOptimism(membersBinding, {
-      op: 'update',     // mark _pending (dim), don't yank the row yet
-      reconcile: false,
-      // pending row = an invite being cancelled; anything else = a member removed.
-      onSuccess: (/** @type {any} */ _d, /** @type {any} */ { id, status }) => {
-        membersBinding.remove(id);
-        successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed');
-      },
+      op: 'remove',
+      onOptimistic: (/** @type {any} */ { status }) => successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed'),
       onError: (/** @type {any} */ e) => toast({ description: classifyError(t, e?.code).text, variant: 'destructive' }),
     }),
   });
@@ -365,7 +362,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
     confirm({
       title: t('member.remove_confirm'),
       variant: 'destructive',
-      onConfirm: () => removeMut.mutate({ id: memberId, status, row: { id: memberId, _pending: true } }),
+      onConfirm: () => removeMut.mutate({ id: memberId, status }),
     });
   }
 
@@ -418,9 +415,9 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
           // "Leave trip"; other rows get state-appropriate management actions
           // when you're an owner/admin.
           const canActOnRow = !isOwner && (isSelf || canManage);
-          // Busy row = a resend/reinvite in flight (`removing`) OR an optimistic
-          // remove dimming the row until it drops (`_pending`) — same mbrow--busy skin.
-          const isRemoving = removing === m.id || m._pending;
+          // Busy row = a resend/reinvite in flight (`removing`) → mbrow--busy skin.
+          // (Remove is instant: the row is gone at T0, so it needs no busy state.)
+          const isRemoving = removing === m.id;
           // Identity (name / email line / avatar / anonymized label) comes from
           // the SHARED resolver chat and documents already use (TRIP-334). The
           // payload now carries a profile for every row it ships, so a row that
