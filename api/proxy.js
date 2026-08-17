@@ -18,6 +18,14 @@
 //      the frontend build uses → same project as auth, no cross-env mismatch).
 //   2. Real client-IP forwarding — drop client-supplied forwarding headers, set
 //      one clean `x-forwarded-for` from Vercel's trusted IP (rate-limit safe).
+//      Supabase's own gateway OVERWRITES `x-forwarded-for`/`x-real-ip` with the
+//      IP of THIS proxy (a couple of Vercel egress IPs), so the DB-side per-IP
+//      rate-limit (signupPrecheck / requestPasswordReset) would collapse every
+//      user onto those few IPs. To carry the real client IP past that gateway we
+//      also stamp a bespoke `x-triplanio-client-ip` header (which the gateway
+//      leaves untouched), authenticated by a shared `x-triplanio-proxy-secret`
+//      so a direct caller hitting Supabase cannot forge it (rateLimit.ts trusts
+//      the client-ip header ONLY when the secret matches).
 //   3. NO apikey injection — the browser sends the public anon key just as the
 //      SDK did; both `apikey` and `Authorization` are forwarded untouched.
 //
@@ -30,8 +38,16 @@ export const config = { maxDuration: 60 };
 const STRIP_REQUEST = new Set([
   'host', 'connection', 'content-length', 'cookie',
   'x-forwarded-for', 'x-real-ip', 'x-forwarded-host', 'forwarded',
+  // Never let a caller supply these — the proxy is their sole author below, so a
+  // spoofed client-ip (or a guessed secret) from the browser is dropped first.
+  'x-triplanio-client-ip', 'x-triplanio-proxy-secret',
 ]);
 const STRIP_RESPONSE = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection']);
+
+/** Shared secret proving a request carrying `x-triplanio-client-ip` came from
+ * THIS proxy. Absent → we send no secret and rateLimit.ts keeps its XFF fallback
+ * (safe staged rollout: set the env on Vercel + Supabase to activate). */
+const PROXY_SHARED_SECRET = process.env.PROXY_SHARED_SECRET || '';
 
 /** Trusted client IP set by Vercel's proxy (not the client-supplied value). */
 function clientIp(req) {
@@ -62,7 +78,16 @@ export default async function handler(req, res) {
     headers[k] = Array.isArray(v) ? v.join(',') : v;
   }
   const ip = clientIp(req);
-  if (ip) { headers['x-forwarded-for'] = ip; headers['x-real-ip'] = ip; }
+  if (ip) {
+    headers['x-forwarded-for'] = ip;
+    headers['x-real-ip'] = ip;
+    // Carry the real client IP past Supabase's gateway (which rewrites the two
+    // headers above); only trusted when the shared secret rides along.
+    if (PROXY_SHARED_SECRET) {
+      headers['x-triplanio-client-ip'] = ip;
+      headers['x-triplanio-proxy-secret'] = PROXY_SHARED_SECRET;
+    }
+  }
 
   // The transport only ever sends JSON, so re-serialising the parsed body is
   // faithful and avoids depending on raw-stream availability under Vercel.
