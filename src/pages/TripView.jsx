@@ -1153,7 +1153,6 @@ export default function TripView() {
         categories={budgetCategoryOptions(budgetCategories, t)}
         mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
         cities={visits.filter((v) => v.city_name)}
-        onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
         onProRefusal={() => openProUpsell({
           mode: isOwner ? 'upgrade' : 'info',
           feature: t('budget.title'),
@@ -1168,7 +1167,6 @@ export default function TripView() {
         onOpenChange={(o) => { if (!o) setAddModal(null); }}
         tripId={tripId}
         existing={null}
-        onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
         onProRefusal={() => openProUpsell({
           mode: isOwner ? 'upgrade' : 'info',
           feature: t('budget.title'),
