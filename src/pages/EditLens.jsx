@@ -159,7 +159,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
-import { withRecompute } from '@/lib/trip-data';
+import { withRecompute, reconcileCityChain, pruneCityContent } from '@/lib/trip-data';
 import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -348,29 +348,25 @@ export default function EditLens({ tripId, shell, content }) {
   // intermediate server state (no jitter). Per-action RPCs are also coalesced/debounced
   // by their callers (e.g. the nights stepper) so the server receives only the final value.
   const seqRef = useRef(0);
-  // onResult(result) runs ONLY on RPC success, under the seq-guard, BEFORE the refetch —
-  // e.g. addCity reconciles the real city_visit uuid returned by add_city into the draft
-  // immediately (shrinks the tmp- window to the RPC latency instead of the full refetch).
-  // okKey: optional `toast` subtitle key fired ONLY on real success. Passed by the
-  // discrete actions (start date / add city / remove city); the frequent ones
-  // (nights, reorder) leave it undefined so they stay silent and don't spam.
   // The E-write lifecycle (seq-guard + ordered barriers) lives in the seam as
-  // withRecompute; this only declares the editor's phases. Signature is unchanged,
-  // so the five action call sites below stay exactly as they were.
-  //   onResult runs BEFORE the refetch (addCity reconciles the real uuid, removeCity
-  //     sweeps files) — a best-effort side effect (throws are swallowed by the seam).
-  //   refetchOpts lets date-only actions (nights/start/reorder) skip the CONTENT half.
+  // withRecompute; this only declares the editor's phases. Since TRIP-435 the five
+  // route RPCs RETURN the recomputed city_visits chain, so the authoritative
+  // reconciliation comes FROM THE RESPONSE — the `refetch` phase is dropped (ONE
+  // round-trip, not RPC + confirm-refetch).
+  //   reconcile(chain): fold the returned chain into the shell cache (real ids +
+  //     server dates → the added city un-mutes) and fire the success toast on this same
+  //     RPC land. onOk is a best-effort side effect (removeCity prunes its content +
+  //     sweeps files) — throws are swallowed by the seam.
   //   okKey: a success toast for the discrete actions; the frequent ones stay silent.
-  const runAction = (rpcFn, onResult, refetchOpts, okKey) => withRecompute(seqRef, {
+  /**
+   * @param {() => Promise<any>} rpcFn
+   * @param {{ onOk?: () => void, okKey?: string }} [opts]
+   */
+  const runAction = (rpcFn, { onOk, okKey } = {}) => withRecompute(seqRef, {
     run: rpcFn,
-    // Confirm the action the MOMENT the RPC lands — reconcile the real uuid (un-mute)
-    // AND fire the success toast here, not in commit. commit runs after the confirm-
-    // refetch (a second round-trip); gating the toast on it made it trail the action
-    // by ~a full extra RPC. The refetch stays as a background cache-sync only.
-    reconcile: (result) => { onResult?.(result); if (okKey) successToast(t, okKey); },
-    refetch: () => refetchTrip(qc, tripId, refetchOpts),
-    // Rebuild the draft from fresh server state on the next render (buildDraft); the
-    // client already re-laid the chain, so this is an invisible confirm, not a jump.
+    reconcile: (chain) => { reconcileCityChain(qc, tripId, chain); onOk?.(); if (okKey) successToast(t, okKey); },
+    // No `refetch` phase: the chain the RPC returned IS the authoritative reconciliation
+    // (TRIP-435). Rebuild the draft from the now-authoritative cache on the next render.
     commit: () => { setDraft(null); },
     // RPC failed → drop the optimistic patch by rebuilding from the last good cache
     // state (only if a newer action hasn't already taken ownership — the seam gates it).
@@ -439,6 +435,13 @@ export default function EditLens({ tripId, shell, content }) {
     // стал бы причиной того отката, который лечит. allSettled, а не all:
     // упавшая RPC не должна отменять перезапрос остальных.
     // qc жив после размонтирования (это клиент приложения, а не наш стейт).
+    //
+    // Здесь ОСОЗНАННО рефетч, а не реконсиляция из ответа (TRIP-435): в отличие от
+    // runAction, тут оседает НЕСКОЛЬКО RPC разом (ночи по нескольким городам + старт),
+    // и каждая вернула бы цепочку по состоянию СВОЕЙ транзакции — записать в кэш
+    // последнюю по времени значило бы рискнуть затереть чужую правку. Один
+    // авторитетный перечит после allSettled читает итоговое состояние без гонки.
+    // Компонент размонтирован, путь не на критичной задержке — цена рефетча не важна.
     Promise.allSettled(pending).then(() => refetchTrip(qc, tripId, { content: false })).catch(() => {});
   }, [tripId, qc]);
 
@@ -538,7 +541,7 @@ export default function EditLens({ tripId, shell, content }) {
   // Live-persist a new chain order (drag/keyboard reorder). tmp cities aren't in the
   // DB yet so skip until they're real (their add already refetches). One
   // reorder_cities → server recompute → refetch.
-  const persistOrder = (ids) => { if (ids.some(isTmpId)) return; runAction(() => rpcReorderCities(tripId, ids), undefined, { content: false }); };
+  const persistOrder = (ids) => { if (ids.some(isTmpId)) return; runAction(() => rpcReorderCities(tripId, ids)); };
   // Shared drag/FLIP/keyboard reorder engine. `commitOrder` reproduces the prior
   // inline behavior EXACTLY: optimistic client recompute (adjacency gaps + date
   // chain from the fixed trip start) then live-persist the new chain order. Anchors
@@ -587,7 +590,7 @@ export default function EditLens({ tripId, shell, content }) {
       timers.delete(id);
       const finalN = nightsTarget.current.get(id);
       nightsTarget.current.delete(id);
-      runAction(() => rpcSetCityNights(tripId, id, finalN), undefined, { content: false });
+      runAction(() => rpcSetCityNights(tripId, id, finalN));
     }, 350));
   };
   const shiftStart = (delta) => {
@@ -607,7 +610,7 @@ export default function EditLens({ tripId, shell, content }) {
       startCommit.current = null;
       const finalBase = startTarget.current;
       startTarget.current = null;
-      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), undefined, { content: false }, 'start_date_updated');
+      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), { okKey: 'start_date_updated' });
     }, 350);
   };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
@@ -625,8 +628,9 @@ export default function EditLens({ tripId, shell, content }) {
     if (ok) doRemoveCity(id);
   };
   // Full optimism: drop the node AND re-lay the chain now (recompute = server-mirror),
-  // so the cities after it close the gap instantly instead of jumping when the server
-  // (remove_city → recompute_trip) refetch lands. The refetch still confirms.
+  // so the cities after it close the gap instantly instead of jumping. The server
+  // (remove_city → recompute_trip) returns the recomputed chain, which runAction
+  // reconciles FROM THE RESPONSE — no confirm-refetch (TRIP-435).
   const doRemoveCity = (id) => {
     editDraft((d) => {
       const node = d.nodes.find((n) => n.id === id); if (!node) return d;
@@ -635,16 +639,22 @@ export default function EditLens({ tripId, shell, content }) {
     });
     if (String(id).startsWith('tmp-')) return; // never persisted → no server rows / files
     // remove_city cascade-deletes this city's hotels/activities/transfers server-side, but
-    // SQL can't reach Storage. Collect the SAME set's document paths and sweep them via the
-    // single shared file primitive (removeTripFiles) — only AFTER the RPC succeeds (onResult),
-    // else those bookings' files orphan until the whole trip is deleted (TRIP-137). Mirrors
-    // remove_city's cascade set: transfers touching the city on either end.
-    const orphanPaths = [
+    // SQL can't reach Storage, and dropping the write-path refetch (TRIP-435) means the
+    // content cache no longer self-cleans. So on success (onOk) we mirror the cascade on the
+    // client: prune the SAME set from the content cache (pruneCityContent) and sweep those
+    // bookings' document paths via the single shared file primitive (removeTripFiles) — else
+    // rows/files orphan until the trip is deleted (TRIP-137). Cascade set: hotels/activities
+    // by city_visit_id + transfers touching the city on either end.
+    const orphanEntities = [
       ...liveHotels.filter((h) => h.city_visit_id === id),
       ...liveActivities.filter((a) => a.city_visit_id === id),
       ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
-    ].flatMap((e) => collectDocPaths(e.documents));
-    runAction(() => rpcRemoveCity(tripId, id), () => removeTripFiles(orphanPaths), undefined, 'city_removed');
+    ];
+    const orphanPaths = orphanEntities.flatMap((e) => collectDocPaths(e.documents));
+    runAction(() => rpcRemoveCity(tripId, id), {
+      onOk: () => { pruneCityContent(qc, tripId, id); removeTripFiles(orphanPaths); },
+      okKey: 'city_removed',
+    });
   };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
@@ -654,8 +664,8 @@ export default function EditLens({ tripId, shell, content }) {
     // Full optimism: build the tmp node with its nights, splice it into place, then
     // re-lay the chain (recompute = server-mirror). It lands in its final slot WITH
     // correct dates immediately — no null-date node sorting to the front and snapping
-    // back when add_city → recompute_trip refetches. Stays muted (tmp- id) until the
-    // RPC returns the real uuid.
+    // back. Stays muted (tmp- id) until add_city → recompute_trip returns the chain,
+    // which runAction reconciles FROM THE RESPONSE (real row: id + dates), no refetch.
     const provNights = kind === 'transit' ? 2 : null;
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
@@ -673,7 +683,6 @@ export default function EditLens({ tripId, shell, content }) {
       else { const endIdx = arr.findIndex((n) => n.kind === 'end'); insertIdx = endIdx === -1 ? null : endIdx; arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
       return { ...d, nodes: recompute(applyAdjacencyGaps(arr, liveTransfers), d.startDate) };
     });
-    const tmpId = node.id; // swap this tmp- id for the real uuid the moment add_city returns
     runAction(() => rpcAddCity(tripId, {
       kind,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
@@ -681,9 +690,7 @@ export default function EditLens({ tripId, shell, content }) {
       country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
-    }, insertIdx), (realId) => {
-      if (realId) editDraft((d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === tmpId ? { ...n, id: realId } : n)) }));
-    }, undefined, 'city_added');
+    }, insertIdx), { okKey: 'city_added' });
   };
   const onPickCity = async (c, kind) => {
     closeLeftPanel();

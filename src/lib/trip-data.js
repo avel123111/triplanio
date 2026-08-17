@@ -114,6 +114,47 @@ export function optimisticContentUpdate(qc, tripId, kind, op, record) {
   }
 }
 
+/**
+ * Reconcile the authoritative city_visits chain a route RPC returns (add_city /
+ * remove_city / reorder_cities / set_city_nights / set_trip_start_date) into the
+ * shell cache — in ONE round-trip, no confirm-refetch (TRIP-435). The chain is the
+ * raw city_visits rows in `position` order; we MERGE each onto the existing cache
+ * row by id so the read door's late-bound affiliate enrichment (`cities`,
+ * `iata_city_code`, attached by getTripDetails) survives — replacing the list
+ * wholesale would strip it (the TRIP-277 thin-payload hazard). A freshly added city
+ * has no prior row and thus no enrichment yet; it isn't shown in the editor, and
+ * TripView re-enriches it on its next read. Rows absent from the chain (a removed
+ * city) drop out.
+ */
+export function reconcileCityChain(qc, tripId, chain) {
+  if (!tripId || !Array.isArray(chain)) return;
+  qc.setQueryData(TRIP_SHELL_KEY(tripId), (old) => {
+    if (!old) return old;
+    const prev = new Map((old.cityVisits || []).map((v) => [v.id, v]));
+    return { ...old, cityVisits: chain.map((row) => ({ ...(prev.get(row.id) || {}), ...row })) };
+  });
+}
+
+/**
+ * Prune a removed city's content from the content cache — the client mirror of
+ * remove_city's server cascade (hotels/activities by city_visit_id, transfers
+ * touching the city on either end). Without the old write-path refetch, the shared
+ * content cache would otherwise keep these orphaned rows until the next navigation
+ * refetch. Same filter the editor already builds to sweep the city's Storage files.
+ */
+export function pruneCityContent(qc, tripId, cityId) {
+  if (!tripId || !cityId) return;
+  qc.setQueryData(TRIP_CONTENT_KEY(tripId), (old) => {
+    if (!old) return old;
+    return {
+      ...old,
+      hotels:     (old.hotels     || []).filter((h) => h.city_visit_id !== cityId),
+      activities: (old.activities || []).filter((a) => a.city_visit_id !== cityId),
+      transfers:  (old.transfers  || []).filter((tr) => tr.from_city_visit_id !== cityId && tr.to_city_visit_id !== cityId),
+    };
+  });
+}
+
 // The cache keys a write of `kind` touches. Every entity lives in trip-content;
 // cityVisits ALSO lives in the shell (header/skeleton), so a city write must
 // cancel/snapshot/patch BOTH — else the shell keeps a stale city list.
