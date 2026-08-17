@@ -364,9 +364,14 @@ export default function EditLens({ tripId, shell, content }) {
    */
   const runAction = (rpcFn, { onOk, okKey } = {}) => withRecompute(seqRef, {
     run: rpcFn,
+    // Toast fires on the RPC RESPONSE (reconcile) — the moment the muted card un-mutes /
+    // the authoritative dates land — NOT at T0. For an ADD, "done" is when the real id
+    // arrives (the card stops being pending), so the confirmation must ride the response,
+    // not the optimistic placement — else the toast claims success while the card is still
+    // a grey tmp- row. reconcile also folds the returned chain into the shell cache; no
+    // `refetch` phase — the chain IS the authoritative reconciliation (TRIP-435).
     reconcile: (chain) => { reconcileCityChain(qc, tripId, chain); onOk?.(); if (okKey) successToast(t, okKey); },
-    // No `refetch` phase: the chain the RPC returned IS the authoritative reconciliation
-    // (TRIP-435). Rebuild the draft from the now-authoritative cache on the next render.
+    // Rebuild the draft from the now-authoritative cache on the next render.
     commit: () => { setDraft(null); },
     // RPC failed → drop the optimistic patch by rebuilding from the last good cache
     // state (only if a newer action hasn't already taken ownership — the seam gates it).
@@ -597,6 +602,13 @@ export default function EditLens({ tripId, shell, content }) {
     const cur = startTarget.current ?? draft?.startDate;
     const base = cur ? toDT(cur).plus({ days: delta }).toISO() : null;
     if (!base) return;
+    // Toast fires in the SAME synchronous tick as the date shift (T0) — together with the
+    // change, not ~350ms later at the debounce and not ~2s later on the RPC response. The
+    // shift is EXACT (pure +N days, no recompute engine) and can't diverge from the server,
+    // and nothing is left pending (unlike an ADD, whose grey tmp- card must wait for its
+    // id), so an immediate success toast is honest. Guard on `!startCommit.current` so a
+    // burst of rapid stepping shows ONE toast (leading edge), not one per click.
+    if (!startCommit.current) successToast(t, 'start_date_updated');
     startTarget.current = base;
     // partial optimism: shift ALL dates by the same delta (exact, no recompute engine)
     editDraft((d) => ({ ...d, startDate: base, nodes: d.nodes.map((n) => ({
@@ -604,57 +616,68 @@ export default function EditLens({ tripId, shell, content }) {
       start_date: n.start_date ? toDT(n.start_date).plus({ days: delta }).toISODate() : n.start_date,
       end_date: n.end_date ? toDT(n.end_date).plus({ days: delta }).toISODate() : n.end_date,
     })) }));
-    // debounce: send ONE set_trip_start_date with the FINAL value ~350ms after last click
+    // debounce: send ONE set_trip_start_date with the FINAL value ~350ms after last click.
+    // runAction persists SILENTLY (no okKey — the toast already fired at T0); on failure its
+    // onError toast + rollback revert the optimistic shift.
     if (startCommit.current) clearTimeout(startCommit.current);
     startCommit.current = setTimeout(() => {
       startCommit.current = null;
       const finalBase = startTarget.current;
       startTarget.current = null;
-      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), { okKey: 'start_date_updated' });
+      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()));
     }, 350);
   };
-  // Remove a city → confirm first. On confirm the city AND its attached bookings
-  // leave the grid immediately (live remove_city cascade-deletes the city + children).
-  // Bookings are stashed on the node so Restore brings them back.
+  // Remove a city — PESSIMISTIC (async-confirm). The cityview stays open, the confirm
+  // button spins (ConfirmProvider `busy`) while remove_city runs, and only THEN does the
+  // recomputed chain reconcile the new route from the response, the cascade get mirrored
+  // into the caches, the toast fire and the panel close. Unlike the optimistic route edits
+  // the row does NOT vanish at T0: a delete has a confirm dialog, so the dialog IS the
+  // in-flight surface (spinner), the same primitive bookings/members use. On failure the
+  // error toast shows, nothing is removed and the panel stays open.
   const removeCity = async (id) => {
     const n = draft.nodes.find((x) => x.id === id);
     if (!n) return;
-    const ok = await confirm({
+    // A tmp- city (its add is still in flight) was never persisted — drop it locally, with
+    // no server round-trip, no confirm, no spinner. Re-lay the chain so the gap closes.
+    if (isTmpId(id)) {
+      editDraft((d) => ({ ...d, nodes: recompute(applyAdjacencyGaps(d.nodes.filter((x) => x.id !== id), liveTransfers), d.startDate) }));
+      closeLeftPanel();
+      return;
+    }
+    // remove_city cascade-deletes this city's hotels/activities/transfers server-side, but
+    // SQL can't reach Storage. Collect the SAME cascade set's document paths up front and
+    // sweep them on success (removeTripFiles), else files orphan until the trip is deleted
+    // (TRIP-137). Cascade set: hotels/activities by city_visit_id + transfers touching the
+    // city on either end.
+    const orphanPaths = [
+      ...liveHotels.filter((h) => h.city_visit_id === id),
+      ...liveActivities.filter((a) => a.city_visit_id === id),
+      ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
+    ].flatMap((e) => collectDocPaths(e.documents));
+    let removed = false;
+    await confirm({
       title: t('tse.delete_city_q', { city: n.city_name }),
       description: t('tse.delete_city_desc'),
       confirmLabel: t('tse.delete_city'),
       variant: 'destructive',
+      // Async confirm: the dialog holds the spinner until this settles. Reconcile the new
+      // route FROM THE RESPONSE (reconcileCityChain) + mirror the server cascade into the
+      // content cache (pruneCityContent) + sweep files, then rebuild the draft and toast.
+      onConfirm: async () => {
+        try {
+          const chain = await rpcRemoveCity(tripId, id);
+          reconcileCityChain(qc, tripId, chain);
+          pruneCityContent(qc, tripId, id);
+          removeTripFiles(orphanPaths);
+          setDraft(null);
+          successToast(t, 'city_removed');
+          removed = true;
+        } catch (e) {
+          toast({ description: e && 'code' in e ? errorText(t, e.code) : t('tse.err_save'), variant: 'destructive' });
+        }
+      },
     });
-    if (ok) doRemoveCity(id);
-  };
-  // Full optimism: drop the node AND re-lay the chain now (recompute = server-mirror),
-  // so the cities after it close the gap instantly instead of jumping. The server
-  // (remove_city → recompute_trip) returns the recomputed chain, which runAction
-  // reconciles FROM THE RESPONSE — no confirm-refetch (TRIP-435).
-  const doRemoveCity = (id) => {
-    editDraft((d) => {
-      const node = d.nodes.find((n) => n.id === id); if (!node) return d;
-      const nodes = d.nodes.filter((n) => n.id !== id);
-      return { ...d, nodes: recompute(applyAdjacencyGaps(nodes, liveTransfers), d.startDate) };
-    });
-    if (String(id).startsWith('tmp-')) return; // never persisted → no server rows / files
-    // remove_city cascade-deletes this city's hotels/activities/transfers server-side, but
-    // SQL can't reach Storage, and dropping the write-path refetch (TRIP-435) means the
-    // content cache no longer self-cleans. So on success (onOk) we mirror the cascade on the
-    // client: prune the SAME set from the content cache (pruneCityContent) and sweep those
-    // bookings' document paths via the single shared file primitive (removeTripFiles) — else
-    // rows/files orphan until the trip is deleted (TRIP-137). Cascade set: hotels/activities
-    // by city_visit_id + transfers touching the city on either end.
-    const orphanEntities = [
-      ...liveHotels.filter((h) => h.city_visit_id === id),
-      ...liveActivities.filter((a) => a.city_visit_id === id),
-      ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
-    ];
-    const orphanPaths = orphanEntities.flatMap((e) => collectDocPaths(e.documents));
-    runAction(() => rpcRemoveCity(tripId, id), {
-      onOk: () => { pruneCityContent(qc, tripId, id); removeTripFiles(orphanPaths); },
-      okKey: 'city_removed',
-    });
+    if (removed) closeLeftPanel();
   };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
@@ -847,7 +870,7 @@ export default function EditLens({ tripId, shell, content }) {
           prevCity={prev?.city_name} nextCity={next?.city_name}
           isHotelWarn={(h) => hotelWarnId(h?.id)} isActWarn={(a) => actWarnId(a.id)}
           onBack={closeLeftPanel}
-          onRemove={() => { closeLeftPanel(); removeCity(node.id); }}
+          onRemove={() => removeCity(node.id)}
           onNightsMinus={() => nudgeNights(node.id, -1)} onNightsPlus={() => nudgeNights(node.id, 1)}
           onOpenHotel={(id) => openEvent('hotel', id)} onAddHotel={() => createBooking('hotel', node)}
           onOpenActivity={(id) => openEvent('activity', id)} onAddActivity={() => createBooking('activity', node)}
