@@ -14,6 +14,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   withOptimism,
+  formWrite,
+  reconcileWriteRow,
   tripContentBinding,
   listBinding,
   swapOptimisticRow,
@@ -184,4 +186,49 @@ test('swapOptimisticRow: appends the real row if the tmp row was already clobber
 
   swapOptimisticRow(qc, TRIP, 'hotels', 'tmp-x', { id: 'real-9' }); // idempotent
   assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'real-9'], 'no duplicate on repeat');
+});
+
+// ─── reconcileWriteRow + formWrite (pessimistic form path) ────────────────────
+
+test('reconcileWriteRow add: upserts the returned row by its own id (no tmp)', () => {
+  const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1' }] } });
+  const ok = reconcileWriteRow(tripContentBinding(qc, TRIP, 'hotels'), 'add', { id: 'real-9', name: 'Hilton' });
+  assert.equal(ok, true, 'folded a single row');
+  assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'real-9'], 'returned row appended');
+  reconcileWriteRow(tripContentBinding(qc, TRIP, 'hotels'), 'add', { id: 'real-9' }); // idempotent (dedup)
+  assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'real-9'], 'no duplicate on repeat');
+});
+
+test('reconcileWriteRow update: merges the returned row over the cached one', () => {
+  const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1', name: 'old' }] } });
+  reconcileWriteRow(tripContentBinding(qc, TRIP, 'hotels'), 'update', { id: 'h1', name: 'new' });
+  assert.deepEqual(qc.get(CONTENT).hotels, [{ id: 'h1', name: 'new' }], 'authoritative row merged');
+});
+
+test('reconcileWriteRow: no single row (array / null) → false, so the caller refetches (E)', () => {
+  const qc = makeQC({ [k(CONTENT)]: { transfers: [] } });
+  assert.equal(reconcileWriteRow(tripContentBinding(qc, TRIP, 'transfers'), 'add', null), false, 'null → not folded');
+  assert.equal(reconcileWriteRow(tripContentBinding(qc, TRIP, 'transfers'), 'add', {}), false, 'no id → not folded');
+});
+
+test('formWrite success: reconcile runs THEN onDone (close), onFail never', () => {
+  const order = [];
+  const life = formWrite({
+    reconcile: () => order.push('reconcile'),
+    onDone: () => order.push('done'),
+    onFail: () => order.push('fail'),
+  });
+  life.onSuccess({ id: 'x' }, {});
+  assert.deepEqual(order, ['reconcile', 'done'], 'reconcile-from-row before the dialog closes');
+});
+
+test('formWrite error: onFail fires and onDone does NOT — the dialog stays open', () => {
+  const order = [];
+  const life = formWrite({
+    reconcile: () => order.push('reconcile'),
+    onDone: () => order.push('done'),
+    onFail: () => order.push('fail'),
+  });
+  life.onError(new Error('refused'), {});
+  assert.deepEqual(order, ['fail'], 'no reconcile, no close on failure');
 });

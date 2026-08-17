@@ -143,7 +143,7 @@ import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/sto
 import { aiField } from '@/lib/ai-values';
 import { deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
-import { invalidateTripData, tripContentBinding, withOptimism } from '@/lib/trip-data';
+import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
@@ -861,38 +861,39 @@ export default function EventEditDialog({
       const payload = buildServicePayload(form, tripId, t);
       return upsert('service', entity, payload, tripId);
     },
-    onSuccess: (data) => {
-      // Commit point: every file staged this session that the saved form no
-      // longer references is orphaned — sweep best-effort (TRIP-117). Anchored
-      // on `seenDocPaths`, not `originalDocPaths`, so a file uploaded THIS
-      // session and then detached (AI reset, or by hand) is swept too; the
-      // unmount sweep skips a successful save by design (TRIP-277).
-      committedRef.current = true;
-      removeOrphanedFiles(seenDocPaths.current, form.documents);
-      // Single-row write (create OR edit) → reconcile that row from the write's
-      // return value, no full-trip refetch: edit replaces it, create upserts it
-      // (swap dedups if a background refetch already brought the row). A layover /
-      // complex transfer create writes several rows across cities (saveLayoverChain)
-      // and reshapes the whole timeline — only the server knows the new shape, so
-      // that path (E) takes a targeted refetch.
-      const cacheKind = OPT_CACHE[currentKind];
-      const singleRow = !!cacheKind && !!data?.id && !isComplexTransferCreate;
-      if (singleRow && entity)       tripContentBinding(qc, tripId, cacheKind).update(data);
-      else if (singleRow && !entity) tripContentBinding(qc, tripId, cacheKind).swap(data.id, data);
-      else if (tripId)               invalidateTripData(qc, tripId);
-      successToast(t, entity ? 'booking_updated' : 'booking_added');
-      onOpenChange(false);
-    },
-    onError: (err) => {
-      // Seam refusal carries a generic `code` → localized line (never raw server
-      // prose, TRIP-378); a client-side throw (e.g. err_layover_city) keeps its
-      // own localized message.
-      toast({
-        title: t('event.save_failed'),
-        description: err && 'code' in err ? errorText(t, err.code) : err?.message,
-        variant: 'destructive',
-      });
-    },
+    ...formWrite({
+      // Single-row create/edit → fold from the returned row (edit merges, create
+      // upserts), no full-trip refetch. A layover / complex transfer create writes
+      // several rows across cities (saveLayoverChain) and reshapes the whole timeline
+      // — reconcileWriteRow returns false there → targeted refetch (E, server owns
+      // the new shape).
+      reconcile: (/** @type {any} */ data) => {
+        const cacheKind = OPT_CACHE[currentKind];
+        const folded = cacheKind && !isComplexTransferCreate
+          && reconcileWriteRow(tripContentBinding(qc, tripId, cacheKind), entity ? 'update' : 'add', data);
+        if (!folded && tripId) invalidateTripData(qc, tripId);
+      },
+      onDone: () => {
+        // Commit point: every file staged this session that the saved form no longer
+        // references is orphaned — sweep best-effort (TRIP-117). Anchored on
+        // `seenDocPaths`, so a file uploaded THIS session and then detached (AI reset,
+        // or by hand) is swept too; the unmount sweep skips a success by design (TRIP-277).
+        committedRef.current = true;
+        removeOrphanedFiles(seenDocPaths.current, form.documents);
+        successToast(t, entity ? 'booking_updated' : 'booking_added');
+        onOpenChange(false);
+      },
+      // Refusal carries a generic `code` → localized line (never raw server prose,
+      // TRIP-378); a client-side throw (e.g. err_layover_city) keeps its own message.
+      // The dialog stays OPEN — the input is not lost.
+      onFail: (/** @type {any} */ err) => {
+        toast({
+          title: t('event.save_failed'),
+          description: err && 'code' in err ? errorText(t, err.code) : err?.message,
+          variant: 'destructive',
+        });
+      },
+    }),
   });
 
   // ── Delete mutation ────────────────────────────────────────────────────

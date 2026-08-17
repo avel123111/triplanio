@@ -19,7 +19,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
-import { TRIP_DOCUMENTS_INCLUDE, listBinding, withOptimism } from '@/lib/trip-data';
+import { TRIP_DOCUMENTS_INCLUDE, listBinding, withOptimism, formWrite, reconcileWriteRow } from '@/lib/trip-data';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { errorText } from '@/lib/errorText';
@@ -92,15 +92,14 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   // in TripView) with no parent wiring to forget.
   const createMut = useMutation({
     mutationFn: (/** @type {any} */ body) => insertTripDocument(body),
-    onSuccess: (/** @type {any} */ row) => {
-      if (row) listBinding(qc, DOCS_KEY(tripId), { addTo: 'start' }).add(row);
-      successToast(t, 'document_saved');
-      savedRef.current = true; // files are now owned by the persisted row
-      close();
-    },
-    // Keep the dialog open and the input intact; the staged files stay referenced
-    // by the form (NOT swept here — the dismiss-without-save path still sweeps them).
-    onError: (/** @type {any} */ err) => setErr(errorText(t, err?.code)),
+    ...formWrite({
+      // Reconcile from the returned row (newest-first prepend), never a refetch.
+      reconcile: (/** @type {any} */ row) => reconcileWriteRow(listBinding(qc, DOCS_KEY(tripId), { addTo: 'start' }), 'add', row),
+      onDone: () => { successToast(t, 'document_saved'); savedRef.current = true; close(); },
+      // Keep the dialog open and the input intact; the staged files stay referenced
+      // by the form (NOT swept here — the dismiss-without-save path still sweeps them).
+      onFail: (/** @type {any} */ err) => setErr(errorText(t, err?.code)),
+    }),
   });
 
   async function uploadFiles(files) {

@@ -279,3 +279,51 @@ export function withOptimism(binding, { op, reconcile = true, onSuccess, onError
     },
   };
 }
+
+/**
+ * Fold the row a PESSIMISTIC write returned into the cache — the reconcile-from-row
+ * step of the form path (create upserts it, edit merges it), shared so no dialog
+ * hand-writes `binding.swap`/`binding.update` per screen. Unlike the optimistic
+ * {@link reconcileFromRow} there is no tmp row to match, so `add` upserts by the
+ * row's OWN id (swap dedups if a background refetch already brought it).
+ *
+ * @returns {boolean} true if a single row was folded; false when the write returned
+ *   no single row (a layover chain / recompute reshapes many rows — the caller then
+ *   does a targeted refetch instead).
+ */
+export function reconcileWriteRow(binding, op, data) {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || row.id == null) return false;
+  if (op === 'add') binding.swap(row.id, row);
+  else binding.update(row);
+  return true;
+}
+
+/**
+ * The canonical PESSIMISTIC form-write lifecycle — the mirror of {@link withOptimism}
+ * for a create/edit dialog that STAYS MOUNTED while it writes. There is no optimistic
+ * patch: the Save button carries the in-flight state (its `isPending`), and then
+ *   onSuccess → `reconcile(data, vars)` folds the RETURNED row into the cache
+ *               (reconcile-from-row via {@link reconcileWriteRow}, never a full
+ *               refetch), then `onDone` closes the dialog;
+ *   onError   → `onFail(err, vars)` surfaces the failure and the dialog STAYS OPEN
+ *               — it NEVER closes on error, so the user never loses what they typed.
+ * Spread into `useMutation` next to its `mutationFn`. This is the ONE place the
+ * "close-on-success / keep-open-on-error / reconcile-not-refetch" contract lives, so
+ * documents, bookings and budget forms share it instead of re-hand-rolling it.
+ *
+ * @param {{ reconcile?: (data:any, vars:any)=>void,
+ *           onDone?: (data:any, vars:any)=>void,
+ *           onFail?: (err:any, vars:any)=>void }} [opts]
+ */
+export function formWrite({ reconcile, onDone, onFail } = {}) {
+  return {
+    onSuccess: (data, vars) => {
+      reconcile?.(data, vars);
+      onDone?.(data, vars);
+    },
+    onError: (err, vars) => {
+      onFail?.(err, vars);
+    },
+  };
+}
