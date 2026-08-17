@@ -32,7 +32,9 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import { useMobileNav } from '@/components/MobileBottomNav';
-import { DEFAULT_SECTION, sectionById } from '@/lib/tripMenu';
+import { DEFAULT_SECTION, sectionById, isSectionAvailable } from '@/lib/tripMenu';
+import { useUnreadChatCount } from '@/lib/chat';
+import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -119,6 +121,16 @@ export default function TripShell({
   // Значение флага — ПРИЧИНА (строка), поэтому приводим к булеву, а не сверяем
   // с true: `=== true` тихо вернул бы false на любой живой причине.
   const hidesDock = !!sectionById(section)?.hidesDock;
+
+  // Бейдж непрочитанного на кнопке «Ещё» мобильного дока (TRIP-354): ВНУТРИ трипа
+  // это СУММА двух каналов — непрочитанные сообщения чата трипа + непрочитанные
+  // inapp-уведомления (глобальные). Оба счётчика уже канон-хуки; считаем их
+  // здесь, где на руках tripId и роль, и передаём числом в регистрацию дока —
+  // сам док (`MobileBottomNav`) живёт выше `TripShell` и tripId не знает. Чат
+  // считаем только когда линза чата доступна, иначе — ноль подписок.
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
+  const inappUnread = useUnreadNotificationCount();
+  const moreBadge = chatUnread + inappUnread;
   // useLayoutEffect, а не useEffect: пассивный эффект выполняется ПОСЛЕ отрисовки,
   // и док успевал показать один кадр общего варианта («Поездки · + · Профиль»)
   // поверх открывшегося трипа - а тап, попавший в этот кадр, открывал создание
@@ -129,13 +141,14 @@ export default function TripShell({
       onNavigate: (id) => navCbs.current.onNavigate?.(id),
       openMenu: () => setSideOpen(true),
       hidesDock,
+      moreBadge,
     };
     setTripNav(mine);
     // Снимаем ТОЛЬКО свою регистрацию: когда экранов с оболочкой станет два
     // (редактор во втором PR), порядок «размонтировался старый после того, как
     // смонтировался новый» иначе оставил бы док в общем варианте при живом трипе.
     return () => setTripNav((cur) => (cur === mine ? null : cur));
-  }, [setTripNav, section, hidesDock]);
+  }, [setTripNav, section, hidesDock, moreBadge]);
 
   // Дефолтная секция - «вверх» из трипа, любая другая - «вверх» в трип.
   const backTo = section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`;

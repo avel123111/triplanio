@@ -149,6 +149,7 @@ export default function EventModal(props) {
               </Btn>
               <Btn
                 variant="danger-solid"
+                loading={deleting}
                 disabled={deleting}
                 onClick={async () => {
                   if (!onDelete) return;

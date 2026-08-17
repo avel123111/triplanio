@@ -395,6 +395,19 @@ export const Badge = ({ variant = "", size, icon, children, style }) => (
   </span>
 );
 
+// ----- UnreadBadge ----- (TRIP-354, апрув Pavel)
+// ОДИН красный бейдж непрочитанного на всё приложение. До него счётчик рисовали
+// пятью способами: точка колокольчика (`icon-btn__dot`, --danger, БЕЗ числа),
+// чат-бейджи сайдбара/шита/виджета (--warm, 18/22px, свой класс каждый) и счёт
+// аккаунта (`badge--count`, --brand). Теперь один облик — красный `badge--unread`
+// с числом, свыше 99 → «99+», ноль → ничего. Позиционирование (оверлей на
+// кнопке-иконке / пункте дока / плитке шита) даёт ко-селектор владельца, как у
+// `.icon-btn > .badge--count`; сам бейдж только рисует пилюлю. Нейтральный
+// `badge--count` (синий) остаётся для счётчиков фильтров/деталей.
+/** @param {{ count?: number }} p */
+export const UnreadBadge = ({ count = 0 }) =>
+  count > 0 ? <Badge variant="unread">{count > 99 ? "99+" : count}</Badge> : null;
+
 // ----- RoleBadge ----- (TRIP-409, апрув Pavel)
 // ОДИН перевод роли участника → бейдж. До него пять поверхностей рисовали его
 // по-своему: список участников — цветными <Badge>, «Кто едет» в Обзоре —
@@ -863,7 +876,7 @@ export function StreamEventRow({ e, onClick }) {
             Была сырым <button>, из-за чего скин (переехавший с `.tl3-card` на Card)
             её не касался — карточка облезала до прозрачного текста. `.tl3-card--tr`
             остаётся раскладкой коннектора (город→режим→город). */}
-        <Card as="button" radius="lg" interactive className="tl3-card tl3-card--tr" onClick={onClick}>
+        <Card as="button" radius="lg" interactive ariaBusy={e._pending || undefined} className="tl3-card tl3-card--tr" onClick={onClick}>
           <div className="rv-end">
             <b>{e.from || "—"}</b>
             {e.from_address && e.from_address !== e.from && <span>{e.from_address}</span>}
@@ -890,7 +903,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <Card as="button" radius="lg" interactive className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
+      <Card as="button" radius="lg" interactive ariaBusy={e._pending || undefined} className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>
