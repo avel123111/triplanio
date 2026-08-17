@@ -14,6 +14,8 @@
   "expense_added": "Gasto añadido",
   "expense_deleted": "Gasto eliminado",
   "expense_updated": "Gasto actualizado",
+  "invite_accepted": "Invitación al viaje aceptada",
+  "invite_declined": "Invitación al viaje rechazada",
   "invite_resent": "Invitación reenviada",
   "invite_revoked": "Invitación revocada",
   "invite_sent": "Invitación enviada",
