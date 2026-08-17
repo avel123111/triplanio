@@ -450,7 +450,6 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    visual-diff-exempt: .eroute border-radius — на .card--r-card (24), значение то же
    visual-diff-exempt: .eroute box-shadow — СНЯТА: eroute плоский как все карточки; статичная тень --sh-1 на одном пустом экране = дрейф, вариант ради одного вызывателя не заводим (апрув Pavel) */
 .card,
-.map-route,
 /* оверлеи и всплывающее (диалог тут только за РАМКОЙ — заливку он берёт
    ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
@@ -533,6 +532,9 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 }
 @media (hover: hover) and (pointer: fine) {
   .lrow--add:hover { border-color: var(--a, var(--brand)); background: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); color: var(--a, var(--brand)); }
+  /* TRIP-337: иконка-плитка лида (tone="quiet", серая) тоже уезжает в тон ховера --a,
+     иначе на ховере цветнело всё, кроме неё. */
+  .lrow--add:hover .tile { color: var(--a, var(--brand)); }
 }
 
 /* ── Donut: кольцевая диаграмма — сегменты по долям + центр, запертый в дырке
@@ -703,7 +705,6 @@ h2,
 .acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-heading — Geologica 18/700/1.25, tabular (карьер .acct-sectitle) */
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
-.te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
 .pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
 .invite__tx h3,
@@ -753,7 +754,8 @@ h4,
 .cm-h,
 .eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
 .hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
-.trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → Label (спецификее .seg button{font:inherit}) */
+.seg button,   /* TRIP-337: сегмент-контрол = канон типографики .t-label. Был `font: inherit` → у одного примитива было три разных кегля (Trips-фильтр 13px, а /kit и прочие экраны наследовали крупный контекст). Экранный патч `.trips-toolbar .seg--filter button` снят как дубль этого канона. */
+.te-cityname,   /* TRIP-337: названия города (строка редактора + планировщик — общий носитель .te-cityname) → Label (был Subheading). Маршрут карты идёт своим .map-route__name, тоже Label. */
 .btn,
 .field__label,
 .app-side__item,
@@ -878,7 +880,6 @@ h4,
 .sev,
 .avatar,
 .avatar--sm,
-.seg button,
 .choice-card__sub,
 .ts-startctl__lbl,
 .ts-startctl__date,
@@ -1052,8 +1053,6 @@ h4,
 .chat-mention__lbl,
 .ngrp__label,
 .te-th,
-.te-endlabel,
-.te-wptag,
 .tl3-dh .datechip .m,
 .cityrail .cr-h,
 .plan-popular-badge,
@@ -1114,6 +1113,7 @@ h4,
    visual-diff-exempt: .statbar letter-spacing — стат-подпись statbar Meta→Tiny Caps
    visual-diff-exempt: .statbar line-height — стат-подпись statbar Meta→Tiny Caps */
 .t-tiny-caps,
+.te-endlabel,  /* TRIP-337: СТАРТ/ФИНИШ маршрута → Tiny Caps (был .t-micro 11px) */
 .statbar .k,   /* TRIP-175 инсп.: стат-подпись statbar Meta→Tiny Caps (мелкий серый капс) */
 .sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
 .badge--tiny,  /* TRIP-337: третья ступень пилюли — статус/тариф-чипы плашки на кегль ниже (.t-micro→.t-tiny-caps), апрув Pavel */
@@ -1627,9 +1627,9 @@ button.app-side__item:hover { background: var(--wash); }
    однозначным, когда оболочка останется одна. */
 /* .hv-notes border-radius уехал на .card--r-md (radius="md", TRIP-337 объект 2). */
 
-/* Map lens route panel (TRIP-33): скин - роль поверхности, `.map-route` стоит
-   в её co-селекторе СВОИМ именем; этот блок - только раскладка. Floats top-left over the
-   full-bleed map; collapses to a bottom sheet on phones (below). */
+/* Map lens route panel (TRIP-33): поверхность несёт компонент <Card> (TRIP-337),
+   а `.map-route` держит ТОЛЬКО раскладку — из surface-co-селектора имя убрано.
+   Floats top-left over the full-bleed map; collapses to a bottom sheet on phones (below). */
 .map-route {
   position: absolute; z-index: 2;
   top: 16px; left: 16px;
@@ -1638,7 +1638,9 @@ button.app-side__item:hover { background: var(--wash); }
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+/* TRIP-337: шапка панели = канон <PageHead> (title «Маршрут» + subtitle «N городов»);
+   гасим его margin-bottom, разделитель и отступ несёт эта строка. */
+.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); margin-bottom: 0; }
 .map-route__empty { padding: 32px 20px; text-align: center; }
 .map-route__list { padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
 .map-route__item {
@@ -2652,8 +2654,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 [data-theme="dark"] .seg { background: var(--surface-3); }  /* TRIP-176: тёмная = --surface-3 (#1B1A26), как карточки /trips */
 .seg button {
- font: inherit;
-
+ /* тип — из канона .t-label (co-selector, TRIP-337); `font: inherit` снят — он давал разные кегли по контексту экрана */
  color: var(--muted);
  background: transparent;
  border: 0;
@@ -4684,6 +4685,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-cell--hotel .btn--dashed, .te-cell--act .btn--dashed { --a: var(--hl); }
     /* Заполненные ячейки отеля/активности — <Chip variant="tone" square>;
        тон приходит каналом `--hl*` с `.te-cell--hotel`/`--act` (ниже). */
+    /* TRIP-337: наличие/варн (квадратный чип) — радиус 10 (--r-btn), в один радиус
+       с пустой пунктирной ячейкой (.btn базово r-btn); был --r-sm (8).
+       floor-exempt: reach +4 — контекстные правки облика примитивов по задачам TRIP-337
+       (радиус чипов отеля/активности в ячейке · непрозрачная плашка переезда `.te-seam .fpill--tone`
+       + её ховер · тон бейджа «ПЕРЕСАДКА» `.te-dts .badge`); все — scoped на существующий класс, без новых имён; апрув Pavel */
+    .te-cell--hotel .fpill--square, .te-cell--act .fpill--square { border-radius: var(--r-btn); }
 
     /* ---- redesigned itinerary: NO outer frame — just hairline separators
        between rows; transfers are chips straddling the seam between two cities ---- */
@@ -4718,7 +4725,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* visual-diff-move: te-row__node -> tile — плитка-узел маршрута на <Tile> (ступень 28, тон каналом из инлайна call-site) */
     .te-row__node { --tile: 28px; flex-shrink: 0; }
     .te-endlabel { display: block; margin-bottom: 1px; }
-    .te-wptag { color: var(--ev-transfer-ink); padding: 2px 7px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); white-space: nowrap; flex: none; }
+    /* TRIP-337: тег «ПЕРЕСАДКА» = DS <Badge size="tiny">; приватный .te-wptag снят.
+       Тон переезда несёт эта scoped-строка (единственный .badge внутри .te-dts —
+       именно он), поэтому на бейдже нет инлайна. */
+    .te-dts .badge { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
     /* Transfer badge: ONE symmetric transition drives both directions — it melts
        away (fade+shrink) when a drag starts and eases back in on drop. No keyframe
        animation: a filled animation pins opacity and breaks the fade-out. */
@@ -4726,6 +4736,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); gap: 0; align-items: stretch; }
     /* Канал тона переезда для <Chip variant="tone"/"placeholder"> шва. */
     .te-seam { --hl: var(--ev-transfer); --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
+    /* TRIP-337: плашка НАЛИЧИЯ переезда (<Chip variant="tone">) — сплошной непрозрачный
+       surface, цвет переезда несут текст и рамка (был бледный тинт --hl-soft, читался
+       прозрачным). Скоуплено на шов — общий .fpill--tone (ячейки отеля/активности) не трогаем. */
+    .te-seam .fpill--tone { background: var(--surface); border-color: var(--hl); color: var(--hl-ink); }
+    /* TRIP-337: ховер плашки переезда — тинтованная заливка канала (мой непрозрачный
+       surface убил дефолтный ховер .fpill--tone, возвращаю осознанно). */
+    .te-seam .fpill--tone:hover { background: color-mix(in srgb, var(--hl) 12%, var(--surface)); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     /* Швы переезда (заполненный/пустой) — <Chip variant="tone"/"placeholder">. */
 
