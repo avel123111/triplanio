@@ -19,7 +19,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
-import { TRIP_DOCUMENTS_INCLUDE, listBinding, withOptimism, formWrite, reconcileWriteRow } from '@/lib/trip-data';
+import { TRIP_DOCUMENTS_INCLUDE, listBinding, formWrite, reconcileWriteRow } from '@/lib/trip-data';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { errorText } from '@/lib/errorText';
@@ -335,13 +335,16 @@ function DocDetailDialog({ doc, open, onOpenChange, readOnly, onDelete }) {
   const close   = () => onOpenChange?.(false);
   const confirm = useConfirm();
 
-  // Confirm here, then hand the delete to the parent (which owns the optimistic
-  // remove + write + reconcile) and close. The row dims, the write runs in the
-  // background — the dialog no longer has to stay open through the roundtrip.
+  // Async-confirm (PESSIMISTIC): the confirm button spins while the parent's delete runs
+  // (onDelete returns the mutation promise). ON THE RESPONSE the row drops + toast (parent
+  // onSuccess) and this dialog closes. On refusal onDelete rejects → the seam swallows it,
+  // the parent shows the error toast and BOTH the confirm resolves and this dialog stay put.
   async function handleDelete() {
-    if (!(await confirm({ title: t('doc.delete_confirm', { name: doc.title }), variant: 'destructive' }))) return;
-    onDelete?.(doc);
-    close();
+    await confirm({
+      title: t('doc.delete_confirm', { name: doc.title }),
+      variant: 'destructive',
+      onConfirm: async () => { await onDelete?.(doc); close(); },
+    });
   }
 
   return (
@@ -596,30 +599,30 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   const docsBinding = listBinding(qc, DOCS_KEY(tripId), { addTo: 'start' });
 
   const deleteDoc = useMutation({
-    mutationFn: ({ doc }) => deleteTripDocument(tripId, doc.id).then((deleted) => {
+    mutationFn: (/** @type {any} */ { doc }) => deleteTripDocument(tripId, doc.id).then((deleted) => {
       // false = already gone / RLS hid it — treat as failure so the row rolls back.
       // Carry the machine `code` the onError branch reads (errorText / NOT_FOUND path).
       if (!deleted) throw Object.assign(new Error('NOT_FOUND'), { code: 'NOT_FOUND' });
       return deleted;
     }),
-    // op:update DIMS the row (`_pending`) rather than yanking it; onSuccess drops it.
-    ...withOptimism(docsBinding, {
-      op: 'update',
-      reconcile: false, // delete returns a bool — no row to reconcile from
-      onSuccess: (_d, { doc }) => {
-        docsBinding.remove(doc.id);
-        removeTripFiles(collectDocPaths(doc.documents)); // files orphaned once gone
-        successToast(t, 'document_deleted');
-      },
-      onError: (err) => {
-        // Genuinely-gone row: reconcile to server truth (rare path, one refetch ok).
-        if (err?.code === 'NOT_FOUND') qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
-        toast({ description: errorText(t, err?.code), variant: 'destructive' });
-      },
-    }),
+    // PESSIMISTIC: no optimistic `_pending` dim. The confirm dialog's button spins
+    // (async-confirm, handleDelete) until the delete lands; ON THE RESPONSE the row drops,
+    // its files are swept and the toast fires — together. Deleting a doc is a real Storage
+    // teardown, so the UI confirms only once it happened, not at T0.
+    onSuccess: (/** @type {any} */ _d, /** @type {any} */ { doc }) => {
+      docsBinding.remove(doc.id);
+      removeTripFiles(collectDocPaths(doc.documents)); // files orphaned once gone
+      successToast(t, 'document_deleted');
+    },
+    onError: (/** @type {any} */ err) => {
+      // Genuinely-gone row: reconcile to server truth (rare path, one refetch ok).
+      if (err?.code === 'NOT_FOUND') qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
+      toast({ description: errorText(t, err?.code), variant: 'destructive' });
+    },
   });
 
-  const removeDoc = (doc) => deleteDoc.mutate({ doc, row: { id: doc.id, _pending: true } });
+  // Returns the promise so the async-confirm spinner can await it (rejects → dialog stays).
+  const removeDoc = (doc) => deleteDoc.mutateAsync({ doc });
 
   // Author identity (name/avatar/is_deleted) comes from the ONE profile bundle
   // shipped with the trip content (getTripDetails), handed down by TripView —
