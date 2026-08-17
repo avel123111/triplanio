@@ -985,7 +985,10 @@ export default function ScreenAccount() {
             </div>
 
             <div className="card">
-              <Row gap="g7" className="row--div">
+              {/* Ряд ОДИН в своей карточке → row--flush (рамку и отступы держит
+                  .card), как в карточке «Удалить» выше. row--div тут докидывал бы
+                  свои 13px сверху/снизу — вариант строки СПИСКА, не одиночного ряда. */}
+              <Row gap="g7" className="row--flush">
                 <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
                 <Grow>
                   <div className="row__t">{t('account.logout_title')}</div>
