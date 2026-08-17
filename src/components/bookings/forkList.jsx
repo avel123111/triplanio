@@ -126,11 +126,9 @@ export function ForkPager({ page, totalPages, pages, onGoto, prevLabel, nextLabe
 // only from ForkToolbar below — not exported, so a caller can't grow a second
 // chips row outside the toolbar's one-control-at-a-time rule.
 function ForkPill({ label, onRemove, removeLabel }) {
-  return (
-    <span className="s22f-pill">{label}
-      <IconBtn size="sm" tone="quiet" icon="close" ariaLabel={removeLabel} onClick={onRemove} />
-    </span>
-  );
+  // Активный фильтр = канон <Chip> в мягком бренд-тоне со снятием (✕). Прежний
+  // приватный `.s22f-pill` + вложенный <IconBtn> удалён (тот раздувал высоту).
+  return <Chip variant="soft" onRemove={onRemove} removeLabel={removeLabel}>{label}</Chip>;
 }
 
 // Fork filter toolbar shell — search row + (when open) the filter popover body
@@ -174,7 +172,7 @@ export function ForkToolbar({
 
       {filtersOpen && (
         <>
-          <Card radius="lg" className="s22f-panel">{children}</Card>
+          <Card radius="btn" className="s22f-panel">{children}</Card>
           {/* Actions live OUTSIDE the filter card (design) */}
           <div className="s22f-panelfoot">
             <Btn variant="quiet" onClick={onReset}>

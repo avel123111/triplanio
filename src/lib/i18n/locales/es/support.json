@@ -1,10 +1,10 @@
 {
-  "title": "¿Encontraste un error? ¡Cuéntanos!",
+  "title": "¿Encontraste un error?",
   "row_title": "¿Encontraste un error? ¡Cuéntanos!",
   "row_sub": "Describe el problema y adjunta una captura - lo revisamos",
   "row_cta": "Informar",
   "field_label": "¿Qué pasó?",
-  "field_hint": "cuanto más detalle, más rápido lo arreglamos",
+  "field_hint": "Cuanto más detalle, más rápido lo arreglamos",
   "placeholder": "Describe qué hacías, qué esperabas y qué ocurrió",
   "privacy_note": "Junto con el mensaje se envían la dirección de la pantalla, la versión de la app y datos técnicos de la sesión",
   "too_long": "Demasiado largo - quita {n} car.",

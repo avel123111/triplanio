@@ -88,12 +88,12 @@ export default function ChatReply({ text, time, onAsk }) {
         </div>
       </div>
 
-      <div className="row row--g1 row--wrap chat-reply__acts">
-        <Btn variant="secondary" icon={copied ? 'check' : 'copy'} onClick={copy}>
+      <div className="row row--g6 row--wrap chat-reply__acts">
+        <Btn variant="link" icon={copied ? 'check' : 'copy'} onClick={copy}>
           {copied ? t('common.copied') : t('common.copy')}
         </Btn>
         {onAsk && (
-          <Btn variant="secondary" icon="chat" onClick={onAsk}>{t('chat.reply_ask')}</Btn>
+          <Btn variant="link" icon="chat" onClick={onAsk}>{t('chat.reply_ask')}</Btn>
         )}
       </div>
     </div>

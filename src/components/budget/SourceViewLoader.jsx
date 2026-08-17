@@ -10,17 +10,21 @@
  * - Delete (canEdit) → confirm, delete the row, invalidate trip queries.
  */
 import React, { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding } from '@/lib/trip-data';
 import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/design/index';
+import { successToast } from '@/lib/successToast';
+import { refusalError } from '@/lib/refusalError';
 import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 import { errorText } from '@/lib/errorText';
+
+const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
 
 export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange, canEdit = false, warning = null, subEvent = null, onEditInEditor = null }) {
   const t = useT();
@@ -34,6 +38,27 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
   // Shared loader (same fetch used by the editor's left-panel shell).
   const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, {
     tripId, open, onError: () => onOpenChange(false),
+  });
+
+  // Delete on the seam — PESSIMISTIC: EventModal's confirm button spins (its `deleting`
+  // state, which awaits `onDelete()`) while deleteSourceEntity runs, and only ON THE
+  // RESPONSE does the row drop, the toast fire and the modal close — together. A service
+  // delete is a real server teardown, so the UI confirms once it landed, not at T0. On
+  // refusal: error toast, the row stays, the modal stays open.
+  // Defined before the early return; id + orphan keys travel via mutate vars.
+  const delBinding = tripContentBinding(qc, tripId, CACHE_KIND[kind]);
+  const deleteMut = useMutation({
+    mutationFn: async (/** @type {any} */ { id: rowId, tripId: tId, orphanPaths }) => {
+      const { error, deleted, code } = await deleteSourceEntity(kind, rowId, tId, orphanPaths);
+      if (error) throw refusalError(code);
+      if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
+    },
+    onSuccess: (/** @type {any} */ _d, /** @type {any} */ { id: rowId }) => {
+      delBinding.remove(rowId);
+      successToast(t, 'booking_deleted');
+      onOpenChange(false);
+    },
+    onError: (/** @type {any} */ e) => toast({ description: e?.code ? errorText(t, e.code) : t('event.delete_failed'), variant: 'destructive' }),
   });
 
   if (!open || !data) return null;
@@ -80,19 +105,14 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
     return null;
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!ENTITY_TABLE_BY_KIND[kind]) return;
     // Capture attachment object keys before delete; deleteSourceEntity sweeps
     // best-effort only after the row is actually gone (TRIP-117).
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
-    const { error, deleted, code } = await deleteSourceEntity(kind, data.id, data.trip_id, orphanPaths);
-    if (error || !deleted) {
-      toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' });
-      if (error) throw error;
-      return; // 0-row reject: don't close as success, refetch reconciles
-    }
-    onOpenChange(false);
-    invalidate();
+    // Return the promise so EventModal's confirm button can await it (spinner) — and
+    // swallow the rejection (onError already toasted) so the awaited handler doesn't throw.
+    return deleteMut.mutateAsync({ id: data.id, tripId: data.trip_id, orphanPaths }).catch(() => {});
   };
 
   // All kinds edit inline via EventEditDialog (live-edit model, TRIP-126).

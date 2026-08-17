@@ -42,7 +42,7 @@ export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, 
             {sub && <span className="t-mono">{sub}</span>}
           </div>
         </div>
-        <IconBtn icon="close" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
+        <IconBtn icon="close" onClick={onBack} ariaLabel={t('common.close')} />
       </div>
       <div className="lp-b scrollbar-thin">{children}</div>
       {foot && <div className={'lp-f' + (footClass ? ' ' + footClass : '')}>{foot}</div>}

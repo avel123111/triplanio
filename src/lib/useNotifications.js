@@ -26,6 +26,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
+import { useT } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 
 /** Rows the bell popover renders: the head of that same list. */
 export const BELL_ROWS = 30;
@@ -89,21 +91,65 @@ export function useUnreadNotificationCount() {
   return data;
 }
 
+// ── Pure inbox-cache surgery (the {list, unreadCount} shape isn't a row-list, so
+//    it gets its own patchers — one place, shared by the three writes). The honest
+//    unread total drops by one per row that flips unread→read; mark-all zeroes it. ──
+
+/** @param {Inbox} inbox @param {string} id */
+function markReadInList(inbox, id) {
+  let dec = 0;
+  const list = inbox.list.map((n) => {
+    if (n.id !== id || n.read) return n;
+    dec = 1;
+    return { ...n, read: true };
+  });
+  return { ...inbox, list, unreadCount: Math.max(0, (inbox.unreadCount ?? 0) - dec) };
+}
+
+/** @param {Inbox} inbox */
+function markAllReadInList(inbox) {
+  return { ...inbox, list: inbox.list.map((n) => ({ ...n, read: true })), unreadCount: 0 };
+}
+
+/** @param {Inbox} inbox @param {string} memberId @param {string} status */
+function respondInList(inbox, memberId, status) {
+  let dec = 0;
+  const list = inbox.list.map((n) => {
+    if (n.trip_member_id !== memberId) return n;
+    if (!n.read) dec = 1;
+    return { ...n, read: true, member_status: status };
+  });
+  return { ...inbox, list, unreadCount: Math.max(0, (inbox.unreadCount ?? 0) - dec) };
+}
+
 /**
- * Writes. `read` / `read-all` go through the write-seam edge `inbox`; the seam
- * scopes both to the caller (`user_id = p_actor`) inside the RPC. `markAllRead`
- * marks by predicate (not the ids on screen) so the honest badge reaches zero.
+ * Writes. `read` / `read-all` / invite `respond` go through their write-seam edges;
+ * each is OPTIMISTIC on the shared inbox cache — the row's read flag (and the honest
+ * badge) flip at once, no refetch — with a snapshot rollback on refusal, mirroring
+ * `withOptimism` for the inbox's own `{list, unreadCount}` shape.
  */
 export function useNotificationActions() {
   const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['inbox'] });
+  const t = useT();
+  const { user } = useAuth();
+  const key = INBOX_KEY(user?.id);
+
+  // cancel→snapshot→patch (onMutate) and restore-on-error, shared by all three.
+  const begin = async (/** @type {(inbox: Inbox) => Inbox} */ apply) => {
+    await qc.cancelQueries({ queryKey: key });
+    const prev = qc.getQueryData(key);
+    qc.setQueryData(key, (/** @type {any} */ old) => (old ? apply(old) : old));
+    return { prev };
+  };
+  const rollback = (/** @type {any} */ ctx) => { if (ctx?.prev !== undefined) qc.setQueryData(key, ctx.prev); };
 
   const markAllRead = useMutation({
     mutationFn: async () => {
       const { error } = await invokeFn('inbox/read-all');
       if (error) throw error;
     },
-    onSuccess: invalidate,
+    onMutate: () => begin(markAllReadInList),
+    onError: (_e, _v, ctx) => rollback(ctx),
   });
 
   const markOneRead = useMutation({
@@ -112,7 +158,8 @@ export function useNotificationActions() {
       const { error } = await invokeFn('inbox/read', { body: { id: notifId } });
       if (error) throw error;
     },
-    onSuccess: invalidate,
+    onMutate: (notifId) => begin((inbox) => markReadInList(inbox, notifId)),
+    onError: (_e, _v, ctx) => rollback(ctx),
   });
 
   const respondInvite = useMutation({
@@ -131,11 +178,18 @@ export function useNotificationActions() {
       // global MutationCache.onError seam doesn't capture it twice.
       if (error || data?.error) throw error || new Error(data?.error || 'Failed');
     },
-    onSuccess: () => {
-      // Refetch the inbox — the row's `member_status` (now carried by getInbox)
-      // flips accepted/declined; the trips list gains/loses the joined trip.
-      invalidate();
-      qc.invalidateQueries({ queryKey: ['trips'] });
+    // PESSIMISTIC (not optimistic): responding to an invite is a real server state
+    // change (member.user_id set, inviter notified, row marked read), so the UI confirms
+    // only on the server response — the button carries the in-flight state
+    // (respondInvite.isPending → <Btn loading>). On success we flip the row
+    // (accept→active/accepted badge, decline→declined), mark it read, and fire the toast
+    // together. No onMutate patch → onError needs no local rollback; the refusal surfaces
+    // through the global MutationCache.onError seam.
+    onSuccess: (_d, { memberId, action }) => {
+      qc.setQueryData(key, (/** @type {any} */ old) => (old ? respondInList(old, memberId, action === 'accept' ? 'active' : 'declined') : old));
+      successToast(t, action === 'accept' ? 'invite_accepted' : 'invite_declined');
+      // Accepting joins the trip → the trips list gains it (a different cache).
+      if (action === 'accept') qc.invalidateQueries({ queryKey: ['trips'] });
     },
   });
 

@@ -17,6 +17,7 @@ import { Row, Col, Grid, Grow } from '../design/Layout';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
 import { classifyError } from '@/lib/errorText';
+import { goPro } from '@/lib/goPro';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
@@ -520,7 +521,7 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   // (per-trip + monthly + yearly). No hidePerTrip here: Pro.jsx already hides the
   // per-trip offer for non-owners (tripOwner check), so the flag only created an
   // owner-vs-owner inconsistency between Settings and the sidebar (TRIP-63 №2).
-  const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
+  const openUpgrade = () => goPro(nav, { tripId });
 
   // Seed local state when the trip first loads or when switching to a different
   // trip. Keyed on trip.id (NOT the trip object): react-query hands back a fresh

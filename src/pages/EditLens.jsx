@@ -154,11 +154,58 @@
  * -> .ts-grid, живой класс и тоже только редакторский, значения те же.
  * visual-diff-move: .ts-screen .te-row -> ts-grid
  * visual-diff-move: .ts-screen .te-cell--act -> ts-grid
+ *
+ * ── TRIP-337 (батч из 8 UI-фиксов) — намеренный дрейф, апрув Pavel. Маркеры 2p
+ *    лежат тут, а не в app.css: медиа-маркер `.tile {@media …}` в CSS-комментарии
+ *    гард разбирает как правило (см. шапку выше).
+ * visual-diff-exempt: .seg button font — `font: inherit` снят, кегль из канона .t-label
+ * visual-diff-exempt: .seg button font-size — сегмент снят с .t-meta на канон .t-label (кегль label 13px)
+ * visual-diff-exempt: .seg button font-weight — то же, вес label 600
+ * visual-diff-exempt: .seg button font-variant-numeric — то же (label без tabular-nums)
+ * visual-diff-exempt: .fpill--tone:hover background — ховер плашки переезда возвращён тинтом канала (мой непрозрачный surface убил дефолтный ховер)
+ * visual-diff-exempt: .trips-toolbar .seg--filter button font-family — экранный патч снят, типографика на канон .seg button/.t-label
+ * visual-diff-exempt: .trips-toolbar .seg--filter button font-size — то же
+ * visual-diff-exempt: .trips-toolbar .seg--filter button font-weight — то же
+ * visual-diff-exempt: .trips-toolbar .seg--filter button letter-spacing — то же
+ * visual-diff-exempt: .trips-toolbar .seg--filter button line-height — то же
+ * visual-diff-exempt: .te-cityname font-family — название города Subheading→Label
+ * visual-diff-exempt: .te-cityname font-size — то же
+ * visual-diff-exempt: .te-cityname line-height — то же
+ * visual-diff-exempt: .te-endlabel font-size — СТАРТ/ФИНИШ Micro→Tiny Caps
+ * visual-diff-exempt: .te-wptag background — класс снят, тег «ПЕРЕСАДКА» на DS <Badge size="tiny">
+ * visual-diff-exempt: .te-wptag border-radius — то же
+ * visual-diff-exempt: .te-wptag flex — то же
+ * visual-diff-exempt: .te-wptag font-family — то же
+ * visual-diff-exempt: .te-wptag font-size — то же
+ * visual-diff-exempt: .te-wptag font-weight — то же
+ * visual-diff-exempt: .te-wptag letter-spacing — то же
+ * visual-diff-exempt: .te-wptag line-height — то же
+ * visual-diff-exempt: .te-wptag padding — то же
+ * visual-diff-exempt: .te-wptag text-transform — то же
+ * visual-diff-exempt: .te-wptag white-space — то же
+ * visual-diff-exempt: .badge background — тон бейджа «ПЕРЕСАДКА» = ev-transfer (scoped .te-dts .badge)
+ * visual-diff-exempt: .badge color — то же
+ * visual-diff-exempt: .te-dts background — то же (атрибуция правила .te-dts .badge)
+ * visual-diff-exempt: .te-dts color — то же
+ * visual-diff-exempt: .fpill--square border-radius — чип отеля/активности в ячейке r-sm→r-btn
+ * visual-diff-exempt: .te-cell--act border-radius — то же (scoped-правило радиуса)
+ * visual-diff-exempt: .te-cell--hotel border-radius — то же
+ * visual-diff-exempt: .fpill--tone background — плашка наличия переезда: непрозрачный surface вместо тинта
+ * visual-diff-exempt: .te-seam background — то же (scoped surface плашки переезда)
+ * visual-diff-exempt: .te-seam border-color — плашка переезда: цветная рамка --hl
+ * visual-diff-exempt: .te-seam color — плашка переезда: цветной текст --hl-ink
+ * visual-diff-exempt: .map-route background — surface-роль ушла на <Card>, .map-route только раскладка
+ * visual-diff-exempt: .map-route border — то же
+ * visual-diff-exempt: .map-route__head margin-bottom — гашу margin канона PageHead в панели маршрута
+ * visual-diff-exempt: .tile {@media (hover: hover) and (pointer: fine)} color — иконка плейсхолдера красится в тон ховера --a
+ * visual-diff-exempt: .pop-flush border-radius — контейнер search/select (города/адреса/язык/валюта) на радиус поля --r-btn (10); был --r-card (24) от базы .pop
+ * visual-diff-exempt: .menu border-radius — канон action-меню на --r-btn (10, попап аккаунта и все меню); был --r-md (16)
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
+import { withRecompute, reconcileCityChain, pruneCityContent } from '@/lib/trip-data';
 import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -347,49 +394,50 @@ export default function EditLens({ tripId, shell, content }) {
   // intermediate server state (no jitter). Per-action RPCs are also coalesced/debounced
   // by their callers (e.g. the nights stepper) so the server receives only the final value.
   const seqRef = useRef(0);
-  // onResult(result) runs ONLY on RPC success, under the seq-guard, BEFORE the refetch —
-  // e.g. addCity reconciles the real city_visit uuid returned by add_city into the draft
-  // immediately (shrinks the tmp- window to the RPC latency instead of the full refetch).
-  // okKey: optional `toast` subtitle key fired ONLY on real success. Passed by the
-  // discrete actions (start date / add city / remove city); the frequent ones
-  // (nights, reorder) leave it undefined so they stay silent and don't spam.
-  const runAction = async (rpcFn, onResult, refetchOpts, okKey) => {
-    const mySeq = ++seqRef.current;
-    let result;
-    try { result = await rpcFn(); }
-    catch (e) {
-      // Honest refusal: the seam carries a generic `code` → localized line via
-      // errorText (never raw server prose, TRIP-378). A client-side throw without
-      // a code falls back to the generic save-failed copy.
-      const desc = e && 'code' in e ? errorText(t, e.code) : t('tse.err_save');
-      toast({ description: desc, variant: 'destructive' });
-      // RPC failed → drop the optimistic patch RIGHT AWAY by rebuilding from the last
-      // good server state (cache-backed buildDraft). Don't gate the rollback on a
-      // refetch that would also fail offline. If a newer action superseded us it owns
-      // the state, so leave it alone.
-      if (mySeq === seqRef.current) setDraft(null);
-      return;
-    }
-    if (mySeq !== seqRef.current) return;           // superseded by a newer action → keep optimistic state
-    if (onResult) { try { onResult(result); } catch { /* ignore */ } }
-    // refetchOpts lets date-only actions (nights/start/reorder) skip the CONTENT half
-    // (hotels/activities/transfers unchanged) → less work, less flicker. Default: both.
-    try { await refetchTrip(qc, tripId, refetchOpts); } catch { /* ignore */ }
-    if (mySeq !== seqRef.current) return;           // a newer action started during the refetch
-    setDraft(null); // rebuild from fresh server state on next render (buildDraft)
-    if (okKey) successToast(t, okKey);
-  };
+  // The E-write lifecycle (seq-guard + ordered barriers) lives in the seam as
+  // withRecompute; this only declares the editor's phases. Since TRIP-435 the five
+  // route RPCs RETURN the recomputed city_visits chain, so the authoritative
+  // reconciliation comes FROM THE RESPONSE — the `refetch` phase is dropped (ONE
+  // round-trip, not RPC + confirm-refetch).
+  //   reconcile(chain): fold the returned chain into the shell cache (real ids +
+  //     server dates → the added city un-mutes) and fire the success toast on this same
+  //     RPC land. onOk is a best-effort side effect (removeCity prunes its content +
+  //     sweeps files) — throws are swallowed by the seam.
+  //   okKey: a success toast for the discrete actions; the frequent ones stay silent.
+  /**
+   * @param {() => Promise<any>} rpcFn
+   * @param {{ onOk?: () => void, okKey?: string }} [opts]
+   */
+  const runAction = (rpcFn, { onOk, okKey } = {}) => withRecompute(seqRef, {
+    run: rpcFn,
+    // Toast fires on the RPC RESPONSE (reconcile) — the moment the muted card un-mutes /
+    // the authoritative dates land — NOT at T0. For an ADD, "done" is when the real id
+    // arrives (the card stops being pending), so the confirmation must ride the response,
+    // not the optimistic placement — else the toast claims success while the card is still
+    // a grey tmp- row. reconcile also folds the returned chain into the shell cache; no
+    // `refetch` phase — the chain IS the authoritative reconciliation (TRIP-435).
+    reconcile: (chain) => { reconcileCityChain(qc, tripId, chain); onOk?.(); if (okKey) successToast(t, okKey); },
+    // Rebuild the draft from the now-authoritative cache on the next render.
+    commit: () => { setDraft(null); },
+    // RPC failed → drop the optimistic patch by rebuilding from the last good cache
+    // state (only if a newer action hasn't already taken ownership — the seam gates it).
+    rollback: () => setDraft(null),
+    // Honest refusal: a generic `code` → localized line (never raw server prose,
+    // TRIP-378); a client-side throw without a code falls back to the generic copy.
+    onError: (e) => toast({ description: e && 'code' in e ? errorText(t, e.code) : t('tse.err_save'), variant: 'destructive' }),
+  });
   // Any panel that may have WRITTEN transfers/bookings (create/event) closes through
   // here: pull fresh server state and rebuild the draft from it. The server already
   // recomputed the date chain (incl. overnight day_change, Ф2 trigger) and added any
-  // layover cities to the shell, so the rebuild reflects them with no client-side
-  // gap mirror or manual shell merge. seq-guard so a concurrent runAction wins.
-  const closePanelAndSync = async () => {
+  // layover cities to the shell, so the rebuild reflects them with no client-side gap
+  // mirror or manual shell merge. A bare resync (no rpc) through the same seq-guard,
+  // so a concurrent runAction wins.
+  const closePanelAndSync = () => {
     closeLeftPanel();
-    const mySeq = ++seqRef.current;
-    try { await refetchTrip(qc, tripId); } catch { /* ignore */ }
-    if (mySeq !== seqRef.current) return;
-    setDraft(null);
+    return withRecompute(seqRef, {
+      refetch: () => refetchTrip(qc, tripId),
+      commit: () => setDraft(null),
+    });
   };
   // Coalesced/debounced server commit for the nights stepper (one RPC after the burst).
   const nightsCommit = useRef(new Map());   // cityId -> timeout handle
@@ -438,6 +486,13 @@ export default function EditLens({ tripId, shell, content }) {
     // стал бы причиной того отката, который лечит. allSettled, а не all:
     // упавшая RPC не должна отменять перезапрос остальных.
     // qc жив после размонтирования (это клиент приложения, а не наш стейт).
+    //
+    // Здесь ОСОЗНАННО рефетч, а не реконсиляция из ответа (TRIP-435): в отличие от
+    // runAction, тут оседает НЕСКОЛЬКО RPC разом (ночи по нескольким городам + старт),
+    // и каждая вернула бы цепочку по состоянию СВОЕЙ транзакции — записать в кэш
+    // последнюю по времени значило бы рискнуть затереть чужую правку. Один
+    // авторитетный перечит после allSettled читает итоговое состояние без гонки.
+    // Компонент размонтирован, путь не на критичной задержке — цена рефетча не важна.
     Promise.allSettled(pending).then(() => refetchTrip(qc, tripId, { content: false })).catch(() => {});
   }, [tripId, qc]);
 
@@ -537,7 +592,7 @@ export default function EditLens({ tripId, shell, content }) {
   // Live-persist a new chain order (drag/keyboard reorder). tmp cities aren't in the
   // DB yet so skip until they're real (their add already refetches). One
   // reorder_cities → server recompute → refetch.
-  const persistOrder = (ids) => { if (ids.some(isTmpId)) return; runAction(() => rpcReorderCities(tripId, ids), undefined, { content: false }); };
+  const persistOrder = (ids) => { if (ids.some(isTmpId)) return; runAction(() => rpcReorderCities(tripId, ids)); };
   // Shared drag/FLIP/keyboard reorder engine. `commitOrder` reproduces the prior
   // inline behavior EXACTLY: optimistic client recompute (adjacency gaps + date
   // chain from the fixed trip start) then live-persist the new chain order. Anchors
@@ -566,16 +621,18 @@ export default function EditLens({ tripId, shell, content }) {
     const next = Math.max(0, Math.min(60, base + delta));
     if (next === base) return;
     nightsTarget.current.set(id, next);
-    // partial optimism: instantly reflect ONLY the touched city (its nights + its own
-    // end_date). Downstream dates are NOT recomputed on the client — they come from the
-    // server (recompute_trip) on refetch. No second date engine in the editor.
-    editDraft((d) => ({ ...d, nodes: d.nodes.map((n) => {
-      if (n.id !== id) return n;
-      const end = next > 0 && n.start_date ? toDT(n.start_date).plus({ days: next }).toISODate() : n.start_date;
-      return next === 0
-        ? { ...n, kind: 'waypoint', nights: 0, end_date: n.start_date }
-        : { ...n, kind: 'transit', nights: next, end_date: end };
-    }) }));
+    // Full optimism: set the touched city's nights/kind, then re-lay the WHOLE chain
+    // downstream with the SAME engine reorder uses (recompute = server-mirror
+    // layoutDates) so the cities AFTER it shift instantly — no waiting for the server
+    // refetch to un-jank them. The refetch still confirms authoritatively, invisibly.
+    editDraft((d) => {
+      const nodes = d.nodes.map((n) => (
+        n.id !== id ? n
+          : next === 0 ? { ...n, kind: 'waypoint', nights: 0 }
+                       : { ...n, kind: 'transit', nights: next }
+      ));
+      return { ...d, nodes: recompute(applyAdjacencyGaps(nodes, liveTransfers), d.startDate) };
+    });
     if (String(id).startsWith('tmp-')) return;
     // debounce: send ONE set_city_nights with the FINAL value ~350ms after the last click
     const timers = nightsCommit.current;
@@ -584,13 +641,20 @@ export default function EditLens({ tripId, shell, content }) {
       timers.delete(id);
       const finalN = nightsTarget.current.get(id);
       nightsTarget.current.delete(id);
-      runAction(() => rpcSetCityNights(tripId, id, finalN), undefined, { content: false });
+      runAction(() => rpcSetCityNights(tripId, id, finalN));
     }, 350));
   };
   const shiftStart = (delta) => {
     const cur = startTarget.current ?? draft?.startDate;
     const base = cur ? toDT(cur).plus({ days: delta }).toISO() : null;
     if (!base) return;
+    // Toast fires in the SAME synchronous tick as the date shift (T0) — together with the
+    // change, not ~350ms later at the debounce and not ~2s later on the RPC response. The
+    // shift is EXACT (pure +N days, no recompute engine) and can't diverge from the server,
+    // and nothing is left pending (unlike an ADD, whose grey tmp- card must wait for its
+    // id), so an immediate success toast is honest. Guard on `!startCommit.current` so a
+    // burst of rapid stepping shows ONE toast (leading edge), not one per click.
+    if (!startCommit.current) successToast(t, 'start_date_updated');
     startTarget.current = base;
     // partial optimism: shift ALL dates by the same delta (exact, no recompute engine)
     editDraft((d) => ({ ...d, startDate: base, nodes: d.nodes.map((n) => ({
@@ -598,90 +662,96 @@ export default function EditLens({ tripId, shell, content }) {
       start_date: n.start_date ? toDT(n.start_date).plus({ days: delta }).toISODate() : n.start_date,
       end_date: n.end_date ? toDT(n.end_date).plus({ days: delta }).toISODate() : n.end_date,
     })) }));
-    // debounce: send ONE set_trip_start_date with the FINAL value ~350ms after last click
+    // debounce: send ONE set_trip_start_date with the FINAL value ~350ms after last click.
+    // runAction persists SILENTLY (no okKey — the toast already fired at T0); on failure its
+    // onError toast + rollback revert the optimistic shift.
     if (startCommit.current) clearTimeout(startCommit.current);
     startCommit.current = setTimeout(() => {
       startCommit.current = null;
       const finalBase = startTarget.current;
       startTarget.current = null;
-      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), undefined, { content: false }, 'start_date_updated');
+      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()));
     }, 350);
   };
-  // Remove a city → confirm first. On confirm the city AND its attached bookings
-  // leave the grid immediately (live remove_city cascade-deletes the city + children).
-  // Bookings are stashed on the node so Restore brings them back.
+  // Remove a city — PESSIMISTIC (async-confirm). The cityview stays open, the confirm
+  // button spins (ConfirmProvider `busy`) while remove_city runs, and only THEN does the
+  // recomputed chain reconcile the new route from the response, the cascade get mirrored
+  // into the caches, the toast fire and the panel close. Unlike the optimistic route edits
+  // the row does NOT vanish at T0: a delete has a confirm dialog, so the dialog IS the
+  // in-flight surface (spinner), the same primitive bookings/members use. On failure the
+  // error toast shows, nothing is removed and the panel stays open.
   const removeCity = async (id) => {
     const n = draft.nodes.find((x) => x.id === id);
     if (!n) return;
-    const ok = await confirm({
-      title: t('tse.delete_city_q', { city: n.city_name }),
-      description: t('tse.delete_city_desc'),
-      confirmLabel: t('tse.delete_city'),
-      variant: 'destructive',
-    });
-    if (ok) doRemoveCity(id);
-  };
-  // partial optimism: drop the node from the list now; downstream dates are NOT
-  // recomputed on the client — the server (remove_city → recompute_trip) reflows
-  // the chain and runAction refetches it. (removed-tray push stays until the
-  // draft/tray teardown slice.)
-  const doRemoveCity = (id) => {
-    editDraft((d) => {
-      const node = d.nodes.find((n) => n.id === id); if (!node) return d;
-      return { ...d, nodes: d.nodes.filter((n) => n.id !== id) };
-    });
-    if (String(id).startsWith('tmp-')) return; // never persisted → no server rows / files
+    // A tmp- city (its add is still in flight) was never persisted — drop it locally, with
+    // no server round-trip, no confirm, no spinner. Re-lay the chain so the gap closes.
+    if (isTmpId(id)) {
+      editDraft((d) => ({ ...d, nodes: recompute(applyAdjacencyGaps(d.nodes.filter((x) => x.id !== id), liveTransfers), d.startDate) }));
+      closeLeftPanel();
+      return;
+    }
     // remove_city cascade-deletes this city's hotels/activities/transfers server-side, but
-    // SQL can't reach Storage. Collect the SAME set's document paths and sweep them via the
-    // single shared file primitive (removeTripFiles) — only AFTER the RPC succeeds (onResult),
-    // else those bookings' files orphan until the whole trip is deleted (TRIP-137). Mirrors
-    // remove_city's cascade set: transfers touching the city on either end.
+    // SQL can't reach Storage. Collect the SAME cascade set's document paths up front and
+    // sweep them on success (removeTripFiles), else files orphan until the trip is deleted
+    // (TRIP-137). Cascade set: hotels/activities by city_visit_id + transfers touching the
+    // city on either end.
     const orphanPaths = [
       ...liveHotels.filter((h) => h.city_visit_id === id),
       ...liveActivities.filter((a) => a.city_visit_id === id),
       ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
     ].flatMap((e) => collectDocPaths(e.documents));
-    runAction(() => rpcRemoveCity(tripId, id), () => removeTripFiles(orphanPaths), undefined, 'city_removed');
+    let removed = false;
+    await confirm({
+      title: t('tse.delete_city_q', { city: n.city_name }),
+      description: t('tse.delete_city_desc'),
+      confirmLabel: t('tse.delete_city'),
+      variant: 'destructive',
+      // Async confirm: the dialog holds the spinner until this settles. Reconcile the new
+      // route FROM THE RESPONSE (reconcileCityChain) + mirror the server cascade into the
+      // content cache (pruneCityContent) + sweep files, then rebuild the draft and toast.
+      onConfirm: async () => {
+        try {
+          const chain = await rpcRemoveCity(tripId, id);
+          reconcileCityChain(qc, tripId, chain);
+          pruneCityContent(qc, tripId, id);
+          removeTripFiles(orphanPaths);
+          setDraft(null);
+          successToast(t, 'city_removed');
+          removed = true;
+        } catch (e) {
+          toast({ description: e && 'code' in e ? errorText(t, e.code) : t('tse.err_save'), variant: 'destructive' });
+        }
+      },
+    });
+    if (removed) closeLeftPanel();
   };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
       toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });
       return;
     }
-    // Optimistic placement: a new transit city must render at the END of the
-    // route immediately. sortVisits orders by start_date, so a null-date node
-    // would sort to the FRONT and then snap to the end once add_city →
-    // recompute_trip returns real dates (the "jumps to the end" glitch). Seed it
-    // with the trip's last known date (+ its nights) and a trailing position so it
-    // lands in its final slot right away; it stays muted (tmp- id) until the
-    // refetch swaps in real dates. 'start'/'end' are anchors ordered by rank, so
-    // their dates don't affect placement.
+    // Full optimism: build the tmp node with its nights, splice it into place, then
+    // re-lay the chain (recompute = server-mirror). It lands in its final slot WITH
+    // correct dates immediately — no null-date node sorting to the front and snapping
+    // back. Stays muted (tmp- id) until add_city → recompute_trip returns the chain,
+    // which runAction reconciles FROM THE RESPONSE (real row: id + dates), no refetch.
     const provNights = kind === 'transit' ? 2 : null;
-    const lastDate = draft.nodes.reduce((m, n) => { const e = n.end_date || n.start_date; return e && (!m || e > m) ? e : m; }, null);
-    const maxPos = draft.nodes.reduce((m, n) => (Number.isFinite(n.position) && n.position > m ? n.position : m), -1);
-    const provStart = kind === 'start' ? null : lastDate;
-    const provEnd = provStart && kind === 'transit' ? toDT(provStart).plus({ days: provNights }).toISODate() : provStart;
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
       city_name: city.city_name, country_code: city.country_code || null,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
-      nights: provNights, gap: 0, start_date: provStart, end_date: provEnd,
-      position: kind === 'start' ? -1 : maxPos + 1,
+      nights: provNights, gap: 0, start_date: null, end_date: null,
     };
     let insertIdx = null;
-    // partial optimism: splice the tmp node into place; its dates stay null until
-    // the server (add_city → recompute_trip) lays them and runAction refetches.
-    // No client recompute — existing cities keep their dates.
     editDraft((d) => {
       const arr = d.nodes.slice();
       if (kind === 'start') { arr.unshift(node); insertIdx = 0; }
       else if (kind === 'end') { arr.push(node); insertIdx = null; }
       else { const endIdx = arr.findIndex((n) => n.kind === 'end'); insertIdx = endIdx === -1 ? null : endIdx; arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
-      return { ...d, nodes: arr };
+      return { ...d, nodes: recompute(applyAdjacencyGaps(arr, liveTransfers), d.startDate) };
     });
-    const tmpId = node.id; // swap this tmp- id for the real uuid the moment add_city returns
     runAction(() => rpcAddCity(tripId, {
       kind,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
@@ -689,9 +759,7 @@ export default function EditLens({ tripId, shell, content }) {
       country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
-    }, insertIdx), (realId) => {
-      if (realId) editDraft((d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === tmpId ? { ...n, id: realId } : n)) }));
-    }, undefined, 'city_added');
+    }, insertIdx), { okKey: 'city_added' });
   };
   const onPickCity = async (c, kind) => {
     closeLeftPanel();
@@ -848,7 +916,7 @@ export default function EditLens({ tripId, shell, content }) {
           prevCity={prev?.city_name} nextCity={next?.city_name}
           isHotelWarn={(h) => hotelWarnId(h?.id)} isActWarn={(a) => actWarnId(a.id)}
           onBack={closeLeftPanel}
-          onRemove={() => { closeLeftPanel(); removeCity(node.id); }}
+          onRemove={() => removeCity(node.id)}
           onNightsMinus={() => nudgeNights(node.id, -1)} onNightsPlus={() => nudgeNights(node.id, 1)}
           onOpenHotel={(id) => openEvent('hotel', id)} onAddHotel={() => createBooking('hotel', node)}
           onOpenActivity={(id) => openEvent('activity', id)} onAddActivity={() => createBooking('activity', node)}
@@ -1199,8 +1267,8 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         lead={<Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>}
         name={seg.city_name}
         conf={<Conf n={cityConf} />}
-        dates={<><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</>}>
-        <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled />
+        dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>
+        <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled variant="bare" />
         <div className="te-cell te-cell--hotel" />
         <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
       </CityRow>
@@ -1213,7 +1281,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       name={seg.city_name}
       conf={<Conf n={cityConf} />}
       dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
-      <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} />
+      <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} variant="bare" />
       <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
       <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
     </CityRow>
@@ -1234,7 +1302,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
     return (
       <Row justify="j-center" className="te-seam">
         <Chip variant="placeholder" icon="plus" disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-          {tx('tse.add_transfer')}
+          <span className="t-meta">{tx('tse.add_transfer')}</span>
         </Chip>
       </Row>
     );
@@ -1312,7 +1380,7 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
   return (
     <div className="lp lp--wide">
       <div className="lp-h lp-h--ev">
-        <IconBtn icon="back" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
+        <IconBtn icon="close" onClick={onBack} ariaLabel={t('common.close')} />
         <Tile as="span" className="lp-ic" style={{ '--hl-soft': 'var(--brand)', '--hl-ink': '#fff' }}><Icon name="pin" size={17} /></Tile>
         <div className="lp-ti">
           <b>{t('tse.add_point')}</b>

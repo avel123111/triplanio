@@ -17,9 +17,9 @@
  * dlg__body / dlg__foot structure). No inline hover handlers — CSS only.
  */
 import React, { useState, useRef, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
-import { TRIP_DOCUMENTS_INCLUDE } from '@/lib/trip-data';
+import { TRIP_DOCUMENTS_INCLUDE, listBinding, formWrite, reconcileWriteRow } from '@/lib/trip-data';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { errorText } from '@/lib/errorText';
@@ -27,7 +27,7 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, Skeleton, Seg, Tile, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, Skeleton, Seg, Tile, Dialog as DSDialog, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -74,14 +74,33 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   const [linkUrl,    setLinkUrl]    = useState('');
   const [visibility, setVisibility] = useState(defaultVisibility);
   const [documents,  setDocuments]  = useState([]); // [{ file_url, file_name, storage_path }]
-  const [saving,     setSaving]     = useState(false);
   const [uploading,  setUploading]  = useState(false);
   const [err,        setErr]        = useState('');
   const fileInputRef = useRef(null);
-  const qc           = useQueryClient();
   const { user }     = useAuth();
   const v    = useHybridValidation('document', { title });
   const st   = (f) => fieldState(v.displayIssues, f);
+
+  const qc = useQueryClient();
+  // This dialog owns its own write and stays mounted until it resolves: the Save
+  // button shows the in-flight spinner (the established `<Btn loading>` primitive),
+  // the dialog closes ONLY on success, and a failure keeps it open with an inline
+  // error so the user never loses what they typed. On success we reconcile FROM the
+  // returned row — insert it into the docs cache in place (newest-first), never a
+  // full getTripDetails refetch — so the card appears already-solid. Being
+  // self-contained, it works from EVERY call site (DocsLens AND the bottom-nav "+"
+  // in TripView) with no parent wiring to forget.
+  const createMut = useMutation({
+    mutationFn: (/** @type {any} */ body) => insertTripDocument(body),
+    ...formWrite({
+      // Reconcile from the returned row (newest-first prepend), never a refetch.
+      reconcile: (/** @type {any} */ row) => reconcileWriteRow(listBinding(qc, DOCS_KEY(tripId), { addTo: 'start' }), 'add', row),
+      onDone: () => { successToast(t, 'document_saved'); savedRef.current = true; close(); },
+      // Keep the dialog open and the input intact; the staged files stay referenced
+      // by the form (NOT swept here — the dismiss-without-save path still sweeps them).
+      onFail: (/** @type {any} */ err) => setErr(errorText(t, err?.code)),
+    }),
+  });
 
   async function uploadFiles(files) {
     if (!files?.length) return;
@@ -96,42 +115,26 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     }
   }
 
-  async function save() {
-    setSaving(true); setErr('');
-    try {
-      await insertTripDocument({
-        tripId,
-        title:      title.trim(),
-        notes:      notes.trim()   || null,
-        // Store an ABSOLUTE url: a scheme-less "google.com" is a relative path
-        // to the browser and would navigate inside the app (TRIP-230).
-        link_url:   normalizeExternalUrl(linkUrl),
-        documents:  documents.length ? documents : null,
-        visibility,
-        // `created_by` is stamped by the server from the JWT (TRIP-399) — not sent.
-        // Author-name snapshot — mirrors chat_messages.user_full_name so the
-        // uploader's name survives them leaving the trip (their trip_members /
-        // active-profile row is gone). resolveAuthor() reads this as the fallback.
-        created_by_name: (user?.full_name || '').trim() || null,
-      });
-    } catch (e) {
-      setSaving(false);
-      // insertTripDocument бросает refusalError → текст по машинному `code`
-      // (серверную прозу не показываем, TRIP-378/423).
-      setErr(errorText(t, e?.code));
-      return;
-    }
-    setSaving(false);
-    // Saved → the staged files are now referenced by the row; the close sweep
-    // must skip them.
-    savedRef.current = true;
-    // One event split by PROPERTIES (TRIP-316). Shared vs private used to be two
-    // events, document1_/document2_uploaded, whose digits mean nothing to anyone
-    // reading the report. `file_kind` reuses the badge classifier, so "what do
-    // people actually keep here - scans or PDF bookings?" becomes answerable:
-    // there is no document TYPE (passport / insurance) anywhere in the model,
-    // the extension is all we know. Mixed kinds collapse to 'mixed', and no files
-    // at all (a link or a bare note) to 'none'.
+  // Collect the form into a write body and fire the dialog's own create mutation.
+  // No close/sweep here — createMut.onSuccess closes (and marks the files owned),
+  // createMut.onError keeps the dialog open with an inline error.
+  function save() {
+    const body = {
+      tripId,
+      title:      title.trim(),
+      notes:      notes.trim() || null,
+      // Store an ABSOLUTE url: a scheme-less "google.com" is a relative path to
+      // the browser and would navigate inside the app (TRIP-230).
+      link_url:   normalizeExternalUrl(linkUrl),
+      documents:  documents.length ? documents : null,
+      visibility,
+      // `created_by` is stamped by the server from the JWT (TRIP-399) — not sent.
+      // created_by_name mirrors chat_messages.user_full_name so the uploader's
+      // name survives them leaving the trip; resolveAuthor reads it as fallback.
+      created_by_name: (user?.full_name || '').trim() || null,
+    };
+    // One event split by PROPERTIES (TRIP-316): file_kind reuses the badge
+    // classifier; mixed kinds → 'mixed', a bare link/note → 'none'.
     const kinds = [...new Set(documents.map((d) => fileType(d.file_name)))];
     track('document_uploaded', {
       trip_id: tripId,
@@ -139,9 +142,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
       file_kind: kinds.length > 1 ? 'mixed' : (kinds[0] || 'none'),
       has_link: !!linkUrl.trim(),
     });
-    qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
-    successToast(t, 'document_saved');
-    close();
+    createMut.mutate(body);
   }
 
   const visOpts = [
@@ -160,22 +161,24 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   ];
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent aria-describedby={undefined}>
-        {/* sr-only a11y title — visible h2 is inside dlg__head */}
-        <DialogTitle className="sr-only">{t('doc.dialog_new')}</DialogTitle>
-
-        {/* ── Header ── */}
-        <div className="dlg__head">
-          <Tile as="span" style={{ '--tile': '36px' }}>
-            <Icon name="file" size={17} />
-          </Tile>
-          <h2>{t('doc.dialog_new')}</h2>
-          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
-        </div>
-
-        {/* ── Body ── */}
-        <div className="dlg__body">
+    <DSDialog
+      title={t('doc.dialog_new')}
+      icon="file"
+      open={open}
+      onOpenChange={handleOpenChange}
+      busy={createMut.isPending}
+      foot={<>
+        <Btn variant="secondary" onClick={close} disabled={createMut.isPending}>{t('trip.form_cancel')}</Btn>
+        <Btn
+          variant="primary"
+          loading={createMut.isPending}
+          disabled={uploading || createMut.isPending}
+          aria-disabled={!v.canSubmit}
+          onClick={() => v.attemptSubmit(save)}>
+          {t('trip.form_save')}
+        </Btn>
+      </>}
+    >
           <IssuesPanel issues={v.panelIssues} style={{ marginBottom: 12 }} />
           {err && (
             <div style={{ marginBottom: 12 }}>
@@ -297,7 +300,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               onClick={() => !uploading && fileInputRef.current?.click()}
               onDragOver={e => e.preventDefault()}
               onDrop={e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}>
-              <Card variant="add" radius="md" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
+              <Card variant="add" radius="btn" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -321,81 +324,45 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               </Card>
             </div>
           </div>
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="dlg__foot">
-          <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
-          <Btn
-            variant="primary"
-            loading={saving}
-            disabled={uploading}
-            aria-disabled={!v.canSubmit}
-            onClick={() => v.attemptSubmit(save)}>
-            {t('trip.form_save')}
-          </Btn>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DSDialog>
   );
 }
 
 // ─── DocDetailDialog ──────────────────────────────────────────────────────────
 
-function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
-  const { t }    = useI18n();
-  const close    = () => onOpenChange?.(false);
-  const confirm  = useConfirm();
-  const [deleting, setDeleting] = useState(false);
-  const qc = useQueryClient();
-  const { toast } = useToast();
+function DocDetailDialog({ doc, open, onOpenChange, readOnly, onDelete }) {
+  const { t }   = useI18n();
+  const close   = () => onOpenChange?.(false);
+  const confirm = useConfirm();
 
+  // Async-confirm (PESSIMISTIC): the confirm button spins while the parent's delete runs
+  // (onDelete returns the mutation promise). ON THE RESPONSE the row drops + toast (parent
+  // onSuccess) and this dialog closes. On refusal onDelete rejects → the seam swallows it,
+  // the parent shows the error toast and BOTH the confirm resolves and this dialog stay put.
   async function handleDelete() {
-    if (!(await confirm({ title: t('doc.delete_confirm', { name: doc.title }), variant: 'destructive' }))) return;
-    setDeleting(true);
-    let deleted;
-    try {
-      deleted = await deleteTripDocument(tripId, doc.id); // false = already gone (404), not success
-    } catch (e) {
-      setDeleting(false);
-      // Реальный отказ (напр. DOC_PRIVATE_NOT_OWNER) → текст по машинному `code`.
-      toast({ description: errorText(t, e?.code), variant: 'destructive' });
-      return; // real error → keep dialog open
-    }
-    if (!deleted) {
-      // Nothing was deleted: RLS hid the row (session expired / removed from
-      // trip) or another member already deleted it. Don't sweep files, don't
-      // claim success — refresh so the user sees the real state. Контракт
-      // deleteTripDocument: false = NOT_FOUND → так и словим.
-      setDeleting(false);
-      qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
-      toast({ description: errorText(t, 'NOT_FOUND'), variant: 'destructive' });
-      return;
-    }
-    // Row gone → its files are now orphaned (unique uuid keys, single reference).
-    // Best-effort sweep; never blocks the delete (TRIP-117).
-    await removeTripFiles(collectDocPaths(doc.documents));
-    qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
-    successToast(t, 'document_deleted');
-    close();
+    await confirm({
+      title: t('doc.delete_confirm', { name: doc.title }),
+      variant: 'destructive',
+      onConfirm: async () => { await onDelete?.(doc); close(); },
+    });
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
-        <DialogTitle className="sr-only">{doc.title}</DialogTitle>
-
-        {/* ── Header ── */}
-        <div className="dlg__head">
-          <Tile as="span" style={{ '--tile': '36px' }}>
-            <Icon name="file" size={17} />
-          </Tile>
-          <h2>{doc.title}</h2>
-          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
-        </div>
-
-        {/* ── Body ── */}
-        <div className="dlg__body">
+    <DSDialog
+      title={doc.title}
+      icon="file"
+      open={open}
+      onOpenChange={onOpenChange}
+      foot={<>
+        {!readOnly && (
+          <Btn variant="danger" icon="trash" onClick={handleDelete}>
+            {t('trip.delete')}
+          </Btn>
+        )}
+        <Grow />
+        <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
+      </>}
+    >
           {doc.notes && (
             <p className="dl-dview-note">{doc.notes}</p>
           )}
@@ -435,20 +402,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               {formatDate(doc.created_at)}
             </Row>
           )}
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="dlg__foot">
-          {!readOnly && (
-            <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>
-              {t('trip.delete')}
-            </Btn>
-          )}
-          <Grow />
-          <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DSDialog>
   );
 }
 
@@ -457,6 +411,9 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
 function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
   const { t }    = useI18n();
   const { user } = useAuth();
+  // Optimistic rows carry `_pending` (a create still in flight, or a delete in
+  // flight): dim + non-interactive until the write reconciles the cache.
+  const pending  = !!doc._pending;
   const files    = doc.documents || [];
   const shown    = files.slice(0, 2);
   const more     = files.length - shown.length;
@@ -483,8 +440,9 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
       as="button"
       radius="md"
       interactive
+      ariaBusy={pending || undefined}
       className="col dl-card"
-      onClick={() => onOpenDetail?.(doc)}>
+      onClick={() => { if (!pending) onOpenDetail?.(doc); }}>
 
       {/* Icon + title + visibility chip */}
       <Row align="a-start" className="dl-card__top">
@@ -630,6 +588,42 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
     enabled: !!tripId,
   });
 
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  // Delete is the only optimistic doc mutation that lives HERE: it acts on the
+  // list where the user's eyes are (dim → drop), the list screen is always
+  // mounted, and there is no typed input to lose. CREATE is owned by AddDocDialog
+  // itself (button-spinner + close-on-success), so it works from every entry
+  // point without parent wiring — including the bottom-nav "+".
+  const docsBinding = listBinding(qc, DOCS_KEY(tripId), { addTo: 'start' });
+
+  const deleteDoc = useMutation({
+    mutationFn: (/** @type {any} */ { doc }) => deleteTripDocument(tripId, doc.id).then((deleted) => {
+      // false = already gone / RLS hid it — treat as failure so the row rolls back.
+      // Carry the machine `code` the onError branch reads (errorText / NOT_FOUND path).
+      if (!deleted) throw Object.assign(new Error('NOT_FOUND'), { code: 'NOT_FOUND' });
+      return deleted;
+    }),
+    // PESSIMISTIC: no optimistic `_pending` dim. The confirm dialog's button spins
+    // (async-confirm, handleDelete) until the delete lands; ON THE RESPONSE the row drops,
+    // its files are swept and the toast fires — together. Deleting a doc is a real Storage
+    // teardown, so the UI confirms only once it happened, not at T0.
+    onSuccess: (/** @type {any} */ _d, /** @type {any} */ { doc }) => {
+      docsBinding.remove(doc.id);
+      removeTripFiles(collectDocPaths(doc.documents)); // files orphaned once gone
+      successToast(t, 'document_deleted');
+    },
+    onError: (/** @type {any} */ err) => {
+      // Genuinely-gone row: reconcile to server truth (rare path, one refetch ok).
+      if (err?.code === 'NOT_FOUND') qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
+      toast({ description: errorText(t, err?.code), variant: 'destructive' });
+    },
+  });
+
+  // Returns the promise so the async-confirm spinner can await it (rejects → dialog stays).
+  const removeDoc = (doc) => deleteDoc.mutateAsync({ doc });
+
   // Author identity (name/avatar/is_deleted) comes from the ONE profile bundle
   // shipped with the trip content (getTripDetails), handed down by TripView —
   // no separate profile-fetch hop. Authors who have LEFT the trip aren't in
@@ -765,8 +759,8 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           open={true}
           onOpenChange={o => { if (!o) setDetailDoc(null); }}
           doc={detailDoc}
-          tripId={tripId}
           readOnly={readOnly}
+          onDelete={removeDoc}
         />
       )}
     </div>

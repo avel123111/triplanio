@@ -5,7 +5,7 @@ import { useNotificationList, useUnreadNotificationCount, useNotificationActions
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Badge, Btn, EmptyState, IconBtn, NotifRow, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
+import { Badge, Btn, EmptyState, IconBtn, NotifRow, Popover, PopoverContent, PopoverTrigger, UnreadBadge } from '@/design/index';
 import { buildNotifView } from '@/components/notifications/notifView';
 
 // ★TRIP-344: проп `triggerClassName` удалён. Его единственный вызыватель
@@ -31,18 +31,13 @@ export default function NotificationsBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        {/* Метка непрочитанных — РЕБЁНОК кнопки: она позиционируется от неё, а
-            не от строки. Имя `icon-btn__dot`, а не приклеенное `dot`, — апрув
-            Pavel: правило вида `.icon-btn .dot` заводит ключ и на ПРЕДКА (2p,
-            решение TRIP-363), поэтому объявления метки становились победителем
-            базового ключа `.icon-btn` и ЛЮБОЙ перенос на примитив читался как
-            «смена значения» — 44 ложных отказа. Односоставное имя снимает это
-            структурно и совпадает с направлением каталога: имя без префикса
-            внутри компонента ДС схлопывается в <владелец>__<имя>.
-            Класс `relative` тоже ушёл: правила у него нет НИГДЕ (наследство
-            Tailwind), а `position: relative` база `.icon-btn` объявляет сама. */}
+        {/* Метка непрочитанных — РЕБЁНОК кнопки: позиционируется от неё
+            ко-селектором `.icon-btn > .badge--unread`. Канон непрочитанного
+            (TRIP-354): красный `<UnreadBadge>` С ЧИСЛОМ вместо прежней точки
+            `.icon-btn__dot`. Число озвучивается как часть доступного имени
+            кнопки. */}
         <IconBtn icon="bell" ariaLabel={t('notif.title')}>
-          {unread > 0 && <span aria-hidden className="icon-btn__dot" />}
+          <UnreadBadge count={unread} />
         </IconBtn>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
@@ -71,7 +66,7 @@ export default function NotificationsBell() {
                 t={t}
                 nav={nav}
                 fmtRelative={fmtRelative}
-                pending={respondInvite.isPending}
+                pendingAction={respondInvite.isPending && respondInvite.variables?.memberId === n.trip_member_id ? respondInvite.variables.action : null}
                 onRespond={(action) => {
                   if (!n.read) markOneRead.mutate(n.id);
                   respondInvite.mutate({ memberId: n.trip_member_id, tripId: n.trip_id, action });
@@ -98,7 +93,7 @@ export default function NotificationsBell() {
 
 // Поповер-строка = канон `<NotifRow compact>` + слоты действий. Резолв (глиф из
 // sender, живое имя, i18n-текст) — общий `buildNotifView`, тот же, что у экрана.
-function PopoverRow({ n, t, nav, fmtRelative, pending, onRespond, onMarkRead, onOpenTrip }) {
+function PopoverRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRead, onOpenTrip }) {
   // Invite status rides the row now (getInbox joins trip_members) — no per-row
   // `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
@@ -111,8 +106,8 @@ function PopoverRow({ n, t, nav, fmtRelative, pending, onRespond, onMarkRead, on
     <>
       {showPending && (
         <>
-          <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-          <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+          <Btn variant="primary" icon="check" loading={pendingAction === 'accept'} disabled={!!pendingAction} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+          <Btn variant="secondary" loading={pendingAction === 'decline'} disabled={!!pendingAction} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
         </>
       )}
       {isInvite && memberStatus === 'active' && (

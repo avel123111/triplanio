@@ -27,6 +27,7 @@ import type Stripe from 'npm:stripe@17.0.0';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, isProductCode, ENTITLING_STATUSES } from '../_shared/payments/catalog.ts';
 import { ensureProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
+import { originGuard } from '../_shared/originGuard.ts';
 
 Deno.serve(withHandler('createStripeCheckout', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -38,14 +39,9 @@ Deno.serve(withHandler('createStripeCheckout', async (req, corsHeaders) => {
     }
 
     // ---------- Origin ----------
-    const publicAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
-    if (!publicAppUrl) {
-      return Response.json({ error: 'Server misconfigured: PUBLIC_APP_URL missing' }, { status: 500, headers: corsHeaders });
-    }
-    const reqOrigin = (req.headers.get('origin') || '').replace(/\/+$/, '');
-    if (reqOrigin && reqOrigin !== publicAppUrl) {
-      return Response.json({ error: 'Origin not allowed' }, { status: 400, headers: corsHeaders });
-    }
+    const origin = originGuard(req, corsHeaders);
+    if (origin instanceof Response) return origin;
+    const { publicAppUrl } = origin;
 
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) {

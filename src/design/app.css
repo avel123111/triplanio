@@ -446,11 +446,10 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    visual-diff-move: .tm-manage -> card card--r-lg
    visual-diff-move: .tm-account -> card card--r-lg
    visual-diff-move: .tm-cell -> card card--r-md
-   visual-diff-move: .s22f-panel -> card card--r-lg
+   visual-diff-move: .s22f-panel -> card card--r-btn
    visual-diff-exempt: .eroute border-radius — на .card--r-card (24), значение то же
    visual-diff-exempt: .eroute box-shadow — СНЯТА: eroute плоский как все карточки; статичная тень --sh-1 на одном пустом экране = дрейф, вариант ради одного вызывателя не заводим (апрув Pavel) */
 .card,
-.map-route,
 /* оверлеи и всплывающее (диалог тут только за РАМКОЙ — заливку он берёт
    ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
@@ -533,6 +532,9 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 }
 @media (hover: hover) and (pointer: fine) {
   .lrow--add:hover { border-color: var(--a, var(--brand)); background: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); color: var(--a, var(--brand)); }
+  /* TRIP-337: иконка-плитка лида (tone="quiet", серая) тоже уезжает в тон ховера --a,
+     иначе на ховере цветнело всё, кроме неё. */
+  .lrow--add:hover .tile { color: var(--a, var(--brand)); }
 }
 
 /* ── Donut: кольцевая диаграмма — сегменты по долям + центр, запертый в дырке
@@ -703,7 +705,6 @@ h2,
 .acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-heading — Geologica 18/700/1.25, tabular (карьер .acct-sectitle) */
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
-.te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
 .pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
 .invite__tx h3,
@@ -753,7 +754,8 @@ h4,
 .cm-h,
 .eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
 .hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
-.trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → Label (спецификее .seg button{font:inherit}) */
+.seg button,   /* TRIP-337: сегмент-контрол = канон типографики .t-label. Был `font: inherit` → у одного примитива было три разных кегля (Trips-фильтр 13px, а /kit и прочие экраны наследовали крупный контекст). Экранный патч `.trips-toolbar .seg--filter button` снят как дубль этого канона. */
+.te-cityname,   /* TRIP-337: названия города (строка редактора + планировщик — общий носитель .te-cityname) → Label (был Subheading). Маршрут карты идёт своим .map-route__name, тоже Label. */
 .btn,
 .field__label,
 .app-side__item,
@@ -873,13 +875,11 @@ h4,
 .field__hint,
 .app-header__trip-meta,
 .app-header__pro,
-.app-side__item-badge,
 .err, .wrn,
 .pro-up p,
 .sev,
 .avatar,
 .avatar--sm,
-.seg button,
 .choice-card__sub,
 .ts-startctl__lbl,
 .ts-startctl__date,
@@ -892,7 +892,6 @@ h4,
 .chat-msg__err,       /* TRIP-296: «Не отправлено» / ассистент не ответил */
 .chat-composer__hint, /* TRIP-296: подсказка Enter / Shift+Enter */
 .chat-member__rl,
-.dock__count,
 .dock-panel__head .nm,
 .fpill,
 .fpill__c,
@@ -978,8 +977,6 @@ h4,
 .dl-dview-link b,
 .dl-dview-meta,
 .eed-fchint,
-.eed-bkpill,
-.eed-bkopen,
 .tcp__err,
 .docfield__count,
 .ncal-wdc-empty,   /* инсп.: Meta («Свободный день» календаря) */
@@ -1029,7 +1026,7 @@ h4,
 .langdd__btn,
 .langdd__item .code,
 .s22-count,
-.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span,
+.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .fork-or span,
 .addon-card__desc, /* инсп.: Meta (описание аддона) */
 /* TRIP-410 моно-аудит: календарь уходит с JetBrains на Geologica — управляющие
    пилюли, плашки городов, чипы событий (были в .t-mono, поверх sans-оверлея). Кегли
@@ -1056,8 +1053,6 @@ h4,
 .chat-mention__lbl,
 .ngrp__label,
 .te-th,
-.te-endlabel,
-.te-wptag,
 .tl3-dh .datechip .m,
 .cityrail .cr-h,
 .plan-popular-badge,
@@ -1118,6 +1113,7 @@ h4,
    visual-diff-exempt: .statbar letter-spacing — стат-подпись statbar Meta→Tiny Caps
    visual-diff-exempt: .statbar line-height — стат-подпись statbar Meta→Tiny Caps */
 .t-tiny-caps,
+.te-endlabel,  /* TRIP-337: СТАРТ/ФИНИШ маршрута → Tiny Caps (был .t-micro 11px) */
 .statbar .k,   /* TRIP-175 инсп.: стат-подпись statbar Meta→Tiny Caps (мелкий серый капс) */
 .sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
 .badge--tiny,  /* TRIP-337: третья ступень пилюли — статус/тариф-чипы плашки на кегль ниже (.t-micro→.t-tiny-caps), апрув Pavel */
@@ -1291,12 +1287,9 @@ h4,
    в кавычках — говорить о ней словами.
    Ни один гард этого не ловит: 2p сравнивает РАЗОБРАННЫЙ CSS, а для него
    правила просто нет с обеих сторон; доказывается только рендером. */
-.icon-btn__dot {
-  position: absolute; top: 4px; right: 4px;
-  width: 11px; height: 11px; border-radius: var(--r-pill);
-  background: var(--danger); border: 2px solid var(--surface);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--danger) 30%, transparent);
-}
+/* Колокольчик уведомлений несёт красный `.badge--unread` С ЧИСЛОМ (TRIP-354,
+   апрув Pavel: единый канон вместо прежней точки-`.icon-btn__dot` без числа);
+   позиция — ко-селектор `.icon-btn > .badge--unread`. */
 /* Header override — keep the 38px round shape; colours fall back to the neutral
    .icon-btn base (theme-aware) now that the bar is glass, not brand-gradient.
    ★TRIP-344: исключение ОСТАЛОСЬ (38px круг — апрув Pavel: диаметр совпадает с
@@ -1366,12 +1359,10 @@ button.app-side__item { cursor: pointer; }
 button.app-side__item:active { transform: scale(.985); }
 button.app-side__item:hover { background: var(--wash); }
 .app-side__item.active { background: var(--brand-soft); color: var(--brand); }
-.app-side__item-badge {
- margin-left: auto;
- min-width: 18px; height: 18px; padding: 0 6px;
- border-radius: var(--r-pill); background: var(--warm); color: white;
- display: grid; place-items: center;
-}
+/* Бейдж непрочитанного чата в пункте сайдбара — красный канон `.badge--unread`,
+   позиция ко-селектором (ряд флексовый, толкаем вправо). TRIP-354: свой класс
+   `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
+.app-side__item > .badge--unread { margin-left: auto; }
 
 
 .app-main {
@@ -1636,9 +1627,9 @@ button.app-side__item:hover { background: var(--wash); }
    однозначным, когда оболочка останется одна. */
 /* .hv-notes border-radius уехал на .card--r-md (radius="md", TRIP-337 объект 2). */
 
-/* Map lens route panel (TRIP-33): скин - роль поверхности, `.map-route` стоит
-   в её co-селекторе СВОИМ именем; этот блок - только раскладка. Floats top-left over the
-   full-bleed map; collapses to a bottom sheet on phones (below). */
+/* Map lens route panel (TRIP-33): поверхность несёт компонент <Card> (TRIP-337),
+   а `.map-route` держит ТОЛЬКО раскладку — из surface-co-селектора имя убрано.
+   Floats top-left over the full-bleed map; collapses to a bottom sheet on phones (below). */
 .map-route {
   position: absolute; z-index: 2;
   top: 16px; left: 16px;
@@ -1647,7 +1638,9 @@ button.app-side__item:hover { background: var(--wash); }
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+/* TRIP-337: шапка панели = канон <PageHead> (title «Маршрут» + subtitle «N городов»);
+   гасим его margin-bottom, разделитель и отступ несёт эта строка. */
+.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); margin-bottom: 0; }
 .map-route__empty { padding: 32px 20px; text-align: center; }
 .map-route__list { padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
 .map-route__item {
@@ -1763,17 +1756,19 @@ button.app-side__item:hover { background: var(--wash); }
     var(--pro-gradient) border-box;
   box-shadow: 0 26px 54px -32px var(--pro);
 }
-/* Приподнятая карточка (проп `raised`, TRIP-337 объект 2): статическая тень --sh-1,
-   на ховере усиление до --sh-2 (превью карты обзора). База `.card` тени не даёт.
+/* Приподнятая карточка (проп `raised`, TRIP-337 объект 2): статическая тень --sh-1.
+   База `.card` тени не даёт. `raised` — ТОЛЬКО статичная высота, БЕЗ ховер-лифта:
+   лифт на наведении = язык КЛИКАБЕЛЬНОЙ поверхности (`.card--interactive`), а оба
+   вызывателя `raised` (превью карты Обзора, fork-state) контейнером не кликабельны,
+   и ховер-усиление читалось как «нажми меня» на неинтерактивной панели (TRIP-337).
    Дожиг split-скина 4→0 — radius/тень с приватных классов на пропы, значение то же:
    visual-diff-move: .choice-card -> card--r-card
    visual-diff-move: .records -> card--r-card
    visual-diff-exempt: .ov-mapcard box-shadow — на .card--raised (--sh-1), значение то же
-   visual-diff-exempt: .ov-mapcard:hover box-shadow — hover-тень уехала на .card--raised:hover (--sh-2), канон media-gated
-   visual-diff-exempt: .card--raised box-shadow — новый канон-вариант raised (--sh-1), первый вызыватель ov-mapcard
-   visual-diff-exempt: .card--raised:hover {@media (hover: hover) and (pointer: fine)} box-shadow — новый канон-вариант raised: ховер-усиление --sh-2 (media-gated как .card--interactive) */
+   visual-diff-exempt: .card--raised box-shadow — канон-вариант raised (--sh-1), первый вызыватель ov-mapcard
+   visual-diff-exempt: .ov-mapcard:hover box-shadow — ховер-лифт снят: карта не кликабельна контейнером, лифт = язык .card--interactive (TRIP-337)
+   visual-diff-exempt: .card--raised:hover {@media (hover: hover) and (pointer: fine)} box-shadow — ховер-усиление снято с raised: статичная высота без «нажми меня» (TRIP-337) */
 .card--raised { box-shadow: var(--sh-1); }
-@media (hover: hover) and (pointer: fine) { .card--raised:hover { box-shadow: var(--sh-2); } }
 /* TRIP-337 объект 2 дожиг: радиус (и тень eroute) ушли с приватных карточек на
    пропы <Card radius/raised> — класс стал layout-only. Перенос объявлен в блоке
    visual-diff-move у ко-селектора выше (`.X -> card card--r-Y`, eroute тень снята),
@@ -1805,7 +1800,11 @@ button.app-side__item:hover { background: var(--wash); }
 .card--parsed { background: var(--success-soft); border-color: var(--success); border-radius: var(--r-btn); }
 
 /* Пунктир/добавить - «создать ещё». Прозрачный, пунктирная рамка. */
-.card--add { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); }
+/* Фон через канал --add-bg (дефолт transparent — все add-аффордансы без изменений).
+   Точка расхождения: зона загрузки документа кормит --surface (решение Pavel,
+   TRIP-337), пунктир и ховер остаются каноном.
+   visual-diff-exempt: .card--add background — transparent → var(--add-bg, transparent): дефолт тот же, канал для белого dropzone, апрув Pavel */
+.card--add { background: var(--add-bg, transparent); border: 1px dashed var(--line-strong); color: var(--muted); }
 
 /* Утопленная - фон отступает назад от несущей карточки (заметки/адрес/строка). */
 .card--recessed { background: var(--surface-3); }
@@ -1842,7 +1841,11 @@ button.app-side__item:hover { background: var(--wash); }
 .field { display: flex; flex-direction: column; gap: 7px; }
 /* Подпись поля - ink-2, чтобы не спорить с самим значением. Размер/вес тут НЕ
    объявлены: их держит канон .t-label (Geologica 13/600), см. co-selector выше. */
-.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-label (co-selector, TRIP-165) */
+/* flex-wrap: без него лейбл и хинт в узком поле сжимаются до min-content и текст
+   ломается ВНУТРИ («Что»/«случилось?»); с ним длинный хинт уходит на строку ниже
+   ЦЕЛИКОМ, а короткий лейбл остаётся одной строкой (норм-приложения, TRIP-337).
+   visual-diff-exempt: .field__label flex-wrap — длинный хинт переносится строкой ниже, лейбл не рвётся посреди слова (апрув Pavel) */
+.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }   /* тип — канон .t-label (co-selector, TRIP-165) */
 /* Звёздочка обязательного поля - одна на всё приложение (TRIP-333). Знак и цвет
    объявлены здесь; КОМУ ставить `data-required`, отвечает валидатор
    (`isFieldRequired`), а не автор лейбла.
@@ -1869,13 +1872,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    пересадки, и лишний отступ оторвал бы её от своего сегмента).
    ★Родитель теперь ОДИН: тело диалога переехало на `.lp-b` вместе со всей
    оболочкой события (TRIP-333 §4). */
-/* TRIP-343 объект 2: eed-fcbox / eed-nightrow — скин снят на `<Card radius="md">`,
-   класс ОСТАЁТСЯ численным раскладочным остатком (padding живёт в
-   EventEditDialog.css: .eed-fcbox 12, .eed-nightrow 12/14 + margin/justify → 08).
-   Статичные. (`.acc` — отдельным заходом: условная обёртка isMulti + хук
-   состояния `.acc.is-open .acc__chev`, требует динамического носителя.)
-   visual-diff-move: eed-fcbox -> card card--r-md
-   visual-diff-move: eed-nightrow -> card card--r-md */
+/* TRIP-343 объект 2: eed-fcbox — скин снят на `<Card radius="md">`, класс ОСТАЁТСЯ
+   численным раскладочным остатком (padding живёт в EventEditDialog.css: .eed-fcbox 12).
+   Статичный. (`.acc` — отдельным заходом: условная обёртка isMulti + хук состояния
+   `.acc.is-open .acc__chev`, требует динамического носителя.)
+   (Overnight-отметка `.eed-nightrow` удалена — переехала на канон <Badge>, TRIP-337.)
+   visual-diff-move: eed-fcbox -> card card--r-md */
 /* TRIP-343 объект 2: скин аккордеона на `<Card radius="md" pad="none">` (bg/border
    → .card, radius → .card--r-md, overflow → .card--flush). `.acc` остаётся КЛАССОМ
    (хук состояния `.acc.is-open .acc__chev`); своё правило было только overflow →
@@ -2449,6 +2451,93 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--brand-soft); color: var(--brand); }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
+/* Красный бейдж НЕПРОЧИТАННОГО (TRIP-354, апрув Pavel) — единый облик для чата и
+   уведомлений. Форма-пилюля и типографика приходят из базы `.badge`; здесь только
+   красная заливка --danger и белый текст. Литерал #fff, а не --primary-fg: в
+   тёмной теме тот темнеет, а на красном (--danger в обеих темах тёмный) нужен
+   белый. 18px — компактнее нейтрального счётчика 20px, садится оверлеем на
+   иконку/пункт дока/плитку.
+   floor-exempt: reach +3 — оверлей-бейдж позиционирует ВЛАДЕЛЕЦ ко-селектором
+   (`.app-side__item`/`.tm-cell`/`.mbnav__ico` > `.badge--unread`), тот же приём,
+   что у существующего `.icon-btn > .badge--count`; сведение 4 счётчиков в один
+   красный канон, апрув Pavel (TRIP-354). */
+.badge--unread { background: var(--danger); color: #fff; min-width: 18px; height: 18px; padding: 0 5px; justify-content: center; letter-spacing: 0; }
+/* TRIP-354 · ярус 2p: намеренная замена 4 самодельных счётчиков одним красным каноном .badge--unread.
+   visual-diff-exempt: .tm-cell__badge align-items — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge border-radius — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge display — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge justify-content — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge min-width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge padding — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge border-radius — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge display — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge font-family — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge font-size — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge font-variant-numeric — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge font-weight — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge letter-spacing — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge line-height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge margin-left — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge min-width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge padding — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item-badge place-items — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .app-side__item margin-left — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread {@media (max-width: 640px)} position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread {@media (max-width: 640px)} right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread {@media (max-width: 640px)} top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread {@media (max-width: 640px)} z-index — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread color — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread justify-content — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread letter-spacing — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread margin-left — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread min-width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread padding — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .badge--unread top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count border — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count border-radius — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count display — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count min-width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count padding — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count place-items — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot border — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot border-radius — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot box-shadow — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot height — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .icon-btn__dot width — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .mbnav__ico {@media (max-width: 640px)} position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .mbnav__ico {@media (max-width: 640px)} right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .mbnav__ico {@media (max-width: 640px)} top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .mbnav__ico {@media (max-width: 640px)} z-index — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell__badge top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell position — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell right — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .tm-cell top — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
+   visual-diff-exempt: .dock__count font-family — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count font-size — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count font-variant-numeric — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count font-weight — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count letter-spacing — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+   visual-diff-exempt: .dock__count line-height — TRIP-354 канон unread-бейджа: .dock__count снят с co-селектора типографики вместе с классом; апрув Pavel
+*/
 /* orphan-exempt: badge--outline — эмитится <Badge variant="outline"> композицией
    badge--${variant} (RoleBadge, роль «Наблюдатель»); литерала в разметке нет по построению (TRIP-409) */
 .badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
@@ -2462,7 +2551,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    умел переноситься. */
 .sev {
  padding: 13px 15px;
- border-radius: var(--r-md);
+ /* Радиус контрола (--r-btn 10) — паритет с карточками event-view и полями:
+    все контейнеры одной панели несут один радиус (решение Pavel, TRIP-337).
+    visual-diff-exempt: .sev border-radius — секция → контрол (--r-md 16 → --r-btn 10), паритет радиусов внутри панели, апрув Pavel */
+ border-radius: var(--r-btn);
  border: 1px solid;
  color: var(--ink-2);
 }
@@ -2562,8 +2654,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 [data-theme="dark"] .seg { background: var(--surface-3); }  /* TRIP-176: тёмная = --surface-3 (#1B1A26), как карточки /trips */
 .seg button {
- font: inherit;
-
+ /* тип — из канона .t-label (co-selector, TRIP-337); `font: inherit` снят — он давал разные кегли по контексту экрана */
  color: var(--muted);
  background: transparent;
  border: 0;
@@ -2920,8 +3011,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .icon-btn[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
 .icon-btn[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
 /* Счётчик активных на кнопке-иконке — реюз `.badge--count` (тоггл фильтров форк-
-   панели), позиция ко-селектором, НОВОГО КЛАССА НЕТ (`.icon-btn` position:relative). */
-.icon-btn > .badge--count { position: absolute; top: -6px; right: -6px; }
+   панели), позиция ко-селектором, НОВОГО КЛАССА НЕТ (`.icon-btn` position:relative).
+   Тот же оверлей несёт красный `.badge--unread` (колокольчик уведомлений, FAB
+   чата) — TRIP-354: одно правило позиционирует оба счётчика на кнопке-иконке. */
+.icon-btn > .badge--count, .icon-btn > .badge--unread { position: absolute; top: -6px; right: -6px; }
 .icon-btn--sm { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
 .icon-btn--round { border-radius: var(--r-pill); }
 .icon-btn--soft { background: var(--secondary); border-color: var(--line); color: var(--ink-2); }
@@ -2959,11 +3052,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (`--warning`/`--success`) перекрашивает и градиент, и тень одним каналом. */
 .icon-btn--fab {
   width: 56px; height: 56px; border-radius: var(--r-pill); border: 0; color: #fff;
-  background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--fab-tint, var(--brand)) 82%, #fff) 0%, var(--fab-tint, var(--brand)) 46%, var(--fab-tint, var(--brand)) 100%);
+  --fab-bg: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--fab-tint, var(--brand)) 82%, #fff) 0%, var(--fab-tint, var(--brand)) 46%, var(--fab-tint, var(--brand)) 100%);
+  background: var(--fab-bg);
   box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--fab-tint, var(--brand)) 72%, transparent),
               0 4px 10px -2px rgba(15, 23, 42, .3), inset 0 1px 0 rgba(255, 255, 255, .4);
 }
-.icon-btn--fab:hover { filter: brightness(1.05); color: #fff; }
+/* Ховер ПЕРЕОБЪЯВЛЯЕТ свой фон-градиент: базовое `.icon-btn:hover` (выше) красит
+   фон в `--wash` при равной специфичности, и без этой строки FAB на ховере
+   становился бледно-белым (иконка #fff на --wash). Как у соседей --solid/--soft/
+   --outline: залитый вариант держит свой фон на ховере, яркость даёт brightness.
+   Градиент вынесен в канал --fab-bg (вариант-скоуп, не :root), чтобы база и ховер
+   несли один источник, а не дублировали 3-строчный radial-gradient.
+   visual-diff-exempt: .icon-btn--fab --fab-bg — градиент вынесен в канал (то же значение, что было инлайн в background)
+   visual-diff-exempt: .icon-btn--fab background — литерал градиента → var(--fab-bg), вычисленное значение то же
+   visual-diff-exempt: .icon-btn--fab:hover background — фикс протечки base .icon-btn:hover (--wash) на залитый FAB: фон = свой градиент --fab-bg, как у --solid/--soft */
+.icon-btn--fab:hover { background: var(--fab-bg); filter: brightness(1.05); color: #fff; }
 .icon-btn--fab > svg { width: 24px; height: 24px; }
 
 /* Ступени - НЕ ряд «+6», к которому потом подложили замер. Каждая стоит в
@@ -3224,6 +3327,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .mbnav__item.is-active { color: var(--brand); }
   .mbnav__ico { position: relative; display: grid; place-items: center; width: 30px; height: 26px; }
   .mbnav__ico > * { position: relative; z-index: 1; }
+  /* Красный бейдж непрочитанного на пункте дока («Ещё» в трипе, «Профиль» вне) —
+     оверлей у правого-верхнего угла иконки (TRIP-354). Специфичнее правила
+     `.mbnav__ico > *` выше, поэтому берёт position:absolute. */
+  .mbnav__ico > .badge--unread { position: absolute; top: -6px; right: -8px; z-index: 2; }
   .mbnav__item.is-active .mbnav__ico::before {
     content: ''; position: absolute; inset: -3px -7px; border-radius: var(--r-sm); background: var(--brand-soft); z-index: 0;
   }
@@ -3771,7 +3878,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      панелей редактора `.lp-f`. Футер шита `.dlg__foot` — канон-примитив, и его
      прячет САМ компонент <Dialog> через useKeyboardOpen (реагировать снаружи на
      канон-примитив = reach, гард 2o). */
+  /* Футер `.lp-f` скрывается на клавиатуре ВЕЗДЕ, где живёт: мобильный шит
+     редактора (`.lp-sheet`) И модальная оболочка event view/edit (`.dlg-modal`).
+     Единая логика для всех модалок (TRIP-337): канон `.dlg__foot` прячет сам
+     <Dialog> хуком, а не-канон `.lp-f` — этим правилом по одному сигналу
+     `[data-keyboard]`. Раньше цеплялся только `.lp-sheet`, и футер event-view/edit
+     на клавиатуре не скрывался.
+     Первая строка (`.lp-sheet .lp-f`) оставлена как есть — селектор с двумя
+     классами держит ключ `.lp-sheet` неизменным; вторая (широкая, один класс
+     `.lp-f`) накрывает ОСТАЛЬНЫЕ оболочки, `display:none` у `.lp-f` тот же. */
   [data-keyboard] .lp-sheet .lp-f { display: none; }
+  [data-keyboard] .lp-f { display: none; }
   [data-keyboard] .mbnav { display: none; }
 
 
@@ -4231,13 +4348,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    действия), не поверхности; удержан числом (translateY(-2px) scale(1.04) / .95). */
 .dock:hover { transform: translateY(-2px) scale(1.04); }
 .dock:active { transform: scale(.95); }
-.dock__count {
- position: absolute; top: -4px; right: -4px;
- background: var(--warm); color: #fff;
- min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--r-pill);
- display: grid; place-items: center;
- border: 2px solid var(--bg);
-}
+/* Счётчик непрочитанного на FAB чата = красный `.badge--unread`, позиционируется
+   ко-селектором `.icon-btn > .badge--unread` (`.dock` — это `.icon-btn`).
+   TRIP-354: свой класс `.dock__count` (--warm 22px) свёрнут в общий бейдж. */
 .dock-panel {
   position: fixed; right: 24px; bottom: 24px;
   width: 396px; max-width: calc(100vw - 32px);
@@ -4307,8 +4420,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   animation: popIn .14s var(--ease-out);
 }
 @keyframes popIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
-/* Flush variant — list-style popovers that own their padding (SearchSelect). */
-.pop-flush { padding: 0; }
+/* Flush variant — list-style popovers that own their padding (SearchSelect +
+   Autocomplete: города/адреса/язык/валюта). TRIP-337: радиус контейнера сведён к
+   --r-btn (10) — в один радиус с полем-триггером `.input`; база .pop = --r-card (24). */
+.pop-flush { padding: 0; border-radius: var(--r-btn); }
 
 /* Bell popover — head / list / foot (Lumo: rounded prow rows in a padded list) */
 /* Shell overrides the .pop base: full-width-capped, clipped, larger radius, no padding. */
@@ -4367,6 +4482,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .fpill--sm { min-height: 24px; padding: 0 8px; font-size: var(--fs-micro); font-weight: 500; }
 .fpill--soft { background: var(--brand-soft); border-color: transparent; color: var(--brand); }
 .fpill--soft:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
+/* dismiss — ярлык-тег со снятием (активный фильтр поиска): тело НЕ кликается,
+   курсор обычный, справа хвостовой ✕ `.fpill__x`. ✕ МЕНЬШЕ высоты пилюли, поэтому
+   не раздувает её (прежний `.s22f-pill` вставлял полноразмерный <IconBtn> и рос до
+   ~42px — теперь высота держится каноном `--ctl-h-sm`). */
+.fpill--dismiss { cursor: default; padding-right: var(--sp-2); }
+.fpill__x { display: grid; place-items: center; width: 20px; height: 20px; flex: none; padding: 0; border: 0; background: transparent; border-radius: var(--r-pill); color: inherit; cursor: pointer; opacity: .7; transition: opacity .14s, background .14s; }
+.fpill__x:hover { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); }
+.fpill__x svg { width: 14px; height: 14px; }
 /* avatars — стопка аватаров + подпись, высота от содержимого */
 .fpill--avatars { padding: 0 12px 0 5px; min-height: 38px; }
 .fpill--avatars .avatar { width: 26px; height: 26px; }
@@ -4478,7 +4601,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* ---- table header ---- */
     /* ★`row-gap: 0` - не новое значение, а прежнее под своим именем: у сетки начальный зазор 0, а `.grid` несёт дефолтные 10px по ОБЕИМ осям, тогда как правило задаёт только `column-gap`. Без этой строки между строками появились бы 10px, которых не было. Тот же приём, что `gap: 0` у флекса в зоне 1.
      visual-diff-move: te-thead -> grid */
-    .te-thead { grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
+    .te-thead { grid-template-columns: 16px 28px minmax(0,1fr) 96px 80px 80px; row-gap: 0; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
     /* visual-diff-move: te-th -> trunc */
     .te-th { color: var(--muted); min-width: 0; }
     .te-th--c { text-align: center; }
@@ -4494,7 +4617,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        и gap принадлежал СОСТАВНОМУ правилу планировщика (оно специфичнее), и его
        перенос удостоверен своим маркером на полный селектор. Заявить их переносом
        на `.grid` было бы неправдой. Объявлены исключением в конце файла. */
-    .te-row { position: relative; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+    .te-row { position: relative; grid-template-columns: 16px 28px minmax(0,1fr) 96px 80px 80px; row-gap: 0; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     .te-row:hover { background: var(--surface); border-color: var(--brand); box-shadow: var(--sh-2); }
     .te-row:hover .te-cityname { color: var(--brand); }
     /* visual-diff-move: te-cityname -> trunc */
@@ -4564,6 +4687,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-cell--hotel .btn--dashed, .te-cell--act .btn--dashed { --a: var(--hl); }
     /* Заполненные ячейки отеля/активности — <Chip variant="tone" square>;
        тон приходит каналом `--hl*` с `.te-cell--hotel`/`--act` (ниже). */
+    /* TRIP-337: наличие/варн (квадратный чип) — радиус 10 (--r-btn), в один радиус
+       с пустой пунктирной ячейкой (.btn базово r-btn); был --r-sm (8).
+       floor-exempt: reach +4 — контекстные правки облика примитивов по задачам TRIP-337
+       (радиус чипов отеля/активности в ячейке · непрозрачная плашка переезда `.te-seam .fpill--tone`
+       + её ховер · тон бейджа «ПЕРЕСАДКА» `.te-dts .badge`); все — scoped на существующий класс, без новых имён; апрув Pavel */
+    .te-cell--hotel .fpill--square, .te-cell--act .fpill--square { border-radius: var(--r-btn); }
 
     /* ---- redesigned itinerary: NO outer frame — just hairline separators
        between rows; transfers are chips straddling the seam between two cities ---- */
@@ -4598,7 +4727,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* visual-diff-move: te-row__node -> tile — плитка-узел маршрута на <Tile> (ступень 28, тон каналом из инлайна call-site) */
     .te-row__node { --tile: 28px; flex-shrink: 0; }
     .te-endlabel { display: block; margin-bottom: 1px; }
-    .te-wptag { color: var(--ev-transfer-ink); padding: 2px 7px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); white-space: nowrap; flex: none; }
+    /* TRIP-337: тег «ПЕРЕСАДКА» = DS <Badge size="tiny">; приватный .te-wptag снят.
+       Тон переезда несёт эта scoped-строка (единственный .badge внутри .te-dts —
+       именно он), поэтому на бейдже нет инлайна. */
+    .te-dts .badge { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
     /* Transfer badge: ONE symmetric transition drives both directions — it melts
        away (fade+shrink) when a drag starts and eases back in on drop. No keyframe
        animation: a filled animation pins opacity and breaks the fade-out. */
@@ -4606,6 +4738,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); gap: 0; align-items: stretch; }
     /* Канал тона переезда для <Chip variant="tone"/"placeholder"> шва. */
     .te-seam { --hl: var(--ev-transfer); --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
+    /* TRIP-337: плашка НАЛИЧИЯ переезда (<Chip variant="tone">) — сплошной непрозрачный
+       surface, цвет переезда несут текст и рамка (был бледный тинт --hl-soft, читался
+       прозрачным). Скоуплено на шов — общий .fpill--tone (ячейки отеля/активности) не трогаем. */
+    .te-seam .fpill--tone { background: var(--surface); border-color: var(--hl); color: var(--hl-ink); }
+    /* TRIP-337: ховер плашки переезда — тинтованная заливка канала (мой непрозрачный
+       surface убил дефолтный ховер .fpill--tone, возвращаю осознанно). */
+    .te-seam .fpill--tone:hover { background: color-mix(in srgb, var(--hl) 12%, var(--surface)); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     /* Швы переезда (заполненный/пустой) — <Chip variant="tone"/"placeholder">. */
 
@@ -5083,6 +5222,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .tl3-card:hover {@media (hover: hover)} transform — лифт снят (канон без движения, апрув /kit)
    visual-diff-exempt: .tl3-card:hover {@media (hover: hover)} box-shadow — лифт снят (был --sh-2, покой плоский) */
 .tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; }
+/* Optimistic pending booking (create write in flight): dim + non-interactive until
+   the seam reconciles the row. Keyed on aria-busy so no new class family.
+   visual-diff-exempt: .tl3-card[aria-busy=true] opacity — приглушение pending-брони оптимизма
+   visual-diff-exempt: .tl3-card[aria-busy=true] pointer-events — pending-бронь не кликабельна до реконсиляции */
+.tl3-card[aria-busy="true"] { opacity: .55; pointer-events: none; }
 /* Единственный экземпляр семейства, существовавший до примитива: геометрия
    больше не переобъявляется, остались три ручки и тон по типу события.
    44/20px - ВНЕ ступеней (ближайшая --xl это 46/21); переезд на ступень меняет
@@ -5691,7 +5835,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    C5 · ActionMenu (Lumo .menu) — canonical dropdown/action menu.
    Used by the shared <ActionMenu> component (Radix dropdown-menu).
    ============================================================ */
-.menu { width: 236px; background: var(--popover); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-3); padding: 6px; z-index: var(--z-menu); }
+.menu { width: 236px; background: var(--popover); border: 1px solid var(--line); border-radius: var(--r-btn); box-shadow: var(--sh-3); padding: 6px; z-index: var(--z-menu); }
 .menu .mi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; background: transparent; border-radius: var(--r-sm); font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; outline: none; transition: background .14s, color .14s; }
 .menu .mi svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
 .menu .mi:hover, .menu .mi[data-highlighted] { background: var(--accent); color: var(--accent-ink); }
@@ -5901,7 +6045,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tm-cell__ico { width: 30px; height: 30px; flex: none; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--wash); color: var(--muted); }
 .tm-cell.is-active .tm-cell__ico { background: var(--surface); color: var(--brand); }
 .tm-cell__lbl { display: block; }
-.tm-cell__badge { position: absolute; top: 10px; right: 10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill); background: var(--warm); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+/* Бейдж непрочитанного чата на плитке-линзе шита = красный `.badge--unread`,
+   оверлей ко-селектором (`.tm-cell` position:relative). TRIP-354: свой класс
+   `.tm-cell__badge` (--warm) свёрнут в общий бейдж. */
+.tm-cell > .badge--unread { position: absolute; top: 10px; right: 10px; }
 
 .tm-caption { padding: 2px 8px 8px; }
 .tm-manage { overflow: hidden; }
@@ -5969,9 +6116,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    ============================================================ */
 /* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .ss-search { padding: 6px 6px 8px; }
-.ss-list { max-height: 264px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
+/* max-height caps to Radix's available popover height so a long list never spills
+   past the viewport when the popover can't flip to more room (shared by both
+   searchable pickers — SearchSelect + Autocomplete). Fallback 264 when the var is
+   absent (mobile sheet, where `.sheet .ss-list` overrides with 56vh anyway). */
+.ss-list { max-height: min(264px, var(--radix-popover-content-available-height, 264px)); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 2px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
 .ss-opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; background: transparent; border-radius: var(--r-sm); font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; }
-.ss-opt:hover, .ss-opt[data-active] { background: var(--accent); color: var(--accent-ink); }
+.ss-opt:hover, .ss-opt[data-active], .ss-opt[data-highlighted] { background: var(--accent); color: var(--accent-ink); }
 .ss-opt .chk { margin-left: auto; flex: none; width: 15px; height: 15px; color: var(--brand); }
 .ss-empty { padding: 16px; text-align: center; color: var(--muted); }
 /* bigger touch rows when the picker is shown inside a bottom-sheet */
@@ -6082,7 +6233,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* Chip for "Совместный" and role — lives on top of a photo with a dark scrim.
    TRIP-326: backdrop-filter убран; тонкий белый фон оставлен — на фото нужен,
-   иначе белый непрозрачный чип режет любое изображение. */
+   иначе белый непрозрачный чип режет любое изображение.
+   ★ Бейдж роли на обложке рендерится ЭТИМ ЖЕ чипом: `<RoleBadge glass>` эмитит
+   `.tc__glass` вместо тонального `.badge` (решение Pavel, TRIP-337) — soft-тон
+   роли на фото не читался. Только над фото; список участников/чат/список-строка
+   берут тональный RoleBadge как прежде. */
 .tc__glass {
  background: rgba(255,255,255,.22); color: #fff;
  border: 1px solid rgba(255,255,255,.32); border-radius: var(--r-pill);
@@ -6444,6 +6599,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .ai-blk-hd padding — координация на токен --sp-6 (12), было 11/13
    visual-diff-exempt: .ai-blk-body padding — координация на токен --sp-6 (12) по горизонтали/низу, было 13/12 */
 .ai-blk-hd{display:flex;align-items:center;gap:var(--sp-5);padding:var(--sp-5) var(--sp-6);}
+/* Лёгкий ховер КЛИКАБЕЛЬНОЙ шапки (свёрнутый парсер = одна большая кнопка «раскрыть»).
+   Переезд `.ai-blk` → <Card tone="ai"> увёл ховер на `.card--interactive`, которого
+   у блока нет, — и свёрнутый контейнер перестал реагировать на наведение (TRIP-337).
+   Тинт из канона ai (тот же `--ai-soft`, что у `.icon-btn--ai:hover`/`.chat-mention__row:hover`),
+   клип по скруглению несёт `.ai-blk{overflow:hidden}`. Скоуп `[role="button"]` — пассивные
+   шапки (parsed/locked/parsing/checking) не кликабельны и НЕ реагируют.
+   visual-diff-exempt: .ai-blk-hd[role="button"]:hover background — возврат лёгкого ai-ховера кликабельной шапке (TRIP-337) */
+.ai-blk-hd[role="button"]{cursor:pointer;transition:background .16s;}
+.ai-blk-hd[role="button"]:hover{background:var(--ai-soft);}
 /* .ai-blk-ic УДАЛЁН (TRIP-391 объект 3): значок-плитка AI-блока = <Tile tone="ai"
    solid size="sm"> (солид-ai градиент + белый значок, канон .tile--solid.tile--ai).
    Сторона 30→ступень sm 28 (кегль 15→--tile-ic sm 15 точь-в-точь), принято глазом
@@ -7169,7 +7333,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .pcard__price { flex: 0 1 auto; min-width: 0; gap: 5px; white-space: nowrap; }
 .pcard__price b { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
 .pcard__price span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
-.pcard__go { flex: none; border-radius: var(--r-pill); }
+/* Радиус снят: кнопка-ссылка партнёра = канон `.btn` (--r-btn 10), не пилюля
+   (решение Pavel, TRIP-337: партнёрские CTA в форке эвентов/сервисов на радиус 10).
+   visual-diff-exempt: .pcard__go border-radius — pill-оверрайд снят, наследует канон .btn (--r-btn 10), апрув Pavel */
+.pcard__go { flex: none; }
 @media (prefers-reduced-motion: reduce) { .pcard, .pcard__thumb img { transition: none; } .pcard:active { transform: none; } }
 
 /* ─── Trips home + statistics: greeting, stat-bar, map hero, rail ─────────────
@@ -7584,7 +7751,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* — visit panel (desktop right slide-over / mobile bottom sheet) over the app — */
 .vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: var(--z-panel); }
-.vpanel { position: fixed; z-index: calc(var(--z-panel) + 10); background: var(--bg); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }  /* TRIP-176: фон драйвера = фон приложения */
+/* Фон драйвера сведён к канон-поверхности модалок `--surface` (как `.dlg`/`.lp`/
+   `.sheet`) — единый фон оверлеев (решение Pavel, TRIP-337: `--bg` был
+   единственным расхождением поверхности среди всех оверлеев).
+   visual-diff-exempt: .vpanel background — фон драйвера --bg → --surface, унификация поверхности оверлеев с .dlg/.lp/.sheet, апрув Pavel */
+.vpanel { position: fixed; z-index: calc(var(--z-panel) + 10); background: var(--surface); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
 /* ≤640 the panel is a vaul Drawer (see VisitPanel.jsx) — vaul owns the slide-up
    and drag transform, so no `animation` here (it would fight vaul). */
@@ -7604,9 +7775,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    `margin-left: auto` не переезжает и не нужен: соседний блок заголовка стоит
    на `flex: 1`, поэтому крестик и так прижат вправо. */
 .vp-b { flex: 1; min-height: 0; padding: 6px 20px 24px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-/* Mobile bottom-sheet: clear the fixed bottom-nav so the last rows aren't hidden
-   under it, and keep the body the scroll container (flex:1 + min-height:0). */
-@media (max-width: 640px) { .vp-b { padding-bottom: calc(88px + env(safe-area-inset-bottom)); } }
+/* Mobile bottom-sheet: тело — скролл-контейнер (flex:1 + min-height:0). Прежний
+   `88px` «под нижнюю навигацию» был мёртвым: шит (z 120) лежит ПОВЕРХ нава (z-nav 95)
+   и накрывает его скримом — навигации под последними строками нет, чистить нечего.
+   Отступ низа сведён к канону шитов (safe-area + дыхание), убран большой пустой гэп.
+   visual-diff-exempt: .vp-b padding-bottom — снят мёртвый 88px-клиренс нава (нав перекрыт шитом), гэп низа (просьба Pavel, TRIP-337) */
+@media (max-width: 640px) { .vp-b { padding-bottom: calc(var(--sp-8) + env(safe-area-inset-bottom)); } }
 .visit { display: flex; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
 .visit:last-child { border-bottom: 0; }
 .visit .when { flex: none; width: 44px; text-align: center; padding-top: 2px; }
@@ -7688,14 +7862,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    брендовая. Канал объявлен на контейнере, поэтому у кнопки своего класса под
    тон нет (TRIP-344 PR 3). */
 .s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; --a: var(--muted); }
-.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
-/* Крестик удаления фильтра — примитив <IconBtn size="sm" tone="quiet"> (канон
-   .icon-btn). Приватный каскад `.s22f-pill button` (круг 17px, --brand-soft-12)
-   снят: крестик теперь как везде, унификация к канону (апрув Pavel, TRIP-344).
-   ⚠️ 2p краснеет на снятии этих 9 объявлений и НЕ гасится маркером: единица
-   `.s22f-pill button` — бесклассовый селектор из нескольких лексем, слепой
-   участок TRIP-366 (visual-diff-exempt его не адресует). Оставлено красным с
-   разбором в теле PR — доказательство переноса = рендер до/после. */
+/* Сам активный чип фильтра переехал на канон <Chip variant="soft" onRemove> (модуль
+   Chip): приватный `.s22f-pill` (+ вложенный <IconBtn>, раздувавший высоту) удалён. */
 /* От класса остался ОДИН смысл — «прижата к правому краю ряда». Вид (фон,
    рамка, тон, подчёркивание И ТИПОГРАФИКА) уехал в `btn--link`; два следствия
    названы, потому что видны глазом: подчёркивание перестало быть постоянным и
@@ -8004,7 +8172,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .pro-hero-eyebrow background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .ptrip --brand-soft — пин острова .ptrip переименован вслед за токеном, значение то же (33,115,200,.10)
    visual-diff-exempt: .ptrip --primary-soft — пин острова .ptrip переименован вслед за токеном, значение то же (33,115,200,.10)
-   visual-diff-exempt: .s22f-pill background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .sec-lbl background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .seg background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
    visual-diff-exempt: .seg color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)

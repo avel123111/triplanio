@@ -153,7 +153,7 @@ export default function Inbox() {
                       t={t}
                       nav={nav}
                       fmtRelative={fmtRelative}
-                      pending={respondInvite.isPending}
+                      pendingAction={respondInvite.isPending && respondInvite.variables?.memberId === n.trip_member_id ? respondInvite.variables.action : null}
                       onRespond={(action) => {
                         if (!n.read) markOneRead.mutate(n.id);
                         respondInvite.mutate({ memberId: n.trip_member_id, tripId: n.trip_id, action });
@@ -204,7 +204,7 @@ function InboxEmpty({ onCollection }) {
 
 // Строка экрана = канон `<NotifRow>` (полноразмерный) + слоты действий. Резолв —
 // тот же `buildNotifView`, что у поповера: одна строка, две поверхности.
-function InboxRow({ n, t, nav, fmtRelative, pending, onRespond, onMarkRead }) {
+function InboxRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRead }) {
   // Invite status comes with the row now (getInbox joins trip_members) — no
   // per-row `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
@@ -222,8 +222,8 @@ function InboxRow({ n, t, nav, fmtRelative, pending, onRespond, onMarkRead }) {
     <>
       {showPending && (
         <>
-          <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-          <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+          <Btn variant="primary" icon="check" loading={pendingAction === 'accept'} disabled={!!pendingAction} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+          <Btn variant="secondary" loading={pendingAction === 'decline'} disabled={!!pendingAction} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
         </>
       )}
       {status}

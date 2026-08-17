@@ -21,8 +21,11 @@
  * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
 import React, { useState, useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { invokeFn } from '@/lib/invokeFn';
+import { formWrite, reconcileWriteRow, withOptimism, tripContentBinding, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { refusalError } from '@/lib/refusalError';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
@@ -30,6 +33,7 @@ import { classifyError } from '@/lib/errorText';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
+import { goPro } from '@/lib/goPro';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur } from '@/lib/budget/money';
@@ -115,7 +119,7 @@ const ORPHAN_CITY = '__orphan_city__';
 // `cities` — the trip's city_visits (already localized). The picker stores the
 // VISIT, not its label: a label frozen at save time is stuck in whatever language
 // the UI was in, and the two writers disagreed on that (TRIP-230).
-export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange, onProRefusal }) {
+export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, open, onOpenChange, onProRefusal }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -132,72 +136,86 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const orphanCity = !existing?.city_visit_id ? (existing?.city_name || '') : '';
   const [cityVisitId, setCityVisitId] = useState(existing?.city_visit_id || (orphanCity ? ORPHAN_CITY : ''));
   const [notes, setNotes] = useState(existing?.notes || '');
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('expense', { title, amount, categoryId });
   const st = (f) => fieldState(v.displayIssues, f);
 
-  async function save() {
-    setSaving(true);
-    setErr('');
-    const row = {
-      category_id: categoryId,
-      title: title.trim(),
-      original_amount: Number(amount),
-      original_currency: currency,
-      notes: notes.trim() || null,
-      spent_on: date || null,
-      city_visit_id: cityVisitId === ORPHAN_CITY ? null : (cityVisitId || null),
-      // Kept in step as a fallback label for anything reading the row without
-      // the visit (and for rows whose visit is later deleted).
-      city_name: cityVisitId === ORPHAN_CITY
-        ? orphanCity
-        : (cities.find((c) => c.id === cityVisitId)?.city_name || null),
-    };
-    // source_kind/source_id/created_by ставит сервер (ручная дверь рождает
-    // только ручную трату) — клиент их больше не шлёт.
-    const { error, code } = await budgetMutate('expense',
-      isEdit ? { tripId, id: existing.id, ...row } : { tripId, ...row });
-    if (error) {
-      setSaving(false);
-      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
-      return;
-    }
-    setSaving(false);
-    if (!isEdit) {
-      track('budget_expense_added', { trip_id: tripId, has_fx: currency !== (mainCurrency || 'EUR') });
-    }
-    successToast(t, isEdit ? 'expense_updated' : 'expense_added');
-    onSaved?.();
-    close();
-  }
+  const qc = useQueryClient();
+  const expenseBinding = tripContentBinding(qc, tripId, 'budgetExpenses');
 
-  async function remove() {
-    if (!isEdit) return;
-    setDeleting(true);
-    const { error, code } = await budgetMutate('expense/delete', { tripId, id: existing.id });
-    if (error) {
-      setDeleting(false);
-      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
-      return;
-    }
-    setDeleting(false);
-    successToast(t, 'expense_deleted');
-    onSaved?.();
-    close();
-  }
+  // The expense card (title/amount/category/city/date) — the write body. The
+  // server stamps source_kind/source_id/created_by (the manual door only ever
+  // mints a manual expense), so the client never sends them.
+  const buildRow = () => ({
+    category_id: categoryId,
+    title: title.trim(),
+    original_amount: Number(amount),
+    original_currency: currency,
+    notes: notes.trim() || null,
+    spent_on: date || null,
+    city_visit_id: cityVisitId === ORPHAN_CITY ? null : (cityVisitId || null),
+    // Kept in step as a fallback label for anything reading the row without the
+    // visit (and for rows whose visit is later deleted).
+    city_name: cityVisitId === ORPHAN_CITY
+      ? orphanCity
+      : (cities.find((c) => c.id === cityVisitId)?.city_name || null),
+  });
+
+  // Refusal routing shared by save + delete: inline text, except the Pro-refusal
+  // (402) which closes the dialog and opens the upsell (handleBudgetWriteError).
+  const onWriteError = (/** @type {any} */ e) => handleBudgetWriteError(t, e?.code, { setErr, close, onProRefusal });
+
+  // Create/edit on the shared form path: button spinner, close on success,
+  // reconcile the returned row into the budgetExpenses slice (the client-side
+  // totals recompute from it — no full-trip refetch), keep open on refusal.
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      setErr('');
+      const row = buildRow();
+      const { data, error, code } = await budgetMutate('expense', isEdit ? { tripId, id: existing.id, ...row } : { tripId, ...row });
+      if (error) throw refusalError(code);
+      return data;
+    },
+    ...formWrite({
+      reconcile: (/** @type {any} */ data) => reconcileWriteRow(expenseBinding, isEdit ? 'update' : 'add', data),
+      onDone: () => {
+        if (!isEdit) track('budget_expense_added', { trip_id: tripId, has_fx: currency !== (mainCurrency || 'EUR') });
+        successToast(t, isEdit ? 'expense_updated' : 'expense_added');
+        close();
+      },
+      onFail: onWriteError,
+    }),
+  });
+
+  // Delete (canon): the dialog stays open with the button spinner until the write
+  // lands (it unmounts on close, so onSuccess must fire while mounted), then the row
+  // drops + toast + close TOGETHER. Dim (op:update), NOT an instant op:remove that
+  // would yank the row at T0 behind the still-open dialog while the toast trails 2s.
+  const delMut = useMutation({
+    mutationFn: async () => {
+      const { error, code } = await budgetMutate('expense/delete', { tripId, id: existing.id });
+      if (error) throw refusalError(code);
+    },
+    ...withOptimism(expenseBinding, {
+      op: 'update',
+      reconcile: false,
+      onSuccess: (/** @type {any} */ _d, /** @type {any} */ { id }) => { expenseBinding.remove(id); successToast(t, 'expense_deleted'); close(); },
+      onError: onWriteError,
+    }),
+  });
+
+  const busy = saveMut.isPending || delMut.isPending;
 
   return (
     <Dialog title={isEdit ? t('budget.edit_expense') : t('budget.manual_expense')} icon="wallet" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
         {isEdit && (
-          <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting || saving}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
+          <Btn variant="danger" icon="trash" loading={delMut.isPending} onClick={() => delMut.mutate({ id: existing.id, row: { id: existing.id, _pending: true } })} disabled={busy}>{t('trip.delete')}</Btn>
         )}
         <div className="grow" />
-        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>
-          {saving ? t('member.saving') : isEdit ? t('trip.form_save') : t('members.add')}
+        <Btn variant="secondary" onClick={close} disabled={busy}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="primary" icon="check" loading={saveMut.isPending} onClick={() => v.attemptSubmit(() => saveMut.mutate())} disabled={busy} aria-disabled={!v.canSubmit}>
+          {isEdit ? t('trip.form_save') : t('members.add')}
         </Btn>
       </>}>
       {/* Вертикальный ритм тела диалога - одна колонка со ступенью шкалы вместо
@@ -264,7 +282,7 @@ function liveRateToMain(fx, code) {
   return 1 / Number(r);
 }
 
-function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved, open, onOpenChange, onProRefusal }) {
+function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, open, onOpenChange, onProRefusal }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const others = currencies.filter(c => c && c !== mainCurrency);
@@ -277,43 +295,46 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
     });
     return init;
   });
-  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('fx', { rates: values });
   const st = (f) => fieldState(v.displayIssues, f);
 
-  async function apply() {
-    setSaving(true);
-    setErr('');
-    const next = {};
-    Object.entries(values).forEach(([code, raw]) => {
-      const n = Number(raw);
-      if (raw === '' || !Number.isFinite(n) || n <= 0) return;
-      const live = liveRateToMain(fx, code);
-      // Store as a manual override ONLY when there is no live rate, or the user
-      // actually changed it - otherwise auto rates would get frozen.
-      if (live == null || Math.abs(n - live) / live > 0.0001) next[code] = n;
-    });
-    // Self-heal строки бюджета делает СЕРВЕР (settings → ensure_trip_budget,
-    // исполнима только service_role) — клиент больше не вставляет trip_budgets и
-    // не пишет currency (на трипах без main_currency это роняло бы NOT NULL).
-    const { error, code } = await budgetMutate('settings', { tripId, fx_overrides: next });
-    if (error) {
-      setSaving(false);
-      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
-      return;
-    }
-    setSaving(false);
-    successToast(t, 'rate_updated');
-    onSaved?.();
-    close();
-  }
+  const qc = useQueryClient();
+  // FX is a settings write on the single `budget` object (not a list row), so its
+  // reconcile patches `budget.fx_overrides` from what we SENT — the client-side
+  // totals recompute from it, no full-trip refetch. Same form lifecycle as the
+  // other budget dialogs (button spinner, close on success, keep open on refusal).
+  const applyMut = useMutation({
+    mutationFn: async () => {
+      setErr('');
+      const next = {};
+      Object.entries(values).forEach(([code, raw]) => {
+        const n = Number(raw);
+        if (raw === '' || !Number.isFinite(n) || n <= 0) return;
+        const live = liveRateToMain(fx, code);
+        // Store a manual override ONLY when there is no live rate, or the user
+        // actually changed it — otherwise auto rates would get frozen.
+        if (live == null || Math.abs(n - live) / live > 0.0001) next[code] = n;
+      });
+      // Self-heal of the trip_budgets row is the SERVER's (settings → ensure_trip_budget,
+      // service_role only) — the client no longer inserts trip_budgets or writes currency.
+      const { error, code } = await budgetMutate('settings', { tripId, fx_overrides: next });
+      if (error) throw refusalError(code);
+      return next;
+    },
+    ...formWrite({
+      reconcile: (/** @type {any} */ next) => qc.setQueryData(TRIP_CONTENT_KEY(tripId),
+        (/** @type {any} */ old) => (old?.budget ? { ...old, budget: { ...old.budget, fx_overrides: next } } : old)),
+      onDone: () => { successToast(t, 'rate_updated'); close(); },
+      onFail: (/** @type {any} */ e) => handleBudgetWriteError(t, e?.code, { setErr, close, onProRefusal }),
+    }),
+  });
 
   return (
     <Dialog title={t('budget.fx_button')} icon="arrowSwap" size="" open={open} onOpenChange={onOpenChange} foot={<>
       <div className="grow" />
-      <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
-      <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
+      <Btn variant="secondary" onClick={close} disabled={applyMut.isPending}>{t('trip.form_cancel')}</Btn>
+      <Btn variant="primary" icon="check" loading={applyMut.isPending} onClick={() => v.attemptSubmit(() => applyMut.mutate())} disabled={applyMut.isPending} aria-disabled={!v.canSubmit}>{t('budget.apply')}</Btn>
     </>}>
       <div className="col col--g4">
       <div className="t-body">
@@ -360,7 +381,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
 const CAT_COLORS = CATEGORY_HEXES;
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'ticket', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
-export function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange, onProRefusal }) {
+export function AddCategoryDialog({ tripId, existing, open, onOpenChange, onProRefusal }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -369,43 +390,45 @@ export function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChang
   const [name, setName] = useState(existing ? categoryDisplayName(existing, t) : '');
   const [color, setColor] = useState(existing?.color || DEFAULT_CATEGORY_HEX);
   const [icon, setIcon] = useState(existing?.icon || CAT_ICONS_BUDGET[0]);
-  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('category', { name });
   const st = (f) => fieldState(v.displayIssues, f);
 
-  async function save() {
-    setSaving(true);
-    setErr('');
-    // Переименование СЕЯНОЙ категории делает её собственной: отвязка system_key
-    // не даёт при следующей смене языка перевести поверх пользовательского
-    // текста (TRIP-230). Считается это от ЛОКАЛИЗОВАННОЙ подписи, поэтому живёт
-    // на клиенте — сервер языка зрителя не знает; он принимает только ОБНУЛЕНИЕ
-    // ключа (clearOnly), присвоить чужой нельзя (по нему роутятся автотраты).
-    // kind/order_index/created_by на вставке ставит сервер.
-    const dropsSeedKey = existing?.kind === 'custom' && !!existing.system_key
-      && name.trim() !== categoryDisplayName(existing, t);
-    const { error, code } = await budgetMutate('category', existing
-      ? { tripId, id: existing.id, name: name.trim(), color, icon,
-          ...(dropsSeedKey ? { system_key: null } : {}) }
-      : { tripId, name: name.trim(), icon, color });
-    if (error) {
-      setSaving(false);
-      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
-      return;
-    }
-    setSaving(false);
-    successToast(t, existing ? 'category_updated' : 'category_added');
-    onSaved?.();
-    close();
-  }
+  const qc = useQueryClient();
+  const catBinding = tripContentBinding(qc, tripId, 'budgetCategories');
+
+  // Same shared form path as the expense dialog: button spinner, close on
+  // success, reconcile the returned category into the budgetCategories slice.
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      setErr('');
+      // Renaming a SEEDED category makes it the user's own: dropping system_key
+      // stops the next language switch from translating over their text (TRIP-230).
+      // Computed from the LOCALIZED label, so it lives on the client — the server
+      // only accepts CLEARING the key (can't reassign one; autos route by it).
+      // kind/order_index/created_by on insert are the server's.
+      const dropsSeedKey = existing?.kind === 'custom' && !!existing.system_key
+        && name.trim() !== categoryDisplayName(existing, t);
+      const { data, error, code } = await budgetMutate('category', existing
+        ? { tripId, id: existing.id, name: name.trim(), color, icon,
+            ...(dropsSeedKey ? { system_key: null } : {}) }
+        : { tripId, name: name.trim(), icon, color });
+      if (error) throw refusalError(code);
+      return data;
+    },
+    ...formWrite({
+      reconcile: (/** @type {any} */ data) => reconcileWriteRow(catBinding, existing ? 'update' : 'add', data),
+      onDone: () => { successToast(t, existing ? 'category_updated' : 'category_added'); close(); },
+      onFail: (/** @type {any} */ e) => handleBudgetWriteError(t, e?.code, { setErr, close, onProRefusal }),
+    }),
+  });
 
   return (
     <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="grid" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
         <div className="grow" />
-        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
+        <Btn variant="secondary" onClick={close} disabled={saveMut.isPending}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="primary" icon="check" loading={saveMut.isPending} onClick={() => v.attemptSubmit(() => saveMut.mutate())} disabled={saveMut.isPending} aria-disabled={!v.canSubmit}>{existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
       <div className="col col--g7">
       <Field label={t('trip.title_label')} required={v.isRequired('name')}>
@@ -530,7 +553,7 @@ export function BudgetSkeleton() {
   );
 }
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient, onOpenSource }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
   const isMobile = useIsMobile();
@@ -551,7 +574,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     mode: isOwner ? 'upgrade' : 'info',
     feature: t('budget.title'),
     ownerName,
-    onUpgrade: () => nav(`/pro?tripId=${tripId}`),
+    onUpgrade: () => goPro(nav, { tripId }),
   });
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
@@ -602,10 +625,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       // hotel/transfer/activity, modal for services) — TRIP-195.
       onOpenSource?.(src, expense.source_id);
     }
-  }
-
-  function refresh() {
-    queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
   }
 
   // Build enriched categories with converted totals.
@@ -883,9 +902,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           expensesPlural={expensesPlural} onOpen={openExpense} onAdd={openAddExpense} readOnly={readOnly} />
       )}
 
-      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} onSaved={refresh} onProRefusal={onProRefusal} />}
-      {categoryModal !== null && <AddCategoryDialog open={true} onOpenChange={(o) => { if (!o) setCategoryModal(null); }} tripId={tripId} existing={categoryModal.existing ?? null} onSaved={refresh} onProRefusal={onProRefusal} />}
-      <FxRatesDialog open={fxOpen} onOpenChange={setFxOpen} tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies} currentOverrides={budget?.fx_overrides} fx={fx} onSaved={refresh} onProRefusal={onProRefusal} />
+      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} onProRefusal={onProRefusal} />}
+      {categoryModal !== null && <AddCategoryDialog open={true} onOpenChange={(o) => { if (!o) setCategoryModal(null); }} tripId={tripId} existing={categoryModal.existing ?? null} onProRefusal={onProRefusal} />}
+      <FxRatesDialog open={fxOpen} onOpenChange={setFxOpen} tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies} currentOverrides={budget?.fx_overrides} fx={fx} onProRefusal={onProRefusal} />
     </div>
   );
 }

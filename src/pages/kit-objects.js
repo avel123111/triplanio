@@ -59,7 +59,7 @@ export const KIT_OBJECTS = [
   { id: 'donut', family: 'donut', group: 'components', css: false },
   { id: 'btn', family: 'btn', group: 'components', prefix: 'btn', maps: ['BTN_VARIANTS'], extras: ['sm', 'brand'], interactive: true },
   { id: 'icon-btn', family: 'icon', group: 'components', prefix: 'icon-btn', maps: ['ICON_BTN_TONES', 'ICON_BTN_SIZES'], extras: ['round'], interactive: true },
-  { id: 'chip', family: 'fpill', group: 'components', prefix: 'fpill', maps: ['CHIP_VARIANTS'], extras: ['square', 'sm', 'avatars'], interactive: true },
+  { id: 'chip', family: 'fpill', group: 'components', prefix: 'fpill', maps: ['CHIP_VARIANTS'], extras: ['square', 'sm', 'avatars', 'dismiss'], interactive: true },
   { id: 'seg', family: 'seg', group: 'components', prefix: 'seg', maps: ['SEG_VARIANTS'] },
   // Строка уведомления — источник оси CSS-производный: обличья = объявленные
   // `.notif--*` (`--unread`/`--compact`/`--link`), витрина рисует через <NotifRow>.
@@ -74,6 +74,10 @@ export const KIT_OBJECTS = [
   { id: 'card', family: 'card', group: 'components', prefix: 'card', maps: ['CARD_VARIANTS'], interactive: true },
   { id: 'field', family: 'field', group: 'components', css: true },
   { id: 'input', family: 'input', group: 'components', css: true },
+  // Поисковый пикер (Autocomplete): поле + выпадающий лист на канон-примитиве
+  // Popover + список `.ss-*` (тот же лист-хром, что у SearchSelect). Осей-обличий
+  // у семьи нет (структурные классы без `--`), поэтому источник — демо (css:false).
+  { id: 'autocomplete', family: 'ss', group: 'components', css: false, interactive: true },
   { id: 'avatar', family: 'avatar', group: 'components', css: true },
   { id: 'sev', family: 'sev', group: 'components', css: true },
   { id: 'empty-state', family: 'empty', group: 'components', css: true },

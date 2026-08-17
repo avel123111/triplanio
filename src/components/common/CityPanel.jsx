@@ -112,7 +112,7 @@ export default function CityPanel({
           <b>{node.city_name}</b>
           {node.country_code && <span className="lp-country"><CountryFlag code={node.country_code} />{fmtCountry(node.country_code)}</span>}
         </div>
-        <IconBtn icon="close" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
+        <IconBtn icon="close" onClick={onBack} ariaLabel={t('common.close')} />
       </div>
 
       <div className="lp-b scrollbar-thin">
@@ -124,6 +124,7 @@ export default function CityPanel({
           <span className="t-meta">{rangeText(node.start_date, node.end_date) || '—'}</span>
         </div>
         <Stepper
+          variant="bare"
           title={t('tse.nights_label')}
           value={nights}
           onMinus={onNightsMinus} minusDisabled={nights <= 0} minusLabel={t('tse.nights_remove')}

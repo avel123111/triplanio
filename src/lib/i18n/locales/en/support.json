@@ -1,10 +1,10 @@
 {
-  "title": "Found a bug? Let us know!",
+  "title": "Found a bug?",
   "row_title": "Found a bug? Let us know!",
   "row_sub": "Describe the problem and attach a screenshot - we'll look into it",
   "row_cta": "Report",
   "field_label": "What happened?",
-  "field_hint": "the more detail, the faster we fix it",
+  "field_hint": "The more detail, the faster we fix it",
   "placeholder": "Describe what you did, what you expected and what happened",
   "privacy_note": "Your screen address, app version and session technical info are sent along with the message",
   "too_long": "Too long - remove {n} char.",

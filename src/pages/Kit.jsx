@@ -33,13 +33,14 @@ import { useParams, Link } from 'react-router-dom';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
-  FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet,
+  FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
 import { Icon } from '@/design/icons';
 import Accordion from '@/components/common/Accordion';
+import Autocomplete from '@/components/common/Autocomplete';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
 import './Kit.css';
@@ -59,7 +60,7 @@ const TX = {
   titles: {
     'pagehead': 'Шапка экрана', 'stat': 'Плитка-показатель', 'list-row': 'Строка списка', 'donut': 'Диаграмма-кольцо', 'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
     'seg': 'Сегмент-контрол', 'stepper': 'Степпер', 'swatch': 'Свотч',
-    'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля',
+    'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля', 'autocomplete': 'Поисковый пикер',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
     'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
@@ -79,6 +80,7 @@ const TX = {
     'card': 'Поверхность: заголовок, подзаголовок, действие справа.',
     'field': 'Подпись, подсказка, обязательность; состояния prop-driven.',
     'input': 'Декорации поля, которые эмитит сам <Input>: иконка, кольцо, валюта, ряд.',
+    'autocomplete': 'Поиск-по-мере-ввода: поле + выпадающий лист на Popover (лист-хром .ss-* общий с SearchSelect). Флип и «клик мимо» — от Popover.',
     'avatar': 'Инициалы / фото / AI / плейсхолдер / удалён; размеры и стопка.',
     'sev': 'Тон по уровню важности (info/warning/error/success/quiet).',
     'empty-state': 'Каркас с иконкой, текстом и призывом к действию.',
@@ -121,8 +123,9 @@ const TX = {
   // и `title=`-литералы, из `TX` он их не видит; ключи в локали заводить незачем.
   lockmsg: 'Подключает владелец', accent: 'тон из контекста', brandName: 'Найти на Booking',
   members: 'Участники', chipAll: 'Все', chipJump: 'Новые сообщения', chipRoute: 'Лиссабон → Порту',
-  chipAdd: 'Добавить переезд', chipMore: '+2 ещё',
+  chipAdd: 'Добавить переезд', chipMore: '+2 ещё', chipRemove: 'Снять фильтр',
   roleOwner: 'Владелец', roleAdmin: 'Админ', roleViewer: 'Наблюдатель', rolePending: 'Ожидает',
+  overnight: 'Ночной переезд', acSearchPh: 'Начните вводить город…',
   cardTitle: 'Заголовок карточки', cardBody: 'Тело карточки: обычный текст на поверхности.',
   cardHead: 'Заголовок', sevText: 'Текст',
   sevInvite: 'Нажмите, чтобы разрешить', sevInviteTitle: 'Приглашение',
@@ -227,6 +230,33 @@ const Specimen = ({ label, items }) => (
     </div>
   </div>
 );
+
+/** Живое демо поискового пикера для витрины: контролируемый <Autocomplete> с
+ *  локальным мок-поиском (без сети/атрибуции LocationIQ). Показывает поле; лист
+ *  на Popover + `.ss-*` появляется по вводу. */
+const KIT_CITIES = [
+  { id: 'lis', name: 'Лиссабон', sub: 'Португалия' },   // i18n-ignore: демо-данные витрины /kit
+  { id: 'por', name: 'Порту', sub: 'Португалия' },       // i18n-ignore: демо-данные витрины /kit
+  { id: 'mad', name: 'Мадрид', sub: 'Испания' },         // i18n-ignore: демо-данные витрины /kit
+  { id: 'bcn', name: 'Барселона', sub: 'Испания' },      // i18n-ignore: демо-данные витрины /kit
+];
+function AutocompleteDemo() {
+  const [q, setQ] = useState('');
+  return (
+    <Autocomplete
+      inputValue={q}
+      onInputChange={setQ}
+      search={(query) => KIT_CITIES.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))}
+      getKey={(c) => c.id}
+      renderRow={(c) => (<span className="col col--g1"><span className="t-strong">{c.name}</span><span className="t-meta">{c.sub}</span></span>)}
+      onPick={(c) => setQ(c.name)}
+      placeholder={TX.acSearchPh}
+      icon="search"
+      minChars={1}
+      attribution={false}
+    />
+  );
+}
 
 /** Force-state харнесс как ОСЬ «состояние» одного образца: переключатель (Chip,
  *  выбор = aria-pressed) флипает ОДИН экземпляр через состояния, которые примитив
@@ -364,7 +394,7 @@ const RECIPES = {
       label: 'форма (icon-btn--round) · метка · нажато · счётчик', items: [
         it('round tone="soft"', <IconBtn icon="arrow" round tone="soft" ariaLabel="Форма" />),
         it('tone="outline" round', <IconBtn icon="close" tone="outline" round ariaLabel={TX.close} />),
-        it('icon-btn__dot', <IconBtn icon="bell" ariaLabel="Непрочитанное"><span aria-hidden className="icon-btn__dot" /></IconBtn>),
+        it('непрочитанное (.badge--unread)', <IconBtn icon="bell" ariaLabel="Непрочитанное"><UnreadBadge count={7} /></IconBtn>),
         it('disabled', <IconBtn icon="close" disabled ariaLabel={TX.close} />),
         it('aria-pressed', <IconBtn icon="globe" ariaPressed ariaLabel="Нажато" />),
         it('sliders · outline · .badge--count', <IconBtn icon="sliders" tone="outline" ariaLabel="Фильтры"><Badge variant="count">2</Badge></IconBtn>),
@@ -384,12 +414,13 @@ const RECIPES = {
       ],
     },
     {
-      label: 'модификаторы (extras): square · sm · avatars', items: [
+      label: 'модификаторы (extras): square · sm · avatars · dismiss', items: [
         it('square', <Chip square>12 300 ₽</Chip>),
         it('variant="tone" square', <span className="te-cell--act"><Chip variant="tone" square icon="ticket">3</Chip></span>),
         ...[1, 2, 3].map((p) => it(`sm square${ctx.chipPage === p ? ' on' : ''}`, <Chip sm square on={ctx.chipPage === p} onClick={() => ctx.setChipPage(p)}>{p}</Chip>)),
         it('sm square variant="soft"', <Chip sm square variant="soft">{TX.chipMore}</Chip>),
         it('avatars', <Chip avatars><AvatarStack people={[{ name: 'А' }, { name: 'М' }, { name: 'К' }]} />{TX.members}</Chip>),
+        it('onRemove — тег со снятием (активный фильтр)', <Chip variant="soft" onRemove={() => {}} removeLabel={TX.chipRemove}>EUR до 20</Chip>),
       ],
     },
   ],
@@ -430,6 +461,24 @@ const RECIPES = {
         it('variant="brand"', <Badge variant="brand">{TX.roleAdmin}</Badge>),
         it('variant="outline"', <Badge variant="outline">{TX.roleViewer}</Badge>),
         it('variant="quiet"', <Badge variant="quiet">{TX.rolePending}</Badge>),
+      ],
+    },
+    {
+      // Признак-отметка = обычный бейдж ДС с иконкой (например «ночной переезд»
+      // в редакторе трансфера), а не свой тинтованный бокс.
+      label: 'с иконкой (icon) — признак-отметка', items: [
+        it('variant="brand" icon="moon"', <Badge variant="brand" icon="moon">{TX.overnight}</Badge>),
+      ],
+    },
+    {
+      // Канон НЕПРОЧИТАННОГО (TRIP-354): красный `<UnreadBadge count>` — единый
+      // счётчик для уведомлений и чата (колокольчик, FAB чата, пункты дока, шит,
+      // аккаунт). Число, свыше 99 → «99+», 0 → ничего. Оверлеем садится
+      // ко-селектором владельца (`.icon-btn > .badge--unread`).
+      label: 'непрочитанное — <UnreadBadge count> (красный канон)', items: [
+        it('count={3}', <UnreadBadge count={3} />),
+        it('count={128} → 99+', <UnreadBadge count={128} />),
+        it('на кнопке-иконке (оверлей)', <IconBtn icon="bell" tone="outline" ariaLabel="Уведомления"><UnreadBadge count={5} /></IconBtn>),
       ],
     },
   ],
@@ -527,6 +576,14 @@ const RECIPES = {
             <InputGroup><span className={`input-unit ${c}`}>₽</span><Input num placeholder={TX.placeholder} /></InputGroup>
           </Field>
         ))}
+      </div>
+    ), true)],
+  }],
+
+  autocomplete: () => [{
+    items: [it('поиск-по-мере-ввода (Popover + .ss-list) — введите «ли» / «ма»', (
+      <div className="grow" style={{ maxWidth: 360 }}>
+        <AutocompleteDemo />
       </div>
     ), true)],
   }],

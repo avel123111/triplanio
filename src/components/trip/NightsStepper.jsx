@@ -12,13 +12,15 @@ import { useT } from '@/lib/i18n/I18nContext';
 // и делает `title` ОБЯЗАТЕЛЬНЫМ. Набор ЗАКРЫТЫЙ, `...rest` тут нет.
 /**
  * @param {{ value: any, onMinus: any, onPlus: any,
- *           minusDisabled?: boolean, plusDisabled?: boolean, title?: string }} p
+ *           minusDisabled?: boolean, plusDisabled?: boolean, title?: string,
+ *           variant?: 'pill'|'block'|'bare' }} p
  */
-export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = false, plusDisabled = false, title }) {
+export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = false, plusDisabled = false, title, variant }) {
   const t = useT();
   const stop = (e) => e.stopPropagation();
   return (
     <Stepper
+      variant={variant}
       value={<>{value}<span className="muted">{t('planner.night_short')}</span></>}
       onMinus={onMinus} minusDisabled={minusDisabled} minusLabel={t('planner.fewer_nights')}
       onPlus={onPlus} plusDisabled={plusDisabled} plusLabel={t('planner.more_nights')}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
-import { Btn, Dialog, Field, FileRow, IconBtn, Card, Textarea, useToast } from '@/design/index';
+import { Btn, Dialog, Field, FileRow, Grow, IconBtn, Card, Textarea, useToast } from '@/design/index';
 import { Icon } from '@/design/icons';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { invokeFn } from '@/lib/invokeFn';
@@ -135,10 +135,15 @@ function FeedbackDialog({ source, onClose }) {
             placeholder={t('support.placeholder')}
             aria-invalid={over ? 'true' : undefined}
           />
-          <div className="row row--j-between row--g4">
-            <span className="t-meta muted">{t('support.privacy_note')}</span>
-            <span className={`t-meta ${over ? 'err' : 'muted'}`}>{textLen} / {SUPPORT_MAX_TEXT}</span>
+          {/* Счётчик — своей строкой справа под полем (как в норм-приложениях),
+              один на строке → не переносится; спейсер — DS <Grow/>, не сырой span.
+              Ниже — отдельная строка про уходящие с сообщением данные.
+              floor-exempt: dsshare +3 — счётчик вынесен на свою строку по просьбе Pavel (UX: был разбит на 2 строки); совокупный сдвиг после мёрджа origin/dev, все правки — согласованный UX/унификация модалок */}
+          <div className="row">
+            <Grow />
+            <span className={`t-meta ${over ? 'err' : 'muted'}`}>{`${textLen} / ${SUPPORT_MAX_TEXT}`}</span>
           </div>
+          <span className="t-meta muted">{t('support.privacy_note')}</span>
           {over && (
             <div className="err">
               <Icon name="warning" size={13} />{t('support.too_long', { n: textLen - SUPPORT_MAX_TEXT })}

@@ -24,8 +24,9 @@ export function isProActive(user) {
 // remount) reads the cache synchronously instead of re-fetching — so `resolved` is
 // already true on the second mount and the sidebar "upgrade" card no longer flashes.
 //
-// Returns { isPro, resolved }. `resolved` stays false on the FIRST resolve so the
-// upgrade banner isn't shown prematurely on pro trips during the async check.
+// Returns { isPro, isOwner, resolved }. `resolved` stays false on the FIRST resolve
+// so the upgrade banner isn't shown prematurely on pro trips during the async check;
+// `isOwner` is only meaningful once resolved (defaults to false).
 export function useTripProStatus(tripId, isProTrip = false) {
   const q = useQuery({
     queryKey: ['trip-owner-pro', tripId],
@@ -36,7 +37,10 @@ export function useTripProStatus(tripId, isProTrip = false) {
       // Behaviour is unchanged — the client is a singleton resolved on first use.
       const { invokeFn } = await import('@/lib/invokeFn');
       const res = await invokeFn('checkSubscriptionStatus', { body: { tripId } });
-      return !!res.data?.isPro;
+      // Keep both facts the server already returns: `isOwner` gates who may be sent
+      // to checkout (a participant can't unlock someone else's trip). EventEditDialog
+      // reads it from this shared cache instead of its own fetch.
+      return { isPro: !!res.data?.isPro, isOwner: !!res.data?.isOwner };
     },
     enabled: !!tripId,
     staleTime: 5 * 60 * 1000,
@@ -48,9 +52,12 @@ export function useTripProStatus(tripId, isProTrip = false) {
     // never granted.
     retry: 2,
   });
-  const ownerPro = q.data === true;
+  const ownerPro = q.data?.isPro === true;
   return {
     isPro: !!isProTrip || ownerPro,
+    // Trip owner (server-resolved). Only meaningful once the query settles; until
+    // then defaults to false. Consumers that need it must gate on `resolved`.
+    isOwner: q.data?.isOwner === true,
     // Instant if the trip itself is Pro; otherwise once the query settles. On a
     // warm cache the query is already success on first render → no flash.
     resolved: !!isProTrip || q.isSuccess || q.isError,

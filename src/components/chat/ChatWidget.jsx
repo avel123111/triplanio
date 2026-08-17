@@ -16,7 +16,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useChatId, useUnreadChatCount, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, chatParticipants, pluralPeople, CHAT_MESSAGES_KEY } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { AvatarStack, EmptyState, IconBtn } from '@/design/index';
+import { AvatarStack, EmptyState, IconBtn, UnreadBadge } from '@/design/index';
 import { resolveMembers } from '@/lib/resolveAuthor';
 import ChatStream from './ChatStream';
 import ChatComposer from './ChatComposer';
@@ -89,9 +89,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId, p
         onClick={() => setOpen(true)}
         ariaLabel={t('chat.open_aria')}
       >
-        {unread > 0 && (
-          <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
-        )}
+        <UnreadBadge count={unread} />
       </IconBtn>
     );
   }

@@ -29,8 +29,25 @@ export function supabaseThrottleKind(err: unknown): 'soon' | 'hour' | null {
   return /second/.test(m) ? 'soon' : 'hour';
 }
 
-/** Best-effort client IP from the edge proxy headers (first hop of XFF). */
+/**
+ * Best-effort client IP for per-IP limiting.
+ *
+ * When calls arrive through our same-origin `/api` proxy (TRIP-432), Supabase's
+ * gateway rewrites `x-forwarded-for`/`x-real-ip` with the proxy's own egress IP,
+ * so those headers no longer identify the user — every caller collapses onto a
+ * few Vercel IPs. The proxy therefore restamps the real client IP into a bespoke
+ * `x-triplanio-client-ip`, authenticated by `x-triplanio-proxy-secret`. We trust
+ * that IP ONLY when the secret matches `PROXY_SHARED_SECRET` (so a direct caller
+ * hitting the function URL cannot forge it); otherwise we fall back to the XFF
+ * first hop, preserving the pre-proxy behaviour for direct callers.
+ */
+const PROXY_SHARED_SECRET = Deno.env.get('PROXY_SHARED_SECRET') || '';
+
 function clientIp(req: Request): string | null {
+  if (PROXY_SHARED_SECRET && req.headers.get('x-triplanio-proxy-secret') === PROXY_SHARED_SECRET) {
+    const trusted = req.headers.get('x-triplanio-client-ip')?.trim();
+    if (trusted) return trusted;
+  }
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {
     const first = xff.split(',')[0].trim();

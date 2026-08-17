@@ -4,11 +4,12 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, useToast,
+  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, UnreadBadge, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
+import { goPro } from '@/lib/goPro';
 import { useTheme } from '@/lib/ThemeContext';
 import { useProStatus } from '@/lib/useProStatus';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
@@ -210,7 +211,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
       price={actualMoney || monthlyPrice}
       per={t('account.per_month_short')}
       action={(
-        <Btn variant="primary" icon="refresh" disabled={portalLoading} onClick={onManage}>
+        <Btn variant="primary" icon="refresh" loading={portalLoading} disabled={portalLoading} onClick={onManage}>
           {portalLoading ? t('account.opening') : t('account.resume')}
         </Btn>
       )}
@@ -395,7 +396,7 @@ export default function ScreenAccount() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [activeSec, setActiveSec] = useState('profile');
-  const openUpgrade = () => nav('/pro?hidePerTrip=1');
+  const openUpgrade = () => goPro(nav, { hidePerTrip: true });
   const [errorMsg, setErrorMsg] = useState(null);
 
   // Delete account flow: null | 'confirm' | 'blocked'
@@ -862,11 +863,14 @@ export default function ScreenAccount() {
             <Row as="h2" className="acct-sectitle">{t('account.email_notifs')}</Row>
 
             {/* In-app notifications — quick link to the inbox with unread count.
-                Same row grammar as every other navigational row on this screen
-                (Privacy / Terms / cookie settings below): a .card holding
-                .row--div, not a bespoke card-shaped button. */}
+                ЕДИНСТВЕННАЯ строка в карточке → канон `.row--flush` (TRIP-354): рамку
+                целиком задаёт `.card` (18px), поэтому у строки своей вертикальной
+                отбивки быть не должно. `.row--div` (13px сверху/снизу) стекался с
+                паддингом карточки и раздувал контейнер. Списковые карточки ниже
+                (Privacy / Terms) остаются на `.row--div` — там строк несколько и
+                разделители между ними нужны. */}
             <div className="card" style={{ marginBottom: 16 }}>
-              <button type="button" className="row--div row row--g7" onClick={() => nav('/inbox')}>
+              <button type="button" className="row--flush row row--g7" onClick={() => nav('/inbox')}>
                 <span className="tile tile--lg tile--brand"><Icon name="bell" size={18} /></span>
                 <Grow>
                   <div className="row__t">{t('account.inbox_title')}</div>
@@ -876,9 +880,7 @@ export default function ScreenAccount() {
                     count is spoken as part of the row. (The old markup carried an
                     aria-label on a bare <span> — a generic role takes no
                     name-from-author, so it was never announced.) */}
-                {unreadCount > 0 && (
-                  <Badge variant="count">{unreadCount > 99 ? '99+' : unreadCount}</Badge>
-                )}
+                <UnreadBadge count={unreadCount} />
                 <Icon name="arrowR" size={16} className="muted-2" />
               </button>
             </div>
@@ -906,7 +908,7 @@ export default function ScreenAccount() {
                     <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a> · {t('account.support_reply')}
                   </div>
                 </Grow>
-                <Btn variant="secondary" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
+                <Btn variant="secondary" icon="mail" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
               </Row>
               <a className="row--div row row--g7" href="/privacy" target="_blank" rel="noreferrer noopener">
                 <span className="tile tile--lg tile--quiet"><Icon name="shield" size={18} /></span>
@@ -955,7 +957,7 @@ export default function ScreenAccount() {
                   <div className="row__t">{t('settings.delete_account')}</div>
                   <div className="row__s">{t('account.delete_desc')}</div>
                 </Grow>
-                <Btn variant="danger" disabled={deletingAccount} onClick={handleDeleteAccount}>{t('settings.delete_account')}</Btn>
+                <Btn variant="danger" loading={deletingAccount} disabled={deletingAccount} onClick={handleDeleteAccount}>{t('settings.delete_account')}</Btn>
               </Row>
 
               {deleteState === 'blocked' && (
@@ -984,13 +986,16 @@ export default function ScreenAccount() {
             </div>
 
             <div className="card">
-              <Row gap="g7" className="row--div">
-                <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
+              {/* Ряд ОДИН в своей карточке → row--flush (рамку и отступы держит
+                  .card), как в карточке «Удалить» выше. row--div тут докидывал бы
+                  свои 13px сверху/снизу — вариант строки СПИСКА, не одиночного ряда. */}
+              <Row gap="g7" className="row--flush">
+                <span className="tile tile--lg tile--quiet"><Icon name="logout" size={18} /></span>
                 <Grow>
                   <div className="row__t">{t('account.logout_title')}</div>
                   <div className="row__s">{t('account.logout_desc')}</div>
                 </Grow>
-                <Btn variant="secondary" icon="arrow" onClick={logout}>{t('auth.logout')}</Btn>
+                <Btn variant="secondary" icon="logout" onClick={logout}>{t('auth.logout')}</Btn>
               </Row>
             </div>
           </section>
