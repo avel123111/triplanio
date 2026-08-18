@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints, clampPadding } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
+import { useSharedMap } from '@/lib/map/MapProvider';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
@@ -102,7 +103,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
  *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
  *           focusZoom?: number, onMapClick?: any, cooperativeGestures?: boolean,
- *           preserveInitialCamera?: boolean, children?: any }} p
+ *           inheritMapView?: boolean, children?: any }} p
  */
 export default function MapView({
   visits,
@@ -186,12 +187,15 @@ export default function MapView({
   // ctrl+scroll") for as long as this surface owns the singleton; restored on
   // unmount so other screens keep it. Defaults to the singleton's setting (on).
   cooperativeGestures = true,
-  // Пропустить ПЕРВЫЙ авто-fit на монтировании: камеру передал предыдущий экран
-  // через общий singleton-инстанс (create-flow → редактор). Та же карта уже
-  // кадрирует этот маршрут; перефит под новый контейнер дал бы заметный «скачок»
-  // камеры на финале View-Transition. resize сохраняет центр, поэтому маршрут
-  // остаётся в кадре. Дальнейшие правки (ночи/порядок) фитятся как обычно.
-  preserveInitialCamera = false,
+  // Наследовать ЖИВОЙ вид общей singleton-карты на монтировании, а не навязывать
+  // дефолты этого экрана: экран-источник (create-flow → редактор) уже показывает
+  // этот маршрут в этой проекции, и любое изменение (перефит камеры ИЛИ смена
+  // проекции) дало бы «скачок» на финале View-Transition. Наследуем ДВЕ вещи:
+  //  • камеру — пропускаем первый авто-fit (resize держит центр, маршрут в кадре);
+  //  • проекцию — стартовое значение берём из текущей проекции живого инстанса
+  //    (см. useState(projection) ниже), а не из initialProjection.
+  // Заходы НЕ из мастера (обычная навигация) флага не несут → дефолты экрана.
+  inheritMapView = false,
   children,
 }) {
   const containerRef = useRef(null);
@@ -218,7 +222,19 @@ export default function MapView({
   useEffect(() => { selectedHotelIdRef.current = selectedHotelId != null ? String(selectedHotelId) : null; }, [selectedHotelId]);
   useEffect(() => { hoveredHotelIdRef.current = hoveredHotelId != null ? String(hoveredHotelId) : null; }, [hoveredHotelId]);
 
-  const [projection, setProjection] = useState(initialProjection);
+  const sharedMap = useSharedMap();
+  // При наследовании вида (create-flow → редактор) стартуем с ТЕКУЩЕЙ проекции
+  // живого singleton — не с initialProjection этого экрана, иначе useMapSurface
+  // навяжет свою проекцию и на финале перехода будет мгновенный «щелчок»
+  // (напр. планнер переключён в mercator, а редактор форсит globe). Инициализатор
+  // читается один раз; singleton уже создан планнером и хранит его проекцию.
+  const [projection, setProjection] = useState(() => {
+    if (inheritMapView) {
+      const live = sharedMap?.getMap?.()?.getProjection?.()?.name;
+      if (live) return live;
+    }
+    return initialProjection;
+  });
   // Internal toggles (driven by the on-map control buttons). Seeded from props and
   // re-synced if the prop changes (e.g. the app theme), but the buttons can override.
   const [mapScheme, setMapScheme] = useState(colorScheme);
@@ -632,10 +648,10 @@ export default function MapView({
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
         // Первый fit после загрузки/смены стиля — мгновенный (без «влёта»). НО когда
-        // камеру передал предыдущий экран через общий singleton (create-flow →
+        // вид наследуется от предыдущего экрана через общий singleton (create-flow →
         // редактор), пропускаем его: та же карта уже кадрирует маршрут, а перефит под
         // новый контейнер дал бы скачок на финале View-Transition (resize держит центр).
-        if (!preserveInitialCamera) fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 });
+        if (!inheritMapView) fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 });
       } else if (revealActiveId == null) {
         calmFit(map, pts, { padding: 60, maxZoom: 8 }); // non-public: adaptive calm tempo
       } else {

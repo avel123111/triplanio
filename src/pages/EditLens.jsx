@@ -350,10 +350,11 @@ export default function EditLens({ tripId, shell, content }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   // Заход из мастера создания (navWithTransition ставит state.fromCreate): карта —
-  // тот же singleton, что уже кадрировал маршрут на экране успеха, поэтому просим
-  // MapView НЕ перефичивать камеру на первом монтировании — иначе на финале
-  // View-Transition камера скакнёт. Смена линз внутри трипа пушит новую запись
-  // истории без state, так что дальше флаг сам гаснет.
+  // тот же singleton, что уже показывал маршрут на экране успеха, поэтому просим
+  // MapView НАСЛЕДОВАТЬ его живой вид (камеру и проекцию), а не навязывать свои
+  // дефолты — иначе на финале View-Transition карта скакнёт (перефит камеры или
+  // смена проекции). Смена линз внутри трипа пушит новую запись истории без state,
+  // так что дальше флаг сам гаснет.
   const fromCreate = useLocation().state?.fromCreate === true;
   const [draft, setDraft] = useState(null);
   // Left-column panel FSM (replaces the old view/add modals). null = the city
@@ -1163,7 +1164,7 @@ export default function EditLens({ tripId, shell, content }) {
                 то есть карта его никогда не читала, а Object.fromEntries считался
                 на каждый рендер редактора. Нашла прагма. */}
             <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
-              preserveInitialCamera={fromCreate}
+              inheritMapView={fromCreate}
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
