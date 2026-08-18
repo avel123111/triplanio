@@ -22,7 +22,8 @@
  * sentry seams — still "seam, not framework".
  */
 import { corsFor } from './cors.ts';
-import { captureEdgeError, traceContextFromRequest, type EdgeTraceContext } from './sentry.ts';
+import { captureEdgeError } from './sentry.ts';
+import { traceContextFromRequest, type EdgeTraceContext } from './trace.ts';
 import type { Refusal } from './mutateRules.ts';
 
 export type ErrorBody = { error: string; code?: string };
