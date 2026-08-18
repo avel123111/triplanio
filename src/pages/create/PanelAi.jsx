@@ -62,17 +62,19 @@ function BotMessage({ children }) {
 }
 
 // User turn — RIGHT: the trip chat's own-message structure (chat-run--me /
-// chat-run__col / chat-bubble--me), with the user's avatar + name added (row-reverse
-// puts the avatar on the right). Name uses `.chat-name` — a PARTICIPANT name (ink),
-// NOT `.chat-reply__who` (which is the assistant's --ai-ink purple).
+// chat-run__col / chat-bubble--me), with the user's avatar + name added. DOM order
+// is [body, avatar] and the row is justify-end (`.chat-run--me`), so both sit at the
+// right edge with the avatar last (rightmost) — NO row-reverse (reverse flips
+// justify-end to the left and threw the bubble across the panel). Name uses
+// `.chat-name` — a PARTICIPANT name (ink), NOT the assistant's `.chat-reply__who`.
 function UserMessage({ text, name, photo, seed }) {
   return (
-    <div className="row row--g6 chat-run chat-run--me" style={{ flexDirection: 'row-reverse' }}>
-      <div className="chat-run__av"><Avatar name={name} photo={photo} seed={seed} /></div>
+    <div className="row row--a-start row--g6 chat-run chat-run--me">
       <div className="col col--g2 chat-run__col">
         <div className="chat-name"><b>{name}</b></div>
         <div className="chat-bubble chat-bubble--me"><span style={{ whiteSpace: 'pre-wrap' }}>{text}</span></div>
       </div>
+      <div className="chat-run__av"><Avatar name={name} photo={photo} seed={seed} /></div>
     </div>
   );
 }
