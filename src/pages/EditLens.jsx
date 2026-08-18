@@ -1155,7 +1155,7 @@ export default function EditLens({ tripId, shell, content }) {
                 пропов не собирает, а во всём репо это было единственное вхождение -
                 то есть карта его никогда не читала, а Object.fromEntries считался
                 на каждый рендер редактора. Нашла прагма. */}
-            <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls
+            <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}

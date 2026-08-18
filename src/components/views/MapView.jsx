@@ -144,6 +144,9 @@ export default function MapView({
   active = true,
   // Show the on-map control buttons (projection, theme, start/finish toggles).
   mapControls = false,
+  // Начальная проекция: 'mercator' (плоская) | 'globe'. Дефолт плоская; map-lens и
+  // edit-lens открываются на глобусе (запрос Pavel, TRIP-337), overview остаётся плоским.
+  initialProjection = 'mercator',
   // Basemap variant forwarded to the shared surface (e.g. 'monochrome' for the
   // public shared-trip reader, mirroring the stats map). Defaults to the normal
   // styled basemap.
@@ -209,7 +212,7 @@ export default function MapView({
   useEffect(() => { selectedHotelIdRef.current = selectedHotelId != null ? String(selectedHotelId) : null; }, [selectedHotelId]);
   useEffect(() => { hoveredHotelIdRef.current = hoveredHotelId != null ? String(hoveredHotelId) : null; }, [hoveredHotelId]);
 
-  const [projection, setProjection] = useState('mercator');
+  const [projection, setProjection] = useState(initialProjection);
   // Internal toggles (driven by the on-map control buttons). Seeded from props and
   // re-synced if the prop changes (e.g. the app theme), but the buttons can override.
   const [mapScheme, setMapScheme] = useState(colorScheme);

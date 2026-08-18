@@ -39,9 +39,9 @@
   --brand-ink:    #16294A;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
-  --bk:           #003B95;  /* Booking.com brand navy — supplier/score badge */
+  --bk:           #0c3b7c;  /* Booking.com brand navy — одинаково в обеих темах (запрос Pavel). visual-diff-exempt: :root --bk — бренд-цвет Booking (TRIP-337, Pavel) */
   --bk-fg:        #fff;
-  --viator:       #328E6E;  /* Viator brand green — activity state button */
+  --viator:       #008768;  /* Viator brand green — одинаково в обеих темах (запрос Pavel). visual-diff-exempt: :root --viator — бренд-цвет Viator (TRIP-337, Pavel) */
 
   /* Neutrals / surfaces */
   --ink:    #272433;
@@ -281,8 +281,8 @@
   --map-route-ring: rgba(111,178,255,.42);   /* selected-route casing — dark */
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
-  --bk:           #1A66D9;  /* Booking navy — dark theme */
-  --viator:       #2FA07C;  /* Viator green — dark theme */
+  --bk:           #0c3b7c;  /* Booking navy — одинаково со светлой темой (запрос Pavel). visual-diff-exempt: :root[data-theme=dark] --bk — бренд-цвет Booking, обе темы одинаково (TRIP-337, Pavel) */
+  --viator:       #008768;  /* Viator green — одинаково со светлой темой (запрос Pavel). visual-diff-exempt: :root[data-theme=dark] --viator — бренд-цвет Viator, обе темы одинаково (TRIP-337, Pavel) */
 
   /* Neutrals / surfaces — dark */
   --ink:    #EDECF4;
