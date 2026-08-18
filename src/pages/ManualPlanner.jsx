@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
@@ -35,6 +36,21 @@ import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
+
+// Навигация с нативным View-Transition. Классический BrowserRouter (не data-router)
+// НЕ умеет флаг `viewTransition` у navigate — он молча игнорируется, и переход
+// получается жёстким «cut». Поэтому запускаем переход сами: startViewTransition
+// снимает снапшот «до», а flushSync СИНХРОННО коммитит новый роут внутри колбэка
+// (без него React отрисовал бы редактор уже ПОСЛЕ снапшота «после», и твинить было
+// бы нечего). Браузер интерполирует общие по имени элементы. Нет поддержки VT
+// (Safari<18) → обычная навигация.
+function navWithTransition(navigate, to) {
+  if (typeof document === 'undefined' || typeof document.startViewTransition !== 'function') {
+    navigate(to);
+    return;
+  }
+  document.startViewTransition(() => flushSync(() => navigate(to)));
+}
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
 function daysBetweenISO(a, b) {
@@ -644,12 +660,11 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         action={(
           <>
             {/* «Перейти в трип» ведёт в линзу edit (маршрут + карта) и запускает
-                нативный View-Transition (см. блок в app.css): карта-фон планнера
-                сворачивается в рамочный контейнер редактора, слева выезжает меню,
-                панель подтверждения перетекает в колонку маршрута. viewTransition
-                опциональный флаг react-router — без поддержки VT (Safari<18) это
-                штатный мгновенный переход. */}
-            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=edit`, { viewTransition: true })}>{t('planner.open_trip')}</Btn>
+                нативный View-Transition (см. navWithTransition + блок в app.css):
+                карта-фон планнера сворачивается в рамочный контейнер редактора,
+                слева выезжает меню, панель подтверждения перетекает в колонку
+                маршрута. Без поддержки VT (Safari<18) — мгновенный переход. */}
+            <Btn variant="primary" onClick={() => savedTripId && navWithTransition(nav, `/trip/${savedTripId}?lens=edit`)}>{t('planner.open_trip')}</Btn>
             <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
           </>
         )}
