@@ -16,13 +16,22 @@
  * when SENTRY_DSN is unset, so local / unconfigured runs stay silent.
  */
 import * as Sentry from 'npm:@sentry/deno@10.56.0';
+import { envTag } from './envTag.ts';
 
 const dsn = Deno.env.get('SENTRY_DSN');
+
+// Fail-loud на мисконфиг: развёрнутый проект помечает окружение секретом
+// `SENTRY_ENVIRONMENT`, но если при этом `SENTRY_DSN` пуст — edge-мониторинг
+// молча выключен (captureEdgeError = no-op). Делаем тихую слепоту видимой
+// строкой в логе функции. Локалка (обе не заданы) — молчит.
+if (!dsn && Deno.env.get('SENTRY_ENVIRONMENT')) {
+  console.warn('SENTRY_DSN unset — edge monitoring OFF');
+}
 
 if (dsn) {
   Sentry.init({
     dsn,
-    environment: Deno.env.get('SENTRY_ENVIRONMENT') ?? 'production',
+    environment: envTag(),
     defaultIntegrations: false,
     tracesSampleRate: 0,
     sendDefaultPii: false,
