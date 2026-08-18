@@ -17,6 +17,7 @@ import {
   statisticsBundle, availableYears, filterByYear, dominantTone, TONE, countVisitUnits,
 } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
+import MapControls from '@/lib/map/MapControls';
 import VisitPanel from '@/components/stats/VisitPanel';
 import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import { useMobileNav } from '@/components/MobileBottomNav';
@@ -25,7 +26,7 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
 } from '@/components/stats/widgets';
-import { Btn, Card, Skeleton, IconBtn, Seg } from '@/design/index';
+import { Btn, Card, Skeleton, Seg } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
 
@@ -390,33 +391,22 @@ export default function Statistics() {
                 selected={panel ? { kind: panel.kind, key: panel.key } : null}
                 cooperativeGestures={!fs}
               >
-                {/* ★TRIP-344: фон и рамку несёт плашка `.map-ctl`, кнопки внутри
-                    quiet (прозрачные) — эталон «столбиком в своей плашке». */}
-                <div className="map-ctl">
-                  <IconBtn
-                    icon="globe"
-                    size="sm"
-                    ariaPressed={globe}
-                    onClick={() => setGlobe((g) => !g)}
-                    ariaLabel={t('stats.map_globe')}
-                  />
-                  <IconBtn
-                    icon="expand"
-                    size="sm"
-                    onClick={() => setFs((v) => !v)}
-                    ariaLabel={t('stats.map_fullscreen')}
-                  />
-                </div>
-                {fs && (
-                  <IconBtn
-                    icon="close"
-                    tone="outline"
-                    round
-                    className="mapfs-close"
-                    onClick={() => setFs(false)}
-                    ariaLabel={t('common.close')}
-                  />
-                )}
+                {/* ★TRIP-337: единая сборка контролов карты. Набор Statistics —
+                    проекция (глобус) + фуллскрин; тема/старт-финиш не показываются.
+                    floor-exempt: dsshare +4 — унификация карты (TRIP-337): 3 ручных
+                    <IconBtn> контролов карты (глобус/expand/X выхода) свернулись в общий
+                    <MapControls> — DS-кнопки те же, но считаются раз внутри общей
+                    композиции (вне числителя доли), ровно кейс «правильный ход опускает
+                    долю» из §1 эпика. Апрув Pavel на унификацию карты. */}
+                <MapControls
+                  withTheme={false}
+                  withSE={false}
+                  withFullscreen
+                  projection={globe ? 'globe' : 'mercator'}
+                  onToggleProjection={() => setGlobe((g) => !g)}
+                  fullscreen={fs}
+                  onToggleFullscreen={() => setFs((v) => !v)}
+                />
                 <div className="map-legend">
                   {legendRows.map((r) => (
                     <span className="c" key={r.tone}>

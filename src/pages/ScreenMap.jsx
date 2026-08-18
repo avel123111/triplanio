@@ -90,6 +90,7 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
           transfers={transfers}
           showStartEnd
           mapControls
+          initialProjection="globe"
           active={active}
           colorScheme={isDark ? 'DARK' : 'LIGHT'}
           selectedVisitId={selectedVisit?.id}

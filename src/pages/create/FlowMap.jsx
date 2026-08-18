@@ -37,7 +37,8 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   const markersRef = useRef([]);
 
   // On-map controls (same set as MapView): projection / theme / start-finish.
-  const [projection, setProjection] = useState('mercator');
+  // Планировщик (оба флоу) открывается на глобусе (запрос Pavel, TRIP-337).
+  const [projection, setProjection] = useState('globe');
   // Seed from the app theme and follow it live (mirrors MapView): the on-map
   // toggle can still override until the next app-theme change.
   const [scheme, setScheme] = useState(isDark ? 'DARK' : 'LIGHT');
