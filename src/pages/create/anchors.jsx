@@ -15,7 +15,11 @@ import cityOptionRow from '@/components/common/cityOptionRow';
 // (city object), clear-on-type, and timezone enrichment on pick. Lives here (not
 // in ManualPlanner) so both the planner steps and the AI panel reuse ONE picker
 // without a circular import.
-export function CityPicker({ value, onChange, placeholder, autoFocus }) {
+// `blurOnPick` — after a pick, drop focus off the field. On step 1 the departure
+// date collapses out of the row while the city input is focused (:focus-within);
+// blurring on pick lets the date reappear instead of staying hidden behind a
+// still-focused input.
+export function CityPicker({ value, onChange, placeholder, autoFocus, blurOnPick }) {
   const t = useT();
   const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
@@ -36,6 +40,7 @@ export function CityPicker({ value, onChange, placeholder, autoFocus }) {
         // shows a country, not blank. This is the single point that enriches a raw
         // search result; downstream consumers already receive the derived name.
         onChange({ ...city, country: localizeCountry(city.country_code, lang), timezone: tzFromCoords(city.latitude, city.longitude) });
+        if (blurOnPick) requestAnimationFrame(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       }}
       renderRow={cityOptionRow}
       placeholder={placeholder || t('planner.city_search_ph')}

@@ -18,7 +18,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, EmptyState, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -277,7 +277,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       <div className="field-row field-row--aside">
         <div className="field">
           <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
-          <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} autoFocus />
+          <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} blurOnPick />
         </div>
         <div className="field">
           <label className="field__label">{t('planner.departure_date')}</label>
@@ -1242,6 +1242,17 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           .lp panel (progress header → scroll body → sticky footer). */}
       <div className="flow-grid">
         <div className="flow-mapcol">
+          {/* Floating round back control — shown only on the phone shell (the app
+              header is removed there); the canon `.map-back` position/visibility
+              live in CSS. */}
+          <IconBtn
+            className="map-back"
+            icon="back"
+            round
+            tone="outline"
+            ariaLabel={t('notif.to_collection')}
+            onClick={() => nav('/trips')}
+          />
           <div className="flow-mapbox">
             <FlowMap
               home={home}
