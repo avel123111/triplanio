@@ -669,8 +669,8 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           </div>
         </div>
 
-        {/* statbar is card-homed (its skin lives on <Card>) — kept on <Card> for the
-            surface-registry guard; flattened to a divided section by the CSS below. */}
+        {/* statbar is card-homed (its skin lives on the Card primitive) — kept on the
+            Card for the surface-registry guard; flattened to a divided section below. */}
         <Card pad="none" className="statbar">
           <div className="s">
             <Stat

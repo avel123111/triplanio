@@ -3648,7 +3648,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* App header removed on the phone shell (Pavel 2026-08-18): the map is the top
      band, so navigation collapses to the floating round "back" control on it. */
   .flow-page > .app-header { display: none; }
-  .map-back { display: inline-flex; }
+  /* grid (not inline-flex): keeps the base `.icon-btn` place-items:center so the
+     arrow stays centred; inline-flex would drop it to the top-left corner. */
+  .map-back { display: grid; }
   /* Grid is a fixed-height flex column that does NOT scroll; the sheet body does. */
   .flow-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
   /* Map: fixed band at the top, edge-to-edge (no inset frame / radius). */
