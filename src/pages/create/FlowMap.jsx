@@ -321,10 +321,10 @@ export default function FlowMap({
 
   const revealed = ready && framed;
   return (
-    <div className="flow-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: revealed ? 1 : 0, transition: 'opacity .3s ease' }} />
+    <div className="flow-map">
+      <div ref={containerRef} className={'flow-map__canvas' + (revealed ? ' is-revealed' : '')} />
       {!revealed && (
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--surface)', zIndex: 2 }}>
+        <div className="flow-map__cover">
           {/* Spinner only before the style loads; once ready we just hold a plain
               cover until our camera is set (framed), so there is no spinner flash
               on a warm singleton — only the stale frame stays hidden, and we never
@@ -345,15 +345,10 @@ export default function FlowMap({
       )}
 
       {totalNights > 0 && (
-        <div className="t-meta" style={{
-          position: 'absolute', bottom: 14, right: 14,
-          display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px',
-          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)',
-          color: 'var(--muted)', boxShadow: 'var(--sh-1)',
-        }}>
-          <span style={{ color: 'var(--ink-2)' }}>{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
+        <div className="t-meta flow-map__stat">
+          <span className="flow-map__stat-hl">{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
           <span className="muted-2">·</span>
-          <span style={{ color: 'var(--ink-2)' }}>{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
+          <span className="flow-map__stat-hl">{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
         </div>
       )}
 

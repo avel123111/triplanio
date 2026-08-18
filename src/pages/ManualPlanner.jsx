@@ -1354,10 +1354,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         <div className="flow-editcol">
           <div className="lp">
             <div className="flow-lp-h">
-              {/* flex:1 + min-width:0 so the progress can shrink and its "next" hint
-                  wraps INSIDE this column instead of overflowing and shoving the
-                  reset control off the narrow mobile sheet header. */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+              {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
+                  "next" hint wraps INSIDE this column instead of overflowing and
+                  shoving the reset control off the narrow mobile sheet header. */}
+              <div className="grow--fit">
                 <FlowProgress
                   steps={visibleSteps}
                   current={stepIdx}
