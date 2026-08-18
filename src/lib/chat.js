@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { report } from '@/lib/reportDataError';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
@@ -327,7 +328,14 @@ function subscribeChatRows(chatId, onRow) {
         if (!payload.new?.id) return;
         for (const fn of subscribers) fn(payload.new, payload.eventType);
       })
-      .subscribe();
+      // A dead channel makes new messages silently stop arriving (the room looks
+      // idle, not broken). Report the terminal states so the outage is visible;
+      // SUBSCRIBED / CLOSED are normal lifecycle, not failures.
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          report(new Error(`chat realtime ${status}`), { surface: 'realtime', source: 'chat_rows' });
+        }
+      });
     entry = { channel, subscribers };
     chatRowRegistry.set(chatId, entry);
   }

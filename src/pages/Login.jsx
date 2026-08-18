@@ -3,6 +3,7 @@ import { track } from '@/lib/analytics';
 import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { reportAuthError } from '@/lib/reportDataError';
 import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Checkbox } from '@/design/index';
@@ -273,7 +274,7 @@ export default function Login() {
         queryParams: { prompt: 'select_account' },
       },
     });
-    if (error) { trackSignupFailed('oauth_error', 'google'); setError(error.message); setIsLoading(false); }
+    if (error) { reportAuthError(error, 'oauth'); trackSignupFailed('oauth_error', 'google'); setError(error.message); setIsLoading(false); }
   };
 
   // Google One Tap credential handler - exchanges the Google JWT for a
@@ -296,6 +297,7 @@ export default function Login() {
         nonce,
       });
       if (error) {
+        reportAuthError(error, 'id_token');
         setError(error.message);
         setIsLoading(false);
         return;
@@ -316,6 +318,7 @@ export default function Login() {
       // buttons don't flash re-enabled before the navigation tears the page down.
       window.location.href = postLoginPath();
     } catch (err) {
+      reportAuthError(err, 'id_token');
       setError(err.message);
       setIsLoading(false);
     }
@@ -378,13 +381,13 @@ export default function Login() {
       provider: 'apple',
       options: { redirectTo: window.location.origin + postLoginPath() },
     });
-    if (error) { trackSignupFailed('oauth_error', 'apple'); setError(error.message); setIsLoading(false); }
+    if (error) { reportAuthError(error, 'oauth'); trackSignupFailed('oauth_error', 'apple'); setError(error.message); setIsLoading(false); }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault(); setIsLoading(true); setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError(error.message); setIsLoading(false); return; }
+    if (error) { reportAuthError(error, 'signin'); setError(error.message); setIsLoading(false); return; }
     track('user_logged_in', { method: 'email' });
     window.location.href = postLoginPath();
   };
@@ -438,7 +441,7 @@ export default function Login() {
         emailRedirectTo: window.location.origin + postLoginPath(),
       },
     });
-    if (error) { trackSignupFailed('signup_error'); setError(error.message); setIsLoading(false); }
+    if (error) { reportAuthError(error, 'signup'); trackSignupFailed('signup_error'); setError(error.message); setIsLoading(false); }
     // NOT a registration: confirming the address is mandatory (Supabase Auth
     // mailer_autoconfirm = false), so at this point the person is on the "check
     // your inbox" screen and may never come back. `user_signed_up` fires later,
@@ -457,6 +460,7 @@ export default function Login() {
     setIsLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
+      reportAuthError(error, 'update_password');
       const msg = /session|token|expired|missing/i.test(error.message)
         ? t('auth.err_reset_link')
         : error.message;
@@ -468,7 +472,8 @@ export default function Login() {
   // From the "password updated" screen: drop the recovery session and send the
   // user to a clean login so they sign in with the new password.
   const finishToLogin = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) reportAuthError(error, 'signout');
     window.location.href = '/login';
   };
 
