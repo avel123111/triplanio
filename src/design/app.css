@@ -8792,10 +8792,14 @@ a.doc-row__n:hover{ color: var(--brand); }
 .flow-editcol > .lp { view-transition-name: trip-panel; }
 .ts-col-left { view-transition-name: trip-panel; }
 
-/* Единый ритм морфинга общих элементов. */
-::view-transition-group(trip-map),
-::view-transition-group(trip-panel) {
-  animation-duration: 420ms;
+/* Единый, чуть неспешный ритм всего перехода (~0.6с) — и морф общих элементов
+   (карта/панель), и корневой крест-фейд, и въезд меню идут одним темпом. `*`
+   покрывает root/trip-map/trip-panel/trip-side разом; reduced-motion ниже
+   перебивает это `!important`. */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 600ms;
   animation-timing-function: var(--ease-out);
 }
 
@@ -8814,7 +8818,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 @media (min-width: 881px) {
   .app-side { view-transition-name: trip-side; }
   ::view-transition-new(trip-side) {
-    animation: vtSideIn 360ms var(--ease-out) both;
+    animation: vtSideIn 560ms var(--ease-out) both;
   }
 }
 @keyframes vtSideIn {
