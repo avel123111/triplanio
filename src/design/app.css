@@ -8775,8 +8775,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    анимируются. Нет поддержки VT (Safari<18) → штатный мгновенный переход.
 
    Хореография:
-   • trip-map   — карта из фона планнера сворачивается в рамочный контейнер редактора;
-   • trip-panel — панель подтверждения перетекает в левую колонку маршрута;
+   • trip-map   — карта из фона планнера сворачивается в рамочный контейнер редактора (морф);
+   • trip-panel — левая колонка маршрута редактора ВЪЕЗЖАЕТ слева (slide-in, не морф);
    • trip-side  — боковое меню редактора выезжает слева (десктоп; на телефоне меню — шит).
 
    Парные имена (`.flow-mapbox`/`.ts-map`, `.flow-editcol>.lp`/`.ts-col-left`) в DOM
@@ -8788,17 +8788,17 @@ a.doc-row__n:hover{ color: var(--brand); }
 .flow-mapbox { view-transition-name: trip-map; }
 .ts-map { view-transition-name: trip-map; }
 
-/* Левая панель: плавающая карточка планнера ↔ левая колонка маршрута редактора. */
-.flow-editcol > .lp { view-transition-name: trip-panel; }
+/* Левый контент редактора (колонка маршрута) ВЪЕЗЖАЕТ слева, как меню — НЕ
+   морфится из карточки успеха планнера. Пары trip-panel планнер↔редактор больше
+   НЕТ намеренно: морф разнородного контента (успех → список городов) как раз и
+   читался как «растворение». Планнерская .lp остаётся в root и быстро гаснет
+   дефолтным крест-фейдом, а колонка маршрута заходит своим slide-in поверх. */
 .ts-col-left { view-transition-name: trip-panel; }
 
-/* Единый, чуть неспешный ритм всего перехода (~0.6с) — и морф общих элементов
-   (карта/панель), и корневой крест-фейд, и въезд меню идут одним темпом. `*`
-   покрывает root/trip-map/trip-panel/trip-side разом; reduced-motion ниже
-   перебивает это `!important`. */
-::view-transition-group(*),
-::view-transition-old(*),
-::view-transition-new(*) {
+/* Карту сжимаем неспешно (~0.6с). Крест-фейд снапшотов (::view-transition-old/new)
+   НЕ трогаем — быстрый дефолт (~0.25с). Медленный крест-фейд превращал бы въезд в
+   «растворение» (дешёвый PowerPoint). */
+::view-transition-group(trip-map) {
   animation-duration: 600ms;
   animation-timing-function: var(--ease-out);
 }
@@ -8806,23 +8806,24 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Старый (карта-фон планнера) и новый (карта в контейнере редактора) снапшоты —
    это один и тот же живой singleton с почти той же камерой (см. camera-handoff),
    поэтому крест-фейд между ними незаметен, а группа плавно сжимает фон в рамочный
-   контейнер. `acquire` карты переехал в useLayoutEffect, так что к снапшоту «после»
-   холст уже в слоте и в верном размере — пустого бокса и «дорастания» больше нет.
-   `cover` — чтобы кадры заполняли группу без полей при смене пропорций фон→бокс. */
+   контейнер. `acquire` карты в useLayoutEffect, так что к снапшоту «после» холст
+   уже в слоте и в верном размере — пустого бокса и «дорастания» нет. `cover` —
+   чтобы кадры заполняли группу без полей при смене пропорций фон→бокс. */
 ::view-transition-old(trip-map),
 ::view-transition-new(trip-map) { object-fit: cover; }
 
-/* Меню редактора «въезжает» слева — только на десктопе, где это постоянный рельс
-   (на телефоне ≤880 меню off-canvas/шит, у него свой жест). Появляется без пары
-   в снапшоте «до» → проигрывается анимация входа. */
+/* Меню И левый контент редактора ВЪЕЗЖАЮТ слева — только на десктопе (на телефоне
+   меню — шит, контент — полноширинный, там дефолтный вход). Оба появляются без
+   пары в снапшоте «до» → проигрывается анимация входа slide-in. */
 @media (min-width: 881px) {
   .app-side { view-transition-name: trip-side; }
-  ::view-transition-new(trip-side) {
-    animation: vtSideIn 560ms var(--ease-out) both;
+  ::view-transition-new(trip-side),
+  ::view-transition-new(trip-panel) {
+    animation: vtSlideInLeft 560ms var(--ease-out) both;
   }
 }
-@keyframes vtSideIn {
-  from { opacity: 0; transform: translateX(-18px); }
+@keyframes vtSlideInLeft {
+  from { opacity: 0; transform: translateX(-32px); }
   to   { opacity: 1; transform: none; }
 }
 
