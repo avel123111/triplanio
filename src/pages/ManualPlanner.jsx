@@ -102,6 +102,23 @@ function computeAutoTitle(home, cities, t) {
   return startName || lastName || t('trips.new');
 }
 
+// A 0-night stop is a same-day layover/waypoint (mirrors the editor's
+// kind:'waypoint') — one predicate, so the row, the map pin and the save payload
+// can't drift on what counts as a waypoint.
+function isPlannerWaypoint(city) {
+  return (+city.nights || 0) === 0 && !!city.city_name;
+}
+
+// City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
+// null when the trip start isn't set yet. Shared by the city row and the map
+// tooltip so both read identically.
+function cityDateRange(city, lang) {
+  const nights = +city.nights || 0;
+  const start = city.startDate ? shortDateLabel(city.startDate, lang) : null;
+  const end = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
+  return start ? (end ? `${start} – ${end}` : start) : null;
+}
+
 function recomputeDates(list, anchorISO) {
   // Chain anchor = the STABLE trip-start date (the top "Старт" control), NOT the
   // current first element's date. Mirrors the editor, which anchors on the start
@@ -147,9 +164,9 @@ function CityRow({ idx, city, isDragging, isPressing, active = false, onArm, onC
   const nights = +city.nights || 0;
   // 0 nights = a layover/waypoint (same-day stop) — mirrors the editor: dashed
   // transfer-tinted node + a "Пересадка" badge instead of a nights range.
-  const isWaypoint = !!city.city_name && nights === 0;
-  const startLabel = city.startDate ? shortDateLabel(city.startDate, lang) : null;
-  const endLabel = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
+  // (predicate + date range come from the shared helpers above)
+  const isWaypoint = isPlannerWaypoint(city);
+  const dateRange = cityDateRange(city, lang);
   // Empty rows open in the picker; once a city is chosen it shows read-only
   // (change a city by deleting + re-adding) so it can never get stuck as an input.
   const [editing, setEditing] = useState(!city.city_name);
@@ -180,8 +197,8 @@ function CityRow({ idx, city, isDragging, isPressing, active = false, onArm, onC
     ? <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>
     : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
   const dates = isWaypoint
-    ? <><Badge size="tiny">{t('tse.layover')}</Badge>{startLabel}</>
-    : (startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null);
+    ? <><Badge size="tiny">{t('tse.layover')}</Badge>{dateRange}</>
+    : dateRange;
 
   return (
     <CityRowBase
@@ -432,7 +449,9 @@ function StepCities({ cities, setCities, home, setHome, startDate, setStartDate,
               <div
                 key={c.id}
                 ref={setRowRef(c.id)}
-                onMouseEnter={onHover ? () => onHover(rowId) : undefined}
+                // Skip enter-hover mid-drag: a FLIP reorder slides rows under a
+                // held pointer, which would otherwise churn the highlight.
+                onMouseEnter={onHover ? () => { if (!draggingId) onHover(rowId); } : undefined}
                 onMouseLeave={onHover ? () => onHover(null) : undefined}
               >
                 <CityRow
@@ -1024,21 +1043,19 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // way FlowMap tags its pins ('home' | city.id | 'return'). A city's date range is
   // start..start+nights (single day for a 0-night waypoint); anchors show name only.
   const mapPointById = useMemo(() => {
-    const cityDates = (c) => {
-      const nights = +c.nights || 0;
-      const s = c.startDate ? shortDateLabel(c.startDate, lang) : null;
-      const e = (c.startDate && nights) ? shortDateLabel(addDays(c.startDate, nights), lang) : null;
-      return s ? (e ? `${s} – ${e}` : s) : null;
-    };
     const m = {};
     if (home?.latitude != null) m.home = { lng: home.longitude, lat: home.latitude, countryCode: home.country_code, name: home.city_name, dates: null };
-    cities.forEach((c) => { if (c.latitude != null) m[String(c.id)] = { lng: c.longitude, lat: c.latitude, countryCode: c.country_code, name: c.city_name, dates: cityDates(c) }; });
+    cities.forEach((c) => { if (c.latitude != null) m[String(c.id)] = { lng: c.longitude, lat: c.latitude, countryCode: c.country_code, name: c.city_name, dates: cityDateRange(c, lang) }; });
     if (effectiveReturn?.latitude != null) m.return = { lng: effectiveReturn.longitude, lat: effectiveReturn.latitude, countryCode: effectiveReturn.country_code, name: effectiveReturn.city_name, dates: null };
     return m;
   }, [home, cities, effectiveReturn, lang]);
   // The tooltip follows the hovered pin/row, otherwise the selected one.
   const activeMapId = hoveredMapId || selectedMapId;
   const cityBadge = activeMapId ? mapPointById[activeMapId] || null : null;
+  // Clear map selection/hover on step change: a pin drawn on one step (e.g. the
+  // return pin, only shown on return/review) must not leave a tooltip floating at
+  // its coordinate once the step no longer renders it.
+  useEffect(() => { setHoveredMapId(null); setSelectedMapId(null); }, [step]);
 
   // ── Supabase save ────────────────────────────────────────────────────────
   const handleSave = async () => {

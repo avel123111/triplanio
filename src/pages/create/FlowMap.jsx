@@ -112,14 +112,17 @@ export default function FlowMap({
   // planner (same as the Map lens): the map is the primary surface here.
   const { mapRef, ready, canFit } = useMapSurface(containerRef, { markersRef, scheme, projection, cooperativeGestures: false });
 
-  // `posed` gates the fade-in: the singleton is SHARED, so on entry it still shows
+  // `framed` gates the fade-in: the singleton is SHARED, so on entry it still shows
   // the previous screen's camera + basemap (e.g. the far, monochrome Trips/stats
   // map). Seeding `ready` from a reused style would reveal that stale frame for a
-  // beat before this screen's camera + theme re-assert — the jerky "far grey → my
-  // globe" flip. Hold the reveal behind a surface-colour cover until the first
-  // 'idle' AFTER our camera is set (basemap theme also settles on that idle), so
-  // the map appears already framed and coloured. (TRIP-337)
-  const [posed, setPosed] = useState(false);
+  // beat before this screen's camera re-asserts — the jerky "far grey → my globe"
+  // flip. So hold the reveal behind a surface cover until OUR camera has been set
+  // (the flag flips in the fit effect below, a frame after jumpTo — by then the
+  // basemap theme has re-applied too). NB: gate on "camera set", NOT Mapbox 'idle':
+  // 'idle' also waits for every tile of the view to finish loading, and a whole-
+  // earth globe has enough tiles that that takes SECONDS — the tiles stream in on
+  // the already-revealed map, exactly like every other map screen. (TRIP-337)
+  const [framed, setFramed] = useState(false);
 
   // Latest interactivity callbacks kept in refs so passing fresh closures doesn't
   // rebuild the markers (mirrors MapView).
@@ -209,23 +212,12 @@ export default function FlowMap({
         }
       }
       prevHadPointsRef.current = positions.length > 0;
+      // Our camera is now set — safe to reveal (see `framed`). Idempotent; React
+      // bails on the unchanged value after the first flip.
+      setFramed(true);
     }
     return undefined;
   }, [ready, canFit, ptsKey, winW, winH]);
-
-  // Reveal gate (see `posed`): once the slot is measured and our camera is set
-  // (the fit effect above runs first, same render), wait one 'idle' — the camera
-  // has settled and the basemap theme has re-applied by then — and only then fade
-  // the map in. A timeout backstops a singleton that never emits 'idle'.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready || !canFit || posed) return undefined;
-    let done = false;
-    const mark = () => { if (!done) { done = true; setPosed(true); } };
-    map.once('idle', mark);
-    const to = setTimeout(mark, 1200);
-    return () => { clearTimeout(to); try { map.off('idle', mark); } catch { /* ignore */ } };
-  }, [ready, canFit, posed]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering the city list is cheap). Re-runs after a rebuild too
@@ -292,15 +284,16 @@ export default function FlowMap({
     return undefined;
   }, [ready, legsKey]);
 
-  const revealed = ready && posed;
+  const revealed = ready && framed;
   return (
     <div className="flow-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: revealed ? 1 : 0, transition: 'opacity .3s ease' }} />
       {!revealed && (
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--surface)', zIndex: 2 }}>
           {/* Spinner only before the style loads; once ready we just hold a plain
-              cover until the camera/theme settle (posed), so there is no spinner
-              flash on a warm singleton — only the stale frame stays hidden. */}
+              cover until our camera is set (framed), so there is no spinner flash
+              on a warm singleton — only the stale frame stays hidden, and we never
+              wait on tile loading. */}
           {!ready && <div className="spin spin--ring spin--lg spin--ink" />}
         </div>
       )}
