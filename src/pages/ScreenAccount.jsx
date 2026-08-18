@@ -502,17 +502,6 @@ export default function ScreenAccount() {
     setUploadingAvatar(true);
     setErrorMsg(null);
     try {
-      // TRIP-367 root-cause: «new row violates row-level security policy» при
-      // аплоаде = `auth.uid()` NULL, т.е. storage-запрос ушёл без валидного
-      // токена (сессия ещё не восстановилась после загрузки страницы или токен
-      // протух). Глобальный createAuthRetryFetch лечит только 401, а storage-RLS-
-      // отказ приходит НЕ-401 и проходит мимо него. Форсим восстановление сессии
-      // ДО загрузки байтов: getSession() дожидается восстановления и обновляет
-      // протухший access-token, поэтому следующий storage-запрос уходит с живым
-      // токеном. Нет живой сессии вовсе — честный UNAUTHENTICATED, а не сырой
-      // storage-отказ «violates RLS».
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setErrorMsg(errorText(t, 'UNAUTHENTICATED')); return; }
       // Deterministic key: one object per user, no extension. upsert overwrites
       // it in place, so stale variants can never accumulate and no listing sweep
       // is needed (TRIP-48). The browser renders <img> by the stored Content-Type,
