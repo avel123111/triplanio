@@ -90,10 +90,17 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   const ptsKey = pts.map((p) => `${p.kind || ''}:${p.label}@${p.lat},${p.lng}`).join('|');
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
+  // A FlowMap-owned handle to the (singleton) map instance. useMapSurface nulls its
+  // own mapRef in cleanup, and React runs cleanups in declaration order — so the
+  // unmount padding-reset below cannot rely on mapRef.current (already null by then).
+  // This ref is never nulled by the hook, so the reset still reaches the instance.
+  const mapForPaddingRef = useRef(null);
+
   // Markers + fit.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
+    mapForPaddingRef.current = map;
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
     const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind }));
@@ -126,8 +133,9 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
 
   // The map is a shared singleton — hand it back with zero viewport padding so the
   // planner's idle-globe offset never leaks onto another screen (MapView / stats).
+  // Uses the FlowMap-owned ref (mapRef.current is already null at unmount, see above).
   useEffect(() => () => {
-    try { mapRef.current?.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
+    try { mapForPaddingRef.current?.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
   }, []);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
