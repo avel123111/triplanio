@@ -27,10 +27,10 @@ function buildLegs(home, cities, returnCity, finalPoint) {
 // must be framed in the VISIBLE area (right of the panel) — reserve the panel's
 // width on the left. On phones (≤960) the map is its own top band with the sheet
 // below it, so only a little bottom room is reserved for the sheet's overlap.
-// Mirror the CSS: .flow-editcol width = min(460px, 40vw); breakpoint 960.
+// Mirror the CSS: .flow-editcol width = min(550px, 44vw); breakpoint 960.
 function fitPaddingFor(w) {
   if (w > 960) {
-    const panel = Math.min(460, w * 0.4);
+    const panel = Math.min(550, w * 0.44);
     return { top: 48, right: 48, bottom: 48, left: Math.round(panel + 40) };
   }
   return { top: 32, right: 40, bottom: 52, left: 40 };

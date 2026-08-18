@@ -3530,7 +3530,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .flow-editcol {
   position: absolute; top: 0; left: 0; bottom: 0;
   display: flex;
-  width: min(460px, 40vw);
+  width: min(550px, 44vw);
   padding: var(--sp-7); padding-right: 0;
   z-index: 2;
   pointer-events: none;
