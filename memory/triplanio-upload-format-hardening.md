@@ -158,9 +158,12 @@ OCR (`inputType: url`), которая скачивает что дадут. Ф�
 отклоняет команду с `new row violates row-level security policy` (403), причём
 INSERT в отсутствие конфликта проходит — баг всплывает только на ПЕРЕЗАПИСИ.
 Именно это сломало смену аватара: `avatars` — единственный user-write бакет с
-фиксированным ключом (`<uid>/avatar`) и `upsert:true`, а TRIP-48
-(`20260713120000`) снял с него `avatars_select` (bucket-wide листинг), когда
-upsert ещё не требовал SELECT. Фикс `20260818194500` вернул `avatars_select`
+фиксированным ключом (`<uid>/avatar`) и `upsert:true`. `avatars_select`
+(bucket-wide) была в baseline и удовлетворяла SELECT для `ON CONFLICT`; TRIP-48
+(`20260713120000`, 2026-07-13) сняла её вместе с листингом бакета → с этого
+момента перезапись сломалась (`ON CONFLICT DO UPDATE` ВСЕГДА требует
+SELECT-политику; последняя успешная загрузка 10.07 — за 3 дня до дропа). Фикс
+`20260818194500` вернул `avatars_select`
 **owner-scoped** (не bucket-wide) — `ON CONFLICT` получает SELECT, публичный
 листинг не воскресает. `support`-бакет политики SELECT НЕ требует: пишет без
 `upsert` по уникальному uuid-пути → `ON CONFLICT` не возникает. Публичное чтение

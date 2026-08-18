@@ -6,12 +6,14 @@
 -- `INSERT … ON CONFLICT (bucket_id,name) DO UPDATE`; Postgres под RLS отклоняет
 -- такую команду, если на таблице нет SELECT-политики (DO UPDATE обязан прочитать
 -- конфликтующую строку) → `new row violates row-level security policy` (403).
--- `trips`/`avatars_delete` работают, потому что у них SELECT-политика есть.
+-- `trips` работает, потому что у него есть `trips_select`; у `avatars` не хватало
+-- именно `avatars_select`.
 --
--- SELECT-политику `avatars_select` (bucket-wide) снял TRIP-48
--- (20260713120000) вместе с листингом бакета — тогда `upsert` ещё не требовал
--- SELECT; после смены реализации upsert на `ON CONFLICT` её отсутствие и стало
--- багом. Возвращаем её owner-scoped (НЕ bucket-wide) — так `ON CONFLICT` получает
+-- `avatars_select` (bucket-wide) была в baseline и удовлетворяла SELECT для
+-- `ON CONFLICT`; TRIP-48 (20260713120000, 2026-07-13) сняла её вместе с листингом
+-- бакета → с этого момента перезапись аватара сломалась (`ON CONFLICT DO UPDATE`
+-- ВСЕГДА требует SELECT-политику; последняя успешная загрузка 10.07 — за 3 дня до
+-- дропа). Возвращаем её owner-scoped (НЕ bucket-wide) — так `ON CONFLICT` получает
 -- нужный SELECT, а публичный листинг бакета не воскресает: зеркало трёх
 -- существующих owner-scoped политик (`avatars_insert`/`update` — 20260811143722,
 -- `avatars_delete` — 20260630210347). Ключ аватара = `<uid>/avatar`.
