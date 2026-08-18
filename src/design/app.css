@@ -705,6 +705,7 @@ h2,
 .pt-h-lead,        /* TRIP-410: лид-заголовок публичного трипа → Heading (был локальный --fs-h2/-.025em; вес держит .t-strong) */
 .acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-heading — Geologica 18/700/1.25, tabular (карьер .acct-sectitle) */
 .t-subheading,
+.dock-panel__id b,    /* TRIP-337 инсп.: заголовок виджета чата Label→Subheading */
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
@@ -819,7 +820,6 @@ h4,
 .chat-thinking,       /* TRIP-296 инсп.: Meta→Label («Triplanio печатает») */
 .chat-mention__row span, /* TRIP-296: подпись в поповере упоминания — не моно */
 .chat-reply__who b,   /* TRIP-296 инсп.: Meta→Label (автор ответа ассистента) */
-.dock-panel__id b,    /* TRIP-296: заголовок виджета */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→Label (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→Label (лейблы «Доступ»/«Файлы» диалога документа) */
 .dl-dropzone b,       /* TRIP-275 инсп.: Meta→Label (CTA dropzone «Загрузить файлы…») */
@@ -873,6 +873,7 @@ h4,
    visual-diff-exempt: .t-support letter-spacing — новый канон (0) */
 .t-support { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
 .t-meta,
+.dock-panel__id span,    /* TRIP-337 инсп.: подзаголовок виджета чата off-canon→Meta */
 .field__hint,
 .app-header__trip-meta,
 .app-header__pro,
@@ -4205,6 +4206,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    явным исключением `[data-theme="dark"] .chat-composer__row` выше по файлу
    (фон здесь не объявлен вовсе - в светлой он приходит от группы). */
 .chat-composer__row {
+  /* align-items: flex-end — кнопки прижаты к низу поля (растёт вверх): на
+     растянутом инпуте они у последней строки, а на ОДНОЙ строке совпадают с ней,
+     т.к. высота кнопки = высоте строки-ряда поля (--ctl-h 40 = line 22 + pad 9·2).
+     Раньше в доке кнопки были --ctl-h-sm (32) и на 4px висели ниже текста — теперь
+     40 (см. .dock-panel .chat-at/.chat-send ниже). */
   gap: 8px; align-items: flex-end; padding: 8px;
   box-shadow: var(--sh-1);
 }
@@ -4365,6 +4371,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 @keyframes dockUp { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 /* ONE header row — the former tab strip held a single always-active tab. */
+/* ★TRIP-337 инсп.: типографика шапки виджета сведена на каноны — заголовок
+   Label→Subheading (.t-subheading), подзаголовок off-canon→Meta (.t-meta),
+   ко-селекторами выше по файлу.
+   visual-diff-exempt: .dock-panel__id b font-family — заголовок виджета Label→Subheading (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel__id b font-size — заголовок виджета Label→Subheading (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel__id b line-height — заголовок виджета Label→Subheading (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel__id span font-family — подзаголовок виджета off-canon→Meta (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel__id span font-size — подзаголовок виджета off-canon→Meta (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel__id span font-variant-numeric — подзаголовок виджета off-canon→Meta (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel__id span font-weight — подзаголовок виджета off-canon→Meta (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel__id span letter-spacing — подзаголовок виджета off-canon→Meta (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel__id span line-height — подзаголовок виджета off-canon→Meta (TRIP-337, Pavel) */
 .dock-panel__head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 /* Контекстной перебивки стороны здесь больше НЕТ: 32px - это ровно ступень
    `--ctl-h-sm`, поэтому кнопки шапки дока просто просят `size="sm"` у примитива
@@ -4394,11 +4412,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Ступень теперь общая, у дока остаются свои отступы и отсутствие тени. */
 .dock-panel .chat-composer { border-top: 0; padding: 0; }
 .dock-panel .chat-composer__row { padding: 6px; box-shadow: none; }
-/* 34px здесь были ТРЕТЬИМ числом стороны мимо обеих ступеней. Уплотнение в доке
-   выражается ступенью `--sm` (32px), а не своим литералом: иначе размер кнопки
-   в доке нельзя объявить из разметки - контекстное правило (0,2,0) молча бьёт
-   модификатор (0,1,0). Радиус общий, из ко-селектора `.tile, .icon-btn`. */
-.dock-panel .chat-at, .dock-panel .chat-send { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
+/* ★TRIP-337: док-override размера кнопок @/отправки на --ctl-h-sm (32px) снят.
+   При поле 40px и выравнивании по низу 32px-кнопки висели на 4px ниже строки
+   текста (растянутый инпут — особенно стрёмно). Теперь они md (--ctl-h 40 = высота
+   строки-ряда поля) как в полном чате: flex-end совпадает со строкой и на одной
+   строке, и на последней строке растянутого поля. Радиус — из ко-селектора
+   `.tile, .icon-btn`.
+   visual-diff-exempt: .chat-at width — кнопки дока @/отправки 32→40 к строке поля (TRIP-337, Pavel)
+   visual-diff-exempt: .chat-at height — кнопки дока @/отправки 32→40 к строке поля (TRIP-337, Pavel)
+   visual-diff-exempt: .chat-send width — кнопки дока @/отправки 32→40 к строке поля (TRIP-337, Pavel)
+   visual-diff-exempt: .chat-send height — кнопки дока @/отправки 32→40 к строке поля (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel width — снят descendant-override размера кнопок; своя ширина дока (396px) не менялась, атрибуция 2p (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel height — снят descendant-override размера кнопок; своя высота дока не менялась, атрибуция 2p (TRIP-337, Pavel) */
 .dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 
 /* ──────────────────────────────────────────────────────────────────────────
