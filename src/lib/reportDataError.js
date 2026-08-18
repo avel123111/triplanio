@@ -106,6 +106,6 @@ export function reportDataError(error, source, key) {
 export function reportAuthError(error, source) {
 	if (!error) return;
 	const status = statusOf(error);
-	if (typeof status === 'number' && status >= 400 && status < 500) return; // expected
+	if (typeof status === 'number' && status >= 400 && status < 500) return; // expected 4xx — i18n-ignore (гард 2d читает `>= 400 … < 500` как JSX-текст, это не строка UI)
 	report(error, { surface: 'auth', source });
 }
