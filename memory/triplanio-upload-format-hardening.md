@@ -149,6 +149,24 @@ OCR (`inputType: url`), которая скачивает что дадут. Ф�
 подметать старый объект. Поймал `code-simplifier`. Правило: **при смене сигнатуры грепать имя
 ФУНКЦИИ, а не имя поля.** Обложка теперь передаётся как `collectDocPaths([{ file_url: url }])`.
 
+## Конвенция RLS-политик user-write бакета (TRIP-367)
+
+**User-write бакет, принимающий `upsert:true`, ОБЯЗАН иметь полный CRUD-набор
+политик, включая SELECT.** supabase-js при `upsert:true` шлёт запись как
+`INSERT … ON CONFLICT (bucket_id,name) DO UPDATE`, а `ON CONFLICT DO UPDATE`
+под RLS обязан ПРОЧИТАТЬ конфликтующую строку → без SELECT-политики Postgres
+отклоняет команду с `new row violates row-level security policy` (403), причём
+INSERT в отсутствие конфликта проходит — баг всплывает только на ПЕРЕЗАПИСИ.
+Именно это сломало смену аватара: `avatars` — единственный user-write бакет с
+фиксированным ключом (`<uid>/avatar`) и `upsert:true`, а TRIP-48
+(`20260713120000`) снял с него `avatars_select` (bucket-wide листинг), когда
+upsert ещё не требовал SELECT. Фикс `20260818194500` вернул `avatars_select`
+**owner-scoped** (не bucket-wide) — `ON CONFLICT` получает SELECT, публичный
+листинг не воскресает. `support`-бакет политики SELECT НЕ требует: пишет без
+`upsert` по уникальному uuid-пути → `ON CONFLICT` не возникает. Публичное чтение
+аватаров идёт через `/object/public/` мимо RLS, поэтому owner-scoped SELECT его
+не трогает. Наблюдаемость сбоя storage-загрузки — отдельно, [TRIP-284].
+
 ## Осознанно НЕ сделано
 
 `Content-Disposition: attachment` на документах: после белого списка исполняемых форматов в
