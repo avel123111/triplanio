@@ -14,9 +14,32 @@
  *
  * Config: errors only (`tracesSampleRate: 0`), `sendDefaultPii: false`. No-op
  * when SENTRY_DSN is unset, so local / unconfigured runs stay silent.
+ *
+ * Distributed tracing (TRIP-373): we STITCH the edge error onto the browser trace
+ * that triggered it — the error event carries the incoming request's `trace_id` as
+ * its `contexts.trace`, so it lands under the same trace tree as the browser
+ * transaction (fixes "two unconnected trees"). This is ERROR-linking only and
+ * touches NO scope — the parsed trace rides `captureException`'s per-call context,
+ * exactly like tags/extra, preserving the per-request isolation above.
+ *
+ * DEFERRED — full performance waterfall (browser click → edge span → DB): would
+ * require turning edge tracing ON (`tracesSampleRate > 0`) and wrapping each
+ * handler in a span/transaction. Both need per-request scope (`startSpan` /
+ * `withIsolationScope`), which reintroduces the shared-scope leak this file is
+ * built to avoid — a concurrent request in a reused isolate could inherit another's
+ * span/context. Error-linking gives the "one trace tree" DoD without that risk;
+ * the waterfall stays out until per-request isolation is proven safe here (rule 13,
+ * security-review). This is an architectural deferral, not an omission.
  */
 import * as Sentry from 'npm:@sentry/deno@10.56.0';
 import { envTag } from './envTag.ts';
+// The `sentry-trace` parser lives in the env/SDK-free `trace.ts` so `trace_test.ts`
+// can pin it under `deno test` without --allow-env/--allow-net. Imported here for
+// `captureEdgeError`'s signature AND re-exported, so this Sentry seam stays the
+// single import surface for callers (`http.ts`).
+import { traceContextFromRequest, type EdgeTraceContext } from './trace.ts';
+export { traceContextFromRequest };
+export type { EdgeTraceContext };
 
 const dsn = Deno.env.get('SENTRY_DSN');
 
@@ -53,19 +76,23 @@ if (dsn) {
 /**
  * Capture an edge-function error and flush before the isolate is frozen
  * (without the flush, short-lived isolates drop the event). No-op without a DSN.
- * Never throws — monitoring must not break the handler. Context is passed
- * directly, not via the shared global scope (see isolation note above).
+ * Never throws — monitoring must not break the handler. Context (tags/extra AND
+ * the optional distributed-trace link) is passed directly, not via the shared
+ * global scope (see isolation note above).
  */
 export async function captureEdgeError(
   error: unknown,
   fn: string,
   extra?: Record<string, unknown>,
+  trace?: EdgeTraceContext,
 ): Promise<void> {
   if (!dsn) return;
   try {
     Sentry.captureException(error, {
       tags: { fn },
       ...(extra ? { extra } : {}),
+      // Stitch onto the browser trace when the caller propagated one (TRIP-373).
+      ...(trace ? { contexts: { trace } } : {}),
     });
     await Sentry.flush(2000);
   } catch (_e) {
