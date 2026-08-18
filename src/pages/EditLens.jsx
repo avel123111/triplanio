@@ -349,12 +349,11 @@ export default function EditLens({ tripId, shell, content }) {
   const { fmtMoney } = useI18nFormat();
   const qc = useQueryClient();
   const { toast } = useToast();
-  // Заход из мастера создания (navWithTransition ставит state.fromCreate): карта —
-  // тот же singleton, что уже показывал маршрут на экране успеха, поэтому просим
-  // MapView НАСЛЕДОВАТЬ его живой вид (камеру и проекцию), а не навязывать свои
-  // дефолты — иначе на финале View-Transition карта скакнёт (перефит камеры или
-  // смена проекции). Смена линз внутри трипа пушит новую запись истории без state,
-  // так что дальше флаг сам гаснет.
+  // Заход из мастера создания (navigate ставит state.fromCreate): карта — тот же
+  // singleton, что уже показывал маршрут на экране успеха, поэтому просим MapView
+  // НАСЛЕДОВАТЬ его живой вид (камеру и проекцию), а не навязывать свои дефолты —
+  // иначе карта на входе скакнёт (перефит камеры или смена проекции). Смена линз
+  // внутри трипа пушит новую запись истории без state, так что флаг сам гаснет.
   const fromCreate = useLocation().state?.fromCreate === true;
   const [draft, setDraft] = useState(null);
   // Left-column panel FSM (replaces the old view/add modals). null = the city

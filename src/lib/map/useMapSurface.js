@@ -55,13 +55,12 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   useEffect(() => { coopRef.current = cooperativeGestures; }, [cooperativeGestures]);
 
   // Claim the singleton into this slot on mount; park it back on unmount.
-  // useLayoutEffect (не useEffect): захват слота + первый resize должны пройти
-  // СИНХРОННО в фазе коммита, ДО отрисовки. Иначе при переходе через
-  // document.startViewTransition (create-flow → редактор) reparent карты
-  // случался уже ПОСЛЕ снапшота «после» и первой отрисовки — холст выводился в
-  // старом/коротком размере и «дорастал» до контейнера отдельным кадром. В
-  // layout-фазе контейнер уже выложен (flushSync посчитал лейаут), поэтому resize
-  // сразу берёт финальные размеры, и карта появляется корректной с первого кадра.
+  // useLayoutEffect (не useEffect): захват слота + первый resize проходят СИНХРОННО
+  // в фазе коммита, ДО отрисовки. В passive useEffect reparent случался бы уже
+  // ПОСЛЕ первой отрисовки нового экрана — холст выводился в старом/коротком
+  // размере и «дорастал» до контейнера отдельным кадром (видимый рост карты при
+  // заходе в редактор). В layout-фазе контейнер уже выложен, resize сразу берёт
+  // финальные размеры — карта появляется корректной с первого кадра.
   useLayoutEffect(() => {
     const slot = containerRef.current;
     if (!slot) return undefined;

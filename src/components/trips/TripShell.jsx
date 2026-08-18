@@ -73,6 +73,7 @@ function SidebarSkeleton() {
 export default function TripShell({
   tripId,
   trip,
+  entering = false,
   section = DEFAULT_SECTION,
   myStep,
   isOwner,
@@ -163,7 +164,7 @@ export default function TripShell({
   };
 
   return (
-    <div className="trip-shell">
+    <div className={'trip-shell' + (entering ? ' trip-shell--enter' : '')}>
       <AppHeader
         isTrip
         user={user}
