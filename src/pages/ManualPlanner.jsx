@@ -44,12 +44,12 @@ import { useConfirm } from '@/components/common/ConfirmProvider';
 // (без него React отрисовал бы редактор уже ПОСЛЕ снапшота «после», и твинить было
 // бы нечего). Браузер интерполирует общие по имени элементы. Нет поддержки VT
 // (Safari<18) → обычная навигация.
-function navWithTransition(navigate, to) {
+function navWithTransition(navigate, to, options) {
   if (typeof document === 'undefined' || typeof document.startViewTransition !== 'function') {
-    navigate(to);
+    navigate(to, options);
     return;
   }
-  document.startViewTransition(() => flushSync(() => navigate(to)));
+  document.startViewTransition(() => flushSync(() => navigate(to, options)));
 }
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
@@ -664,7 +664,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
                 карта-фон планнера сворачивается в рамочный контейнер редактора,
                 слева выезжает меню, панель подтверждения перетекает в колонку
                 маршрута. Без поддержки VT (Safari<18) — мгновенный переход. */}
-            <Btn variant="primary" onClick={() => savedTripId && navWithTransition(nav, `/trip/${savedTripId}?lens=edit`)}>{t('planner.open_trip')}</Btn>
+            <Btn variant="primary" onClick={() => savedTripId && navWithTransition(nav, `/trip/${savedTripId}?lens=edit`, { state: { fromCreate: true } })}>{t('planner.open_trip')}</Btn>
             <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
           </>
         )}

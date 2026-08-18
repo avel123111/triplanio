@@ -102,7 +102,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
  *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
  *           focusZoom?: number, onMapClick?: any, cooperativeGestures?: boolean,
- *           children?: any }} p
+ *           preserveInitialCamera?: boolean, children?: any }} p
  */
 export default function MapView({
   visits,
@@ -186,6 +186,12 @@ export default function MapView({
   // ctrl+scroll") for as long as this surface owns the singleton; restored on
   // unmount so other screens keep it. Defaults to the singleton's setting (on).
   cooperativeGestures = true,
+  // Пропустить ПЕРВЫЙ авто-fit на монтировании: камеру передал предыдущий экран
+  // через общий singleton-инстанс (create-flow → редактор). Та же карта уже
+  // кадрирует этот маршрут; перефит под новый контейнер дал бы заметный «скачок»
+  // камеры на финале View-Transition. resize сохраняет центр, поэтому маршрут
+  // остаётся в кадре. Дальнейшие правки (ночи/порядок) фитятся как обычно.
+  preserveInitialCamera = false,
   children,
 }) {
   const containerRef = useRef(null);
@@ -625,7 +631,11 @@ export default function MapView({
     if (canFit && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
-        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 }); // first frame after load: snap
+        // Первый fit после загрузки/смены стиля — мгновенный (без «влёта»). НО когда
+        // камеру передал предыдущий экран через общий singleton (create-flow →
+        // редактор), пропускаем его: та же карта уже кадрирует маршрут, а перефит под
+        // новый контейнер дал бы скачок на финале View-Transition (resize держит центр).
+        if (!preserveInitialCamera) fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 });
       } else if (revealActiveId == null) {
         calmFit(map, pts, { padding: 60, maxZoom: 8 }); // non-public: adaptive calm tempo
       } else {

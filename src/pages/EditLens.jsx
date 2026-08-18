@@ -202,6 +202,7 @@
  * visual-diff-exempt: .menu border-radius — канон action-меню на --r-btn (10, попап аккаунта и все меню); был --r-md (16)
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
@@ -348,6 +349,12 @@ export default function EditLens({ tripId, shell, content }) {
   const { fmtMoney } = useI18nFormat();
   const qc = useQueryClient();
   const { toast } = useToast();
+  // Заход из мастера создания (navWithTransition ставит state.fromCreate): карта —
+  // тот же singleton, что уже кадрировал маршрут на экране успеха, поэтому просим
+  // MapView НЕ перефичивать камеру на первом монтировании — иначе на финале
+  // View-Transition камера скакнёт. Смена линз внутри трипа пушит новую запись
+  // истории без state, так что дальше флаг сам гаснет.
+  const fromCreate = useLocation().state?.fromCreate === true;
   const [draft, setDraft] = useState(null);
   // Left-column panel FSM (replaces the old view/add modals). null = the city
   // list; otherwise the left pane swaps in-place to a panel:
@@ -1156,6 +1163,7 @@ export default function EditLens({ tripId, shell, content }) {
                 то есть карта его никогда не читала, а Object.fromEntries считался
                 на каждый рендер редактора. Нашла прагма. */}
             <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+              preserveInitialCamera={fromCreate}
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
