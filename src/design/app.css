@@ -7946,9 +7946,12 @@ a.doc-row__n:hover{ color: var(--brand); }
 .fork-state__actions .btn { width: 100%; }
 
 /* Branded partner button — solid brand bg (--bg set inline per partner: Booking
-   navy / Viator green) + white logo chip. Reuses the base .btn engine. */
-.btn--brand { box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--bg) 65%, transparent); }
-.btn--brand:hover { box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--bg) 72%, transparent); filter: brightness(1.05); }
+   navy / Viator green) + white logo chip. Reuses the base .btn engine.
+   Свечение снято — как у .btn--primary/ai/pro (запрос Pavel): плоская кнопка без
+   тени, остаётся лишь лёгкий hover-brightness (это отклик, не свечение). */
+.btn--brand:hover { filter: brightness(1.05); }
+/* visual-diff-exempt: .btn--brand box-shadow — снято свечение (rest), как primary/ai/pro (Pavel) */
+/* visual-diff-exempt: .btn--brand:hover box-shadow — снято свечение (hover), как primary/ai/pro (Pavel) */
 .btn__brandlogo { width: 20px; height: 20px; border-radius: 6px; background: #fff; display: grid; place-items: center; flex: none; overflow: hidden; }
 .btn__brandlogo img { width: 15px; height: 15px; object-fit: contain; }
 /* Pager — prev · windowed numbers · next. */

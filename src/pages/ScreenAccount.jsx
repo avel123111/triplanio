@@ -314,7 +314,7 @@ function ReminderChannels() {
                         </Grow>
                       </Row>
                     </Card>
-                    <IconBtn icon="unlink" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
+                    <IconBtn icon="x" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
                   </Row>
                 ))}
                 <Row gap="g4" align="a-start"><Icon name="info" size={13} className="muted" /><span className="t-meta muted">{t('telegram.account_hint')}</span></Row>
