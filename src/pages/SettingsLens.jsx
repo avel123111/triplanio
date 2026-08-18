@@ -397,7 +397,7 @@ function TelegramSection({ tripId }) {
           {/* Отвязка = канон icon-only `<IconBtn>` (danger), та же реализация, что на
               экране аккаунта (ScreenAccount): один объект — одна кнопка. Спиннера нет
               намеренно — подтверждение отвязки идёт своим диалогом с busy. */}
-          <IconBtn icon="x" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} disabled={busyId === a.id} onClick={() => remove(a)} />
+          <IconBtn icon="close" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} disabled={busyId === a.id} onClick={() => remove(a)} />
         </Card>
       ))}
       <Btn variant="secondary" icon="plus" onClick={openConnect}>
