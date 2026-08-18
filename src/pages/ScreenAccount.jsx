@@ -529,7 +529,13 @@ export default function ScreenAccount() {
       if (uploadErr) throw uploadErr;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       const { error, code } = await invokeFn('account/profile', { body: { avatar_url: publicUrl } });
-      if (error || code) { setErrorMsg(errorText(t, code)); return; }
+      if (error || code) {
+        setErrorMsg(errorText(t, code));
+        // Профиль на новый объект не переключился — метём только что залитую
+        // версию, чтобы не оставить сироту (как обложки при сбое).
+        await removeAvatarObject(publicUrl);
+        return;
+      }
       setAvatarUrl(publicUrl);
       // Старый объект больше не адресуется профилем — сносим best-effort.
       await removeAvatarObject(prevUrl);
