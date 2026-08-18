@@ -7705,16 +7705,20 @@ a.doc-row__n:hover{ color: var(--brand); }
 .stats-ghost .is-ghost { opacity: .5; filter: saturate(.45); pointer-events: none; }
 
 /* — map controls + legend + fullscreen (over the .mapwrap surface) — */
-/* ★TRIP-344: `.map-ctl` — плашка-подложка (фон/рамка из surface-канона выше,
-   радиус+паддинг тут); кнопки внутри quiet. Раскладка тут (левый угол, ряд);
-   MapControls переопределяет угол инлайном. Состояние «включено» держит канон
-   `.icon-btn[aria-pressed]` (бренд-заливка) — один способ на все кнопки системы.
+/* ★TRIP-344/337: `.map-ctl` — плашка-подложка (фон/рамка из surface-канона выше,
+   радиус+паддинг тут); кнопки внутри quiet. Раскладка тут — ЕДИНЫЙ угол на все
+   поверхности: правый верхний, колонкой (TRIP-337; инлайн-переопределение угла в
+   MapControls снято). Состояние «включено» держит канон `.icon-btn[aria-pressed]`
+   (бренд-заливка) — один способ на все кнопки системы.
    Подложка = намеренные объявления, не перенос (правило .icon-btn--outline живо):
    visual-diff-exempt: .map-ctl border — плашка-подложка карты (эталон nx)
    visual-diff-exempt: .map-ctl border-radius — плашка-подложка карты (эталон nx)
    visual-diff-exempt: .map-ctl padding — плашка-подложка карты (эталон nx)
-   visual-diff-exempt: .map-ctl gap — зазор кнопок в плашке 4px (эталон nx) */
-.map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-btn); }
+   visual-diff-exempt: .map-ctl gap — зазор кнопок в плашке 4px (эталон nx)
+   visual-diff-exempt: .map-ctl left — единый угол вправо, плашка была слева (TRIP-337, апрув Pavel)
+   visual-diff-exempt: .map-ctl right — единый угол вправо (TRIP-337, апрув Pavel)
+   visual-diff-exempt: .map-ctl flex-direction — плашка колонкой на всех поверхностях (TRIP-337, апрув Pavel) */
+.map-ctl { position: absolute; right: 14px; top: 13px; z-index: 3; display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-btn); }
 /* Живая обратная связь на нажатие пальцем (примитив её не несёт). */
 .map-ctl button:active { transform: scale(.92); }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
@@ -7734,19 +7738,21 @@ a.doc-row__n:hover{ color: var(--brand); }
    reparent — the same map element just fills the viewport; consumer calls resize) */
 .mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; }
 /* TRIP-326: glass снят. */
-/* ★TRIP-344: круг, сторона и цвет уехали в `IconBtn tone="outline" round`.
-   Здесь остаётся только то, где кнопка лежит: примитиву это знать неоткуда, а
-   два правила ниже ещё и двигают её `top` в полноэкранном режиме.
-   Ховера у неё не было вовсе - теперь приходит с тоном.
-   visual-diff-move: .mapfs-close -> icon-btn icon-btn--outline icon-btn--round */
-.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; }
-/* Fullscreen sits above the app header (--z-overlay is above --z-header). On
-   mobile, push the controls below the header band (54px) + notch so the close +
-   mode buttons are never hidden under the top bar — robust regardless of any
+/* ★TRIP-337: отдельный `.mapfs-close` (X выхода) удалён как избыточный — выход из
+   фуллскрина несёт тоггл фуллскрина в единой плашке `.map-ctl` (pressed = в
+   фуллскрине). Один контрол фуллскрина вместо двух.
+   visual-diff-exempt: .mapfs-close position — класс X выхода удалён (TRIP-337, апрув Pavel)
+   visual-diff-exempt: .mapfs-close right — класс X выхода удалён (TRIP-337, апрув Pavel)
+   visual-diff-exempt: .mapfs-close top — класс X выхода удалён (TRIP-337, апрув Pavel)
+   visual-diff-exempt: .mapfs-close z-index — класс X выхода удалён (TRIP-337, апрув Pavel)
+   visual-diff-exempt: .mapfs-close {@media (max-width: 640px)} top — класс X выхода удалён (TRIP-337, апрув Pavel)
+   Fullscreen sits above the app header (--z-overlay is above --z-header). On
+   mobile, push the controls below the header band (54px) + notch so the mode
+   buttons are never hidden under the top bar — robust regardless of any
    stacking context. */
-.mapwrap.is-fs .map-ctl, .mapwrap.is-fs .mapfs-close { top: max(13px, calc(env(safe-area-inset-top) + 10px)); }
+.mapwrap.is-fs .map-ctl { top: max(13px, calc(env(safe-area-inset-top) + 10px)); }
 @media (max-width: 640px) {
-  .mapwrap.is-fs .map-ctl, .mapwrap.is-fs .mapfs-close { top: calc(54px + max(12px, env(safe-area-inset-top))); }
+  .mapwrap.is-fs .map-ctl { top: calc(54px + max(12px, env(safe-area-inset-top))); }
 }
 
 /* — visit panel (desktop right slide-over / mobile bottom sheet) over the app — */
