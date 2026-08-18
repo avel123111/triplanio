@@ -4367,9 +4367,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      side padding (for the wide chat lens); in the narrow planner panel that just
      squeezes the field, so drop both here (same as the dock-panel context does).
    • background-origin: border-box — the icon-btn carries a 1px transparent border, so
-     a padding-box gradient left a band at the edges (Pavel "полосы по краям"). */
+     a padding-box gradient left a band at the edges (Pavel "полосы по краям").
+   • The fill is the SAME recipe as the canonical `.btn--ai` AI CTA, so the send
+     button reads as the system's AI button, not a one-off: `--ai-gradient` framed
+     with `background-size: 170% 170%` and, on hover, the gradient SLIDES
+     (`background-position: 100% 0`) — the `.btn--ai:hover` motion, NOT the base
+     `.chat-send:hover` brightness bump (Pavel: "градиент странный и ховер не такой").
+     The slide needs `background-position` in the transition — the base `.chat-send`
+     transition doesn't carry it, so redeclare here (mirrors the `.btn` base). */
 .chat-composer--ai .chat-composer__in { max-width: none; padding: 0; }
-.chat-composer--ai .chat-send { background: var(--ai-gradient); background-origin: border-box; box-shadow: 0 6px 16px -9px var(--ai); }
+.chat-composer--ai .chat-send {
+  background: var(--ai-gradient); background-origin: border-box; background-size: 170% 170%;
+  box-shadow: 0 6px 16px -9px var(--ai);
+  transition: transform .16s var(--ease-spring), background-position .4s var(--ease-out);
+}
+.chat-composer--ai .chat-send:hover { filter: none; background-position: 100% 0; }
 .chat-composer--ai .chat-send:disabled { box-shadow: none; }
 /* Call the assistant without knowing the "@" convention.
    ★Тон `ai` в каноне - это ХОВЕР-тинт (так его носит крестик AI-блока). Эта

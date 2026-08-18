@@ -1369,7 +1369,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             <div className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
-                <PanelAi ctx={{ aiMessages, onGenerate, userName: user?.full_name || user?.email || '', userPhoto: user?.avatar_url || '', userSeed: user?.id }} />
+                <PanelAi ctx={{ aiMessages, onGenerate }} />
               ) : (
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}

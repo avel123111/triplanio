@@ -10,10 +10,11 @@ import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 // AI ENTRY PANEL — the CONVERSATION (transcript only). The composer is pinned by
 // ManualPlanner as a separate <ChatComposer> bar below this scroller. Sides mirror
 // the trip chat (Pavel): the BOT is left (avatar + tinted card), the USER is right
-// (avatar + own bubble). Vertical rhythm comes from the chat's own per-message
-// margins (.chat-reply / .chat-run), NOT a wrapping gap — a wrapping gap stacked on
-// top of them read as double spacing.
-//   ctx: { aiMessages, onGenerate(promptText), userName, userPhoto, userSeed }
+// (own bubble only — no avatar, no name, exactly like the sender's own message in
+// the trip chat). Vertical rhythm comes from the chat's own per-message margins
+// (.chat-reply / .chat-run), NOT a wrapping gap — a wrapping gap stacked on top of
+// them read as double spacing.
+//   ctx: { aiMessages, onGenerate(promptText) }
 // =====================================================================
 
 // The itinerary the bot proposed on a turn — a light list (start → cities), reusing
@@ -61,27 +62,23 @@ function BotMessage({ children }) {
   );
 }
 
-// User turn — RIGHT: the trip chat's own-message structure (chat-run--me /
-// chat-run__col / chat-bubble--me), with the user's avatar + name added. DOM order
-// is [body, avatar] and the row is justify-end (`.chat-run--me`), so both sit at the
-// right edge with the avatar last (rightmost) — NO row-reverse (reverse flips
-// justify-end to the left and threw the bubble across the panel). Name uses
-// `.chat-name` — a PARTICIPANT name (ink), NOT the assistant's `.chat-reply__who`.
-function UserMessage({ text, name, photo, seed }) {
+// User turn — RIGHT: EXACTLY the trip chat's own message (chat-run--me /
+// chat-run__col / chat-bubble--me). In the trip chat the sender's own message has
+// NO avatar and NO name (`{!isMe && avatar}`, `{!isMe && name}`), so neither is
+// drawn here either — just the bubble, right-aligned by `.chat-run--me`.
+function UserMessage({ text }) {
   return (
     <div className="row row--a-start row--g6 chat-run chat-run--me">
       <div className="col col--g2 chat-run__col">
-        <div className="chat-name"><b>{name}</b></div>
         <div className="chat-bubble chat-bubble--me"><span style={{ whiteSpace: 'pre-wrap' }}>{text}</span></div>
       </div>
-      <div className="chat-run__av"><Avatar name={name} photo={photo} seed={seed} /></div>
     </div>
   );
 }
 
 export default function PanelAi({ ctx }) {
   const t = useT();
-  const { aiMessages = [], onGenerate, userName, userPhoto, userSeed } = ctx;
+  const { aiMessages = [], onGenerate } = ctx;
 
   // Auto-scroll the transcript to the newest message (the panel body is the scroller).
   const endRef = useRef(null);
@@ -96,7 +93,7 @@ export default function PanelAi({ ctx }) {
   return (
     <div>
       {aiMessages.map((m) => {
-        if (m.role === 'user') return <UserMessage key={m.id} text={m.text} name={userName} photo={userPhoto} seed={userSeed} />;
+        if (m.role === 'user') return <UserMessage key={m.id} text={m.text} />;
         if (m.kind === 'welcome') return <BotMessage key={m.id}><span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span></BotMessage>;
         if (m.kind === 'error') return <BotMessage key={m.id}><span className="t-body">{t('ai_plan.error_plan_title')}</span></BotMessage>;
         return (
