@@ -1,113 +1,123 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Card, Chip, Textarea, Tile } from '../../design/index';
+import { Avatar, Card, Chip, Tile } from '../../design/index';
+import CountryFlag from '@/components/common/CountryFlag';
+import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import { useT } from '@/lib/i18n/I18nContext';
-import { CityAnchorRow } from './anchors';
+import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 
 // =====================================================================
-// AI ENTRY PANEL — design-system A6 (AI Planner / PanelAi). Vertical rhythm via
-// one flex-gap column: title → prompt field → assistant status → draft. The
-// prompt uses the design-system <Textarea> instead of the old inline
-// border:none/padding:0 hack that cramped the text against the edge.
-// 3 states: prompt → generating → draft. The Next button lives in the shared
-// flow footer (ManualPlanner), not here.
-//   ctx: { aiState, prompt, setPrompt, aiComment, home, setHome, returnCity,
-//          cities, onGenerate(promptText) }
+// AI ENTRY PANEL — the CONVERSATION (transcript only). The composer is pinned by
+// ManualPlanner as a separate <ChatComposer> bar below this scroller. Sides mirror
+// the trip chat (Pavel): the BOT is left (avatar + tinted card), the USER is right
+// (own bubble only — no avatar, no name, exactly like the sender's own message in
+// the trip chat). Vertical rhythm comes from the chat's own per-message margins
+// (.chat-reply / .chat-run), NOT a wrapping gap — a wrapping gap stacked on top of
+// them read as double spacing.
+//   props: aiMessages[], onGenerate(promptText) — direct props, like its sibling
+//   flow panels (FlowMap / FlowProgress / StepHome), not a ctx bag.
 // =====================================================================
-export default function PanelAi({ ctx }) {
+
+// The itinerary the bot proposed on a turn — a light list (start → cities), reusing
+// the editor's name/number primitives + CountryFlag; no new classes.
+function DraftItinerary({ draft }) {
   const t = useT();
-  const { aiState, prompt, setPrompt, aiComment, home, setHome, returnCity, cities = [], onGenerate } = ctx;
-  const canPrompt = prompt.trim().length > 0 && aiState !== 'generating';
+  const home = draft?.home;
+  const cities = draft?.cities || [];
+  if (!home?.city_name && cities.length === 0) return null;
+  return (
+    <div className="col col--g3 pl-ai-draft">
+      {home?.city_name && (
+        <div className="row row--g4">
+          <Tile as="span" round className="te-row__node" style={{ '--hl-soft': 'var(--ai-soft)', '--hl-ink': 'var(--ai-ink)' }}>
+            {home.country_code ? <CountryFlag code={home.country_code} /> : <Icon name="flag" size={11} />}
+          </Tile>
+          <span className="te-cityname trunc grow">{home.city_name}</span>
+          <span className="muted t-meta">{t('ai_plan.start')}</span>
+        </div>
+      )}
+      {cities.map((c, i) => (
+        <div key={c.id} className="row row--g4">
+          <Tile as="span" round className="te-row__num">{i + 1}</Tile>
+          <span className="te-cityname trunc grow">{c.city_name}{c.country ? <span className="muted t-meta"> {c.country}</span> : null}</span>
+          <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  let statusText;
-  if (aiState === 'generating') statusText = t('ai_plan.status_generating');
-  else if (aiState === 'draft') statusText = aiComment || t('ai_plan.status_ready');
-  else statusText = t('ai_plan.status_waiting');
+// Assistant turn — LEFT: avatar + name + tinted card. Same shell/skin as the trip
+// chat's ChatReply.
+function BotMessage({ children }) {
+  return (
+    <div className="chat-reply">
+      <div className="row row--g6">
+        <div className="chat-run__av"><Avatar kind="ai" /></div>
+        <div className="col col--g4 grow--fit">
+          <div className="row row--g4 chat-reply__who"><b>{TRIPLANIO_BOT_NAME}</b></div>
+          <Card radius="md" className="chat-reply__card">{children}</Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// User turn — RIGHT: the trip chat's own-message SHELL (chat-run--me /
+// chat-run__col / chat-bubble--me). In the trip chat the sender's own message has
+// NO avatar and NO name (`{!isMe && avatar}`, `{!isMe && name}`), so neither is
+// drawn here either — just the bubble, right-aligned by `.chat-run--me`. The body
+// is a plain pre-wrap span, NOT the chat's ChatMarkdown: a user's typed prompt is
+// literal text, so `*`/`_`/`` ` `` must stay as typed, not turn into formatting.
+function UserMessage({ text }) {
+  return (
+    <div className="row row--a-start row--g6 chat-run chat-run--me">
+      <div className="col col--g2 chat-run__col">
+        <div className="chat-bubble chat-bubble--me"><span style={{ whiteSpace: 'pre-wrap' }}>{text}</span></div>
+      </div>
+    </div>
+  );
+}
+
+export default function PanelAi({ aiMessages = [], onGenerate }) {
+  const t = useT();
+
+  // Auto-scroll the transcript to the newest message (the panel body is the scroller).
+  const endRef = useRef(null);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [aiMessages.length]);
+
+  // Quick-start chips only on the opening turn (nothing sent yet); tapping one sends
+  // it straight to the bot. They sit UNDER the welcome message, indented by an
+  // avatar-width spacer so they line up with the message body (not the panel edge);
+  // `.pl-ai-chips` binds their font to the Meta canon.
+  const showChips = aiMessages.length <= 1;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Title */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div className="tile tile--xl tile--ai tile--solid">
-          <Icon name="sparkles" size={21} />
-        </div>
-        <div>
-          <h1>{t('ai_plan.title')}</h1>
-          <div className="muted t-body">{t('ai_plan.page_subtitle')}</div>
-        </div>
-      </div>
+    <div>
+      {aiMessages.map((m) => {
+        if (m.role === 'user') return <UserMessage key={m.id} text={m.text} />;
+        if (m.kind === 'welcome') return <BotMessage key={m.id}><span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span></BotMessage>;
+        if (m.kind === 'error') return <BotMessage key={m.id}><span className="t-body">{t('ai_plan.error_plan_title')}</span></BotMessage>;
+        return (
+          <BotMessage key={m.id}>
+            {m.text ? <div className="chat-reply__text"><ChatMarkdown text={m.text} linkClassName="cm-a cm-a--brand" /></div> : null}
+            <DraftItinerary draft={m.draft} />
+          </BotMessage>
+        );
+      })}
 
-      {/* Prompt field — plain design-system input (neutral surface, NOT the AI
-          tint: the assistant reply block right below is already ai-purple, so a
-          purple textarea stacked on it read as one muddy block). */}
-      <div className="field" style={{ marginBottom: 0 }}>
-        <label className="field__label">{t('ai_plan.assistant_hint')}</label>
-        {/* The submit CTA sits INSIDE the textarea (bottom-right, like a chat
-            composer) — the textarea reserves bottom padding so text never runs
-            under the button. */}
-        <div style={{ position: 'relative' }}>
-          <Textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={aiState === 'generating'}
-            placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-            rows={5}
-            style={{ paddingBottom: 58 }}
-          />
-          <div style={{ position: 'absolute', right: 14, bottom: 14 }}>
-            {aiState === 'generating' ? (
-              <Btn variant="ai" disabled>
-                {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
-              </Btn>
-            ) : aiState === 'draft' ? (
-              <Btn variant="ai" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
-            ) : (
-              <Btn variant="ai" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
-            )}
+      {showChips && (
+        <div className="row row--g6 pl-ai-chips">
+          <div className="chat-run__av" aria-hidden="true" />
+          <div className="row row--wrap row--g4 grow--fit">
+            {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
+              <Chip key={p} onClick={() => onGenerate(p)}>{p}</Chip>
+            ))}
           </div>
         </div>
-      </div>
-
-      {/* Assistant status reply */}
-      <div className="t-body" style={{ padding: 14, background: 'var(--ai-soft)', borderRadius: 'var(--r-sm)', color: 'var(--ink-2)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <Tile as="span" round style={{ '--tile': '22px', '--tile-ic': '11px', '--hl-soft': 'var(--ai-gradient)', '--hl-ink': '#fff' }}><Icon name="sparkles" size={11} /></Tile>
-          <b className="t-meta" style={{ color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_label')}</b>
-          {aiState === 'generating' && <span className="ai-dots" style={{ color: 'var(--ai)', marginLeft: 'auto' }}><span /><span /><span /></span>}
-        </div>
-        <span style={{ whiteSpace: 'pre-wrap' }}>{statusText}</span>
-      </div>
-
-      {/* Draft city list */}
-      {aiState === 'draft' && cities.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div className="eyebrow">{t('ai_plan.draft_label')}</div>
-          {/* Origin — OPTIONAL. Editable so a departure the AI didn't recognise
-              can be added right here or skipped (same add-start control as step 2). */}
-          <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
-          {cities.map((c, i) => (
-            /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
-            <Card key={c.id} radius="btn" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px' }}>
-              <Tile as="div" round className="t-meta" style={{ '--tile': '24px', '--hl-soft': 'var(--ai)', '--hl-ink': '#fff' }}>{i + 1}</Tile>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="trunc te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>
-              </div>
-              <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
-            </Card>
-          ))}
-          {/* Return/finish — shown only for a round-trip (finish == origin). */}
-          {returnCity?.city_name && <CityAnchorRow label={t('ai_plan.end')} city={returnCity} />}
-        </div>
       )}
 
-      {/* Prompt chips */}
-      {aiState === 'prompt' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
-            <Chip key={p} onClick={() => setPrompt(p)}>{p}</Chip>
-          ))}
-        </div>
-      )}
+      <div ref={endRef} />
     </div>
   );
 }

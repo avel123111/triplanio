@@ -77,7 +77,19 @@ export const Input = ({ icon, iconNode, loading, onClear, clearLabel, num, class
           {ringRight ? (
             <span aria-hidden="true">{ring}</span>
           ) : (
-            <button type="button" className="input-affix__clear" onClick={onClear} aria-label={clearLabel} tabIndex={-1}>
+            <button
+              type="button"
+              className="input-affix__clear"
+              /* preventDefault on mousedown: without it, mousedown here shifts focus
+                 → a focus-driven parent (the `:has(:focus-within)` field-row widen,
+                 the Autocomplete dropdown) re-renders BETWEEN mousedown and mouseup,
+                 so the two land on different elements and no `click` ever fires — the
+                 × read as "clicked the input" and never cleared (root cause of #9). */
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={onClear}
+              aria-label={clearLabel}
+              tabIndex={-1}
+            >
               <Icon name="close" size={14} />
             </button>
           )}

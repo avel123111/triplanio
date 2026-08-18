@@ -873,6 +873,7 @@ h4,
    visual-diff-exempt: .t-support letter-spacing — новый канон (0) */
 .t-support { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
 .t-meta,
+.pl-ai-chips .fpill,     /* TRIP-337: чипы-подсказки AI-планнера на канон Meta (у .fpill свой `font: inherit`, поэтому нужен селектор специфичнее) */
 .dock-panel__id span,    /* TRIP-337 инсп.: подзаголовок виджета чата off-canon→Meta */
 .field__hint,
 .app-header__trip-meta,
@@ -2308,19 +2309,30 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
    неравные, и низ у них разной высоты - выравнивание по НИЗУ, иначе контрол
    всплывает к верхнему краю более высокого поля. */
-.field-row--aside { grid-template-columns: 7fr 3fr; align-items: end; transition: grid-template-columns .3s var(--ease-out); }
+.field-row--aside { grid-template-columns: 7fr 3fr; align-items: start; transition: grid-template-columns .18s var(--ease-out); }
 /* На фокусе ПЕРВОГО поля (город старта) строка ПЛАВНО схлопывает правый контрол-
    «аси́д» (дату) — поле и его дропдаун занимают всю ширину, как is-editing у рядов
    шага 2. Это канон «раздвижение по фокусу» (TRIP-337), переиспользуемый дальше.
    Анимируем ТРЕК грида 3fr→0fr (fr↔fr интерполируется на современных движках; на
    очень старых — жёсткий схлоп, но рабочий), а не `display:none` (его анимировать
-   нельзя). Аси́д клипуется (overflow) и гаснет; после схлопа убирается из таб-порядка
-   (visibility с задержкой). `:has` читает фокус ВНУТРИ первого поля — фокус самого
-   контрола даты (последнее поле) строку не трогает. */
+   нельзя). `:has` читает фокус ВНУТРИ первого поля — фокус самого контрола даты
+   (последнее поле) строку не трогает.
+   ⚠️ `min-width:0`+`overflow:hidden` стоят ТОЛЬКО на схлопнутом состоянии, не в
+   покое: в покое они дали бы треку ужаться ниже min-content контрола и КЛИПНУЛИ бы
+   дату (плюс `+` степпера) — баг #8. В покое трек уважает ширину контрола, дата
+   видна целиком; клип нужен лишь пока трек анимируется к нулю.
+   `align-items: start` (не end): при схлопе аси́д может стать выше (перенос узкого
+   контента), и на `end` это опускало бы город с датой ВНИЗ — баг #10. */
 .field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: 1fr 0fr; }
-.field-row--aside > .field:last-child { min-width: 0; overflow: hidden; transition: opacity .2s ease; }
+/* nowrap on the aside so it NEVER reflows taller as its track shrinks to 0 — otherwise
+   the label wraps to many lines, grows the row, and everything BELOW the row (the
+   "Рядом" section) is pushed down mid-animation (Pavel). Height stays constant → the
+   row height stays constant → nothing above or below moves. Harmless at rest (the
+   control already fits on one line). */
+.field-row--aside > .field:last-child { transition: opacity .16s ease; white-space: nowrap; }
 .field-row--aside:has(> .field:first-child:focus-within) > .field:last-child {
-  opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .3s;
+  min-width: 0; overflow: hidden; opacity: 0; visibility: hidden;
+  transition: opacity .16s ease, visibility 0s linear .18s;
 }
 
 /* Badge / chip */
@@ -3581,6 +3593,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   border-radius: var(--r-btn);
   box-shadow: var(--sh-2);
 }
+/* Dark theme: the floating panel (header + body + footer) drops from the raised
+   white surface to the app background, so it reads as one dim panel over the map
+   instead of a bright card (Pavel, TRIP-337). Scoped to the planner — the shared
+   `.lp-f` keeps its `--wash` everywhere else. Body (`.lp-b`) is transparent, so it
+   inherits the panel; only the header/footer, which set their own fill, are re-set. */
+[data-theme="dark"] .flow-editcol > .lp,
+[data-theme="dark"] .flow-editcol .flow-lp-h,
+[data-theme="dark"] .flow-editcol .lp-f { background: var(--bg); }
 /* Floating round "back" control on the map (canon layout, reused on other
    screens): white surface circle (icon-btn--outline) top-left, over the map.
    Hidden by default; shown on the mobile shell where the app header is removed. */
@@ -3745,6 +3765,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    секции внутри ПЛОСКИЕ и разделены бордюрами — hero клипуется к радиусу карточки,
    `.statbar` и маршрут больше НЕ несут своих скруглений (был «радиус в радиусе»
    внутри flush-родителя). Пространство `pl` уже существует (`.pl-revrow`). */
+/* The itinerary list inside an AI chat reply — a small gap off the reply text. */
+.pl-ai-draft { margin-top: var(--sp-5); }
+/* Quick-start chips under the welcome message — a small gap below it. The empty
+   `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
+.pl-ai-chips { margin-top: var(--sp-4); }
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
 /* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a
@@ -4335,6 +4360,29 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* `cursor: not-allowed` тут больше нет: канон гасит `pointer-events` у
    `[disabled]`, и курсор был бы объявлением, которое никогда не наблюдается. */
 .chat-send:disabled { box-shadow: none; }
+/* AI-planner composer: the send button carries the assistant gradient instead of the
+   brand solid, and there's no @-mention button (hideMention). `--ai` extends the
+   existing `chat-composer` family — same size/skin, only the send fill differs.
+   • Full width: the base `.chat-composer__in` centres itself with a 760px cap + 24px
+     side padding (for the wide chat lens); in the narrow planner panel that just
+     squeezes the field, so drop both here (same as the dock-panel context does).
+   • background-origin: border-box — the icon-btn carries a 1px transparent border, so
+     a padding-box gradient left a band at the edges (Pavel "полосы по краям").
+   • The fill is the SAME recipe as the canonical `.btn--ai` AI CTA, so the send
+     button reads as the system's AI button, not a one-off: `--ai-gradient` framed
+     with `background-size: 170% 170%` and, on hover, the gradient SLIDES
+     (`background-position: 100% 0`) — the `.btn--ai:hover` motion, NOT the base
+     `.chat-send:hover` brightness bump (Pavel: "градиент странный и ховер не такой").
+     The slide needs `background-position` in the transition — the base `.chat-send`
+     transition doesn't carry it, so redeclare here (mirrors the `.btn` base). */
+.chat-composer--ai .chat-composer__in { max-width: none; padding: 0; }
+.chat-composer--ai .chat-send {
+  background: var(--ai-gradient); background-origin: border-box; background-size: 170% 170%;
+  box-shadow: 0 6px 16px -9px var(--ai);
+  transition: transform .16s var(--ease-spring), background-position .4s var(--ease-out);
+}
+.chat-composer--ai .chat-send:hover { filter: none; background-position: 100% 0; }
+.chat-composer--ai .chat-send:disabled { box-shadow: none; }
 /* Call the assistant without knowing the "@" convention.
    ★Тон `ai` в каноне - это ХОВЕР-тинт (так его носит крестик AI-блока). Эта
    кнопка - единственная, которая несёт тот же тинт В ПОКОЕ, поэтому заливка

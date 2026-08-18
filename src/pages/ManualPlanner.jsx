@@ -29,6 +29,7 @@ import { coverGradientCss, DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
+import ChatComposer from '@/components/chat/ChatComposer';
 import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -810,10 +811,16 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [selectedMapId, setSelectedMapId] = useState(null);
 
   // ── AI-entry state (only used when method === 'ai') ────────────────────────
-  const [prompt, setPrompt]                 = useState('');
+  // The prompt text lives in <ChatComposer> (it owns its own field); the flow keeps
+  // only the transcript + generation state.
   const [aiState, setAiState]               = useState(isAi ? 'prompt' : 'draft'); // prompt | generating | draft
-  const [aiComment, setAiComment]           = useState('');
   const [sessionId, setSessionId]           = useState(() => crypto.randomUUID());
+  // Chat transcript for the AI flow (Pavel, TRIP-337): a conversation with the bot,
+  // not one pink comment. `kind:'welcome'`/`'error'` render their text from i18n (so a
+  // language switch re-localizes them); an assistant turn stores the bot's `text` +
+  // a `draft` snapshot of the itinerary it proposed. n8n keeps context by sessionId,
+  // so follow-up messages refine the draft.
+  const [aiMessages, setAiMessages]         = useState(() => (isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []));
 
   // Restore from sessionStorage on mount - only for the current user
   useEffect(() => {
@@ -832,6 +839,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         if (saved.startDate) setStartDateRaw(saved.startDate);
         if (saved.cover) setCover(saved.cover);
         if (saved.aiState && isAi) setAiState(saved.aiState);
+        if (saved.aiMessages?.length && isAi) setAiMessages(saved.aiMessages);
       }
     } catch {}
     setRestored(true);
@@ -841,9 +849,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState }));
+      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, aiMessages }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, restored, user?.id]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, aiMessages, restored, user?.id]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
   // Empty/invalid values are IGNORED - the trip start is required and can't be
@@ -931,7 +939,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     }
 
     // Start city → home (origin marker; optional, no nights/dates of its own).
-    setHome(startCity?.city_name ? startCity : null);
+    const resolvedHome = startCity?.city_name ? startCity : null;
+    setHome(resolvedHome);
 
     // Finish/return — mapped to the SAME model the manual flow uses (Pavel's
     // call): a one-way end (a distinct final city, not the origin) sets finalPoint
@@ -953,7 +962,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
     // Transit cities anchored to the first city's start_date (or default).
     const anchor = finalCities[0]?.startDate || defaultStartISO();
-    setCities(recomputeDates(finalCities, anchor));
+    const resolvedCities = recomputeDates(finalCities, anchor);
+    setCities(resolvedCities);
     setStartDateRaw(anchor);
 
     setFinalPoint(oneWayEnd);
@@ -961,6 +971,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setReturnCity(null);
 
     if (d?.title) setTripTitle(d.title);
+    // Return the resolved draft so the caller can snapshot it into the chat message
+    // (each assistant turn shows the itinerary it proposed).
+    return { home: resolvedHome, cities: resolvedCities, finalPoint: oneWayEnd, title: d?.title || '' };
   };
 
   const planMut = useMutation({
@@ -978,11 +991,22 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       }
       return data;
     },
-    onMutate: () => { setAiState('generating'); setError(null); },
+    onMutate: (vars) => {
+      setAiState('generating'); setError(null);
+      // The prompt becomes an outgoing chat message (the composer clears itself).
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'user', text: vars.promptText }]);
+    },
     onSuccess: async (data) => {
       const out = data?.output || {};
-      setAiComment(out.ai_comment || '');
-      await applyAiDraft(out.draft || {});
+      const full = await applyAiDraft(out.draft || {});
+      // The bot's reply = its text + a DISPLAY-ONLY snapshot of the itinerary it
+      // proposed (name / country / nights only — not the full resolved city objects
+      // with coords/tz/ids), so a multi-turn transcript in sessionStorage stays small.
+      const draft = {
+        home: full.home ? { city_name: full.home.city_name, country_code: full.home.country_code } : null,
+        cities: (full.cities || []).map((c) => ({ id: c.id, city_name: c.city_name, country: c.country, nights: c.nights })),
+      };
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '', draft }]);
       setAiState('draft');
     },
     onError: (err) => {
@@ -992,6 +1016,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const description = err?.context?.status === 429
         ? t('ai_plan.error_rate_limited')
         : errorText(t, err?.code);
+      // A bot bubble closes the turn so the outgoing message isn't left hanging; the
+      // toast still carries the specific reason. Text is from i18n (never raw server prose).
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', kind: 'error' }]);
       toast({ title: t('ai_plan.error_plan_title'), description, variant: 'destructive' });
     },
   });
@@ -1026,9 +1053,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setSavedOk(false);
     setSavedTripId(null);
     setError(null);
-    // AI-entry reset
-    setPrompt('');
-    setAiComment('');
+    // AI-entry reset — fresh transcript (back to the welcome) + a new n8n session.
+    setAiMessages(isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []);
     setAiState(isAi ? 'prompt' : 'draft');
     setSessionId(crypto.randomUUID());
     try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
@@ -1343,7 +1369,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             <div className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
-                <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, home, setHome, returnCity: effectiveReturn, cities, onGenerate }} />
+                <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
               ) : (
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}
@@ -1381,12 +1407,29 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               )}
             </div>
 
+            {/* AI composer — a pinned bar (flex:none) between the scrolling transcript
+                and the footer, exactly like the trip chat. Reuses <ChatComposer>: no
+                @-mention here (hideMention), the send button in the assistant gradient
+                (chat-composer--ai), and the "Triplanio печатает" pill while generating. */}
+            {step === 'home' && isAi && (
+              <ChatComposer
+                className="chat-composer--ai"
+                hideMention
+                onSend={onGenerate}
+                disabled={aiState === 'generating'}
+                isThinking={aiState === 'generating'}
+                placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
+              />
+            )}
+
             {showFooter && (
               <div className="lp-f flow-foot">
                 {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
                 {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
-                    icon in the header) — nav actions all live in the action bar. */}
-                {!isFirstStep && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+                    icon in the header) — nav actions all live in the action bar. It
+                    also shows on the AI entry step (step 1), where a conversation can
+                    already have built a draft to clear. */}
+                {(!isFirstStep || (isAi && step === 'home')) && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
                 <div className="flow-foot__spacer grow" />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>
