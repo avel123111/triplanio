@@ -812,8 +812,13 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // ── AI-entry state (only used when method === 'ai') ────────────────────────
   const [prompt, setPrompt]                 = useState('');
   const [aiState, setAiState]               = useState(isAi ? 'prompt' : 'draft'); // prompt | generating | draft
-  const [aiComment, setAiComment]           = useState('');
   const [sessionId, setSessionId]           = useState(() => crypto.randomUUID());
+  // Chat transcript for the AI flow (Pavel, TRIP-337): a conversation with the bot,
+  // not one pink comment. `kind:'welcome'`/`'error'` render their text from i18n (so a
+  // language switch re-localizes them); an assistant turn stores the bot's `text` +
+  // a `draft` snapshot of the itinerary it proposed. n8n keeps context by sessionId,
+  // so follow-up messages refine the draft.
+  const [aiMessages, setAiMessages]         = useState(() => (isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []));
 
   // Restore from sessionStorage on mount - only for the current user
   useEffect(() => {
@@ -832,6 +837,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         if (saved.startDate) setStartDateRaw(saved.startDate);
         if (saved.cover) setCover(saved.cover);
         if (saved.aiState && isAi) setAiState(saved.aiState);
+        if (saved.aiMessages?.length && isAi) setAiMessages(saved.aiMessages);
       }
     } catch {}
     setRestored(true);
@@ -841,9 +847,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState }));
+      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, aiMessages }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, restored, user?.id]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, aiMessages, restored, user?.id]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
   // Empty/invalid values are IGNORED - the trip start is required and can't be
@@ -931,7 +937,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     }
 
     // Start city → home (origin marker; optional, no nights/dates of its own).
-    setHome(startCity?.city_name ? startCity : null);
+    const resolvedHome = startCity?.city_name ? startCity : null;
+    setHome(resolvedHome);
 
     // Finish/return — mapped to the SAME model the manual flow uses (Pavel's
     // call): a one-way end (a distinct final city, not the origin) sets finalPoint
@@ -953,7 +960,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
     // Transit cities anchored to the first city's start_date (or default).
     const anchor = finalCities[0]?.startDate || defaultStartISO();
-    setCities(recomputeDates(finalCities, anchor));
+    const resolvedCities = recomputeDates(finalCities, anchor);
+    setCities(resolvedCities);
     setStartDateRaw(anchor);
 
     setFinalPoint(oneWayEnd);
@@ -961,6 +969,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setReturnCity(null);
 
     if (d?.title) setTripTitle(d.title);
+    // Return the resolved draft so the caller can snapshot it into the chat message
+    // (each assistant turn shows the itinerary it proposed).
+    return { home: resolvedHome, cities: resolvedCities, finalPoint: oneWayEnd, title: d?.title || '' };
   };
 
   const planMut = useMutation({
@@ -978,11 +989,17 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       }
       return data;
     },
-    onMutate: () => { setAiState('generating'); setError(null); },
+    onMutate: (vars) => {
+      setAiState('generating'); setError(null);
+      // The prompt becomes an outgoing chat message; clear the composer.
+      setAiMessages((m) => [...m, { id: `u${Date.now()}`, role: 'user', text: vars.promptText }]);
+      setPrompt('');
+    },
     onSuccess: async (data) => {
       const out = data?.output || {};
-      setAiComment(out.ai_comment || '');
-      await applyAiDraft(out.draft || {});
+      const draft = await applyAiDraft(out.draft || {});
+      // The bot's reply = its text + a snapshot of the itinerary it proposed.
+      setAiMessages((m) => [...m, { id: `a${Date.now()}`, role: 'assistant', text: out.ai_comment || '', draft }]);
       setAiState('draft');
     },
     onError: (err) => {
@@ -992,6 +1009,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const description = err?.context?.status === 429
         ? t('ai_plan.error_rate_limited')
         : errorText(t, err?.code);
+      // A bot bubble closes the turn so the outgoing message isn't left hanging; the
+      // toast still carries the specific reason. Text is from i18n (never raw server prose).
+      setAiMessages((m) => [...m, { id: `e${Date.now()}`, role: 'assistant', kind: 'error' }]);
       toast({ title: t('ai_plan.error_plan_title'), description, variant: 'destructive' });
     },
   });
@@ -1026,9 +1046,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setSavedOk(false);
     setSavedTripId(null);
     setError(null);
-    // AI-entry reset
+    // AI-entry reset — fresh transcript (back to the welcome) + a new n8n session.
     setPrompt('');
-    setAiComment('');
+    setAiMessages(isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []);
     setAiState(isAi ? 'prompt' : 'draft');
     setSessionId(crypto.randomUUID());
     try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
@@ -1343,7 +1363,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             <div className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
-                <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, home, setHome, returnCity: effectiveReturn, cities, onGenerate }} />
+                <PanelAi ctx={{ aiState, prompt, setPrompt, aiMessages, home, setHome, returnCity: effectiveReturn, cities, onGenerate }} />
               ) : (
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}

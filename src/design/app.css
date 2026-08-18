@@ -3745,6 +3745,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    секции внутри ПЛОСКИЕ и разделены бордюрами — hero клипуется к радиусу карточки,
    `.statbar` и маршрут больше НЕ несут своих скруглений (был «радиус в радиусе»
    внутри flush-родителя). Пространство `pl` уже существует (`.pl-revrow`). */
+/* The itinerary list inside an AI chat reply — a small gap off the reply text. */
+.pl-ai-draft { margin-top: var(--sp-5); }
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
 /* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a
