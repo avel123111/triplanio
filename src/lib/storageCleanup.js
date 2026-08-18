@@ -87,6 +87,8 @@ export async function removeTripFiles(paths) {
   for (let i = 0; i < unique.length; i += 100) {
     const chunk = unique.slice(i, i + 100);
     try {
+      // storage-soft-fail: подметание сирот трип-бакета — по контракту не бросает
+      // и ничего пользователю не должно; лишний объект метётся позже, не инцидент.
       const { error } = await supabase.storage.from(TRIP_BUCKET).remove(chunk);
       if (error) console.error('removeTripFiles: remove failed', error);
     } catch (e) {

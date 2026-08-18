@@ -21,6 +21,7 @@
     "check:axes": "node scripts/ci/check-design-axes.mjs",
     "report:exemptions": "node scripts/ci/report-exemptions.mjs",
     "check:door": "node scripts/ci/check-data-door.mjs",
+    "check:storage-seam": "node scripts/ci/check-storage-seam.mjs",
     "check:tscheck": "node scripts/ci/check-ts-check.mjs",
     "check:avatar": "node scripts/ci/check-avatar-seed.mjs",
     "check:invoke": "node scripts/ci/check-invoke-discriminant.mjs",

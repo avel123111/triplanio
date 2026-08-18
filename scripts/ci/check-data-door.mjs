@@ -163,9 +163,13 @@
  * Выход: 0 ок · 1 нарушение · 2 не смог измерить.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** realpath, но без броска (argv[1] мог уже уехать) — для сверки «прямой вызов». */
+const realpathSafe = (p) => { try { return realpathSync(p); } catch { return p; } };
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
 const EXEMPT = 'door-exempt';
@@ -421,20 +425,23 @@ function fromCalls(src) {
     const close = matchParen(src, open);
     if (close === -1) continue;
 
+    // первая операция после закрывающей скобки: `.from('x')\n .insert(` тоже.
+    // Считается и для бакета Storage — гард 2aa сверяет её (upload/move/remove).
+    const tail = src.slice(close + 1, close + 200);
+    const opMatch = tail.match(/^\s*\.\s*([A-Za-z_$][\w$]*)/);
+    const op = opMatch ? opMatch[1] : null;
+
     const before = src.slice(Math.max(0, m.index - 60), m.index).replace(/\s+$/, '');
-    if (/(^|[.\s])storage$/.test(before)) { calls.push({ storage: true, line: lineAt(src, m.index) }); continue; }
+    if (/(^|[.\s])storage$/.test(before)) { calls.push({ storage: true, op, line: lineAt(src, m.index) }); continue; }
     if (/(^|[^\w$.])Array$/.test(before)) continue; // Array.from(…) — не запрос
 
     const arg = src.slice(open + 1, close).trim();
     const lit = arg.match(/^['"`]([a-z_][a-z0-9_]*)['"`]$/i);
 
-    // первая операция после закрывающей скобки: `.from('x')\n .insert(` тоже
-    const tail = src.slice(close + 1, close + 200);
-    const op = tail.match(/^\s*\.\s*([A-Za-z_$][\w$]*)/);
     calls.push({
       table: lit ? lit[1] : null,
       variable: !lit,
-      op: op ? op[1] : null,
+      op,
       line: lineAt(src, m.index),
       storage: false,
     });
@@ -570,8 +577,46 @@ function measure(cwd) {
   return m;
 }
 
+/* ─────────────────── ЕДИНЫЙ ДЕТЕКТОР STORAGE-ЗАПИСЕЙ (для гарда 2aa) ────────── */
+
+/** Байтовые ПИШУЩИЕ операции Storage. Чтения (`createSignedUrl`/`getPublicUrl`/
+ *  `list`) сюда НЕ входят — их сбой ничего молча не рушит (§ТЗ TRIP-284). */
+export const STORAGE_WRITE_OPS = new Set(['upload', 'update', 'move', 'copy', 'remove']);
+
+/**
+ * Все прямые ПИШУЩИЕ двери Storage под `src/` — единственный источник списка для
+ * структурного гарда `check-storage-seam.mjs` (2aa). Тот же разбор, что у табло
+ * («один инструмент на оба дерева»): `blankComments` + `fromCalls` ловят и
+ * многострочную цепочку `supabase.storage\n .from(b)\n .upload(`. Возвращает
+ * `[{ file, line, op }]`, отсортированные по файлу/строке — параллельного списка
+ * путей не заводится, гард читает ровно это.
+ *
+ * @param {string} cwd
+ * @returns {Array<{ file: string, line: number, op: string }>}
+ */
+export function storageWriteSites(cwd) {
+  const sites = [];
+  for (const file of walk(join(cwd, 'src'), ['.js', '.jsx'])) {
+    const rel = relative(cwd, file).split(sep).join('/');
+    const src = blankComments(readFileSync(file, 'utf8'));
+    for (const c of fromCalls(src)) {
+      if (c.storage && c.op && STORAGE_WRITE_OPS.has(c.op)) sites.push({ file: rel, line: c.line, op: c.op });
+    }
+  }
+  return sites.sort((a, b) => (a.file === b.file ? a.line - b.line : a.file.localeCompare(b.file)));
+}
+
 /* ─────────────────────────────── режим --json ───────────────────────────── */
 
+// Импорт как модуль (гард 2aa тянет `storageWriteSites`) НЕ должен запускать
+// ратчет: CLI ниже исполняется только при ПРЯМОМ вызове файла. Тест гарда
+// гоняет его подпроцессом, так что прямой запуск по-прежнему работает.
+const invokedDirectly =
+  process.argv[1] && realpathSafe(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (invokedDirectly) runCli();
+
+function runCli() {
 const argv = process.argv.slice(2).filter((a) => a !== '--');
 const wantJson = argv.includes('--json');
 const wantTarget = argv.includes('--assert-target');
@@ -754,3 +799,4 @@ if (wantTarget && far.length) {
 
 console.log(far.length ? `  ратчет держится; до цели осталось метрик: ${far.length}.` : '  все цели эпика достигнуты.');
 process.exit(0);
+}

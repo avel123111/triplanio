@@ -206,6 +206,15 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-data-door.mjs
+      # 2aa — storage seam (TRIP-284). Каждая прямая ПИШУЩАЯ дверь Storage
+      # (upload/move/remove) объявляет судьбу сбоя: `// storage-report` (уходит в
+      # report({surface:'storage'})) или `// storage-soft-fail: …` (осознанный
+      # best-effort). Список дверей — из storageWriteSites() табло 2r, второго
+      # детектора не заводится. Инвариант по всему дереву (не дифф), как 2h/2i;
+      # зависимостей нет (node stdlib) — джоба без `npm ci` не ломается.
+      - name: 2aa — storage seam (прямая запись Storage объявляет судьбу сбоя)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-storage-seam.mjs
       # 2s — покрытие типами (TRIP-377, Ф0.1 эпика TRIP-374). Единственный
       # храповик, идущий ВВЕРХ среди гардов этой джобы: `checkJs` выключен, и
       # прагма `// @ts-check` — поштучный вход в проверку. Снять её стоит одной
