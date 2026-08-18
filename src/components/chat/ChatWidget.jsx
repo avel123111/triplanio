@@ -18,6 +18,7 @@ import { useChatId, useUnreadChatCount, useChatRows, useChatMessages, useChatSen
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { AvatarStack, EmptyState, IconBtn, UnreadBadge } from '@/design/index';
 import { resolveMembers } from '@/lib/resolveAuthor';
+import { report } from '@/lib/reportDataError';
 import ChatStream from './ChatStream';
 import ChatComposer from './ChatComposer';
 
@@ -67,7 +68,10 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId, p
     supabase.from('chat_reads').upsert(
       { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
       { onConflict: 'chat_id,user_id' },
-    ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
+    ).then(({ error }) => {
+      if (error) report(error, { surface: 'data', source: 'chat_read' });
+      qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
+    });
   }, [open, chatId, user?.id]);
 
   // ── Display names ── from the ONE profile bundle shipped with the trip

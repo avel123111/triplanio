@@ -33,7 +33,8 @@
  */
 
 import { supabaseAdmin, getRequestUser } from './supabaseAdmin.ts';
-import { HttpError, jsonError, refusalResponse } from './http.ts';
+import { HttpError, jsonError, refusalResponse, runInBackground } from './http.ts';
+import { captureEdgeError } from './sentry.ts';
 import { isCallerEditor, isCallerOwner, isCallerParticipant } from './tripAccess.ts';
 import { proRefusal } from './proGate.ts';
 import { mutateSuccess } from './mutateResponse.ts';
@@ -297,6 +298,11 @@ export async function mutate(
       await effect({ actor: actorFull, loadedRow, result: data, outcome, scopeValue: scope, db: supabaseAdmin });
     } catch (e) {
       console.error(`mutate: afterWrite ${slug}/${actionName} failed:`, e);
+      // Побочка best-effort, но её тихий сбой (teardown участника, mark-read)
+      // должен быть виден в мониторинге. `emit`/`notify` уже саморепортят
+      // fire-and-forget и в этот catch физически не попадают — двойного capture
+      // нет. В фоне (как в `withHandler`), чтобы не добавлять задержку к ответу.
+      runInBackground(captureEdgeError(e, 'mutate', { afterWrite: `${slug}/${actionName}` }));
     }
   }
 
