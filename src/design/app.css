@@ -3699,7 +3699,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Truncation priority on the city line: the CITY keeps its space and the COUNTRY
    yields first (a long country name — «Доминиканская Республика» — no longer
    erases the city). Country truncates within ≤55% of the line. */
-.te-cityline .te-cityname { flex: 0 1 auto; }
 .te-cityline .te-country { flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Сводка шага «Проверка» (TRIP-337): ОДНА карточка (радиус на `.card--r-lg`),

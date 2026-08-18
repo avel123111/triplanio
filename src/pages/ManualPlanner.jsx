@@ -874,11 +874,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setHome(startCity?.city_name ? startCity : null);
 
     // Finish/return — mapped to the SAME model the manual flow uses (Pavel's
-    // call): a one-way end (a distinct final city, not the origin) becomes the
-    // LAST city with the "финиш" switch ON (finalPoint) — the "Возврат" step is
-    // then skipped, exactly like a manual finish, no separate return node. A
-    // round-trip (end == origin) or no end → switch OFF, return defaults to
-    // "home" (manual default) and the "Возврат" step is shown.
+    // call): a one-way end (a distinct final city, not the origin) sets finalPoint
+    // (the "Останусь"/finish choice on step 3) — no separate return node. A
+    // round-trip (end == origin) or no end → finalPoint off, return defaults to
+    // "home" (manual default). The "Возврат" step is always shown; finalPoint only
+    // decides whether a return leg is created.
     const startName = startCity?.city_name || '';
     const oneWayEnd = !!endCity?.city_name && endCity.city_name !== startName;
     let finalCities = transitResolved;
@@ -937,7 +937,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   });
   const onGenerate = (promptText) => { if (promptText) planMut.mutate({ promptText }); };
 
-  // Visible steps - "Возврат" is skipped when the last city is the finish point.
   // The entry step's label depends on the method (origin vs AI prompt).
   const entryLabel = isAi ? t('planner.step_home_ai') : t('planner.step_home');
   // The "Возврат" decision (round-trip / other city / stay = finish) now lives
