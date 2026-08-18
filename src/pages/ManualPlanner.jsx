@@ -994,7 +994,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     onMutate: (vars) => {
       setAiState('generating'); setError(null);
       // The prompt becomes an outgoing chat message (the composer clears itself).
-      setAiMessages((m) => [...m, { id: `u${Date.now()}`, role: 'user', text: vars.promptText }]);
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'user', text: vars.promptText }]);
     },
     onSuccess: async (data) => {
       const out = data?.output || {};
@@ -1006,7 +1006,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         home: full.home ? { city_name: full.home.city_name, country_code: full.home.country_code } : null,
         cities: (full.cities || []).map((c) => ({ id: c.id, city_name: c.city_name, country: c.country, nights: c.nights })),
       };
-      setAiMessages((m) => [...m, { id: `a${Date.now()}`, role: 'assistant', text: out.ai_comment || '', draft }]);
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '', draft }]);
       setAiState('draft');
     },
     onError: (err) => {
@@ -1018,7 +1018,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         : errorText(t, err?.code);
       // A bot bubble closes the turn so the outgoing message isn't left hanging; the
       // toast still carries the specific reason. Text is from i18n (never raw server prose).
-      setAiMessages((m) => [...m, { id: `e${Date.now()}`, role: 'assistant', kind: 'error' }]);
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', kind: 'error' }]);
       toast({ title: t('ai_plan.error_plan_title'), description, variant: 'destructive' });
     },
   });
@@ -1369,7 +1369,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             <div className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
-                <PanelAi ctx={{ aiMessages, onGenerate }} />
+                <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
               ) : (
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}

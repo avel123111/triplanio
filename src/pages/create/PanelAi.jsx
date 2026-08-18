@@ -14,7 +14,8 @@ import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 // the trip chat). Vertical rhythm comes from the chat's own per-message margins
 // (.chat-reply / .chat-run), NOT a wrapping gap — a wrapping gap stacked on top of
 // them read as double spacing.
-//   ctx: { aiMessages, onGenerate(promptText) }
+//   props: aiMessages[], onGenerate(promptText) — direct props, like its sibling
+//   flow panels (FlowMap / FlowProgress / StepHome), not a ctx bag.
 // =====================================================================
 
 // The itinerary the bot proposed on a turn — a light list (start → cities), reusing
@@ -78,9 +79,8 @@ function UserMessage({ text }) {
   );
 }
 
-export default function PanelAi({ ctx }) {
+export default function PanelAi({ aiMessages = [], onGenerate }) {
   const t = useT();
-  const { aiMessages = [], onGenerate } = ctx;
 
   // Auto-scroll the transcript to the newest message (the panel body is the scroller).
   const endRef = useRef(null);
