@@ -4351,6 +4351,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* `cursor: not-allowed` тут больше нет: канон гасит `pointer-events` у
    `[disabled]`, и курсор был бы объявлением, которое никогда не наблюдается. */
 .chat-send:disabled { box-shadow: none; }
+/* AI-planner composer: the send button carries the assistant gradient instead of the
+   brand solid, and there's no @-mention button (hideMention). `--ai` extends the
+   existing `chat-composer` family — same size/skin, only the send fill differs. */
+.chat-composer--ai .chat-send { background: var(--ai-gradient); box-shadow: 0 6px 16px -9px var(--ai); }
+.chat-composer--ai .chat-send:disabled { box-shadow: none; }
 /* Call the assistant without knowing the "@" convention.
    ★Тон `ai` в каноне - это ХОВЕР-тинт (так его носит крестик AI-блока). Эта
    кнопка - единственная, которая несёт тот же тинт В ПОКОЕ, поэтому заливка

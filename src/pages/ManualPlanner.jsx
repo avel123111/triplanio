@@ -29,6 +29,7 @@ import { coverGradientCss, DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
+import ChatComposer from '@/components/chat/ChatComposer';
 import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -810,7 +811,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [selectedMapId, setSelectedMapId] = useState(null);
 
   // ── AI-entry state (only used when method === 'ai') ────────────────────────
-  const [prompt, setPrompt]                 = useState('');
+  // The prompt text lives in <ChatComposer> (it owns its own field); the flow keeps
+  // only the transcript + generation state.
   const [aiState, setAiState]               = useState(isAi ? 'prompt' : 'draft'); // prompt | generating | draft
   const [sessionId, setSessionId]           = useState(() => crypto.randomUUID());
   // Chat transcript for the AI flow (Pavel, TRIP-337): a conversation with the bot,
@@ -991,9 +993,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     },
     onMutate: (vars) => {
       setAiState('generating'); setError(null);
-      // The prompt becomes an outgoing chat message; clear the composer.
+      // The prompt becomes an outgoing chat message (the composer clears itself).
       setAiMessages((m) => [...m, { id: `u${Date.now()}`, role: 'user', text: vars.promptText }]);
-      setPrompt('');
     },
     onSuccess: async (data) => {
       const out = data?.output || {};
@@ -1053,7 +1054,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setSavedTripId(null);
     setError(null);
     // AI-entry reset — fresh transcript (back to the welcome) + a new n8n session.
-    setPrompt('');
     setAiMessages(isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []);
     setAiState(isAi ? 'prompt' : 'draft');
     setSessionId(crypto.randomUUID());
@@ -1369,7 +1369,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             <div className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
-                <PanelAi ctx={{ aiState, prompt, setPrompt, aiMessages, onGenerate }} />
+                <PanelAi ctx={{ aiMessages, onGenerate, userName: user?.full_name || user?.email || '', userPhoto: user?.avatar_url || '', userSeed: user?.id }} />
               ) : (
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}
@@ -1407,12 +1407,29 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               )}
             </div>
 
+            {/* AI composer — a pinned bar (flex:none) between the scrolling transcript
+                and the footer, exactly like the trip chat. Reuses <ChatComposer>: no
+                @-mention here (hideMention), the send button in the assistant gradient
+                (chat-composer--ai), and the "Triplanio печатает" pill while generating. */}
+            {step === 'home' && isAi && (
+              <ChatComposer
+                className="chat-composer--ai"
+                hideMention
+                onSend={onGenerate}
+                disabled={aiState === 'generating'}
+                isThinking={aiState === 'generating'}
+                placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
+              />
+            )}
+
             {showFooter && (
               <div className="lp-f flow-foot">
                 {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
                 {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
-                    icon in the header) — nav actions all live in the action bar. */}
-                {!isFirstStep && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+                    icon in the header) — nav actions all live in the action bar. It
+                    also shows on the AI entry step (step 1), where a conversation can
+                    already have built a draft to clear. */}
+                {(!isFirstStep || (isAi && step === 'home')) && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
                 <div className="flow-foot__spacer grow" />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>

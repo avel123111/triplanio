@@ -1,24 +1,22 @@
 import React, { useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Avatar, Btn, Card, Chip, Textarea, Tile } from '../../design/index';
+import { Avatar, Card, Chip, Tile } from '../../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import { useT } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 
 // =====================================================================
-// AI ENTRY PANEL — a CONVERSATION with the assistant, not a pink comment block
-// (Pavel, TRIP-337). Reuses the trip chat's visual language wholesale: the bot
-// avatar (<Avatar kind="ai">), the assistant card (.chat-reply*) and the outgoing
-// bubble (.chat-run--me / .chat-bubble--me) — so the two chats can't drift. The
-// planner owns the transcript + the draft; n8n keeps context by sessionId, so
-// follow-up messages refine the same draft.
-//   ctx: { aiState, prompt, setPrompt, aiMessages, onGenerate(promptText) }
+// AI ENTRY PANEL — the CONVERSATION (transcript only). The composer is pinned by
+// ManualPlanner as a separate <ChatComposer> bar below this scroller (like the trip
+// chat), and the "Triplanio печатает" state lives on that composer. Every message —
+// bot AND user — is rendered by ONE shell (ChatMsg), reusing the trip chat's avatar
+// + name + card so the two chats can't drift.
+//   ctx: { aiMessages, onGenerate(promptText), userName, userPhoto, userSeed }
 // =====================================================================
 
-// The itinerary the bot proposed on a turn — a light list (start → cities), not
-// nested cards, so it reads as content INSIDE the reply. Reuses the editor's
-// name/number primitives + CountryFlag; no new classes.
+// The itinerary the bot proposed on a turn — a light list (start → cities), reusing
+// the editor's name/number primitives + CountryFlag; no new classes.
 function DraftItinerary({ draft }) {
   const t = useT();
   const home = draft?.home;
@@ -46,30 +44,17 @@ function DraftItinerary({ draft }) {
   );
 }
 
-// One assistant turn — avatar + name row + a reply card. Same shell as ChatReply
-// (the trip chat), only the card body differs (welcome text / reply text + draft /
-// a typing indicator / an error line).
-function BotMessage({ children }) {
+// One message — avatar + name + card. The SAME shell (from ChatReply) serves the bot
+// and the user; only the avatar/name and the card tone differ (`ai` = the assistant-
+// tinted card, neutral = a plain surface card for the user's own message).
+function ChatMsg({ avatar, name, tone, children }) {
   return (
     <div className="col col--g4 chat-reply">
       <div className="row row--g6">
-        <div className="chat-run__av"><Avatar kind="ai" /></div>
+        <div className="chat-run__av">{avatar}</div>
         <div className="col col--g4 grow--fit">
-          <div className="row row--g4 chat-reply__who"><b>{TRIPLANIO_BOT_NAME}</b></div>
-          <Card radius="md" className="chat-reply__card">{children}</Card>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Outgoing user message — the same right-aligned bubble as the trip chat.
-function UserBubble({ text }) {
-  return (
-    <div className="row row--a-start row--g6 chat-run chat-run--me">
-      <div className="col col--g2 chat-run__col">
-        <div className="col col--a-start chat-msg">
-          <div className="chat-bubble chat-bubble--me"><span style={{ whiteSpace: 'pre-wrap' }}>{text}</span></div>
+          <div className="row row--g4 chat-reply__who"><b>{name}</b></div>
+          <Card radius="md" className={tone === 'ai' ? 'chat-reply__card' : undefined}>{children}</Card>
         </div>
       </div>
     </div>
@@ -78,68 +63,45 @@ function UserBubble({ text }) {
 
 export default function PanelAi({ ctx }) {
   const t = useT();
-  const { aiState, prompt, setPrompt, aiMessages = [], onGenerate } = ctx;
-  const generating = aiState === 'generating';
-  const canSend = prompt.trim().length > 0 && !generating;
-  const send = () => { if (canSend) onGenerate(prompt.trim()); };
+  const { aiMessages = [], onGenerate, userName, userPhoto, userSeed } = ctx;
 
-  // Auto-scroll the transcript to the newest message (the panel body is the
-  // scroller). Runs on every message and while the bot is typing.
+  // Auto-scroll the transcript to the newest message (the panel body is the scroller).
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [aiMessages.length, generating]);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [aiMessages.length]);
 
-  // Quick-start chips only on the opening turn (nothing sent yet): they seed the
-  // composer so the user can edit before sending.
-  const showChips = aiMessages.length <= 1 && !generating;
+  // Quick-start chips only on the opening turn (nothing sent yet) — tapping one sends
+  // it straight to the bot.
+  const showChips = aiMessages.length <= 1;
 
   return (
     <div className="col col--g6">
       {aiMessages.map((m) => {
-        if (m.role === 'user') return <UserBubble key={m.id} text={m.text} />;
-        if (m.kind === 'welcome') return <BotMessage key={m.id}><span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span></BotMessage>;
-        if (m.kind === 'error') return <BotMessage key={m.id}><span className="t-body">{t('ai_plan.error_plan_title')}</span></BotMessage>;
-        return (
-          <BotMessage key={m.id}>
-            {/* Assistant text through ChatMarkdown + .chat-reply__text — the same
-                render the trip chat gives its bot answers. */}
+        if (m.role === 'user') {
+          return (
+            <ChatMsg key={m.id} avatar={<Avatar name={userName} photo={userPhoto} seed={userSeed} />} name={userName}>
+              <span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>
+            </ChatMsg>
+          );
+        }
+        let body;
+        if (m.kind === 'welcome') body = <span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span>;
+        else if (m.kind === 'error') body = <span className="t-body">{t('ai_plan.error_plan_title')}</span>;
+        else body = (
+          <>
             {m.text ? <div className="chat-reply__text"><ChatMarkdown text={m.text} linkClassName="cm-a cm-a--brand" /></div> : null}
             <DraftItinerary draft={m.draft} />
-          </BotMessage>
+          </>
         );
+        return <ChatMsg key={m.id} avatar={<Avatar kind="ai" />} name={TRIPLANIO_BOT_NAME} tone="ai">{body}</ChatMsg>;
       })}
-
-      {generating && (
-        <BotMessage>
-          <span className="ai-dots"><span /><span /><span /></span>
-        </BotMessage>
-      )}
 
       {showChips && (
         <div className="row row--wrap row--g4">
           {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
-            <Chip key={p} onClick={() => setPrompt(p)}>{p}</Chip>
+            <Chip key={p} onClick={() => onGenerate(p)}>{p}</Chip>
           ))}
         </div>
       )}
-
-      {/* Composer — always available, muted while the bot is generating. The send
-          CTA sits inside the textarea (chat-composer style); Shift+Enter sends. */}
-      <div className="field" style={{ marginBottom: 0 }}>
-        <div style={{ position: 'relative' }}>
-          <Textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); send(); } }}
-            disabled={generating}
-            placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-            rows={3}
-            style={{ paddingBottom: 58 }}
-          />
-          <div style={{ position: 'absolute', right: 14, bottom: 14 }}>
-            <Btn variant="ai" icon="send" disabled={!canSend} onClick={send}>{t('chat.send')}</Btn>
-          </div>
-        </div>
-      </div>
 
       <div ref={endRef} />
     </div>
