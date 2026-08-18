@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, UnreadBadge, useToast,
+  Badge, Btn, Card, Cover, IconBtn, ListRow, Seg, Severity, SearchSelect, Tile, UnreadBadge, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -297,25 +297,24 @@ function ReminderChannels() {
               badge={<Badge variant="success" size="tiny">{t('telegram.connected')}</Badge>}
             >
               <Col gap="g2">
+                {/* floor-exempt: dsshare +4 — переход строки на канон <ListRow> сворачивает
+                    явные <Row>/<Grow> в композицию ДС (вне числителя доли), ровно кейс
+                    «правильный ход опускает долю» из §1 эпика. Апрув Pavel на правку строки. */}
+                {/* Строка трипа = канон `<ListRow>` (lead обложка + title/sub + trail):
+                    отвязка `<IconBtn>` живёт в слоте `trail` ВНУТРИ карточки, а не
+                    сиблингом снаружи (TRIP-337, запрос Pavel). Клик по всей строке в
+                    трип снят — управление напоминаниями идёт из «Настроек путешествия»
+                    (подсказка ниже), и это ровно та же нерастянутая строка, что в
+                    SettingsLens: один объект — одна реализация. */}
                 {items.map((a) => (
-                  <Row gap="g2" key={a.id}>
-                    {/* Строка трипа собрана из ПРИМИТИВОВ ДС (Card/Row/Grow/Cover/каноны),
-                        без triage-классов и инлайна: обложка — <Cover> (градиент классами
-                        по data-cover, фото через <img>), название/логин — каноны .t-*.
-                        Вся строка ведёт в трип; отвязка — <IconBtn> справа (sibling, т.к.
-                        кнопку в кнопку нельзя). `grow--fit` даёт всем карточкам равную
-                        ширину → иконки строго выровнены, длинное название truncate'ится. */}
-                    <Card as="button" radius="btn" interactive className="grow--fit" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
-                      <Row gap="g4">
-                        <Cover gradient={a.cover_gradient} image={a.cover_image_url} />
-                        <Grow fit>
-                          <Trunc className="t-strong">{a.trip_title}</Trunc>
-                          <div className="t-meta muted">{nick(a)}</div>
-                        </Grow>
-                      </Row>
-                    </Card>
-                    <IconBtn icon="close" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
-                  </Row>
+                  <ListRow
+                    key={a.id}
+                    variant="raised"
+                    lead={<Cover gradient={a.cover_gradient} image={a.cover_image_url} />}
+                    title={<Trunc>{a.trip_title}</Trunc>}
+                    sub={nick(a)}
+                    trail={<IconBtn icon="close" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />}
+                  />
                 ))}
                 <Row gap="g4" align="a-start"><Icon name="info" size={13} className="muted" /><span className="t-meta muted">{t('telegram.account_hint')}</span></Row>
               </Col>
