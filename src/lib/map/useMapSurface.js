@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { MAPBOX_TOKEN, applyBasemapConfig } from '@/lib/mapbox';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { repaintRouteLines } from './routeLines';
@@ -55,7 +55,14 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   useEffect(() => { coopRef.current = cooperativeGestures; }, [cooperativeGestures]);
 
   // Claim the singleton into this slot on mount; park it back on unmount.
-  useEffect(() => {
+  // useLayoutEffect (не useEffect): захват слота + первый resize должны пройти
+  // СИНХРОННО в фазе коммита, ДО отрисовки. Иначе при переходе через
+  // document.startViewTransition (create-flow → редактор) reparent карты
+  // случался уже ПОСЛЕ снапшота «после» и первой отрисовки — холст выводился в
+  // старом/коротком размере и «дорастал» до контейнера отдельным кадром. В
+  // layout-фазе контейнер уже выложен (flushSync посчитал лейаут), поэтому resize
+  // сразу берёт финальные размеры, и карта появляется корректной с первого кадра.
+  useLayoutEffect(() => {
     const slot = containerRef.current;
     if (!slot) return undefined;
     if (!sharedMap || !sharedMap.hasToken) { setError('No Mapbox token'); return undefined; }
