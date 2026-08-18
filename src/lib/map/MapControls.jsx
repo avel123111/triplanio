@@ -14,6 +14,17 @@ import { useT } from '@/lib/i18n/I18nContext';
 //
 // ★TRIP-337: позиция плашки живёт в КЛАССЕ `.map-ctl` (правый верхний, колонкой) —
 // инлайна больше нет; один угол на все поверхности.
+/**
+ * Все пропы взаимодействия опциональны: экран передаёт только те, чьи контролы
+ * показывает (Statistics — проекция+фуллскрин, без темы/SE).
+ * @param {{
+ *   projection?: string, onToggleProjection?: any,
+ *   scheme?: string, onToggleScheme?: any,
+ *   showSE?: boolean, onToggleSE?: any,
+ *   fullscreen?: boolean, onToggleFullscreen?: any,
+ *   withProjection?: boolean, withTheme?: boolean, withSE?: boolean, withFullscreen?: boolean,
+ * }} p
+ */
 export default function MapControls({
   projection, onToggleProjection, scheme, onToggleScheme, showSE, onToggleSE,
   fullscreen, onToggleFullscreen,

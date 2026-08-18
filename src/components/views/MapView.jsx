@@ -98,7 +98,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * @param {{ visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
- *           mapControls?: boolean, basemapTheme?: string, hideRoute?: boolean,
+ *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
  *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
  *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
  *           focusZoom?: number, onMapClick?: any, cooperativeGestures?: boolean,
