@@ -2059,6 +2059,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .input-affix__end { inset-inline-end: 12px; }
 .input-affix--ic .input { padding-inline-start: 36px; }
 .input-affix--end .input { padding-inline-end: 36px; }
+/* Clear (×) action in the right slot (TRIP-337). The slot itself is
+   pointer-events:none (it also carries the passive loading ring); the button
+   re-enables them. A bare glyph button (no surface — no radius/background, so it's
+   not a card-homed skin), quiet muted → ink on hover; padding is the hit area. */
+.input-affix__clear {
+  pointer-events: auto; border: 0; margin: 0; padding: var(--sp-2); cursor: pointer;
+  display: flex; color: var(--muted-2); background: transparent;
+  transition: color .16s ease;
+}
+.input-affix__clear:hover { color: var(--ink); }
 /* Иконка НЕ участвует в состоянии: раньше она поднималась в `--brand` при
    фокусе и при заполненном значении, и в фокусе поле давало три синих сигнала
    разом - рамку, кольцо и иконку. Состояние несёт рамка, иконка нейтральна
@@ -2298,13 +2308,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
    неравные, и низ у них разной высоты - выравнивание по НИЗУ, иначе контрол
    всплывает к верхнему краю более высокого поля. */
-.field-row--aside { grid-template-columns: 7fr 3fr; align-items: end; }
-/* На фокусе ПЕРВОГО поля (город старта) строка схлопывается в одну колонку и прячет
-   контрол-«аси́д» справа (дату) — поле и его дропдаун занимают всю ширину, как is-editing
-   у рядов шага 2. `:has` читает фокус ВНУТРИ первого поля; фокус самого контрола даты
-   (последнее поле) строку не трогает. */
-.field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: 1fr; }
-.field-row--aside:has(> .field:first-child:focus-within) > .field:last-child { display: none; }
+.field-row--aside { grid-template-columns: 7fr 3fr; align-items: end; transition: grid-template-columns .3s var(--ease-out); }
+/* На фокусе ПЕРВОГО поля (город старта) строка ПЛАВНО схлопывает правый контрол-
+   «аси́д» (дату) — поле и его дропдаун занимают всю ширину, как is-editing у рядов
+   шага 2. Это канон «раздвижение по фокусу» (TRIP-337), переиспользуемый дальше.
+   Анимируем ТРЕК грида 3fr→0fr (fr↔fr интерполируется на современных движках; на
+   очень старых — жёсткий схлоп, но рабочий), а не `display:none` (его анимировать
+   нельзя). Аси́д клипуется (overflow) и гаснет; после схлопа убирается из таб-порядка
+   (visibility с задержкой). `:has` читает фокус ВНУТРИ первого поля — фокус самого
+   контрола даты (последнее поле) строку не трогает. */
+.field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: 1fr 0fr; }
+.field-row--aside > .field:last-child { min-width: 0; overflow: hidden; transition: opacity .2s ease; }
+.field-row--aside:has(> .field:first-child:focus-within) > .field:last-child {
+  opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .3s;
+}
 
 /* Badge / chip */
 .badge {

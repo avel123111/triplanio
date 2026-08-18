@@ -7,6 +7,7 @@ import { Card, Tile } from '../../design/index';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
+import CountryFlag from '@/components/common/CountryFlag';
 
 // ─── CityPicker ──────────────────────────────────────────────────────────────
 // City picker for the create-flow rows — a thin facade over the shared
@@ -27,6 +28,11 @@ export function CityPicker({ value, onChange, placeholder, autoFocus, blurOnPick
   // Sync the field text when the selection changes externally.
   useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
 
+  // A committed, resolved city (coords + country) → its flag replaces the pin in the
+  // field and a clear (×) appears (TRIP-337). While the user re-types, `value` is
+  // cleared upstream (onInputChange below), so both revert to the plain pin.
+  const validCity = value?.latitude != null && !!value?.country_code;
+
   return (
     <Autocomplete
       inputValue={q}
@@ -46,6 +52,11 @@ export function CityPicker({ value, onChange, placeholder, autoFocus, blurOnPick
       placeholder={placeholder || t('planner.city_search_ph')}
       autoFocus={autoFocus}
       icon="pin"
+      inputProps={{
+        iconNode: validCity ? <CountryFlag code={value.country_code} /> : undefined,
+        onClear: value ? () => onChange(null) : undefined,
+        clearLabel: t('common.remove'),
+      }}
       attribution={false}
     />
   );
