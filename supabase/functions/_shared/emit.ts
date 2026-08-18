@@ -35,6 +35,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { runInBackground } from './http.ts';
 import { signN8nJwt } from './n8nAuth.ts';
 import { captureEdgeError } from './sentry.ts';
+import { envTag } from './envTag.ts';
 import { RESOLVERS, EMPTY_DATA, type EmitData } from './emitResolvers.ts';
 import { buildInAppRows, EXTERNAL } from './notifyRules.ts';
 
@@ -72,7 +73,7 @@ export type EmitCtx = { db: SupabaseClient; snapshot?: Record<string, unknown> }
 export function buildEnvelope(event: string, data: EmitData): Record<string, unknown> {
   return {
     event,
-    env: Deno.env.get('SENTRY_ENVIRONMENT') ?? 'production',
+    env: envTag(),
     at: new Date().toISOString(),
     id: crypto.randomUUID(),
     data,

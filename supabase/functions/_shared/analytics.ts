@@ -15,9 +15,11 @@
  * - Fire-and-forget: analytics must NEVER block or fail the request; every error
  *   is swallowed.
  */
+import { envTag } from './envTag.ts';
+
 const TOKEN = Deno.env.get('POSTHOG_PROJECT_KEY');
 const HOST = Deno.env.get('POSTHOG_HOST') || 'https://eu.i.posthog.com';
-const ENV = Deno.env.get('SENTRY_ENVIRONMENT') === 'development' ? 'dev' : 'prod';
+const ENV = envTag() === 'development' ? 'dev' : 'prod';
 
 /**
  * Capture a product-analytics event from an edge function.
