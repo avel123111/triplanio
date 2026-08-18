@@ -3697,6 +3697,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    is set here because the planner list is NOT inside .te-table. */
 .te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: default; }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
+/* Highlight when the matching map pin is hovered/selected (Map-lens parity,
+   TRIP-337) — reuse the `is-hover` state name markers use, brand ring, no motion.
+   Sits after --bad so a valid row lights up; a bad row keeps its danger border. */
+.te-row.te-row--plan.is-hover { border-color: var(--brand); box-shadow: var(--sh-1), 0 0 0 3px var(--brand-soft); }
 /* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
 .te-row.te-row--plan .te-row__pacts { justify-self: end; }
 /* Planner has no reliable row-hover (esp. touch) → the delete is ALWAYS visible

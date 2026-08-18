@@ -3,7 +3,7 @@ import { mapboxgl } from '@/lib/mapbox';
 import { calmFit } from '@/lib/map/camera';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
+import { groupByLocation, createMarkerEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
 import MapControls from '@/lib/map/MapControls';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -62,14 +62,27 @@ function startGlobeView(map, pad, winW) {
 // FLOW MAP - full-bleed Mapbox route preview that fills its container.
 // Shared across every step of the unified create flow so the map is the
 // constant spatial anchor (vs. the old small map card). Same singleton
-// instance, markers, route lines and controls as the trip MapView — only the
-// data source (home/cities/transport) and the start/finish labels differ.
+// instance, markers, route lines, controls, tooltip and hover/select wiring
+// as the trip MapView / Map lens — only the data source (home/cities/transport)
+// and the pre-save id scheme differ.
+//
+// Interactivity mirrors the Map lens (Pavel, TRIP-337): each pin is hoverable +
+// clickable, a glass tooltip (createCityBadgeEl) shows the active city's name +
+// dates, and hover/selection is mirrored BOTH ways with the step's city list —
+// the parent owns `hoveredId`/`selectedId` and feeds `cityBadge` back, exactly as
+// ScreenMap drives MapView. Marker ids: 'home', the city's own id, 'return'.
 // =====================================================================
-export default function FlowMap({ home, cities = [], returnCity, transport = {}, finalPoint = false }) {
+export default function FlowMap({
+  home, cities = [], returnCity, transport = {}, finalPoint = false,
+  // Map-lens-style interactivity (all optional — omit for a passive preview):
+  hoveredId = null, selectedId = null, cityBadge = null,
+  onCityHover, onCityClick, onMapClick,
+}) {
   const t = useT();
   const { isDark } = useTheme();
   const containerRef = useRef(null);
   const markersRef = useRef([]);
+  const cityBadgePopupRef = useRef(null);
 
   // On-map controls (same set as MapView): projection / theme / start-finish.
   // Планировщик (оба флоу) открывается на глобусе (запрос Pavel, TRIP-337).
@@ -99,15 +112,38 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   // planner (same as the Map lens): the map is the primary surface here.
   const { mapRef, ready, canFit } = useMapSurface(containerRef, { markersRef, scheme, projection, cooperativeGestures: false });
 
-  // Unified with the trip MapView: home → start flag, return → finish flag,
-  // transit cities numbered 1..N (icons/flags come from the shared renderer).
+  // `posed` gates the fade-in: the singleton is SHARED, so on entry it still shows
+  // the previous screen's camera + basemap (e.g. the far, monochrome Trips/stats
+  // map). Seeding `ready` from a reused style would reveal that stale frame for a
+  // beat before this screen's camera + theme re-assert — the jerky "far grey → my
+  // globe" flip. Hold the reveal behind a surface-colour cover until the first
+  // 'idle' AFTER our camera is set (basemap theme also settles on that idle), so
+  // the map appears already framed and coloured. (TRIP-337)
+  const [posed, setPosed] = useState(false);
+
+  // Latest interactivity callbacks kept in refs so passing fresh closures doesn't
+  // rebuild the markers (mirrors MapView).
+  const onCityHoverRef = useRef(onCityHover);
+  const onCityClickRef = useRef(onCityClick);
+  const onMapClickRef = useRef(onMapClick);
+  useEffect(() => { onCityHoverRef.current = onCityHover; }, [onCityHover]);
+  useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
+  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
+
+  // Unified with the trip MapView: home → start flag, return → finish flag, transit
+  // cities numbered 1..N, a 0-night stop → waypoint glyph (NOT a number, same as the
+  // editor / Map lens). Each pin carries a stable id ('home' | city.id | 'return')
+  // so hover/click can address it and the tooltip can be looked up by the parent.
   const pts = [];
-  if (home?.latitude && showSE) pts.push({ lat: home.latitude, lng: home.longitude, label: null, kind: 'start', name: home.city_name });
-  cities.forEach((c, i) => {
-    if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), kind: 'transit', name: c.city_name });
+  if (home?.latitude && showSE) pts.push({ lat: home.latitude, lng: home.longitude, label: null, kind: 'start', data: 'home' });
+  let transitNo = 0;
+  cities.forEach((c) => {
+    if (c.latitude == null) return;
+    const isWaypoint = (+c.nights || 0) === 0 && !!c.city_name;
+    pts.push({ lat: c.latitude, lng: c.longitude, label: isWaypoint ? null : String(++transitNo), kind: isWaypoint ? 'waypoint' : 'transit', data: String(c.id) });
   });
   if (!finalPoint && returnCity?.latitude && returnCity.city_name !== home?.city_name && showSE) {
-    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: null, kind: 'end', name: returnCity.city_name });
+    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: null, kind: 'end', data: 'return' });
   }
 
   const positions = pts.map((p) => [p.lng, p.lat]);
@@ -134,9 +170,16 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     mapForPaddingRef.current = map;
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
-    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind }));
+    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind, data: p.data }));
     groupByLocation(points).forEach((g) => {
-      const el = createMarkerEl(g.labels.filter((l) => l != null), { icon: iconForKinds(g.kinds) });
+      const el = createMarkerEl(g.labels.filter((l) => l != null), {
+        icon: iconForKinds(g.kinds),
+        onClick: onCityClick ? () => { const cb = onCityClickRef.current; if (cb) cb(g.data[0]); } : undefined,
+        onHover: onCityHover ? (entering) => { const cb = onCityHoverRef.current; if (cb) cb(entering ? g.data[0] : null); } : undefined,
+      });
+      // Tag the element with the ids at this spot so the hover/select effect can
+      // toggle .is-sel / .is-hover without rebuilding the markers.
+      el.dataset.mid = g.data.filter(Boolean).join(',');
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
     });
@@ -170,6 +213,66 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     return undefined;
   }, [ready, canFit, ptsKey, winW, winH]);
 
+  // Reveal gate (see `posed`): once the slot is measured and our camera is set
+  // (the fit effect above runs first, same render), wait one 'idle' — the camera
+  // has settled and the basemap theme has re-applied by then — and only then fade
+  // the map in. A timeout backstops a singleton that never emits 'idle'.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !canFit || posed) return undefined;
+    let done = false;
+    const mark = () => { if (!done) { done = true; setPosed(true); } };
+    map.once('idle', mark);
+    const to = setTimeout(mark, 1200);
+    return () => { clearTimeout(to); try { map.off('idle', mark); } catch { /* ignore */ } };
+  }, [ready, canFit, posed]);
+
+  // Selection + hover highlight — toggled on the existing marker elements (no
+  // rebuild, so hovering the city list is cheap). Re-runs after a rebuild too
+  // (ptsKey) so the state survives a redraw. Mirrors MapView.
+  useEffect(() => {
+    if (!ready) return;
+    const sel = selectedId != null ? String(selectedId) : null;
+    const hov = hoveredId != null ? String(hoveredId) : null;
+    markersRef.current.forEach((m) => {
+      const el = m.getElement();
+      const ids = (el.dataset.mid || '').split(',').filter(Boolean);
+      const isSel = sel != null && ids.includes(sel);
+      el.classList.toggle('is-sel', isSel);
+      el.classList.toggle('is-hover', !isSel && hov != null && ids.includes(hov));
+    });
+  }, [ready, selectedId, hoveredId, ptsKey]);
+
+  // City tooltip — one glass label (flag + name + dates) at the active city,
+  // carried by a mapboxgl.Popup so it auto-anchors on-screen. Same primitive +
+  // skin as the Map lens (createCityBadgeEl / .cbadge / .cbadge-popup); the parent
+  // feeds `cityBadge` from the hovered-or-selected city.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; }
+    if (!map || !ready || !cityBadge || cityBadge.lng == null || cityBadge.lat == null) return undefined;
+    const el = createCityBadgeEl({ countryCode: cityBadge.countryCode, name: cityBadge.name, dates: cityBadge.dates });
+    cityBadgePopupRef.current = new mapboxgl.Popup({
+      closeButton: false, closeOnClick: false, focusAfterOpen: false,
+      className: 'cbadge-popup', offset: 16, maxWidth: 'none',
+    })
+      .setLngLat([cityBadge.lng, cityBadge.lat])
+      .setDOMContent(el)
+      .addTo(map);
+    return () => { if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; } };
+  }, [ready, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode]);
+
+  // Click on empty map → let the parent clear the selection. Mapbox fires 'click'
+  // only for a real canvas click (a drag emits move events; HTML markers swallow
+  // their own click in a separate DOM layer), so this never fires for pins or pans.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+    const handler = (e) => { const cb = onMapClickRef.current; if (cb) cb(e); };
+    map.on('click', handler);
+    return () => { try { map.off('click', handler); } catch { /* ignore */ } };
+  }, [ready]);
+
   // The map is a shared singleton — hand it back with zero viewport padding so the
   // planner's idle-globe offset never leaks onto another screen (MapView / stats).
   // Uses the FlowMap-owned ref (mapRef.current is already null at unmount, see above).
@@ -189,16 +292,20 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     return undefined;
   }, [ready, legsKey]);
 
+  const revealed = ready && posed;
   return (
     <div className="flow-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: ready ? 1 : 0, transition: 'opacity .3s ease' }} />
-      {!ready && (
+      <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: revealed ? 1 : 0, transition: 'opacity .3s ease' }} />
+      {!revealed && (
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--surface)', zIndex: 2 }}>
-          <div className="spin spin--ring spin--lg spin--ink" />
+          {/* Spinner only before the style loads; once ready we just hold a plain
+              cover until the camera/theme settle (posed), so there is no spinner
+              flash on a warm singleton — only the stale frame stays hidden. */}
+          {!ready && <div className="spin spin--ring spin--lg spin--ink" />}
         </div>
       )}
 
-      {ready && (
+      {revealed && (
         <MapControls
           projection={projection}
           onToggleProjection={() => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe'))}

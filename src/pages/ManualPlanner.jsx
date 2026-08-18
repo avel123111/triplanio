@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
@@ -140,7 +140,7 @@ function recomputeDates(list, anchorISO) {
 // list and the structural editor render the SAME row skeleton — one component,
 // two variants. The trailing actions (nights stepper + delete) are the only
 // per-screen difference; the final-point toggle still lives on the last card.
-function CityRow({ idx, city, isDragging, isPressing, onArm, onChange, onRemove, onMove }) {
+function CityRow({ idx, city, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!city.city_name && city.latitude == null;
@@ -188,7 +188,8 @@ function CityRow({ idx, city, isDragging, isPressing, onArm, onChange, onRemove,
       variant="planner"
       // `is-editing` collapses the grip + number columns so the search field (and
       // its dropdown) spans the whole row — no longer cramped by the stepper/icon.
-      className={editing ? 'is-editing' : ''}
+      // `is-hover` mirrors the map pin's hover/selected state (Map-lens parity).
+      className={[editing ? 'is-editing' : '', active ? 'is-hover' : ''].filter(Boolean).join(' ')}
       dragging={isDragging}
       pressing={isPressing}
       invalid={invalid}
@@ -361,7 +362,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, setHome, startDate, setStartDate }) {
+function StepCities({ cities, setCities, home, setHome, startDate, setStartDate, hoveredId = null, selectedId = null, onHover }) {
   const t = useT();
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
@@ -424,13 +425,22 @@ function StepCities({ cities, setCities, home, setHome, startDate, setStartDate 
             // preview reorders), used for numbering / isLast; the hook owns the
             // FLIP shuffle and commit.
             const dIdx = cities.indexOf(c);
+            const rowId = String(c.id);
+            // Mutual hover with the map pin. onMouseEnter/Leave live on the wrapper
+            // (not the row) so they never interfere with the pointer-drag arming.
             return (
-              <div key={c.id} ref={setRowRef(c.id)}>
+              <div
+                key={c.id}
+                ref={setRowRef(c.id)}
+                onMouseEnter={onHover ? () => onHover(rowId) : undefined}
+                onMouseLeave={onHover ? () => onHover(null) : undefined}
+              >
                 <CityRow
                   idx={dIdx}
                   city={c}
                   isDragging={draggingId === c.id}
                   isPressing={pressingId === c.id}
+                  active={hoveredId === rowId || selectedId === rowId}
                   onArm={(e) => armDrag(e, c.id)}
                   onChange={(patch) => update(c.id, patch)}
                   onRemove={() => remove(c.id)}
@@ -775,6 +785,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [savedTripId, setSavedTripId] = useState(null);
   const [error, setError]           = useState(null);
   const [restored, setRestored]     = useState(false);
+  // Map ↔ list linking (Map-lens parity, TRIP-337): the pin/list row hovered or
+  // selected. Ids match FlowMap's marker ids ('home' | city.id | 'return').
+  const [hoveredMapId, setHoveredMapId]   = useState(null);
+  const [selectedMapId, setSelectedMapId] = useState(null);
 
   // ── AI-entry state (only used when method === 'ai') ────────────────────────
   const [prompt, setPrompt]                 = useState('');
@@ -1005,6 +1019,26 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // return city - the trip ends at the last transit city.
   const effectiveReturn = finalPoint ? null : (returnMode === 'home' ? home : returnCity);
   const autoTitle = computeAutoTitle(home, cities, t);
+
+  // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed the same
+  // way FlowMap tags its pins ('home' | city.id | 'return'). A city's date range is
+  // start..start+nights (single day for a 0-night waypoint); anchors show name only.
+  const mapPointById = useMemo(() => {
+    const cityDates = (c) => {
+      const nights = +c.nights || 0;
+      const s = c.startDate ? shortDateLabel(c.startDate, lang) : null;
+      const e = (c.startDate && nights) ? shortDateLabel(addDays(c.startDate, nights), lang) : null;
+      return s ? (e ? `${s} – ${e}` : s) : null;
+    };
+    const m = {};
+    if (home?.latitude != null) m.home = { lng: home.longitude, lat: home.latitude, countryCode: home.country_code, name: home.city_name, dates: null };
+    cities.forEach((c) => { if (c.latitude != null) m[String(c.id)] = { lng: c.longitude, lat: c.latitude, countryCode: c.country_code, name: c.city_name, dates: cityDates(c) }; });
+    if (effectiveReturn?.latitude != null) m.return = { lng: effectiveReturn.longitude, lat: effectiveReturn.latitude, countryCode: effectiveReturn.country_code, name: effectiveReturn.city_name, dates: null };
+    return m;
+  }, [home, cities, effectiveReturn, lang]);
+  // The tooltip follows the hovered pin/row, otherwise the selected one.
+  const activeMapId = hoveredMapId || selectedMapId;
+  const cityBadge = activeMapId ? mapPointById[activeMapId] || null : null;
 
   // ── Supabase save ────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -1262,6 +1296,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               // default "home" mode must not pre-draw a round-trip).
               returnCity={(step === 'return' || step === 'review') ? effectiveReturn : null}
               finalPoint={finalPoint}
+              hoveredId={hoveredMapId}
+              selectedId={selectedMapId}
+              cityBadge={cityBadge}
+              onCityHover={setHoveredMapId}
+              onCityClick={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
+              onMapClick={() => setSelectedMapId(null)}
             />
           </div>
         </div>
@@ -1289,7 +1329,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}
               {step === 'cities' && (
-                <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
+                <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} />
               )}
               {step === 'return' && (
                 <StepReturn
