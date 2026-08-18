@@ -42,23 +42,29 @@ export default function PanelAi({ ctx }) {
           purple textarea stacked on it read as one muddy block). */}
       <div className="field" style={{ marginBottom: 0 }}>
         <label className="field__label">{t('ai_plan.assistant_hint')}</label>
-        <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          disabled={aiState === 'generating'}
-          placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-          rows={5}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-          {aiState === 'generating' ? (
-            <Btn variant="ai" disabled>
-              {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
-            </Btn>
-          ) : aiState === 'draft' ? (
-            <Btn variant="ai" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
-          ) : (
-            <Btn variant="ai" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
-          )}
+        {/* The submit CTA sits INSIDE the textarea (bottom-right, like a chat
+            composer) — the textarea reserves bottom padding so text never runs
+            under the button. */}
+        <div style={{ position: 'relative' }}>
+          <Textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            disabled={aiState === 'generating'}
+            placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
+            rows={5}
+            style={{ paddingBottom: 54 }}
+          />
+          <div style={{ position: 'absolute', right: 10, bottom: 10 }}>
+            {aiState === 'generating' ? (
+              <Btn variant="ai" disabled>
+                {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
+              </Btn>
+            ) : aiState === 'draft' ? (
+              <Btn variant="ai" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
+            ) : (
+              <Btn variant="ai" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
+            )}
+          </div>
         </div>
       </div>
 
@@ -81,7 +87,7 @@ export default function PanelAi({ ctx }) {
           <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
           {cities.map((c, i) => (
             /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
-            <Card key={c.id} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px' }}>
+            <Card key={c.id} radius="btn" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px' }}>
               <Tile as="div" round className="t-meta" style={{ '--tile': '24px', '--hl-soft': 'var(--ai)', '--hl-ink': '#fff' }}>{i + 1}</Tile>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="trunc te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>

@@ -18,7 +18,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, Card, EmptyState, Severity, Toggle, Tile, useToast } from '../design/index';
+import { Btn, Card, EmptyState, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -140,7 +140,7 @@ function recomputeDates(list, anchorISO) {
 // list and the structural editor render the SAME row skeleton — one component,
 // two variants. The trailing actions (nights stepper + delete) are the only
 // per-screen difference; the final-point toggle still lives on the last card.
-function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMove }) {
+function CityRow({ idx, city, isDragging, isPressing, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!city.city_name && city.latitude == null;
@@ -150,14 +150,20 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
   // Empty rows open in the picker; once a city is chosen it shows read-only
   // (change a city by deleting + re-adding) so it can never get stuck as an input.
   const [editing, setEditing] = useState(!city.city_name);
+  // Confirm-on-add: a search result is STAGED (shown in the field) and only
+  // written into the plan when the user taps "Добавить" — an accidental tap on a
+  // search result no longer commits a city.
+  const [staged, setStaged] = useState(null);
   const stopArm = (e) => e.stopPropagation();
-  const pick = (picked) => {
-    if (picked) {
-      onChange({ city_name: picked.city_name, city_name_en: picked.city_name_en, geonameid: picked.geonameid ?? null, name_i18n: picked.name_i18n || null, country: picked.country || localizeCountry(picked.country_code, lang), country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
-      setEditing(false);
-    } else {
-      onChange({ city_name: '', city_name_en: '', geonameid: null, name_i18n: null, country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
-    }
+
+  const cityFields = (p) => ({ city_name: p.city_name, city_name_en: p.city_name_en, geonameid: p.geonameid ?? null, name_i18n: p.name_i18n || null, country: p.country || localizeCountry(p.country_code, lang), country_code: p.country_code, latitude: p.latitude, longitude: p.longitude, timezone: p.timezone, external_city_id: p.external_city_id });
+  // Picking a result stages it (typing again clears the stage); confirm commits.
+  const onSearchPick = (picked) => setStaged(picked || null);
+  const confirmStaged = () => {
+    if (!staged) return;
+    onChange(cityFields(staged));
+    setStaged(null);
+    setEditing(false);
   };
 
   const grip = (
@@ -167,15 +173,15 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       <Icon name="drag" size={14} />
     </span>
   );
-  const lead = <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</Tile>;
-  const dates = isFinalAnchor
-    ? t('planner.final_point')
-    : (startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null);
+  const lead = <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
+  const dates = startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null;
 
-  const row = (
+  return (
     <CityRowBase
       variant="planner"
-      className={isFinalAnchor ? 'te-row--fin' : ''}
+      // `is-editing` collapses the grip + number columns so the search field (and
+      // its dropdown) spans the whole row — no longer cramped by the stepper/icon.
+      className={editing ? 'is-editing' : ''}
       dragging={isDragging}
       pressing={isPressing}
       invalid={invalid}
@@ -187,10 +193,12 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       country={editing ? undefined : city.country}
       dates={editing ? undefined : dates}
       editingSlot={editing
-        ? <CityPicker value={city.city_name ? city : null} onChange={pick} placeholder={t('planner.city_ph')} autoFocus={!!city.city_name} />
+        ? <CityPicker value={staged || (city.city_name ? city : null)} onChange={onSearchPick} placeholder={t('planner.city_ph')} autoFocus />
         : undefined}
     >
-      {!isFinalAnchor && (
+      {editing ? (
+        <button className="te-step te-step--ok" onPointerDown={stopArm} disabled={!staged} onClick={(e) => { e.stopPropagation(); confirmStaged(); }} title={t('common.add')} aria-label={t('common.add')}><Icon name="check" size={15} /></button>
+      ) : (
         <NightsStepper
           value={nights}
           onMinus={() => onChange({ nights: Math.max(1, nights - 1) })}
@@ -201,23 +209,6 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       )}
       <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
     </CityRowBase>
-  );
-
-  if (!isLast) return row;
-  // Last city — its card carries the final-point toggle (the "finish" applies to
-  // THIS city), so the control stays attached to the city it governs.
-  return (
-    <Card radius="lg" pad="none" className={'pl-lastcard' + (finalPoint ? ' is-fin' : '')}>
-      {row}
-      <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
-        <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
-        <Icon name="flag" size={13} className="muted" />
-        <div className="t-meta grow--fit">
-          <span className="t-label">{t('planner.final_point')}</span>{' '}
-          <span className="muted">{t('planner.final_point_hint')}</span>
-        </div>
-      </div>
-    </Card>
   );
 }
 
@@ -357,7 +348,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoint, startDate, setStartDate }) {
+function StepCities({ cities, setCities, home, setHome, startDate, setStartDate }) {
   const t = useT();
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
@@ -427,10 +418,6 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
                   city={c}
                   isDragging={draggingId === c.id}
                   isPressing={pressingId === c.id}
-                  isLast={dIdx === cities.length - 1}
-                  isFinalAnchor={dIdx === cities.length - 1 && finalPoint}
-                  finalPoint={finalPoint}
-                  onToggleFinalPoint={setFinalPoint}
                   onArm={(e) => armDrag(e, c.id)}
                   onChange={(patch) => update(c.id, patch)}
                   onRemove={() => remove(c.id)}
@@ -457,13 +444,41 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
 
 // ─── Step 3: Return ───────────────────────────────────────────────────────────
 
-function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity }) {
+// Один выбор возврата — вертикальный список из трёх взаимоисключающих карточек:
+// домой / в другой город / останусь (финиш, возврата нет). «Финиш» ЖИВЁТ ТОЛЬКО
+// ЗДЕСЬ (тумблер с шага 2 убран) — одна точка правды. finalPoint остаётся общим
+// стейтом (карту/сохранение не трогаем), но пишется только этими карточками.
+function ReturnOption({ on, onClick, icon, tone, title, desc }) {
+  return (
+    <Card
+      as="button"
+      radius="btn"
+      interactive
+      onClick={onClick}
+      className={`choice-card choice-card--stack choice-card--sm${on ? ' choice-card--on' : ''}`}
+    >
+      <div className="row">
+        <div className={`tile tile--lg tile--${tone} tile--solid`}>
+          <Icon name={icon} size={19} />
+        </div>
+        <div className="t-subheading">{title}</div>
+      </div>
+      <div className="muted t-meta">{desc}</div>
+    </Card>
+  );
+}
+
+function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity, finalPoint, setFinalPoint }) {
   const t = useT();
-  // "Домой" is only meaningful with an origin. Without a start there's nowhere
-  // to return home to → the round-trip card is hidden and "другой город" is the
-  // only mode (matches the optional-start model).
+  // "Домой" is only meaningful with an origin. Without a start there's nowhere to
+  // return home to → the round-trip card is hidden; a default is nudged to "other"
+  // only when the user hasn't chosen the "stay" finish.
   const canHome = !!home?.city_name;
-  useEffect(() => { if (!canHome && returnMode !== 'other') setReturnMode('other'); }, [canHome]);
+  useEffect(() => { if (!canHome && !finalPoint && returnMode !== 'other') setReturnMode('other'); }, [canHome]);
+
+  const onHome = returnMode === 'home' && !finalPoint;
+  const onOther = returnMode === 'other' && !finalPoint;
+
   return (
     <div>
       <h1>
@@ -474,66 +489,52 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       </div>
 
       <h2 className="section-sub">{t('planner.step_return')}</h2>
-      {/* Пара карточек, поле города и подсказка - одна колонка со ступенью 16
-          вместо трёх рукописных полей 14/18 у соседних блоков. */}
       <div className="col col--g7">
-      <div className={'field-row' + (canHome ? ' cols-2' : '')}>
-        {canHome && (
-          <Card
-            as="button"
-            radius="card"
-            interactive
-            onClick={() => setReturnMode('home')}
-            className={`choice-card choice-card--stack choice-card--sm${returnMode === 'home' ? ' choice-card--on' : ''}`}
-          >
-            <div className="row">
-              <div className="tile tile--lg tile--brand tile--solid">
-                <Icon name="flag" size={19} />
-              </div>
-              <div className="t-subheading">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
-            </div>
-            <div className="muted t-meta">
-              {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
-            </div>
-          </Card>
-        )}
-
-        <Card
-          as="button"
-          radius="card"
-          interactive
-          onClick={() => setReturnMode('other')}
-          className={`choice-card choice-card--stack choice-card--sm${returnMode === 'other' ? ' choice-card--on' : ''}`}
-        >
-          <div className="row">
-            <div className="tile tile--lg tile--warm tile--solid">
-              <Icon name="globe" size={19} />
-            </div>
-            <div className="t-subheading">{t('planner.return_other')}</div>
-          </div>
-          <div className="muted t-meta">
-            {t('planner.return_other_desc')}
-          </div>
-        </Card>
-      </div>
-
-      {returnMode === 'other' && (
-        <div className="field">
-          <label className="field__label">{t('planner.return_city')}</label>
-          <CityPicker
-            value={returnCity}
-            onChange={setReturnCity}
-            placeholder={t('planner.return_city_ph')}
-            autoFocus
+        {/* Вертикальный список вариантов (было двумя карточками в ряд). */}
+        <div className="col col--g4">
+          {canHome && (
+            <ReturnOption
+              on={onHome}
+              onClick={() => { setReturnMode('home'); setFinalPoint(false); }}
+              icon="flag" tone="brand"
+              title={t('planner.return_home', { city: home?.city_name || '…' })}
+              desc={<>{t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}</>}
+            />
+          )}
+          <ReturnOption
+            on={onOther}
+            onClick={() => { setReturnMode('other'); setFinalPoint(false); }}
+            icon="globe" tone="warm"
+            title={t('planner.return_other')}
+            desc={t('planner.return_other_desc')}
+          />
+          {/* «Останусь» = финиш: возврата нет (переносит смысл убранного тумблера
+              шага 2). Ключи переиспользованы, без новых i18n-строк. */}
+          <ReturnOption
+            on={finalPoint}
+            onClick={() => setFinalPoint(true)}
+            icon="check" tone="success"
+            title={t('planner.final_point')}
+            desc={t('planner.final_point_hint')}
           />
         </div>
-      )}
 
-      <Severity level="quiet">
-        <div className="t-meta muted">{t('planner.return_info')}</div>
-      </Severity>
+        {onOther && (
+          <div className="field">
+            <label className="field__label">{t('planner.return_city')}</label>
+            <CityPicker
+              value={returnCity}
+              onChange={setReturnCity}
+              placeholder={t('planner.return_city_ph')}
+              autoFocus
+            />
+          </div>
+        )}
+
+        <Severity level="quiet">
+          <div className="t-meta muted">{t('planner.return_info')}</div>
+        </Severity>
       </div>
-
     </div>
   );
 }
@@ -605,10 +606,33 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         {t('planner.review_desc')}
       </div>
 
-      {/* Превью трипа собрано из готового: обложка - постер карточки трипа с
-          /trips (.tc), полоса цифр - .statbar, отступ содержимого - вложенный
-          .card. Своего у превью не осталось ничего. */}
-      <div className="card card--flush">
+      {/* Редактируемое сверху — название и обложка кормят превью ниже. */}
+      <div className="field">
+        <label className="field__label t-label">{t('planner.title_label')}</label>
+        <input
+          className="input"
+          value={tripTitle}
+          onChange={e => setTripTitle(e.target.value)}
+          placeholder={autoTitle}
+          disabled={saving}
+        />
+      </div>
+
+      <div className="field">
+        <label className="field__label t-label">{t('planner.cover')}</label>
+        <TripCoverPicker
+          coverImageUrl={cover?.cover_image_url || ''}
+          coverGradient={cover?.cover_gradient || ''}
+          onChange={setCover}
+          showPreview={false}
+        />
+      </div>
+
+      {/* Сводка — ОДНА карточка с одним радиусом; hero / статы / маршрут = плоские
+          секции, разделённые бордюрами. Прежде .statbar и .card лежали скруглёнными
+          ВНУТРИ flush-родителя (радиус в радиусе) — это и убрано. Собрано из готового:
+          обложка = постер .tc, цифры = .statbar/.v/.k, ряд точки = .pl-revrow. */}
+      <Card radius="lg" pad="none" className="pl-summary">
         <div className="tc tc--band">
           {/* heroBg - ДАННЫЕ (загруженное фото или градиент обложки трипа) */}
           <div className="tc__bg" style={{ background: heroBg }}>
@@ -621,7 +645,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           </div>
         </div>
 
-        <Card radius="lg" pad="none" className="statbar statbar--inset">
+        <div className="statbar pl-summary__sec">
           <div className="s">
             <Stat
               label={t('event.start')}
@@ -635,17 +659,17 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
-        </Card>
+        </div>
 
-        <div className="card">
+        <div className="pl-summary__sec pl-summary__route">
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
           <div className="col col--g1">
             {home?.city_name && (
               <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
             )}
             {cities.map((c, i) => {
-              // Last city with the finish switch on → the endpoint marker (single
-              // blue flag, unified with the start), not a numbered stop.
+              // Last city with the finish chosen on step 3 → the endpoint marker
+              // (single blue flag, unified with the start), not a numbered stop.
               const isFin = finalPoint && i === cities.length - 1;
               return (
                 <ReviewRow
@@ -665,28 +689,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
             )}
           </div>
         </div>
-      </div>
-
-      <div className="field">
-        <label className="field__label t-label">{t('planner.cover')}</label>
-        <TripCoverPicker
-          coverImageUrl={cover?.cover_image_url || ''}
-          coverGradient={cover?.cover_gradient || ''}
-          onChange={setCover}
-          showPreview={false}
-        />
-      </div>
-
-      <div className="field">
-        <label className="field__label t-label">{t('planner.title_label')}</label>
-        <input
-          className="input"
-          value={tripTitle}
-          onChange={e => setTripTitle(e.target.value)}
-          placeholder={autoTitle}
-          disabled={saving}
-        />
-      </div>
+      </Card>
 
       {error && <Severity level="error">{error}</Severity>}
 
@@ -937,7 +940,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // Visible steps - "Возврат" is skipped when the last city is the finish point.
   // The entry step's label depends on the method (origin vs AI prompt).
   const entryLabel = isAi ? t('planner.step_home_ai') : t('planner.step_home');
-  const visibleSteps = (finalPoint ? STEPS.filter(s => s.id !== 'return') : STEPS)
+  // The "Возврат" decision (round-trip / other city / stay = finish) now lives
+  // ENTIRELY on step 3, so the step is always present — no step is ever skipped.
+  const visibleSteps = STEPS
     .map(s => ({ ...s, label: s.id === 'home' ? entryLabel : t(s.labelKey) }));
   const goNext = () => {
     const i = visibleSteps.findIndex(s => s.id === step);
@@ -947,12 +952,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const i = visibleSteps.findIndex(s => s.id === step);
     if (i > 0) setStep(visibleSteps[i - 1].id);
   };
-
-  // If the active step becomes hidden (toggled finalPoint while on "return"),
-  // fall back to the skeleton step.
-  useEffect(() => {
-    if (!visibleSteps.some(s => s.id === step)) setStep('cities');
-  }, [finalPoint]);
 
   // Reset draft and go back to step 1
   const resetToStart = () => {
@@ -1237,12 +1236,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                   onJump={(i) => setStep(visibleSteps[i].id)}
                 />
               </div>
-              {/* Reset lives here (quiet, icon-only, top-right) instead of in the
-                  action bar, so the footer holds only Back + the primary CTA and the
-                  narrow mobile header stays uncrowded. Label via aria/title. */}
-              {!isFirstStep && (
-                <Btn variant="quiet" size="sm" icon="refresh" ariaLabel={t('planner.reset')} title={t('planner.reset')} onClick={requestReset} disabled={saving} />
-              )}
             </div>
 
             <div className="lp-b scrollbar-thin flow-lp-b">
@@ -1252,7 +1245,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}
               {step === 'cities' && (
-                <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} />
+                <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               )}
               {step === 'return' && (
                 <StepReturn
@@ -1262,6 +1255,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                   setReturnMode={setReturnMode}
                   returnCity={returnCity}
                   setReturnCity={setReturnCity}
+                  finalPoint={finalPoint}
+                  setFinalPoint={setFinalPoint}
                 />
               )}
               {step === 'review' && (
@@ -1285,6 +1280,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             {showFooter && (
               <div className="lp-f flow-foot">
                 {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
+                {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
+                    icon in the header) — nav actions all live in the action bar. */}
+                {!isFirstStep && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
                 <div className="flow-foot__spacer grow" />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>

@@ -77,7 +77,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
       );
     }
     return (
-      <Card as="button" variant="add" radius="md" pad="none" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
+      <Card as="button" variant="add" radius="btn" pad="none" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
         <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="plus" size={13} /></Tile>
         <div className="te-citycell grow">
           <span className="te-endlabel" style={{ color: accent }}>{label}</span>
@@ -88,7 +88,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
   }
 
   return (
-    <Card recessed radius="md" pad="none" className="row row--g6 te-end">
+    <Card recessed radius="btn" pad="none" className="row row--g6 te-end">
       <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="flag" size={13} /></Tile>
       <div className="te-citycell grow">
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>

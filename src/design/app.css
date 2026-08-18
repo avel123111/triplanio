@@ -3434,7 +3434,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      --sm     плотный шаг для списка, а не для пары крупных карточек */
 .choice-card--on { border-color: var(--brand); background: var(--brand-soft); }
 .choice-card--stack { flex-direction: column; align-items: stretch; gap: 10px; }
-.choice-card--sm { padding: 12px 14px; gap: 10px; }
+/* Радиус 10 (--r-btn) у ПЛОТНОГО списочного варианта — планировщик (возврат,
+   reverse-geo кандидаты) просил более тугой угол, чем 24 крупных навигационных
+   карточек NewTripDialog (те несут `.choice-card` без `--sm`, их не трогает). */
+.choice-card--sm { padding: 12px 14px; gap: 10px; border-radius: var(--r-btn); }
 
 /* Empty Trips · "Маршрут" (no trips yet) — itinerary-rail hero + choice pair.
    New element (approved 2026-06-20). Bound to existing Lumo tokens, mobile-first.
@@ -3599,7 +3602,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    путешествие" never cramps/overflows the row on small tablets/phones. */
 @media (max-width: 768px) {
   .flow-foot__spacer { display: none; }
-  .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
+  /* Back / Reset stay compact; the primary CTA (last child) fills the row and
+     wraps to its own line when a long label ("Сохранить путешествие") can't fit
+     beside them. */
+  .flow-foot > .btn { min-width: 0; justify-content: center; }
+  .flow-foot > .btn:last-child { flex: 1 1 auto; }
 }
 
 /* Phones / tablets: the reusable Map + Sheet scaffold (Pavel 2026-08-18 — the
@@ -3665,9 +3672,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    matches the editor row exactly — one component, one look. The resting card look
    is set here because the planner list is NOT inside .te-table. */
 .te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border-radius: var(--r-md); box-shadow: var(--sh-1); cursor: default; }
-/* Finish (final-point) uses the SAME brand accent as the start anchor — one
-   blue endpoint look across the flow (no warm/orange divergence). */
-.te-row.te-row--plan.te-row--fin { background: var(--brand-soft); border-color: var(--brand); }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
 /* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
 .te-row.te-row--plan .te-row__pacts { justify-self: end; }
@@ -3676,24 +3680,36 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .te-row.te-row--plan .te-step { opacity: 1; }
 .te-row.te-row--plan .te-step--del { color: var(--muted); }
 .te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
+/* Confirm-add control (staged city → commit). Brand-accented; muted while nothing
+   is staged. Reuses the .te-step row-control size (parity with delete). */
+.te-row.te-row--plan .te-step--ok { color: var(--brand); }
+.te-row.te-row--plan .te-step--ok:not(:disabled):hover { color: var(--brand-ink); background: var(--brand-soft); }
+.te-row.te-row--plan .te-step--ok:disabled { color: var(--muted-2); cursor: default; }
+/* While a row is in the picker, collapse the grip + number columns so the search
+   field (and its dropdown) spans the whole row — no longer cramped by the
+   stepper/icon on desktop or squeezed on mobile. */
+.te-row.te-row--plan.is-editing { grid-template-columns: minmax(0, 1fr) auto; }
+.te-row.te-row--plan.is-editing .te-grip,
+.te-row.te-row--plan.is-editing .te-row__num { display: none; }
 /* Mobile: drop the grip column (long-press the row still reorders). */
 @media (max-width: 640px) {
   .te-row.te-row--plan { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px; }
   .te-row.te-row--plan .te-grip { display: none; }
 }
-/* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
-   strip holds the final-point toggle, so the toggle reads as part of the last
-   city (the finish), not a stray control. */
-/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
-/* TRIP-343 объект 2: скин на `<Card radius="lg" pad="none">`; `.pl-lastcard` остаётся
-   классом (хук `.is-fin` + co-селектор `> .te-row--plan`), своё правило было только
-   overflow → ушло на .card--flush. FLUSH (дети .te-row--plan несут паддинг). Статичн.
-   visual-diff-move: pl-lastcard -> card card--r-lg card--flush */
-.pl-lastcard.is-fin { border-color: var(--brand); }
-.pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
-.pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
-.pl-fin-sub { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px dashed var(--line); }
-.pl-fin-sub > svg { flex: none; }
+/* Truncation priority on the city line: the CITY keeps its space and the COUNTRY
+   yields first (a long country name — «Доминиканская Республика» — no longer
+   erases the city). Country truncates within ≤55% of the line. */
+.te-cityline .te-cityname { flex: 0 1 auto; }
+.te-cityline .te-country { flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Сводка шага «Проверка» (TRIP-337): ОДНА карточка (радиус на `.card--r-lg`),
+   секции внутри ПЛОСКИЕ и разделены бордюрами — hero клипуется к радиусу карточки,
+   `.statbar` и маршрут больше НЕ несут своих скруглений (был «радиус в радиусе»
+   внутри flush-родителя). Пространство `pl` уже существует (`.pl-revrow`). */
+.pl-summary { overflow: hidden; }
+.pl-summary .tc--band { border-radius: 0; }
+.pl-summary__sec { border-top: 1px solid var(--line); }
+.pl-summary__route { padding: var(--sp-6) var(--sp-7); }
 
 /* ─── Планировщик: превью трипа на шаге «Обзор» (TRIP-321 Ф14.13/14.15) ──────
    Первый заход развёрстывал этот блок в СЕМНАДЦАТЬ своих имён - и это была не
@@ -7407,8 +7423,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Полоса внутри карточки: своего верхнего поля у неё нет (карточка уже задала
    ритм), зато нужна нижняя черта - под ней идёт следующий блок той же карточки.
    Ячейки тут без плитки-иконки, поэтому шаг плотнее. */
-.statbar--inset { margin-top: 0; border-bottom: 1px solid var(--line); }
-.statbar--inset .s { padding: 12px 16px; }
 /* visual-diff-move: .statbar .ic -> tile — плитка-иконка статбара на примитив <Tile>:
    квадрат/радиус/центр/тинт несёт .tile, контекст задаёт ступень + тон каналом --hl
    (TRIP-391 объект 3, семья ic). Тон-варианты (.c-*) и размер иконки (--tile-ic ↔
