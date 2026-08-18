@@ -149,26 +149,30 @@ OCR (`inputType: url`), которая скачивает что дадут. Ф�
 подметать старый объект. Поймал `code-simplifier`. Правило: **при смене сигнатуры грепать имя
 ФУНКЦИИ, а не имя поля.** Обложка теперь передаётся как `collectDocPaths([{ file_url: url }])`.
 
-## Конвенция RLS-политик user-write бакета (TRIP-367)
+## Перезапись в user-write бакете: уникальный ключ, НЕ upsert (TRIP-367)
 
-**User-write бакет, принимающий `upsert:true`, ОБЯЗАН иметь полный CRUD-набор
-политик, включая SELECT.** supabase-js при `upsert:true` шлёт запись как
-`INSERT … ON CONFLICT (bucket_id,name) DO UPDATE`, а `ON CONFLICT DO UPDATE`
-под RLS обязан ПРОЧИТАТЬ конфликтующую строку → без SELECT-политики Postgres
-отклоняет команду с `new row violates row-level security policy` (403), причём
-INSERT в отсутствие конфликта проходит — баг всплывает только на ПЕРЕЗАПИСИ.
-Именно это сломало смену аватара: `avatars` — единственный user-write бакет с
-фиксированным ключом (`<uid>/avatar`) и `upsert:true`. `avatars_select`
-(bucket-wide) была в baseline и удовлетворяла SELECT для `ON CONFLICT`; TRIP-48
-(`20260713120000`, 2026-07-13) сняла её вместе с листингом бакета → с этого
-момента перезапись сломалась (`ON CONFLICT DO UPDATE` ВСЕГДА требует
-SELECT-политику; последняя успешная загрузка 10.07 — за 3 дня до дропа). Фикс
-`20260818194500` вернул `avatars_select`
-**owner-scoped** (не bucket-wide) — `ON CONFLICT` получает SELECT, публичный
-листинг не воскресает. `support`-бакет политики SELECT НЕ требует: пишет без
-`upsert` по уникальному uuid-пути → `ON CONFLICT` не возникает. Публичное чтение
-аватаров идёт через `/object/public/` мимо RLS, поэтому owner-scoped SELECT его
-не трогает. Наблюдаемость сбоя storage-загрузки — отдельно, [TRIP-284].
+**Публичный бакет = ноль SELECT-политик (инвариант TRIP-48, гард 2e
+`check-security-tiers`).** Поэтому для перезаписи файла НЕ использовать
+`upsert:true`: supabase-js шлёт его как `INSERT … ON CONFLICT (bucket_id,name)
+DO UPDATE`, а `ON CONFLICT DO UPDATE` под RLS обязан ПРОЧИТАТЬ конфликтующую
+строку → без SELECT-политики Postgres отклоняет команду с `new row violates
+row-level security policy` (403), причём плоский INSERT (нет конфликта) проходит
+— баг всплывал только на ПЕРЕЗАПИСИ. Так и сломалась смена аватара: `avatars`
+писался фиксированным ключом (`<uid>/avatar`) с `upsert:true`, а bucket-wide
+`avatars_select` из baseline (которая удовлетворяла тот SELECT) сняла TRIP-48
+(`20260713120000`, 2026-07-13) вместе с листингом → перезапись стала падать
+(последняя успешная 10.07, за 3 дня до дропа).
+
+**Правильный паттерн (как обложки трипа и официальный Supabase-пример
+аватаров):** уникальный ключ на версию (`<uid>/<uuid>`, папка `<uid>/`
+обязательна для owner-scoped `avatars_insert`) + указатель в профиле + best-effort
+снос старого объекта (`parseStorageObjectUrl(prevUrl)` → `.remove([path])`).
+Плоский INSERT в новый ключ конфликта не даёт → SELECT-политика не нужна;
+уникальный ключ сам бьёт кэш, поэтому `?t=` не нужен. Промежуточный фикс
+`20260818194500` (owner-scoped `avatars_select`) был откачен `20260818210000`,
+т.к. любая SELECT-политика на публичном бакете валит гард 2e. `support`-бакет
+уже так и делает (uuid-путь, без `upsert`). Наблюдаемость сбоя загрузки —
+отдельно, [TRIP-284].
 
 ## Осознанно НЕ сделано
 

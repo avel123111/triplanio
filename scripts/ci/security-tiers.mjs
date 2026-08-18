@@ -234,7 +234,7 @@ export const FUNCTIONS = {
 // тексте политики, а не смысл предиката — что именно проверяет функция с этим
 // именем, остаётся на ревью (тот же предел, что у IF4).
 export const BUCKETS = {
-  avatars: { public: true,  policies: ['insert', 'update', 'delete'], note: 'публичный; детерм. ключ <uid>/avatar, БЕЗ SELECT (TRIP-48)' },
+  avatars: { public: true,  policies: ['insert', 'update', 'delete'], note: 'публичный; уникальный ключ <uid>/<uuid> на версию, БЕЗ SELECT (TRIP-48/367); перезапись НЕ upsert\'ом — плоский INSERT + best-effort снос старого' },
   trips:   {
     public: false,
     policies: ['select', 'insert', 'update', 'delete'],
