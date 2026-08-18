@@ -2323,7 +2323,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    `align-items: start` (не end): при схлопе аси́д может стать выше (перенос узкого
    контента), и на `end` это опускало бы город с датой ВНИЗ — баг #10. */
 .field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: 1fr 0fr; }
-.field-row--aside > .field:last-child { transition: opacity .16s ease; }
+/* nowrap on the aside so it NEVER reflows taller as its track shrinks to 0 — otherwise
+   the label wraps to many lines, grows the row, and everything BELOW the row (the
+   "Рядом" section) is pushed down mid-animation (Pavel). Height stays constant → the
+   row height stays constant → nothing above or below moves. Harmless at rest (the
+   control already fits on one line). */
+.field-row--aside > .field:last-child { transition: opacity .16s ease; white-space: nowrap; }
 .field-row--aside:has(> .field:first-child:focus-within) > .field:last-child {
   min-width: 0; overflow: hidden; opacity: 0; visibility: hidden;
   transition: opacity .16s ease, visibility 0s linear .18s;
@@ -4353,8 +4358,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-send:disabled { box-shadow: none; }
 /* AI-planner composer: the send button carries the assistant gradient instead of the
    brand solid, and there's no @-mention button (hideMention). `--ai` extends the
-   existing `chat-composer` family — same size/skin, only the send fill differs. */
-.chat-composer--ai .chat-send { background: var(--ai-gradient); box-shadow: 0 6px 16px -9px var(--ai); }
+   existing `chat-composer` family — same size/skin, only the send fill differs.
+   • Full width: the base `.chat-composer__in` centres itself with a 760px cap + 24px
+     side padding (for the wide chat lens); in the narrow planner panel that just
+     squeezes the field, so drop both here (same as the dock-panel context does).
+   • background-origin: border-box — the icon-btn carries a 1px transparent border, so
+     a padding-box gradient left a band at the edges (Pavel "полосы по краям"). */
+.chat-composer--ai .chat-composer__in { max-width: none; padding: 0; }
+.chat-composer--ai .chat-send { background: var(--ai-gradient); background-origin: border-box; box-shadow: 0 6px 16px -9px var(--ai); }
 .chat-composer--ai .chat-send:disabled { box-shadow: none; }
 /* Call the assistant without knowing the "@" convention.
    ★Тон `ai` в каноне - это ХОВЕР-тинт (так его носит крестик AI-блока). Эта

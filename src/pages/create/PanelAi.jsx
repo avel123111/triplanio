@@ -8,10 +8,11 @@ import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 
 // =====================================================================
 // AI ENTRY PANEL — the CONVERSATION (transcript only). The composer is pinned by
-// ManualPlanner as a separate <ChatComposer> bar below this scroller (like the trip
-// chat), and the "Triplanio печатает" state lives on that composer. Every message —
-// bot AND user — is rendered by ONE shell (ChatMsg), reusing the trip chat's avatar
-// + name + card so the two chats can't drift.
+// ManualPlanner as a separate <ChatComposer> bar below this scroller. Sides mirror
+// the trip chat (Pavel): the BOT is left (avatar + tinted card), the USER is right
+// (avatar + own bubble). Vertical rhythm comes from the chat's own per-message
+// margins (.chat-reply / .chat-run), NOT a wrapping gap — a wrapping gap stacked on
+// top of them read as double spacing.
 //   ctx: { aiMessages, onGenerate(promptText), userName, userPhoto, userSeed }
 // =====================================================================
 
@@ -44,18 +45,33 @@ function DraftItinerary({ draft }) {
   );
 }
 
-// One message — avatar + name + card. The SAME shell (from ChatReply) serves the bot
-// and the user; only the avatar/name and the card tone differ (`ai` = the assistant-
-// tinted card, neutral = a plain surface card for the user's own message).
-function ChatMsg({ avatar, name, tone, children }) {
+// Assistant turn — LEFT: avatar + name + tinted card. Same shell/skin as the trip
+// chat's ChatReply.
+function BotMessage({ children }) {
   return (
-    <div className="col col--g4 chat-reply">
+    <div className="chat-reply">
       <div className="row row--g6">
-        <div className="chat-run__av">{avatar}</div>
+        <div className="chat-run__av"><Avatar kind="ai" /></div>
         <div className="col col--g4 grow--fit">
-          <div className="row row--g4 chat-reply__who"><b>{name}</b></div>
-          <Card radius="md" className={tone === 'ai' ? 'chat-reply__card' : undefined}>{children}</Card>
+          <div className="row row--g4 chat-reply__who"><b>{TRIPLANIO_BOT_NAME}</b></div>
+          <Card radius="md" className="chat-reply__card">{children}</Card>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// User turn — RIGHT: the outgoing bubble (chat-run--me / chat-bubble--me), with the
+// user's avatar + name (row-reverse puts the avatar on the right).
+function UserMessage({ text, name, photo, seed }) {
+  return (
+    // The row IS the .chat-run (its margin-top spaces messages, and .chat-run--me
+    // justify-ends it); row-reverse puts the avatar on the right.
+    <div className="row row--g6 chat-run chat-run--me" style={{ flexDirection: 'row-reverse' }}>
+      <div className="chat-run__av"><Avatar name={name} photo={photo} seed={seed} /></div>
+      <div className="col col--g4 col--a-end grow--fit">
+        <div className="row row--g4 chat-reply__who"><b>{name}</b></div>
+        <div className="chat-bubble chat-bubble--me"><span style={{ whiteSpace: 'pre-wrap' }}>{text}</span></div>
       </div>
     </div>
   );
@@ -69,40 +85,38 @@ export default function PanelAi({ ctx }) {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [aiMessages.length]);
 
-  // Quick-start chips only on the opening turn (nothing sent yet) — tapping one sends
-  // it straight to the bot.
+  // Quick-start chips only on the opening turn (nothing sent yet). They live INSIDE
+  // the welcome message so they align with the bot's text and inherit its font;
+  // tapping one sends it straight to the bot.
   const showChips = aiMessages.length <= 1;
+  const chips = showChips ? (
+    <div className="row row--wrap row--g4" style={{ marginTop: 10 }}>
+      {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
+        <Chip key={p} onClick={() => onGenerate(p)}>{p}</Chip>
+      ))}
+    </div>
+  ) : null;
 
   return (
-    <div className="col col--g6">
+    <div>
       {aiMessages.map((m) => {
-        if (m.role === 'user') {
+        if (m.role === 'user') return <UserMessage key={m.id} text={m.text} name={userName} photo={userPhoto} seed={userSeed} />;
+        if (m.kind === 'welcome') {
           return (
-            <ChatMsg key={m.id} avatar={<Avatar name={userName} photo={userPhoto} seed={userSeed} />} name={userName}>
-              <span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>
-            </ChatMsg>
+            <BotMessage key={m.id}>
+              <span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span>
+              {chips}
+            </BotMessage>
           );
         }
-        let body;
-        if (m.kind === 'welcome') body = <span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span>;
-        else if (m.kind === 'error') body = <span className="t-body">{t('ai_plan.error_plan_title')}</span>;
-        else body = (
-          <>
+        if (m.kind === 'error') return <BotMessage key={m.id}><span className="t-body">{t('ai_plan.error_plan_title')}</span></BotMessage>;
+        return (
+          <BotMessage key={m.id}>
             {m.text ? <div className="chat-reply__text"><ChatMarkdown text={m.text} linkClassName="cm-a cm-a--brand" /></div> : null}
             <DraftItinerary draft={m.draft} />
-          </>
+          </BotMessage>
         );
-        return <ChatMsg key={m.id} avatar={<Avatar kind="ai" />} name={TRIPLANIO_BOT_NAME} tone="ai">{body}</ChatMsg>;
       })}
-
-      {showChips && (
-        <div className="row row--wrap row--g4">
-          {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
-            <Chip key={p} onClick={() => onGenerate(p)}>{p}</Chip>
-          ))}
-        </div>
-      )}
-
       <div ref={endRef} />
     </div>
   );
