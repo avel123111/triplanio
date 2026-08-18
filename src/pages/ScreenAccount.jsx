@@ -16,6 +16,7 @@ import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { parseStorageObjectUrl } from '@/lib/storage';
 import { errorText } from '@/lib/errorText';
 import { track } from '@/lib/analytics';
 import { openConsentBanner } from '@/lib/consent';
@@ -352,6 +353,15 @@ function ReminderChannels() {
   );
 }
 
+// Best-effort снос объекта аватара по его публичному URL. Провал намеренно
+// проглатывается — сохранённая/снятая ссылка `avatar_url` уже победила. Ключ
+// уникален на версию, поэтому путь берётся из URL, а не из фикс-имени.
+async function removeAvatarObject(url) {
+  const obj = parseStorageObjectUrl(url);
+  if (obj?.bucket !== 'avatars') return;
+  try { await supabase.storage.from('avatars').remove([obj.path]); } catch { /* ignore */ }
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ScreenAccount() {
@@ -501,26 +511,28 @@ export default function ScreenAccount() {
     }
     setUploadingAvatar(true);
     setErrorMsg(null);
+    const prevUrl = avatarUrl;
     try {
-      // Deterministic key: one object per user, no extension. upsert overwrites
-      // it in place, so stale variants can never accumulate and no listing sweep
-      // is needed (TRIP-48). The browser renders <img> by the stored Content-Type,
-      // not the URL suffix, and avatar_url carries a ?t= cache-buster. That type
-      // comes from the multipart part the browser builds out of `file` — passing
-      // a `contentType` option here would do nothing (storage-js only applies it
-      // to non-Blob bodies), so the MIME allow-list on the bucket is the gate.
-      const path = `${user.id}/avatar`;
+      // Уникальный ключ на версию под своей папкой: `<uid>/<uuid>`. Папка `<uid>/`
+      // обязательна — её проверяет owner-scoped `avatars_insert`. Уникальность
+      // ключа = плоский INSERT (нет `ON CONFLICT`, значит SELECT-политика не
+      // нужна — публичный бакет держит ноль SELECT-политик, гард 2e/TRIP-48) и
+      // сам бьёт кэш браузера, поэтому `?t=` не нужен. Content-Type берётся из
+      // multipart-части, что строит браузер из `file`; MIME-гейт — allow-list
+      // бакета. Паттерн — как у обложек трипа и официального Supabase-примера.
+      const path = `${user.id}/${crypto.randomUUID()}`;
       // Байты аватара — прямо в Storage (намеренно разрешённое прямое обращение,
       // handoff). Только ссылка `avatar_url` идёт через шов.
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { upsert: true });
+        .upload(path, file);
       if (uploadErr) throw uploadErr;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = `${publicUrl}?t=${Date.now()}`;
-      const { error, code } = await invokeFn('account/profile', { body: { avatar_url: url } });
+      const { error, code } = await invokeFn('account/profile', { body: { avatar_url: publicUrl } });
       if (error || code) { setErrorMsg(errorText(t, code)); return; }
-      setAvatarUrl(url);
+      setAvatarUrl(publicUrl);
+      // Старый объект больше не адресуется профилем — сносим best-effort.
+      await removeAvatarObject(prevUrl);
       await checkUserAuth?.();
     } catch (e) {
       // Сбой загрузки байтов в Storage (не edge) — кода нет, показываем общий
@@ -543,11 +555,8 @@ export default function ScreenAccount() {
       setErrorMsg(errorText(t, code));
       return;
     }
-    // Байты — best-effort прямо в Storage (own-folder DELETE policy); провал не
-    // откатывает уже снятую ссылку.
-    try {
-      await supabase.storage.from('avatars').remove([`${user.id}/avatar`]);
-    } catch { /* ignore */ }
+    // Байты — best-effort прямо в Storage (own-folder DELETE policy).
+    await removeAvatarObject(prev);
     await checkUserAuth?.();
   };
 
