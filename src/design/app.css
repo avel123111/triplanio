@@ -4206,12 +4206,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    явным исключением `[data-theme="dark"] .chat-composer__row` выше по файлу
    (фон здесь не объявлен вовсе - в светлой он приходит от группы). */
 .chat-composer__row {
-  /* Кнопки @/отправки компактнее поля (~32 vs 40px) — при выравнивании по низу
-     они садились ПОД центрированный текст поля. Центрируем по вертикали: центр
-     кнопки = центр строки поля (TRIP-337, запрос Pavel).
-     visual-diff-exempt: .chat-composer__row align-items — было flex-end, кнопки
-     висели внизу под текстом (Pavel) */
-  gap: 8px; align-items: center; padding: 8px;
+  /* align-items: flex-end — кнопки прижаты к низу поля (растёт вверх): на
+     растянутом инпуте они у последней строки, а на ОДНОЙ строке совпадают с ней,
+     т.к. высота кнопки = высоте строки-ряда поля (--ctl-h 40 = line 22 + pad 9·2).
+     Раньше в доке кнопки были --ctl-h-sm (32) и на 4px висели ниже текста — теперь
+     40 (см. .dock-panel .chat-at/.chat-send ниже). */
+  gap: 8px; align-items: flex-end; padding: 8px;
   box-shadow: var(--sh-1);
 }
 .chat-composer__field { flex: 1; min-width: 0; position: relative; min-height: 40px; }
@@ -4412,11 +4412,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Ступень теперь общая, у дока остаются свои отступы и отсутствие тени. */
 .dock-panel .chat-composer { border-top: 0; padding: 0; }
 .dock-panel .chat-composer__row { padding: 6px; box-shadow: none; }
-/* 34px здесь были ТРЕТЬИМ числом стороны мимо обеих ступеней. Уплотнение в доке
-   выражается ступенью `--sm` (32px), а не своим литералом: иначе размер кнопки
-   в доке нельзя объявить из разметки - контекстное правило (0,2,0) молча бьёт
-   модификатор (0,1,0). Радиус общий, из ко-селектора `.tile, .icon-btn`. */
-.dock-panel .chat-at, .dock-panel .chat-send { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
+/* ★TRIP-337: док-override размера кнопок @/отправки на --ctl-h-sm (32px) снят.
+   При поле 40px и выравнивании по низу 32px-кнопки висели на 4px ниже строки
+   текста (растянутый инпут — особенно стрёмно). Теперь они md (--ctl-h 40 = высота
+   строки-ряда поля) как в полном чате: flex-end совпадает со строкой и на одной
+   строке, и на последней строке растянутого поля. Радиус — из ко-селектора
+   `.tile, .icon-btn`.
+   visual-diff-exempt: .chat-at width — кнопки дока @/отправки 32→40 к строке поля (TRIP-337, Pavel)
+   visual-diff-exempt: .chat-at height — кнопки дока @/отправки 32→40 к строке поля (TRIP-337, Pavel)
+   visual-diff-exempt: .chat-send width — кнопки дока @/отправки 32→40 к строке поля (TRIP-337, Pavel)
+   visual-diff-exempt: .chat-send height — кнопки дока @/отправки 32→40 к строке поля (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel width — снят descendant-override размера кнопок; своя ширина дока (396px) не менялась, атрибуция 2p (TRIP-337, Pavel)
+   visual-diff-exempt: .dock-panel height — снят descendant-override размера кнопок; своя высота дока не менялась, атрибуция 2p (TRIP-337, Pavel) */
 .dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 
 /* ──────────────────────────────────────────────────────────────────────────
