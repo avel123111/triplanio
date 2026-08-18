@@ -61,16 +61,16 @@ function BotMessage({ children }) {
   );
 }
 
-// User turn — RIGHT: the outgoing bubble (chat-run--me / chat-bubble--me), with the
-// user's avatar + name (row-reverse puts the avatar on the right).
+// User turn — RIGHT: the trip chat's own-message structure (chat-run--me /
+// chat-run__col / chat-bubble--me), with the user's avatar + name added (row-reverse
+// puts the avatar on the right). Name uses `.chat-name` — a PARTICIPANT name (ink),
+// NOT `.chat-reply__who` (which is the assistant's --ai-ink purple).
 function UserMessage({ text, name, photo, seed }) {
   return (
-    // The row IS the .chat-run (its margin-top spaces messages, and .chat-run--me
-    // justify-ends it); row-reverse puts the avatar on the right.
     <div className="row row--g6 chat-run chat-run--me" style={{ flexDirection: 'row-reverse' }}>
       <div className="chat-run__av"><Avatar name={name} photo={photo} seed={seed} /></div>
-      <div className="col col--g4 col--a-end grow--fit">
-        <div className="row row--g4 chat-reply__who"><b>{name}</b></div>
+      <div className="col col--g2 chat-run__col">
+        <div className="chat-name"><b>{name}</b></div>
         <div className="chat-bubble chat-bubble--me"><span style={{ whiteSpace: 'pre-wrap' }}>{text}</span></div>
       </div>
     </div>
@@ -85,30 +85,17 @@ export default function PanelAi({ ctx }) {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [aiMessages.length]);
 
-  // Quick-start chips only on the opening turn (nothing sent yet). They live INSIDE
-  // the welcome message so they align with the bot's text and inherit its font;
-  // tapping one sends it straight to the bot.
+  // Quick-start chips only on the opening turn (nothing sent yet); tapping one sends
+  // it straight to the bot. They sit UNDER the welcome message, indented by an
+  // avatar-width spacer so they line up with the message body (not the panel edge);
+  // `.pl-ai-chips` binds their font to the Meta canon.
   const showChips = aiMessages.length <= 1;
-  const chips = showChips ? (
-    <div className="row row--wrap row--g4" style={{ marginTop: 10 }}>
-      {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
-        <Chip key={p} onClick={() => onGenerate(p)}>{p}</Chip>
-      ))}
-    </div>
-  ) : null;
 
   return (
     <div>
       {aiMessages.map((m) => {
         if (m.role === 'user') return <UserMessage key={m.id} text={m.text} name={userName} photo={userPhoto} seed={userSeed} />;
-        if (m.kind === 'welcome') {
-          return (
-            <BotMessage key={m.id}>
-              <span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span>
-              {chips}
-            </BotMessage>
-          );
-        }
+        if (m.kind === 'welcome') return <BotMessage key={m.id}><span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span></BotMessage>;
         if (m.kind === 'error') return <BotMessage key={m.id}><span className="t-body">{t('ai_plan.error_plan_title')}</span></BotMessage>;
         return (
           <BotMessage key={m.id}>
@@ -117,6 +104,18 @@ export default function PanelAi({ ctx }) {
           </BotMessage>
         );
       })}
+
+      {showChips && (
+        <div className="row row--g6 pl-ai-chips">
+          <div className="chat-run__av" aria-hidden="true" />
+          <div className="row row--wrap row--g4 grow--fit">
+            {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
+              <Chip key={p} onClick={() => onGenerate(p)}>{p}</Chip>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div ref={endRef} />
     </div>
   );

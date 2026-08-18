@@ -873,6 +873,7 @@ h4,
    visual-diff-exempt: .t-support letter-spacing — новый канон (0) */
 .t-support { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
 .t-meta,
+.pl-ai-chips .fpill,     /* TRIP-337: чипы-подсказки AI-планнера на канон Meta (у .fpill свой `font: inherit`, поэтому нужен селектор специфичнее) */
 .dock-panel__id span,    /* TRIP-337 инсп.: подзаголовок виджета чата off-canon→Meta */
 .field__hint,
 .app-header__trip-meta,
@@ -3766,6 +3767,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    внутри flush-родителя). Пространство `pl` уже существует (`.pl-revrow`). */
 /* The itinerary list inside an AI chat reply — a small gap off the reply text. */
 .pl-ai-draft { margin-top: var(--sp-5); }
+/* Quick-start chips under the welcome message — a small gap below it. The empty
+   `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
+.pl-ai-chips { margin-top: var(--sp-4); }
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
 /* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a
