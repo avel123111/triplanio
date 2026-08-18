@@ -23,6 +23,19 @@ function buildLegs(home, cities, returnCity, finalPoint) {
   return legs;
 }
 
+// Desktop: the step panel FLOATS over the left of the full-bleed map, so the route
+// must be framed in the VISIBLE area (right of the panel) — reserve the panel's
+// width on the left. On phones (≤960) the map is its own top band with the sheet
+// below it, so only a little bottom room is reserved for the sheet's overlap.
+// Mirror the CSS: .flow-editcol width = min(460px, 40vw); breakpoint 960.
+function fitPaddingFor(w) {
+  if (w > 960) {
+    const panel = Math.min(460, w * 0.4);
+    return { top: 48, right: 48, bottom: 48, left: Math.round(panel + 40) };
+  }
+  return { top: 32, right: 40, bottom: 52, left: 40 };
+}
+
 // =====================================================================
 // FLOW MAP - full-bleed Mapbox route preview that fills its container.
 // Shared across every step of the unified create flow so the map is the
@@ -44,6 +57,16 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   const [scheme, setScheme] = useState(isDark ? 'DARK' : 'LIGHT');
   useEffect(() => { setScheme(isDark ? 'DARK' : 'LIGHT'); }, [isDark]);
   const [showSE, setShowSE] = useState(true);
+
+  // Track viewport width so the fit re-frames when the layout crosses the
+  // desktop↔mobile breakpoint or the panel width (40vw) changes on resize.
+  const [winW, setWinW] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200));
+  useEffect(() => {
+    let raf = 0;
+    const onResize = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setWinW(window.innerWidth)); };
+    window.addEventListener('resize', onResize);
+    return () => { window.removeEventListener('resize', onResize); cancelAnimationFrame(raf); };
+  }, []);
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // marker cleanup on unmount).
@@ -81,9 +104,15 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     });
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
-    if (canFit && positions.length) calmFit(map, positions, { padding: 48, maxZoom: 7, singleZoom: 8 });
+    // Asymmetric padding keeps the route clear of the floating panel; offset does the
+    // same for the single-point (origin-only) case, which fitBounds padding can't.
+    if (canFit && positions.length) {
+      const pad = fitPaddingFor(winW);
+      const offset = [Math.round((pad.left - pad.right) / 2), 0];
+      calmFit(map, positions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
+    }
     return undefined;
-  }, [ready, canFit, ptsKey]);
+  }, [ready, canFit, ptsKey, winW]);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).
