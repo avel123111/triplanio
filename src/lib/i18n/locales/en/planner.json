@@ -28,8 +28,6 @@
   "err_no_session": "Your session expired. Sign in again.",
   "err_no_title": "Enter a trip name",
   "fewer_nights": "Fewer nights",
-  "final_point": "This is the trip's final stop",
-  "final_point_hint": "No return needed, the \"Return\" step is skipped",
   "stay_title": "Staying in {city}",
   "stay_desc": "{city} is the final stop of the trip, no return needed",
   "from_date_prefix": "from",

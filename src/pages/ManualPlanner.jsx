@@ -1034,8 +1034,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       cities.forEach((c, i) => {
         if (!c.city_name) return;
         const isFinalAnchor = finalPoint && i === cities.length - 1;
-        citiesPayload.push(isFinalAnchor
-          ? { ...cityIdentity(c), kind: 'end' }
+        // 0 nights = a layover/waypoint — save it with the SAME kind the editor uses
+        // (kind:'waypoint'), so it's excluded from city/country counts and reopens as
+        // a пересадка, not a numbered stop. A distinct final anchor stays kind:'end'.
+        citiesPayload.push(
+          isFinalAnchor ? { ...cityIdentity(c), kind: 'end' }
+          : (+c.nights === 0) ? { ...cityIdentity(c), kind: 'waypoint' }
           : { ...cityIdentity(c), kind: 'transit', nights: +c.nights || 0 });
       });
       // Return city → kind:'end' (created even when returnMode==='home', so the
