@@ -3731,8 +3731,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
 /* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a
-   divided section: no own radius/side-borders, just a top divider. */
-.pl-summary > .statbar { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+   divided section: no own radius/side-borders, just a top divider. Its standalone
+   `margin-top:18px` (separation from content above in other layouts) becomes an
+   empty strip here, where the cover band already abuts it — drop it so the band
+   meets the numbers flush at the divider (TRIP-337, Pavel). */
+.pl-summary > .statbar { border: 0; border-top: 1px solid var(--line); border-radius: 0; margin-top: 0; }
 .pl-summary__route { padding: var(--sp-6) var(--sp-7); border-top: 1px solid var(--line); }
 
 /* ─── Планировщик: превью трипа на шаге «Обзор» (TRIP-321 Ф14.13/14.15) ──────

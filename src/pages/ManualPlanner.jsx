@@ -1308,10 +1308,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <FlowMap
               home={home}
               cities={cities}
-              // The return leg is only drawn once the user reaches step 3 and makes
-              // a choice — before that there is no return line on the map (the
-              // default "home" mode must not pre-draw a round-trip).
-              returnCity={(step === 'return' || step === 'review') ? effectiveReturn : null}
+              // Always pass the return city (it feeds the camera framing), but only
+              // DRAW the return pin + leg from step 3 on — so navigating steps toggles
+              // what's drawn without re-framing, and the default round-trip never
+              // pre-draws a line home on the earlier steps.
+              returnCity={effectiveReturn}
+              drawReturn={step === 'return' || step === 'review'}
               finalPoint={finalPoint}
               hoveredId={hoveredMapId}
               selectedId={selectedMapId}

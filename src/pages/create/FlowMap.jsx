@@ -9,13 +9,15 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 
 // Build ordered legs (home → cities → return) - self-contained so the map has
-// no dependency on the planner's save logic. Mirrors computeLegs ordering.
-function buildLegs(home, cities, returnCity, finalPoint) {
+// no dependency on the planner's save logic. Mirrors computeLegs ordering. The
+// return leg is drawn only when `drawReturn` (the return/review steps), so the
+// default round-trip never pre-draws a line back home on the earlier steps.
+function buildLegs(home, cities, returnCity, finalPoint, drawReturn) {
   const stops = [];
   if (home?.latitude) stops.push(home);
   cities.forEach((c) => { if (c.latitude) stops.push(c); });
   const lastCity = cities[cities.length - 1];
-  if (!finalPoint && returnCity?.latitude && returnCity.city_name !== lastCity?.city_name) {
+  if (!finalPoint && drawReturn && returnCity?.latitude && returnCity.city_name !== lastCity?.city_name) {
     stops.push(returnCity);
   }
   const legs = [];
@@ -74,6 +76,10 @@ function startGlobeView(map, pad, winW) {
 // =====================================================================
 export default function FlowMap({
   home, cities = [], returnCity, transport = {}, finalPoint = false,
+  // `drawReturn` — draw the return pin + leg (the return/review steps). The return
+  // CITY still feeds the camera framing whenever it's a distinct place (see the fit
+  // effect), so stepping between steps toggles what's drawn WITHOUT re-framing.
+  drawReturn = false,
   // Map-lens-style interactivity (all optional — omit for a passive preview):
   hoveredId = null, selectedId = null, cityBadge = null,
   onCityHover, onCityClick, onMapClick,
@@ -137,6 +143,10 @@ export default function FlowMap({
   // cities numbered 1..N, a 0-night stop → waypoint glyph (NOT a number, same as the
   // editor / Map lens). Each pin carries a stable id ('home' | city.id | 'return')
   // so hover/click can address it and the tooltip can be looked up by the parent.
+  // The return counts as a distinct place only when it isn't the origin (a real
+  // round-trip returns to home, already on the map). This gates the fit; drawing it
+  // ALSO requires `drawReturn` (the step), so the pin appears without moving the camera.
+  const hasDistinctReturn = !finalPoint && returnCity?.latitude != null && returnCity.city_name !== home?.city_name && showSE;
   const pts = [];
   if (home?.latitude && showSE) pts.push({ lat: home.latitude, lng: home.longitude, label: null, kind: 'start', data: 'home' });
   let transitNo = 0;
@@ -145,15 +155,24 @@ export default function FlowMap({
     const isWaypoint = (+c.nights || 0) === 0 && !!c.city_name;
     pts.push({ lat: c.latitude, lng: c.longitude, label: isWaypoint ? null : String(++transitNo), kind: isWaypoint ? 'waypoint' : 'transit', data: String(c.id) });
   });
-  if (!finalPoint && returnCity?.latitude && returnCity.city_name !== home?.city_name && showSE) {
+  if (hasDistinctReturn && drawReturn) {
     pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: null, kind: 'end', data: 'return' });
   }
 
-  const positions = pts.map((p) => [p.lng, p.lat]);
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
-  const legs = buildLegs(home, cities, returnCity, finalPoint);
+  const legs = buildLegs(home, cities, returnCity, finalPoint, drawReturn);
 
+  // DRAW key — markers rebuild when this changes (incl. the return pin appearing on
+  // step 3). FIT key — the camera re-frames ONLY when this changes: the real route
+  // geometry (home + cities + a distinct return, step-independent) plus the viewport
+  // size. So stepping between steps rebuilds pins but never jerks the camera; only a
+  // route edit / resize re-frames. (TRIP-337, Pavel)
   const ptsKey = pts.map((p) => `${p.kind || ''}:${p.label}@${p.lat},${p.lng}`).join('|');
+  const fitPositions = [];
+  if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
+  cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
+  if (hasDistinctReturn) fitPositions.push([returnCity.longitude, returnCity.latitude]);
+  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // A FlowMap-owned handle to the (singleton) map instance. useMapSurface nulls its
@@ -165,6 +184,10 @@ export default function FlowMap({
   // Did the previous fit draw a route? Lets the empty branch tell a fresh mount /
   // resize (snap to the start globe) apart from a draft RESET (glide back out).
   const prevHadPointsRef = useRef(false);
+  // The fitKey the camera was last framed for — so a marker rebuild that leaves the
+  // route geometry unchanged (a step change) doesn't re-fit. Reset when the route
+  // empties, so the next real route frames again.
+  const fittedSigRef = useRef('');
 
   // Markers + fit.
   useEffect(() => {
@@ -190,13 +213,19 @@ export default function FlowMap({
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
     if (canFit) {
       const pad = fitPaddingFor(winW);
-      if (positions.length) {
-        // Route: clear any idle-globe viewport padding first, then fit with the
-        // asymmetric reserve. Offset does the same for the single-point (origin-only)
-        // case, which fitBounds padding can't.
-        try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
-        const offset = [Math.round((pad.left - pad.right) / 2), Math.round((pad.top - pad.bottom) / 2)];
-        calmFit(map, positions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
+      if (fitPositions.length) {
+        // Route: re-frame ONLY when the route geometry / viewport actually changed
+        // (fitKey) — a step change rebuilds pins above but leaves fitKey alone, so
+        // the camera holds. Clear any idle-globe viewport padding first, then fit
+        // with the asymmetric reserve; offset does the same for the single-point
+        // (origin-only) case, which fitBounds padding can't.
+        if (fitKey !== fittedSigRef.current) {
+          fittedSigRef.current = fitKey;
+          try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
+          const offset = [Math.round((pad.left - pad.right) / 2), Math.round((pad.top - pad.bottom) / 2)];
+          calmFit(map, fitPositions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
+        }
+        prevHadPointsRef.current = true;
       } else {
         // Empty globe = the neutral START view. Offset the projection into the
         // visible area (setPadding), recentre to the world, and size the globe to
@@ -210,14 +239,20 @@ export default function FlowMap({
         } else {
           try { map.jumpTo(view); } catch { /* ignore */ }
         }
+        prevHadPointsRef.current = false;
+        fittedSigRef.current = '';
       }
-      prevHadPointsRef.current = positions.length > 0;
       // Our camera is now set — safe to reveal (see `framed`). Idempotent; React
       // bails on the unchanged value after the first flip.
       setFramed(true);
     }
     return undefined;
-  }, [ready, canFit, ptsKey, winW, winH]);
+    // ptsKey → rebuild markers (incl. the step-toggled return pin); fitKey → re-frame
+    // (route geometry + viewport size, so it also covers resize). fitKey can change
+    // without ptsKey (a distinct return set while off the return step), so both are deps.
+    // winW/winH are read directly inside (fitPaddingFor / startGlobeView) — listed so
+    // exhaustive-deps stays honest, though fitKey already carries them.
+  }, [ready, canFit, ptsKey, fitKey, winW, winH]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering the city list is cheap). Re-runs after a rebuild too
