@@ -30,6 +30,8 @@
   "fewer_nights": "Fewer nights",
   "final_point": "This is the trip's final stop",
   "final_point_hint": "No return needed, the \"Return\" step is skipped",
+  "stay_title": "Staying in {city}",
+  "stay_desc": "{city} is the final stop of the trip, no return needed",
   "from_date_prefix": "from",
   "geo_hint": "Allow location access, we'll detect your city automatically. You can decline and enter it manually.",
   "geo_off": "Geolocation is off",

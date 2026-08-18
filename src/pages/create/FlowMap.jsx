@@ -104,12 +104,22 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     });
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
-    // Asymmetric padding keeps the route clear of the floating panel; offset does the
-    // same for the single-point (origin-only) case, which fitBounds padding can't.
-    if (canFit && positions.length) {
+    if (canFit) {
       const pad = fitPaddingFor(winW);
-      const offset = [Math.round((pad.left - pad.right) / 2), 0];
-      calmFit(map, positions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
+      // Optical offset = the exact centre shift the asymmetric padding produces, so
+      // the single-point fit and the empty globe land in the SAME visible area.
+      const offset = [Math.round((pad.left - pad.right) / 2), Math.round((pad.top - pad.bottom) / 2)];
+      if (positions.length) {
+        // Asymmetric padding keeps the route clear of the floating panel; offset does
+        // the same for the single-point (origin-only) case, which fitBounds padding can't.
+        calmFit(map, positions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
+      } else {
+        // Empty (whole-earth globe, no route yet): recentre with the SAME optical
+        // offset so the earth sits in the visible area, not behind the floating panel.
+        // Explicit centre (not getCenter) keeps it idempotent across resizes — no drift,
+        // and no persistent map padding that a later route fit would double.
+        try { map.easeTo({ center: [15, 25], offset, duration: 400, essential: true }); } catch { /* ignore */ }
+      }
     }
     return undefined;
   }, [ready, canFit, ptsKey, winW]);

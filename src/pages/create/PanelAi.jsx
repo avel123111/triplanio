@@ -52,9 +52,9 @@ export default function PanelAi({ ctx }) {
             disabled={aiState === 'generating'}
             placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
             rows={5}
-            style={{ paddingBottom: 54 }}
+            style={{ paddingBottom: 58 }}
           />
-          <div style={{ position: 'absolute', right: 10, bottom: 10 }}>
+          <div style={{ position: 'absolute', right: 14, bottom: 14 }}>
             {aiState === 'generating' ? (
               <Btn variant="ai" disabled>
                 {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>

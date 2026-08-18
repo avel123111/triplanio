@@ -30,6 +30,8 @@
   "fewer_nights": "Menos noches",
   "final_point": "Este es el punto final del viaje",
   "final_point_hint": "No hace falta regreso, se omite el paso «Regreso»",
+  "stay_title": "Me quedo en {city}",
+  "stay_desc": "{city} es el punto final del viaje, sin regreso",
   "from_date_prefix": "desde",
   "geo_hint": "Permite el acceso a la ubicación, detectaremos tu ciudad automáticamente. Puedes rechazarlo e introducirla manualmente.",
   "geo_off": "La geolocalización está desactivada",

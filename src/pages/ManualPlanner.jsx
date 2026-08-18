@@ -18,7 +18,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, Card, EmptyState, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, EmptyState, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -144,9 +144,12 @@ function CityRow({ idx, city, isDragging, isPressing, onArm, onChange, onRemove,
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!city.city_name && city.latitude == null;
-  const nights = +city.nights || 1;
+  const nights = +city.nights || 0;
+  // 0 nights = a layover/waypoint (same-day stop) — mirrors the editor: dashed
+  // transfer-tinted node + a "Пересадка" badge instead of a nights range.
+  const isWaypoint = !!city.city_name && nights === 0;
   const startLabel = city.startDate ? shortDateLabel(city.startDate, lang) : null;
-  const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights), lang) : null;
+  const endLabel = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
   // Empty rows open in the picker; once a city is chosen it shows read-only
   // (change a city by deleting + re-adding) so it can never get stuck as an input.
   const [editing, setEditing] = useState(!city.city_name);
@@ -173,8 +176,12 @@ function CityRow({ idx, city, isDragging, isPressing, onArm, onChange, onRemove,
       <Icon name="drag" size={14} />
     </span>
   );
-  const lead = <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
-  const dates = startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null;
+  const lead = isWaypoint
+    ? <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>
+    : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
+  const dates = isWaypoint
+    ? <><Badge size="tiny">{t('tse.layover')}</Badge>{startLabel}</>
+    : (startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null);
 
   return (
     <CityRowBase
@@ -197,13 +204,18 @@ function CityRow({ idx, city, isDragging, isPressing, onArm, onChange, onRemove,
         : undefined}
     >
       {editing ? (
-        <button className="te-step te-step--ok" onPointerDown={stopArm} disabled={!staged} onClick={(e) => { e.stopPropagation(); confirmStaged(); }} title={t('common.add')} aria-label={t('common.add')}><Icon name="check" size={15} /></button>
+        // Clear, tappable primary button (not a tiny checkmark) — reachable on
+        // mobile. Wrapped so the row's pointerdown doesn't arm a drag (Btn does
+        // not forward onPointerDown).
+        <span onPointerDown={stopArm}>
+          <Btn variant="primary" size="sm" icon="check" disabled={!staged} onClick={(e) => { e.stopPropagation(); confirmStaged(); }}>{t('common.add')}</Btn>
+        </span>
       ) : (
         <NightsStepper
           value={nights}
-          onMinus={() => onChange({ nights: Math.max(1, nights - 1) })}
+          onMinus={() => onChange({ nights: Math.max(0, nights - 1) })}
           onPlus={() => onChange({ nights: Math.min(30, nights + 1) })}
-          minusDisabled={nights <= 1}
+          minusDisabled={nights <= 0}
           plusDisabled={nights >= 30}
         />
       )}
@@ -455,15 +467,15 @@ function ReturnOption({ on, onClick, icon, tone, title, desc }) {
       radius="btn"
       interactive
       onClick={onClick}
-      className={`choice-card choice-card--stack choice-card--sm${on ? ' choice-card--on' : ''}`}
+      className={`choice-card choice-card--sm${on ? ' choice-card--on' : ''}`}
     >
-      <div className="row">
-        <div className={`tile tile--lg tile--${tone} tile--solid`}>
-          <Icon name={icon} size={19} />
-        </div>
-        <div className="t-subheading">{title}</div>
+      <div className={`tile tile--lg tile--${tone} tile--solid`}>
+        <Icon name={icon} size={19} />
       </div>
-      <div className="muted t-meta">{desc}</div>
+      <div className="grow--fit">
+        <div className="t-subheading">{title}</div>
+        <div className="muted t-meta">{desc}</div>
+      </div>
     </Card>
   );
 }
@@ -508,14 +520,14 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             title={t('planner.return_other')}
             desc={t('planner.return_other_desc')}
           />
-          {/* «Останусь» = финиш: возврата нет (переносит смысл убранного тумблера
-              шага 2). Ключи переиспользованы, без новых i18n-строк. */}
+          {/* «Останусь в {город}» = финиш: возврата нет (переносит смысл убранного
+              тумблера шага 2). */}
           <ReturnOption
             on={finalPoint}
             onClick={() => setFinalPoint(true)}
             icon="check" tone="success"
-            title={t('planner.final_point')}
-            desc={t('planner.final_point_hint')}
+            title={t('planner.stay_title', { city: lastCityName })}
+            desc={t('planner.stay_desc', { city: lastCityName })}
           />
         </div>
 
@@ -632,7 +644,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           секции, разделённые бордюрами. Прежде .statbar и .card лежали скруглёнными
           ВНУТРИ flush-родителя (радиус в радиусе) — это и убрано. Собрано из готового:
           обложка = постер .tc, цифры = .statbar/.v/.k, ряд точки = .pl-revrow. */}
-      <Card radius="lg" pad="none" className="pl-summary">
+      <Card radius="btn" pad="none" className="pl-summary">
         <div className="tc tc--band">
           {/* heroBg - ДАННЫЕ (загруженное фото или градиент обложки трипа) */}
           <div className="tc__bg" style={{ background: heroBg }}>
@@ -1215,7 +1227,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <FlowMap
               home={home}
               cities={cities}
-              returnCity={effectiveReturn}
+              // The return leg is only drawn once the user reaches step 3 and makes
+              // a choice — before that there is no return line on the map (the
+              // default "home" mode must not pre-draw a round-trip).
+              returnCity={(step === 'return' || step === 'review') ? effectiveReturn : null}
               finalPoint={finalPoint}
             />
           </div>

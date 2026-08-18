@@ -3671,7 +3671,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    template wins. Fonts/sizes are INHERITED (not overridden) so the planner row
    matches the editor row exactly — one component, one look. The resting card look
    is set here because the planner list is NOT inside .te-table. */
-.te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border-radius: var(--r-md); box-shadow: var(--sh-1); cursor: default; }
+.te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: default; }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
 /* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
 .te-row.te-row--plan .te-row__pacts { justify-self: end; }
@@ -3680,11 +3680,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .te-row.te-row--plan .te-step { opacity: 1; }
 .te-row.te-row--plan .te-step--del { color: var(--muted); }
 .te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
-/* Confirm-add control (staged city → commit). Brand-accented; muted while nothing
-   is staged. Reuses the .te-step row-control size (parity with delete). */
-.te-row.te-row--plan .te-step--ok { color: var(--brand); }
-.te-row.te-row--plan .te-step--ok:not(:disabled):hover { color: var(--brand-ink); background: var(--brand-soft); }
-.te-row.te-row--plan .te-step--ok:disabled { color: var(--muted-2); cursor: default; }
 /* While a row is in the picker, collapse the grip + number columns so the search
    field (and its dropdown) spans the whole row — no longer cramped by the
    stepper/icon on desktop or squeezed on mobile. */
