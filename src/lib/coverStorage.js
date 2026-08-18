@@ -9,6 +9,7 @@
  */
 
 import { supabase } from '@/api/supabaseClient';
+import { report } from '@/lib/reportDataError';
 import { TRIP_BUCKET, SIGNED_URL_TTL, DRAFT_PREFIX, parseStorageObjectUrl } from '@/lib/storage';
 
 /**
@@ -34,8 +35,9 @@ export async function finalizeDraftCover(tripId, coverImageUrl) {
   const basename = parsed.path.slice(parsed.path.lastIndexOf('/') + 1);
   const newPath = `${tripId}/${basename}`;
 
+  // storage-report: перенос обложки из драфта в папку трипа — сбой байтовой двери.
   const { error: moveErr } = await supabase.storage.from(TRIP_BUCKET).move(parsed.path, newPath);
-  if (moveErr) { console.error('finalizeDraftCover: move failed', moveErr); return coverImageUrl; }
+  if (moveErr) { report(moveErr, { surface: 'storage', source: 'move_cover' }); console.error('finalizeDraftCover: move failed', moveErr); return coverImageUrl; }
 
   const { data, error: signErr } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(newPath, SIGNED_URL_TTL);
   if (signErr || !data?.signedUrl) { console.error('finalizeDraftCover: sign failed', signErr); return coverImageUrl; }

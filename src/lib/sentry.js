@@ -33,15 +33,19 @@ const ENVIRONMENT = import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.M
 const RELEASE = __SENTRY_RELEASE__ || undefined;
 
 // Pure browser noise — would only burn the shared free-plan quota without ever
-// being actionable. `Failed to fetch` / `AbortError` are users navigating away
-// or going offline mid-request, not bugs.
+// being actionable. `AbortError` is a user navigating away / cancelling mid-request;
+// ResizeObserver loops and "Non-Error promise rejection" are framework churn.
+//
+// The generic fetch failures (`Failed to fetch` / `NetworkError…` / `Load failed`)
+// were REMOVED (TRIP-284): they hid real signal — a failed chunk after a deploy, a
+// down edge door, a broken Storage upload — behind the same string as an offline
+// blip. The client seams already filter the truly-expected cases (invokeFn tags
+// network vs 200-error; reportAuthError skips 4xx), so these should surface, not
+// be blanket-muted here.
 const IGNORE_ERRORS = [
   'ResizeObserver loop limit exceeded',
   'ResizeObserver loop completed with undelivered notifications.',
   'Non-Error promise rejection captured',
-  'Failed to fetch',
-  'NetworkError when attempting to fetch resource.',
-  'Load failed',
   'AbortError',
 ];
 

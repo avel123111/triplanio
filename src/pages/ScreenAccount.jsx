@@ -16,6 +16,7 @@ import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { report } from '@/lib/reportDataError';
 import { parseStorageObjectUrl } from '@/lib/storage';
 import { errorText } from '@/lib/errorText';
 import { track } from '@/lib/analytics';
@@ -359,6 +360,8 @@ function ReminderChannels() {
 async function removeAvatarObject(url) {
   const obj = parseStorageObjectUrl(url);
   if (obj?.bucket !== 'avatars') return;
+  // storage-soft-fail: снос прежней/сиротской версии аватара — ссылка уже
+  // переключена, оставшийся объект в своей папке пользователю не мешает.
   try { await supabase.storage.from('avatars').remove([obj.path]); } catch { /* ignore */ }
 }
 
@@ -523,10 +526,11 @@ export default function ScreenAccount() {
       const path = `${user.id}/${crypto.randomUUID()}`;
       // Байты аватара — прямо в Storage (намеренно разрешённое прямое обращение,
       // handoff). Только ссылка `avatar_url` идёт через шов.
+      // storage-report: залив байтов аватара — прямая дверь, сбой виден в форме.
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(path, file);
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) { report(uploadErr, { surface: 'storage', source: 'upload_avatar' }); throw uploadErr; }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       const { error, code } = await invokeFn('account/profile', { body: { avatar_url: publicUrl } });
       if (error || code) {
