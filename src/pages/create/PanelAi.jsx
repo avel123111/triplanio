@@ -62,10 +62,12 @@ function BotMessage({ children }) {
   );
 }
 
-// User turn — RIGHT: EXACTLY the trip chat's own message (chat-run--me /
+// User turn — RIGHT: the trip chat's own-message SHELL (chat-run--me /
 // chat-run__col / chat-bubble--me). In the trip chat the sender's own message has
 // NO avatar and NO name (`{!isMe && avatar}`, `{!isMe && name}`), so neither is
-// drawn here either — just the bubble, right-aligned by `.chat-run--me`.
+// drawn here either — just the bubble, right-aligned by `.chat-run--me`. The body
+// is a plain pre-wrap span, NOT the chat's ChatMarkdown: a user's typed prompt is
+// literal text, so `*`/`_`/`` ` `` must stay as typed, not turn into formatting.
 function UserMessage({ text }) {
   return (
     <div className="row row--a-start row--g6 chat-run chat-run--me">
