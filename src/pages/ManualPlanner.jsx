@@ -1226,12 +1226,23 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         <div className="flow-editcol">
           <div className="lp">
             <div className="flow-lp-h">
-              <FlowProgress
-                steps={visibleSteps}
-                current={stepIdx}
-                accent={isAi ? 'var(--ai)' : 'var(--brand)'}
-                onJump={(i) => setStep(visibleSteps[i].id)}
-              />
+              {/* flex:1 + min-width:0 so the progress can shrink and its "next" hint
+                  wraps INSIDE this column instead of overflowing and shoving the
+                  reset control off the narrow mobile sheet header. */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <FlowProgress
+                  steps={visibleSteps}
+                  current={stepIdx}
+                  accent={isAi ? 'var(--ai)' : 'var(--brand)'}
+                  onJump={(i) => setStep(visibleSteps[i].id)}
+                />
+              </div>
+              {/* Reset lives here (quiet, icon-only, top-right) instead of in the
+                  action bar, so the footer holds only Back + the primary CTA and the
+                  narrow mobile header stays uncrowded. Label via aria/title. */}
+              {!isFirstStep && (
+                <Btn variant="quiet" size="sm" icon="refresh" ariaLabel={t('planner.reset')} title={t('planner.reset')} onClick={requestReset} disabled={saving} />
+              )}
             </div>
 
             <div className="lp-b scrollbar-thin flow-lp-b">
@@ -1274,7 +1285,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             {showFooter && (
               <div className="lp-f flow-foot">
                 {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
-                {!isFirstStep && <Btn variant="secondary" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
                 <div className="flow-foot__spacer grow" />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>

@@ -3507,35 +3507,47 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   overflow: hidden;
   background: var(--bg, var(--wash));
 }
+/* Desktop: the map is the full-bleed canvas and the step panel floats over it
+   (Pavel 2026-08-18 — «карта весь фон, контент плавающая панель поверх»). The
+   panel is anchored LEFT so the map's own controls (top-right) and nights badge
+   (bottom-right) stay clear of it — the canonical map-app layout (list left,
+   map right). */
 .flow-grid {
   flex: 1;
   min-height: 0;
-  /* Positioned so the city dropdown (portaled into the mobile scroller as
-     position:absolute) resolves its coords against it and scrolls WITH content. */
+  /* Positioning context: the map fills it, the panel floats over it, and the
+     city dropdown (portaled position:absolute) resolves coords against it. */
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  /* Explicit full-height row — without it the implicit auto row collapses to the
-     card's content height, which left an empty strip below AND stopped .lp-b from
-     scrolling (the bug behind "пустая полоса" + "скроллы не работают"). */
-  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
 }
-.flow-mapcol { position: relative; min-width: 0; min-height: 0; }
-.flow-mapbox {
-  position: absolute;
-  inset: 14px;
-  right: 7px;
-  overflow: hidden;
-  border-radius: var(--r-md);
+.flow-mapcol { position: absolute; inset: 0; }
+/* Map is edge-to-edge — no inset frame, border or radius; it IS the background. */
+.flow-mapbox { position: absolute; inset: 0; overflow: hidden; }
+/* Floating panel column: pinned to the left with a gutter on top/left/bottom
+   (padding-right:0 so the panel's right edge sits inside the map, not doubled);
+   pointer-events pass THROUGH the column so the map stays pannable, the panel
+   re-enables them. */
+.flow-editcol {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  display: flex;
+  width: min(460px, 40vw);
+  padding: var(--sp-7); padding-right: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+/* The floating panel: a single elevated white card over the map — its own
+   border / radius / shadow, no double-framing. */
+.flow-editcol > .lp {
+  flex: 1; min-width: 0; min-height: 0; margin: 0;
+  pointer-events: auto;
+  background: var(--surface);
   border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-2);
 }
-.flow-editcol { position: relative; min-width: 0; min-height: 0; display: flex; }
-/* The .lp card is the single frame (its own border / radius / shadow); its
-   margins match the map box so the two read as equal cards. */
-.flow-editcol > .lp { flex: 1; min-width: 0; min-height: 0; margin: 14px 14px 14px 7px; }
-/* Progress header — bordered, non-scrolling top of the card. */
-.flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+/* Progress header — non-scrolling top of the panel. Row so the reset control
+   (relocated out of the action bar) sits at the top-right, quiet. */
+.flow-lp-h { flex: none; padding: var(--sp-6) var(--sp-7); border-bottom: 1px solid var(--line); background: var(--surface); display: flex; align-items: flex-start; gap: var(--sp-6); }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 /* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
@@ -3590,70 +3602,53 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
 }
 
-/* Phones / tablets: app-shell via flexbox — NO position:fixed and NO
-   position:sticky anywhere (both proved unreliable on iOS: fixed detaches to the
-   layout viewport and flies on zoom/keyboard; sticky failed to pin at all here).
-   Instead .flow-page is a normal-flow flex column sized to 100dvh, the app header
-   is a flex:none item that simply never scrolls (so it stays pinned WITHOUT any
-   positioning — it cannot fly), and the SINGLE scroller is the middle row
-   (.flow-grid): the map + progress + step body + footer all scroll inside it as
-   one. The map scrolls with everything (Pavel's ask). The footer is a plain
-   static element at the end of that scroll — it has zero positioning, so it
-   physically cannot fly; it just scrolls with the content. When the keyboard
-   opens, 100dvh shrinks (interactive-widget=resizes-content) so the shell + its
-   scroller shrink above the keyboard and the focused field scrolls into view. */
+/* Phones / tablets: the reusable Map + Sheet scaffold (Pavel 2026-08-18 — the
+   first screen of a layout pattern reused elsewhere). The map is a FIXED band at
+   the top (~32% of the shell) and the step content lives in a bottom SHEET (~68%)
+   that overlaps the map with a rounded top + grabber. The sheet carries its own
+   sticky progress header, an internally-scrolling body (.lp-b) and a sticky action
+   bar (.lp-f) — the map no longer scrolls away and the footer never detaches.
+   iOS safety kept from the previous model: .flow-page is a 100dvh flex column with
+   overflow:hidden (the document has nothing to scroll, so the toolbar/keyboard
+   cannot shove the static header around), NO position:fixed and NO <body> lock.
+   The SINGLE scroller is now the sheet body (.lp-b), not the whole grid — this is
+   the intended resolution of the old "тело само себе скроллер" open question. */
 @media (max-width: 960px) {
-  /* The planner shell is the route ROOT and is sized to exactly 100dvh with
-     overflow:hidden — IDENTICAL to the proven .app-shell pattern used on every
-     other standalone screen (Trips / Account / Inbox …). Because the shell fills
-     the viewport and clips its own overflow, the DOCUMENT has nothing to scroll,
-     so the iOS toolbar/keyboard cannot shove the static header around. NO <body>
-     position:fixed lock — that lock is exactly what made the header fly up when
-     the keyboard opened (Safari pans a fixed body to reveal the focused input and
-     never restores it). The app-shell screens don't lock the body and their
-     header never flies; the planner now mirrors that 1:1. */
+  /* Shell sized to exactly 100dvh with overflow:hidden — the proven .app-shell
+     pattern: the document has nothing to scroll, so the iOS toolbar/keyboard
+     cannot shove the static header. No <body> position:fixed lock. */
   .flow-page { height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none; }
-  /* Header is STATIC (not sticky, not fixed) — exactly like the app-shell header
-     on every other screen (.app-shell > .app-header). In a 100dvh fixed-height
-     flex column where the MIDDLE scrolls, a static header simply never scrolls
-     and never flies. The global .app-header rule is position:sticky, which
-     misbehaved here on iOS (header scrolled away) — override it to static. */
+  /* Header STATIC (not sticky/fixed) — mirrors the app-shell header 1:1. */
   .flow-page > .app-header { position: static; flex: none; }
-  .flow-grid {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+  /* Grid is a fixed-height flex column that does NOT scroll; the sheet body does. */
+  .flow-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+  /* Map: fixed band at the top, edge-to-edge (no inset frame / radius). */
+  .flow-mapcol { flex: 0 0 32%; position: relative; min-height: 0; }
+  .flow-mapbox { position: absolute; inset: 0; margin: 0; border: none; border-radius: 0; }
+  /* Sheet: fills the rest and overlaps the map by 16px with a rounded top. */
+  .flow-editcol {
+    position: relative; flex: 1 1 auto; min-height: 0;
+    display: flex; width: auto; padding: 0;
+    margin-top: calc(-1 * var(--sp-7)); z-index: 2; pointer-events: auto;
   }
-  .flow-mapcol { flex: none; position: relative; min-height: 0; }
-  .flow-mapbox { position: relative; inset: auto; right: auto; height: 200px; margin: 12px 12px 0; border-radius: var(--r-btn); }
-  .flow-editcol { display: block; flex: none; }
-  /* Keep .lp's own overflow:hidden so its inner content is clipped to the card's
-     rounded corners (no square inner backgrounds poking over the rounded border).
-     The city dropdown renders in normal flow under the input (see CityPicker), so
-     it scrolls with the content inside the .flow-grid scroller — never clipped,
-     never mispositioned. */
-  .flow-editcol > .lp { margin: 12px; }
-  /* TRIP-321 Ф13: здесь стояло
-       .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
-     с намерением «на телефоне тело растёт по содержимому, скроллит .flow-grid,
-     а не тело». Намерение НЕ ИСПОЛНЯЛОСЬ НИ РАЗУ: медиа-запрос не добавляет
-     специфичности, а `.lp-b` объявлен НИЖЕ по файлу и выигрывает по порядку -
-     все четыре объявления перебиты. Замерено вычисленным стилем на 500px:
-     padding 14px 15px (не 16/14), flex 1 1 0% (не none), overflow auto (не
-     visible; visible рядом с overflow-y:auto и по спецификации вычисляется в
-     auto - то есть даже уцелевшая ось ничего бы не дала).
-     Правило удалено как мёртвое: рендер не меняется ни на пиксель.
-     ★ ОТКРЫТЫЙ ВОПРОС К ПРОДУКТУ, а не к стилю: телефонная раскладка сейчас
-     работает НЕ так, как здесь было задумано - тело само себе скроллер. Чинить
-     это - изменение поведения, отдельной задачей и со снимком. */
-  /* Footer: plain static element at the end of the scroll. No fixed/sticky → it
-     can never detach or fly; it just scrolls with the content. Safe-area padding
-     keeps the buttons above the iOS home indicator at the end of the scroll. */
-  .flow-foot { padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)); }
+  .flow-editcol > .lp {
+    flex: 1; min-height: 0; margin: 0;
+    border: none; border-radius: var(--r-xl) var(--r-xl) 0 0;
+    /* elevation from the base .lp (var(--sh-1), token) — no raw shadow colour;
+       the rounded top over the map already reads as a sheet at the seam. */
+  }
+  /* Grabber handle at the top of the sheet header. */
+  .flow-lp-h { position: relative; padding-top: var(--sp-8); }
+  .flow-lp-h::before {
+    content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 38px; height: 4px; border-radius: 2px; background: var(--line-strong);
+  }
+  /* The FlowProgress "next step" hint (.t-meta) is redundant with the segmented
+     bar on the narrow sheet and would crowd the reset control — hide it here.
+     Scoped to the sheet header, so it never touches .t-meta elsewhere. */
+  .flow-lp-h .t-meta { display: none; }
+  /* Sticky action bar: safe-area padding lifts it above the iOS home indicator. */
+  .flow-foot { flex: none; padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
