@@ -86,7 +86,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
   if (editable && !hasCity) {
     if (adding) {
       return (
-        <div className="field" style={{ marginBottom: 0 }}>
+        <div className="field">
           <label className="field__label">{label}</label>
           <CityPicker value={null} onChange={(c) => { onPick(c); setAdding(false); }} placeholder={t('planner.start_city_ph')} autoFocus />
         </div>

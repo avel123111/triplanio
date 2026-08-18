@@ -3615,6 +3615,28 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    специфичность 0-1-0, а `.lp-b { padding: 14px 15px }` объявлен НИЖЕ - и
    выигрывает по порядку. Замерено вычисленным стилем: 14px 15px. */
 .flow-lp-b { position: relative; }
+/* FlowProgress (TRIP-337) — счётчик-прогресс create-флоу на ДС. Раскладка несут
+   .row/.col в разметке; здесь — только облик, которого у примитивов нет. Акцент
+   шага приходит КАНАЛОМ --fp-accent (brand для ручного флоу, ai для ИИ), как тинт
+   у Tile: цвет выбирается в рантайме, но переменной, не хардкодом. Полоска шагов —
+   расширение семейства flow-. */
+.flow-prog { width: 100%; }
+.flow-prog__word { color: var(--fp-accent, var(--brand)); }
+.flow-prog__label { color: var(--ink); }
+.flow-prog__next { margin-left: auto; color: var(--muted); }
+.flow-prog__seg { flex: 1; height: 6px; border-radius: var(--r-pill); background: var(--line); transition: background .25s ease; }
+.flow-prog__seg--now { background: var(--fp-accent, var(--brand)); }
+.flow-prog__seg--done { background: var(--success); }
+.flow-prog__seg[role="button"] { cursor: pointer; }
+/* FlowMap — сама карта и оверлеи поверх неё (лоадер-подложка + плавающая
+   пилюля «города · ночи»). Раньше всё это стояло сырыми инлайнами. --fp-* тут не
+   при чём; reveal карты — состояние .is-revealed, не инлайн-opacity. */
+.flow-map { position: absolute; inset: 0; overflow: hidden; }
+.flow-map__canvas { position: absolute; inset: 0; opacity: 0; transition: opacity .3s ease; }
+.flow-map__canvas.is-revealed { opacity: 1; }
+.flow-map__cover { position: absolute; inset: 0; display: grid; place-items: center; background: var(--surface); z-index: 2; }
+.flow-map__stat { position: absolute; right: 14px; bottom: 14px; display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
+.flow-map__stat-hl { color: var(--ink-2); }
 /* Section sub-heading — the missing mid-tier between the title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…). */
 .flow-lp-b .section-sub { color: var(--ink); margin: 0 0 12px; }
