@@ -37,20 +37,28 @@ const requiredAttrs = (on) => (on
  * декорации позиционируются от обёртки, и её отступ уводит иконку - `.ss-search`
  * со своим `padding: 6px` ставил её на 6px вместо 12.
  */
-/** @param {{ icon?: string, loading?: boolean, num?: boolean, className?: string, boxRef?: any } & import('react').ComponentPropsWithoutRef<'input'>} p */
-export const Input = ({ icon, loading, num, className = '', boxRef, ...rest }) => {
+/**
+ * Лидирующая декорация — ЛИБО имя иконки (`icon`), ЛИБО готовая нода (`iconNode`,
+ * побеждает): нода нужна там, где слева стоит не глиф системы, а маленький ассет —
+ * флаг страны у поля города, когда выбор сделан (TRIP-337). Кольцо загрузки
+ * по-прежнему замещает лид (что бы там ни стояло).
+ *
+ * Правое действие — очистка: `onClear` рисует справа кнопку `×`; вызыватель отдаёт
+ * её ТОЛЬКО когда есть что чистить (есть значение), и она гаснет на время загрузки
+ * (идёт поиск). Правый отступ резервируется, как только поле ВООБЩЕ очищаемое, —
+ * иначе строка дёргалась бы в момент появления `×` (та же причина, что у кольца).
+ */
+/** @param {{ icon?: string, iconNode?: any, loading?: boolean, onClear?: any, clearLabel?: string, num?: boolean, className?: string, boxRef?: any } & import('react').ComponentPropsWithoutRef<'input'>} p */
+export const Input = ({ icon, iconNode, loading, onClear, clearLabel, num, className = '', boxRef, ...rest }) => {
   const required = React.useContext(RequiredCtx);
-  // Кольцо загрузки ЗАМЕЩАЕТ стартовую иконку: у поля один индикатор и одно
-  // место под него, а правая сторона остаётся свободной под действие. Ширина
-  // текстовой зоны при этом не меняется вовсе, поэтому резерв справа, который
-  // держали против дёрганья при наборе (TRIP-277), тут не нужен.
-  // ★У поля БЕЗ иконки замещать нечего - там кольцо остаётся справа, и резерв
-  // ему по-прежнему нужен: иначе отступ включится вместе со спиннером и поле
-  // дёрнется. Резервируется, как только вызов ВООБЩЕ умеет грузиться, даже при
-  // `loading={false}`.
-  const ringReplacesIcon = Boolean(loading && icon);
-  const hasEnd = !icon && loading !== undefined;
-  const boxClass = ['input-affix', icon && 'input-affix--ic', hasEnd && 'input-affix--end', className]
+  const hasLead = Boolean(icon || iconNode);
+  const ringReplacesLead = Boolean(loading && hasLead);
+  // Правый слот: кольцо у поля БЕЗ лид-иконки, либо кнопка очистки. `×` скрыта на
+  // время загрузки. Резерв справа — как только поле очищаемое ИЛИ грузящееся-без-иконки.
+  const ringRight = Boolean(loading && !hasLead);
+  const showClear = Boolean(onClear && !loading);
+  const hasEnd = onClear !== undefined || (!hasLead && loading !== undefined);
+  const boxClass = ['input-affix', hasLead && 'input-affix--ic', hasEnd && 'input-affix--end', className]
     .filter(Boolean).join(' ');
   // Канон-кольцо базовой ступени (18px): она и означает «рядом со строкой
   // текста». Своих ручек размера не даём - у примитива их три ступени, и
@@ -59,13 +67,21 @@ export const Input = ({ icon, loading, num, className = '', boxRef, ...rest }) =
   return (
     <div className={boxClass} ref={boxRef}>
       <input className={num ? 'input num' : 'input'} {...requiredAttrs(rest.required ?? required)} {...rest} />
-      {icon && (
+      {hasLead && (
         <span className="input-affix__ic" aria-hidden="true">
-          {ringReplacesIcon ? ring : <Icon name={icon} size={16} />}
+          {ringReplacesLead ? ring : (iconNode || <Icon name={icon} size={16} />)}
         </span>
       )}
-      {hasEnd && loading && (
-        <span className="input-affix__end" aria-hidden="true">{ring}</span>
+      {(ringRight || showClear) && (
+        <span className="input-affix__end">
+          {ringRight ? (
+            <span aria-hidden="true">{ring}</span>
+          ) : (
+            <button type="button" className="input-affix__clear" onClick={onClear} aria-label={clearLabel} tabIndex={-1}>
+              <Icon name="close" size={14} />
+            </button>
+          )}
+        </span>
       )}
     </div>
   );

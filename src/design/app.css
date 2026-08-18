@@ -2059,6 +2059,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .input-affix__end { inset-inline-end: 12px; }
 .input-affix--ic .input { padding-inline-start: 36px; }
 .input-affix--end .input { padding-inline-end: 36px; }
+/* Clear (×) action in the right slot (TRIP-337). The slot itself is
+   pointer-events:none (it also carries the passive loading ring); the button
+   re-enables them. A bare glyph button (no surface — no radius/background, so it's
+   not a card-homed skin), quiet muted → ink on hover; padding is the hit area. */
+.input-affix__clear {
+  pointer-events: auto; border: 0; margin: 0; padding: var(--sp-2); cursor: pointer;
+  display: flex; color: var(--muted-2); background: transparent;
+  transition: color .16s ease;
+}
+.input-affix__clear:hover { color: var(--ink); }
 /* Иконка НЕ участвует в состоянии: раньше она поднималась в `--brand` при
    фокусе и при заполненном значении, и в фокусе поле давало три синих сигнала
    разом - рамку, кольцо и иконку. Состояние несёт рамка, иконка нейтральна
@@ -2298,7 +2308,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
    неравные, и низ у них разной высоты - выравнивание по НИЗУ, иначе контрол
    всплывает к верхнему краю более высокого поля. */
-.field-row--aside { grid-template-columns: 7fr 3fr; align-items: end; }
+.field-row--aside { grid-template-columns: 7fr 3fr; align-items: end; transition: grid-template-columns .3s var(--ease-out); }
+/* На фокусе ПЕРВОГО поля (город старта) строка ПЛАВНО схлопывает правый контрол-
+   «аси́д» (дату) — поле и его дропдаун занимают всю ширину, как is-editing у рядов
+   шага 2. Это канон «раздвижение по фокусу» (TRIP-337), переиспользуемый дальше.
+   Анимируем ТРЕК грида 3fr→0fr (fr↔fr интерполируется на современных движках; на
+   очень старых — жёсткий схлоп, но рабочий), а не `display:none` (его анимировать
+   нельзя). Аси́д клипуется (overflow) и гаснет; после схлопа убирается из таб-порядка
+   (visibility с задержкой). `:has` читает фокус ВНУТРИ первого поля — фокус самого
+   контрола даты (последнее поле) строку не трогает. */
+.field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: 1fr 0fr; }
+.field-row--aside > .field:last-child { min-width: 0; overflow: hidden; transition: opacity .2s ease; }
+.field-row--aside:has(> .field:first-child:focus-within) > .field:last-child {
+  opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .3s;
+}
 
 /* Badge / chip */
 .badge {
@@ -3397,7 +3420,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    радиусом. РАДИУС 24 (`--r-card`) — то же именованное исключение шкалы, что у
    `.records` (документ Pavel 20/16/10/24); стоит позже `.card--r-lg` и
    перекрывает ось lg на объекте. Ховер — канон (подсветка рамки --line-hover без
-   движения). `--on` (выбрана), `--stack`, `--sm` остаются вариантами.
+   движения). `--on` (выбрана), `--sm` остаются вариантами.
    visual-diff-exempt: .choice-card border-radius — 24 (--r-card) восстановлен по документу Pavel (был сведён на lg 20 в PR-4) — объект 2 */
 .choice-card {
   display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
@@ -3430,11 +3453,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    в бренд и заливает мягким тоном. Здесь это одно объявление; тон плитки внутри
    доводит .tile--solid, который уже есть.
      --on     выбрана
-     --stack  содержимое колонкой (плитка с заголовком, под ними описание)
      --sm     плотный шаг для списка, а не для пары крупных карточек */
 .choice-card--on { border-color: var(--brand); background: var(--brand-soft); }
-.choice-card--stack { flex-direction: column; align-items: stretch; gap: 10px; }
-.choice-card--sm { padding: 12px 14px; gap: 10px; }
+/* Радиус 10 (--r-btn) у ПЛОТНОГО списочного варианта — планировщик (возврат,
+   reverse-geo кандидаты) просил более тугой угол, чем 24 крупных навигационных
+   карточек NewTripDialog (те несут `.choice-card` без `--sm`, их не трогает). */
+.choice-card--sm { padding: 12px 14px; gap: 10px; border-radius: var(--r-btn); }
 
 /* Empty Trips · "Маршрут" (no trips yet) — itinerary-rail hero + choice pair.
    New element (approved 2026-06-20). Bound to existing Lumo tokens, mobile-first.
@@ -3491,6 +3515,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 
 
+/* Канон тонкого скроллбара ДС: контейнер с классом `.scrollbar-thin` (скролл-тело
+   панелей планировщика/редактора и т.п.) получает тонкий полоз на токенах вместо
+   браузерного дефолта. Firefox — `scrollbar-width/color`; WebKit — псевдоэлементы.
+   Полоз-«таблетка» на `--line-strong`, трек прозрачный, ховер темнее. Без рамки у
+   thumb — иначе радиус+фон+рамка читаются гардом 2z как поверхность (ложно).
+   prefix-exempt: scrollbar — новый канон ДС «тонкий скроллбар», апрув Pavel («будет каноном в ДС») */
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
 /* ── Unified create-flow (manual + AI) ──────────────────────────────────────
    Mirrors the trip-edit two-card layout: a framed full-bleed map (left) and a
    framed white .lp panel (right) holding the progress header → scroll body →
@@ -3507,35 +3543,51 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   overflow: hidden;
   background: var(--bg, var(--wash));
 }
+/* Desktop: the map is the full-bleed canvas and the step panel floats over it
+   (Pavel 2026-08-18 — «карта весь фон, контент плавающая панель поверх»). The
+   panel is anchored LEFT so the map's own controls (top-right) and nights badge
+   (bottom-right) stay clear of it — the canonical map-app layout (list left,
+   map right). */
 .flow-grid {
   flex: 1;
   min-height: 0;
-  /* Positioned so the city dropdown (portaled into the mobile scroller as
-     position:absolute) resolves its coords against it and scrolls WITH content. */
+  /* Positioning context: the map fills it, the panel floats over it, and the
+     city dropdown (portaled position:absolute) resolves coords against it. */
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  /* Explicit full-height row — without it the implicit auto row collapses to the
-     card's content height, which left an empty strip below AND stopped .lp-b from
-     scrolling (the bug behind "пустая полоса" + "скроллы не работают"). */
-  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
 }
-.flow-mapcol { position: relative; min-width: 0; min-height: 0; }
-.flow-mapbox {
-  position: absolute;
-  inset: 14px;
-  right: 7px;
-  overflow: hidden;
-  border-radius: var(--r-md);
+.flow-mapcol { position: absolute; inset: 0; }
+/* Map is edge-to-edge — no inset frame, border or radius; it IS the background. */
+.flow-mapbox { position: absolute; inset: 0; overflow: hidden; }
+/* Floating panel column: pinned to the left with a gutter on top/left/bottom
+   (padding-right:0 so the panel's right edge sits inside the map, not doubled);
+   pointer-events pass THROUGH the column so the map stays pannable, the panel
+   re-enables them. */
+.flow-editcol {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  display: flex;
+  width: min(550px, 44vw);
+  padding: var(--sp-7); padding-right: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+/* The floating panel: a single elevated white card over the map — its own
+   border / radius / shadow, no double-framing. */
+.flow-editcol > .lp {
+  flex: 1; min-width: 0; min-height: 0; margin: 0;
+  pointer-events: auto;
+  background: var(--surface);
   border: 1px solid var(--line);
+  border-radius: var(--r-btn);
+  box-shadow: var(--sh-2);
 }
-.flow-editcol { position: relative; min-width: 0; min-height: 0; display: flex; }
-/* The .lp card is the single frame (its own border / radius / shadow); its
-   margins match the map box so the two read as equal cards. */
-.flow-editcol > .lp { flex: 1; min-width: 0; min-height: 0; margin: 14px 14px 14px 7px; }
-/* Progress header — bordered, non-scrolling top of the card. */
-.flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+/* Floating round "back" control on the map (canon layout, reused on other
+   screens): white surface circle (icon-btn--outline) top-left, over the map.
+   Hidden by default; shown on the mobile shell where the app header is removed. */
+.map-back { position: absolute; top: 12px; left: 12px; z-index: 3; box-shadow: var(--sh-1); display: none; }
+/* Progress header — non-scrolling top of the panel. Row so the reset control
+   (relocated out of the action bar) sits at the top-right, quiet. */
+.flow-lp-h { flex: none; padding: var(--sp-6) var(--sp-7); border-bottom: 1px solid var(--line); background: var(--surface); display: flex; align-items: flex-start; gap: var(--sp-6); }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 /* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
@@ -3587,73 +3639,64 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    путешествие" never cramps/overflows the row on small tablets/phones. */
 @media (max-width: 768px) {
   .flow-foot__spacer { display: none; }
-  .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
+  /* Back / Reset stay compact; the primary CTA (last child) fills the row and
+     wraps to its own line when a long label ("Сохранить путешествие") can't fit
+     beside them. */
+  .flow-foot > .btn { min-width: 0; justify-content: center; }
+  .flow-foot > .btn:last-child { flex: 1 1 auto; }
 }
 
-/* Phones / tablets: app-shell via flexbox — NO position:fixed and NO
-   position:sticky anywhere (both proved unreliable on iOS: fixed detaches to the
-   layout viewport and flies on zoom/keyboard; sticky failed to pin at all here).
-   Instead .flow-page is a normal-flow flex column sized to 100dvh, the app header
-   is a flex:none item that simply never scrolls (so it stays pinned WITHOUT any
-   positioning — it cannot fly), and the SINGLE scroller is the middle row
-   (.flow-grid): the map + progress + step body + footer all scroll inside it as
-   one. The map scrolls with everything (Pavel's ask). The footer is a plain
-   static element at the end of that scroll — it has zero positioning, so it
-   physically cannot fly; it just scrolls with the content. When the keyboard
-   opens, 100dvh shrinks (interactive-widget=resizes-content) so the shell + its
-   scroller shrink above the keyboard and the focused field scrolls into view. */
+/* Phones / tablets: the reusable Map + Sheet scaffold (Pavel 2026-08-18 — the
+   first screen of a layout pattern reused elsewhere). The map is a FIXED band at
+   the top (~32% of the shell) and the step content lives in a bottom SHEET (~68%)
+   that overlaps the map with a rounded top + grabber. The sheet carries its own
+   sticky progress header, an internally-scrolling body (.lp-b) and a sticky action
+   bar (.lp-f) — the map no longer scrolls away and the footer never detaches.
+   iOS safety kept from the previous model: .flow-page is a 100dvh flex column with
+   overflow:hidden (the document has nothing to scroll, so the toolbar/keyboard
+   cannot shove the static header around), NO position:fixed and NO <body> lock.
+   The SINGLE scroller is now the sheet body (.lp-b), not the whole grid — this is
+   the intended resolution of the old "тело само себе скроллер" open question. */
 @media (max-width: 960px) {
-  /* The planner shell is the route ROOT and is sized to exactly 100dvh with
-     overflow:hidden — IDENTICAL to the proven .app-shell pattern used on every
-     other standalone screen (Trips / Account / Inbox …). Because the shell fills
-     the viewport and clips its own overflow, the DOCUMENT has nothing to scroll,
-     so the iOS toolbar/keyboard cannot shove the static header around. NO <body>
-     position:fixed lock — that lock is exactly what made the header fly up when
-     the keyboard opened (Safari pans a fixed body to reveal the focused input and
-     never restores it). The app-shell screens don't lock the body and their
-     header never flies; the planner now mirrors that 1:1. */
+  /* Shell sized to exactly 100dvh with overflow:hidden — the proven .app-shell
+     pattern: the document has nothing to scroll, so the iOS toolbar/keyboard
+     cannot shove the static header. No <body> position:fixed lock. */
   .flow-page { height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none; }
-  /* Header is STATIC (not sticky, not fixed) — exactly like the app-shell header
-     on every other screen (.app-shell > .app-header). In a 100dvh fixed-height
-     flex column where the MIDDLE scrolls, a static header simply never scrolls
-     and never flies. The global .app-header rule is position:sticky, which
-     misbehaved here on iOS (header scrolled away) — override it to static. */
-  .flow-page > .app-header { position: static; flex: none; }
-  .flow-grid {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+  /* App header removed on the phone shell (Pavel 2026-08-18): the map is the top
+     band, so navigation collapses to the floating round "back" control on it. */
+  .flow-page > .app-header { display: none; }
+  /* grid (not inline-flex): keeps the base `.icon-btn` place-items:center so the
+     arrow stays centred; inline-flex would drop it to the top-left corner. */
+  .map-back { display: grid; }
+  /* Grid is a fixed-height flex column that does NOT scroll; the sheet body does. */
+  .flow-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+  /* Map: fixed band at the top, edge-to-edge (no inset frame / radius). */
+  .flow-mapcol { flex: 0 0 32%; position: relative; min-height: 0; }
+  .flow-mapbox { position: absolute; inset: 0; margin: 0; border: none; border-radius: 0; }
+  /* Sheet: fills the rest and overlaps the map by 16px with a rounded top. */
+  .flow-editcol {
+    position: relative; flex: 1 1 auto; min-height: 0;
+    display: flex; width: auto; padding: 0;
+    margin-top: calc(-1 * var(--sp-7)); z-index: 2; pointer-events: auto;
   }
-  .flow-mapcol { flex: none; position: relative; min-height: 0; }
-  .flow-mapbox { position: relative; inset: auto; right: auto; height: 200px; margin: 12px 12px 0; border-radius: var(--r-btn); }
-  .flow-editcol { display: block; flex: none; }
-  /* Keep .lp's own overflow:hidden so its inner content is clipped to the card's
-     rounded corners (no square inner backgrounds poking over the rounded border).
-     The city dropdown renders in normal flow under the input (see CityPicker), so
-     it scrolls with the content inside the .flow-grid scroller — never clipped,
-     never mispositioned. */
-  .flow-editcol > .lp { margin: 12px; }
-  /* TRIP-321 Ф13: здесь стояло
-       .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
-     с намерением «на телефоне тело растёт по содержимому, скроллит .flow-grid,
-     а не тело». Намерение НЕ ИСПОЛНЯЛОСЬ НИ РАЗУ: медиа-запрос не добавляет
-     специфичности, а `.lp-b` объявлен НИЖЕ по файлу и выигрывает по порядку -
-     все четыре объявления перебиты. Замерено вычисленным стилем на 500px:
-     padding 14px 15px (не 16/14), flex 1 1 0% (не none), overflow auto (не
-     visible; visible рядом с overflow-y:auto и по спецификации вычисляется в
-     auto - то есть даже уцелевшая ось ничего бы не дала).
-     Правило удалено как мёртвое: рендер не меняется ни на пиксель.
-     ★ ОТКРЫТЫЙ ВОПРОС К ПРОДУКТУ, а не к стилю: телефонная раскладка сейчас
-     работает НЕ так, как здесь было задумано - тело само себе скроллер. Чинить
-     это - изменение поведения, отдельной задачей и со снимком. */
-  /* Footer: plain static element at the end of the scroll. No fixed/sticky → it
-     can never detach or fly; it just scrolls with the content. Safe-area padding
-     keeps the buttons above the iOS home indicator at the end of the scroll. */
-  .flow-foot { padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)); }
+  .flow-editcol > .lp {
+    flex: 1; min-height: 0; margin: 0;
+    border: none; border-radius: var(--r-xl) var(--r-xl) 0 0;
+    /* elevation from the base .lp (var(--sh-1), token) — no raw shadow colour;
+       the rounded top over the map already reads as a sheet at the seam. */
+  }
+  /* Grabber handle at the top of the sheet header. */
+  .flow-lp-h { position: relative; padding-top: var(--sp-8); }
+  .flow-lp-h::before {
+    content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 38px; height: 4px; border-radius: 2px; background: var(--line-strong);
+  }
+  /* The FlowProgress "next step" hint (.t-meta) is redundant with the segmented
+     bar on the narrow sheet and would crowd the reset control — hide it here.
+     Scoped to the sheet header, so it never touches .t-meta elsewhere. */
+  .flow-lp-h .t-meta { display: none; }
+  /* Sticky action bar: safe-area padding lifts it above the iOS home indicator. */
+  .flow-foot { flex: none; padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
@@ -3669,11 +3712,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    template wins. Fonts/sizes are INHERITED (not overridden) so the planner row
    matches the editor row exactly — one component, one look. The resting card look
    is set here because the planner list is NOT inside .te-table. */
-.te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border-radius: var(--r-md); box-shadow: var(--sh-1); cursor: default; }
-/* Finish (final-point) uses the SAME brand accent as the start anchor — one
-   blue endpoint look across the flow (no warm/orange divergence). */
-.te-row.te-row--plan.te-row--fin { background: var(--brand-soft); border-color: var(--brand); }
+.te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: default; }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
+/* Highlight when the matching map pin is hovered/selected (Map-lens parity,
+   TRIP-337) — reuse the `is-hover` state name markers use, brand ring, no motion.
+   Sits after --bad so a valid row lights up; a bad row keeps its danger border. */
+.te-row.te-row--plan.is-hover { border-color: var(--brand); box-shadow: var(--sh-1), 0 0 0 3px var(--brand-soft); }
 /* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
 .te-row.te-row--plan .te-row__pacts { justify-self: end; }
 /* Planner has no reliable row-hover (esp. touch) → the delete is ALWAYS visible
@@ -3681,24 +3725,35 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .te-row.te-row--plan .te-step { opacity: 1; }
 .te-row.te-row--plan .te-step--del { color: var(--muted); }
 .te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
+/* While a row is in the picker, collapse the grip + number columns so the search
+   field (and its dropdown) spans the whole row — no longer cramped by the
+   stepper/icon on desktop or squeezed on mobile. */
+.te-row.te-row--plan.is-editing { grid-template-columns: minmax(0, 1fr) auto; }
+.te-row.te-row--plan.is-editing .te-grip,
+.te-row.te-row--plan.is-editing .te-row__num { display: none; }
 /* Mobile: drop the grip column (long-press the row still reorders). */
 @media (max-width: 640px) {
   .te-row.te-row--plan { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px; }
   .te-row.te-row--plan .te-grip { display: none; }
 }
-/* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
-   strip holds the final-point toggle, so the toggle reads as part of the last
-   city (the finish), not a stray control. */
-/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
-/* TRIP-343 объект 2: скин на `<Card radius="lg" pad="none">`; `.pl-lastcard` остаётся
-   классом (хук `.is-fin` + co-селектор `> .te-row--plan`), своё правило было только
-   overflow → ушло на .card--flush. FLUSH (дети .te-row--plan несут паддинг). Статичн.
-   visual-diff-move: pl-lastcard -> card card--r-lg card--flush */
-.pl-lastcard.is-fin { border-color: var(--brand); }
-.pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
-.pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
-.pl-fin-sub { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px dashed var(--line); }
-.pl-fin-sub > svg { flex: none; }
+/* Truncation priority on the city line: the CITY keeps its space and the COUNTRY
+   yields first (a long country name — «Доминиканская Республика» — no longer
+   erases the city). Country truncates within ≤55% of the line. */
+.te-cityline .te-country { flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Сводка шага «Проверка» (TRIP-337): ОДНА карточка (радиус на `.card--r-lg`),
+   секции внутри ПЛОСКИЕ и разделены бордюрами — hero клипуется к радиусу карточки,
+   `.statbar` и маршрут больше НЕ несут своих скруглений (был «радиус в радиусе»
+   внутри flush-родителя). Пространство `pl` уже существует (`.pl-revrow`). */
+.pl-summary { overflow: hidden; }
+.pl-summary .tc--band { border-radius: 0; }
+/* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a
+   divided section: no own radius/side-borders, just a top divider. Its standalone
+   `margin-top:18px` (separation from content above in other layouts) becomes an
+   empty strip here, where the cover band already abuts it — drop it so the band
+   meets the numbers flush at the divider (TRIP-337, Pavel). */
+.pl-summary > .statbar { border: 0; border-top: 1px solid var(--line); border-radius: 0; margin-top: 0; }
+.pl-summary__route { padding: var(--sp-6) var(--sp-7); border-top: 1px solid var(--line); }
 
 /* ─── Планировщик: превью трипа на шаге «Обзор» (TRIP-321 Ф14.13/14.15) ──────
    Первый заход развёрстывал этот блок в СЕМНАДЦАТЬ своих имён - и это была не
@@ -7412,8 +7467,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Полоса внутри карточки: своего верхнего поля у неё нет (карточка уже задала
    ритм), зато нужна нижняя черта - под ней идёт следующий блок той же карточки.
    Ячейки тут без плитки-иконки, поэтому шаг плотнее. */
-.statbar--inset { margin-top: 0; border-bottom: 1px solid var(--line); }
-.statbar--inset .s { padding: 12px 16px; }
 /* visual-diff-move: .statbar .ic -> tile — плитка-иконка статбара на примитив <Tile>:
    квадрат/радиус/центр/тинт несёт .tile, контекст задаёт ступень + тон каналом --hl
    (TRIP-391 объект 3, семья ic). Тон-варианты (.c-*) и размер иконки (--tile-ic ↔

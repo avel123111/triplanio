@@ -7,6 +7,7 @@ import { Card, Tile } from '../../design/index';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
+import CountryFlag from '@/components/common/CountryFlag';
 
 // ─── CityPicker ──────────────────────────────────────────────────────────────
 // City picker for the create-flow rows — a thin facade over the shared
@@ -15,13 +16,22 @@ import cityOptionRow from '@/components/common/cityOptionRow';
 // (city object), clear-on-type, and timezone enrichment on pick. Lives here (not
 // in ManualPlanner) so both the planner steps and the AI panel reuse ONE picker
 // without a circular import.
-export function CityPicker({ value, onChange, placeholder, autoFocus }) {
+// `blurOnPick` — after a pick, drop focus off the field. On step 1 the departure
+// date collapses out of the row while the city input is focused (:focus-within);
+// blurring on pick lets the date reappear instead of staying hidden behind a
+// still-focused input.
+export function CityPicker({ value, onChange, placeholder, autoFocus, blurOnPick }) {
   const t = useT();
   const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
 
   // Sync the field text when the selection changes externally.
   useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
+
+  // A committed, resolved city (coords + country) → its flag replaces the pin in the
+  // field and a clear (×) appears (TRIP-337). While the user re-types, `value` is
+  // cleared upstream (onInputChange below), so both revert to the plain pin.
+  const validCity = value?.latitude != null && !!value?.country_code;
 
   return (
     <Autocomplete
@@ -36,11 +46,17 @@ export function CityPicker({ value, onChange, placeholder, autoFocus }) {
         // shows a country, not blank. This is the single point that enriches a raw
         // search result; downstream consumers already receive the derived name.
         onChange({ ...city, country: localizeCountry(city.country_code, lang), timezone: tzFromCoords(city.latitude, city.longitude) });
+        if (blurOnPick) requestAnimationFrame(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       }}
       renderRow={cityOptionRow}
       placeholder={placeholder || t('planner.city_search_ph')}
       autoFocus={autoFocus}
       icon="pin"
+      inputProps={{
+        iconNode: validCity ? <CountryFlag code={value.country_code} /> : undefined,
+        onClear: value ? () => onChange(null) : undefined,
+        clearLabel: t('common.remove'),
+      }}
       attribution={false}
     />
   );
@@ -77,7 +93,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
       );
     }
     return (
-      <Card as="button" variant="add" radius="md" pad="none" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
+      <Card as="button" variant="add" radius="btn" pad="none" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
         <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="plus" size={13} /></Tile>
         <div className="te-citycell grow">
           <span className="te-endlabel" style={{ color: accent }}>{label}</span>
@@ -88,7 +104,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
   }
 
   return (
-    <Card recessed radius="md" pad="none" className="row row--g6 te-end">
+    <Card recessed radius="btn" pad="none" className="row row--g6 te-end">
       <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="flag" size={13} /></Tile>
       <div className="te-citycell grow">
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>
