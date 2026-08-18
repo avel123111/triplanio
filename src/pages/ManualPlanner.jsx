@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
+import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE } from '@/lib/trip-data';
 import { refusalError } from '@/lib/refusalError';
 import { goPro } from '@/lib/goPro';
 import { errorText } from '@/lib/errorText';
@@ -641,7 +643,13 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
         action={(
           <>
-            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}`)}>{t('planner.open_trip')}</Btn>
+            {/* «Перейти в трип» ведёт в линзу edit (маршрут + карта) и запускает
+                нативный View-Transition (см. блок в app.css): карта-фон планнера
+                сворачивается в рамочный контейнер редактора, слева выезжает меню,
+                панель подтверждения перетекает в колонку маршрута. viewTransition
+                опциональный флаг react-router — без поддержки VT (Safari<18) это
+                штатный мгновенный переход. */}
+            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=edit`, { viewTransition: true })}>{t('planner.open_trip')}</Btn>
             <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
           </>
         )}
@@ -1170,6 +1178,14 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       track('trip_created', { method, city_count: citiesPayload.length, trip_id: trip.id });
       setSavedOk(true);
       setSavedTripId(trip.id);
+      // Прогрев кэша трипа ТЕМИ ЖЕ queryFn, что использует TripView: пока показан
+      // экран успеха, shell+content уже подгружаются, и к моменту тапа «Перейти в
+      // трип» линза edit рисует реальную сетку (карта + маршрут) ПЕРВЫМ кадром —
+      // без скелетона, а значит целевой контейнер карты существует в момент, когда
+      // View-Transition снимает снапшот «после». fire-and-forget: сбой прогрева не
+      // критичен (редактор всё равно дозагрузит сам), поэтому промис не ждём.
+      qc.prefetchQuery({ queryKey: TRIP_SHELL_KEY(trip.id), queryFn: () => invokeGetTripDetails({ tripId: trip.id, include: TRIP_SHELL_INCLUDE }) });
+      qc.prefetchQuery({ queryKey: TRIP_CONTENT_KEY(trip.id), queryFn: () => invokeGetTripDetails({ tripId: trip.id, include: TRIP_CONTENT_INCLUDE }) });
     } catch (err) {
       console.error('Failed to save trip:', err);
       track('trip_create_failed', { method, reason: err?.message || 'unknown' });

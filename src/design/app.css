@@ -8760,3 +8760,74 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .tt--block width — примитив тултип ДС (обёртка блочного триггера), апрув Pavel TRIP-274
    visual-diff-exempt: .tt position — примитив тултип ДС, апрув Pavel TRIP-274
  */
+
+/* ============================================================================
+   Плавный переход «создание трипа → редактор маршрута» (TRIP-337).
+
+   Нативный View Transitions API — ноль зависимостей. Кнопка «Перейти в трип» на
+   экране успеха навигирует с `viewTransition:true` (react-router 6.30), браузер
+   снимает снапшот «до/после» и твинит ОБЩИЕ по имени элементы между раскладкой
+   планнера (карта-фон + плавающая панель) и линзой edit (рамочная карта справа +
+   колонка маршрута слева + боковое меню).
+
+   `view-transition-name` инертны, пока не идёт переход, а переход запускает ТОЛЬКО
+   та навигация с флагом — обычные смены линз (`setSearchParams` без флага) не
+   анимируются. Нет поддержки VT (Safari<18) → штатный мгновенный переход.
+
+   Хореография:
+   • trip-map   — карта из фона планнера сворачивается в рамочный контейнер редактора;
+   • trip-panel — панель подтверждения перетекает в левую колонку маршрута;
+   • trip-side  — боковое меню редактора выезжает слева (десктоп; на телефоне меню — шит).
+
+   Парные имена (`.flow-mapbox`/`.ts-map`, `.flow-editcol>.lp`/`.ts-col-left`) в DOM
+   НИКОГДА не сосуществуют — экраны взаимоисключающие роуты, поэтому дубля имени в
+   одном снапшоте не возникает.
+   ============================================================================ */
+
+/* Карта: холст-фон планнера ↔ рамочный контейнер карты редактора. */
+.flow-mapbox { view-transition-name: trip-map; }
+.ts-map { view-transition-name: trip-map; }
+
+/* Левая панель: плавающая карточка планнера ↔ левая колонка маршрута редактора. */
+.flow-editcol > .lp { view-transition-name: trip-panel; }
+.ts-col-left { view-transition-name: trip-panel; }
+
+/* Единый ритм морфинга общих элементов. */
+::view-transition-group(trip-map),
+::view-transition-group(trip-panel) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-out);
+}
+
+/* Карта — синглтон: живой mapbox-инстанс переезжает в слот `.ts-map` уже ПОСЛЕ
+   снапшота «после» (его `acquire` живёт в useEffect), поэтому новый снапшот карты
+   пустой. Поэтому не крест-фейдим в пустой бокс, а ДЕРЖИМ старый снапшот
+   (полноэкранная карта) и даём группе плавно сжать его в рамочный контейнер; когда
+   VT снимает оверлей, в контейнере уже стоит живая карта. `cover` — чтобы кадр не
+   растягивался при смене пропорций фон→бокс. */
+::view-transition-old(trip-map) { animation: none; object-fit: cover; }
+::view-transition-new(trip-map) { animation: none; opacity: 0; }
+
+/* Меню редактора «въезжает» слева — только на десктопе, где это постоянный рельс
+   (на телефоне ≤880 меню off-canvas/шит, у него свой жест). Появляется без пары
+   в снапшоте «до» → проигрывается анимация входа. */
+@media (min-width: 881px) {
+  .app-side { view-transition-name: trip-side; }
+  ::view-transition-new(trip-side) {
+    animation: vtSideIn 360ms var(--ease-out) both;
+  }
+}
+@keyframes vtSideIn {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* reduced-motion: без морфинга — мгновенная смена состояния. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+}
