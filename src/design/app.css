@@ -3403,7 +3403,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    радиусом. РАДИУС 24 (`--r-card`) — то же именованное исключение шкалы, что у
    `.records` (документ Pavel 20/16/10/24); стоит позже `.card--r-lg` и
    перекрывает ось lg на объекте. Ховер — канон (подсветка рамки --line-hover без
-   движения). `--on` (выбрана), `--stack`, `--sm` остаются вариантами.
+   движения). `--on` (выбрана), `--sm` остаются вариантами.
    visual-diff-exempt: .choice-card border-radius — 24 (--r-card) восстановлен по документу Pavel (был сведён на lg 20 в PR-4) — объект 2 */
 .choice-card {
   display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
@@ -3436,10 +3436,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    в бренд и заливает мягким тоном. Здесь это одно объявление; тон плитки внутри
    доводит .tile--solid, который уже есть.
      --on     выбрана
-     --stack  содержимое колонкой (плитка с заголовком, под ними описание)
      --sm     плотный шаг для списка, а не для пары крупных карточек */
 .choice-card--on { border-color: var(--brand); background: var(--brand-soft); }
-.choice-card--stack { flex-direction: column; align-items: stretch; gap: 10px; }
 /* Радиус 10 (--r-btn) у ПЛОТНОГО списочного варианта — планировщик (возврат,
    reverse-geo кандидаты) просил более тугой угол, чем 24 крупных навигационных
    карточек NewTripDialog (те несут `.choice-card` без `--sm`, их не трогает). */
