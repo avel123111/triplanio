@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
 import { Avatar, Btn, Card, Chip, Textarea, Tile } from '../../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
+import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import { useT } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 
@@ -12,8 +13,7 @@ import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 // bubble (.chat-run--me / .chat-bubble--me) — so the two chats can't drift. The
 // planner owns the transcript + the draft; n8n keeps context by sessionId, so
 // follow-up messages refine the same draft.
-//   ctx: { aiState, prompt, setPrompt, aiMessages, home, setHome, returnCity,
-//          cities, onGenerate(promptText) }
+//   ctx: { aiState, prompt, setPrompt, aiMessages, onGenerate(promptText) }
 // =====================================================================
 
 // The itinerary the bot proposed on a turn — a light list (start → cities), not
@@ -100,7 +100,9 @@ export default function PanelAi({ ctx }) {
         if (m.kind === 'error') return <BotMessage key={m.id}><span className="t-body">{t('ai_plan.error_plan_title')}</span></BotMessage>;
         return (
           <BotMessage key={m.id}>
-            {m.text ? <span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span> : null}
+            {/* Assistant text through ChatMarkdown + .chat-reply__text — the same
+                render the trip chat gives its bot answers. */}
+            {m.text ? <div className="chat-reply__text"><ChatMarkdown text={m.text} linkClassName="cm-a cm-a--brand" /></div> : null}
             <DraftItinerary draft={m.draft} />
           </BotMessage>
         );

@@ -997,8 +997,14 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     },
     onSuccess: async (data) => {
       const out = data?.output || {};
-      const draft = await applyAiDraft(out.draft || {});
-      // The bot's reply = its text + a snapshot of the itinerary it proposed.
+      const full = await applyAiDraft(out.draft || {});
+      // The bot's reply = its text + a DISPLAY-ONLY snapshot of the itinerary it
+      // proposed (name / country / nights only — not the full resolved city objects
+      // with coords/tz/ids), so a multi-turn transcript in sessionStorage stays small.
+      const draft = {
+        home: full.home ? { city_name: full.home.city_name, country_code: full.home.country_code } : null,
+        cities: (full.cities || []).map((c) => ({ id: c.id, city_name: c.city_name, country: c.country, nights: c.nights })),
+      };
       setAiMessages((m) => [...m, { id: `a${Date.now()}`, role: 'assistant', text: out.ai_comment || '', draft }]);
       setAiState('draft');
     },
@@ -1363,7 +1369,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             <div className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
-                <PanelAi ctx={{ aiState, prompt, setPrompt, aiMessages, home, setHome, returnCity: effectiveReturn, cities, onGenerate }} />
+                <PanelAi ctx={{ aiState, prompt, setPrompt, aiMessages, onGenerate }} />
               ) : (
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}
