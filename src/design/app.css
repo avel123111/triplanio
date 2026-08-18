@@ -2299,6 +2299,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    неравные, и низ у них разной высоты - выравнивание по НИЗУ, иначе контрол
    всплывает к верхнему краю более высокого поля. */
 .field-row--aside { grid-template-columns: 7fr 3fr; align-items: end; }
+/* На фокусе ПЕРВОГО поля (город старта) строка схлопывается в одну колонку и прячет
+   контрол-«аси́д» справа (дату) — поле и его дропдаун занимают всю ширину, как is-editing
+   у рядов шага 2. `:has` читает фокус ВНУТРИ первого поля; фокус самого контрола даты
+   (последнее поле) строку не трогает. */
+.field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: 1fr; }
+.field-row--aside:has(> .field:first-child:focus-within) > .field:last-child { display: none; }
 
 /* Badge / chip */
 .badge {

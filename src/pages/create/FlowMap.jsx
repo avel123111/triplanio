@@ -70,7 +70,9 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // marker cleanup on unmount).
-  const { mapRef, ready, canFit } = useMapSurface(containerRef, { markersRef, scheme, projection });
+  // cooperativeGestures off — no "use two fingers to move the map" gate on the
+  // planner (same as the Map lens): the map is the primary surface here.
+  const { mapRef, ready, canFit } = useMapSurface(containerRef, { markersRef, scheme, projection, cooperativeGestures: false });
 
   // Unified with the trip MapView: home → start flag, return → finish flag,
   // transit cities numbered 1..N (icons/flags come from the shared renderer).

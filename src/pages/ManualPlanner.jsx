@@ -627,6 +627,9 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         {t('planner.review_desc')}
       </div>
 
+      {/* Секции шага в одну колонку с ровным шагом — иначе поля/сводка/статусы
+          лежат вплотную (у `.field` своего вертикального отступа нет). */}
+      <div className="col col--g7">
       {/* Редактируемое сверху — название и обложка кормят превью ниже. */}
       <div className="field">
         <label className="field__label t-label">{t('planner.title_label')}</label>
@@ -721,6 +724,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           <div className="t-body">{t('planner.saving_msg')}</div>
         </Severity>
       )}
+      </div>
 
     </div>
   );
