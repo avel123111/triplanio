@@ -8,6 +8,7 @@
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { mapGazCity, buildResolvePayload, expandBatchRows } from './geo-cities.js';
+import { report } from './reportDataError.js';
 
 // App UI locales baked into the per-visit name_i18n snapshot. Anything else
 // collapses to English.
@@ -25,7 +26,7 @@ export async function searchCities(query, lang) {
   if (!query || query.length < 2) return [];
   const lk = normLang(lang);
   const { data, error } = await supabase.rpc('search_gazetteer', { q: query, lang: lk, lim: 12 });
-  if (error) return [];
+  if (error) { report(error, { surface: 'data', source: 'gazetteer_search' }); return []; }
   return (data || []).map((g) => mapGazCity(g, lk));
 }
 
@@ -51,7 +52,7 @@ export async function resolveCities(items, lang) {
     items: buildResolvePayload(items, lk),
     lang: lk,
   });
-  if (error) return items.map(() => []);
+  if (error) { report(error, { surface: 'data', source: 'gazetteer_batch' }); return items.map(() => []); }
   return expandBatchRows(data, items.length, lk);
 }
 
@@ -69,7 +70,7 @@ export async function nearbyCities(lat, lon, lang, lim = 3) {
   const { data, error } = await supabase.rpc('nearest_cities', {
     _lat: lat, _lng: lon, _lim: lim, _lang: lk,
   });
-  if (error) return [];
+  if (error) { report(error, { surface: 'data', source: 'nearest_cities' }); return []; }
   return (data || []).map((g) => mapGazCity(g, lk));
 }
 
