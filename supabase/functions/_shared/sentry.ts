@@ -33,7 +33,13 @@
  */
 import * as Sentry from 'npm:@sentry/deno@10.56.0';
 import { envTag } from './envTag.ts';
-import type { EdgeTraceContext } from './trace.ts';
+// The `sentry-trace` parser lives in the env/SDK-free `trace.ts` so `trace_test.ts`
+// can pin it under `deno test` without --allow-env/--allow-net. Imported here for
+// `captureEdgeError`'s signature AND re-exported, so this Sentry seam stays the
+// single import surface for callers (`http.ts`).
+import { traceContextFromRequest, type EdgeTraceContext } from './trace.ts';
+export { traceContextFromRequest };
+export type { EdgeTraceContext };
 
 const dsn = Deno.env.get('SENTRY_DSN');
 
