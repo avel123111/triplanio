@@ -106,23 +106,29 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
     if (canFit) {
       const pad = fitPaddingFor(winW);
-      // Optical offset = the exact centre shift the asymmetric padding produces, so
-      // the single-point fit and the empty globe land in the SAME visible area.
-      const offset = [Math.round((pad.left - pad.right) / 2), Math.round((pad.top - pad.bottom) / 2)];
       if (positions.length) {
-        // Asymmetric padding keeps the route clear of the floating panel; offset does
-        // the same for the single-point (origin-only) case, which fitBounds padding can't.
+        // Route: clear any idle-globe viewport padding first, then fit with the
+        // asymmetric reserve. Offset does the same for the single-point (origin-only)
+        // case, which fitBounds padding can't.
+        try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
+        const offset = [Math.round((pad.left - pad.right) / 2), Math.round((pad.top - pad.bottom) / 2)];
         calmFit(map, positions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
       } else {
-        // Empty (whole-earth globe, no route yet): recentre with the SAME optical
-        // offset so the earth sits in the visible area, not behind the floating panel.
-        // Explicit centre (not getCenter) keeps it idempotent across resizes — no drift,
-        // and no persistent map padding that a later route fit would double.
-        try { map.easeTo({ center: [15, 25], offset, duration: 400, essential: true }); } catch { /* ignore */ }
+        // Empty (whole-earth globe, no route yet): offset the whole projection via
+        // VIEWPORT PADDING so the earth sits in the visible area, not behind the
+        // floating panel. setPadding shifts the projection centre directly (reliable,
+        // idempotent — no drift), and the route branch above resets it before fitting.
+        try { map.setPadding(pad); } catch { /* ignore */ }
       }
     }
     return undefined;
   }, [ready, canFit, ptsKey, winW]);
+
+  // The map is a shared singleton — hand it back with zero viewport padding so the
+  // planner's idle-globe offset never leaks onto another screen (MapView / stats).
+  useEffect(() => () => {
+    try { mapRef.current?.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
+  }, []);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).

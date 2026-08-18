@@ -204,11 +204,12 @@ function CityRow({ idx, city, isDragging, isPressing, onArm, onChange, onRemove,
         : undefined}
     >
       {editing ? (
-        // Clear, tappable primary button (not a tiny checkmark) — reachable on
-        // mobile. Wrapped so the row's pointerdown doesn't arm a drag (Btn does
-        // not forward onPointerDown).
+        // Icon-only primary button (canon <Btn>, no text) attached at the end of the
+        // search field — full-height control, so it's a proper tap target on mobile
+        // without being oversized. Wrapped so the row's pointerdown doesn't arm a drag
+        // (Btn does not forward onPointerDown).
         <span onPointerDown={stopArm}>
-          <Btn variant="primary" size="sm" icon="check" disabled={!staged} onClick={(e) => { e.stopPropagation(); confirmStaged(); }}>{t('common.add')}</Btn>
+          <Btn variant="primary" icon="check" ariaLabel={t('common.add')} title={t('common.add')} disabled={!staged} onClick={(e) => { e.stopPropagation(); confirmStaged(); }} />
         </span>
       ) : (
         <NightsStepper
@@ -480,12 +481,20 @@ function ReturnOption({ on, onClick, icon, tone, title, desc }) {
   );
 }
 
-function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity, finalPoint, setFinalPoint }) {
+function StepReturn({ home, lastCity, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity, finalPoint, setFinalPoint }) {
   const t = useT();
   // "Домой" is only meaningful with an origin. Without a start there's nowhere to
   // return home to → the round-trip card is hidden; a default is nudged to "other"
   // only when the user hasn't chosen the "stay" finish.
-  const canHome = !!home?.city_name;
+  // "Домой" is meaningless when the origin IS the last city — returning "home" would
+  // just duplicate that city at the end. Hide the option then (по внешнему id, а не
+  // только имени: тёзки-города в разных странах — не один город).
+  const homeIsLast = !!home?.city_name && !!lastCity?.city_name && (
+    (home.external_city_id != null && home.external_city_id === lastCity.external_city_id) ||
+    (home.geonameid != null && home.geonameid === lastCity.geonameid) ||
+    home.city_name === lastCity.city_name
+  );
+  const canHome = !!home?.city_name && !homeIsLast;
   useEffect(() => { if (!canHome && !finalPoint && returnMode !== 'other') setReturnMode('other'); }, [canHome]);
 
   const onHome = returnMode === 'home' && !finalPoint;
@@ -657,7 +666,9 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           </div>
         </div>
 
-        <div className="statbar pl-summary__sec">
+        {/* statbar is card-homed (its skin lives on <Card>) — kept on <Card> for the
+            surface-registry guard; flattened to a divided section by the CSS below. */}
+        <Card pad="none" className="statbar">
           <div className="s">
             <Stat
               label={t('event.start')}
@@ -671,9 +682,9 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
-        </div>
+        </Card>
 
-        <div className="pl-summary__sec pl-summary__route">
+        <div className="pl-summary__route">
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
           <div className="col col--g1">
             {home?.city_name && (
@@ -1268,6 +1279,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               {step === 'return' && (
                 <StepReturn
                   home={home}
+                  lastCity={cities[cities.length - 1] || null}
                   lastCityName={cities[cities.length - 1]?.city_name || t('planner.last_city_fallback')}
                   returnMode={returnMode}
                   setReturnMode={setReturnMode}

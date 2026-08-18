@@ -124,6 +124,7 @@ export default function TripCoverPicker({
         {TRIP_GRADIENTS.map((g) => (
           <Swatch
             key={g.id}
+            variant="round"
             on={!coverImageUrl && coverGradient === g.id}
             onClick={() => handlePickGradient(g.id)}
             title={g.name}

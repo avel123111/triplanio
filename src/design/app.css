@@ -3494,6 +3494,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 
 
+/* Канон тонкого скроллбара ДС: контейнер с классом `.scrollbar-thin` (скролл-тело
+   панелей планировщика/редактора и т.п.) получает тонкий полоз на токенах вместо
+   браузерного дефолта. Firefox — `scrollbar-width/color`; WebKit — псевдоэлементы.
+   Полоз-«таблетка» на `--line-strong`, трек прозрачный, ховер темнее. Без рамки у
+   thumb — иначе радиус+фон+рамка читаются гардом 2z как поверхность (ложно).
+   prefix-exempt: scrollbar — новый канон ДС «тонкий скроллбар», апрув Pavel («будет каноном в ДС») */
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
 /* ── Unified create-flow (manual + AI) ──────────────────────────────────────
    Mirrors the trip-edit two-card layout: a framed full-bleed map (left) and a
    framed white .lp panel (right) holding the progress header → scroll body →
@@ -3702,8 +3714,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    внутри flush-родителя). Пространство `pl` уже существует (`.pl-revrow`). */
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
-.pl-summary__sec { border-top: 1px solid var(--line); }
-.pl-summary__route { padding: var(--sp-6) var(--sp-7); }
+/* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a
+   divided section: no own radius/side-borders, just a top divider. */
+.pl-summary > .statbar { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.pl-summary__route { padding: var(--sp-6) var(--sp-7); border-top: 1px solid var(--line); }
 
 /* ─── Планировщик: превью трипа на шаге «Обзор» (TRIP-321 Ф14.13/14.15) ──────
    Первый заход развёрстывал этот блок в СЕМНАДЦАТЬ своих имён - и это была не
