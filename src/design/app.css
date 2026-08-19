@@ -5035,23 +5035,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (TRIP-341), а у канон-класса свой ховер, чужого `--hl` он не читает. */
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
+/* Футер диалога/панели — СТАНДАРТНЫЙ вид, как в нормальных приложениях: кнопки
+   внизу СПРАВА, натуральной ширины, главная крайняя справа, деструктивная слева
+   от неё. Один облик на ВСЕ состояния (просмотр/редактирование/создание/
+   подтверждение) и все окна event/service/city. Растяжка `.lp-f--ratio` (2/8) и
+   схлопывание подписи `.btn-label-collapse` убраны в TRIP-337 — именно они плодили
+   разнобой размеров (мелкая кнопка справа vs. «во всю ширину» vs. 20/80). */
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
-/* Two-button footer (delete + primary) filling the bar in a ~2/8 ratio. On
-   phones the destructive button collapses to its icon (text via .btn-label-collapse). */
-.lp-f--ratio { justify-content: stretch; }
-.lp-f--ratio > .btn:first-child { flex: 2; }
-.lp-f--ratio > .btn:last-child  { flex: 8; }
+/* visual-diff-exempt: .lp-f--ratio justify-content — семейство растяжки футера удалено, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child flex — растяжка футера `.lp-f--ratio > .btn` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:last-child flex — растяжка футера `.lp-f--ratio > .btn` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child {@media (max-width: 640px)} flex — мобильная растяжка футера `.lp-f--ratio > .btn:first-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f--ratio flex — растяжка футера `.lp-f--ratio > .btn:last-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f--ratio {@media (max-width: 640px)} flex — растяжка футера `.lp-f--ratio > .btn:first-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn-label-collapse {@media (max-width: 640px)} display — схлопывание подписи удаления убрано, TRIP-337 апрув Pavel */
 @media (max-width: 640px) {
-  /* `:not(:last-child)` — только когда у первой кнопки ЕСТЬ сосед (двухкнопочный
-     футер удалить+primary). Одиночная кнопка (создание/только-редактировать) —
-     это И первый, И последний ребёнок: без `:not(:last-child)` правило гасило её
-     до auto-ширины, и в `justify-content:stretch` она уезжала влево. Теперь она
-     остаётся на `flex:8` (last-child) и тянется на всю ширину. */
-  /* visual-diff-exempt: .btn:first-child {@media (max-width: 640px)} flex — сужение правила: одиночная кнопка (создание/только-редактировать) больше не auto-ширины, TRIP-337 апрув Pavel */
-  /* visual-diff-exempt: .btn:first-child:not(:last-child) {@media (max-width: 640px)} flex — то же правило, суженное до двухкнопочного футера (удалить+primary), TRIP-337 апрув Pavel */
-  .lp-f--ratio > .btn:first-child:not(:last-child) { flex: 0 0 auto; }
   .lp-f--single > .btn { width: 100%; }
-  .btn-label-collapse { display: none; }
 }
 
 /* `.addmini` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft" size="sm">.

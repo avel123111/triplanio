@@ -136,10 +136,10 @@ export default function EventModal(props) {
             to the top action row, so read-only events no longer need a footer). */}
         {canEdit && (onDelete || onEdit) && (
         /* Единый канон-футер event/service view — тот же набор и те же i18n-ключи,
-           что у панели просмотра (EventSourcePanel): удалить (danger, подпись
-           схлопывается в иконку на мобиле) + primary. Раскладку держит
-           `lp-f--ratio`; корзина рисуется `icon`-пропом, не сырым lucide. */
-        <div className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}>
+           что у панели просмотра (EventSourcePanel): удалить (danger) + primary,
+           стандартный `.lp-f` (кнопки справа, натуральной ширины). Корзина
+           рисуется `icon`-пропом, не сырым lucide. */
+        <div className="lp-f">
           {confirmDel ? (
             <>
               <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleting}>{t('common.cancel')}</Btn>
@@ -161,7 +161,7 @@ export default function EventModal(props) {
             <>
               {onDelete && (
                 <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('common.delete')}>
-                  <span className="btn-label-collapse">{t('common.delete')}</span>
+                  {t('common.delete')}
                 </Btn>
               )}
               {onEdit && (

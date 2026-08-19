@@ -1322,13 +1322,13 @@ export default function EventEditDialog({
           </div>
           )}
 
-          {/* Footer — TRIP-186: единый канон с event view / city view (lp-f--ratio
-              + <Btn>): удалить (danger, схлоп на мобиле) + primary. Pinned снизу
-              в панельном режиме. TRIP-333 §4: класс один на оба режима, своим у
-              диалога остался только прилипший низ, и тот не нужен модалке -
-              она и так не прокручивает футер. */}
+          {/* Footer — единый канон с event view / city view: стандартный `.lp-f`
+              (кнопки справа, натуральной ширины), удалить (danger) + primary.
+              Pinned снизу в панельном режиме. TRIP-333 §4: класс один на оба
+              режима, своим у диалога остался только прилипший низ, и тот не нужен
+              модалке — она и так не прокручивает футер. */}
           <div
-            className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}
+            className="lp-f"
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
@@ -1340,7 +1340,7 @@ export default function EventEditDialog({
               <>
                 {isEdit && (
                   <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} disabled={deleteMut.isPending} ariaLabel={t('common.delete')}>
-                    <span className="btn-label-collapse">{t('common.delete')}</span>
+                    {t('common.delete')}
                   </Btn>
                 )}
                 <Btn

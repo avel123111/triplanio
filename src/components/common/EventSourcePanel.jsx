@@ -134,7 +134,6 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
       title={title}
       sub={sub}
       onBack={onClose}
-      footClass={confirmDel ? '' : 'lp-f--ratio'}
       // Футер рисуется ТОЛЬКО когда в нём есть кнопки: у наблюдателя (`!canEdit`)
       // действий нет, поэтому `foot` = null и PanelShell вообще не выводит `.lp-f`
       // (иначе пустой фрагмент оставался тонкой полоской с border-top).
@@ -145,7 +144,7 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
         </>
       ) : canEdit ? (
         <>
-          <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('common.delete')}><span className="btn-label-collapse">{t('common.delete')}</span></Btn>
+          <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('common.delete')}>{t('common.delete')}</Btn>
           <Btn variant="primary" icon="edit" onClick={() => setEditMode(true)}>{t('trip.edit_trip')}</Btn>
         </>
       ) : null}
