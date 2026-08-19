@@ -1362,7 +1362,7 @@ h4,
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
 }
 button.app-side__item { cursor: pointer; }
-.app-side__item svg { stroke-width: 2.4px; flex: 0 0 auto; transition: color .22s var(--ease-out); }
+.app-side__item svg { stroke-width: 1.6px; flex: 0 0 auto; transition: color .22s var(--ease-out); }
 button.app-side__item:active { transform: scale(.985); }
 button.app-side__item:hover { background: var(--wash); }
 .app-side__item.active { background: var(--brand-soft); color: var(--brand); }
@@ -1384,8 +1384,10 @@ button.app-side__item:hover { background: var(--wash); }
 .app-side__brand:hover { background: var(--wash); }
 .app-side__logo { width: 34px; height: 34px; flex: 0 0 auto; border-radius: var(--r-sm); overflow: hidden; display: grid; place-items: center; }
 .app-side__logo img { width: 34px; height: 34px; display: block; border-radius: var(--r-sm); }
-.app-side__brand-name { color: var(--ink); font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; }
+.app-side__brand-name { color: var(--ink); font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; max-width: 160px; opacity: 1; transition: opacity .16s var(--ease-out), max-width .26s var(--ease-out); }
 .app-side__nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 10px; }
+/* Подпись пункта плавно сжимается/исчезает при смене режима (не резкий display). */
+.app-side__label { white-space: nowrap; overflow: hidden; max-width: 200px; opacity: 1; transition: opacity .16s var(--ease-out), max-width .26s var(--ease-out); }
 .app-side__toggle {
   display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
   width: 100%; padding: 12px 16px; cursor: pointer;
@@ -1393,15 +1395,15 @@ button.app-side__item:hover { background: var(--wash); }
   color: var(--muted); transition: background .15s var(--ease-out), color .15s var(--ease-out);
 }
 .app-side__toggle:hover { background: var(--wash); color: var(--ink); }
-.app-side__toggle svg { stroke-width: 2.4px; flex: 0 0 auto; }
+.app-side__toggle svg { stroke-width: 1.6px; flex: 0 0 auto; }
 .app-side__toggle .app-side__label { color: inherit; }
 
 /* Узкий режим действует только на десктопе: на ≤880 меню выезжает off-canvas
    на всю ширину и всегда показывает подписи (см. блок @media ниже). */
 @media (min-width: 881px) {
   .trip-body.is-side-narrow .app-side__brand { justify-content: center; padding-left: 0; padding-right: 0; }
-  .trip-body.is-side-narrow .app-side__brand-name { display: none; }
-  .trip-body.is-side-narrow .app-side__label { display: none; }
+  .trip-body.is-side-narrow .app-side__brand-name { opacity: 0; max-width: 0; }
+  .trip-body.is-side-narrow .app-side__label { opacity: 0; max-width: 0; }
   .trip-body.is-side-narrow .app-side__nav { overflow: visible; padding-left: 6px; padding-right: 6px; }
   .trip-body.is-side-narrow .app-side__item { position: relative; justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
   .trip-body.is-side-narrow .app-side__item > .badge--unread { position: absolute; top: 3px; right: 7px; margin: 0; }
@@ -5210,15 +5212,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    стояла ОТДЕЛЬНЫМ рядом над `.trip-body`; теперь она внутри `.trip-main`,
    поэтому «начинается от меню». Ширина колонки меню — токеном `--tside-w`, узкий
    режим лишь меняет его значение. */
-.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--tside-w, 220px) 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
+/* Колонка меню — `auto` (её ширину задаёт сама `.app-side` через `--tside-w`),
+   чтобы плавно анимировать `width` меню: transition по `width` поддержан всеми
+   движками, в отличие от transition по `grid-template-columns`. */
+.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
 .trip-body.is-side-narrow { --tside-w: 72px; }
 /* Правая колонка: шапка (фикс-высота) + скроллящееся тело. */
 .trip-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 /* Меню во всю высоту кадра: колонка бренд → nav(скролл) → тумблер. */
 .trip-shell .app-side {
   position: static; top: auto; height: auto; min-height: 0; align-self: stretch;
+  width: var(--tside-w, 220px); flex: 0 0 auto;
   display: flex; flex-direction: column; overflow: visible; padding: 0;
+  transition: width .26s var(--ease-out);
 }
+@media (prefers-reduced-motion: reduce) { .trip-shell .app-side { transition: none; } }
 .trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
