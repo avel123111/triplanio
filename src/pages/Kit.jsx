@@ -712,7 +712,12 @@ const RECIPES = {
     const goTrips = <Btn variant="primary" icon="plus" block>Перейти к путешествиям</Btn>; // i18n-ignore: демо-подпись витрины /kit
     const inbox = [
       { unread: true, glyph: { mode: 'avatar', name: 'Женя Соколов' }, title: 'Женя Соколов зовёт в путешествие', message: 'Токио, весна · роль наблюдателя', time: '5 мин', actions: inviteActs },
-      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Новая бронь: отель', message: 'Токио, весна · Костя Марков', time: '2 ч', actions: link },
+      // Бронь добавлена — 4 вида (TRIP-284): заголовок «{автор} добавил(а) <вид>»,
+      // тело «<Вид> в «{трип}»». activity — новый тип (раньше не уведомлялся вовсе).
+      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) отель', message: 'Отель в «Токио, весна»', time: '2 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) переезд', message: 'Переезд в «Токио, весна»', time: '3 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) активность', message: 'Активность в «Токио, весна»', time: '3 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) услугу', message: 'Услуга в «Токио, весна»', time: '3 ч', actions: link },
       { glyph: { mode: 'avatar', name: 'Марк Лебедев' }, title: 'Марк Лебедев теперь в путешествии', message: 'Токио, весна', time: '4 ч', actions: link },
       { glyph: { mode: 'tile', icon: 'shield', tone: 'brand' }, title: 'Теперь ты администратор', message: 'Лиссабон · можно менять маршрут и бюджет', time: '2 дн', actions: link },
       { glyph: { mode: 'avatar', name: 'Ира Волкова' }, title: 'Ира Волкова зовёт в путешествие', message: 'Токио, весна', time: '2 дн', actions: acceptedActs },
@@ -724,7 +729,7 @@ const RECIPES = {
     ];
     const popover = [
       { unread: true, glyph: { mode: 'avatar', name: 'Женя Соколов' }, title: 'Женя Соколов зовёт в путешествие', message: 'Токио, весна', time: '5 мин', actions: inviteActs },
-      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Новая бронь: отель', message: 'Токио, весна · Костя Марков', time: '2 ч', actions: link },
+      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) отель', message: 'Отель в «Токио, весна»', time: '2 ч', actions: link },
       { glyph: { mode: 'avatar', name: 'Марк Лебедев' }, title: 'Марк Лебедев теперь в путешествии', message: 'Токио, весна', time: '4 ч', actions: link },
       { glyph: { mode: 'tile', icon: 'card', tone: 'danger' }, title: 'Оплата Pro не прошла', message: 'Обнови способ оплаты', time: '3 ч' },
     ];
