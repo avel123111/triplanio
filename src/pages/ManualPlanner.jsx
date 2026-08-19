@@ -523,19 +523,20 @@ function ReturnOption({ on, onClick, icon, tone, title, desc }) {
   );
 }
 
-function StepReturn({ home, lastCity, lastCityName, end, setEnd }) {
+function StepReturn({ home, lastCityName, end, setEnd }) {
   const t = useT();
-  // "Домой" is only meaningful with an origin. Without a start there's nowhere to
-  // return home to → the round-trip card is hidden. It's also meaningless when the
-  // origin IS the last city — returning "home" would just duplicate that city.
-  const canHome = !!home?.city_name && !sameCity(home, lastCity);
+  // «Домой» (финиш = город старта) доступен, если старт вообще есть. Никаких сравнений
+  // старт↔последний-город — финиш это самостоятельный узел.
+  const canHome = !!home?.city_name;
 
   // `end` is the single source of truth (null | city | 'stay'); `otherMode` is a
   // LOCAL UI flag for the «другой» card (the picker writes the city into `end`).
+  // `endIsHome` here is COSMETIC only — decides which card looks active on revisit,
+  // not any data behaviour.
   const endIsCity = !!end && end !== 'stay';
   const endIsHome = endIsCity && sameCity(end, home);
   const [otherMode, setOtherMode] = useState(endIsCity && !endIsHome);
-  // No origin / origin == last city → «домой» impossible: fall the default to «другой».
+  // No origin → «домой» impossible: default the choice to «другой».
   useEffect(() => { if (!canHome && end !== 'stay') setOtherMode(true); }, [canHome]);
 
   const onStay = end === 'stay';
@@ -634,7 +635,7 @@ function Stat({ label, value, hint, warn }) {
   );
 }
 
-function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
+function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
   const nav = useNavigate();
   const t = useT();
   const { lang } = useI18n();
@@ -730,15 +731,15 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         </Card>
 
         <div className="pl-summary__route">
-          <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
+          <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (finishCity ? 1 : 0) })}</div>
           <div className="col col--g1">
             {home?.city_name && (
               <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
             )}
             {cities.map((c, i) => {
-              // Last city with the finish chosen on step 3 → the endpoint marker
+              // Last city with «останусь» chosen on step 3 → the endpoint marker
               // (single blue flag, unified with the start), not a numbered stop.
-              const isFin = finalPoint && i === cities.length - 1;
+              const isFin = isStay && i === cities.length - 1;
               return (
                 <ReviewRow
                   key={c.id}
@@ -752,8 +753,8 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
                 />
               );
             })}
-            {returnCity?.city_name && (
-              <ReviewRow icon="flag" name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
+            {finishCity?.city_name && (
+              <ReviewRow icon="flag" name={finishCity.city_name} sub={`${finishCity.country || ''} · ${t('planner.sub_finish')}`} muted />
             )}
           </div>
         </div>
@@ -962,11 +963,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setCities(resolvedCities);
     setStartDateRaw(anchor);
 
-    // Finish узел — из ответа ИИ как есть (n8n отдаёт `kind:'end'` отдельным узлом):
-    // явный end → он; иначе, если есть старт — возврат домой (клон старта); ни того
-    // ни другого → маршрут открыт (последний город = терминал). Никакого угадывания
-    // способа возврата — узел `end` едет насквозь и виден в чате/ревью/карте.
-    const endNode = endCity?.city_name ? endCity : (resolvedHome ? { ...resolvedHome } : null);
+    // Finish узел — только если ИИ дал его явно (n8n отдаёт `kind:'end'` отдельным
+    // узлом). Не дал — узел не выдумываем: финиш определится на шаге 3 (дефолт
+    // «домой»). Узел `end` едет насквозь и виден в чате/ревью/карте как есть.
+    const endNode = endCity?.city_name ? endCity : null;
     setEnd(endNode);
 
     if (d?.title) setTripTitle(d.title);
@@ -1058,27 +1058,25 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
   };
 
-  // Derive the two values the map/review/save consume from the single `end` node.
-  // `isStay` («останусь») = the last city itself is the terminus (no separate node).
-  // `effectiveReturn` = the separate finish city (or null when staying / open).
+  // Финиш — самостоятельный узел (kind:'end'), а не «возврат»: 4 типа города —
+  // старт / финиш / пересадка / посещение. `isStay` («останусь») = последний город
+  // сам становится терминалом. Иначе финиш = явно заданный узел `end`, а если он не
+  // задан — дефолт «домой» = город старта. Никаких сравнений старт↔финиш.
   const lastCity = cities[cities.length - 1] || null;
-  const homeReturnsToLast = sameCity(home, lastCity); // возврат домой дублировал бы последний город
   const isStay = end === 'stay';
-  const effectiveReturn = isStay ? null
-    : end ? end
-    : (home?.city_name && !homeReturnsToLast ? home : null);
+  const finishCity = isStay ? null : (end || home || null);
   const autoTitle = computeAutoTitle(home, cities, t);
 
   // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed the same
-  // way FlowMap tags its pins ('home' | city.id | 'return'). A city's date range is
+  // way FlowMap tags its pins ('home' | city.id | 'finish'). A city's date range is
   // start..start+nights (single day for a 0-night waypoint); anchors show name only.
   const mapPointById = useMemo(() => {
     const m = {};
     if (home?.latitude != null) m.home = { lng: home.longitude, lat: home.latitude, countryCode: home.country_code, name: home.city_name, dates: null };
     cities.forEach((c) => { if (c.latitude != null) m[String(c.id)] = { lng: c.longitude, lat: c.latitude, countryCode: c.country_code, name: c.city_name, dates: cityDateRange(c, lang) }; });
-    if (effectiveReturn?.latitude != null) m.return = { lng: effectiveReturn.longitude, lat: effectiveReturn.latitude, countryCode: effectiveReturn.country_code, name: effectiveReturn.city_name, dates: null };
+    if (finishCity?.latitude != null) m.finish = { lng: finishCity.longitude, lat: finishCity.latitude, countryCode: finishCity.country_code, name: finishCity.city_name, dates: null };
     return m;
-  }, [home, cities, effectiveReturn, lang]);
+  }, [home, cities, finishCity, lang]);
   // The tooltip follows the hovered pin/row, otherwise the selected one.
   const activeMapId = hoveredMapId || selectedMapId;
   const cityBadge = activeMapId ? mapPointById[activeMapId] || null : null;
@@ -1138,10 +1136,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         else if (+c.nights === 0) citiesPayload.push({ ...id, kind: 'waypoint' });
         else citiesPayload.push({ ...id, kind: 'transit', nights: +c.nights || 0 });
       });
-      // Separate finish node → kind:'end' (a returning «домой»/«другой» leg, or the
-      // AI's explicit end city). «Останусь» has no separate node — the last city
-      // above already carries kind:'end' (isFinalAnchor).
-      if (effectiveReturn?.city_name) citiesPayload.push({ ...cityIdentity(effectiveReturn), kind: 'end' });
+      // Separate finish node → kind:'end' (домой = город старта / другой город / явный
+      // финиш из ИИ). «Останусь» отдельного узла не создаёт — последний город выше уже
+      // помечен kind:'end' (isFinalAnchor).
+      if (finishCity?.city_name) citiesPayload.push({ ...cityIdentity(finishCity), kind: 'end' });
 
       // Atomic create through the single door (TRIP-406): trips + city_visits +
       // recompute in one transaction. The seam authenticates (JWT), gates the
@@ -1267,7 +1265,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const stepIdx = Math.max(0, visibleSteps.findIndex((s) => s.id === step));
   const isFirstStep = stepIdx === 0;
   const citiesValid = cities.length > 0 && cities.every((c) => c.city_name && c.latitude != null);
-  const hasDraftData = !!home?.city_name || cities.length > 0 || !!effectiveReturn?.city_name;
+  const hasDraftData = !!home?.city_name || cities.length > 0 || !!finishCity?.city_name;
 
   // Reset asks for confirmation only when there's something to lose.
   const requestReset = async () => {
@@ -1339,13 +1337,13 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <FlowMap
               home={home}
               cities={cities}
-              // Always pass the return city (it feeds the camera framing), but only
-              // DRAW the return pin + leg from step 3 on — so navigating steps toggles
+              // Always pass the finish city (it feeds the camera framing), but only
+              // DRAW the finish pin + leg from step 3 on — so navigating steps toggles
               // what's drawn without re-framing, and the default round-trip never
               // pre-draws a line home on the earlier steps.
-              returnCity={effectiveReturn}
-              drawReturn={step === 'return' || step === 'review'}
-              finalPoint={isStay}
+              finishCity={finishCity}
+              drawFinish={step === 'return' || step === 'review'}
+              isStay={isStay}
               hoveredId={hoveredMapId}
               selectedId={selectedMapId}
               cityBadge={cityBadge}
@@ -1384,7 +1382,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               {step === 'return' && (
                 <StepReturn
                   home={home}
-                  lastCity={lastCity}
                   lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
                   end={end}
                   setEnd={setEnd}
@@ -1394,8 +1391,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                 <StepReview
                   home={home}
                   cities={cities}
-                  returnCity={effectiveReturn}
-                  finalPoint={isStay}
+                  finishCity={finishCity}
+                  isStay={isStay}
                   cover={cover}
                   setCover={setCover}
                   tripTitle={tripTitle}
