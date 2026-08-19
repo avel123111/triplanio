@@ -85,6 +85,7 @@ export async function captureEdgeError(
   fn: string,
   extra?: Record<string, unknown>,
   trace?: EdgeTraceContext,
+  fingerprint?: string[],
 ): Promise<void> {
   if (!dsn) return;
   try {
@@ -93,6 +94,13 @@ export async function captureEdgeError(
       ...(extra ? { extra } : {}),
       // Stitch onto the browser trace when the caller propagated one (TRIP-373).
       ...(trace ? { contexts: { trace } } : {}),
+      // Explicit grouping key (TRIP-441). Only the synthetic `<fn> responded <status>`
+      // path passes one: those events all share ONE stack (they are minted at a
+      // single line in reportResponseError), so default stack-grouping collapses
+      // every function's returned-≥400 into one un-triageable issue. Fingerprinting
+      // by fn+status splits them apart. Thrown errors carry no fingerprint and keep
+      // their natural per-stack grouping.
+      ...(fingerprint ? { fingerprint } : {}),
     });
     await Sentry.flush(2000);
   } catch (_e) {
