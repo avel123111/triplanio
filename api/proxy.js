@@ -35,6 +35,9 @@
 
 export const config = { maxDuration: 60 };
 
+// NOTE (TRIP-373): `sentry-trace` / `baggage` are deliberately NOT stripped — they
+// carry the browser's trace context and must reach the edge for the browser
+// transaction and the edge error to stitch into one trace. Do not add them here.
 const STRIP_REQUEST = new Set([
   'host', 'connection', 'content-length', 'cookie',
   'x-forwarded-for', 'x-real-ip', 'x-forwarded-host', 'forwarded',

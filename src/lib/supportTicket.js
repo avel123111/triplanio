@@ -8,6 +8,7 @@
  * не пишем). Здесь — только загрузка/подметание файлов и сбор meta сессии.
  */
 import { supabase } from '@/api/supabaseClient';
+import { report } from '@/lib/reportDataError';
 import { safeStorageName } from '@/lib/storage';
 
 export const SUPPORT_BUCKET = 'support';
@@ -35,10 +36,11 @@ export async function uploadSupportFiles(files) {
   const errors = [];
   for (const file of Array.from(files || [])) {
     const path = `${crypto.randomUUID()}/${safeStorageName(file.name)}`;
+    // storage-report: вложение баг-репорта — сбой заливки байтов виден отправителю.
     const { error } = await supabase.storage
       .from(SUPPORT_BUCKET)
       .upload(path, file, { contentType: file.type || undefined });
-    if (error) { errors.push({ file }); continue; }
+    if (error) { report(error, { surface: 'storage', source: 'upload_support' }); errors.push({ file }); continue; }
     uploaded.push({ path, name: file.name, size: file.size, mime: file.type });
   }
   return { uploaded, errors };
@@ -47,6 +49,8 @@ export async function uploadSupportFiles(files) {
 /** Подмести осиротевшие объекты (тикет не сохранился). Best-effort, не бросает. */
 export function removeSupportFiles(paths) {
   if (!paths?.length) return;
+  // storage-soft-fail: подметание своих сирот — если не удалилось, пользователь
+  // ничего не теряет (тикет уже не создан); шуметь в Sentry незачем.
   supabase.storage.from(SUPPORT_BUCKET).remove(paths).then(() => {}, () => {});
 }
 

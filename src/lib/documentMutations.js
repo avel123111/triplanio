@@ -16,6 +16,7 @@ import { refusalError } from '@/lib/refusalError';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
+import { report } from '@/lib/reportDataError';
 import { isAllowedUpload, uploadContentType } from '@/lib/fileType';
 
 /** React-query key for a trip's documents list. */
@@ -63,8 +64,9 @@ export async function uploadTripFiles(tripId, files) {
     // uploadContentType): storage-js sends a File as multipart, where the
     // browser owns the part's Content-Type and `contentType` is ignored.
     const body = new File([file], file.name, { type: uploadContentType(file) });
+    // storage-report: залив документа — байтовая дверь, сбой виден пользователю.
     const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, body);
-    if (upErr) { errors.push({ file, reason: 'upload', message: upErr.message }); continue; }
+    if (upErr) { report(upErr, { surface: 'storage', source: 'upload_doc' }); errors.push({ file, reason: 'upload', message: upErr.message }); continue; }
     const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
     if (!urlData?.signedUrl) {
       // Object landed but no URL → it would render as a broken link. Treat as a

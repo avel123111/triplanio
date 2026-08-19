@@ -22,7 +22,7 @@
  * sentry seams — still "seam, not framework".
  */
 import { corsFor } from './cors.ts';
-import { captureEdgeError } from './sentry.ts';
+import { captureEdgeError, traceContextFromRequest, type EdgeTraceContext } from './sentry.ts';
 import type { Refusal } from './mutateRules.ts';
 
 export type ErrorBody = { error: string; code?: string };
@@ -113,7 +113,11 @@ export function runInBackground(p: Promise<unknown>): void {
  * body just yields the bare status. Runs in the background, so this adds no
  * latency to the response the user already received.
  */
-async function reportResponseError(fnName: string, res: Response): Promise<void> {
+async function reportResponseError(
+  fnName: string,
+  res: Response,
+  trace?: EdgeTraceContext,
+): Promise<void> {
   const extra: Record<string, unknown> = { status: res.status };
   try {
     const body = await res.clone().json();
@@ -122,7 +126,7 @@ async function reportResponseError(fnName: string, res: Response): Promise<void>
       if (body.code != null) extra.code = body.code;
     }
   } catch { /* non-JSON body — status alone is what we have */ }
-  return captureEdgeError(new Error(`${fnName} responded ${res.status}`), fnName, extra);
+  return captureEdgeError(new Error(`${fnName} responded ${res.status}`), fnName, extra, trace);
 }
 
 /**
@@ -160,6 +164,10 @@ export function withHandler(
   return async (req: Request): Promise<Response> => {
     const corsHeaders = corsFor(req);
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+    // Incoming browser trace (TRIP-373), parsed once per request and threaded into
+    // every capture path below so the edge error stitches onto it. Undefined when
+    // the caller sent none. Passed per-call — never onto the global scope.
+    const trace = traceContextFromRequest(req);
     try {
       const res = await handler(req, corsHeaders);
       // Report every >=400 outcome — EXCEPT a 401 (expected stale-token handshake,
@@ -168,14 +176,14 @@ export function withHandler(
       // geoLocationiq's 429/502, which carry distinct grouping + upstream status).
       // Without the opt-out those would be reported twice.
       if (res.status >= 400 && res.status !== 401 && res.headers.get('x-sentry-skip') !== '1') {
-        runInBackground(reportResponseError(fnName, res));
+        runInBackground(reportResponseError(fnName, res, trace));
       }
       return res;
     } catch (e) {
       if (e instanceof HttpError) {
         // A thrown 401 is silenced for the same reason as a returned one.
         if (e.status !== 401) {
-          runInBackground(captureEdgeError(e, fnName, { status: e.status, code: e.code }));
+          runInBackground(captureEdgeError(e, fnName, { status: e.status, code: e.code }, trace));
         }
         return jsonError(e.status, e.message, e.code, corsHeaders);
       }
@@ -183,7 +191,7 @@ export function withHandler(
       // when Sentry is unset (local dev) or misconfigured. Only the unexpected
       // 5xx path is logged; expected 4xx control flow would just be noise.
       console.error(`${fnName} unhandled:`, e);
-      runInBackground(captureEdgeError(e, fnName));
+      runInBackground(captureEdgeError(e, fnName, undefined, trace));
       // Клиенту — СТАТИЧНЫЙ текст, `e.message` (в т.ч. сырой текст Postgres) едет
       // только в Sentry строкой выше (TRIP-420, кусок контракта ошибок TRIP-276).
       // Пользователь видит локализованную строку по `code: 'INTERNAL'`; `error`

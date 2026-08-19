@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { reportAuthError } from '@/lib/reportDataError';
 import { identifyUser, resetIdentity, track } from '@/lib/analytics';
 import { forgetStashedAttribution, getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
 import { conversion } from '@/lib/destinations/ads';
@@ -251,6 +252,11 @@ export const AuthProvider = ({ children }) => {
       loadedUserIdRef.current = authUser.id;
     } catch (error) {
       console.error('Failed to load user profile:', error);
+      // Real failures only: a getMe/register edge reject is already reported by
+      // the invoke seam (stamped __seamHandled → this is a no-op); a genuine
+      // non-seam throw in the auth-bootstrap path would otherwise vanish here,
+      // silently on a background refresh. Expected 4xx are filtered out.
+      reportAuthError(error, 'profile');
       // On a silent refresh, keep the current auth state untouched — a transient
       // profile-fetch blip must not flip the app to "loading" or sign the user
       // out; reconcile-on-read covers the missed refresh.

@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, UnreadBadge, useToast,
+  Badge, Btn, Card, Cover, IconBtn, ListRow, Seg, Severity, SearchSelect, Tile, UnreadBadge, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -16,6 +16,8 @@ import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { report } from '@/lib/reportDataError';
+import { parseStorageObjectUrl } from '@/lib/storage';
 import { errorText } from '@/lib/errorText';
 import { track } from '@/lib/analytics';
 import { openConsentBanner } from '@/lib/consent';
@@ -297,25 +299,24 @@ function ReminderChannels() {
               badge={<Badge variant="success" size="tiny">{t('telegram.connected')}</Badge>}
             >
               <Col gap="g2">
+                {/* floor-exempt: dsshare +4 — переход строки на канон <ListRow> сворачивает
+                    явные <Row>/<Grow> в композицию ДС (вне числителя доли), ровно кейс
+                    «правильный ход опускает долю» из §1 эпика. Апрув Pavel на правку строки. */}
+                {/* Строка трипа = канон `<ListRow>` (lead обложка + title/sub + trail):
+                    отвязка `<IconBtn>` живёт в слоте `trail` ВНУТРИ карточки, а не
+                    сиблингом снаружи (TRIP-337, запрос Pavel). Клик по всей строке в
+                    трип снят — управление напоминаниями идёт из «Настроек путешествия»
+                    (подсказка ниже), и это ровно та же нерастянутая строка, что в
+                    SettingsLens: один объект — одна реализация. */}
                 {items.map((a) => (
-                  <Row gap="g2" key={a.id}>
-                    {/* Строка трипа собрана из ПРИМИТИВОВ ДС (Card/Row/Grow/Cover/каноны),
-                        без triage-классов и инлайна: обложка — <Cover> (градиент классами
-                        по data-cover, фото через <img>), название/логин — каноны .t-*.
-                        Вся строка ведёт в трип; отвязка — <IconBtn> справа (sibling, т.к.
-                        кнопку в кнопку нельзя). `grow--fit` даёт всем карточкам равную
-                        ширину → иконки строго выровнены, длинное название truncate'ится. */}
-                    <Card as="button" radius="btn" interactive className="grow--fit" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
-                      <Row gap="g4">
-                        <Cover gradient={a.cover_gradient} image={a.cover_image_url} />
-                        <Grow fit>
-                          <Trunc className="t-strong">{a.trip_title}</Trunc>
-                          <div className="t-meta muted">{nick(a)}</div>
-                        </Grow>
-                      </Row>
-                    </Card>
-                    <IconBtn icon="unlink" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
-                  </Row>
+                  <ListRow
+                    key={a.id}
+                    variant="raised"
+                    lead={<Cover gradient={a.cover_gradient} image={a.cover_image_url} />}
+                    title={<Trunc>{a.trip_title}</Trunc>}
+                    sub={nick(a)}
+                    trail={<IconBtn icon="close" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />}
+                  />
                 ))}
                 <Row gap="g4" align="a-start"><Icon name="info" size={13} className="muted" /><span className="t-meta muted">{t('telegram.account_hint')}</span></Row>
               </Col>
@@ -351,6 +352,17 @@ function ReminderChannels() {
       </Col>
     </Card>
   );
+}
+
+// Best-effort снос объекта аватара по его публичному URL. Провал намеренно
+// проглатывается — сохранённая/снятая ссылка `avatar_url` уже победила. Ключ
+// уникален на версию, поэтому путь берётся из URL, а не из фикс-имени.
+async function removeAvatarObject(url) {
+  const obj = parseStorageObjectUrl(url);
+  if (obj?.bucket !== 'avatars') return;
+  // storage-soft-fail: снос прежней/сиротской версии аватара — ссылка уже
+  // переключена, оставшийся объект в своей папке пользователю не мешает.
+  try { await supabase.storage.from('avatars').remove([obj.path]); } catch { /* ignore */ }
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -502,37 +514,35 @@ export default function ScreenAccount() {
     }
     setUploadingAvatar(true);
     setErrorMsg(null);
+    const prevUrl = avatarUrl;
     try {
-      // TRIP-367 root-cause: «new row violates row-level security policy» при
-      // аплоаде = `auth.uid()` NULL, т.е. storage-запрос ушёл без валидного
-      // токена (сессия ещё не восстановилась после загрузки страницы или токен
-      // протух). Глобальный createAuthRetryFetch лечит только 401, а storage-RLS-
-      // отказ приходит НЕ-401 и проходит мимо него. Форсим восстановление сессии
-      // ДО загрузки байтов: getSession() дожидается восстановления и обновляет
-      // протухший access-token, поэтому следующий storage-запрос уходит с живым
-      // токеном. Нет живой сессии вовсе — честный UNAUTHENTICATED, а не сырой
-      // storage-отказ «violates RLS».
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setErrorMsg(errorText(t, 'UNAUTHENTICATED')); return; }
-      // Deterministic key: one object per user, no extension. upsert overwrites
-      // it in place, so stale variants can never accumulate and no listing sweep
-      // is needed (TRIP-48). The browser renders <img> by the stored Content-Type,
-      // not the URL suffix, and avatar_url carries a ?t= cache-buster. That type
-      // comes from the multipart part the browser builds out of `file` — passing
-      // a `contentType` option here would do nothing (storage-js only applies it
-      // to non-Blob bodies), so the MIME allow-list on the bucket is the gate.
-      const path = `${user.id}/avatar`;
+      // Уникальный ключ на версию под своей папкой: `<uid>/<uuid>`. Папка `<uid>/`
+      // обязательна — её проверяет owner-scoped `avatars_insert`. Уникальность
+      // ключа = плоский INSERT (нет `ON CONFLICT`, значит SELECT-политика не
+      // нужна — публичный бакет держит ноль SELECT-политик, гард 2e/TRIP-48) и
+      // сам бьёт кэш браузера, поэтому `?t=` не нужен. Content-Type берётся из
+      // multipart-части, что строит браузер из `file`; MIME-гейт — allow-list
+      // бакета. Паттерн — как у обложек трипа и официального Supabase-примера.
+      const path = `${user.id}/${crypto.randomUUID()}`;
       // Байты аватара — прямо в Storage (намеренно разрешённое прямое обращение,
       // handoff). Только ссылка `avatar_url` идёт через шов.
+      // storage-report: залив байтов аватара — прямая дверь, сбой виден в форме.
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { upsert: true });
-      if (uploadErr) throw uploadErr;
+        .upload(path, file);
+      if (uploadErr) { report(uploadErr, { surface: 'storage', source: 'upload_avatar' }); throw uploadErr; }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = `${publicUrl}?t=${Date.now()}`;
-      const { error, code } = await invokeFn('account/profile', { body: { avatar_url: url } });
-      if (error || code) { setErrorMsg(errorText(t, code)); return; }
-      setAvatarUrl(url);
+      const { error, code } = await invokeFn('account/profile', { body: { avatar_url: publicUrl } });
+      if (error || code) {
+        setErrorMsg(errorText(t, code));
+        // Профиль на новый объект не переключился — метём только что залитую
+        // версию, чтобы не оставить сироту (как обложки при сбое).
+        await removeAvatarObject(publicUrl);
+        return;
+      }
+      setAvatarUrl(publicUrl);
+      // Старый объект больше не адресуется профилем — сносим best-effort.
+      await removeAvatarObject(prevUrl);
       await checkUserAuth?.();
     } catch (e) {
       // Сбой загрузки байтов в Storage (не edge) — кода нет, показываем общий
@@ -555,11 +565,8 @@ export default function ScreenAccount() {
       setErrorMsg(errorText(t, code));
       return;
     }
-    // Байты — best-effort прямо в Storage (own-folder DELETE policy); провал не
-    // откатывает уже снятую ссылку.
-    try {
-      await supabase.storage.from('avatars').remove([`${user.id}/avatar`]);
-    } catch { /* ignore */ }
+    // Байты — best-effort прямо в Storage (own-folder DELETE policy).
+    await removeAvatarObject(prev);
     await checkUserAuth?.();
   };
 

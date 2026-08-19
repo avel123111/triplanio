@@ -17,6 +17,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
+import { report } from '@/lib/reportDataError';
 import { uploadErrorText } from '@/lib/documentMutations';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
@@ -121,9 +122,11 @@ export default function EventAiBlock({
         // non-ASCII / special chars → "Invalid key"); the real name is kept for
         // display via `documents` below.
         const path = tripStoragePath(tripId, f.name);
+        // storage-report: залив файла для AI-разбора — сбой байтовой двери.
         const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, f.file);
         // Storage-ошибка (кода НЕТ) → её дом uploadErrorText, не сырой показ .message.
         if (upErr) {
+          report(upErr, { surface: 'storage', source: 'upload_ai' });
           const storageMsg = upErr.message;
           throw new Error(uploadErrorText({ file: f, reason: 'upload', message: storageMsg }, t));
         }

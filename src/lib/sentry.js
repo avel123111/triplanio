@@ -12,9 +12,10 @@
  *  - No DSN → the SDK is never initialised and every Sentry call is a safe no-op.
  *    This keeps local dev (and any env without the var) completely silent.
  *  - Tracing ON at 10% (TRIP-219 F5): browser page-loads / navigations with timed
- *    spans for the backend calls they make. Trace headers are NOT propagated to
- *    Supabase yet (its CORS allow-list omits sentry-trace/baggage → would fail the
- *    preflight); connecting the browser trace to the edge is a separate step.
+ *    spans for the backend calls they make. Trace headers ARE propagated to the
+ *    same-origin `/api/*` edge transport (TRIP-373) — see `tracePropagationTargets`
+ *    below — so an edge error is stitched under the same trace as the browser
+ *    transaction that triggered it.
  *  - Session Replay ON, privacy-first: only sessions WITH an error are recorded,
  *    and all text / inputs / media are masked — a replay shows structure, never
  *    real content (email / billing / trip data).
@@ -32,15 +33,19 @@ const ENVIRONMENT = import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.M
 const RELEASE = __SENTRY_RELEASE__ || undefined;
 
 // Pure browser noise — would only burn the shared free-plan quota without ever
-// being actionable. `Failed to fetch` / `AbortError` are users navigating away
-// or going offline mid-request, not bugs.
+// being actionable. `AbortError` is a user navigating away / cancelling mid-request;
+// ResizeObserver loops and "Non-Error promise rejection" are framework churn.
+//
+// The generic fetch failures (`Failed to fetch` / `NetworkError…` / `Load failed`)
+// were REMOVED (TRIP-284): they hid real signal — a failed chunk after a deploy, a
+// down edge door, a broken Storage upload — behind the same string as an offline
+// blip. The client seams already filter the truly-expected cases (invokeFn tags
+// network vs 200-error; reportAuthError skips 4xx), so these should surface, not
+// be blanket-muted here.
 const IGNORE_ERRORS = [
   'ResizeObserver loop limit exceeded',
   'ResizeObserver loop completed with undelivered notifications.',
   'Non-Error promise rejection captured',
-  'Failed to fetch',
-  'NetworkError when attempting to fetch resource.',
-  'Load failed',
   'AbortError',
 ];
 
@@ -88,12 +93,17 @@ export function initSentry() {
     // Tracing: sample 10% of transactions (browser + timed backend-call spans).
     // Not 1.0 — protect the shared free-plan quota; raise once stable.
     tracesSampleRate: 0.1,
-    // Do NOT attach sentry-trace / baggage headers yet: the Supabase edge CORS
-    // allow-list (_shared/cors.ts) doesn't include them, so injecting them would
-    // fail the preflight and break every call. Connecting the browser trace to the
-    // edge (CORS header + withHandler instrumentation) is a separate step; until
-    // then browser-side spans still time each backend call.
-    tracePropagationTargets: [],
+    // Attach sentry-trace / baggage ONLY to the same-origin `/api/*` edge
+    // transport (TRIP-432 façade → api/proxy.js → Supabase). This stitches the
+    // browser trace to the edge error it triggered (TRIP-373). The pattern is
+    // matched against the request URL, so a PATH regex (not a host) covers both
+    // the relative `/api/getMe` and any absolute form. Deliberately narrow: it does
+    // NOT match the direct supabase.co doors (Storage/Auth/realtime/gazetteer) —
+    // those are cross-origin and would need the CORS allow-list to carry the
+    // headers; they can be added here alongside that change when their trace is
+    // wanted. `[]` (the old value) would disable propagation for EVERYTHING,
+    // including same-origin.
+    tracePropagationTargets: [/\/api\//],
     // Session Replay: record ONLY sessions where an error occurred (never healthy
     // traffic), so volume tracks error count, not user traffic.
     replaysOnErrorSampleRate: 1.0,

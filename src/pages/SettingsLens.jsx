@@ -25,7 +25,7 @@ import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, Severity, Skeleton, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, IconBtn, Severity, Skeleton, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -394,7 +394,10 @@ function TelegramSection({ tripId }) {
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </Grow>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
-          <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
+          {/* Отвязка = канон icon-only `<IconBtn>` (danger), та же реализация, что на
+              экране аккаунта (ScreenAccount): один объект — одна кнопка. Спиннера нет
+              намеренно — подтверждение отвязки идёт своим диалогом с busy. */}
+          <IconBtn icon="close" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} disabled={busyId === a.id} onClick={() => remove(a)} />
         </Card>
       ))}
       <Btn variant="secondary" icon="plus" onClick={openConnect}>

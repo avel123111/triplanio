@@ -20,6 +20,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { resolveMembers } from '@/lib/resolveAuthor';
+import { report } from '@/lib/reportDataError';
 import ChatStream from '@/components/chat/ChatStream';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { Avatar, AvatarStack, EmptyState, RoleBadge, Severity, Skeleton, Btn, Chip, Grow, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
@@ -183,7 +184,10 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId, profil
     supabase.from('chat_reads').upsert(
       { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
       { onConflict: 'chat_id,user_id' },
-    ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
+    ).then(({ error }) => {
+      if (error) report(error, { surface: 'data', source: 'chat_read' });
+      qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
+    });
   }, [chatId, user?.id, msgs.length]);
 
   // ── Thinking state ── read from the server: an open assistant run on any row.

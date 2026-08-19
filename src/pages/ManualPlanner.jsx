@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
@@ -18,7 +18,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, Card, EmptyState, Severity, Toggle, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -29,6 +29,7 @@ import { coverGradientCss, DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
+import ChatComposer from '@/components/chat/ChatComposer';
 import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -102,6 +103,23 @@ function computeAutoTitle(home, cities, t) {
   return startName || lastName || t('trips.new');
 }
 
+// A 0-night stop is a same-day layover/waypoint (mirrors the editor's
+// kind:'waypoint') — one predicate, so the row, the map pin and the save payload
+// can't drift on what counts as a waypoint.
+function isPlannerWaypoint(city) {
+  return (+city.nights || 0) === 0 && !!city.city_name;
+}
+
+// City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
+// null when the trip start isn't set yet. Shared by the city row and the map
+// tooltip so both read identically.
+function cityDateRange(city, lang) {
+  const nights = +city.nights || 0;
+  const start = city.startDate ? shortDateLabel(city.startDate, lang) : null;
+  const end = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
+  return start ? (end ? `${start} – ${end}` : start) : null;
+}
+
 function recomputeDates(list, anchorISO) {
   // Chain anchor = the STABLE trip-start date (the top "Старт" control), NOT the
   // current first element's date. Mirrors the editor, which anchors on the start
@@ -140,24 +158,33 @@ function recomputeDates(list, anchorISO) {
 // list and the structural editor render the SAME row skeleton — one component,
 // two variants. The trailing actions (nights stepper + delete) are the only
 // per-screen difference; the final-point toggle still lives on the last card.
-function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMove }) {
+function CityRow({ idx, city, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!city.city_name && city.latitude == null;
-  const nights = +city.nights || 1;
-  const startLabel = city.startDate ? shortDateLabel(city.startDate, lang) : null;
-  const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights), lang) : null;
+  const nights = +city.nights || 0;
+  // 0 nights = a layover/waypoint (same-day stop) — mirrors the editor: dashed
+  // transfer-tinted node + a "Пересадка" badge instead of a nights range.
+  // (predicate + date range come from the shared helpers above)
+  const isWaypoint = isPlannerWaypoint(city);
+  const dateRange = cityDateRange(city, lang);
   // Empty rows open in the picker; once a city is chosen it shows read-only
   // (change a city by deleting + re-adding) so it can never get stuck as an input.
   const [editing, setEditing] = useState(!city.city_name);
+  // Confirm-on-add: a search result is STAGED (shown in the field) and only
+  // written into the plan when the user taps "Добавить" — an accidental tap on a
+  // search result no longer commits a city.
+  const [staged, setStaged] = useState(null);
   const stopArm = (e) => e.stopPropagation();
-  const pick = (picked) => {
-    if (picked) {
-      onChange({ city_name: picked.city_name, city_name_en: picked.city_name_en, geonameid: picked.geonameid ?? null, name_i18n: picked.name_i18n || null, country: picked.country || localizeCountry(picked.country_code, lang), country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
-      setEditing(false);
-    } else {
-      onChange({ city_name: '', city_name_en: '', geonameid: null, name_i18n: null, country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
-    }
+
+  const cityFields = (p) => ({ city_name: p.city_name, city_name_en: p.city_name_en, geonameid: p.geonameid ?? null, name_i18n: p.name_i18n || null, country: p.country || localizeCountry(p.country_code, lang), country_code: p.country_code, latitude: p.latitude, longitude: p.longitude, timezone: p.timezone, external_city_id: p.external_city_id });
+  // Picking a result stages it (typing again clears the stage); confirm commits.
+  const onSearchPick = (picked) => setStaged(picked || null);
+  const confirmStaged = () => {
+    if (!staged) return;
+    onChange(cityFields(staged));
+    setStaged(null);
+    setEditing(false);
   };
 
   const grip = (
@@ -167,15 +194,20 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       <Icon name="drag" size={14} />
     </span>
   );
-  const lead = <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</Tile>;
-  const dates = isFinalAnchor
-    ? t('planner.final_point')
-    : (startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null);
+  const lead = isWaypoint
+    ? <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>
+    : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
+  const dates = isWaypoint
+    ? <><Badge size="tiny">{t('tse.layover')}</Badge>{dateRange}</>
+    : dateRange;
 
-  const row = (
+  return (
     <CityRowBase
       variant="planner"
-      className={isFinalAnchor ? 'te-row--fin' : ''}
+      // `is-editing` collapses the grip + number columns so the search field (and
+      // its dropdown) spans the whole row — no longer cramped by the stepper/icon.
+      // `is-hover` mirrors the map pin's hover/selected state (Map-lens parity).
+      className={[editing ? 'is-editing' : '', active ? 'is-hover' : ''].filter(Boolean).join(' ')}
       dragging={isDragging}
       pressing={isPressing}
       invalid={invalid}
@@ -187,37 +219,28 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       country={editing ? undefined : city.country}
       dates={editing ? undefined : dates}
       editingSlot={editing
-        ? <CityPicker value={city.city_name ? city : null} onChange={pick} placeholder={t('planner.city_ph')} autoFocus={!!city.city_name} />
+        ? <CityPicker value={staged || (city.city_name ? city : null)} onChange={onSearchPick} placeholder={t('planner.city_ph')} autoFocus />
         : undefined}
     >
-      {!isFinalAnchor && (
+      {editing ? (
+        // Icon-only primary button (canon <Btn>, no text) attached at the end of the
+        // search field — full-height control, so it's a proper tap target on mobile
+        // without being oversized. Wrapped so the row's pointerdown doesn't arm a drag
+        // (Btn does not forward onPointerDown).
+        <span onPointerDown={stopArm}>
+          <Btn variant="primary" icon="check" ariaLabel={t('common.add')} title={t('common.add')} disabled={!staged} onClick={(e) => { e.stopPropagation(); confirmStaged(); }} />
+        </span>
+      ) : (
         <NightsStepper
           value={nights}
-          onMinus={() => onChange({ nights: Math.max(1, nights - 1) })}
+          onMinus={() => onChange({ nights: Math.max(0, nights - 1) })}
           onPlus={() => onChange({ nights: Math.min(30, nights + 1) })}
-          minusDisabled={nights <= 1}
+          minusDisabled={nights <= 0}
           plusDisabled={nights >= 30}
         />
       )}
       <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
     </CityRowBase>
-  );
-
-  if (!isLast) return row;
-  // Last city — its card carries the final-point toggle (the "finish" applies to
-  // THIS city), so the control stays attached to the city it governs.
-  return (
-    <Card radius="lg" pad="none" className={'pl-lastcard' + (finalPoint ? ' is-fin' : '')}>
-      {row}
-      <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
-        <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
-        <Icon name="flag" size={13} className="muted" />
-        <div className="t-meta grow--fit">
-          <span className="t-label">{t('planner.final_point')}</span>{' '}
-          <span className="muted">{t('planner.final_point_hint')}</span>
-        </div>
-      </div>
-    </Card>
   );
 }
 
@@ -273,7 +296,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       <div className="field-row field-row--aside">
         <div className="field">
           <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
-          <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} autoFocus />
+          <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} blurOnPick />
         </div>
         <div className="field">
           <label className="field__label">{t('planner.departure_date')}</label>
@@ -357,7 +380,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoint, startDate, setStartDate }) {
+function StepCities({ cities, setCities, home, setHome, startDate, setStartDate, hoveredId = null, selectedId = null, onHover }) {
   const t = useT();
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
@@ -420,17 +443,24 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
             // preview reorders), used for numbering / isLast; the hook owns the
             // FLIP shuffle and commit.
             const dIdx = cities.indexOf(c);
+            const rowId = String(c.id);
+            // Mutual hover with the map pin. onMouseEnter/Leave live on the wrapper
+            // (not the row) so they never interfere with the pointer-drag arming.
             return (
-              <div key={c.id} ref={setRowRef(c.id)}>
+              <div
+                key={c.id}
+                ref={setRowRef(c.id)}
+                // Skip enter-hover mid-drag: a FLIP reorder slides rows under a
+                // held pointer, which would otherwise churn the highlight.
+                onMouseEnter={onHover ? () => { if (!draggingId) onHover(rowId); } : undefined}
+                onMouseLeave={onHover ? () => onHover(null) : undefined}
+              >
                 <CityRow
                   idx={dIdx}
                   city={c}
                   isDragging={draggingId === c.id}
                   isPressing={pressingId === c.id}
-                  isLast={dIdx === cities.length - 1}
-                  isFinalAnchor={dIdx === cities.length - 1 && finalPoint}
-                  finalPoint={finalPoint}
-                  onToggleFinalPoint={setFinalPoint}
+                  active={hoveredId === rowId || selectedId === rowId}
                   onArm={(e) => armDrag(e, c.id)}
                   onChange={(patch) => update(c.id, patch)}
                   onRemove={() => remove(c.id)}
@@ -457,13 +487,49 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
 
 // ─── Step 3: Return ───────────────────────────────────────────────────────────
 
-function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity }) {
+// Один выбор возврата — вертикальный список из трёх взаимоисключающих карточек:
+// домой / в другой город / останусь (финиш, возврата нет). «Финиш» ЖИВЁТ ТОЛЬКО
+// ЗДЕСЬ (тумблер с шага 2 убран) — одна точка правды. finalPoint остаётся общим
+// стейтом (карту/сохранение не трогаем), но пишется только этими карточками.
+function ReturnOption({ on, onClick, icon, tone, title, desc }) {
+  return (
+    <Card
+      as="button"
+      radius="btn"
+      interactive
+      onClick={onClick}
+      className={`choice-card choice-card--sm${on ? ' choice-card--on' : ''}`}
+    >
+      <div className={`tile tile--lg tile--${tone} tile--solid`}>
+        <Icon name={icon} size={19} />
+      </div>
+      <div className="grow--fit">
+        <div className="t-subheading">{title}</div>
+        <div className="muted t-meta">{desc}</div>
+      </div>
+    </Card>
+  );
+}
+
+function StepReturn({ home, lastCity, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity, finalPoint, setFinalPoint }) {
   const t = useT();
-  // "Домой" is only meaningful with an origin. Without a start there's nowhere
-  // to return home to → the round-trip card is hidden and "другой город" is the
-  // only mode (matches the optional-start model).
-  const canHome = !!home?.city_name;
-  useEffect(() => { if (!canHome && returnMode !== 'other') setReturnMode('other'); }, [canHome]);
+  // "Домой" is only meaningful with an origin. Without a start there's nowhere to
+  // return home to → the round-trip card is hidden; a default is nudged to "other"
+  // only when the user hasn't chosen the "stay" finish.
+  // "Домой" is meaningless when the origin IS the last city — returning "home" would
+  // just duplicate that city at the end. Hide the option then (по внешнему id, а не
+  // только имени: тёзки-города в разных странах — не один город).
+  const homeIsLast = !!home?.city_name && !!lastCity?.city_name && (
+    (home.external_city_id != null && home.external_city_id === lastCity.external_city_id) ||
+    (home.geonameid != null && home.geonameid === lastCity.geonameid) ||
+    home.city_name === lastCity.city_name
+  );
+  const canHome = !!home?.city_name && !homeIsLast;
+  useEffect(() => { if (!canHome && !finalPoint && returnMode !== 'other') setReturnMode('other'); }, [canHome]);
+
+  const onHome = returnMode === 'home' && !finalPoint;
+  const onOther = returnMode === 'other' && !finalPoint;
+
   return (
     <div>
       <h1>
@@ -474,66 +540,52 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       </div>
 
       <h2 className="section-sub">{t('planner.step_return')}</h2>
-      {/* Пара карточек, поле города и подсказка - одна колонка со ступенью 16
-          вместо трёх рукописных полей 14/18 у соседних блоков. */}
       <div className="col col--g7">
-      <div className={'field-row' + (canHome ? ' cols-2' : '')}>
-        {canHome && (
-          <Card
-            as="button"
-            radius="card"
-            interactive
-            onClick={() => setReturnMode('home')}
-            className={`choice-card choice-card--stack choice-card--sm${returnMode === 'home' ? ' choice-card--on' : ''}`}
-          >
-            <div className="row">
-              <div className="tile tile--lg tile--brand tile--solid">
-                <Icon name="flag" size={19} />
-              </div>
-              <div className="t-subheading">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
-            </div>
-            <div className="muted t-meta">
-              {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
-            </div>
-          </Card>
-        )}
-
-        <Card
-          as="button"
-          radius="card"
-          interactive
-          onClick={() => setReturnMode('other')}
-          className={`choice-card choice-card--stack choice-card--sm${returnMode === 'other' ? ' choice-card--on' : ''}`}
-        >
-          <div className="row">
-            <div className="tile tile--lg tile--warm tile--solid">
-              <Icon name="globe" size={19} />
-            </div>
-            <div className="t-subheading">{t('planner.return_other')}</div>
-          </div>
-          <div className="muted t-meta">
-            {t('planner.return_other_desc')}
-          </div>
-        </Card>
-      </div>
-
-      {returnMode === 'other' && (
-        <div className="field">
-          <label className="field__label">{t('planner.return_city')}</label>
-          <CityPicker
-            value={returnCity}
-            onChange={setReturnCity}
-            placeholder={t('planner.return_city_ph')}
-            autoFocus
+        {/* Вертикальный список вариантов (было двумя карточками в ряд). */}
+        <div className="col col--g4">
+          {canHome && (
+            <ReturnOption
+              on={onHome}
+              onClick={() => { setReturnMode('home'); setFinalPoint(false); }}
+              icon="flag" tone="brand"
+              title={t('planner.return_home', { city: home?.city_name || '…' })}
+              desc={<>{t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}</>}
+            />
+          )}
+          <ReturnOption
+            on={onOther}
+            onClick={() => { setReturnMode('other'); setFinalPoint(false); }}
+            icon="globe" tone="warm"
+            title={t('planner.return_other')}
+            desc={t('planner.return_other_desc')}
+          />
+          {/* «Останусь в {город}» = финиш: возврата нет (переносит смысл убранного
+              тумблера шага 2). */}
+          <ReturnOption
+            on={finalPoint}
+            onClick={() => setFinalPoint(true)}
+            icon="check" tone="success"
+            title={t('planner.stay_title', { city: lastCityName })}
+            desc={t('planner.stay_desc', { city: lastCityName })}
           />
         </div>
-      )}
 
-      <Severity level="quiet">
-        <div className="t-meta muted">{t('planner.return_info')}</div>
-      </Severity>
+        {onOther && (
+          <div className="field">
+            <label className="field__label">{t('planner.return_city')}</label>
+            <CityPicker
+              value={returnCity}
+              onChange={setReturnCity}
+              placeholder={t('planner.return_city_ph')}
+              autoFocus
+            />
+          </div>
+        )}
+
+        <Severity level="quiet">
+          <div className="t-meta muted">{t('planner.return_info')}</div>
+        </Severity>
       </div>
-
     </div>
   );
 }
@@ -605,10 +657,36 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         {t('planner.review_desc')}
       </div>
 
-      {/* Превью трипа собрано из готового: обложка - постер карточки трипа с
-          /trips (.tc), полоса цифр - .statbar, отступ содержимого - вложенный
-          .card. Своего у превью не осталось ничего. */}
-      <div className="card card--flush">
+      {/* Секции шага в одну колонку с ровным шагом — иначе поля/сводка/статусы
+          лежат вплотную (у `.field` своего вертикального отступа нет). */}
+      <div className="col col--g7">
+      {/* Редактируемое сверху — название и обложка кормят превью ниже. */}
+      <div className="field">
+        <label className="field__label t-label">{t('planner.title_label')}</label>
+        <input
+          className="input"
+          value={tripTitle}
+          onChange={e => setTripTitle(e.target.value)}
+          placeholder={autoTitle}
+          disabled={saving}
+        />
+      </div>
+
+      <div className="field">
+        <label className="field__label t-label">{t('planner.cover')}</label>
+        <TripCoverPicker
+          coverImageUrl={cover?.cover_image_url || ''}
+          coverGradient={cover?.cover_gradient || ''}
+          onChange={setCover}
+          showPreview={false}
+        />
+      </div>
+
+      {/* Сводка — ОДНА карточка с одним радиусом; hero / статы / маршрут = плоские
+          секции, разделённые бордюрами. Прежде .statbar и .card лежали скруглёнными
+          ВНУТРИ flush-родителя (радиус в радиусе) — это и убрано. Собрано из готового:
+          обложка = постер .tc, цифры = .statbar/.v/.k, ряд точки = .pl-revrow. */}
+      <Card radius="btn" pad="none" className="pl-summary">
         <div className="tc tc--band">
           {/* heroBg - ДАННЫЕ (загруженное фото или градиент обложки трипа) */}
           <div className="tc__bg" style={{ background: heroBg }}>
@@ -621,7 +699,9 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           </div>
         </div>
 
-        <Card radius="lg" pad="none" className="statbar statbar--inset">
+        {/* statbar is card-homed (its skin lives on the Card primitive) — kept on the
+            Card for the surface-registry guard; flattened to a divided section below. */}
+        <Card pad="none" className="statbar">
           <div className="s">
             <Stat
               label={t('event.start')}
@@ -637,15 +717,15 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           </div>
         </Card>
 
-        <div className="card">
+        <div className="pl-summary__route">
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
           <div className="col col--g1">
             {home?.city_name && (
               <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
             )}
             {cities.map((c, i) => {
-              // Last city with the finish switch on → the endpoint marker (single
-              // blue flag, unified with the start), not a numbered stop.
+              // Last city with the finish chosen on step 3 → the endpoint marker
+              // (single blue flag, unified with the start), not a numbered stop.
               const isFin = finalPoint && i === cities.length - 1;
               return (
                 <ReviewRow
@@ -665,28 +745,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
             )}
           </div>
         </div>
-      </div>
-
-      <div className="field">
-        <label className="field__label t-label">{t('planner.cover')}</label>
-        <TripCoverPicker
-          coverImageUrl={cover?.cover_image_url || ''}
-          coverGradient={cover?.cover_gradient || ''}
-          onChange={setCover}
-          showPreview={false}
-        />
-      </div>
-
-      <div className="field">
-        <label className="field__label t-label">{t('planner.title_label')}</label>
-        <input
-          className="input"
-          value={tripTitle}
-          onChange={e => setTripTitle(e.target.value)}
-          placeholder={autoTitle}
-          disabled={saving}
-        />
-      </div>
+      </Card>
 
       {error && <Severity level="error">{error}</Severity>}
 
@@ -695,6 +754,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           <div className="t-body">{t('planner.saving_msg')}</div>
         </Severity>
       )}
+      </div>
 
     </div>
   );
@@ -745,12 +805,22 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [savedTripId, setSavedTripId] = useState(null);
   const [error, setError]           = useState(null);
   const [restored, setRestored]     = useState(false);
+  // Map ↔ list linking (Map-lens parity, TRIP-337): the pin/list row hovered or
+  // selected. Ids match FlowMap's marker ids ('home' | city.id | 'return').
+  const [hoveredMapId, setHoveredMapId]   = useState(null);
+  const [selectedMapId, setSelectedMapId] = useState(null);
 
   // ── AI-entry state (only used when method === 'ai') ────────────────────────
-  const [prompt, setPrompt]                 = useState('');
+  // The prompt text lives in <ChatComposer> (it owns its own field); the flow keeps
+  // only the transcript + generation state.
   const [aiState, setAiState]               = useState(isAi ? 'prompt' : 'draft'); // prompt | generating | draft
-  const [aiComment, setAiComment]           = useState('');
   const [sessionId, setSessionId]           = useState(() => crypto.randomUUID());
+  // Chat transcript for the AI flow (Pavel, TRIP-337): a conversation with the bot,
+  // not one pink comment. `kind:'welcome'`/`'error'` render their text from i18n (so a
+  // language switch re-localizes them); an assistant turn stores the bot's `text` +
+  // a `draft` snapshot of the itinerary it proposed. n8n keeps context by sessionId,
+  // so follow-up messages refine the draft.
+  const [aiMessages, setAiMessages]         = useState(() => (isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []));
 
   // Restore from sessionStorage on mount - only for the current user
   useEffect(() => {
@@ -769,6 +839,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         if (saved.startDate) setStartDateRaw(saved.startDate);
         if (saved.cover) setCover(saved.cover);
         if (saved.aiState && isAi) setAiState(saved.aiState);
+        if (saved.aiMessages?.length && isAi) setAiMessages(saved.aiMessages);
       }
     } catch {}
     setRestored(true);
@@ -778,9 +849,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState }));
+      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, aiMessages }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, restored, user?.id]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, aiMessages, restored, user?.id]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
   // Empty/invalid values are IGNORED - the trip start is required and can't be
@@ -868,14 +939,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     }
 
     // Start city → home (origin marker; optional, no nights/dates of its own).
-    setHome(startCity?.city_name ? startCity : null);
+    const resolvedHome = startCity?.city_name ? startCity : null;
+    setHome(resolvedHome);
 
     // Finish/return — mapped to the SAME model the manual flow uses (Pavel's
-    // call): a one-way end (a distinct final city, not the origin) becomes the
-    // LAST city with the "финиш" switch ON (finalPoint) — the "Возврат" step is
-    // then skipped, exactly like a manual finish, no separate return node. A
-    // round-trip (end == origin) or no end → switch OFF, return defaults to
-    // "home" (manual default) and the "Возврат" step is shown.
+    // call): a one-way end (a distinct final city, not the origin) sets finalPoint
+    // (the "Останусь"/finish choice on step 3) — no separate return node. A
+    // round-trip (end == origin) or no end → finalPoint off, return defaults to
+    // "home" (manual default). The "Возврат" step is always shown; finalPoint only
+    // decides whether a return leg is created.
     const startName = startCity?.city_name || '';
     const oneWayEnd = !!endCity?.city_name && endCity.city_name !== startName;
     let finalCities = transitResolved;
@@ -890,7 +962,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
     // Transit cities anchored to the first city's start_date (or default).
     const anchor = finalCities[0]?.startDate || defaultStartISO();
-    setCities(recomputeDates(finalCities, anchor));
+    const resolvedCities = recomputeDates(finalCities, anchor);
+    setCities(resolvedCities);
     setStartDateRaw(anchor);
 
     setFinalPoint(oneWayEnd);
@@ -898,6 +971,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setReturnCity(null);
 
     if (d?.title) setTripTitle(d.title);
+    // Return the resolved draft so the caller can snapshot it into the chat message
+    // (each assistant turn shows the itinerary it proposed).
+    return { home: resolvedHome, cities: resolvedCities, finalPoint: oneWayEnd, title: d?.title || '' };
   };
 
   const planMut = useMutation({
@@ -915,11 +991,22 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       }
       return data;
     },
-    onMutate: () => { setAiState('generating'); setError(null); },
+    onMutate: (vars) => {
+      setAiState('generating'); setError(null);
+      // The prompt becomes an outgoing chat message (the composer clears itself).
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'user', text: vars.promptText }]);
+    },
     onSuccess: async (data) => {
       const out = data?.output || {};
-      setAiComment(out.ai_comment || '');
-      await applyAiDraft(out.draft || {});
+      const full = await applyAiDraft(out.draft || {});
+      // The bot's reply = its text + a DISPLAY-ONLY snapshot of the itinerary it
+      // proposed (name / country / nights only — not the full resolved city objects
+      // with coords/tz/ids), so a multi-turn transcript in sessionStorage stays small.
+      const draft = {
+        home: full.home ? { city_name: full.home.city_name, country_code: full.home.country_code } : null,
+        cities: (full.cities || []).map((c) => ({ id: c.id, city_name: c.city_name, country: c.country, nights: c.nights })),
+      };
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '', draft }]);
       setAiState('draft');
     },
     onError: (err) => {
@@ -929,15 +1016,19 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const description = err?.context?.status === 429
         ? t('ai_plan.error_rate_limited')
         : errorText(t, err?.code);
+      // A bot bubble closes the turn so the outgoing message isn't left hanging; the
+      // toast still carries the specific reason. Text is from i18n (never raw server prose).
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', kind: 'error' }]);
       toast({ title: t('ai_plan.error_plan_title'), description, variant: 'destructive' });
     },
   });
   const onGenerate = (promptText) => { if (promptText) planMut.mutate({ promptText }); };
 
-  // Visible steps - "Возврат" is skipped when the last city is the finish point.
   // The entry step's label depends on the method (origin vs AI prompt).
   const entryLabel = isAi ? t('planner.step_home_ai') : t('planner.step_home');
-  const visibleSteps = (finalPoint ? STEPS.filter(s => s.id !== 'return') : STEPS)
+  // The "Возврат" decision (round-trip / other city / stay = finish) now lives
+  // ENTIRELY on step 3, so the step is always present — no step is ever skipped.
+  const visibleSteps = STEPS
     .map(s => ({ ...s, label: s.id === 'home' ? entryLabel : t(s.labelKey) }));
   const goNext = () => {
     const i = visibleSteps.findIndex(s => s.id === step);
@@ -947,12 +1038,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const i = visibleSteps.findIndex(s => s.id === step);
     if (i > 0) setStep(visibleSteps[i - 1].id);
   };
-
-  // If the active step becomes hidden (toggled finalPoint while on "return"),
-  // fall back to the skeleton step.
-  useEffect(() => {
-    if (!visibleSteps.some(s => s.id === step)) setStep('cities');
-  }, [finalPoint]);
 
   // Reset draft and go back to step 1
   const resetToStart = () => {
@@ -968,9 +1053,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setSavedOk(false);
     setSavedTripId(null);
     setError(null);
-    // AI-entry reset
-    setPrompt('');
-    setAiComment('');
+    // AI-entry reset — fresh transcript (back to the welcome) + a new n8n session.
+    setAiMessages(isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []);
     setAiState(isAi ? 'prompt' : 'draft');
     setSessionId(crypto.randomUUID());
     try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
@@ -980,6 +1064,24 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // return city - the trip ends at the last transit city.
   const effectiveReturn = finalPoint ? null : (returnMode === 'home' ? home : returnCity);
   const autoTitle = computeAutoTitle(home, cities, t);
+
+  // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed the same
+  // way FlowMap tags its pins ('home' | city.id | 'return'). A city's date range is
+  // start..start+nights (single day for a 0-night waypoint); anchors show name only.
+  const mapPointById = useMemo(() => {
+    const m = {};
+    if (home?.latitude != null) m.home = { lng: home.longitude, lat: home.latitude, countryCode: home.country_code, name: home.city_name, dates: null };
+    cities.forEach((c) => { if (c.latitude != null) m[String(c.id)] = { lng: c.longitude, lat: c.latitude, countryCode: c.country_code, name: c.city_name, dates: cityDateRange(c, lang) }; });
+    if (effectiveReturn?.latitude != null) m.return = { lng: effectiveReturn.longitude, lat: effectiveReturn.latitude, countryCode: effectiveReturn.country_code, name: effectiveReturn.city_name, dates: null };
+    return m;
+  }, [home, cities, effectiveReturn, lang]);
+  // The tooltip follows the hovered pin/row, otherwise the selected one.
+  const activeMapId = hoveredMapId || selectedMapId;
+  const cityBadge = activeMapId ? mapPointById[activeMapId] || null : null;
+  // Clear map selection/hover on step change: a pin drawn on one step (e.g. the
+  // return pin, only shown on return/review) must not leave a tooltip floating at
+  // its coordinate once the step no longer renders it.
+  useEffect(() => { setHoveredMapId(null); setSelectedMapId(null); }, [step]);
 
   // ── Supabase save ────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -1024,9 +1126,13 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       cities.forEach((c, i) => {
         if (!c.city_name) return;
         const isFinalAnchor = finalPoint && i === cities.length - 1;
-        citiesPayload.push(isFinalAnchor
-          ? { ...cityIdentity(c), kind: 'end' }
-          : { ...cityIdentity(c), kind: 'transit', nights: +c.nights || 0 });
+        // 0 nights = a layover/waypoint — save it with the SAME kind the editor uses
+        // (kind:'waypoint'), so it's excluded from city/country counts and reopens as
+        // a пересадка, not a numbered stop. A distinct final anchor stays kind:'end'.
+        const id = cityIdentity(c);
+        if (isFinalAnchor) citiesPayload.push({ ...id, kind: 'end' });
+        else if (+c.nights === 0) citiesPayload.push({ ...id, kind: 'waypoint' });
+        else citiesPayload.push({ ...id, kind: 'transit', nights: +c.nights || 0 });
       });
       // Return city → kind:'end' (created even when returnMode==='home', so the
       // cityN → end leg always exists and the "no transfer" affordance shows).
@@ -1213,12 +1319,34 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           .lp panel (progress header → scroll body → sticky footer). */}
       <div className="flow-grid">
         <div className="flow-mapcol">
+          {/* Floating round back control — shown only on the phone shell (the app
+              header is removed there); the canon `.map-back` position/visibility
+              live in CSS. */}
+          <IconBtn
+            className="map-back"
+            icon="back"
+            round
+            tone="outline"
+            ariaLabel={t('notif.to_collection')}
+            onClick={() => nav('/trips')}
+          />
           <div className="flow-mapbox">
             <FlowMap
               home={home}
               cities={cities}
+              // Always pass the return city (it feeds the camera framing), but only
+              // DRAW the return pin + leg from step 3 on — so navigating steps toggles
+              // what's drawn without re-framing, and the default round-trip never
+              // pre-draws a line home on the earlier steps.
               returnCity={effectiveReturn}
+              drawReturn={step === 'return' || step === 'review'}
               finalPoint={finalPoint}
+              hoveredId={hoveredMapId}
+              selectedId={selectedMapId}
+              cityBadge={cityBadge}
+              onCityHover={setHoveredMapId}
+              onCityClick={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
+              onMapClick={() => setSelectedMapId(null)}
             />
           </div>
         </div>
@@ -1226,31 +1354,39 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         <div className="flow-editcol">
           <div className="lp">
             <div className="flow-lp-h">
-              <FlowProgress
-                steps={visibleSteps}
-                current={stepIdx}
-                accent={isAi ? 'var(--ai)' : 'var(--brand)'}
-                onJump={(i) => setStep(visibleSteps[i].id)}
-              />
+              {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
+                  "next" hint wraps INSIDE this column instead of overflowing and
+                  shoving the reset control off the narrow mobile sheet header. */}
+              <div className="grow--fit">
+                <FlowProgress
+                  steps={visibleSteps}
+                  current={stepIdx}
+                  accent={isAi ? 'var(--ai)' : 'var(--brand)'}
+                  onJump={(i) => setStep(visibleSteps[i].id)}
+                />
+              </div>
             </div>
 
             <div className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
-                <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, home, setHome, returnCity: effectiveReturn, cities, onGenerate }} />
+                <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
               ) : (
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}
               {step === 'cities' && (
-                <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} />
+                <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} />
               )}
               {step === 'return' && (
                 <StepReturn
                   home={home}
+                  lastCity={cities[cities.length - 1] || null}
                   lastCityName={cities[cities.length - 1]?.city_name || t('planner.last_city_fallback')}
                   returnMode={returnMode}
                   setReturnMode={setReturnMode}
                   returnCity={returnCity}
                   setReturnCity={setReturnCity}
+                  finalPoint={finalPoint}
+                  setFinalPoint={setFinalPoint}
                 />
               )}
               {step === 'review' && (
@@ -1271,10 +1407,29 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               )}
             </div>
 
+            {/* AI composer — a pinned bar (flex:none) between the scrolling transcript
+                and the footer, exactly like the trip chat. Reuses <ChatComposer>: no
+                @-mention here (hideMention), the send button in the assistant gradient
+                (chat-composer--ai), and the "Triplanio печатает" pill while generating. */}
+            {step === 'home' && isAi && (
+              <ChatComposer
+                className="chat-composer--ai"
+                hideMention
+                onSend={onGenerate}
+                disabled={aiState === 'generating'}
+                isThinking={aiState === 'generating'}
+                placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
+              />
+            )}
+
             {showFooter && (
               <div className="lp-f flow-foot">
                 {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
-                {!isFirstStep && <Btn variant="secondary" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+                {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
+                    icon in the header) — nav actions all live in the action bar. It
+                    also shows on the AI entry step (step 1), where a conversation can
+                    already have built a draft to clear. */}
+                {(!isFirstStep || (isAi && step === 'home')) && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
                 <div className="flow-foot__spacer grow" />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>

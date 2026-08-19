@@ -24,9 +24,12 @@
 
 .tcp__swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
-/* Плитка градиента — примитив <Swatch variant="round"> (канон `.swatch`).
-   Прежний `.tcp__sw` держал свой размер (40px), свой ховер (scale) и галочку
-   выбора `.tcp__check`; выбор теперь виден рамкой примитива (TRIP-344). */
+/* Плитка градиента — примитив <Swatch variant="round">. Оставляем ЧИСТЫЙ облик
+   round (border:0 + кольцо выбора box-shadow — без 2px-рамки, из-за которой на
+   градиенте появлялись полосы по краям), переопределяем ТОЛЬКО радиус: pill → 10
+   (--r-btn). Одна точка, обе поверхности (create + settings). Прежний `.tcp__sw`
+   держал свой размер, ховер и галочку выбора; выбор теперь виден кольцом примитива. */
+.tcp__swatches .swatch--round { border-radius: var(--r-btn); }
 
 /* `.tcp__upload` удалён: кнопка загрузки обложки — это `<Btn variant="secondary"
    icon="upload" loading>`. Класс повторял тон secondary своими руками и при этом

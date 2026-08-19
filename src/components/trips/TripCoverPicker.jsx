@@ -3,6 +3,7 @@ import { Btn, Card, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '@/lib/storage';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
+import { report } from '@/lib/reportDataError';
 import { TRIP_GRADIENTS, getGradientById } from '@/lib/trip-gradients';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
 import { uploadErrorText } from '@/lib/documentMutations';
@@ -80,10 +81,11 @@ export default function TripCoverPicker({
       const path = tripId
         ? tripStoragePath(tripId, file.name)
         : draftStoragePath(user.id, file.name);
+      // storage-report: залив обложки трипа — сбой байтовой двери виден в форме.
       const { error: uploadErr } = await supabase.storage
         .from(TRIP_BUCKET)
         .upload(path, file, { cacheControl: '3600', upsert: true });
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) { report(uploadErr, { surface: 'storage', source: 'upload_cover' }); throw uploadErr; }
       const { data: signed, error: signErr } = await supabase.storage
         .from(TRIP_BUCKET)
         .createSignedUrl(path, SIGNED_URL_TTL);

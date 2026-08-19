@@ -42,10 +42,12 @@ const ChatComposer = forwardRef(
    *   jump?: any,
    *   withHint?: boolean,
    *   maxHeight?: number,
+   *   hideMention?: boolean,
+   *   className?: string,
    * }} p
    */
   function ChatComposer(
-    { onSend, disabled = false, placeholder, isThinking = false, jump = null, withHint = false, maxHeight = 132 },
+    { onSend, disabled = false, placeholder, isThinking = false, jump = null, withHint = false, maxHeight = 132, hideMention = false, className = '' },
     ref,
   ) {
   const { t } = useI18n();
@@ -101,7 +103,7 @@ const ChatComposer = forwardRef(
   }, []);
 
   return (
-    <div className="chat-composer">
+    <div className={className ? `chat-composer ${className}` : 'chat-composer'}>
       <div className="col col--g4 chat-composer__in">
         {(isThinking || jump) && (
           <div className="row row--g4 chat-overline">
@@ -115,7 +117,7 @@ const ChatComposer = forwardRef(
             {jump}
           </div>
         )}
-        {showMention && (
+        {!hideMention && showMention && (
           <div className="chat-mention">
             <div className="chat-mention__lbl">{t('chat.mention')}</div>
             {/* Only @Triplanio is actionable - members aren't mentionable, so the
@@ -136,21 +138,27 @@ const ChatComposer = forwardRef(
 
         {/* Композер - это и есть `InputGroup`: рамка, фон и фокус-кольцо вокруг
             поля и двух кнопок, читающихся как одно поле. Свой скин он объявлял
-            заново (TRIP-333 §5); за классом осталась только его дельта -
-            выравнивание по низу (поле растёт вверх), свои отступы и
-            «плавающая» тень дока. Радиус тоже общий с полями: приподнятость
+            заново (TRIP-333 §5); за классом осталась только его дельта - свои
+            отступы и «плавающая» тень дока. Кнопки @/отправки прижаты к низу
+            (align-items: flex-end) и высотой в строку-ряд поля (--ctl-h), поэтому
+            совпадают со строкой текста и на одной строке, и на последней строке
+            растянутого поля (TRIP-337). Радиус тоже общий с полями: приподнятость
             дока несёт тень, а не форма угла. Оверлей меншенов не тронут. */}
         <InputGroup className="chat-composer__row">
-          {/* Calling the assistant used to be discoverable only by typing "@". */}
-          <IconBtn
-            icon="at"
-            tone="ai"
-            className="chat-at"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={insertMention}
-            title={t('chat.mention_all_hint')}
-            ariaLabel={t('chat.mention')}
-          />
+          {/* Calling the assistant used to be discoverable only by typing "@".
+              hideMention drops it where there's no group to mention (the AI planner
+              composer — the whole surface is already the assistant). */}
+          {!hideMention && (
+            <IconBtn
+              icon="at"
+              tone="ai"
+              className="chat-at"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={insertMention}
+              title={t('chat.mention_all_hint')}
+              ariaLabel={t('chat.mention')}
+            />
+          )}
 
           <div className="chat-composer__field">
             {/* Overlay (visible) sits BEHIND a transparent-text textarea: the

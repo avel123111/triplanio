@@ -34,6 +34,7 @@ import '@/design/app.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { initSentry } from '@/lib/sentry'
+import { installChunkReloadGuard } from '@/lib/chunkReload'
 import { applyConsent, clearAnalyticsStorage, getConsent } from '@/lib/consent'
 import { setCampaign } from '@/lib/analytics'
 import { boot as bootPosthog } from '@/lib/destinations/posthog'
@@ -67,6 +68,9 @@ else clearAnalyticsStorage()
 
 // Must run before the first render so early errors are captured.
 initSentry()
+
+// Reload once on a stale-chunk import failure after a deploy (TRIP-284, 1f).
+installChunkReloadGuard()
 
 // Typography canon inspector (TRIP-165) — a dev/staging-only browser tool.
 // It must run on the DEPLOYED dev site (dev.triplanio.com), which Vercel builds

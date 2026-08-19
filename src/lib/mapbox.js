@@ -67,7 +67,9 @@ export function fitToPoints(map, points, opts = {}) {
   if (!map || !points || points.length === 0) return;
   const duration = opts.duration ?? (opts.animate ? 650 : 0);
   if (points.length === 1) {
-    map.easeTo({ center: points[0], zoom: opts.singleZoom ?? 7, duration });
+    // opts.offset shifts a single centred point out from under an overlay (e.g. the
+    // planner's floating panel); [0,0] when unset keeps the point centred.
+    map.easeTo({ center: points[0], zoom: opts.singleZoom ?? 7, duration, offset: opts.offset ?? [0, 0] });
     return;
   }
   const b = new mapboxgl.LngLatBounds();

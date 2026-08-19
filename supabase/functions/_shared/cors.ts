@@ -47,7 +47,16 @@ const BASE_HEADERS: Record<string, string> = {
   // It is a non-safelisted request header, so the browser preflights it; without
   // it here the OPTIONS check fails and every pinned call is blocked on all fronts
   // (incl. Vercel previews). Ignored by server-to-server callers (no preflight).
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
+  //
+  // `sentry-trace` / `baggage` carry the browser's trace context (TRIP-373). The
+  // primary edge transport is now the same-origin `/api/*` façade (TRIP-432), for
+  // which CORS does not apply — but the direct supabase.co doors (Storage / Auth /
+  // realtime / gazetteer) ARE cross-origin, so allow-listing the two headers here
+  // keeps their preflight from rejecting a propagated trace. `baggage` holds trace
+  // metadata (env / release / trace_id / parametrised transaction name), not the
+  // request body — no PII.
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-region, sentry-trace, baggage',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   // Without this, a cross-origin browser caller cannot read Retry-After off a 429
   // response — only CORS-safelisted headers are exposed by default. The geocode
