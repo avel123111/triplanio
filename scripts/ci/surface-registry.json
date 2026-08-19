@@ -80,6 +80,7 @@
     "mapwrap": { "object": "map", "reason": "обёртка карты — объект «карта»" },
     "map-route__item": { "object": "map", "reason": "элемент маршрута на карте — объект «карта»" },
     "s22mk__core": { "object": "map", "reason": "ядро маркера Stay22 — объект «карта/маркер» (движение оставлено, см. E)" },
+    "flow-map__stat": { "object": "map", "reason": "плавающая стат-пилюля над картой планнера (счётчик) — своя поверхность, рендерится сырым <div> поверх FlowMap, не <Card> (TRIP-337 FlowMap)" },
 
     "ncal-dc": { "object": "calendar", "reason": "день календаря — объект «календарь»" },
     "ncal-dn": { "object": "calendar", "reason": "ночь/день календаря — объект «календарь»" },
