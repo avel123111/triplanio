@@ -68,6 +68,13 @@ export const AuthProvider = ({ children }) => {
       }
       // If isOAuthCallback and no session yet: code exchange is still in-flight.
       // Keep isLoadingAuth=true and let onAuthStateChange handle it below.
+    }).catch((error) => {
+      // getSession() rejects only on a token-refresh network failure (expired
+      // token + GoTrue unreachable) at boot. Correctness is already covered by the
+      // INITIAL_SESSION branch of onAuthStateChange below, so this does NOT touch
+      // loadUserProfile / the attribution marks — it only surfaces the otherwise
+      // silent boot-time GoTrue blip to Sentry instead of swallowing it.
+      reportAuthError(error, 'auth-boot');
     });
 
     // Secondary: react to auth changes (sign-in, sign-out, OAuth callback, token refresh)
