@@ -16,6 +16,8 @@
 // excluded here to keep those keys out of the client bundle. `tolgee pull` still
 // writes locales/<lang>/n8n.json into the repo (Tolgee is the source of truth);
 // this glob just declines to import it.
+import { settleNamespace } from './settleNamespace.js';
+
 const modules = import.meta.glob(['./locales/*/*.json', '!./locales/*/n8n.json']);
 
 // Group the per-file importers by language: { [lang]: { [namespace]: () => import() } }.
@@ -37,23 +39,12 @@ export function hasLang(lang) {
 export async function loadLocale(lang) {
   const nsLoaders = LOADERS[lang];
   if (!nsLoaders) return {};
+  // Degrade per-namespace, never crash the whole language (TRIP-441): a failed /
+  // undefined chunk becomes an empty namespace via the Vite-free `settleNamespace`
+  // (extracted so the catch-path is testable under `node --test` — this file's
+  // top-level `import.meta.glob` is Vite-only).
   const entries = await Promise.all(
-    Object.entries(nsLoaders).map(async ([ns, load]) => {
-      // Degrade per-namespace, never crash the whole language (TRIP-441). A lazy
-      // JSON chunk can fail to load — a hashed asset 404s after a redeploy replaced
-      // it under an open tab, or `import()` resolves to `undefined` — and a bare
-      // `mod.default` there threw an unhandled rejection that took down the ENTIRE
-      // locale activation. Fall back to an empty namespace: the facade renders the
-      // bare key for those strings (visibly missing, not a white screen) while
-      // every other namespace still loads.
-      try {
-        const mod = await load();
-        return [ns, mod?.default || mod || {}];
-      } catch (e) {
-        console.warn(`[i18n] locale chunk failed: ${lang}/${ns}`, e);
-        return [ns, {}];
-      }
-    }),
+    Object.entries(nsLoaders).map(([ns, load]) => settleNamespace(lang, ns, load)),
   );
   return Object.fromEntries(entries);
 }
