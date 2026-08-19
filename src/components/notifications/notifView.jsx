@@ -105,11 +105,21 @@ export function buildNotifView(n, t, { deletedLabel } = {}) {
   const titleNode = isInvite ? emphasize(titleText, [params.trip]) : titleText;
   const messageNode = isInvite ? emphasize(messageText, [params.inviter]) : messageText;
 
+  // «Открыть путешествие» — ЕДИНЫЙ предикат для инбокса И колокольчика (был
+  // продублирован построчно в обоих, расходился молча). Показываем ссылку только
+  // тем, у кого ещё есть доступ: приглашение — лишь после принятия (member_status
+  // active), а `trip_member_removed` адресовано ИСКЛЮЧЁННОМУ участнику — открывать
+  // ему нечего (роут отдаст 403/пустоту), поэтому ссылку прячем.
+  const showLink = !!n.trip_id
+    && n.type !== 'trip_member_removed'
+    && (n.member_status === 'active' || n.type !== 'trip_invite');
+
   return {
     glyph: notifGlyph(n.type, n.sender),
     isInvite,
     titleNode,
     messageText,
     messageNode,
+    showLink,
   };
 }

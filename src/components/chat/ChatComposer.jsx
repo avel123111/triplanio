@@ -1,6 +1,7 @@
 // @ts-check
 import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { Avatar, IconBtn } from '@/design/index';
+import { Avatar, Btn, IconBtn } from '@/design/index';
+import { Icon } from '@/design/icons';
 import { InputGroup } from '@/design/Input';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
@@ -44,10 +45,13 @@ const ChatComposer = forwardRef(
    *   maxHeight?: number,
    *   hideMention?: boolean,
    *   className?: string,
+   *   nextAction?: () => void,
+   *   nextLabel?: string,
+   *   nextDisabled?: boolean,
    * }} p
    */
   function ChatComposer(
-    { onSend, disabled = false, placeholder, isThinking = false, jump = null, withHint = false, maxHeight = 132, hideMention = false, className = '' },
+    { onSend, disabled = false, placeholder, isThinking = false, jump = null, withHint = false, maxHeight = 132, hideMention = false, className = '', nextAction, nextLabel, nextDisabled = false },
     ref,
   ) {
   const { t } = useI18n();
@@ -101,6 +105,8 @@ const ChatComposer = forwardRef(
     ta.addEventListener('scroll', sync);
     return () => ta.removeEventListener('scroll', sync);
   }, []);
+
+  const hasText = !!text.trim();
 
   return (
     <div className={className ? `chat-composer ${className}` : 'chat-composer'}>
@@ -216,17 +222,37 @@ const ChatComposer = forwardRef(
             />
           </div>
 
-          <IconBtn
-            icon="send"
-            tone="solid"
-            className="chat-send"
-            /* Don't let the button take focus: on phones that collapses the
-               keyboard between messages. */
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={send}
-            disabled={disabled || !text.trim()}
-            ariaLabel={t('chat.send')}
-          />
+          {/* AI-планер сливает «Отправить» и «Далее» в ОДНУ кнопку (nextAction):
+              есть текст → компактная ИКОНКА отправки; пусто → «Далее» (стрелка + лейбл).
+              Переход ПЛАВНЫЙ — лейбл сворачивается grid-колонкой (морф ширины кнопки),
+              см. `.chat-cta` в app.css. В обычном чате (nextAction не задан) остаётся
+              круглая иконка-отправка. */}
+          {nextAction ? (
+            <Btn
+              variant="ai"
+              className={'chat-cta' + (hasText ? ' chat-cta--send' : '')}
+              /* Don't take focus: on phones that collapses the keyboard between sends. */
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={hasText ? send : nextAction}
+              disabled={hasText ? disabled : nextDisabled}
+              ariaLabel={hasText ? t('chat.send') : nextLabel}
+            >
+              <Icon name={hasText ? 'send' : 'arrowRight'} size={16} />
+              <span className="chat-cta__lbl"><span>{nextLabel}</span></span>
+            </Btn>
+          ) : (
+            <IconBtn
+              icon="send"
+              tone="solid"
+              className="chat-send"
+              /* Don't let the button take focus: on phones that collapses the
+                 keyboard between messages. */
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={send}
+              disabled={disabled || !hasText}
+              ariaLabel={t('chat.send')}
+            />
+          )}
         </InputGroup>
 
         {withHint && (
