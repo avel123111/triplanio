@@ -1229,6 +1229,10 @@ h4,
 .app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
 .app-header__brand-name { color: var(--ink); }
 .app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
+/* Эксперимент layout'а: на экранах трипа бренд-блок целиком уехал в левое меню
+   (`.app-side__brand`), поэтому в шапке трипа его больше нет — остаётся «назад»,
+   разделитель и заголовок трипа. */
+.app-header--trip .app-header__brand { display: none; }
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
 .app-header__vdiv { width: 1px; height: 28px; background: var(--line); flex: 0 0 auto; }
@@ -1358,7 +1362,7 @@ h4,
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
 }
 button.app-side__item { cursor: pointer; }
-.app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
+.app-side__item svg { stroke-width: 2.4px; flex: 0 0 auto; transition: color .22s var(--ease-out); }
 button.app-side__item:active { transform: scale(.985); }
 button.app-side__item:hover { background: var(--wash); }
 .app-side__item.active { background: var(--brand-soft); color: var(--brand); }
@@ -1366,6 +1370,63 @@ button.app-side__item:hover { background: var(--wash); }
    позиция ко-селектором (ряд флексовый, толкаем вправо). TRIP-354: свой класс
    `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
 .app-side__item > .badge--unread { margin-left: auto; }
+
+/* ── Эксперимент layout'а трипа: меню во всю высоту ─────────────────────────
+   Бренд наверху, прокручиваемый список посередине, тумблер узкий/широкий внизу.
+   Узкий режим (`.trip-body.is-side-narrow`) прячет подписи и вордмарк, оставляя
+   иконки 24×24; разделители групп схлопываются в тонкую линию (сохраняя ритм);
+   при наведении на иконку всплывает тултип с названием пункта. */
+.app-side__brand {
+  display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
+  padding: 14px 14px; width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: none; border-bottom: 1px solid var(--line);
+}
+.app-side__brand:hover { background: var(--wash); }
+.app-side__logo { width: 34px; height: 34px; flex: 0 0 auto; border-radius: var(--r-sm); overflow: hidden; display: grid; place-items: center; }
+.app-side__logo img { width: 34px; height: 34px; display: block; border-radius: var(--r-sm); }
+.app-side__brand-name { color: var(--ink); font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; }
+.app-side__nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 10px; }
+.app-side__toggle {
+  display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
+  width: 100%; padding: 12px 16px; cursor: pointer;
+  background: transparent; border: none; border-top: 1px solid var(--line);
+  color: var(--muted); transition: background .15s var(--ease-out), color .15s var(--ease-out);
+}
+.app-side__toggle:hover { background: var(--wash); color: var(--ink); }
+.app-side__toggle svg { stroke-width: 2.4px; flex: 0 0 auto; }
+.app-side__toggle .app-side__label { color: inherit; }
+
+/* Узкий режим действует только на десктопе: на ≤880 меню выезжает off-canvas
+   на всю ширину и всегда показывает подписи (см. блок @media ниже). */
+@media (min-width: 881px) {
+  .trip-body.is-side-narrow .app-side__brand { justify-content: center; padding-left: 0; padding-right: 0; }
+  .trip-body.is-side-narrow .app-side__brand-name { display: none; }
+  .trip-body.is-side-narrow .app-side__label { display: none; }
+  .trip-body.is-side-narrow .app-side__nav { overflow: visible; padding-left: 6px; padding-right: 6px; }
+  .trip-body.is-side-narrow .app-side__item { position: relative; justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+  .trip-body.is-side-narrow .app-side__item > .badge--unread { position: absolute; top: 3px; right: 7px; margin: 0; }
+  .trip-body.is-side-narrow .app-side__toggle { position: relative; justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+  /* Разделитель группы: подпись схлопывается в тонкую линию, но забирает
+     сопоставимую высоту — «учесть разделители и расстояние». */
+  .trip-body.is-side-narrow .app-side__group-label {
+    height: 1px; margin: 12px 10px; padding: 0;
+    background: var(--line); font-size: 0; color: transparent; overflow: hidden;
+  }
+  .trip-body.is-side-narrow .app-side__upgrade { display: none; }
+
+  /* Тултип названия пункта (только в узком режиме) — всплывает справа от иконки. */
+  .trip-body.is-side-narrow .app-side__item::after,
+  .trip-body.is-side-narrow .app-side__toggle::after {
+    content: attr(data-tip);
+    position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+    padding: 6px 10px; border-radius: var(--r-sm); white-space: nowrap;
+    background: var(--ink); color: var(--surface); font-size: 13px; font-weight: 500;
+    box-shadow: var(--sh-2); opacity: 0; pointer-events: none;
+    transition: opacity .12s var(--ease-out); z-index: 60;
+  }
+  .trip-body.is-side-narrow .app-side__item:hover::after,
+  .trip-body.is-side-narrow .app-side__toggle:hover::after { opacity: 1; }
+}
 
 
 .app-main {
@@ -5143,10 +5204,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Gradient hero (.trip-hero / .thead) removed — title, meta and trip actions
    now live in the unified <AppHeader> at the top of the shell. */
 
-/* ---- Body: sidebar + content ---- */
-.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
-/* Inside the shell the sidebar scrolls within its own row instead of the page. */
-.trip-shell .app-side { position: static; top: auto; height: auto; min-height: 0; overflow-y: auto; align-self: stretch; }
+/* ---- Body: sidebar + content ----
+   Эксперимент layout'а: `.trip-body` — это ВЕСЬ кадр во всю высоту (меню слева,
+   правее — колонка `.trip-main` с шапкой сверху и телом под ней). Раньше шапка
+   стояла ОТДЕЛЬНЫМ рядом над `.trip-body`; теперь она внутри `.trip-main`,
+   поэтому «начинается от меню». Ширина колонки меню — токеном `--tside-w`, узкий
+   режим лишь меняет его значение. */
+.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--tside-w, 220px) 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
+.trip-body.is-side-narrow { --tside-w: 72px; }
+/* Правая колонка: шапка (фикс-высота) + скроллящееся тело. */
+.trip-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+/* Меню во всю высоту кадра: колонка бренд → nav(скролл) → тумблер. */
+.trip-shell .app-side {
+  position: static; top: auto; height: auto; min-height: 0; align-self: stretch;
+  display: flex; flex-direction: column; overflow: visible; padding: 0;
+}
 .trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
@@ -5181,8 +5253,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     position: absolute; top: 0; left: 0; bottom: 0;
     width: 264px; max-width: 84%; z-index: calc(var(--z-side-nav) + 5);
     transform: translateX(-104%); transition: transform .26s var(--ease-out);
-    box-shadow: var(--sh-3);
+    box-shadow: var(--sh-3); overflow-y: auto;
   }
+  /* Тумблер узкий/широкий не нужен в выезжающем меню — оно и так на всю ширину. */
+  .app-side__toggle { display: none; }
   .trip-body.is-menu-open .app-side { transform: none; }
   .trip-side-scrim {
     display: block; position: absolute; inset: 0; background: var(--scrim);

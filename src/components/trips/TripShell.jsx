@@ -52,19 +52,25 @@ function SidebarSkeleton() {
   // их в одну значило бы поменять картинку загрузки без повода.
   const row = (w) => (i) => (
     <div key={i} className="app-side__item">
-      <Skeleton w={15} h={15} r={4} />
-      <Skeleton w={w(i)} h={12} r={4} />
+      <Skeleton w={24} h={24} r={5} />
+      <span className="app-side__label"><Skeleton w={w(i)} h={12} r={4} /></span>
     </div>
   );
   return (
     <aside className="app-side">
-      <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip.sections_title')}</div>
-        {[1, 2, 3, 4, 5, 6].map(row((i) => 80 + (i % 3) * 15))}
+      <div className="app-side__brand">
+        <span className="app-side__logo"><img src="/triplanio-logo.svg" alt="Triplanio" /></span>
+        <span className="app-side__brand-name">Triplanio</span>
       </div>
-      <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-        {[1, 2, 3, 4].map(row((i) => 70 + (i % 3) * 10))}
+      <div className="app-side__nav">
+        <div className="app-side__group">
+          <div className="app-side__group-label">{t('trip.sections_title')}</div>
+          {[1, 2, 3, 4, 5, 6].map(row((i) => 80 + (i % 3) * 15))}
+        </div>
+        <div className="app-side__group">
+          <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
+          {[1, 2, 3, 4].map(row((i) => 70 + (i % 3) * 10))}
+        </div>
       </div>
     </aside>
   );
@@ -96,6 +102,17 @@ export default function TripShell({
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPhone = useIsPhone();
   const [sideOpen, setSideOpen] = useState(false);
+  // Узкий/широкий режим левого меню (эксперимент layout'а). Предпочтение
+  // пользователя переживает перезагрузку — держим в localStorage, читаем
+  // синхронно в инициализаторе, чтобы не мигнуть широким при узком.
+  const [sideNarrow, setSideNarrow] = useState(() => {
+    try { return localStorage.getItem('tripSideNarrow') === '1'; } catch { return false; }
+  });
+  const toggleSideNarrow = () => setSideNarrow((v) => {
+    const next = !v;
+    try { localStorage.setItem('tripSideNarrow', next ? '1' : '0'); } catch { /* ignore */ }
+    return next;
+  });
   const { setTripNav } = useMobileNav();
 
   // Тело - постоянный скролл-контейнер (сама оболочка не скроллится), поэтому
@@ -164,26 +181,17 @@ export default function TripShell({
 
   return (
     <div className="trip-shell">
-      <AppHeader
-        isTrip
-        user={user}
-        isPro={isProActive(user)}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={() => nav(backTo)}
-        backTitle={t('trip.back')}
-        // Пока грузимся, бургера нет - как и было. Открывать нечего: меню ещё
-        // скелетон, а скрим и телефонный шит в этой ветке не отрисованы, то
-        // есть выехавший ящик было бы нечем закрыть.
-        onMenu={loading ? undefined : () => setSideOpen(true)}
-        title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
-        meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
-      />
-      <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
+      {/* Эксперимент layout'а: меню — левая колонка во всю высоту экрана
+          (логотип + разделы + тумблер узкий/широкий), а шапка и контент живут
+          в правой колонке `.trip-main`, то есть шапка начинается ОТ меню. */}
+      <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '') + (sideNarrow ? ' is-side-narrow' : '')}>
         {loading ? <SidebarSkeleton /> : (
           <>
             <TripSidebar
               {...menuProps}
+              narrow={sideNarrow}
+              onToggleNarrow={toggleSideNarrow}
+              onBrand={() => nav('/trips')}
               onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
               onShare={onShare}
             />
@@ -203,11 +211,28 @@ export default function TripShell({
             />
           </>
         )}
-        <div className="trip-content">
-          <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
-            {children}
-          </main>
-          {drawer}
+        <div className="trip-main">
+          <AppHeader
+            isTrip
+            user={user}
+            isPro={isProActive(user)}
+            isDark={isDark}
+            onToggleTheme={toggleTheme}
+            onBack={() => nav(backTo)}
+            backTitle={t('trip.back')}
+            // Пока грузимся, бургера нет - как и было. Открывать нечего: меню ещё
+            // скелетон, а скрим и телефонный шит в этой ветке не отрисованы, то
+            // есть выехавший ящик было бы нечем закрыть.
+            onMenu={loading ? undefined : () => setSideOpen(true)}
+            title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
+            meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
+          />
+          <div className="trip-content">
+            <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
+              {children}
+            </main>
+            {drawer}
+          </div>
         </div>
       </div>
       {overlays}

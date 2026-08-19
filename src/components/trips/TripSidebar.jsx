@@ -46,8 +46,10 @@ function SidebarBody({
             key={item.id}
             className={'app-side__item' + (lens === item.id ? ' active' : '')}
             onClick={() => onNavigate(item.id)}
+            title={t(item.labelKey)}
+            data-tip={t(item.labelKey)}
           >
-            <Icon name={item.icon} size={15} />
+            <Icon name={item.icon} size={24} />
             <span className="app-side__label">{t(item.labelKey)}</span>
             {item.id === 'chat' && <UnreadBadge count={chatUnread} />}
           </button>
@@ -62,15 +64,17 @@ function SidebarBody({
               key={item.id}
               className={'app-side__item' + (lens === item.id ? ' active' : '')}
               onClick={() => onNavigate(item.id)}
+              title={t(item.labelKey)}
+              data-tip={t(item.labelKey)}
             >
-              <Icon name={item.icon} size={15} />
+              <Icon name={item.icon} size={24} />
               <span className="app-side__label">{t(item.labelKey)}</span>
             </button>
           ))}
           {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (шеринг), не кнопка-примитив. */}
           {canShare && onShare && (
-            <button className="app-side__item" onClick={onShare}>
-              <Icon name="share" size={15} />
+            <button className="app-side__item" onClick={onShare} title={t('trip.share')} data-tip={t('trip.share')}>
+              <Icon name="share" size={24} />
               <span className="app-side__label">{t('trip.share')}</span>
             </button>
           )}
@@ -107,14 +111,37 @@ export default function TripSidebar({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myStep,
   onUpgrade, onProInfo, onShare,
+  narrow = false, onToggleNarrow, onBrand,
 }) {
+  const { t } = useI18n();
   return (
     <aside className="app-side">
-      <SidebarBody
-        tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
-        isPro={isPro} proResolved={proResolved} isOwner={isOwner} myStep={myStep}
-        onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare}
-      />
+      {/* Логотип уехал в меню (эксперимент layout'а): в широком — плитка +
+          вордмарк, в узком — только плитка. Клик ведёт к списку трипов. */}
+      <button type="button" className="app-side__brand" onClick={onBrand} aria-label="Triplanio" title="Triplanio">
+        <span className="app-side__logo"><img src="/triplanio-logo.svg" alt="Triplanio" /></span>
+        <span className="app-side__brand-name">Triplanio</span>
+      </button>
+      <div className="app-side__nav">
+        <SidebarBody
+          tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
+          isPro={isPro} proResolved={proResolved} isOwner={isOwner} myStep={myStep}
+          onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare}
+        />
+      </div>
+      {onToggleNarrow && (
+        <button
+          type="button"
+          className="app-side__toggle"
+          onClick={onToggleNarrow}
+          aria-label={t('common.menu')}
+          title={t('common.menu')}
+          data-tip={t('common.menu')}
+        >
+          <Icon name={narrow ? 'chevron' : 'chevL'} size={22} />
+          <span className="app-side__label">{t('common.menu')}</span>
+        </button>
+      )}
     </aside>
   );
 }
