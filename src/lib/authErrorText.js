@@ -19,8 +19,8 @@ const FALLBACK_KEY = 'auth.err_generic';
 const RESET_LINK_KEY = 'auth.err_reset_link';
 
 // Только коды, достижимые из наших 5 auth-флоу (signInWithPassword, signUp,
-// signInWithOAuth, signInWithIdToken, updateUser), сверено с таблицей
-// `@supabase/auth-js` (`src/lib/error-codes.ts`, 2.106.2). Значения — ключи
+// signInWithOAuth, signInWithIdToken, updateUser), сверено с типом `ErrorCode`
+// пакета `@supabase/auth-js` (2.106.2). Значения — ключи
 // `auth.err_*` (часть уже существовала: `err_email_exists`, `err_rate_limited`,
 // `err_reset_link`). Незнакомый/отсутствующий код молча уходит в фолбэк —
 // пользователю НИКОГДА не показываем ни `auth.err_<code>`, ни серверную прозу.
