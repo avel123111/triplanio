@@ -27,6 +27,21 @@ export function isProActive(user) {
 // Returns { isPro, isOwner, resolved }. `resolved` stays false on the FIRST resolve
 // so the upgrade banner isn't shown prematurely on pro trips during the async check;
 // `isOwner` is only meaningful once resolved (defaults to false).
+//
+// При hasAccess=false запрос отключён, поэтому `resolved` остаётся false
+// БЕССРОЧНО (а не «до первого резолва») — это НАМЕРЕННО: у гейтнутого зрителя
+// (чужак/удалённый/pending-инвайт, не-член публичного трипа) owner-pro
+// непознаваем, и upgrade-баннер ему не предлагаем. Гейтнутый вызов ОДИН — в
+// TripView (hasTripAccess); его `resolved` читает только upgrade-баннер
+// (showUpgrade = proResolved && !isPro, едет через TripShell/SettingsLens) и
+// деградирует в «нет баннера». EventEditDialog тоже ждёт `resolved`, но на СВОЁМ
+// НЕгейтнутом вызове (hasAccess=true по умолчанию) — гейт его не касается. НЕ
+// строить потребителя, который ЖДЁТ resolved у гейтнутого вызова.
+// ponytail: булеаны {isPro,isOwner,resolved} перегружают loading-vs-gated в один
+//   флаг. Сегодня ни один потребитель не обязан отличать «грузится» от «нет
+//   доступа» (баннер трактует оба как «не показывать»). Появится такой → поднять
+//   до status-энума (апрув Pavel, rule #6: трогает потребителей хука). Сейчас код
+//   корректен — не делать.
 export function useTripProStatus(tripId, isProTrip = false, hasAccess = true) {
   const q = useQuery({
     queryKey: ['trip-owner-pro', tripId],
