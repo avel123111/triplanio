@@ -331,11 +331,11 @@ export const BTN_VARIANTS = ["primary", "secondary", "soft", "quiet", "link", "d
 /**
  * @param {{ variant: BtnVariant, size?: 'sm', icon?: string, iconRight?: string,
  *   tile?: boolean, sub?: any, block?: boolean, disabled?: boolean, loading?: boolean,
- *   children?: any, onClick?: any, className?: string, ariaLabel?: string,
+ *   children?: any, onClick?: any, onMouseDown?: any, className?: string, ariaLabel?: string,
  *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any,
  *   locked?: boolean, lockedHint?: any }} p
  */
-export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style, locked, lockedHint }) => {
+export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, onMouseDown, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style, locked, lockedHint }) => {
   // `locked` — действие недоступно текущей роли (наблюдателю). Не плодит класс:
   // приглушённый вид даёт существующий `.btn[aria-disabled]`, справа — замок,
   // клик подавлен, а причина висит тултипом. Один кирпич на все «viewer'у нельзя»
@@ -357,6 +357,10 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
     type="button"
     className={`btn btn--${variant} ${size ? `btn--${size}` : ""} ${block ? "btn--block" : ""} ${className}`}
     onClick={locked ? undefined : onClick}
+    // Forwarded so callers can suppress focus-steal (`e.preventDefault()` on a
+    // mousedown keeps the on-screen keyboard up between sends) — без него проп
+    // молча терялся и типы ругались (TS2322).
+    onMouseDown={onMouseDown}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
     aria-label={ariaLabel}
