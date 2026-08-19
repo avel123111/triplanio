@@ -1337,12 +1337,14 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <FlowMap
               home={home}
               cities={cities}
-              // Always pass the finish city (it feeds the camera framing), but only
-              // DRAW the finish pin + leg from step 3 on — so navigating steps toggles
-              // what's drawn without re-framing, and the default round-trip never
-              // pre-draws a line home on the earlier steps.
+              // Always pass the finish city (it feeds the camera framing). DRAW the
+              // finish pin + leg when it's ALREADY DECIDED — the AI put it in the draft,
+              // or the user picked it — so a known finish shows immediately (incl. on
+              // the AI chat step), not only from step 3. The manual null-default
+              // (resolved to home only for display) is NOT an explicit finish, so it
+              // still waits for step 3 → no pre-drawn line home on the earlier steps.
               finishCity={finishCity}
-              drawFinish={step === 'return' || step === 'review'}
+              drawFinish={(!!end && end !== 'stay') || step === 'return' || step === 'review'}
               isStay={isStay}
               hoveredId={hoveredMapId}
               selectedId={selectedMapId}
