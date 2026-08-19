@@ -5036,18 +5036,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 /* Футер диалога/панели — СТАНДАРТНЫЙ вид, как в нормальных приложениях: кнопки
-   ЗАПОЛНЯЮТ ширину бара поровну (две → 50/50, одна → во всю ширину), главная
-   крайняя справа, деструктивная — призрак слева. Тот же паттерн, что уже несёт
-   `ConfirmDialog` (`.dlg__foot` с `flex:1`). Один облик на ВСЕ состояния
+   ЗАПОЛНЯЮТ ширину бара, главная (Editar/Guardar/Crear/…) вдвое шире вторичной
+   (ratio 1:2, primary справа), деструктивная — призрак слева; одна кнопка → во
+   всю ширину. Один облик на ВСЕ состояния
    (просмотр/редактирование/создание/подтверждение) и все окна event/service/city.
    Старые `.lp-f--ratio` (2/8) и `.btn-label-collapse` убраны в TRIP-337 — они
    плодили разнобой (мелкая справа vs. «во всю ширину» vs. 20/80).
    Исключения: `flow-foot` (визард со спейсером back/reset/next) и `lp-f--single`
    (одиночная модалка) держат свою раскладку. */
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
-.lp-f:not(.flow-foot):not(.lp-f--single) > .btn { flex: 1; }
+.lp-f:not(.flow-foot):not(.lp-f--single) > .btn { flex: 2; }
+.lp-f:not(.flow-foot):not(.lp-f--single) > .btn:first-child:not(:last-child) { flex: 1; }
 /* visual-diff-exempt: .btn flex — футер заполняет ширину поровну (нормальный паттерн, как ConfirmDialog), TRIP-337 апрув Pavel */
 /* visual-diff-exempt: .lp-f:not(.flow-foot):not(.lp-f--single) flex — тот же fill-футер, ключ по классу-предку, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child:not(:last-child) flex — вторичная/удаление узкая (ratio 1:2), TRIP-337 апрув Pavel */
 /* visual-diff-exempt: .lp-f--ratio justify-content — семейство растяжки футера удалено, TRIP-337 апрув Pavel */
 /* visual-diff-exempt: .btn:first-child flex — растяжка футера `.lp-f--ratio > .btn` удалена, TRIP-337 апрув Pavel */
 /* visual-diff-exempt: .btn:last-child flex — растяжка футера `.lp-f--ratio > .btn` удалена, TRIP-337 апрув Pavel */
