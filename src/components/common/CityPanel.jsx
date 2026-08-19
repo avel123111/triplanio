@@ -177,8 +177,8 @@ export default function CityPanel({
         <GhostAdd icon="ticket" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />
       </div>
       </div>
-      <div className="lp-f lp-f--ratio">
-        <Btn variant="danger" icon="trash" onClick={onRemove} ariaLabel={t('common.delete')}><span className="btn-label-collapse">{t('common.delete')}</span></Btn>
+      <div className="lp-f">
+        <Btn variant="danger" icon="trash" onClick={onRemove} ariaLabel={t('common.delete')}>{t('common.delete')}</Btn>
         <Btn variant="primary" icon="check" onClick={onBack}>{t('common.done')}</Btn>
       </div>
     </div>

@@ -1142,15 +1142,19 @@ h4,
 .sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
 .badge--tiny,  /* TRIP-337: третья ступень пилюли — статус/тариф-чипы плашки на кегль ниже (.t-micro→.t-tiny-caps), апрув Pavel */
 .cdu span { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175 инсп.: подпись таймера Micro→Tiny Caps */
-/* Моно — ОДИН источник (JetBrains Mono, --font-mono): коды/брони/рейсы/полисы/
-   share-URL/email/kbd/code. Числа/даты/времена НЕ моно — их держит Geologica с
-   tabular-nums (каноны t-display/t-title/t-heading/t-meta). kbd сохраняет свой кегль. */
+/* Моно — ОДИН источник (JetBrains Mono, --font-mono): share-URL/email/kbd/code.
+   TRIP-337: КОДЫ-ДАННЫЕ (бронь/рейс/полис) в event/service выведены из моно НА
+   УРОВНЕ РАЗМЕТКИ — их поля ввода и ряды просмотра больше не несут .t-mono/`mono`
+   (стандартный шрифт поля / канон `.t-body`, решение Pavel). Само правило .kv .v.mono
+   оставлено латентным, чтобы не двигать общий моно-каскад. Числа/даты/времена НЕ моно —
+   их держит Geologica с tabular-nums (t-display/t-title/t-heading/t-meta).
+   kbd сохраняет свой кегль. */
 .t-mono,
 .mono,
 .cm-code,
 .confirm__email,
 .kv .v.mono,
-.chat-composer__hint kbd, code { font-family: var(--font-mono); font-size: var(--fs-meta); font-weight: 500; line-height: 1.4; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-mono — JetBrains 13/500/1.4, tabular, track -0.01 (только коды) */
+.chat-composer__hint kbd, code { font-family: var(--font-mono); font-size: var(--fs-meta); font-weight: 500; line-height: 1.4; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-mono — JetBrains 13/500/1.4, tabular, track -0.01 */
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
    пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
    Применяется как class="t-mono tp-caption" — база из канона, дельта из модификатора,
@@ -5031,16 +5035,30 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (TRIP-341), а у канон-класса свой ховер, чужого `--hl` он не читает. */
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
+/* Футер диалога/панели — СТАНДАРТНЫЙ вид, как в нормальных приложениях: кнопки
+   ЗАПОЛНЯЮТ ширину бара, главная (Editar/Guardar/Crear/…) вдвое шире вторичной
+   (ratio 1:2, primary справа), деструктивная — призрак слева; одна кнопка → во
+   всю ширину. Один облик на ВСЕ состояния
+   (просмотр/редактирование/создание/подтверждение) и все окна event/service/city.
+   Старые `.lp-f--ratio` (2/8) и `.btn-label-collapse` убраны в TRIP-337 — они
+   плодили разнобой (мелкая справа vs. «во всю ширину» vs. 20/80).
+   Исключения: `flow-foot` (визард со спейсером back/reset/next) и `lp-f--single`
+   (одиночная модалка) держат свою раскладку. */
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
-/* Two-button footer (delete + primary) filling the bar in a ~2/8 ratio. On
-   phones the destructive button collapses to its icon (text via .btn-label-collapse). */
-.lp-f--ratio { justify-content: stretch; }
-.lp-f--ratio > .btn:first-child { flex: 2; }
-.lp-f--ratio > .btn:last-child  { flex: 8; }
+.lp-f:not(.flow-foot):not(.lp-f--single) > .btn { flex: 2; }
+.lp-f:not(.flow-foot):not(.lp-f--single) > .btn:first-child:not(:last-child) { flex: 1; }
+/* visual-diff-exempt: .btn flex — футер заполняет ширину поровну (нормальный паттерн, как ConfirmDialog), TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f:not(.flow-foot):not(.lp-f--single) flex — тот же fill-футер, ключ по классу-предку, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child:not(:last-child) flex — вторичная/удаление узкая (ratio 1:2), TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f--ratio justify-content — семейство растяжки футера удалено, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child flex — растяжка футера `.lp-f--ratio > .btn` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:last-child flex — растяжка футера `.lp-f--ratio > .btn` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child {@media (max-width: 640px)} flex — мобильная растяжка футера `.lp-f--ratio > .btn:first-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f--ratio flex — растяжка футера `.lp-f--ratio > .btn:last-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f--ratio {@media (max-width: 640px)} flex — растяжка футера `.lp-f--ratio > .btn:first-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn-label-collapse {@media (max-width: 640px)} display — схлопывание подписи удаления убрано, TRIP-337 апрув Pavel */
 @media (max-width: 640px) {
-  .lp-f--ratio > .btn:first-child { flex: 0 0 auto; }
   .lp-f--single > .btn { width: 100%; }
-  .btn-label-collapse { display: none; }
 }
 
 /* `.addmini` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft" size="sm">.

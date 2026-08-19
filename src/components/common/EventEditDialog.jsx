@@ -1322,13 +1322,13 @@ export default function EventEditDialog({
           </div>
           )}
 
-          {/* Footer — TRIP-186: единый канон с event view / city view (lp-f--ratio
-              + <Btn>): удалить (danger, схлоп на мобиле) + primary. Pinned снизу
-              в панельном режиме. TRIP-333 §4: класс один на оба режима, своим у
-              диалога остался только прилипший низ, и тот не нужен модалке -
-              она и так не прокручивает футер. */}
+          {/* Footer — единый канон с event view / city view: стандартный `.lp-f`
+              (кнопки справа, натуральной ширины), удалить (danger) + primary.
+              Pinned снизу в панельном режиме. TRIP-333 §4: класс один на оба
+              режима, своим у диалога остался только прилипший низ, и тот не нужен
+              модалке — она и так не прокручивает футер. */}
           <div
-            className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}
+            className="lp-f"
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
@@ -1340,7 +1340,7 @@ export default function EventEditDialog({
               <>
                 {isEdit && (
                   <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} disabled={deleteMut.isPending} ariaLabel={t('common.delete')}>
-                    <span className="btn-label-collapse">{t('common.delete')}</span>
+                    {t('common.delete')}
                   </Btn>
                 )}
                 <Btn
@@ -1745,7 +1745,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
           <div>
             <Label>{t('event.booking_ref')}</Label>
             <AiField active={aiFields.has('booking_reference')}>
-              <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+              <Input value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
             </AiField>
           </div>
         </div>
@@ -1947,7 +1947,7 @@ function TransferLegCard({
           <div>
             <Label>{t('event.flight_train_no')}</Label>
             <AiField active={aiHas('flight_number')}>
-              <Input className="t-mono" value={leg.flight_number} onChange={(e) => patch({ flight_number: e.target.value })} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
+              <Input value={leg.flight_number} onChange={(e) => patch({ flight_number: e.target.value })} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
             </AiField>
           </div>
         </div>
@@ -1956,7 +1956,7 @@ function TransferLegCard({
           <div>
             <Label>{t('event.booking_ref')}</Label>
             <AiField active={aiHas('booking_reference')}>
-              <Input className="t-mono" value={leg.booking_reference} onChange={(e) => patch({ booking_reference: e.target.value })} placeholder="-" />
+              <Input value={leg.booking_reference} onChange={(e) => patch({ booking_reference: e.target.value })} placeholder="-" />
             </AiField>
           </div>
           <div>
@@ -2381,7 +2381,7 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
       <SectionHeader>{t('service.insurance_section')}</SectionHeader>
       <div>
         <Label>{t('service.policy_number')}</Label>
-        <Input className="t-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
+        <Input value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
       </div>
       <div className="fld-grid grid grid--2">
         <div data-vfield="date_start">
@@ -2545,7 +2545,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         />
         <div>
           <Label>{t('event.booking_ref')}</Label>
-          <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+          <Input value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
         </div>
       </div>
 
