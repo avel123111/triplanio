@@ -31,7 +31,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   // Prevent race condition: track which user ID is currently being loaded
   const loadingForRef = React.useRef(null);
@@ -268,7 +267,6 @@ export const AuthProvider = ({ children }) => {
       // profile-fetch blip must not flip the app to "loading" or sign the user
       // out; reconcile-on-read covers the missed refresh.
       if (!silent) {
-        setAuthError({ type: 'unknown', message: error.message });
         setIsAuthenticated(false);
         setIsLoadingAuth(false);
         setAuthChecked(true);
@@ -319,7 +317,6 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated,
       isLoadingAuth,
       isLoadingPublicSettings: false,  // kept for interface compatibility
-      authError,
       appPublicSettings: null,          // kept for interface compatibility
       authChecked,
       logout,

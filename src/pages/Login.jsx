@@ -4,6 +4,7 @@ import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attributio
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
+import { authErrorText } from '@/lib/authErrorText';
 import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Checkbox } from '@/design/index';
@@ -274,7 +275,7 @@ export default function Login() {
         queryParams: { prompt: 'select_account' },
       },
     });
-    if (error) { reportAuthError(error, 'oauth'); trackSignupFailed('oauth_error', 'google'); setError(error.message); setIsLoading(false); }
+    if (error) { reportAuthError(error, 'oauth'); trackSignupFailed('oauth_error', 'google'); setError(authErrorText(t, error)); setIsLoading(false); }
   };
 
   // Google One Tap credential handler - exchanges the Google JWT for a
@@ -298,7 +299,7 @@ export default function Login() {
       });
       if (error) {
         reportAuthError(error, 'id_token');
-        setError(error.message);
+        setError(authErrorText(t, error));
         setIsLoading(false);
         return;
       }
@@ -319,7 +320,7 @@ export default function Login() {
       window.location.href = postLoginPath();
     } catch (err) {
       reportAuthError(err, 'id_token');
-      setError(err.message);
+      setError(authErrorText(t, err));
       setIsLoading(false);
     }
   };
@@ -381,13 +382,13 @@ export default function Login() {
       provider: 'apple',
       options: { redirectTo: window.location.origin + postLoginPath() },
     });
-    if (error) { reportAuthError(error, 'oauth'); trackSignupFailed('oauth_error', 'apple'); setError(error.message); setIsLoading(false); }
+    if (error) { reportAuthError(error, 'oauth'); trackSignupFailed('oauth_error', 'apple'); setError(authErrorText(t, error)); setIsLoading(false); }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault(); setIsLoading(true); setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { reportAuthError(error, 'signin'); setError(error.message); setIsLoading(false); return; }
+    if (error) { reportAuthError(error, 'signin'); setError(authErrorText(t, error)); setIsLoading(false); return; }
     track('user_logged_in', { method: 'email' });
     window.location.href = postLoginPath();
   };
@@ -441,7 +442,7 @@ export default function Login() {
         emailRedirectTo: window.location.origin + postLoginPath(),
       },
     });
-    if (error) { reportAuthError(error, 'signup'); trackSignupFailed('signup_error'); setError(error.message); setIsLoading(false); }
+    if (error) { reportAuthError(error, 'signup'); trackSignupFailed('signup_error'); setError(authErrorText(t, error)); setIsLoading(false); }
     // NOT a registration: confirming the address is mandatory (Supabase Auth
     // mailer_autoconfirm = false), so at this point the person is on the "check
     // your inbox" screen and may never come back. `user_signed_up` fires later,
@@ -461,10 +462,10 @@ export default function Login() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       reportAuthError(error, 'update_password');
-      const msg = /session|token|expired|missing/i.test(error.message)
-        ? t('auth.err_reset_link')
-        : error.message;
-      setError(msg); setIsLoading(false); return;
+      // session-missing / протухшая recovery-ссылка разруливаются внутри маппера
+      // (типизированная AuthSessionMissingError + recovery-коды), поэтому мини-хак
+      // с регуляркой по error.message больше не нужен.
+      setError(authErrorText(t, error)); setIsLoading(false); return;
     }
     goto('reset-done'); setIsLoading(false);
   };
