@@ -39,8 +39,20 @@ export async function loadLocale(lang) {
   if (!nsLoaders) return {};
   const entries = await Promise.all(
     Object.entries(nsLoaders).map(async ([ns, load]) => {
-      const mod = await load();
-      return [ns, mod.default || mod];
+      // Degrade per-namespace, never crash the whole language (TRIP-441). A lazy
+      // JSON chunk can fail to load — a hashed asset 404s after a redeploy replaced
+      // it under an open tab, or `import()` resolves to `undefined` — and a bare
+      // `mod.default` there threw an unhandled rejection that took down the ENTIRE
+      // locale activation. Fall back to an empty namespace: the facade renders the
+      // bare key for those strings (visibly missing, not a white screen) while
+      // every other namespace still loads.
+      try {
+        const mod = await load();
+        return [ns, mod?.default || mod || {}];
+      } catch (e) {
+        console.warn(`[i18n] locale chunk failed: ${lang}/${ns}`, e);
+        return [ns, {}];
+      }
     }),
   );
   return Object.fromEntries(entries);

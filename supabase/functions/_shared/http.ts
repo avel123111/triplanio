@@ -126,7 +126,17 @@ async function reportResponseError(
       if (body.code != null) extra.code = body.code;
     }
   } catch { /* non-JSON body — status alone is what we have */ }
-  return captureEdgeError(new Error(`${fnName} responded ${res.status}`), fnName, extra, trace);
+  // Group by fn+status (TRIP-441): every synthetic "<fn> responded <status>" is
+  // minted here on ONE line, so without an explicit fingerprint Sentry's stack
+  // grouping folds all functions' returned-≥400 into a single issue. `extra.code`
+  // (e.g. Stay22's `upstream_502`) still distinguishes causes WITHIN an issue.
+  return captureEdgeError(
+    new Error(`${fnName} responded ${res.status}`),
+    fnName,
+    extra,
+    trace,
+    ['edge-response', fnName, String(res.status)],
+  );
 }
 
 /**

@@ -920,7 +920,12 @@ export default function TripView() {
 
   // Trip-level Pro (owner-aware), resolved via a shared CACHED hook so it doesn't
   // re-flash when crossing the edit↔trip route boundary. See useTripProStatus.
-  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
+  // Gate the server Pro-check on confirmed access (participant step): a non-member
+  // opening this route must not fire checkSubscriptionStatus into an expected 403
+  // (TRIP-441). `myStep` is null until the trip+members load, so the check simply
+  // waits for access to resolve, then runs — never for a stranger.
+  const hasTripAccess = clearsStep(myStep, 'participant');
+  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip, hasTripAccess);
   // Edit Mode (structure editor) gate: ступень editor. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
   const canEditMode = clearsStep(myStep, 'editor');
