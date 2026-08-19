@@ -63,7 +63,8 @@ const STEPS = [
 const storageKey = (userId, method = 'manual') => `triplanio-planner-v2-${method}-${userId || 'guest'}`;
 
 // Same physical city (external directory id / geonameid, else name — тёзки-города в
-// разных странах ≠ один город). Shared by the return control and the finish derive.
+// разных странах ≠ один город). Used by StepReturn to decide which return card looks
+// active (cosmetic only — not part of the finish derive).
 function sameCity(a, b) {
   if (!a?.city_name || !b?.city_name) return false;
   if (a.external_city_id != null && b.external_city_id != null) return a.external_city_id === b.external_city_id;
@@ -731,7 +732,7 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
         </Card>
 
         <div className="pl-summary__route">
-          <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (finishCity ? 1 : 0) })}</div>
+          <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (finishCity?.city_name ? 1 : 0) })}</div>
           <div className="col col--g1">
             {home?.city_name && (
               <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
@@ -810,8 +811,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [cities, setCities]         = useState([]);
   // Finish узел — единственный источник истины по концу маршрута (заменил
   // returnMode/returnCity/finalPoint). Значения:
-  //   null   — дефолт: возврат домой, если старт есть и это не последний город;
-  //            иначе маршрут открыт (терминал = последний город);
+  //   null   — дефолт: финиш = город старта, если старт задан; иначе терминала нет;
   //   city   — узел финиша (домой = клон старта / другой город / финиш из ИИ);
   //   'stay' — «останусь»: последний город и есть терминал (kind:'end', без ночей).
   const [end, setEnd] = useState(null);
@@ -823,7 +823,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [error, setError]           = useState(null);
   const [restored, setRestored]     = useState(false);
   // Map ↔ list linking (Map-lens parity, TRIP-337): the pin/list row hovered or
-  // selected. Ids match FlowMap's marker ids ('home' | city.id | 'return').
+  // selected. Ids match FlowMap's marker ids ('home' | city.id | 'finish').
   const [hoveredMapId, setHoveredMapId]   = useState(null);
   const [selectedMapId, setSelectedMapId] = useState(null);
 
