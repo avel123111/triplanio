@@ -22,9 +22,6 @@ import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, IconBtn, Severity, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
-  Trash2,
-} from 'lucide-react';
-import {
   useEventViewModel, useEntityDocs, EventViewSections, eventHeader,
 } from '@/components/common/EventViewBody';
 
@@ -138,17 +135,17 @@ export default function EventModal(props) {
         {/* Footer — only when there are edit/delete actions (map + booking moved
             to the top action row, so read-only events no longer need a footer). */}
         {canEdit && (onDelete || onEdit) && (
-        /* Та же пара «удалить + редактировать», что в панели просмотра, значит
-           и раскладка та же (`lp-f--ratio`). Своё мобильное правило, растягивавшее
-           кнопки поровну, вместе с этим отпало. */
+        /* Единый канон-футер event/service view — тот же набор и те же i18n-ключи,
+           что у панели просмотра (EventSourcePanel): удалить (danger, подпись
+           схлопывается в иконку на мобиле) + primary. Раскладку держит
+           `lp-f--ratio`; корзина рисуется `icon`-пропом, не сырым lucide. */
         <div className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}>
           {confirmDel ? (
             <>
-              <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleting}>
-                {t('trip.form_cancel')}
-              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleting}>{t('common.cancel')}</Btn>
               <Btn
                 variant="danger-solid"
+                icon="trash"
                 loading={deleting}
                 disabled={deleting}
                 onClick={async () => {
@@ -157,24 +154,18 @@ export default function EventModal(props) {
                   finally { setDeleting(false); setConfirmDel(false); }
                 }}
               >
-                <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />{deleting ? t('event.deleting') : t('trip.delete')}
+                {t('common.delete')}
               </Btn>
             </>
           ) : (
             <>
-              {/* Форма кнопок - та же, что у трёх соседних футеров события:
-                  иконка пропом, подпись под `.btn-label-collapse`. Без этого
-                  `lp-f--ratio` работал вполсилы: на узком экране он гасит
-                  подпись первой кнопки, а гасить было нечего. */}
-              {canEdit && onDelete && (
-                <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('trip.delete')}>
-                  <span className="btn-label-collapse">{t('trip.delete')}</span>
+              {onDelete && (
+                <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('common.delete')}>
+                  <span className="btn-label-collapse">{t('common.delete')}</span>
                 </Btn>
               )}
-              {canEdit && onEdit && (
-                <Btn variant="primary" icon="edit" onClick={onEdit}>
-                  {t('trip.edit_trip')}
-                </Btn>
+              {onEdit && (
+                <Btn variant="primary" icon="edit" onClick={onEdit}>{t('trip.edit_trip')}</Btn>
               )}
             </>
           )}

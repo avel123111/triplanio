@@ -1142,15 +1142,19 @@ h4,
 .sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
 .badge--tiny,  /* TRIP-337: третья ступень пилюли — статус/тариф-чипы плашки на кегль ниже (.t-micro→.t-tiny-caps), апрув Pavel */
 .cdu span { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175 инсп.: подпись таймера Micro→Tiny Caps */
-/* Моно — ОДИН источник (JetBrains Mono, --font-mono): коды/брони/рейсы/полисы/
-   share-URL/email/kbd/code. Числа/даты/времена НЕ моно — их держит Geologica с
-   tabular-nums (каноны t-display/t-title/t-heading/t-meta). kbd сохраняет свой кегль. */
+/* Моно — ОДИН источник (JetBrains Mono, --font-mono): share-URL/email/kbd/code.
+   TRIP-337: КОДЫ-ДАННЫЕ (бронь/рейс/полис) в event/service выведены из моно НА
+   УРОВНЕ РАЗМЕТКИ — их поля ввода и ряды просмотра больше не несут .t-mono/`mono`
+   (стандартный шрифт поля / канон `.t-body`, решение Pavel). Само правило .kv .v.mono
+   оставлено латентным, чтобы не двигать общий моно-каскад. Числа/даты/времена НЕ моно —
+   их держит Geologica с tabular-nums (t-display/t-title/t-heading/t-meta).
+   kbd сохраняет свой кегль. */
 .t-mono,
 .mono,
 .cm-code,
 .confirm__email,
 .kv .v.mono,
-.chat-composer__hint kbd, code { font-family: var(--font-mono); font-size: var(--fs-meta); font-weight: 500; line-height: 1.4; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-mono — JetBrains 13/500/1.4, tabular, track -0.01 (только коды) */
+.chat-composer__hint kbd, code { font-family: var(--font-mono); font-size: var(--fs-meta); font-weight: 500; line-height: 1.4; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-mono — JetBrains 13/500/1.4, tabular, track -0.01 */
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
    пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
    Применяется как class="t-mono tp-caption" — база из канона, дельта из модификатора,
@@ -5038,7 +5042,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .lp-f--ratio > .btn:first-child { flex: 2; }
 .lp-f--ratio > .btn:last-child  { flex: 8; }
 @media (max-width: 640px) {
-  .lp-f--ratio > .btn:first-child { flex: 0 0 auto; }
+  /* `:not(:last-child)` — только когда у первой кнопки ЕСТЬ сосед (двухкнопочный
+     футер удалить+primary). Одиночная кнопка (создание/только-редактировать) —
+     это И первый, И последний ребёнок: без `:not(:last-child)` правило гасило её
+     до auto-ширины, и в `justify-content:stretch` она уезжала влево. Теперь она
+     остаётся на `flex:8` (last-child) и тянется на всю ширину. */
+  /* visual-diff-exempt: .btn:first-child {@media (max-width: 640px)} flex — сужение правила: одиночная кнопка (создание/только-редактировать) больше не auto-ширины, TRIP-337 апрув Pavel */
+  /* visual-diff-exempt: .btn:first-child:not(:last-child) {@media (max-width: 640px)} flex — то же правило, суженное до двухкнопочного футера (удалить+primary), TRIP-337 апрув Pavel */
+  .lp-f--ratio > .btn:first-child:not(:last-child) { flex: 0 0 auto; }
   .lp-f--single > .btn { width: 100%; }
   .btn-label-collapse { display: none; }
 }

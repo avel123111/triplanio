@@ -1745,7 +1745,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
           <div>
             <Label>{t('event.booking_ref')}</Label>
             <AiField active={aiFields.has('booking_reference')}>
-              <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+              <Input value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
             </AiField>
           </div>
         </div>
@@ -1947,7 +1947,7 @@ function TransferLegCard({
           <div>
             <Label>{t('event.flight_train_no')}</Label>
             <AiField active={aiHas('flight_number')}>
-              <Input className="t-mono" value={leg.flight_number} onChange={(e) => patch({ flight_number: e.target.value })} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
+              <Input value={leg.flight_number} onChange={(e) => patch({ flight_number: e.target.value })} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
             </AiField>
           </div>
         </div>
@@ -1956,7 +1956,7 @@ function TransferLegCard({
           <div>
             <Label>{t('event.booking_ref')}</Label>
             <AiField active={aiHas('booking_reference')}>
-              <Input className="t-mono" value={leg.booking_reference} onChange={(e) => patch({ booking_reference: e.target.value })} placeholder="-" />
+              <Input value={leg.booking_reference} onChange={(e) => patch({ booking_reference: e.target.value })} placeholder="-" />
             </AiField>
           </div>
           <div>
@@ -2381,7 +2381,7 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
       <SectionHeader>{t('service.insurance_section')}</SectionHeader>
       <div>
         <Label>{t('service.policy_number')}</Label>
-        <Input className="t-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
+        <Input value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
       </div>
       <div className="fld-grid grid grid--2">
         <div data-vfield="date_start">
@@ -2545,7 +2545,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         />
         <div>
           <Label>{t('event.booking_ref')}</Label>
-          <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+          <Input value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
         </div>
       </div>
 

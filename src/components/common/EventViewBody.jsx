@@ -168,6 +168,9 @@ export function Section({ title, accent, count, children }) {
   );
 }
 
+// `mono` — латентная возможность (JetBrains для кода). TRIP-337: коды-данные
+// (бронь/рейс/полис) выведены из моно, поэтому ни один вызов её больше не передаёт;
+// параметр оставлен, чтобы не трогать общий моно-каскад (.kv .v.mono) правкой CSS.
 export function KV({ label, children, mono }) {
   if (children == null || children === '') return null;
   return (
@@ -290,25 +293,25 @@ function HotelBody({ entity, docs = [] }) {
             {entity.booking_reference && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Hash /></span>
-                <span className="hv-row__k t-meta">{t('event.booking_ref')}</span>
+                <span className="hv-row__k t-label">{t('event.booking_ref')}</span>
                 <span className="hv-row__sp" />
-                <span className="hv-row__v t-strong mono">{entity.booking_reference}</span>
+                <span className="hv-row__v t-body">{entity.booking_reference}</span>
               </div>
             )}
             {entity.phone && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Phone /></span>
-                <span className="hv-row__k t-meta">{t('event.phone')}</span>
+                <span className="hv-row__k t-label">{t('event.phone')}</span>
                 <span className="hv-row__sp" />
-                <span className="hv-row__v t-strong">{entity.phone}</span>
+                <span className="hv-row__v t-body">{entity.phone}</span>
               </div>
             )}
             {entity.email && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Mail /></span>
-                <span className="hv-row__k t-meta">E-mail</span>
+                <span className="hv-row__k t-label">E-mail</span>
                 <span className="hv-row__sp" />
-                <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--brand)' }}>{entity.email}</a>
+                <a className="hv-row__v t-body" href={`mailto:${entity.email}`} style={{ color: 'var(--brand)' }}>{entity.email}</a>
               </div>
             )}
           </Card>
@@ -428,25 +431,25 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
             {entity.booking_reference && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Hash /></span>
-                <span className="hv-row__k t-meta">{t('event.booking_ref')}</span>
+                <span className="hv-row__k t-label">{t('event.booking_ref')}</span>
                 <span className="hv-row__sp" />
-                <span className="hv-row__v t-strong mono">{entity.booking_reference}</span>
+                <span className="hv-row__v t-body">{entity.booking_reference}</span>
               </div>
             )}
             {carrier && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Ic /></span>
-                <span className="hv-row__k t-meta">{t('transfer.carrier')}</span>
+                <span className="hv-row__k t-label">{t('transfer.carrier')}</span>
                 <span className="hv-row__sp" />
-                <span className="hv-row__v t-strong">{carrier}</span>
+                <span className="hv-row__v t-body">{carrier}</span>
               </div>
             )}
             {entity.flight_number && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Ticket /></span>
-                <span className="hv-row__k t-meta">{t('event.flight_number')}</span>
+                <span className="hv-row__k t-label">{t('event.flight_number')}</span>
                 <span className="hv-row__sp" />
-                <span className="hv-row__v t-strong mono">{entity.flight_number}</span>
+                <span className="hv-row__v t-body">{entity.flight_number}</span>
               </div>
             )}
           </Card>
@@ -509,7 +512,7 @@ function ActivityBody({ entity, docs = [] }) {
           <Card radius="btn" pad="none" className="hv-rows">
             <div className="hv-row row row--g6">
               <span className="hv-row__ic"><MapIcon /></span>
-              <span className="hv-row__v t-strong" style={{ textAlign: 'left', maxWidth: 'none', whiteSpace: 'normal' }}>{entity.location_address}</span>
+              <span className="hv-row__v t-body" style={{ textAlign: 'left', maxWidth: 'none', whiteSpace: 'normal' }}>{entity.location_address}</span>
             </div>
           </Card>
         </div>
@@ -549,7 +552,7 @@ function EsimBody({ entity, accent }) {
     <>
       <Section title={t('service.esim_cost_section')} accent={accent}>
         <div className="kv-grid grid grid--2">
-          <KV label={t('budget.field_amount')} mono>{price}</KV>
+          <KV label={t('budget.field_amount')}>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
       </Section>
@@ -570,14 +573,14 @@ function InsuranceBody({ entity, accent }) {
     <>
       <Section title={t('service.insurance_section')} accent={accent}>
         <div className="kv-grid grid grid--2">
-          {d.policy_number && <KV label={t('service.policy_number')} mono>{d.policy_number}</KV>}
-          {d.date_start && <KV label={t('service.date_start')} mono>{fmtInsDate(d.date_start)}</KV>}
-          {d.date_finish && <KV label={t('service.date_finish')} mono>{fmtInsDate(d.date_finish)}</KV>}
+          {d.policy_number && <KV label={t('service.policy_number')}>{d.policy_number}</KV>}
+          {d.date_start && <KV label={t('service.date_start')}>{fmtInsDate(d.date_start)}</KV>}
+          {d.date_finish && <KV label={t('service.date_finish')}>{fmtInsDate(d.date_finish)}</KV>}
         </div>
       </Section>
       <Section title={t('service.insurance_cost_section')} accent={accent}>
         <div className="kv-grid grid grid--2">
-          <KV label={t('budget.field_amount')} mono>{price}</KV>
+          <KV label={t('budget.field_amount')}>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
       </Section>
@@ -624,7 +627,7 @@ function ServiceBody({ entity, accent }) {
       <Section title={t('event.finance_booking')} accent={accent}>
         <div className="kv-grid grid grid--2">
           <KV label={t('budget.field_amount')}>{fmtPrice(price, cur)}</KV>
-          <KV label={t('service.car_booking_ref')} mono>{d.booking_reference}</KV>
+          <KV label={t('service.car_booking_ref')}>{d.booking_reference}</KV>
         </div>
       </Section>
     </>
