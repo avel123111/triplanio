@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/lib/AuthContext';
@@ -783,6 +783,11 @@ export default function TripView() {
   const { user } = useAuth();
   const { toast } = useToast();
   const lens = searchParams.get('lens') || DEFAULT_SECTION;
+  // Заход из мастера создания (navigate ставит state.fromCreate): один раз при
+  // входе анимируем ВХОД меню и колонки маршрута (CSS-класс .trip-shell--enter).
+  // Смена линз внутри трипа пушит запись истории без state → флаг сам гаснет, и
+  // повторных анимаций нет. Карту тут НЕ трогаем (см. кнопку в ManualPlanner).
+  const enteringFromCreate = useLocation().state?.fromCreate === true;
 
   // Тема и аккаунт-Pro нужны только шапке, а её держит TripShell и берёт их из
   // контекстов сама.
@@ -1220,6 +1225,7 @@ export default function TripView() {
     <TripShell
       tripId={tripId}
       trip={trip}
+      entering={enteringFromCreate}
       section={shownLens}
       myStep={myStep}
       isOwner={isOwner}

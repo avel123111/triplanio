@@ -8760,3 +8760,31 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .tt--block width — примитив тултип ДС (обёртка блочного триггера), апрув Pavel TRIP-274
    visual-diff-exempt: .tt position — примитив тултип ДС, апрув Pavel TRIP-274
  */
+
+/* ============================================================================
+   Вход в редактор из мастера создания (TRIP-337).
+
+   КАРТУ через переход НЕ анимируем намеренно: это живой WebGL-холст в singleton-
+   инстансе, который на переходе переезжает в новый слот и меняет размер. Любой
+   снапшот-морф (View Transitions) ловит его в незавершённом состоянии — отсюда
+   были замороженная «половина по вертикали» и полупрозрачный транзит. Поэтому
+   карта просто оказывается в своей панели корректной и непрозрачной (камеру и
+   проекцию наследует у планнера — см. inheritMapView), а плавно ВЪЕЗЖАЮТ только
+   меню и колонка маршрута — обычный DOM, который анимируется чисто.
+
+   Класс `.trip-shell--enter` ставится ОДИН раз при заходе с флагом state.fromCreate
+   (см. TripView/TripShell); смена линз внутри трипа пушит запись без state → флаг
+   гаснет, повторных анимаций нет. Меню — только на десктопе (на телефоне это шит).
+   ============================================================================ */
+.trip-shell--enter .ts-col-left { animation: tripEnterSlide 460ms var(--ease-out) both; }
+@media (min-width: 881px) {
+  .trip-shell--enter .app-side { animation: tripEnterSlide 420ms var(--ease-out) both; }
+}
+@keyframes tripEnterSlide {
+  from { opacity: 0; transform: translateX(-28px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trip-shell--enter .ts-col-left,
+  .trip-shell--enter .app-side { animation: none; }
+}

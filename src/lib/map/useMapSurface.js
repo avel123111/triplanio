@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { MAPBOX_TOKEN, applyBasemapConfig } from '@/lib/mapbox';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { repaintRouteLines } from './routeLines';
@@ -55,7 +55,13 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   useEffect(() => { coopRef.current = cooperativeGestures; }, [cooperativeGestures]);
 
   // Claim the singleton into this slot on mount; park it back on unmount.
-  useEffect(() => {
+  // useLayoutEffect (не useEffect): захват слота + первый resize проходят СИНХРОННО
+  // в фазе коммита, ДО отрисовки. В passive useEffect reparent случался бы уже
+  // ПОСЛЕ первой отрисовки нового экрана — холст выводился в старом/коротком
+  // размере и «дорастал» до контейнера отдельным кадром (видимый рост карты при
+  // заходе в редактор). В layout-фазе контейнер уже выложен, resize сразу берёт
+  // финальные размеры — карта появляется корректной с первого кадра.
+  useLayoutEffect(() => {
     const slot = containerRef.current;
     if (!slot) return undefined;
     if (!sharedMap || !sharedMap.hasToken) { setError('No Mapbox token'); return undefined; }
