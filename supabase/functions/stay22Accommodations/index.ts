@@ -89,8 +89,13 @@ Deno.serve(withHandler('stay22Accommodations', async (req, corsHeaders) => {
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       console.error('[stay22Accommodations] upstream error', res.status, text.slice(0, 500));
+      // Carry the real upstream status in the canonical `code` (TRIP-441): the edge
+      // seam's Sentry reporter reads `body.code`, so `upstream_429`/`upstream_5xx`
+      // reaches monitoring and the bare "responded 502" becomes diagnosable (is
+      // Stay22 rate-limiting us, down, or are we sending a bad request?). The client
+      // path is unchanged — a 502 surfaces as a transport error it already handles.
       return Response.json(
-        { error: 'stay22_upstream_error', status: res.status },
+        { error: 'stay22_upstream_error', code: `upstream_${res.status}`, status: res.status },
         { status: 502, headers: corsHeaders },
       );
     }
