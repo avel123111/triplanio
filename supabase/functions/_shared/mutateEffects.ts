@@ -56,6 +56,16 @@ async function teardownMember(db: SupabaseClient, tripId: unknown, userId: unkno
  * Реестр побочек по ключу `slug/action`. Присутствие ключа = «у действия есть
  * afterWrite» (декларация — здесь, в файле ресурса-эффектов, не на чистом спеке).
  */
+/**
+ * Бронь добавлена — уведомить владельца+участников (кроме автора) через шов `notify`
+ * (in-app пишет edge; n8n не участвует — booking in-app-only). `kind` фиксирован
+ * действием (сегмент пути) → per-kind заголовок. Заменяет немой PG-триггер
+ * `notify_booking_added` (снесён в TRIP-284, активности он не уведомлял вовсе).
+ */
+const bookingEmit = (kind: string): AfterWrite => async ({ scopeValue, actor, db }) => {
+  await notify('booking_added', { trip_id: scopeValue, actor_id: actor.id, kind }, { db });
+};
+
 export const AFTER_WRITE: Record<string, AfterWrite> = {
   // Трип удалён владельцем (TRIP-416). Внешняя побочка, которую FK-каскад не
   // достаёт, ПОСЛЕ удаления строки — обе best-effort:
@@ -105,6 +115,14 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     if (addons?.telegram_assistant === true) return;
     await disconnectTripTelegram(db, { tripId: scopeValue });
   },
+
+  // Бронь добавлена — по одному ключу на вид (kind = сегмент пути); layover — это
+  // тот же реальный переезд (kind=transfer). Все 4 вида + сложный переезд эмитят.
+  'trip-booking/hotel': bookingEmit('hotel'),
+  'trip-booking/transfer': bookingEmit('transfer'),
+  'trip-booking/activity': bookingEmit('activity'),
+  'trip-booking/service': bookingEmit('service'),
+  'trip-booking/transfer-layover': bookingEmit('transfer'),
 
   // Приглашение создано/реактивировано (declined→pending) — in-app пишет notify в
   // edge, n8n шлёт email.
