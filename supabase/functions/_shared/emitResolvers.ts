@@ -18,7 +18,7 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { EmitIds } from './emit.ts';
-import { memberLeftRecipientIds } from './emitResolverRules.ts';
+import { bookingAddedRecipientIds, memberLeftRecipientIds } from './emitResolverRules.ts';
 
 export type Row = Record<string, unknown> | null;
 export type EmitData = {
@@ -33,6 +33,9 @@ export type EmitData = {
   /** Язык сообщения в чат (trip_telegram_unlinked): язык владельца трипа,
    *  резолвится вызывателем. n8n читает 0 таблиц. */
   locale?: string | null;
+  /** Тип брони (`booking_added`): сырой код hotel|transfer|activity|service —
+   *  спека выбирает по нему per-kind заголовок, рендер локализует сообщение. */
+  kind?: string | null;
 };
 
 /** Пустой конверт — когда резолвера нет (неизвестное событие) или нет `db`. */
@@ -80,6 +83,14 @@ async function loadActiveAdminIds(db: SupabaseClient, tripId: unknown): Promise<
   if (typeof tripId !== 'string' || !tripId) return [];
   const { data } = await db.from('trip_members').select('user_id')
     .eq('trip_id', tripId).eq('role', 'admin').eq('status', 'active');
+  return (data ?? []).map((r) => (r as { user_id: unknown }).user_id);
+}
+
+/** user_id всех активных участников трипа (с аккаунтом) — аудитория `booking_added`. */
+async function loadActiveMemberIds(db: SupabaseClient, tripId: unknown): Promise<unknown[]> {
+  if (typeof tripId !== 'string' || !tripId) return [];
+  const { data } = await db.from('trip_members').select('user_id')
+    .eq('trip_id', tripId).eq('status', 'active').not('user_id', 'is', null);
   return (data ?? []).map((r) => (r as { user_id: unknown }).user_id);
 }
 
@@ -176,6 +187,21 @@ export const RESOLVERS: Record<string, Resolver> = {
   trip_invite_declined: respondResolver,
   pro_activated: proResolver,
   pro_payment_failed: proResolver,
+
+  // Бронь добавлена (все 4 вида) — адресаты = владелец + активные участники, без
+  // автора. `kind` едет id-слотом (в данных трипа/актора его нет). member не нужен.
+  booking_added: async (db, ids) => {
+    const [trip, actor, memberIds] = await Promise.all([
+      loadTrip(db, ids.trip_id),
+      loadUser(db, ids.actor_id),
+      loadActiveMemberIds(db, ids.trip_id),
+    ]);
+    const recipients = await loadUsers(
+      db,
+      bookingAddedRecipientIds(trip?.created_by, memberIds, ids.actor_id),
+    );
+    return { trip, actor, member: null, recipients, kind: typeof ids.kind === 'string' && ids.kind ? ids.kind : null };
+  },
 
   // Telegram-привязка снята (ручная отвязка / потеря Pro / выход-удаление
   // участника / выключение аддона telegram_assistant). Адресат — сам чат

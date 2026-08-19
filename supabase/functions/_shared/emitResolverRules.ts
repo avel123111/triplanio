@@ -16,11 +16,30 @@ export function memberLeftRecipientIds(
   adminUserIds: unknown[],
   leaverId: unknown,
 ): string[] {
+  return audienceMinusActor([ownerId, ...adminUserIds], leaverId);
+}
+
+/**
+ * `booking_added`: аудитория inapp = владелец трипа + ВСЕ активные участники (с
+ * аккаунтом), БЕЗ самого автора брони. Зеркало SQL-триггера `notify_booking_added`
+ * (active members ∪ owner − actor). Дедуп, отброс пустых, владелец первым —
+ * детерминизм ради теста.
+ */
+export function bookingAddedRecipientIds(
+  ownerId: unknown,
+  activeMemberUserIds: unknown[],
+  actorId: unknown,
+): string[] {
+  return audienceMinusActor([ownerId, ...activeMemberUserIds], actorId);
+}
+
+/** Свести id-список к получателям: строки, дедуп, порядок стабилен, минус актора. */
+function audienceMinusActor(ids: unknown[], actorId: unknown): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const id of [ownerId, ...adminUserIds]) {
+  for (const id of ids) {
     if (typeof id !== 'string' || !id) continue;
-    if (id === leaverId || seen.has(id)) continue;
+    if (id === actorId || seen.has(id)) continue;
     seen.add(id);
     out.push(id);
   }

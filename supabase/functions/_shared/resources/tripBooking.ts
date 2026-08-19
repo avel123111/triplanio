@@ -24,10 +24,10 @@
  * это по определению `op:'rpc'` (`add_layover_transfer`). `p_actor` инъектит шов,
  * `created_by` строк ставит сама RPC = `p_actor`; клиент актора не называет.
  *
- * ☞ Уведомление «бронь добавлена»: пишется существующим триггером
- * `trg_notify_booking_added` (SECURITY DEFINER, бьёт и под service_role) — прод-
- * дырки нет. Снос триггера + декларативный `emit`→n8n — атомарно в TRIP-356.
- *   // TODO(TRIP-356): emit trip_booking_added (members+owner−actor, все 4 вида) → outbound n8n
+ * ☞ Уведомление «бронь добавлена»: эмитит шов через `AFTER_WRITE` (`mutateEffects.ts`,
+ * событие `booking_added`) для всех 4 видов + сложного переезда — как invite/member.
+ * Немой PG-триггер `notify_booking_added` снесён (TRIP-284): он не уведомлял активности
+ * и глушил сбой в `raise warning` мимо Sentry.
  *
  * Кэпы/энумы ниже — ЗЕРКАЛО CHECK живой схемы (baseline + замер dev 2026-08-12).
  * Расходиться нельзя: что БД отвергнет как 500 с текстом Postgres, шов обязан

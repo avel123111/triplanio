@@ -1,10 +1,10 @@
 /**
- * ЧИСТЫЕ РЕШАТЕЛИ ПОБОЧЕК участников (TRIP-409). Вынесены из `mutateEffects.ts`
- * (I/O: emit/teardown) РОВНО чтобы решение «какое событие / нужен ли North-Star»
- * можно было запинить тестом: `mutateEffects.ts` тянет `emit`→`sentry`/`analytics`,
- * читающие `Deno.env` на загрузке, и в env-free `deno test` не грузится вовсе
- * (тот же раскол, что `mutateRules.ts` ↔ `mutate.ts`). Здесь — только решение,
- * САМ вызов emit/teardown остаётся в I/O-половине.
+ * ЧИСТЫЕ РЕШАТЕЛИ ПОБОЧЕК шва `mutate` (TRIP-409). Вынесены из `mutateEffects.ts`
+ * (I/O: emit/teardown) РОВНО чтобы решение «какое событие / нужен ли North-Star /
+ * уведомлять ли» можно было запинить тестом: `mutateEffects.ts` тянет
+ * `emit`→`sentry`/`analytics`, читающие `Deno.env` на загрузке, и в env-free
+ * `deno test` не грузится вовсе (тот же раскол, что `mutateRules.ts` ↔ `mutate.ts`).
+ * Здесь — только решение, САМ вызов emit/teardown остаётся в I/O-половине.
  */
 
 /** По исходу RPC `respond_trip_invite` — что делает побочка. `markRead` НЕ здесь:
@@ -24,4 +24,13 @@ export function respondEffectPlan(outcome: unknown): {
  *  (offline-участнику некуда слать). Сравнивает старую роль (loadedRow) с новой. */
 export function roleChangeNotifies(beforeRole: unknown, afterRole: unknown, userId: unknown): boolean {
   return beforeRole !== afterRole && !!userId;
+}
+
+/** Уведомлять «бронь добавлена» — ТОЛЬКО при создании. Зеркалит снятый триггер
+ *  `notify_booking_added` (`AFTER INSERT REFERENCING NEW TABLE`: на UPDATE, т.е.
+ *  правке брони / прикреплении документа, transition-таблица пуста → не срабатывал).
+ *  upsert-путь брони дёргает afterWrite и на update — этот гейт восстанавливает
+ *  insert-only семантику; layover (create-only rpc) даёт isInsert=true. */
+export function bookingAddedNotifies(isInsert: boolean): boolean {
+  return isInsert;
 }

@@ -20,15 +20,19 @@ import { purgePrivateDocsForMember } from './personalDocsTeardown.ts';
 import { disconnectTripTelegram } from './telegramTeardown.ts';
 import { purgeTripBucket } from './tripStoragePurge.ts';
 import { emitTripReached2 } from './analytics.ts';
-import { respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
+import { bookingAddedNotifies, respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
 
 /** Контекст побочки: актор, загруженная ДО записи строка, результат записи,
- *  дискриминант исхода RPC, скоуп (trip_id) и service_role-клиент. */
+ *  дискриминант исхода RPC, `isInsert` (создание vs правка — уже посчитан швом,
+ *  `mutate.ts`), скоуп (trip_id) и service_role-клиент. */
 export type AfterWriteCtx = {
   actor: Actor;
   loadedRow: Record<string, unknown> | null;
   result: unknown;
   outcome: unknown;
+  /** true = запись СОЗДАНА (insert-путь: нет id и не синглтон-по-скоупу); false =
+   *  правка существующей строки. Зеркалит `AFTER INSERT`-семантику снятых триггеров. */
+  isInsert: boolean;
   scopeValue: string;
   db: SupabaseClient;
 };
@@ -56,6 +60,22 @@ async function teardownMember(db: SupabaseClient, tripId: unknown, userId: unkno
  * Реестр побочек по ключу `slug/action`. Присутствие ключа = «у действия есть
  * afterWrite» (декларация — здесь, в файле ресурса-эффектов, не на чистом спеке).
  */
+/**
+ * Бронь добавлена — уведомить владельца+участников (кроме автора) через шов `notify`
+ * (in-app пишет edge; n8n не участвует — booking in-app-only). `kind` фиксирован
+ * действием (сегмент пути) → per-kind заголовок. Заменяет немой PG-триггер
+ * `notify_booking_added` (снесён в TRIP-284, активности он не уведомлял вовсе).
+ *
+ * ТОЛЬКО на создании (`isInsert`): старый триггер был `AFTER INSERT REFERENCING NEW
+ * TABLE` — на UPDATE (правка брони, прикрепление документа к ней) transition-таблица
+ * пуста → уведомления не было. upsert-путь брони дёргает afterWrite и на update, так
+ * что гейт восстанавливает ту семантику. layover — create-only rpc → `isInsert=true`.
+ */
+const bookingEmit = (kind: string): AfterWrite => async ({ scopeValue, actor, db, isInsert }) => {
+  if (!bookingAddedNotifies(isInsert)) return;
+  await notify('booking_added', { trip_id: scopeValue, actor_id: actor.id, kind }, { db });
+};
+
 export const AFTER_WRITE: Record<string, AfterWrite> = {
   // Трип удалён владельцем (TRIP-416). Внешняя побочка, которую FK-каскад не
   // достаёт, ПОСЛЕ удаления строки — обе best-effort:
@@ -105,6 +125,14 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     if (addons?.telegram_assistant === true) return;
     await disconnectTripTelegram(db, { tripId: scopeValue });
   },
+
+  // Бронь добавлена — по одному ключу на вид (kind = сегмент пути); layover — это
+  // тот же реальный переезд (kind=transfer). Все 4 вида + сложный переезд эмитят.
+  'trip-booking/hotel': bookingEmit('hotel'),
+  'trip-booking/transfer': bookingEmit('transfer'),
+  'trip-booking/activity': bookingEmit('activity'),
+  'trip-booking/service': bookingEmit('service'),
+  'trip-booking/transfer-layover': bookingEmit('transfer'),
 
   // Приглашение создано/реактивировано (declined→pending) — in-app пишет notify в
   // edge, n8n шлёт email.

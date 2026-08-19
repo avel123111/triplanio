@@ -63,6 +63,10 @@ export type EmitIds = {
    *  no language of its own, so the caller resolves the trip owner's language
    *  once and passes it — n8n reads 0 tables. */
   locale?: string;
+  /** Тип брони для `booking_added` (hotel|transfer|activity|service). Не в данных
+   *  резолвера — приезжает id-слотом (как chat_id/locale): спека выбирает по нему
+   *  per-kind заголовок, рендер локализует сырой kind в сообщении. */
+  kind?: string;
 };
 
 /** Resolve context: the caller's service_role client + the pre-write `member`
