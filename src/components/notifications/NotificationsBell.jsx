@@ -97,9 +97,8 @@ function PopoverRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRe
   // Invite status rides the row now (getInbox joins trip_members) — no per-row
   // `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
-  const { glyph, isInvite, titleNode, messageText, messageNode } = buildNotifView(n, t, { deletedLabel: t('common.deleted_user') });
+  const { glyph, isInvite, titleNode, messageText, messageNode, showLink } = buildNotifView(n, t, { deletedLabel: t('common.deleted_user') });
   const showPending = isInvite && memberStatus === 'pending';
-  const showLink = n.trip_id && (memberStatus === 'active' || n.type !== 'trip_invite');
   const hasActions = showPending || (isInvite && memberStatus === 'active') || showLink;
 
   const actions = hasActions ? (

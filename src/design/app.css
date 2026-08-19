@@ -830,7 +830,6 @@ h4,
 .limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
 .app-header .app-header__avatar,
 .avatar--lg,
-.chat-bubble,
 .chat-ov, .chat-ta,
 .pro-hero__sub,
 .notes-block,
@@ -871,7 +870,29 @@ h4,
    visual-diff-exempt: .t-support font-weight — новый канон (400)
    visual-diff-exempt: .t-support line-height — новый канон (1.45)
    visual-diff-exempt: .t-support letter-spacing — новый канон (0) */
-.t-support { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
+/* Сообщения чата (все 3 поверхности: лента группы, виджет, AI-планер) съезжают с
+   Body(15) на Support(13) — плотнее, как в мессенджерах (запрос Pavel). `.chat-bubble`
+   = свои/чужие пузыри, `.chat-reply__text` = контейнер прозы бота, а `.chat-reply__text
+   .cm-p` — САМИ абзацы: их иначе перебивает co-selector `.card p` (Body 15) той же
+   группы, т.к. `.chat-reply__card` это `.card`, а `.card p` (0,1,1) специфичнее
+   наследования от контейнера (0,1,0). Ввод (`.chat-ta`/`.chat-ov`) НАМЕРЕННО остаётся
+   на Body — это не сообщение.
+   visual-diff-exempt: .chat-bubble font-size — сообщение Body→Support (15→13), запрос Pavel
+   visual-diff-exempt: .chat-bubble line-height — сообщение Body→Support (1.55→1.45)
+   visual-diff-exempt: .chat-reply__text font-family — проза бота на канон Support (была наследована)
+   visual-diff-exempt: .chat-reply__text font-size — проза бота Body→Support (15→13)
+   visual-diff-exempt: .chat-reply__text font-weight — канон Support (400)
+   visual-diff-exempt: .chat-reply__text line-height — канон Support (1.45)
+   visual-diff-exempt: .chat-reply__text letter-spacing — канон Support (0)
+   visual-diff-exempt: .cm-p font-size — абзацы бота Body→Support (15→13), перебивают .card p, запрос Pavel
+   visual-diff-exempt: .cm-p font-family — абзацы бота на канон Support
+   visual-diff-exempt: .cm-p font-weight — канон Support (400)
+   visual-diff-exempt: .cm-p line-height — канон Support (1.45)
+   visual-diff-exempt: .cm-p letter-spacing — канон Support (0) */
+.t-support,
+.chat-bubble,
+.chat-reply__text,
+.chat-reply__text .cm-p { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
 .t-meta,
 .pl-ai-chips .fpill,     /* TRIP-337: чипы-подсказки AI-планнера на канон Meta (у .fpill свой `font: inherit`, поэтому нужен селектор специфичнее) */
 .dock-panel__id span,    /* TRIP-337 инсп.: подзаголовок виджета чата off-canon→Meta */
@@ -1906,6 +1927,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .acc__chev { flex: none; display: inline-flex; color: var(--muted); transform: rotate(0deg); transition: transform .18s var(--ease-out); }
 .acc.is-open .acc__chev { transform: rotate(90deg); }
 .acc__body { padding: 14px; border-top: 1px solid var(--line); }
+/* Слот trailing аккордеона (кнопка удаления layover-сегмента трансфера) собран из
+   примитивов `.row` + `.grow` — новых имён и правил ноль: заголовок несёт `.grow`
+   (тянется), действие прижато справа своим паддингом. Нужен потому, что <Btn> нельзя
+   вложить в кнопку-заголовок <button>. TRIP-337 №4 — унификация рукописного
+   аккордеона-сегмента на канон `.acc` (инлайны/lucide-шеврон сняты).
+   Транспортный тон сегмента приходит каналом `--seg-c` с корня leg (Accordion/div):
+   его читают метки «Откуда/Куда» (`.eed-fromto`) — раньше цвет ставился ИНЛАЙНОМ на
+   каждой. Вне сегмента `--seg-c` не задан → `var()` невалиден → метка держит свой цвет.
+   Eyebrow «Сегмент N · тип» в шапке теперь на дефолтном тоне канона (был инлайн-цвет) —
+   транспортный тон несут плитка-иконка и метки маршрута.
+   visual-diff-exempt: .eed-fromto color — цвет сегмента перенесён из инлайна в канал --seg-c (то же значение) */
+.eed-fromto { color: var(--seg-c); }
 /* Lumo DS inputs: типографику держит канон `.t-body` (co-selector выше по
    файлу), форму - рамка `--line-strong` и кольцо фокуса `--primary-ring`.
    Числа здесь намеренно НЕ повторяются: эта шапка уже дважды расходилась с
@@ -3593,21 +3626,25 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   border-radius: var(--r-btn);
   box-shadow: var(--sh-2);
 }
-/* Dark theme: the floating panel (header + body + footer) drops from the raised
-   white surface to the app background, so it reads as one dim panel over the map
-   instead of a bright card (Pavel, TRIP-337). Scoped to the planner — the shared
-   `.lp-f` keeps its `--wash` everywhere else. Body (`.lp-b`) is transparent, so it
-   inherits the panel; only the header/footer, which set their own fill, are re-set. */
-[data-theme="dark"] .flow-editcol > .lp,
-[data-theme="dark"] .flow-editcol .flow-lp-h,
-[data-theme="dark"] .flow-editcol .lp-f { background: var(--bg); }
+/* Панель флоу (планировщик): header/footer СИДЯТ на фоне приложения (--bg), а тело
+   (`.lp-b`, прозрачное → `.lp` = --surface) остаётся белой карточкой — в ОБЕИХ темах
+   (запрос Pavel: в light шапка/футер = фон, тело белое; в dark так уже было). Фон
+   header/footer задан в базе (`.flow-lp-h` + `.flow-editcol .lp-f` ниже), поэтому
+   тёмная тема отдельного правила на них не требует. В dark дополнительно тускнеет
+   САМА панель — тело перестаёт быть ярко-белым и уходит на --bg: */
+[data-theme="dark"] .flow-editcol > .lp { background: var(--bg); }
 /* Floating round "back" control on the map (canon layout, reused on other
    screens): white surface circle (icon-btn--outline) top-left, over the map.
    Hidden by default; shown on the mobile shell where the app header is removed. */
 .map-back { position: absolute; top: 12px; left: 12px; z-index: 3; box-shadow: var(--sh-1); display: none; }
 /* Progress header — non-scrolling top of the panel. Row so the reset control
    (relocated out of the action bar) sits at the top-right, quiet. */
-.flow-lp-h { flex: none; padding: var(--sp-6) var(--sp-7); border-bottom: 1px solid var(--line); background: var(--surface); display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Шапка на фоне приложения (--bg), не на белой поверхности — тело белое, шапка/футер
+   с ним контрастируют (запрос Pavel №2). В dark то же --bg (панель тускнеет целиком). */
+.flow-lp-h { flex: none; padding: var(--sp-6) var(--sp-7); border-bottom: 1px solid var(--line); background: var(--bg); display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Футер флоу — тот же фон приложения, что и шапка; scoped к .flow-editcol, поэтому
+   общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся на своём --wash (запрос Pavel №2). */
+.flow-editcol .lp-f { background: var(--bg); }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 /* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
@@ -4398,6 +4435,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      The slide needs `background-position` in the transition — the base `.chat-send`
      transition doesn't carry it, so redeclare here (mirrors the `.btn` base). */
 .chat-composer--ai .chat-composer__in { max-width: none; padding: 0; }
+/* Круглая send-кнопка (`.chat-send`) в AI-градиенте — ОСТАВЛЕНА дремлющей: на AI-шаге
+   теперь рисуется слитая `.chat-cta`, но `.chat-send` ещё живёт в чате группы/виджета,
+   и снятие этих правил не дало бы визуального эффекта, но краснило бы 2p снятием
+   объявлений. */
 .chat-composer--ai .chat-send {
   background: var(--ai-gradient); background-origin: border-box; background-size: 170% 170%;
   box-shadow: 0 6px 16px -9px var(--ai);
@@ -4405,6 +4446,36 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 .chat-composer--ai .chat-send:hover { filter: none; background-position: 100% 0; }
 .chat-composer--ai .chat-send:disabled { box-shadow: none; }
+/* Слитая кнопка «Отправить ⇄ Далее» AI-планера (ChatComposer): вариант `ai` даёт
+   AI-градиент, высота из `.btn` (min-height: --ctl-h). ПЛАВНЫЙ морф: есть текст →
+   компактная иконка отправки (`--send`), лейбл «Далее» сворачивается grid-колонкой
+   1fr→0fr (анимируемая ширина) + gap кнопки схлопывается 8→0; пусто → стрелка + «Далее».
+   floor-exempt: classes +3 — .chat-cta/.chat-cta--send/.chat-cta__lbl (слитая кнопка send⇄next AI-планера, плавный морф), апрув Pavel №7
+   floor-exempt: triage +3 — те же в семье chat (под разбором), апрув Pavel №7
+   floor-exempt: layout +2 — .chat-cta__lbl (grid, механизм морфа ширины) + .chat-cta--send (gap:0), апрув Pavel №7
+   visual-diff-exempt: .chat-cta transition — новый морф ширины кнопки (gap), апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl display — грид-обёртка лейбла для морфа ширины, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl grid-template-columns — колонка лейбла 1fr↔0fr (морф ширины), апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl transition — плавность морфа лейбла, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl opacity — затухание лейбла при сворачивании, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl > span overflow — клип сворачиваемого лейбла, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl > span white-space — лейбл в одну строку при морфе, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl > span min-width — 0 для корректного схлопа грид-колонки, апрув Pavel №7
+   visual-diff-exempt: .chat-cta--send gap — схлоп зазора кнопки при send-режиме (иконка без лейбла), апрув Pavel №7
+   visual-diff-exempt: .chat-cta--send grid-template-columns — лейбл свёрнут в send-режиме, апрув Pavel №7
+   visual-diff-exempt: .chat-cta--send opacity — лейбл прозрачен в send-режиме, апрув Pavel №7 */
+.chat-cta { transition: gap .22s var(--ease-out); }
+.chat-cta__lbl { display: grid; grid-template-columns: 1fr; transition: grid-template-columns .22s var(--ease-out), opacity .18s var(--ease-out); }
+.chat-cta__lbl > span { overflow: hidden; white-space: nowrap; min-width: 0; }
+.chat-cta--send { gap: 0; }
+.chat-cta--send .chat-cta__lbl { grid-template-columns: 0fr; opacity: 0; }
+/* Пилюля «Трипланио печатает»: верх был ~20px (паддинг композера 12 + собственный
+   margin-top 8 пилюли), низ 8 (шаг .col--g4) — перекос 2.5×. Верх композера подрезан
+   до того же шага, лишний margin пилюли снят → симметрия 8/8 (запрос Pavel).
+   visual-diff-exempt: .chat-composer--ai padding-top — верх композера на --sp-4 (баланс пилюли «думает»)
+   visual-diff-exempt: .chat-composer--ai margin-top — снят верхний отступ пилюли (правило .chat-composer--ai .chat-overline), баланс 8/8 */
+.chat-composer--ai { padding-top: var(--sp-4); }
+.chat-composer--ai .chat-overline { margin-top: 0; }
 /* Call the assistant without knowing the "@" convention.
    ★Тон `ai` в каноне - это ХОВЕР-тинт (так его носит крестик AI-блока). Эта
    кнопка - единственная, которая несёт тот же тинт В ПОКОЕ, поэтому заливка
@@ -6552,8 +6623,14 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* ── Мобильные переопределения ─────────────────────────────── */
 @media (max-width: 640px) {
   .tc-grid { grid-template-columns: 1fr; gap: 14px; }
-  .tc { min-height: 220px; }
-  .tc__in { min-height: 220px; }
+  /* Постер-КАРТОЧКИ на мобиле выше (220), но полоса-шапка `.tc--band` (превью трипа
+     в планировщике) держит свои 120: раньше `.tc{220}` перебивал `.tc--band{120}`
+     по порядку, а внутренний `.tc__in` оставался 120 (специфичнее) — заголовок
+     повисал в СЕРЕДИНЕ 220-градиента. Исключаем band из мобильной высоты.
+     visual-diff-exempt: .tc {@media (max-width: 640px)} min-height — правило сужено до :not(.tc--band), band больше не тянется до 220 (фикс центрирования заголовка), апрув Pavel №8
+     visual-diff-exempt: .tc:not(.tc--band) {@media (max-width: 640px)} min-height — постер-карточки держат 220, band исключён, апрув Pavel №8 */
+  .tc:not(.tc--band) { min-height: 220px; }
+  .tc:not(.tc--band) .tc__in { min-height: 220px; }
   .tc-add { min-height: 220px; }
   .limitcard { padding: 16px; gap: 12px 14px; }
   /* icon + text share row 1; CTA drops to its own full-width row 2 */

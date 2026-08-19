@@ -21,7 +21,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Badge, Toggle, Btn, Card, IconBtn, Tile, Seg, Severity, useToast } from '@/design/index';
 import {
-  Trash2, ChevronDown, ArrowRight, Repeat,
+  Trash2, ArrowRight, Repeat,
   Plane, Car as CarIcon, ShieldCheck,
   BedDouble, Ticket,
 } from 'lucide-react';
@@ -1803,7 +1803,6 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           onTimeMissing={(which, v) => setTime(which === 'dep' ? 'start' : 'end', v)}
           legNumber={null}
           isMulti={false}
-          collapsible={false}
           fromName={fromVisit?.city_name || '-'}
           toName={toVisit?.city_name || '-'}
           toCityEditable={false}
@@ -1852,7 +1851,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
 // time-missing key (`onTimeMissing`). No save-path changes — purely presentational.
 function TransferLegCard({
   leg, patch, aiHas, vf, onTimeMissing,
-  legNumber, isMulti, collapsible, open, onToggleOpen, onRemove,
+  legNumber, isMulti, open, onToggleOpen, onRemove,
   fromName, toName, toCityEditable, layoverCityPh,
   startTz, endTz, issues, color, t,
 }) {
@@ -1862,53 +1861,19 @@ function TransferLegCard({
   // Within-leg duration (departure → arrival) for the date-block hint —
   // same "minutes between two ISO locals, non-negative or null" as the layover gap.
   const durMin = layoverMins(leg.startLocal, leg.endLocal);
-  const isOpen = collapsible ? open : true;
-  // TRIP-186/343: сегмент «с пересадками» (isMulti) — поверхность-аккордеон, идёт
-  // через `<Card radius="md" pad="none" className="acc">` (рамку/заливку/скругление/
-  // обрезку держит Card + класс-остаток .acc). Одиночный (direct) трансфер оголён —
-  // обычный div без скина. Носитель поэтому ДИНАМИЧЕСКИЙ (не-Card ветка без скина).
-  const Seg = isMulti ? Card : 'div';
-  const segProps = isMulti ? { radius: 'md', pad: 'none', className: 'acc' } : {};
-  return (
-    <Seg {...segProps}>
-      {isMulti && (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
-        {/* TRIP-391 объект 1: кнопка-обёртка = ЗАГОЛОВОК аккордеона-сегмента
-            (прозрачный full-bleed, раскрывает/сворачивает) → объект 6, не примитив
-            Btn. Значок внутри — плитка 34×34, тон каналом --hl → <Tile> (объект 3). */}
-        <button type="button" onClick={collapsible ? onToggleOpen : undefined}
-          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
-          <Tile as="span" style={{ '--hl-soft': TYPE_META.transfer.soft, '--hl-ink': color }}>
-            <TIcon />
-          </Tile>
-          <span style={{ minWidth: 0, flex: 1 }}>
-            <span className="eyebrow" style={{ color, display: 'block' }}>{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
-            <span className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
-              <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
-            </span>
-          </span>
-          {collapsible && <span className="muted t-meta" style={{ flexShrink: 0 }}>{isOpen ? t('event.collapse') : t('event.expand')}</span>}
-          {collapsible && <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />}
-        </button>
-        {onRemove && (
-          <Btn variant="quiet" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
-            <Trash2 size={14} />
-          </Btn>
-        )}
-      </div>
-      )}
+  const isOpen = isMulti ? open : true;
 
-      <div style={{ display: isOpen ? 'block' : 'none', padding: isMulti ? '4px 14px 14px' : 0, borderTop: isMulti ? '1px solid var(--line)' : 'none' }}>
-        {isMulti && <div style={{ height: 10 }} />}
+  // Тело сегмента — ОДИНАКОВО для прямого трансфера и layover-сегмента; в layover
+  // Accordion сам оборачивает его в `.acc__body` (паддинг/бордер), своей обёртки нет.
+  const body = (
+    <>
         <div className="field__label" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
         <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
 
         {/* From / To — city (readonly endpoint, or layover picker) + address */}
         <div className="fld-grid grid grid--2" style={{ marginTop: 14 }}>
           <div>
-            <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
+            <div className="eed-fromto">{t('event.from')}</div>
             <div className="eed-accrow">
               <Label>{t('event.city')}</Label>
               <input className="input" value={fromName} readOnly tabIndex={-1} title={t('event.city_from_route_title')} />
@@ -1926,7 +1891,7 @@ function TransferLegCard({
             </div>
           </div>
           <div>
-            <div className="eed-fromto" style={{ color }}>{t('event.to')}</div>
+            <div className="eed-fromto">{t('event.to')}</div>
             <div className="eed-accrow" data-vfield={toCityEditable ? vf('toCity') : undefined}>
               <Label>{t('event.city')}</Label>
               {toCityEditable ? (
@@ -2008,8 +1973,41 @@ function TransferLegCard({
             </div>
           </div>
         </div>
-      </div>
-    </Seg>
+    </>
+  );
+
+  // Прямой (одиночный) трансфер — тело без скина и без раскрывашки. Канал цвета
+  // сегмента `--seg-c` на корне (транспортный тон читают `.eed-fromto` из CSS).
+  if (!isMulti) return <div style={{ '--seg-c': color }}>{body}</div>;
+
+  // Layover-сегмент → канон-аккордеон <Accordion> (тот же, что в профиле и секциях
+  // события): скин/шеврон/анимацию/тело даёт компонент. Здесь — только богатая шапка
+  // (плитка-тинт + № сегмента + маршрут from→to) в слоте header и удаление сегмента
+  // в слоте trailing (в кнопку-заголовок <button> его вложить нельзя).
+  return (
+    <Accordion
+      open={isOpen}
+      onToggle={onToggleOpen}
+      style={{ '--seg-c': color }}
+      header={(
+        <>
+          <Tile as="span" style={{ '--hl-soft': TYPE_META.transfer.soft, '--hl-ink': color }}><TIcon /></Tile>
+          <span className="acc__titles">
+            <span className="eyebrow">{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
+            <span className="row row--g3 t-label">
+              <span className="trunc">{fromName}</span>
+              <ArrowRight size={12} className="muted" style={{ flexShrink: 0 }} />
+              <span className="trunc">{toName}</span>
+            </span>
+          </span>
+        </>
+      )}
+      trailing={onRemove ? (
+        <Btn variant="quiet" onClick={onRemove} title={t('event.remove_segment')}><Trash2 size={14} /></Btn>
+      ) : undefined}
+    >
+      {body}
+    </Accordion>
   );
 }
 
@@ -2208,7 +2206,6 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
               onTimeMissing={(which, v) => setTime(`seg${i}-${which}`, v)}
               legNumber={i + 1}
               isMulti
-              collapsible
               open={open}
               onToggleOpen={() => toggleOpen(seg, i)}
               onRemove={N > 2 ? () => removeSegment(i) : null}

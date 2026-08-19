@@ -1292,6 +1292,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     // Make the optionality discoverable: with no origin picked the primary CTA
     // reads "Пропустить" (not "Дальше"), so the user knows the step is skippable.
     if (!isAi && !home?.city_name) primaryLabel = t('planner.skip');
+    // AI-вход: отдельного футер-ряда нет — Reset убран, а «Далее» слито в кнопку
+    // композера (пусто → Далее, есть текст → Отправить). Так внизу один ряд.
+    if (isAi) showFooter = false;
   } else if (step === 'cities') {
     primaryDisabled = !citiesValid;
   } else if (step === 'review') {
@@ -1419,6 +1422,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                 disabled={aiState === 'generating'}
                 isThinking={aiState === 'generating'}
                 placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
+                /* Слитая кнопка: пусто → «Далее» (переход к шагу 2, доступен когда бот
+                   собрал черновик), есть текст → «Отправить». Gate тот же, что был у
+                   футер-кнопки Next на AI-шаге (aiState==='draft'). */
+                nextAction={goNext}
+                nextLabel={t('planner.next')}
+                nextDisabled={aiState !== 'draft'}
               />
             )}
 

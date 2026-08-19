@@ -96,8 +96,8 @@ export default function PanelAi({ aiMessages = [], onGenerate }) {
     <div>
       {aiMessages.map((m) => {
         if (m.role === 'user') return <UserMessage key={m.id} text={m.text} />;
-        if (m.kind === 'welcome') return <BotMessage key={m.id}><span className="t-body" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span></BotMessage>;
-        if (m.kind === 'error') return <BotMessage key={m.id}><span className="t-body">{t('ai_plan.error_plan_title')}</span></BotMessage>;
+        if (m.kind === 'welcome') return <BotMessage key={m.id}><span className="t-support" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span></BotMessage>;
+        if (m.kind === 'error') return <BotMessage key={m.id}><span className="t-support">{t('ai_plan.error_plan_title')}</span></BotMessage>;
         return (
           <BotMessage key={m.id}>
             {m.text ? <div className="chat-reply__text"><ChatMarkdown text={m.text} linkClassName="cm-a cm-a--brand" /></div> : null}
