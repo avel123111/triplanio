@@ -44,22 +44,22 @@ function fitPaddingFor(w, bottomInset = 0) {
 // The neutral "start" globe view (before any route is picked, and what a draft
 // RESET returns to). Mapbox globe: at zoom z the equatorial circumference spans
 // 512·2^z px, so the sphere's on-screen diameter ≈ 512·2^z/π. Invert that to the
-// zoom whose globe fills ~85% of the MAP's height — clamped so it never grows wider
-// than the strip left visible beside the floating panel (else it tucks behind it).
-// This is why a wide screen no longer shows a tiny planet: the size now tracks the
-// container, not a fixed zoom. Phones keep a fixed start zoom — their short map band
-// already frames the globe and Pavel asked to leave mobile un-adaptive. Coefficients
-// are eyeballed; nudge them here if the globe reads a touch big/small.
-function startGlobeView(map, pad, winW) {
+// zoom whose globe fills ~85% of the VISIBLE area (the container minus the padding
+// the caller reserved — the floating panel on desktop, the bottom sheet on phones).
+// So the globe tracks the room actually left for it, on every screen: a wide desktop
+// no longer shows a tiny planet, and a phone sizes + centres the globe into the strip
+// above the sheet, re-fitting as the sheet is dragged (the sheet height rides in via
+// `pad.bottom`). Coefficients are eyeballed; nudge them here if it reads big/small.
+function startGlobeView(map, pad) {
   const center = [0, 20];
-  if (winW <= 960) return { center, zoom: 2 };
   const el = map.getContainer?.();
   const H = el?.clientHeight || 0;
   const W = el?.clientWidth || 0;
-  if (!H || !W) return { center, zoom: 2.4 };
-  const visW = Math.max(360, W - pad.left - pad.right); // room right of the panel
-  const targetD = Math.min(0.85 * H, 0.92 * visW);
-  const zoom = Math.max(0.8, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
+  if (!H || !W) return { center, zoom: 2 };
+  const visH = Math.max(140, H - pad.top - pad.bottom);
+  const visW = Math.max(280, W - pad.left - pad.right);
+  const targetD = Math.min(0.85 * visH, 0.92 * visW);
+  const zoom = Math.max(0.5, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
   return { center, zoom };
 }
 
@@ -191,6 +191,9 @@ export default function FlowMap({
   // Did the previous fit draw a route? Lets the empty branch tell a fresh mount /
   // resize (snap to the start globe) apart from a draft RESET (glide back out).
   const prevHadPointsRef = useRef(false);
+  // Has the idle globe been shown at least once? Lets a drag-driven re-centre glide
+  // (easeTo) while the very first paint still snaps (hidden behind the reveal cover).
+  const globeShownRef = useRef(false);
   // The fitKey the camera was last framed for — so a marker rebuild that leaves the
   // route geometry unchanged (a step change) doesn't re-fit. Reset when the route
   // empties, so the next real route frames again.
@@ -235,17 +238,24 @@ export default function FlowMap({
         prevHadPointsRef.current = true;
       } else {
         // Empty globe = the neutral START view. Offset the projection into the
-        // visible area (setPadding), recentre to the world, and size the globe to
-        // ~85% of the map's height (desktop) so a wide screen no longer shows a
-        // tiny planet. Returning here from a route (draft RESET) glides back out;
-        // a fresh mount / resize just snaps (the fade-in hides it).
-        try { map.setPadding(pad); } catch { /* ignore */ }
-        const view = startGlobeView(map, pad, winW);
-        if (prevHadPointsRef.current) {
-          try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
+        // VISIBLE area with setPadding (the sheet's covered height rides in via
+        // pad.bottom on phones), recentre to the world, and size the globe to ~85%
+        // of that visible area — so the planet centres in the strip above the sheet
+        // and re-fits as the sheet is dragged. Clamp the reserved bottom so a tall
+        // sheet always leaves a real strip for the globe (never pushes it off-screen).
+        const contH = map.getContainer?.()?.clientHeight || 0;
+        const spad = { ...pad, bottom: Math.min(pad.bottom, Math.max(0, contH - pad.top - 140)) };
+        try { map.setPadding(spad); } catch { /* ignore */ }
+        const view = startGlobeView(map, spad);
+        // Route RESET (had points) glides 600ms; a drag-driven re-centre glides 300ms;
+        // only the very first idle paint snaps (hidden behind the reveal cover).
+        if (prevHadPointsRef.current || globeShownRef.current) {
+          const duration = prevHadPointsRef.current ? 600 : 300;
+          try { map.easeTo({ ...view, duration }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
         } else {
           try { map.jumpTo(view); } catch { /* ignore */ }
         }
+        globeShownRef.current = true;
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';
       }

@@ -3722,6 +3722,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} inset — то же (inset:0)
      visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} position — то же (relative→absolute)
      visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} position — шит: абсолютный оверлей у низа вьюпорта
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} top — сброс top:0 десктопа, иначе шит липнет к верху
      visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} bottom — то же (bottom:0)
      visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} left — то же (left:0)
      visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} right — то же (right:0)
@@ -3747,7 +3748,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      The map covered below is a separate element, so shrinking the sheet just uncovers
      it. Detents: peek (~22%) / default (~68%) / full (100%). */
   .flow-editcol {
-    position: absolute; left: 0; right: 0; bottom: 0;
+    /* top:auto is REQUIRED — the desktop rule pins top:0, and top:0 + bottom:0 +
+       an explicit height would top-anchor the sheet (it stuck to the top of the
+       screen with the map showing below). Bottom-anchored, height-driven. */
+    position: absolute; top: auto; left: 0; right: 0; bottom: 0;
     height: var(--sheet-h, 68%); max-height: 100%;
     display: flex; width: auto; padding: 0; margin: 0;
     z-index: 2; pointer-events: auto;
