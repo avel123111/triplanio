@@ -30,12 +30,15 @@ function buildLegs(home, cities, returnCity, finalPoint, drawReturn) {
 // width on the left. On phones (≤960) the map is its own top band with the sheet
 // below it, so only a little bottom room is reserved for the sheet's overlap.
 // Mirror the CSS: .flow-editcol width = min(550px, 44vw); breakpoint 960.
-function fitPaddingFor(w) {
+// `bottomInset` (mobile only) = the height of the sheet currently covering the map
+// from the bottom, so the route frames in the strip left VISIBLE above the sheet as
+// it's dragged between detents. 0 on desktop (the sheet floats left, not bottom).
+function fitPaddingFor(w, bottomInset = 0) {
   if (w > 960) {
     const panel = Math.min(550, w * 0.44);
     return { top: 48, right: 48, bottom: 48, left: Math.round(panel + 40) };
   }
-  return { top: 32, right: 40, bottom: 52, left: 40 };
+  return { top: 32, right: 40, bottom: 52 + Math.max(0, bottomInset), left: 40 };
 }
 
 // The neutral "start" globe view (before any route is picked, and what a draft
@@ -80,6 +83,10 @@ export default function FlowMap({
   // CITY still feeds the camera framing whenever it's a distinct place (see the fit
   // effect), so stepping between steps toggles what's drawn WITHOUT re-framing.
   drawReturn = false,
+  // Height (px) of the bottom sheet covering the map on the phone shell, so the fit
+  // reserves it and the route stays framed above the sheet as it's dragged. 0 = no
+  // reserve (desktop, or sheet at full where framing doesn't matter).
+  bottomInset = 0,
   // Map-lens-style interactivity (all optional — omit for a passive preview):
   hoveredId = null, selectedId = null, cityBadge = null,
   onCityHover, onCityClick, onMapClick,
@@ -172,7 +179,7 @@ export default function FlowMap({
   if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
   cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
   if (hasDistinctReturn) fitPositions.push([returnCity.longitude, returnCity.latitude]);
-  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
+  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}+${bottomInset}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // A FlowMap-owned handle to the (singleton) map instance. useMapSurface nulls its
@@ -212,7 +219,7 @@ export default function FlowMap({
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
     if (canFit) {
-      const pad = fitPaddingFor(winW);
+      const pad = fitPaddingFor(winW, bottomInset);
       if (fitPositions.length) {
         // Route: re-frame ONLY when the route geometry / viewport actually changed
         // (fitKey) — a step change rebuilds pins above but leaves fitKey alone, so
@@ -252,7 +259,7 @@ export default function FlowMap({
     // without ptsKey (a distinct return set while off the return step), so both are deps.
     // winW/winH are read directly inside (fitPaddingFor / startGlobeView) — listed so
     // exhaustive-deps stays honest, though fitKey already carries them.
-  }, [ready, canFit, ptsKey, fitKey, winW, winH]);
+  }, [ready, canFit, ptsKey, fitKey, winW, winH, bottomInset]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering the city list is cheap). Re-runs after a rebuild too

@@ -32,8 +32,25 @@ import PanelAi from '@/pages/create/PanelAi';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
+import { useSheetDetents } from '@/lib/useSheetDetents';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
+
+// Reactive `(max-width: <px>)` match. Used to switch the planner between the
+// desktop floating panel and the mobile draggable sheet at the sheet breakpoint
+// (960px — the same one the CSS uses).
+function useMaxWidth(px) {
+  const q = `(max-width: ${px}px)`;
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => {
+    const mql = window.matchMedia(q);
+    const on = () => setM(mql.matches);
+    mql.addEventListener('change', on);
+    on();
+    return () => mql.removeEventListener('change', on);
+  }, [q]);
+  return m;
+}
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
 function daysBetweenISO(a, b) {
@@ -774,6 +791,13 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
 
+  // Mobile shell (≤960px): the step panel is a draggable bottom sheet over a
+  // full-bleed map — detents peek / default / full, and it auto-raises to full while
+  // the keyboard is up (useSheetDetents owns the gesture + keyboard follow). Desktop
+  // (>960px) keeps the floating left panel; the hook is disabled there.
+  const isSheet = useMaxWidth(960);
+  const sheet = useSheetDetents({ enabled: isSheet });
+
   // NB: no <body> scroll-lock here. The planner shell (.flow-page) is a 100dvh
   // overflow:hidden root — the same fixed-shell pattern as .app-shell on every
   // other screen — so the document never scrolls and the static header stays put,
@@ -1344,6 +1368,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               hoveredId={hoveredMapId}
               selectedId={selectedMapId}
               cityBadge={cityBadge}
+              // Reserve the sheet's covered height so the route frames in the strip
+              // left visible above it as it's dragged (0 at full — map is hidden then).
+              bottomInset={isSheet && !sheet.isFull ? sheet.settledHeightPx : 0}
               onCityHover={setHoveredMapId}
               onCityClick={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
               onMapClick={() => setSelectedMapId(null)}
@@ -1351,9 +1378,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           </div>
         </div>
 
-        <div className="flow-editcol">
+        <div
+          ref={sheet.rootRef}
+          className={'flow-editcol' + (isSheet && sheet.isDragging ? ' is-dragging' : '')}
+          style={sheet.sheetStyle}
+        >
           <div className="lp">
-            <div className="flow-lp-h">
+            {/* Sheet drag zone (mobile): the progress header + grabber grow/shrink the
+                sheet between detents; the body scrolls natively. */}
+            <div className="flow-lp-h" data-sheet-drag>
               {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
                   "next" hint wraps INSIDE this column instead of overflowing and
                   shoving the reset control off the narrow mobile sheet header. */}
@@ -1367,7 +1400,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               </div>
             </div>
 
-            <div className="lp-b scrollbar-thin flow-lp-b">
+            <div ref={sheet.bodyRef} className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
                 <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
               ) : (

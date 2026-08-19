@@ -3710,25 +3710,65 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* grid (not inline-flex): keeps the base `.icon-btn` place-items:center so the
      arrow stays centred; inline-flex would drop it to the top-left corner. */
   .map-back { display: grid; }
-  /* Grid is a fixed-height flex column that does NOT scroll; the sheet body does. */
-  .flow-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-  /* Map: fixed band at the top, edge-to-edge (no inset frame / radius). */
-  .flow-mapcol { flex: 0 0 32%; position: relative; min-height: 0; }
+  /* Guard 2p (check:semantics): the phone shell moves from a fixed 32%/68% split to
+     a full-bleed map + a draggable detent sheet (peek / default / full) whose height
+     is JS-driven. Every declaration change below is that intentional re-layout —
+     approved by Pavel (preview). One line per printed key:
+     visual-diff-exempt: .flow-grid {@media (max-width: 960px)} display — шелл: карта на весь фон, шит поверх
+     visual-diff-exempt: .flow-grid {@media (max-width: 960px)} flex — то же (сетка больше не flex-колонка)
+     visual-diff-exempt: .flow-grid {@media (max-width: 960px)} flex-direction — то же
+     visual-diff-exempt: .flow-grid {@media (max-width: 960px)} position — контекст позиционирования для абсолютных карты+шита
+     visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} flex — карта из верхней ленты 32% в full-bleed
+     visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} inset — то же (inset:0)
+     visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} position — то же (relative→absolute)
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} position — шит: абсолютный оверлей у низа вьюпорта
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} bottom — то же (bottom:0)
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} left — то же (left:0)
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} right — то же (right:0)
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} height — высота из детента (--sheet-h), не flex:1
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} max-height — потолок 100% вьюпорта
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} margin-top — снят 16px-нахлёст старого сплита
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} transition — плавный переход высоты между детентами
+     visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} will-change — подсказка компоновщику (height)
+     visual-diff-exempt: .is-dragging {@media (max-width: 960px)} transition — .flow-editcol.is-dragging: следовать пальцу 1:1
+     visual-diff-exempt: .flow-lp-h {@media (max-width: 960px)} touch-action — шапка = drag-зона шита
+     visual-diff-exempt: .flow-lp-h {@media (max-width: 960px)} cursor — то же (grab)
+  */
+  /* Positioning context for the full-bleed map + the sheet floating over it. */
+  .flow-grid { display: block; position: relative; min-height: 0; overflow: hidden; }
+  /* Map is the full-bleed background — a fixed-size element the sheet slides over,
+     so dragging the sheet never resizes the Mapbox canvas (only reveals more of it). */
+  .flow-mapcol { position: absolute; inset: 0; min-height: 0; }
   .flow-mapbox { position: absolute; inset: 0; margin: 0; border: none; border-radius: 0; }
-  /* Sheet: fills the rest and overlaps the map by 16px with a rounded top. */
+  /* Draggable bottom sheet: pinned to the viewport bottom, its HEIGHT driven by the
+     `--sheet-h` custom property (useSheetDetents writes it live; the 68% fallback is
+     the default detent when JS hasn't run). Height — not translateY — so the action
+     footer stays pinned at the bottom and the body scrolls in between at every detent.
+     The map covered below is a separate element, so shrinking the sheet just uncovers
+     it. Detents: peek (~22%) / default (~68%) / full (100%). */
   .flow-editcol {
-    position: relative; flex: 1 1 auto; min-height: 0;
-    display: flex; width: auto; padding: 0;
-    margin-top: calc(-1 * var(--sp-7)); z-index: 2; pointer-events: auto;
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: var(--sheet-h, 68%); max-height: 100%;
+    display: flex; width: auto; padding: 0; margin: 0;
+    z-index: 2; pointer-events: auto;
+    transition: height .28s cubic-bezier(.4, 0, .2, 1);
+    will-change: height;
   }
+  /* While the finger is down the sheet follows it 1:1 — no easing. */
+  .flow-editcol.is-dragging { transition: none; }
   .flow-editcol > .lp {
     flex: 1; min-height: 0; margin: 0;
     border: none; border-radius: var(--r-xl) var(--r-xl) 0 0;
     /* elevation from the base .lp (var(--sh-1), token) — no raw shadow colour;
        the rounded top over the map already reads as a sheet at the seam. */
   }
-  /* Grabber handle at the top of the sheet header. */
-  .flow-lp-h { position: relative; padding-top: var(--sp-8); }
+  /* At the peek detent the body collapses to nothing (flex:1 + min-height:0) so the
+     sheet shows just the grip + progress + action bar over a wide-open map; raising
+     it grows the body back. No extra class needed — the height shrink does it. */
+  /* Grabber handle at the top of the sheet header; the whole header is the drag zone
+     (data-sheet-drag), so `touch-action: none` lets a vertical drag move the sheet
+     instead of scrolling — taps on the progress steps still fire. */
+  .flow-lp-h { position: relative; padding-top: var(--sp-8); touch-action: none; cursor: grab; }
   .flow-lp-h::before {
     content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
     width: 38px; height: 4px; border-radius: 2px; background: var(--line-strong);
