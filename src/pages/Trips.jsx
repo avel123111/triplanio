@@ -44,8 +44,8 @@ function scopeLabel(t, visits = []) {
  * components expect.
  *
  * participants = the card's participants (owner + active members, owner first):
- *   { user_id, full_name, email, avatar_url, is_owner, is_deleted }
- *   from get_my_trip_cards (TRIP-403).
+ *   { user_id, name, avatar_url, is_owner, is_deleted }
+ *   from get_my_trip_cards (TRIP-403; server-resolved `name`, no raw email — TRIP-431).
  *
  * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
@@ -486,7 +486,7 @@ export default function Trips() {
     for (const tr of allTrips) {
       m[tr.id] = (tr.participants || []).map((p) => resolveAuthor({
         userId: p.user_id,
-        profiles: { [p.user_id]: { id: p.user_id, full_name: p.full_name, avatar_url: p.avatar_url, email: p.email, is_deleted: p.is_deleted } },
+        profiles: { [p.user_id]: { id: p.user_id, full_name: p.name, avatar_url: p.avatar_url, is_deleted: p.is_deleted } },
         deletedLabel: t('common.deleted_user'),
       }));
     }
