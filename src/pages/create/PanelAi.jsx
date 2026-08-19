@@ -18,24 +18,33 @@ import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 //   flow panels (FlowMap / FlowProgress / StepHome), not a ctx bag.
 // =====================================================================
 
-// The itinerary the bot proposed on a turn — a light list (start → cities), reusing
-// the editor's name/number primitives + CountryFlag; no new classes.
+// Anchor row (start / finish) — the AI-tinted node tile + city name + a meta label
+// on the right. The tint travels as CSS channels on the inline style (the sanctioned
+// call-site входная точка тона для `.te-row__node`); shared by start and finish so
+// the inline lives ONCE, not once per anchor.
+function AnchorRow({ code, name, label }) {
+  return (
+    <div className="row row--g4">
+      <Tile as="span" round className="te-row__node" style={{ '--hl-soft': 'var(--ai-soft)', '--hl-ink': 'var(--ai-ink)' }}>
+        {code ? <CountryFlag code={code} /> : <Icon name="flag" size={11} />}
+      </Tile>
+      <span className="te-cityname trunc grow">{name}</span>
+      <span className="muted t-meta">{label}</span>
+    </div>
+  );
+}
+
+// The itinerary the bot proposed on a turn — a light list (start → cities → finish),
+// reusing the editor's name/number primitives + CountryFlag; no new classes.
 function DraftItinerary({ draft }) {
   const t = useT();
   const home = draft?.home;
   const cities = draft?.cities || [];
-  if (!home?.city_name && cities.length === 0) return null;
+  const end = draft?.end;
+  if (!home?.city_name && cities.length === 0 && !end?.city_name) return null;
   return (
     <div className="col col--g3 pl-ai-draft">
-      {home?.city_name && (
-        <div className="row row--g4">
-          <Tile as="span" round className="te-row__node" style={{ '--hl-soft': 'var(--ai-soft)', '--hl-ink': 'var(--ai-ink)' }}>
-            {home.country_code ? <CountryFlag code={home.country_code} /> : <Icon name="flag" size={11} />}
-          </Tile>
-          <span className="te-cityname trunc grow">{home.city_name}</span>
-          <span className="muted t-meta">{t('ai_plan.start')}</span>
-        </div>
-      )}
+      {home?.city_name && <AnchorRow code={home.country_code} name={home.city_name} label={t('ai_plan.start')} />}
       {cities.map((c, i) => (
         <div key={c.id} className="row row--g4">
           <Tile as="span" round className="te-row__num">{i + 1}</Tile>
@@ -43,6 +52,8 @@ function DraftItinerary({ draft }) {
           <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
         </div>
       ))}
+      {/* Финиш-узел из ответа ИИ (kind:'end') — тот же примитив, что и старт. */}
+      {end?.city_name && <AnchorRow code={end.country_code} name={end.city_name} label={t('planner.sub_finish')} />}
     </div>
   );
 }

@@ -8,17 +8,19 @@ import MapControls from '@/lib/map/MapControls';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 
-// Build ordered legs (home → cities → return) - self-contained so the map has
-// no dependency on the planner's save logic. Mirrors computeLegs ordering. The
-// return leg is drawn only when `drawReturn` (the return/review steps), so the
-// default round-trip never pre-draws a line back home on the earlier steps.
-function buildLegs(home, cities, returnCity, finalPoint, drawReturn) {
+// Build ordered legs (home → cities → finish) - self-contained so the map has
+// no dependency on the planner's save logic. The finish leg is drawn only when
+// `drawFinish` (the finish/review steps), so the default never pre-draws a line
+// to the finish on the earlier steps.
+function buildLegs(home, cities, finishCity, isStay, drawFinish) {
   const stops = [];
   if (home?.latitude) stops.push(home);
   cities.forEach((c) => { if (c.latitude) stops.push(c); });
   const lastCity = cities[cities.length - 1];
-  if (!finalPoint && drawReturn && returnCity?.latitude && returnCity.city_name !== lastCity?.city_name) {
-    stops.push(returnCity);
+  // Не тянем нулевое плечо, если финиш совпадает по координате с последним городом.
+  const sameSpot = (a, b) => a && b && a.latitude === b.latitude && a.longitude === b.longitude;
+  if (!isStay && drawFinish && finishCity?.latitude && !sameSpot(finishCity, lastCity)) {
+    stops.push(finishCity);
   }
   const legs = [];
   for (let i = 0; i < stops.length - 1; i++) legs.push({ id: `leg_${i}`, from: stops[i], to: stops[i + 1] });
@@ -72,14 +74,14 @@ function startGlobeView(map, pad, winW) {
 // clickable, a glass tooltip (createCityBadgeEl) shows the active city's name +
 // dates, and hover/selection is mirrored BOTH ways with the step's city list —
 // the parent owns `hoveredId`/`selectedId` and feeds `cityBadge` back, exactly as
-// ScreenMap drives MapView. Marker ids: 'home', the city's own id, 'return'.
+// ScreenMap drives MapView. Marker ids: 'home', the city's own id, 'finish'.
 // =====================================================================
 export default function FlowMap({
-  home, cities = [], returnCity, transport = {}, finalPoint = false,
-  // `drawReturn` — draw the return pin + leg (the return/review steps). The return
-  // CITY still feeds the camera framing whenever it's a distinct place (see the fit
-  // effect), so stepping between steps toggles what's drawn WITHOUT re-framing.
-  drawReturn = false,
+  home, cities = [], finishCity, transport = {}, isStay = false,
+  // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
+  // CITY still feeds the camera framing, so stepping between steps toggles what's
+  // drawn WITHOUT re-framing.
+  drawFinish = false,
   // Map-lens-style interactivity (all optional — omit for a passive preview):
   hoveredId = null, selectedId = null, cityBadge = null,
   onCityHover, onCityClick, onMapClick,
@@ -139,14 +141,14 @@ export default function FlowMap({
   useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
   useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
 
-  // Unified with the trip MapView: home → start flag, return → finish flag, transit
+  // Unified with the trip MapView: home → start flag, finish → finish flag, transit
   // cities numbered 1..N, a 0-night stop → waypoint glyph (NOT a number, same as the
-  // editor / Map lens). Each pin carries a stable id ('home' | city.id | 'return')
+  // editor / Map lens). Each pin carries a stable id ('home' | city.id | 'finish')
   // so hover/click can address it and the tooltip can be looked up by the parent.
-  // The return counts as a distinct place only when it isn't the origin (a real
-  // round-trip returns to home, already on the map). This gates the fit; drawing it
-  // ALSO requires `drawReturn` (the step), so the pin appears without moving the camera.
-  const hasDistinctReturn = !finalPoint && returnCity?.latitude != null && returnCity.city_name !== home?.city_name && showSE;
+  // The finish pin is drawn whenever a finish node exists (кроме «останусь»); a
+  // round-trip finish that coincides with the start is deduped by the по-координате
+  // pin grouping — no start↔finish name compare. Drawing it requires `drawFinish`.
+  const hasFinish = !isStay && finishCity?.latitude != null && showSE;
   const pts = [];
   if (home?.latitude && showSE) pts.push({ lat: home.latitude, lng: home.longitude, label: null, kind: 'start', data: 'home' });
   let transitNo = 0;
@@ -155,23 +157,23 @@ export default function FlowMap({
     const isWaypoint = (+c.nights || 0) === 0 && !!c.city_name;
     pts.push({ lat: c.latitude, lng: c.longitude, label: isWaypoint ? null : String(++transitNo), kind: isWaypoint ? 'waypoint' : 'transit', data: String(c.id) });
   });
-  if (hasDistinctReturn && drawReturn) {
-    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: null, kind: 'end', data: 'return' });
+  if (hasFinish && drawFinish) {
+    pts.push({ lat: finishCity.latitude, lng: finishCity.longitude, label: null, kind: 'end', data: 'finish' });
   }
 
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
-  const legs = buildLegs(home, cities, returnCity, finalPoint, drawReturn);
+  const legs = buildLegs(home, cities, finishCity, isStay, drawFinish);
 
-  // DRAW key — markers rebuild when this changes (incl. the return pin appearing on
+  // DRAW key — markers rebuild when this changes (incl. the finish pin appearing on
   // step 3). FIT key — the camera re-frames ONLY when this changes: the real route
-  // geometry (home + cities + a distinct return, step-independent) plus the viewport
-  // size. So stepping between steps rebuilds pins but never jerks the camera; only a
-  // route edit / resize re-frames. (TRIP-337, Pavel)
+  // geometry (home + cities + finish, step-independent) plus the viewport size. So
+  // stepping between steps rebuilds pins but never jerks the camera; only a route
+  // edit / resize re-frames. (TRIP-337, Pavel)
   const ptsKey = pts.map((p) => `${p.kind || ''}:${p.label}@${p.lat},${p.lng}`).join('|');
   const fitPositions = [];
   if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
   cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
-  if (hasDistinctReturn) fitPositions.push([returnCity.longitude, returnCity.latitude]);
+  if (hasFinish) fitPositions.push([finishCity.longitude, finishCity.latitude]);
   const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
