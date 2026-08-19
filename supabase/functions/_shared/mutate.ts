@@ -295,7 +295,7 @@ export async function mutate(
   const effect = AFTER_WRITE[`${slug}/${actionName}`];
   if (effect) {
     try {
-      await effect({ actor: actorFull, loadedRow, result: data, outcome, scopeValue: scope, db: supabaseAdmin });
+      await effect({ actor: actorFull, loadedRow, result: data, outcome, isInsert, scopeValue: scope, db: supabaseAdmin });
     } catch (e) {
       console.error(`mutate: afterWrite ${slug}/${actionName} failed:`, e);
       // Побочка best-effort, но её тихий сбой (teardown участника, mark-read)

@@ -20,15 +20,19 @@ import { purgePrivateDocsForMember } from './personalDocsTeardown.ts';
 import { disconnectTripTelegram } from './telegramTeardown.ts';
 import { purgeTripBucket } from './tripStoragePurge.ts';
 import { emitTripReached2 } from './analytics.ts';
-import { respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
+import { bookingAddedNotifies, respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
 
 /** Контекст побочки: актор, загруженная ДО записи строка, результат записи,
- *  дискриминант исхода RPC, скоуп (trip_id) и service_role-клиент. */
+ *  дискриминант исхода RPC, `isInsert` (создание vs правка — уже посчитан швом,
+ *  `mutate.ts`), скоуп (trip_id) и service_role-клиент. */
 export type AfterWriteCtx = {
   actor: Actor;
   loadedRow: Record<string, unknown> | null;
   result: unknown;
   outcome: unknown;
+  /** true = запись СОЗДАНА (insert-путь: нет id и не синглтон-по-скоупу); false =
+   *  правка существующей строки. Зеркалит `AFTER INSERT`-семантику снятых триггеров. */
+  isInsert: boolean;
   scopeValue: string;
   db: SupabaseClient;
 };
@@ -61,8 +65,14 @@ async function teardownMember(db: SupabaseClient, tripId: unknown, userId: unkno
  * (in-app пишет edge; n8n не участвует — booking in-app-only). `kind` фиксирован
  * действием (сегмент пути) → per-kind заголовок. Заменяет немой PG-триггер
  * `notify_booking_added` (снесён в TRIP-284, активности он не уведомлял вовсе).
+ *
+ * ТОЛЬКО на создании (`isInsert`): старый триггер был `AFTER INSERT REFERENCING NEW
+ * TABLE` — на UPDATE (правка брони, прикрепление документа к ней) transition-таблица
+ * пуста → уведомления не было. upsert-путь брони дёргает afterWrite и на update, так
+ * что гейт восстанавливает ту семантику. layover — create-only rpc → `isInsert=true`.
  */
-const bookingEmit = (kind: string): AfterWrite => async ({ scopeValue, actor, db }) => {
+const bookingEmit = (kind: string): AfterWrite => async ({ scopeValue, actor, db, isInsert }) => {
+  if (!bookingAddedNotifies(isInsert)) return;
   await notify('booking_added', { trip_id: scopeValue, actor_id: actor.id, kind }, { db });
 };
 
