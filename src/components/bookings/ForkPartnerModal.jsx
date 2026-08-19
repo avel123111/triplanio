@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight } from 'lucide-react';
 import { CardSim, Icon } from '@/design/icons';
-import { Btn, IconBtn, Card, Tile, Tooltip, Dialog as DSDialog } from '@/design/index';
+import { IconBtn, Card, Tile, Tooltip, Dialog as DSDialog } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -307,7 +307,6 @@ export default function ForkPartnerModal({
     return (
       <>
         <div className="lp-b scrollbar-thin">{body}</div>
-        <div className="lp-f lp-f--single"><Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
         {styleTag}
       </>
     );
@@ -322,7 +321,6 @@ export default function ForkPartnerModal({
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
         <div className="lp-b scrollbar-thin">{body}</div>
-        <div className="lp-f lp-f--single"><Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
         {styleTag}
       </div>
     );
@@ -338,7 +336,6 @@ export default function ForkPartnerModal({
       icon={meta.iconName}
       open={open}
       onOpenChange={onOpenChange}
-      foot={<Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn>}
     >
       {body}
       {styleTag}
