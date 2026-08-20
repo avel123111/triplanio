@@ -22,7 +22,7 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { requireUser } from '../_shared/supabaseAdmin.ts';
 
 const VIATOR_BASE = Deno.env.get('VIATOR_BASE') || 'https://api.viator.com/partner';
 const VIATOR_VERSION = 'application/json;version=2.0';
@@ -49,8 +49,7 @@ function pickImage(images: any[]): string | null {
 }
 
 Deno.serve(withHandler('viatorActivities', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const apiKey = Deno.env.get('VIATOR_API_KEY');
     if (!apiKey) return Response.json({ error: 'VIATOR_API_KEY not configured' }, { status: 500, headers: corsHeaders });

@@ -64,3 +64,20 @@ export async function getRequestUser(req: Request) {
   if (authFailed) throw new HttpError(503, 'Auth service unavailable', 'AUTH_UNAVAILABLE');
   return user; // user.id (uuid), user.email
 }
+
+/**
+ * Require an authenticated caller. Resolves the user via `getRequestUser` (which
+ * already throws `HttpError(503)` on a genuine Auth outage) and throws the ONE
+ * canonical `HttpError(401, …, 'UNAUTHENTICATED')` when there is no session —
+ * `withHandler` catches it, attaches CORS and renders the canon `{ error, code }`
+ * body. Collapses the ~two dozen hand-written `if (!user) return 401` copies that
+ * had drifted (bare 401 без кода, `undefined`-код, `UNAUTHORIZED`) into a single
+ * source, so the code→i18n contract can never regress per-function again.
+ *
+ *   const user = await requireUser(req);
+ */
+export async function requireUser(req: Request): Promise<User> {
+  const user = await getRequestUser(req);
+  if (!user) throw new HttpError(401, 'Unauthorized', 'UNAUTHENTICATED');
+  return user;
+}

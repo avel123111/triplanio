@@ -26,7 +26,7 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { requireUser } from '../_shared/supabaseAdmin.ts';
 
 const STAY22_BASE = 'https://api.stay22.com/v2/accommodations';
 const AID = 'triplanio';
@@ -35,8 +35,7 @@ const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
 
 Deno.serve(withHandler('stay22Accommodations', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const apiKey = Deno.env.get('STAY22_API_KEY');
     if (!apiKey) return Response.json({ error: 'STAY22_API_KEY not configured' }, { status: 500, headers: corsHeaders });

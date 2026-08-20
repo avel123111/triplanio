@@ -9,12 +9,11 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
 
 Deno.serve(withHandler('telegramSetActive', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const { tripId, integrationId, isActive } = await req.json();
     if (!tripId || !integrationId || typeof isActive !== 'boolean') {

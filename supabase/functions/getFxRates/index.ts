@@ -2,34 +2,20 @@
 // Returns fresh-ish FX rates for the given base currency, cached in the
 // fx_rates table. Source: frankfurter.app (ECB), refreshed after 48h.
 import { withHandler } from '../_shared/http.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { requireUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
 // open.er-api.com (free, no key) — unlike ECB/frankfurter it INCLUDES RUB and
 // most world currencies, which a RUB-centric app needs.
 const SOURCE = 'er-api';
 const MAX_AGE_HOURS = 48;
 
-const admin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false } },
-);
-
-async function getUser(req: Request) {
-  const a = req.headers.get('Authorization');
-  if (!a) return null;
-  const { data: { user } } = await admin.auth.getUser(a.replace('Bearer ', ''));
-  return user ?? null;
-}
-
 Deno.serve(withHandler('getFxRates', async (req, corsHeaders) => {
-    const user = await getUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const body = await req.json().catch(() => ({}));
     const base = String(body?.base || 'EUR').toUpperCase();
 
-    const { data: existingRows } = await admin
+    const { data: existingRows } = await supabaseAdmin
       .from('fx_rates').select('*').eq('base', base).limit(1);
     const cached = existingRows?.[0];
 
@@ -60,9 +46,9 @@ Deno.serve(withHandler('getFxRates', async (req, corsHeaders) => {
     };
 
     if (cached?.id) {
-      await admin.from('fx_rates').update(payload).eq('id', cached.id);
+      await supabaseAdmin.from('fx_rates').update(payload).eq('id', cached.id);
     } else {
-      await admin.from('fx_rates').insert(payload);
+      await supabaseAdmin.from('fx_rates').insert(payload);
     }
 
     return Response.json({ ...payload, age_hours: 0, cached: false }, { headers: corsHeaders });

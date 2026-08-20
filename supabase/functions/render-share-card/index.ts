@@ -23,6 +23,7 @@
  */
 import { corsFor } from '../_shared/cors.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { jsonError } from '../_shared/http.ts';
 import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 import { pickLang } from '../_shared/tgLang.ts';
@@ -61,7 +62,7 @@ Deno.serve(async (req) => {
 
   try {
     const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: cors });
+    if (!user) return jsonError(401, 'Unauthorized', 'UNAUTHENTICATED', cors);
 
     const body = await req.json().catch(() => ({}));
     const tripId = body.trip_id;

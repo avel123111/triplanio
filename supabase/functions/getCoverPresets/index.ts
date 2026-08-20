@@ -16,11 +16,10 @@
  */
 
 import { HttpError, withHandler } from '../_shared/http.ts';
-import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { requireUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
 Deno.serve(withHandler('getCoverPresets', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) throw new HttpError(401, 'Unauthorized', 'UNAUTHENTICATED');
+    const user = await requireUser(req);
 
     const { data, error } = await supabaseAdmin
       .from('cover_presets')

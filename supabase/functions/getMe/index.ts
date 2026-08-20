@@ -22,17 +22,11 @@
  * getUserPlan) — записи в config.toml не нужно.
  */
 
-import { withHandler, jsonError } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { withHandler } from '../_shared/http.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 
 Deno.serve(withHandler('getMe', async (req, corsHeaders) => {
-  // Протухший/отсутствующий токен → 401 (ожидаемо; withHandler молчит на нём
-  // централизованно). Реальный сбой Auth-сервиса поднимается 503 внутри
-  // getRequestUser (AUTH_UNAVAILABLE) и сюда как null не доезжает.
-  const user = await getRequestUser(req);
-  // Отказ по канону honest-refusal (TRIP-378) — через общий jsonError, а не
-  // сырой Response.json({ error }): статусом, с машинным code.
-  if (!user) return jsonError(401, 'Unauthorized', 'UNAUTHENTICATED', corsHeaders);
+  const user = await requireUser(req);
 
   // `maybeSingle`: 0 строк — не ошибка, а `data: null` (см. ★★). `error` здесь =
   // только инфра-сбой → throw → 500 INTERNAL (ретраится, летит в Sentry).
