@@ -43,7 +43,7 @@
   "nights_label": "Noches",
   "nights_remove": "Quitar una noche",
   "node_visit": "Visita",
-  "overnight_title": "Transporte nocturno (cambio de día): la siguiente ciudad y todas las posteriores se desplazan +1 día",
+  "overnight_title": "Transporte con cambio de día: +{count} d — la siguiente ciudad y las posteriores se desplazan {count} día(s)",
   "pt_end_sub": "Fin del viaje",
   "pt_start_sub": "Inicio del viaje",
   "pt_transit_sub": "Parada con pernoctaciones",

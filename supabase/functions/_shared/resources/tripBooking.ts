@@ -116,7 +116,7 @@ const TRANSFER_FIELDS: Record<string, FieldSpec> = {
     type: 'string',
     enum: ['plane', 'train', 'bus', 'car', 'taxi', 'ferry', 'walk', 'own_transport', 'other'],
   },
-  day_change: { type: 'boolean' },
+  day_span: { type: 'number' },        // transfer duration in local days (0/1/N); the server gap
   start_datetime: ts(),
   end_datetime: ts(),
   carrier: { type: 'string', max: 300, nullable: true },
@@ -172,7 +172,7 @@ export const TRIP_BOOKING: ResourceSpec = {
     'hotel/delete': { op: 'delete', table: 'hotel_stays', requires: ['editor'], loadTarget: true },
 
     // ── Переезд (простой) ─────────────────────────────────────────────────────
-    // `returnChain`: запись переезда двигает даты городов через `day_change`
+    // `returnChain`: запись переезда двигает даты городов через `day_span`
     // (триггер `trg_recompute_transfer`). Шов дочитывает пересчитанную цепочку и
     // отдаёт `{ row, cities }` — клиент реконсилит даты из одного ответа.
     transfer: {

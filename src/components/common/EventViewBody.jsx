@@ -357,7 +357,8 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const fromCity = cityLabel(fromVisit, lang);
   const toCity = cityLabel(toVisit, lang);
   const Ic = transferKind(entity.transport_type).Icon;
-  const night = !!entity.day_change;
+  const span = entity.day_span ?? 0;
+  const night = span > 0;
   const typeCap = t(entity.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer');
   const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
   const carrier = entity.carrier || '';
@@ -370,7 +371,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       <Card radius="btn" className="tv-card">
         <div className="row row--wrap row--g3 tv-eyebrows">
           <span className="badge badge--sm tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
-          {night && <span className="badge badge--sm tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
+          {night && <span className="badge badge--sm tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1', { count: span })}</span></span>}
         </div>
         <div className="grid tv-route">
           <div className="tv-when">
@@ -397,7 +398,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
           <div className="tv-when">
             <div className="row row--a-baseline row--g2 tv-arr">
               <span className="tv-when__t t-strong">{fmtTime(entity.end_datetime)}</span>
-              {night && <span className="tv-plus1 t-meta">+1</span>}
+              {night && <span className="tv-plus1 t-meta">+{span}</span>}
             </div>
             <div className="tv-when__d t-meta">{fmtDate(entity.end_datetime)}</div>
           </div>
