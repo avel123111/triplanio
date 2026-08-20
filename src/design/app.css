@@ -3926,8 +3926,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Вариант обложки-hero для карточек (SettingsLens): без full-bleed планнера —
    гасит отрицательные márgins, скругляет углы под <Card> и держит формат 4:3
    (высота из ширины, не узкая полоса как full-bleed 200px на широком десктопе).
-   Ширину ограничивает контейнер блока (.settings-basic), иначе 4:3 на всю
-   карточку раздул бы обложку.
+   Ширину задаёт колонка сетки блока (.settings-grid, ~половина карточки).
    visual-diff-exempt: .pl-cover--contained margin — вариант в карточке: без full-bleed (margin 0)
    visual-diff-exempt: .pl-cover--contained border-radius — скругление под <Card>
    visual-diff-exempt: .pl-cover--contained height — высота из формата (не фикс 200px планнера)
@@ -5831,11 +5830,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    написана инлайном дважды на одном экране и с РАЗНЫМИ числами (gap 14 и 12);
    всего этот шаблон в репозитории 36 раз (26 правил в CSS + 10 инлайнов). */
 .settings-plate { padding: 12px 14px; background: var(--wash); border-radius: var(--r-sm); }
-/* Колонка блока «Основное»: ограничивает ширину, чтобы на широком десктопе
-   обложка 4:3 не раздувалась во всю карточку, а поля не были во всю ширину.
-   На мобиле (уже 460px) не сужает — адаптив сам.
-   visual-diff-exempt: .settings-basic max-width — колонка формы «Основное» (обложка 4:3 + поля не на всю ширину карточки) */
-.settings-basic { max-width: 460px; }
 
 @media (max-width: 900px) {
   /* .settings-identity{...}/.settings-identity__cover{...} сняты вместе с классом:

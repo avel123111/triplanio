@@ -811,24 +811,26 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
-        {/* Обложка-карусель (канон hero из планнера), вариант --contained: без
-            full-bleed планнера, скруглённая, формат 4:3. Ширину блока держит
-            .settings-basic, чтобы на десктопе обложка и поля не растягивались во
-            всю карточку. Под обложкой — Название и Основная валюта. */}
-        <Col gap="g6" className="settings-basic">
+        {/* Блок во всю ширину карточки (как секции ниже), 2 колонки: слева —
+            обложка-карусель (канон hero, вариант --contained: без full-bleed
+            планнера, скруглённая, 4:3) + лента миниатюр; справа — поля Название и
+            Основная валюта. На мобиле .settings-grid схлопывается в одну колонку. */}
+        <Grid cols="2" gap="g7" className="settings-grid">
           <TripCoverPicker
             heroClassName="pl-cover pl-cover--contained"
             coverImageUrl={coverImageUrl}
             tripId={tripId}
             onChange={({ cover_image_url }) => setCoverImageUrl(cover_image_url)}
           />
-          <Field label={t('trip.title_label')}>
-            <Input value={title} onChange={e => setTitle(e.target.value)} />
-          </Field>
-          <Field label={t('settings.main_currency_label')} sub={t('settings.main_currency_hint')}>
-            <CurrencyCombobox value={currency} onChange={setCurrency} />
-          </Field>
-        </Col>
+          <Col gap="g6">
+            <Field label={t('trip.title_label')}>
+              <Input value={title} onChange={e => setTitle(e.target.value)} />
+            </Field>
+            <Field label={t('settings.main_currency_label')} sub={t('settings.main_currency_hint')}>
+              <CurrencyCombobox value={currency} onChange={setCurrency} />
+            </Field>
+          </Col>
+        </Grid>
         </fieldset>
       </Card>
 
