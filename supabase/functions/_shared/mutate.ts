@@ -308,25 +308,43 @@ export async function mutate(
 
   // Действие пере-разложило маршрут (запись трансфера): recompute уже случился
   // в ТОЙ ЖЕ транзакции записи (триггер `trg_recompute_transfer` на upsert/delete,
-  // либо внутри RPC layover) и закоммичен. Дочитываем АВТОРИТЕТНУЮ цепочку и отдаём
-  // её в ОДНОМ ответе — клиент реконсилит даты городов из строки, что вернула
-  // запись, а не отдельным рефетчем (тот же контракт, что route-RPC, TRIP-435).
-  // Форма: `{ row, cities }` (row = записанная строка / null у delete/void-rpc).
+  // либо внутри RPC layover) и закоммичен. Дочитываем АВТОРИТЕТНУЮ цепочку И полный
+  // набор трансферов трипа, отдаём их в ОДНОМ ответе — клиент реконсилит даты
+  // городов и срез трансферов из этого ответа, без второго рефетча (тот же контракт,
+  // что route-RPC, TRIP-435). Форма: `{ row, cities, transfers }` (row = записанная
+  // строка / null у delete/void-rpc).
+  //
+  // Зачем `transfers`: одиночный трансфер клиент сворачивал из `row`, но layover
+  // пишет N новых сегментов (RPC → `row:null`), которые построчный fold свернуть не
+  // мог → клиент делал второй рефетч контента, и даты «доезжали» через секунду
+  // (buildDraft выводит gap из трансферов, а они отставали). Возвращаем набор — клиент
+  // заменяет `content.transfers` целиком, одиночный и layover идут одним путём.
   //
   // Read-АФТЕР-WRITE, поэтому НЕ через `rpc()` (тот бросил бы → 500): запись УЖЕ
   // закоммичена, и провал чисто-обогащающего дочитывания НЕ смеет превратить
   // успешную запись в 500 (клиент ретраил бы → дубль трансфера). Деградируем как
-  // `afterWrite`: логируем + `cities:null`, клиент оставляет старые даты до
-  // следующего фетча (ровно до-returnChain поведение), а не теряет запись.
+  // `afterWrite`: логируем + `null`, клиент падает на рефетч (ровно до-returnChain
+  // поведение), а не теряет запись. `transfers` — тот же `select('*')`, что и
+  // getTripDetails (та же форма строк, без обогащения → замена среза корректна).
   if (action.returnChain) {
     let cities: unknown = null;
+    let transfers: unknown = null;
     try {
       cities = await rpc('_trip_city_chain', { p_trip: scope });
     } catch (e) {
       console.error(`mutate: returnChain chain read failed ${slug}/${actionName}:`, e);
       runInBackground(captureEdgeError(e, 'mutate', { returnChain: `${slug}/${actionName}` }));
     }
-    return mutateSuccess({ row: data ?? null, cities: cities ?? null }, corsHeaders);
+    try {
+      const { data: trows, error } = await supabaseAdmin
+        .from('transfers').select('*').eq('trip_id', scope).order('created_at');
+      if (error) throw error;
+      transfers = trows ?? [];
+    } catch (e) {
+      console.error(`mutate: returnChain transfers read failed ${slug}/${actionName}:`, e);
+      runInBackground(captureEdgeError(e, 'mutate', { returnChainTransfers: `${slug}/${actionName}` }));
+    }
+    return mutateSuccess({ row: data ?? null, cities: cities ?? null, transfers: transfers ?? null }, corsHeaders);
   }
 
   return mutateSuccess(data, corsHeaders);

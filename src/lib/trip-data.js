@@ -136,6 +136,25 @@ export function reconcileCityChain(qc, tripId, chain) {
 }
 
 /**
+ * Reconcile the authoritative transfers set a transfer/layover write returns (the
+ * seam's `returnChain` now answers `{ row, cities, transfers }`, TRIP-435) into the
+ * content cache. Unlike cityVisits, transfers carry NO late-bound enrichment (the
+ * read door selects them raw, `select('*')`, same as here), so we REPLACE the slice
+ * wholesale: new layover segments appear, cascade-removed rows drop out, and any
+ * optimistic tmp row is superseded by the real one — all without a second content
+ * refetch (which is what made a saved layover's dates land a beat late: buildDraft
+ * derives each city's gap from these transfers, so a stale slice flattened the just-
+ * recomputed dates until the refetch caught up).
+ */
+export function reconcileTransfers(qc, tripId, transfers) {
+  if (!tripId || !Array.isArray(transfers)) return;
+  qc.setQueryData(TRIP_CONTENT_KEY(tripId), (old) => {
+    if (!old) return old;
+    return { ...old, transfers };
+  });
+}
+
+/**
  * Prune a removed city's content from the content cache — the client mirror of
  * remove_city's server cascade (hotels/activities by city_visit_id, transfers
  * touching the city on either end). Without the old write-path refetch, the shared
