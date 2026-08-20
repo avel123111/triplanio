@@ -811,11 +811,12 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
-        {/* Блок во всю ширину карточки (как секции ниже), 2 колонки: слева —
-            обложка-карусель (канон hero, вариант --contained: без full-bleed
-            планнера, скруглённая, 4:3) + лента миниатюр; справа — поля Название и
-            Основная валюта. На мобиле .settings-grid схлопывается в одну колонку. */}
-        <Grid cols="2" gap="g7" className="settings-grid">
+        {/* Блок во всю ширину карточки, 2 РАВНЫЕ колонки: слева обложка-карусель
+            (канон hero, --contained: без full-bleed, скруглённая, 4:3) + лента;
+            справа поля Название и Основная валюта. Колонки — minmax(0,1fr), иначе
+            grid-элемент с aspect-ratio раздувает свою колонку (обложка съедала
+            поля). На мобиле .settings-basic схлопывается в одну колонку. */}
+        <Grid className="settings-basic">
           <TripCoverPicker
             heroClassName="pl-cover pl-cover--contained"
             coverImageUrl={coverImageUrl}

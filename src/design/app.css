@@ -5830,6 +5830,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    написана инлайном дважды на одном экране и с РАЗНЫМИ числами (gap 14 и 12);
    всего этот шаблон в репозитории 36 раз (26 правил в CSS + 10 инлайнов). */
 .settings-plate { padding: 12px 14px; background: var(--wash); border-radius: var(--r-sm); }
+/* Блок «Основное»: 2 РАВНЫЕ колонки (обложка+лента | поля) во всю ширину карточки.
+   minmax(0,1fr), а не 1fr — иначе grid-элемент с aspect-ratio (обложка 4:3) имеет
+   большой авто-min-width и раздувает свою колонку, зажимая поля (был баг 75/25).
+   visual-diff-exempt: .settings-basic display — 2-колоночная сетка блока «Основное»
+   visual-diff-exempt: .settings-basic grid-template-columns — равные колонки minmax(0,1fr) (обложка не раздувает трек)
+   visual-diff-exempt: .settings-basic gap — зазор колонок
+   visual-diff-exempt: .settings-basic align-items — колонки от верха
+   visual-diff-exempt: .settings-basic {@media (max-width: 880px)} grid-template-columns — одна колонка на мобиле */
+.settings-basic { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-7); align-items: start; }
+@media (max-width: 880px) { .settings-basic { grid-template-columns: 1fr; } }
 
 @media (max-width: 900px) {
   /* .settings-identity{...}/.settings-identity__cover{...} сняты вместе с классом:
