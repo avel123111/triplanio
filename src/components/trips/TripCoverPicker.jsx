@@ -101,6 +101,11 @@ export default function TripCoverPicker({
   const slides = useMemo(() => [...extraSlides, ...presetUrls], [extraSlides, presetUrls]);
 
   const coverTrackRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  // Флаг «этот скролл — программный» (из синхронизатора ниже): его onCoverScroll
+  // НЕ должен коммитить кавер. Иначе после аплоада синхронизатор проматывает ленту
+  // к новому слайду, а дебаунс-коммит со СТАРЫМ замыканием slides (ещё без
+  // загруженного фото) откатывал кавер на presets[0] — «загрузка не менялась».
+  const programmatic = useRef(false);
   // Скрываем стрелку, когда в ту сторону ехать некуда: «влево» на первом слайде,
   // «вправо» на последнем (1px допуск на дробный zoom).
   const [atStart, setAtStart] = useState(true);
@@ -119,7 +124,7 @@ export default function TripCoverPicker({
     if (!el || slides.length === 0) return;
     const idx = Math.max(0, slides.indexOf(coverImageUrl));
     const target = idx * el.clientWidth;
-    if (Math.abs(el.scrollLeft - target) > 2) el.scrollLeft = target;
+    if (Math.abs(el.scrollLeft - target) > 2) { programmatic.current = true; el.scrollLeft = target; }
     syncEdges();
   }, [coverImageUrl, slides]);
 
@@ -138,6 +143,9 @@ export default function TripCoverPicker({
     const el = coverTrackRef.current;
     if (!el) return;
     syncEdges();
+    // Программный скролл синхронизатора (после аплоада/клика/дефолта) кавер уже
+    // выставил — не коммитим и не трогаем подсветку (activeUrl падает на кавер).
+    if (programmatic.current) { programmatic.current = false; return; }
     setScrollUrl(slides[Math.round(el.scrollLeft / el.clientWidth)] ?? null);
     clearTimeout(scrollSettle.current);
     scrollSettle.current = setTimeout(() => {

@@ -811,10 +811,11 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
-        {/* Обложка-карусель (канон hero из планнера) во всю ширину карточки —
-            вариант --contained (без full-bleed планнера, с радиусом под <Card>);
-            под ней два поля: Название и Основная валюта. */}
-        <Col gap="g6">
+        {/* Обложка-карусель (канон hero из планнера), вариант --contained: без
+            full-bleed планнера, скруглённая, формат 4:3. Ширину блока держит
+            .settings-basic, чтобы на десктопе обложка и поля не растягивались во
+            всю карточку. Под обложкой — Название и Основная валюта. */}
+        <Col gap="g6" className="settings-basic">
           <TripCoverPicker
             heroClassName="pl-cover pl-cover--contained"
             coverImageUrl={coverImageUrl}
