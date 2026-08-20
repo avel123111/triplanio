@@ -5,17 +5,17 @@ import HeaderActions from '@/components/HeaderActions';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
- * Unified top bar (brand gradient) used across the whole app.
+ * Unified top bar used across the whole app.
  *
- * Replaces the old white `.app-header` AND the separate gradient hero
- * (`.trip-hero` / TripHeaderBar): both rows collapse into a single branded
- * bar. The trip title, meta and trip-action buttons now live here, separated
- * from the brand block and from the utility cluster by vertical dividers.
+ * Standalone screens (Trips / Stats / Inbox / Account):
+ *   [back*] logo · Triplanio │ <page title> │ theme · bell · account+PRO
  *
- *   [menu*][back*] logo · Triplanio │ <trip title + meta> │ theme · bell · account+PRO
- *     menu  — burger, shown ONLY on mobile (opens the trip sidebar drawer)
- *     back  — round back/exit button, rendered when `onBack` is provided
- *     trip  — title / meta render only when a trip context is given
+ * Trip screens (`isTrip`, внутри rail shell): бренд-блок НЕ рендерится — лого
+ * живёт наверху икон-рейла (TripSidebar), шапка отдаёт место заголовку:
+ *   [back] <trip title + meta> │ theme · bell · account+PRO
+ *
+ * Бургер-кнопки больше нет: на телефоне меню трипа открывает мобильный док
+ * («Ещё» → канон-шит), на планшете/десктопе рейл виден всегда.
  *
  * Trip actions (Share / Edit / Settings / Members / Copy) live in the left trip
  * menu (TripSidebar), NOT in this header. PRO badge + utility icons come from
@@ -26,15 +26,15 @@ import { useT } from '@/lib/i18n/I18nContext';
  *   onBrand   — click handler for the logo/brand (defaults to nav('/trips'))
  *   onBack    — optional; renders the round back button when set
  *   backTitle — tooltip / aria-label for the back button
- *   onMenu    — optional; renders the mobile-only burger (trip sidebar)
  *   title     — optional trip title (enables the trip block)
  *   meta      — optional trip meta node (e.g. dates · days · cities)
+ *   isTrip    — trip-screen variant: НЕ рисует бренд-блок (лого живёт в рейле)
  */
 /**
  * ⚠️ Аннотация обязательна: без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ и делает
  * КАЖДЫЙ проп без дефолта ОБЯЗАТЕЛЬНЫМ, поэтому законный вызов без `onBrand` /
- * `onMenu` / `meta` (все три опциональны — у `onBrand` даже есть фолбэк
- * `nav('/trips')` строкой ниже) краснел TS2739 у экрана под `// @ts-check`.
+ * `meta` (оба опциональны — у `onBrand` даже есть фолбэк `nav('/trips')`
+ * строкой ниже) краснел TS2739 у экрана под `// @ts-check`.
  * Тот же запечатанный набор, что у компонентов `src/design/**`.
  *
  * ⚠️ `onToggleTheme` ОБЯЗАТЕЛЕН, и это не педантизм: он уходит в `onClick`
@@ -43,9 +43,9 @@ import { useT } from '@/lib/i18n/I18nContext';
  * дефект без единого признака. Ослабление типа есть СНЯТИЕ ПОКРЫТИЯ: каждый `?`
  * это заявление «без этого компонент работает», и здесь оно было бы неправдой.
  *
- * Остальные три пропа того же вызова проверены тем же вопросом и необязательны
+ * Остальные пропы того же вызова проверены тем же вопросом и необязательны
  * ПО УСТРОЙСТВУ, а не по недосмотру: `user` читается только через `?.`, `isPro`
- * стоит под `{isPro && …}`, `onBack`/`onMenu`/`meta` - под условием, `onBrand` и
+ * стоит под `{isPro && …}`, `onBack`/`meta` - под условием, `onBrand` и
  * `title` имеют фолбэк. Пограничный случай назван вслух: `isDark` выбирает
  * ЗНАЧОК (`isDark ? 'sun' : 'moon'`), без него кнопка работает, но может
  * показать не тот значок; все 7 вызывателей его передают, так что ужесточение
@@ -53,7 +53,7 @@ import { useT } from '@/lib/i18n/I18nContext';
  *
  * @param {{ user?: any, isPro?: boolean, isDark?: boolean, onToggleTheme: () => void,
  *           onBrand?: () => void, onBack?: () => void, backTitle?: string,
- *           onMenu?: () => void, title?: any, meta?: any, isTrip?: boolean }} p
+ *           title?: any, meta?: any, isTrip?: boolean }} p
  */
 export default function AppHeader({
   user,
@@ -63,7 +63,6 @@ export default function AppHeader({
   onBrand,
   onBack,
   backTitle,
-  onMenu,
   title,
   meta,
   isTrip = false,
@@ -74,29 +73,29 @@ export default function AppHeader({
   const hasTrip = title != null || meta != null;
 
   return (
-    <header className={'app-header' + (isTrip ? ' app-header--trip' : '')}>
+    // Модификатор app-header--trip снят вместе с последним CSS-правилом на нём:
+    // вариант шапки решает JSX (isTrip), мёртвый класс в DOM не печатаем.
+    <header className="app-header">
       <div className="app-header__left">
         {onBack && (
           <button className="app-header__gbtn" onClick={onBack} title={backTitle} aria-label={backTitle || t('common.back')} type="button">
             <Icon name="back" size={17} />
           </button>
         )}
-        {onMenu && (
-          <button className="app-header__gbtn app-header__menu" onClick={onMenu} aria-label={t('common.menu')} type="button">
-            <Icon name="list" size={18} />
-          </button>
-        )}
 
-        <div className="app-header__brand" onClick={goBrand}>
-          <span className="app-header__logo">
-            <img src="/triplanio-logo.svg" alt="Triplanio" />
-          </span>
-          <span className="app-header__brand-name">Triplanio</span>
-        </div>
+        {/* Трип-экраны бренда не несут: лого живёт наверху икон-рейла. */}
+        {!isTrip && (
+          <div className="app-header__brand" onClick={goBrand}>
+            <span className="app-header__logo">
+              <img src="/triplanio-logo.svg" alt="Triplanio" /> {/* i18n-ignore — «Triplanio» бренд, не переводится */}
+            </span>
+            <span className="app-header__brand-name">Triplanio</span> {/* i18n-ignore — бренд */}
+          </div>
+        )}
 
         {hasTrip && (
           <>
-            <span className="app-header__vdiv" />
+            {!isTrip && <span className="app-header__vdiv" />}
             <div className="app-header__trip">
               {/* div, not <h1>: a global `h1 { font-size: var(--fs-h2) !important }`
                   mobile rule would otherwise inflate the header title past desktop. */}

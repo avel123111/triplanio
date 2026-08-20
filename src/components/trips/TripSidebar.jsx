@@ -1,19 +1,22 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Avatar, Badge, Btn, Card, Sheet, UnreadBadge } from '@/design/index';
+import { Avatar, Badge, Btn, Card, Grow, Sheet, UnreadBadge } from '@/design/index';
 import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
 import { clearsStep } from '@/lib/tripStep';
 import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
 
-// Общее ТЕЛО меню (группы + карточка апгрейда). Одинаково рисуется двумя
-// оболочками пункта меню:
-//   • TripSidebar      — <aside> для десктопа/планшета
-//   • TripSidebarSheet — телефонный bottom-sheet
-// Одно тело гарантирует, что набор пунктов, ролевые гейты, бейдж чата и
-// карточка Pro у них совпадают.
+// Тело УЗКОГО ИКОН-РЕЙЛА — десктоп/планшет-оболочка меню трипа (эксперимент
+// «rail shell»). Рейл полновысотный: наверху лого (выход к списку трипов, в
+// шапке трипа бренда больше нет), дальше вертикальные плитки «иконка+подпись»,
+// внизу компактный PRO-чип апгрейда. Телефонный bottom-sheet (SidebarSheetBody
+// ниже) остаётся отдельной раскладкой под палец.
+//
+// Обе оболочки берут состав пунктов из ОДНОГО реестра секций (tripMenu) —
+// набор, ролевые гейты и бейдж чата у них совпадают по построению.
 //
 // Все пункты — обычные секции из реестра. Отдельного случая под структурный
 // редактор тут больше нет: до TRIP-349 он был роутом, поэтому уезжал мимо
@@ -25,6 +28,7 @@ function SidebarBody({
   onUpgrade, onProInfo, onShare,
 }) {
   const { t } = useI18n();
+  const nav = useNavigate();
   // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
   // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
   const lensItems = availableSections(trip, myStep, 'lens');
@@ -36,53 +40,62 @@ function SidebarBody({
   // the badge only renders under a visible chat item, so a chat-off trip holds
   // zero realtime subscriptions instead of a live one that can never show.
   const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
+  // Пункт рейла: вертикальная плитка. Подпись видима (канон .t-tiny), title
+  // дублирует её на случай эллипсиса длинной локали.
+  const railItem = (item, active, onClick) => (
+    <button
+      key={item.id}
+      type="button"
+      className={'app-side__item' + (active ? ' active' : '')}
+      onClick={onClick || (() => onNavigate(item.id))}
+      aria-current={active ? 'page' : undefined}
+      title={t(item.labelKey)}
+    >
+      <Icon name={item.icon} size={20} />
+      <span className="app-side__label t-tiny">{t(item.labelKey)}</span>
+      {item.id === 'chat' && <UnreadBadge count={chatUnread} />}
+    </button>
+  );
   return (
     <>
+      {/* Лого = выход к списку трипов (бренд из шапки трипа переехал сюда). */}
+      <button type="button" className="app-side__brand" onClick={() => nav('/trips')} title={t('nav.trips')} aria-label={t('nav.trips')}>
+        <img src="/triplanio-logo.svg" alt="" />
+      </button>
       <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip.sections_title')}</div>
         {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
-        {lensItems.map((item) => (
-          <button
-            key={item.id}
-            className={'app-side__item' + (lens === item.id ? ' active' : '')}
-            onClick={() => onNavigate(item.id)}
-          >
-            <Icon name={item.icon} size={15} />
-            <span className="app-side__label">{t(item.labelKey)}</span>
-            {item.id === 'chat' && <UnreadBadge count={chatUnread} />}
-          </button>
-        ))}
+        {lensItems.map((item) => railItem(item, lens === item.id))}
       </div>
       {(mgmtItems.length > 0 || canShare) && (
         <div className="app-side__group">
-          <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (управление), не кнопка-примитив. */}
-          {mgmtItems.map((item) => (
-            <button
-              key={item.id}
-              className={'app-side__item' + (lens === item.id ? ' active' : '')}
-              onClick={() => onNavigate(item.id)}
-            >
-              <Icon name={item.icon} size={15} />
-              <span className="app-side__label">{t(item.labelKey)}</span>
-            </button>
-          ))}
-          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (шеринг), не кнопка-примитив. */}
-          {canShare && onShare && (
-            <button className="app-side__item" onClick={onShare}>
-              <Icon name="share" size={15} />
-              <span className="app-side__label">{t('trip.share')}</span>
-            </button>
-          )}
+          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (управление/шеринг), не кнопка-примитив. */}
+          {mgmtItems.map((item) => railItem(item, lens === item.id))}
+          {canShare && onShare && railItem({ id: 'share', icon: 'share', labelKey: 'trip.share' }, false, onShare)}
         </div>
       )}
-      {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
+      <Grow />
+      {/* Компактный вход апгрейда: полная карточка не влезает в рейл, но точка
+          входа Pro обязана остаться видимой (EP-карта Pro-визуала).
+          TRIP-391 объект 1: .app-side__item — плитка ШЕЛЛА в общем ряду рейла
+          (та же геометрия и хит-зона, что у пунктов), не кнопка-примитив. */}
+      {showUpgrade && (
+        <button
+          type="button"
+          className="app-side__item"
+          onClick={isOwner ? onUpgrade : onProInfo}
+          title={t('trip_menu.upgrade_trip')}
+          aria-label={t('trip_menu.upgrade_trip')}
+        >
+          <Badge variant="pro" icon="pro">PRO</Badge>
+        </button>
+      )}
     </>
   );
 }
 
-// "Upgrade this trip to Pro" card — shown on free trips in both the list sidebar
-// and the phone sheet, so it lives in one place.
+// "Upgrade this trip to Pro" card — the free-trip upsell of the PHONE SHEET.
+// В рейл полная карточка не влезает: там та же точка входа компактным PRO-чипом
+// (SidebarBody выше), поэтому карточка осталась одна и только у шита.
 function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
   const { t } = useI18n();
   return (
@@ -101,15 +114,16 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
   );
 }
 
-// Левое меню трипа. Рисуется ОДИН раз — оболочкой TripShell, — а все секции,
-// включая структурный редактор, переключаются одним и тем же onNavigate.
+// Левый икон-рейл трипа. Рисуется ОДИН раз — оболочкой TripShell, — а все
+// секции, включая структурный редактор, переключаются одним и тем же onNavigate.
 export default function TripSidebar({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myStep,
   onUpgrade, onProInfo, onShare,
 }) {
+  const { t } = useI18n();
   return (
-    <aside className="app-side">
+    <aside className="app-side" aria-label={t('nav.aria_primary')}>
       <SidebarBody
         tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
         isPro={isPro} proResolved={proResolved} isOwner={isOwner} myStep={myStep}
@@ -119,10 +133,11 @@ export default function TripSidebar({
   );
 }
 
-// Phone sheet BODY (TRIP-235). Same items/role-gating/chat-badge/upgrade card as
-// the list sidebar, but laid out for touch: lenses in a 3-col grid of tiles with
-// the open screen highlighted, management collapsed into one bordered container,
-// and an account row (moved out of the bottom nav) at the foot.
+// Phone sheet BODY (TRIP-235). Same items / role-gating / chat-badge as the rail
+// (тот же реестр секций), but laid out for touch: lenses in a 3-col grid of tiles
+// with the open screen highlighted, management collapsed into one bordered
+// container, the full upgrade card (в рейле на её месте PRO-чип) and an account
+// row (moved out of the bottom nav) at the foot.
 function SidebarSheetBody({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myStep,
@@ -196,9 +211,10 @@ function SidebarSheetBody({
 
 // Phone variant: the touch-optimised menu (SidebarSheetBody) inside the canonical
 // bottom-sheet (reuses <Sheet> — max-height, swipe-to-close, scrim, focus-trap).
-// On phones the slide-in drawer is suppressed via CSS and this is shown instead.
-// The parent gates `open` on the phone breakpoint and closes it through the
-// onNavigate / onShare / onAccount callbacks.
+// On phones the rail itself is suppressed via CSS, so this sheet IS the trip menu
+// (открывает его кнопка «Ещё» мобильного дока). The parent gates `open` on the
+// phone breakpoint and closes it through the onNavigate / onShare / onAccount
+// callbacks.
 export function TripSidebarSheet({ open, onOpenChange, ...rest }) {
   const { t } = useI18n();
   return (

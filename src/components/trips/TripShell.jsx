@@ -12,6 +12,13 @@
  * Поэтому оболочка тут КОМПОНЕНТ, а не узор для копирования: у неё один хозяин,
  * и разъехаться ей больше негде.
  *
+ * Раскладка — «rail shell» (эксперимент нового layout): слева полновысотный
+ * УЗКИЙ ИКОН-РЕЙЛ (TripSidebar, лого наверху), справа колонка .trip-body =
+ * шапка + контент. Рейл виден на всех ширинах >640; на телефоне его нет —
+ * меню открывается канон-шитом (TripSidebarSheet) из мобильного дока. Бургер
+ * и выезжающий drawer 641–880 удалены вместе с этой перестройкой: рейл узкий,
+ * прятать его больше незачем.
+ *
  * Три слота - потому что позиция в DOM у них несущая, а не косметическая:
  *   children       - тело секции, внутри скроллящегося <main>
  *   drawer         - внутри `.trip-content` ПОСЛЕ <main>: EventDrawerHost
@@ -42,30 +49,25 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { isProActive } from '@/lib/subscription';
 import { Skeleton } from '@/design/index';
 
-// Скелетон меню на время загрузки shell-запроса. Реальный TripSidebar тут
+// Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
 // нельзя: его состав зависит от аддонов и роли, а они приезжают тем же
 // запросом - подставив его раньше, мы бы показали чужой набор пунктов и
 // перерисовали меню под пользователем.
 function SidebarSkeleton() {
-  const t = useT();
-  // Ширины полос — как были: у разделов своя формула, у управления своя. Свести
-  // их в одну значило бы поменять картинку загрузки без повода.
-  const row = (w) => (i) => (
+  // Форма повторяет живой рейл: лого-плитка, затем вертикальные плитки
+  // «иконка+подпись» (6 разделов + 3 управления).
+  const row = (i) => (
     <div key={i} className="app-side__item">
-      <Skeleton w={15} h={15} r={4} />
-      <Skeleton w={w(i)} h={12} r={4} />
+      <Skeleton w={20} h={20} r={6} />
+      <Skeleton w={36 + (i % 3) * 8} h={8} r={4} />
     </div>
   );
+  // aria-hidden: скелетон декоративен — ложный нав-лендмарк скринридеру не нужен.
   return (
-    <aside className="app-side">
-      <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip.sections_title')}</div>
-        {[1, 2, 3, 4, 5, 6].map(row((i) => 80 + (i % 3) * 15))}
-      </div>
-      <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-        {[1, 2, 3, 4].map(row((i) => 70 + (i % 3) * 10))}
-      </div>
+    <aside className="app-side" aria-hidden="true">
+      <div className="app-side__brand"><Skeleton w={38} h={38} r={8} /></div>
+      <div className="app-side__group">{[1, 2, 3, 4, 5, 6].map(row)}</div>
+      <div className="app-side__group">{[1, 2, 3].map(row)}</div>
     </aside>
   );
 }
@@ -164,45 +166,27 @@ export default function TripShell({
 
   return (
     <div className="trip-shell">
-      <AppHeader
-        isTrip
-        user={user}
-        isPro={isProActive(user)}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={() => nav(backTo)}
-        backTitle={t('trip.back')}
-        // Пока грузимся, бургера нет - как и было. Открывать нечего: меню ещё
-        // скелетон, а скрим и телефонный шит в этой ветке не отрисованы, то
-        // есть выехавший ящик было бы нечем закрыть.
-        onMenu={loading ? undefined : () => setSideOpen(true)}
-        title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
-        meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
-      />
-      <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
-        {loading ? <SidebarSkeleton /> : (
-          <>
-            <TripSidebar
-              {...menuProps}
-              onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
-              onShare={onShare}
-            />
-            <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
-            {/* Телефоны: то же меню канон-шитом. Выезжающий drawer и его скрим
-                на этом брейкпоинте гасятся в CSS. */}
-            <TripSidebarSheet
-              {...menuProps}
-              open={isPhone && sideOpen}
-              onOpenChange={setSideOpen}
-              onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
-              onShare={onShare && (() => { setSideOpen(false); onShare(); })}
-              onUpgrade={onUpgrade && (() => { setSideOpen(false); onUpgrade(); })}
-              onProInfo={onProInfo && (() => { setSideOpen(false); onProInfo(); })}
-              user={user}
-              onAccount={() => { setSideOpen(false); nav('/settings'); }}
-            />
-          </>
-        )}
+      {/* Рейл — на всю высоту, ЛЕВЕЕ шапки: лого живёт в нём (rail shell).
+          На телефоне рейл скрыт CSS'ом, меню открывается канон-шитом ниже. */}
+      {loading ? <SidebarSkeleton /> : (
+        <TripSidebar
+          {...menuProps}
+          onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
+          onShare={onShare}
+        />
+      )}
+      <div className="trip-body">
+        <AppHeader
+          isTrip
+          user={user}
+          isPro={isProActive(user)}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          onBack={() => nav(backTo)}
+          backTitle={t('trip.back')}
+          title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
+          meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
+        />
         <div className="trip-content">
           <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
             {children}
@@ -210,6 +194,20 @@ export default function TripShell({
           {drawer}
         </div>
       </div>
+      {/* Телефоны: то же меню канон-шитом (открывает его кнопка «Ещё» дока). */}
+      {!loading && (
+        <TripSidebarSheet
+          {...menuProps}
+          open={isPhone && sideOpen}
+          onOpenChange={setSideOpen}
+          onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
+          onShare={onShare && (() => { setSideOpen(false); onShare(); })}
+          onUpgrade={onUpgrade && (() => { setSideOpen(false); onUpgrade(); })}
+          onProInfo={onProInfo && (() => { setSideOpen(false); onProInfo(); })}
+          user={user}
+          onAccount={() => { setSideOpen(false); nav('/settings'); }}
+        />
+      )}
       {overlays}
     </div>
   );

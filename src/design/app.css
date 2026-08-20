@@ -225,7 +225,6 @@
      его содержимое = calc(+N). Гард 2k валит сырой z-index ≥10. === */
   --z-drag:      30;   /* строка, поднятая перетаскиванием */
   --z-drawer:    40;   /* ящик события внутри панели (+1 — сам ящик) */
-  --z-side-nav:  45;   /* затемнение бокового меню трипа (+5 — само меню) */
   --z-header:    50;   /* шапка приложения */
   --z-menu:      60;   /* выпадающее меню */
   --z-dock:      70;   /* кнопка чат-дока (+5 — его панель) */
@@ -1241,7 +1240,9 @@ h4,
   display: grid; place-items: center; transition: background .15s var(--ease-out);
 }
 .app-header__gbtn:hover { background: var(--wash); color: var(--ink); }
-.app-header__menu { display: none; }                /* burger — shown on mobile only */
+/* Бургер (.app-header__menu) удалён: жил только в полосе 641–880 при спрятанном
+   меню; с полновысотным икон-рейлом (rail shell) прятать меню больше незачем,
+   на телефоне его открывает мобильный док («Ещё» → канон-шит). */
 
 /* Brand block — logo tile + wordmark */
 .app-header__brand { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 0 0 auto; min-width: 0; }
@@ -1253,7 +1254,8 @@ h4,
 }
 .app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
 .app-header__brand-name { color: var(--ink); }
-.app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
+/* Трип-экраны бренда не несут вовсе (JSX `!isTrip`): лого живёт наверху
+   икон-рейла, правило `.app-header--trip .app-header__brand-name` удалено. */
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
 .app-header__vdiv { width: 1px; height: 28px; background: var(--line); flex: 0 0 auto; }
@@ -1355,42 +1357,168 @@ h4,
 }
 
 
-/* Trip side nav. The grid host that used to wrap it (.app-body) is gone — the
-   живая оболочка ОДНА - .trip-shell/.trip-body (TripShell); она же владеет
-   колонкой меню и его off-canvas-поведением на всех экранах трипа. */
+/* Rail shell · ярус 2p: намеренная перестройка оболочки трипа — все изменения объявлены.
+   visual-diff-exempt: .app-header__brand-name {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-header__brand-name display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-header__logo {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-header__menu {@media (max-width: 640px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-header__menu {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-header__menu display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-header__vdiv {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-header--trip {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-header--trip display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand img border-radius — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand img display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand img height — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand img margin — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand img width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand:focus-visible box-shadow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand:focus-visible outline — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand background — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand border — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand cursor — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand flex — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand padding — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__brand text-align — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__group border-top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__group padding-top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item:focus-visible box-shadow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item:focus-visible outline — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item border-radius — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item flex-direction — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item gap — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item justify-content — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item margin-left — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item min-height — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item padding — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item right — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item text-align — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__item top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__label max-width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__label overflow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__label text-overflow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side__label white-space — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} bottom — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} box-shadow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} left — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} max-width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} transform — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} transition — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} z-index — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side align-self — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side flex — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side flex-direction — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side gap — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side height — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side overflow-x — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side padding — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .app-side width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .badge--unread margin-left — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} opacity — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} pointer-events — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} transform — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} grid-template-columns — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} opacity — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} pointer-events — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} transform — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body flex-direction — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body grid-template-columns — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body grid-template-rows — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-body min-width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-content flex — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} bottom — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} box-shadow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} left — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} max-width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transform — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transition — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} z-index — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell align-self — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell flex-direction — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell height — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-shell overflow-y — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 640px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} background — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} inset — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} opacity — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} pointer-events — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} transition — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} z-index — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: .trip-side-scrim display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
+   visual-diff-exempt: :root --z-side-nav — rail shell: оба читателя токена (скрим и off-canvas drawer) удалены этим же диффом, токен мёртв */
+/* Trip side nav — УЗКИЙ полновысотный ИКОН-РЕЙЛ (rail shell, эксперимент нового
+   layout по задаче Pavel). Живёт колонкой ЛЕВЕЕ шапки внутри .trip-shell
+   (единственный хозяин — TripShell): наверху лого-плитка (выход к трипам),
+   дальше вертикальные плитки «иконка+подпись» (.t-tiny), внизу PRO-чип.
+   Прежний слой «sticky под шапкой 220px + off-canvas drawer 641–880» удалён —
+   рейл узкий и виден на всех ширинах >640, на телефоне меню открывает шит. */
 .app-side {
+  flex: none; width: 84px;
+  display: flex; flex-direction: column; gap: var(--sp-1);
   border-right: 1px solid var(--line);
   background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
-  height: calc(100vh - 56px);
-  padding: 16px 10px;
-  position: sticky; top: 56px;
-  overflow-y: auto;
+  padding: var(--sp-6) var(--sp-4);
+  min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
 }
+/* Лого-плитка рейла. Геометрия у класса, интерактив у элемента (скелетон
+   рендерит тот же класс div'ом) — узор `.app-side__item` ниже. Центрирование —
+   margin:auto у картинки: кнопка растянута колонкой рейла, свой display ей не нужен. */
+.app-side__brand {
+  flex: none;
+  padding: var(--sp-1) 0 var(--sp-6);
+  border: none; background: transparent;
+  text-align: center;   /* центрирует и скелетон-плитку (inline-block) */
+}
+button.app-side__brand { cursor: pointer; }
+button.app-side__brand:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+.app-side__brand img { width: 38px; height: 38px; border-radius: var(--r-sm); display: block; margin: 0 auto; }
 .app-side__group { margin-bottom: 14px; }
+/* Группы рейла разделены линией: текст-подписи групп в 84px не влезают
+   (подпись «Управление» осталась у телефонного шита — .tm-caption). */
+.app-side__group + .app-side__group { border-top: 1px solid var(--line); padding-top: var(--sp-5); }
 .app-side__group-label {
  color: var(--muted-2); padding: 10px 10px 6px;
 }
-/* Ряд бокового меню. Геометрия - у КЛАССА (это то, чем ряд ЯВЛЯЕТСЯ), интерактив
+/* Плитка рейла. Геометрия - у КЛАССА (это то, чем плитка ЯВЛЯЕТСЯ), интерактив
    - у ЭЛЕМЕНТА (это то, что делает КНОПКА): под тем же классом живёт скелетон
    меню на время загрузки, и он не кликается. Правило по элементу вместо руки в
    вызывателе - узор из шапки гарда 2l. Все живые пункты меню это <button>,
    поэтому набор объявлений на классе не меняется, только его специфичность. */
 .app-side__item {
- display: flex; align-items: center; gap: 10px;
- padding: 8px 10px; border-radius: var(--r-sm);
+ position: relative;
+ display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2);
+ padding: var(--sp-4) var(--sp-1); min-height: 52px; border-radius: var(--r-btn);
  color: var(--ink-2);
- border: none; background: transparent; width: 100%; text-align: left;
+ border: none; background: transparent; width: 100%; text-align: center;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
 }
 button.app-side__item { cursor: pointer; }
+button.app-side__item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
 button.app-side__item:active { transform: scale(.985); }
 button.app-side__item:hover { background: var(--wash); }
 .app-side__item.active { background: var(--brand-soft); color: var(--brand); }
-/* Бейдж непрочитанного чата в пункте сайдбара — красный канон `.badge--unread`,
-   позиция ко-селектором (ряд флексовый, толкаем вправо). TRIP-354: свой класс
-   `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
-.app-side__item > .badge--unread { margin-left: auto; }
+/* Подпись плитки: канон .t-tiny из разметки, здесь только страховка от длинной
+   локали (эллипсис; полный текст дублирует title на кнопке). */
+.app-side__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Бейдж непрочитанного чата — красный канон `.badge--unread` ОВЕРЛЕЕМ у угла
+   плитки (тот же приём, что у мобильного дока `.mbnav__ico`). TRIP-354: свой
+   класс `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
+.app-side__item > .badge--unread { position: absolute; top: 3px; right: 14px; }
 
 
 .app-main {
@@ -3275,10 +3403,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
 .cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
-/* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
-   three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
-   phone bottom-nav (≤640). There is no separate tablet/icon-rail state: the full
-   220px sidebar simply holds down to 881, then goes straight to the drawer. */
+/* Rail shell (эксперимент нового layout): у трип-нава ровно ДВЕ раскладки —
+   узкий полновысотный икон-рейл (>640, .app-side 84px, всегда виден) и
+   телефонный bottom-nav+шит (≤640). Это ОСОЗНАННАЯ отмена решения TRIP-211
+   («никакого икон-рейл-яруса»): тогда рейл был бы ТРЕТЬИМ состоянием между
+   полным сайдбаром и drawer'ом, теперь он ЕДИНСТВЕННОЕ — полный сайдбар,
+   бургер и off-canvas drawer 641–880 удалены целиком. */
 
 /* Mobile app shell */
 @media (max-width: 880px) {
@@ -3286,11 +3416,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      glass (base `@supports` rule), same 60px height, same 18px padding / 14px gap.
      No mobile size or background override here, so it never changes by width. */
   /* Non-trip screens keep logo + "Triplanio" on mobile (matches the design).
-     Only trip screens drop the brand block for burger + title. */
-  .app-header--trip .app-header__logo,
-  .app-header--trip .app-header__brand-name,
-  .app-header--trip .app-header__vdiv { display: none; }
-  .app-header__menu { display: grid; }                /* mobile burger appears */
+     Trip screens carry no brand at any width (rail shell, JSX `!isTrip`). */
   .app-header__trip-meta { display: none; }
   .app-header__trip-title { font-size: var(--ctl-fs); }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
@@ -3320,7 +3446,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 
 @media (max-width: 640px) {
-  .app-header__menu { display: none; }
   .app-header__account { display: none; }
   .trip-screen-body { padding-bottom: 96px !important; }
   .trip-screen-body--flush { padding-bottom: 0 !important; }
@@ -5192,8 +5317,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    V3 screens mockup (.thead / .tscreen-h / .tripbody / .tmenu).
    Scoped to .trip-shell so the rest of the app keeps document scroll.
    ================================================================= */
+/* Rail shell: ряд «рейл | колонка (шапка + контент)». Рейл полновысотный —
+   шапка начинается ПРАВЕЕ него, лого живёт в рейле (как в современных
+   планировщиках). Сам рейл описан одним блоком `.app-side` выше. */
 .trip-shell {
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: row;
   /* dvh = the VISIBLE viewport (shrinks with the mobile toolbar); vh fallback for
      older browsers. Keeps the bottom nav clearance correct on phones. */
   height: 100vh; height: 100dvh; min-height: 0; overflow: hidden;
@@ -5205,11 +5333,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Gradient hero (.trip-hero / .thead) removed — title, meta and trip actions
    now live in the unified <AppHeader> at the top of the shell. */
 
-/* ---- Body: sidebar + content ---- */
-.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
-/* Inside the shell the sidebar scrolls within its own row instead of the page. */
-.trip-shell .app-side { position: static; top: auto; height: auto; min-height: 0; overflow-y: auto; align-self: stretch; }
-.trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+/* ---- Body: header + content (правая колонка ряда) ---- */
+.trip-body { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.trip-content { position: relative; flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
    Used OUTSIDE the structure editor (timeline / calendar / budget / overview).
@@ -5234,23 +5360,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
 .trip-screen-body--flush { padding: 0; overflow: hidden; }
 
-/* ---- Mobile menu scrim (sidebar slides over the content) ---- */
-.trip-side-scrim { display: none; }
+/* Off-canvas drawer 641–880 и его скрим (.trip-side-scrim, .is-menu-open)
+   удалены: рейл узкий и остаётся видимым на планшете (rail shell). */
 
 @media (max-width: 880px) {
-  .trip-body { grid-template-columns: 1fr; }
-  .trip-shell .app-side {
-    position: absolute; top: 0; left: 0; bottom: 0;
-    width: 264px; max-width: 84%; z-index: calc(var(--z-side-nav) + 5);
-    transform: translateX(-104%); transition: transform .26s var(--ease-out);
-    box-shadow: var(--sh-3);
-  }
-  .trip-body.is-menu-open .app-side { transform: none; }
-  .trip-side-scrim {
-    display: block; position: absolute; inset: 0; background: var(--scrim);
-    z-index: var(--z-side-nav); opacity: 0; pointer-events: none; transition: opacity .25s var(--ease-out);
-  }
-  .trip-body.is-menu-open .trip-side-scrim { opacity: 1; pointer-events: auto; }
   .trip-screen-body { padding: 16px 16px 48px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
@@ -5258,10 +5371,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 
 /* Phones: the lens menu is shown as a bottom-sheet (TripSidebarSheet), so the
-   slide-in drawer and its scrim are suppressed below 640px. */
+   rail is suppressed below 640px. */
 @media (max-width: 640px) {
   .trip-shell .app-side { display: none; }
-  .trip-side-scrim { display: none; }
 }
 
 /* ============================================================
