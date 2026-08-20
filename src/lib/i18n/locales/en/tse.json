@@ -43,7 +43,7 @@
   "nights_label": "Nights",
   "nights_remove": "Remove a night",
   "node_visit": "Visit",
-  "overnight_title": "Day-change transfer: +{count}d — the next city and all following ones shift by {count} day(s)",
+  "overnight_title": "Day-change transfer: +{count}d — the next city and all following shift by {count} day(s)",
   "pt_end_sub": "End of the trip",
   "pt_start_sub": "Start of the trip",
   "pt_transit_sub": "Stop with overnight stays",
