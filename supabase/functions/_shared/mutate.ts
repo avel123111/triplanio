@@ -336,8 +336,12 @@ export async function mutate(
       runInBackground(captureEdgeError(e, 'mutate', { returnChain: `${slug}/${actionName}` }));
     }
     try {
+      // Тот же запрос, что read-дверь (getTripDetails): `select('*')` по `trip_id`,
+      // БЕЗ order — клиент ищет трансферы по from/to id, порядок массива ему не важен,
+      // а лишний `order` разъехался бы с формой read-двери (фоновый рефетч вернул бы
+      // другой порядок среза). Одна форма на обе двери.
       const { data: trows, error } = await supabaseAdmin
-        .from('transfers').select('*').eq('trip_id', scope).order('created_at');
+        .from('transfers').select('*').eq('trip_id', scope);
       if (error) throw error;
       transfers = trows ?? [];
     } catch (e) {
