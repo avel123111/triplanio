@@ -3299,16 +3299,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .carousel__nav z-index — новый примитив-лента (стрелка)
    visual-diff-exempt: .carousel__nav box-shadow — новый примитив-лента (стрелка)
    visual-diff-exempt: .carousel__nav display — новый примитив-лента (стрелка скрыта без hover)
-   visual-diff-exempt: .carousel__nav--prev left — новый примитив-лента (стрелка влево)
-   visual-diff-exempt: .carousel__nav--next right — новый примитив-лента (стрелка вправо)
-   visual-diff-exempt: .carousel__nav {@media (hover: hover)} display — стрелки только на десктопе (hover-указатель) */
+   visual-diff-exempt: .carousel__track overflow-y — лента не клипает выделение/тень миниатюр по вертикали
+   visual-diff-exempt: .carousel__track padding-top — вертикальный воздух: кольцо выбора миниатюры не режется сверху
+   visual-diff-exempt: .carousel__track scrollbar-width — карусель без видимого скроллбара (Firefox)
+   visual-diff-exempt: .carousel__track::-webkit-scrollbar display — карусель без видимого скроллбара (WebKit)
+   visual-diff-exempt: .carousel__nav--prev left — стрелка влево, чуть отступя от края (плавающая поверх ленты)
+   visual-diff-exempt: .carousel__nav--next right — стрелка вправо, чуть отступя от края (плавающая поверх ленты)
+   visual-diff-exempt: .carousel:hover {@media (hover: hover)} display — стрелки всплывают только при наведении на карусель (десктоп) */
 .carousel { position: relative; }
-.carousel__track { display: flex; gap: var(--sp-4); overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-left: var(--sp-4); padding-bottom: var(--sp-2); }
+.carousel__track { display: flex; gap: var(--sp-4); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-left: var(--sp-4); padding-top: var(--sp-2); padding-bottom: var(--sp-2); scrollbar-width: none; }
+.carousel__track::-webkit-scrollbar { display: none; }
 .carousel__track > * { scroll-snap-align: start; flex: none; }
 .carousel__nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; box-shadow: var(--sh-2); display: none; }
-.carousel__nav--prev { left: 0; }
-.carousel__nav--next { right: 0; }
-@media (hover: hover) { .carousel__nav { display: grid; } }
+.carousel__nav--prev { left: var(--sp-2); }
+.carousel__nav--next { right: var(--sp-2); }
+@media (hover: hover) { .carousel:hover .carousel__nav { display: grid; } }
 
 /* ── EditableText: инлайн-правка текста, примитив ДС (<EditableText>) ─────────
    Текст + карандаш → БЕСШОВНЫЙ инлайн-инпут (.editable__input: прозрачный, без
@@ -3328,12 +3333,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .editable__input border — бесшовный (без рамки)
    visual-diff-exempt: .editable__input padding — бесшовный (без внутренних отступов бокса)
    visual-diff-exempt: .editable__input font — наследует типографику контекста (.t-title и т.п.)
+   visual-diff-exempt: .editable__input letter-spacing — наследует трекинг контекста (точное совпадение с текстом)
    visual-diff-exempt: .editable__input color — наследует цвет контекста (белый на обложке)
-   visual-diff-exempt: .editable__input outline — без фокус-бокса (правка = текст, не форма) */
+   visual-diff-exempt: .editable__input outline — без фокус-бокса (правка = текст, не форма)
+   visual-diff-exempt: .editable__input -webkit-appearance — снимает нативный хром инпута iOS (бесшовность)
+   visual-diff-exempt: .editable__input appearance — снимает нативный хром инпута (бесшовность) */
 .editable { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .editable__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .editable__edit { flex: none; }
-.editable__input { min-width: 0; background: transparent; border: 0; padding: 0; font: inherit; color: inherit; outline: none; }
+.editable__input { min-width: 0; background: transparent; border: 0; padding: 0; font: inherit; letter-spacing: inherit; color: inherit; outline: none; -webkit-appearance: none; appearance: none; }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -3884,6 +3892,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .pl-cover__title padding — заголовок поверх обложки
    visual-diff-exempt: .pl-cover__title color — белый текст на скриме обложки
    visual-diff-exempt: .icon-btn color — белый карандаш на скриме обложки (scoped .pl-cover__title .icon-btn)
+   visual-diff-exempt: .editable flex — обёртка правки заполняет ширину обложки (scoped .pl-cover__title .editable)
    visual-diff-exempt: .editable__input flex — инпут правки названия заполняет ширину обложки (scoped .pl-cover__title)
    visual-diff-exempt: .pl-cover__title flex — то же правило, атрибуция на .pl-cover__title */
 .pl-cover {
@@ -3897,6 +3906,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   color: #fff;
 }
 .pl-cover__title .icon-btn { color: #fff; }
+.pl-cover__title .editable { flex: 1; }
 .pl-cover__title .editable__input { flex: 1; }
 
 .pl-summary { overflow: hidden; }

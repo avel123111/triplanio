@@ -675,6 +675,7 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
             placeholder={autoTitle}
             ariaLabel={t('planner.title_label')}
             editLabel={t('planner.title_edit')}
+            confirmLabel={t('common.done')}
           />
         </div>
       </div>
