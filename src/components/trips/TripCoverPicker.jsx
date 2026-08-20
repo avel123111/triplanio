@@ -174,7 +174,7 @@ export default function TripCoverPicker({
   // обложки; переиспользуется тем же обработчиком, что и прежняя плитка ленты.
   const uploadBtn = (
     <IconBtn
-      icon="upload"
+      icon="image-up"
       disabled={uploading}
       onClick={handlePickFile}
       ariaLabel={uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
