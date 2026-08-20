@@ -11,7 +11,7 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { requireUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 
@@ -21,25 +21,10 @@ import { aiFlowLimited } from '../_shared/rateLimit.ts';
 const PLANNER_RATE_LIMIT = 10;
 const PLANNER_RATE_WINDOW = 3600;
 
-const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false } },
-);
-
-async function getRequestUser(req: Request) {
-  const auth = req.headers.get('Authorization');
-  if (!auth) return null;
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(auth.replace('Bearer ', ''));
-  if (error || !user) return null;
-  return user;
-}
-
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/ai-trip-planner';
 
 Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const { sessionId, prompt, language } = await req.json();
     if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400, headers: corsHeaders });

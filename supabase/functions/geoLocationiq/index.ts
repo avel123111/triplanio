@@ -31,7 +31,7 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { requireUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 
 const LIQ_BASE = 'https://us1.locationiq.com/v1';
@@ -148,8 +148,7 @@ async function resolveOne(
 }
 
 Deno.serve(withHandler('geoLocationiq', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const apiKey = Deno.env.get('LOCATIONIQ_API_KEY');
     if (!apiKey) return Response.json({ error: 'LOCATIONIQ_API_KEY not configured' }, { status: 500, headers: corsHeaders });

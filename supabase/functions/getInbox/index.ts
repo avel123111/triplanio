@@ -14,15 +14,12 @@
 // verify_jwt=true дефолтом (аутентификация через getRequestUser, как getTrips) —
 // записи в config.toml не нужно.
 
-import { withHandler, jsonError } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { withHandler } from '../_shared/http.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 import { fetchSenders } from '../_shared/profiles.ts';
 
 Deno.serve(withHandler('getInbox', async (req, corsHeaders) => {
-  // Протухший/отсутствующий токен → 401 (ожидаемо). Реальный сбой Auth-сервиса
-  // поднимается 503 внутри getRequestUser (AUTH_UNAVAILABLE) и сюда null не доезжает.
-  const user = await getRequestUser(req);
-  if (!user) return jsonError(401, 'Unauthorized', 'UNAUTHENTICATED', corsHeaders);
+  const user = await requireUser(req);
 
   // `error` = только инфра-сбой БД → throw → 500 INTERNAL. Бизнес-ответа-«нет» у
   // чтения нет: пустой инбокс — валидный `{ list: [], unreadCount: 0 }` от RPC.

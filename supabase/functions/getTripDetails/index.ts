@@ -21,7 +21,7 @@
  * to an authorized user is rejected, never served data.
  */
 
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 import { callerStep } from '../_shared/tripAccess.ts';
 import { clearsStep } from '../_shared/tripStep.ts';
@@ -30,13 +30,10 @@ import { fetchTripProfiles } from '../_shared/profiles.ts';
 import { readGroup } from './readGroup.ts';
 
 Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
-    // Identify caller — REQUIRED. getRequestUser returns null when there is no
-    // Authorization header OR when the token is not a real user token (e.g. the
-    // public anon key shipped in the frontend bundle). Either way: deny.
-    const user = await getRequestUser(req);
-    if (!user) {
-      return jsonError(401, 'Unauthorized', undefined, corsHeaders);
-    }
+    // Identify caller — REQUIRED. requireUser denies (canon 401) when there is no
+    // Authorization header OR the token is not a real user token (e.g. the public
+    // anon key shipped in the frontend bundle). Either way: deny.
+    const user = await requireUser(req);
 
     const { tripId, include } = await req.json();
     if (!tripId) {

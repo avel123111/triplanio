@@ -22,14 +22,13 @@
  *   error `code` on failure: not_found | revoked | expired | trip_missing | blocked
  */
 import { jsonError, readJson, refusalResponse, withHandler } from '../_shared/http.ts';
-import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { requireUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { emitTripReached2 } from '../_shared/analytics.ts';
 import { notify } from '../_shared/emit.ts';
 import { resolveRedeemRole } from './redeemRole.ts';
 
 Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return jsonError(401, 'Unauthorized', 'UNAUTHENTICATED', corsHeaders);
+    const user = await requireUser(req);
 
     const body = await readJson(req);
     const token = String(body.token ?? '').trim();

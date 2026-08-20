@@ -7,36 +7,22 @@
 // NOTE: the real free-tier enforcement lives in the create_trip RPC. This endpoint
 // only drives the upsell dialog, so on ANY error we fail OPEN (activeCount 0)
 // rather than falsely blocking the user.
-import { withHandler, jsonError } from '../_shared/http.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const admin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false } },
-);
-
-async function getUser(req: Request) {
-  const a = req.headers.get('Authorization');
-  if (!a) return null;
-  const { data: { user } } = await admin.auth.getUser(a.replace('Bearer ', ''));
-  return user ?? null;
-}
+import { withHandler } from '../_shared/http.ts';
+import { requireUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
 Deno.serve(withHandler('getActiveTrips', async (req, corsHeaders) => {
-    const user = await getUser(req);
-    if (!user) return jsonError(401, 'Unauthorized', undefined, corsHeaders);
+    const user = await requireUser(req);
 
     // Pro verdict from the single SQL source (is_user_pro, migration 0055) instead
     // of an inline copy of the predicate. Fail-open: on RPC error isPro=false and
     // activeCount stays 0, so the upsell never falsely blocks (create_trip is the
     // real enforcement).
-    const { data: isProRpc } = await admin.rpc('is_user_pro', { p_uid: user.id });
+    const { data: isProRpc } = await supabaseAdmin.rpc('is_user_pro', { p_uid: user.id });
     const isPro = isProRpc === true;
 
     // Single source of truth (migration 0045): active = owned trip with no dated
     // visits yet OR max(city_visits.end_date) >= today.
-    const { data: activeTrips, error } = await admin
+    const { data: activeTrips, error } = await supabaseAdmin
       .rpc('active_owned_trips', { p_uid: user.id });
 
     if (error) {
