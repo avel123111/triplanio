@@ -7,7 +7,7 @@
  * Returns every Telegram binding the caller initiated (user_id = caller) across
  * ALL trips, enriched with the trip title and the caller's role in that trip:
  *
- *   { integrations: [{ id, trip_id, trip_title, cover_image_url, cover_gradient,
+ *   { integrations: [{ id, trip_id, trip_title, cover_image_url,
  *                      role, telegram_chat_id, telegram_username,
  *                      telegram_first_name, is_active, linked_at }] }
  *
@@ -44,11 +44,11 @@ Deno.serve(withHandler('telegramGetMyIntegrations', async (req, corsHeaders) => 
     // thumbnail; creator derives the owner role).
     const { data: trips } = await supabaseAdmin
       .from('trips')
-      .select('id, title, created_by, cover_image_url, cover_gradient')
+      .select('id, title, created_by, cover_image_url')
       .in('id', tripIds);
     const tripsById: Record<string, {
       id: string; title: string; created_by: string;
-      cover_image_url: string | null; cover_gradient: string | null;
+      cover_image_url: string | null;
     }> = {};
     for (const tr of trips ?? []) tripsById[tr.id] = tr;
 
@@ -71,7 +71,6 @@ Deno.serve(withHandler('telegramGetMyIntegrations', async (req, corsHeaders) => 
           trip_id: r.trip_id,
           trip_title: tr.title ?? '',
           cover_image_url: tr.cover_image_url ?? null,
-          cover_gradient: tr.cover_gradient ?? null,
           role: tr.created_by === user.id ? 'owner' : (roleByTrip[r.trip_id] || 'viewer'),
           telegram_chat_id: r.telegram_chat_id,
           telegram_username: r.telegram_username,
