@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, Carousel, COVER_FALLBACK, Swatch } from '@/design/index';
+import { Card, Carousel, COVER_FALLBACK, IconBtn, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '@/lib/storage';
@@ -37,10 +37,18 @@ export default function TripCoverPicker({
   tripId,
   onChange,
   showPreview = true,
+  // Hero-режим: когда задан heroClassName, вместо маленького превью рисуется
+  // большая обложка (фото на всю ширину) с кнопкой загрузки в правом верхнем
+  // углу и стрелками смены кавера по бокам; heroOverlay — контент поверх низа
+  // обложки (в планнере — <EditableText> с названием трипа). Без heroClassName
+  // (Settings, место #2) поведение прежнее: превью-карточка + лента.
+  heroClassName = '',
+  heroOverlay = null,
 }) {
   const t = useT();
   const { user } = useAuth();
   const fileRef = useRef(null);
+  const stripRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   // Covers uploaded during THIS picker session. When such a staged cover is
@@ -69,8 +77,22 @@ export default function TripCoverPicker({
     sweepIfStaged(coverImageUrl);
     onChange({ cover_image_url: url });
     // Довести выбранную миниатюру к центру ленты — активная плитка расширяется
-    // (CSS), доводчик держит её в кадре: карусель «дышит», а не стоит рядом.
+    // (CSS), доводчик держит её в кадре: лента «дышит», а не стоит рядом.
     el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  };
+
+  // Стрелки НА ОБЛОЖКЕ меняют сам выбранный кавер (prev/next по каталогу), а не
+  // скроллят ленту. Текущий кавер может быть загруженным фото/фоллбеком (индекса
+  // в каталоге нет) — тогда первый шаг встаёт на край каталога. Лента доводит
+  // новую выбранную миниатюру к центру, чтобы стрелка и лента были заодно.
+  const cyclePreset = (dir) => {
+    if (presets.length === 0) return;
+    const cur = presets.findIndex((p) => p.image_url === coverImageUrl);
+    const idx = cur === -1
+      ? (dir > 0 ? 0 : presets.length - 1)
+      : (cur + dir + presets.length) % presets.length;
+    const thumb = stripRef.current?.querySelector(`[data-idx="${idx}"]`);
+    handlePickPreset(presets[idx].image_url, /** @type {HTMLElement | null} */ (thumb));
   };
 
   const handlePickFile = () => fileRef.current?.click();
@@ -124,39 +146,67 @@ export default function TripCoverPicker({
     }
   };
 
+  // Кнопка загрузки своего фото — иконка-кнопка. В hero-режиме живёт в углу
+  // обложки; переиспользуется тем же обработчиком, что и прежняя плитка ленты.
+  const uploadBtn = (
+    <IconBtn
+      icon="upload"
+      tone="soft"
+      round
+      disabled={uploading}
+      onClick={handlePickFile}
+      ariaLabel={uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
+      className="tcp__upload"
+    />
+  );
+
   return (
     <div className="col col--g6">
-      {showPreview && (
-        /* TRIP-343 объект 2 (G): превью обложки — постер-форма <Card pad="none">;
-           скин (рамка+радиус+фон) на примитиве, `.tcp__preview` — раскладка.
-           Обложки нет → показываем ту же фоллбек-картинку, что увидит трип. */
-        <Card pad="none" radius="md" className="tcp__preview">
-          <img src={coverImageUrl || COVER_FALLBACK} alt="" className="tcp__img" />
-        </Card>
+      {heroClassName ? (
+        /* Hero-режим (планнер): большая обложка на всю ширину. Загрузка — иконкой
+           в правом верхнем углу; стрелки по бокам МЕНЯЮТ выбранный кавер (не
+           скроллят ленту); heroOverlay — название трипа поверх низа обложки. */
+        <div className={heroClassName}>
+          <img className="tc__img" src={coverImageUrl || COVER_FALLBACK} alt="" />
+          <div className="tc__scrim" />
+          {uploadBtn}
+          {presets.length > 1 && (
+            <>
+              <IconBtn icon="chevL" tone="soft" round ariaLabel={t('common.prev')} onClick={() => cyclePreset(-1)} className="tcp__nav tcp__nav--prev" />
+              <IconBtn icon="chev" tone="soft" round ariaLabel={t('common.next')} onClick={() => cyclePreset(1)} className="tcp__nav tcp__nav--next" />
+            </>
+          )}
+          {heroOverlay && <div className="pl-cover__title t-title">{heroOverlay}</div>}
+        </div>
+      ) : (
+        showPreview && (
+          /* TRIP-343 объект 2 (G): превью обложки — постер-форма <Card pad="none">;
+             скин (рамка+радиус+фон) на примитиве, `.tcp__preview` — раскладка.
+             Обложки нет → показываем ту же фоллбек-картинку, что увидит трип. */
+          <Card pad="none" radius="md" className="tcp__preview">
+            <img src={coverImageUrl || COVER_FALLBACK} alt="" className="tcp__img" />
+          </Card>
+        )
       )}
 
-      <Carousel
-        className="tcp__strip"
-        ariaLabel={t('trip.cover_gallery')}
-        prevLabel={t('common.prev')}
-        nextLabel={t('common.next')}
-      >
-        {/* Загрузка своего фото — ВЕДУЩАЯ плитка ленты (иконка), тем же примитивом
-            <Swatch>, что и пресеты: один ряд, один облик. Гаснет на время заливки. */}
-        <Swatch
-          variant="round"
-          icon="upload"
-          disabled={uploading}
-          onClick={handlePickFile}
-          aria-label={uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
-          className="tcp__upload"
-        />
-        {presets.map((p) => {
+      <Carousel className="tcp__strip" ariaLabel={t('trip.cover_gallery')} ref={stripRef}>
+        {/* Вне hero-режима (Settings) загрузка — ведущая плитка ленты; в hero-режиме
+            она уехала в угол обложки, поэтому здесь её нет. */}
+        {!heroClassName && (
+          <Swatch
+            variant="round"
+            icon="upload"
+            disabled={uploading}
+            onClick={handlePickFile}
+            aria-label={uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
+          />
+        )}
+        {presets.map((p, i) => {
           /* Плитка пресета — примитив <Swatch variant="round"> (его round-вариант и
              ЕСТЬ обложка-свотч, TRIP-344): выбор = aria-pressed, картинка — фоном.
              Выбор пресета копирует его URL в cover_image_url (как аплоад). Фон из
              данных держим переменной (гард 2l не считает `style={var}`), как в
-             VisitPanel/TripDot. */
+             VisitPanel/TripDot. data-idx — адрес для доводчика стрелок обложки. */
           const swatchStyle = { backgroundImage: `url(${p.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' };
           return (
             <Swatch
@@ -166,6 +216,7 @@ export default function TripCoverPicker({
               onClick={(e) => handlePickPreset(p.image_url, e.currentTarget)}
               aria-label={t('trip.cover_preset')}
               style={swatchStyle}
+              data-idx={i}
             />
           );
         })}

@@ -3281,39 +3281,24 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    prefix-exempt: carousel — новый примитив-лента (scroll-snap + стрелки), апрув Pavel
    floor-exempt: namespaces +2 — примитивы <Carousel> (.carousel) и <EditableText> (.editable), апрув Pavel
    floor-exempt: classes +11 — примитивы <Carousel>/<EditableText> (вкл. .editable__input) + герой обложки планнера (.pl-cover* и .tcp__strip), апрув Pavel
-   floor-exempt: triage +2 — новые классы в семьях под разбором (.pl-cover* и .tcp__strip), апрув Pavel
+   floor-exempt: triage +6 — новые классы в семьях под разбором (.pl-cover*, .tcp__strip, .tcp__upload, .tcp__nav*), апрув Pavel
    floor-exempt: reach +3 — скоуп-правила героя/ленты в примитивы (Swatch размер+ховер, инпут правки, карандаш) — бесшовный облик на обложке, апрув Pavel
    floor-exempt: layout +3 — приватные классы раскладки героя/ленты обложки, апрув Pavel
-   visual-diff-exempt: .carousel position — новый примитив-лента
-   visual-diff-exempt: .carousel__track display — новый примитив-лента
-   visual-diff-exempt: .carousel__track gap — новый примитив-лента
-   visual-diff-exempt: .carousel__track overflow-x — новый примитив-лента
-   visual-diff-exempt: .carousel__track scroll-snap-type — новый примитив-лента
-   visual-diff-exempt: .carousel__track scroll-padding-left — новый примитив-лента
-   visual-diff-exempt: .carousel__track padding-bottom — новый примитив-лента
-   visual-diff-exempt: .carousel__track > * scroll-snap-align — новый примитив-лента (дети снапятся)
-   visual-diff-exempt: .carousel__track > * flex — новый примитив-лента (дети не сжимаются)
-   visual-diff-exempt: .carousel__nav position — новый примитив-лента (стрелка)
-   visual-diff-exempt: .carousel__nav top — новый примитив-лента (стрелка)
-   visual-diff-exempt: .carousel__nav transform — новый примитив-лента (стрелка)
-   visual-diff-exempt: .carousel__nav z-index — новый примитив-лента (стрелка)
-   visual-diff-exempt: .carousel__nav box-shadow — новый примитив-лента (стрелка)
-   visual-diff-exempt: .carousel__nav display — новый примитив-лента (стрелка скрыта без hover)
-   visual-diff-exempt: .carousel__track overflow-y — лента не клипает выделение/тень миниатюр по вертикали
-   visual-diff-exempt: .carousel__track padding-top — вертикальный воздух: кольцо выбора миниатюры не режется сверху
-   visual-diff-exempt: .carousel__track scrollbar-width — карусель без видимого скроллбара (Firefox)
-   visual-diff-exempt: .carousel__track::-webkit-scrollbar display — карусель без видимого скроллбара (WebKit)
-   visual-diff-exempt: .carousel__nav--prev left — стрелка влево, чуть отступя от края (плавающая поверх ленты)
-   visual-diff-exempt: .carousel__nav--next right — стрелка вправо, чуть отступя от края (плавающая поверх ленты)
-   visual-diff-exempt: .carousel:hover {@media (hover: hover)} display — стрелки всплывают только при наведении на карусель (десктоп) */
-.carousel { position: relative; }
-.carousel__track { display: flex; gap: var(--sp-4); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-left: var(--sp-4); padding-top: var(--sp-2); padding-bottom: var(--sp-2); scrollbar-width: none; }
-.carousel__track::-webkit-scrollbar { display: none; }
-.carousel__track > * { scroll-snap-align: start; flex: none; }
-.carousel__nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; box-shadow: var(--sh-2); display: none; }
-.carousel__nav--prev { left: var(--sp-2); }
-.carousel__nav--next { right: var(--sp-2); }
-@media (hover: hover) { .carousel:hover .carousel__nav { display: grid; } }
+   visual-diff-exempt: .carousel display — примитив-лента (флекс-ряд)
+   visual-diff-exempt: .carousel gap — примитив-лента
+   visual-diff-exempt: .carousel overflow-x — примитив-лента (горизонтальный скролл)
+   visual-diff-exempt: .carousel overflow-y — лента не клипает выделение/тень миниатюр по вертикали
+   visual-diff-exempt: .carousel scroll-snap-type — примитив-лента (снап)
+   visual-diff-exempt: .carousel scroll-padding-left — примитив-лента
+   visual-diff-exempt: .carousel padding-top — вертикальный воздух: кольцо выбора миниатюры не режется сверху
+   visual-diff-exempt: .carousel padding-bottom — вертикальный воздух снизу
+   visual-diff-exempt: .carousel scrollbar-width — лента без видимого скроллбара (Firefox)
+   visual-diff-exempt: .carousel::-webkit-scrollbar display — лента без видимого скроллбара (WebKit)
+   visual-diff-exempt: .carousel > * scroll-snap-align — дети ленты снапятся
+   visual-diff-exempt: .carousel > * flex — дети ленты не сжимаются */
+.carousel { display: flex; gap: var(--sp-4); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-left: var(--sp-4); padding-top: var(--sp-2); padding-bottom: var(--sp-2); scrollbar-width: none; }
+.carousel::-webkit-scrollbar { display: none; }
+.carousel > * { scroll-snap-align: start; flex: none; }
 
 /* ── EditableText: инлайн-правка текста, примитив ДС (<EditableText>) ─────────
    Текст + карандаш → БЕСШОВНЫЙ инлайн-инпут (.editable__input: прозрачный, без
@@ -3894,7 +3879,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .icon-btn color — белый карандаш на скриме обложки (scoped .pl-cover__title .icon-btn)
    visual-diff-exempt: .editable flex — обёртка правки заполняет ширину обложки (scoped .pl-cover__title .editable)
    visual-diff-exempt: .editable__input flex — инпут правки названия заполняет ширину обложки (scoped .pl-cover__title)
-   visual-diff-exempt: .pl-cover__title flex — то же правило, атрибуция на .pl-cover__title */
+   visual-diff-exempt: .pl-cover__title flex — то же правило, атрибуция на .pl-cover__title
+   visual-diff-exempt: .tcp__upload position — кнопка загрузки в углу обложки
+   visual-diff-exempt: .tcp__upload z-index — кнопка загрузки над скримом
+   visual-diff-exempt: .tcp__upload top — кнопка загрузки в правом верхнем углу
+   visual-diff-exempt: .tcp__upload right — кнопка загрузки в правом верхнем углу
+   visual-diff-exempt: .tcp__nav position — стрелка смены кавера по краю обложки
+   visual-diff-exempt: .tcp__nav z-index — стрелка над скримом
+   visual-diff-exempt: .tcp__nav top — стрелка по вертикальному центру обложки
+   visual-diff-exempt: .tcp__nav transform — центрирование стрелки по вертикали
+   visual-diff-exempt: .tcp__nav--prev left — стрелка «предыдущий кавер» у левого края
+   visual-diff-exempt: .tcp__nav--next right — стрелка «следующий кавер» у правого края */
 .pl-cover {
   position: relative; overflow: hidden; height: 200px;
   margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
@@ -3908,6 +3903,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .pl-cover__title .icon-btn { color: #fff; }
 .pl-cover__title .editable { flex: 1; }
 .pl-cover__title .editable__input { flex: 1; }
+/* Загрузка своего фото — иконка-кнопка в правом верхнем углу обложки. */
+.tcp__upload { position: absolute; z-index: 4; top: var(--sp-4); right: var(--sp-4); }
+/* Стрелки смены выбранного кавера — по бокам обложки, по центру. Меняют сам
+   пресет (prev/next по каталогу), а НЕ скроллят ленту миниатюр. */
+.tcp__nav { position: absolute; z-index: 4; top: 50%; transform: translateY(-50%); }
+.tcp__nav--prev { left: var(--sp-4); }
+.tcp__nav--next { right: var(--sp-4); }
 
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }

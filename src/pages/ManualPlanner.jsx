@@ -18,7 +18,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, COVER_FALLBACK, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -663,12 +663,15 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
   return (
     <div className="col col--g6 pl-review">
       {/* Обложка во всю ширину сразу под разделителем прогресса, без радиусов
-          (full-bleed из падинга .lp-b): фото/выбранный пресет ИЛИ фоллбек-картинка;
-          на ней — название трипа с карандашом (инлайн-правка через <EditableText>). */}
-      <div className="pl-cover">
-        <img className="tc__img" src={cover?.cover_image_url || COVER_FALLBACK} alt="" />
-        <div className="tc__scrim" />
-        <div className="pl-cover__title t-title">
+          (full-bleed из падинга .lp-b, класс .pl-cover). Hero-режим общего пикера
+          рисует: фото/пресет/фоллбек, кнопку загрузки в правом верхнем углу,
+          стрелки смены кавера по бокам и название трипа с карандашом (наш
+          <EditableText> как heroOverlay). Ниже — лента миниатюр без стрелок. */}
+      <TripCoverPicker
+        coverImageUrl={cover?.cover_image_url || ''}
+        onChange={setCover}
+        heroClassName="pl-cover"
+        heroOverlay={(
           <EditableText
             value={tripTitle}
             onChange={setTripTitle}
@@ -677,14 +680,7 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
             editLabel={t('planner.title_edit')}
             confirmLabel={t('common.done')}
           />
-        </div>
-      </div>
-
-      {/* Лента выбора обложки — пресеты + загрузка своего фото (общий пикер-лента). */}
-      <TripCoverPicker
-        coverImageUrl={cover?.cover_image_url || ''}
-        onChange={setCover}
-        showPreview={false}
+        )}
       />
 
       {/* Сводка под обложкой — без изменений: статы + маршрут плоскими секциями. */}
