@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Btn, Card, COVER_FALLBACK, Swatch } from '@/design/index';
+import { Card, Carousel, COVER_FALLBACK, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '@/lib/storage';
@@ -65,9 +65,12 @@ export default function TripCoverPicker({
     staleTime: 60 * 60 * 1000,
   });
 
-  const handlePickPreset = (url) => {
+  const handlePickPreset = (url, el) => {
     sweepIfStaged(coverImageUrl);
     onChange({ cover_image_url: url });
+    // Довести выбранную миниатюру к центру ленты — активная плитка расширяется
+    // (CSS), доводчик держит её в кадре: карусель «дышит», а не стоит рядом.
+    el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
   };
 
   const handlePickFile = () => fileRef.current?.click();
@@ -132,7 +135,22 @@ export default function TripCoverPicker({
         </Card>
       )}
 
-      <div className="tcp__swatches">
+      <Carousel
+        className="tcp__strip"
+        ariaLabel={t('trip.cover_gallery')}
+        prevLabel={t('common.prev')}
+        nextLabel={t('common.next')}
+      >
+        {/* Загрузка своего фото — ВЕДУЩАЯ плитка ленты (иконка), тем же примитивом
+            <Swatch>, что и пресеты: один ряд, один облик. Гаснет на время заливки. */}
+        <Swatch
+          variant="round"
+          icon="upload"
+          disabled={uploading}
+          onClick={handlePickFile}
+          aria-label={uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
+          className="tcp__upload"
+        />
         {presets.map((p) => {
           /* Плитка пресета — примитив <Swatch variant="round"> (его round-вариант и
              ЕСТЬ обложка-свотч, TRIP-344): выбор = aria-pressed, картинка — фоном.
@@ -145,31 +163,20 @@ export default function TripCoverPicker({
               key={p.id}
               variant="round"
               on={coverImageUrl === p.image_url}
-              onClick={() => handlePickPreset(p.image_url)}
+              onClick={(e) => handlePickPreset(p.image_url, e.currentTarget)}
               aria-label={t('trip.cover_preset')}
               style={swatchStyle}
             />
           );
         })}
-
-        {/* Кнопка загрузки — обычная вторичная кнопка системы. Спиннер отдаёт
-            `loading` — он же гасит кнопку и ставит aria-busy. */}
-        <Btn
-          variant="secondary"
-          icon="upload"
-          loading={uploading}
-          onClick={handlePickFile}
-        >
-          {uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
-        </Btn>
-        <input
-          ref={fileRef}
-          type="file"
-          accept={IMAGE_ACCEPT}
-          onChange={handleUpload}
-          className="tcp__file"
-        />
-      </div>
+      </Carousel>
+      <input
+        ref={fileRef}
+        type="file"
+        accept={IMAGE_ACCEPT}
+        onChange={handleUpload}
+        className="tcp__file"
+      />
 
       {error && <p className="tcp__err">{error}</p>}
     </div>

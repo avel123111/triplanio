@@ -3275,6 +3275,66 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
 .cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
+/* ── Carousel: горизонтальная лента-примитив ДС (<Carousel>) ──────────────────
+   Нативный scroll-snap + десктоп-стрелки (только под hover-указателем). Дети —
+   любые элементы (у нас <Swatch>-миниатюры). Новый namespace, апрув Pavel.
+   prefix-exempt: carousel — новый примитив-лента (scroll-snap + стрелки), апрув Pavel
+   floor-exempt: namespaces +2 — примитивы <Carousel> (.carousel) и <EditableText> (.editable), апрув Pavel
+   floor-exempt: classes +11 — примитивы <Carousel>/<EditableText> (вкл. .editable__input) + герой обложки планнера (.pl-cover* и .tcp__strip), апрув Pavel
+   floor-exempt: triage +2 — новые классы в семьях под разбором (.pl-cover* и .tcp__strip), апрув Pavel
+   floor-exempt: reach +3 — скоуп-правила героя/ленты в примитивы (Swatch размер+ховер, инпут правки, карандаш) — бесшовный облик на обложке, апрув Pavel
+   floor-exempt: layout +3 — приватные классы раскладки героя/ленты обложки, апрув Pavel
+   visual-diff-exempt: .carousel position — новый примитив-лента
+   visual-diff-exempt: .carousel__track display — новый примитив-лента
+   visual-diff-exempt: .carousel__track gap — новый примитив-лента
+   visual-diff-exempt: .carousel__track overflow-x — новый примитив-лента
+   visual-diff-exempt: .carousel__track scroll-snap-type — новый примитив-лента
+   visual-diff-exempt: .carousel__track scroll-padding-left — новый примитив-лента
+   visual-diff-exempt: .carousel__track padding-bottom — новый примитив-лента
+   visual-diff-exempt: .carousel__track > * scroll-snap-align — новый примитив-лента (дети снапятся)
+   visual-diff-exempt: .carousel__track > * flex — новый примитив-лента (дети не сжимаются)
+   visual-diff-exempt: .carousel__nav position — новый примитив-лента (стрелка)
+   visual-diff-exempt: .carousel__nav top — новый примитив-лента (стрелка)
+   visual-diff-exempt: .carousel__nav transform — новый примитив-лента (стрелка)
+   visual-diff-exempt: .carousel__nav z-index — новый примитив-лента (стрелка)
+   visual-diff-exempt: .carousel__nav box-shadow — новый примитив-лента (стрелка)
+   visual-diff-exempt: .carousel__nav display — новый примитив-лента (стрелка скрыта без hover)
+   visual-diff-exempt: .carousel__nav--prev left — новый примитив-лента (стрелка влево)
+   visual-diff-exempt: .carousel__nav--next right — новый примитив-лента (стрелка вправо)
+   visual-diff-exempt: .carousel__nav {@media (hover: hover)} display — стрелки только на десктопе (hover-указатель) */
+.carousel { position: relative; }
+.carousel__track { display: flex; gap: var(--sp-4); overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-left: var(--sp-4); padding-bottom: var(--sp-2); }
+.carousel__track > * { scroll-snap-align: start; flex: none; }
+.carousel__nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; box-shadow: var(--sh-2); display: none; }
+.carousel__nav--prev { left: 0; }
+.carousel__nav--next { right: 0; }
+@media (hover: hover) { .carousel__nav { display: grid; } }
+
+/* ── EditableText: инлайн-правка текста, примитив ДС (<EditableText>) ─────────
+   Текст + карандаш → БЕСШОВНЫЙ инлайн-инпут (.editable__input: прозрачный, без
+   рамки, наследует шрифт/цвет контекста), НЕ боксовый <Input>. Облик текста —
+   от контекста (напр. .t-title + белый на обложке).
+   prefix-exempt: editable — новый примитив инлайн-правки текста, апрув Pavel
+   visual-diff-exempt: .editable display — новый примитив инлайн-правки
+   visual-diff-exempt: .editable align-items — новый примитив инлайн-правки
+   visual-diff-exempt: .editable gap — новый примитив инлайн-правки
+   visual-diff-exempt: .editable min-width — новый примитив инлайн-правки
+   visual-diff-exempt: .editable__text overflow — новый примитив (обрезка длинного текста)
+   visual-diff-exempt: .editable__text text-overflow — новый примитив (многоточие)
+   visual-diff-exempt: .editable__text white-space — новый примитив (одна строка)
+   visual-diff-exempt: .editable__edit flex — новый примитив (карандаш не сжимается)
+   visual-diff-exempt: .editable__input min-width — бесшовный инлайн-инпут правки
+   visual-diff-exempt: .editable__input background — бесшовный (прозрачный, не форменный бокс)
+   visual-diff-exempt: .editable__input border — бесшовный (без рамки)
+   visual-diff-exempt: .editable__input padding — бесшовный (без внутренних отступов бокса)
+   visual-diff-exempt: .editable__input font — наследует типографику контекста (.t-title и т.п.)
+   visual-diff-exempt: .editable__input color — наследует цвет контекста (белый на обложке)
+   visual-diff-exempt: .editable__input outline — без фокус-бокса (правка = текст, не форма) */
+.editable { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.editable__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editable__edit { flex: none; }
+.editable__input { min-width: 0; background: transparent; border: 0; padding: 0; font: inherit; color: inherit; outline: none; }
+
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
    phone bottom-nav (≤640). There is no separate tablet/icon-rail state: the full
@@ -3806,6 +3866,39 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Quick-start chips under the welcome message — a small gap below it. The empty
    `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
 .pl-ai-chips { margin-top: var(--sp-4); }
+/* ── Обложка шага «Проверка»: во всю ширину под разделителем, без радиусов ─────
+   Вырывается из падинга .lp-b (14px верт / 15px гор) отрицательными márgins и
+   упирается в бордюр шапки прогресса. Фото/скрим — канон .tc__img/.tc__scrim;
+   название с карандашом — <EditableText> поверх обложки внизу.
+   visual-diff-exempt: .pl-cover position — новый герой обложки планнера
+   visual-diff-exempt: .pl-cover overflow — новый герой обложки планнера
+   visual-diff-exempt: .pl-cover height — новый герой обложки планнера
+   visual-diff-exempt: .pl-cover margin — full-bleed: гасит падинг .lp-b (14/15px)
+   visual-diff-exempt: .pl-cover__title position — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title z-index — заголовок над скримом
+   visual-diff-exempt: .pl-cover__title left — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title right — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title bottom — заголовок внизу обложки
+   visual-diff-exempt: .pl-cover__title display — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title align-items — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title padding — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title color — белый текст на скриме обложки
+   visual-diff-exempt: .icon-btn color — белый карандаш на скриме обложки (scoped .pl-cover__title .icon-btn)
+   visual-diff-exempt: .editable__input flex — инпут правки названия заполняет ширину обложки (scoped .pl-cover__title)
+   visual-diff-exempt: .pl-cover__title flex — то же правило, атрибуция на .pl-cover__title */
+.pl-cover {
+  position: relative; overflow: hidden; height: 200px;
+  margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
+}
+.pl-cover__title {
+  position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center;
+  padding: var(--sp-6) var(--sp-7);
+  color: #fff;
+}
+.pl-cover__title .icon-btn { color: #fff; }
+.pl-cover__title .editable__input { flex: 1; }
+
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
 /* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a

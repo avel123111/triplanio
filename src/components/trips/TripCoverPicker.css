@@ -25,20 +25,31 @@
    visual-diff-exempt: .tcp__ph justify-content — плейсхолдер 🌍 удалён
    visual-diff-exempt: .tcp__ph opacity — плейсхолдер 🌍 удалён */
 
-.tcp__swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-
-/* Плитка градиента — примитив <Swatch variant="round">. Оставляем ЧИСТЫЙ облик
-   round (border:0 + кольцо выбора box-shadow — без 2px-рамки, из-за которой на
-   градиенте появлялись полосы по краям), переопределяем ТОЛЬКО радиус: pill → 10
-   (--r-btn). Одна точка, обе поверхности (create + settings). Прежний `.tcp__sw`
-   держал свой размер, ховер и галочку выбора; выбор теперь виден кольцом примитива. */
-.tcp__swatches .swatch--round { border-radius: var(--r-btn); }
-
-/* `.tcp__upload` удалён: кнопка загрузки обложки — это `<Btn variant="secondary"
-   icon="upload" loading>`. Класс повторял тон secondary своими руками и при этом
-   расходился с ним ДВАЖДЫ: брал радиус со ступени ПОВЕРХНОСТИ (--r-md 16px)
-   вместо ступени контрола (--r-btn 10px) и держал собственную высоту паддингом
-   вместо общего `--ctl-h`. Спиннер и гашение отдаёт проп `loading`. */
+/* Лента выбора обложки — примитив <Carousel> с миниатюрами <Swatch variant="round">
+   (пресеты + ведущая плитка загрузки). `.tcp__swatches` (flex-wrap ряд) заменён
+   каруселью; его декларации сняты — 2p объявляет снятие:
+   visual-diff-exempt: .tcp__swatches display — ряд заменён каруселью
+   visual-diff-exempt: .tcp__swatches flex-wrap — ряд заменён каруселью
+   visual-diff-exempt: .tcp__swatches align-items — ряд заменён каруселью
+   visual-diff-exempt: .tcp__swatches gap — ряд заменён каруселью
+   Миниатюры — пейзажной формы (как в референсе): переопределяем размер/радиус
+   примитива Swatch, кольцо выбора его же. Раньше `.tcp__swatches .swatch--round`
+   правил только радиус; теперь `.tcp__strip .swatch--round` даёт размер+радиус.
+   visual-diff-exempt: .tcp__swatches border-radius — правило .tcp__swatches .swatch--round снято (ряд заменён каруселью)
+   visual-diff-exempt: .swatch--round border-radius — миниатюра в ленте: радиус --r-btn → --r-sm (пейзажная форма)
+   visual-diff-exempt: .swatch--round width — миниатюра в ленте: пейзажный размер
+   visual-diff-exempt: .swatch--round height — миниатюра в ленте: пейзажный размер
+   visual-diff-exempt: .tcp__strip border-radius — миниатюра в ленте (радиус на .swatch--round)
+   visual-diff-exempt: .tcp__strip width — миниатюра в ленте (ширина на .swatch--round)
+   visual-diff-exempt: .tcp__strip height — миниатюра в ленте (высота на .swatch--round)
+   visual-diff-exempt: .tcp__strip transition — плавное расширение активной миниатюры и ховер
+   visual-diff-exempt: .swatch--round transition — плавное расширение активной миниатюры и ховер (лента обложек)
+   visual-diff-exempt: .swatch--round[aria-pressed=true] width — активная миниатюра расширяется (акцент, как в референсе)
+   visual-diff-exempt: .swatch--round:hover {@media (hover: hover)} box-shadow — ховер-подъём миниатюры на десктопе
+   visual-diff-exempt: .tcp__strip {@media (hover: hover)} box-shadow — то же правило, атрибуция на .tcp__strip */
+.tcp__strip .swatch--round { width: 72px; height: 52px; border-radius: var(--r-sm); transition: width .3s var(--ease-out), box-shadow .2s var(--ease-out); }
+.tcp__strip .swatch--round[aria-pressed="true"] { width: 108px; }
+@media (hover: hover) { .tcp__strip .swatch--round:hover { box-shadow: var(--sh-2); } }
 
 .tcp__file { display: none; }                                            /* was hidden */
 
