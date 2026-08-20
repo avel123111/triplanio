@@ -621,6 +621,30 @@ export type Database = {
           },
         ]
       }
+      cover_presets: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          image_url: string
+          sort: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url: string
+          sort?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url?: string
+          sort?: number
+        }
+        Relationships: []
+      }
       fx_rates: {
         Row: {
           base: string
