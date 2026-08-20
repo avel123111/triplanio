@@ -4,15 +4,14 @@
 // OWNER has an active Pro subscription. Without a tripId, falls back to the
 // caller's own subscription (used by the trip-creation paywall).
 import { withHandler } from '../_shared/http.ts';
-import { supabaseAdmin as admin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { supabaseAdmin as admin, requireUser } from '../_shared/supabaseAdmin.ts';
 import { reconcileEntitlement, needsEntitlementReconcile, reconcileTripEntitlement } from '../_shared/reconcileEntitlement.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 import { callerStep } from '../_shared/tripAccess.ts';
 import { clearsStep } from '../_shared/tripStep.ts';
 
 Deno.serve(withHandler('checkSubscriptionStatus', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const { tripId } = await req.json().catch(() => ({}));
     // No trip context → check caller's own subscription.
