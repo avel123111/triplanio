@@ -5,8 +5,8 @@
  *
  * `settings` = `op:'rpc'` `update_trip_settings` (read-modify-write jsonb деталей
  * + условный Pro-отказ = НЕ плоский update, обёртка не пустая — TRIP-405). Верхние
- * колонки (title≤300/description/cover_image_url/cover_gradient/notes) валидирует
- * вложенный `fields`-объект тем же движком `validateFields` (не копия правил);
+ * колонки (title≤300/description/cover_image_url/notes) валидирует вложенный
+ * `fields`-объект тем же движком `validateFields` (не копия правил);
  * патч деталей — `main_currency`/`display`/`addons` (`type:'json'`). Тело фронта
  * почти прежнее — шов берёт scope из `body.tripId`.
  *
@@ -29,7 +29,6 @@ const SETTINGS_COL_FIELDS: Record<string, FieldSpec> = {
   title: { type: 'string', max: 300 },
   description: { type: 'string', nullable: true },
   cover_image_url: { type: 'string', nullable: true },
-  cover_gradient: { type: 'string', nullable: true },
   notes: { type: 'string', nullable: true },
 };
 

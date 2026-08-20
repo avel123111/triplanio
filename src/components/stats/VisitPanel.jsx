@@ -1,11 +1,10 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { Drawer } from 'vaul';
 import { pointType, TONE } from '@/lib/travel-stats';
-import { coverGradientCss } from '@/lib/trip-gradients';
 import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { Icon } from '@/design/icons';
-import { IconBtn, Tile } from '@/design/index';
+import { COVER_FALLBACK, IconBtn, Tile } from '@/design/index';
 import { formatDateRange } from '@/lib/trip-dates';
 
 // ≤640px the panel is a bottom sheet — render it through vaul (native swipe +
@@ -32,7 +31,7 @@ import { formatDateRange } from '@/lib/trip-dates';
 //   name, sub           — header title / subtitle (already localized by caller)
 //   visits              — point rows for this place: { city_name, country_code,
 //                         kind, trip_id, start_date, end_date }
-//   trips               — { [trip_id]: { title, cover_gradient, cover_image_url } }
+//   trips               — { [trip_id]: { title, cover_image_url } }
 //   t, lang             — i18n
 //   onOpenTrip(tripId)  — navigate to a trip
 //   onEditManual(point) — open AddPlaceDialog for a manual visit
@@ -86,12 +85,13 @@ function groupVisits(visits = []) {
   return [...tripRows, ...manualRows].sort((a, b) => new Date(b.start || 0) - new Date(a.start || 0));
 }
 
-// Trip swatch in the trip-link: the cover PHOTO if uploaded, else the gradient.
+// Trip swatch in the trip-link: the cover PHOTO if uploaded, else the fallback
+// cover image from the bundle (градиентов больше нет).
 function TripDot({ trip }) {
-  const photo = trip?.cover_image_url;
-  const style = photo
-    ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: coverGradientCss(trip?.cover_gradient) };
+  const src = trip?.cover_image_url || COVER_FALLBACK;
+  // Фон из данных (URL фото/фоллбека) — держим переменной (гард 2l не считает
+  // `style={var}`, в отличие от инлайн-литерала); класс `.d` даёт размер/форму.
+  const style = { backgroundImage: `url(${src})`, backgroundSize: 'cover', backgroundPosition: 'center' };
   return <span className="d" style={style} />;
 }
 

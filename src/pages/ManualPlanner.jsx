@@ -18,14 +18,13 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, COVER_FALLBACK, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
-import { coverGradientCss, DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
@@ -644,9 +643,6 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
   const autoTitle = computeAutoTitle(home, cities, t);
   const displayTitle = tripTitle || autoTitle;
 
-  const hasPhoto = !!cover?.cover_image_url;
-  const heroBg = hasPhoto ? 'var(--wash)' : coverGradientCss(cover?.cover_gradient);
-
   if (savedOk) {
     return (
       <EmptyState
@@ -690,7 +686,6 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
         <label className="field__label t-label">{t('planner.cover')}</label>
         <TripCoverPicker
           coverImageUrl={cover?.cover_image_url || ''}
-          coverGradient={cover?.cover_gradient || ''}
           onChange={setCover}
           showPreview={false}
         />
@@ -702,9 +697,9 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
           обложка = постер .tc, цифры = .statbar/.v/.k, ряд точки = .pl-revrow. */}
       <Card radius="btn" pad="none" className="pl-summary">
         <div className="tc tc--band">
-          {/* heroBg - ДАННЫЕ (загруженное фото или градиент обложки трипа) */}
-          <div className="tc__bg" style={{ background: heroBg }}>
-            {hasPhoto && <img className="tc__img" src={cover.cover_image_url} alt="" />}
+          {/* Обложка: загруженное фото или фоллбек-картинка из бандла (градиентов нет) */}
+          <div className="tc__bg">
+            <img className="tc__img" src={cover?.cover_image_url || COVER_FALLBACK} alt="" />
           </div>
           <div className="tc__scrim" />
           <div className="tc__in">
@@ -816,7 +811,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   //   'stay' — «останусь»: последний город и есть терминал (kind:'end', без ночей).
   const [end, setEnd] = useState(null);
   const [tripTitle, setTripTitle]   = useState('');
-  const [cover, setCover]           = useState({ cover_image_url: '', cover_gradient: 'gradient_1' });
+  const [cover, setCover]           = useState({ cover_image_url: '' });
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
   const [savedTripId, setSavedTripId] = useState(null);
@@ -1047,7 +1042,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setEnd(null);
     setStartDateRaw(defaultStartISO());
     setTripTitle('');
-    setCover({ cover_image_url: '', cover_gradient: 'gradient_1' });
+    setCover({ cover_image_url: '' });
     setSavedOk(false);
     setSavedTripId(null);
     setError(null);
@@ -1152,24 +1147,21 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       if (createErr) throw refusalError(code);
       const trip = { id: newTripId };
 
-      // 2. Persist cover (gradient or uploaded image). create_trip_with_route
+      // 2. Persist the uploaded cover photo (if any). create_trip_with_route
       // doesn't accept cover fields; trips is Ярус B (TRIP-190) — no direct client
       // write — so the cover goes through the updateTripSettings edge (declared
       // Storage boundary: the file lands before tripId exists, re-homed after).
-      if (cover?.cover_gradient || cover?.cover_image_url) {
+      // Без фото сохранять нечего: обложки нет → рендерится фоллбек-картинка
+      // (градиентов больше нет, cover_image_url остаётся null).
+      if (cover?.cover_image_url) {
         // Cover was uploaded before the trip existed (draft prefix) — move it
         // under <tripId>/ and re-sign before persisting the URL.
-        const finalCoverUrl = cover.cover_image_url
-          ? await finalizeDraftCover(trip.id, cover.cover_image_url)
-          : null;
+        const finalCoverUrl = await finalizeDraftCover(trip.id, cover.cover_image_url);
         const { error: coverErr } = await invokeFn('trip-settings/settings', {
           body: {
             tripId: trip.id,
             fields: {
               cover_image_url: finalCoverUrl,
-              // Invariant: every trip keeps a built-in gradient (photo renders on
-              // top when present). Never persist null → no legacy/procedural cover.
-              cover_gradient: cover.cover_gradient || DEFAULT_GRADIENT_ID,
             },
           },
         });

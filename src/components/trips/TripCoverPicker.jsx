@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Btn, Card, Swatch } from '@/design/index';
+import { useQuery } from '@tanstack/react-query';
+import { Btn, Card, COVER_FALLBACK, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '@/lib/storage';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { report } from '@/lib/reportDataError';
-import { TRIP_GRADIENTS, getGradientById } from '@/lib/trip-gradients';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
 import { uploadErrorText } from '@/lib/documentMutations';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -13,16 +14,26 @@ import './TripCoverPicker.css';
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
 
+// Каталог пресетов читаем через edge-витрину getCoverPresets (дверь auth,
+// service_role) — прямого клиентского SELECT нет (эпик «единая дверь» TRIP-374).
+async function fetchCoverPresets() {
+  const { data, error } = await invokeFn('getCoverPresets', { body: {} });
+  if (error) throw new Error('getCoverPresets failed');
+  return data?.presets || [];
+}
+
 /**
  * Cover picker shared by the create flow (ManualPlanner) and trip Settings
- * (SettingsLens). Lets the user pick one of the built-in gradients
- * (TRIP_GRADIENTS) or upload a photo to Supabase Storage. Calls
- * `onChange({ cover_image_url, cover_gradient })` with the new pair — choosing a
- * gradient clears the uploaded photo and vice versa.
+ * (SettingsLens). Lets the user pick one of the curated preset images
+ * (getCoverPresets) or upload their own photo to Supabase Storage. Both cases
+ * write the same field: choosing a preset COPIES its public URL into
+ * `cover_image_url` (exactly like an upload), so removing a preset from the
+ * gallery never breaks a trip that already picked it. No gradients anymore —
+ * an empty cover renders the bundled fallback image.
+ * Calls `onChange({ cover_image_url })` with the new value.
  */
 export default function TripCoverPicker({
   coverImageUrl = '',
-  coverGradient = '',
   tripId,
   onChange,
   showPreview = true,
@@ -33,9 +44,11 @@ export default function TripCoverPicker({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   // Covers uploaded during THIS picker session. When such a staged cover is
-  // replaced (new upload / gradient) it's an orphan → delete it immediately.
+  // replaced (new upload / preset) it's an orphan → delete it immediately.
   // A cover that arrived via props is the persisted one; its replacement is
-  // swept by the parent's save-time diff, not here (TRIP-117).
+  // swept by the parent's save-time diff, not here (TRIP-117). Preset URLs live
+  // in the public `trip-cover-presets` bucket, so sweeping (bucket `trips`)
+  // never touches them.
   const stagedUrls = useRef(new Set());
   const sweepIfStaged = (url) => {
     if (url && stagedUrls.current.has(url)) {
@@ -44,11 +57,17 @@ export default function TripCoverPicker({
     }
   };
 
-  const gradient = getGradientById(coverGradient);
+  const { data: presets = [] } = useQuery({
+    queryKey: ['coverPresets'],
+    queryFn: fetchCoverPresets,
+    // Набор курируется вручную и меняется редко — держим час, чтобы переход
+    // между создать/настройки не бил edge заново.
+    staleTime: 60 * 60 * 1000,
+  });
 
-  const handlePickGradient = (id) => {
+  const handlePickPreset = (url) => {
     sweepIfStaged(coverImageUrl);
-    onChange({ cover_image_url: '', cover_gradient: id });
+    onChange({ cover_image_url: url });
   };
 
   const handlePickFile = () => fileRef.current?.click();
@@ -92,7 +111,7 @@ export default function TripCoverPicker({
       if (signErr || !signed?.signedUrl) throw signErr || new Error(t('trip.cover_upload_failed'));
       sweepIfStaged(coverImageUrl); // replacing an earlier staged upload
       stagedUrls.current.add(signed.signedUrl);
-      onChange({ cover_image_url: signed.signedUrl, cover_gradient: '' });
+      onChange({ cover_image_url: signed.signedUrl });
     } catch (err) {
       // Storage-ошибка (кода НЕТ) → её дом uploadErrorText, не сырой показ .message.
       const storageMsg = err?.message;
@@ -102,44 +121,39 @@ export default function TripCoverPicker({
     }
   };
 
-  const previewStyle = coverImageUrl
-    ? undefined
-    : gradient
-      ? { background: gradient.css }
-      : undefined;
-
   return (
     <div className="col col--g6">
       {showPreview && (
         /* TRIP-343 объект 2 (G): превью обложки — постер-форма <Card pad="none">;
-           скин (рамка+радиус+фон) на примитиве, `.tcp__preview` — раскладка. */
-        <Card pad="none" radius="md" className="tcp__preview" style={previewStyle}>
-          {coverImageUrl ? (
-            <img src={coverImageUrl} alt="" className="tcp__img" />
-          ) : !gradient ? (
-            <div className="tcp__ph">🌍</div>
-          ) : null}
+           скин (рамка+радиус+фон) на примитиве, `.tcp__preview` — раскладка.
+           Обложки нет → показываем ту же фоллбек-картинку, что увидит трип. */
+        <Card pad="none" radius="md" className="tcp__preview">
+          <img src={coverImageUrl || COVER_FALLBACK} alt="" className="tcp__img" />
         </Card>
       )}
 
       <div className="tcp__swatches">
-        {TRIP_GRADIENTS.map((g) => (
-          <Swatch
-            key={g.id}
-            variant="round"
-            on={!coverImageUrl && coverGradient === g.id}
-            onClick={() => handlePickGradient(g.id)}
-            title={g.name}
-            style={{ background: g.preview }}
-          />
-        ))}
+        {presets.map((p) => {
+          /* Плитка пресета — примитив <Swatch variant="round"> (его round-вариант и
+             ЕСТЬ обложка-свотч, TRIP-344): выбор = aria-pressed, картинка — фоном.
+             Выбор пресета копирует его URL в cover_image_url (как аплоад). Фон из
+             данных держим переменной (гард 2l не считает `style={var}`), как в
+             VisitPanel/TripDot. */
+          const swatchStyle = { backgroundImage: `url(${p.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+          return (
+            <Swatch
+              key={p.id}
+              variant="round"
+              on={coverImageUrl === p.image_url}
+              onClick={() => handlePickPreset(p.image_url)}
+              aria-label={t('trip.cover_preset')}
+              style={swatchStyle}
+            />
+          );
+        })}
 
-        {/* Кнопка загрузки — обычная вторичная кнопка системы. Своего класса
-            `.tcp__upload` у неё больше нет: он повторял тон secondary и при
-            этом брал радиус со ступени ПОВЕРХНОСТИ (--r-md 16px) вместо ступени
-            КОНТРОЛА (--r-btn 10px), из-за чего кнопка была скруглена сильнее
-            соседних. Спиннер отдаёт `loading` — он же гасит кнопку и ставит
-            aria-busy, поэтому отдельный `disabled` не нужен. */}
+        {/* Кнопка загрузки — обычная вторичная кнопка системы. Спиннер отдаёт
+            `loading` — он же гасит кнопку и ставит aria-busy. */}
         <Btn
           variant="secondary"
           icon="upload"
