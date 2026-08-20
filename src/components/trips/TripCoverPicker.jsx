@@ -101,6 +101,16 @@ export default function TripCoverPicker({
   const slides = useMemo(() => [...extraSlides, ...presetUrls], [extraSlides, presetUrls]);
 
   const coverTrackRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  // Скрываем стрелку, когда в ту сторону ехать некуда: «влево» на первом слайде,
+  // «вправо» на последнем (1px допуск на дробный zoom).
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+  const syncEdges = () => {
+    const el = coverTrackRef.current;
+    if (!el) return;
+    setAtStart(el.scrollLeft <= 1);
+    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
+  };
 
   // Кавер сменили НЕ свайпом (аплоад/дефолт/клик по миниатюре) → подвести ленту
   // слайдов к нему. Если уже на месте — no-op (снап-скролл сам её туда привёл).
@@ -110,17 +120,29 @@ export default function TripCoverPicker({
     const idx = Math.max(0, slides.indexOf(coverImageUrl));
     const target = idx * el.clientWidth;
     if (Math.abs(el.scrollLeft - target) > 2) el.scrollLeft = target;
+    syncEdges();
   }, [coverImageUrl, slides]);
 
+  // Подсветка активной миниатюры в ленте должна идти В НОГУ со свайпом/стрелками,
+  // а не ждать коммита кавера (дебаунс) — иначе главная картинка сменилась, а ряд
+  // догоняет через полсекунды. Живой индекс слайда держим в scrollUrl и им гоним
+  // `on` миниатюр; коммит кавера наверх (onChange) — по-прежнему на осадке скролла.
+  const [scrollUrl, setScrollUrl] = useState(/** @type {string | null} */ (null));
+  const activeUrl = scrollUrl ?? coverImageUrl;
+
   // Осевший после скролла слайд → кавер (дебаунс на конец скролла); тот же url — no-op.
+  // Края ленты и живую подсветку синхроним сразу (без дебаунса).
   const scrollSettle = useRef(/** @type {ReturnType<typeof setTimeout> | undefined} */ (undefined));
   useEffect(() => () => clearTimeout(scrollSettle.current), []);
   const onCoverScroll = () => {
     const el = coverTrackRef.current;
     if (!el) return;
+    syncEdges();
+    setScrollUrl(slides[Math.round(el.scrollLeft / el.clientWidth)] ?? null);
     clearTimeout(scrollSettle.current);
     scrollSettle.current = setTimeout(() => {
       selectCover(slides[Math.round(el.scrollLeft / el.clientWidth)]);
+      setScrollUrl(null);
     }, 120);
   };
 
@@ -218,11 +240,11 @@ export default function TripCoverPicker({
           </div>
           <div className="tc__scrim" />
           {uploadBtn}
-          {slides.length > 1 && (
-            <>
-              <IconBtn icon="chevL" ariaLabel={t('common.prev')} onClick={() => pageCover(-1)} className="tcp__ctl tcp__nav tcp__nav--prev" />
-              <IconBtn icon="chev" ariaLabel={t('common.next')} onClick={() => pageCover(1)} className="tcp__ctl tcp__nav tcp__nav--next" />
-            </>
+          {slides.length > 1 && !atStart && (
+            <IconBtn icon="chevL" ariaLabel={t('common.prev')} onClick={() => pageCover(-1)} className="tcp__ctl tcp__nav tcp__nav--prev" />
+          )}
+          {slides.length > 1 && !atEnd && (
+            <IconBtn icon="chev" ariaLabel={t('common.next')} onClick={() => pageCover(1)} className="tcp__ctl tcp__nav tcp__nav--next" />
           )}
           {heroOverlay && <div className="pl-cover__title t-title">{heroOverlay}</div>}
         </div>
@@ -260,7 +282,7 @@ export default function TripCoverPicker({
             <Swatch
               key={p.id}
               variant="round"
-              on={coverImageUrl === p.image_url}
+              on={activeUrl === p.image_url}
               onClick={() => selectCover(p.image_url)}
               aria-label={t('trip.cover_preset')}
               style={swatchStyle}
