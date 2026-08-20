@@ -1576,7 +1576,7 @@ export type Database = {
           created_at: string | null
           created_by: string
           currency: string
-          day_change: boolean
+          day_span: number
           details: Json | null
           documents: Json | null
           end_datetime: string | null
@@ -1604,7 +1604,7 @@ export type Database = {
           created_at?: string | null
           created_by: string
           currency: string
-          day_change?: boolean
+          day_span?: number
           details?: Json | null
           documents?: Json | null
           end_datetime?: string | null
@@ -1632,7 +1632,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           currency?: string
-          day_change?: boolean
+          day_span?: number
           details?: Json | null
           documents?: Json | null
           end_datetime?: string | null

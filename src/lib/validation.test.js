@@ -111,14 +111,14 @@ test('layover: endpoints aligned with trip days -> no day errors', () => {
   assert.ok(!has(issues, 'TR_DEP_DAY'));
   assert.ok(!has(issues, 'TR_ARR_DAY'));
 });
-test('layover: endpoints far from trip days -> TR_DEP_DAY + TR_ARR_DAY', () => {
+test('layover: first departure far from the leave day -> TR_DEP_DAY (arrival is no longer checked)', () => {
   const segs = [
     { start: '2026-07-15T08:00:00', end: '2026-07-15T10:00:00', toCity: { city_name: 'Madrid' } },
     { start: '2026-07-20T11:00:00', end: '2026-07-20T16:00:00' },
   ];
   const issues = validateEntity('transfer', { id: 't1', hasLayovers: true, segments: segs }, { fromVisit: FROM, toVisit: TO });
   assert.ok(has(issues, 'TR_DEP_DAY'));
-  assert.ok(has(issues, 'TR_ARR_DAY'));
+  assert.ok(!has(issues, 'TR_ARR_DAY'), 'arrival defines the next city start now — not flagged');
 });
 
 // ---------- AI city-mismatch advisories (ephemeral, parse-time) ----------

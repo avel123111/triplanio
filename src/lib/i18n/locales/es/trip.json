@@ -12,6 +12,7 @@
   "cities_count_one": "ciudad",
   "copy_link": "Copiar enlace",
   "copying": "Copiando el viaje…",
+  "cover_gallery": "Galería de portadas",
   "cover_image": "Imagen de portada",
   "cover_preset": "Portada predefinida",
   "cover_too_large": "Imagen demasiado grande (máx. 4 MB).",
@@ -79,6 +80,6 @@
   "tl_transfer": "Traslado",
   "to_my_trips": "A mis viajes",
   "update": "Actualizar viaje",
-  "who_goes": "Quién viaja",
-  "viewer_locked": "Los observadores no pueden editar el viaje"
+  "viewer_locked": "Los observadores no pueden editar el viaje",
+  "who_goes": "Quién viaja"
 }

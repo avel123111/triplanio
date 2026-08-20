@@ -105,6 +105,22 @@ test('mid-chain waypoint consumes no nights; the city after it does NOT shift', 
   assert.equal(laid[4].start_date, '2026-09-16');
 });
 
+test('multi-day transfer (gap=3): the arrival city and all following shift +3', () => {
+  // A non-binary day_span: a 3-day crossing c1 -> c2 pushes c2 (and everything after)
+  // three days past c1's checkout. Mirrors recompute_trip reading transfers.day_span.
+  const nodes = [
+    { id: 's', kind: 'start' },
+    { id: 'c1', kind: 'transit', nights: 2, gap: 0 },
+    { id: 'c2', kind: 'transit', nights: 2, gap: 3 },
+    { id: 'e', kind: 'end', gap: 0 },
+  ];
+  const laid = layoutDates(nodes, BASE);
+  assert.equal(laid[1].end_date, '2026-09-13');   // c1 checkout (2 nights from 09-11)
+  assert.equal(laid[2].start_date, '2026-09-16');  // +3 days
+  assert.equal(laid[2].end_date, '2026-09-18');
+  assert.equal(laid[3].start_date, '2026-09-18');  // finish = last checkout
+});
+
 test('reorder re-anchors on base, not on the first node\'s stale date (TRIP-216)', () => {
   // The planner's recomputeDates wrapper lays out a flat transit chain from the
   // FIXED trip start. Simulate a reorder: the node dragged to the top still carries

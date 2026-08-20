@@ -4,7 +4,7 @@ import {
   Sparkles, Lock, Camera, Wallet, Trash2, ExternalLink, Calendar, BedDouble, Users,
   Pencil, ArrowRight, Sparkle, Ellipsis, Map, Link, Flag, MessageCircle, Bell, User,
   Share2, Send, Search, Plane, Paperclip, Moon, List, LayoutGrid, Globe,
-  GripVertical, Crown, ArrowRightLeft, Upload, TrainFront, Sun, Shield, RefreshCw,
+  GripVertical, Crown, ArrowRightLeft, Upload, ImageUp, TrainFront, Sun, Shield, RefreshCw,
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus, AtSign,
   Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair, SlidersHorizontal,
@@ -105,7 +105,7 @@ const LUCIDE = {
   user: User, share: Share2, send: Send, search: Search, pro: ProStar, plane: Plane,
   paperclip: Paperclip, moon: Moon, list: List, grid: LayoutGrid, globe: Globe,
   drag: GripVertical, crown: Crown, arrowSwap: ArrowRightLeft, arrowRight: ArrowRight,
-  upload: Upload, train: TrainFront, sun: Sun, shield: Shield, refresh: RefreshCw,
+  upload: Upload, 'image-up': ImageUp, train: TrainFront, sun: Sun, shield: Shield, refresh: RefreshCw,
   // `chevL` заведён в TRIP-344 PR 2 (апрув Pavel). Реестр знал шеврон ВПРАВО,
   // ВВЕРХ и ВНИЗ, а влево — нет, и навигация календаря из-за этой дыры уехала бы
   // на СТРЕЛКУ, то есть на другой глиф. Тот же lucide, ноль визуальных
