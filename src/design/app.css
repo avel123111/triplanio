@@ -111,6 +111,7 @@
 
   /* Overlays / scrims */
   --scrim:            rgba(23,20,40,.45);
+  --scrim-soft:       rgba(23,20,40,.22);  /* покойная полупрозрачная подложка контролов поверх медиа (ховер поднимает до --scrim) */
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
 
   /* Event types (+ink +soft) */
@@ -131,7 +132,7 @@
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
 
   /* Radii (Lumo names + legacy aliases) */
-  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-pill:999px;
+  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-xs:4px; --r-pill:999px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
      controls derive from --r-btn directly, so every control outer shape shares
      one radius. The segment track uses it as-is; its inner buttons are
@@ -342,6 +343,7 @@
 
   /* Overlays / scrims — dark */
   --scrim:            rgba(0,0,0,.62);
+  --scrim-soft:       rgba(0,0,0,.30);
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.55));
 
   /* Event types — dark */
@@ -3275,6 +3277,60 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
 .cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
+/* ── Carousel: горизонтальная лента-примитив ДС (<Carousel>) ──────────────────
+   Нативный scroll-snap + десктоп-стрелки (только под hover-указателем). Дети —
+   любые элементы (у нас <Swatch>-миниатюры). Новый namespace, апрув Pavel.
+   prefix-exempt: carousel — новый примитив-лента (scroll-snap + стрелки), апрув Pavel
+   floor-exempt: namespaces +2 — примитивы <Carousel> (.carousel) и <EditableText> (.editable), апрув Pavel
+   floor-exempt: classes +15 — примитивы <Carousel>/<EditableText> (вкл. .editable__input/.editable__confirm) + герой обложки планнера (.pl-cover*, .pl-cover__track/__slide, .tcp__strip, .tcp__ctl), апрув Pavel
+   floor-exempt: triage +9 — новые классы в семьях под разбором (.pl-cover*, .pl-cover__track/__slide, .tcp__strip, .tcp__upload, .tcp__nav*, .tcp__ctl), апрув Pavel
+   floor-exempt: tokens +2 — --r-xs (шаг радиуса 4px) + --scrim-soft (покойная подложка контролов на медиа), апрув Pavel
+   floor-exempt: reach +3 — скоуп-правила героя/ленты в примитивы (Swatch размер+ховер, инпут правки, карандаш) — бесшовный облик на обложке, апрув Pavel
+   floor-exempt: layout +4 — приватные классы раскладки героя/ленты обложки (вкл. .pl-cover__track/__slide), апрув Pavel
+   visual-diff-exempt: .carousel display — примитив-лента (флекс-ряд)
+   visual-diff-exempt: .carousel gap — примитив-лента
+   visual-diff-exempt: .carousel overflow-x — примитив-лента (горизонтальный скролл)
+   visual-diff-exempt: .carousel overflow-y — лента не клипает выделение/тень миниатюр по вертикали
+   visual-diff-exempt: .carousel scroll-snap-type — примитив-лента (снап)
+   visual-diff-exempt: .carousel scroll-padding-left — примитив-лента
+   visual-diff-exempt: .carousel padding-top — вертикальный воздух: кольцо выбора миниатюры не режется сверху
+   visual-diff-exempt: .carousel padding-bottom — вертикальный воздух снизу
+   visual-diff-exempt: .carousel scrollbar-width — лента без видимого скроллбара (Firefox)
+   visual-diff-exempt: .carousel::-webkit-scrollbar display — лента без видимого скроллбара (WebKit)
+   visual-diff-exempt: .carousel > * scroll-snap-align — дети ленты снапятся
+   visual-diff-exempt: .carousel > * flex — дети ленты не сжимаются */
+.carousel { display: flex; gap: var(--sp-4); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-left: var(--sp-4); padding-top: var(--sp-2); padding-bottom: var(--sp-2); scrollbar-width: none; }
+.carousel::-webkit-scrollbar { display: none; }
+.carousel > * { scroll-snap-align: start; flex: none; }
+
+/* ── EditableText: инлайн-правка текста, примитив ДС (<EditableText>) ─────────
+   Текст + карандаш → БЕСШОВНЫЙ инлайн-инпут (.editable__input: прозрачный, без
+   рамки, наследует шрифт/цвет контекста), НЕ боксовый <Input>. Облик текста —
+   от контекста (напр. .t-title + белый на обложке).
+   prefix-exempt: editable — новый примитив инлайн-правки текста, апрув Pavel
+   visual-diff-exempt: .editable display — новый примитив инлайн-правки
+   visual-diff-exempt: .editable align-items — новый примитив инлайн-правки
+   visual-diff-exempt: .editable gap — новый примитив инлайн-правки
+   visual-diff-exempt: .editable min-width — новый примитив инлайн-правки
+   visual-diff-exempt: .editable__text overflow — новый примитив (обрезка длинного текста)
+   visual-diff-exempt: .editable__text text-overflow — новый примитив (многоточие)
+   visual-diff-exempt: .editable__text white-space — новый примитив (одна строка)
+   visual-diff-exempt: .editable__edit flex — новый примитив (карандаш не сжимается)
+   visual-diff-exempt: .editable__input min-width — бесшовный инлайн-инпут правки
+   visual-diff-exempt: .editable__input background — бесшовный (прозрачный, не форменный бокс)
+   visual-diff-exempt: .editable__input border — бесшовный (без рамки)
+   visual-diff-exempt: .editable__input padding — бесшовный (без внутренних отступов бокса)
+   visual-diff-exempt: .editable__input font — наследует типографику контекста (.t-title и т.п.)
+   visual-diff-exempt: .editable__input letter-spacing — наследует трекинг контекста (точное совпадение с текстом)
+   visual-diff-exempt: .editable__input color — наследует цвет контекста (белый на обложке)
+   visual-diff-exempt: .editable__input outline — без фокус-бокса (правка = текст, не форма)
+   visual-diff-exempt: .editable__input -webkit-appearance — снимает нативный хром инпута iOS (бесшовность)
+   visual-diff-exempt: .editable__input appearance — снимает нативный хром инпута (бесшовность) */
+.editable { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.editable__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editable__edit { flex: none; }
+.editable__input { min-width: 0; background: transparent; border: 0; padding: 0; font: inherit; letter-spacing: inherit; color: inherit; outline: none; -webkit-appearance: none; appearance: none; }
+
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
    phone bottom-nav (≤640). There is no separate tablet/icon-rail state: the full
@@ -3806,6 +3862,97 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Quick-start chips under the welcome message — a small gap below it. The empty
    `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
 .pl-ai-chips { margin-top: var(--sp-4); }
+/* ── Обложка шага «Проверка»: во всю ширину под разделителем, без радиусов ─────
+   Вырывается из падинга .lp-b (14px верт / 15px гор) отрицательными márgins и
+   упирается в бордюр шапки прогресса. Фото/скрим — канон .tc__img/.tc__scrim;
+   название с карандашом — <EditableText> поверх обложки внизу.
+   visual-diff-exempt: .pl-cover position — новый герой обложки планнера
+   visual-diff-exempt: .pl-cover overflow — новый герой обложки планнера
+   visual-diff-exempt: .pl-cover height — новый герой обложки планнера
+   visual-diff-exempt: .pl-cover margin — full-bleed: гасит падинг .lp-b (14/15px)
+   visual-diff-exempt: .pl-cover__title position — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title z-index — заголовок над скримом
+   visual-diff-exempt: .pl-cover__title left — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title right — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title bottom — заголовок внизу обложки
+   visual-diff-exempt: .pl-cover__title display — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title align-items — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title padding — заголовок поверх обложки
+   visual-diff-exempt: .pl-cover__title color — белый текст на скриме обложки
+   visual-diff-exempt: .icon-btn color — белый карандаш на скриме обложки (scoped .pl-cover__title .icon-btn)
+   visual-diff-exempt: .editable flex — обёртка правки заполняет ширину обложки (scoped .pl-cover__title .editable)
+   visual-diff-exempt: .editable__input flex — инпут правки названия заполняет ширину обложки (scoped .pl-cover__title)
+   visual-diff-exempt: .pl-cover__title flex — то же правило, атрибуция на .pl-cover__title
+   visual-diff-exempt: .tcp__upload position — кнопка загрузки в углу обложки
+   visual-diff-exempt: .tcp__upload z-index — кнопка загрузки над скримом
+   visual-diff-exempt: .tcp__upload top — кнопка загрузки в правом верхнем углу
+   visual-diff-exempt: .tcp__upload right — кнопка загрузки в правом верхнем углу
+   visual-diff-exempt: .tcp__nav position — стрелка смены кавера по краю обложки
+   visual-diff-exempt: .tcp__nav z-index — стрелка над скримом
+   visual-diff-exempt: .tcp__nav top — стрелка по вертикальному центру обложки
+   visual-diff-exempt: .tcp__nav transform — центрирование стрелки по вертикали
+   visual-diff-exempt: .tcp__nav--prev left — стрелка «предыдущий кавер» у левого края
+   visual-diff-exempt: .tcp__nav--next right — стрелка «следующий кавер» у правого края
+   visual-diff-exempt: .tcp__ctl background — общий облик контролов обложки: полупрозрачный тёмный чип (токен --scrim)
+   visual-diff-exempt: .tcp__ctl color — белая иконка на полупрозрачном чипе
+   visual-diff-exempt: .tcp__ctl border-color — без рамки на фото
+   visual-diff-exempt: .tcp__ctl:hover background — держим тёмный чип на ховере (перебиваем .icon-btn:hover wash)
+   visual-diff-exempt: .tcp__ctl:hover color — белая иконка на ховере
+   visual-diff-exempt: :root --r-xs — новый шаг шкалы радиусов (4px), для миниатюр ленты
+   visual-diff-exempt: :root --scrim-soft — покойная полупрозрачная подложка контролов поверх медиа (0.22 light)
+   visual-diff-exempt: :root[data-theme=dark] --scrim-soft — то же в тёмной теме (0.30)
+   visual-diff-exempt: .editable__confirm background — кнопка ✓ правки = тот же чип, что контролы обложки (покой --scrim-soft)
+   visual-diff-exempt: .editable__confirm color — белая иконка ✓
+   visual-diff-exempt: .editable__confirm border-color — без рамки на фото
+   visual-diff-exempt: .editable__confirm:hover background — ховер поднимает до --scrim (как у контролов)
+   visual-diff-exempt: .editable__confirm:hover color — белая иконка ✓ на ховере
+   visual-diff-exempt: .pl-cover__track display — обложка = scroll-snap-лента слайдов (флекс-ряд)
+   visual-diff-exempt: .pl-cover__track height — лента во всю высоту обложки
+   visual-diff-exempt: .pl-cover__track overflow-x — горизонтальный скролл слайдов (свайп)
+   visual-diff-exempt: .pl-cover__track overflow-y — без вертикального скролла
+   visual-diff-exempt: .pl-cover__track scroll-snap-type — снап доводит слайд до края
+   visual-diff-exempt: .pl-cover__track scrollbar-width — скроллбар ленты скрыт
+   visual-diff-exempt: .pl-cover__track::-webkit-scrollbar display — скроллбар ленты скрыт (WebKit)
+   visual-diff-exempt: .pl-cover__slide flex — слайд не сжимается
+   visual-diff-exempt: .pl-cover__slide width — слайд во всю ширину обложки
+   visual-diff-exempt: .pl-cover__slide height — слайд во всю высоту обложки
+   visual-diff-exempt: .pl-cover__slide object-fit — кроп картинки слайда
+   visual-diff-exempt: .pl-cover__slide scroll-snap-align — слайд снапится по центру
+   visual-diff-exempt: .pl-cover pointer-events — скрим не ловит касания, свайп доходит до ленты (scoped .pl-cover .tc__scrim) */
+.pl-cover {
+  position: relative; overflow: hidden; height: 200px;
+  margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
+}
+.pl-cover__title {
+  position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center;
+  padding: var(--sp-6) var(--sp-7);
+  color: #fff;
+}
+.pl-cover__title .icon-btn { color: #fff; }
+.pl-cover__title .editable { flex: 1; }
+.pl-cover__title .editable__input { flex: 1; }
+/* Единый облик контролов поверх обложки (загрузка + стрелки + кнопка ✓ правки
+   названия): полупрозрачный тёмный чип на токенах, белая иконка, КВАДРАТ (радиус
+   базы .icon-btn = --r-sm, БЕЗ round). Покой — --scrim-soft (лёгкая подложка),
+   ховер поднимает до --scrim. Форма/размер/тон у всех одинаковы. */
+.tcp__ctl, .editable__confirm { background: var(--scrim-soft); color: #fff; border-color: transparent; }
+.tcp__ctl:hover, .editable__confirm:hover { background: var(--scrim); color: #fff; }
+/* Загрузка своего фото — иконка-кнопка в правом верхнем углу обложки. */
+.tcp__upload { position: absolute; z-index: 4; top: var(--sp-4); right: var(--sp-4); }
+/* Стрелки смены выбранного кавера — по бокам обложки, по центру. Меняют сам
+   пресет (prev/next по каталогу), а НЕ скроллят ленту миниатюр. */
+.tcp__nav { position: absolute; z-index: 4; top: 50%; transform: translateY(-50%); }
+.tcp__nav--prev { left: var(--sp-4); }
+.tcp__nav--next { right: var(--sp-4); }
+/* Обложка = горизонтальная scroll-snap-лента слайдов (нативный свайп + доводка
+   снапом, как <Carousel>); скроллбар скрыт. Скрим НЕ ловит касания, чтобы свайп
+   доходил до ленты под ним. */
+.pl-cover__track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.pl-cover__track::-webkit-scrollbar { display: none; }
+.pl-cover__slide { flex: none; width: 100%; height: 100%; object-fit: cover; scroll-snap-align: center; }
+.pl-cover .tc__scrim { pointer-events: none; }
+
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
 /* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a
@@ -7293,9 +7440,16 @@ a.doc-row__n:hover{ color: var(--brand); }
    in the app is intentionally >16px on mobile, so clamping to exactly 16px is
    safe. */
 @media (max-width: 640px) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not(.editable__input),
   textarea, select { font-size: var(--ctl-fs) !important; }
 }
+/* `.editable__input` исключён из анти-зум-гарда выше (`:not(.editable__input)`):
+   инлайн-правка наследует типографику контекста (на обложке .t-title = 20px,
+   ВСЕГДА ≥16px), поэтому фокус-зум iOS не триггерит; кламп до 16px её только
+   УМЕНЬШАЛ (заголовок 20 → инпут 16 на мобиле). Инвариант «нет поля <16px на
+   мобиле» держится: контекст правки — заголовочный (≥16).
+   visual-diff-exempt: input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not(.editable__input) {@media (max-width: 640px)} font-size — в анти-зум-гард добавлен :not(.editable__input) (правка заголовка ≥16, зум не триггерит)
+   visual-diff-exempt: input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]) {@media (max-width: 640px)} font-size — старый селектор гарда заменён версией с :not(.editable__input) (то же 16px для всех прочих полей) */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EDITOR SIDE PANELS (.lp) — Lumo design. View+edit panels in TripStructureEdit.

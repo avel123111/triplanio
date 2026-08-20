@@ -18,7 +18,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, COVER_FALLBACK, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -661,53 +661,30 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
   }
 
   return (
-    <div>
-      <h1>{t('planner.step_review')}</h1>
-      <div className="t-body">
-        {t('planner.review_desc')}
-      </div>
+    <div className="col col--g6 pl-review">
+      {/* Обложка во всю ширину сразу под разделителем прогресса, без радиусов
+          (full-bleed из падинга .lp-b, класс .pl-cover). Hero-режим общего пикера
+          рисует: фото/пресет/фоллбек, кнопку загрузки в правом верхнем углу,
+          стрелки смены кавера по бокам и название трипа с карандашом (наш
+          <EditableText> как heroOverlay). Ниже — лента миниатюр без стрелок. */}
+      <TripCoverPicker
+        coverImageUrl={cover?.cover_image_url || ''}
+        onChange={setCover}
+        heroClassName="pl-cover"
+        heroOverlay={(
+          <EditableText
+            value={tripTitle}
+            onChange={setTripTitle}
+            placeholder={autoTitle}
+            ariaLabel={t('planner.title_label')}
+            editLabel={t('planner.title_edit')}
+            confirmLabel={t('common.done')}
+          />
+        )}
+      />
 
-      {/* Секции шага в одну колонку с ровным шагом — иначе поля/сводка/статусы
-          лежат вплотную (у `.field` своего вертикального отступа нет). */}
-      <div className="col col--g7">
-      {/* Редактируемое сверху — название и обложка кормят превью ниже. */}
-      <div className="field">
-        <label className="field__label t-label">{t('planner.title_label')}</label>
-        <input
-          className="input"
-          value={tripTitle}
-          onChange={e => setTripTitle(e.target.value)}
-          placeholder={autoTitle}
-          disabled={saving}
-        />
-      </div>
-
-      <div className="field">
-        <label className="field__label t-label">{t('planner.cover')}</label>
-        <TripCoverPicker
-          coverImageUrl={cover?.cover_image_url || ''}
-          onChange={setCover}
-          showPreview={false}
-        />
-      </div>
-
-      {/* Сводка — ОДНА карточка с одним радиусом; hero / статы / маршрут = плоские
-          секции, разделённые бордюрами. Прежде .statbar и .card лежали скруглёнными
-          ВНУТРИ flush-родителя (радиус в радиусе) — это и убрано. Собрано из готового:
-          обложка = постер .tc, цифры = .statbar/.v/.k, ряд точки = .pl-revrow. */}
+      {/* Сводка под обложкой — без изменений: статы + маршрут плоскими секциями. */}
       <Card radius="btn" pad="none" className="pl-summary">
-        <div className="tc tc--band">
-          {/* Обложка: загруженное фото или фоллбек-картинка из бандла (градиентов нет) */}
-          <div className="tc__bg">
-            <img className="tc__img" src={cover?.cover_image_url || COVER_FALLBACK} alt="" />
-          </div>
-          <div className="tc__scrim" />
-          <div className="tc__in">
-            <div className="tc__spacer" />
-            <div className="t-title tc__title">{displayTitle}</div>
-          </div>
-        </div>
-
         {/* statbar is card-homed (its skin lives on the Card primitive) — kept on the
             Card for the surface-registry guard; flattened to a divided section below. */}
         <Card pad="none" className="statbar">
@@ -763,8 +740,6 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
           <div className="t-body">{t('planner.saving_msg')}</div>
         </Severity>
       )}
-      </div>
-
     </div>
   );
 }
