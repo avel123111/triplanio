@@ -3280,8 +3280,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    любые элементы (у нас <Swatch>-миниатюры). Новый namespace, апрув Pavel.
    prefix-exempt: carousel — новый примитив-лента (scroll-snap + стрелки), апрув Pavel
    floor-exempt: namespaces +2 — примитивы <Carousel> (.carousel) и <EditableText> (.editable), апрув Pavel
-   floor-exempt: classes +11 — примитивы <Carousel>/<EditableText> (вкл. .editable__input) + герой обложки планнера (.pl-cover* и .tcp__strip), апрув Pavel
-   floor-exempt: triage +6 — новые классы в семьях под разбором (.pl-cover*, .tcp__strip, .tcp__upload, .tcp__nav*), апрув Pavel
+   floor-exempt: classes +12 — примитивы <Carousel>/<EditableText> (вкл. .editable__input) + герой обложки планнера (.pl-cover*, .tcp__strip, .tcp__ctl), апрув Pavel
+   floor-exempt: triage +7 — новые классы в семьях под разбором (.pl-cover*, .tcp__strip, .tcp__upload, .tcp__nav*, .tcp__ctl), апрув Pavel
    floor-exempt: reach +3 — скоуп-правила героя/ленты в примитивы (Swatch размер+ховер, инпут правки, карандаш) — бесшовный облик на обложке, апрув Pavel
    floor-exempt: layout +3 — приватные классы раскладки героя/ленты обложки, апрув Pavel
    visual-diff-exempt: .carousel display — примитив-лента (флекс-ряд)
@@ -3889,7 +3889,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .tcp__nav top — стрелка по вертикальному центру обложки
    visual-diff-exempt: .tcp__nav transform — центрирование стрелки по вертикали
    visual-diff-exempt: .tcp__nav--prev left — стрелка «предыдущий кавер» у левого края
-   visual-diff-exempt: .tcp__nav--next right — стрелка «следующий кавер» у правого края */
+   visual-diff-exempt: .tcp__nav--next right — стрелка «следующий кавер» у правого края
+   visual-diff-exempt: .tcp__ctl background — общий облик контролов обложки: полупрозрачный тёмный чип (токен --scrim)
+   visual-diff-exempt: .tcp__ctl color — белая иконка на полупрозрачном чипе
+   visual-diff-exempt: .tcp__ctl border-color — без рамки на фото
+   visual-diff-exempt: .tcp__ctl:hover background — держим тёмный чип на ховере (перебиваем .icon-btn:hover wash)
+   visual-diff-exempt: .tcp__ctl:hover color — белая иконка на ховере */
 .pl-cover {
   position: relative; overflow: hidden; height: 200px;
   margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
@@ -3903,6 +3908,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .pl-cover__title .icon-btn { color: #fff; }
 .pl-cover__title .editable { flex: 1; }
 .pl-cover__title .editable__input { flex: 1; }
+/* Единый облик контролов обложки (загрузка + стрелки): полупрозрачный тёмный
+   чип (токен --scrim, тема-осведомлённый), белая иконка, КВАДРАТ (радиус базы
+   .icon-btn = --r-sm, БЕЗ round). Форма/размер/тон у всех трёх одинаковы. */
+.tcp__ctl { background: var(--scrim); color: #fff; border-color: transparent; }
+.tcp__ctl:hover { background: var(--scrim); color: #fff; }
 /* Загрузка своего фото — иконка-кнопка в правом верхнем углу обложки. */
 .tcp__upload { position: absolute; z-index: 4; top: var(--sp-4); right: var(--sp-4); }
 /* Стрелки смены выбранного кавера — по бокам обложки, по центру. Меняют сам
@@ -7398,9 +7408,16 @@ a.doc-row__n:hover{ color: var(--brand); }
    in the app is intentionally >16px on mobile, so clamping to exactly 16px is
    safe. */
 @media (max-width: 640px) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not(.editable__input),
   textarea, select { font-size: var(--ctl-fs) !important; }
 }
+/* `.editable__input` исключён из анти-зум-гарда выше (`:not(.editable__input)`):
+   инлайн-правка наследует типографику контекста (на обложке .t-title = 20px,
+   ВСЕГДА ≥16px), поэтому фокус-зум iOS не триггерит; кламп до 16px её только
+   УМЕНЬШАЛ (заголовок 20 → инпут 16 на мобиле). Инвариант «нет поля <16px на
+   мобиле» держится: контекст правки — заголовочный (≥16).
+   visual-diff-exempt: input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not(.editable__input) {@media (max-width: 640px)} font-size — в анти-зум-гард добавлен :not(.editable__input) (правка заголовка ≥16, зум не триггерит)
+   visual-diff-exempt: input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]) {@media (max-width: 640px)} font-size — старый селектор гарда заменён версией с :not(.editable__input) (то же 16px для всех прочих полей) */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EDITOR SIDE PANELS (.lp) — Lumo design. View+edit panels in TripStructureEdit.

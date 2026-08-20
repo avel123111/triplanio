@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Carousel, COVER_FALLBACK, IconBtn, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
@@ -95,6 +95,30 @@ export default function TripCoverPicker({
     handlePickPreset(presets[idx].image_url, /** @type {HTMLElement | null} */ (thumb));
   };
 
+  // В hero-режиме (создание трипа) шаг открывается БЕЗ выбранной обложки —
+  // плейсхолдер. Как только каталог пресетов загрузился, выбираем первый по
+  // умолчанию, чтобы у трипа сразу был кавер (пустой `coverImageUrl` — только
+  // до этого момента; свой выбор/аплоад делают его непустым и эффект молчит).
+  useEffect(() => {
+    if (heroClassName && !coverImageUrl && presets.length > 0) {
+      onChange({ cover_image_url: presets[0].image_url });
+    }
+  }, [heroClassName, coverImageUrl, presets, onChange]);
+
+  // Свайп по самой обложке (мобайл) листает кавер — тот же cyclePreset, что и
+  // боковые стрелки. Горизонтальный сдвиг за порог: влево = следующий, вправо =
+  // предыдущий. Порог отсекает случайные тапы (по карандашу/кнопкам).
+  const touchStartX = useRef(/** @type {number | null} */ (null));
+  const onTouchStart = (e) => { touchStartX.current = e.touches[0]?.clientX ?? null; };
+  const onTouchEnd = (e) => {
+    const start = touchStartX.current;
+    touchStartX.current = null;
+    if (start == null) return;
+    const dx = (e.changedTouches[0]?.clientX ?? start) - start;
+    if (Math.abs(dx) < 40) return;
+    cyclePreset(dx < 0 ? 1 : -1);
+  };
+
   const handlePickFile = () => fileRef.current?.click();
 
   const handleUpload = async (e) => {
@@ -151,12 +175,10 @@ export default function TripCoverPicker({
   const uploadBtn = (
     <IconBtn
       icon="upload"
-      tone="soft"
-      round
       disabled={uploading}
       onClick={handlePickFile}
       ariaLabel={uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
-      className="tcp__upload"
+      className="tcp__ctl tcp__upload"
     />
   );
 
@@ -166,14 +188,14 @@ export default function TripCoverPicker({
         /* Hero-режим (планнер): большая обложка на всю ширину. Загрузка — иконкой
            в правом верхнем углу; стрелки по бокам МЕНЯЮТ выбранный кавер (не
            скроллят ленту); heroOverlay — название трипа поверх низа обложки. */
-        <div className={heroClassName}>
+        <div className={heroClassName} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           <img className="tc__img" src={coverImageUrl || COVER_FALLBACK} alt="" />
           <div className="tc__scrim" />
           {uploadBtn}
           {presets.length > 1 && (
             <>
-              <IconBtn icon="chevL" tone="soft" round ariaLabel={t('common.prev')} onClick={() => cyclePreset(-1)} className="tcp__nav tcp__nav--prev" />
-              <IconBtn icon="chev" tone="soft" round ariaLabel={t('common.next')} onClick={() => cyclePreset(1)} className="tcp__nav tcp__nav--next" />
+              <IconBtn icon="chevL" ariaLabel={t('common.prev')} onClick={() => cyclePreset(-1)} className="tcp__ctl tcp__nav tcp__nav--prev" />
+              <IconBtn icon="chev" ariaLabel={t('common.next')} onClick={() => cyclePreset(1)} className="tcp__ctl tcp__nav tcp__nav--next" />
             </>
           )}
           {heroOverlay && <div className="pl-cover__title t-title">{heroOverlay}</div>}
