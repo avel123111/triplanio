@@ -760,6 +760,16 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
       // Deleting an owned trip lowers the active-trip count — drop the gate cache
       // so the planner can't read a stale count and flash the limit guard.
       invalidateActiveTripsLimit(queryClient);
+      // Purge every cache keyed to the now-deleted trip. Without this the trips
+      // list keeps the deleted card for its 30s staleTime window (a tap re-opens
+      // /trip/<deleted> → getTripDetails 404), and the trip's own shell/content/
+      // chat caches linger so a Back navigation re-renders then refetches a dead
+      // id. removeQueries (not invalidate) — there is nothing to refetch for a
+      // trip that no longer exists; invalidating would re-fire the 404.
+      queryClient?.removeQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+      queryClient?.removeQueries({ queryKey: ['trip-content', tripId] });
+      queryClient?.removeQueries({ queryKey: ['chat-id', tripId] });
+      queryClient?.invalidateQueries({ queryKey: ['trips'] }); // list drops the card now, not in 30s
       track('trip_deleted', { trip_id: tripId });
       successToast(t, 'trip_deleted');
       nav('/trips');

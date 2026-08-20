@@ -31,12 +31,18 @@ export function useChatId(tripId, { enabled = true } = {}) {
   return useQuery({
     queryKey: CHAT_ID_KEY(tripId),
     queryFn: async () => {
+      // maybeSingle, NOT single: a trip the caller can't see (deleted, or one
+      // they're not a member of — RLS returns zero rows) is a legitimate "no
+      // chat here", not a failure. `.single()` threw PGRST116 on zero rows, which
+      // the data seam reported to Sentry as an error (TRIPLANIO-21) even though
+      // the screen already handles the missing trip via useQueryGate. A genuine
+      // query failure still throws and is still reported.
       const { data, error } = await supabase
         .from('chats')
         .select('id')
         .eq('trip_id', tripId)
         .eq('type', 'group')
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data?.id || null;
     },
