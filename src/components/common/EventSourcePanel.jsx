@@ -9,7 +9,7 @@
  */
 import React, { useState } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, withOptimism } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, withOptimism, reconcileCityChain } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { Btn, Severity, Skeleton, useToast } from '@/design/index';
@@ -54,10 +54,13 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
   const delBinding = tripContentBinding(qc, tripId, CACHE_KIND[kind]);
   const deleteMut = useMutation({
     mutationFn: async ({ id: rowId, orphanPaths }) => {
-      const { error, deleted, code } = await deleteSourceEntity(kind, rowId, tripId, orphanPaths);
+      const { data: res, error, deleted, code } = await deleteSourceEntity(kind, rowId, tripId, orphanPaths);
       if (error) throw Object.assign(new Error('delete_failed'), { code });
       // deleted:false = already gone / RLS hid it — surface so the row rolls back.
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
+      // Transfer delete un-shifts downstream city dates on the server; reconcile the
+      // returned chain into the shell so the timeline updates without a reload.
+      if (kind === 'transfer' && res?.cities) reconcileCityChain(qc, tripId, res.cities);
     },
     ...withOptimism(delBinding, {
       op: 'update',     // dim the row (`_pending`), don't yank it yet

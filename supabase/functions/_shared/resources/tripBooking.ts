@@ -172,10 +172,14 @@ export const TRIP_BOOKING: ResourceSpec = {
     'hotel/delete': { op: 'delete', table: 'hotel_stays', requires: ['editor'], loadTarget: true },
 
     // ── Переезд (простой) ─────────────────────────────────────────────────────
+    // `returnChain`: запись переезда двигает даты городов через `day_change`
+    // (триггер `trg_recompute_transfer`). Шов дочитывает пересчитанную цепочку и
+    // отдаёт `{ row, cities }` — клиент реконсилит даты из одного ответа.
     transfer: {
       op: 'upsert',
       table: 'transfers',
       requires: ['editor'],
+      returnChain: true,
       fields: {
         ...COMMON_BOOKING_FIELDS,
         from_city_visit_id: { type: 'uuid', nullable: true },
@@ -184,7 +188,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       },
       forcedOnInsert: { created_by: '@actor' },
     },
-    'transfer/delete': { op: 'delete', table: 'transfers', requires: ['editor'], loadTarget: true },
+    'transfer/delete': { op: 'delete', table: 'transfers', requires: ['editor'], loadTarget: true, returnChain: true },
 
     // ── Активность ────────────────────────────────────────────────────────────
     // У `activities` НЕТ верхних booking_reference/booking_url — поэтому активность
@@ -235,6 +239,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       op: 'rpc',
       rpc: 'add_layover_transfer',
       requires: ['editor'],
+      returnChain: true,
       fields: {
         from_city_visit_id: { type: 'uuid', required: true },
         to_city_visit_id: { type: 'uuid', required: true },

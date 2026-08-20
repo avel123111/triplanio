@@ -38,17 +38,20 @@ export const ENTITY_TABLE_BY_KIND = {
  * @param {string} id - entity row id
  * @param {string} tripId - scopes the row and gates the right (server-side)
  * @param {string[]} orphanPaths - object keys to remove once the row is gone
- * @returns {Promise<{ error: any, deleted: boolean, code?: string }>} `deleted`
- *   is false when the row no longer exists (seam answers 404 NOT_FOUND — another
- *   member removed it): callers must NOT treat it as success. `error` carries a
- *   generic `code` for a real refusal (403 not-editor / 401 expired / 500) so the
- *   caller words it via `errorText` — never raw server prose (TRIP-378).
+ * @returns {Promise<{ error: any, deleted: boolean, code?: string, data?: any }>}
+ *   `deleted` is false when the row no longer exists (seam answers 404 NOT_FOUND —
+ *   another member removed it): callers must NOT treat it as success. `error`
+ *   carries a generic `code` for a real refusal (403 not-editor / 401 expired /
+ *   500) so the caller words it via `errorText` — never raw server prose (TRIP-378).
+ *   `data` is the seam's success payload: for a TRANSFER delete it is
+ *   `{ row: null, cities }` (returnChain) so the caller can reconcile the recomputed
+ *   city dates; for leaf kinds (hotel/activity/service) it is null.
  */
 export async function deleteSourceEntity(kind, id, tripId, orphanPaths) {
   if (!ENTITY_TABLE_BY_KIND[kind]) {
     return { error: new Error(`unknown entity kind: ${kind}`), deleted: false };
   }
-  const { error, code } = await invokeFn(`trip-booking/${kind}/delete`, { body: { tripId, id } });
+  const { data, error, code } = await invokeFn(`trip-booking/${kind}/delete`, { body: { tripId, id } });
   if (error) {
     // 404 = row already gone: not a failure, but not a delete WE did → deleted:false
     // so the caller reconciles (undo optimistic removal) without a scary toast.
@@ -56,5 +59,5 @@ export async function deleteSourceEntity(kind, id, tripId, orphanPaths) {
     return { error: new Error(code || 'write_rejected'), deleted: false, code };
   }
   removeTripFiles(orphanPaths); // best-effort; the row is gone
-  return { error: null, deleted: true };
+  return { error: null, deleted: true, data: data ?? null };
 }

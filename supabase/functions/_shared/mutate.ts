@@ -306,6 +306,29 @@ export async function mutate(
     }
   }
 
+  // Действие пере-разложило маршрут (запись трансфера): recompute уже случился
+  // в ТОЙ ЖЕ транзакции записи (триггер `trg_recompute_transfer` на upsert/delete,
+  // либо внутри RPC layover) и закоммичен. Дочитываем АВТОРИТЕТНУЮ цепочку и отдаём
+  // её в ОДНОМ ответе — клиент реконсилит даты городов из строки, что вернула
+  // запись, а не отдельным рефетчем (тот же контракт, что route-RPC, TRIP-435).
+  // Форма: `{ row, cities }` (row = записанная строка / null у delete/void-rpc).
+  //
+  // Read-АФТЕР-WRITE, поэтому НЕ через `rpc()` (тот бросил бы → 500): запись УЖЕ
+  // закоммичена, и провал чисто-обогащающего дочитывания НЕ смеет превратить
+  // успешную запись в 500 (клиент ретраил бы → дубль трансфера). Деградируем как
+  // `afterWrite`: логируем + `cities:null`, клиент оставляет старые даты до
+  // следующего фетча (ровно до-returnChain поведение), а не теряет запись.
+  if (action.returnChain) {
+    let cities: unknown = null;
+    try {
+      cities = await rpc('_trip_city_chain', { p_trip: scope });
+    } catch (e) {
+      console.error(`mutate: returnChain chain read failed ${slug}/${actionName}:`, e);
+      runInBackground(captureEdgeError(e, 'mutate', { returnChain: `${slug}/${actionName}` }));
+    }
+    return mutateSuccess({ row: data ?? null, cities: cities ?? null }, corsHeaders);
+  }
+
   return mutateSuccess(data, corsHeaders);
 }
 
