@@ -10,9 +10,9 @@ import { useT } from '@/lib/i18n/I18nContext';
  * Standalone screens (Trips / Stats / Inbox / Account):
  *   [back*] logo · Triplanio │ <page title> │ theme · bell · account+PRO
  *
- * Trip screens (`isTrip`, внутри rail shell): бренд-блок НЕ рендерится — лого
- * живёт наверху икон-рейла (TripSidebar), шапка отдаёт место заголовку:
- *   [back] <trip title + meta> │ theme · bell · account+PRO
+ * Trip screens (`isTrip`, внутри rail shell): шапка — тонкая КОНТЕКСТНАЯ полоса
+ * [back] <trip title + meta>. Ни бренда, ни правого кластера: лого и utilities
+ * (тема · уведомления · аккаунт) живут в рейле (RailUtilities).
  *
  * Бургер-кнопки больше нет: на телефоне меню трипа открывает мобильный док
  * («Ещё» → канон-шит), на планшете/десктопе рейл виден всегда.
@@ -106,9 +106,14 @@ export default function AppHeader({
         )}
       </div>
 
-      <div className="app-header__right">
-        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
-      </div>
+      {/* Utilities на трип-экранах живут в рейле (RailUtilities) — правый
+          кластер шапки рендерится только вне трипа (телефонные app-экраны и
+          планер-визард). */}
+      {!isTrip && (
+        <div className="app-header__right">
+          <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
+        </div>
+      )}
     </header>
   );
 }

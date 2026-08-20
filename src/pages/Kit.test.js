@@ -145,7 +145,9 @@ function shownOnKit() {
  *  гасит. */
 // tt--block — режим ОБЁРТКИ тултипа (full-width блочный триггер), а не обличье
 // самого пузыря: показывать на витрине нечем (TRIP-274 Ф2.2).
-const NOT_SHOWN = new Set(['seg--filter', 'seg--view', 'tt--block']);
+// page-main--wide — ширина КОЛОНКИ ЭКРАНА (1240 vs 760), ось каркаса AppShell,
+// а не обличье примитива: на витрине показывать нечем (rail everywhere).
+const NOT_SHOWN = new Set(['seg--filter', 'seg--view', 'tt--block', 'page-main--wide']);
 
 // ── Сверка ──────────────────────────────────────────────────────────────────
 

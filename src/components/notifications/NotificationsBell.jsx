@@ -12,7 +12,13 @@ import { buildNotifView } from '@/components/notifications/notifView';
 // передавал `"icon-btn"` — то есть РОВНО дефолт, — а сам класс теперь несёт
 // примитив. Проп, у которого одно значение и оно же дефолт, это не точка
 // расширения, а вторая дорога к одному результату.
-export default function NotificationsBell() {
+//
+// Rail everywhere: колокольчик живёт и в нижнем кластере рейла — там триггер
+// имеет форму рейл-плитки (`railItem`), а поповер открывается ВПРАВО от рейла
+// (`side`/`align` уходят в Radix PopoverContent как есть). Один компонент —
+// один источник списка/бейджа для обеих форм триггера.
+/** @param {{ side?: 'top'|'right'|'bottom'|'left', align?: 'start'|'center'|'end', railItem?: boolean }} p */
+export default function NotificationsBell({ side = 'bottom', align = 'end', railItem = false } = {}) {
   const t = useT();
   const { fmtRelative } = useI18nFormat();
   const { user } = useAuth();
@@ -32,15 +38,24 @@ export default function NotificationsBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         {/* Метка непрочитанных — РЕБЁНОК кнопки: позиционируется от неё
-            ко-селектором `.icon-btn > .badge--unread`. Канон непрочитанного
+            ко-селектором владельца (`.icon-btn > .badge--unread` у кнопки шапки,
+            `.app-side__item > .badge--unread` у рейл-плитки). Канон непрочитанного
             (TRIP-354): красный `<UnreadBadge>` С ЧИСЛОМ вместо прежней точки
             `.icon-btn__dot`. Число озвучивается как часть доступного имени
             кнопки. */}
-        <IconBtn icon="bell" ariaLabel={t('notif.title')}>
-          <UnreadBadge count={unread} />
-        </IconBtn>
+        {railItem ? (
+          <button type="button" className="app-side__item" title={t('notif.title')} aria-label={t('notif.title')}>
+            <Icon name="bell" size={20} />
+            <span className="app-side__label t-tiny">{t('nav.notifications')}</span>
+            <UnreadBadge count={unread} />
+          </button>
+        ) : (
+          <IconBtn icon="bell" ariaLabel={t('notif.title')}>
+            <UnreadBadge count={unread} />
+          </IconBtn>
+        )}
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
+      <PopoverContent side={side} align={align} sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
           <div className="t-subheading grow">{t('notif.title')}</div>

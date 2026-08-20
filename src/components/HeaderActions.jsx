@@ -23,10 +23,23 @@ import { displayName } from '@/lib/displayName';
  *   isDark        - boolean; picks sun/moon icon
  *   onToggleTheme - () => void
  */
-export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
+// Состав меню аккаунта — ЕДИНСТВЕННЫЙ источник для обеих точек показа: аватар
+// в шапке (ниже) и аватар в нижнем кластере рейла (RailUtilities в AppShell).
+// «Профиль» ведёт на аккаунт-экран, «Выйти» — logout из AuthContext (прямое
+// действие, без confirm — как кнопка выхода в ScreenAccount).
+export function useAccountMenuItems() {
   const t = useT();
   const nav = useNavigate();
   const { logout } = useAuth();
+  return [
+    { icon: 'user', label: t('nav.profile'), onSelect: () => nav('/settings') },
+    { icon: 'logout', label: t('auth.logout'), onSelect: () => logout() },
+  ];
+}
+
+export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
+  const t = useT();
+  const accountItems = useAccountMenuItems();
   return (
     <div className="row row--g4">
       {/* ★TRIP-344: сторону этим двум кнопкам задаёт не ступень, а контекстное
@@ -43,9 +56,8 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
         onClick={onToggleTheme}
       />
       <NotificationsBell />
-      {/* Клик по профилю → канон-меню (ActionMenu): «Профиль» ведёт на аккаунт-экран
-          (тот же адрес, что раньше открывал аватар), «Выйти» — logout из AuthContext
-          (прямое действие, без confirm — как кнопка выхода в ScreenAccount). */}
+      {/* Клик по профилю → канон-меню (ActionMenu); состав пунктов — общий
+          useAccountMenuItems (тот же в рейле). */}
       <ActionMenu
         align="end"
         title={t('nav.account')}
@@ -60,10 +72,7 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
             {isPro && <span className="app-header__pro">PRO</span>}
           </button>
         )}
-        items={[
-          { icon: 'user', label: t('nav.profile'), onSelect: () => nav('/settings') },
-          { icon: 'logout', label: t('auth.logout'), onSelect: () => logout() },
-        ]}
+        items={accountItems}
       />
     </div>
   );

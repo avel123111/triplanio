@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '@/lib/ThemeContext';
 import { useNotificationList, useUnreadNotificationCount, useNotificationActions } from '@/lib/useNotifications';
-import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
-import { isProActive } from '@/lib/subscription';
 import { Btn, Badge, Card, EmptyState, ListRow, NotifRow, PageHead, Seg, Skeleton, Tile } from '../design/index';
-import AppHeader from '@/components/AppHeader';
+import AppShell from '@/components/AppShell';
 import { buildNotifView } from '@/components/notifications/notifView';
 import { useQueryGate } from '@/lib/useQueryGate';
 import { gateStubProps } from '@/lib/loadStateClassify';
@@ -29,11 +26,8 @@ const GROUP_LABEL_KEY = { today: 'common.today', yesterday: 'common.yesterday', 
 
 export default function Inbox() {
   const nav = useNavigate();
-  const { user } = useAuth();
   const t = useT();
   const { fmtRelative } = useI18nFormat();
-  const isPro = isProActive(user);
-  const { isDark, toggle: toggleTheme } = useTheme();
 
   const [filter, setFilter] = useState('all');
 
@@ -95,17 +89,7 @@ export default function Inbox() {
   }
 
   return (
-    <div className="app-shell">
-      <AppHeader
-        user={user}
-        isPro={isPro}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={() => nav('/trips')}
-        backTitle={t('telegram.go_to_trips')}
-        title={t('notif.inbox_title')}
-      />
-
+    <AppShell active="inbox" onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} title={t('notif.inbox_title')}>
       <main className="ov-anim page-main">
         <PageHead
           title={t('notif.inbox_title')}
@@ -168,7 +152,7 @@ export default function Inbox() {
           )}
         </div>
       </main>
-    </div>
+    </AppShell>
   );
 }
 

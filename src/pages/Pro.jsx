@@ -5,11 +5,9 @@ import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
-import { useTheme } from '@/lib/ThemeContext';
-import { isProActive } from '@/lib/subscription';
 import { Icon } from '@/design/icons';
 import { Btn, Card, Skeleton, Severity, Tile } from '@/design/index';
-import AppHeader from '@/components/AppHeader';
+import AppShell from '@/components/AppShell';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
 // modal - callers navigate here with `/pro?tripId=...&hidePerTrip=1`.
@@ -21,8 +19,6 @@ export default function Pro() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { t, fmtMoney } = useI18nFormat();
-  const { isDark, toggle: toggleTheme } = useTheme();
-  const isPro = isProActive(user);
 
   const tripId = searchParams.get('tripId') || null;
   // `from` lets callers tag WHY pricing opened — a feature gate passes
@@ -191,23 +187,11 @@ export default function Pro() {
   const busy = !!loadingPlan;
 
   return (
-    <div className="pro-page app-shell">
-
-      {/* ── App header ── */}
-      <AppHeader
-        user={user}
-        isPro={isPro}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={() => nav(-1)}
-        backTitle={t('common.back')}
-        title="Pro"
-      />
+    <AppShell className="pro-page" onBack={() => nav(-1)} backTitle={t('common.back')} title="Pro"> {/* i18n-ignore — «Pro» бренд-имя тарифа, не переводится */}
 
       {/* ── Main content zone — natural height, centered (canonical standalone shell) ── */}
       <main
-        className="pro-main"
-        style={{ flex: 1, width: '100%', maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px)', boxSizing: 'border-box' }}
+        className="pro-main page-main page-main--wide"
       >
 
         {/* Hero */}
@@ -363,6 +347,6 @@ export default function Pro() {
 
       </main>
 
-    </div>
+    </AppShell>
   );
 }

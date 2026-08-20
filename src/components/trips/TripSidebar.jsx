@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Avatar, Badge, Btn, Card, Grow, Sheet, UnreadBadge } from '@/design/index';
+import { RailItem, RailUtilities } from '@/components/AppShell';
 import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
 import { clearsStep } from '@/lib/tripStep';
 import { displayName } from '@/lib/displayName';
@@ -40,21 +41,16 @@ function SidebarBody({
   // the badge only renders under a visible chat item, so a chat-off trip holds
   // zero realtime subscriptions instead of a live one that can never show.
   const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
-  // Пункт рейла: вертикальная плитка. Подпись видима (канон .t-tiny), title
-  // дублирует её на случай эллипсиса длинной локали.
+  // Пункт рейла — общий RailItem (одна реализация плитки у app- и трип-рейла).
   const railItem = (item, active, onClick) => (
-    <button
+    <RailItem
       key={item.id}
-      type="button"
-      className={'app-side__item' + (active ? ' active' : '')}
+      icon={item.icon}
+      label={t(item.labelKey)}
+      active={active}
       onClick={onClick || (() => onNavigate(item.id))}
-      aria-current={active ? 'page' : undefined}
-      title={t(item.labelKey)}
-    >
-      <Icon name={item.icon} size={20} />
-      <span className="app-side__label t-tiny">{t(item.labelKey)}</span>
-      {item.id === 'chat' && <UnreadBadge count={chatUnread} />}
-    </button>
+      badge={item.id === 'chat' ? chatUnread : 0}
+    />
   );
   return (
     <>
@@ -89,6 +85,9 @@ function SidebarBody({
           <Badge variant="pro" icon="pro">PRO</Badge>
         </button>
       )}
+      {/* Нижний кластер (тема · уведомления · аккаунт) — общий с app-рейлом;
+          шапка трипа utilities больше не несёт. */}
+      <RailUtilities />
     </>
   );
 }

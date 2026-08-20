@@ -1359,108 +1359,182 @@ h4,
 }
 
 
-/* Rail shell · ярус 2p: намеренная перестройка оболочки трипа — все изменения объявлены.
-   visual-diff-exempt: .app-header__brand-name {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-header__brand-name display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-header__logo {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-header__menu {@media (max-width: 640px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-header__menu {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-header__menu display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-header__vdiv {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-header--trip {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-header--trip display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand img border-radius — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand img display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand img height — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand img margin — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand img width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand:focus-visible box-shadow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand:focus-visible outline — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand background — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand border — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand cursor — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand flex — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand padding — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__brand text-align — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__group border-top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__group padding-top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item:focus-visible box-shadow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item:focus-visible outline — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item border-radius — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item flex-direction — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item gap — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item justify-content — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item margin-left — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item min-height — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item padding — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item right — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item text-align — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__item top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__label max-width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__label overflow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__label text-overflow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side__label white-space — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} bottom — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} box-shadow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} left — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} max-width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} transform — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} transition — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} z-index — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side align-self — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side flex — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side flex-direction — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side gap — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side height — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side overflow-x — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side padding — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .app-side width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .badge--unread margin-left — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} opacity — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} pointer-events — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} transform — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body {@media (max-width: 880px)} grid-template-columns — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body {@media (max-width: 880px)} opacity — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body {@media (max-width: 880px)} pointer-events — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body {@media (max-width: 880px)} transform — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body flex-direction — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body grid-template-columns — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body grid-template-rows — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-body min-width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-content flex — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} bottom — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} box-shadow — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} left — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} max-width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} top — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transform — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transition — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} width — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} z-index — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell align-self — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell flex-direction — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell height — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-shell overflow-y — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 640px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} background — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} inset — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} opacity — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} pointer-events — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} position — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} transition — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} z-index — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: .trip-side-scrim display — rail shell: узкий полновысотный икон-рейл 84px вместо сайдбара 220px и off-canvas drawer, шапка правее рейла; эксперимент нового layout, задача Pavel
-   visual-diff-exempt: :root --z-side-nav — rail shell: оба читателя токена (скрим и off-canvas drawer) удалены этим же диффом, токен мёртв */
+/* Rail everywhere · ярус 2p: намеренная перестройка оболочки приложения — все изменения объявлены.
+   visual-diff-exempt: :root --z-side-nav — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .acct-content section scroll-margin-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} padding-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .active::before border — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .active::before box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} padding-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame > main flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame > main min-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-frame top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header__brand-name {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header__brand-name display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header__logo {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header__menu {@media (max-width: 640px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header__menu {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header__menu display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header__vdiv {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header--trip {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-header--trip display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-right — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} padding-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand img border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand img display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand img height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand img margin — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand img width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand:focus-visible box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand:focus-visible outline — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand border — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand cursor — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand padding — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__brand text-align — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) content — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group::before:not(:last-of-type) width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group:last-of-type border-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group:last-of-type margin-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group:last-of-type padding-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group border-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group margin-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group padding-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__group position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item > * position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before:hover background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before border — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before content — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before transition — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item::before width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item:focus-visible box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item:focus-visible outline — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item:hover background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item gap — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item justify-content — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item margin-left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item padding — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item right — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item text-align — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__item top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__label background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__label border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__label max-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__label overflow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__label padding — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__label position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__label text-overflow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side__label white-space — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} max-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} transition — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} z-index — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side align-self — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side gap — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side padding — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .app-side width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .badge--unread margin-left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} opacity — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} pointer-events — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .page-main--wide max-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .page-main {@media (max-width: 640px)} padding-left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .page-main {@media (max-width: 640px)} padding-right — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} grid-template-columns — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} opacity — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} pointer-events — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body grid-template-columns — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body grid-template-rows — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-body min-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-content flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} max-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transition — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} z-index — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell align-self — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-shell overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 640px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} inset — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} opacity — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} pointer-events — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} transition — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} z-index — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
+   visual-diff-exempt: .trip-side-scrim display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel */
 /* Trip side nav — УЗКИЙ полновысотный ИКОН-РЕЙЛ (rail shell, эксперимент нового
    layout по задаче Pavel). Живёт колонкой ЛЕВЕЕ шапки внутри .trip-shell
    (единственный хозяин — TripShell): наверху лого-плитка (выход к трипам),
@@ -1468,7 +1542,7 @@ h4,
    Прежний слой «sticky под шапкой 220px + off-canvas drawer 641–880» удалён —
    рейл узкий и виден на всех ширинах >640, на телефоне меню открывает шит. */
 .app-side {
-  flex: none; width: 84px;
+  flex: none; width: 100px;
   display: flex; flex-direction: column; gap: var(--sp-1);
   border-right: 1px solid var(--line);
   background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
@@ -1488,7 +1562,7 @@ h4,
 button.app-side__brand { cursor: pointer; }
 button.app-side__brand:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .app-side__brand img { width: 38px; height: 38px; border-radius: var(--r-sm); display: block; margin: 0 auto; }
-.app-side__group { margin-bottom: 14px; }
+.app-side__group { margin-bottom: 10px; }
 /* Группы рейла разделены линией: текст-подписи групп в 84px не влезают
    (подпись «Управление» осталась у телефонного шита — .tm-caption). */
 .app-side__group + .app-side__group { border-top: 1px solid var(--line); padding-top: var(--sp-5); }
@@ -1503,7 +1577,7 @@ button.app-side__brand:focus-visible { outline: none; box-shadow: 0 0 0 3px var(
 .app-side__item {
  position: relative;
  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2);
- padding: var(--sp-4) var(--sp-1); min-height: 52px; border-radius: var(--r-btn);
+ padding: var(--sp-3) var(--sp-1); min-height: 46px; border-radius: var(--r-btn);
  color: var(--ink-2);
  border: none; background: transparent; width: 100%; text-align: center;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
@@ -1512,11 +1586,41 @@ button.app-side__item { cursor: pointer; }
 button.app-side__item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
 button.app-side__item:active { transform: scale(.985); }
-button.app-side__item:hover { background: var(--wash); }
-.app-side__item.active { background: var(--brand-soft); color: var(--brand); }
-/* Подпись плитки: канон .t-tiny из разметки, здесь только страховка от длинной
-   локали (эллипсис; полный текст дублирует title на кнопке). */
-.app-side__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-side__item.active { color: var(--brand); }
+/* «Рейл = маршрут» (signature-ход): через иконки пунктов идёт вертикальная нить,
+   каждый пункт — «остановка», активный — ring-маркер в языке пинов карты
+   (.tmk__core: surface-круг + брендовая обводка). Нить не рисуется на последней
+   группе — нижний кластер utilities не часть «маршрута». */
+.app-side__group { position: relative; }
+.app-side__group:not(:last-of-type)::before {
+  content: ''; position: absolute; left: 50%; top: 16px; bottom: 16px;
+  width: 2px; transform: translateX(-50%); border-radius: 1px; background: var(--line);
+}
+/* Круг-«остановка» под иконкой: разрывает нить; у активного — ring, на ховере —
+   мягкая подсветка (ховер живёт на круге, не на всей плитке). */
+.app-side__item::before {
+  content: ''; position: absolute; top: 0; left: 50%; width: 32px; height: 32px;
+  transform: translateX(-50%); border-radius: var(--r-pill); background: var(--header-bg);
+  transition: background .22s var(--ease-out), border-color .22s var(--ease-out);
+}
+button.app-side__item:hover::before { background: var(--wash); }
+.app-side__item.active::before {
+  background: var(--surface); border: 3px solid var(--brand);
+  box-shadow: 0 3px 10px rgba(20, 24, 40, .16);
+}
+/* Контент плитки — над кругом-подложкой: absolute-псевдоэлемент иначе красится
+   ПОВЕРХ статических детей (иконки, PRO-бейджа, аватара). Бейдж непрочитанного
+   держит свой absolute из ко-селектора ниже (специфичность выше). */
+.app-side__item > * { position: relative; }
+/* Подпись плитки: канон .t-tiny из разметки, здесь страховка от длинной локали
+   (эллипсис; полный текст дублирует title) + маска нити позади текста. */
+.app-side__label {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  position: relative; padding: 0 var(--sp-1); background: var(--header-bg); border-radius: var(--r-xs);
+}
+/* Нижний кластер utilities — всегда ПОСЛЕДНЯЯ группа рейла: отделён линией,
+   как группа от группы (селектор по позиции, чтобы не тянуться в примитив .grow). */
+.app-side__group:last-of-type { border-top: 1px solid var(--line); padding-top: var(--sp-5); margin-bottom: 0; }
 /* Бейдж непрочитанного чата — красный канон `.badge--unread` ОВЕРЛЕЕМ у угла
    плитки (тот же приём, что у мобильного дока `.mbnav__ico`). TRIP-354: свой
    класс `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
@@ -3500,6 +3604,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   min-height: 100vh;
   background: var(--bg, var(--wash));
 }
+/* Rail everywhere (AppShell): ряд «app-рейл | контент» на standalone-экранах.
+   На десктопе шапки нет — глобальный хром живёт в рейле; скролл ДОКУМЕНТНЫЙ,
+   рейл прилипает на всю высоту вьюпорта. На телефоне рейл не рендерится (JS),
+   ряд вырождается в один контент-столбец под прежней шапкой. Контент-ребёнок
+   ряда — <main> либо обёртка .grow (Аккаунт: баннер + воркспейс). */
+.app-frame { display: flex; flex-direction: row; flex: 1; min-height: 0; }
+/* floor-exempt: layout +1 — .app-frame: единственный каркас-ряд «рейл | контент» standalone-экранов (rail everywhere), задача Pavel
+   floor-exempt: namespaces +1 — семья page получила ось ширины (page-main--wide): синглтон стал namespace; унификация контейнеров вместо инлайн-мейнов, задача Pavel */
+.app-frame > .app-side { position: sticky; top: 0; height: 100vh; height: 100dvh; }
+.app-frame > main { flex: 1; min-width: 0; }
+/* Широкий контент-столбец (Путешествия · Статистика · Pro); базовый .page-main —
+   узкая колонка Входящих. */
+.page-main--wide { max-width: 1240px; }
 
 @media (max-width: 640px) {
   .app-header__account { display: none; }
@@ -3508,18 +3625,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
      become a fixed-height shell — the global header pins (never scrolls), the
      content scrolls INSIDE its own container, and the bottom nav stays glued.
-     No document scroll → the iOS toolbar can't shove the header/nav around. */
+     No document scroll → the iOS toolbar can't shove the header/nav around.
+     Скролл-контейнер — контент-ребёнок ряда .app-frame (main или .grow-обёртка). */
   .app-shell { display: flex !important; flex-direction: column !important; height: 100dvh !important; min-height: 0 !important; overflow: hidden !important; }
   .app-shell > .app-header { position: static; flex: none; }
-  .app-shell > main,
-  .app-shell > .acct-shell {
+  .app-frame > main {
     flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
     padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
   }
   /* Phone-only: standalone content gets the same 16px side gutters as the trip
-     screen (.trip-screen-body) so its width matches the trip on mobile. Desktop
-     widths are untouched (handled by the inline maxWidth on each page). */
-  .app-shell > main { padding-left: 16px !important; padding-right: 16px !important; }
+     screen (.trip-screen-body) so its width matches the trip on mobile. Гаттеры
+     скоуплены на .page-main: у голого main Аккаунта свои поля несёт .acct-shell. */
+  .page-main { padding-left: 16px; padding-right: 16px; }
 }
 
 /* ============================================================
@@ -6008,7 +6125,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .acct-shell { max-width: 1120px; margin: 0 auto; padding: 26px 24px 80px; grid-template-columns: 232px minmax(0, 1fr); gap: 30px; align-items: start; }
 /* Base text matches the Lumo body exactly so nothing inherits a lighter/smaller
    default (15px / 500 / display-headings). */
-.acct-nav { position: sticky; top: 78px; }
+/* Rail everywhere: шапки над воркспейсом больше нет — прилипание и якорные
+   отступы секций считаются от верха вьюпорта (26px = верхний паддинг .acct-shell). */
+.acct-nav { position: sticky; top: 26px; }
 /* ★ОСТАТОК: зазор 11px вне шкалы - удержан.
    visual-diff-move: .acct-nav a -> row */
 .acct-nav a { gap: 11px; padding: 10px 12px; border-radius: var(--r-btn); color: var(--muted); margin-bottom: 2px; position: relative; cursor: pointer; transition: background .18s var(--ease-out), color .18s; }
@@ -6018,7 +6137,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ★ОСТАТОК: зазор 22px вне шкалы - удержан.
    visual-diff-move: acct-content -> col */
 .acct-content { gap: 22px; min-width: 0; }
-.acct-content section { scroll-margin-top: 78px; }
+.acct-content section { scroll-margin-top: 26px; }
 /* ★ОСТАТОК: зазор 9px вне шкалы - удержан.
    visual-diff-move: acct-sectitle -> row */
 .acct-sectitle { gap: 9px; margin: 0 0 13px; color: var(--ink); }
@@ -6900,9 +7019,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   position: relative;
 }
 
-/* ── Main content zone — natural height, centered (canonical standalone shell,
-   same as Statistics/Account: layout width + padding come from the inline style
-   on <main>). ── */
+/* ── Main content zone — natural height, centered (canonical standalone shell:
+   ширину и паддинги колонки несёт .page-main.page-main--wide). ── */
 .pro-main {
   position: relative; z-index: 1;
   display: flex; flex-direction: column; gap: 14px;

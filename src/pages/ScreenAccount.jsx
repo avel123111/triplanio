@@ -22,7 +22,7 @@ import { errorText } from '@/lib/errorText';
 import { track } from '@/lib/analytics';
 import { openConsentBanner } from '@/lib/consent';
 import { useFeedback } from '@/components/support/FeedbackProvider';
-import AppHeader from '@/components/AppHeader';
+import AppShell from '@/components/AppShell';
 import Accordion from '@/components/common/Accordion';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -646,7 +646,6 @@ export default function ScreenAccount() {
   // this window so a second tap can't start another checkout (no own poller).
   // isPro comes from useProStatus (the unified verdict) above.
   const awaitingWebhook = searchParams?.get('stripe_status') === 'success' && !isPro;
-  const isDark = theme === 'dark';
 
   const planBadge =
     planState === 'with-sub' ? <Badge variant="pro" icon="pro">{t('account.badge_pro_sub')}</Badge>
@@ -672,18 +671,10 @@ export default function ScreenAccount() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="app-shell">
-
-      {/* ── APP HEADER ── */}
-      <AppHeader
-        user={user}
-        isPro={isPro}
-        isDark={isDark}
-        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        onBack={() => nav('/trips')}
-        backTitle={t('notif.to_collection')}
-        title={t('account.title')}
-      />
+    <AppShell onBack={() => nav('/trips')} backTitle={t('notif.to_collection')} title={t('account.title')}>
+      {/* Контент-колонка правее рейла — ЧЕСТНЫЙ <main> (у экрана его не было):
+          баннер ошибки + двухпанельный воркспейс; ширину держит .acct-shell. */}
+      <main>
 
       {/* Payment / action error banner (full width, above the workspace) */}
       {errorMsg && (
@@ -1009,6 +1000,7 @@ export default function ScreenAccount() {
 
         </Col>
       </Grid>
-    </div>
+      </main>
+    </AppShell>
   );
 }

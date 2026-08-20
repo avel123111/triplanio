@@ -47,7 +47,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { isProActive } from '@/lib/subscription';
-import { Skeleton } from '@/design/index';
+import { Grow, Skeleton } from '@/design/index';
 
 // Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
 // нельзя: его состав зависит от аддонов и роли, а они приезжают тем же
@@ -63,10 +63,13 @@ function SidebarSkeleton() {
     </div>
   );
   // aria-hidden: скелетон декоративен — ложный нав-лендмарк скринридеру не нужен.
+  // Форма зеркалит живой рейл: 2 группы секций + нижний кластер utilities.
   return (
     <aside className="app-side" aria-hidden="true">
       <div className="app-side__brand"><Skeleton w={38} h={38} r={8} /></div>
       <div className="app-side__group">{[1, 2, 3, 4, 5, 6].map(row)}</div>
+      <div className="app-side__group">{[1, 2, 3].map(row)}</div>
+      <Grow />
       <div className="app-side__group">{[1, 2, 3].map(row)}</div>
     </aside>
   );

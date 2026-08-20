@@ -26,7 +26,7 @@ import {
 
 import { useCreateTrip, ChoiceCard } from '@/components/create/CreateTripProvider';
 import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
-import AppHeader from '@/components/AppHeader';
+import AppShell from '@/components/AppShell';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 function scopeLabel(t, visits = []) {
@@ -220,8 +220,6 @@ const TripCard = ({ trip, onClick }) => {
 
 // ─── Trip row (list view) ────────────────────────────────────────────────────
 const TripRow = ({ trip, onClick }) => {
-  const { t } = useI18n();
-
   return (
     <Card
       as="button"
@@ -387,7 +385,7 @@ export default function Trips() {
   const { user }  = useAuth();
   const nav       = useNavigate();
 
-  const { isDark, toggle: toggleTheme } = useTheme();
+  const { isDark } = useTheme();
 
   const [viewMode,    setViewMode]    = useState(() => {
     try { return localStorage.getItem('trips:viewMode') === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
@@ -614,13 +612,10 @@ export default function Trips() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className={`app-shell${!isLoadingData && allTrips.length === 0 ? ' stats-ghost' : ''}`}>
-
-      {/* APP HEADER */}
-      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
+    <AppShell active="trips" ghost={!isLoadingData && allTrips.length === 0}>
 
       {/* PAGE CONTENT */}
-      <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <main className="page-main page-main--wide">
 
         {/* Loading skeleton */}
         {isLoadingData && allTrips.length === 0 && (
@@ -773,6 +768,6 @@ export default function Trips() {
           </>
         )}
       </main>
-    </div>
+    </AppShell>
   );
 }

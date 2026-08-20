@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { isProActive } from '@/lib/subscription';
 import { cityKey, localizeVisits } from '@/lib/trip-cities';
 import { localizeCountry } from '@/lib/i18n/format';
 import { continentOf, COUNTRIES_PER_CONTINENT } from '@/lib/continents';
@@ -28,7 +27,7 @@ import {
 } from '@/components/stats/widgets';
 import { Btn, Card, Skeleton, Seg } from '@/design/index';
 import { Icon } from '@/design/icons';
-import AppHeader from '@/components/AppHeader';
+import AppShell from '@/components/AppShell';
 
 // "Моя статистика" — full Ф5 screen. Reads the same get_user_travel_stats RPC the
 // home screen uses, year-filters + aggregates entirely on the client via
@@ -80,9 +79,8 @@ function StatsScreenSkeleton() {
 export default function Statistics() {
   const { t, locale, lang } = useI18n();
   const { user } = useAuth();
-  const { isDark, toggle: toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const nav = useNavigate();
-  const isPro = isProActive(user);
   const scheme = isDark ? 'DARK' : 'LIGHT';
 
   // Localised country name from ISO-3166-1 alpha-2 — delegates to the canonical
@@ -334,9 +332,8 @@ export default function Statistics() {
 
   // ── render ──────────────────────────────────────────────────────────────────
   return (
-    <div className={`app-shell${isEmpty ? ' stats-ghost' : ''}`}>
-      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} title={t('stats.page_title')} />
-      <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+    <AppShell active="stats" ghost={isEmpty} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} title={t('stats.page_title')}>
+      <main className="page-main page-main--wide">
         {showSkeleton ? <StatsScreenSkeleton /> : (<>
 
         {/* head: title + sub + year filter */}
@@ -486,6 +483,6 @@ export default function Statistics() {
         editing={editingPoint}
         onSaved={() => setEditingPoint(null)}
       />
-    </div>
+    </AppShell>
   );
 }
