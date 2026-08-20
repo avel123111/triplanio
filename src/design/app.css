@@ -3923,6 +3923,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   position: relative; overflow: hidden; height: 200px;
   margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
 }
+/* Вариант обложки-hero для карточек (SettingsLens): без full-bleed планнера —
+   гасит отрицательные márgins и скругляет углы, чтобы сесть внутрь <Card>.
+   visual-diff-exempt: .pl-cover--contained margin — вариант в карточке: без full-bleed (margin 0)
+   visual-diff-exempt: .pl-cover--contained border-radius — скругление под <Card> */
+.pl-cover--contained { margin: 0; border-radius: var(--r-md); }
 .pl-cover__title {
   position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center;
@@ -5797,16 +5802,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .readonly-banner align-items — класс удалён (был баг, значение инертно) */
 .dl-root > .sev { margin-bottom: var(--sp-7); }
 
-/* Identity card: live cover preview + name/description/currency/notes. */
-/* ★ОСТАТОК: зазор 22px вне шкалы; `align-items: start` удержан - у `.grid` оси
-   выравнивания нет вовсе.
-   visual-diff-move: settings-identity -> grid */
-.settings-identity { grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
-.settings-identity__cover { position: static; }
-/* visual-diff-move: settings-identity__fields -> col col--g7 */
-.settings-identity__fields { min-width: 0; }
-/* Field names in the identity card match the "Leave trip" row title style. */
-.settings-identity .field__label { color: var(--ink); }
+/* Identity card (TRIP-… редизайн «Основное»): 2-колоночная сетка обложка|поля
+   удалена — блок стал вертикальным (обложка-hero во всю ширину + Название +
+   валюта), раскладку несёт примитив <Col>. Класс .settings-identity* снят.
+   floor-exempt: dsshare +4 — из блока «Основное» удалены поля Описание/Заметки (просьба Pavel); меньше UI → абсолютная доля ДС просела на 4bp (сам блок теперь целиком на ДС: Col/TripCoverPicker/Field/Input/CurrencyCombobox), апрув Pavel
+   visual-diff-exempt: .settings-identity grid-template-columns — класс удалён (редизайн блока «Основное» на вертикаль)
+   visual-diff-exempt: .settings-identity gap — класс удалён (редизайн блока «Основное»)
+   visual-diff-exempt: .settings-identity align-items — класс удалён (редизайн блока «Основное»)
+   visual-diff-exempt: .settings-identity__cover position — класс удалён (обложка теперь во всю ширину)
+   visual-diff-exempt: .settings-identity__fields min-width — класс удалён (поля в <Col>)
+   visual-diff-exempt: .field__label color — снят скоуп .settings-identity (метки полей — дефолт Field) */
 
 /* Two-column zone for features / integrations / warnings. */
 /* ★Настоящая унификация, а не переименование: `1fr 1fr` - это ровно значение оси
@@ -5823,8 +5828,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .settings-plate { padding: 12px 14px; background: var(--wash); border-radius: var(--r-sm); }
 
 @media (max-width: 900px) {
-  .settings-identity { grid-template-columns: 1fr; gap: 16px; }
-  .settings-identity__cover { position: static; }
+  /* .settings-identity{...}/.settings-identity__cover{...} сняты вместе с классом:
+     visual-diff-exempt: .settings-identity {@media (max-width: 900px)} grid-template-columns — класс удалён (редизайн блока «Основное»)
+     visual-diff-exempt: .settings-identity {@media (max-width: 900px)} gap — класс удалён (редизайн блока «Основное»)
+     visual-diff-exempt: .settings-identity__cover {@media (max-width: 900px)} position — класс удалён (редизайн блока «Основное») */
   .settings-grid { grid-template-columns: 1fr; }
 }
 

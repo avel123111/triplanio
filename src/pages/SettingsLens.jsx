@@ -25,7 +25,7 @@ import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, IconBtn, Severity, Skeleton, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, IconBtn, Input, Severity, Skeleton, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -428,22 +428,18 @@ export function SettingsSkeleton() {
       {/* 1. General: заголовок + Save + identity-grid (обложка | форма) */}
       <Card>
         <CardHeader title={<Skeleton w={120} h={22} r={6} />} action={<Skeleton w={130} h={40} r={'var(--r-btn)'} />} />
-        <Grid className="settings-identity">
-          <div className="settings-identity__cover">
-            <Skeleton w="100%" h={150} r={'var(--r-md)'} />
-            <div className="row row--g4 row--wrap" style={{ marginTop: 12 }}>
-              {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} w={32} h={32} r="50%" />)}
-            </div>
+        <Col gap="g6">
+          <Skeleton w="100%" h={200} r={'var(--r-md)'} />
+          <div className="row row--g3 row--wrap">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w={52} h={52} r={'var(--r-xs)'} />)}
           </div>
-          <Col gap="g7" className="settings-identity__fields">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="col col--g3">
-                <Skeleton w="35%" h={13} r={5} />
-                <Skeleton w="100%" h={i === 3 ? 120 : 44} r={'var(--r-btn)'} />
-              </div>
-            ))}
-          </Col>
-        </Grid>
+          {[0, 1].map((i) => (
+            <div key={i} className="col col--g3">
+              <Skeleton w="35%" h={13} r={5} />
+              <Skeleton w="100%" h={44} r={'var(--r-btn)'} />
+            </div>
+          ))}
+        </Col>
       </Card>
       {/* 2. Optional features: заголовок + addon-grid (3 тоггл-карточки в ряд) */}
       <Card>
@@ -493,8 +489,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   const { startCopy, copying } = useCreateTrip();
 
   const [title,   setTitle]   = useState(trip?.title        || '');
-  const [description, setDescription] = useState(trip?.description || '');
-  const [notes,   setNotes]   = useState(trip?.notes        || '');
   const [coverImageUrl, setCoverImageUrl] = useState(trip?.cover_image_url || '');
   const [currency, setCurrency] = useState(trip?.details?.main_currency || trip?.main_currency || 'EUR');
   const [saving,  setSaving]  = useState(false);
@@ -530,8 +524,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   // object would wipe the user's in-progress title edit right before they save it.
   useEffect(() => {
     if (trip?.title)        setTitle(trip.title);
-    setDescription(trip?.description || '');
-    setNotes(trip?.notes || '');
     setCoverImageUrl(trip?.cover_image_url || '');
     if (trip?.details?.main_currency || trip?.main_currency) setCurrency(trip.details?.main_currency || trip.main_currency || 'EUR');
     setFeatures(featuresFromTrip(trip));
@@ -539,14 +531,12 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     setChatWidget(trip?.details?.display?.chat_widget !== false);
   }, [trip?.id]);
 
-  // Dirty state for the identity block (title / description / currency / cover /
-  // notes). Toggles below auto-save on click, so the Save button only governs
+  // Dirty state for the identity block (title / currency / cover).
+  // Toggles below auto-save on click, so the Save button only governs
   // these manually-edited fields and stays disabled until something changes.
   const persistedCurrency = trip?.details?.main_currency || trip?.main_currency || 'EUR';
   const dirty =
     title.trim()    !== (trip?.title || '') ||
-    description     !== (trip?.description || '') ||
-    notes           !== (trip?.notes || '') ||
     coverImageUrl   !== (trip?.cover_image_url || '') ||
     currency        !== persistedCurrency;
 
@@ -606,8 +596,8 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     setBusyToggle(null);
   }
 
-  // Save identity settings: title, description, notes, cover image and main
-  // currency. All these columns are whitelisted by trip-settings/settings
+  // Save identity settings: title, cover image and main currency. All these
+  // columns are whitelisted by trip-settings/settings
   // (title/description/cover_image_url/notes); currency lives under
   // details.main_currency. Обложки нет → cover_image_url=null → фоллбек-картинка.
   async function saveSettings() {
@@ -617,8 +607,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     const prevCoverUrl = trip?.cover_image_url || '';
     const fields = {
       title: title.trim(),
-      description: description.trim() || null,
-      notes: notes || null,
       cover_image_url: coverImageUrl || null,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
@@ -646,8 +634,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip,
         title: fields.title,
-        description: fields.description,
-        notes: fields.notes,
         cover_image_url: fields.cover_image_url,
         details: { ...(old.trip.details || {}), main_currency: currency } } } : old);
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -808,7 +794,7 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
       {readOnly && (
         <Severity level="info" title={t('settings.readonly_banner_title')}>{t('settings.readonly_banner_desc')}</Severity>
       )}
-      {/* ── Identity: cover + name / description / currency / notes ──────────
+      {/* ── Identity: cover + name / currency ───────────────────────────────
           Save here governs only these manually-edited fields; the feature and
           display toggles below auto-save on click. */}
       <Card>
@@ -825,31 +811,23 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
-        <Grid className="settings-identity">
-          <div className="settings-identity__cover">
-            <Field label={t('trip.form_cover')}>
-              <TripCoverPicker
-                coverImageUrl={coverImageUrl}
-                tripId={tripId}
-                onChange={({ cover_image_url }) => setCoverImageUrl(cover_image_url)}
-              />
-            </Field>
-          </div>
-          <Col gap="g7" className="settings-identity__fields">
-            <Field label={t('trip.title_label')}>
-              <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
-            </Field>
-            <Field label={t('trip.description')}>
-              <input className="input" value={description} onChange={e => setDescription(e.target.value)} placeholder={t('trip.form_description_placeholder')} />
-            </Field>
-            <Field label={t('settings.main_currency_label')} sub={t('settings.main_currency_hint')}>
-              <CurrencyCombobox value={currency} onChange={setCurrency} />
-            </Field>
-            <Field label={t('trip.form_notes')}>
-              <Textarea rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('trip.form_notes_placeholder')} />
-            </Field>
-          </Col>
-        </Grid>
+        {/* Обложка-карусель (канон hero из планнера) во всю ширину карточки —
+            вариант --contained (без full-bleed планнера, с радиусом под <Card>);
+            под ней два поля: Название и Основная валюта. */}
+        <Col gap="g6">
+          <TripCoverPicker
+            heroClassName="pl-cover pl-cover--contained"
+            coverImageUrl={coverImageUrl}
+            tripId={tripId}
+            onChange={({ cover_image_url }) => setCoverImageUrl(cover_image_url)}
+          />
+          <Field label={t('trip.title_label')}>
+            <Input value={title} onChange={e => setTitle(e.target.value)} />
+          </Field>
+          <Field label={t('settings.main_currency_label')} sub={t('settings.main_currency_hint')}>
+            <CurrencyCombobox value={currency} onChange={setCurrency} />
+          </Field>
+        </Col>
         </fieldset>
       </Card>
 
