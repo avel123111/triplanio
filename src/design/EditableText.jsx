@@ -59,7 +59,7 @@ export const EditableText = ({
               если тап по галочке уводит фокус раньше её onClick — итог тот же (правка
               закрыта). preventDefault на mousedown держит фокус до клика на десктопе. */}
           <IconBtn
-            icon="check" size="sm" ariaLabel={confirmLabel} className="editable__edit"
+            icon="check" size="sm" ariaLabel={confirmLabel} className="editable__edit editable__confirm"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setEditing(false)}
           />

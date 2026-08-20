@@ -111,6 +111,7 @@
 
   /* Overlays / scrims */
   --scrim:            rgba(23,20,40,.45);
+  --scrim-soft:       rgba(23,20,40,.22);  /* покойная полупрозрачная подложка контролов поверх медиа (ховер поднимает до --scrim) */
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
 
   /* Event types (+ink +soft) */
@@ -131,7 +132,7 @@
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
 
   /* Radii (Lumo names + legacy aliases) */
-  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-pill:999px;
+  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-xs:4px; --r-pill:999px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
      controls derive from --r-btn directly, so every control outer shape shares
      one radius. The segment track uses it as-is; its inner buttons are
@@ -342,6 +343,7 @@
 
   /* Overlays / scrims — dark */
   --scrim:            rgba(0,0,0,.62);
+  --scrim-soft:       rgba(0,0,0,.30);
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.55));
 
   /* Event types — dark */
@@ -3280,10 +3282,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    любые элементы (у нас <Swatch>-миниатюры). Новый namespace, апрув Pavel.
    prefix-exempt: carousel — новый примитив-лента (scroll-snap + стрелки), апрув Pavel
    floor-exempt: namespaces +2 — примитивы <Carousel> (.carousel) и <EditableText> (.editable), апрув Pavel
-   floor-exempt: classes +12 — примитивы <Carousel>/<EditableText> (вкл. .editable__input) + герой обложки планнера (.pl-cover*, .tcp__strip, .tcp__ctl), апрув Pavel
-   floor-exempt: triage +7 — новые классы в семьях под разбором (.pl-cover*, .tcp__strip, .tcp__upload, .tcp__nav*, .tcp__ctl), апрув Pavel
+   floor-exempt: classes +15 — примитивы <Carousel>/<EditableText> (вкл. .editable__input/.editable__confirm) + герой обложки планнера (.pl-cover*, .pl-cover__track/__slide, .tcp__strip, .tcp__ctl), апрув Pavel
+   floor-exempt: triage +9 — новые классы в семьях под разбором (.pl-cover*, .pl-cover__track/__slide, .tcp__strip, .tcp__upload, .tcp__nav*, .tcp__ctl), апрув Pavel
+   floor-exempt: tokens +2 — --r-xs (шаг радиуса 4px) + --scrim-soft (покойная подложка контролов на медиа), апрув Pavel
    floor-exempt: reach +3 — скоуп-правила героя/ленты в примитивы (Swatch размер+ховер, инпут правки, карандаш) — бесшовный облик на обложке, апрув Pavel
-   floor-exempt: layout +3 — приватные классы раскладки героя/ленты обложки, апрув Pavel
+   floor-exempt: layout +4 — приватные классы раскладки героя/ленты обложки (вкл. .pl-cover__track/__slide), апрув Pavel
    visual-diff-exempt: .carousel display — примитив-лента (флекс-ряд)
    visual-diff-exempt: .carousel gap — примитив-лента
    visual-diff-exempt: .carousel overflow-x — примитив-лента (горизонтальный скролл)
@@ -3894,7 +3897,28 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .tcp__ctl color — белая иконка на полупрозрачном чипе
    visual-diff-exempt: .tcp__ctl border-color — без рамки на фото
    visual-diff-exempt: .tcp__ctl:hover background — держим тёмный чип на ховере (перебиваем .icon-btn:hover wash)
-   visual-diff-exempt: .tcp__ctl:hover color — белая иконка на ховере */
+   visual-diff-exempt: .tcp__ctl:hover color — белая иконка на ховере
+   visual-diff-exempt: :root --r-xs — новый шаг шкалы радиусов (4px), для миниатюр ленты
+   visual-diff-exempt: :root --scrim-soft — покойная полупрозрачная подложка контролов поверх медиа (0.22 light)
+   visual-diff-exempt: :root[data-theme=dark] --scrim-soft — то же в тёмной теме (0.30)
+   visual-diff-exempt: .editable__confirm background — кнопка ✓ правки = тот же чип, что контролы обложки (покой --scrim-soft)
+   visual-diff-exempt: .editable__confirm color — белая иконка ✓
+   visual-diff-exempt: .editable__confirm border-color — без рамки на фото
+   visual-diff-exempt: .editable__confirm:hover background — ховер поднимает до --scrim (как у контролов)
+   visual-diff-exempt: .editable__confirm:hover color — белая иконка ✓ на ховере
+   visual-diff-exempt: .pl-cover__track display — обложка = scroll-snap-лента слайдов (флекс-ряд)
+   visual-diff-exempt: .pl-cover__track height — лента во всю высоту обложки
+   visual-diff-exempt: .pl-cover__track overflow-x — горизонтальный скролл слайдов (свайп)
+   visual-diff-exempt: .pl-cover__track overflow-y — без вертикального скролла
+   visual-diff-exempt: .pl-cover__track scroll-snap-type — снап доводит слайд до края
+   visual-diff-exempt: .pl-cover__track scrollbar-width — скроллбар ленты скрыт
+   visual-diff-exempt: .pl-cover__track::-webkit-scrollbar display — скроллбар ленты скрыт (WebKit)
+   visual-diff-exempt: .pl-cover__slide flex — слайд не сжимается
+   visual-diff-exempt: .pl-cover__slide width — слайд во всю ширину обложки
+   visual-diff-exempt: .pl-cover__slide height — слайд во всю высоту обложки
+   visual-diff-exempt: .pl-cover__slide object-fit — кроп картинки слайда
+   visual-diff-exempt: .pl-cover__slide scroll-snap-align — слайд снапится по центру
+   visual-diff-exempt: .pl-cover pointer-events — скрим не ловит касания, свайп доходит до ленты (scoped .pl-cover .tc__scrim) */
 .pl-cover {
   position: relative; overflow: hidden; height: 200px;
   margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
@@ -3908,11 +3932,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .pl-cover__title .icon-btn { color: #fff; }
 .pl-cover__title .editable { flex: 1; }
 .pl-cover__title .editable__input { flex: 1; }
-/* Единый облик контролов обложки (загрузка + стрелки): полупрозрачный тёмный
-   чип (токен --scrim, тема-осведомлённый), белая иконка, КВАДРАТ (радиус базы
-   .icon-btn = --r-sm, БЕЗ round). Форма/размер/тон у всех трёх одинаковы. */
-.tcp__ctl { background: var(--scrim); color: #fff; border-color: transparent; }
-.tcp__ctl:hover { background: var(--scrim); color: #fff; }
+/* Единый облик контролов поверх обложки (загрузка + стрелки + кнопка ✓ правки
+   названия): полупрозрачный тёмный чип на токенах, белая иконка, КВАДРАТ (радиус
+   базы .icon-btn = --r-sm, БЕЗ round). Покой — --scrim-soft (лёгкая подложка),
+   ховер поднимает до --scrim. Форма/размер/тон у всех одинаковы. */
+.tcp__ctl, .editable__confirm { background: var(--scrim-soft); color: #fff; border-color: transparent; }
+.tcp__ctl:hover, .editable__confirm:hover { background: var(--scrim); color: #fff; }
 /* Загрузка своего фото — иконка-кнопка в правом верхнем углу обложки. */
 .tcp__upload { position: absolute; z-index: 4; top: var(--sp-4); right: var(--sp-4); }
 /* Стрелки смены выбранного кавера — по бокам обложки, по центру. Меняют сам
@@ -3920,6 +3945,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .tcp__nav { position: absolute; z-index: 4; top: 50%; transform: translateY(-50%); }
 .tcp__nav--prev { left: var(--sp-4); }
 .tcp__nav--next { right: var(--sp-4); }
+/* Обложка = горизонтальная scroll-snap-лента слайдов (нативный свайп + доводка
+   снапом, как <Carousel>); скроллбар скрыт. Скрим НЕ ловит касания, чтобы свайп
+   доходил до ленты под ним. */
+.pl-cover__track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.pl-cover__track::-webkit-scrollbar { display: none; }
+.pl-cover__slide { flex: none; width: 100%; height: 100%; object-fit: cover; scroll-snap-align: center; }
+.pl-cover .tc__scrim { pointer-events: none; }
 
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }

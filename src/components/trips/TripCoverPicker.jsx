@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Carousel, COVER_FALLBACK, IconBtn, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
@@ -73,51 +73,72 @@ export default function TripCoverPicker({
     staleTime: 60 * 60 * 1000,
   });
 
-  const handlePickPreset = (url, el) => {
+  // Единая точка выбора кавера: подмести staged-загрузку, отдать наверх и довести
+  // выбранную миниатюру к центру ленты (адрес по data-idx пресета).
+  const selectCover = (url) => {
+    if (!url || url === coverImageUrl) return;
     sweepIfStaged(coverImageUrl);
     onChange({ cover_image_url: url });
-    // Довести выбранную миниатюру к центру ленты — активная плитка расширяется
-    // (CSS), доводчик держит её в кадре: лента «дышит», а не стоит рядом.
-    el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    const pi = presets.findIndex((p) => p.image_url === url);
+    if (pi >= 0) {
+      stripRef.current?.querySelector(`[data-idx="${pi}"]`)
+        ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    }
   };
 
-  // Стрелки НА ОБЛОЖКЕ меняют сам выбранный кавер (prev/next по каталогу), а не
-  // скроллят ленту. Текущий кавер может быть загруженным фото/фоллбеком (индекса
-  // в каталоге нет) — тогда первый шаг встаёт на край каталога. Лента доводит
-  // новую выбранную миниатюру к центру, чтобы стрелка и лента были заодно.
-  const cyclePreset = (dir) => {
-    if (presets.length === 0) return;
-    const cur = presets.findIndex((p) => p.image_url === coverImageUrl);
-    const idx = cur === -1
-      ? (dir > 0 ? 0 : presets.length - 1)
-      : (cur + dir + presets.length) % presets.length;
-    const thumb = stripRef.current?.querySelector(`[data-idx="${idx}"]`);
-    handlePickPreset(presets[idx].image_url, /** @type {HTMLElement | null} */ (thumb));
+  // Обложка-герой = горизонтальная scroll-snap-лента слайдов (тот же нативный
+  // приём, что и <Carousel>): свайп/стрелки ФИЗИЧЕСКИ проматывают картинку, снап
+  // доводит до края, а осевший слайд становится кавером. slides = пресеты + свои
+  // загруженные фото ведущими (регистрируем стабильно, чтобы индексы не съезжали
+  // при перелистывании обратно к пресетам).
+  const presetUrls = useMemo(() => presets.map((p) => p.image_url), [presets]);
+  const [extraSlides, setExtraSlides] = useState(/** @type {string[]} */ ([]));
+  useEffect(() => {
+    if (coverImageUrl && !presetUrls.includes(coverImageUrl) && !extraSlides.includes(coverImageUrl)) {
+      setExtraSlides((s) => [coverImageUrl, ...s]);
+    }
+  }, [coverImageUrl, presetUrls, extraSlides]);
+  const slides = useMemo(() => [...extraSlides, ...presetUrls], [extraSlides, presetUrls]);
+
+  const coverTrackRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+
+  // Кавер сменили НЕ свайпом (аплоад/дефолт/клик по миниатюре) → подвести ленту
+  // слайдов к нему. Если уже на месте — no-op (снап-скролл сам её туда привёл).
+  useEffect(() => {
+    const el = coverTrackRef.current;
+    if (!el || slides.length === 0) return;
+    const idx = Math.max(0, slides.indexOf(coverImageUrl));
+    const target = idx * el.clientWidth;
+    if (Math.abs(el.scrollLeft - target) > 2) el.scrollLeft = target;
+  }, [coverImageUrl, slides]);
+
+  // Осевший после скролла слайд → кавер (дебаунс на конец скролла); тот же url — no-op.
+  const scrollSettle = useRef(/** @type {ReturnType<typeof setTimeout> | undefined} */ (undefined));
+  useEffect(() => () => clearTimeout(scrollSettle.current), []);
+  const onCoverScroll = () => {
+    const el = coverTrackRef.current;
+    if (!el) return;
+    clearTimeout(scrollSettle.current);
+    scrollSettle.current = setTimeout(() => {
+      selectCover(slides[Math.round(el.scrollLeft / el.clientWidth)]);
+    }, 120);
   };
 
-  // В hero-режиме (создание трипа) шаг открывается БЕЗ выбранной обложки —
-  // плейсхолдер. Как только каталог пресетов загрузился, выбираем первый по
-  // умолчанию, чтобы у трипа сразу был кавер (пустой `coverImageUrl` — только
-  // до этого момента; свой выбор/аплоад делают его непустым и эффект молчит).
+  // Стрелки листают ленту на слайд (нативный smooth-скролл → осевший станет
+  // кавером через onCoverScroll). Свайп на мобиле — тот же нативный скролл.
+  const pageCover = (dir) => {
+    const el = coverTrackRef.current;
+    el?.scrollBy({ left: dir * (el.clientWidth || 0), behavior: 'smooth' });
+  };
+
+  // В hero-режиме шаг открывается БЕЗ кавера (плейсхолдер) — как только каталог
+  // загрузился, выбираем первый по умолчанию (свой выбор/аплоад делают кавер
+  // непустым, и эффект молчит).
   useEffect(() => {
     if (heroClassName && !coverImageUrl && presets.length > 0) {
       onChange({ cover_image_url: presets[0].image_url });
     }
   }, [heroClassName, coverImageUrl, presets, onChange]);
-
-  // Свайп по самой обложке (мобайл) листает кавер — тот же cyclePreset, что и
-  // боковые стрелки. Горизонтальный сдвиг за порог: влево = следующий, вправо =
-  // предыдущий. Порог отсекает случайные тапы (по карандашу/кнопкам).
-  const touchStartX = useRef(/** @type {number | null} */ (null));
-  const onTouchStart = (e) => { touchStartX.current = e.touches[0]?.clientX ?? null; };
-  const onTouchEnd = (e) => {
-    const start = touchStartX.current;
-    touchStartX.current = null;
-    if (start == null) return;
-    const dx = (e.changedTouches[0]?.clientX ?? start) - start;
-    if (Math.abs(dx) < 40) return;
-    cyclePreset(dx < 0 ? 1 : -1);
-  };
 
   const handlePickFile = () => fileRef.current?.click();
 
@@ -185,17 +206,22 @@ export default function TripCoverPicker({
   return (
     <div className="col col--g6">
       {heroClassName ? (
-        /* Hero-режим (планнер): большая обложка на всю ширину. Загрузка — иконкой
-           в правом верхнем углу; стрелки по бокам МЕНЯЮТ выбранный кавер (не
-           скроллят ленту); heroOverlay — название трипа поверх низа обложки. */
-        <div className={heroClassName} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          <img className="tc__img" src={coverImageUrl || COVER_FALLBACK} alt="" />
+        /* Hero-режим (планнер): большая обложка на всю ширину — scroll-snap-лента
+           слайдов (свайп/стрелки физически проматывают картинку). Загрузка —
+           иконкой в правом верхнем углу; стрелки по бокам листают слайд;
+           heroOverlay — название трипа поверх низа обложки. */
+        <div className={heroClassName}>
+          <div className="pl-cover__track" ref={coverTrackRef} onScroll={onCoverScroll}>
+            {(slides.length ? slides : [COVER_FALLBACK]).map((url) => (
+              <img key={url} className="pl-cover__slide" src={url} alt="" />
+            ))}
+          </div>
           <div className="tc__scrim" />
           {uploadBtn}
-          {presets.length > 1 && (
+          {slides.length > 1 && (
             <>
-              <IconBtn icon="chevL" ariaLabel={t('common.prev')} onClick={() => cyclePreset(-1)} className="tcp__ctl tcp__nav tcp__nav--prev" />
-              <IconBtn icon="chev" ariaLabel={t('common.next')} onClick={() => cyclePreset(1)} className="tcp__ctl tcp__nav tcp__nav--next" />
+              <IconBtn icon="chevL" ariaLabel={t('common.prev')} onClick={() => pageCover(-1)} className="tcp__ctl tcp__nav tcp__nav--prev" />
+              <IconBtn icon="chev" ariaLabel={t('common.next')} onClick={() => pageCover(1)} className="tcp__ctl tcp__nav tcp__nav--next" />
             </>
           )}
           {heroOverlay && <div className="pl-cover__title t-title">{heroOverlay}</div>}
@@ -235,7 +261,7 @@ export default function TripCoverPicker({
               key={p.id}
               variant="round"
               on={coverImageUrl === p.image_url}
-              onClick={(e) => handlePickPreset(p.image_url, e.currentTarget)}
+              onClick={() => selectCover(p.image_url)}
               aria-label={t('trip.cover_preset')}
               style={swatchStyle}
               data-idx={i}

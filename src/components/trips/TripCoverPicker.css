@@ -46,8 +46,10 @@
    visual-diff-exempt: .swatch--round transition — плавное расширение активной миниатюры и ховер (лента обложек)
    visual-diff-exempt: .swatch--round[aria-pressed=true] width — активная миниатюра расширяется (акцент, как в референсе)
    visual-diff-exempt: .swatch--round:hover {@media (hover: hover)} box-shadow — ховер-подъём миниатюры на десктопе
-   visual-diff-exempt: .tcp__strip {@media (hover: hover)} box-shadow — то же правило, атрибуция на .tcp__strip */
-.tcp__strip .swatch--round { width: 72px; height: 52px; border-radius: var(--r-sm); transition: width .3s var(--ease-out), box-shadow .2s var(--ease-out); }
+   visual-diff-exempt: .tcp__strip {@media (hover: hover)} box-shadow — то же правило, атрибуция на .tcp__strip
+   visual-diff-exempt: .tcp__strip gap — зазор ленты миниатюр 6px (--sp-3), плотнее дефолта карусели */
+.carousel.tcp__strip { gap: var(--sp-3); }
+.tcp__strip .swatch--round { width: 52px; height: 52px; border-radius: var(--r-xs); transition: width .3s var(--ease-out), box-shadow .2s var(--ease-out); }
 .tcp__strip .swatch--round[aria-pressed="true"] { width: 108px; }
 @media (hover: hover) { .tcp__strip .swatch--round:hover { box-shadow: var(--sh-2); } }
 
