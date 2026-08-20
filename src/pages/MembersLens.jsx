@@ -346,7 +346,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // not at T0. On refusal: error toast, the row stays.
   function removeMember(memberId, status) {
     confirm({
-      title: t('member.remove_confirm'),
+      title: t('members.remove'),
+      description: t('member.remove_confirm'),
       variant: 'destructive',
       onConfirm: async () => {
         const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });

@@ -753,8 +753,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   // FK cascade wipes child rows, then Telegram teardown + Storage purge run
   // best-effort in afterWrite (post-delete).
   async function deleteTrip() {
-    if (!(await confirm({ title: t('settings.delete_confirm1'), variant: 'destructive' }))) return;
-
     // The actual irreversible delete; attached to the LAST confirm shown so its
     // button carries the spinner while trip-owner/delete (DELETE + best-effort
     // Telegram teardown + Storage purge) runs.
@@ -775,20 +773,27 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
       nav('/trips');
     };
 
-    // 3rd confirm — ONLY for a trip carrying a one-time Pro purchase
-    // (is_pro_trip), which burns on delete. NOT shown when Pro comes from an
-    // account-level subscription (that survives the trip being deleted), so we
-    // key off is_pro_trip, not the merged isPro flag.
+    // Ordinary trip → ONE confirm that runs the delete. Pro trip → the first
+    // confirm only gates, then a SECOND Pro-specific confirm warns that the
+    // one-time purchase burns and carries the spinner while the delete runs.
+    // The 2nd dialog is keyed off is_pro_trip (a one-time purchase that burns on
+    // delete), NOT the merged isPro flag: an account-level subscription survives
+    // the trip being deleted, so it must NOT trigger the extra warning.
+    const proceed = await confirm({
+      title: t('confirm.delete_trip.title'),
+      description: t('confirm.delete_trip.body'),
+      variant: 'destructive',
+      ...(isProTrip ? {} : { onConfirm: runDelete }),
+    });
+    if (!proceed) return;
+
     if (isProTrip) {
-      if (!(await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive' }))) return;
       await confirm({
         title: t('confirm.delete_pro_trip.title'),
         description: t('confirm.delete_pro_trip.body'),
         variant: 'destructive',
         onConfirm: runDelete,
       });
-    } else {
-      await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive', onConfirm: runDelete });
     }
   }
 

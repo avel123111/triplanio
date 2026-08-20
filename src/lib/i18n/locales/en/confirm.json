@@ -1,6 +1,8 @@
 {
-  "copy_trip.title": "Are you sure you want to copy this trip?",
+  "copy_trip.body": "Are you sure you want to copy this trip? Create your own copy of this trip with all its cities and bookings. You own the copy; Pro features and documents are not carried over.",
   "delete_pro_trip.body": "This is a Pro trip - the one-time upgrade you paid for will be lost. Are you sure?",
   "delete_pro_trip.title": "You are deleting a Pro trip",
+  "delete_trip.body": "Are you sure you want to delete this trip? All trip data will be deleted. This cannot be undone.",
+  "delete_trip.title": "Delete the trip",
   "leave_trip.body": "You will lose access, and your personal documents in this trip will be permanently deleted. You can return only with a new invite."
 }
