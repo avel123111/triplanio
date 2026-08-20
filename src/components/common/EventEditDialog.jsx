@@ -145,7 +145,8 @@ import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/sto
 import { aiField } from '@/lib/ai-values';
 import { deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
-import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow } from '@/lib/trip-data';
+import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow, reconcileCityChain } from '@/lib/trip-data';
+import { refetchTrip } from '@/lib/tripEdit';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
@@ -864,6 +865,22 @@ export default function EventEditDialog({
       // — reconcileWriteRow returns false there → targeted refetch (E, server owns
       // the new shape).
       reconcile: (/** @type {any} */ data) => {
+        // Transfer writes reshape the whole date chain (`day_change` → server
+        // recompute). The seam answers `{ row, cities }`: reconcile the recomputed
+        // city chain into the shell (dates) AND fold the transfer row into content —
+        // both from THIS response, no separate refetch (parity with route RPCs).
+        if (currentKind === 'transfer') {
+          if (data?.cities) reconcileCityChain(qc, tripId, data.cities);
+          // The seam always answers `{ row, cities }` here (returnChain) — pull the
+          // row out the same way as `data.cities` above (row === null for layovers).
+          const row = data?.row ?? null;
+          const folded = !isComplexTransferCreate && row
+            && reconcileWriteRow(tripContentBinding(qc, tripId, 'transfers'), entity ? 'update' : 'add', row);
+          // Layover create writes several transfer rows (row === null) → refetch just
+          // the content half for them; the shell is already current from the chain.
+          if (!folded && tripId) refetchTrip(qc, tripId, { shell: false, content: true });
+          return;
+        }
         const cacheKind = OPT_CACHE[currentKind];
         const folded = cacheKind && !isComplexTransferCreate
           && reconcileWriteRow(tripContentBinding(qc, tripId, cacheKind), entity ? 'update' : 'add', data);
@@ -904,11 +921,15 @@ export default function EventEditDialog({
       // Entity gone → every file it referenced (originals + any staged this
       // session) is orphaned. deleteSourceEntity sweeps best-effort on success
       // (TRIP-117); seenDocPaths is the dialog's broader set (originals + staged).
-      const { error, deleted, code } = await deleteSourceEntity(currentKind, entity.id, tripId, [...seenDocPaths.current]);
+      const { data, error, deleted, code } = await deleteSourceEntity(currentKind, entity.id, tripId, [...seenDocPaths.current]);
       if (error) throw refusalError(code);
       // deleted:false = the row is already gone (seam answered 404) → surface it
       // (rollback restores the row), don't close as a phantom success.
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
+      // Deleting a transfer (esp. an overnight one) un-shifts the downstream city
+      // dates on the server (DELETE recompute trigger); reconcile the returned chain
+      // into the shell so the timeline reflects it without a reload (returnChain).
+      if (currentKind === 'transfer' && data?.cities) reconcileCityChain(qc, tripId, data.cities);
     },
     ...withOptimism(delBinding, {
       op: 'update',     // dim the row (`_pending`), don't yank it yet
@@ -1520,7 +1541,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, t) {
 
   // Atomic layover write through the single door (TRIP-405): op:'rpc' →
   // add_layover_transfer under service_role, with p_actor injected from the JWT.
-  const { error, code } = await invokeFn('trip-booking/transfer-layover', {
+  const { data, error, code } = await invokeFn('trip-booking/transfer-layover', {
     body: {
       tripId,
       from_city_visit_id: fromVisit?.id,
@@ -1530,7 +1551,9 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, t) {
     },
   });
   if (error) throw refusalError(code);
-  return null;
+  // Seam answers { row: null, cities } (returnChain) — hand it back so the caller
+  // reconciles the recomputed city chain into the shell (dates) in one round-trip.
+  return data ?? null;
 }
 
 function buildActivityPayload(form, visit, tz) {

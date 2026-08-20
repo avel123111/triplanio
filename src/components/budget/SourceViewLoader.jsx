@@ -11,7 +11,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, reconcileCityChain } from '@/lib/trip-data';
 import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
@@ -49,9 +49,12 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
   const delBinding = tripContentBinding(qc, tripId, CACHE_KIND[kind]);
   const deleteMut = useMutation({
     mutationFn: async (/** @type {any} */ { id: rowId, tripId: tId, orphanPaths }) => {
-      const { error, deleted, code } = await deleteSourceEntity(kind, rowId, tId, orphanPaths);
+      const { data: res, error, deleted, code } = await deleteSourceEntity(kind, rowId, tId, orphanPaths);
       if (error) throw refusalError(code);
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
+      // Transfer delete un-shifts downstream city dates on the server; reconcile the
+      // returned chain into the shell so the timeline updates without a reload.
+      if (kind === 'transfer' && res?.cities) reconcileCityChain(qc, tId, res.cities);
     },
     onSuccess: (/** @type {any} */ _d, /** @type {any} */ { id: rowId }) => {
       delBinding.remove(rowId);
