@@ -3248,59 +3248,32 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .tile--pro color — залитая форма pro: белый значок под solid */
 .tile--solid.tile--pro { background: var(--pro-gradient); color: #fff; }
 
-/* ── Cover: обложка трипа как примитив ДС (<Cover>, TRIP-337) ─────────────────
-   Заменяет ИНЛАЙН `style={{ background: coverGradientCss(id) }}` на `.tr__thumb`/
-   `.tc__bg`: градиент — КОНЕЧНЫЙ набор (16, `TRIP_GRADIENTS`), поэтому он живёт
-   классами тут, выбор — по `data-cover`; фото — `<img class="cover__img">` (атрибут,
-   не стиль) поверх. Значения ↔ `TRIP_GRADIENTS` держит тест `Cover.test.js`.
-   prefix-exempt: cover — новый примитив-обложка (замена инлайн-скина covers на ДС), апрув Pavel
-   floor-exempt: namespaces +1 — примитив <Cover> (обложка): свой namespace вместо инлайна, апрув Pavel
-   visual-diff-exempt: .cover position — новый примитив обложки
-   visual-diff-exempt: .cover overflow — новый примитив обложки
-   visual-diff-exempt: .cover flex — новый примитив обложки
-   visual-diff-exempt: .cover width — новый примитив обложки
-   visual-diff-exempt: .cover height — новый примитив обложки
-   visual-diff-exempt: .cover border-radius — новый примитив обложки
-   visual-diff-exempt: .cover background — новый примитив обложки (дефолт-подложка)
-   visual-diff-exempt: .cover[data-cover=gradient_1] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_2] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_3] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_4] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_5] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_6] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_7] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_8] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_9] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_10] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_11] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_12] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_13] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_14] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_15] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_16] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover__img position — новый примитив обложки
-   visual-diff-exempt: .cover__img inset — новый примитив обложки
-   visual-diff-exempt: .cover__img width — новый примитив обложки
-   visual-diff-exempt: .cover__img height — новый примитив обложки
-   visual-diff-exempt: .cover__img object-fit — новый примитив обложки */
-.cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2); }
+/* ── Cover: обложка трипа как примитив ДС (<Cover>) ───────────────────────────
+   Нижний слой `.cover` несёт фоллбек-картинку из бандла (`public/covers/
+   fallback.webp`) поверх нейтральной подложки — она видна, когда обложки нет; фото
+   — `<img class="cover__img">` поверх, его `onError` гасит img → снова просвечивает
+   фоллбек. Градиенты обложек ВЫПИЛЕНЫ (дефолт = картинка, не цвет): 16 правил
+   `.cover[data-cover="gradient_N"]` удалены вместе с `TRIP_GRADIENTS`. 2p видит
+   снятие фона у каждого юнита и смену фона у `.cover` — каждое объявлено маркером.
+   visual-diff-exempt: .cover background — дефолт-подложка теперь несёт фоллбек-картинку (выпил градиентов обложки)
+   visual-diff-exempt: .cover[data-cover=gradient_1] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_2] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_3] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_4] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_5] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_6] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_7] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_8] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_9] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_10] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_11] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_12] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_13] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_14] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_15] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_16] background — снят с выпилом градиентов обложки */
+.cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
 .cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.cover[data-cover="gradient_1"]  { background: linear-gradient(to bottom left, #F4A85A 0%, #C84060 100%); }
-.cover[data-cover="gradient_2"]  { background: linear-gradient(to bottom left, #F2E060 0%, #D08820 100%); }
-.cover[data-cover="gradient_3"]  { background: linear-gradient(to bottom left, #F09888 0%, #E03888 100%); }
-.cover[data-cover="gradient_4"]  { background: linear-gradient(to bottom left, #E05030 0%, #8C1A18 100%); }
-.cover[data-cover="gradient_5"]  { background: linear-gradient(to bottom left, #62A8F0 0%, #2050C0 100%); }
-.cover[data-cover="gradient_6"]  { background: linear-gradient(to bottom left, #40C8D0 0%, #0870A0 100%); }
-.cover[data-cover="gradient_7"]  { background: linear-gradient(to bottom left, #5470E6 0%, #0E80A8 100%); }
-.cover[data-cover="gradient_8"]  { background: linear-gradient(to bottom left, #9090E8 0%, #2828A0 100%); }
-.cover[data-cover="gradient_9"]  { background: linear-gradient(to bottom left, #80D858 0%, #1E8840 100%); }
-.cover[data-cover="gradient_10"] { background: linear-gradient(to bottom left, #F09040 0%, #A83C10 100%); }
-.cover[data-cover="gradient_11"] { background: linear-gradient(to bottom left, #48D898 0%, #107858 100%); }
-.cover[data-cover="gradient_12"] { background: linear-gradient(to bottom left, #78E0A0 0%, #3868C8 100%); }
-.cover[data-cover="gradient_13"] { background: linear-gradient(to bottom left, #B080F0 0%, #5020A8 100%); }
-.cover[data-cover="gradient_14"] { background: linear-gradient(to bottom left, #F0A0C8 0%, #C02878 100%); }
-.cover[data-cover="gradient_15"] { background: linear-gradient(to bottom left, #E070E8 0%, #8820B0 100%); }
-.cover[data-cover="gradient_16"] { background: linear-gradient(to bottom left, #70B0F0 0%, #E040A0 50%, #F08840 100%); }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the

@@ -33,7 +33,6 @@ import { useConfirm } from '@/components/common/ConfirmProvider';
 import { telegram as tgBrand } from '@/lib/externalBrands';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
-import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -497,7 +496,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   const [description, setDescription] = useState(trip?.description || '');
   const [notes,   setNotes]   = useState(trip?.notes        || '');
   const [coverImageUrl, setCoverImageUrl] = useState(trip?.cover_image_url || '');
-  const [coverGradient, setCoverGradient] = useState(trip?.cover_gradient || '');
   const [currency, setCurrency] = useState(trip?.details?.main_currency || trip?.main_currency || 'EUR');
   const [saving,  setSaving]  = useState(false);
   // Which display/feature toggle is mid-flight (key string or feature id) — drives
@@ -535,7 +533,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     setDescription(trip?.description || '');
     setNotes(trip?.notes || '');
     setCoverImageUrl(trip?.cover_image_url || '');
-    setCoverGradient(trip?.cover_gradient || '');
     if (trip?.details?.main_currency || trip?.main_currency) setCurrency(trip.details?.main_currency || trip.main_currency || 'EUR');
     setFeatures(featuresFromTrip(trip));
     setBookingWarnings(trip?.details?.display?.booking_warnings !== false);
@@ -551,7 +548,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     description     !== (trip?.description || '') ||
     notes           !== (trip?.notes || '') ||
     coverImageUrl   !== (trip?.cover_image_url || '') ||
-    coverGradient   !== (trip?.cover_gradient || '') ||
     currency        !== persistedCurrency;
 
   // ЕДИНСТВЕННОЕ место, где отказ edge-функции превращается в текст тоста:
@@ -610,10 +606,10 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     setBusyToggle(null);
   }
 
-  // Save identity settings: title, description, notes, cover (gradient/image)
-  // and main currency. All these columns are whitelisted by trip-settings/settings
-  // (title/description/cover_image_url/cover_gradient/notes); currency lives
-  // under details.main_currency.
+  // Save identity settings: title, description, notes, cover image and main
+  // currency. All these columns are whitelisted by trip-settings/settings
+  // (title/description/cover_image_url/notes); currency lives under
+  // details.main_currency. Обложки нет → cover_image_url=null → фоллбек-картинка.
   async function saveSettings() {
     if (!title.trim()) return;
     setSaving(true);
@@ -624,9 +620,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
       description: description.trim() || null,
       notes: notes || null,
       cover_image_url: coverImageUrl || null,
-      // Invariant: keep a built-in gradient even when a photo is set (photo just
-      // renders on top). Never persist null → no legacy/procedural fallback.
-      cover_gradient: coverGradient || DEFAULT_GRADIENT_ID,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
     // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
@@ -656,7 +649,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
         description: fields.description,
         notes: fields.notes,
         cover_image_url: fields.cover_image_url,
-        cover_gradient: fields.cover_gradient,
         details: { ...(old.trip.details || {}), main_currency: currency } } } : old);
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
@@ -828,12 +820,8 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
             <Field label={t('trip.form_cover')}>
               <TripCoverPicker
                 coverImageUrl={coverImageUrl}
-                coverGradient={coverGradient}
                 tripId={tripId}
-                onChange={({ cover_image_url, cover_gradient }) => {
-                  setCoverImageUrl(cover_image_url);
-                  setCoverGradient(cover_gradient);
-                }}
+                onChange={({ cover_image_url }) => setCoverImageUrl(cover_image_url)}
               />
             </Field>
           </div>

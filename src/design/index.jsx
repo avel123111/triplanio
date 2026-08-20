@@ -54,7 +54,7 @@ export { Donut } from './Donut';
 export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
 export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
-export { Cover } from './Cover';
+export { Cover, COVER_FALLBACK } from './Cover';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';

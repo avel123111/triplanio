@@ -147,6 +147,10 @@ export const TABLES = {
   n8n_chat_histories:   { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML (RLS включён TRIP-46, гранты остались)' },
   rate_limit_hits:      { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; корзины rate-limit' },
   telegram_reminder_logs: { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; логи напоминаний' },
+  // Пресеты обложек трипа: справочник, курируется через дашборд (service_role).
+  // Клиент напрямую не читает — только edge getCoverPresets под service_role.
+  // RLS on без политик (deny-all), REVOKE ALL у anon/authenticated.
+  cover_presets:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'галерея обложек; чтение через edge getCoverPresets, REVOKE ALL у anon/authenticated, RLS deny-all' },
 };
 
 // SECURITY DEFINER функции — вторая «дверь» (privileged bypass RLS). Ф4 (LIVE)
@@ -246,6 +250,10 @@ export const BUCKETS = {
   // (n8n). Браузер (авторизованный) кладёт файл напрямую — INSERT; DELETE для
   // подметания осиротевшего файла при несохранённом тикете. Клиентского SELECT нет.
   support: { public: false, policies: ['insert', 'delete'] },
+  // Пресеты обложек трипа: публичный, раздача по /object/public/ URL, БЕЗ SELECT-
+  // политики (инвариант TRIP-48) и БЕЗ политик записи — заливает только Pavel через
+  // дашборд (service_role обходит RLS). Каталог читает edge getCoverPresets.
+  'trip-cover-presets': { public: true, policies: [], note: 'публичный набор обложек; раздача по URL, БЕЗ SELECT (TRIP-48), запись только через дашборд/service_role' },
 };
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
@@ -390,6 +398,7 @@ export const DOORS = {
 
   // ── auth: любой залогиненный, трип не при чём ──
   geoLocationiq:         'auth',        // геокодер, кэш общий
+  getCoverPresets:       'auth',        // витрина каталога обложек трипа
   getFxRates:            'auth',
   getStripePrices:       'auth',        // витрина каталога
   planTripWithAi:        'auth',        // Pro-гейта нет — продуктовое решение, TRIP-32
