@@ -68,6 +68,43 @@ test('waypoint between start and city1 keeps single date; anchors still material
   assert.equal(laid[3].start_date, '2026-09-13'); // finish = last checkout
 });
 
+test('two consecutive overnight legs accumulate (+2): mirrors a multi-leg layover', () => {
+  // c1 --overnight--> waypoint --overnight--> c2. Each day_change adds a day, so c2
+  // lands at c1's checkout + 2. Guards the server layover behaviour (add_layover_transfer
+  // with two day_change segments), verified 1:1 against recompute_trip.
+  const nodes = [
+    { id: 's', kind: 'start' },
+    { id: 'c1', kind: 'transit', nights: 2, gap: 0 },
+    { id: 'w', kind: 'waypoint', gap: 1 },   // overnight c1 -> waypoint
+    { id: 'c2', kind: 'transit', nights: 2, gap: 1 }, // overnight waypoint -> c2
+    { id: 'e', kind: 'end', gap: 0 },
+  ];
+  const laid = layoutDates(nodes, BASE);
+  assert.equal(laid[1].end_date, '2026-09-13');   // c1 checkout
+  assert.equal(laid[2].start_date, '2026-09-14');  // waypoint = +1
+  assert.equal(laid[2].end_date, '2026-09-14');    // single date
+  assert.equal(laid[3].start_date, '2026-09-15');  // c2 = checkout + 2 (accumulated)
+  assert.equal(laid[3].end_date, '2026-09-17');
+  assert.equal(laid[4].start_date, '2026-09-17');  // finish = last checkout
+});
+
+test('mid-chain waypoint consumes no nights; the city after it does NOT shift', () => {
+  const nodes = [
+    { id: 's', kind: 'start' },
+    { id: 'c1', kind: 'transit', nights: 3, gap: 0 },
+    { id: 'w', kind: 'waypoint', gap: 0 },   // between two cities, no day_change
+    { id: 'c2', kind: 'transit', nights: 2, gap: 0 },
+    { id: 'e', kind: 'end', gap: 0 },
+  ];
+  const laid = layoutDates(nodes, BASE);
+  assert.equal(laid[1].end_date, '2026-09-14');   // c1 checkout (3 nights)
+  assert.equal(laid[2].start_date, '2026-09-14');  // waypoint sits on that day
+  assert.equal(laid[2].end_date, '2026-09-14');
+  assert.equal(laid[3].start_date, '2026-09-14');  // c2 starts same day (waypoint took 0 nights)
+  assert.equal(laid[3].end_date, '2026-09-16');
+  assert.equal(laid[4].start_date, '2026-09-16');
+});
+
 test('reorder re-anchors on base, not on the first node\'s stale date (TRIP-216)', () => {
   // The planner's recomputeDates wrapper lays out a flat transit chain from the
   // FIXED trip start. Simulate a reorder: the node dragged to the top still carries
