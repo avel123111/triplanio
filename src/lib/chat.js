@@ -315,6 +315,22 @@ function subscribeChatRows(chatId, onRow) {
   let entry = chatRowRegistry.get(chatId);
   if (!entry) {
     const subscribers = new Set();
+    // A dead channel makes new messages silently stop arriving (the room looks
+    // idle, not broken), so a genuinely stuck channel MUST surface. But a
+    // terminal status is also what a routine reconnect emits: realtime-js drops
+    // the socket on any network blip, fires CHANNEL_ERROR/TIMED_OUT, then
+    // auto-rejoins — the join push re-runs and the callback fires again with
+    // SUBSCRIBED. Reporting on the first terminal status turned every reconnect
+    // into a Sentry event (TRIPLANIO-22). Instead we DEBOUNCE: arm a timer on a
+    // terminal status and report ONLY if the channel has not returned to
+    // 'joined' after a grace window — i.e. it never recovered. The window (20s)
+    // sits above realtime-js's reconnect backoff ([1,2,5,10]s), so a channel
+    // that ever comes back is never reported; one that stays dead still is. This
+    // is fail-safe toward reporting: a stuck channel emits no SUBSCRIBED, so the
+    // timer always fires, and the live `channel.state` re-check only SUPPRESSES a
+    // recovery it can prove — it can never mute a real outage.
+    let deadTimer = null;
+    const clearDeadTimer = () => { if (deadTimer) { clearTimeout(deadTimer); deadTimer = null; } };
     const channel = supabase
       .channel(`chat-rows-${chatId}`)
       .on('postgres_changes', {
@@ -328,21 +344,29 @@ function subscribeChatRows(chatId, onRow) {
         if (!payload.new?.id) return;
         for (const fn of subscribers) fn(payload.new, payload.eventType);
       })
-      // A dead channel makes new messages silently stop arriving (the room looks
-      // idle, not broken). Report the terminal states so the outage is visible;
-      // SUBSCRIBED / CLOSED are normal lifecycle, not failures.
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          report(new Error(`chat realtime ${status}`), { surface: 'realtime', source: 'chat_rows' });
+          if (deadTimer) return; // one pending check per outage — don't stack timers
+          deadTimer = setTimeout(() => {
+            deadTimer = null;
+            // Recheck the live state: a channel that rejoined is 'joined' and is
+            // not an outage. Only a still-broken channel is reported.
+            if (channel.state !== 'joined') {
+              report(new Error(`chat realtime ${status}`), { surface: 'realtime', source: 'chat_rows' });
+            }
+          }, 20000);
+        } else if (status === 'SUBSCRIBED') {
+          clearDeadTimer(); // (re)joined — nothing is stuck
         }
       });
-    entry = { channel, subscribers };
+    entry = { channel, subscribers, clearDeadTimer };
     chatRowRegistry.set(chatId, entry);
   }
   entry.subscribers.add(onRow);
   return () => {
     entry.subscribers.delete(onRow);
     if (entry.subscribers.size === 0) {
+      entry.clearDeadTimer(); // don't let a pending report outlive the channel
       supabase.removeChannel(entry.channel);
       chatRowRegistry.delete(chatId);
     }
