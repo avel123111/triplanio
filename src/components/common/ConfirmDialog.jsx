@@ -67,7 +67,11 @@ export default function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      {/* Radix opt-out when a caller passes no description — Radix's own sanctioned
+          way to silence "Missing Description or aria-describedby" (guard 2f). Belt
+          for the braces: CI guard 2ab forbids a title/description-less confirm at
+          the call site, so in practice `description` is always present. */}
+      <AlertDialogContent {...(description ? {} : { 'aria-describedby': undefined })}>
         <AlertDialogHeader>
           {title && <AlertDialogTitle>{title}</AlertDialogTitle>}
           {description && (

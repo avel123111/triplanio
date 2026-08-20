@@ -117,6 +117,7 @@ jobs:
   #   2w check-invoke-discriminant   — дискриминант отказа invokeFn в корне результата (.data.code/.data.ok не растёт)
   #   2x check-i18n-dynamic-keys     — DB/n8n-only key families (notif.tpl_* + emit()→n8n.*) must not be deleted (TRIP-299)
   #   2y check-spec-columns          — spec-поля table-DML-действия ⊆ колонки таблицы из database.types.ts (TRIP-420)
+  #   2ab check-confirm-copy         — every confirm({…}) carries a title AND a description (a11y name + Radix description)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -157,6 +158,9 @@ jobs:
       - name: 2f — dialog radix confinement (a11y contract)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-dialog-radix.mjs
+      - name: 2ab — confirm() copy contract (title + description)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-confirm-copy.mjs
       - name: 2g — column caps (new text columns must be bounded)
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }

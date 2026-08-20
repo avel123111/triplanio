@@ -35,9 +35,12 @@
     <link rel="preload" href="/fonts/golos/golos-text-400-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/golos/golos-text-600-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/golos/golos-text-600-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
-    <!-- Self-hosted Exo 2 (заголовки, вариативный woff2 несёт веса 700/800) — preload латиница+кириллица (TRIP-175) -->
-    <link rel="preload" href="/fonts/exo2/exo2-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/exo2/exo2-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Exo 2 больше НЕ грузится: после TRIP-410 приложение перешло на single-font
+         Geologica, у Exo 2 не осталось ни одного @font-face/font-family — его preload
+         был осиротевшим (грузился впустую → "preloaded but not used" на всех роутах).
+         Geologica здесь НЕ preload'им намеренно: index.html общий и с marketing/public
+         (там Golos), глобальный preload увёл бы тот же варнинг на лендинг — ровно ловушка
+         TRIP-202; преложка Geologica — это роут-скоуп задача (TRIP-328). -->
     <!-- Self-hosted JetBrains Mono 500 — мета-ярус канона «Экзо» стал моно (даты/счётчики на первом экране) — preload латиница+кириллица (TRIP-183) -->
     <link rel="preload" href="/fonts/jetbrains/jetbrains-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/jetbrains/jetbrains-mono-500-cyrillic.woff2" as="font" type="font/woff2" crossorigin />

@@ -139,7 +139,7 @@ export function CreateTripProvider({ children }) {
     copyPromptRef.current = true;
     let ok;
     try {
-      ok = await confirm({ title: t('confirm.copy_trip.title') });
+      ok = await confirm({ title: t('settings.copy_trip_title'), description: t('confirm.copy_trip.body') });
     } finally {
       copyPromptRef.current = false;
     }

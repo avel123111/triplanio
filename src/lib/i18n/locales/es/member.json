@@ -30,7 +30,7 @@
   "offline_name_hint": "Sin cuenta, solo se muestra en participantes",
   "offline_name_ph": "Alex, mamá, etc.",
   "offline_note": "Un participante offline no recibe notificaciones ni vota",
-  "remove_confirm": "¿Quitar a este participante del viaje?",
+  "remove_confirm": "¿Seguro que quieres quitar a este participante del viaje?",
   "role_admin_desc": "Admin: editarlo todo",
   "role_admin_short": "Edita el viaje",
   "role_label": "Rol",
