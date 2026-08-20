@@ -166,14 +166,15 @@ function validateTransferSingle(d = {}, ctx = {}) {
   if (d.start && d.end && _ms(d.end) <= _ms(d.start)) {
     out.push(mk('error', 'TR_ORDER', 'field', { field: 'end', ...ref }));
   }
+  // Departure must land on the day you leave the previous city.
   const depGap = daysBetween(cityDay(from.end_date), calDay(d.start));
   if (depGap != null && Math.abs(depGap) > TRANSFER_DAY_TOLERANCE) {
     out.push(mk('warning', 'TR_DEP_DAY', 'entity', { field: 'start', ...ref }));
   }
-  const arrGap = daysBetween(cityDay(to.start_date), calDay(d.end));
-  if (arrGap != null && Math.abs(arrGap) > TRANSFER_DAY_TOLERANCE) {
-    out.push(mk('warning', 'TR_ARR_DAY', 'entity', { field: 'end', ...ref }));
-  }
+  // No arrival-day check: the arrival now DEFINES the next city's start (via the
+  // transfer's day_span, recompute_trip: start = prevCheckout + span). So arrival vs
+  // to.start_date is tautological when the departure aligns, and merely echoes
+  // TR_DEP_DAY when it doesn't — nothing independent to flag.
   return out;
 }
 
@@ -193,21 +194,14 @@ function validateTransferLayover(d = {}, ctx = {}) {
     if (s.end) prevArr = _ms(s.end);
     if (i < segs.length - 1 && isBlank(s.toCity?.city_name)) out.push(mk('error', 'SEG_CITY_REQUIRED', 'field', { field: `${f}.toCity`, ...ref }));
   });
-  // Endpoints of the chain must align with the trip-leg days, exactly like a
-  // single transfer (+/-1 day): first departure vs leaving `from`, last arrival
-  // vs reaching `to`. This closes the hole where an AI-parsed layover with
-  // wildly wrong dates passed the engine and could be saved.
-  const first = segs[0], last = segs[segs.length - 1];
+  // First departure must align with leaving `from` (same rule as a single transfer).
+  // No last-arrival check: the arrival defines the next city's start via day_span
+  // (see validateTransferSingle) — nothing independent to flag.
+  const first = segs[0];
   if (from && first?.start) {
     const depGap = daysBetween(cityDay(from.end_date), calDay(first.start));
     if (depGap != null && Math.abs(depGap) > TRANSFER_DAY_TOLERANCE) {
       out.push(mk('warning', 'TR_DEP_DAY', 'entity', { field: 'seg0.start', ...ref }));
-    }
-  }
-  if (to && last?.end) {
-    const arrGap = daysBetween(cityDay(to.start_date), calDay(last.end));
-    if (arrGap != null && Math.abs(arrGap) > TRANSFER_DAY_TOLERANCE) {
-      out.push(mk('warning', 'TR_ARR_DAY', 'entity', { field: `seg${segs.length - 1}.end`, ...ref }));
     }
   }
   return out;

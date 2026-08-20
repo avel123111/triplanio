@@ -155,16 +155,17 @@ import './EventEditDialog.css';
 // a booking whose end precedes its start is nonsense to persist.
 const BLOCKING_CODES = new Set(['HOTEL_ORDER', 'ACT_ORDER', 'TR_ORDER', 'SVC_ORDER', 'SEG_ORDER', 'SEG_BACKSTEP']);
 
-// A transfer is "overnight" (day_change) IFF its arrival lands on a later calendar
-// day than its departure — nothing else. day_change is therefore fully DERIVED from
-// the dates, never an independent user flag: it is the single bit the server's
-// recompute_trip reads to add a +1 gap to the arrival city, so storing anything
-// other than (arrivalDay > departureDay) would desync the city layout from the
-// actual travel dates. Compares the wall-clock date parts (the "YYYY-MM-DD" slice
-// of the local datetime), matching validation.calDay and the server's day math.
-const isOvernightLocal = (startLocal, endLocal) => {
+// A transfer's DAY SPAN = arrival local calendar day − departure local calendar day
+// (0 = same day, 1 = overnight, ≥2 = a multi-day crossing). Fully DERIVED from the
+// dates, never an independent user flag: it is the number the server's recompute_trip
+// reads as the gap it adds to the arrival city (transfers.day_span), so it must always
+// equal the actual travel dates or the city layout desyncs. Compares the wall-clock
+// "YYYY-MM-DD" slices — same day math as validation.calDay and the server. Derivation
+// lives HERE (local time is known) and the int is stored; the server never re-derives.
+const daySpanLocal = (startLocal, endLocal) => {
   const sd = (startLocal || '').slice(0, 10), ed = (endLocal || '').slice(0, 10);
-  return !!(sd && ed && ed > sd);
+  if (!sd || !ed || ed <= sd) return 0;
+  return Math.max(0, Math.round((Date.parse(`${ed}T00:00:00Z`) - Date.parse(`${sd}T00:00:00Z`)) / 86400000));
 };
 
 // Assigns an AI-parsed value onto the form draft and records the key, so the
@@ -763,9 +764,9 @@ export default function EventEditDialog({
   );
   const hasBlockingError = useMemo(() => issues.some((i) => i.level === 'error'), [issues]);
 
-  // day_change is no longer a form field the user toggles: it is derived from the
-  // dates at every seam (badge display + buildTransferPayload / layover segments via
-  // isOvernightLocal), so there is nothing to auto-raise here anymore.
+  // day_span is not a form field the user toggles: it is derived from the dates at
+  // every seam (badge display + buildTransferPayload / layover segments via
+  // daySpanLocal), so there is nothing to auto-raise here anymore.
 
   // Live map route preview while creating a transfer (shaped by transport type).
   useEffect(() => {
@@ -1465,7 +1466,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     from_city_visit_id: fromVisit?.id,
     to_city_visit_id: toVisit?.id,
     transport_type: form.transport_type,
-    day_change: isOvernightLocal(form.startLocal, form.endLocal),
+    day_span: daySpanLocal(form.startLocal, form.endLocal), // transfer duration in local days (0/1/N)
     start_datetime: localToUtc(form.startLocal, startTz),
     end_datetime: localToUtc(form.endLocal, endTz),
     carrier: form.carrier || undefined,
@@ -1520,7 +1521,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, t) {
   // One leg per segment. Booking link is shared; documents/notes ride the first leg.
   const segments = segs.map((s, i) => ({
     transport_type: s.transport_type,
-    day_change: isOvernightLocal(s.startLocal, s.endLocal),
+    day_span: daySpanLocal(s.startLocal, s.endLocal), // transfer duration in local days (0/1/N)
     start_datetime: localToUtc(s.startLocal, 'UTC'),
     end_datetime: localToUtc(s.endLocal, 'UTC'),
     carrier: s.carrier || null,
@@ -1884,6 +1885,7 @@ function TransferLegCard({
   // Within-leg duration (departure → arrival) for the date-block hint —
   // same "minutes between two ISO locals, non-negative or null" as the layover gap.
   const durMin = layoverMins(leg.startLocal, leg.endLocal);
+  const legSpan = daySpanLocal(leg.startLocal, leg.endLocal);
   const isOpen = isMulti ? open : true;
 
   // Тело сегмента — ОДИНАКОВО для прямого трансфера и layover-сегмента; в layover
@@ -1950,13 +1952,15 @@ function TransferLegCard({
           endLabel={t('event.arrival')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz} endAi={aiHas('endLocal')}
           midText={durMin != null ? fmtDur(durMin, t) : null}
         />
-        {/* Overnight — DERIVED from the dates, not a user toggle. day_change is a pure
-            function of (arrival day > departure day): the single bit recompute_trip
-            reads to add the +1 arrival-day gap, so it must always equal the actual
-            dates. Shown as the canon <Badge> (moon + label) the moment the arrival
-            date is a later day — a DS mark, not a bespoke tinted box. */}
-        {isOvernightLocal(leg.startLocal, leg.endLocal) && (
-          <Badge variant="brand" icon="moon" style={{ marginTop: 14 }}>{t('event.overnight_label')}</Badge>
+        {/* Day span — DERIVED from the dates, not a user toggle. day_span is a pure
+            function of (arrival day − departure day): the number recompute_trip reads
+            to gap the arrival city, so it must always equal the actual dates. Shown as
+            the canon <Badge> (moon + "+N дн") the moment arrival is a later day — a DS
+            mark, not a bespoke tinted box. */}
+        {legSpan > 0 && (
+          <Badge variant="brand" icon="moon" style={{ marginTop: 14 }}>
+            {t('event.overnight_label', { count: legSpan })}
+          </Badge>
         )}
 
         {/* Carrier / flight no. */}

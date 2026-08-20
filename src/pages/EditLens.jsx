@@ -262,13 +262,12 @@ const isTmpId = (id) => String(id || '').startsWith('tmp-');
 // server recompute_trip. Used here only as optimistic reorder layout.
 const recompute = layoutDates;
 
-// Adjacency-driven gap, mirroring server recompute_trip [R1]: a city's gap is 1
-// ONLY when the transfer between it and the PREVIOUS node has day_change — not any
-// transfer that merely points at this city. A baked gap goes stale after a reorder
-// (the overnight transfer is no longer adjacent) and would drift +1 vs the server,
-// so it must be re-derived on every (re)layout. ManualPlanner passes no transfers
-// → all gap 0. The first non-anchor's gap now applies too (0043): an overnight
-// start->first leg counts, anchored at the start-leg departure day.
+// Adjacency-driven gap, mirroring server recompute_trip [R1]: a city's gap is the
+// day_span of the transfer between it and the PREVIOUS node — not any transfer that
+// merely points at this city. A baked gap goes stale after a reorder (the transfer is
+// no longer adjacent) and would drift vs the server, so it must be re-derived on every
+// (re)layout. ManualPlanner passes no transfers → all gap 0. The first non-anchor's
+// gap applies too (0043): a multi-day start->first leg counts, anchored at departure.
 function applyAdjacencyGaps(nodes, transfers = []) {
   let prevId = null;
   return nodes.map((n) => {
@@ -277,12 +276,12 @@ function applyAdjacencyGaps(nodes, transfers = []) {
     // The start anchor is the base — no incoming gap applies to it.
     if (isAnchor(n)) {
       const tr = (n.kind === 'end' && prevId) ? (transfers || []).find((t) => t.from_city_visit_id === prevId && t.to_city_visit_id === n.id) : null;
-      const next = n.kind === 'end' ? { ...n, gap: tr?.day_change ? 1 : 0 } : n;
+      const next = n.kind === 'end' ? { ...n, gap: tr?.day_span ?? 0 } : n;
       prevId = n.id;
       return next;
     }
     const tr = prevId ? (transfers || []).find((t) => t.from_city_visit_id === prevId && t.to_city_visit_id === n.id) : null;
-    const next = { ...n, gap: tr?.day_change ? 1 : 0 };
+    const next = { ...n, gap: tr?.day_span ?? 0 };
     prevId = n.id;
     return next;
   });
@@ -291,15 +290,13 @@ function applyAdjacencyGaps(nodes, transfers = []) {
 function buildDraft(shell, transfers = [], lang) {
   const visits = localizeVisits(sortVisits(shell?.cityVisits || []), lang);
   // nights = stored date span. gap (days between the previous checkout and this
-  // check-in) now comes from the INCOMING transfer's day_change flag: an overnight
-  // / day-change transfer means this city starts +1 day after the previous one.
-  // No incoming transfer or day_change=false → gap 0 (flush). Source of truth =
-  // transfers.day_change; the stored city dates are just the baked-in result.
-  // gap is adjacency-driven (mirror server recompute_trip [R1]): a city's gap is 1
-  // only if the transfer between it and the PREVIOUS node has day_change, NOT any
-  // transfer that merely points at this city (which would survive a reorder and
-  // drift +1 vs the server). The first non-anchor's gap applies too (mirror 0043):
-  // an overnight start->first leg is the adjacency from the `start` anchor.
+  // check-in) is the INCOMING transfer's day_span: a multi-day (or overnight) leg means
+  // this city starts N days after the previous one. No incoming transfer → gap 0 (flush).
+  // Source of truth = transfers.day_span; the stored city dates are the baked-in result.
+  // gap is adjacency-driven (mirror server recompute_trip [R1]): only the transfer
+  // between it and the PREVIOUS node counts, NOT one that merely points at this city
+  // (which would survive a reorder and drift vs the server). The first non-anchor's gap
+  // applies too (mirror 0043): a start->first leg is the adjacency from the `start` anchor.
   const trBetween = (a, b) => (transfers || []).find((t) => t.from_city_visit_id === a && t.to_city_visit_id === b);
   let prevId = null;
   const nodes = visits.map((v, i) => {
@@ -309,7 +306,7 @@ function buildDraft(shell, transfers = [], lang) {
     const isWp = v.kind === 'waypoint';
     const nights = isWp ? null : Math.max(0, (sd && ed ? Math.round(ed.diff(sd, 'days').days) : 1));
     const tr = prevId ? trBetween(prevId, v.id) : null;
-    const gap = tr?.day_change ? 1 : 0;
+    const gap = tr?.day_span ?? 0;
     prevId = v.id;
     return { ...base, nights, gap };
   });
@@ -816,12 +813,12 @@ export default function EditLens({ tripId, shell, content }) {
   const arrivalFor = (id) => liveTransfers.find((t) => t.to_city_visit_id === id);
   const departureFor = (id) => liveTransfers.find((t) => t.from_city_visit_id === id);
   // Anchor dates: start = trip start (first city's start); finish = last city's
-  // end, +1 day when the final leg into the finish is an overnight transfer
-  // (day_change) — mirrors server recompute_trip's gap rule.
+  // end, +N days by the final leg's day_span — mirrors server recompute_trip's gap rule.
   const endNode = ordered.find((n) => n.kind === 'end') || null;
   const finishTransfer = endNode ? arrivalFor(endNode.id) : null;
-  const finishDate = endDate && finishTransfer?.day_change
-    ? (toDT(endDate)?.plus({ days: 1 })?.toISODate() || endDate)
+  const finishSpan = finishTransfer?.day_span ?? 0;
+  const finishDate = endDate && finishSpan
+    ? (toDT(endDate)?.plus({ days: finishSpan })?.toISODate() || endDate)
     : endDate;
   // panel navigation
   const openCity = (id) => { if (justDraggedRef.current) { justDraggedRef.current = false; return; } setLeftPanel({ type: 'city', id }); };
@@ -1308,6 +1305,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
     );
   }
   const meta = transferKind(t.transport_type);
+  const span = t.day_span ?? 0;
   return (
     <Row justify="j-center" className="te-seam">
       <Chip variant="tone" icon={mismatch ? 'warning' : meta.icon} className={mismatch ? 'is-warn' : ''} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
@@ -1322,7 +1320,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
             ⚠️ Угловые скобки тут писать НЕЛЬЗЯ: гард 2d читает НАПИСАНИЕ, включая
             комментарии, и пара `<svg>` … `<title>` с текстом между ними читается
             им как сырая JSX-строка - первая редакция этого абзаца роняла CI. */}
-        {t.day_change && <span title={tx('tse.overnight_title')}><Icon name="moon" size={11} style={{ color: 'var(--brand)' }} /></span>}
+        {span > 0 && <span title={tx('tse.overnight_title', { count: span })}><Icon name="moon" size={11} style={{ color: 'var(--brand)' }} /></span>}
         <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
       </Chip>
     </Row>
