@@ -2046,7 +2046,6 @@ export type Database = {
       }
       trips: {
         Row: {
-          cover_gradient: string | null
           cover_image_url: string | null
           created_at: string | null
           created_by: string
@@ -2060,7 +2059,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          cover_gradient?: string | null
           cover_image_url?: string | null
           created_at?: string | null
           created_by: string
@@ -2074,7 +2072,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          cover_gradient?: string | null
           cover_image_url?: string | null
           created_at?: string | null
           created_by?: string
