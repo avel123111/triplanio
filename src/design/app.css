@@ -7162,6 +7162,83 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* visual-diff-exempt: .rt overflow — редизайн V4 (задача Pavel, PR #927) */
 /* visual-diff-exempt: .rt text-overflow — редизайн V4 (задача Pavel, PR #927) */
 /* visual-diff-exempt: .rt white-space — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .badge--count background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .col margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dash-hero margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-addcard background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-addcard border-color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__body padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__media background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__media flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__media height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__media img display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__media img height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__media img object-fit — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__media img width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-drop display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery a border-radius — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery a flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery a height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery a overflow — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery a width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery img display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery img width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery margin-bottom — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-empty background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-empty border-color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-grid display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-grid gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-grid grid-template-columns — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec margin-bottom — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec--mine background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec--mine color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec__head align-items — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec__head display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec__head gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec__head margin-bottom — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec__title align-items — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec__title display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec__title gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-sec__title margin-bottom — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .invite margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .is-drag background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .is-drag border-color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .mapwrap flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cd flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cd width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cd {@media (max-width: 640px)} width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pagehead margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rail flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rail min-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc {@media (max-width: 640px)} min-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero min-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero white-space — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero {@media (max-width: 640px)} min-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero {@media (max-width: 640px)} width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc-grid margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc__in min-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc__in padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc__title white-space — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-addcard {@media (max-width: 640px)} min-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__media {@media (max-width: 640px)} height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery img height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-dview-gallery img object-fit — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-search {@media (max-width: 640px)} max-width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .seg--filter {@media (max-width: 640px)} flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .seg--filter {@media (max-width: 640px)} order — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .seg--view {@media (max-width: 640px)} flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .seg--view {@media (max-width: 640px)} order — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar .seg--filter button {@media (max-width: 640px)} flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar .seg--filter button {@media (max-width: 640px)} justify-content — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} order — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar__search {@media (max-width: 640px)} order — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar__spacer flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar__spacer {@media (max-width: 640px)} display — редизайн V4 (задача Pavel, PR #927) */
 /* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
    «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
    actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */

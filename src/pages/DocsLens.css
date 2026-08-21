@@ -35,7 +35,15 @@
    visual-diff-exempt: .dl-card box-shadow — rest-тень --sh-1 снята (канон покой плоский)
    visual-diff-exempt: .dl-card:focus-visible box-shadow — фокус-кольцо → .card--interactive:focus-visible
    visual-diff-exempt: .dl-card:focus-visible outline — фокус → .card--interactive:focus-visible */
-.dl-card { font: inherit; padding: 16px; cursor: pointer; text-align: left; width: 100%; }
+/* Редизайн V4 (задача Pavel): медиа-карточка. Паддинг карточки уезжает на
+   __body ради full-bleed фото-слота; overflow клипит кроп под радиус.
+   visual-diff-move: .dl-card padding -> .dl-card__body
+   visual-diff-exempt: .dl-card overflow — клип full-bleed медиа под радиус карточки (редизайн V4) */
+.dl-card { font: inherit; cursor: pointer; text-align: left; width: 100%; overflow: hidden; }
+.dl-card__body { padding: 16px; } /* design-token-exempt: 16px — перенос паддинга .dl-card, значение не менялось */
+/* Фото-слот: кроп 116px, фон на время загрузки — токен --wash. */
+.dl-card__media { height: 116px; background: var(--wash); flex: none; }
+.dl-card__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* Optimistic pending state (create/delete write in flight): dim + non-interactive
    until the seam reconciles the cache. Keyed on aria-busy so no new class family.
    visual-diff-exempt: .dl-card[aria-busy=true] opacity — приглушение pending-карточки оптимизма
@@ -288,6 +296,47 @@
 /* visual-diff-move: dl-dview-meta -> row row--g4 */
 .dl-dview-meta { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); }
 .dl-dview-meta svg { width: 13px; height: 13px; }
+
+/* ─── Sections + gallery grid (редизайн V4, задача Pavel) ─────────
+   Секционные шапки и грид галереи из инлайн-стилей call-site'ов — в семью
+   (значения перенесены как были, храповик 2l вниз).
+   floor-exempt: classes +9 — dl-sec/dl-sec__head/dl-sec__title/dl-sec--mine/dl-grid/
+     dl-card__body/dl-card__media/dl-drop/dl-dview-gallery: редизайн Документов по
+     задаче Pavel (галерея с медиа-превью, тип-чипы, dropzone); частично — переезд
+     инлайнов в семью
+   floor-exempt: triage +9 — те же имена в triage-семье dl
+   floor-exempt: layout +2 — dl-grid (грид галереи, бывший инлайн) и dl-drop
+     (грид-ячейка drop-обёртки): раскладка экрана, перенос/обвязка поведения */
+.dl-sec { margin-bottom: 30px; } /* design-token-exempt: 30px — перенос инлайна секции, значение не менялось */
+.dl-sec__head { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; } /* design-token-exempt: 11px/14px — перенос инлайна шапки секции, значения не менялись */
+.dl-sec__title { display: flex; align-items: center; gap: 9px; margin-bottom: 0; } /* design-token-exempt: 9px — перенос инлайна заголовка секции, значение не менялось */
+/* Тёплый счётчик личной секции — контекст-правило вместо инлайна на Badge.
+   floor-exempt: reach +1 — перенос ИНЛАЙНА call-site'а (style на Badge) в
+   контекст-правило секции: стиль не новый, инлайн-храповик 2l вниз */
+.dl-sec--mine .badge--count { background: var(--warm); color: var(--primary-fg); }
+/* Грид галереи документов — дословно бывший инлайн DocsGrid. */
+.dl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; } /* design-token-exempt: 14px — перенос инлайна грида, значение не менялось */
+
+/* ─── Drop-цели экрана (add-карточка и пустая секция) ─────────────
+   Обёртка-поведение = грид-ячейка (Card растягивается стретчем); drag-over
+   подсвечивается тем же брендом, что канон-ховер .card--add:hover. */
+.dl-drop { display: grid; }
+.dl-addcard.is-drag,
+.dl-empty.is-drag { border-color: var(--brand); background: var(--brand-soft); }
+
+/* ─── Detail: галерея изображений ─────────────────────────────────
+   Миниатюры-ссылки 104×78 с кропом; раскладку ленты даёт Row row--wrap row--g3. */
+.dl-dview-gallery { margin-bottom: var(--sp-6); }
+.dl-dview-gallery a { width: 104px; height: 78px; border-radius: var(--r-sm); overflow: hidden; flex: none; }
+.dl-dview-gallery img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ─── Мобила ≤640 (канон-брейкпоинт): поиск на всю строку, превью компактнее,
+   add/drop-карточка не раздувает колонку. */
+@media (max-width: 640px) {
+  .dl-search { max-width: none; }
+  .dl-card__media { height: 96px; }
+  .dl-addcard { min-height: 120px; }
+}
 
 /* ─── Toolbar: search + filter ───────────────────────────────── */
 /* visual-diff-move: dl-toolbar -> row row--wrap row--g6 */

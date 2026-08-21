@@ -24,6 +24,8 @@ import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { errorText } from '@/lib/errorText';
 import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
+import { pluralize } from '@/lib/i18n/format';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
@@ -43,9 +45,26 @@ import './DocsLens.css';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-/** Inline file chip used in both cards and the detail dialog. */
-function FileChip({ file }) {
-  return <FileRow name={file.file_name} />;
+/** Drag&drop-цель экрана (редизайн, задача Pavel): поведение ВОКРУГ Card — канон
+ *  «скин на Card, поведение вокруг» (как dropzone в AddDocDialog). children —
+ *  render-функция, получает drag-состояние для is-drag подсветки. Файлы с дропа
+ *  уезжают в существующий staging AddDocDialog (тот же шов uploadTripFiles —
+ *  гейты формата/размера не обходятся, TRIP-281). */
+function DropTarget({ onDropFiles, disabled = false, children }) {
+  const [drag, setDrag] = useState(false);
+  if (disabled) return children(false);
+  return (
+    <div
+      className="dl-drop"
+      onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={(e) => {
+        e.preventDefault(); setDrag(false);
+        if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+      }}>
+      {children(drag)}
+    </div>
+  );
 }
 
 function formatDate(iso) {
@@ -55,7 +74,7 @@ function formatDate(iso) {
 
 // ─── AddDocDialog ─────────────────────────────────────────────────────────────
 
-export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange }) {
+export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange, initialFiles = null }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   // Files are uploaded to Storage as they're picked, before the row is saved.
@@ -114,6 +133,14 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
+
+  // Файлы, брошенные на drop-цель ЭКРАНА (add-карточка/пустая секция), уезжают
+  // в тот же staging, что и выбор в диалоге — один раз, на маунте.
+  const initialRef = useRef(initialFiles);
+  React.useEffect(() => {
+    if (initialRef.current?.length) { uploadFiles(initialRef.current); initialRef.current = null; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Collect the form into a write body and fire the dialog's own create mutation.
   // No close/sweep here — createMut.onSuccess closes (and marks the files owned),
@@ -334,6 +361,12 @@ function DocDetailDialog({ doc, open, onOpenChange, readOnly, onDelete }) {
   const { t }   = useI18n();
   const close   = () => onOpenChange?.(false);
   const confirm = useConfirm();
+  // Галерея изображений: миниатюры-ссылки (клик = оригинал в новой вкладке);
+  // битые превью (HEIC/протухший URL) падают обратно в строки FileRow.
+  const [brokenIdx, setBrokenIdx] = useState(/** @type {number[]} */ ([]));
+  const allFiles = doc.documents || [];
+  const imgs   = allFiles.filter((f, i) => fileType(f.file_name) === 'img' && !brokenIdx.includes(i));
+  const others = allFiles.filter((f, i) => fileType(f.file_name) !== 'img' || brokenIdx.includes(i));
 
   // Async-confirm (PESSIMISTIC): the confirm button spins while the parent's delete runs
   // (onDelete returns the mutation promise). ON THE RESPONSE the row drops + toast (parent
@@ -377,17 +410,34 @@ function DocDetailDialog({ doc, open, onOpenChange, readOnly, onDelete }) {
             </a>
           )}
 
-          {doc.documents?.length > 0 && (
+          {allFiles.length > 0 && (
             <div>
               <Row gap="g3" className="dl-label" style={{ marginTop: doc.notes || doc.link_url ? 14 : 0 }}>
                 <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
                 {t('doc.files_label')}
               </Row>
-              <Col gap="g3">
-                {doc.documents.map((f, i) => (
-                  <FileRow key={i} name={f.file_name} fallback={f.file_url} href={normalizeExternalUrl(f.file_url)} />
-                ))}
-              </Col>
+              {/* Изображения — галереей миниатюр (лента Row row--wrap, кроп-фреймы свои) */}
+              {imgs.length > 0 && (
+                <Row wrap gap="g3" className="dl-dview-gallery">
+                  {imgs.map((f, i) => (
+                    <a key={i} href={normalizeExternalUrl(f.file_url)} target="_blank" rel="noreferrer" title={f.file_name}>
+                      <img
+                        src={f.file_url}
+                        alt={f.file_name}
+                        loading="lazy"
+                        onError={() => setBrokenIdx(prev => [...prev, allFiles.indexOf(f)])}
+                      />
+                    </a>
+                  ))}
+                </Row>
+              )}
+              {others.length > 0 && (
+                <Col gap="g3">
+                  {others.map((f, i) => (
+                    <FileRow key={i} name={f.file_name} fallback={f.file_url} href={normalizeExternalUrl(f.file_url)} />
+                  ))}
+                </Col>
+              )}
             </div>
           )}
 
@@ -410,15 +460,21 @@ function DocDetailDialog({ doc, open, onOpenChange, readOnly, onDelete }) {
 // ─── DocCard ──────────────────────────────────────────────────────────────────
 
 function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
-  const { t }    = useI18n();
+  const { t, lang } = useI18n();
   const { user } = useAuth();
   // Optimistic rows carry `_pending` (a create still in flight, or a delete in
   // flight): dim + non-interactive until the write reconciles the cache.
   const pending  = !!doc._pending;
   const files    = doc.documents || [];
-  const shown    = files.slice(0, 2);
-  const more     = files.length - shown.length;
   const isShared = scope !== 'personal';
+  // Медиа-карточка (редизайн, задача Pavel): фото-превью первого изображения —
+  // signed URL уже в jsonb (TTL 10 лет, нового запроса нет). HEIC/битый URL →
+  // onError-фоллбек на безмедийную карточку (часть контракта, не опция).
+  const [imgBroken, setImgBroken] = useState(false);
+  const imgFile = files.find(f => fileType(f.file_name) === 'img');
+  // Форматы карточки — тип-чипами (словарь fileType → канон FileTypeBadge);
+  // «+N» — файлы сверх уникальных форматов, список открывается кликом.
+  const kinds = [...new Set(files.map(f => fileType(f.file_name)))];
 
   // Uploader identity via the shared resolver (same mechanism as chat) for BOTH
   // scopes: falls back to the created_by_name snapshot so a doc whose author has
@@ -436,6 +492,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
     deletedLabel: t('common.deleted_user'),
   }), [doc.created_by, doc.created_by_name, profiles, members, user, t]);
 
+  const hasMedia = !!imgFile && !imgBroken;
   return (
     <Card
       as="button"
@@ -445,67 +502,79 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
       className="col dl-card"
       onClick={() => { if (!pending) onOpenDetail?.(doc); }}>
 
-      {/* Icon + title + visibility chip */}
-      <Row align="a-start" className="dl-card__top">
-        <Tile size="lg" icon="file" className={isShared ? undefined : 'dl-card__ic--mine'} />
-        <div className="dl-card__h">
-          <Trunc className="dl-card__title">{doc.title}</Trunc>
-          <div className="dl-card__sub">
-            {files.length > 0
-              ? `${files.length} ${files.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}`
-              : t('doc.card_no_files')}
-            {doc.link_url && t('doc.has_link')}
-          </div>
+      {/* Media slot: full-bleed фото-кроп (паддинг карточки живёт на __body) */}
+      {hasMedia && (
+        <div className="dl-card__media">
+          <img src={imgFile.file_url} alt="" loading="lazy" decoding="async" onError={() => setImgBroken(true)} />
         </div>
-        <Row as="span" inline gap="g2" className={`dl-vischip${isShared ? '' : ' dl-vischip--mine'}`}>
-          <Icon name={isShared ? 'users' : 'lock'} size={11} />
+      )}
+
+      <div className="dl-card__body col">
+        {/* Icon + title + visibility chip; у медиа-карточки плитку-иконку заменяет фото */}
+        <Row align="a-start" className="dl-card__top">
+          {!hasMedia && <Tile size="lg" icon="file" className={isShared ? undefined : 'dl-card__ic--mine'} />}
+          <div className="dl-card__h">
+            <Trunc className="dl-card__title">{doc.title}</Trunc>
+            <div className="dl-card__sub">
+              {files.length > 0
+                ? pluralize(t, files.length, 'doc.files_count', lang, { count: files.length })
+                : t('doc.card_no_files')}
+              {doc.link_url && t('doc.has_link')}
+            </div>
+          </div>
+          <Row as="span" inline gap="g2" className={`dl-vischip${isShared ? '' : ' dl-vischip--mine'}`}>
+            <Icon name={isShared ? 'users' : 'lock'} size={11} />
+          </Row>
         </Row>
-      </Row>
 
-      {/* Notes excerpt */}
-      {doc.notes && (
-        <div className="dl-card__notes">{doc.notes}</div>
-      )}
+        {/* Notes excerpt */}
+        {doc.notes && (
+          <div className="dl-card__notes">{doc.notes}</div>
+        )}
 
-      {/* File chips (max 2) */}
-      {shown.length > 0 && (
-        <Col gap="g3">
-          {shown.map((f, i) => <FileChip key={i} file={f} />)}
-          {more > 0 && (
-            <span className="dl-filemore">+{more} {t('doc.files_count_few')}</span>
-          )}
-        </Col>
-      )}
+        {/* Форматы тип-чипами: цвет не может разойтись со словарём — чип прогоняет
+            расширение через тот же fileType() (канон FileTypeBadge, единственная
+            реализация формат-бейджа). */}
+        {kinds.length > 0 && (
+          <Row wrap gap="g2">
+            {kinds.map(k => <FileTypeBadge key={k} name={`.${k}`} />)}
+            {files.length > kinds.length && (
+              <span className="dl-filemore tab">+{files.length - kinds.length}</span>
+            )}
+          </Row>
+        )}
 
-      {/* Link row (visual, non-navigating — detail dialog has the real link) */}
-      {doc.link_url && (
-        <Row className="dl-linkrow">
-          <Icon name="external" size={14} />
-          <b>{doc.link_url.replace(/^https?:\/\//, '').split('/')[0]}</b>
-          <Icon name="chev" size={13} style={{ opacity: .55 }} />
+        {/* Link row (visual, non-navigating — detail dialog has the real link) */}
+        {doc.link_url && (
+          <Row className="dl-linkrow">
+            <Icon name="external" size={14} />
+            <b>{doc.link_url.replace(/^https?:\/\//, '').split('/')[0]}</b>
+            <Icon name="chev" size={13} style={{ opacity: .55 }} />
+          </Row>
+        )}
+
+        {/* Footer: avatar + name + date. One <Avatar> path for both scopes; only
+            the LABEL differs (a shared doc names its author, a personal one reads
+            "Только вы"). The avatar itself is always the real uploader identity. */}
+        <Row className="dl-card__foot">
+          <Avatar name={uploader.name} photo={uploader.photo || ''} deleted={uploader.deleted} seed={uploader.seed} size="sm" />
+          <Grow as="span" fit className="trunc dl-card__foot-who">{isShared ? uploader.name : t('doc.only_you')}</Grow>
+          <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
         </Row>
-      )}
-
-      {/* Footer: avatar + name + date. One <Avatar> path for both scopes; only
-          the LABEL differs (a shared doc names its author, a personal one reads
-          "Только вы"). The avatar itself is always the real uploader identity. */}
-      <Row className="dl-card__foot">
-        <Avatar name={uploader.name} photo={uploader.photo || ''} deleted={uploader.deleted} seed={uploader.seed} size="sm" />
-        <Grow as="span" fit className="trunc dl-card__foot-who">{isShared ? uploader.name : t('doc.only_you')}</Grow>
-        <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
-      </Row>
+      </div>
     </Card>
   );
 }
 
 // ─── DocEmpty ─────────────────────────────────────────────────────────────────
 
-function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
+function DocEmpty({ scope, onOpenAdd, canAdd = true, drag = false }) {
   const { t }    = useI18n();
   const isShared = scope !== 'personal';
   return (
     // Скин утоплённой поверхности — канон `<Card recessed>` (TRIP-343 объект 2).
-    <Card recessed radius="md" className="dl-empty">
+    // Пустая секция = самая большая drop-цель (is-drag подсвечивает drag-over).
+    <Card recessed radius="md" className={`dl-empty${drag ? ' is-drag' : ''}`}>
       <Tile size="2xl" icon="file" className={`dl-empty__ic${isShared ? '' : ' dl-empty__ic--mine'}`} />
       <b>{isShared ? t('doc.empty_shared') : t('doc.empty_private')}</b>
       <span>{isShared ? t('doc.empty_shared_desc') : t('doc.empty_private_desc')}</span>
@@ -531,17 +600,22 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
   const { t }    = useI18n();
   const isShared = scope !== 'personal';
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+    <div className="dl-grid">
       {docs.map(d => (
         <DocCard key={d.id} doc={d} scope={scope} members={members} profiles={profiles} onOpenDetail={onOpenDetail} />
       ))}
       {canAdd && (
-        <Card as="button" variant="add" radius="md"
-          className={`col col--g4 col--j-center dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
-          onClick={() => onOpenAdd?.()}>
-          <Tile as="span" size="xl" tone="quiet" icon="plus" className="dl-addcard__ic" />
-          <b>{t('doc.add_doc')}</b>
-        </Card>
+        <DropTarget onDropFiles={(files) => onOpenAdd?.({ files })}>
+          {(drag) => (
+            <Card as="button" variant="add" radius="md"
+              className={`col col--g4 col--j-center dl-addcard${!isShared ? ' dl-addcard--mine' : ''}${drag ? ' is-drag' : ''}`}
+              onClick={() => onOpenAdd?.()}>
+              <Tile as="span" size="xl" tone="quiet" icon="plus" className="dl-addcard__ic" />
+              <b>{t('doc.add_doc')}</b>
+              <small className="muted t-meta">{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</small>
+            </Card>
+          )}
+        </DropTarget>
       )}
     </div>
   );
@@ -689,11 +763,11 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
       </Row>
 
       {/* ── Shared section ── */}
-      <section style={{ marginBottom: 30 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
+      <section className="dl-sec">
+        <div className="dl-sec__head">
           <Tile icon="users" />
           <div>
-            <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+            <h3 className="dl-sec__title">
               {t('doc.section_shared')}
               <Badge variant="count">{sharedTotal}</Badge>
             </h3>
@@ -704,28 +778,30 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
         </div>
 
         {sharedDocs.length === 0
-          ? <DocEmpty scope="shared" canAdd={!readOnly} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} />
+          ? (
+            <DropTarget disabled={readOnly} onDropFiles={(files) => setAddDocVis({ defaultVisibility: 'shared', files })}>
+              {(drag) => <DocEmpty scope="shared" drag={drag} canAdd={!readOnly} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} />}
+            </DropTarget>
+          )
           : <DocsGrid
               docs={sharedDocs}
               scope="shared"
               members={members}
               profiles={profiles}
               canAdd={!readOnly}
-              onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })}
+              onOpenAdd={(extra) => setAddDocVis({ defaultVisibility: 'shared', files: extra?.files })}
               onOpenDetail={setDetailDoc}
             />}
       </section>
 
       {/* ── Personal section ── */}
-      <section style={{ marginBottom: 30 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
+      <section className="dl-sec dl-sec--mine">
+        <div className="dl-sec__head">
           <Tile icon="user" className="dl-sec-ic--mine" />
           <div>
-            <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+            <h3 className="dl-sec__title">
               {t('doc.section_private')}
-              <Badge variant="count" style={{ background: 'var(--warm)', color: 'var(--primary-fg)' }}>
-                {personalTotal}
-              </Badge>
+              <Badge variant="count">{personalTotal}</Badge>
             </h3>
             <div className="muted t-meta">
               {t('doc.section_private_hint')}
@@ -734,14 +810,18 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
         </div>
 
         {personalDocs.length === 0
-          ? <DocEmpty scope="personal" canAdd={!readOnly} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} />
+          ? (
+            <DropTarget disabled={readOnly} onDropFiles={(files) => setAddDocVis({ defaultVisibility: 'private', files })}>
+              {(drag) => <DocEmpty scope="personal" drag={drag} canAdd={!readOnly} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} />}
+            </DropTarget>
+          )
           : <DocsGrid
               docs={personalDocs}
               scope="personal"
               members={members}
               profiles={profiles}
               canAdd={!readOnly}
-              onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })}
+              onOpenAdd={(extra) => setAddDocVis({ defaultVisibility: 'private', files: extra?.files })}
               onOpenDetail={setDetailDoc}
             />}
       </section>
@@ -753,6 +833,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           onOpenChange={o => { if (!o) setAddDocVis(null); }}
           tripId={tripId}
           defaultVisibility={addDocVis.defaultVisibility}
+          initialFiles={addDocVis.files || null}
         />
       )}
       {detailDoc && (
