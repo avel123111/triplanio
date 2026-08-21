@@ -145,7 +145,7 @@ import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/sto
 import { aiField } from '@/lib/ai-values';
 import { deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
-import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow, reconcileCityChain } from '@/lib/trip-data';
+import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow, reconcileCityChain, reconcileTransfers } from '@/lib/trip-data';
 import { refetchTrip } from '@/lib/tripEdit';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
@@ -860,26 +860,22 @@ export default function EventEditDialog({
       return upsert('service', entity, payload, tripId);
     },
     ...formWrite({
-      // Single-row create/edit → fold from the returned row (edit merges, create
-      // upserts), no full-trip refetch. A layover / complex transfer create writes
-      // several rows across cities (saveLayoverChain) and reshapes the whole timeline
-      // — reconcileWriteRow returns false there → targeted refetch (E, server owns
-      // the new shape).
+      // Hotel/activity/service (single row): fold from the returned row (edit merges,
+      // create upserts), no full-trip refetch. Transfer (single OR layover): fold the
+      // city chain + full transfers set the seam returns — see the transfer branch.
       reconcile: (/** @type {any} */ data) => {
-        // Transfer writes reshape the whole date chain (`day_change` → server
-        // recompute). The seam answers `{ row, cities }`: reconcile the recomputed
-        // city chain into the shell (dates) AND fold the transfer row into content —
-        // both from THIS response, no separate refetch (parity with route RPCs).
+        // Transfer writes reshape the date chain (day_span → server recompute) AND,
+        // for a layover, add N new segment rows. The seam answers `{ row, cities,
+        // transfers }`: fold the recomputed city chain into the shell (dates) and
+        // REPLACE the content transfers slice with the authoritative set — both from
+        // THIS response, one round-trip, for single AND layover alike. buildDraft then
+        // sees the new segments at once (no stale-gap window where the dates land a
+        // beat late). refetch stays ONLY as the degrade path (seam couldn't read the
+        // set → transfers null), mirroring the cities-null degrade.
         if (currentKind === 'transfer') {
           if (data?.cities) reconcileCityChain(qc, tripId, data.cities);
-          // The seam always answers `{ row, cities }` here (returnChain) — pull the
-          // row out the same way as `data.cities` above (row === null for layovers).
-          const row = data?.row ?? null;
-          const folded = !isComplexTransferCreate && row
-            && reconcileWriteRow(tripContentBinding(qc, tripId, 'transfers'), entity ? 'update' : 'add', row);
-          // Layover create writes several transfer rows (row === null) → refetch just
-          // the content half for them; the shell is already current from the chain.
-          if (!folded && tripId) refetchTrip(qc, tripId, { shell: false, content: true });
+          if (Array.isArray(data?.transfers)) reconcileTransfers(qc, tripId, data.transfers);
+          else if (tripId) refetchTrip(qc, tripId, { shell: false, content: true });
           return;
         }
         const cacheKind = OPT_CACHE[currentKind];

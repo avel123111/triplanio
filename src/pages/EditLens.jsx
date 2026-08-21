@@ -424,14 +424,23 @@ export default function EditLens({ tripId, shell, content }) {
     onError: (e) => toast({ description: e && 'code' in e ? errorText(t, e.code) : t('tse.err_save'), variant: 'destructive' }),
   });
   // Any panel that may have WRITTEN transfers/bookings (create/event) closes through
-  // here: pull fresh server state and rebuild the draft from it. The server already
-  // recomputed the date chain (incl. overnight day_change, Ф2 trigger) and added any
-  // layover cities to the shell, so the rebuild reflects them with no client-side gap
-  // mirror or manual shell merge. A bare resync (no rpc) through the same seq-guard,
-  // so a concurrent runAction wins.
+  // here. The write ALREADY reconciled the caches from its own response (the seam's
+  // returnChain: city chain → shell dates, transfers set → content), so the draft can
+  // be rebuilt from the now-current caches AT ONCE.
+  //
+  // The draft is a state SNAPSHOT, not a live cache view: reconcile updates the query
+  // cache, but the rendered dates come from `draft.nodes` and don't move until
+  // `setDraft(null)` triggers a rebuild. Doing that only in `commit` gated the rebuild
+  // behind the AWAITED confirm-refetch (withRecompute: reconcile → await refetch →
+  // commit) — THAT was the 1-2s lag where a saved transfer/layover's city dates
+  // updated a beat late even though the cache was already correct. Rebuild in
+  // `reconcile` (fires before the await) so the visible dates snap in immediately; the
+  // refetch stays a background confirm, and `commit` re-rebuilds only if it brought
+  // something newer (skipped by the seq-guard when a concurrent runAction has taken over).
   const closePanelAndSync = () => {
     closeLeftPanel();
     return withRecompute(seqRef, {
+      reconcile: () => setDraft(null),
       refetch: () => refetchTrip(qc, tripId),
       commit: () => setDraft(null),
     });
