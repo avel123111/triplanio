@@ -122,13 +122,13 @@ export default function TripSidebar({
 }) {
   const { t } = useI18n();
   return (
-    <aside className="app-side" aria-label={t('nav.aria_primary')}>
+    <nav className="app-side" aria-label={t('nav.aria_primary')}>
       <SidebarBody
         tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
         isPro={isPro} proResolved={proResolved} isOwner={isOwner} myStep={myStep}
         onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare}
       />
-    </aside>
+    </nav>
   );
 }
 

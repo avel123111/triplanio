@@ -43,10 +43,8 @@ import { DEFAULT_SECTION, sectionById, isSectionAvailable } from '@/lib/tripMenu
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { useAuth } from '@/lib/AuthContext';
-import { useTheme } from '@/lib/ThemeContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { isProActive } from '@/lib/subscription';
 import { Grow, Skeleton } from '@/design/index';
 
 // Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
@@ -98,7 +96,6 @@ export default function TripShell({
   const t = useT();
   const nav = useNavigate();
   const { user } = useAuth();
-  const { isDark, toggle: toggleTheme } = useTheme();
   const isPhone = useIsPhone();
   const [sideOpen, setSideOpen] = useState(false);
   const { setTripNav } = useMobileNav();
@@ -181,10 +178,6 @@ export default function TripShell({
       <div className="trip-body">
         <AppHeader
           isTrip
-          user={user}
-          isPro={isProActive(user)}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
           onBack={() => nav(backTo)}
           backTitle={t('trip.back')}
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}

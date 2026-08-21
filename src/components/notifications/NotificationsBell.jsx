@@ -44,7 +44,7 @@ export default function NotificationsBell({ side = 'bottom', align = 'end', rail
             `.icon-btn__dot`. Число озвучивается как часть доступного имени
             кнопки. */}
         {railItem ? (
-          <button type="button" className="app-side__item" title={t('notif.title')} aria-label={t('notif.title')}>
+          <button type="button" className="app-side__item" title={t('notif.title')}>
             <Icon name="bell" size={20} />
             <span className="app-side__label t-tiny">{t('nav.notifications')}</span>
             <UnreadBadge count={unread} />

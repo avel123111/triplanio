@@ -39,7 +39,9 @@ import { displayName } from '@/lib/displayName';
 // вертикальная «остановка маршрута» (иконка в круге на нити + подпись .t-tiny).
 // title дублирует подпись на случай эллипсиса длинной локали; бейдж — канон
 // .badge--unread оверлеем (ко-селектор владельца в app.css).
-export function RailItem({ icon, label, active = false, onClick, badge = 0, ariaLabel }) {
+// ⚠️ aria-label НЕ ставим: он перекрыл бы имя-из-контента и скрыл от скринридера
+// ЧИСЛО непрочитанного в бейдже — имя кнопки = подпись + счётчик (TRIP-354).
+export function RailItem({ icon, label, active = false, onClick, badge = 0 }) {
   return (
     <button
       type="button"
@@ -47,7 +49,6 @@ export function RailItem({ icon, label, active = false, onClick, badge = 0, aria
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       title={label}
-      aria-label={ariaLabel || label}
     >
       <Icon name={icon} size={20} />
       <span className="app-side__label t-tiny">{label}</span>
@@ -83,11 +84,13 @@ export function RailUtilities() {
         align="end"
         title={t('nav.account')}
         trigger={(
+          // Без aria-label: доступное имя = видимая подпись «Аккаунт» (WCAG 2.5.3
+          // Label in Name — голосовое управление говорит то, что написано);
+          // имя пользователя остаётся в title-подсказке.
           <button
             type="button"
             className="app-side__item"
             title={accountName || t('nav.account')}
-            aria-label={accountName || t('nav.account')}
           >
             <Avatar name={accountName} photo={user?.avatar_url} seed={user?.id} size="sm" />
             <span className="app-side__label t-tiny">{t('nav.account')}</span>
@@ -115,7 +118,9 @@ function AppRail({ active }) {
   const isPro = isProActive(user);
   const inboxUnread = useUnreadNotificationCount();
   return (
-    <aside className="app-side" aria-label={t('nav.aria_primary')}>
+    // <nav>, не <aside>: на десктопе это ЕДИНСТВЕННЫЙ навигационный лендмарк
+    // экрана (шапки нет) — complementary-роль прятала его от ротора скринридера.
+    <nav className="app-side" aria-label={t('nav.aria_primary')}>
       <button type="button" className="app-side__brand" onClick={() => nav('/trips')} title={t('nav.trips')} aria-label={t('nav.trips')}>
         <img src="/triplanio-logo.svg" alt="" />
       </button>
@@ -145,7 +150,7 @@ function AppRail({ active }) {
         </button>
       )}
       <RailUtilities />
-    </aside>
+    </nav>
   );
 }
 

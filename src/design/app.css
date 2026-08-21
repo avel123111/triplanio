@@ -1360,6 +1360,7 @@ h4,
 
 
 /* Rail everywhere · ярус 2p: намеренная перестройка оболочки приложения — все изменения объявлены.
+   visual-diff-exempt: .app-frame {@media (max-width: 640px)} padding-bottom — rail everywhere: клиренс под док несёт скроллер-main, нижний паддинг .acct-shell обнулён от двойной пустоты
    visual-diff-exempt: :root --z-side-nav — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
    visual-diff-exempt: .acct-content section scroll-margin-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
    visual-diff-exempt: .acct-shell {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
@@ -3608,7 +3609,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    На десктопе шапки нет — глобальный хром живёт в рейле; скролл ДОКУМЕНТНЫЙ,
    рейл прилипает на всю высоту вьюпорта. На телефоне рейл не рендерится (JS),
    ряд вырождается в один контент-столбец под прежней шапкой. Контент-ребёнок
-   ряда — <main> либо обёртка .grow (Аккаунт: баннер + воркспейс). */
+   ряда — всегда <main> (у Аккаунта он голый: баннер + воркспейс, поля несёт
+   .acct-shell). */
 .app-frame { display: flex; flex-direction: row; flex: 1; min-height: 0; }
 /* floor-exempt: layout +1 — .app-frame: единственный каркас-ряд «рейл | контент» standalone-экранов (rail everywhere), задача Pavel
    floor-exempt: namespaces +1 — семья page получила ось ширины (page-main--wide): синглтон стал namespace; унификация контейнеров вместо инлайн-мейнов, задача Pavel */
@@ -3626,13 +3628,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      become a fixed-height shell — the global header pins (never scrolls), the
      content scrolls INSIDE its own container, and the bottom nav stays glued.
      No document scroll → the iOS toolbar can't shove the header/nav around.
-     Скролл-контейнер — контент-ребёнок ряда .app-frame (main или .grow-обёртка). */
+     Скролл-контейнер — контент-ребёнок ряда .app-frame (всегда <main>). */
   .app-shell { display: flex !important; flex-direction: column !important; height: 100dvh !important; min-height: 0 !important; overflow: hidden !important; }
   .app-shell > .app-header { position: static; flex: none; }
   .app-frame > main {
     flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
     padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
   }
+  /* Клиренс под док несёт скроллер-<main> — свой нижний паддинг воркспейса
+     Аккаунта иначе складывался бы с ним в двойную пустоту. */
+  .app-frame > main > .acct-shell { padding-bottom: 0; }
   /* Phone-only: standalone content gets the same 16px side gutters as the trip
      screen (.trip-screen-body) so its width matches the trip on mobile. Гаттеры
      скоуплены на .page-main: у голого main Аккаунта свои поля несёт .acct-shell. */
