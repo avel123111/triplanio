@@ -663,7 +663,6 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-display — Geologica clamp(28–40)/800/1.05, tabular (карьер .head h1) */
 .t-title,
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
-.nextcard__tx b,   /* TRIP-188: инспектор канонов — название следующего трипа Label→Title */
 .cdu b,            /* TRIP-188: инспектор канонов — числа обратного отсчёта Subheading→Title */
 .lp-ti b,          /* TRIP-188: инспектор канонов — заголовки шапок панелей события/добавления Subheading→Title */
 .flow-lp-b h1,     /* TRIP-222: инспектор канонов — заголовки шагов планирования Heading→Title (оба flow) */
@@ -970,7 +969,6 @@ h4,
 .s22mk__core,
 .ring__c .l,
 .wmini .sub,
-.nextcard__tx .rt,
 .nonext p,
 .sfig .v small,
 .world__ring .cap,
@@ -5193,6 +5191,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   transition: background .15s var(--ease-out);
 }
 .notif + .notif::before { content: ""; position: absolute; left: 65px; right: 0; top: 0; height: 1px; background: var(--line); }
+/* Закреплённый блок решений инбокса (редизайн, задача Pavel): полноширинный
+   хайрлайн-подчерк шапки `.wdg-h` перед первой строкой — зеркало соседского
+   хайрлайна выше. Контекстная связка двух семей: сегодня соседство .wdg-h+.notif
+   существует только в блоке «Приглашения» на /inbox. */
+.wdg-h + .notif::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--line); }
+/* Мобила: кнопки Accept/Decline закреплённого инвайта — полноширинная пара
+   больших тач-целей; :not(.notif--compact) не трогает 360px-поповер колокольчика. */
+@media (max-width: 640px) {
+  .notif:not(.notif--compact) .notif__act .btn { flex: 1 1 auto; }
+}
 .notif--unread { background: var(--brand-soft); }
 .notif--link { cursor: pointer; }
 @media (hover: hover) { .notif--link:hover { background: var(--surface-2); } }
@@ -7082,42 +7090,78 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tr--add b { color: inherit; display: block; }
 .tr--add small { color: var(--muted); }
 
-/* ── Редизайн главной V4 (задача Pavel, PR #927): hero-постер трипа в .dash-hero,
-   секции Активные/Прошедшие вместо Seg-табов, ритм секций через соседство с .pagehead,
-   карта в роли мини-виджета рейла. Изменения объявлены намеренными: */
-/* visual-diff-exempt: .col margin-top — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .dash-hero margin-top — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .invite margin-top — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .mapwrap flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .nextcard__cd flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .nextcard__cd width — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .nextcard__cd {@media (max-width: 640px)} width — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .pagehead margin-top — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .rail flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .rail min-height — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .seg--filter {@media (max-width: 640px)} flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .seg--filter {@media (max-width: 640px)} order — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .seg--view {@media (max-width: 640px)} flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .seg--view {@media (max-width: 640px)} order — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc {@media (max-width: 640px)} min-height — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc--hero flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc--hero min-height — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc--hero padding — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc--hero white-space — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc--hero width — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc--hero {@media (max-width: 640px)} min-height — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc--hero {@media (max-width: 640px)} width — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc-grid margin-top — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc__in min-height — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc__in padding — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .tc__title white-space — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .trips-toolbar .seg--filter button {@media (max-width: 640px)} flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .trips-toolbar .seg--filter button {@media (max-width: 640px)} justify-content — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} order — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .trips-toolbar__search {@media (max-width: 640px)} order — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .trips-toolbar__spacer flex — редизайн главной (задача Pavel, PR #927) */
-/* visual-diff-exempt: .trips-toolbar__spacer {@media (max-width: 640px)} display — редизайн главной (задача Pavel, PR #927) */
+/* ── Редизайн V4 (задача Pavel, PR #927): дом путешественника на главной (hero-постер
+   в .dash-hero, секции Активные/Прошедшие, ритм через соседство с .pagehead, карта =
+   мини-виджет рейла, снос NextTripCard/Seg-фильтров) + action-инбокс (закреплённый
+   блок решений .wdg-h+.notif, полноширинные кнопки инвайта на мобиле).
+   Изменения объявлены намеренными: */
+/* visual-diff-exempt: .nextcard align-items — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard cursor — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard font-family — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard text-align — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover border-radius — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover overflow — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover place-items — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover position — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover svg height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover svg position — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover svg width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover svg z-index — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover::after background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover::after content — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover::after inset — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cover::after position — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx b display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx b font-family — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx b font-size — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx b font-variant-numeric — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx b font-weight — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx b letter-spacing — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx b line-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx b margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx font-family — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx font-size — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx font-variant-numeric — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx font-weight — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx letter-spacing — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx line-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx min-width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .notif::before left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .notif:not(.notif--compact) {@media (max-width: 640px)} flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .notif__act {@media (max-width: 640px)} flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt font-family — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt font-size — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt font-variant-numeric — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt font-weight — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt letter-spacing — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt line-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .wdg-h background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .wdg-h content — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .wdg-h height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .wdg-h left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .wdg-h position — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .wdg-h right — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .wdg-h top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__chev flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx overflow — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx text-overflow — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__tx white-space — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt overflow — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt text-overflow — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rt white-space — редизайн V4 (задача Pavel, PR #927) */
 /* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
    «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
    actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */
@@ -8287,30 +8331,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ring__c .l { color: var(--muted); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
 
-/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
-/* TRIP-343 объект 2: скин на `<Card as="button" radius="lg" interactive>`; `.nextcard`
-   остаётся ЧИСЛЕННЫМ раскладочным остатком (padding 14 + flex/gap/width/text → 08).
-   Прежний ХОВЕР-ЛИФТ (translateY + --sh-2) и :active снят — канон интерактива:
-   подсветка рамки (--line-hover) + мягкая --sh-1 без движения; рамку-ховер несёт
-   .card--interactive:hover (тот же --line-hover). Апрув облика /kit.
-   visual-diff-exempt: .nextcard background — скин переехал на .card
-   visual-diff-exempt: .nextcard border — скин переехал на .card
-   visual-diff-exempt: .nextcard border-radius — радиус переехал на .card--r-lg
-   visual-diff-exempt: .nextcard transition — interactive несёт свой (без transform)
-   visual-diff-exempt: .nextcard:hover {@media (hover: hover)} transform — лифт снят (канон без движения, апрув /kit)
-   visual-diff-exempt: .nextcard:hover {@media (hover: hover)} box-shadow — лифт снят (был --sh-2, канон покой плоский)
-   visual-diff-exempt: .nextcard:hover {@media (hover: hover)} border-color — рамка-ховер переехала на .card--interactive:hover (тот же --line-hover)
-   visual-diff-exempt: .nextcard:active transform — нажатие без движения (канон) */
-.nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; padding: 14px; cursor: pointer; }
-.nextcard__cover { width: 64px; height: 64px; border-radius: var(--r-btn); flex: none; position: relative; overflow: hidden; display: grid; place-items: center; color: var(--primary-fg); }
-.nextcard__cover svg { width: 24px; height: 24px; position: relative; z-index: 1; }
-.nextcard__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.18)); }
-.nextcard__tx { flex: 1; min-width: 0; }
+/* Бейдж «starts in» и лента отсчёта пережили сам NextTripCard (TRIP-343 →
+   редизайн V4): их носит hero-постер главной (.tc--hero). Остальная семья
+   .nextcard (base/cover/tx/chev) удалена вместе с компонентом. */
 .nextcard__tag { max-width: 100%; margin-top: 9px; color: var(--success-ink); background: var(--success-soft); }
-.nextcard__tx b { display: block; margin-top: 7px; color: var(--ink); }
-.nextcard__tx .rt { color: var(--muted); margin-top: 2px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* display:block: строка scope занимает свою строку → бейдж «starts in» встаёт НАД таймером (запрос Pavel); заодно чинит ellipsis (на инлайне не работал).   visual-diff-exempt: .nextcard__tx display — блок у .rt, чтобы бейдж ушёл на свою строку
-   visual-diff-exempt: .rt display — то же правило (.nextcard__tx .rt), второй юнит */
-.nextcard__chev { color: var(--muted-2); flex: none; }
 .nextcard__cd { display: flex; flex-wrap: nowrap; gap: 7px; margin-top: 11px; }
 /* Плитка обратного отсчёта — скин утоплённой поверхности несёт `<Card recessed
    radius="md">` (TRIP-343 объект 2); здесь только раскладка и типографика.

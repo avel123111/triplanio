@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotificationList, useUnreadNotificationCount, useNotificationActions } from '@/lib/useNotifications';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Btn, Badge, Card, EmptyState, ListRow, NotifRow, PageHead, Seg, Skeleton, Tile } from '../design/index';
+import { Icon } from '../design/icons';
 import AppShell from '@/components/AppShell';
 import { buildNotifView } from '@/components/notifications/notifView';
 import { useQueryGate } from '@/lib/useQueryGate';
@@ -40,9 +41,20 @@ export default function Inbox() {
   const { markAllRead, markOneRead, respondInvite } = useNotificationActions();
 
   const unreadCount = useUnreadNotificationCount();
-  const inviteCount = notifications.filter(n => n.type === 'trip_invite').length;
 
-  const filtered = notifications.filter(n => {
+  // ── Action-инбокс (редизайн, задача Pavel): два потока ────────────────────────
+  // «Зона решений» = pending-инвайты, закреплены бренд-карточкой над лентой и
+  // ИСКЛЮЧЕНЫ из дата-групп (нет дублей); отвеченный инвайт возвращается в ленту
+  // с бейджем статуса — механика inbox-zero без единого нового запроса.
+  const isPendingInvite = (n) => n.type === 'trip_invite' && n.member_status === 'pending';
+  const pendingInvites = notifications.filter(isPendingInvite);
+  const stream = notifications.filter(n => !isPendingInvite(n));
+
+  // Счётчики табов — от ленты (история), pending живут в закреплённом блоке.
+  const streamUnread = stream.filter(n => !n.read).length;
+  const inviteCount = stream.filter(n => n.type === 'trip_invite').length;
+
+  const filtered = stream.filter(n => {
     if (filter === 'unread') return !n.read;
     if (filter === 'invites') return n.type === 'trip_invite';
     return true;
@@ -55,7 +67,7 @@ export default function Inbox() {
 
   const TABS = [
     ['all', t('notif.all'), 0],
-    ['unread', t('notif.unread'), unreadCount],
+    ['unread', t('notif.unread'), streamUnread],
     ['invites', t('notif.invitations'), inviteCount],
   ];
 
@@ -91,26 +103,55 @@ export default function Inbox() {
   return (
     <AppShell active="inbox" onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} title={t('notif.inbox_title')}>
       <main className="ov-anim page-main">
-        <PageHead
-          title={t('notif.inbox_title')}
-          actions={notifications.length > 0 && unreadCount > 0 && (
-            <Btn variant="link" onClick={() => markAllRead.mutate()}>{t('notif.mark_all_read')}</Btn>
-          )}
-        />
+        <PageHead title={t('notif.inbox_title')} />
 
-        {/* Фильтр + содержимое — одна колонка с шагом (был margin-класс .nfilters). */}
+        {/* Тулбар + зона решений + лента — одна колонка с шагом. */}
         <div className="col col--g8">
           {notifications.length > 0 && (
-            // `.row` — чтобы Seg (inline-flex) сжался по контенту слева, а не
-            // растянулся на всю ширину колонки (`.col` тянет прямых детей).
-            <div className="row">
+            // Фильтры слева, «Прочитать всё» видимой кнопкой справа (была
+            // ссылкой в шапке — длинная RU-строка давила заголовок на мобиле);
+            // row--wrap переносит кнопку на свою строку на узком.
+            <div className="row row--j-between row--wrap">
               <Seg
                 value={filter}
                 onChange={setFilter}
                 ariaLabel={t('notif.title')}
                 options={TABS.map(([k, l, c]) => ({ value: k, label: c > 0 ? <>{l} <b>{c}</b></> : l }))}
               />
+              {unreadCount > 0 && (
+                <Btn variant="soft" icon="check" loading={markAllRead.isPending} onClick={() => markAllRead.mutate()}>
+                  {t('notif.mark_all_read')}
+                </Btn>
+              )}
             </div>
+          )}
+
+          {/* Зона решений: pending-приглашения закреплены НАД лентой при любом
+              фильтре — решение не тонет в датах. Строки без unread-подложки
+              (акцент несёт бренд-карточка) и без клика (цели — только кнопки). */}
+          {!isLoading && pendingInvites.length > 0 && (
+            <Card pad="none" radius="lg" tone="brand">
+              <div className="wdg-h">
+                <span className="wi"><Icon name="users" size={17} /></span>
+                <h4>{t('notif.invitations')}</h4>
+                <Badge variant="count">{pendingInvites.length}</Badge>
+              </div>
+              {pendingInvites.map((n) => (
+                <InboxRow
+                  key={n.id}
+                  n={n}
+                  t={t}
+                  nav={nav}
+                  fmtRelative={fmtRelative}
+                  pinned
+                  pendingAction={respondInvite.isPending && respondInvite.variables?.memberId === n.trip_member_id ? respondInvite.variables.action : null}
+                  onRespond={(action) => {
+                    if (!n.read) markOneRead.mutate(n.id);
+                    respondInvite.mutate({ memberId: n.trip_member_id, tripId: n.trip_id, action });
+                  }}
+                />
+              ))}
+            </Card>
           )}
 
           {isLoading ? (
@@ -120,12 +161,20 @@ export default function Inbox() {
           ) : notifications.length === 0 ? (
             <InboxEmpty onCollection={() => nav('/trips')} />
           ) : filtered.length === 0 ? (
-            <EmptyState icon="bell" title={t('notif.filter_empty')} />
+            filter === 'unread' ? (
+              // Inbox-zero: пустые «Непрочитанные» — успех, а не пустота.
+              <EmptyState kind="success" icon="check" title={t('notif.all_read')} body={t('notif.all_read_desc')} />
+            ) : pendingInvites.length > 0 ? (
+              // Вся почта = pending-инвайты: блок решений выше и есть контент.
+              null
+            ) : (
+              <EmptyState icon="bell" title={t('notif.filter_empty')} />
+            )
           ) : (
             <div className="col col--g8">
               {groups.map((g) => (
               <div key={g.label} className="col col--g4">
-                <div className="ngrp__label">{t(GROUP_LABEL_KEY[g.label])}</div>
+                <div className="ngrp__label t-label tp-caption">{t(GROUP_LABEL_KEY[g.label])}</div>
                 {/* Дата-группа — ОДНА карточка-поверхность, строки вплотную с
                     хайрлайнами; прочитанная строка на цвете карточки, непрочитанная
                     — мягкая подложка поверх. */}
@@ -162,10 +211,13 @@ function InboxEmpty({ onCollection }) {
   // заголовок + подпись, хайрлайн между строками, последняя без него — сам
   // вариант). Никакого своего скина: строки, отступы и текст несут примитивы ДС
   // (`ListRow`/`Tile`), все они есть на витрине `/kit`.
+  // Каждая строка — тонированная плитка своего смысла (приглашения=бренд,
+  // обновления=info, что нового=AI): «живость» цветом и поверхностью, без
+  // единой новой строки текста и без нового CSS.
   const rows = [
-    { icon: 'users', title: t('notif.invitations'), sub: t('notif.invitations_desc') },
-    { icon: 'refresh', title: t('notif.updates'), sub: t('notif.updates_desc') },
-    { icon: 'file', title: t('notif.whats_new'), sub: t('notif.whats_new_desc') },
+    { icon: 'users', tone: 'brand', title: t('notif.invitations'), sub: t('notif.invitations_desc') },
+    { icon: 'refresh', tone: 'info', title: t('notif.updates'), sub: t('notif.updates_desc') },
+    { icon: 'sparkles', tone: 'ai', title: t('notif.whats_new'), sub: t('notif.whats_new_desc') },
   ];
   return (
     <EmptyState
@@ -174,11 +226,11 @@ function InboxEmpty({ onCollection }) {
       body={t('notif.inbox_empty_lead')}
       action={
         <div className="col col--g6 grow--fit">
-          <div>
+          <Card pad="none" radius="md">
             {rows.map((r) => (
-              <ListRow key={r.icon} variant="divider" lead={<Tile icon={r.icon} />} title={r.title} sub={r.sub} />
+              <ListRow key={r.icon} variant="divider" lead={<Tile icon={r.icon} tone={r.tone} />} title={r.title} sub={r.sub} />
             ))}
-          </div>
+          </Card>
           <Btn variant="primary" icon="plus" block onClick={onCollection}>{t('notif.to_collection')}</Btn>
         </div>
       }
@@ -188,7 +240,9 @@ function InboxEmpty({ onCollection }) {
 
 // Строка экрана = канон `<NotifRow>` (полноразмерный) + слоты действий. Резолв —
 // тот же `buildNotifView`, что у поповера: одна строка, две поверхности.
-function InboxRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRead }) {
+// `pinned` — строка закреплённого блока решений: без unread-подложки (двойной
+// акцент поверх бренд-карточки не нужен) и без клика (цели — только кнопки).
+function InboxRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRead, pinned = false }) {
   // Invite status comes with the row now (getInbox joins trip_members) — no
   // per-row `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
@@ -219,12 +273,12 @@ function InboxRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRead
   return (
     <NotifRow
       glyph={glyph}
-      unread={!n.read}
+      unread={!pinned && !n.read}
       title={titleNode}
       message={messageText ? messageNode : null}
       time={fmtRelative(n.created_at)}
       actions={actions}
-      onClick={() => { if (!n.read) onMarkRead?.(); }}
+      onClick={pinned ? undefined : () => { if (!n.read) onMarkRead?.(); }}
     />
   );
 }
