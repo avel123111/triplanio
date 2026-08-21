@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
-import { useAuth } from '@/lib/AuthContext';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Btn, Card, Skeleton, Severity, Tile } from '@/design/index';
@@ -17,7 +16,6 @@ import AppShell from '@/components/AppShell';
 export default function Pro() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
   const { t, fmtMoney } = useI18nFormat();
 
   const tripId = searchParams.get('tripId') || null;
@@ -190,9 +188,7 @@ export default function Pro() {
     <AppShell className="pro-page" onBack={() => nav(-1)} backTitle={t('common.back')} title="Pro"> {/* i18n-ignore — «Pro» бренд-имя тарифа, не переводится */}
 
       {/* ── Main content zone — natural height, centered (canonical standalone shell) ── */}
-      <main
-        className="pro-main page-main page-main--wide"
-      >
+      <main className="pro-main page-main page-main--wide">
 
         {/* Hero */}
         <div className="pro-hero">

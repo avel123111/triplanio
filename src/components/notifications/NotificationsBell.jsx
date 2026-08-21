@@ -18,7 +18,7 @@ import { buildNotifView } from '@/components/notifications/notifView';
 // (`side`/`align` уходят в Radix PopoverContent как есть). Один компонент —
 // один источник списка/бейджа для обеих форм триггера.
 /** @param {{ side?: 'top'|'right'|'bottom'|'left', align?: 'start'|'center'|'end', railItem?: boolean }} p */
-export default function NotificationsBell({ side = 'bottom', align = 'end', railItem = false } = {}) {
+export default function NotificationsBell({ side = 'bottom', align = 'end', railItem = false }) {
   const t = useT();
   const { fmtRelative } = useI18nFormat();
   const { user } = useAuth();

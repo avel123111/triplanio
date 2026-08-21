@@ -11,15 +11,16 @@ import { useT } from '@/lib/i18n/I18nContext';
  *   [back*] logo · Triplanio │ <page title> │ theme · bell · account+PRO
  *
  * Trip screens (`isTrip`, внутри rail shell): шапка — тонкая КОНТЕКСТНАЯ полоса
- * [back] <trip title + meta>. Ни бренда, ни правого кластера: лого и utilities
- * (тема · уведомления · аккаунт) живут в рейле (RailUtilities).
+ * [back] <trip title + meta> │ <actions>. Бренда нет (лого живёт в рейле), и
+ * utilities (тема · уведомления · аккаунт) тоже — их несёт рейл (RailUtilities);
+ * правый кластер трип-шапки отдан КОНТЕКСТНЫМ действиям экрана (`actions`).
  *
  * Бургер-кнопки больше нет: на телефоне меню трипа открывает мобильный док
  * («Ещё» → канон-шит), на планшете/десктопе рейл виден всегда.
  *
- * Trip actions (Share / Edit / Settings / Members / Copy) live in the left trip
- * menu (TripSidebar), NOT in this header. PRO badge + utility icons come from
- * <HeaderActions>.
+ * Разделы трипа (Edit / Settings / Members / Copy) живут в рейле (TripSidebar),
+ * НЕ в шапке; сюда TripShell отдаёт только «Поделиться» — это ДЕЙСТВИЕ, а не
+ * раздел. PRO badge + utility icons вне трипа приходят из <HeaderActions>.
  *
  * Props:
  *   user, isPro, isDark, onToggleTheme — forwarded to the right-hand cluster
@@ -29,6 +30,7 @@ import { useT } from '@/lib/i18n/I18nContext';
  *   title     — optional trip title (enables the trip block)
  *   meta      — optional trip meta node (e.g. dates · days · cities)
  *   isTrip    — trip-screen variant: НЕ рисует бренд-блок (лого живёт в рейле)
+ *   actions   — узел правого кластера трип-шапки (только при isTrip)
  */
 /**
  * ⚠️ Аннотация обязательна: без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ и делает
@@ -49,12 +51,13 @@ import { useT } from '@/lib/i18n/I18nContext';
  * стоит под `{isPro && …}`, `onBack`/`meta` - под условием, `onBrand` и
  * `title` имеют фолбэк. Пограничный случай назван вслух: `isDark` выбирает
  * ЗНАЧОК (`isDark ? 'sun' : 'moon'`), без него кнопка работает, но может
- * показать не тот значок; все 7 вызывателей его передают, так что ужесточение
- * было бы бесплатным - оставлено необязательным намеренно, отдельным решением.
+ * показать не тот значок; все НЕ-ТРИП вызыватели (AppShell + два в
+ * ManualPlanner) его передают, так что ужесточение было бы бесплатным -
+ * оставлено необязательным намеренно, отдельным решением.
  *
  * @param {{ user?: any, isPro?: boolean, isDark?: boolean, onToggleTheme?: () => void,
  *           onBrand?: () => void, onBack?: () => void, backTitle?: string,
- *           title?: any, meta?: any, isTrip?: boolean }} p
+ *           title?: any, meta?: any, isTrip?: boolean, actions?: any }} p
  */
 export default function AppHeader({
   user,
@@ -67,6 +70,7 @@ export default function AppHeader({
   title,
   meta,
   isTrip = false,
+  actions = null,
 }) {
   const nav = useNavigate();
   const t = useT();
@@ -108,11 +112,11 @@ export default function AppHeader({
       </div>
 
       {/* Utilities на трип-экранах живут в рейле (RailUtilities) — правый
-          кластер шапки рендерится только вне трипа (телефонные app-экраны и
-          планер-визард). */}
-      {!isTrip && (
+          кластер шапки вне трипа = HeaderActions, у трипа = контекстные
+          ДЕЙСТВИЯ экрана (например, «Поделиться»). */}
+      {(!isTrip || actions) && (
         <div className="app-header__right">
-          <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
+          {isTrip ? actions : <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />}
         </div>
       )}
     </header>

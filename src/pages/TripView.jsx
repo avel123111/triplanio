@@ -1326,11 +1326,12 @@ export default function TripView() {
               onAddService={openServiceChoice}
               onOpenService={(s) => setEventView({ open: true, kind: 'service', id: s.id })}
               onBudgetLocked={() => setBudgetAddonOff(true)}
+              onOpenEdit={() => setLens('edit')}
             />
           )}
           {shownLens === 'timeline' && (
             <>
-              <div className="ov-anim tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+              <div className="ov-anim tl-twocol">
                 <TimelineLens
                   stream={stream}
                   visits={visits}

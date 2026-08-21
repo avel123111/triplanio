@@ -1359,183 +1359,255 @@ h4,
 }
 
 
-/* Rail everywhere · ярус 2p: намеренная перестройка оболочки приложения — все изменения объявлены.
-   visual-diff-exempt: .app-frame {@media (max-width: 640px)} padding-bottom — rail everywhere: клиренс под док несёт скроллер-main, нижний паддинг .acct-shell обнулён от двойной пустоты
-   visual-diff-exempt: :root --z-side-nav — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .acct-content section scroll-margin-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} padding-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .active::before border — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .active::before box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} padding-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame > main flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame > main min-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-frame top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header__brand-name {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header__brand-name display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header__logo {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header__menu {@media (max-width: 640px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header__menu {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header__menu display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header__vdiv {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header--trip {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-header--trip display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-right — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell {@media (max-width: 640px)} -webkit-overflow-scrolling — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell {@media (max-width: 640px)} flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell {@media (max-width: 640px)} overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell {@media (max-width: 640px)} overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-shell {@media (max-width: 640px)} padding-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand img border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand img display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand img height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand img margin — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand img width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand:focus-visible box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand:focus-visible outline — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand border — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand cursor — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand padding — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__brand text-align — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) content — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group::before:not(:last-of-type) width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group:last-of-type border-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group:last-of-type margin-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group:last-of-type padding-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group border-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group margin-bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group padding-top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__group position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item > * position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before:hover background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before border — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before content — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before transition — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item::before width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item:focus-visible box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item:focus-visible outline — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item:hover background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item gap — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item justify-content — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item margin-left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item min-height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item padding — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item right — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item text-align — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__item top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__label background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__label border-radius — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__label max-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__label overflow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__label padding — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__label position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__label text-overflow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side__label white-space — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} max-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} transition — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side {@media (max-width: 880px)} z-index — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side align-self — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side gap — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side overflow-x — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side padding — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .app-side width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .badge--unread margin-left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} opacity — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} pointer-events — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .page-main--wide max-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .page-main {@media (max-width: 640px)} padding-left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .page-main {@media (max-width: 640px)} padding-right — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body {@media (max-width: 880px)} grid-template-columns — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body {@media (max-width: 880px)} opacity — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body {@media (max-width: 880px)} pointer-events — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body {@media (max-width: 880px)} transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body grid-template-columns — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body grid-template-rows — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-body min-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-content flex — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} bottom — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} box-shadow — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} left — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} max-width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} top — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transform — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transition — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} width — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} z-index — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell align-self — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell flex-direction — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell height — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-shell overflow-y — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 640px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} background — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} inset — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} opacity — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} pointer-events — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} position — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} transition — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} z-index — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel
-   visual-diff-exempt: .trip-side-scrim display — rail everywhere: единая оболочка всех экранов — узкий икон-рейл с utilities, шапка только контекстная/телефонная, контейнеры page-main, signature «рейл = маршрут»; редизайн layout по задаче Pavel */
+/* Редизайн приложения · ярус 2p: намеренная перестройка оболочки и экранов — все изменения объявлены.
+   visual-diff-exempt: :root --z-side-nav — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .acct-content section scroll-margin-top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} -webkit-overflow-scrolling — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} overflow-x — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} overflow-y — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .acct-shell {@media (max-width: 640px)} padding-bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .active::before border — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .active::before box-shadow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} -webkit-overflow-scrolling — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} overflow-x — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} overflow-y — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame > main {@media (max-width: 640px)} padding-bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame > main flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame > main min-width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame {@media (max-width: 640px)} padding-bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-frame top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header__brand-name {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header__brand-name display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header__logo {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header__menu {@media (max-width: 640px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header__menu {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header__menu display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header__vdiv {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header--trip {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-header--trip display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} -webkit-overflow-scrolling — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} overflow-x — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} overflow-y — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-right — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} -webkit-overflow-scrolling — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} overflow-x — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} overflow-y — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-shell {@media (max-width: 640px)} padding-bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand img border-radius — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand img display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand img height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand img margin — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand img width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand:focus-visible box-shadow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand:focus-visible outline — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand border — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand cursor — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand padding — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__brand text-align — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group::before border-left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group::before bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group::before content — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group::before left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group::before position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group::before top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group::before transform — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group::before width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group border-top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group margin-bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group padding-top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__group position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item > * position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before:hover background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before border — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before border-radius — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before box-shadow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before content — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before transform — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before transition — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item::before width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item:focus-visible box-shadow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item:focus-visible outline — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item:hover background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item border-radius — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item gap — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item justify-content — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item margin-left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item padding — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item right — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item text-align — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__item top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__label background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__label border-radius — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__label max-width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__label overflow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__label padding — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__label position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__label text-overflow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__label white-space — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll border-left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll content — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll margin — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll overflow-x — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll overflow-y — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll padding — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll transform — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side__scroll width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} box-shadow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} max-width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} transform — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} transition — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} z-index — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side align-self — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side border-top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side gap — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side margin-bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side overflow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side overflow-y — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side padding — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side padding-top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .app-side width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .badge--unread margin-left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} opacity — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} pointer-events — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} transform — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-anim {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-anim {@media (max-width: 880px)} height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-anim display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-anim flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-anim height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map {@media (max-width: 880px)} flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map {@media (max-width: 880px)} height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map {@media (max-width: 880px)} order — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map {@media (max-width: 880px)} position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-col--map top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-leg display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-leg justify-content — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-maparea {@media (max-width: 880px)} flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-maparea flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-maparea height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-maparea min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-mapcard {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-mapcard display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-mapcard flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-mapcard flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-mapcard min-height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-route display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-route flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-route gap — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop:focus-visible box-shadow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop:focus-visible outline — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop:hover background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop align-items — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop border — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop border-radius — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop cursor — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop gap — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop padding — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop text-align — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop transition — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ov-stop width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .ovwrap grid-template-columns — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .page-main--wide max-width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .page-main {@media (max-width: 640px)} padding-left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .page-main {@media (max-width: 640px)} padding-right — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .tl-twocol align-items — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .tl-twocol display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .tl-twocol gap — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .tl-twocol grid-template-columns — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .tl3-dh position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .tl3-dh top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .tl3-dh z-index — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} grid-template-columns — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} opacity — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} pointer-events — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} transform — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body grid-template-columns — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body grid-template-rows — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-body min-width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-content flex — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} bottom — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} box-shadow — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} left — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} max-width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} top — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transform — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transition — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} width — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} z-index — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell align-self — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell height — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-shell overflow-y — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 640px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} background — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} inset — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} opacity — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} pointer-events — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} position — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} transition — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} z-index — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .trip-side-scrim display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .wdg-b display — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .wdg-b flex-direction — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии
+   visual-diff-exempt: .wdg-b gap — редизайн приложения (задача Pavel, полная свобода): rail everywhere + командный центр Обзора (лента маршрута + карта-канвас) + sticky-день-хедеры хронологии */
 /* Trip side nav — УЗКИЙ полновысотный ИКОН-РЕЙЛ (rail shell, эксперимент нового
    layout по задаче Pavel). Живёт колонкой ЛЕВЕЕ шапки внутри .trip-shell
    (единственный хозяин — TripShell): наверху лого-плитка (выход к трипам),
@@ -1549,7 +1621,15 @@ h4,
   background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
   padding: var(--sp-6) var(--sp-4);
   min-height: 0;
+  overflow: hidden;
+}
+/* Скролл-регион секций: лого сверху и utilities снизу ПРИШПИЛЕНЫ и видимы
+   всегда, скроллятся только группы разделов (короткие вьюпорты резали низ). */
+.app-side__scroll {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
   overflow-y: auto; overflow-x: hidden;
+  margin: 0 calc(-1 * var(--sp-1)); padding: 0 var(--sp-1);
 }
 /* Лого-плитка рейла. Геометрия у класса, интерактив у элемента (скелетон
    рендерит тот же класс div'ом) — узор `.app-side__item` ниже. Центрирование —
@@ -1588,14 +1668,16 @@ button.app-side__item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(-
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
 button.app-side__item:active { transform: scale(.985); }
 .app-side__item.active { color: var(--brand); }
-/* «Рейл = маршрут» (signature-ход): через иконки пунктов идёт вертикальная нить,
-   каждый пункт — «остановка», активный — ring-маркер в языке пинов карты
-   (.tmk__core: surface-круг + брендовая обводка). Нить не рисуется на последней
-   группе — нижний кластер utilities не часть «маршрута». */
+/* «Рейл = маршрут» (signature-ход): через иконки пунктов идёт ПУНКТИРНАЯ нить —
+   тот же язык, что у карты (маршрут без транспорта = dashed линия); каждый пункт
+   — «остановка», активный — ring-маркер в языке пинов (.tmk__core: surface-круг
+   + брендовая обводка). Нить только у секций в скролл-регионе — нижний кластер
+   utilities не часть «маршрута». */
 .app-side__group { position: relative; }
-.app-side__group:not(:last-of-type)::before {
+.app-side__scroll .app-side__group::before {
   content: ''; position: absolute; left: 50%; top: 16px; bottom: 16px;
-  width: 2px; transform: translateX(-50%); border-radius: 1px; background: var(--line);
+  width: 0; transform: translateX(-50%);
+  border-left: 2px dashed var(--line-strong);
 }
 /* Круг-«остановка» под иконкой: разрывает нить; у активного — ring, на ховере —
    мягкая подсветка (ховер живёт на круге, не на всей плитке). */
@@ -1619,9 +1701,9 @@ button.app-side__item:hover::before { background: var(--wash); }
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   position: relative; padding: 0 var(--sp-1); background: var(--header-bg); border-radius: var(--r-xs);
 }
-/* Нижний кластер utilities — всегда ПОСЛЕДНЯЯ группа рейла: отделён линией,
-   как группа от группы (селектор по позиции, чтобы не тянуться в примитив .grow). */
-.app-side__group:last-of-type { border-top: 1px solid var(--line); padding-top: var(--sp-5); margin-bottom: 0; }
+/* Нижний кластер utilities — прямой ребёнок рейла (вне скролл-региона):
+   отделён линией, как группа от группы, и всегда видим. */
+.app-side > .app-side__group { border-top: 1px solid var(--line); padding-top: var(--sp-5); margin-bottom: 0; }
 /* Бейдж непрочитанного чата — красный канон `.badge--unread` ОВЕРЛЕЕМ у угла
    плитки (тот же приём, что у мобильного дока `.mbnav__ico`). TRIP-354: свой
    класс `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
@@ -3612,8 +3694,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ряда — всегда <main> (у Аккаунта он голый: баннер + воркспейс, поля несёт
    .acct-shell). */
 .app-frame { display: flex; flex-direction: row; flex: 1; min-height: 0; }
-/* floor-exempt: layout +1 — .app-frame: единственный каркас-ряд «рейл | контент» standalone-экранов (rail everywhere), задача Pavel
-   floor-exempt: namespaces +1 — семья page получила ось ширины (page-main--wide): синглтон стал namespace; унификация контейнеров вместо инлайн-мейнов, задача Pavel */
+/* floor-exempt: layout +8 — редизайн приложения (задача Pavel, полная свобода): каркас-ряд .app-frame, скролл-регион рейла .app-side__scroll, командный центр Обзора (.ov-col--map sticky-канвас, .ov-route/.ov-stop/.ov-leg лента маршрута), сетка хронологии .tl-twocol из инлайна в класс
+   floor-exempt: namespaces +1 — семья page получила ось ширины (page-main--wide): синглтон стал namespace; унификация контейнеров вместо инлайн-мейнов, задача Pavel
+   floor-exempt: classes +5 — новые классы редизайна: .app-side__scroll (пиннед-низ рейла) + .ov-route/.ov-stop/.ov-leg/.ov-col--map (лента маршрута и карта-канвас командного центра Обзора), задача Pavel
+   floor-exempt: triage +4 — те же классы в triage-семьях app/ov (редизайн экранов, задача Pavel)
+   floor-exempt: dsshare +8 — лента маршрута: плитки-кнопки остановок сырые по построению (нав-плитка шелла, как .app-side__item), внутри — канон Card/Chip/Icon/tmk; задача Pavel */
 .app-frame > .app-side { position: sticky; top: 0; height: 100vh; height: 100dvh; }
 .app-frame > main { flex: 1; min-width: 0; }
 /* Широкий контент-столбец (Путешествия · Статистика · Pro); базовый .page-main —
@@ -5652,7 +5737,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ============================================================ */
 .ovwrap {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 44%);
   gap: 18px;
   align-items: start;
 }
@@ -5661,6 +5746,27 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    viewport (mockup v01 @container): 5-across when the column is wide, 2-col when
    the 2-column overview squeezes it on mid-width desktops (TRIP-278). */
 .ovwrap .ov-col:first-child { container-type: inline-size; }
+/* Карта-КАНВАС командного центра: sticky-панель на всю высоту вьюпорта правее
+   контента (клик по остановке в ленте перелетает её). Высота = вьюпорт минус
+   шапка трипа (60) и вертикальные поля тела (28+28). */
+.ov-col--map { position: sticky; top: 0; height: calc(100dvh - 116px); }
+.ov-col--map .ov-anim { height: 100%; display: flex; flex-direction: column; }
+.ov-col--map .ov-mapcard { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ov-col--map .ov-maparea { flex: 1; height: auto; min-height: 0; }
+
+/* Лента маршрута (командный центр): остановки в языке пинов карты (.tmk),
+   между ними — чипы переездов по центру (как «средняя колонка» переезда). */
+.ov-route .wdg-b { display: flex; flex-direction: column; gap: var(--sp-1); }
+.ov-stop {
+  display: flex; align-items: center; gap: var(--sp-6);
+  padding: var(--sp-3) var(--sp-3); border-radius: var(--r-btn);
+  border: none; background: transparent; width: 100%; text-align: left; cursor: pointer;
+  transition: background .15s var(--ease-out);
+}
+.ov-stop:hover { background: var(--wash); }
+.ov-stop.is-sel { background: var(--brand-soft); }
+.ov-stop:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+.ov-leg { display: flex; justify-content: center; }
 
 /* ---- widget shell ---- */
 /* TRIP-343 объект 2: `.wdg` был FLUSH-поверхностью (свой padding:0 + overflow,
@@ -5775,6 +5881,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 @media (max-width: 880px) {
   .ovwrap { grid-template-columns: 1fr; }
+  /* Одна колонка: карта возвращается верхней фикс-панелью (командный центр —
+     десктопный режим; sticky-канвас на мобиле не работает и не нужен). */
+  .ov-col--map { order: -1; position: static; height: auto; }
+  .ov-col--map .ov-anim { height: auto; display: block; }
+  .ov-col--map .ov-mapcard { display: block; }
+  .ov-col--map .ov-maparea { flex: none; height: 220px; }
   .ov-maparea { height: 220px; }
 }
 
@@ -5783,7 +5895,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ============================================================ */
 .tl3 { display: flex; flex-direction: column; }
 .tl3-day { padding-bottom: 8px; scroll-margin-top: 12px; overflow-x: clip; }
-.tl3-dh { display: flex; align-items: center; gap: 12px; padding: 16px 0 12px; }
+.tl3-dh {
+  display: flex; align-items: center; gap: 12px; padding: 16px 0 12px;
+  position: sticky; top: 0; z-index: 2; background: var(--bg);
+}
 .tl3-dh .datechip { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; height: 54px; border-radius: var(--r-btn); background: var(--brand-soft); flex: none; transition: background .2s var(--ease-out); }
 .tl3-dh .datechip .d { color: var(--brand); }
 .tl3-dh .datechip .m { color: var(--brand); opacity: .85; margin-top: 2px; }
@@ -5890,11 +6005,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Timeline content width matches the Settings lens (.settings-lens): same
    1040px cap, centered — so both columns together read as one column width on
    wide desktops instead of stretching edge-to-edge (TRIP-279). */
-.tl-twocol { max-width: 1040px; margin-inline: auto; }
+.tl-twocol { max-width: 1040px; margin-inline: auto; display: grid; grid-template-columns: 1fr 260px; gap: var(--sp-8); align-items: start; }
 /* Timeline on mobile: drop the city rail, plates span full width */
 @media (max-width: 880px) {
   .cityrail { display: none; }
-  .tl-twocol { grid-template-columns: 1fr !important; }
+  .tl-twocol { grid-template-columns: 1fr; }
 }
 
 /* ============================================================

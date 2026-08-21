@@ -26,7 +26,7 @@ import { useUnreadNotificationCount } from '@/lib/useNotifications';
 function SidebarBody({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myStep,
-  onUpgrade, onProInfo, onShare,
+  onUpgrade, onProInfo,
 }) {
   const { t } = useI18n();
   const nav = useNavigate();
@@ -34,7 +34,6 @@ function SidebarBody({
   // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
   const lensItems = availableSections(trip, myStep, 'lens');
   const mgmtItems = availableSections(trip, myStep, 'manage');
-  const canShare = clearsStep(myStep, 'participant');
   // Only after Pro state is resolved — avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro;
   // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
@@ -42,13 +41,13 @@ function SidebarBody({
   // zero realtime subscriptions instead of a live one that can never show.
   const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
   // Пункт рейла — общий RailItem (одна реализация плитки у app- и трип-рейла).
-  const railItem = (item, active, onClick) => (
+  const railItem = (item, active) => (
     <RailItem
       key={item.id}
       icon={item.icon}
       label={t(item.labelKey)}
       active={active}
-      onClick={onClick || (() => onNavigate(item.id))}
+      onClick={() => onNavigate(item.id)}
       badge={item.id === 'chat' ? chatUnread : 0}
     />
   );
@@ -58,33 +57,36 @@ function SidebarBody({
       <button type="button" className="app-side__brand" onClick={() => nav('/trips')} title={t('nav.trips')} aria-label={t('nav.trips')}>
         <img src="/triplanio-logo.svg" alt="" />
       </button>
-      <div className="app-side__group">
-        {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
-        {lensItems.map((item) => railItem(item, lens === item.id))}
-      </div>
-      {(mgmtItems.length > 0 || canShare) && (
+      {/* Секции — в скролл-регионе; utilities пришпилены к низу рейла.
+          «Поделиться» — ДЕЙСТВИЕ, не раздел: живёт кнопкой в шапке трипа. */}
+      <div className="app-side__scroll">
         <div className="app-side__group">
-          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (управление/шеринг), не кнопка-примитив. */}
-          {mgmtItems.map((item) => railItem(item, lens === item.id))}
-          {canShare && onShare && railItem({ id: 'share', icon: 'share', labelKey: 'trip.share' }, false, onShare)}
+          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
+          {lensItems.map((item) => railItem(item, lens === item.id))}
         </div>
-      )}
-      <Grow />
-      {/* Компактный вход апгрейда: полная карточка не влезает в рейл, но точка
-          входа Pro обязана остаться видимой (EP-карта Pro-визуала).
-          TRIP-391 объект 1: .app-side__item — плитка ШЕЛЛА в общем ряду рейла
-          (та же геометрия и хит-зона, что у пунктов), не кнопка-примитив. */}
-      {showUpgrade && (
-        <button
-          type="button"
-          className="app-side__item"
-          onClick={isOwner ? onUpgrade : onProInfo}
-          title={t('trip_menu.upgrade_trip')}
-          aria-label={t('trip_menu.upgrade_trip')}
-        >
-          <Badge variant="pro" icon="pro">PRO</Badge>
-        </button>
-      )}
+        {mgmtItems.length > 0 && (
+          <div className="app-side__group">
+            {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (управление), не кнопка-примитив. */}
+            {mgmtItems.map((item) => railItem(item, lens === item.id))}
+          </div>
+        )}
+        <Grow />
+        {/* Компактный вход апгрейда: полная карточка не влезает в рейл, но точка
+            входа Pro обязана остаться видимой (EP-карта Pro-визуала).
+            TRIP-391 объект 1: .app-side__item — плитка ШЕЛЛА в общем ряду рейла
+            (та же геометрия и хит-зона, что у пунктов), не кнопка-примитив. */}
+        {showUpgrade && (
+          <button
+            type="button"
+            className="app-side__item"
+            onClick={isOwner ? onUpgrade : onProInfo}
+            title={t('trip_menu.upgrade_trip')}
+            aria-label={t('trip_menu.upgrade_trip')}
+          >
+            <Badge variant="pro" icon="pro">PRO</Badge>
+          </button>
+        )}
+      </div>
       {/* Нижний кластер (тема · уведомления · аккаунт) — общий с app-рейлом;
           шапка трипа utilities больше не несёт. */}
       <RailUtilities />
@@ -118,7 +120,7 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
 export default function TripSidebar({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myStep,
-  onUpgrade, onProInfo, onShare,
+  onUpgrade, onProInfo,
 }) {
   const { t } = useI18n();
   return (
@@ -126,7 +128,7 @@ export default function TripSidebar({
       <SidebarBody
         tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
         isPro={isPro} proResolved={proResolved} isOwner={isOwner} myStep={myStep}
-        onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare}
+        onUpgrade={onUpgrade} onProInfo={onProInfo}
       />
     </nav>
   );

@@ -11,7 +11,7 @@
  * плавающий док. Гейт — JS (useIsPhone), НЕ новый брейкпоинт: рейл на телефоне
  * просто не рендерится, шапка рендерится только на телефоне.
  *
- * DOM: .app-shell > [AppHeader (телефон)] > .app-frame (ряд) > [AppRail] + children.
+ * DOM: .app-shell > [AppHeader (телефон)] + .app-frame (ряд) > [AppRail] + children.
  * Скролл на десктопе остаётся ДОКУМЕНТНЫМ (как был у этих экранов) — рейл
  * прилипает sticky на всю высоту вьюпорта; на телефоне работает прежний
  * фикс-шелл ≤640 (скроллится main внутри .app-frame).
@@ -57,10 +57,12 @@ export function RailItem({ icon, label, active = false, onClick, badge = 0 }) {
   );
 }
 
-// Нижний кластер ОБОИХ рейлов: тема · уведомления (поповер вправо) · аккаунт
-// (канон-меню: Профиль / Выйти — тот же состав, что в шапке: useAccountMenuItems).
-// Последняя группа рейла — CSS отделяет её линией и не рисует на ней нить.
-export function RailUtilities() {
+// Нижний кластер ОБОИХ рейлов: тема · [уведомления] · аккаунт (канон-меню:
+// Профиль / Выйти — тот же состав, что в шапке: useAccountMenuItems). Кластер
+// ПРИШПИЛЕН к низу рейла (секции скроллятся отдельно, .app-side__scroll).
+// `bell=false` у app-рейла: там «Входящие» — первоклассный пункт навигации,
+// второй колокольчик с тем же бейджем рядом сбивал бы с толку.
+export function RailUtilities({ bell = true }) {
   const t = useT();
   const { user } = useAuth();
   const { isDark, toggle } = useTheme();
@@ -78,7 +80,7 @@ export function RailUtilities() {
         <Icon name={isDark ? 'sun' : 'moon'} size={20} />
         <span className="app-side__label t-tiny">{t('settings.theme')}</span>
       </button>
-      <NotificationsBell side="right" align="end" railItem />
+      {bell && <NotificationsBell side="right" align="end" railItem />}
       <ActionMenu
         side="right"
         align="end"
@@ -120,36 +122,40 @@ function AppRail({ active }) {
   return (
     // <nav>, не <aside>: на десктопе это ЕДИНСТВЕННЫЙ навигационный лендмарк
     // экрана (шапки нет) — complementary-роль прятала его от ротора скринридера.
+    // Секции — в скролл-регионе (.app-side__scroll); utilities пришпилены к низу
+    // и видимы всегда, даже на коротких вьюпортах.
     <nav className="app-side" aria-label={t('nav.aria_primary')}>
       <button type="button" className="app-side__brand" onClick={() => nav('/trips')} title={t('nav.trips')} aria-label={t('nav.trips')}>
         <img src="/triplanio-logo.svg" alt="" />
       </button>
-      <div className="app-side__group">
-        {APP_SECTIONS.map((s) => (
-          <RailItem
-            key={s.id}
-            icon={s.icon}
-            label={t(s.labelKey)}
-            active={active === s.id}
-            onClick={() => nav(s.to)}
-            badge={s.id === 'inbox' ? inboxUnread : 0}
-          />
-        ))}
+      <div className="app-side__scroll">
+        <div className="app-side__group">
+          {APP_SECTIONS.map((s) => (
+            <RailItem
+              key={s.id}
+              icon={s.icon}
+              label={t(s.labelKey)}
+              active={active === s.id}
+              onClick={() => nav(s.to)}
+              badge={s.id === 'inbox' ? inboxUnread : 0}
+            />
+          ))}
+        </div>
+        <Grow />
+        {/* Вход в Pro: компакт-чип, как у трип-рейла (там — апгрейд трипа). */}
+        {!isPro && (
+          <button
+            type="button"
+            className="app-side__item"
+            onClick={() => nav('/pro')}
+            title={t('trips.go_pro')}
+            aria-label={t('trips.go_pro')}
+          >
+            <Badge variant="pro" icon="pro">PRO</Badge>
+          </button>
+        )}
       </div>
-      <Grow />
-      {/* Вход в Pro: компакт-чип, как у трип-рейла (там — апгрейд трипа). */}
-      {!isPro && (
-        <button
-          type="button"
-          className="app-side__item"
-          onClick={() => nav('/pro')}
-          title={t('trips.go_pro')}
-          aria-label={t('trips.go_pro')}
-        >
-          <Badge variant="pro" icon="pro">PRO</Badge>
-        </button>
-      )}
-      <RailUtilities />
+      <RailUtilities bell={false} />
     </nav>
   );
 }

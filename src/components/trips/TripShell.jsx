@@ -42,32 +42,35 @@ import { useMobileNav } from '@/components/MobileBottomNav';
 import { DEFAULT_SECTION, sectionById, isSectionAvailable } from '@/lib/tripMenu';
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
+import { clearsStep } from '@/lib/tripStep';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { Grow, Skeleton } from '@/design/index';
+import { Grow, IconBtn, Skeleton } from '@/design/index';
 
 // Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
 // нельзя: его состав зависит от аддонов и роли, а они приезжают тем же
 // запросом - подставив его раньше, мы бы показали чужой набор пунктов и
 // перерисовали меню под пользователем.
 function SidebarSkeleton() {
-  // Форма повторяет живой рейл: лого-плитка, затем вертикальные плитки
-  // «иконка+подпись» (6 разделов + 3 управления).
+  // Плитка «иконка+подпись» — как у живого рейла (RailItem).
   const row = (i) => (
     <div key={i} className="app-side__item">
       <Skeleton w={20} h={20} r={6} />
       <Skeleton w={36 + (i % 3) * 8} h={8} r={4} />
     </div>
   );
+  // Форма зеркалит живой рейл: лого-плитка, две группы секций (6 разделов +
+  // 3 управления) и нижний кластер utilities.
   // aria-hidden: скелетон декоративен — ложный нав-лендмарк скринридеру не нужен.
-  // Форма зеркалит живой рейл: 2 группы секций + нижний кластер utilities.
   return (
     <aside className="app-side" aria-hidden="true">
       <div className="app-side__brand"><Skeleton w={38} h={38} r={8} /></div>
-      <div className="app-side__group">{[1, 2, 3, 4, 5, 6].map(row)}</div>
-      <div className="app-side__group">{[1, 2, 3].map(row)}</div>
-      <Grow />
+      <div className="app-side__scroll">
+        <div className="app-side__group">{[1, 2, 3, 4, 5, 6].map(row)}</div>
+        <div className="app-side__group">{[1, 2, 3].map(row)}</div>
+        <Grow />
+      </div>
       <div className="app-side__group">{[1, 2, 3].map(row)}</div>
     </aside>
   );
@@ -172,7 +175,6 @@ export default function TripShell({
         <TripSidebar
           {...menuProps}
           onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
-          onShare={onShare}
         />
       )}
       <div className="trip-body">
@@ -182,6 +184,10 @@ export default function TripShell({
           backTitle={t('trip.back')}
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
           meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
+          // «Поделиться» — действие шапки, не раздел рейла (участник и выше).
+          actions={!loading && onShare && clearsStep(myStep, 'participant') && (
+            <IconBtn icon="share" ariaLabel={t('trip.share')} title={t('trip.share')} onClick={onShare} />
+          )}
         />
         <div className="trip-content">
           <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>

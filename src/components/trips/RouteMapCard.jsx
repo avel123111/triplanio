@@ -6,12 +6,18 @@ import MapView from '@/components/views/MapView';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 
-// Route-map preview for the Overview screen. Reuses the same Mapbox MapView as
-// every other map in the app (no schematic/SVG), with on-map controls off, in a
-// rounded fixed-height panel. The header "Open" button jumps to the full map
-// lens. `active` mirrors whether the Overview lens is visible so MapView can
-// resize() when the panel regains size.
-export default function RouteMapCard({ visits = [], transfers = [], active = true, onOpen }) {
+// Карта-КАНВАС «командного центра» Обзора. Reuses the same Mapbox MapView as
+// every other map in the app (no schematic/SVG), with on-map controls off; в
+// колонке .ov-col--map растягивается на всю высоту вьюпорта (sticky-панель),
+// на мобиле — прежняя фикс-высота. The header "Open" button jumps to the full
+// map lens. `active` mirrors whether the Overview lens is visible so MapView
+// can resize() when the panel regains size. Выделение остановки двустороннее:
+// selectedVisitId/focus приходят из ленты маршрута, клик по пину на карте
+// уходит наверх через onCityClick.
+export default function RouteMapCard({
+  visits = [], transfers = [], active = true, onOpen,
+  selectedVisitId = null, focus = null, onCityClick = null,
+}) {
   const { t } = useI18n();
   const { theme } = useTheme();
   const colorScheme = theme === 'dark' ? 'DARK' : 'LIGHT';
@@ -37,6 +43,9 @@ export default function RouteMapCard({ visits = [], transfers = [], active = tru
             colorScheme={colorScheme}
             mapControls={false}
             active={active}
+            selectedVisitId={selectedVisitId}
+            focus={focus}
+            onCityClick={onCityClick}
           />
         ) : (
           <div className="ov-map-empty muted">
