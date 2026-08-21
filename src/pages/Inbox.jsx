@@ -71,6 +71,33 @@ export default function Inbox() {
     ['invites', t('notif.invitations'), inviteCount],
   ];
 
+  // Ответ на инвайт — один обработчик на обе поверхности (закреплённый блок
+  // решений и лента): расхождение копий = разное поведение у одной и той же
+  // строки. In-flight действие берётся из переменных мутации по memberId.
+  const pendingActionFor = (n) => (
+    respondInvite.isPending && respondInvite.variables?.memberId === n.trip_member_id
+      ? respondInvite.variables.action
+      : null
+  );
+  const respondTo = (n) => (action) => {
+    if (!n.read) markOneRead.mutate(n.id);
+    respondInvite.mutate({ memberId: n.trip_member_id, tripId: n.trip_id, action });
+  };
+
+  // Пустой результат фильтра. Плоской лесенкой, а не вложенными тернарниками:
+  // «Непрочитанные» без писем — это inbox-zero (успех), а при закреплённых
+  // pending-инвайтах контент на экране уже есть — рисовать пустоту нечем.
+  function filterEmptyNode() {
+    // При закреплённых pending-инвайтах пустоту не рисуем НИ на одном фильтре:
+    // контент (блок решений) уже на экране, а «всё прочитано» противоречило бы
+    // непрочитанным приглашениям прямо над ним.
+    if (pendingInvites.length > 0) return null;
+    if (filter === 'unread') {
+      return <EmptyState kind="success" icon="check" title={t('notif.all_read')} body={t('notif.all_read_desc')} />;
+    }
+    return <EmptyState icon="bell" title={t('notif.filter_empty')} />;
+  }
+
   // ── Load gate (TRIP-208) ──────────────────────────────────────────────────────
   // A failed notifications load must surface an error + retry, not silently render
   // the "inbox empty" screen. Cached list wins (hasData) — a background refetch
@@ -144,11 +171,8 @@ export default function Inbox() {
                   nav={nav}
                   fmtRelative={fmtRelative}
                   pinned
-                  pendingAction={respondInvite.isPending && respondInvite.variables?.memberId === n.trip_member_id ? respondInvite.variables.action : null}
-                  onRespond={(action) => {
-                    if (!n.read) markOneRead.mutate(n.id);
-                    respondInvite.mutate({ memberId: n.trip_member_id, tripId: n.trip_id, action });
-                  }}
+                  pendingAction={pendingActionFor(n)}
+                  onRespond={respondTo(n)}
                 />
               ))}
             </Card>
@@ -161,20 +185,14 @@ export default function Inbox() {
           ) : notifications.length === 0 ? (
             <InboxEmpty onCollection={() => nav('/trips')} />
           ) : filtered.length === 0 ? (
-            filter === 'unread' ? (
-              // Inbox-zero: пустые «Непрочитанные» — успех, а не пустота.
-              <EmptyState kind="success" icon="check" title={t('notif.all_read')} body={t('notif.all_read_desc')} />
-            ) : pendingInvites.length > 0 ? (
-              // Вся почта = pending-инвайты: блок решений выше и есть контент.
-              null
-            ) : (
-              <EmptyState icon="bell" title={t('notif.filter_empty')} />
-            )
+            filterEmptyNode()
           ) : (
             <div className="col col--g8">
               {groups.map((g) => (
               <div key={g.label} className="col col--g4">
-                <div className="ngrp__label t-label tp-caption">{t(GROUP_LABEL_KEY[g.label])}</div>
+                {/* Вид лейбла целиком несёт канон .t-micro (co-selector в app.css);
+                    добавочные t-label/tp-caption были мертвы по каскаду — сняты. */}
+                <div className="ngrp__label">{t(GROUP_LABEL_KEY[g.label])}</div>
                 {/* Дата-группа — ОДНА карточка-поверхность, строки вплотную с
                     хайрлайнами; прочитанная строка на цвете карточки, непрочитанная
                     — мягкая подложка поверх. */}
@@ -186,11 +204,8 @@ export default function Inbox() {
                       t={t}
                       nav={nav}
                       fmtRelative={fmtRelative}
-                      pendingAction={respondInvite.isPending && respondInvite.variables?.memberId === n.trip_member_id ? respondInvite.variables.action : null}
-                      onRespond={(action) => {
-                        if (!n.read) markOneRead.mutate(n.id);
-                        respondInvite.mutate({ memberId: n.trip_member_id, tripId: n.trip_id, action });
-                      }}
+                      pendingAction={pendingActionFor(n)}
+                      onRespond={respondTo(n)}
                       onMarkRead={() => { if (!n.read) markOneRead.mutate(n.id); }}
                     />
                   ))}

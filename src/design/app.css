@@ -6044,9 +6044,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      прыжок к дню не ныряет под неё (scroll-margin). */
   .cr-strip { display: flex; position: sticky; top: 0; z-index: 3; height: 48px; align-items: center; background: var(--bg); }
   .cr-strip .cr-dy { flex: none; width: 36px; height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .cr-strip .cr-dy small { color: inherit; opacity: .75; }
+  /* Без opacity: --muted и так приглушён, а полупрозрачность роняла контраст
+     аббревиатуры месяца ниже 4.5:1 (WCAG 1.4.3). */
+  .cr-strip .cr-dy small { color: inherit; }
   .tl3-dh { top: 48px; }
   .tl3-day { scroll-margin-top: 60px; }
+  /* Клавиатурный фокус не ныряет под sticky-ленту: скролл-контейнер ленты
+     оставляет 60px сверху при автопрокрутке к сфокусированному (WCAG 2.4.11). */
+  .trip-screen-body { scroll-padding-top: 60px; }
 }
 
 /* ============================================================
@@ -7372,6 +7377,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* visual-diff-exempt: .summary gap — редизайн V4 (задача Pavel, PR #927) */
 /* visual-diff-exempt: .summary padding — редизайн V4 (задача Pavel, PR #927) */
 /* visual-diff-exempt: .t-meta margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dl-card__body flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .is-fs margin-inline — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .mapwrap margin-inline — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trip-screen-body {@media (max-width: 880px)} scroll-padding-top — редизайн V4 (задача Pavel, PR #927) */
 /* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
    «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
    actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */
@@ -7621,9 +7631,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    `.app-shell > main` rule) */
 @media (max-width: 760px) {
   .pro-plans { grid-template-columns: 1fr; }
-  /* Yearly (герой) первым на мобильном стеке — рекомендуемый план до фолда;
-     DOM/таб-порядок не меняется (визуальный order). */
-  .pro-plans .card--featured { order: -1; }
+  /* Yearly первый в самом DOM (Pro.jsx cards) — CSS-order не нужен, порядок
+     чтения/фокуса совпадает с визуальным. */
   .plan-card__body { padding: 16px 18px 12px; }
   .plan-card__footer { padding: 0 18px 16px; }
   /* Per-trip bar: on mobile the CTA drops to its own full-width row under the text,
@@ -8802,7 +8811,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 @media (max-width: 640px) {
   .page-main--wide > .mapwrap { margin-inline: -16px; border-radius: 0; border-left: 0; border-right: 0; } /* design-token-exempt: -16px — full-bleed гасит паддинг .page-main (16), карта-обложка */
 }
-.mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; margin-top: 0; }
+.mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; margin-top: 0; margin-inline: 0; } /* margin-inline: гасит full-bleed −16px мобильной обложки — fixed-оверлей не шире вьюпорта */
 /* TRIP-326: glass снят. */
 /* ★TRIP-337: отдельный `.mapfs-close` (X выхода) удалён как избыточный — выход из
    фуллскрина несёт тоггл фуллскрина в единой плашке `.map-ctl` (pressed = в

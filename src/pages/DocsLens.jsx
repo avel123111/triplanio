@@ -16,7 +16,7 @@
  * (.dl-* on app.css tokens). Dialogs use Radix ui/dialog (dlg__head /
  * dlg__body / dlg__foot structure). No inline hover handlers — CSS only.
  */
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { TRIP_DOCUMENTS_INCLUDE, listBinding, formWrite, reconcileWriteRow } from '@/lib/trip-data';
@@ -57,7 +57,11 @@ function DropTarget({ onDropFiles, disabled = false, children }) {
     <div
       className="dl-drop"
       onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-      onDragLeave={() => setDrag(false)}
+      // dragleave всплывает от детей карточки — гасим подсветку только при
+      // реальном уходе за пределы цели, иначе is-drag мигает при проводке.
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(/** @type {Node|null} */ (e.relatedTarget))) setDrag(false);
+      }}
       onDrop={(e) => {
         e.preventDefault(); setDrag(false);
         if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
@@ -137,7 +141,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   // Файлы, брошенные на drop-цель ЭКРАНА (add-карточка/пустая секция), уезжают
   // в тот же staging, что и выбор в диалоге — один раз, на маунте.
   const initialRef = useRef(initialFiles);
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialRef.current?.length) { uploadFiles(initialRef.current); initialRef.current = null; }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -365,8 +369,10 @@ function DocDetailDialog({ doc, open, onOpenChange, readOnly, onDelete }) {
   // битые превью (HEIC/протухший URL) падают обратно в строки FileRow.
   const [brokenIdx, setBrokenIdx] = useState(/** @type {number[]} */ ([]));
   const allFiles = doc.documents || [];
-  const imgs   = allFiles.filter((f, i) => fileType(f.file_name) === 'img' && !brokenIdx.includes(i));
-  const others = allFiles.filter((f, i) => fileType(f.file_name) !== 'img' || brokenIdx.includes(i));
+  // Один предикат на оба списка — зеркальные условия разъезжаются при первой же правке.
+  const inGallery = (f, i) => fileType(f.file_name) === 'img' && !brokenIdx.includes(i);
+  const imgs   = allFiles.filter(inGallery);
+  const others = allFiles.filter((f, i) => !inGallery(f, i));
 
   // Async-confirm (PESSIMISTIC): the confirm button spins while the parent's delete runs
   // (onDelete returns the mutation promise). ON THE RESPONSE the row drops + toast (parent
@@ -472,9 +478,18 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
   // onError-фоллбек на безмедийную карточку (часть контракта, не опция).
   const [imgBroken, setImgBroken] = useState(false);
   const imgFile = files.find(f => fileType(f.file_name) === 'img');
+  const hasMedia = !!imgFile && !imgBroken;
   // Форматы карточки — тип-чипами (словарь fileType → канон FileTypeBadge);
   // «+N» — файлы сверх уникальных форматов, список открывается кликом.
-  const kinds = [...new Set(files.map(f => fileType(f.file_name)))];
+  // Чипу отдаём ПЕРВЫЙ файл своего вида, не синтетическое «.pdf»: FileTypeBadge
+  // сам гонит имя через fileType(), и выдуманное расширение («.img») не прошло
+  // бы round-trip (img-чип красился бы серым file-видом).
+  const kindMap = new Map();
+  for (const f of files) {
+    const k = fileType(f.file_name);
+    if (!kindMap.has(k)) kindMap.set(k, f);
+  }
+  const kinds = [...kindMap.entries()];
 
   // Uploader identity via the shared resolver (same mechanism as chat) for BOTH
   // scopes: falls back to the created_by_name snapshot so a doc whose author has
@@ -492,10 +507,13 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
     deletedLabel: t('common.deleted_user'),
   }), [doc.created_by, doc.created_by_name, profiles, members, user, t]);
 
-  const hasMedia = !!imgFile && !imgBroken;
   return (
+    // pad="none" ОБЯЗАТЕЛЕН: снятие приватного паддинга открыло бы базу
+    // .card{18px} и врезало full-bleed медиа на 18px от краёв (паддинг несёт
+    // __body; card--flush заодно клипит кроп под радиус).
     <Card
       as="button"
+      pad="none"
       radius="md"
       interactive
       ariaBusy={pending || undefined}
@@ -516,8 +534,11 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
           <div className="dl-card__h">
             <Trunc className="dl-card__title">{doc.title}</Trunc>
             <div className="dl-card__sub">
+              {/* Число приклеиваем сами: ключи doc.files_count_* — голые
+                  существительные без {count} (Tolgee не трогаем), pluralize
+                  выбирает только форму слова. */}
               {files.length > 0
-                ? pluralize(t, files.length, 'doc.files_count', lang, { count: files.length })
+                ? `${files.length} ${pluralize(t, files.length, 'doc.files_count', lang)}`
                 : t('doc.card_no_files')}
               {doc.link_url && t('doc.has_link')}
             </div>
@@ -532,12 +553,17 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
           <div className="dl-card__notes">{doc.notes}</div>
         )}
 
-        {/* Форматы тип-чипами: цвет не может разойтись со словарём — чип прогоняет
-            расширение через тот же fileType() (канон FileTypeBadge, единственная
-            реализация формат-бейджа). */}
+        {/* Форматы тип-чипами: цвет не может разойтись со словарём — чип гонит
+            РЕАЛЬНОЕ имя первого файла вида через тот же fileType() (канон
+            FileTypeBadge). Обёртка с aria-label/title: сам чип — иконка без
+            текста, вид различался бы только цветом (WCAG 1.4.1/1.1.1). */}
         {kinds.length > 0 && (
           <Row wrap gap="g2">
-            {kinds.map(k => <FileTypeBadge key={k} name={`.${k}`} />)}
+            {kinds.map(([k, f]) => (
+              <span key={k} role="img" aria-label={k} title={f.file_name}>
+                <FileTypeBadge name={f.file_name} />
+              </span>
+            ))}
             {files.length > kinds.length && (
               <span className="dl-filemore tab">+{files.length - kinds.length}</span>
             )}
@@ -739,7 +765,13 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   ];
 
   return (
-    <div className="dl-root ov-anim">
+    // Гард промаха: экран теперь ПРИГЛАШАЕТ бросать файлы (drop-цели ниже), и
+    // дроп на пару пикселей мимо цели не должен уводить вкладку на сам файл —
+    // на корне глушим дефолтную навигацию браузера, действий не совершая.
+    <div
+      className="dl-root ov-anim"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => e.preventDefault()}>
       {readOnly && (
         <Severity level="info" title={t('settings.readonly_banner_title')}>{t('doc.readonly_banner_desc')}</Severity>
       )}

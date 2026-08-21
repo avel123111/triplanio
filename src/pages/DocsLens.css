@@ -39,8 +39,10 @@
    __body ради full-bleed фото-слота; overflow клипит кроп под радиус.
    visual-diff-move: .dl-card padding -> .dl-card__body
    visual-diff-exempt: .dl-card overflow — клип full-bleed медиа под радиус карточки (редизайн V4) */
-.dl-card { font: inherit; cursor: pointer; text-align: left; width: 100%; overflow: hidden; }
-.dl-card__body { padding: 16px; } /* design-token-exempt: 16px — перенос паддинга .dl-card, значение не менялось */
+.dl-card { font: inherit; cursor: pointer; text-align: left; width: 100%; overflow: hidden; gap: 0; } /* gap:0 гасит дефолт .col — фото прилегает к телу без шва */
+/* flex:1 — тело добирает высоту стретч-ячейки грида, margin-top:auto футера
+   снова прижимает его к низу (низы карточек в ряду совпадают). */
+.dl-card__body { padding: 16px; flex: 1; } /* design-token-exempt: 16px — перенос паддинга .dl-card, значение не менялось */
 /* Фото-слот: кроп 116px, фон на время загрузки — токен --wash. */
 .dl-card__media { height: 116px; background: var(--wash); flex: none; }
 .dl-card__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -305,8 +307,9 @@
      задаче Pavel (галерея с медиа-превью, тип-чипы, dropzone); частично — переезд
      инлайнов в семью
    floor-exempt: triage +9 — те же имена в triage-семье dl
-   floor-exempt: layout +2 — dl-grid (грид галереи, бывший инлайн) и dl-drop
-     (грид-ячейка drop-обёртки): раскладка экрана, перенос/обвязка поведения */
+   floor-exempt: layout +3 — dl-grid (грид галереи, бывший инлайн), dl-drop
+     (грид-ячейка drop-обёртки) и dl-card__body (flex:1 — тело добирает высоту
+     стретч-ячейки, футер прижат к низу): раскладка экрана */
 .dl-sec { margin-bottom: 30px; } /* design-token-exempt: 30px — перенос инлайна секции, значение не менялось */
 .dl-sec__head { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; } /* design-token-exempt: 11px/14px — перенос инлайна шапки секции, значения не менялись */
 .dl-sec__title { display: flex; align-items: center; gap: 9px; margin-bottom: 0; } /* design-token-exempt: 9px — перенос инлайна заголовка секции, значение не менялось */

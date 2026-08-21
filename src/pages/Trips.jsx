@@ -6,6 +6,7 @@ import { goPro } from '@/lib/goPro';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange, computeTripRange, countdownParts } from '@/lib/trip-dates';
+import { naiveDayKey } from '@/lib/naive-time';
 import { isProActive } from '@/lib/subscription';
 import { displayName } from '@/lib/displayName';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -51,9 +52,11 @@ function scopeLabel(t, visits = []) {
  */
 function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = [], serverPro = undefined) {
   // Duration in days (inclusive) — only when both ends are known; 0 = don't show.
+  // КАЛЕНДАРНЫЕ дни через naiveDayKey, не сырые миллисекунды: в ISO лежит
+  // настенное время (чекаут «12:00»), и сырой diff давал «12 – 16 июл · 6 дней».
   const range = computeTripRange(visits);
   const nDays = range.start && range.end
-    ? Math.round((new Date(range.end).getTime() - new Date(range.start).getTime()) / 864e5) + 1
+    ? Math.round((new Date(naiveDayKey(range.end)).getTime() - new Date(naiveDayKey(range.start)).getTime()) / 864e5) + 1
     : 0;
   // Up to 3 unique country flags — the SAME deduped transit set as scope/counters,
   // so the flag row can never disagree with the city list next to it.
@@ -597,6 +600,13 @@ export default function Trips() {
   // .start = earliest city start_date, .end = latest city end_date.
   const rangeOf = (tr) => computeTripRange(visitsByTrip[tr.id] || []);
 
+  // Одна точка сборки карточки: у normalizeTrip семь позиционных аргументов —
+  // герой и обе секции обязаны звать её ОДИНАКОВО (перепутанный порядок в одной
+  // из копий невидим глазом). Зависит только от visitsByTrip/participantsByTrip/
+  // isPro/t — они и стоят в deps hero-мемо ниже.
+  const norm = (tr) =>
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro);
+
   // Active → earliest start first (asc). Undated trips (no start; treated as
   // active) sink to the bottom, tie-broken by created_at desc (allTrips is
   // already created_at-desc, so a stable 0 keeps that order).
@@ -620,45 +630,56 @@ export default function Trips() {
   // Из двух идущих берём стартовавший ПОЗЖЕ (актуальнее); из будущих — ближайший.
   // У предстоящего — тикающий отсчёт (nowTs), у идущего — прогресс «N/M дн».
   const hero = useMemo(() => {
+    // «Сегодня» — ЛОКАЛЬНЫЙ календарный день зрителя: сравнение day-ключей, не
+    // миллисекунд (start_date — date-only, парсится как UTC-полночь; сырое
+    // startMs <= nowTs флипало героя в «Сегодня» вечером НАКАНУНЕ для таймзон
+    // западнее UTC — та же семантика дней, что у isTripInPast).
+    const dNow = new Date(nowTs);
+    const todayKey = `${dNow.getFullYear()}-${String(dNow.getMonth() + 1).padStart(2, '0')}-${String(dNow.getDate()).padStart(2, '0')}`;
     let cur = null, next = null;
     for (const tr of allTrips) {
       const visits = visitsByTrip[tr.id] || [];
       const { start } = computeTripRange(visits);
       if (!start) continue;
+      const startDay = naiveDayKey(start);
       const startMs = new Date(start).getTime();
-      if (startMs <= nowTs) {
-        if (!isTripInPast(visits) && (!cur || startMs > cur.startMs)) cur = { tr, visits, startMs };
+      if (startDay <= todayKey) {
+        if (!isTripInPast(visits) && (!cur || startDay > cur.startDay)) cur = { tr, startDay };
       } else if (!next || startMs < next.startMs) {
-        next = { tr, visits, startMs };
+        next = { tr, startMs };
       }
     }
     const pick = cur || next;
     if (!pick) return null;
-    const base = normalizeTrip(t, pick.tr, pick.visits, pick.tr.role, isPro, participantsByTrip[pick.tr.id] || [], pick.tr.is_pro);
+    const base = norm(pick.tr);
     if (cur) {
-      const dayIdx = Math.min(base.nDays || 1, Math.floor((nowTs - pick.startMs) / 864e5) + 1);
+      // «Какой день поездки» — календарная разница day-ключей (переключается в
+      // локальную полночь). Обе стороны parsed как UTC-полночь → diff кратен суткам.
+      const sinceStart = Math.round((new Date(todayKey).getTime() - new Date(cur.startDay).getTime()) / 864e5) + 1;
+      const dayIdx = Math.min(base.nDays || 1, Math.max(1, sinceStart));
       return { ...base, isCurrent: true, dayIdx };
     }
     return { ...base, isCurrent: false, countdown: countdownParts(pick.startMs - nowTs) };
   }, [allTrips, visitsByTrip, participantsByTrip, isPro, nowTs, t]);
 
+  // Активен ли поиск — от него зависят пустые состояния и состав секций.
+  const searching = search.trim().length > 0;
+
   // ── Секции ────────────────────────────────────────────────────────────────────
-  // «Активные» без hero-трипа (герой и есть его карточка — дубль устранён);
+  // «Активные» без hero-трипа (герой и есть его карточка — дубль устранён), НО
+  // при активном поиске герой возвращается в секцию: иначе поиск по названию
+  // именно hero-трипа рисовал «ничего не найдено» под его же постером.
   // «Прошедшие» — всегда компактные строки, сгруппированные по годам окончания
   // (pastTrips уже отсортированы end desc — группировка сохраняет порядок).
-  const activeShown = activeTrips
-    .filter(tr => tr.id !== hero?.id)
-    .map(tr => normalizeTrip(t, tr, visitsByTrip[tr.id] || [], tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro));
-  const pastShown = pastTrips.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro));
+  const activeShown = activeTrips.filter(tr => searching || tr.id !== hero?.id).map(norm);
+  const pastShown = pastTrips.map(norm);
   const pastByYear = /** @type {[number, (typeof pastShown)[number][]][]} */ ([]);
-  for (let i = 0; i < pastTrips.length; i++) {
-    const year = new Date(rangeOf(pastTrips[i]).end).getFullYear();
+  for (const tr of pastShown) {
+    const year = new Date(rangeOf(tr).end).getFullYear();
     const last = pastByYear[pastByYear.length - 1];
-    if (last && last[0] === year) last[1].push(pastShown[i]);
-    else pastByYear.push([year, [pastShown[i]]]);
+    if (last && last[0] === year) last[1].push(tr);
+    else pastByYear.push([year, [tr]]);
   }
-
 
   // The screen shows the trip LIST and the stat HERO together, so first paint
   // waits for BOTH composites: getTrips (cards: list/visits/participants/roles/
@@ -789,7 +810,7 @@ export default function Trips() {
 
             {isLoadingData ? (
               <TripSkeleton viewMode={viewMode} />
-            ) : (search.trim() && activeShown.length === 0 && pastShown.length === 0) ? (
+            ) : (searching && activeShown.length === 0 && pastShown.length === 0) ? (
             /* Поиск не нашёл ничего ни в одной секции */
               <EmptyState
                 icon="search"
@@ -799,13 +820,13 @@ export default function Trips() {
             ) : (
               <>
                 {/* ── Активные ── */}
-                {!(search.trim() && activeShown.length === 0) && (
+                {(!searching || activeShown.length > 0) && (
                   <>
                     <PageHead
                       title={t('trips.tab_active')}
                       actions={<Badge variant="count">{activeShown.length}</Badge>}
                     />
-                    {activeShown.length === 0 && !hero && !search.trim() && pastTrips.length > 0 ? (
+                    {activeShown.length === 0 && !hero && !searching && pastTrips.length > 0 ? (
                       /* Активной жизни нет вовсе (и героя нет) → приглашение */
                       <Card radius="lg" className="row invite">
                         <Tile as="span" className="invite__ic"><Icon name="sparkles" size={28} /></Tile>

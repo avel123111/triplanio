@@ -61,7 +61,11 @@ function StatsScreenSkeleton() {
       </div>
       <Skeleton w="100%" h={420} r={'var(--r-card)'} style={{ marginTop: 18 }} />
       <Card radius="lg" className="summary" style={{ marginTop: 18 }}>
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w="100%" h={92} r={'var(--r-xl)'} />)}
+        {/* Скелетон-плитки в .sfig-обёртках: полка с gap:0 иначе слепила бы их
+            в сплошную плиту; хейрлайны и паддинги фигур приходят из CSS полки. */}
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div className="sfig" key={i}><Skeleton w="100%" h={62} r={'var(--r-sm)'} /></div>
+        ))}
       </Card>
       <Skeleton w="100%" h={220} r={'var(--r-card)'} style={{ marginTop: 18 }} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={180} h={22} r={6} /></div>

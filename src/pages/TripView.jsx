@@ -363,22 +363,37 @@ function localTodayKey() {
 // ─── Активный день/город ленты — ОДИН observer на обоих потребителей ──────────
 // (рейл городов + скраббер дней): параметры rootMargin/threshold те же, что жили
 // внутри CityRail, — расхождение копий дало бы разный «активный день» в рейле и
-// ленте. depsKey — пересборка при смене состава дней.
+// ленте. depsKey — строка СОСТАВА (join id/дней, не length): при сдвиге дат тем
+// же числом React перемонтирует [data-tlday]-узлы, и observer на старых узлах
+// молча замирал бы.
 function useActiveTlDay(scrollRef, depsKey) {
   const [active, setActive] = useState({ day: /** @type {string|null} */ (null), cityId: /** @type {string|null} */ (null) });
   useEffect(() => {
     const root = scrollRef?.current;
     if (!root) return undefined;
-    const els = Array.from(root.querySelectorAll('[data-tlday]'));
-    if (!els.length) return undefined;
-    const obs = new IntersectionObserver((entries) => {
-      const vis = entries.filter(e => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-      const el = vis[0]?.target;
-      if (el) setActive({ day: el.getAttribute('data-tlday'), cityId: el.getAttribute('data-city') || null });
-    }, { root, rootMargin: '-8% 0px -72% 0px', threshold: 0 });
-    els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
+    /** @type {IntersectionObserver|null} */
+    let obs = null;
+    const attach = () => {
+      const els = Array.from(root.querySelectorAll('[data-tlday]'));
+      if (!els.length) return false;
+      obs = new IntersectionObserver((entries) => {
+        const vis = entries.filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        const el = vis[0]?.target;
+        // День без города (pre/post-trip события) НЕ гасит активный город —
+        // прогресс/кластер рейла держат последний известный (как старый observer).
+        if (el) setActive(prev => ({ day: el.getAttribute('data-tlday'), cityId: el.getAttribute('data-city') || prev.cityId }));
+      }, { root, rootMargin: '-8% 0px -72% 0px', threshold: 0 });
+      els.forEach(el => obs.observe(el));
+      return true;
+    };
+    if (attach()) return () => obs?.disconnect();
+    // Холодная загрузка: рейл монтируется по shell-данным РАНЬШЕ, чем лента дней
+    // (контент ещё грузится, [data-tlday]-узлов нет) — ждём их появления и
+    // цепляем observer тогда, иначе активный день был бы мёртв до смены линзы.
+    const mo = new MutationObserver(() => { if (attach()) mo.disconnect(); });
+    mo.observe(root, { childList: true, subtree: true });
+    return () => { mo.disconnect(); obs?.disconnect(); };
   }, [scrollRef, depsKey]);
   return active;
 }
@@ -395,11 +410,17 @@ function goDay(scrollRef, day) {
 // Wanderlog). На десктопе скрыт CSS'ом (навигация живёт в рейле городов).
 function DayScrub({ days, scrollRef, todayKey }) {
   const { t, lang } = useI18n();
-  const { day: activeDay } = useActiveTlDay(scrollRef, days.length);
+  const { day: activeDay } = useActiveTlDay(scrollRef, days.join('|'));
   const stripRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   useEffect(() => {
-    stripRef.current?.querySelector('.cr-dy.on')
-      ?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    // Автоцентрирование активного чипа — ТОЛЬКО горизонтальный scrollTo самой
+    // ленты: scrollIntoView мог прокрутить и вертикальных предков, дёргая
+    // инерционный скролл пользователя (iOS/Safari).
+    const strip = stripRef.current;
+    const el = /** @type {HTMLElement|null} */ (strip?.querySelector('.cr-dy.on'));
+    if (strip && el) {
+      strip.scrollTo({ left: el.offsetLeft - strip.clientWidth / 2 + el.clientWidth / 2, behavior: 'smooth' });
+    }
   }, [activeDay]);
   return (
     <Carousel ref={stripRef} className="cr-strip" ariaLabel={t('trip_menu.timeline')}>
@@ -414,7 +435,7 @@ function DayScrub({ days, scrollRef, todayKey }) {
             type="button"
             className={'cr-dy tab' + (d === activeDay ? ' on' : '')}
             aria-current={d === todayKey ? 'date' : undefined}
-            aria-label={`${dd.getDate()} ${weekdayLong(d, lang)}`}
+            aria-label={`${dd.toLocaleDateString(lang, { day: 'numeric', month: 'long' })}, ${weekdayLong(d, lang)}`}
             onClick={() => goDay(scrollRef, d)}>
             {dd.getDate()}{mon && <small className="t-micro">{mon}</small>}
           </button>
@@ -722,7 +743,15 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
                   MissingTransferWarning, TRIP-274: не прячем по роли, блокируем
                   действие). */}
               {!hasAny && (
-                <Card as="button" variant="add" radius="md" className="row row--g4" onClick={() => onAddActivityForDay?.(day)}>
+                <Card
+                  as="button"
+                  variant="add"
+                  radius="md"
+                  className="row row--g4"
+                  /* Скринридеру — ДЕЙСТВИЕ кнопки (открывает поиск активности),
+                     не статус «ничего не запланировано» из видимого текста. */
+                  ariaLabel={`${t('fork.tab_find_activity')} — ${weekdayLong(day, lang)}`}
+                  onClick={() => onAddActivityForDay?.(day)}>
                   <Icon name="plus" size={14} />
                   <span className="t-meta">{t('view.empty_day')}</span>
                 </Card>
@@ -793,7 +822,10 @@ function CityRail({ visits = [], scrollRef }) {
     () => sortVisits(visits).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint'),
     [visits],
   );
-  const { day: activeDay, cityId: activeId } = useActiveTlDay(scrollRef, cities.length);
+  const { day: activeDay, cityId: activeId } = useActiveTlDay(
+    scrollRef,
+    cities.map(c => `${c.id}:${c.start_date}`).join('|'),
+  );
 
   if (cities.length === 0) return null;
 
@@ -832,7 +864,7 @@ function CityRail({ visits = [], scrollRef }) {
                     type="button"
                     className={'cr-dy tab' + (d === activeDay ? ' on' : '')}
                     aria-current={d === todayKey ? 'date' : undefined}
-                    aria-label={`${Number(d.slice(8, 10))} ${weekdayLong(d, lang)}`}
+                    aria-label={`${new Date(`${d}T00:00`).toLocaleDateString(lang, { day: 'numeric', month: 'long' })}, ${weekdayLong(d, lang)}`}
                     onClick={() => goDay(scrollRef, d)}>
                     {Number(d.slice(8, 10))}
                   </button>

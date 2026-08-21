@@ -153,19 +153,22 @@ export default function Pro() {
 
   const monthly = renderPrice('account_pro_monthly');
   const yearly = renderPrice('account_pro_yearly');
+  // Yearly (герой) — ПЕРВЫМ и в DOM: рекомендуемый план первый для скринридера
+  // и клавиатуры на всех ширинах; CSS-order не нужен (визуальный порядок =
+  // порядок чтения, WCAG 1.3.2/2.4.3).
   const cards = [
-    {
-      key: 'monthly', name: t('sub.plan_monthly_short'),
-      price: monthly,
-      caption: t('sub.caption_monthly'), features: proFeatures,
-      cta: { label: t('sub.subscribe_monthly'), variant: 'primary', code: 'account_pro_monthly' },
-    },
     {
       key: 'yearly', name: t('sub.plan_yearly_short'), featured: true,
       price: yearly, oldPrice: yearStrike, save: savePct,
       caption: yearPerMonth ? t('sub.caption_yearly', { perMonth: yearPerMonth }) : '',
       features: proFeatures,
       cta: { label: t('sub.subscribe_yearly'), variant: 'pro', icon: 'pro', code: 'account_pro_yearly' },
+    },
+    {
+      key: 'monthly', name: t('sub.plan_monthly_short'),
+      price: monthly,
+      caption: t('sub.caption_monthly'), features: proFeatures,
+      cta: { label: t('sub.subscribe_monthly'), variant: 'primary', code: 'account_pro_monthly' },
     },
   ];
 
