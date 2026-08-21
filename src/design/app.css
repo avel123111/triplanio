@@ -3929,10 +3929,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Ширину задаёт колонка сетки блока (.settings-grid, ~половина карточки).
    visual-diff-exempt: .pl-cover--contained margin — вариант в карточке: без full-bleed (margin 0)
    visual-diff-exempt: .pl-cover--contained border-radius — скругление под <Card>
-   visual-diff-exempt: .pl-cover--contained height — высота из формата (не фикс 200px планнера)
-   visual-diff-exempt: .pl-cover--contained aspect-ratio — формат 4:3 (полная картинка, не узкая)
-   visual-diff-exempt: .pl-cover--contained min-height — grid-элемент: min-height:auto (=min-content картинки) перебивал aspect-ratio на узком мобиле и раздувал обложку на весь экран; 0 отдаёт высоту формату 4:3 */
-.pl-cover--contained { margin: 0; border-radius: var(--r-md); height: auto; min-height: 0; aspect-ratio: 4 / 3; }
+   Высота — padding-hack (padding-bottom = 3/4 ширины = формат 4:3), НЕ aspect-ratio:
+   на реальном мобиле aspect-ratio перебивался min-content картинки-слайда и обложка
+   разъезжалась на весь экран. padding задаёт высоту из ширины в любом браузере и не
+   зависит от контента; лента кладётся абсолютом внутрь (правило ниже).
+   visual-diff-exempt: .pl-cover--contained height — высота 0 (её даёт padding-hack, не контент)
+   visual-diff-exempt: .pl-cover--contained padding-bottom — формат 4:3 через padding (3/4 ширины), не раздувается
+   design-token-exempt: 75% — доля формата 4:3 (высота/ширина), геометрия, не токен */
+.pl-cover--contained { margin: 0; border-radius: var(--r-md); height: 0; padding-bottom: 75%; }
+/* Лента слайдов в contained-обложке абсолютом заполняет padding-box (высоту задаёт
+   padding родителя, а не картинки).
+   visual-diff-exempt: .pl-cover__track position — абсолют в padding-box contained-обложки (scoped .pl-cover--contained)
+   visual-diff-exempt: .pl-cover__track inset — заполняет padding-box (scoped .pl-cover--contained)
+   visual-diff-exempt: .pl-cover--contained position — то же правило, атрибуция на .pl-cover--contained
+   visual-diff-exempt: .pl-cover--contained inset — то же правило, атрибуция на .pl-cover--contained */
+.pl-cover--contained .pl-cover__track { position: absolute; inset: 0; }
 .pl-cover__title {
   position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center;
