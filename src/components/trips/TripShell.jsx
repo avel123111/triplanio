@@ -159,8 +159,10 @@ export default function TripShell({
   const backTo = section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`;
 
   // Секция сама владеет своим скроллом (карта, чат, редактор): тело без
-  // паддинга и без скролла, поверхность в край.
-  const flush = sectionById(section)?.flush === true;
+  // паддинга и без скролла, поверхность в край. Значение 'phone' — flush ТОЛЬКО
+  // на телефоне (Обзор: мобильный канвас «карта + свайп-шит», десктоп скроллится).
+  const flushFlag = sectionById(section)?.flush;
+  const flush = flushFlag === true || (flushFlag === 'phone' && isPhone);
 
   const menuProps = {
     tripId, trip, lens: section, isPro, proResolved, isOwner, myStep,

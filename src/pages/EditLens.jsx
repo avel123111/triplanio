@@ -1182,11 +1182,6 @@ export default function EditLens({ tripId, shell, content }) {
           {/* Side-панели (город / форк / событие) — DRAWER поверх виджета:
               накрывает карточку целиком (список остаётся под ним), карта и её
               пины отелей интерактивны — скрима нет. */}
-          {useDrawer && (
-            <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
-              {leftPanelEl}
-            </div>
-          )}
           </div>{/* /lp — плавающий виджет */}
 
           {/* Mobile: the editor panel opens as a bottom sheet — the SAME shared
@@ -1198,6 +1193,15 @@ export default function EditLens({ tripId, shell, content }) {
             </LpSheet>
           )}
         </div>
+
+        {/* Side-панель — DRAWER-слой на КАНВАСЕ: раскрывается от левого меню и
+            от хедера вниз, накрывая виджет маршрута целиком (задача Pavel);
+            карта справа остаётся интерактивной, скрима нет. */}
+        {useDrawer && (
+          <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
+            {leftPanelEl}
+          </div>
+        )}
       </div>
   );
 }

@@ -140,7 +140,13 @@ test('недоступная секция падает на дефолт, дос
 
 test('flush стоит ровно у секций, которые сами владеют своим скроллом', () => {
   const flush = SECTIONS.filter((s) => s.flush).map((s) => s.id);
-  assert.deepEqual(flush, ['map', 'chat', 'edit']);
+  // overview — flush ТОЛЬКО на телефоне ('phone': мобильный канвас «карта +
+  // свайп-шит»); полный flush (true) остаётся у карт/чата/редактора.
+  assert.deepEqual(flush, ['overview', 'map', 'chat', 'edit']);
+  assert.equal(SECTIONS.find((s) => s.id === 'overview')?.flush, 'phone');
+  for (const id of ['map', 'chat', 'edit']) {
+    assert.equal(SECTIONS.find((s) => s.id === id)?.flush, true, `${id}: полный flush`);
+  }
 });
 
 test('док прячут только чат и редактор, и у каждого НАЗВАНА причина', () => {

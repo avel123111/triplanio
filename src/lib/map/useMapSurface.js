@@ -3,6 +3,7 @@ import { MAPBOX_TOKEN, applyBasemapConfig } from '@/lib/mapbox';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { repaintRouteLines } from './routeLines';
 import { useSharedMap } from './MapProvider';
+import { SHEET_INSET_EVENT } from '@/hooks/useSheetDrag';
 
 // Shared lifecycle for any screen that shows the app-wide singleton Mapbox map.
 // The instance is never created/destroyed here: it's acquired (its element moved
@@ -198,6 +199,26 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
       requestAnimationFrame(() => { try { mapRef.current.resize(); } catch { /* ignore */ } });
     }
   }, [active, ready]);
+
+  // Свайп-шит мобильного канваса (useSheetDrag) шлёт высоту шита событием —
+  // камера получает НИЖНИЙ ОТСТУП (Mapbox padding), а канвас карты НЕ
+  // ресайзится: во время жеста setPadding (мгновенно), на снапе easeTo
+  // (плавный доезд фокуса). Один слушатель здесь = поведение у всех карт
+  // (FlowMap, MapView-синглтон, StatsMap) без строчки в экранах.
+  useEffect(() => {
+    const onSheet = (e) => {
+      const m = mapRef.current;
+      if (!m) return;
+      const { px = 0, animate = false } = e.detail || {};
+      const padding = { top: 0, left: 0, right: 0, bottom: Math.max(0, Math.round(px)) };
+      try {
+        if (animate) m.easeTo({ padding, duration: 280 });
+        else m.setPadding(padding);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener(SHEET_INSET_EVENT, onSheet);
+    return () => window.removeEventListener(SHEET_INSET_EVENT, onSheet);
+  }, []);
 
   return { mapRef, ready, canFit, error };
 }

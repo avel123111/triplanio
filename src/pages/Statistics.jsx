@@ -28,6 +28,7 @@ import {
 import { Btn, Card, Skeleton, Seg } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppShell from '@/components/AppShell';
+import MapSheetCanvas from '@/components/common/MapSheetCanvas';
 
 // "Моя статистика" — full Ф5 screen. Reads the same get_user_travel_stats RPC the
 // home screen uses, year-filters + aggregates entirely on the client via
@@ -335,11 +336,12 @@ export default function Statistics() {
   }
 
   // ── render ──────────────────────────────────────────────────────────────────
-  return (
-    <AppShell active="stats" ghost={isEmpty} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} title={t('stats.page_title')}>
-      <main className="page-main page-main--wide">
-        {showSkeleton ? <StatsScreenSkeleton /> : (<>
-
+  // Куски рендера собраны в константы: десктоп — карта-обложка в потоке
+  // документа; телефон — те же куски живут КАНВАСОМ «карта + свайп-шит»
+  // (MapSheetCanvas, паттерн планера/редактора — задача Pavel): карта во весь
+  // экран позади, вся статистика в шите на трёх ступенях (10/68/100).
+  const headBlock = (
+    <>
         {/* head: title + sub + year filter */}
         <div className="head">
           <div className="head__row" style={{ position: 'relative', zIndex: 1 }}>
@@ -365,7 +367,10 @@ export default function Statistics() {
             </div>
           </div>
         </div>
-
+    </>
+  );
+  const noteBlock = (
+    <>
         {/* empty-state note */}
         {isEmpty && (
           <Card tone="brand" radius="md" className="empty-note row row--g7 row--wrap" style={{ marginTop: 18 }}>
@@ -377,7 +382,10 @@ export default function Statistics() {
             <Btn variant="primary" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
           </Card>
         )}
-
+    </>
+  );
+  const mapBlock = (
+    <>
         {/* map hero */}
         {/* Геометрия карты-обложки — в CSS (`.page-main--wide > .mapwrap` + .is-fs);
             на телефоне карта уходит full-bleed от края до края (редизайн V4). */}
@@ -422,7 +430,10 @@ export default function Statistics() {
             )
             : <Skeleton style={{ position: 'absolute', inset: 0 }} h="100%" r={0} />}
         </div>
-
+    </>
+  );
+  const tailBlock = (
+    <>
         {/* summary */}
         <SummaryTiles items={summaryItems} />
 
@@ -465,8 +476,28 @@ export default function Statistics() {
         {/* trips per year */}
         <div className="sec-head"><h2 className="t-subheading">{t('stats.byyear_title')}</h2></div>
         <YearChart bars={yearBars.bars} caption={yearBars.caption} />
-        </>)}
-      </main>
+    </>
+  );
+  return (
+    <AppShell active="stats" ghost={isEmpty} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} title={t('stats.page_title')}>
+      {isPhone && !showSkeleton ? (
+        <main className="map-sheet-host">
+          <MapSheetCanvas map={mapBlock}>
+            {headBlock}
+            {noteBlock}
+            {tailBlock}
+          </MapSheetCanvas>
+        </main>
+      ) : (
+        <main className="page-main page-main--wide">
+          {showSkeleton ? <StatsScreenSkeleton /> : (<>
+            {headBlock}
+            {noteBlock}
+            {mapBlock}
+            {tailBlock}
+          </>)}
+        </main>
+      )}
 
       <VisitPanel
         open={!!panelData}

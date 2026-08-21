@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { sortVisits } from '@/lib/validation';
 import { Card, Skeleton } from '@/design/index';
+import { useTheme } from '@/lib/ThemeContext';
+import { useIsPhone } from '@/hooks/use-mobile';
+import MapView from '@/components/views/MapView';
+import MapSheetCanvas from '@/components/common/MapSheetCanvas';
 import RouteMapCard from '@/components/trips/RouteMapCard';
 import RouteStripCard from '@/components/trips/RouteStripCard';
 import TripStatRow from '@/components/trips/TripStatRow';
@@ -105,74 +109,90 @@ export default function OverviewLens({
   // Право управления (editor) — из единого контекста доступа (TRIP-274 Ф2.2),
   // раздаётся подкартам (бюджет/участники) как булев проп.
   const { canEdit: canManage } = useTripAccess();
+  const { theme } = useTheme();
+  const isPhone = useIsPhone();
   const orderedVisits = useMemo(() => sortVisits(visits), [visits]);
   // Выделенная остановка: единый стейт ленты и карты. Храним ЦЕЛИКОМ визит —
   // карте нужны и id (подсветка пина), и координаты (focus → flyTo).
   const [selStop, setSelStop] = useState(null);
   const selectStop = (v) => setSelStop((cur) => (cur?.id === v?.id ? null : v));
+  // Пропы карты — одни на обе оболочки (десктоп-карточка / мобильный канвас):
+  // двустороннее выделение лента ⇄ пины не расходится между раскладками.
+  const mapProps = {
+    visits,
+    transfers,
+    active,
+    selectedVisitId: selStop?.id || null,
+    // focus = МАССИВ точек [[lng,lat]] (контракт MapView: 1 точка → flyTo);
+    // сравнение с null — координаты 0 на экваторе/меридиане легитимны.
+    focus: selStop?.latitude != null && selStop?.longitude != null ? [[selStop.longitude, selStop.latitude]] : null,
+    // onCityClick отдаёт ГРУППУ визитов точки (g.data — как у всех карт);
+    // берём первый с id, как разворачивают остальные вызыватели.
+    onCityClick: (pts) => { const v = (pts || []).find((p) => p?.id); if (v) selectStop(v); },
+  };
+  // Содержимое Обзора — один набор виджетов на обе оболочки: лента маршрута
+  // первой (сердце экрана), затем статы/бюджет/участники/сервисы.
+  const widgets = (
+    <>
+      <RouteStripCard
+        visits={visits}
+        transfers={transfers}
+        selectedId={selStop?.id || null}
+        onStopClick={selectStop}
+        onOpenEdit={onOpenEdit}
+        canManage={canManage}
+      />
+      <TripStatRow visits={visits} transfers={transfers} trip={trip} orderedVisits={orderedVisits} />
+      <BudgetSummaryCard
+        trip={trip}
+        budget={budget}
+        budgetExpenses={budgetExpenses}
+        budgetCategories={budgetCategories}
+        canManage={canManage}
+        budgetEnabled={budgetEnabled}
+        isLoading={contentLoading}
+        onOpen={onOpenBudget}
+        onLocked={onBudgetLocked}
+      />
+      <MembersSummaryCard
+        trip={trip}
+        members={members}
+        profiles={memberProfiles}
+        user={user}
+        canManage={canManage}
+        isLoading={contentLoading}
+        onOpenMembers={onOpenMembers}
+      />
+      <ServicesCard services={services} onAddService={onAddService} onOpenService={onOpenService} />
+    </>
+  );
 
   if (isLoading) return <OverviewSkeleton />;
 
+  // Телефон: канвас «карта + свайп-шит» (паттерн планера/редактора, задача
+  // Pavel) — карта во весь экран позади, весь Обзор в шите на трёх ступенях.
+  if (isPhone) {
+    return (
+      <MapSheetCanvas
+        className="ov-canvas"
+        map={<MapView {...mapProps} colorScheme={theme === 'dark' ? 'DARK' : 'LIGHT'} mapControls={false} />}
+      >
+        {widgets}
+      </MapSheetCanvas>
+    );
+  }
+
   return (
     <div className="ovwrap">
-      <div className="ov-col">
-        <div className="ov-anim">
-          <RouteStripCard
-            visits={visits}
-            transfers={transfers}
-            selectedId={selStop?.id || null}
-            onStopClick={selectStop}
-            onOpenEdit={onOpenEdit}
-            canManage={canManage}
-          />
-        </div>
-        <div className="ov-anim">
-          <TripStatRow visits={visits} transfers={transfers} trip={trip} orderedVisits={orderedVisits} />
-        </div>
-        <div className="ov-anim">
-          <BudgetSummaryCard
-            trip={trip}
-            budget={budget}
-            budgetExpenses={budgetExpenses}
-            budgetCategories={budgetCategories}
-            canManage={canManage}
-            budgetEnabled={budgetEnabled}
-            isLoading={contentLoading}
-            onOpen={onOpenBudget}
-            onLocked={onBudgetLocked}
-          />
-        </div>
-        <div className="ov-anim">
-          <MembersSummaryCard
-            trip={trip}
-            members={members}
-            profiles={memberProfiles}
-            user={user}
-            canManage={canManage}
-            isLoading={contentLoading}
-            onOpenMembers={onOpenMembers}
-          />
-        </div>
-        <div className="ov-anim">
-          <ServicesCard services={services} onAddService={onAddService} onOpenService={onOpenService} />
-        </div>
+      {/* Колонка сама и раскладка (gap 18), и анимация входа: fragment widgets
+          кладёт виджеты ПРЯМЫМИ детьми — общий с мобильным канвасом набор. */}
+      <div className="ov-col ov-anim">
+        {widgets}
       </div>
 
       <div className="ov-col ov-col--map">
         <div className="ov-anim">
-          <RouteMapCard
-            visits={visits}
-            transfers={transfers}
-            active={active}
-            onOpen={onOpenMap}
-            selectedVisitId={selStop?.id || null}
-            // focus = МАССИВ точек [[lng,lat]] (контракт MapView: 1 точка → flyTo);
-            // сравнение с null — координаты 0 на экваторе/меридиане легитимны.
-            focus={selStop?.latitude != null && selStop?.longitude != null ? [[selStop.longitude, selStop.latitude]] : null}
-            // onCityClick отдаёт ГРУППУ визитов точки (g.data — как у всех карт);
-            // берём первый с id, как разворачивают остальные вызыватели.
-            onCityClick={(pts) => { const v = (pts || []).find((p) => p?.id); if (v) selectStop(v); }}
-          />
+          <RouteMapCard {...mapProps} onOpen={onOpenMap} />
         </div>
       </div>
     </div>

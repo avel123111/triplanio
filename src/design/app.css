@@ -4012,6 +4012,24 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    floor-exempt: triage +1 — то же имя в семье sheet */
 .sheet-grip { display: none; }
 
+/* Мобильный канвас «карта + свайп-шит» (Обзор, Статистика — MapSheetCanvas):
+   хост берёт высоту родителя (flush-тело секции / main фикс-шелла); .mapwrap
+   статистики внутри map-слота глушит рамку/радиус (канвас — в край).
+   floor-exempt: classes +2 — map-sheet (хост канваса) и map-sheet-host (main
+     standalone-экрана под канвас): мобильный паттерн «карта+шит» на Обзоре и
+     Статистике (задача Pavel)
+   floor-exempt: triage +2 — те же имена в семье map
+   floor-exempt: layout +2 — раскладка хостов канваса (высота/флекс-цепочка)
+   floor-exempt: dsshare +2 — перенос виджетов Обзора/Статистики внутрь общей
+     канвас-оболочки сместил счётчик композиции; состав ДС-компонентов на
+     экранах НЕ менялся (те же карточки/виджеты, один общий хост) */
+.map-sheet { height: 100%; }
+.map-sheet .flow-mapbox .mapwrap { position: absolute; inset: 0; margin: 0; border: 0; border-radius: 0; min-height: 0; }
+.map-sheet-host { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.map-sheet-host > .map-sheet { flex: 1; height: auto; }
+/* Внутри фикс-шелла телефона main-скроллер отдаёт скролл канвасу. */
+.app-frame > main.map-sheet-host { overflow-y: hidden; padding-bottom: 0; }
+
 /* Floating panel column: pinned to the left with a gutter on top/left/bottom
    (padding-right:0 so the panel's right edge sits inside the map, not doubled);
    pointer-events pass THROUGH the column so the map stays pannable, the panel
@@ -4157,18 +4175,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .map-back { display: grid; }
   /* Grid is a fixed-height flex column that does NOT scroll; the sheet body does. */
   .flow-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-  /* Карта — верхняя полоса, ЖИВАЯ по высоте: занимает остаток над шитом, чья
-     высота тянется грабером через --sheet-h (10–100%); ResizeObserver в
-     useMapSurface сам зовёт map.resize() на каждое изменение. */
-  .flow-mapcol { flex: 1 1 auto; position: relative; min-height: 0; }
+  /* Карта — ВСЕГДА полной высоты канваса, позади шита (не ресайзится: ресайз
+     GL-канваса на каждый кадр жеста и «гасил» карту). Видимую зону камере
+     задаёт нижний padding Mapbox — его шлёт useSheetDrag, слушает useMapSurface. */
+  .flow-mapcol { position: absolute; inset: 0; }
   .flow-mapbox { position: absolute; inset: 0; margin: 0; border: none; border-radius: 0; }
-  /* Шит: высота = --sheet-h (дефолт 68% ≈ прежняя раскладка), перекрывает карту
-     на 16px скруглённым верхом. */
+  /* Свайп-шит: три ступени (10 / 68 / 100), высота = --sheet-h; на снапе
+     (класс is-snapping на хосте) доезжает транзишеном. */
   .flow-editcol {
-    position: relative; flex: 0 0 var(--sheet-h, 68%); height: var(--sheet-h, 68%); min-height: 0;
+    /* top:auto ОБЯЗАТЕЛЕН: база десктопа даёт top:0, а при top+height
+       абсолюту bottom игнорируется — шит прибивало К ВЕРХУ экрана. */
+    position: absolute; top: auto; left: 0; right: 0; bottom: 0; height: var(--sheet-h, 68%); min-height: 0;
     display: flex; width: auto; padding: 0;
-    margin-top: calc(-1 * var(--sp-7)); z-index: 2; pointer-events: auto;
+    z-index: 2; pointer-events: auto;
   }
+  .flow-grid.is-snapping .flow-editcol { transition: height .28s var(--ease-out); }
   /* Грабер: видим и тянется (touch-action: none — жест не скроллит страницу). */
   .sheet-grip { display: grid; place-items: center; flex: none; height: 22px; touch-action: none; cursor: grab; }
   .sheet-grip::before { content: ""; width: 38px; height: 4px; border-radius: 2px; background: var(--line-strong); }
@@ -6146,17 +6167,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Обрывается на шве колонок, оставляя естественный зазор до карты. Скрима нет:
    карта (правая половина) остаётся кликабельной. Только двухколоночный десктоп. */
 /* КАНВАС редактора (паттерн планера, задача Pavel): карта = фон секции,
-   контент = плавающий .lp-виджет (реюз flow-семьи целиком). Скоуп-класс на
-   хосте: drawer side-панелей накрывает ВИДЖЕТ (позиционный контекст —
-   карточка), углы наследует от неё.
+   контент = плавающий .lp-виджет (реюз flow-семьи целиком). Drawer side-панелей
+   — слой НА КАНВАСЕ: раскрывается от левого меню (left:0) и от хедера (top:0)
+   вниз, накрывая виджет вместе с его гаттером (задача Pavel).
    floor-exempt: classes +1 — ts-canvas: скоуп канвас-раскладки редактора (реюз flow-семьи планера, задача Pavel)
    floor-exempt: triage +1 — то же имя в семье ts */
 /* Хост-высота: тело flush-секции трипа — БЛОК, а не флекс-колонка планера,
    поэтому flex:1 у .flow-grid здесь пустое слово (тот же приём, что был у
    .ts-grid): канвас берёт высоту тела явно. */
 .ts-canvas { height: 100%; }
-.ts-canvas .flow-editcol > .lp { position: relative; }
-.ts-canvas .ts-pdrawer { border-right: 0; border-radius: inherit; }
+.ts-canvas > .ts-pdrawer {
+  inset: auto; left: 0; top: 0; bottom: 0;
+  width: calc(min(550px, 44vw) + var(--sp-7));
+  border-right: 1px solid var(--line);
+}
 .ts-pdrawer { position: absolute; inset: 0; z-index: 20; /* design-token-exempt: локальный стек внутри левой колонки */ display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
 .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
 @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
@@ -7737,6 +7761,53 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* visual-diff-exempt: .sheet-grip::before {@media (max-width: 960px)} content — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
 /* visual-diff-exempt: .sheet-grip::before {@media (max-width: 960px)} height — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
 /* visual-diff-exempt: .sheet-grip::before {@media (max-width: 960px)} width — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .app-frame overflow-y — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .app-frame padding-bottom — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} bottom — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} left — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} margin-top — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} position — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} right — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} transition — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-grid {@media (max-width: 960px)} transition — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-mapbox border — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-mapbox border-radius — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-mapbox margin — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-mapbox min-height — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} inset — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} min-height — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} position — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .is-snapping {@media (max-width: 960px)} transition — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet border — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet border-radius — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet flex — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet height — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet inset — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet margin — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet min-height — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet position — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet-host display — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet-host flex — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet-host flex-direction — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet-host height — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet-host min-height — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet-host min-width — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet-host overflow-y — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .map-sheet-host padding-bottom — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .mapwrap border — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .mapwrap margin — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .mapwrap position — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas bottom — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas inset — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas left — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas top — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas width — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-pdrawer bottom — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-pdrawer inset — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-pdrawer left — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-pdrawer top — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .ts-pdrawer width — снап-шит 3 ступени + камера-padding + мобильные канвасы (задача Pavel) */
+/* visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} top — фикс: шит к низу (top:auto против top:0 базы) */
 /* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
    «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
    actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */

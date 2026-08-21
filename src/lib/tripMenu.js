@@ -31,7 +31,9 @@ import { clearsStep } from './tripStep.js';
 //                 'pending-layout' — раскладка под док ещё не сделана
 //                                    (TRIP-349 п.2 отложен намеренно)
 export const SECTIONS = [
-  { id: 'overview', group: 'lens', labelKey: 'trip_menu.overview', icon: 'grid', event: 'overview_opened' },
+  // flush:'phone' — на телефоне Обзор живёт канвасом «карта + свайп-шит»
+  // (владеет скроллом сам), десктоп остаётся скроллящейся секцией.
+  { id: 'overview', group: 'lens', labelKey: 'trip_menu.overview', icon: 'grid', event: 'overview_opened', flush: 'phone' },
   { id: 'timeline', group: 'lens', labelKey: 'trip_menu.timeline', icon: 'list', event: 'timeline_opened' },
   { id: 'map', group: 'lens', labelKey: 'trip_menu.map', icon: 'map', event: 'map_opened', flush: true },
   { id: 'calendar', group: 'lens', labelKey: 'trip_menu.calendar', icon: 'calendar', event: 'calendar_opened' },
