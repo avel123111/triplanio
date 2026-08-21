@@ -14,13 +14,13 @@
      while the shared marketing header/footer keep their landing styling. */
   --font-display:'Geologica',ui-sans-serif,system-ui,sans-serif;                /* TRIP-410 — single-font (пин против landing.css, что грузится после app.css) */
   --font-ui:'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;       /* TRIP-410 */
-  --brand:#2173C8;
-  --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
-  --ink:#272433; --ink-2:#4A4659; --muted:#7A7689; --muted-2:#ABA7B8;
+  --brand:#0274D4;
+  --brand-grad:linear-gradient(135deg,#2FA4F2 0%,#0274D4 100%);
+  --ink:#152238; --ink-2:#3B4A66; --muted:#6C7C97; --muted-2:#9FACC0;
   /* TRIP-326: зеркало держит ТУ ЖЕ холодно-серую шкалу, что и :root в app.css.
      Раньше здесь оставалась прежняя фиолетовая — публичный экран расходился
      с приложением по фону и границам. Меняешь нейтрали в app.css — правь и тут. */
-  --bg:#f7f9fa; --surface:#FFFFFF; --surface-2:#EEF1F4; --surface-3:#F5F8FA;
+  --bg:#F1F4F9; --surface:#FFFFFF; --surface-2:#E8EDF4; --surface-3:#F4F7FB;
   --line:#E6EAEE; --line-strong:#D5DAE0; --line-hover:#C8CED6;
   --primary-hover:#1C66B4; --primary-ring:rgba(33,115,200,.28); --brand-soft:rgba(33,115,200,.10);
 

@@ -5,13 +5,13 @@
    :root here would override the app's theme-aware tokens (e.g. --ink) on every
    route after sign-in, breaking dark theme (dark-navy text on dark surfaces). */
 .auth {
-  --brand:         #2167e2;
-  --brand-600:     #1b58c4;
-  --brand-700:     #174aa6;
-  --brand-soft:    rgba(33,103,226,.08);
-  --brand-soft-12: rgba(33,103,226,.12);
-  --brand-ink:     #0b1f47;
-  --brand-ink-2:   #0a1a3a;
+  --brand:         #0274D4;
+  --brand-600:     #0161B6;
+  --brand-700:     #02519A;
+  --brand-soft:    rgba(2,116,212,.08);
+  --brand-soft-12: rgba(2,116,212,.12);
+  --brand-ink:     #0E1E38;
+  --brand-ink-2:   #0A1730;
 
   /* Семья --primary-* тоже обязана быть здесь: остров светлый по замыслу, но
      `data-theme` на <html> живёт своей жизнью (эффект ThemeProvider срабатывает
@@ -255,7 +255,7 @@
   border-radius: var(--r-sm);
   cursor: pointer;
   box-shadow: 0 1px 0 rgba(255,255,255,.15) inset,
-              0 8px 20px -8px rgba(33,103,226,.55);
+              0 8px 20px -8px rgba(2,116,212,.55);
   transition: background .15s ease, transform .15s ease;
 }
 .btn-primary:hover { background: var(--brand-600); transform: translateY(-1px); }
@@ -578,7 +578,7 @@
 }
 .appnudge .av {
   width: 26px; height: 26px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--brand), #5b8fff);
+  background: linear-gradient(135deg, var(--brand), #2FA4F2);
   color: #fff;
   font-size: var(--fs-micro); font-weight: 700; /* design-token-exempt: инициал в кружке-аватаре, глиф не текст */
   display: inline-flex; align-items: center; justify-content: center;

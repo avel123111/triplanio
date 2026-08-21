@@ -10,7 +10,7 @@
 // casing). Markers don't go through here — they're DOM nodes that inherit the
 // tokens directly via CSS.
 
-const FALLBACK_ROUTE = '#2173C8'; // matches light --map-route; only used pre-paint / in SSR
+const FALLBACK_ROUTE = '#0274D4'; // matches light --map-route; only used pre-paint / in SSR
 const FALLBACK_RING = 'rgba(33,115,200,.30)';
 
 // Resolved value of a CSS custom property on :root, trimmed. Returns the fallback

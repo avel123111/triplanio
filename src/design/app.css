@@ -20,47 +20,47 @@
      values in components — bind to a token below (guard 2k enforces this).
      =================================================================== */
   /* Brand / primary */
-  --primary-hover: #1C66B4;
-  --primary-press: #18579A;
-  --primary-ring:  rgba(33,115,200,.28);
-  --brand:        #2173C8;
+  --primary-hover: #0161B6;
+  --primary-press: #02519A;
+  --primary-ring:  rgba(2,116,212,.30);
+  --brand:        #0274D4;
   --primary-fg:   #fff;                  /* ink ON a --brand surface */
   --brand-600:    var(--primary-hover);
   --brand-700:    var(--primary-press);
-  --brand-soft:   rgba(33,115,200,.10);
-  --brand-soft-12:rgba(33,115,200,.16);
-  --map-route:    #2173C8;   /* concrete hex for Mapbox line paint (CSS vars can't be used in paint); mirrors --brand */
-  --map-route-ring: rgba(33,115,200,.30);   /* translucent casing under a selected route segment */
+  --brand-soft:   rgba(2,116,212,.10);
+  --brand-soft-12:rgba(2,116,212,.16);
+  --map-route:    #0274D4;   /* concrete hex for Mapbox line paint (CSS vars can't be used in paint); mirrors --brand */
+  --map-route-ring: rgba(2,116,212,.30);   /* translucent casing under a selected route segment */
   /* Имена --primary-soft и --primary-soft-2 УДАЛЕНЫ (TRIP-352 шаг 2). Это было
      ВТОРОЕ имя того же тона, заведённое заплаткой («was referenced but
      undefined»), а не второй тон: тон общий, расходилась только альфа тёмной
      темы, и её выровнял #699. Все читатели переехали на --brand-soft /
      --brand-soft-12. Словарь :root: 163 -> 161. */
-  --brand-ink:    #16294A;
+  --brand-ink:    #0E1E38;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
-  --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
+  --brand-grad:   linear-gradient(135deg,#2FA4F2 0%,#0274D4 100%);
   --bk:           #0c3b7c;  /* Booking.com brand navy — одинаково в обеих темах (запрос Pavel). visual-diff-exempt: :root --bk — бренд-цвет Booking (TRIP-337, Pavel) */
   --bk-fg:        #fff;
   --viator:       #008768;  /* Viator brand green — одинаково в обеих темах (запрос Pavel). visual-diff-exempt: :root --viator — бренд-цвет Viator (TRIP-337, Pavel) */
 
   /* Neutrals / surfaces */
-  --ink:    #272433;
-  --ink-2:  #4A4659;
-  --muted:  #7A7689;
-  --muted-2:#ABA7B8;
+  --ink:    #152238;
+  --ink-2:  #3B4A66;
+  --muted:  #6C7C97;
+  --muted-2:#9FACC0;
   /* Граница — ОДНА на всё (TRIP-326): карточки, панели, меню трипа, шапка,
      разделители. Подобрана под пару фон #f7f9fa ↔ карточка #ffffff и читается на
      обеих. Отдельными остаются только контрольные границы (--line-strong /
      --line-hover): полю ввода нужна более заметная рамка, иначе оно перестаёт
      читаться как поле. Оттенок всех нейтралей переведён из фиолетового в
      холодно-серый — рядом с #f7f9fa старая фиолетовая шкала читалась как брак. */
-  --line:   #E6EAEE;
-  --line-strong: #D5DAE0;
-  --line-hover: #C8CED6;
-  --bg:      #f7f9fa;
+  --line:   #E2E8F1;
+  --line-strong: #CBD5E3;
+  --line-hover: #B9C6D8;
+  --bg:      #F1F4F9;
   --surface: #FFFFFF;
-  --surface-2: #EEF1F4;
-  --surface-3: #F5F8FA;
+  --surface-2: #E8EDF4;
+  --surface-3: #F4F7FB;
   --wash:   var(--surface-2);            /* legacy: subtle tinted wash */
   --wash-2: var(--surface-3);
   --secondary: var(--surface-2);
@@ -95,24 +95,24 @@
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
   /* Pro / premium — оранж→розовый градиент монетизации (TRIP-187) */
-  --pro:       #FF2D78;
-  --pro-soft:  rgba(255,45,120,.12);
-  --pro-ink:   #E11D6A;
+  --pro:       #A85E02;
+  --pro-soft:  rgba(196,120,8,.14);
+  --pro-ink:   #8A4D02;
   --pro-fg:    #fff;
-  --pro-gradient: linear-gradient(135deg,#FF7A59 0%,#FF2D78 100%);
+  --pro-gradient: linear-gradient(135deg,#EDA51E 0%,#C67102 100%);
   /* Hero-градиент диалога лимита трипов: фикс-стопы (не через --brand-ink, который в
      тёмной теме светлый) — одинаково тёмно-синий в обеих темах, под белый текст.
      floor-exempt: tokens +1 — hero-градиент апселла, апрув Pavel
      visual-diff-exempt: :root --pro-hero-grad — новый токен градиента (было инлайном в TripLimitDialog) */
-  --pro-hero-grad: linear-gradient(110deg, #16294A 0%, #2173C8 55%, color-mix(in srgb, #2173C8 55%, white) 120%);
+  --pro-hero-grad: linear-gradient(110deg, #0E1E38 0%, #0274D4 55%, color-mix(in srgb, #0274D4 55%, white) 120%);
 
   /* Рейтинг (★ отелей/активностей) — своё золото, отвязано от --pro (TRIP-187) */
   --rating:    #E6A21E;
 
   /* Overlays / scrims */
-  --scrim:            rgba(23,20,40,.45);
-  --scrim-soft:       rgba(23,20,40,.22);  /* покойная полупрозрачная подложка контролов поверх медиа (ховер поднимает до --scrim) */
-  --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
+  --scrim:            rgba(8,16,32,.48);
+  --scrim-soft:       rgba(8,16,32,.24);  /* покойная полупрозрачная подложка контролов поверх медиа (ховер поднимает до --scrim) */
+  --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(6,14,28,.46));
 
   /* Event types (+ink +soft) */
   --ev-hotel:#5470E6; --ev-hotel-ink:#4257C9; --ev-hotel-soft:rgba(84,112,230,.11);
@@ -121,7 +121,7 @@
   --night:#6366F1; --night-ink:#4F46E5; --night-soft:rgba(99,102,241,.13);
   --ev-activity:#E0568F; --ev-activity-ink:#BC2F6A; --ev-activity-soft:rgba(224,86,143,.12);
   --ev-car:#2FA866; --ev-car-ink:#12703E; --ev-car-soft:rgba(47,168,102,.12);
-  --ev-esim:#2173C8; --ev-esim-ink:#1358A0; --ev-esim-soft:rgba(33,115,200,.11);
+  --ev-esim:#0274D4; --ev-esim-ink:#0161B6; --ev-esim-soft:rgba(2,116,212,.11);
   --ev-insurance:#E2920E; --ev-insurance-ink:#7A4E08; --ev-insurance-soft:rgba(226,146,14,.13);
   --ev-deadline:#E14B5A; --ev-deadline-ink:#B41F30; --ev-deadline-soft:rgba(225,75,90,.12);
   /* TRIP-321 Ф13: `--ev-service-ink` выпилен - ноль `var()` во всём репозитории,
@@ -132,7 +132,7 @@
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
 
   /* Radii (Lumo names + legacy aliases) */
-  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-xs:4px; --r-pill:999px;
+  --r-card:28px; --r-md:18px; --r-btn:12px; --r-sm:8px; --r-xs:4px; --r-pill:999px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
      controls derive from --r-btn directly, so every control outer shape shares
      one radius. The segment track uses it as-is; its inner buttons are
@@ -182,9 +182,9 @@
   --ctl-h-sm: 32px;
 
   /* Shadows (Lumo scale) */
-  --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
-  --sh-2:0 4px 12px -4px rgba(39,36,51,.10), 0 18px 48px -16px rgba(39,36,51,.20);
-  --sh-3:0 8px 20px -6px rgba(39,36,51,.14), 0 30px 70px -22px rgba(39,36,51,.30);
+  --sh-1:0 2px 8px -2px rgba(15,37,68,.06), 0 12px 32px -12px rgba(15,37,68,.13);
+  --sh-2:0 6px 16px -6px rgba(15,37,68,.11), 0 24px 56px -20px rgba(15,37,68,.20);
+  --sh-3:0 10px 24px -8px rgba(15,37,68,.15), 0 36px 88px -28px rgba(15,37,68,.30);
 
   /* === Канонические поверхности (TRIP-189, переработано TRIP-326) — ЕДИНЫЙ
      источник для всех карточек/панелей/виджетов. Роль ОДНА и плоская: заливка
@@ -193,7 +193,7 @@
      стеклом: отличались они только тенью и блюром, а их больше нет.
      Алиасов у цвета нет: --line-2 / --surface-card / --surface-card-border были
      вторыми именами тех же двух значений и удалены — один цвет = одно имя. === */
-  --r-xl: 20px;
+  --r-xl: 22px;
   /* Хром — шапка приложения и меню трипа. В светлой это карточечный белый, в
      тёмной (ниже) сливается с фоном.
      ⚠ TRIP-321: --header-bg выглядит как алиас на --surface, но это РУЧКА ТЕМЫ —
@@ -202,18 +202,30 @@
      его в списке «НЕ ТРОГАТЬ» и падает тестом, если правило ослабить. */
   --header-bg:    var(--surface);
 
+  /* HORIZON: тёмный нав-рейл. Ручки скина рейла: light — глубокий нави «борт»
+     (лицо нового языка), dark — сливается с тёмными поверхностями (см. twin).
+     floor-exempt: tokens +8 — ручки темы нав-рейла (Horizon, редизайн по задаче Pavel) */
+  --rail-bg:          #0E1E38;
+  --rail-ink:         #F2F6FC;
+  --rail-muted:       #93A7C4;
+  --rail-line:        rgba(255,255,255,.16);
+  --rail-chip:        rgba(255,255,255,.07);
+  --rail-chip-active: rgba(255,255,255,.14);
+  --rail-accent:      #4FA8F5;
+  --rail-ring:        rgba(79,168,245,.45);
+
   /* Гарнитуры (TRIP-410 — единственный дом токенов шрифтов). Single-font:
      Geologica несёт и текст, и заголовки (числа — tabular-nums); JetBrains Mono —
      ТОЛЬКО коды/брони/рейсы/полисы/share-URL/email/kbd/code (V2). */
-  --font-display: 'Geologica',ui-sans-serif,system-ui,sans-serif;                   /* заголовки — та же гарнитура, что и текст */
-  --font-ui:      'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;     /* единая гарнитура апп (текст+заголовки) */
-  --font-sans:    'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;     /* алиас --font-ui (читается index.css body) */
+  --font-display: 'Unbounded','Geologica',ui-sans-serif,system-ui,sans-serif;       /* HORIZON: display-гарнитура заголовков */
+  --font-ui:      'Onest','Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif; /* HORIZON: гарнитура текста и контролов */
+  --font-sans:    'Onest','Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif; /* алиас --font-ui (читается index.css body) */
   --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* ТОЛЬКО коды/брони/рейсы/полисы/URL/email/kbd/code (числа — Geologica tabular) */
 
   /* Трекинг канонов (живёт в канон-блоке .t-*). Geologica — чистая шкала:
      отрицательный трек только на крупном дисплее, капс-лейблы держат положительный. */
-  --track-hero: -0.02em;         /* трекинг .t-display */
-  --track-h:    -0.01em;         /* трекинг .t-title/.t-heading */
+  --track-hero: -0.01em;         /* трекинг .t-display */
+  --track-h:    0;         /* трекинг .t-title/.t-heading */
   --track-caps: 0.06em;          /* трекинг капс-лейблов .t-micro (V2: под 700-капс) */
 
   /* Motion — strong custom curves (built-in easings are too weak).
@@ -256,8 +268,8 @@
   --ctl-fs:     16px;    /* пол контролов: textarea/select/chat ≥16px (анти-iOS-zoom), .btn--lg, шапка — переименован из --fs-h4 (TRIP-410) */
   --fs-h3:      16px;    /* .t-subheading */
   --fs-h2:      18px;    /* .t-heading */
-  --fs-h1:      clamp(20px, 2.6vw, 24px); /* .t-title */
-  --fs-display: clamp(28px, 4vw, 40px);   /* .t-display */
+  --fs-h1:      clamp(18px, 2.2vw, 22px); /* .t-title */
+  --fs-display: clamp(24px, 3.2vw, 34px);   /* .t-display */
 }
 
 /* На телефоне контрол крупнее: 44px - минимальная цель нажатия (WCAG 2.5.5).
@@ -267,42 +279,52 @@
 /* Dark theme */
 :root[data-theme="dark"] {
   /* Brand / primary — dark */
-  --primary-hover: #8AC1FF;
-  --primary-press: #A8D2FF;
-  --primary-ring:  rgba(111,178,255,.36);
-  --brand:        #6FB2FF;
+  --primary-hover: #74BCF9;
+  --primary-press: #93CCFB;
+  --primary-ring:  rgba(79,168,245,.38);
+  --brand:        #4FA8F5;
   --primary-fg:   #08182B;               /* ink ON a --brand surface — dark */
   /* --brand-soft и удалённый --primary-soft были ОДНИМ семейством, а не двумя
      тонами: тон общий, расходилась только альфа тёмной темы (след двух портов).
      #699 выровнял значения, 04 PR3 удалил второе имя - см. светлый :root. */
-  --brand-soft:   rgba(111,178,255,.16);
-  --brand-soft-12:rgba(111,178,255,.24);
-  --map-route:    #6FB2FF;   /* concrete hex for Mapbox line paint — dark; mirrors --brand */
-  --map-route-ring: rgba(111,178,255,.42);   /* selected-route casing — dark */
-  --brand-ink:    #BFD3F5;
-  --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
+  --brand-soft:   rgba(79,168,245,.16);
+  --brand-soft-12:rgba(79,168,245,.24);
+  --map-route:    #4FA8F5;   /* concrete hex for Mapbox line paint — dark; mirrors --brand */
+  --map-route-ring: rgba(79,168,245,.44);   /* selected-route casing — dark */
+  --brand-ink:    #C7DCF8;
+  --brand-grad:   linear-gradient(135deg,#6AB9F8 0%,#3D9BEC 100%);
   --bk:           #0c3b7c;  /* Booking navy — одинаково со светлой темой (запрос Pavel). visual-diff-exempt: :root[data-theme=dark] --bk — бренд-цвет Booking, обе темы одинаково (TRIP-337, Pavel) */
   --viator:       #008768;  /* Viator green — одинаково со светлой темой (запрос Pavel). visual-diff-exempt: :root[data-theme=dark] --viator — бренд-цвет Viator, обе темы одинаково (TRIP-337, Pavel) */
 
   /* Neutrals / surfaces — dark */
-  --ink:    #EDECF4;
-  --ink-2:  #C4C1D2;
-  --muted:  #8C88A0;
-  --muted-2:#5F5C72;
+  --ink:    #EAF0F9;
+  --ink-2:  #C3CEDF;
+  --muted:  #8595AE;
+  --muted-2:#5C6B85;
   /* Одна граница на всё (TRIP-326) — подобрана так, чтобы читаться И на фоне
      #0c0e1c, И на карточке #1f212f: одним цветом обведены карточки, панели,
      шапка, меню трипа и разделители. */
-  --line:   #2B2D3E;
-  --line-strong: #383A4D;
-  --line-hover: #33354A;
-  --bg:      #0c0e1c;
-  --surface: #1f212f;
-  --surface-2: #2A2937;
-  --surface-3: #1B1A26;
+  --line:   #22304A;
+  --line-strong: #2E405E;
+  --line-hover: #2A3A56;
+  --bg:      #0A1120;
+  --surface: #141E31;
+  --surface-2: #1D2A42;
+  --surface-3: #101A2C;
 
   /* Канонические поверхности — тёмная (TRIP-326): непрозрачная заливка, без
      стекла. Хром (шапка + меню трипа) сливается с фоном — граница отделяет. */
   --header-bg:    var(--bg);
+
+  /* HORIZON: рейл в тёмной теме — своя ступень ночи (см. light-twin). */
+  --rail-bg:          #0D1626;
+  --rail-ink:         var(--ink);
+  --rail-muted:       var(--muted);
+  --rail-line:        rgba(255,255,255,.12);
+  --rail-chip:        rgba(255,255,255,.06);
+  --rail-chip-active: rgba(255,255,255,.12);
+  --rail-accent:      var(--brand);
+  --rail-ring:        var(--primary-ring);
 
   /* Semantic — dark */
   --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
@@ -331,11 +353,11 @@
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
   /* Pro — dark (оранж→розовый, TRIP-187) */
-  --pro:       #FF6B85;
-  --pro-soft:  rgba(255,107,133,.18);
-  --pro-ink:   #FF9DB6;
+  --pro:       #E8A13C;
+  --pro-soft:  rgba(232,161,60,.18);
+  --pro-ink:   #F2C079;
   --pro-fg:    #fff;
-  --pro-gradient: linear-gradient(135deg,#FF8A6B 0%,#FF4D8A 100%);
+  --pro-gradient: linear-gradient(135deg,#F5BE55 0%,#DE8A14 100%);
 
   /* Рейтинг — dark золото (TRIP-187) */
   --rating:    #F0B65A;
@@ -660,7 +682,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .pro-hero__title,      /* TRIP-229: инспектор канонов — заголовок Pro-страницы Heading→Display (hero макета) */
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
 .pt-mast h1,           /* TRIP-410: hero публичного трипа → Display (был локальный --fs-display/-.035em) */
-.head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-display — Geologica clamp(28–40)/800/1.05, tabular (карьер .head h1) */
+.head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 700; line-height: 1.14; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* HORIZON: .t-display — Unbounded clamp(24–34)/700/1.14, tabular */
 .t-title,
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
 .cdu b,            /* TRIP-188: инспектор канонов — числа обратного отсчёта Subheading→Title */
@@ -675,7 +697,7 @@ h1,
 .ncal-month-lbl,   /* TRIP-175 инсп.: Display→Title (месяц календаря) */
 .brand-col__tag,   /* TRIP-410: бренд-строка логина → Title (был локальный --fs-h1/600/-0.032em) */
 .pt-cta h2,        /* TRIP-410: заголовок CTA публичного трипа → Title (был локальный --fs-h1/-.03em; color:#fff остаётся локально) */
-.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular */
+.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 600; line-height: 1.22;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* HORIZON: .t-title — Unbounded clamp(18–22)/600/1.22, tabular */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
@@ -703,7 +725,7 @@ h2,
 .flow-lp-b .section-sub, /* TRIP-222: инспектор канонов — саб-заголовки шагов планирования Subheading→Heading */
 .pt-cstop__ht h2,  /* TRIP-410: заголовок остановки публичного трипа → Heading (был локальный --fs-h2/-.03em) */
 .pt-h-lead,        /* TRIP-410: лид-заголовок публичного трипа → Heading (был локальный --fs-h2/-.025em; вес держит .t-strong) */
-.acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-heading — Geologica 18/700/1.25, tabular (карьер .acct-sectitle) */
+.acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 600; line-height: 1.3; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* HORIZON: .t-heading — Unbounded 18/600/1.3, tabular */
 .t-subheading,
 .dock-panel__id b,    /* TRIP-337 инсп.: заголовок виджета чата Label→Subheading */
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
@@ -735,7 +757,7 @@ h3,
 .ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
 .dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
 .dl-visopt__lbl b,   /* TRIP-275 инсп.: Meta→Subheading (заголовок опции видимости «Общий»/«Личный») */
-.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.3; letter-spacing: 0; }   /* TRIP-410: .t-subheading — Geologica 16/600/1.3 */
+.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 500; line-height: 1.35; letter-spacing: 0; }   /* HORIZON: .t-subheading — Unbounded 16/500/1.35 */
 .t-label,
 h4,
 .te-step,
@@ -1616,11 +1638,27 @@ h4,
   flex: none; width: 100px;
   display: flex; flex-direction: column; gap: var(--sp-1);
   border-right: 1px solid var(--line);
-  background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
+  background: var(--rail-bg); /* HORIZON: рейл = тёмный нави-«борт» в обеих темах */
   padding: var(--sp-6) var(--sp-4);
   min-height: 0;
   overflow: hidden;
+  /* Каналы контента рейла перебиты ЛОКАЛЬНО на рейл-ручки: пункты, нить,
+     круги-остановки, ховеры и фокус читают борт, а не общие нейтрали.
+     Значения ручек по темам — в :root/:root[data-theme=dark]. */
+  --header-bg: var(--rail-bg);
+  --ink: var(--rail-ink);
+  --ink-2: var(--rail-ink);
+  --muted: var(--rail-muted);
+  --muted-2: var(--rail-muted);
+  --line: var(--rail-line);
+  --line-strong: var(--rail-line);
+  --wash: var(--rail-chip);
+  --surface: var(--rail-chip-active);
+  --brand: var(--rail-accent);
+  --primary-ring: var(--rail-ring);
 }
+/* Лого на тёмном борте — белая плитка-подложка, иначе синий знак тонет в нави. */
+.app-side .app-side__brand img { background: #fff; padding: 3px; } /* design-token-exempt: 3px — воздух знака внутри белой плитки (не шаг раскладки) */
 /* Скролл-регион секций: лого сверху и utilities снизу ПРИШПИЛЕНЫ и видимы
    всегда, скроллятся только группы разделов (короткие вьюпорты резали низ). */
 .app-side__scroll {
@@ -7382,6 +7420,262 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* visual-diff-exempt: .is-fs margin-inline — редизайн V4 (задача Pavel, PR #927) */
 /* visual-diff-exempt: .mapwrap margin-inline — редизайн V4 (задача Pavel, PR #927) */
 /* visual-diff-exempt: .trip-screen-body {@media (max-width: 880px)} scroll-padding-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: :root --bg — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --brand — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --brand-grad — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --brand-ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --brand-soft — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --brand-soft-12 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --ev-esim — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --ev-esim-ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --ev-esim-soft — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --font-display — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --font-sans — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --font-ui — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --fs-display — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --fs-h1 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --ink-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --line — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --line-hover — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --line-strong — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --map-route — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --map-route-ring — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --muted — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --muted-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --overlay-grad-soft — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --primary-hover — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --primary-press — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --primary-ring — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --pro — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --pro-gradient — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --pro-hero-grad — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --pro-ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --pro-soft — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --r-btn — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --r-card — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --r-md — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --r-xl — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --rail-accent — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --rail-bg — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --rail-chip — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --rail-chip-active — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --rail-ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --rail-line — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --rail-muted — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --rail-ring — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --scrim — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --scrim-soft — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --sh-1 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --sh-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --sh-3 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --surface-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --surface-3 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --track-h — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root --track-hero — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --brand — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --brand-soft — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --brand-soft-12 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --map-route — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --primary-hover — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --primary-press — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --primary-ring — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth__h1 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth__h1 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .big font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .brand-col__tag font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .brand-col__tag line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .bud-total font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .bud-total line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .cdu b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .cdu b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .d font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .d line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .flow-lp-b h1 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .flow-lp-b h1 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .head h1 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .head h1 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .lp-ti b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .lp-ti b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ncal-month-lbl font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ncal-month-lbl line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .plan-price__amount font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .plan-price__amount line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pro-hero__title font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pro-hero__title line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pt-cta h2 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pt-cta h2 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pt-mast h1 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pt-mast h1 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .t-display font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .t-display line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .t-title font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .t-title line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tc__title font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tc__title line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --bg — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --brand-grad — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --brand-ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --ink-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --line — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --line-hover — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --line-strong — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --map-route-ring — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --muted — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --muted-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --pro — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --pro-gradient — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --pro-ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --pro-soft — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --rail-accent — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --rail-bg — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --rail-chip — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --rail-chip-active — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --rail-ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --rail-line — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --rail-muted — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --rail-ring — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --surface — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --surface-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: :root[data-theme=dark] --surface-3 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: h1 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .acct-hero__name font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .acct-hero__name line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .acct-sectitle font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .acct-sectitle line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .addon-card__title font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .addon-card__title line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-header__brand-name font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-header__brand-name line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-header__trip-title font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-header__trip-title line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .big line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .card h3 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .card h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .chat-head h3 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .chat-head h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .choice-card__ttl font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .choice-card__ttl line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .dlg__head h2 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .dlg__head h2 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .dock-panel__id b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .dock-panel__id b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .eroute h3 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .eroute h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .flow-lp-b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .flow-lp-b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .fork-state b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .fork-state b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .invite__tx h3 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .invite__tx h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .limitcard__top b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .limitcard__top b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ncal-wdc-num font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pcard__name font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pcard__name line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pcard__price b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pcard__price b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pro-up font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pro-up line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pt font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pt line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht h2 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .pt-h-lead line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .sec-head h2 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .sec-head h2 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .section-sub font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .section-sub line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .t-heading font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .t-heading line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .t-subheading font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .t-subheading line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tc-add b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tc-add b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tcp__ph font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tcp__ph line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .wd font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .wd line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .yr font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .yr line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: h2 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-main__title font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-main__title line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --brand — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --header-bg — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --ink-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --line — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --line-strong — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --muted — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --muted-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --primary-ring — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --surface — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side --wash — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side .app-side__brand img background — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side .app-side__brand img padding — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .app-side background — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth__brand-link font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth__brand-link line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .brand-col__logo font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .brand-col__logo line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .cr-nm font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .cr-nm line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .dl-root section h3 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .dl-root section h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .dl-visopt__lbl b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .dl-visopt__lbl b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .drawer li a font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .drawer li a line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .faq__q font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .faq__q line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .head__av font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .head__av line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .invite-banner__title font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .invite-banner__title line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .mbrow__name font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .mbrow__name line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ncal-dn font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ncal-year-lbl font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ncal-year-lbl line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --brand — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --brand-grad — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .sheet-h h3 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .sheet-h h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .step h3 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .step h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .step__num font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .step__num line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .stepper button font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .stepper button line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tl3-card .body b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tl3-card .body b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tl3-card--tr .rv-end b font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .tl3-card--tr .rv-end b line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .trip-head__title font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .trip-head__title line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .vp-h h3 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .vp-h h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .wdg-h h4 font-weight — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .wdg-h h4 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .appnudge background — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth --brand — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth --brand-600 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth --brand-700 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth --brand-ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth --brand-ink-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth --brand-soft — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .auth --brand-soft-12 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .av background — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .btn-primary box-shadow — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --bg — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --ink — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --ink-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --muted — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --muted-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --surface-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .ptrip --surface-3 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
 /* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
    «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
    actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */
