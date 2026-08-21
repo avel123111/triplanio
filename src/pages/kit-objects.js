@@ -94,6 +94,14 @@ export const KIT_OBJECTS = [
   // фото — <img> поверх (его onError гасит img → просвечивает фоллбек). Источник —
   // рецепт (css:false): вариантов `.cover--*` у семьи нет.
   { id: 'cover', family: 'cover', group: 'components', css: false },
+  // Лента-карусель (<Carousel>, семья .carousel): горизонтальный scroll-snap ряд
+  // произвольных детей (миниатюры обложки трипа и т.п.). Источник — рецепт
+  // (css:false): у семьи нет `--`-вариантов, только базовый класс + снап-поведение.
+  { id: 'carousel', family: 'carousel', group: 'components', css: false },
+  // Инлайн-правка текста (<EditableText>, семья .editable): текст с карандашом ⇄
+  // бесшовный инпут НА ТОМ ЖЕ МЕСТЕ, подтверждение галочкой. Источник — рецепт
+  // (css:false): только `__`-элементы (input/text/edit/confirm), без `--`-вариантов.
+  { id: 'editable', family: 'editable', group: 'components', css: false },
   { id: 'readonly-banner', family: 'readonly', group: 'components', css: false },
   // Плитка-иконка - двухосный объект (размер × тон) + булевы round/solid и тон
   // warm (только залитый). Источник оси - карты, экспортированные примитивом

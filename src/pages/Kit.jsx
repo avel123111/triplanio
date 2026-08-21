@@ -35,6 +35,7 @@ import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover,
+  Carousel, EditableText,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
@@ -64,6 +65,7 @@ const TX = {
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
     'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
+    'carousel': 'Карусель-лента', 'editable': 'Инлайн-правка текста',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -91,6 +93,8 @@ const TX = {
     'dialog': 'Диалог и шит — оверлеи (открываются кнопкой).',
     'accordion': 'Раскрывашка: шапка-кнопка (иконка · заголовок · статус) + вложенное тело; шеврон вправо→вниз.',
     'cover': 'Обложка трипа: фото ИЛИ фоллбек-картинка из бандла (градиентов больше нет).',
+    'carousel': 'Горизонтальная scroll-snap-лента произвольных детей: свайп/скролл, снап по краю. Так собрана лента миниатюр обложки.',
+    'editable': 'Текст с карандашом ⇄ бесшовный инпут на том же месте; подтверждение галочкой (Enter/blur тоже фиксируют, Esc отменяет).',
     'tile': 'Квадрат под значок: тон · размер · форма · залитая.',
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
@@ -310,6 +314,21 @@ function ToastLab() {
  *  показать вариант; ЧТО показать — данные. */
 const it = (name, node, full) => ({ name, node, full });
 const glyph = 'Ag';
+
+/** <EditableText> — контролируемый компонент; демо держит правку в своём
+ *  состоянии (тексты — dev-only витрины, i18n-ignore, как `TX`). */
+function EditableDemo() {
+  const [v, setV] = useState('Моё путешествие'); // i18n-ignore: демо-значение витрины /kit
+  return (
+    <EditableText
+      value={v}
+      onChange={setV}
+      ariaLabel={'Название'/* i18n-ignore: витрина /kit */}
+      editLabel={'Изменить'/* i18n-ignore: витрина /kit */}
+      confirmLabel={'Готово'/* i18n-ignore: витрина /kit */}
+    />
+  );
+}
 
 const RECIPES = {
   pagehead: () => [
@@ -694,6 +713,24 @@ const RECIPES = {
     },
   ],
 
+  // Карусель — горизонтальная scroll-snap-лента: рисуем достаточно детей, чтобы
+  // она переполнилась и снап/скролл были видны (тут — плитки-иконки).
+  carousel: () => [{
+    label: 'лента произвольных детей со scroll-snap (свайп/скролл; так собрана лента миниатюр обложки)',
+    items: [it('Carousel + дети',
+      <Carousel ariaLabel={'Пример ленты'/* i18n-ignore: витрина /kit */}>
+        {['pin', 'plane', 'bed', 'car', 'cam', 'map', 'star', 'heart', 'ticket', 'compass', 'globe', 'wallet'].map((ic) => (
+          <Tile key={ic} icon={ic} tone="brand" size="xl" />
+        ))}
+      </Carousel>, true)],
+  }],
+
+  // Инлайн-правка: контролируемый компонент, поэтому демо держит своё состояние
+  // в маленькой обёртке (как чекбокс/тумблер через ctx, но локально).
+  editable: () => [{
+    label: 'текст с карандашом ⇄ инпут на том же месте (клик по карандашу → правка → галочка/Enter фиксируют)',
+    items: [it('EditableText', <EditableDemo />, true)],
+  }],
 
   // Строка уведомления — один компонент на все типы и обе поверхности. Показана
   // КАК В ПРИЛОЖЕНИИ: строки стопкой на реалистичной ширине, с теми же кнопками
