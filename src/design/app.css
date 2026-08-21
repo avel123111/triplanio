@@ -3929,29 +3929,38 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .pl-cover--contained margin — вариант в карточке: без full-bleed (margin 0)
    visual-diff-exempt: .pl-cover--contained border-radius — скругление под <Card>
 
-   ВЫСОТА — `aspect-ratio: 4/3` + `min-height: 0`, НЕ padding-hack и НЕ голый
-   aspect-ratio. Почему именно так (два реальных бага, пойманных на устройстве):
-   • голый `aspect-ratio` перебивался `min-height:auto` флекс/грид-элемента
-     (min-content картинки-слайда) → обложка разъезжалась на мобиле. `min-height:0`
-     это снимает — формат держится на любой ширине.
-   • padding-hack (`height:0; padding-bottom:75%`) считался в Chromium, но
-     .pl-cover--contained это ФЛЕКС-элемент (.col), а процентный `padding` на
-     флекс-элементе WebKit/iOS Safari резолвит неверно → тот же разъезд на весь
-     экран на реальном мобиле (в headless-Chromium НЕ воспроизводится).
-   `aspect-ratio` + `min-height:0` — стандартная флекс/грид-безопасная конструкция,
-   работает и в Safari. Лента слайдов — как в планнере: base `.pl-cover__track`
-   `height:100%` (родитель теперь имеет реальную высоту от формата, абсолют не нужен).
-   `max-height` — жёсткий потолок-страховка: в норме (4:3 от ширины) он НЕ
-   срабатывает, но если у какого-то движка формат вдруг не применится, `overflow`
-   базового `.pl-cover` обрежет ленту по нему — катастрофа «на весь экран»
-   становится невозможной по построению.
+   ВЫСОТА — `aspect-ratio: 4/3` + `min-height: 0`, а ЛЕНТА — АБСОЛЮТ внутри. Почему
+   именно так (баг, воспроизведённый на устройстве — «через секунду после загрузки
+   картинки обложка распирается», ряд улетает вправо):
+   • `.pl-cover__slide` (<img>) имеет `width/height: 100%`. Если родитель ленты берёт
+     высоту из `aspect-ratio`, Chromium считает её ОПРЕДЕЛЁННОЙ и `100%` резолвится,
+     а WebKit/iOS Safari — НЕТ. Пока картинка не загружена — размера нет («нормально»);
+     как только <img> докачался и получил натуральный размер (900×1600) — `100%` не
+     срабатывает, и картинка распирает бокс СВОИМ размером и по высоте, и по ширине.
+   • Лечится абсолютом: лента `position:absolute; inset:0`, и тогда `100%` слайда
+     считается от ОПРЕДЕЛЁННОГО бокса (его размер задан inset'ом от позиционированного
+     `.pl-cover`, Safari это уважает), `object-fit:cover` кропит, распереть родителя
+     картинка не может по построению.
+   • `min-height:0` снимает min-content флекс/грид-элемента (иначе слайд перебивал бы
+     формат — это был отдельный баг голого aspect-ratio).
+   • padding-hack (`height:0; padding-bottom:75%`) отвергнут: .pl-cover--contained это
+     ФЛЕКС-элемент (.col), а процентный `padding` на флекс-элементе Safari резолвит
+     неверно (в headless-Chromium НЕ воспроизводится).
+   `max-height` + `overflow` базового `.pl-cover` — последний рубеж: даже если у
+   какого-то движка формат не применится, обложка обрежется по потолку, а не
+   раскроется на весь экран.
    visual-diff-exempt: .pl-cover--contained height — auto (высоту даёт aspect-ratio, не base 200px)
-   visual-diff-exempt: .pl-cover--contained aspect-ratio — формат 4:3 (высота из ширины), флекс-безопасно
-   visual-diff-exempt: .pl-cover--contained min-height — снять min-content флекс/грид-элемента (иначе слайд перебивает формат)
-   visual-diff-exempt: .pl-cover--contained max-height — потолок-страховка от разъезда «на весь экран» (в норме не срабатывает)
+   visual-diff-exempt: .pl-cover--contained aspect-ratio — формат 4:3 (высота из ширины)
+   visual-diff-exempt: .pl-cover--contained min-height — снять min-content флекс/грид-элемента
+   visual-diff-exempt: .pl-cover--contained max-height — потолок-страховка от разъезда (в норме не срабатывает)
+   visual-diff-exempt: .pl-cover__track position — абсолют: слайд считает 100% от определённого бокса (Safari-safe), scoped .pl-cover--contained
+   visual-diff-exempt: .pl-cover__track inset — заполняет бокс обложки, scoped .pl-cover--contained
+   visual-diff-exempt: .pl-cover--contained position — то же правило, атрибуция на .pl-cover--contained
+   visual-diff-exempt: .pl-cover--contained inset — то же правило, атрибуция на .pl-cover--contained
    design-token-exempt: 4 / 3 — доля формата обложки (ширина/высота), геометрия, не токен
    design-token-exempt: 60vh — потолок-страховка высоты обложки, геометрия, не токен */
 .pl-cover--contained { margin: 0; border-radius: var(--r-md); height: auto; aspect-ratio: 4 / 3; min-height: 0; max-height: 60vh; }
+.pl-cover--contained .pl-cover__track { position: absolute; inset: 0; }
 .pl-cover__title {
   position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center;
