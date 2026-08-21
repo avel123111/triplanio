@@ -3924,26 +3924,34 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
 }
 /* Вариант обложки-hero для карточек (SettingsLens): без full-bleed планнера —
-   гасит отрицательные márgins, скругляет углы под <Card> и держит формат 4:3
-   (высота из ширины, не узкая полоса как full-bleed 200px на широком десктопе).
-   Ширину задаёт колонка сетки блока (.settings-grid, ~половина карточки).
+   гасит отрицательные márgins, скругляет углы под <Card> и держит формат 4:3.
+   Ширину задаёт колонка сетки блока (.settings-basic, ~половина карточки).
    visual-diff-exempt: .pl-cover--contained margin — вариант в карточке: без full-bleed (margin 0)
    visual-diff-exempt: .pl-cover--contained border-radius — скругление под <Card>
-   Высота — padding-hack (padding-bottom = 3/4 ширины = формат 4:3), НЕ aspect-ratio:
-   на реальном мобиле aspect-ratio перебивался min-content картинки-слайда и обложка
-   разъезжалась на весь экран. padding задаёт высоту из ширины в любом браузере и не
-   зависит от контента; лента кладётся абсолютом внутрь (правило ниже).
-   visual-diff-exempt: .pl-cover--contained height — высота 0 (её даёт padding-hack, не контент)
-   visual-diff-exempt: .pl-cover--contained padding-bottom — формат 4:3 через padding (3/4 ширины), не раздувается
-   design-token-exempt: 75% — доля формата 4:3 (высота/ширина), геометрия, не токен */
-.pl-cover--contained { margin: 0; border-radius: var(--r-md); height: 0; padding-bottom: 75%; }
-/* Лента слайдов в contained-обложке абсолютом заполняет padding-box (высоту задаёт
-   padding родителя, а не картинки).
-   visual-diff-exempt: .pl-cover__track position — абсолют в padding-box contained-обложки (scoped .pl-cover--contained)
-   visual-diff-exempt: .pl-cover__track inset — заполняет padding-box (scoped .pl-cover--contained)
-   visual-diff-exempt: .pl-cover--contained position — то же правило, атрибуция на .pl-cover--contained
-   visual-diff-exempt: .pl-cover--contained inset — то же правило, атрибуция на .pl-cover--contained */
-.pl-cover--contained .pl-cover__track { position: absolute; inset: 0; }
+
+   ВЫСОТА — `aspect-ratio: 4/3` + `min-height: 0`, НЕ padding-hack и НЕ голый
+   aspect-ratio. Почему именно так (два реальных бага, пойманных на устройстве):
+   • голый `aspect-ratio` перебивался `min-height:auto` флекс/грид-элемента
+     (min-content картинки-слайда) → обложка разъезжалась на мобиле. `min-height:0`
+     это снимает — формат держится на любой ширине.
+   • padding-hack (`height:0; padding-bottom:75%`) считался в Chromium, но
+     .pl-cover--contained это ФЛЕКС-элемент (.col), а процентный `padding` на
+     флекс-элементе WebKit/iOS Safari резолвит неверно → тот же разъезд на весь
+     экран на реальном мобиле (в headless-Chromium НЕ воспроизводится).
+   `aspect-ratio` + `min-height:0` — стандартная флекс/грид-безопасная конструкция,
+   работает и в Safari. Лента слайдов — как в планнере: base `.pl-cover__track`
+   `height:100%` (родитель теперь имеет реальную высоту от формата, абсолют не нужен).
+   `max-height` — жёсткий потолок-страховка: в норме (4:3 от ширины) он НЕ
+   срабатывает, но если у какого-то движка формат вдруг не применится, `overflow`
+   базового `.pl-cover` обрежет ленту по нему — катастрофа «на весь экран»
+   становится невозможной по построению.
+   visual-diff-exempt: .pl-cover--contained height — auto (высоту даёт aspect-ratio, не base 200px)
+   visual-diff-exempt: .pl-cover--contained aspect-ratio — формат 4:3 (высота из ширины), флекс-безопасно
+   visual-diff-exempt: .pl-cover--contained min-height — снять min-content флекс/грид-элемента (иначе слайд перебивает формат)
+   visual-diff-exempt: .pl-cover--contained max-height — потолок-страховка от разъезда «на весь экран» (в норме не срабатывает)
+   design-token-exempt: 4 / 3 — доля формата обложки (ширина/высота), геометрия, не токен
+   design-token-exempt: 60vh — потолок-страховка высоты обложки, геометрия, не токен */
+.pl-cover--contained { margin: 0; border-radius: var(--r-md); height: auto; aspect-ratio: 4 / 3; min-height: 0; max-height: 60vh; }
 .pl-cover__title {
   position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center;
