@@ -5,7 +5,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { goPro } from '@/lib/goPro';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
-import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
+import { isTripInPast, formatTripRange, computeTripRange, countdownParts } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { displayName } from '@/lib/displayName';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -13,7 +13,8 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, Card, COVER_FALLBACK, EmptyState, Input, RoleBadge, Seg, Skeleton, Tile } from '../design/index';
+import { AvatarStack, Badge, Btn, Card, COVER_FALLBACK, EmptyState, Input, PageHead, RoleBadge, Seg, Skeleton, Tile } from '../design/index';
+import CountryFlag from '@/components/common/CountryFlag';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
@@ -49,9 +50,19 @@ function scopeLabel(t, visits = []) {
  * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
 function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = [], serverPro = undefined) {
+  // Duration in days (inclusive) — only when both ends are known; 0 = don't show.
+  const range = computeTripRange(visits);
+  const nDays = range.start && range.end
+    ? Math.round((new Date(range.end).getTime() - new Date(range.start).getTime()) / 864e5) + 1
+    : 0;
+  // Up to 3 unique country flags — the SAME deduped transit set as scope/counters,
+  // so the flag row can never disagree with the city list next to it.
+  const flags = [...new Set(uniqueTransitCities(visits).map(v => v.country_code).filter(Boolean))].slice(0, 3);
   return {
     ...trip,
     days:      formatTripRange(visits, '-'),
+    nDays,
+    flags,
     scope:     scopeLabel(t, visits),
     role,
     // Owner-aware Pro badge (TRIP-121). Effective Pro = is_pro_trip OR the trip
@@ -87,28 +98,68 @@ const TripAvatars = ({ members, maxShow = 3, white = false }) => {
   );
 };
 
-// ─── Next-trip rail card / empty states ────────────────────────────────────────
-function NextTripCard({ trip, onClick, t }) {
+// ─── Trip hero / empty states ─────────────────────────────────────────────────
+// Обложечный ГЕРОЙ идущего/ближайшего трипа — главный объект экрана (редизайн,
+// задача Pavel). Постер-канон .tc в новой роли .tc--hero: display-заголовок
+// поверх фото, даты + длительность, города с флагами, стек участников. У
+// предстоящего — живой отсчёт утоплёнными плитками .cdu (тикает раз в минуту);
+// у идущего — glass-чип «Сегодня» + плитка прогресса «N/M дн».
+function TripHero({ trip, onClick, t, lang }) {
   const cd = trip.countdown;
   return (
-    <Card as="button" radius="lg" interactive className="nextcard" onClick={onClick}>
-      <span className="nextcard__cover">
+    <Card as="button" pad="none" radius="lg" className="tc tc--hero" onClick={onClick}>
+      <div className="tc__bg">
         <img className="tc__img" src={trip.cover_image_url || COVER_FALLBACK} alt="" />
-      </span>
-      <span className="nextcard__tx">
-        <span className="t-label tp-caption">{t('stats.next_trip_title')}</span>
-        <b>{trip.title}</b>
-        <span className="rt">{trip.scope}</span>
-        <span className="badge badge--sm nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
-        <span className="nextcard__cd">
-          {/* Утоплённые плитки отсчёта — скин на канон `<Card recessed>`, раскладку/
-              типографику держит `.cdu` (TRIP-343 объект 2). */}
-          <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.d}</b><span>{t('stats.cd_days')}</span></Card>
-          <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.h}</b><span>{t('stats.cd_hours')}</span></Card>
-          <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.m}</b><span>{t('stats.cd_min')}</span></Card>
-        </span>
-      </span>
-      <span className="nextcard__chev"><Icon name="chev" /></span>
+        {!trip.cover_image_url && (
+          <>
+            <div className="tc__blob tc__b1" />
+            <div className="tc__blob tc__b2" />
+          </>
+        )}
+      </div>
+      <div className="tc__scrim" />
+      <div className="tc__in">
+        <div className="tc__tags">
+          {trip.isCurrent
+            ? <span className="tc__glass"><Icon name="calendar" /> {t('common.today')}</span>
+            : <span className="badge badge--sm nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>}
+          {trip.pro && <Badge variant="pro" icon="pro">PRO</Badge>}
+        </div>
+        <div className="tc__spacer" />
+        {!trip.isCurrent && <div className="t-label tp-caption">{t('stats.next_trip_title')}</div>}
+        <div className="tc__title t-display">{trip.title}</div>
+        <div className="tc__dates tab">
+          {trip.days}
+          {trip.nDays > 0 && <> · {trip.nDays} {pluralize(t, trip.nDays, 'trip.days', lang)}</>}
+        </div>
+        <div className="tc__scope">
+          {trip.flags.length > 0
+            ? trip.flags.map(cc => <CountryFlag key={cc} code={cc} />)
+            : <Icon name="pin" />}
+          <span className="trunc">{trip.scope}</span>
+        </div>
+        <div className="tc__foot">
+          <span className="nextcard__cd">
+            {trip.isCurrent
+              ? trip.nDays > 0 && (
+                <Card as="div" recessed radius="md" pad="none" className="cdu">
+                  <b className="tab">{trip.dayIdx}/{trip.nDays}</b>
+                  <span>{t('overview.unit_days')}</span>
+                </Card>
+              )
+              : cd && (
+                <>
+                  {/* Утоплённые плитки отсчёта — скин на канон `<Card recessed>`,
+                      раскладку/типографику держит `.cdu` (TRIP-343 объект 2). */}
+                  <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.d}</b><span>{t('stats.cd_days')}</span></Card>
+                  <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.h}</b><span>{t('stats.cd_hours')}</span></Card>
+                  <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.m}</b><span>{t('stats.cd_min')}</span></Card>
+                </>
+              )}
+          </span>
+          {trip.isShared && <TripAvatars members={trip.members} maxShow={3} white />}
+        </div>
+      </div>
     </Card>
   );
 }
@@ -129,32 +180,39 @@ function NoNextCard({ variant, onPlan, t }) {
   );
 }
 
-// ─── Map hero + rail (shared by filled + empty screens) ────────────────────────
-function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onPlan, onOpenNext, t, ghost = false }) {
+// ─── Stat hero: trip-hero + map + rail (shared by filled + empty screens) ──────
+// При наличии героя (идущий/ближайший трип) он занимает левую 1.5fr-ячейку
+// (место карты), карта уезжает в рейл под WorldMini; без героя — прежняя
+// раскладка (карта слева, рейл = WorldMini + NoNextCard). Mapbox-синглтон не
+// пересоздаётся: меняется только контейнер, lazy-mount через rAF как был.
+function StatHero({ points, home, world, showMap, scheme, hero, onAllStats, onPlan, onOpenHero, t, lang, ghost = false }) {
   const items = [
     { key: 'countries', value: home.countries, label: t('stats.sb_countries'), icon: <Icon name="globe" /> },
     { key: 'cities',    value: home.cities,    label: t('stats.sb_cities'),     tone: 'city',     icon: <Icon name="buildings" /> },
     { key: 'trips',     value: home.trips,     label: t('stats.sb_trips'),      tone: 'trip',     icon: <Icon name="suitcase" /> },
     { key: 'transfers', value: home.transfers, label: t('stats.sb_transfers'),  tone: 'transfer', icon: <Icon name="arrowSwap" /> },
   ];
+  const map = (
+    <div className="mapwrap">
+      {showMap
+        ? <StatsMap points={points} colorScheme={scheme} pins={false} />
+        : <Skeleton style={{ position: 'absolute', inset: 0 }} h="100%" r={0} />}
+    </div>
+  );
   return (
     <>
       <div className="t-label tp-caption" style={{ margin: '36px 0 12px' }}>{t('stats.trips_summary')}</div>
       <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
       <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
-        <div className="mapwrap">
-          {showMap
-            ? <StatsMap points={points} colorScheme={scheme} pins={false} />
-            : <Skeleton style={{ position: 'absolute', inset: 0 }} h="100%" r={0} />}
-        </div>
+        {hero ? <TripHero trip={hero} onClick={onOpenHero} t={t} lang={lang} /> : map}
         <div className="rail">
           <WorldMini
             world={world}
             title={t('stats.world_explored')}
             subCaption={t('stats.world_countries_visited')}
           />
-          {nextTrip
-            ? <NextTripCard trip={nextTrip} onClick={onOpenNext} t={t} />
+          {hero
+            ? map
             : <NoNextCard variant={home.trips > 0 ? 'no-planned' : 'empty'} onPlan={onPlan} t={t} />}
         </div>
       </div>
@@ -164,7 +222,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
 
 // ─── Trip card (grid / poster view) ─────────────────────────────────────────
 const TripCard = ({ trip, onClick }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   return (
     <Card as="button" pad="none" radius="lg" className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
@@ -195,11 +253,17 @@ const TripCard = ({ trip, onClick }) => {
 
         <div className="tc__spacer" />
 
-        {/* trip info */}
+        {/* trip info: даты + длительность в днях; города с SVG-флагами стран
+            (канон CountryFlag/.cflag — единственный источник флагов, TRIP-177) */}
         <div className="tc__title">{trip.title}</div>
-        <div className="tc__dates tab">{trip.days}</div>
+        <div className="tc__dates tab">
+          {trip.days}
+          {trip.nDays > 0 && <> · {trip.nDays} {pluralize(t, trip.nDays, 'trip.days', lang)}</>}
+        </div>
         <div className="tc__scope">
-          <Icon name="pin" />
+          {trip.flags.length > 0
+            ? trip.flags.map(cc => <CountryFlag key={cc} code={cc} />)
+            : <Icon name="pin" />}
           <span className="trunc">{trip.scope}</span>
         </div>
 
@@ -242,14 +306,17 @@ const TripRow = ({ trip, onClick }) => {
       <div className="tr__main">
         <div className="tr__title">{trip.title}</div>
         <div className="tr__sub">
-          <Icon name="pin" />
+          {trip.flags.length > 0
+            ? trip.flags.map(cc => <CountryFlag key={cc} code={cc} />)
+            : <Icon name="pin" />}
           <span className="trunc">{trip.scope}</span>
         </div>
       </div>
 
-      {/* meta */}
+      {/* meta — дата видна и на телефоне (класс tr-hideS снят с этого узла:
+          мобильный список терял ВСЮ мету; аватары/роль/PRO остаются скрытыми) */}
       <div className="tr__meta">
-        <span className="tr__date tab tr-hideS">{trip.days}</span>
+        <span className="tr__date tab">{trip.days}</span>
         {trip.isShared && (
           <div className="tr-hideS">
             <TripAvatars members={trip.members} maxShow={2} />
@@ -324,26 +391,26 @@ function HomeSkeleton({ viewMode }) {
       <Skeleton w={140} h={13} r={5} style={{ margin: '36px 0 12px' }} />
       {/* 3. Стат-бар (.statbar-карточка ≈76px) */}
       <Skeleton w="100%" h={76} r={'var(--r-lg)'} />
-      {/* 4. dash-hero: карта | рейл (World Explored ≈150 + Next Trip ≈200) */}
+      {/* 4. dash-hero: hero-постер трипа (340) | рейл (World Explored ≈150 + карта) */}
       <div className="dash-hero" style={{ marginTop: 18 }}>
-        <Skeleton w="100%" h={380} r={'var(--r-xl)'} />
+        <Skeleton w="100%" h={340} r={'var(--r-xl)'} />
         <div className="rail">
           <Skeleton w="100%" h={150} r={'var(--r-xl)'} />
-          <Skeleton w="100%" h={200} r={'var(--r-xl)'} />
+          <Skeleton w="100%" h={174} r={'var(--r-xl)'} />
         </div>
       </div>
-      {/* 5. Секц.шапка «MY TRIPS / N trips»: eyebrow + заголовок, БЕЗ кнопки справа
-          (в реальном её нет — раньше скелетон рисовал лишнюю кнопку) */}
-      <div style={{ margin: '30px 0 16px' }}>
-        <Skeleton w={120} h={13} r={5} style={{ marginBottom: 6 }} />
-        <Skeleton w={160} h={28} r={'var(--r-sm)'} />
-      </div>
-      {/* 6. Ряд фильтров `.trips-toolbar`: сегменты + поиск + переключатель вида —
-          целый ряд, которого в скелетоне не было (карточки съезжали вверх) */}
-      <div className="trips-toolbar">
-        <Skeleton w={190} h={40} r={'var(--r-pill)'} />
-        <Skeleton w={300} h={44} r={'var(--r-xl)'} />
+      {/* 5. Шапка коллекции (PageHead): заголовок + eyebrow слева, вид справа;
+          отступ сверху даёт правило `.dash-hero + .pagehead` (как в реальном рендере) */}
+      <div className="pagehead">
+        <div className="grow">
+          <Skeleton w={160} h={28} r={'var(--r-sm)'} style={{ marginBottom: 6 }} />
+          <Skeleton w={120} h={13} r={5} />
+        </div>
         <Skeleton w={78} h={40} r={'var(--r-sm)'} />
+      </div>
+      {/* 6. Поиск `.trips-toolbar` (сегмент-фильтров больше нет — секции) */}
+      <div className="trips-toolbar">
+        <Skeleton w={300} h={44} r={'var(--r-xl)'} />
       </div>
       {/* 7. Карточки */}
       <TripSkeleton viewMode={viewMode} />
@@ -390,8 +457,17 @@ export default function Trips() {
   const [viewMode,    setViewMode]    = useState(() => {
     try { return localStorage.getItem('trips:viewMode') === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
   });
-  const [filterMode,  setFilterMode]  = useState('active');
   const [search,      setSearch]      = useState('');
+  // «Сейчас» для героя/отсчёта: тикает раз в минуту, deps ТОЛЬКО у hero-мемо —
+  // поиск/списки от него не пересобираются (отсчёт раньше застывал на моменте
+  // загрузки страницы).
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  // Якорь секции «Прошедшие» — кнопка invite_show_past скроллит к архиву.
+  const pastRef = React.useRef(/** @type {HTMLDivElement|null} */ (null));
   // Create-trip flow lives in the global CreateTripProvider so the same sheet is
   // reachable from every screen (and the bottom-nav "+"); no more ?new=1 routing.
   const { openChoice, startCreate } = useCreateTrip();
@@ -540,36 +616,48 @@ export default function Trips() {
     .filter(tr => isTripInPast(visitsByTrip[tr.id] || []) && matches(tr))
     .sort((a, b) => new Date(rangeOf(b).end).getTime() - new Date(rangeOf(a).end).getTime());
 
-  const shown       = filterMode === 'active' ? activeTrips : pastTrips;
-
-  const shownNorm = shown.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro)
-  );
-
-  // ── Next upcoming trip (nearest future start) for the rail card ──────────────
-  const nextTrip = useMemo(() => {
-    const now = Date.now();
-    let best = null;
+  // ── Hero: идущий трип (стартовал, не прошёл) с приоритетом над ближайшим ─────
+  // Из двух идущих берём стартовавший ПОЗЖЕ (актуальнее); из будущих — ближайший.
+  // У предстоящего — тикающий отсчёт (nowTs), у идущего — прогресс «N/M дн».
+  const hero = useMemo(() => {
+    let cur = null, next = null;
     for (const tr of allTrips) {
       const visits = visitsByTrip[tr.id] || [];
       const { start } = computeTripRange(visits);
       if (!start) continue;
       const startMs = new Date(start).getTime();
-      if (startMs <= now) continue;
-      if (!best || startMs < best.startMs) best = { tr, visits, startMs };
+      if (startMs <= nowTs) {
+        if (!isTripInPast(visits) && (!cur || startMs > cur.startMs)) cur = { tr, visits, startMs };
+      } else if (!next || startMs < next.startMs) {
+        next = { tr, visits, startMs };
+      }
     }
-    if (!best) return null;
-    const diff = best.startMs - now;
-    return {
-      ...best.tr,
-      scope:     scopeLabel(t, best.visits),
-      countdown: {
-        d: Math.floor(diff / 864e5),
-        h: Math.floor((diff % 864e5) / 36e5),
-        m: Math.floor((diff % 36e5) / 6e4),
-      },
-    };
-  }, [allTrips, visitsByTrip, t]);
+    const pick = cur || next;
+    if (!pick) return null;
+    const base = normalizeTrip(t, pick.tr, pick.visits, pick.tr.role, isPro, participantsByTrip[pick.tr.id] || [], pick.tr.is_pro);
+    if (cur) {
+      const dayIdx = Math.min(base.nDays || 1, Math.floor((nowTs - pick.startMs) / 864e5) + 1);
+      return { ...base, isCurrent: true, dayIdx };
+    }
+    return { ...base, isCurrent: false, countdown: countdownParts(pick.startMs - nowTs) };
+  }, [allTrips, visitsByTrip, participantsByTrip, isPro, nowTs, t]);
+
+  // ── Секции ────────────────────────────────────────────────────────────────────
+  // «Активные» без hero-трипа (герой и есть его карточка — дубль устранён);
+  // «Прошедшие» — всегда компактные строки, сгруппированные по годам окончания
+  // (pastTrips уже отсортированы end desc — группировка сохраняет порядок).
+  const activeShown = activeTrips
+    .filter(tr => tr.id !== hero?.id)
+    .map(tr => normalizeTrip(t, tr, visitsByTrip[tr.id] || [], tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro));
+  const pastShown = pastTrips.map(tr =>
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro));
+  const pastByYear = /** @type {[number, (typeof pastShown)[number][]][]} */ ([]);
+  for (let i = 0; i < pastTrips.length; i++) {
+    const year = new Date(rangeOf(pastTrips[i]).end).getFullYear();
+    const last = pastByYear[pastByYear.length - 1];
+    if (last && last[0] === year) last[1].push(pastShown[i]);
+    else pastByYear.push([year, [pastShown[i]]]);
+  }
 
 
   // The screen shows the trip LIST and the stat HERO together, so first paint
@@ -633,11 +721,12 @@ export default function Trips() {
               world={world}
               showMap={showMap}
               scheme={scheme}
-              nextTrip={nextTrip}
+              hero={hero}
               onAllStats={() => nav('/stats')}
               onPlan={() => openChoice()}
-              onOpenNext={() => nextTrip && nav(`/trip/${nextTrip.id}`)}
+              onOpenHero={() => hero && nav(`/trip/${hero.id}`)}
               t={t}
+              lang={lang}
               ghost={!isLoadingData && allTrips.length === 0}
             />
           </>
@@ -648,30 +737,31 @@ export default function Trips() {
           <EmptyRoute onManual={() => startCreate('manual')} onAi={() => startCreate('ai')} />
         )}
 
-        {/* Normal view */}
+        {/* Normal view — редакционные секции вместо Seg-табов: «Активные» (hero
+            исключён — герой и есть его карточка) и «Прошедшие» годовыми
+            разворотами компактных строк. Поиск фильтрует обе секции. */}
         {allTrips.length > 0 && (
           <>
-            {/* Section header row */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div className="t-label tp-caption" style={{ marginBottom: 6 }}>{t('trips.my_trips_eyebrow')}</div>
-                <h2 className="t-title">{pluralize(t, allTrips.length, 'stats.sum_trips', lang, { count: allTrips.length })}</h2>
-              </div>
-            </div>
+            {/* Шапка коллекции — канон PageHead; переключатель вида в actions */}
+            <PageHead
+              title={pluralize(t, allTrips.length, 'stats.sum_trips', lang, { count: allTrips.length })}
+              subtitle={t('trips.my_trips_eyebrow')}
+              actions={(
+                <Seg
+                  className="seg--view"
+                  title={t('trips.view')}
+                  value={viewMode}
+                  onChange={setViewMode}
+                  options={[
+                    { value: 'grid', label: <Icon name="grid" size={13} /> },
+                    { value: 'list', label: <Icon name="list" size={13} /> },
+                  ]}
+                />
+              )}
+            />
 
-            {/* Filters row — adaptive (.trips-toolbar): wraps the search to its own
-                full-width line on phones, segments share the first line. */}
+            {/* Поиск по обеим секциям (.trips-toolbar сохраняет мобильный перенос) */}
             <div className="trips-toolbar">
-              <Seg
-                className="seg--filter"
-                ariaLabel={t('trips.tab_active')}
-                value={filterMode}
-                onChange={setFilterMode}
-                options={[
-                  { value: 'active', label: <>{t('trips.tab_active')} · <span className="num">{activeTrips.length}</span></> },
-                  { value: 'past', label: <>{t('trips.tab_past')} · <span className="num">{pastTrips.length}</span></> },
-                ]}
-              />
               <Input
                 className="trips-toolbar__search"
                 icon="search"
@@ -680,23 +770,11 @@ export default function Trips() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
-              <div className="trips-toolbar__spacer" />
-              <Seg
-                className="seg--view"
-                title={t('trips.view')}
-                value={viewMode}
-                onChange={setViewMode}
-                options={[
-                  { value: 'grid', label: <Icon name="grid" size={13} /> },
-                  { value: 'list', label: <Icon name="list" size={13} /> },
-                ]}
-              />
             </div>
 
-            {/* Free-limit banner — под фильтрами, над списком (TRIP-187): спокойный
-                бренд-акцент, PRO-пилюля (звезда) даёт акцент, CTA — бренд-кнопка.
-                Shown only when owned active trips reach/exceed the free cap (1). */}
-            {filterMode === 'active' && limitReached && (
+            {/* Free-limit banner — над списком (TRIP-187): спокойный бренд-акцент.
+                Shown when owned active trips reach/exceed the free cap (1). */}
+            {limitReached && (
               <Card tone="brand" radius="md" className="limitcard">
                 <Badge variant="pro" icon="pro">PRO</Badge>
                 <div className="limitcard__body">
@@ -709,61 +787,95 @@ export default function Trips() {
               </Card>
             )}
 
-            {/* Trip list */}
             {isLoadingData ? (
               <TripSkeleton viewMode={viewMode} />
-            ) : shownNorm.length === 0 ? (
-              // Active tab with no upcoming/active trips (past ones exist) → invite,
-              // not a generic empty. A real search miss still shows empty_search.
-              (filterMode === 'active' && !search.trim()) ? (
-                <Card radius="lg" className="row invite">
-                  <Tile as="span" className="invite__ic"><Icon name="sparkles" size={28} /></Tile>
-                  <div className="invite__tx">
-                    <h3>{t('trips.invite_title')}</h3>
-                    <p>{t('trips.invite_desc')}</p>
-                  </div>
-                  <div className="row row--wrap invite__act">
-                    <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
-                    <Btn variant="secondary" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
-                  </div>
-                </Card>
-              ) : (
-                <EmptyState
-                  icon={filterMode === 'past' ? 'calendar' : 'search'}
-                  title={filterMode === 'past' ? t('trips.empty_archive_title') : t('trips.empty_search_title')}
-                  body={filterMode === 'past' ? t('trips.empty_archive_body') : t('trips.empty_search_body')}
-                />
-              )
-            ) : viewMode === 'grid' ? (
-              <div className="tc-grid">
-                {shownNorm.map(tr => (
-                  <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
-                ))}
-                {filterMode === 'active' && (
-                  <Card as="button" variant="add" radius="md" className="tc-add" onClick={() => openChoice()}>
-                    <div className="tc-add__ic">
-                      <Icon name="plus" size={24} />
-                    </div>
-                    <b>{t('trips.add_trip')}</b>
-                    <small>{t('trips.add_trip_sub')}</small>
-                  </Card>
-                )}
-              </div>
+            ) : (search.trim() && activeShown.length === 0 && pastShown.length === 0) ? (
+            /* Поиск не нашёл ничего ни в одной секции */
+              <EmptyState
+                icon="search"
+                title={t('trips.empty_search_title')}
+                body={t('trips.empty_search_body')}
+              />
             ) : (
-              <div className="col">
-                {shownNorm.map(tr => (
-                  <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
-                ))}
-                {filterMode === 'active' && (
-                  <Card as="button" variant="add" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
-                    <span className="tr__addic"><Icon name="plus" size={20} /></span>
-                    <span className="tr__main">
-                      <b>{t('trips.add_trip')}</b>
-                      <small>{t('trips.add_trip_sub')}</small>
-                    </span>
-                  </Card>
+              <>
+                {/* ── Активные ── */}
+                {!(search.trim() && activeShown.length === 0) && (
+                  <>
+                    <PageHead
+                      title={t('trips.tab_active')}
+                      actions={<Badge variant="count">{activeShown.length}</Badge>}
+                    />
+                    {activeShown.length === 0 && !hero && !search.trim() && pastTrips.length > 0 ? (
+                      /* Активной жизни нет вовсе (и героя нет) → приглашение */
+                      <Card radius="lg" className="row invite">
+                        <Tile as="span" className="invite__ic"><Icon name="sparkles" size={28} /></Tile>
+                        <div className="invite__tx">
+                          <h3>{t('trips.invite_title')}</h3>
+                          <p>{t('trips.invite_desc')}</p>
+                        </div>
+                        <div className="row row--wrap invite__act">
+                          <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
+                          <Btn variant="secondary" onClick={() => pastRef.current?.scrollIntoView({ behavior: 'smooth' })}>{t('trips.invite_show_past')}</Btn>
+                        </div>
+                      </Card>
+                    ) : viewMode === 'grid' ? (
+                      <div className="tc-grid">
+                        {activeShown.map(tr => (
+                          <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
+                        ))}
+                        <Card as="button" variant="add" radius="md" className="tc-add" onClick={() => openChoice()}>
+                          <div className="tc-add__ic">
+                            <Icon name="plus" size={24} />
+                          </div>
+                          <b>{t('trips.add_trip')}</b>
+                          <small>{t('trips.add_trip_sub')}</small>
+                        </Card>
+                      </div>
+                    ) : (
+                      <div className="col">
+                        {activeShown.map(tr => (
+                          <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
+                        ))}
+                        <Card as="button" variant="add" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
+                          <span className="tr__addic"><Icon name="plus" size={20} /></span>
+                          <span className="tr__main">
+                            <b>{t('trips.add_trip')}</b>
+                            <small>{t('trips.add_trip_sub')}</small>
+                          </span>
+                        </Card>
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
+
+                {/* ── Прошедшие: годовые развороты компактных строк. Рефом служит
+                    сама шапка (PageHead форвардит ref) — секция без лишней обёртки,
+                    отбивку сверху даёт правило соседства `… + .pagehead`. ── */}
+                {pastShown.length > 0 && (
+                  <>
+                    <PageHead
+                      ref={pastRef}
+                      title={t('trips.tab_past')}
+                      actions={<Badge variant="count">{pastShown.length}</Badge>}
+                    />
+                    {pastByYear.map(([year, list]) => (
+                      <React.Fragment key={year}>
+                        {pastByYear.length > 1 && (
+                          <PageHead
+                            title={String(year)}
+                            subtitle={pluralize(t, list.length, 'stats.sum_trips', lang, { count: list.length })}
+                          />
+                        )}
+                        <div className="col">
+                          {list.map(tr => (
+                            <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
+                          ))}
+                        </div>
+                      </React.Fragment>
+                    ))}
+                  </>
+                )}
+              </>
             )}
           </>
         )}

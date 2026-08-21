@@ -41,6 +41,18 @@ export function formatTripRange(visits = [], noDatesLabel = 'No dates yet') {
   return `${s.toFormat('d MMM yyyy')} – ${e.toFormat('d MMM yyyy')}`;
 }
 
+// Разложить интервал до старта (мс) на плитки отсчёта {d, h, m}.
+// Отрицательный/нулевой интервал (старт уже наступил) → нули: карточка отсчёта
+// не должна показывать «-1 день», пока минутный тик не переключит героя.
+export function countdownParts(diffMs) {
+  const ms = Math.max(0, diffMs);
+  return {
+    d: Math.floor(ms / 864e5),
+    h: Math.floor((ms % 864e5) / 36e5),
+    m: Math.floor((ms % 36e5) / 6e4),
+  };
+}
+
 export function latestEventDate(visits = []) {
   const { end } = computeTripRange(visits);
   return end ? DateTime.fromISO(end) : null;

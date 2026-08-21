@@ -6878,6 +6878,19 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    он не кликабелен. */
 .tc--band { min-height: 120px; border: 0; border-radius: 0; box-shadow: none; }
 .tc--band .tc__in { min-height: 120px; }
+/* Постер в роли ГЕРОЯ главной (редизайн экранов, задача Pavel): идущий/ближайший
+   трип занимает левую 1.5fr-ячейку .dash-hero — display-заголовок поверх фото,
+   отсчёт/прогресс утоплёнными плитками .cdu (кросс-реюз узаконен: .nextcard__cd/
+   .cdu — самостоятельные классы). Высота = ячейка карты (340, зеркало
+   .dash-hero .mapwrap); заголовок героя переносится (базовый .tc__title держит
+   nowrap-эллипсис для карточек грида).
+   floor-exempt: classes +1 — .tc--hero: hero-роль постера, не выражается ни одним
+   существующим модификатором tc (.tc--band — противоположность), редизайн главной по задаче Pavel
+   floor-exempt: triage +1 — то же имя в triage-семье tc */
+.tc--hero { min-height: 340px; }
+.tc--hero .tc__in { min-height: 340px; padding: var(--sp-8); }
+.tc--hero .tc__title { white-space: normal; }
+.tc--hero .nextcard__cd { flex: none; width: min(280px, 100%); }
 /* TRIP-343 объект 2: движение снято — `.tc` это карточка (постер трипа), а канон
    карточки = покой без движения. Наведение остаётся ПОДСВЕТКОЙ (тень --sh-1→--sh-3),
    но без лифта/сжатия; `transition: transform` тоже снят (нечего анимировать).
@@ -7069,20 +7082,58 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tr--add b { color: inherit; display: block; }
 .tr--add small { color: var(--muted); }
 
-/* ── Trips toolbar (filters row) — adaptive on mobile ───────────────────────
-   Desktop: [Active/Past seg] [search (flex)] [spacer] [grid/list seg].
-   ≤640px:  row1 = [Active/Past seg (grows)] [grid/list seg]; row2 = search full. */
+/* ── Редизайн главной V4 (задача Pavel, PR #927): hero-постер трипа в .dash-hero,
+   секции Активные/Прошедшие вместо Seg-табов, ритм секций через соседство с .pagehead,
+   карта в роли мини-виджета рейла. Изменения объявлены намеренными: */
+/* visual-diff-exempt: .col margin-top — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .dash-hero margin-top — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .invite margin-top — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .mapwrap flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cd flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cd width — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .nextcard__cd {@media (max-width: 640px)} width — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pagehead margin-top — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rail flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .rail min-height — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .seg--filter {@media (max-width: 640px)} flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .seg--filter {@media (max-width: 640px)} order — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .seg--view {@media (max-width: 640px)} flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .seg--view {@media (max-width: 640px)} order — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc {@media (max-width: 640px)} min-height — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero min-height — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero padding — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero white-space — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero width — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero {@media (max-width: 640px)} min-height — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc--hero {@media (max-width: 640px)} width — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc-grid margin-top — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc__in min-height — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc__in padding — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tc__title white-space — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar .seg--filter button {@media (max-width: 640px)} flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar .seg--filter button {@media (max-width: 640px)} justify-content — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} order — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar__search {@media (max-width: 640px)} order — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar__spacer flex — редизайн главной (задача Pavel, PR #927) */
+/* visual-diff-exempt: .trips-toolbar__spacer {@media (max-width: 640px)} display — редизайн главной (задача Pavel, PR #927) */
+/* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
+   «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
+   actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */
+/* Ритм секций коллекции (редизайн главной): шапка-PageHead после героя/списка/
+   инвайта отбивается сверху — тот же 30px, что у секц-шапки статистики (.sec-head).
+   Контекстная посадка канона, своего класса у отбивки нет. */
+.dash-hero + .pagehead,
+.tc-grid + .pagehead,
+.col + .pagehead,
+.invite + .pagehead { margin-top: 30px; } /* design-token-exempt: 30px — существующий ритм секц-шапок (.sec-head 30/16), новая величина не заводится */
 .trips-toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
 /* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .trips-toolbar__search { flex: 1; min-width: 180px; max-width: 340px; }
-.trips-toolbar__spacer { flex: 1; }
 @media (max-width: 640px) {
   .trips-toolbar { gap: 10px; }
-  .trips-toolbar .seg--filter { order: 1; flex: 1; }
-  .trips-toolbar .seg--filter button { flex: 1; justify-content: center; }
-  .trips-toolbar .seg--view { order: 2; flex: none; }
-  .trips-toolbar__search { order: 3; flex: 1 1 100%; max-width: none; min-width: 0; }
-  .trips-toolbar__spacer { display: none; }
+  .trips-toolbar__search { flex: 1 1 100%; max-width: none; min-width: 0; }
 }
 
 /* ── Баннер лимита Free-тарифа ─────────────────────────────── */
@@ -7120,6 +7171,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
      visual-diff-exempt: .tc:not(.tc--band) {@media (max-width: 640px)} min-height — постер-карточки держат 220, band исключён, апрув Pavel №8 */
   .tc:not(.tc--band) { min-height: 220px; }
   .tc:not(.tc--band) .tc__in { min-height: 220px; }
+  /* Герой на телефоне выше рядовой карточки (260): двойной класс перебивает
+     `.tc:not(.tc--band){220}` равной специфичностью ПОЗЖЕ в каскаде; плитки
+     отсчёта — на всю ширину. */
+  .tc.tc--hero, .tc.tc--hero .tc__in { min-height: 260px; }
+  .tc--hero .nextcard__cd { width: 100%; }
   .tc-add { min-height: 220px; }
   .limitcard { padding: 16px; gap: 12px 14px; }
   /* icon + text share row 1; CTA drops to its own full-width row 2 */
@@ -8208,6 +8264,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 @media (max-width: 900px) { .dash-hero { grid-template-columns: 1fr; } }
 .dash-hero .mapwrap { min-height: 340px; }
 @media (max-width: 640px) { .dash-hero .mapwrap { min-height: 280px; } }
+/* Карта в роли МИНИ-виджета рейла (когда левую ячейку занял hero-трип): не ниже
+   220, flex добирает остаток рейла под WorldMini (на десктопе грид тянет обе
+   ячейки до общей высоты). Равная специфичность с `.dash-hero .mapwrap` —
+   побеждает порядок в файле, поэтому правило стоит ПОСЛЕ обоих. */
+.rail .mapwrap { min-height: 220px; flex: 1 1 auto; }
 .rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
 /* бордер/радиус как у канон-поверхности; фон остаётся wash (под картой). TRIP-326: тень снята вместе со стеклом */

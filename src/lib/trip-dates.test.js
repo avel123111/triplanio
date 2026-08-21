@@ -4,7 +4,7 @@
 // 0-night layovers. Run: npm test (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatDateRange } from './trip-dates.js';
+import { formatDateRange, countdownParts } from './trip-dates.js';
 
 // Stand-in for a screen's own single-date formatter (day + short month).
 const fmtDM = (iso) => {
@@ -38,4 +38,20 @@ test('no dates at all render as an empty string', () => {
 test('the separator is overridable without touching the collapse rule', () => {
   assert.equal(formatDateRange('2026-07-12', '2026-07-16', fmtDM, ' - '), '12 Jul - 16 Jul');
   assert.equal(formatDateRange('2026-07-12', '2026-07-12', fmtDM, ' - '), '12 Jul');
+});
+
+// ── countdownParts — плитки отсчёта героя главной ──────────────────────────────
+test('countdownParts splits an interval into d/h/m tiles', () => {
+  // 2 дня 3 часа 4 минуты (+59 сек — секунды отбрасываются вниз)
+  const ms = ((2 * 24 + 3) * 60 + 4) * 60_000 + 59_000;
+  assert.deepEqual(countdownParts(ms), { d: 2, h: 3, m: 4 });
+});
+
+test('countdownParts clamps a started trip to zeros, never negatives', () => {
+  assert.deepEqual(countdownParts(0), { d: 0, h: 0, m: 0 });
+  assert.deepEqual(countdownParts(-5_000), { d: 0, h: 0, m: 0 });
+});
+
+test('countdownParts: under an hour → minutes only', () => {
+  assert.deepEqual(countdownParts(59 * 60_000), { d: 0, h: 0, m: 59 });
 });
