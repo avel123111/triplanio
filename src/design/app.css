@@ -3923,44 +3923,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   position: relative; overflow: hidden; height: 200px;
   margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
 }
-/* Вариант обложки-hero для карточек (SettingsLens): без full-bleed планнера —
-   гасит отрицательные márgins, скругляет углы под <Card> и держит формат 4:3.
-   Ширину задаёт колонка сетки блока (.settings-basic, ~половина карточки).
+/* Вариант обложки-hero для карточек (SettingsLens): ТОЧНО как обложка планнера
+   (`.pl-cover`: height:200px · overflow:hidden · лента in-flow height:100% · слайд
+   object-fit:cover) — только гасим full-bleed márgins и скругляем углы под <Card>.
+   Высоту НЕ трогаем и НИЧЕГО не добавляем: наследуем фиксированные 200px базового
+   `.pl-cover`.
+   ПОЧЕМУ фикс-высота, а не 4:3/aspect-ratio/padding (история грабель): слайд-<img>
+   имеет height:100%, а `100%` резолвится ТОЛЬКО от ОПРЕДЕЛЁННОЙ высоты родителя.
+   Фиксированный px определён на любом движке; aspect-ratio/padding на ФЛЕКС-элементе
+   (`.col`) WebKit/iOS Safari резолвит неверно — после загрузки картинка распирала
+   бокс своим натуральным размером (в headless-Chromium НЕ воспроизводилось, потому
+   долго не ловилось). Планнер на height:200px не разъезжается ни на одном устройстве
+   — берём ровно его конструкцию.
    visual-diff-exempt: .pl-cover--contained margin — вариант в карточке: без full-bleed (margin 0)
-   visual-diff-exempt: .pl-cover--contained border-radius — скругление под <Card>
-
-   ВЫСОТА — `aspect-ratio: 4/3` + `min-height: 0`, а ЛЕНТА — АБСОЛЮТ внутри. Почему
-   именно так (баг, воспроизведённый на устройстве — «через секунду после загрузки
-   картинки обложка распирается», ряд улетает вправо):
-   • `.pl-cover__slide` (<img>) имеет `width/height: 100%`. Если родитель ленты берёт
-     высоту из `aspect-ratio`, Chromium считает её ОПРЕДЕЛЁННОЙ и `100%` резолвится,
-     а WebKit/iOS Safari — НЕТ. Пока картинка не загружена — размера нет («нормально»);
-     как только <img> докачался и получил натуральный размер (900×1600) — `100%` не
-     срабатывает, и картинка распирает бокс СВОИМ размером и по высоте, и по ширине.
-   • Лечится абсолютом: лента `position:absolute; inset:0`, и тогда `100%` слайда
-     считается от ОПРЕДЕЛЁННОГО бокса (его размер задан inset'ом от позиционированного
-     `.pl-cover`, Safari это уважает), `object-fit:cover` кропит, распереть родителя
-     картинка не может по построению.
-   • `min-height:0` снимает min-content флекс/грид-элемента (иначе слайд перебивал бы
-     формат — это был отдельный баг голого aspect-ratio).
-   • padding-hack (`height:0; padding-bottom:75%`) отвергнут: .pl-cover--contained это
-     ФЛЕКС-элемент (.col), а процентный `padding` на флекс-элементе Safari резолвит
-     неверно (в headless-Chromium НЕ воспроизводится).
-   `max-height` + `overflow` базового `.pl-cover` — последний рубеж: даже если у
-   какого-то движка формат не применится, обложка обрежется по потолку, а не
-   раскроется на весь экран.
-   visual-diff-exempt: .pl-cover--contained height — auto (высоту даёт aspect-ratio, не base 200px)
-   visual-diff-exempt: .pl-cover--contained aspect-ratio — формат 4:3 (высота из ширины)
-   visual-diff-exempt: .pl-cover--contained min-height — снять min-content флекс/грид-элемента
-   visual-diff-exempt: .pl-cover--contained max-height — потолок-страховка от разъезда (в норме не срабатывает)
-   visual-diff-exempt: .pl-cover__track position — абсолют: слайд считает 100% от определённого бокса (Safari-safe), scoped .pl-cover--contained
-   visual-diff-exempt: .pl-cover__track inset — заполняет бокс обложки, scoped .pl-cover--contained
-   visual-diff-exempt: .pl-cover--contained position — то же правило, атрибуция на .pl-cover--contained
-   visual-diff-exempt: .pl-cover--contained inset — то же правило, атрибуция на .pl-cover--contained
-   design-token-exempt: 4 / 3 — доля формата обложки (ширина/высота), геометрия, не токен
-   design-token-exempt: 60vh — потолок-страховка высоты обложки, геометрия, не токен */
-.pl-cover--contained { margin: 0; border-radius: var(--r-md); height: auto; aspect-ratio: 4 / 3; min-height: 0; max-height: 60vh; }
-.pl-cover--contained .pl-cover__track { position: absolute; inset: 0; }
+   visual-diff-exempt: .pl-cover--contained border-radius — скругление под <Card> */
+.pl-cover--contained { margin: 0; border-radius: var(--r-md); }
 .pl-cover__title {
   position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center;
