@@ -139,45 +139,33 @@ export default function Pro() {
   const yearPerMonth = yearlyAmt ? fmtMoney(yearlyAmt / 12 / 100, currency, { minFraction: 0, maxFraction: 2 }) : null;
   const savePct = (monthlyAmt && yearlyAmt) ? Math.round((1 - yearlyAmt / (monthlyAmt * 12)) * 100) : null;
 
-  // Feature matrix (TRIP-229). Free unlocks only rows 1-2; every Pro plan unlocks all.
-  const freeFeatures = [
-    { text: t('sub.feat_free_active1'), on: true },
-    { text: t('sub.feat_basic'), on: true },
-    { text: t('sub.feat_budget'), on: false },
-    { text: t('sub.feat_ai_recognition'), on: false },
-    { text: t('sub.feat_ai_assistant'), on: false },
-    { text: t('sub.feat_group_chat'), on: false },
-  ];
+  // Лестница ценности Pro (редизайн V4): от главного к деталям; у обоих платных
+  // планов набор одинаковый. Free разжалован из карты-конкурента в спокойную
+  // строку-факт под сеткой (минус-матрица «чего у вас нет» умерла вместе с ней).
   const proFeatures = [
-    { text: t('sub.feat_unlimited_active'), on: true },
-    { text: t('sub.feat_basic'), on: true },
-    { text: t('sub.feat_budget'), on: true },
-    { text: t('sub.feat_ai_recognition'), on: true },
-    { text: t('sub.feat_ai_assistant'), on: true },
-    { text: t('sub.feat_group_chat'), on: true },
+    t('sub.feat_unlimited_active'),
+    t('sub.feat_budget'),
+    t('sub.feat_ai_recognition'),
+    t('sub.feat_ai_assistant'),
+    t('sub.feat_group_chat'),
+    t('sub.feat_all_sections'),
   ];
 
   const monthly = renderPrice('account_pro_monthly');
   const yearly = renderPrice('account_pro_yearly');
   const cards = [
     {
-      key: 'free', name: t('sub.plan_free_title'), nameColor: 'var(--muted)',
-      price: fmtMoney(0, currency, { minFraction: 0, maxFraction: 0 }),
-      caption: t('sub.free_forever'), features: freeFeatures,
-      cta: { label: t('sub.stay_free'), variant: 'secondary', onClick: () => nav(-1) },
-    },
-    {
-      key: 'monthly', name: t('sub.plan_monthly_short'), nameColor: 'var(--brand)',
+      key: 'monthly', name: t('sub.plan_monthly_short'),
       price: monthly,
       caption: t('sub.caption_monthly'), features: proFeatures,
       cta: { label: t('sub.subscribe_monthly'), variant: 'primary', code: 'account_pro_monthly' },
     },
     {
-      key: 'yearly', name: t('sub.plan_yearly_short'), nameColor: 'var(--pro)', featured: true,
+      key: 'yearly', name: t('sub.plan_yearly_short'), featured: true,
       price: yearly, oldPrice: yearStrike, save: savePct,
       caption: yearPerMonth ? t('sub.caption_yearly', { perMonth: yearPerMonth }) : '',
       features: proFeatures,
-      cta: { label: t('sub.subscribe_yearly'), variant: 'pro', star: true, code: 'account_pro_yearly' },
+      cta: { label: t('sub.subscribe_yearly'), variant: 'pro', icon: 'pro', code: 'account_pro_yearly' },
     },
   ];
 
@@ -190,14 +178,25 @@ export default function Pro() {
       {/* ── Main content zone — natural height, centered (canonical standalone shell) ── */}
       <main className="pro-main page-main page-main--wide">
 
-        {/* Hero */}
+        {/* Hero — заголовок + полоса ценностных плиток (перк-строки sub.perk_*
+            наконец видны на самом pricing-экране, не только в апселл-модалке) */}
         <div className="pro-hero">
           <div className="pro-hero-eyebrow">
-            <img src="/triplanio-logo.svg" alt="" style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0 }} />
-            Triplanio Pro
+            <img src="/triplanio-logo.svg" alt="" />
+            Triplanio Pro {/* i18n-ignore — бренд-имя тарифа */}
           </div>
           <h1 className="pro-hero__title">{t('sub.hero_title')}</h1>
           <p className="pro-hero__sub">{t('sub.hero_sub')}</p>
+          <ul className="pro-hero__perks">
+            {[['suitcase', 'sub.perk_unlimited'], ['sparkles', 'sub.perk_ai'], ['users', 'sub.perk_members']].map(([ic, k]) => (
+              <li key={k}>
+                {/* solid обязателен: мягкой пары у тона pro нет (форма канона —
+                    только .tile--solid.tile--pro, см. Tile.jsx) */}
+                <Tile as="span" size="sm" tone="pro" solid><Icon name={ic} size={14} /></Tile>
+                <span className="t-meta">{t(k)}</span>
+              </li>
+            ))}
+          </ul>
           {tripId === null && (
             <div className="pro-hero__note">
               <Icon name="info" size={12} />
@@ -206,10 +205,11 @@ export default function Pro() {
           )}
         </div>
 
-        {/* Plans grid */}
+        {/* Plans grid — ДВЕ платные карты, Yearly герой (card--featured);
+            Free разжалован в строку-факт под сеткой (редизайн V4). */}
         <div className="pro-plans" aria-label={t('sub.choose_plan')}>
           {pricesLoading && !prices
-            ? Array.from({ length: 3 }).map((_, i) => (
+            ? Array.from({ length: 2 }).map((_, i) => (
                 <Card
                   radius="card"
                   key={i}
@@ -237,33 +237,30 @@ export default function Pro() {
                   )}
 
                   <div className="plan-card__body">
-                    {/* Plan name */}
+                    {/* Plan name — цвет из CSS (brand; featured перекрашивает в pro) */}
                     <div className="plan-card__top">
-                      <div className="plan-card__name" style={{ color: c.nameColor }}>{c.name}</div>
+                      <div className="plan-card__name">{c.name}</div>
                     </div>
 
-                    {/* Price */}
+                    {/* Price; зачёркнутая «цена по-месячно» — нативный <s> */}
                     <div className="plan-price">
                       <span className="plan-price__amount">{c.price}</span>
                       {c.oldPrice && (
-                        <span className="plan-price__period" style={{ textDecoration: 'line-through' }}>{c.oldPrice}</span>
+                        <s className="plan-price__period">{c.oldPrice}</s>
                       )}
                     </div>
                     <div className="t-meta muted">{c.caption}</div>
 
                     <div className="plan-divider" />
 
-                    {/* Feature list — ON: filled accent circle + check; OFF: outlined muted circle + minus (design okBox/noBox) */}
+                    {/* Feature list — лестница ценности, все пункты включены */}
                     <ul className="plan-features">
                       {c.features.map((f, j) => (
-                        <li key={j} className="plan-feature" style={f.on ? undefined : { color: 'var(--muted)' }}>
-                          <div
-                            className="plan-feature__check"
-                            style={f.on ? undefined : { background: 'none', border: '1px solid var(--line)', color: 'var(--muted)' }}
-                          >
-                            <Icon name={f.on ? 'check' : 'minus'} size={12} />
+                        <li key={j} className="plan-feature">
+                          <div className="plan-feature__check">
+                            <Icon name="check" size={12} />
                           </div>
-                          <span>{f.text}</span>
+                          <span>{f}</span>
                         </li>
                       ))}
                     </ul>
@@ -273,12 +270,12 @@ export default function Pro() {
                   <div className="plan-card__footer">
                     <Btn
                       variant={c.cta.variant}
+                      icon={c.cta.icon}
                       block
                       loading={loadingPlan === c.cta.code}
                       disabled={busy}
-                      onClick={() => (c.cta.code ? handleUpgrade(c.cta.code) : c.cta.onClick())}
+                      onClick={() => handleUpgrade(c.cta.code)}
                     >
-                      {c.cta.star && <span aria-hidden="true" style={{ marginRight: 2 }}>★</span>}
                       {c.cta.label}
                     </Btn>
                   </div>
@@ -287,13 +284,29 @@ export default function Pro() {
           }
         </div>
 
+        {/* Free — спокойная строка-факт (та же форма, что per-trip бар ниже):
+            как остаться бесплатно, без карты-конкурента с минус-матрицей. */}
+        {!pricesLoading && (
+          <Card radius="card" className="pro-trip-bar">
+            <Tile as="span"><Icon name="suitcase" size={21} /></Tile>
+            <div className="grow">
+              <div className="t-heading">{t('sub.plan_free_title')}</div>
+              <div className="t-meta muted">{t('sub.feat_free_active1')} · {t('sub.feat_basic')}</div>
+            </div>
+            <div className="pro-trip-bar__actions">
+              <span className="t-title tab">{fmtMoney(0, currency, { minFraction: 0, maxFraction: 0 })}</span>
+              <Btn variant="secondary" disabled={busy} onClick={() => nav(-1)}>{t('sub.stay_free')}</Btn>
+            </div>
+          </Card>
+        )}
+
         {/* One-time per-trip pass — owner only. Sits directly under the plans grid.
             The skeleton mirrors this same slot so the loading layout matches whether
             the banner will show or not. */}
         {!hidePerTrip && pricesLoading && !prices && (
           <Card radius="card" className="pro-trip-bar">
             <Skeleton w={44} h={44} r={'var(--r-sm)'} />
-            <div style={{ flex: 1, minWidth: 220 }}>
+            <div className="grow">
               <Skeleton w="42%" h={16} />
               <div style={{ marginTop: 8 }}><Skeleton w="66%" h={11} /></div>
             </div>
@@ -305,15 +318,14 @@ export default function Pro() {
         )}
         {!hidePerTrip && !pricesLoading && (
           <Card radius="card" className="pro-trip-bar">
-            <Tile as="span" style={{ '--tile': '44px', '--tile-ic': '21px' }}>
-              <Icon name="ticket" size={21} />
-            </Tile>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <div className="t-heading" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
-              <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
+            {/* Билет-плитка на pro-градиенте — эмоциональный якорь разового апгрейда */}
+            <Tile as="span" tone="pro" solid><Icon name="ticket" size={21} /></Tile>
+            <div className="grow">
+              <div className="t-heading">{t('sub.plan_trip_title')}</div>
+              <div className="t-meta muted">{t('sub.plan_trip_subtitle')}</div>
             </div>
             <div className="pro-trip-bar__actions">
-              <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice}</span>
+              <span className="t-title tab">{tripPrice}</span>
               <Btn
                 variant="primary"
                 loading={loadingPlan === 'trip_pro_lifetime'}
@@ -328,7 +340,7 @@ export default function Pro() {
 
         {/* Trust line — small reassurance at the very bottom, below everything. */}
         {!pricesLoading && (
-          <div className="pro-hero__note" style={{ marginTop: 2 }}>
+          <div className="pro-hero__note">
             <Icon name="lock" size={12} />
             {t('sub.secure_checkout')}{t('sub.secure_checkout_meta')}
           </div>

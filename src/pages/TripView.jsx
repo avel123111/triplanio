@@ -19,7 +19,7 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
+import { Btn, Card, Carousel, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
@@ -352,6 +352,78 @@ function buildDayList(startIso, endIso) {
   return days;
 }
 
+// «Сегодня» в локальной таймзоне зрителя, ключом дня 'yyyy-MM-dd' — один
+// источник для бейджа дня, автоскролла и скрабберов (раньше формула жила
+// тремя копиями по файлу).
+function localTodayKey() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+}
+
+// ─── Активный день/город ленты — ОДИН observer на обоих потребителей ──────────
+// (рейл городов + скраббер дней): параметры rootMargin/threshold те же, что жили
+// внутри CityRail, — расхождение копий дало бы разный «активный день» в рейле и
+// ленте. depsKey — пересборка при смене состава дней.
+function useActiveTlDay(scrollRef, depsKey) {
+  const [active, setActive] = useState({ day: /** @type {string|null} */ (null), cityId: /** @type {string|null} */ (null) });
+  useEffect(() => {
+    const root = scrollRef?.current;
+    if (!root) return undefined;
+    const els = Array.from(root.querySelectorAll('[data-tlday]'));
+    if (!els.length) return undefined;
+    const obs = new IntersectionObserver((entries) => {
+      const vis = entries.filter(e => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      const el = vis[0]?.target;
+      if (el) setActive({ day: el.getAttribute('data-tlday'), cityId: el.getAttribute('data-city') || null });
+    }, { root, rootMargin: '-8% 0px -72% 0px', threshold: 0 });
+    els.forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, [scrollRef, depsKey]);
+  return active;
+}
+
+function goDay(scrollRef, day) {
+  scrollRef?.current?.querySelector(`#tlday-${CSS.escape(String(day))}`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── DayScrub ─────────────────────────────────────────────────────────────────
+// Мобильный скраббер дней (≤880, где рейл городов скрыт): тонкая sticky-лента
+// дат на канон-Carousel — число дня чипом, аббревиатура месяца на границах
+// месяцев, активный день автоцентрируется, тап = прыжок к дню (паттерн
+// Wanderlog). На десктопе скрыт CSS'ом (навигация живёт в рейле городов).
+function DayScrub({ days, scrollRef, todayKey }) {
+  const { t, lang } = useI18n();
+  const { day: activeDay } = useActiveTlDay(scrollRef, days.length);
+  const stripRef = useRef(/** @type {HTMLDivElement|null} */ (null));
+  useEffect(() => {
+    stripRef.current?.querySelector('.cr-dy.on')
+      ?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [activeDay]);
+  return (
+    <Carousel ref={stripRef} className="cr-strip" ariaLabel={t('trip_menu.timeline')}>
+      {days.map((d, i) => {
+        const dd = new Date(`${d}T00:00`);
+        const mon = (i === 0 || dd.getDate() === 1)
+          ? dd.toLocaleDateString(lang, { month: 'short' }).replace('.', '')
+          : null;
+        return (
+          <button
+            key={d}
+            type="button"
+            className={'cr-dy tab' + (d === activeDay ? ' on' : '')}
+            aria-current={d === todayKey ? 'date' : undefined}
+            aria-label={`${dd.getDate()} ${weekdayLong(d, lang)}`}
+            onClick={() => goDay(scrollRef, d)}>
+            {dd.getDate()}{mon && <small className="t-micro">{mon}</small>}
+          </button>
+        );
+      })}
+    </Carousel>
+  );
+}
+
 // ─── StreamAnchor ─────────────────────────────────────────────────────────────
 
 function StreamAnchor({ label, sub, color, icon }) {
@@ -395,7 +467,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, scrollRef }) {
   const { t, lang } = useI18n();
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
@@ -404,9 +476,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   const didScrollTodayRef = useRef(false);
   useEffect(() => {
     if (didScrollTodayRef.current) return;
-    const n = new Date();
-    const todayKey = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
-    const el = document.getElementById(`tlday-${todayKey}`);
+    const el = document.getElementById(`tlday-${localTodayKey()}`);
     if (!el) return;
     didScrollTodayRef.current = true;
     requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -544,8 +614,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   };
 
   const rows = [];
-  const _tnow = new Date();
-  const todayKey = `${_tnow.getFullYear()}-${String(_tnow.getMonth() + 1).padStart(2, '0')}-${String(_tnow.getDate()).padStart(2, '0')}`;
+  const todayKey = localTodayKey();
   // Running predecessor across the whole itinerary walk (seed = start anchor).
   let prevCity = ordered[0]?.kind === 'start' ? ordered[0] : null;
 
@@ -647,19 +716,16 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
               {beforeEvents.length > 0 && eventList(beforeEvents, true)}
               {blockNodes}
               {afterEvents.length > 0 && eventList(afterEvents, false)}
-              {/* Empty-day placeholder. (The city hero used to fill arrival days;
-                  with it removed, any day with no transfer block and no events
-                  shows the placeholder.) */}
+              {/* Пустой день = приглашение к плану (редизайн V4): канон add-скина
+                  вместо серой заглушки-тупика; тап открывает добавление активности
+                  с предзаполненным днём. Гейт создания — ВНУТРИ drawer'а (модель
+                  MissingTransferWarning, TRIP-274: не прячем по роли, блокируем
+                  действие). */}
               {!hasAny && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 14px',
-                  background: 'transparent', border: '1px dashed var(--line)',
-                  borderRadius: 'var(--r-sm)', color: 'var(--muted)',
-                }}>
-                  <Icon name="info" size={14} />
-                  <div className="t-meta grow">{t('view.empty_day')}</div>
-                </div>
+                <Card as="button" variant="add" radius="md" className="row row--g4" onClick={() => onAddActivityForDay?.(day)}>
+                  <Icon name="plus" size={14} />
+                  <span className="t-meta">{t('view.empty_day')}</span>
+                </Card>
               )}
             </>
           );
@@ -701,7 +767,14 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // Post-trip event days (e.g. a deadline that lands after the last trip day).
   for (const d of postTripDays) rows.push(renderEventsDay(d));
 
-  return <div className="tl3">{rows}</div>;
+  // Скраббер дней — первый ребёнок ленты: на мобиле (≤880) sticky-лента дат,
+  // на десктопе скрыт (навигация в рейле городов).
+  return (
+    <div className="tl3">
+      <DayScrub days={days} scrollRef={scrollRef} todayKey={todayKey} />
+      {rows}
+    </div>
+  );
 }
 
 // ─── CityRail ─────────────────────────────────────────────────────────────────
@@ -709,36 +782,24 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 // Highlights the city whose day is currently scrolled into view (Intersection
 // Observer on the .tl3-day anchors), and clicking a city scrolls the timeline to
 // that city's first day.
+// Редизайн V4: рейл вырос в двухуровневый маршрут-скраббер — под активным
+// городом раскрываются чипы его дней (клик = прыжок к дню), пройденные города
+// подкрашивают точку и нить прогрессом (паттерн Stippl). Кластер дней — СОСЕД
+// кнопки города (вложенные button невалидны). Observer — общий хук
+// useActiveTlDay (одна реализация с мобильным DayScrub).
 function CityRail({ visits = [], scrollRef }) {
   const { t, lang } = useI18n();
   const cities = useMemo(
     () => sortVisits(visits).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint'),
     [visits],
   );
-  const [activeId, setActiveId] = useState(null);
-
-  useEffect(() => {
-    const root = scrollRef?.current;
-    if (!root || cities.length === 0) return undefined;
-    const dayEls = Array.from(root.querySelectorAll('[data-tlday]'));
-    if (dayEls.length === 0) return undefined;
-    const obs = new IntersectionObserver((entries) => {
-      const vis = entries.filter(e => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-      const cid = vis[0]?.target.getAttribute('data-city');
-      if (cid) setActiveId(cid);
-    }, { root, rootMargin: '-8% 0px -72% 0px', threshold: 0 });
-    dayEls.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
-  }, [cities, scrollRef]);
+  const { day: activeDay, cityId: activeId } = useActiveTlDay(scrollRef, cities.length);
 
   if (cities.length === 0) return null;
 
-  const go = (city) => {
-    const day = naiveDayKey(city.start_date);
-    const el = scrollRef?.current?.querySelector(`#tlday-${CSS.escape(String(day))}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  const activeIdx = cities.findIndex(c => c.id === activeId);
+  const todayKey = localTodayKey();
+  const go = (city) => goDay(scrollRef, naiveDayKey(city.start_date));
   const nights = (city) => {
     const s = parseNaive(city.start_date), e = parseNaive(city.end_date);
     if (!s || !e) return 0;
@@ -748,17 +809,37 @@ function CityRail({ visits = [], scrollRef }) {
   return (
     <div className="cityrail" style={{ position: 'sticky', top: 8 }}>
       <div className="cr-h">{t('overview.stat_cities')}</div>
-      {cities.map((c) => {
+      {cities.map((c, i) => {
         const n = nights(c);
         const range = c.start_date ? formatTripRange([c], '–') : '';
         return (
-          <button key={c.id} className={'cr-item' + (activeId === c.id ? ' on' : '')} onClick={() => go(c)}>
-            <span className="cr-rail"><span className="cr-dot" /><span className="cr-line" /></span>
-            <span className="cr-bd">
-              <span className="cr-nm" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.city_name}</span>
-              <span className="cr-dt">{range}{n > 0 ? ` · ${n} ${t('overview.unit_nights')}` : ''}</span>
-            </span>
-          </button>
+          <React.Fragment key={c.id}>
+            <button
+              className={'cr-item' + (activeId === c.id ? ' on' : '')}
+              data-done={i < activeIdx || undefined}
+              onClick={() => go(c)}>
+              <span className="cr-rail"><span className="cr-dot" /><span className="cr-line" /></span>
+              <span className="cr-bd">
+                <span className="cr-nm" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.city_name}</span>
+                <span className="cr-dt">{range}{n > 0 ? ` · ${n} ${t('overview.unit_nights')}` : ''}</span>
+              </span>
+            </button>
+            {activeId === c.id && (
+              <div className="cr-days">
+                {buildDayList(c.start_date, c.end_date).map(d => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={'cr-dy tab' + (d === activeDay ? ' on' : '')}
+                    aria-current={d === todayKey ? 'date' : undefined}
+                    aria-label={`${Number(d.slice(8, 10))} ${weekdayLong(d, lang)}`}
+                    onClick={() => goDay(scrollRef, d)}>
+                    {Number(d.slice(8, 10))}
+                  </button>
+                ))}
+              </div>
+            )}
+          </React.Fragment>
         );
       })}
     </div>
@@ -1337,6 +1418,7 @@ export default function TripView() {
                   visits={visits}
                   transfers={transfers}
                   trip={trip}
+                  scrollRef={screenBodyRef}
                   isLoading={shellLoading || loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
                     setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })

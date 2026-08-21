@@ -375,7 +375,9 @@ export default function Statistics() {
         )}
 
         {/* map hero */}
-        <div className={`mapwrap${fs ? ' is-fs' : ''}${isEmpty ? ' is-ghost' : ''}`} style={{ minHeight: fs ? 0 : 420, marginTop: fs ? 0 : 18 }}>
+        {/* Геометрия карты-обложки — в CSS (`.page-main--wide > .mapwrap` + .is-fs);
+            на телефоне карта уходит full-bleed от края до края (редизайн V4). */}
+        <div className={`mapwrap${fs ? ' is-fs' : ''}${isEmpty ? ' is-ghost' : ''}`}>
           {showMap
             ? (
               <StatsMap
@@ -444,7 +446,7 @@ export default function Statistics() {
             ]}
           />
         </div>
-        <Card radius="lg" className="panel" style={{ padding: '16px 18px' }}>
+        <Card radius="lg" className="panel">
           <VisitList
             rows={listRows}
             emptyText={listMode === 'countries' ? t('stats.list_empty_countries') : t('stats.list_empty_cities')}

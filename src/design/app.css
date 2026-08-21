@@ -6008,6 +6008,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .cr-item:hover .cr-nm { color: var(--ink); }
 .cr-item.on .cr-dot { border-color: var(--brand); background: var(--brand); box-shadow: 0 0 0 5px var(--brand-soft); }
 .cr-item.on .cr-nm { color: var(--brand); }
+/* ── Скраббер дней (редизайн V4, задача Pavel) ─────────────────────────────
+   Рейл городов = двухуровневый маршрут-скраббер: под активным городом на той
+   же нити раскрываются чипы его дней (клик = прыжок к дню), пройденные города
+   подкрашивают точку и нить прогрессом ([data-done] — атрибут, класс не
+   плодим, прецедент .tl3-card[aria-busy]). Мобильная лента .cr-strip — тот же
+   чип .cr-dy на канон-Carousel, sticky над заголовками дней.
+   floor-exempt: classes +3 — cr-days/cr-dy/cr-strip: джамп-навигация по дням
+     хронологии (редизайн по задаче Pavel)
+   floor-exempt: triage +3 — те же имена в семье cr
+   floor-exempt: layout +2 — cr-days (кластер чипов на нити) и cr-strip
+     (sticky-обвязка канон-Carousel) несут раскладку скраббера */
+.cr-days { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-left: var(--sp-3); border-left: 2px solid var(--line); padding: 0 0 var(--sp-7) var(--sp-8); }
+.cr-dy { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r-xs); background: transparent; color: var(--muted); cursor: pointer; font: inherit; padding: 0; transition: color .2s, border-color .2s; }
+@media (hover: hover) { .cr-dy:hover { color: var(--ink); border-color: var(--line-strong); } }
+.cr-dy.on { background: var(--brand); border-color: var(--brand); color: var(--primary-fg); }
+.cr-dy[aria-current="date"]:not(.on) { color: var(--brand); border-color: var(--brand); }
+.cr-item[data-done] .cr-dot { border-color: var(--brand); background: var(--brand-soft); }
+.cr-item[data-done] .cr-line { background: var(--brand); }
+/* Мобильная лента дат: на десктопе скрыта (навигация в рейле городов). */
+.cr-strip { display: none; }
 
 @media (prefers-reduced-motion: reduce) { .tl3-card:hover { transform: none; } }
 /* Timeline content width matches the Settings lens (.settings-lens): same
@@ -6018,6 +6038,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 @media (max-width: 880px) {
   .cityrail { display: none; }
   .tl-twocol { grid-template-columns: 1fr; }
+  /* Скраббер дней (редизайн V4): вместо скрытого рейла — sticky-лента дат
+     поверх заголовков дней (.tl3-dh z-index:2); display:flex повторяет канон
+     .carousel — снап и скролл живы. Заголовки дней докуются ПОД лентой,
+     прыжок к дню не ныряет под неё (scroll-margin). */
+  .cr-strip { display: flex; position: sticky; top: 0; z-index: 3; height: 48px; align-items: center; background: var(--bg); }
+  .cr-strip .cr-dy { flex: none; width: 36px; height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .cr-strip .cr-dy small { color: inherit; opacity: .75; }
+  .tl3-dh { top: 48px; }
+  .tl3-day { scroll-margin-top: 60px; }
 }
 
 /* ============================================================
@@ -7239,12 +7268,119 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* visual-diff-exempt: .trips-toolbar__search {@media (max-width: 640px)} order — редизайн V4 (задача Pavel, PR #927) */
 /* visual-diff-exempt: .trips-toolbar__spacer flex — редизайн V4 (задача Pavel, PR #927) */
 /* visual-diff-exempt: .trips-toolbar__spacer {@media (max-width: 640px)} display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-days border-left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-days display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-days flex-wrap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-days gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-days margin-left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-days padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dot background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy border — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy border-color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy border-radius — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy cursor — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy font — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy place-items — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy transition — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy {@media (max-width: 880px)} align-items — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy {@media (max-width: 880px)} display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy {@media (max-width: 880px)} flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy {@media (max-width: 880px)} flex-direction — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy {@media (max-width: 880px)} height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy {@media (max-width: 880px)} justify-content — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy {@media (max-width: 880px)} width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy:hover {@media (hover: hover)} border-color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy:hover {@media (hover: hover)} color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy:not(.on)[aria-current=date] border-color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-dy:not(.on)[aria-current=date] color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-item[data-done] background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-item[data-done] border-color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-line background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip .cr-dy small {@media (max-width: 880px)} color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip .cr-dy small {@media (max-width: 880px)} opacity — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} align-items — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} flex-direction — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} justify-content — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} position — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .cr-strip {@media (max-width: 880px)} z-index — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero-eyebrow img border-radius — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero-eyebrow img flex — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero-eyebrow img height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero-eyebrow img width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks flex-wrap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks justify-content — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks list-style — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks margin — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tl3-day {@media (max-width: 880px)} scroll-margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .tl3-dh {@media (max-width: 880px)} top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .card--featured color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .card--featured {@media (max-width: 760px)} order — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .is-fs margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .mapwrap margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .mapwrap {@media (max-width: 640px)} border-left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .mapwrap {@media (max-width: 640px)} border-radius — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .mapwrap {@media (max-width: 640px)} border-right — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .mapwrap {@media (max-width: 640px)} margin-inline — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .page-main--wide margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .page-main--wide min-height — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .page-main--wide {@media (max-width: 640px)} border-left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .page-main--wide {@media (max-width: 640px)} border-radius — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .page-main--wide {@media (max-width: 640px)} border-right — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .page-main--wide {@media (max-width: 640px)} margin-inline — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .panel padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .plan-card__name color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks animation — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks li align-items — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks li color — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks li display — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks li gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-hero__perks {@media (prefers-reduced-motion: reduce)} animation — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-plans grid-template-columns — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-plans margin-inline — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-plans max-width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-plans width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-plans {@media (max-width: 760px)} order — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-trip-bar --tile — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-trip-bar --tile-ic — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-trip-bar margin-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .pro-trip-bar min-width — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig border-left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig transition — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig:hover {@media (hover: hover)} background — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig:hover {@media (hover: hover)} box-shadow — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig:nth-child(2n + 1) {@media (max-width: 640px)} border-left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig:nth-child(3n + 1) {@media (max-width: 1040px)} border-left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig:nth-child(3n + 1) {@media (max-width: 640px)} border-left — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig:nth-child(n + 3) {@media (max-width: 640px)} border-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .sfig:nth-child(n + 4) {@media (max-width: 1040px)} border-top — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .summary gap — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .summary padding — редизайн V4 (задача Pavel, PR #927) */
+/* visual-diff-exempt: .t-meta margin-top — редизайн V4 (задача Pavel, PR #927) */
 /* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
    «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
    actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */
 /* Ритм секций коллекции (редизайн главной): шапка-PageHead после героя/списка/
    инвайта отбивается сверху — тот же 30px, что у секц-шапки статистики (.sec-head).
-   Контекстная посадка канона, своего класса у отбивки нет. */
+   Контекстная посадка канона, своего класса у отбивки нет.
+   floor-exempt: reach +2 — отбивка канона .pagehead соседством (ритм секций
+     главной) + полноширинный хайрлайн .wdg-h+.notif::before (шапка блока решений
+     инбокса): обе — контекстные посадки канонов, не переопределение их облика */
 .dash-hero + .pagehead,
 .tc-grid + .pagehead,
 .col + .pagehead,
@@ -7337,6 +7473,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
  border-radius: var(--r-pill); margin-bottom: 10px;
  color: var(--brand);
 }
+.pro-hero-eyebrow img { width: 22px; height: 22px; border-radius: var(--r-sm); flex: none; }
+/* Полоса ценностных плиток (редизайн V4): перк-строки sub.perk_* видны на самом
+   pricing-экране, а не только в апселл-модалке.
+   floor-exempt: classes +1 — pro-hero__perks: центрируемый wrap-ряд «плитка+подпись»,
+     существующего эквивалента нет (редизайн Pro по задаче Pavel)
+   floor-exempt: triage +1 — то же имя в семье pro
+   floor-exempt: layout +1 — pro-hero__perks несёт раскладку полосы перков */
+.pro-hero__perks { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-4) 22px; list-style: none; margin: var(--sp-4) 0 0; padding: 0; animation: fadeUp .4s var(--ease-out) .15s both; } /* design-token-exempt: 22px — горизонтальный шаг перк-полосы, ритм hero (не ступень шкалы) */
+.pro-hero__perks li { display: inline-flex; align-items: center; gap: var(--sp-4); color: var(--ink-2); }
 .pro-hero__title {
  color: var(--ink);
  animation: fadeUp .4s var(--ease-out) .08s both;
@@ -7352,10 +7497,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 }
 
 /* ── Plans grid ── */
+/* Две платные карты (Free разжалован в строку-факт, редизайн V4), сетка уже и
+   по центру. */
 .pro-plans {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px; align-items: stretch;
+  max-width: 760px; margin-inline: auto; width: 100%;
 }
 
 /* ── Plan card ── */
@@ -7400,7 +7548,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   padding: 18px 20px 12px; min-height: 0;
 }
 .plan-card__top { margin-bottom: 14px; }
-.plan-card__name { color: var(--ink); }
+/* Цвет имени плана из CSS (был инлайном nameColor): база brand, featured — pro. */
+.plan-card__name { color: var(--brand); }
+.card--featured .plan-card__name { color: var(--pro); }
 
 /* Price */
 .plan-price {
@@ -7445,6 +7595,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 18px 22px;
 }
+/* Размер плитки-иконки бара — ручки канала Tile (закон 3 разрешает: ручка,
+   не свойство). Ширину/зазоры текст-колонки несут флекс бара и собственный
+   ритм канонов — отдельных правил на примитивах не заводим. */
+.pro-trip-bar .tile { --tile: 44px; --tile-ic: 21px; }
 .pro-trip-bar__actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
 /* ── Entrance keyframes ── */
@@ -7460,13 +7614,16 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Respect reduced-motion: render the page instantly, no entrance reveals. */
 @media (prefers-reduced-motion: reduce) {
   .pro-hero, .pro-hero__title, .pro-hero__sub, .pro-hero__note,
-  .plan-card-skel { animation: none; }
+  .pro-hero__perks, .plan-card-skel { animation: none; }
 }
 
 /* ── Responsive ── (mobile bottom-nav clearance is handled by the shared
    `.app-shell > main` rule) */
 @media (max-width: 760px) {
   .pro-plans { grid-template-columns: 1fr; }
+  /* Yearly (герой) первым на мобильном стеке — рекомендуемый план до фолда;
+     DOM/таб-порядок не меняется (визуальный order). */
+  .pro-plans .card--featured { order: -1; }
   .plan-card__body { padding: 16px 18px 12px; }
   .plan-card__footer { padding: 0 18px 16px; }
   /* Per-trip bar: on mobile the CTA drops to its own full-width row under the text,
@@ -8439,15 +8596,26 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 /* visual-diff-move: summary -> card card--r-lg */
-.summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; margin-top: 18px; }
-@media (max-width: 1040px) { .summary { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
-.sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; transition: background .2s, box-shadow .22s; }
-/* TRIP-343 объект 2: движение снято — `.sfig` это карточка-плитка сводки. Наведение
-   = подсветка (фон + тень), без лифта.
-   visual-diff-exempt: .sfig transition — transform-переход снят вместе с лифтом — объект 2
-   visual-diff-exempt: .sfig:hover {@media (hover: hover)} transform — лифт снят, карточка без движения (канон) — объект 2 */
-@media (hover: hover) { .sfig:hover { background: var(--surface); box-shadow: var(--sh-1); } }
+/* Редизайн V4 (задача Pavel): сводка — «полка цифр» на хейрлайнах, не тетрис
+   плиток: внутренние зазоры сняты, между фигурами волосяные разделители
+   var(--line) (паттерн .records/.rec с теми же nth-child-сбросами по 1040/640).
+   Ховер-подложка снята — фигура не кликабельна, ложная аффорданс-кнопка. */
+.summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; padding: 8px 0; margin-top: 18px; }
+.sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; }
+.sfig + .sfig { border-left: 1px solid var(--line); }
+/* Медиа-сбросы хейрлайнов — ПОСЛЕ базового `.sfig + .sfig` (равная специфичность,
+   побеждает порядок в файле). */
+@media (max-width: 1040px) {
+  .summary { grid-template-columns: repeat(3, 1fr); }
+  .sfig:nth-child(3n+1) { border-left: 0; }
+  .sfig:nth-child(n+4) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 640px) {
+  .summary { grid-template-columns: repeat(2, 1fr); }
+  .sfig:nth-child(3n+1) { border-left: 1px solid var(--line); }
+  .sfig:nth-child(2n+1) { border-left: 0; }
+  .sfig:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
 /* visual-diff-move: .sfig .ic -> tile — плитка-иконка сводки на <Tile> (ступень+канал --hl)
    visual-diff-exempt: .sfig display — grid дочернего .ic всплыл как flex карточки (огрубление 2p: .sfig .tile держит grid базы — проверено рендером)
    visual-diff-exempt: .sfig border-radius — r-sm дочернего .ic всплыл как r-md карточки .sfig (огрубление 2p — рендер) */
@@ -8467,6 +8635,13 @@ a.doc-row__n:hover{ color: var(--brand); }
    модификаторы (.world 24 / .chart 22-24-18 / инлайн 16-18), они полностью
    перекрывают дефолт .card 18 — overflow НЕ добавляем (pad default, не flush).
    visual-diff-move: panel -> card card--r-lg */
+/* Базовый паддинг панели (был инлайном call-site'а «Страны и города», TRIP-282:
+   повторяемый инлайн у класса = сломанный класс); .world (24) и .chart (22-24-18)
+   перекрывают его ПОЗЖЕ по файлу — их рендер не меняется.
+   prefix-exempt: panel — НЕ новая семья: имя жило в разметке (Card className
+   world/places/chart) и в скин-ко-селекторе ролей; первое СОБСТВЕННОЕ правило =
+   переезд инлайн-паддинга call-site (редизайн V4, задача Pavel) */
+.panel { padding: 16px 18px; } /* design-token-exempt: 16px/18px — перенос инлайна панели, значения не менялись */
 
 /* — world ring + continents — */
 .world { display: grid; grid-template-columns: 230px 1fr; gap: 24px; padding: 24px; position: relative; overflow: hidden; align-items: center; margin-top: 18px; }
@@ -8619,7 +8794,15 @@ a.doc-row__n:hover{ color: var(--brand); }
 .smk--manual .smk__dot { background: var(--surface); box-shadow: 0 0 0 2.5px var(--brand), 0 1px 5px rgba(0, 0, 0, .28); }
 /* fullscreen: expand the existing singleton-map slot to a fixed overlay (no
    reparent — the same map element just fills the viewport; consumer calls resize) */
-.mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; }
+/* Карта-обложка /stats (редизайн V4): геометрия из инлайна — в семью; скоуп
+   `.page-main--wide > .mapwrap` (прямой потомок) не задевает карту главной
+   (та вложена в .dash-hero). На телефоне карта уходит full-bleed от края до
+   края (гасит паддинг 16px .page-main), верх/низ остаются хейрлайнами. */
+.page-main--wide > .mapwrap { min-height: 420px; margin-top: 18px; } /* design-token-exempt: 18px — перенос инлайна marginTop карты, значение не менялось */
+@media (max-width: 640px) {
+  .page-main--wide > .mapwrap { margin-inline: -16px; border-radius: 0; border-left: 0; border-right: 0; } /* design-token-exempt: -16px — full-bleed гасит паддинг .page-main (16), карта-обложка */
+}
+.mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; margin-top: 0; }
 /* TRIP-326: glass снят. */
 /* ★TRIP-337: отдельный `.mapfs-close` (X выхода) удалён как избыточный — выход из
    фуллскрина несёт тоггл фуллскрина в единой плашке `.map-ctl` (pressed = в
