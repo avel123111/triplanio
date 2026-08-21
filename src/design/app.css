@@ -4549,9 +4549,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     border: 0;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  /* Editor: no map on mobile — itinerary/panel take the full width. */
-  .ts-grid { grid-template-columns: 1fr !important; }
-  .ts-col-right { display: none !important; }
+  /* Editor на телефоне живёт flow-паттерном планера: карта — верхняя полоса,
+     контент — шит (правила @760 flow-семьи), своих переопределений нет. */
 }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
@@ -6113,13 +6112,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ts-step:hover { background: var(--wash); }
 .ts-step:active:not(:disabled) { transform: scale(0.9); }
 .ts-step:disabled { opacity: .3; cursor: default; }
-/* TRIP-186: левая колонка «оголена» — контейнерная рамка/радиус/фон и маржины
-   убраны, рейл и заголовок «Маршрут» лежат прямо на канвасе, а список
-   растягивается. Карта справа рамку сохраняет. */
-.ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 0; overflow: hidden; background: transparent; }
-/* Открытая боковая панель сама себе рамка (карточка на канвасе), с тем же
-   инсетом, что и карта. */
-.ts-leftbox .lp { margin: 14px 7px 14px 14px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+/* Контейнер левой колонки (.ts-leftbox) и его инсеты удалены вместе с двумя
+   колонками: виджет-«карточку на канвасе» теперь целиком несёт flow-семья
+   (.flow-editcol > .lp), как у планера. */
 /* Заголовок «Маршрут» переехал на канон `PageHead` (как на Budget) — приватный
    `.ts-routehead*` удалён целиком (раскладку/заголовок/сабтитл/actions несёт PageHead):
    visual-diff-exempt: .ts-routehead margin — класс удалён (миграция на PageHead)
@@ -6141,6 +6136,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    шапки и правее меню, — поэтому никогда не накрывает ни шапку, ни меню.
    Обрывается на шве колонок, оставляя естественный зазор до карты. Скрима нет:
    карта (правая половина) остаётся кликабельной. Только двухколоночный десктоп. */
+/* КАНВАС редактора (паттерн планера, задача Pavel): карта = фон секции,
+   контент = плавающий .lp-виджет (реюз flow-семьи целиком). Скоуп-класс на
+   хосте: drawer side-панелей накрывает ВИДЖЕТ (позиционный контекст —
+   карточка), углы наследует от неё.
+   floor-exempt: classes +1 — ts-canvas: скоуп канвас-раскладки редактора (реюз flow-семьи планера, задача Pavel)
+   floor-exempt: triage +1 — то же имя в семье ts */
+/* Хост-высота: тело flush-секции трипа — БЛОК, а не флекс-колонка планера,
+   поэтому flex:1 у .flow-grid здесь пустое слово (тот же приём, что был у
+   .ts-grid): канвас берёт высоту тела явно. */
+.ts-canvas { height: 100%; }
+.ts-canvas .flow-editcol > .lp { position: relative; }
+.ts-canvas .ts-pdrawer { border-right: 0; border-radius: inherit; }
 .ts-pdrawer { position: absolute; inset: 0; z-index: 20; /* design-token-exempt: локальный стек внутри левой колонки */ display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
 .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
 @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
@@ -6152,44 +6159,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .ts-step:active { transform: none; }
 }
 
-/* Две колонки секции: маршрут слева, карта справа.
-   `height: 100%` — тот же приём, каким берут высоту остальные flush-секции
-   (`.chat-room`, `.trip-map-shell`): тело `.trip-screen-body--flush` это БЛОК с
-   определённой высотой, а не флекс-контейнер, поэтому `flex: 1` тут пустое
-   слово. Раньше он работал — `.ts-grid` висел во флекс-колонке собственной
-   оболочки редактора и уехал вместе с ней. Без этого правила секция сайзится по
-   содержимому и на ≤1080 не скроллится вовсе. */
-.ts-grid {
-  height: 100%; min-width: 0; min-height: 0;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0; overflow: hidden;
-}
-
-/* ≤1080: одна колонка. Раньше тут стояло `.ts-screen { height:auto; overflow:
-   visible }` — редактор ВЫХОДИЛ из фиксированной оболочки в документный скролл,
-   один на весь экран трипа. Внутри `.trip-shell` документного скролла нет
-   (оболочка `overflow:hidden`), поэтому колонка скроллит СЕБЯ, как и на любой
-   другой секции. Это же снимает причину, по которой на редакторе нельзя было
-   показать плавающий док (TRIP-349 п.2 — отдельной задачей). */
-@media (max-width: 1080px) /* design-token-exempt: 1080px — брейкпоинт не новый: он жил в теге style внутри рендера редактора, куда гард не смотрит, и переехал сюда как есть; это ширина схлопывания ДВУХ КОЛОНОК секции (маршрут+карта), а не ярус навигации, поэтому к шкале 640/880 не сводится */ {
-  .ts-grid { grid-template-columns: 1fr; grid-auto-rows: min-content; overflow-y: auto; }
-  .ts-leftscroll { overflow: visible !important; }
-  .ts-leftbox { margin: 0 !important; }
-  /* Карта — полоса под списком. Высоту задаём КОНТЕЙНЕРУ: сама `.ts-map` лежит
-     абсолютом, и прежнее `flex: 0 0 340px` на ней было no-op — у абсолютного
-     элемента flex-строки нет, то есть в полосе 881–1080 полоса карты не имела
-     высоты вовсе. */
-  .ts-col-right { height: 340px; }
-  .ts-map { left: 14px !important; }
-}
+/* Прежние ДВЕ КОЛОНКИ редактора (.ts-grid: маршрут|карта, схлоп @1080) удалены:
+   раскладку целиком несёт flow-семья планера (карта-канвас + плавающий виджет),
+   один паттерн на создание и редактирование (задача Pavel). */
 
 @media (max-width: 760px) {
   /* drop the table header row */
-  .ts-grid .te-thead { display: none !important; }
+  .ts-canvas .te-thead { display: none !important; }
   /* drop the drag grip — on touch the whole row drags via long-press.
-     Scoped to .ts-grid (editor-only host) so it does NOT leak onto the planner's .te-row--plan
+     Scoped to .ts-canvas (editor-only host) so it does NOT leak onto the planner's .te-row--plan
      (the create flow keeps its grip affordance on touch). */
-  .ts-grid .te-grip { display: none !important; }
+  .ts-canvas .te-grip { display: none !important; }
   /* Правило «пустые плейсхолдеры не занимают места на мобиле» снято как
      ИЗБЫТОЧНОЕ, а не как ненужное: строкой ниже в этом же медиа-блоке целиком
      прячутся сами ячейки `.te-cell--hotel` / `.te-cell--act`, внутри которых
@@ -6197,10 +6177,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* compact row: number + name(+dates) + nights (hotel/activity icons hidden).
      Scoped to the editor so the planner's flex .te-row--plan is untouched (no
      leaked grid-template / margins). */
-  .ts-grid .te-row { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
-  .ts-grid .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
+  .ts-canvas .te-row { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
+  .ts-canvas .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
   /* hide hotel/activity presence icons in city rows on mobile */
-  .ts-grid .te-cell--hotel, .ts-grid .te-cell--act { display: none !important; }
+  .ts-canvas .te-cell--hotel, .ts-canvas .te-cell--act { display: none !important; }
 }
 
 /* ===== Trip Settings lens ====================================================
@@ -7676,6 +7656,54 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* visual-diff-exempt: .ptrip --surface-2 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
 /* visual-diff-exempt: .ptrip --surface-3 — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
 /* visual-diff-exempt: h3 line-height — HORIZON: новый визуальный язык (редизайн по прямой задаче Pavel) */
+/* visual-diff-exempt: .flow-editcol position — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .lp margin — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .lp position — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas border-radius — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas border-right — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas position — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas {@media (max-width: 760px)} background — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas {@media (max-width: 760px)} border — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas {@media (max-width: 760px)} box-shadow — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas {@media (max-width: 760px)} column-gap — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas {@media (max-width: 760px)} display — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas {@media (max-width: 760px)} grid-template-columns — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas {@media (max-width: 760px)} margin — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas {@media (max-width: 760px)} padding — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-col-right {@media (max-width: 1080px)} height — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-col-right {@media (max-width: 640px)} display — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid display — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid gap — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid grid-template-columns — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid height — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid min-height — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid min-width — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid overflow — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 1080px)} grid-auto-rows — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 1080px)} grid-template-columns — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 1080px)} overflow-y — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 640px)} grid-template-columns — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 760px)} background — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 760px)} border — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 760px)} box-shadow — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 760px)} column-gap — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 760px)} display — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 760px)} grid-template-columns — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 760px)} margin — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-grid {@media (max-width: 760px)} padding — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox background — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox display — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox flex — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox flex-direction — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox margin — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox min-height — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox min-width — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox overflow — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftbox {@media (max-width: 1080px)} margin — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-leftscroll {@media (max-width: 1080px)} overflow — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-map {@media (max-width: 1080px)} left — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-pdrawer border-right — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .ts-canvas height — канвас-раскладка редактора по паттерну планера (задача Pavel) */
 /* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
    «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
    actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */

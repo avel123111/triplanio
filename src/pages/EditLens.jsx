@@ -355,16 +355,10 @@ export default function EditLens({ tripId, shell, content }) {
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
   const isSheet = useIsPhone();
-  // TRIP-161: the two-column desktop layout (>1080px, mirrors the .ts-grid CSS
-  // breakpoint). Only there do side panels open as a full-height drawer over the
-  // left column; below it we keep the in-flow swap, ≤640 the bottom sheet.
-  const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1081px)').matches);
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1081px)');
-    const onChange = () => setIsWide(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  // Канвас-раскладка (паттерн планера, задача Pavel): виджет маршрута плавает
+  // поверх карты на ЛЮБОЙ ширине >640 — прежний режим «две колонки только
+  // >1080» (isWide + matchMedia 1081) умер вместе с колонками: side-панели
+  // всегда открываются drawer'ом поверх виджета, ≤640 — шитом.
   // A11y: when an in-place left panel opens, move focus into it (its back button
   // if present) so keyboard/SR users land in the new context; Esc closes it.
   const leftPaneRef = useRef(null);
@@ -981,12 +975,12 @@ export default function EditLens({ tripId, shell, content }) {
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
-  // TRIP-161: on the desktop two-column layout every side panel EXCEPT "add
-  // city" opens as a full-height drawer over the left column (route rail stays
-  // mounted underneath; the map keeps interactive — no scrim). Add-city and the
-  // ≤1080 / ≤640 fallbacks keep swapping the rail in place.
+  // TRIP-161 → канвас: каждая side-панель КРОМЕ «добавить город» открывается
+  // drawer'ом поверх плавающего виджета (список маршрута остаётся под ним,
+  // карта интерактивна — скрима нет). «Добавить город» подменяет содержимое
+  // виджета на месте; ≤640 панели живут в шите.
   const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
-  const useDrawer = isWide && isDrawerPanel && !!leftPanelEl;
+  const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
 
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
@@ -1018,12 +1012,61 @@ export default function EditLens({ tripId, shell, content }) {
   // ящика. Телефонного шита меню у неё не было вовсе, поэтому на ≤640 меню
   // редактора вело себя не так, как на всех остальных экранах трипа.
   return (
-      <div className="ts-grid">
-        {/* LEFT - bordered container (same 14px inset / radius as the map box on
-            the right). The "Маршрут" header is the container's header; an open
-            side panel fills the same box. */}
-        <div className="ts-col-left" style={{ position: 'relative', minWidth: 0, display: 'flex', minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-leftbox">
+      <div className="flow-grid ts-canvas">
+        {/* КАРТА — полноэкранный канвас секции (паттерн планера, задача Pavel:
+            «карта на весь экран, левый контент в виджете»). Edge-to-edge, без
+            inset-рамки; варнинги — оверлеем на карте. */}
+        <div className="flow-mapcol">
+          <div className="flow-mapbox">
+            {/* `visitsById` тут не было смысла: MapView его не объявляет и остаток
+                пропов не собирает, а во всём репо это было единственное вхождение -
+                то есть карта его никогда не читала, а Object.fromEntries считался
+                на каждый рендер редактора. Нашла прагма. */}
+            <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+              focus={mapFocus}
+              onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
+              selectedVisitId={selectedNodeId}
+              hoveredVisitId={hoveredNodeId}
+              selectedLegKey={selectedLegKey}
+              hideRoute={isHotelPick}
+              hotelPins={hotelPins}
+              selectedHotelId={staySelectedId}
+              hoveredHotelId={stayHoveredId}
+              onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
+              onHotelHover={setStayHoveredId}
+              colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
+          </div>
+          {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
+          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
+            {showWarn && issues.length > 0 && (
+              /* TRIP-343 объект 2 (канал 3): скин поверхности (--surface+рамка+радиус)
+                 снят с инлайна на Card; тень поповера (--sh-3) остаётся инлайном (высота). */
+              <Card radius="md" pad="none" className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', boxShadow: 'var(--sh-3)', padding: 8 }}>
+                <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
+              </Card>
+            )}
+            <IconBtn
+              size="fab"
+              tone={issues.length ? 'warning' : 'success'}
+              icon={issues.length ? 'warning' : 'check'}
+              onClick={() => { if (issues.length) setShowWarn((v) => !v); }}
+              ariaLabel={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
+              title={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
+            >
+              {/* Счётчик — дочерним, реюзом `.badge--count` (прецедент — колокольчик):
+                  позиция ко-селектором `.icon-btn > .badge--count`. */}
+              {issues.length > 0 && (
+                <Badge variant="count">{issues.length > 99 ? '99+' : issues.length}</Badge>
+              )}
+            </IconBtn>
+          </div>
+        </div>
+
+        {/* ПЛАВАЮЩИЙ ВИДЖЕТ маршрута поверх карты (слева; рейл трипа держит
+            TripShell). Тот же .flow-editcol > .lp, что у планера: одна карточка
+            с собственной тенью; drawer side-панелей накрывает виджет. */}
+        <div className="flow-editcol">
+          <div className="lp">
           <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1} onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
           {/* Desktop (>1080): "add city" replaces the column; other panels open as
               a drawer overlay (below) and the rail stays here. ≤1080: the panel
@@ -1132,6 +1175,16 @@ export default function EditLens({ tripId, shell, content }) {
           </>)}
           </div>{/* /te-panefade */}
 
+          {/* Side-панели (город / форк / событие) — DRAWER поверх виджета:
+              накрывает карточку целиком (список остаётся под ним), карта и её
+              пины отелей интерактивны — скрима нет. */}
+          {useDrawer && (
+            <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
+              {leftPanelEl}
+            </div>
+          )}
+          </div>{/* /lp — плавающий виджет */}
+
           {/* Mobile: the editor panel opens as a bottom sheet — the SAME shared
               LpSheet shell as the global EventDrawerHost (native swipe +
               keyboard-safe reposition; backdrop / swipe-down / Back all close). */}
@@ -1140,65 +1193,6 @@ export default function EditLens({ tripId, shell, content }) {
               {leftPanelEl}
             </LpSheet>
           )}
-          </div>{/* /ts-leftbox */}
-
-          {/* TRIP-161: side-panel DRAWER (city / fork / event view+edit) on the
-              desktop two-column layout. Overlays the left column edge-to-edge, up
-              to the map — no scrim, so the map (and its hotel pins) stays
-              interactive. The route rail stays mounted underneath. */}
-          {useDrawer && (
-            <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
-              {leftPanelEl}
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT - full-height map (always on; hidden on phones via CSS);
-            warnings live in a collapsible overlay widget */}
-        <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-map" style={{ position: 'absolute', inset: 14, left: 7, overflow: 'hidden', borderRadius: 'var(--r-md)', border: '1px solid var(--line)' }}>
-            {/* `visitsById` тут не было смысла: MapView его не объявляет и остаток
-                пропов не собирает, а во всём репо это было единственное вхождение -
-                то есть карта его никогда не читала, а Object.fromEntries считался
-                на каждый рендер редактора. Нашла прагма. */}
-            <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
-              focus={mapFocus}
-              onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
-              selectedVisitId={selectedNodeId}
-              hoveredVisitId={hoveredNodeId}
-              selectedLegKey={selectedLegKey}
-              hideRoute={isHotelPick}
-              hotelPins={hotelPins}
-              selectedHotelId={staySelectedId}
-              hoveredHotelId={stayHoveredId}
-              onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
-              onHotelHover={setStayHoveredId}
-              colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
-          </div>
-          {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
-          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
-            {showWarn && issues.length > 0 && (
-              /* TRIP-343 объект 2 (канал 3): скин поверхности (--surface+рамка+радиус)
-                 снят с инлайна на Card; тень поповера (--sh-3) остаётся инлайном (высота). */
-              <Card radius="md" pad="none" className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', boxShadow: 'var(--sh-3)', padding: 8 }}>
-                <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
-              </Card>
-            )}
-            <IconBtn
-              size="fab"
-              tone={issues.length ? 'warning' : 'success'}
-              icon={issues.length ? 'warning' : 'check'}
-              onClick={() => { if (issues.length) setShowWarn((v) => !v); }}
-              ariaLabel={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
-              title={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
-            >
-              {/* Счётчик — дочерним, реюзом `.badge--count` (прецедент — колокольчик):
-                  позиция ко-селектором `.icon-btn > .badge--count`. */}
-              {issues.length > 0 && (
-                <Badge variant="count">{issues.length > 99 ? '99+' : issues.length}</Badge>
-              )}
-            </IconBtn>
-          </div>
         </div>
       </div>
   );
