@@ -210,6 +210,7 @@ import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { useIsPhone } from '@/hooks/use-mobile';
+import { useSheetDrag } from '@/hooks/useSheetDrag';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
@@ -355,6 +356,10 @@ export default function EditLens({ tripId, shell, content }) {
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
   const isSheet = useIsPhone();
+  // Мобильный шит (≤760) резайзится грабером 10–100% высоты канваса: жест пишет
+  // --sheet-h на хост, карта над шитом подстраивается сама (useMapSurface).
+  const flowHostRef = useRef(/** @type {HTMLDivElement|null} */ (null));
+  const sheetGrip = useSheetDrag(flowHostRef);
   // Канвас-раскладка (паттерн планера, задача Pavel): виджет маршрута плавает
   // поверх карты на ЛЮБОЙ ширине >640 — прежний режим «две колонки только
   // >1080» (isWide + matchMedia 1081) умер вместе с колонками: side-панели
@@ -975,12 +980,11 @@ export default function EditLens({ tripId, shell, content }) {
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
-  // TRIP-161 → канвас: каждая side-панель КРОМЕ «добавить город» открывается
-  // drawer'ом поверх плавающего виджета (список маршрута остаётся под ним,
-  // карта интерактивна — скрима нет). «Добавить город» подменяет содержимое
-  // виджета на месте; ≤640 панели живут в шите.
-  const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
-  const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
+  // TRIP-161 → канвас: КАЖДАЯ side-панель (город / форк / событие / «добавить
+  // город») выезжает drawer'ом ПОВЕРХ плавающего виджета — список маршрута
+  // остаётся под ней, карта интерактивна, скрима нет (задача Pavel: панели не
+  // занимают контейнер, а накрывают его). ≤640 панели живут в шите.
+  const useDrawer = !isSheet && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
 
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
@@ -1012,7 +1016,7 @@ export default function EditLens({ tripId, shell, content }) {
   // ящика. Телефонного шита меню у неё не было вовсе, поэтому на ≤640 меню
   // редактора вело себя не так, как на всех остальных экранах трипа.
   return (
-      <div className="flow-grid ts-canvas">
+      <div className="flow-grid ts-canvas" ref={flowHostRef}>
         {/* КАРТА — полноэкранный канвас секции (паттерн планера, задача Pavel:
             «карта на весь экран, левый контент в виджете»). Edge-to-edge, без
             inset-рамки; варнинги — оверлеем на карте. */}
@@ -1067,12 +1071,12 @@ export default function EditLens({ tripId, shell, content }) {
             с собственной тенью; drawer side-панелей накрывает виджет. */}
         <div className="flow-editcol">
           <div className="lp">
-          <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1} onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
-          {/* Desktop (>1080): "add city" replaces the column; other panels open as
-              a drawer overlay (below) and the rail stays here. ≤1080: the panel
-              replaces the column. ≤640: the column keeps the cities list and the
-              panel opens as a Radix bottom-sheet (rendered below). */}
-          {(!isSheet && !useDrawer && leftPanelEl) || (<>
+          {/* Грабер мобильного шита: тянет высоту виджета 10–100% (десктоп — скрыт CSS'ом) */}
+          <div className="sheet-grip" {...sheetGrip} aria-hidden="true" />
+          <div className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
+          {/* Содержимое виджета — ВСЕГДА список маршрута: любая панель выезжает
+              drawer'ом поверх (ниже), ≤640 — шитом. */}
+          {(<>
           <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'transparent' }}>
           {/* Container header — канон `PageHead` (как на Budget): заголовок «Маршрут»
               + сводка маршрута сабтитлом (реюз totalNights/cityCount/dateRange, без

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
+import { useSheetDrag } from '@/hooks/useSheetDrag';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { resolveCities, nearbyCities } from '@/lib/geo';
@@ -754,6 +755,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
+  // Мобильный шит (≤760) резайзится грабером 10–100% высоты канваса: жест пишет
+  // --sheet-h на хост, карта над шитом подстраивается сама (useMapSurface).
+  const flowHostRef = useRef(/** @type {HTMLDivElement|null} */ (null));
+  const sheetGrip = useSheetDrag(flowHostRef);
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -1290,7 +1295,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
       {/* Two framed cards (trip-edit layout): the full-bleed map and the white
           .lp panel (progress header → scroll body → sticky footer). */}
-      <div className="flow-grid">
+      <div className="flow-grid" ref={flowHostRef}>
         <div className="flow-mapcol">
           {/* Floating round back control — shown only on the phone shell (the app
               header is removed there); the canon `.map-back` position/visibility
@@ -1328,6 +1333,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
         <div className="flow-editcol">
           <div className="lp">
+            {/* Грабер мобильного шита: тянет высоту панели 10–100% (десктоп — скрыт CSS'ом) */}
+            <div className="sheet-grip" {...sheetGrip} aria-hidden="true" />
             <div className="flow-lp-h">
               {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
                   "next" hint wraps INSIDE this column instead of overflowing and

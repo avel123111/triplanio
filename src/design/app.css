@@ -4005,6 +4005,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .flow-mapcol { position: absolute; inset: 0; }
 /* Map is edge-to-edge — no inset frame, border or radius; it IS the background. */
 .flow-mapbox { position: absolute; inset: 0; overflow: hidden; }
+/* Грабер мобильного шита канвас-раскладки (планер + редактор): реальный
+   элемент-хендл (пилюля), тянущий высоту панели 10–100% через --sheet-h
+   (см. useSheetDrag). На десктопе скрыт — панель плавает фикс-шириной.
+   floor-exempt: classes +1 — sheet-grip: драг-хендл мобильного шита канваса (задача Pavel)
+   floor-exempt: triage +1 — то же имя в семье sheet */
+.sheet-grip { display: none; }
+
 /* Floating panel column: pinned to the left with a gutter on top/left/bottom
    (padding-right:0 so the panel's right edge sits inside the map, not doubled);
    pointer-events pass THROUGH the column so the map stays pannable, the panel
@@ -4150,27 +4157,29 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .map-back { display: grid; }
   /* Grid is a fixed-height flex column that does NOT scroll; the sheet body does. */
   .flow-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-  /* Map: fixed band at the top, edge-to-edge (no inset frame / radius). */
-  .flow-mapcol { flex: 0 0 32%; position: relative; min-height: 0; }
+  /* Карта — верхняя полоса, ЖИВАЯ по высоте: занимает остаток над шитом, чья
+     высота тянется грабером через --sheet-h (10–100%); ResizeObserver в
+     useMapSurface сам зовёт map.resize() на каждое изменение. */
+  .flow-mapcol { flex: 1 1 auto; position: relative; min-height: 0; }
   .flow-mapbox { position: absolute; inset: 0; margin: 0; border: none; border-radius: 0; }
-  /* Sheet: fills the rest and overlaps the map by 16px with a rounded top. */
+  /* Шит: высота = --sheet-h (дефолт 68% ≈ прежняя раскладка), перекрывает карту
+     на 16px скруглённым верхом. */
   .flow-editcol {
-    position: relative; flex: 1 1 auto; min-height: 0;
+    position: relative; flex: 0 0 var(--sheet-h, 68%); height: var(--sheet-h, 68%); min-height: 0;
     display: flex; width: auto; padding: 0;
     margin-top: calc(-1 * var(--sp-7)); z-index: 2; pointer-events: auto;
   }
+  /* Грабер: видим и тянется (touch-action: none — жест не скроллит страницу). */
+  .sheet-grip { display: grid; place-items: center; flex: none; height: 22px; touch-action: none; cursor: grab; }
+  .sheet-grip::before { content: ""; width: 38px; height: 4px; border-radius: 2px; background: var(--line-strong); }
   .flow-editcol > .lp {
     flex: 1; min-height: 0; margin: 0;
     border: none; border-radius: var(--r-xl) var(--r-xl) 0 0;
     /* elevation from the base .lp (var(--sh-1), token) — no raw shadow colour;
        the rounded top over the map already reads as a sheet at the seam. */
   }
-  /* Grabber handle at the top of the sheet header. */
-  .flow-lp-h { position: relative; padding-top: var(--sp-8); }
-  .flow-lp-h::before {
-    content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
-    width: 38px; height: 4px; border-radius: 2px; background: var(--line-strong);
-  }
+  /* Пилюля-грабер стала РЕАЛЬНЫМ элементом .sheet-grip (тянет высоту шита) —
+     декоративный ::before на шапке и его компенсирующий паддинг сняты. */
   /* The FlowProgress "next step" hint (.t-meta) is redundant with the segmented
      bar on the narrow sheet and would crowd the reset control — hide it here.
      Scoped to the sheet header, so it never touches .t-meta elsewhere. */
@@ -7704,6 +7713,30 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* visual-diff-exempt: .ts-map {@media (max-width: 1080px)} left — канвас-раскладка редактора по паттерну планера (задача Pavel) */
 /* visual-diff-exempt: .ts-pdrawer border-right — канвас-раскладка редактора по паттерну планера (задача Pavel) */
 /* visual-diff-exempt: .ts-canvas height — канвас-раскладка редактора по паттерну планера (задача Pavel) */
+/* visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} height — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h {@media (max-width: 960px)} padding-top — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h {@media (max-width: 960px)} position — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} background — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} border-radius — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} content — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} height — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} left — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} position — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} top — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} transform — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} width — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} flex — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip {@media (max-width: 960px)} cursor — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip {@media (max-width: 960px)} display — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip {@media (max-width: 960px)} flex — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip {@media (max-width: 960px)} height — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip {@media (max-width: 960px)} place-items — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip {@media (max-width: 960px)} touch-action — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip::before {@media (max-width: 960px)} background — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip::before {@media (max-width: 960px)} border-radius — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip::before {@media (max-width: 960px)} content — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip::before {@media (max-width: 960px)} height — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
+/* visual-diff-exempt: .sheet-grip::before {@media (max-width: 960px)} width — драг-резайз мобильного шита канваса 10-100% (задача Pavel) */
 /* ── Trips toolbar — строка поиска коллекции (Seg-фильтры упразднены: секции
    «Активные/Прошедшие» видны друг под другом; переключатель вида уехал в
    actions PageHead). ≤640px: поиск на всю строку. ─────────────────────────── */
