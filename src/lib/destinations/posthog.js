@@ -72,6 +72,9 @@ export function boot(client) {
     capture_pageview: false, // our own page_view via track() replaces it (no dupe)
     capture_performance: false,
     disable_session_recording: true,
+    // Код — единственный замок на сбор: настройка проекта (heatmaps_opt_in)
+    // не должна включать сбор мыше-движений без нашего ведома (TRIP-328).
+    enable_heatmaps: false,
     person_profiles: 'identified_only',
     persistence: 'memory', // variant B: nothing on the device until consent
   });

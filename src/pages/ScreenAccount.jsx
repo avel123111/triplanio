@@ -24,7 +24,10 @@ import { openConsentBanner } from '@/lib/consent';
 import { useFeedback } from '@/components/support/FeedbackProvider';
 import AppHeader from '@/components/AppHeader';
 import Accordion from '@/components/common/Accordion';
-import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
+import { useConfirm } from '@/components/common/ConfirmProvider';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { listBinding } from '@/lib/trip-data';
+import { TG_MINE_KEY, fetchMyIntegrations, disconnectTelegram, invalidateTelegram } from '@/lib/telegramMutations';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
 
@@ -246,35 +249,52 @@ function ChannelCard({ icon, tone, name, desc, titleBadge, trailing }) {
 }
 
 // ─── Reminder channels (Telegram integrations + future channels) ──────────────
-// Data: telegramGetMyIntegrations (one row per binding). Connected → collapsible
-// list of linked trips; empty → prompt to connect from a trip. The owner unlinks
-// via the shared TelegramUnlinkDialog (same as Trip settings).
+// Data: TG_MINE_KEY (telegramGetMyIntegrations, one row per binding). Connected →
+// collapsible list of linked trips; empty → prompt to connect from a trip. Unlink
+// runs through the shared async-confirm (useConfirm) + the Telegram data-access
+// layer — the SAME seam as Trip settings, so both surfaces behave identically.
 
 function ReminderChannels() {
   const { t } = useI18n();
   const nav = useNavigate();
-  const [items, setItems] = useState(null); // null = loading
-  const [unlinkState, setUnlinkState] = useState(null); // null | { account }
+  const { toast } = useToast();
+  const confirm = useConfirm();
+  const qc = useQueryClient();
 
-  const load = React.useCallback(async () => {
-    const { data, error } = await invokeFn('telegramGetMyIntegrations');
-    setItems(error ? [] : (data?.integrations ?? []));
-  }, []);
-  useEffect(() => { load(); }, [load]);
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: TG_MINE_KEY,
+    queryFn: fetchMyIntegrations,
+  });
 
   const nick = (a) =>
     a.telegram_username ? `@${a.telegram_username}` : (a.telegram_first_name || t('telegram.unknown_user'));
 
-  const doUnlink = async (a) => {
-    setItems(list => list.filter(x => x.id !== a.id)); // optimistic
-    const { error } = await invokeFn('telegramDisconnect', {
-      body: { tripId: a.trip_id, integrationId: a.id },
-    });
-    if (error) load();
-  };
-  const unlink = (a) => setUnlinkState({ account: a });
+  // Unlink is a real teardown (the bot stops), so it mirrors the document-delete
+  // canon: PESSIMISTIC async-confirm. The confirm button spins until the unlink
+  // lands; ON THE RESPONSE the row drops + toast fire together — never yanked at T0.
+  const binding = listBinding(qc, TG_MINE_KEY);
+  const unlinkMut = useMutation({
+    mutationFn: (/** @type {any} */ { account }) => disconnectTelegram(account.trip_id, account.id),
+    onSuccess: (/** @type {any} */ _d, /** @type {any} */ { account }) => {
+      binding.remove(account.id);
+      successToast(t, 'tg_unlinked');
+      invalidateTelegram(qc, account.trip_id); // reconcile the trip-scoped projection too
+    },
+    onError: (/** @type {any} */ err, /** @type {any} */ { account }) => {
+      toast({ description: errorText(t, err?.code), variant: 'destructive' });
+      invalidateTelegram(qc, account.trip_id); // row may already be gone → reconcile both
+    },
+  });
 
-  const connected = Array.isArray(items) && items.length > 0;
+  const unlink = (a) => confirm({
+    title: t('telegram.unlink_title'),
+    description: t('telegram.unlink_body', { handle: nick(a) }),
+    variant: 'destructive',
+    confirmLabel: t('telegram.unlink_confirm'),
+    onConfirm: () => unlinkMut.mutateAsync({ account: a }),
+  });
+
+  const connected = items.length > 0;
 
   return (
     <Card>
@@ -285,7 +305,7 @@ function ReminderChannels() {
         </Col>
 
         <Col gap="g4">
-          {items === null ? (
+          {isLoading ? (
             <div className="t-body muted">{t('common.loading')}</div>
           ) : connected ? (
             /* Канал Telegram — раскрывашка <Accordion> (радиус 10, кликабельная
@@ -340,15 +360,6 @@ function ReminderChannels() {
             trailing={<Badge variant="quiet" size="tiny">{t('trip.addon_coming_soon')}</Badge>}
           />
         </Col>
-
-        {unlinkState && (
-          <TelegramUnlinkDialog
-            open={true}
-            onOpenChange={(o) => { if (!o) setUnlinkState(null); }}
-            handle={nick(unlinkState.account)}
-            onConfirm={() => doUnlink(unlinkState.account)}
-          />
-        )}
       </Col>
     </Card>
   );
