@@ -95,12 +95,23 @@ export function PeekSheet({
   // Полоса шапки (грип + header + док + safe-area) и высота вьюпорта — обе
   // измеряются, а не задаются числом: шапка у каждого экрана своя.
   const [headPx, setHeadPx] = useState(96);
+  const [dockPx, setDockPx] = useState(DOCK_PX);
   const [footPx, setFootPx] = useState(0);
   const [vh, setVh] = useState(() => (typeof window === 'undefined' ? 0 : window.innerHeight));
   const [dragY, setDragY] = useState(null); // px, пока палец на экране; иначе null
 
   // Доли → пиксели: один расчёт на рендер, он же кормит жест и стили.
-  const stops = useMemo(() => resolveDetents(detents, vh, headPx), [detents, vh, headPx]);
+  // ★ НИЖНИЙ РЕЗЕРВ — ОДНА ВЕЛИЧИНА, А НЕ СУММА ДВУХ. Измеренная высота футера
+  // УЖЕ включает его отступ под док (`padding-bottom: --sheet-dock`), поэтому
+  // складывать футер с доком значит вычесть док дважды — ровно из-за этого
+  // содержимое кончалось на 120px выше дна, а футер повисал посреди шита.
+  // Футера нет — резерв держит сам док, чтобы шапка не ушла под нижний нав.
+  const reservePx = footPx > 0 ? footPx : dockPx;
+  // Нижний детент обязан вмещать ВСЁ, что не скроллится: шапку и этот резерв.
+  // Иначе «15%» показывает обрезанный заголовок — то есть выглядит как сломанный
+  // шит, а не как маленький.
+  const minPx = headPx + reservePx;
+  const stops = useMemo(() => resolveDetents(detents, vh, minPx), [detents, vh, minPx]);
   const index = Math.max(0, Math.min(stops.length - 1, detent));
   const sheetH = stops[index] ?? 0;
   const restY = Math.max(0, vh - sheetH);
@@ -109,11 +120,18 @@ export function PeekSheet({
   const live = useRef();
   live.current = { index, stops, vh, onDetentChange };
 
+  // ★ ДОК СЧИТАЕТСЯ РОВНО ОДИН РАЗ. Полоса шапки — это ТОЛЬКО грип + header;
+  // нижний нав и домашняя полоска сюда НЕ входят. Прошлая редакция добавляла их
+  // и сюда (наследие двух-детентного peek'а), и в футере — экран терял 120px:
+  // тело кончалось выше дна, а футер повисал посреди шита. Док нужен в ДВУХ
+  // ролях, и они разные: он поднимает МИНИМАЛЬНЫЙ детент (чтобы заголовок не
+  // ушёл под нав) и держит отступ ФУТЕРА. Высота тела к нему отношения не имеет.
   const measure = useCallback(() => {
     const sheet = sheetRef.current, head = headRef.current;
     if (!sheet || !head) return;
     const band = head.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
-    setHeadPx(Math.round(band + DOCK_PX + safeAreaBottom()));
+    setHeadPx(Math.round(band));
+    setDockPx(Math.round(DOCK_PX + safeAreaBottom()));
     setFootPx(Math.round(footRef.current?.getBoundingClientRect().height || 0));
     setVh(window.innerHeight);
   }, []);
@@ -225,7 +243,8 @@ export function PeekSheet({
     '--sheet-y': (dragY ?? restY) + 'px',
     '--sheet-h': sheetH + 'px',
     '--sheet-head': headPx + 'px',
-    '--sheet-foot': footPx + 'px',
+    '--sheet-reserve': reservePx + 'px',
+    '--sheet-dock': dockPx + 'px',
   };
 
   if (typeof document === 'undefined') return null;

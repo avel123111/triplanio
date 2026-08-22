@@ -4025,7 +4025,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    несёт ОБА класса (`class="lp-b scrollbar-thin flow-lp-b"`), у обоих правил
    специфичность 0-1-0, а `.lp-b { padding: 14px 15px }` объявлен НИЖЕ - и
    выигрывает по порядку. Замерено вычисленным стилем: 14px 15px. */
-.flow-lp-b { position: relative; }
+/* Тело шага: собственные отступы и ритм. Скролл держит ТЕЛО ШЕЛЛА
+   (`.mapshell__body` / `.peek-sheet__body`) — два вложенных скроллера дают
+   залипающий жест на телефоне, поэтому здесь его нет.
+   visual-diff-exempt: .flow-lp-b padding — отступы тела шага (были на .lp-b, снятом вместе с обёрткой)
+   visual-diff-exempt: .flow-lp-b display — колонка содержимого шага
+   visual-diff-exempt: .flow-lp-b flex-direction — то же
+   visual-diff-exempt: .flow-lp-b gap — ритм между блоками шага */
+.flow-lp-b { position: relative; padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; } /* design-token-exempt: значения не новые — те же, что были у .lp-b, правило переехало вместе с разметкой */
 /* FlowProgress (TRIP-337) — счётчик-прогресс create-флоу на ДС. Раскладка несут
    .row/.col в разметке; здесь — только облик, которого у примитивов нет. Акцент
    шага приходит КАНАЛОМ --fp-accent (brand для ручного флоу, ai для ИИ), как тинт
@@ -4213,7 +4220,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} position — раскладка колонки/панели флоу уехала в примитив .mapshell
    visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} width — раскладка колонки/панели флоу уехала в примитив .mapshell
    visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} z-index — раскладка колонки/панели флоу уехала в примитив .mapshell
-   visual-diff-exempt: .flow-editcol background — раскладка колонки/панели флоу уехала в примитив .mapshell
    visual-diff-exempt: .flow-editcol border — раскладка колонки/панели флоу уехала в примитив .mapshell
    visual-diff-exempt: .flow-editcol border-radius — раскладка колонки/панели флоу уехала в примитив .mapshell
    visual-diff-exempt: .flow-editcol bottom — раскладка колонки/панели флоу уехала в примитив .mapshell
@@ -4317,7 +4323,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__toggle transform — та же поездка кнопки к краю
    Состояние «шит раскрыт» перестало быть классом и стало детентом (data-detent):
    visual-diff-exempt: .is-expanded transform — класс снят, раскрытость выражена детентом */
-.mapshell { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+/* ★ ВЫСОТА НЕ ЗАВИСИТ ОТ display РОДИТЕЛЯ. Линза карты живёт в БЛОЧНОМ
+   контейнере (`.trip-screen-body--flush`), планировщик — во флекс-колонке.
+   `flex: 1` в блочном родителе не значит НИЧЕГО: высота схлопывалась в ноль, и
+   линза карты открывалась пустым экраном. Примитив раскладки обязан вставать в
+   любой контейнер с определённой высотой, поэтому здесь ОБА правила.
+   visual-diff-exempt: .mapshell height — примитив не имеет права зависеть от display родителя (в блочном контейнере flex:1 = ноль высоты) */
+.mapshell { position: relative; flex: 1; height: 100%; min-height: 0; overflow: hidden; }
 .mapshell__map { position: absolute; inset: 0; overflow: hidden; background: var(--map-backdrop); }
 /* Плавающая колонка слева с воздухом по трём сторонам; `padding-right: 0` —
    правый край панели уходит внутрь карты, а не двоит отступ. */
@@ -4331,13 +4343,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Весь скин (грунт + рамка + радиус + клип + подъём) несёт примитив
    <Card pad="none" radius="btn" raised> — классу остаётся раскладка. */
 .mapshell__card { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+/* Планировщик (запрос Pavel №2): шапка и футер сидят на фоне ПРИЛОЖЕНИЯ, тело —
+   белая карточка; в тёмной теме тускнеет вся панель. Правило раньше висело на
+   `.flow-editcol > .lp` — колонка удалена, поэтому оно переехало на поверхность
+   шелла, но осталось СВОИМ для планировщика (линза карты его не берёт).
+   visual-diff-exempt: .flow-shell background — тёмная тема гасит панель планировщика до --bg (правило переехало с .flow-editcol > .lp)
+   visual-diff-exempt: .mapshell__card background — то же правило, вторая единица наблюдения (поверхность панели)
+   visual-diff-exempt: .flow-editcol background — источник того же правила: колонка удалена вместе с раскладкой */
+[data-theme="dark"] .flow-shell .mapshell__card { background: var(--bg); }
 .mapshell__body { flex: 1; min-height: 0; overflow-y: auto; }
 .mapshell__panel[data-collapsed] { transform: translateX(-101%); pointer-events: none; }
 /* Кнопка «свернуть/раскрыть» стоит НА ШВЕ: она едет вместе с панелью, поэтому
    её сдвиг — та же переменная ширины, что у колонки. */
+/* Облик — как у остальных контролов над картой (`.map-back`): поверхность на
+   тон приложения с рамкой и тенью, а не заливка брендом. Кнопка служебная и не
+   имеет права спорить с контентом.
+   visual-diff-exempt: .mapshell__toggle box-shadow — служебный контрол над картой, как .map-back */
 .mapshell__toggle {
   position: absolute; top: 50%; left: min(550px, 44vw);
   transform: translate(-50%, -50%); z-index: 3;
+  box-shadow: var(--sh-1);
   transition: left .28s var(--ease-out);
 }
 .mapshell__panel[data-collapsed] ~ .mapshell__toggle { left: 0; transform: translate(6px, -50%); }
@@ -6969,10 +6994,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .peek-sheet__body height — тело ростом с видимую полосу: скролл внутри неё, а не за экраном
    visual-diff-exempt: .peek-sheet__body flex — высоту тела задаёт детент, а не содержимое
    visual-diff-exempt: .peek-sheet__foot flex — панель действий вне скролла тела
-   visual-diff-exempt: .peek-sheet__foot padding-bottom — футер поднят над доком и домашней полоской */
+   visual-diff-exempt: .peek-sheet__foot padding-bottom — футер поднят над доком: док считается ровно здесь, один раз
+   visual-diff-exempt: .peek-sheet__body padding-bottom — отступ снят: на нижнем детенте он держал тело в 16px вместо нуля, а воздух даёт содержимое */
 /* Панель действий шита — СНАРУЖИ скролла: она обязана быть на виду при любом
    положении списка. Поднята над нижним навом и домашней полоской. */
-.peek-sheet__foot { flex: none; padding-bottom: calc(60px + env(safe-area-inset-bottom)); } /* design-token-exempt: 60px — высота фиксированного нижнего нава (тот же литерал, что у .peek-sheet__body), не ступень шкалы */
+.peek-sheet__foot { flex: none; padding-bottom: var(--sheet-dock, 0px); }
 .peek-sheet {
   position: fixed; left: 0; right: 0; bottom: 0;
   /* Below the fixed bottom-nav dock (--z-nav) so the dock floats on top
@@ -6998,7 +7024,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    внутри неё, а не уезжает под нижний край экрана. Во время жеста высота НЕ
    пересчитывается (`--sheet-h` фиксируется на осадке): иначе каждый кадр драга
    стоил бы перекладку всего списка. */
-.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px) - var(--sheet-foot, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom)); }
+.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px) - var(--sheet-reserve, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).

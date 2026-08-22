@@ -1381,6 +1381,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           отдаёт это карте отступами камеры. Своих `.flow-grid/-mapcol/-editcol`
           у шага больше нет — они были третьей копией одной и той же раскладки. */}
       <MapShell
+        className="flow-shell"
         panelLabel={t('trips.new')}
         detent={detent}
         onDetentChange={setDetent}

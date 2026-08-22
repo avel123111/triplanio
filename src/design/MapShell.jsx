@@ -158,7 +158,7 @@ export function MapShell({
               className="mapshell__toggle"
               icon={collapsed ? 'chev' : 'chevL'}
               round
-              tone="solid"
+              tone="outline"
               ariaLabel={collapsed ? expandLabel : collapseLabel}
               ariaExpanded={!collapsed}
               onClick={() => onCollapsedChange(!collapsed)}

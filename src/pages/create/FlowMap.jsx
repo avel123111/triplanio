@@ -58,7 +58,10 @@ function startGlobeView(map, pad) {
   const visW = Math.max(320, W - pad.left - pad.right);
   const visH = Math.max(240, H - pad.top - pad.bottom);
   const targetD = Math.min(0.85 * visH, 0.92 * visW);
-  const zoom = Math.max(0.8, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
+  // Пол зума — не вкусовщина: ниже ~2 глобус вырождается в одноцветный круг
+  // (тайлов такого масштаба нет), и это ровно то, что было видно на телефоне,
+  // где свободное окно маленькое и расчёт уводил зум вниз.
+  const zoom = Math.max(2, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
   return { center, zoom };
 }
 
@@ -223,6 +226,12 @@ export default function FlowMap({
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
     if (canFit) {
+      // ★ ОТСТУПЫ ОБЪЯВЛЯЕМ ЗДЕСЬ, А НЕ ОТДЕЛЬНЫМ ЭФФЕКТОМ. Эффекты бегут в
+      // порядке объявления: отдельный эффект отработал бы ПОСЛЕ кадрирования, и
+      // камера каждый раз вставала бы по ПРЕЖНЕЙ закрытой площади — то есть
+      // карта «не реагировала бы» на движение шита ровно так, как это и
+      // выглядело.
+      setMapInsets(map, insetsRef.current);
       const pad = addPadding(ROUTE_AIR, insetsRef.current);
       if (fitPositions.length) {
         // Route: re-frame ONLY when the route geometry / viewport actually changed
@@ -267,14 +276,9 @@ export default function FlowMap({
     // exhaustive-deps stays honest, though fitKey already carries them.
   }, [ready, canFit, ptsKey, fitKey, winW, winH]);
 
-  // Владелец закрытой площади — один на приложение: обе двери камеры читают её
-  // оттуда сами, поэтому здесь только объявление и снятие на выходе.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return undefined;
-    setMapInsets(map, insets);
-    return () => setMapInsets(map, null);
-  }, [insetsKey, ready]);
+  // Снятие на выходе: карта — синглтон, и закрытая площадь этого экрана не имеет
+  // права диктовать камеру следующему.
+  useEffect(() => () => setMapInsets(mapRef.current, null), []);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering the city list is cheap). Re-runs after a rebuild too
