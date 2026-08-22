@@ -1130,8 +1130,8 @@ export default function EditLens({ tripId, shell, content }) {
   return (
     <MapShell
       className="ts-shell"
-      map={(
-            <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+      map={(camera) => (
+            <MapView camera={camera} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
@@ -1213,11 +1213,8 @@ function Conf({ n }) {
 // inline hotel / activity cells (design mockup HotelCell / ActCell)
 function HotelCell({ hotel, warn, onClick }) {
   const t = useT();
-  // Пустая ячейка ПОДПИСАНА. Безымянный пунктирный квадрат с иконкой кровати в
-  // карточке читается как выключенный элемент, а не как «добавить жильё»: в
-  // таблице его объясняла шапка колонки, а шапки больше нет.
   if (!hotel) return (
-    <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')}>{t('tse.col_stay')}</Btn>
+    <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')} ariaLabel={t('hotel.add')} />
   );
   return (
     <Chip variant="tone" square icon="bed" className={warn ? 'is-warn' : ''} onClick={onClick} title={hotel.name}>
@@ -1227,9 +1224,8 @@ function HotelCell({ hotel, warn, onClick }) {
 }
 function ActCell({ count, warn, onClick }) {
   const t = useT();
-  // То же: подпись вместо безымянного пунктирного квадрата (см. HotelCell).
   if (!count) return (
-    <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')}>{t('budget.source_activity')}</Btn>
+    <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')} ariaLabel={t('budget.source_activity')} />
   );
   return (
     <Chip variant="tone" square icon="ticket" className={warn ? 'is-warn' : ''} onClick={onClick} title={count + ''}>

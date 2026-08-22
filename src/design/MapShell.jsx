@@ -44,6 +44,11 @@ import { mapSlotInsets } from '@/lib/mapShellSlot';
  */
 
 /**
+ * `map` — узел ИЛИ функция `(camera) => node`. Функция нужна там, где закрытая
+ * площадь режет ШИРИНУ: канвас остаётся во всю площадь (карта видна под
+ * виджетом), а кадр уводится отступом камеры — эти отступы и приезжают
+ * аргументом. Разбор, почему не всегда так, — в `mapSlotInsets`.
+ *
  * @param {{
  *   map: any,
  *   panel?: any,
@@ -68,6 +73,11 @@ export function MapShell({
   // Шапка панели — то, что видно, когда шит опущен на нижний детент (и что на
   // десктопе стоит над телом). Шелл обязан знать про неё отдельно: опущенный
   // шит без шапки — безымянная полоска, по которой не понять, что под ней.
+  //
+  // Воздух вокруг шапки даёт ШЕЛЛ (`.mapshell__head`), а не экран: это геометрия
+  // его коробки, и экран, повторяющий её у себя, разъезжается с ней на первой же
+  // правке — ровно так у редактора шапка и оказалась прижатой к краю карточки,
+  // когда своё правило пришлось снять как «дотягивание в примитив».
   panelHeader = null,
   // Панель действий (кнопки шага): на виду при любом скролле тела, поэтому
   // слот отдельный, а не «последний ребёнок» содержимого.
@@ -124,10 +134,14 @@ export function MapShell({
   // кончается свободное место — то самое, ради чего шелл и заведён. Сам расчёт — чистая функция `mapSlotInsets` (закрыта тестами):
   // у правила «слот равен свободному окну» нет скриншота, а его поломка не
   // роняет ни экран, ни гарды.
-  const slotStyle = useMemo(() => {
-    const box = mapSlotInsets({ phone: isPhone, sheetPx, panelPx, collapsed });
-    return { '--mapshell-bottom': `${box.bottom}px`, '--mapshell-left': `${box.left}px` };
-  }, [isPhone, sheetPx, collapsed, panelPx]);
+  const box = useMemo(
+    () => mapSlotInsets({ phone: isPhone, sheetPx, panelPx, collapsed }),
+    [isPhone, sheetPx, collapsed, panelPx],
+  );
+  const slotStyle = useMemo(
+    () => ({ '--mapshell-bottom': `${box.slot.bottom}px`, '--mapshell-left': `${box.slot.left}px` }),
+    [box],
+  );
 
   // Шит живёт в портале на <body>: пока экран смонтирован, он сообщает свою
   // высоту, на выходе площадь обязана обнулиться.
@@ -135,7 +149,7 @@ export function MapShell({
 
   return (
     <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={slotStyle}>
-      <div className="mapshell__map">{map}</div>
+      <div className="mapshell__map">{typeof map === 'function' ? map(box.camera) : map}</div>
 
       {panel && (isPhone ? (
         <PeekSheet
@@ -143,7 +157,7 @@ export function MapShell({
           detent={detent}
           onDetentChange={onDetentChange}
           onHeightChange={setSheetPx}
-          header={panelHeader}
+          header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
           footer={panelFooter}
           label={panelLabel}
         >
@@ -162,7 +176,7 @@ export function MapShell({
                 роль играет поверхность шита (фон + скругление + тень). Экран
                 отдаёт содержимое, а не рисует себе карточку заново. */}
             <Card pad="none" radius="btn" raised className="mapshell__card">
-              {panelHeader}
+              {panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
               <div className="mapshell__body scrollbar-thin">{panel}</div>
               {panelFooter}
             </Card>

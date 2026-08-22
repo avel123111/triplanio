@@ -95,7 +95,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * пометить его обязательным значило бы уронить их в тот момент, когда они
  * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
  *
- * @param {{ visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ * @param {{ camera?: any, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
  *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
@@ -105,6 +105,10 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           children?: any }} p
  */
 export default function MapView({
+  // Закрытая панелью площадь (отступы вьюпорта) — приезжает от `<MapShell>`.
+  // Канвас при этом во всю площадь: карта видна ПОД виджетом, а кадр уходит в
+  // свободное окно. Разбор, почему не всегда так, — в `mapSlotInsets`.
+  camera = null,
   visits,
   transfers,
   showStartEnd = true,
@@ -225,6 +229,28 @@ export default function MapView({
   const { mapRef, ready, canFit, error } = useMapSurface(containerRef, {
     markersRef, scheme: mapScheme, projection, active, basemapTheme, cooperativeGestures,
   });
+
+  // ★ ЗАКРЫТАЯ ПЛОЩАДЬ — ОТСТУП ВЬЮПОРТА, И ЭТО СОСТОЯНИЕ КАРТЫ. Поставили — и
+  // та же цель уезжает в свободное окно сама, без повторного кадрирования
+  // (свернули виджет — карта доехала). Инстанс общий, поэтому на выходе с
+  // экрана отступ обнуляется.
+  const camRef = useRef(camera);
+  camRef.current = camera;
+  const camKey = camera ? `${camera.top}|${camera.right}|${camera.bottom}|${camera.left}` : '';
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+    try { map.setPadding(clampPadding(map, camera || { top: 0, right: 0, bottom: 0, left: 0 })); } catch { /* ignore */ }
+    return () => { try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, camKey]);
+
+  /** Воздух кадра ПЛЮС закрытая площадь — один отступ вьюпорта, с клампом. */
+  const padFor = (air) => {
+    const c = camRef.current;
+    if (!c) return air;
+    return clampPadding(mapRef.current, { top: air + c.top, right: air + c.right, bottom: air + c.bottom, left: air + c.left });
+  };
 
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);
@@ -396,7 +422,7 @@ export default function MapView({
       drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
       applyMarkerVisibility(markersRef.current, orderIndexById, -1, false);
       if (canFit && leaving && ordered.length > 0) {
-        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
+        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: padFor(60), maxZoom: 8, animate: true });
       }
       return undefined;
     }
@@ -434,7 +460,7 @@ export default function MapView({
           try {
             const cam = map.cameraForBounds(
               new mapboxgl.LngLatBounds([from.longitude, from.latitude], [to.longitude, to.latitude]),
-              { padding: clampPadding(map, 80) },
+              { padding: padFor(80) },
             );
             if (cam && typeof cam.zoom === 'number') dip = Math.max(0, REVEAL_CITY_ZOOM - cam.zoom);
           } catch { /* ignore */ }
@@ -544,12 +570,12 @@ export default function MapView({
       if (focus.length === 1) {
         calmFlyTo(map, { center: focus[0], zoom: focusZoom });
       } else if (canFit) {
-        calmFit(map, focus, { padding: 110, maxZoom: 9 });
+        calmFit(map, focus, { padding: padFor(110), maxZoom: 9 });
       }
     } else if (hadFocusRef.current) {
       hadFocusRef.current = false;
       if (canFit && ordered.length > 0) {
-        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
+        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: padFor(60), maxZoom: 8 });
       }
     }
   }, [ready, canFit, focusSig, revealActiveId]);
@@ -625,11 +651,11 @@ export default function MapView({
     if (canFit && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
-        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 }); // first frame after load: snap
+        fitToPoints(map, pts, { padding: padFor(60), maxZoom: 8, duration: 0 }); // first frame after load: snap
       } else if (revealActiveId == null) {
-        calmFit(map, pts, { padding: 60, maxZoom: 8 }); // non-public: adaptive calm tempo
+        calmFit(map, pts, { padding: padFor(60), maxZoom: 8 }); // non-public: adaptive calm tempo
       } else {
-        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 650 }); // public reveal: its own tempo
+        fitToPoints(map, pts, { padding: padFor(60), maxZoom: 8, duration: 650 }); // public reveal: its own tempo
       }
       fittedSigRef.current = visitsSignature;
     }
@@ -752,7 +778,7 @@ export default function MapView({
     if (!hadHotelPinsRef.current && canFit) {
       hadHotelPinsRef.current = true;
       const pts = (hotelPins2 || []).filter((h) => h.lat != null && h.lng != null).map((h) => [h.lng, h.lat]);
-      if (pts.length) calmFit(map, pts, { padding: 80, maxZoom: 15 });
+      if (pts.length) calmFit(map, pts, { padding: padFor(80), maxZoom: 15 });
     }
     renderViewport();
 

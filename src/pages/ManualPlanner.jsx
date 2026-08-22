@@ -1406,10 +1406,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         )}
         panelFooter={FOOTER}
         panel={BODY}
-        // Камере ничего передавать не нужно: слот карты И ЕСТЬ свободное окно
-        // (см. `<MapShell>`), поэтому `FlowMap` побайтово равен версии из dev и
-        // считает кадр от своего контейнера, как считал всегда.
-        map={(
+        // Закрытая площадь приезжает камере отступом вьюпорта там, где она
+        // режет ширину (десктоп); на телефоне шит режет высоту, и её забирает
+        // сам слот — разбор в `mapSlotInsets`.
+        map={(camera) => (
           <>
             {/* Floating round back control — shown only on the phone shell (the app
                 header is removed there); the canon `.map-back` position/visibility
@@ -1423,6 +1423,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               onClick={() => nav('/trips')}
             />
             <FlowMap
+              camera={camera}
               home={home}
               cities={cities}
               // Always pass the finish city (it feeds the camera framing). DRAW the

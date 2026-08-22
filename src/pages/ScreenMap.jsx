@@ -81,10 +81,11 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
       selectedIdx={selectedIdx}
       onSelect={select}
       onHover={setHoverId}
-      // Камере ничего передавать не нужно: слот карты И ЕСТЬ свободное окно
-      // (см. `<MapShell>`), поэтому `MapView` кадрирует по своему контейнеру.
-      map={(
+      // Отступы камеры под панель (десктоп); на телефоне их нет — там слот сам
+      // равен свободному окну. Разбор — в `mapSlotInsets`.
+      map={(camera) => (
         <MapView
+          camera={camera}
           visits={visits}
           transfers={transfers}
           showStartEnd

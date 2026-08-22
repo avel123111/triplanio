@@ -83,3 +83,10 @@ test('жест: скроллить нечего — жест достаётся 
 test('жест: без аргументов — шит (нечего скроллить)', () => {
   assert.equal(gestureOwner(), 'drag');
 });
+
+test('жест: пока тащат карточку в содержимом, шит не берёт его вовсе', () => {
+  // Иначе перестановка города на телефоне невозможна: шит уезжает вместе с ним.
+  assert.equal(gestureOwner({ dragElsewhere: true, dy: 80, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'none');
+  // Даже с грипа — тащат уже не шит.
+  assert.equal(gestureOwner({ dragElsewhere: true, onHandle: true, dy: -40 }), 'none');
+});

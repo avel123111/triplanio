@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * Shared route drag-and-drop engine — extracted verbatim from TripStructureEdit so
@@ -25,6 +25,17 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the row would drop into
   const [pressingId, setPressingId] = useState(null); // touch long-press feedback: row being held before the drag arms
   const endDrag = () => { setDraggingId(null); setOverGap(null); };
+  // ★ ПЕРЕТАСКИВАНИЕ ОБЪЯВЛЕНО НА КОРНЕ ДОКУМЕНТА. Список маршрута живёт в
+  // боттом-шите, и для шита долгое нажатие с ведением пальца неотличимо от
+  // свайпа: он уезжал вместе с городом, и переставить город на телефоне было
+  // нельзя вовсе. Кто тащит, шит знать не должен — он читает факт с корня, тем
+  // же приёмом, каким объявлена открытая клавиатура (`data-keyboard`).
+  useEffect(() => {
+    const root = document.documentElement;
+    root.toggleAttribute('data-dragging', draggingId != null);
+    return () => root.removeAttribute('data-dragging');
+  }, [draggingId]);
+
   const justDraggedRef = useRef(false); // suppress the click that fires right after a drag
 
   // FLIP refs: animate non-dragged rows smoothly to their new slot during drag.

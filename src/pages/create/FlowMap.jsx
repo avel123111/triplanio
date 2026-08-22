@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { mapboxgl } from '@/lib/mapbox';
+import { mapboxgl, clampPadding } from '@/lib/mapbox';
 import { calmFit } from '@/lib/map/camera';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
@@ -44,6 +44,11 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
 function fitPaddingFor(w) {
   return w > 960 ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 52, left: 40 };
 }
+
+/** Воздух кадра ПЛЮС закрытая площадь — один отступ вьюпорта. */
+const addPad = (air, box) => (box
+  ? { top: air.top + box.top, right: air.right + box.right, bottom: air.bottom + box.bottom, left: air.left + box.left }
+  : air);
 
 // Нейтральный СТАРТОВЫЙ вид глобуса (до выбора маршрута; сюда же возвращает
 // RESET черновика).
@@ -101,6 +106,10 @@ function startGlobeView(map, pad, winW) {
 // ScreenMap drives MapView. Marker ids: 'home', the city's own id, 'finish'.
 // =====================================================================
 export default function FlowMap({
+  // Закрытая панелью площадь — приезжает от `<MapShell>` и выражается ОТСТУПОМ
+  // ВЬЮПОРТА: канвас остаётся во всю площадь (карта видна под виджетом), а кадр
+  // уходит в свободное окно. Разбор, почему не всегда так, — в `mapSlotInsets`.
+  camera = null,
   home, cities = [], finishCity, transport = {}, isStay = false,
   // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
   // CITY still feeds the camera framing, so stepping between steps toggles what's
@@ -198,7 +207,11 @@ export default function FlowMap({
   if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
   cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
   if (hasFinish) fitPositions.push([finishCity.longitude, finishCity.latitude]);
-  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
+  const camBox = camera || null;
+  const camKey = camBox ? `${camBox.top}|${camBox.right}|${camBox.bottom}|${camBox.left}` : '';
+  const camRef = useRef(camBox);
+  camRef.current = camBox;
+  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}@${camKey}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // A FlowMap-owned handle to the (singleton) map instance. useMapSurface nulls its
@@ -238,7 +251,7 @@ export default function FlowMap({
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
     if (canFit) {
-      const pad = fitPaddingFor(winW);
+      const pad = clampPadding(map, addPad(fitPaddingFor(winW), camRef.current));
       if (fitPositions.length) {
         // Route: re-frame ONLY when the route geometry / viewport actually changed
         // (fitKey) — a step change rebuilds pins above but leaves fitKey alone, so
@@ -255,7 +268,7 @@ export default function FlowMap({
         // сайзится от него (~85% высоты на десктопе), поэтому отступ вьюпорта не
         // нужен и здесь. Returning here from a route (draft RESET) glides back
         // out; a fresh mount / resize just snaps (the fade-in hides it).
-        try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
+        try { map.setPadding(camRef.current || { top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
         const view = startGlobeView(map, pad, winW);
         if (prevHadPointsRef.current) {
           try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }

@@ -1122,7 +1122,6 @@ h4,
 .chat-reply__tag,     /* TRIP-296: бейдж «ассистент» у ответа */
 .chat-mention__lbl,
 .ngrp__label,
-.te-th,
 .tl3-dh .datechip .m,
 .cityrail .cr-h,
 .plan-popular-badge,
@@ -4028,7 +4027,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (relocated out of the action bar) sits at the top-right, quiet. */
 /* Шапка на фоне приложения (--bg), не на белой поверхности — тело белое, шапка/футер
    с ним контрастируют (запрос Pavel №2). В dark то же --bg (панель тускнеет целиком). */
-.flow-lp-h { flex: none; padding: var(--sp-6) var(--sp-7); border-bottom: 1px solid var(--line); background: var(--bg); display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Отступы шапки переехали в слот шелла (`.mapshell__head`) — одна геометрия на
+   все экраны; здесь остались только разделитель, фон и раскладка.
+   visual-diff-exempt: .flow-lp-h padding — воздух шапки переехал в слот шелла (значение то же) */
+.flow-lp-h { flex: none; border-bottom: 1px solid var(--line); background: var(--bg); display: flex; align-items: flex-start; gap: var(--sp-6); }
 /* Футер флоу — тот же фон приложения, что и шапка. Раньше правило было scoped к
    `.flow-editcol` (колонка удалена вместе с раскладкой); теперь оно висит на
    СВОЁМ классе футера, а общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся
@@ -4414,6 +4416,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Весь скин (грунт + рамка + радиус + клип + подъём) несёт примитив
    <Card pad="none" radius="btn" raised> — классу остаётся раскладка. */
 .mapshell__card { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+/* Воздух вокруг шапки панели — свойство коробки шелла, а не экрана: раньше его
+   держал у себя каждый экран, и у редактора шапка оказалась прижата к краю.
+   visual-diff-exempt: .mapshell__head flex — слот шапки шелла
+   visual-diff-exempt: .mapshell__head padding — воздух вокруг шапки переехал из экрана в шелл */
+.mapshell__head { flex: none; padding: var(--sp-6) var(--sp-7); }
 /* Планировщик (запрос Pavel №2): шапка и футер сидят на фоне ПРИЛОЖЕНИЯ, тело —
    белая карточка; в тёмной теме тускнеет вся панель. Правило раньше висело на
    `.flow-editcol > .lp` — колонка удалена, поэтому оно переехало на поверхность
@@ -5550,6 +5557,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        visual-diff-exempt: .te-thead padding — то же
        visual-diff-exempt: .te-th color — то же
        visual-diff-exempt: .te-th min-width — то же
+       visual-diff-exempt: .te-th font-family — имя снято с ко-селектора типографики вместе с классом
+       visual-diff-exempt: .te-th font-size — то же
+       visual-diff-exempt: .te-th font-weight — то же
+       visual-diff-exempt: .te-th letter-spacing — то же
+       visual-diff-exempt: .te-th line-height — то же
+       visual-diff-exempt: .te-th text-transform — то же
        visual-diff-exempt: .te-th--c text-align — то же */
 
     /* ---- list rows ---- */

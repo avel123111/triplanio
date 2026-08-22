@@ -234,12 +234,16 @@ export function PeekSheet({
         const body = bodyRef.current;
         d.mode = gestureOwner({
           onHandle: d.onHandle,
+          // В содержимом уже тащат карточку (перестановка городов) — жест не наш.
+          dragElsewhere: document.documentElement.hasAttribute('data-dragging'),
           dy,
           scrollTop: body?.scrollTop ?? 0,
           scrollHeight: body?.scrollHeight ?? 0,
           clientHeight: body?.clientHeight ?? 0,
         });
       }
+      // «Не наш» — отпускаем жест целиком: ни тянуть, ни гасить событие.
+      if (d.mode === 'none') { drag.current = null; setDragY(null); return; }
       if (d.mode !== 'drag') return;
       e.preventDefault();
       const dt = e.timeStamp - d.lastT;

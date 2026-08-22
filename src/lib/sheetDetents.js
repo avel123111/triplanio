@@ -73,16 +73,25 @@ export function nearestDetent({ stops, height, from, flick = 0 }) {
  * ловится он только тем, что правило вынуто и закрыто тестом.
  *
  * Правило (оно же — привычка любого системного шита):
+ *   · перетаскивание УЖЕ идёт в содержимом → жест не наш вовсе;
  *   · палец на грипе или шапке    → всегда шит (это его ручка);
  *   · телу нечего скроллить       → шит (иначе жест умирает впустую);
  *   · тянут ВНИЗ, тело в самом верху → шит (это «опустить», а не «прокрутить»);
  *   · иначе                        → скролл тела.
  *
- * @param {{ onHandle?: boolean, dy?: number, scrollTop?: number, scrollHeight?: number, clientHeight?: number }} [p]
+ * ★ `dragElsewhere` — В СОДЕРЖИМОМ УЖЕ ТАЩАТ. Список маршрута переставляется
+ * долгим нажатием: палец держит карточку города и ведёт её вверх-вниз. Для шита
+ * это неотличимо от свайпа, и он уезжал вместе с городом — переставить город на
+ * телефоне было нельзя вовсе. Кто тащит, шит не знает и знать не должен: факт
+ * «перетаскивание идёт» объявлен на корне документа (`data-dragging`), тем же
+ * приёмом, каким объявлена открытая клавиатура (`data-keyboard`).
+ *
+ * @param {{ onHandle?: boolean, dragElsewhere?: boolean, dy?: number, scrollTop?: number, scrollHeight?: number, clientHeight?: number }} [p]
  *   `dy` — смещение пальца, + вниз; остальное — состояние скроллера тела.
- * @returns {'drag' | 'scroll'}
+ * @returns {'drag' | 'scroll' | 'none'}
  */
-export function gestureOwner({ onHandle = false, dy = 0, scrollTop = 0, scrollHeight = 0, clientHeight = 0 } = {}) {
+export function gestureOwner({ onHandle = false, dragElsewhere = false, dy = 0, scrollTop = 0, scrollHeight = 0, clientHeight = 0 } = {}) {
+  if (dragElsewhere) return 'none';
   if (onHandle) return 'drag';
   // +1 — щит от дробных размеров: у неприкрученного скроллера scrollHeight
   // бывает на доли пикселя больше clientHeight, и это не «есть что скроллить».
