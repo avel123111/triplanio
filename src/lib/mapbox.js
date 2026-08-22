@@ -2,6 +2,8 @@
 // trip Map lens, the planner previews and the mini-map all render consistently.
 // Note: Mapbox uses [lng, lat] order (GeoJSON), the opposite of Leaflet/Google.
 import mapboxgl from 'mapbox-gl';
+import { clampPaddingBox } from './map/padding.js';
+import { getMapInsets, offsetForInsets, withMapInsets } from './map/insets.js';
 
 export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -37,7 +39,7 @@ export function applyBasemapConfig(map, scheme, theme = 'default') {
   if (map.isStyleLoaded()) set(); else map.once('style.load', set);
 }
 
-// Clamp a numeric bounds-fit padding to the map's current canvas so a fit is always
+// Clamp a bounds-fit padding to the map's current canvas so a fit is always
 // geometrically possible. Mapbox's cameraForBounds (used by fitBounds AND directly)
 // emits warnOnce("Map cannot fit within canvas with the given bounds, padding, and/or
 // offset.") and silently refuses the fit whenever the padding meets/exceeds the canvas
@@ -46,17 +48,26 @@ export function applyBasemapConfig(map, scheme, theme = 'default') {
 // padding 110 needs a >220px axis. On a normal-size canvas the clamp is a no-op, so
 // the common path is unchanged — it only ever shrinks padding that literally cannot
 // fit, making the illegal camera command unrepresentable rather than papering over it.
+//
+// ★ ЧИСЛО И БОКС — ОДНА ДВЕРЬ (TRIP-422). Прежняя редакция клампила ТОЛЬКО
+// скаляр и возвращала объект как есть — то есть асимметричный отступ, который
+// порождает боттом-шит («низ занят на 68% экрана»), проходил мимо защиты, fit
+// молча уезжал на минимальный зум и глобус повисал в чёрном космосе. Теперь обе
+// формы идут через одну арифметику (`lib/map/padding.js`, закрыта тестом), и
+// скаляр остаётся скаляром на выходе — вызыватели, передающие число, не меняются.
 export function clampPadding(map, padding = 0) {
-  if (!map || typeof padding !== 'number' || !(padding > 0)) return padding;
-  let smaller = 0;
+  if (!map) return padding;
+  const scalar = typeof padding === 'number';
+  if (scalar && !(padding > 0)) return padding;
+  let size;
   try {
     const el = map.getContainer();
-    smaller = Math.min(el?.clientWidth || 0, el?.clientHeight || 0);
+    size = { width: el?.clientWidth || 0, height: el?.clientHeight || 0 };
   } catch { return padding; }
-  if (!smaller) return padding; // unmeasured — the canFit gate should have prevented this
-  // Leave ≥16px of canvas between the two paddings so the fit stays valid.
-  const maxPad = Math.max(0, Math.floor(smaller / 2) - 8);
-  return Math.min(padding, maxPad);
+  const box = clampPaddingBox(size, padding);
+  // Скаляру возвращаем скаляр: у числа «одинаково со всех сторон» — часть
+  // смысла, и объект вместо него менял бы поведение вызывателей молча.
+  return scalar ? Math.min(box.top, box.right, box.bottom, box.left) : box;
 }
 
 // Fit the map to a set of [lng, lat] points. Single point → centered; empty → no-op.
@@ -67,14 +78,18 @@ export function fitToPoints(map, points, opts = {}) {
   if (!map || !points || points.length === 0) return;
   const duration = opts.duration ?? (opts.animate ? 650 : 0);
   if (points.length === 1) {
-    // opts.offset shifts a single centred point out from under an overlay (e.g. the
-    // planner's floating panel); [0,0] when unset keeps the point centred.
-    map.easeTo({ center: points[0], zoom: opts.singleZoom ?? 7, duration, offset: opts.offset ?? [0, 0] });
+    // ОДНА точка: вписывать нечего, поэтому её уводят из-под панели/шита
+    // сдвигом центра. Явный `opts.offset` (если вызыватель знает лучше)
+    // побеждает; иначе сдвиг считается от закрытой площади этой карты.
+    const offset = opts.offset ?? offsetForInsets(getMapInsets(map));
+    map.easeTo({ center: points[0], zoom: opts.singleZoom ?? 7, duration, offset });
     return;
   }
   const b = new mapboxgl.LngLatBounds();
   points.forEach((p) => b.extend(p));
-  map.fitBounds(b, { padding: clampPadding(map, opts.padding ?? 48), maxZoom: opts.maxZoom ?? 8, duration });
+  // Отступ вызова + закрытая площадь карты, и только потом кламп: кламп судит
+  // о СУММЕ, иначе он проверяет половину задачи.
+  map.fitBounds(b, { padding: clampPadding(map, withMapInsets(map, opts.padding ?? 48)), maxZoom: opts.maxZoom ?? 8, duration });
 }
 
 // GeoJSON LineString feature from [[lng,lat], ...].

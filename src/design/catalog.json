@@ -72,15 +72,11 @@
     "cm": "triage",
     "code": "triage",
     "col": "canon",
-    "cover": "canon",
-    "pagehead": "canon",
-    "stat": "canon",
-    "lrow": "canon",
-    "donut": "canon",
     "collage": "triage",
     "cols": "triage",
     "confirm": "triage",
     "consent": "triage",
+    "cover": "canon",
     "cr": "triage",
     "crow": "triage",
     "cs": "triage",
@@ -99,13 +95,14 @@
     "doc": "canon",
     "docfield": "triage",
     "dock": "triage",
+    "donut": "canon",
     "dot": "triage",
     "drawer": "triage",
     "ds": "triage",
     "dt": "triage",
     "dur": "triage",
-    "eed": "triage",
     "editable": "canon",
+    "eed": "triage",
     "empty": "canon",
     "en": "triage",
     "eroute": "triage",
@@ -148,10 +145,12 @@
     "limitcard": "triage",
     "list": "triage",
     "lp": "triage",
+    "lrow": "canon",
     "m": "triage",
     "mailrow": "triage",
     "map": "triage",
     "mapboxgl": "triage",
+    "mapshell": "canon",
     "mapwrap": "triage",
     "mbnav": "triage",
     "mbrow": "triage",
@@ -166,8 +165,8 @@
     "mono": "triage",
     "mrow": "triage",
     "muted": "canon",
-    "name": "triage",
     "n": "triage",
+    "name": "triage",
     "nav": "triage",
     "ncal": "triage",
     "nextcard": "triage",
@@ -181,6 +180,7 @@
     "ov": "triage",
     "ovwrap": "triage",
     "page": "canon",
+    "pagehead": "canon",
     "partner": "canon",
     "pb": "triage",
     "pcard": "triage",
@@ -236,6 +236,7 @@
     "spin": "canon",
     "sr": "canon",
     "ss": "canon",
+    "stat": "canon",
     "statbar": "triage",
     "stats": "triage",
     "stay": "triage",
@@ -264,7 +265,6 @@
     "tmk": "triage",
     "toast": "canon",
     "today": "triage",
-    "tt": "canon",
     "top": "triage",
     "tp": "triage",
     "tr": "triage",
@@ -274,6 +274,7 @@
     "trunc": "canon",
     "trust": "triage",
     "ts": "triage",
+    "tt": "canon",
     "ttl": "triage",
     "tv": "triage",
     "tx": "triage",
@@ -301,73 +302,124 @@
   "axes": {
     "row": {
       "зазор": {
-        "значения": ["g1", "g2", "g3", "g4", "g6", "g7", "g8"],
+        "значения": [
+          "g1",
+          "g2",
+          "g3",
+          "g4",
+          "g6",
+          "g7",
+          "g8"
+        ],
         "дефолт": "g5",
         "шкала": "--sp-N",
         "почему": "ступень = номер токена --sp-N. g5 - собственный зазор .row, поэтому класса под него нет и быть не должно."
       },
       "поперёк": {
-        "значения": ["a-start", "a-baseline"],
+        "значения": [
+          "a-start",
+          "a-baseline"
+        ],
         "дефолт": "a-center",
         "почему": "align-items. Ряд по умолчанию центрирует; a-end у ряда не объявлен - его никто не зовёт."
       },
       "вдоль": {
-        "значения": ["j-between", "j-center"],
+        "значения": [
+          "j-between",
+          "j-center"
+        ],
         "дефолт": "j-start",
         "почему": "justify-content. Начальное значение флекса, отдельным классом не объявлено."
       },
       "перенос": {
-        "значения": ["wrap"],
+        "значения": [
+          "wrap"
+        ],
         "дефолт": "nowrap",
         "почему": "flex-wrap. Ось с одним значением - вторым будет только явный nowrap, и он дефолт."
       },
       "поток": {
-        "значения": ["inline"],
+        "значения": [
+          "inline"
+        ],
         "дефолт": "block",
         "почему": "display:inline-flex против flex. Ортогонально всему остальному."
       }
     },
     "col": {
       "зазор": {
-        "значения": ["g1", "g2", "g3", "g4", "g6", "g7", "g8"],
+        "значения": [
+          "g1",
+          "g2",
+          "g3",
+          "g4",
+          "g6",
+          "g7",
+          "g8"
+        ],
         "дефолт": "g5",
         "шкала": "--sp-N",
         "почему": "та же лестница, что у .row - одна шкала на три примитива."
       },
       "поперёк": {
-        "значения": ["a-start", "a-end"],
+        "значения": [
+          "a-start",
+          "a-end"
+        ],
         "дефолт": "stretch",
         "почему": "align-items. У колонки дефолт НЕ центр (в .col align-items не объявлен), и набор значений другой, чем у ряда: a-baseline у колонки не зовут, a-end у ряда - тоже. Асимметрия объявлена, а не молчит."
       },
       "вдоль": {
-        "значения": ["j-center"],
+        "значения": [
+          "j-center"
+        ],
         "дефолт": "j-start",
         "почему": "justify-content вдоль вертикали."
       }
     },
     "grid": {
       "зазор": {
-        "значения": ["g2", "g3", "g4", "g6", "g7", "g8"],
+        "значения": [
+          "g2",
+          "g3",
+          "g4",
+          "g6",
+          "g7",
+          "g8"
+        ],
         "дефолт": "g5",
         "шкала": "--sp-N",
         "почему": "ступени g1 у сетки НЕТ - её никто не зовёт, и она названа дырой в app.css. Здесь эта дыра ОБЪЯВЛЕНА: .grid--g1 в разметке теперь красный, а не молчаливый дефолт 10px."
       },
       "колонки": {
-        "значения": ["2"],
+        "значения": [
+          "2"
+        ],
         "дефолт": "1",
         "почему": "grid-template-columns. Сегодня одно значение; ось названа осью, потому что вопрос 'сколько колонок' очевидно расширяем, а обличье ортогонально зазору."
       }
     },
     "toast": {
       "тон": {
-        "значения": ["success", "error", "warning", "info"],
+        "значения": [
+          "success",
+          "error",
+          "warning",
+          "info"
+        ],
         "дефолт": "neutral",
         "почему": "Цвет кружка со значком: .toast--<тон> .tic задаёт background. Ось у семьи ровно одна - размер, отступ и позиция у всплывашки общие, разной бывает только серьёзность. Дефолт neutral НЕ имеет класса намеренно: серый кружок рисует база .toast .tic { background: var(--ink-2) }, то есть 'нейтральный' - это отсутствие тона, а не тон."
       }
     },
     "sev": {
       "тон": {
-        "значения": ["info", "warning", "error", "success", "quiet"],
+        "значения": [
+          "info",
+          "warning",
+          "error",
+          "success",
+          "quiet"
+        ],
         "почему": "Серьёзность плашки: .sev--<тон> задаёт фон и цвет рамки, парное правило .sev--<тон> .sev__icon красит плитку значка. ДЕФОЛТА У ОСИ НЕТ намеренно, и ключ не поставлен: компонент пишет класс ВСЕГДА (level = 'info' даёт существующий .sev--info), поэтому 'значения, которое объект несёт сам' тут не существует. Все пять живые: error 20 вызовов, info 4, quiet 4, warning 3, success 2 (замер ПОСЛЕ снятия показа из витрины в этом же PR - до него info было 5)."
       }
     }

@@ -1,40 +1,52 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { nearestDetent, resolveDetents } from '@/lib/sheetDetents';
 
 /**
- * PeekSheet — the NON-modal, persistent bottom-sheet archetype: it's always on
- * screen at a `peek` height and raises/lowers to `full`, the content underneath
- * stays live, and it never dismisses. This is the web equivalent of the native
- * detent sheet (iOS `UISheetPresentationController` detents / Android
- * `BottomSheetBehavior`).
+ * PeekSheet — НЕМОДАЛЬНЫЙ постоянный боттом-шит с ДЕТЕНТАМИ: он всегда на
+ * экране, встаёт на одну из заданных высот, содержимое под ним живёт своей
+ * жизнью, и закрыть его нельзя. Веб-эквивалент нативного detent-шита (iOS
+ * `UISheetPresentationController` detents / Android `BottomSheetBehavior`).
  *
- * Deliberately NOT built on vaul: vaul is a *modal drawer* engine (open over a
- * backdrop → swipe to dismiss; it locks the page and sets touch-action:none on
- * the whole surface) — great for the canonical <Sheet>, but it fights the
- * always-on peek (broken inner scroll + the page pull-to-refresh on drag). So
- * this owns a small, native-style gesture instead:
- *   • the grip + header are drag zones; dragging moves peek ↔ full;
- *   • the body scrolls natively;
- *   • when expanded and the body is scrolled, the body scrolls; a downward drag
- *     from the top of the body hands back to collapsing the sheet (the native
- *     scroll↔drag handoff);
- *   • drags call preventDefault, and overscroll-behavior is contained, so the
- *     page never pull-to-refreshes.
+ * Намеренно НЕ на vaul: vaul — движок МОДАЛЬНОГО drawer'а (открылся над
+ * подложкой → свайп закрывает; он лочит страницу и ставит `touch-action:none`
+ * на всю поверхность). Это правильно для канон-`<Sheet>` (меню, пикеры,
+ * confirm), но воюет с постоянным шитом над живой картой: ломается внутренний
+ * скролл и появляется pull-to-refresh страницы. Поэтому здесь свой жест:
+ *   • грип и шапка — зоны перетаскивания, тело скроллится нативно;
+ *   • раскрытый шит со скролленным телом отдаёт жест телу, а тяга вниз от
+ *     верха тела возвращает его шиту (нативная передача скролл↔драг);
+ *   • драг зовёт preventDefault, overscroll-behavior contained — страница
+ *     не дёргается.
  *
- * Controlled: `expanded` + `onExpandedChange`. The peek height is measured from
- * the grip + header (plus the fixed bottom-nav dock it sits behind + the home
- * safe-area), so callers don't pass magic pixels. Mobile only — desktop callers
- * render their own layout.
+ * ★ ШИТ ПРИКЛЕЕН К НИЗУ, И ЭТО НЕ СЛУЧАЙНОСТЬ. Он `position: fixed; bottom: 0`
+ * во всю высоту вьюпорта и УЕЗЖАЕТ ВНИЗ на `--sheet-y`: видимая полоса — это
+ * его верх. Ровно поэтому он не может «прилипнуть к верхней части экрана» ни
+ * при каком детенте, ни при какой клавиатуре — верхнего якоря у него нет.
  *
- *   <PeekSheet expanded={open} onExpandedChange={setOpen} header={<Head/>} label="Route">
+ * ★ ГЕОМЕТРИЯ ЖИВЁТ В ДВУХ ПЕРЕМЕННЫХ, И РАЗДЕЛЕНЫ ОНИ РАДИ ПЛАВНОСТИ:
+ *   `--sheet-y` — сдвиг, меняется КАЖДЫЙ КАДР жеста (только transform, без
+ *                 перекладки — палец ведёт шит 1:1);
+ *   `--sheet-h` — высота ЗАФИКСИРОВАННОГО детента, меняется ТОЛЬКО на осадке;
+ *                 от неё считается высота тела. Меняй её покадрово — и каждый
+ *                 кадр жеста стоил бы layout всего списка.
+ *
+ * Контролируемый: `detent` (индекс) + `onDetentChange`. `detents` — доли высоты
+ * экрана по возрастанию; самая нижняя поднимается до измеренной шапки (грип +
+ * header + док + safe-area), чтобы заголовок никогда не обрезался: магических
+ * пикселей вызывателю передавать не нужно. Только мобильный: десктоп рисует свою
+ * раскладку.
+ *
+ *   <PeekSheet detents={[0.15, 0.68, 1]} detent={i} onDetentChange={setI}
+ *              header={<Head/>} label="Маршрут">
  *     <ScrollableList/>
  *   </PeekSheet>
  */
 
-const DOCK_PX = 60; // the fixed bottom-nav dock the peek sits behind (TRIP-222)
-const FLICK_VELOCITY = 0.3; // px/ms at release above which a flick snaps by direction
+const DOCK_PX = 60; // фиксированный нижний нав, за которым стоит нижний детент (TRIP-222)
+const FLICK_VELOCITY = 0.3; // px/мс на отпускании, выше которого бросок решает направление
 
-// Resolve the home-indicator inset in px (env() can't be read directly in JS).
+// Инсет домашней полоски в px (env() из JS не прочитать).
 function safeAreaBottom() {
   if (typeof document === 'undefined') return 0;
   const probe = document.createElement('div');
@@ -45,26 +57,58 @@ function safeAreaBottom() {
   return h;
 }
 
-export function PeekSheet({ header, children, expanded, onExpandedChange, label }) {
+/**
+ * `header` — то, что видно на САМОМ НИЖНЕМ детенте (и зона перетаскивания):
+ * шапка обязана читаться, когда шит опущен, иначе опущенный шит превращается в
+ * безымянную полоску. `children` — тело, оно скроллится.
+ *
+ * @param {{
+ *   header?: any,
+ *   children?: any,
+ *   detent?: number,
+ *   onDetentChange?: (i: number) => void,
+ *   detents?: number[],
+ *   onHeightChange?: (px: number) => void,
+ *   label: string,
+ *   className?: string,
+ * }} p
+ */
+export function PeekSheet({
+  header,
+  children,
+  detent = 0,
+  onDetentChange,
+  detents = [0.15, 1],
+  onHeightChange,
+  label,
+  className = '',
+}) {
   const sheetRef = useRef(null);
   const headRef = useRef(null);
   const bodyRef = useRef(null);
   const drag = useRef(null);
-  const [peekPx, setPeekPx] = useState(140);
-  const [dragOffset, setDragOffset] = useState(null); // px while the finger is down, else null
+  // Полоса шапки (грип + header + док + safe-area) и высота вьюпорта — обе
+  // измеряются, а не задаются числом: шапка у каждого экрана своя.
+  const [headPx, setHeadPx] = useState(96);
+  const [vh, setVh] = useState(() => (typeof window === 'undefined' ? 0 : window.innerHeight));
+  const [dragY, setDragY] = useState(null); // px, пока палец на экране; иначе null
 
-  // Latest props for the once-bound native listeners (so they never go stale
-  // without re-binding on every render).
+  // Доли → пиксели: один расчёт на рендер, он же кормит жест и стили.
+  const stops = useMemo(() => resolveDetents(detents, vh, headPx), [detents, vh, headPx]);
+  const index = Math.max(0, Math.min(stops.length - 1, detent));
+  const sheetH = stops[index] ?? 0;
+  const restY = Math.max(0, vh - sheetH);
+
+  // Свежие пропы для однажды навешанных нативных слушателей.
   const live = useRef();
-  live.current = { expanded, onExpandedChange, peekPx };
+  live.current = { index, stops, vh, onDetentChange };
 
-  // Peek band = grip + header, plus the dock zone the sheet spans behind and the
-  // safe-area, so the grip + title clear the dock.
   const measure = useCallback(() => {
     const sheet = sheetRef.current, head = headRef.current;
     if (!sheet || !head) return;
-    const content = head.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
-    setPeekPx(Math.round(content + DOCK_PX + safeAreaBottom()));
+    const band = head.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
+    setHeadPx(Math.round(band + DOCK_PX + safeAreaBottom()));
+    setVh(window.innerHeight);
   }, []);
 
   useLayoutEffect(() => {
@@ -75,8 +119,8 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
     return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measure); };
   }, [measure]);
 
-  // Native, non-passive touch handling — bound once; reads current state via
-  // `live`. preventDefault on a drag is what stops the page pull-to-refresh.
+  // Нативный не-пассивный тач — навешан один раз, текущее состояние читает через
+  // `live`. preventDefault на драге и есть то, что глушит pull-to-refresh.
   useEffect(() => {
     const el = sheetRef.current;
     if (!el) return undefined;
@@ -84,15 +128,15 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
 
     const onStart = (e) => {
       if (e.touches.length !== 1) { drag.current = null; return; }
-      const fullH = el.getBoundingClientRect().height;
-      const { expanded: exp, peekPx: pk } = live.current;
-      const peekOffset = Math.max(0, fullH - pk);
-      const base = exp ? 0 : peekOffset;
+      const { index: i, stops: st, vh: h } = live.current;
       drag.current = {
         startY: e.touches[0].clientY,
-        base, peekOffset, last: base,
-        lastY: e.touches[0].clientY, lastT: e.timeStamp, vy: 0, // for velocity/flick
-        // A tap anywhere on the grip OR the header toggles (not just the grip bar).
+        base: Math.max(0, h - (st[i] ?? 0)),
+        min: Math.max(0, h - (st[st.length - 1] ?? 0)), // самый высокий детент
+        max: Math.max(0, h - (st[0] ?? 0)),             // самый низкий
+        last: Math.max(0, h - (st[i] ?? 0)),
+        lastY: e.touches[0].clientY, lastT: e.timeStamp, vy: 0,
+        // Тап по грипу ИЛИ шапке переключает детент (не только по полоске).
         onHandle: !!(e.target.closest && e.target.closest('[data-peek-grip],[data-peek-head]')),
         mode: 'idle',
       };
@@ -100,43 +144,44 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
     const onMove = (e) => {
       const d = drag.current; if (!d) return;
       const y = e.touches[0].clientY;
-      const dy = y - d.startY; // + down, − up
+      const dy = y - d.startY; // + вниз, − вверх
       if (d.mode === 'idle') {
-        if (Math.abs(dy) < 4) return; // wait for intent
+        if (Math.abs(dy) < 4) return; // ждём намерения
         const atTop = !bodyRef.current || bodyRef.current.scrollTop <= 0;
-        // Expanded: only a downward drag from the top collapses; otherwise the
-        // body scrolls natively. Peek: any drag moves the sheet.
-        d.mode = (!live.current.expanded || (dy > 0 && atTop)) ? 'drag' : 'scroll';
+        const { index: i, stops: st } = live.current;
+        const atMax = i >= st.length - 1;
+        // На верхнем детенте тело скроллится, и только тяга вниз от его верха
+        // возвращает жест шиту. Ниже — любой драг двигает шит.
+        d.mode = (!atMax || (dy > 0 && atTop)) ? 'drag' : 'scroll';
       }
       if (d.mode !== 'drag') return;
       e.preventDefault();
-      // Track finger velocity (px/ms, + = downward) from the last sample so a
-      // quick flick snaps even over a short distance.
       const dt = e.timeStamp - d.lastT;
       if (dt > 0) d.vy = (y - d.lastY) / dt;
       d.lastY = y; d.lastT = e.timeStamp;
-      const offset = Math.max(0, Math.min(d.peekOffset, d.base + dy));
-      d.last = offset;
-      setDragOffset(offset);
+      const next = Math.max(d.min, Math.min(d.max, d.base + dy));
+      d.last = next;
+      setDragY(next);
     };
     const onEnd = (e) => {
       const d = drag.current; drag.current = null;
       if (!d) return;
-      const { expanded: exp, onExpandedChange: cb } = live.current;
+      const { index: i, stops: st, vh: h, onDetentChange: cb } = live.current;
       if (d.mode === 'drag') {
-        setDragOffset(null);
-        // Ignore a stale velocity if the finger paused before lifting (>80ms
-        // since the last move) — that's a deliberate placement, not a flick.
+        setDragY(null);
+        // Скорость, замершая до отпускания (>80мс), — это осознанная установка,
+        // а не бросок.
         const vy = (e.timeStamp - d.lastT) < 80 ? d.vy : 0;
-        // A real flick commits in its direction over any distance (responsive);
-        // a slow/paused drag settles to whichever detent is closer.
-        const next = Math.abs(vy) > FLICK_VELOCITY
-          ? vy < 0            // flick up → expand, flick down → collapse
-          : d.last < d.peekOffset / 2; // → nearer detent
-        if (next !== exp) cb && cb(next);
+        // Бросок считаем в две строки не для красоты: одна строка со знаками
+        // «больше» и «меньше» разом читается сканером i18n как JSX-текст.
+        const isFlick = Math.abs(vy) > FLICK_VELOCITY;
+        const flick = isFlick ? Math.sign(-vy) : 0;
+        const next = nearestDetent({ stops: st, height: h - d.last, from: i, flick });
+        if (next !== i) cb && cb(next);
       } else if (d.mode === 'idle' && d.onHandle) {
-        e.preventDefault(); // swallow the emulated click, then toggle
-        cb && cb(!exp);
+        e.preventDefault(); // глушим эмулированный клик и переключаем
+        const next = i >= st.length - 1 ? 0 : i + 1;
+        cb && cb(next);
       }
     };
 
@@ -150,31 +195,50 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
       el.removeEventListener('touchend', onEnd, opts);
       el.removeEventListener('touchcancel', onEnd, opts);
     };
+    // `stops` читается из замыкания на осадке — он же лежит в `live`, поэтому
+    // перевешивать слушатели на каждое изменение размеров не нужно.
   }, []);
 
+  // Клавиатура: стрелки двигают по детентам поштучно, Enter/Space — по кругу.
   const onGripKey = (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpandedChange && onExpandedChange(!expanded); }
+    const last = stops.length - 1;
+    const go = (n) => { e.preventDefault(); if (n !== index) onDetentChange && onDetentChange(n); };
+    if (e.key === 'ArrowUp') go(Math.min(last, index + 1));
+    else if (e.key === 'ArrowDown') go(Math.max(0, index - 1));
+    else if (e.key === 'Enter' || e.key === ' ') go(index >= last ? 0 : index + 1);
   };
 
-  const style = { '--peek': peekPx + 'px' };
-  if (dragOffset != null) style.transform = `translateY(${dragOffset}px)`;
+  // Высоту сообщаем наверх ТОЛЬКО зафиксированную (не покадрово во время жеста):
+  // ею шелл считает закрытую площадь карты, а камера обязана ехать после осадки,
+  // а не драться с пальцем.
+  useEffect(() => { onHeightChange && onHeightChange(sheetH); }, [sheetH, onHeightChange]);
+
+  const style = {
+    '--sheet-y': (dragY ?? restY) + 'px',
+    '--sheet-h': sheetH + 'px',
+    '--sheet-head': headPx + 'px',
+  };
 
   if (typeof document === 'undefined') return null;
-  // Portal to <body> so `position:fixed` anchors to the viewport (not an ancestor
-  // with a transform/filter) and the sheet shares the dock's stacking context.
+  // Портал в <body>: `position: fixed` обязан считаться от вьюпорта, а не от
+  // предка с transform/filter, и шит делит стек-контекст с доком.
   return createPortal(
     <div
       ref={sheetRef}
-      className={'peek-sheet' + (expanded ? ' is-expanded' : '') + (dragOffset != null ? ' is-dragging' : '')}
+      className={['peek-sheet', dragY != null ? 'is-dragging' : '', className].filter(Boolean).join(' ')}
       style={style}
+      data-detent={index}
+      data-detent-max={stops.length - 1}
     >
       <div
         className="peek-sheet__grip"
         data-peek-grip
-        role="button"
+        role="slider"
         tabIndex={0}
         aria-label={label}
-        aria-expanded={!!expanded}
+        aria-valuemin={0}
+        aria-valuemax={stops.length - 1}
+        aria-valuenow={index}
         onKeyDown={onGripKey}
       >
         <i />

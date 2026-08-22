@@ -5,6 +5,7 @@ import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, 
 import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
+import { setMapInsets } from '@/lib/map/insets';
 import MapControls from '@/lib/map/MapControls';
 import { sortVisits } from '@/lib/validation';
 
@@ -186,6 +187,10 @@ export default function MapView({
   // ctrl+scroll") for as long as this surface owns the singleton; restored on
   // unmount so other screens keep it. Defaults to the singleton's setting (on).
   cooperativeGestures = true,
+  // Какая часть КАНВАСА закрыта чужим слоем (панель слева, шит снизу) — в px.
+  // Карта от этого НЕ меняет размер: меняется только прицел камеры. Даёт
+  // `<MapShell>`; экраны без него ничего не передают и работают как прежде.
+  insets = null,
   children,
 }) {
   const containerRef = useRef(null);
@@ -534,25 +539,50 @@ export default function MapView({
     [focus],
   );
   const hadFocusRef = useRef(false);
-  useEffect(() => {
+  // ★ ОДНА ТОЧКА «КУДА СЕЙЧАС СМОТРИТ КАМЕРА» — на фокус (город / пара городов)
+  // или на весь маршрут. Поводов у неё ДВА: сменился фокус и сменилось СВОБОДНОЕ
+  // МЕСТО (свернули панель, подняли шит). Разными телами эти два повода
+  // разъехались бы на первой же правке кадрирования.
+  const frameCurrent = useCallback(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     // While a progressive reveal is active, the reveal controller owns the camera.
     if (revealActiveId != null) return;
     if (focusSig) {
-      hadFocusRef.current = true;
-      if (focus.length === 1) {
-        calmFlyTo(map, { center: focus[0], zoom: focusZoom });
-      } else if (canFit) {
-        calmFit(map, focus, { padding: 110, maxZoom: 9 });
-      }
-    } else if (hadFocusRef.current) {
-      hadFocusRef.current = false;
-      if (canFit && ordered.length > 0) {
-        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
-      }
+      if (focus.length === 1) calmFlyTo(map, { center: focus[0], zoom: focusZoom });
+      else if (canFit) calmFit(map, focus, { padding: 110, maxZoom: 9 });
+    } else if (canFit && ordered.length > 0) {
+      calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
     }
+  }, [ready, canFit, focusSig, revealActiveId, focus, focusZoom, ordered]);
+
+  useEffect(() => {
+    // Возвращаться к полному маршруту есть смысл только если фокус БЫЛ: иначе
+    // этот эффект перебивал бы первичную посадку камеры.
+    if (focusSig) hadFocusRef.current = true;
+    else if (!hadFocusRef.current) return;
+    else hadFocusRef.current = false;
+    frameCurrent();
   }, [ready, canFit, focusSig, revealActiveId]);
+
+  // ★ СВОБОДНОЕ МЕСТО ИЗМЕНИЛОСЬ → КАМЕРА ЦЕЛИТСЯ В ОСТАТОК, А КАНВАС НЕ
+  // ТРОГАЕТСЯ. Панель и шит НЕ меняют размер карты: пересоздание канваса и есть
+  // источник морганий и «карта пропала на мгновение». Меняется только отступ
+  // камеры — его объявляем ОДНОМУ владельцу (`setMapInsets`), обе двери камеры
+  // читают оттуда сами, и уже после этого перекадрируем.
+  const insetsSig = useMemo(
+    () => [insets?.top, insets?.right, insets?.bottom, insets?.left].map((n) => Math.round(n || 0)).join(','),
+    [insets],
+  );
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    setMapInsets(map, insets);
+    if (ready) frameCurrent();
+    return () => setMapInsets(map, null);
+    // `frameCurrent`/`insets` намеренно вне зависимостей: повод — ИЗМЕНЕНИЕ
+    // отступов (insetsSig), а не новая ссылка на колбэк.
+  }, [insetsSig, ready]);
 
   // --- Draw markers + route lines whenever the data changes ---
   useEffect(() => {

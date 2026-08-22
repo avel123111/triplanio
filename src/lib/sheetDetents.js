@@ -1,0 +1,64 @@
+// @ts-check
+
+/**
+ * Детенты боттом-шита — ЧИСТАЯ арифметика (TRIP-422).
+ *
+ * ★ ЗАЧЕМ ОТДЕЛЬНО. Это правила, у которых нет скриншота: «на какой высоте
+ * встанет шит» и «куда он поедет, когда палец отпустили». Ошибка в них
+ * выглядит как шит, севший не туда, или как заголовок, обрезанный доком, —
+ * ловится глазом и поздно. Чистые функции без импортов бегут в `node --test`;
+ * компоненту остаётся жест и DOM.
+ */
+
+/** Минимум канваса под шитом: он не имеет права занять экран целиком «в ноль». */
+const MIN_TOP_GAP = 0;
+
+/**
+ * Доли высоты экрана → пиксельные высоты детентов.
+ *
+ * Нижний детент поднимается до `headPx` (грип + шапка + док + safe-area): доля
+ * меньше собственной шапки означала бы обрезанный заголовок, а не «маленький
+ * шит». Значения сортируются и дедуплицируются — два совпавших детента дали бы
+ * жест, который «залипает» между ними.
+ *
+ * @param {number[]} fractions доли 0..1
+ * @param {number} vh высота вьюпорта, px
+ * @param {number} headPx измеренная полоса шапки, px
+ * @returns {number[]} высоты по возрастанию, px
+ */
+export function resolveDetents(fractions, vh, headPx = 0) {
+  if (!(vh > 0)) return [];
+  const min = Math.min(Math.max(0, headPx), vh);
+  const max = Math.max(0, vh - MIN_TOP_GAP);
+  const px = (Array.isArray(fractions) && fractions.length ? fractions : [1])
+    .filter((f) => typeof f === 'number' && Number.isFinite(f))
+    .map((f) => Math.round(Math.min(Math.max(f, 0), 1) * vh))
+    .map((h) => Math.min(max, Math.max(min, h)));
+  const uniq = [...new Set(px)].sort((a, b) => a - b);
+  return uniq.length ? uniq : [min];
+}
+
+/**
+ * Куда сесть после отпускания.
+ *
+ * Бросок (`flick` ±1) коммитит В СВОЮ СТОРОНУ на один детент, какой бы короткой
+ * ни была дистанция — иначе быстрый короткий свайп «не сработал бы». Медленная
+ * или замершая тяга садится на БЛИЖАЙШИЙ детент по фактической высоте.
+ *
+ * @param {{ stops: number[], height: number, from: number, flick?: number }} p
+ * @returns {number} индекс детента
+ */
+export function nearestDetent({ stops, height, from, flick = 0 }) {
+  if (!Array.isArray(stops) || stops.length === 0) return 0;
+  const last = stops.length - 1;
+  const cur = Math.max(0, Math.min(last, from | 0));
+  if (flick > 0) return Math.min(last, cur + 1);
+  if (flick < 0) return Math.max(0, cur - 1);
+  let best = 0;
+  let bestD = Infinity;
+  stops.forEach((h, i) => {
+    const d = Math.abs(h - height);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}

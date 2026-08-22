@@ -4230,6 +4230,86 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Quick-start chips under the welcome message — a small gap below it. The empty
    `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
 .pl-ai-chips { margin-top: var(--sp-4); }
+/* ══ MapShell — раскладка «карта во всю площадь + панель поверх» (TRIP-422) ══
+   Один примитив на все экраны с картой: планировщик, линза карты, редактор
+   маршрута. Раньше эта раскладка была написана трижды (`.flow-*`, `.trip-map-*`,
+   `.ts-*`), и каждая копия по-своему отвечала на вопрос «где заканчивается
+   карта» — отсюда и расхождения в поведении.
+
+   ★ КАРТА ВСЕГДА ВО ВСЮ ПЛОЩАДЬ. Панель НЕ режет её колонкой: она лежит
+   ПОВЕРХ, а карта узнаёт о занятом месте отступами камеры (JS, `insets`).
+   Резать канвас = переаллоцировать буфер и перерисовывать тайлы, то есть
+   моргание при каждом движении панели.
+
+   prefix-exempt: mapshell — примитив раскладки «карта + панель/шит», апрув Pavel
+   floor-exempt: namespaces +1 — новый примитив раскладки .mapshell, апрув Pavel
+   floor-exempt: classes +6 — .mapshell/__map/__panel/__card/__body/__toggle, апрув Pavel
+   floor-exempt: triage +6 — те же классы в семье под разбором, апрув Pavel
+   floor-exempt: layout +6 — приватные классы раскладки шелла, апрув Pavel
+   visual-diff-exempt: .mapshell position — новый примитив раскладки
+   visual-diff-exempt: .mapshell flex — новый примитив раскладки
+   visual-diff-exempt: .mapshell min-height — новый примитив раскладки
+   visual-diff-exempt: .mapshell overflow — новый примитив раскладки
+   visual-diff-exempt: .mapshell__map position — карта во всю площадь шелла
+   visual-diff-exempt: .mapshell__map inset — карта во всю площадь шелла
+   visual-diff-exempt: .mapshell__map overflow — клип канваса по краю шелла
+   visual-diff-exempt: .mapshell__panel position — плавающая колонка поверх карты
+   visual-diff-exempt: .mapshell__panel top — плавающая колонка поверх карты
+   visual-diff-exempt: .mapshell__panel left — плавающая колонка поверх карты
+   visual-diff-exempt: .mapshell__panel bottom — плавающая колонка поверх карты
+   visual-diff-exempt: .mapshell__panel width — ширина колонки панели
+   visual-diff-exempt: .mapshell__panel display — колонка панели
+   visual-diff-exempt: .mapshell__panel padding — воздух вокруг плавающей панели
+   visual-diff-exempt: .mapshell__panel z-index — панель над картой
+   visual-diff-exempt: .mapshell__panel transition — сворачивание панели
+   visual-diff-exempt: .mapshell__panel[data-collapsed] transform — свёрнутая панель уезжает за край
+   visual-diff-exempt: .mapshell__panel[data-collapsed] pointer-events — свёрнутая панель не ловит клики
+   visual-diff-exempt: .mapshell__toggle position — кнопка на шве панели и карты
+   visual-diff-exempt: .mapshell__toggle top — кнопка по вертикальному центру шва
+   visual-diff-exempt: .mapshell__toggle left — кнопка на шве панели и карты
+   visual-diff-exempt: .mapshell__toggle z-index — кнопка над панелью и картой
+   visual-diff-exempt: .mapshell__toggle transition — кнопка едет вместе с панелью
+   visual-diff-exempt: .mapshell__card display — поверхность панели: колонка шапка+тело
+   visual-diff-exempt: .mapshell__card flex-direction — то же
+   visual-diff-exempt: .mapshell__card flex — панель занимает свою колонку
+   visual-diff-exempt: .mapshell__card min-width — колонка умеет сжиматься
+   visual-diff-exempt: .mapshell__card min-height — колонка умеет сжиматься
+   visual-diff-exempt: .mapshell__body flex — тело панели занимает остаток колонки
+   visual-diff-exempt: .mapshell__body min-height — тело умеет сжиматься
+   visual-diff-exempt: .mapshell__body overflow-y — скроллится тело, а не страница
+   visual-diff-exempt: .mapshell__panel padding-right — правый край панели уходит внутрь карты, отступ не двоится
+   visual-diff-exempt: .mapshell__panel {@media (max-width: 640px)} display — на телефоне панель уезжает в шит
+   visual-diff-exempt: .mapshell__toggle {@media (max-width: 640px)} display — на телефоне сворачивает жест, а не кнопка
+   visual-diff-exempt: .mapshell__panel[data-collapsed] left — кнопка едет к краю карты вместе с панелью
+   visual-diff-exempt: .mapshell__toggle transform — та же поездка кнопки к краю
+   Состояние «шит раскрыт» перестало быть классом и стало детентом (data-detent):
+   visual-diff-exempt: .is-expanded transform — класс снят, раскрытость выражена детентом */
+.mapshell { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.mapshell__map { position: absolute; inset: 0; overflow: hidden; }
+/* Плавающая колонка слева с воздухом по трём сторонам; `padding-right: 0` —
+   правый край панели уходит внутрь карты, а не двоит отступ. */
+.mapshell__panel {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  width: min(550px, 44vw);
+  display: flex; padding: var(--sp-7); padding-right: 0;
+  z-index: 2;
+  transition: transform .28s var(--ease-out);
+}
+/* Весь скин (грунт + рамка + радиус + клип + подъём) несёт примитив
+   <Card pad="none" radius="btn" raised> — классу остаётся раскладка. */
+.mapshell__card { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+.mapshell__body { flex: 1; min-height: 0; overflow-y: auto; }
+.mapshell__panel[data-collapsed] { transform: translateX(-101%); pointer-events: none; }
+/* Кнопка «свернуть/раскрыть» стоит НА ШВЕ: она едет вместе с панелью, поэтому
+   её сдвиг — та же переменная ширины, что у колонки. */
+.mapshell__toggle {
+  position: absolute; top: 50%; left: min(550px, 44vw);
+  transform: translate(-50%, -50%); z-index: 3;
+  transition: left .28s var(--ease-out);
+}
+.mapshell__panel[data-collapsed] ~ .mapshell__toggle { left: 0; transform: translate(6px, -50%); }
+@media (max-width: 640px) { .mapshell__panel, .mapshell__toggle { display: none; } }
+
 /* ── Пикер обложки (<CoverPicker>) и его посадка в планнере ───────────────────
    Кадр обложки, лента слайдов, стрелки, кнопка загрузки и лента миниатюр — это
    ОДИН примитив ДС; правила ниже принадлежат ему, а не экрану. Экран отвечает
@@ -6844,21 +6924,30 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    sheets; this one never dismisses and leaves the content underneath live (no
    backdrop). Rendered by <PeekSheet>; the JS owns the drag transform + snap.
    ============================================================ */
+/* ★ ВЫСОТА ШИТА = ВЕСЬ ВЬЮПОРТ, А ВИДНА ЕГО ВЕРХНЯЯ ПОЛОСА. Шит приклеен к НИЗУ
+   и уезжает вниз на `--sheet-y`; верхнего якоря у него нет ни при каком детенте
+   — «прилипнуть к верху экрана» ему нечем. Прежняя редакция жила на `height:
+   auto` + `max-height: 88dvh`, то есть высоту диктовало содержимое; с детентами
+   высоту диктует ДЕТЕНТ, иначе «100% экрана» означало бы «сколько получилось».
+   visual-diff-exempt: .peek-sheet height — высоту диктует детент, а не содержимое (3 детента вместо 2)
+   visual-diff-exempt: .peek-sheet max-height — то же: потолок 88dvh заменён детентом
+   visual-diff-exempt: .peek-sheet transform — сдвиг считается от детента (--sheet-y), а не от измеренного peek
+   visual-diff-exempt: .peek-sheet overflow — содержимое ниже видимой полосы не рисуется за краем шита
+   visual-diff-exempt: .peek-sheet.is-expanded transform — состояние «раскрыт» стало детентом (data-detent), класса нет
+   visual-diff-exempt: .peek-sheet__body height — тело ростом с видимую полосу: скролл внутри неё, а не за экраном
+   visual-diff-exempt: .peek-sheet__body flex — то же правило: высоту задаёт детент */
 .peek-sheet {
   position: fixed; left: 0; right: 0; bottom: 0;
   /* Below the fixed bottom-nav dock (--z-nav) so the dock floats on top
      of the peek unchanged (TRIP-222); still above the map (shell content). */
   z-index: var(--z-peek);
-  /* Height fits the content, capped at 88dvh — a short list expands only to its
-     own height; a long one hits the cap and the body scrolls. */
-  height: auto; max-height: 88dvh;
-  display: flex; flex-direction: column;
+  height: 100dvh;
+  display: flex; flex-direction: column; overflow: hidden;
   background: var(--surface); border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--sh-3);
-  transform: translateY(calc(100% - var(--peek, 140px))); /* rest at peek (JS sets --peek) */
+  transform: translateY(var(--sheet-y, 100%));
   transition: transform .32s cubic-bezier(.22, 1, .36, 1);
   overscroll-behavior: none; /* never chain a drag to the page → no pull-to-refresh */
 }
-.peek-sheet.is-expanded { transform: translateY(0); }
 .peek-sheet.is-dragging { transition: none; } /* follow the finger 1:1 mid-drag */
 /* Grip + header are the drag zones (touch-action:none → the gesture is ours);
    the body scrolls natively (pan-y). */
@@ -6868,7 +6957,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* flex:0 1 auto → the body is its content height until the sheet hits the cap,
    then it shrinks and scrolls. padding-bottom = dock zone + a small gap so the
    last row clears the bottom-nav at the end of the scroll. */
-.peek-sheet__body { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom)); }
+/* Тело ростом ровно с ВИДИМУЮ полосу (детент минус шапка) — тогда скролл идёт
+   внутри неё, а не уезжает под нижний край экрана. Во время жеста высота НЕ
+   пересчитывается (`--sheet-h` фиксируется на осадке): иначе каждый кадр драга
+   стоил бы перекладку всего списка. */
+.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom)); }
 
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).
