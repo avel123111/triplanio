@@ -256,6 +256,16 @@
      visual-diff-exempt: :root --map-backdrop — подложка под канвасом (была инлайном на .trip-map-canvas)
      visual-diff-exempt: :root[data-theme=dark] --map-backdrop — то же в тёмной теме */
   --map-backdrop: #dceaf5; /* design-token-exempt: это САМ токен подложки карты, а не его потребитель */
+
+  /* Высота полосы, занятой нижним навом (включая safe-area). Значение сюда
+     ПИШЕТ САМ НАВ, измеряя себя (`MobileBottomNav`): здесь только контракт и
+     дефолт «нава нет». Читают трое — отступ снизу у контента экрана, футер
+     peek-шита и его минимальный детент; до этого каждый знал полосу по-своему
+     (`84px` тут, `60+8+safe` у нава, `68` числом в JS линзы карты — последний
+     терял safe-area и сажал футер под домашнюю полоску).
+     floor-exempt: tokens +1 — --nav-dock-h, единый источник высоты нижнего дока, апрув Pavel
+     visual-diff-exempt: :root --nav-dock-h — новый токен-контракт, значение публикует сам нав */
+  --nav-dock-h: 0px; /* design-token-exempt: это САМ токен полосы нава, а не его потребитель */
   --z-nav:       95;   /* нижняя навигация (+1 — баннер согласия) */
   --z-overlay:  100;   /* тосты, карта на весь экран */
   --z-panel:    110;   /* затемнение выезжающей панели визита (+10 — панель) */
@@ -3772,7 +3782,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .app-shell > main,
   .app-shell > .acct-shell {
     flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+    /* 84px + safe-area = полоса нава (60 + 8 + safe) + 16px воздуха. Полосу
+       теперь называет сам нав, а не вторая копия числа здесь: вычисленное
+       значение то же (68 + safe + 16 = 84 + safe), сменился ИСТОЧНИК.
+       visual-diff-exempt: .app-shell > main {@media (max-width: 640px)} padding-bottom — то же значение, источник полосы теперь один
+       visual-diff-exempt: .app-shell {@media (max-width: 640px)} padding-bottom — тот же селектор-список (.app-shell > .acct-shell)
+       visual-diff-exempt: .acct-shell {@media (max-width: 640px)} padding-bottom — тот же селектор-список (.app-shell > .acct-shell) */
+    padding-bottom: calc(var(--nav-dock-h) + 16px) !important;
   }
   /* Phone-only: standalone content gets the same 16px side gutters as the trip
      screen (.trip-screen-body) so its width matches the trip on mobile. Desktop
@@ -7004,7 +7020,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .peek-sheet__body padding-bottom — отступ снят: на нижнем детенте он держал тело в 16px вместо нуля, а воздух даёт содержимое */
 /* Панель действий шита — СНАРУЖИ скролла: она обязана быть на виду при любом
    положении списка. Поднята над нижним навом и домашней полоской. */
-.peek-sheet__foot { flex: none; padding-bottom: var(--sheet-dock, 0px); }
+/* Футер шита стоит НАД нижним навом: полосу называет сам нав. */
+.peek-sheet__foot { flex: none; padding-bottom: var(--nav-dock-h, 0px); }
 .peek-sheet {
   position: fixed; left: 0; right: 0; bottom: 0;
   /* Below the fixed bottom-nav dock (--z-nav) so the dock floats on top

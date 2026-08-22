@@ -35,10 +35,6 @@ const fmtRange = (a, b) => formatDateRange(a, b, fmtShortDate);
 // city zoom — the city sits in its region rather than filling the frame).
 const FOCUS_ZOOM = 6;
 
-// Нижний нав телефона: высота дока `.mbnav__dock` + его нижний отступ (app.css).
-// Домашнюю полоску шит меряет сам — она есть на любом экране.
-const NAV_DOCK_PX = 68;
-
 function ScreenMap({ visits = [], transfers = [], active = true }) {
   // One selection drives everything (no city selected at start): a selected city
   // gets the highlighted pin + glass badge and the camera flies to it; nothing
@@ -192,11 +188,8 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover, map }) {
   return (
     <MapShell
       map={map}
-      // Под линзами трипа снизу стоит фиксированный нижний нав (`.mbnav__dock`,
-      // 60px + его отступ): шит обязан вставать НАД ним, иначе опущенный шит
-      // прячет свой же заголовок. В планировщике нава нет, и он ничего не
-      // передаёт — константы внутри примитива для этого больше нет.
-      dock={NAV_DOCK_PX}
+      // Полосу нижнего нава шит берёт из `--nav-dock-h` — её публикует сам нав,
+      // измеряя себя. Экран про чужую высоту ничего не знает и не передаёт.
       panelHeader={empty ? null : head}
       panel={empty ? emptyState : list}
       panelLabel={t('trip.sidebar_route')}

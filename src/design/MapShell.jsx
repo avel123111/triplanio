@@ -4,6 +4,7 @@ import { Card } from './index.jsx';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
+import { mapSlotInsets } from '@/lib/mapShellSlot';
 
 /**
  * MapShell — раскладка «карта в свободном окне + панель над ним» (TRIP-422).
@@ -49,7 +50,6 @@ import { useIsPhone } from '@/hooks/use-mobile';
  *   panelHeader?: any,
  *   panelFooter?: any,
  *   panelLabel: string,
- *   dock?: number,
  *   detents?: number[],
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
@@ -72,9 +72,6 @@ export function MapShell({
   // слот отдельный, а не «последний ребёнок» содержимого.
   panelFooter = null,
   panelLabel,
-  // Высота фиксированного нижнего нава экрана: под линзами трипа он есть, в
-  // планировщике его нет. Шелл не гадает — ему говорят.
-  dock = 0,
   detents = [0.15, 0.68, 1],
   detent = 0,
   onDetentChange,
@@ -112,10 +109,12 @@ export function MapShell({
 
   // Свободное окно едет в CSS-переменных, а не в инлайне значений: слот карты
   // описан в `app.css` одним правилом, а JS сообщает ему ровно две измеренные
-  // величины. Свёрнутая панель не отнимает ничего — карта получает весь шелл.
+  // величины. Сам расчёт — чистая функция `mapSlotInsets` (закрыта тестами):
+  // у правила «слот равен свободному окну» нет скриншота, а его поломка не
+  // роняет ни экран, ни гарды.
   const slotStyle = useMemo(() => {
-    if (isPhone) return { '--mapshell-bottom': `${Math.max(0, sheetPx)}px` };
-    return { '--mapshell-left': `${collapsed ? 0 : Math.max(0, panelPx)}px` };
+    const box = mapSlotInsets({ phone: isPhone, sheetPx, panelPx, collapsed });
+    return { '--mapshell-bottom': `${box.bottom}px`, '--mapshell-left': `${box.left}px` };
   }, [isPhone, sheetPx, collapsed, panelPx]);
 
   // Шит живёт в портале на <body>: пока экран смонтирован, он сообщает свою
@@ -132,7 +131,6 @@ export function MapShell({
           detent={detent}
           onDetentChange={onDetentChange}
           onHeightChange={setSheetPx}
-          dock={dock}
           header={panelHeader}
           footer={panelFooter}
           label={panelLabel}

@@ -51,10 +51,16 @@ import { nearestDetent, resolveDetents } from '@/lib/sheetDetents';
 const FLICK_VELOCITY = 0.3; // px/мс на отпускании, выше которого бросок решает направление
 
 // Инсет домашней полоски в px (env() из JS не прочитать).
-function safeAreaBottom() {
+/**
+ * Сколько CSS-величина занимает В ПИКСЕЛЯХ. `getComputedStyle` для custom
+ * property отдаёт ЗАПИСЬ (`calc(...)`, `env(...)`), а не результат, поэтому
+ * единственный честный способ — дать величину настоящему элементу и померить.
+ * Зонд невидим, живёт один кадр и не влияет на раскладку.
+ */
+function cssPx(value) {
   if (typeof document === 'undefined') return 0;
   const probe = document.createElement('div');
-  probe.style.cssText = 'position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;';
+  probe.style.cssText = `position:fixed;bottom:0;left:0;width:0;height:${value};visibility:hidden;pointer-events:none;`;
   document.body.appendChild(probe);
   const h = probe.getBoundingClientRect().height || 0;
   probe.remove();
@@ -76,7 +82,6 @@ function safeAreaBottom() {
  *   onDetentChange?: (i: number) => void,
  *   detents?: number[],
  *   onHeightChange?: (px: number) => void,
- *   dock?: number,
  *   label: string,
  *   className?: string,
  * }} p
@@ -89,8 +94,6 @@ export function PeekSheet({
   onDetentChange,
   detents = [0.15, 1],
   onHeightChange,
-  // Высота фиксированного нижнего нава ЭКРАНА (0 — нава нет).
-  dock = 0,
   label,
   className = '',
 }) {
@@ -102,8 +105,6 @@ export function PeekSheet({
   // Полоса шапки (грип + header + док + safe-area) и высота вьюпорта — обе
   // измеряются, а не задаются числом: шапка у каждого экрана своя.
   const [headPx, setHeadPx] = useState(96);
-  const dockRef = useRef(dock);
-  dockRef.current = dock;
   const [dockPx, setDockPx] = useState(0);
   const [footPx, setFootPx] = useState(0);
   const [vh, setVh] = useState(() => (typeof window === 'undefined' ? 0 : window.innerHeight));
@@ -111,7 +112,7 @@ export function PeekSheet({
 
   // Доли → пиксели: один расчёт на рендер, он же кормит жест и стили.
   // ★ НИЖНИЙ РЕЗЕРВ — ОДНА ВЕЛИЧИНА, А НЕ СУММА ДВУХ. Измеренная высота футера
-  // УЖЕ включает его отступ под док (`padding-bottom: --sheet-dock`), поэтому
+  // УЖЕ включает его отступ под док (`padding-bottom: --nav-dock-h`), поэтому
   // складывать футер с доком значит вычесть док дважды — ровно из-за этого
   // содержимое кончалось на 120px выше дна, а футер повисал посреди шита.
   // Футера нет — резерв держит сам док, чтобы шапка не ушла под нижний нав.
@@ -140,7 +141,9 @@ export function PeekSheet({
     if (!sheet || !head) return;
     const band = head.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
     setHeadPx(Math.round(band));
-    setDockPx(Math.round(dockRef.current + safeAreaBottom()));
+    // Полосу нижнего нава публикует сам нав (`--nav-dock-h`, safe-area уже
+    // внутри). Пропа `dock` не осталось: экран не обязан знать чужую высоту.
+    setDockPx(Math.round(cssPx('var(--nav-dock-h, 0px)')));
     setFootPx(Math.round(footRef.current?.getBoundingClientRect().height || 0));
     setVh(window.innerHeight);
   }, []);
@@ -152,7 +155,7 @@ export function PeekSheet({
     if (ro && footRef.current) ro.observe(footRef.current);
     window.addEventListener('resize', measure);
     return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measure); };
-  }, [measure, dock]);
+  }, [measure]);
 
   // Нативный не-пассивный тач — навешан один раз, текущее состояние читает через
   // `live`. preventDefault на драге и есть то, что глушит pull-to-refresh.
@@ -253,7 +256,6 @@ export function PeekSheet({
     '--sheet-h': sheetH + 'px',
     '--sheet-head': headPx + 'px',
     '--sheet-reserve': reservePx + 'px',
-    '--sheet-dock': dockPx + 'px',
   };
 
   if (typeof document === 'undefined') return null;
