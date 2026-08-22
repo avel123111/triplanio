@@ -28,6 +28,8 @@
   "start_date_updated": "Дата старта изменена",
   "success_title": "Успех",
   "feedback_sent": "Ваше сообщение отправлено, мы ответим Вам в ближайшее время",
+  "tg_reminders_off": "Напоминания выключены",
+  "tg_reminders_on": "Напоминания включены",
   "tg_unlinked": "Telegram отвязан",
   "trip_copied": "Путешествие скопировано",
   "trip_deleted": "Путешествие удалено",
