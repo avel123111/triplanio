@@ -189,7 +189,7 @@
  * Env: BASE_REF (по умолчанию origin/dev).
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import postcss from 'postcss';
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
@@ -453,7 +453,16 @@ try {
  * закоммичено), поэтому гард выглядел бы исправным; локально он
  * печатал «изменений нет» на ЛЮБОЙ незастейдженной правке. Поймано
  * мутацией (.checkbox gap 9px→17px прошёл насквозь), не чтением кода. */
-const headFiles = listCss(null).map((p) => ({ path: p, css: readFileSync(p, 'utf8') }));
+/* ★ УДАЛЁННЫЙ ФАЙЛ — ЭТО ЗАМЕР, А НЕ АВАРИЯ. `git ls-files` перечисляет
+ * ОТСЛЕЖИВАЕМЫЕ пути, и файл, снесённый в рабочем дереве, но ещё не
+ * застейдженный, в списке остаётся: чтение падало ENOENT со стек-трейсом
+ * ровно на том PR, который переносит правила из файла в `app.css`. В CI
+ * (там удаление закоммичено) гард при этом выглядел исправным — то есть
+ * ломался только локально, где им и пользуются. Нет на диске = нет правил,
+ * и разница честно приезжает в сравнение как «ушло». */
+const headFiles = listCss(null)
+  .filter((p) => existsSync(p))
+  .map((p) => ({ path: p, css: readFileSync(p, 'utf8') }));
 
 const base = semantics(baseFiles);
 const head = semantics(headFiles);
