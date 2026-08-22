@@ -88,6 +88,10 @@ export function gestureOwner({ onHandle = false, dy = 0, scrollTop = 0, scrollHe
   // бывает на доли пикселя больше clientHeight, и это не «есть что скроллить».
   const scrollable = scrollHeight > clientHeight + 1;
   if (!scrollable) return 'drag';
-  if (dy > 0 && scrollTop <= 0) return 'drag';
+  // Условие разбито на две строки не для красоты: знаки «больше» и «меньше» на
+  // ОДНОЙ строке сканер i18n читает как JSX-текст (та же ловушка описана у
+  // разбора броска в `PeekSheet`).
+  if (dy <= 0) return 'scroll';
+  if (scrollTop <= 0) return 'drag';
   return 'scroll';
 }
