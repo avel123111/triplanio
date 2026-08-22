@@ -3862,76 +3862,66 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Quick-start chips under the welcome message — a small gap below it. The empty
    `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
 .pl-ai-chips { margin-top: var(--sp-4); }
-/* ── Обложка шага «Проверка»: во всю ширину под разделителем, без радиусов ─────
-   Вырывается из падинга .lp-b (14px верт / 15px гор) отрицательными márgins и
-   упирается в бордюр шапки прогресса. Фото/скрим — канон .tc__img/.tc__scrim;
-   название с карандашом — <EditableText> поверх обложки внизу.
-   visual-diff-exempt: .pl-cover position — новый герой обложки планнера
-   visual-diff-exempt: .pl-cover overflow — новый герой обложки планнера
-   visual-diff-exempt: .pl-cover height — новый герой обложки планнера
-   visual-diff-exempt: .pl-cover margin — full-bleed: гасит падинг .lp-b (14/15px)
-   visual-diff-exempt: .pl-cover__title position — заголовок поверх обложки
-   visual-diff-exempt: .pl-cover__title z-index — заголовок над скримом
-   visual-diff-exempt: .pl-cover__title left — заголовок поверх обложки
-   visual-diff-exempt: .pl-cover__title right — заголовок поверх обложки
-   visual-diff-exempt: .pl-cover__title bottom — заголовок внизу обложки
-   visual-diff-exempt: .pl-cover__title display — заголовок поверх обложки
-   visual-diff-exempt: .pl-cover__title align-items — заголовок поверх обложки
-   visual-diff-exempt: .pl-cover__title padding — заголовок поверх обложки
-   visual-diff-exempt: .pl-cover__title color — белый текст на скриме обложки
-   visual-diff-exempt: .icon-btn color — белый карандаш на скриме обложки (scoped .pl-cover__title .icon-btn)
-   visual-diff-exempt: .editable flex — обёртка правки заполняет ширину обложки (scoped .pl-cover__title .editable)
-   visual-diff-exempt: .editable__input flex — инпут правки названия заполняет ширину обложки (scoped .pl-cover__title)
-   visual-diff-exempt: .pl-cover__title flex — то же правило, атрибуция на .pl-cover__title
-   visual-diff-exempt: .tcp__upload position — кнопка загрузки в углу обложки
-   visual-diff-exempt: .tcp__upload z-index — кнопка загрузки над скримом
-   visual-diff-exempt: .tcp__upload top — кнопка загрузки в правом верхнем углу
-   visual-diff-exempt: .tcp__upload right — кнопка загрузки в правом верхнем углу
-   visual-diff-exempt: .tcp__nav position — стрелка смены кавера по краю обложки
-   visual-diff-exempt: .tcp__nav z-index — стрелка над скримом
-   visual-diff-exempt: .tcp__nav top — стрелка по вертикальному центру обложки
-   visual-diff-exempt: .tcp__nav transform — центрирование стрелки по вертикали
-   visual-diff-exempt: .tcp__nav--prev left — стрелка «предыдущий кавер» у левого края
-   visual-diff-exempt: .tcp__nav--next right — стрелка «следующий кавер» у правого края
-   visual-diff-exempt: .tcp__ctl background — общий облик контролов обложки: полупрозрачный тёмный чип (токен --scrim)
-   visual-diff-exempt: .tcp__ctl color — белая иконка на полупрозрачном чипе
-   visual-diff-exempt: .tcp__ctl border-color — без рамки на фото
-   visual-diff-exempt: .tcp__ctl:hover background — держим тёмный чип на ховере (перебиваем .icon-btn:hover wash)
-   visual-diff-exempt: .tcp__ctl:hover color — белая иконка на ховере
-   visual-diff-exempt: :root --r-xs — новый шаг шкалы радиусов (4px), для миниатюр ленты
-   visual-diff-exempt: :root --scrim-soft — покойная полупрозрачная подложка контролов поверх медиа (0.22 light)
-   visual-diff-exempt: :root[data-theme=dark] --scrim-soft — то же в тёмной теме (0.30)
-   visual-diff-exempt: .editable__confirm background — кнопка ✓ правки = тот же чип, что контролы обложки (покой --scrim-soft)
-   visual-diff-exempt: .editable__confirm color — белая иконка ✓
-   visual-diff-exempt: .editable__confirm border-color — без рамки на фото
-   visual-diff-exempt: .editable__confirm:hover background — ховер поднимает до --scrim (как у контролов)
-   visual-diff-exempt: .editable__confirm:hover color — белая иконка ✓ на ховере
-   visual-diff-exempt: .pl-cover__track display — обложка = scroll-snap-лента слайдов (флекс-ряд)
-   visual-diff-exempt: .pl-cover__track height — лента во всю высоту обложки
-   visual-diff-exempt: .pl-cover__track overflow-x — горизонтальный скролл слайдов (свайп)
-   visual-diff-exempt: .pl-cover__track overflow-y — без вертикального скролла
-   visual-diff-exempt: .pl-cover__track scroll-snap-type — снап доводит слайд до края
-   visual-diff-exempt: .pl-cover__track scrollbar-width — скроллбар ленты скрыт
-   visual-diff-exempt: .pl-cover__track::-webkit-scrollbar display — скроллбар ленты скрыт (WebKit)
-   visual-diff-exempt: .pl-cover__slide flex — слайд не сжимается
-   visual-diff-exempt: .pl-cover__slide width — слайд во всю ширину обложки
-   visual-diff-exempt: .pl-cover__slide height — слайд во всю высоту обложки
-   visual-diff-exempt: .pl-cover__slide object-fit — кроп картинки слайда
-   visual-diff-exempt: .pl-cover__slide scroll-snap-align — слайд снапится по центру
-   visual-diff-exempt: .pl-cover pointer-events — скрим не ловит касания, свайп доходит до ленты (scoped .pl-cover .tc__scrim) */
+/* ── Пикер обложки (<CoverPicker>) и его посадка в планнере ───────────────────
+   Кадр обложки, лента слайдов, стрелки, кнопка загрузки и лента миниатюр — это
+   ОДИН примитив ДС; правила ниже принадлежат ему, а не экрану. Экран отвечает
+   только за посадку кадра: `.pl-cover` вырывает обложку из падинга `.lp-b`
+   (14px верт / 15px гор) отрицательными márgins во всю ширину шага «Проверка».
+   Скрим — канон `.tc__scrim`; название с карандашом (<EditableText>) приезжает
+   в слот `overlay` и ложится на `.tcp__title`.
+
+   Семья переехала из `pl-cover*` (namespace экрана) в `tcp*` (namespace самого
+   пикера) — правила принадлежат примитиву, а не тому, кто его первым позвал:
+   visual-diff-move: pl-cover__title -> tcp__title
+   visual-diff-move: pl-cover__track -> tcp__track
+   visual-diff-move: pl-cover -> tcp__hero
+   visual-diff-move: .pl-cover .tc__scrim -> tcp__hero
+   Кадр обложки получил СВОЙ дефолт (4:3 + скругление), а посадка в планнере
+   гасит скругление, потому что full-bleed полоса упирается в края шага:
+   visual-diff-exempt: .tcp__hero aspect-ratio — кадр обложки 4:3 (дефолт примитива, настройки трипа)
+   visual-diff-exempt: .tcp__hero border-radius — скругление кадра (дефолт примитива)
+   visual-diff-exempt: .pl-cover border-radius — full-bleed полоса без скругления (гасит дефолт кадра)
+   Слайд стал примитивом <Cover> (даром достаётся фоллбек-подложка и onError):
+   переносом это НЕ объявляется, потому что перенос обязан быть один-в-один, а
+   здесь одно объявление осознанно уходит (кроп теперь на `.cover__img`) и одно
+   приходит (радиус гасится до края рамки) — значит каждое называется отдельно:
+   visual-diff-exempt: .pl-cover__slide flex — слайд переехал на .tcp__slide (примитив <Cover>)
+   visual-diff-exempt: .pl-cover__slide width — слайд переехал на .tcp__slide
+   visual-diff-exempt: .pl-cover__slide height — слайд переехал на .tcp__slide
+   visual-diff-exempt: .pl-cover__slide scroll-snap-align — слайд переехал на .tcp__slide
+   visual-diff-exempt: .pl-cover__slide object-fit — кроп уехал на .cover__img (слайд = примитив <Cover>)
+   visual-diff-exempt: .tcp__slide flex — слайд не сжимается (приехал с .pl-cover__slide)
+   visual-diff-exempt: .tcp__slide width — слайд во всю ширину кадра
+   visual-diff-exempt: .tcp__slide height — слайд во всю высоту кадра
+   visual-diff-exempt: .tcp__slide scroll-snap-align — слайд снапится по центру
+   visual-diff-exempt: .tcp__slide border-radius — слайд во всю рамку (гасит радиус <Cover>)
+   Зрителю глушим прокрутку ленты — <fieldset disabled> до неё не достаёт:
+   visual-diff-exempt: .tcp__track[data-disabled] overflow-x — read-only: свайп обложки выключен
+   Превью-карточка 120px удалена: настройки показывают тот же кадр, что и шаг
+   создания, второго облика у обложки больше нет:
+   visual-diff-exempt: .tcp__preview position — превью 120px снято (настройки показывают кадр обложки)
+   visual-diff-exempt: .tcp__preview width — превью 120px снято
+   visual-diff-exempt: .tcp__preview height — превью 120px снято
+   visual-diff-exempt: .tcp__img width — превью 120px снято
+   visual-diff-exempt: .tcp__img height — превью 120px снято
+   visual-diff-exempt: .tcp__img object-fit — превью 120px снято */
+/* Кадр обложки — сам примитив <CoverPicker>. Дефолт кадра = 4:3 со скруглением
+   (настройки трипа); `.pl-cover` перебивает его на full-bleed полосу 200px:
+   высота задана явно, поэтому `aspect-ratio` на ней не действует. */
+.tcp__hero { position: relative; overflow: hidden; aspect-ratio: 4 / 3; border-radius: var(--r-md); }
 .pl-cover {
-  position: relative; overflow: hidden; height: 200px;
+  height: 200px; border-radius: 0;
   margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
 }
-.pl-cover__title {
+.tcp__title {
   position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center;
   padding: var(--sp-6) var(--sp-7);
   color: #fff;
 }
-.pl-cover__title .icon-btn { color: #fff; }
-.pl-cover__title .editable { flex: 1; }
-.pl-cover__title .editable__input { flex: 1; }
+.tcp__title .icon-btn { color: #fff; }
+.tcp__title .editable { flex: 1; }
+.tcp__title .editable__input { flex: 1; }
 /* Единый облик контролов поверх обложки (загрузка + стрелки + кнопка ✓ правки
    названия): полупрозрачный тёмный чип на токенах, белая иконка, КВАДРАТ (радиус
    базы .icon-btn = --r-sm, БЕЗ round). Покой — --scrim-soft (лёгкая подложка),
@@ -3948,10 +3938,28 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Обложка = горизонтальная scroll-snap-лента слайдов (нативный свайп + доводка
    снапом, как <Carousel>); скроллбар скрыт. Скрим НЕ ловит касания, чтобы свайп
    доходил до ленты под ним. */
-.pl-cover__track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.pl-cover__track::-webkit-scrollbar { display: none; }
-.pl-cover__slide { flex: none; width: 100%; height: 100%; object-fit: cover; scroll-snap-align: center; }
-.pl-cover .tc__scrim { pointer-events: none; }
+.tcp__track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.tcp__track::-webkit-scrollbar { display: none; }
+/* Зрителю (read-only) прокрутку глушим АТРИБУТОМ, а не классом: состояние — это
+   данные. <fieldset disabled> сюда не достаёт — прокрутка не элемент формы. */
+.tcp__track[data-disabled] { overflow-x: hidden; }
+/* Слайд — примитив <Cover>: его размер/радиус тут перебиваются на «во всю
+   рамку», а фоллбек-подложка и onError достаются даром (протухший signed URL
+   своей фотки покажет фоллбек, а не битую картинку). */
+.tcp__slide { flex: none; width: 100%; height: 100%; border-radius: 0; scroll-snap-align: center; }
+.tcp__hero .tc__scrim { pointer-events: none; }
+/* Лента миниатюр пикера — примитив <Carousel> со <Swatch variant="round">.
+   Миниатюры пейзажной формы (как в референсе): размер/радиус/кольцо выбора — на
+   самом Swatch, активная расширяется. Правила приехали из `TripCoverPicker.css`
+   вместе с разметкой: их эмитит примитив ДС, а не адаптер трипа, и подключаться
+   они обязаны всем, кто примитив зовёт. */
+.carousel.tcp__strip { gap: var(--sp-3); }
+.tcp__strip .swatch--round { width: 52px; height: 52px; border-radius: var(--r-xs); transition: width .3s var(--ease-out), box-shadow .2s var(--ease-out); }
+.tcp__strip .swatch--round[aria-pressed="true"] { width: 108px; }
+@media (hover: hover) { .tcp__strip .swatch--round:hover { box-shadow: var(--sh-2); } }
+/* Скрытый файловый вход пикера + строка ошибки загрузки. */
+.tcp__file { display: none; }
+.tcp__err { margin: 0; color: var(--danger); }
 
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
@@ -5801,8 +5809,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ★ОСТАТОК: зазор 22px вне шкалы; `align-items: start` удержан - у `.grid` оси
    выравнивания нет вовсе.
    visual-diff-move: settings-identity -> grid */
-.settings-identity { grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
-.settings-identity__cover { position: static; }
+/* Колонка обложки сузилась под кадр 4:3: 240px даёт обложку 240×180, при
+   которой левая колонка почти не выше пары полей справа (апрув Pavel).
+   visual-diff-exempt: .settings-identity grid-template-columns — колонка обложки 280→240 под кадр 4:3
+   visual-diff-exempt: .settings-identity__cover position — обёртка ячейки снята, пикер сам ячейка сетки
+   visual-diff-exempt: .settings-identity__cover {@media (max-width: 900px)} position — та же обёртка снята и на мобиле */
+.settings-identity { grid-template-columns: 240px 1fr; gap: 22px; align-items: start; }
 /* visual-diff-move: settings-identity__fields -> col col--g7 */
 .settings-identity__fields { min-width: 0; }
 /* Field names in the identity card match the "Leave trip" row title style. */
@@ -5824,7 +5836,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 @media (max-width: 900px) {
   .settings-identity { grid-template-columns: 1fr; gap: 16px; }
-  .settings-identity__cover { position: static; }
   .settings-grid { grid-template-columns: 1fr; }
 }
 

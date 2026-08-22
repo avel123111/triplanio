@@ -34,7 +34,7 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover, CoverPicker,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
@@ -64,6 +64,7 @@ const TX = {
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
     'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
+    'coverpicker': 'Пикер обложки',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -91,6 +92,7 @@ const TX = {
     'dialog': 'Диалог и шит — оверлеи (открываются кнопкой).',
     'accordion': 'Раскрывашка: шапка-кнопка (иконка · заголовок · статус) + вложенное тело; шеврон вправо→вниз.',
     'cover': 'Обложка трипа: фото ИЛИ фоллбек-картинка из бандла (градиентов больше нет).',
+    'coverpicker': 'Выбор картинки: кадр листается свайпом и стрелками (scroll-snap), миниатюры под ним, своё фото — кнопкой в углу. Откуда картинки и куда девается загруженный файл, примитив не знает — это даёт вызыватель.',
     'tile': 'Квадрат под значок: тон · размер · форма · залитая.',
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
@@ -694,6 +696,43 @@ const RECIPES = {
     },
   ],
 
+  coverpicker: (ctx) => [
+    {
+      label: 'кадр 4:3 (дефолт) + лента миниатюр; свайп/стрелки листают сам кадр',
+      items: [it('slides + value + onChange', (
+        <CoverPicker
+          slides={ctx.cpSlides}
+          value={ctx.cpValue}
+          onChange={ctx.setCpValue}
+          onUpload={() => {}}
+          ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
+          uploadLabel={'Загрузить своё фото'/* i18n-ignore: витрина /kit */}
+        />
+      ), true)],
+    },
+    {
+      label: 'disabled — свайп ленты выключен, кнопок нет (read-only)',
+      items: [it('disabled', (
+        <CoverPicker
+          slides={ctx.cpSlides}
+          value={ctx.cpSlides[0]}
+          disabled
+          ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
+        />
+      ), true)],
+    },
+    {
+      label: 'пустой слайд (\'\') — «без обложки», рисуется фоллбеком <Cover>',
+      items: [it("slides={['']}", (
+        <CoverPicker
+          slides={['']}
+          value=""
+          ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
+        />
+      ), true)],
+    },
+  ],
+
 
   // Строка уведомления — один компонент на все типы и обе поверхности. Показана
   // КАК В ПРИЛОЖЕНИИ: строки стопкой на реалистичной ширине, с теми же кнопками
@@ -1119,6 +1158,10 @@ export default function Kit() {
   const [swColor, setSwColor] = useState(swColors[0]);
   const [swIcon, setSwIcon] = useState('bed');
   const [swCover, setSwCover] = useState(0);
+  // Демо-слайды пикера обложки — картинки из бандла (флаги), чтобы витрина не
+  // ходила в сеть; пустая строка первой = слайд «без обложки».
+  const cpSlides = ['', '/flags/es.svg', '/flags/fr.svg', '/flags/it.svg'];
+  const [cpValue, setCpValue] = useState('');
 
   // Значения токенов/семей зависят от темы — перечитываем при переключении.
   useEffect(() => {
@@ -1137,6 +1180,7 @@ export default function Kit() {
     checked, setChecked, toggled, setToggled, segView, setSegView, segTone, setSegTone,
     chipFilter, setChipFilter, chipPage, setChipPage,
     swColors, swCovers, swColor, setSwColor, swIcon, setSwIcon, swCover, setSwCover,
+    cpSlides, cpValue, setCpValue,
   };
 
   return (

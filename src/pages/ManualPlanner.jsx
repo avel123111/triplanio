@@ -663,15 +663,17 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
   return (
     <div className="col col--g6 pl-review">
       {/* Обложка во всю ширину сразу под разделителем прогресса, без радиусов
-          (full-bleed из падинга .lp-b, класс .pl-cover). Hero-режим общего пикера
-          рисует: фото/пресет/фоллбек, кнопку загрузки в правом верхнем углу,
-          стрелки смены кавера по бокам и название трипа с карандашом (наш
-          <EditableText> как heroOverlay). Ниже — лента миниатюр без стрелок. */}
+          (full-bleed из падинга .lp-b, класс .pl-cover перебивает кадр 4:3 ДС на
+          полосу 200px). Пикер рисует: фото/пресет/фоллбек, кнопку загрузки в
+          правом верхнем углу, стрелки по бокам, название трипа с карандашом
+          (наш <EditableText> как overlay) и ленту миниатюр под обложкой.
+          `autoSelect` — шаг открывается без обложки, уехать с пустой нельзя. */}
       <TripCoverPicker
         coverImageUrl={cover?.cover_image_url || ''}
         onChange={setCover}
-        heroClassName="pl-cover"
-        heroOverlay={(
+        autoSelect
+        className="pl-cover"
+        overlay={(
           <EditableText
             value={tripTitle}
             onChange={setTripTitle}
