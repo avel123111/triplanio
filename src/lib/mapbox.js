@@ -46,14 +46,34 @@ export function applyBasemapConfig(map, scheme, theme = 'default') {
 // padding 110 needs a >220px axis. On a normal-size canvas the clamp is a no-op, so
 // the common path is unchanged — it only ever shrinks padding that literally cannot
 // fit, making the illegal camera command unrepresentable rather than papering over it.
+/** Полоса канваса, которую отступ не имеет права съесть (px). */
+const MIN_FIT_BOX = 80;
+
 export function clampPadding(map, padding = 0) {
-  if (!map || typeof padding !== 'number' || !(padding > 0)) return padding;
-  let smaller = 0;
+  let smaller = 0, W = 0, H = 0;
   try {
-    const el = map.getContainer();
-    smaller = Math.min(el?.clientWidth || 0, el?.clientHeight || 0);
+    const el = map && map.getContainer();
+    W = el?.clientWidth || 0; H = el?.clientHeight || 0;
+    smaller = Math.min(W, H);
   } catch { return padding; }
   if (!smaller) return padding; // unmeasured — the canFit gate should have prevented this
+  // Асимметричный отступ (объект) — тот же закон по каждой оси отдельно: сумма
+  // противоположных сторон обязана оставить полосу канваса, иначе cameraForBounds
+  // молча отказывает. Именно этим отступом выражается площадь, закрытая панелью
+  // или шитом, поэтому объект здесь не экзотика, а основной случай.
+  if (padding && typeof padding === 'object') {
+    const axis = (a, b, size) => {
+      const room = Math.max(0, size - MIN_FIT_BOX);
+      const sum = a + b;
+      if (sum <= room) return [a, b];
+      const k = sum > 0 ? room / sum : 0;
+      return [Math.floor(a * k), Math.floor(b * k)];
+    };
+    const [left, right] = axis(padding.left || 0, padding.right || 0, W);
+    const [top, bottom] = axis(padding.top || 0, padding.bottom || 0, H);
+    return { top, right, bottom, left };
+  }
+  if (typeof padding !== 'number' || !(padding > 0)) return padding;
   // Leave ≥16px of canvas between the two paddings so the fit stays valid.
   const maxPad = Math.max(0, Math.floor(smaller / 2) - 8);
   return Math.min(padding, maxPad);
@@ -69,7 +89,15 @@ export function fitToPoints(map, points, opts = {}) {
   if (points.length === 1) {
     // opts.offset shifts a single centred point out from under an overlay (e.g. the
     // planner's floating panel); [0,0] when unset keeps the point centred.
-    map.easeTo({ center: points[0], zoom: opts.singleZoom ?? 7, duration, offset: opts.offset ?? [0, 0] });
+    // Асимметричный отступ (объект) описывает ЗАКРЫТУЮ площадь, и одиночная точка
+    // обязана встать по центру СВОБОДНОГО окна ровно так же, как маршрут: для
+    // одной точки `fitBounds` не зовётся, поэтому отступ передаём в `easeTo` сами.
+    const box = opts.padding && typeof opts.padding === 'object' ? clampPadding(map, opts.padding) : null;
+    map.easeTo({
+      center: points[0], zoom: opts.singleZoom ?? 7, duration,
+      offset: opts.offset ?? [0, 0],
+      ...(box ? { padding: box } : null),
+    });
     return;
   }
   const b = new mapboxgl.LngLatBounds();

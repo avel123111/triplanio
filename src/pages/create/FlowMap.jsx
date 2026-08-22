@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { mapboxgl } from '@/lib/mapbox';
+import { mapboxgl, clampPadding } from '@/lib/mapbox';
 import { calmFit } from '@/lib/map/camera';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
@@ -27,64 +27,64 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
   return legs;
 }
 
-// Desktop: the step panel FLOATS over the left of the full-bleed map, so the route
-// must be framed in the VISIBLE area (right of the panel) — reserve the panel's
-// width on the left. On phones (≤960) the map is its own top band with the sheet
-// below it, so only a little bottom room is reserved for the sheet's overlap.
-// Mirror the CSS: .flow-editcol width = min(550px, 44vw); breakpoint 960.
-// Сдвиг центра под закрытую площадь: панель слева на десктопе, шит снизу на
-// телефоне. Это СДВИГ, а не отступ вьюпорта — отступ на проекции `globe` роняет
-// зум и рассинхронивает лимб атмосферы с тайлами (замерено на живой карте:
-// нижний отступ 500px из 620 дал zoom 0.41 и кольцо вокруг планеты).
-const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
-const offsetFor = (b) => [Math.round((b.left - b.right) / 2), Math.round((b.top - b.bottom) / 2)];
+// ★ ЗАКРЫТАЯ ПЛОЩАДЬ = ОТСТУП ВЬЮПОРТА (`padding`), А НЕ СДВИГ КАМЕРЫ.
+// Панель на десктопе и шит на телефоне лежат ПОВЕРХ карты, поэтому кадр обязан
+// строиться в СВОБОДНОМ окне. В Mapbox это ровно то, для чего существует
+// `padding`: он сдвигает центр проекции, и на глобусе диск планеты встаёт в
+// центр свободного окна. `offset` этого НЕ делает — он поворачивает шар под
+// камерой, а сам диск как стоял в центре канваса, так и стоит; отсюда и был
+// «глобус наполовину под шитом» и тёмный космос в верхней половине экрана.
+// Замерено на живом экране (430×900, шит 612): отступ — 0.07% тёмных пикселей в
+// свободном окне, сдвиг — 26.5%.
+//
+// Прежняя редакция обвиняла в кольце вокруг планеты сам `setPadding`. Это была
+// ошибка диагноза: кольцо давал `fitBounds`, которому отступ съедал канвас и
+// ронял зум почти в ноль. Лечится это клампом отступа (`clampPadding`), а не
+// отказом от отступа.
+//
+// `insets` приходят от `<MapShell>` — он один считает, сколько площади закрыто.
 
-function fitPaddingFor(w) {
-  if (w > 960) {
-    const panel = Math.min(550, w * 0.44);
-    return { top: 48, right: 48, bottom: 48, left: Math.round(panel + 40) };
-  }
-  return { top: 32, right: 40, bottom: 52, left: 40 };
+/** Воздух вокруг содержимого кадра. Место под панель/шит сюда НЕ входит: его
+ *  несут `insets`, и складываются они уже в эффекте. */
+function fitAirFor(w) {
+  return w > 960 ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 52, left: 40 };
 }
 
+const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+const addPad = (a, b) => ({
+  top: a.top + b.top, right: a.right + b.right, bottom: a.bottom + b.bottom, left: a.left + b.left,
+});
+
+// Mapbox globe: экватор занимает 512·2^z px, значит диаметр шара на экране ≈
+// 512·2^z/π. Обращаем — зум, при котором шар имеет заданный диаметр.
+const zoomForDiameter = (d) => Math.log2((d * Math.PI) / 512);
+
 // The neutral "start" globe view (before any route is picked, and what a draft
-// RESET returns to). Mapbox globe: at zoom z the equatorial circumference spans
-// 512·2^z px, so the sphere's on-screen diameter ≈ 512·2^z/π. Invert that to the
-// zoom whose globe fills ~85% of the MAP's height — clamped so it never grows wider
-// than the strip left visible beside the floating panel (else it tucks behind it).
-// This is why a wide screen no longer shows a tiny planet: the size now tracks the
-// container, not a fixed zoom. Coefficients are eyeballed; nudge them here if the
-// globe reads a touch big/small.
+// RESET returns to). Размер шара считается от СВОБОДНОГО окна, а не от канваса:
+// именно поэтому на dev не было видно ни края планеты, ни космоса — карта там
+// была полосой в 32% высоты, и шар её всегда переполнял.
 //
-// ★ ТЕЛЕФОН: ДИАМЕТР ≥ ДИАГОНАЛИ СВОБОДНОГО ОКНА. Раньше здесь стоял
-// фиксированный `zoom: 2`, и это работало ровно потому, что карта на телефоне
-// была ПОЛОСОЙ в 32% высоты: шар диаметром ~650px её всегда переполнял, и был
-// виден кусок планеты. Карта во весь экран — и тот же шар в неё ПОМЕЩАЕТСЯ:
-// становится виден край, космос и тёмная ночная сторона, которую и принимают за
-// «одноцветную заливку». Поэтому размер считается от свободного окна и берётся
-// по ДИАГОНАЛИ: шар гарантированно выходит за кадр вместе с углами, и показывать
-// его край не с чего.
-function startGlobeView(map, pad, winW, insets) {
+// ТЕЛЕФОН — ПОКРЫТИЕ: диаметр ≥ диагонали свободного окна, чтобы планета
+// выходила за кадр вместе с углами и показывать её край было не с чего. Нижняя
+// граница зума — 2, ровно то значение, что стояло на dev: на детенте «как было»
+// (свободное окно 430×288) формула даёт меньше, и клип по 2 возвращает
+// в точности прежний кадр.
+// ДЕСКТОП — ВПИСЫВАНИЕ: шар виден целиком и с полями, как и был.
+function startGlobeView(map, insets, winW) {
   const center = [0, 20];
-  if (winW <= 960) {
-    const el = map.getContainer?.();
-    const H = el?.clientHeight || 0;
-    const W = el?.clientWidth || 0;
-    if (!H || !W) return { center, zoom: 2 };
-    const freeW = Math.max(200, W - insets.left - insets.right);
-    const freeH = Math.max(160, H - insets.top - insets.bottom);
-    // +12% запаса: диагональ впритык оставляет край планеты ровно в углу кадра.
-    const d = Math.hypot(freeW, freeH) * 1.12;
-    return { center, zoom: Math.max(2, Math.min(5, Math.log2((d * Math.PI) / 512))) };
-  }
   const el = map.getContainer?.();
-  const H = el?.clientHeight || 0;
   const W = el?.clientWidth || 0;
-  if (!H || !W) return { center, zoom: 2.4 };
-  const visW = Math.max(360, W - pad.left - pad.right); // room right of the panel
-  const targetD = Math.min(0.85 * H, 0.92 * visW);
-  const zoom = Math.max(0.8, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
-  return { center, zoom };
+  const H = el?.clientHeight || 0;
+  if (!H || !W) return { center, zoom: winW > 960 ? 2.4 : 2 };
+  const freeW = Math.max(200, W - insets.left - insets.right);
+  const freeH = Math.max(160, H - insets.top - insets.bottom);
+  if (winW <= 960) {
+    // +5% запаса: диагональ впритык оставляет край планеты ровно в углу кадра.
+    const d = Math.hypot(freeW, freeH) * 1.05;
+    return { center, zoom: Math.max(2, Math.min(5, zoomForDiameter(d))) };
+  }
+  const d = Math.min(0.85 * freeH, 0.92 * freeW);
+  return { center, zoom: Math.max(0.8, Math.min(5, zoomForDiameter(d))) };
 }
 
 // =====================================================================
@@ -223,6 +223,9 @@ export default function FlowMap({
   // route geometry unchanged (a step change) doesn't re-fit. Reset when the route
   // empties, so the next real route frames again.
   const fittedSigRef = useRef('');
+  // Камера этого экрана уже ставилась хотя бы раз: первый кадр обязан встать
+  // мгновенно (его прячет фейд), а вот смену детента надо доводить анимацией.
+  const cameraSetRef = useRef(false);
 
   // Markers + fit.
   useEffect(() => {
@@ -247,46 +250,32 @@ export default function FlowMap({
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
     if (canFit) {
-      const pad = fitPaddingFor(winW);
+      // Закрытая площадь + воздух = ОДИН отступ вьюпорта. Кламп не даёт отступу
+      // съесть канвас: именно это (а не сам отступ) роняло зум и рисовало кольцо.
+      const box = clampPadding(map, addPad(fitAirFor(winW), insetsRef.current));
       if (fitPositions.length) {
         // Route: re-frame ONLY when the route geometry / viewport actually changed
         // (fitKey) — a step change rebuilds pins above but leaves fitKey alone, so
-        // the camera holds. Clear any idle-globe viewport padding first, then fit
-        // with the asymmetric reserve; offset does the same for the single-point
-        // (origin-only) case, which fitBounds padding can't.
+        // the camera holds.
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
-          try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
-          // Сдвиг от воздуха вызова ПЛЮС сдвиг под панель/шит: маршрут встаёт по
-          // центру СВОБОДНОГО окна, а не канваса.
-          const air = offsetFor(pad);
-          const box2 = insetsRef.current;
-          const offset = [air[0] + offsetFor(box2)[0], air[1] + offsetFor(box2)[1]];
-          calmFit(map, fitPositions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
+          calmFit(map, fitPositions, { padding: box, maxZoom: 7, singleZoom: 8 });
         }
         prevHadPointsRef.current = true;
       } else {
-        // Empty globe = the neutral START view. Offset the projection into the
-        // visible area (setPadding), recentre to the world, and size the globe to
-        // ~85% of the map's height (desktop) so a wide screen no longer shows a
-        // tiny planet. Returning here from a route (draft RESET) glides back out;
-        // a fresh mount / resize just snaps (the fade-in hides it).
-        // На телефоне отступ вьюпорта НЕ ставим: он и есть источник кольца вокруг
-        // планеты (замер на живой карте). Смещение под шит несёт `offset` ниже.
-        try { map.setPadding(winW > 960 ? pad : NO_INSETS); } catch { /* ignore */ }
-        const view = startGlobeView(map, pad, winW, insetsRef.current);
-        // Центрируем в СВОБОДНОМ окне: на телефоне шит съедает низ, и без сдвига
-        // шар встаёт по центру ЭКРАНА, то есть наполовину под шитом.
-        const gOffset = winW > 960 ? [0, 0] : offsetFor(insetsRef.current);
-        if (prevHadPointsRef.current) {
-          try { map.easeTo({ ...view, offset: gOffset, duration: 600 }); }
-          catch { try { map.jumpTo(view); } catch { /* ignore */ } }
-        } else {
-          try { map.easeTo({ ...view, offset: gOffset, duration: 0 }); } catch { /* ignore */ }
-        }
+        // Empty globe = the neutral START view. Отступ ставит диск планеты в
+        // центр свободного окна, зум — от размера этого окна. Возврат из
+        // маршрута (draft RESET) выезжает плавно; смена детента — короткий
+        // доводочный ease (камера обязана догнать шит, но не «прыгать»); первый
+        // кадр встаёт мгновенно, его прячет фейд.
+        const view = startGlobeView(map, insetsRef.current, winW);
+        const duration = prevHadPointsRef.current ? 600 : (cameraSetRef.current ? 320 : 0);
+        try { map.easeTo({ ...view, padding: box, duration }); }
+        catch { try { map.jumpTo(view); } catch { /* ignore */ } }
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';
       }
+      cameraSetRef.current = true;
       // Our camera is now set — safe to reveal (see `framed`). Idempotent; React
       // bails on the unchanged value after the first flip.
       setFramed(true);
@@ -295,7 +284,7 @@ export default function FlowMap({
     // ptsKey → rebuild markers (incl. the step-toggled return pin); fitKey → re-frame
     // (route geometry + viewport size, so it also covers resize). fitKey can change
     // without ptsKey (a distinct return set while off the return step), so both are deps.
-    // winW/winH are read directly inside (fitPaddingFor / startGlobeView) — listed so
+    // winW/winH are read directly inside (fitAirFor / startGlobeView) — listed so
     // exhaustive-deps stays honest, though fitKey already carries them.
   }, [ready, canFit, ptsKey, fitKey, winW, winH]);
 
