@@ -2,7 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { mapboxgl } from '@/lib/mapbox';
 import { calmFit } from '@/lib/map/camera';
 import { addPadding } from '@/lib/map/padding';
-import { setMapInsets } from '@/lib/map/insets';
+import { offsetForInsets, setMapInsets } from '@/lib/map/insets';
+
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
@@ -51,16 +52,17 @@ function startGlobeView(map, pad) {
   const H = el?.clientHeight || 0;
   const W = el?.clientWidth || 0;
   if (!H || !W) return { center, zoom: 2.4 };
-  // Глобус вписывается в СВОБОДНОЕ окно — и по ширине, и по высоте. Раньше
-  // высота бралась целиком (шит стоял отдельной полосой под картой); теперь шит
-  // лежит ПОВЕРХ карты, и не вычесть его высоту значило бы прятать пол-планеты
-  // под ним.
+  // ★ ГЛОБУС ЗАПОЛНЯЕТ КАДР, А НЕ ВПИСЫВАЕТСЯ В НЕГО. «Чёрный круг вокруг
+  // планеты» — это КОСМОС проекции globe, и виден он ровно тогда, когда планета
+  // целиком помещается в кадр. Пока карта была узкой полосой, глобус её
+  // переполнял и космоса не было; карта во весь экран плюс вписывание по
+  // МЕНЬШЕЙ стороне сделали планету меньше кадра — и кольцо открылось.
+  // Значит цель не «диаметр = меньшая сторона», а «диаметр ≥ ДИАГОНАЛИ
+  // свободного окна»: тогда край планеты уходит за кадр вместе с углами, и
+  // космосу неоткуда взяться ни при каком детенте.
   const visW = Math.max(320, W - pad.left - pad.right);
   const visH = Math.max(240, H - pad.top - pad.bottom);
-  const targetD = Math.min(0.85 * visH, 0.92 * visW);
-  // Пол зума — не вкусовщина: ниже ~2 глобус вырождается в одноцветный круг
-  // (тайлов такого масштаба нет), и это ровно то, что было видно на телефоне,
-  // где свободное окно маленькое и расчёт уводил зум вниз.
+  const targetD = Math.hypot(visW, visH);
   const zoom = Math.max(2, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
   return { center, zoom };
 }
@@ -198,6 +200,9 @@ export default function FlowMap({
   // Did the previous fit draw a route? Lets the empty branch tell a fresh mount /
   // resize (snap to the start globe) apart from a draft RESET (glide back out).
   const prevHadPointsRef = useRef(false);
+  // Первая посадка камеры на этом экране — без анимации: экран открывается на
+  // нужном виде, а не приезжает к нему. Дальше всё плавно.
+  const framedRef = useRef(false);
   // The fitKey the camera was last framed for — so a marker rebuild that leaves the
   // route geometry unchanged (a step change) doesn't re-fit. Reset when the route
   // empties, so the next real route frames again.
@@ -241,10 +246,11 @@ export default function FlowMap({
         // (origin-only) case, which fitBounds padding can't.
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
-          try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
           // Отдаём ТОЛЬКО воздух: закрытую площадь камера добавит сама (её
-          // единственный владелец — `setMapInsets` ниже), и одиночную точку она
-          // так же сама уведёт из-под панели.
+          // единственный владелец — `setMapInsets` выше), и одиночную точку она
+          // так же сама уведёт из-под панели. `map.setPadding` здесь больше нет:
+          // это МГНОВЕННАЯ смена камеры, и стояла она прямо перед плавным фитом —
+          // то есть каждое движение шита начиналось со скачка.
           calmFit(map, fitPositions, { padding: ROUTE_AIR, maxZoom: 7, singleZoom: 8 });
         }
         prevHadPointsRef.current = true;
@@ -254,13 +260,19 @@ export default function FlowMap({
         // ~85% of the map's height (desktop) so a wide screen no longer shows a
         // tiny planet. Returning here from a route (draft RESET) glides back out;
         // a fresh mount / resize just snaps (the fade-in hides it).
-        try { map.setPadding(pad); } catch { /* ignore */ }
+        // ОДИН вызов вместо трёх состояний. Прежняя редакция ставила отступ
+        // (`setPadding`) и позицию (`jumpTo`) МГНОВЕННО — оба скачком, — поэтому
+        // любое движение шита дёргало глобус. Смещение из-под шита выражаем
+        // `offset`-ом (то же, что делает камера для одиночной точки), а не
+        // липким `padding` карты: липкое состояние потом приходится сбрасывать,
+        // и этот сброс — ещё один скачок.
         const view = startGlobeView(map, pad);
-        if (prevHadPointsRef.current) {
-          try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
-        } else {
-          try { map.jumpTo(view); } catch { /* ignore */ }
-        }
+        const offset = offsetForInsets(insetsRef.current || {});
+        const first = !framedRef.current;
+        framedRef.current = true;
+        try {
+          map.easeTo({ ...view, offset, duration: first ? 0 : 600 });
+        } catch { /* ignore */ }
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';
       }

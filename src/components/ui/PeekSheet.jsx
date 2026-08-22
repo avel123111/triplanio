@@ -43,7 +43,11 @@ import { nearestDetent, resolveDetents } from '@/lib/sheetDetents';
  *   </PeekSheet>
  */
 
-const DOCK_PX = 60; // фиксированный нижний нав, за которым стоит нижний детент (TRIP-222)
+// ★ ВЫСОТУ НИЖНЕГО НАВА ЗАДАЁТ ЭКРАН, А НЕ ПРИМИТИВ. Зашитая константа здесь
+// была прямой ошибкой: под линзами трипа нав есть, а в планировщике его нет
+// вовсе — и эти «60px на всякий случай» превращались в пустую полосу под
+// футером. Примитив знает только про домашнюю полоску (она есть везде), про
+// чужой нав ему обязан сказать вызыватель.
 const FLICK_VELOCITY = 0.3; // px/мс на отпускании, выше которого бросок решает направление
 
 // Инсет домашней полоски в px (env() из JS не прочитать).
@@ -72,6 +76,7 @@ function safeAreaBottom() {
  *   onDetentChange?: (i: number) => void,
  *   detents?: number[],
  *   onHeightChange?: (px: number) => void,
+ *   dock?: number,
  *   label: string,
  *   className?: string,
  * }} p
@@ -84,6 +89,8 @@ export function PeekSheet({
   onDetentChange,
   detents = [0.15, 1],
   onHeightChange,
+  // Высота фиксированного нижнего нава ЭКРАНА (0 — нава нет).
+  dock = 0,
   label,
   className = '',
 }) {
@@ -95,7 +102,9 @@ export function PeekSheet({
   // Полоса шапки (грип + header + док + safe-area) и высота вьюпорта — обе
   // измеряются, а не задаются числом: шапка у каждого экрана своя.
   const [headPx, setHeadPx] = useState(96);
-  const [dockPx, setDockPx] = useState(DOCK_PX);
+  const dockRef = useRef(dock);
+  dockRef.current = dock;
+  const [dockPx, setDockPx] = useState(0);
   const [footPx, setFootPx] = useState(0);
   const [vh, setVh] = useState(() => (typeof window === 'undefined' ? 0 : window.innerHeight));
   const [dragY, setDragY] = useState(null); // px, пока палец на экране; иначе null
@@ -131,7 +140,7 @@ export function PeekSheet({
     if (!sheet || !head) return;
     const band = head.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
     setHeadPx(Math.round(band));
-    setDockPx(Math.round(DOCK_PX + safeAreaBottom()));
+    setDockPx(Math.round(dockRef.current + safeAreaBottom()));
     setFootPx(Math.round(footRef.current?.getBoundingClientRect().height || 0));
     setVh(window.innerHeight);
   }, []);
@@ -143,7 +152,7 @@ export function PeekSheet({
     if (ro && footRef.current) ro.observe(footRef.current);
     window.addEventListener('resize', measure);
     return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measure); };
-  }, [measure]);
+  }, [measure, dock]);
 
   // Нативный не-пассивный тач — навешан один раз, текущее состояние читает через
   // `live`. preventDefault на драге и есть то, что глушит pull-to-refresh.

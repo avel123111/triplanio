@@ -47,6 +47,7 @@ const NO_INSETS = Object.freeze({ top: 0, right: 0, bottom: 0, left: 0 });
  *   panelHeader?: any,
  *   panelFooter?: any,
  *   panelLabel: string,
+ *   dock?: number,
  *   detents?: number[],
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
@@ -69,6 +70,9 @@ export function MapShell({
   // слот отдельный, а не «последний ребёнок» содержимого.
   panelFooter = null,
   panelLabel,
+  // Высота фиксированного нижнего нава экрана: под линзами трипа он есть, в
+  // планировщике его нет. Шелл не гадает — ему говорят.
+  dock = 0,
   detents = [0.15, 0.68, 1],
   detent = 0,
   onDetentChange,
@@ -125,6 +129,7 @@ export function MapShell({
           detent={detent}
           onDetentChange={onDetentChange}
           onHeightChange={setSheetPx}
+          dock={dock}
           header={panelHeader}
           footer={panelFooter}
           label={panelLabel}
