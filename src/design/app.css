@@ -4030,13 +4030,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Отступы шапки переехали в слот шелла (`.mapshell__head`) — одна геометрия на
    все экраны; здесь остались только разделитель, фон и раскладка.
    visual-diff-exempt: .flow-lp-h padding — воздух шапки переехал в слот шелла (значение то же) */
-.flow-lp-h { flex: none; border-bottom: 1px solid var(--line); background: var(--bg); display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Фон шапки снят: цвет несёт карточка виджета (одно правило на оба экрана).
+   visual-diff-exempt: .flow-lp-h background — цвет шапки несёт карточка виджета */
+.flow-lp-h { flex: none; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: var(--sp-6); }
 /* Футер флоу — тот же фон приложения, что и шапка. Раньше правило было scoped к
    `.flow-editcol` (колонка удалена вместе с раскладкой); теперь оно висит на
    СВОЁМ классе футера, а общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся
    на своём --wash.
    visual-diff-move: .flow-editcol .lp-f -> flow-foot */
-.flow-foot { background: var(--bg); }
+/* visual-diff-exempt: .flow-foot background — цвет футера несёт карточка виджета */
+.flow-foot { background: transparent; }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 /* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
@@ -4050,7 +4053,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .flow-lp-b display — колонка содержимого шага
    visual-diff-exempt: .flow-lp-b flex-direction — то же
    visual-diff-exempt: .flow-lp-b gap — ритм между блоками шага */
-.flow-lp-b { position: relative; padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; } /* design-token-exempt: значения не новые — те же, что были у .lp-b, правило переехало вместе с разметкой */
+.flow-lp-b { position: relative; min-height: 100%; padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; } /* design-token-exempt: значения не новые — те же, что были у .lp-b, правило переехало вместе с разметкой */
 /* FlowProgress (TRIP-337) — счётчик-прогресс create-флоу на ДС. Раскладка несут
    .row/.col в разметке; здесь — только облик, которого у примитивов нет. Акцент
    шага приходит КАНАЛОМ --fp-accent (brand для ручного флоу, ai для ИИ), как тинт
@@ -4421,6 +4424,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__head flex — слот шапки шелла
    visual-diff-exempt: .mapshell__head padding — воздух вокруг шапки переехал из экрана в шелл */
 .mapshell__head { flex: none; padding: var(--sp-6) var(--sp-7); }
+/* У `PageHead` собственный нижний отступ — он для экрана, где шапка стоит НАД
+   содержимым страницы. Там, где воздух снизу даёт сам контейнер (слот шапки у
+   шелла), два отступа складываются — на это есть МОДИФИКАТОР ПРИМИТИВА, а не
+   правило-дотягивание из контейнера в чужой класс.
+   floor-exempt: classes +1 — .pagehead--flush, модификатор шапки без нижнего отступа, апрув Pavel
+   visual-diff-exempt: .pagehead--flush margin-bottom — модификатор: воздух снизу даёт контейнер */
+.pagehead--flush { margin-bottom: 0; }
 /* Планировщик (запрос Pavel №2): шапка и футер сидят на фоне ПРИЛОЖЕНИЯ, тело —
    белая карточка; в тёмной теме тускнеет вся панель. Правило раньше висело на
    `.flow-editcol > .lp` — колонка удалена, поэтому оно переехало на поверхность
@@ -4428,7 +4438,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .flow-shell background — тёмная тема гасит панель планировщика до --bg (правило переехало с .flow-editcol > .lp)
    visual-diff-exempt: .mapshell__card background — то же правило, вторая единица наблюдения (поверхность панели)
    visual-diff-exempt: .flow-editcol background — источник того же правила: колонка удалена вместе с раскладкой */
-[data-theme="dark"] .flow-shell .mapshell__card { background: var(--bg); }
+/* ★ ЦВЕТА ВИДЖЕТА — ОДНО ПРАВИЛО НА ОБА ЭКРАНА (и на шит).
+     светлая  шапка и футер — поверхность карточки, тело — фон приложения;
+     тёмная   все три — фон приложения.
+   До этого каждый экран красил себя сам: у планировщика тёмная тема
+   переопределяла карточку, у редактора тело было `--wash`, и «один примитив»
+   на деле выглядел четырьмя разными способами.
+   visual-diff-exempt: .mapshell__body background — тело виджета = фон приложения (одно правило на оба экрана)
+   visual-diff-exempt: .peek-sheet__body background — то же для шита
+   visual-diff-exempt: .mapshell__card background — тёмная тема: карточка виджета = фон приложения (было только у планировщика)
+   visual-diff-exempt: .peek-sheet background — то же для шита */
+.mapshell__body, .peek-sheet__body { background: var(--bg); }
+[data-theme="dark"] .mapshell__card,
+[data-theme="dark"] .peek-sheet { background: var(--bg); }
 .mapshell__body { flex: 1; min-height: 0; overflow-y: auto; }
 .mapshell__panel[data-collapsed] { transform: translateX(-101%); pointer-events: none; }
 /* Кнопка «свернуть/раскрыть» стоит НА ШВЕ: она едет вместе с панелью, поэтому
@@ -5039,6 +5061,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    dock — there the composer is its own rounded surface, so a full-width rule
    above it would read as a second border. */
 .chat-composer { border-top: 1px solid var(--line); padding: 12px; position: relative; flex: none; }
+/* Лента сообщений ИИ-шага РАСТЁТ и занимает свободный остаток виджета —
+   композер стоит следом и оказывается прижат к низу. Раньше это держала
+   оболочка панели (`.lp-b`), удалённая вместе со старой раскладкой, и композер
+   повисал сразу под приветствием.
+   floor-exempt: classes +1 — .pl-ai, корень ленты ИИ-шага (рост вместо дотягивания в чужой примитив), апрув Pavel
+   visual-diff-exempt: .flow-lp-b min-height — тело шага занимает высоту виджета целиком
+   visual-diff-exempt: .pl-ai flex — лента растёт, композер прижат к низу
+   visual-diff-exempt: .pl-ai min-height — лента умеет сжиматься */
+.pl-ai { flex: 1; min-height: 0; }
 .chat-room .chat-composer {
   border-top: 0; padding: 0 24px 20px;
   background: linear-gradient(180deg, transparent, var(--bg) 38%);

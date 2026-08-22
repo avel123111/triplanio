@@ -190,7 +190,6 @@ export function MapShell({
             <IconBtn
               className="mapshell__toggle"
               icon={collapsed ? 'chev' : 'chevL'}
-              round
               tone="outline"
               ariaLabel={collapsed ? expandLabel : collapseLabel}
               ariaExpanded={!collapsed}

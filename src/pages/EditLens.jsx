@@ -217,7 +217,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, useToast } from '../design/index';
+import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } from '../design/index';
 import { Row, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -989,6 +989,20 @@ export default function EditLens({ tripId, shell, content }) {
   const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
 
+  // ПЛАШКА ГОРОДА НА КАРТЕ — та же, что в линзе карты: следует за наведением, а
+  // без него за выбранным городом. Ховер работает В ОБЕ СТОРОНЫ: ряд списка
+  // подсвечивает маркер (`hoveredVisitId`), маркер подсвечивает ряд
+  // (`onCityHover` → тот же `hoveredNodeId`). Раньше связь была односторонней:
+  // с карты в список ничего не приходило.
+  const badgeNode = draft.nodes.find((n) => n.id === (hoveredNodeId || selectedNodeId)) || null;
+  const cityBadge = badgeNode?.latitude != null ? {
+    lng: badgeNode.longitude,
+    lat: badgeNode.latitude,
+    countryCode: badgeNode.country_code,
+    name: badgeNode.city_name,
+    dates: formatDateRange(badgeNode.start_date, badgeNode.end_date, (iso) => fmtD(iso, lang)),
+  } : null;
+
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
   // the whole itinerary by ±1 day; tapping the date opens a calendar to jump to
   // any start (translated into a single delta shift, reusing shiftStart).
@@ -1027,6 +1041,9 @@ export default function EditLens({ tripId, shell, content }) {
   // сворачиванием, на телефоне тот же виджет уезжает в шит с тремя детентами.
   const routeHead = (
     <PageHead
+      /* Воздух снизу даёт слот шапки шелла — модификатор снимает собственный
+         отступ примитива, иначе они складываются. */
+      className="pagehead--flush"
       title={t('planner.step_cities')}
       subtitle={[
         totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
@@ -1132,10 +1149,15 @@ export default function EditLens({ tripId, shell, content }) {
       className="ts-shell"
       map={(camera) => (
             <MapView camera={camera} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+              /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
+                 «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
+              cooperativeGestures={false}
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
               hoveredVisitId={hoveredNodeId}
+              cityBadge={cityBadge}
+              onCityHover={(pts) => setHoveredNodeId(pts ? ((pts || []).find((x) => !isAnchor(x)) || pts[0])?.id ?? null : null)}
               selectedLegKey={selectedLegKey}
               hideRoute={isHotelPick}
               hotelPins={hotelPins}
@@ -1207,31 +1229,43 @@ export default function EditLens({ tripId, shell, content }) {
 function Conf({ n }) {
   const t = useT();
   if (!n) return null;
-  return <Row as="span" inline gap="g1" className="te-warnbadge" title={t('tse.conflicts_n', { n })}><Icon name="warning" size={10} /> {n}</Row>;
+  return (
+    <Tooltip content={t('tse.conflicts_n', { n })}>
+      <Row as="span" inline gap="g1" className="te-warnbadge"><Icon name="warning" size={10} /> {n}</Row>
+    </Tooltip>
+  );
 }
 
 // inline hotel / activity cells (design mockup HotelCell / ActCell)
 function HotelCell({ hotel, warn, onClick }) {
   const t = useT();
   if (!hotel) return (
-    <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')} ariaLabel={t('hotel.add')} />
+    <Tooltip content={t('hotel.add')}>
+      <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} ariaLabel={t('hotel.add')} />
+    </Tooltip>
   );
   return (
-    <Chip variant="tone" square icon="bed" className={warn ? 'is-warn' : ''} onClick={onClick} title={hotel.name}>
-      {warn && <Icon name="warning" size={11} />}
-    </Chip>
+    <Tooltip content={hotel.name}>
+      <Chip variant="tone" square icon="bed" className={warn ? 'is-warn' : ''} onClick={onClick}>
+        {warn && <Icon name="warning" size={11} />}
+      </Chip>
+    </Tooltip>
   );
 }
 function ActCell({ count, warn, onClick }) {
   const t = useT();
   if (!count) return (
-    <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')} ariaLabel={t('budget.source_activity')} />
+    <Tooltip content={t('budget.source_activity')}>
+      <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} ariaLabel={t('budget.source_activity')} />
+    </Tooltip>
   );
   return (
-    <Chip variant="tone" square icon="ticket" className={warn ? 'is-warn' : ''} onClick={onClick} title={count + ''}>
-      <span className="num t-meta">{count}</span>
-      {warn && <Icon name="warning" size={11} />}
-    </Chip>
+    <Tooltip content={t('budget.source_activity')}>
+      <Chip variant="tone" square icon="ticket" className={warn ? 'is-warn' : ''} onClick={onClick}>
+        <span className="num t-meta">{count}</span>
+        {warn && <Icon name="warning" size={11} />}
+      </Chip>
+    </Tooltip>
   );
 }
 
@@ -1311,9 +1345,11 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   if (!t) {
     return (
       <Row justify="j-center" className="te-seam">
-        <Chip variant="placeholder" icon="plus" disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-          <span className="t-meta">{tx('tse.add_transfer')}</span>
-        </Chip>
+        <Tooltip content={`${a.city_name} → ${b.city_name}`}>
+          <Chip variant="placeholder" icon="plus" disabled={disabled} onClick={click}>
+            <span className="t-meta">{tx('tse.add_transfer')}</span>
+          </Chip>
+        </Tooltip>
       </Row>
     );
   }
@@ -1321,7 +1357,8 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   const span = t.day_span ?? 0;
   return (
     <Row justify="j-center" className="te-seam">
-      <Chip variant="tone" icon={mismatch ? 'warning' : meta.icon} className={mismatch ? 'is-warn' : ''} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
+      <Tooltip content={`${a.city_name} → ${b.city_name}`}>
+      <Chip variant="tone" icon={mismatch ? 'warning' : meta.icon} className={mismatch ? 'is-warn' : ''} disabled={disabled} onClick={click}>
         <span className="t-meta">{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {/* Тултип овернайта был МЁРТВ: `Icon` деструктурирует свои пропы без
             остатка, `title` до DOM не доезжал вовсе, а под ключ `tse.overnight_title`
@@ -1333,9 +1370,14 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
             ⚠️ Угловые скобки тут писать НЕЛЬЗЯ: гард 2d читает НАПИСАНИЕ, включая
             комментарии, и пара `<svg>` … `<title>` с текстом между ними читается
             им как сырая JSX-строка - первая редакция этого абзаца роняла CI. */}
-        {span > 0 && <span title={tx('tse.overnight_title', { count: span })}><Icon name="moon" size={11} style={{ color: 'var(--brand)' }} /></span>}
+        {span > 0 && (
+          <Tooltip content={tx('tse.overnight_title', { count: span })}>
+            <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} />
+          </Tooltip>
+        )}
         <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
       </Chip>
+      </Tooltip>
     </Row>
   );
 }

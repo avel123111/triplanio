@@ -103,8 +103,13 @@ export default function PanelAi({ aiMessages = [], onGenerate }) {
   // `.pl-ai-chips` binds their font to the Meta canon.
   const showChips = aiMessages.length <= 1;
 
+  // `.pl-ai` — лента сообщений РАСТЁТ и занимает свободный остаток виджета;
+  // композер стоит следом и оказывается прижат к низу. Раньше это держала
+  // оболочка панели, удалённая вместе со старой раскладкой, — и композер повисал
+  // сразу под приветствием. Правило на СВОЁМ классе шага, а не селектором в
+  // чужой примитив (`.chat-composer`), — такое дотягивание запрещает пол.
   return (
-    <div>
+    <div className="pl-ai">
       {aiMessages.map((m) => {
         if (m.role === 'user') return <UserMessage key={m.id} text={m.text} />;
         if (m.kind === 'welcome') return <BotMessage key={m.id}><span className="t-support" style={{ whiteSpace: 'pre-wrap' }}>{t('ai_plan.status_waiting')}</span></BotMessage>;
