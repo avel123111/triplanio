@@ -1,16 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getMapInsets, offsetForInsets, setMapInsets, withMapInsets } from './insets.js';
+import { getMapInsets, offsetForInsets, setMapInsets } from './insets.js';
 
 test('по умолчанию карта ничем не закрыта', () => {
   assert.deepEqual(getMapInsets({}), { top: 0, right: 0, bottom: 0, left: 0 });
   assert.deepEqual(getMapInsets(null), { top: 0, right: 0, bottom: 0, left: 0 });
 });
 
-test('★ отступ вызова складывается с закрытой площадью', () => {
+test('★★ закрытая площадь даёт СДВИГ камеры, а не отступ вьюпорта', () => {
+  // Замерено на живой карте: большой отступ на globe роняет зум (шит 500 из 620
+  // дал zoom 0.41) и рвёт лимб атмосферы — отсюда «круг вокруг глобуса». Сдвиг
+  // тех же величин даёт нормальный зум и уводит цель из-под шита.
   const map = {};
   setMapInsets(map, { bottom: 300 });
-  assert.deepEqual(withMapInsets(map, 60), { top: 60, right: 60, bottom: 360, left: 60 });
+  assert.deepEqual(offsetForInsets(getMapInsets(map)), [0, -150]);
 });
 
 test('★★ снятие возвращает карту в «ничем не закрыта»', () => {

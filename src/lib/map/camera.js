@@ -13,7 +13,7 @@
 // core for any future map surface. The pure duration math lives in ./calmDuration.js
 // (dependency-free → unit-testable).
 import { mapboxgl, fitToPoints, clampPadding } from '@/lib/mapbox';
-import { getMapInsets, offsetForInsets, withMapInsets } from './insets';
+import { getMapInsets, offsetForInsets } from './insets';
 import { calmDuration } from '@/lib/map/calmDuration';
 
 export { calmDuration };
@@ -47,8 +47,8 @@ export function calmFlyTo(map, target = {}) {
 // derived from cameraForBounds so the duration matches the ACTUAL zoom delta, then
 // the existing fitToPoints does the fit (single source for the fit mechanics).
 //
-// ★ ОЦЕНКА ЛЕТИТ ПО ТОЙ ЖЕ КАМЕРЕ, ЧТО И ПОЛЁТ. Закрытая панелью/шитом площадь
-// добавляется здесь ровно так же, как в `fitToPoints`; посчитай мы длительность
+// ★ ОЦЕНКА ЛЕТИТ ПО ТОЙ ЖЕ КАМЕРЕ, ЧТО И ПОЛЁТ. Сдвиг под закрытую площадь
+// учитывается здесь ровно так же, как в `fitToPoints`; посчитай мы длительность
 // по «пустому» экрану, а полетели по свободному остатку — темп разошёлся бы с
 // расстоянием, и это читалось бы как рывок.
 export function calmFit(map, points, opts = {}) {
@@ -64,7 +64,7 @@ export function calmFit(map, points, opts = {}) {
     try {
       const b = new mapboxgl.LngLatBounds(points[0], points[0]);
       points.forEach((p) => b.extend(p));
-      const cam = map.cameraForBounds(b, { padding: clampPadding(map, withMapInsets(map, padding)), maxZoom });
+      const cam = map.cameraForBounds(b, { padding: clampPadding(map, padding), offset: offsetForInsets(getMapInsets(map)), maxZoom });
       if (cam?.zoom != null) { toZoom = Math.min(cam.zoom, maxZoom); center = [cam.center.lng, cam.center.lat]; }
     } catch { /* fall back to current zoom for the estimate */ }
   }

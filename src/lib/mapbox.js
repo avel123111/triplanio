@@ -3,7 +3,7 @@
 // Note: Mapbox uses [lng, lat] order (GeoJSON), the opposite of Leaflet/Google.
 import mapboxgl from 'mapbox-gl';
 import { clampPaddingBox } from './map/padding.js';
-import { getMapInsets, offsetForInsets, withMapInsets } from './map/insets.js';
+import { getMapInsets, offsetForInsets } from './map/insets.js';
 
 export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -77,19 +77,17 @@ export function clampPadding(map, padding = 0) {
 export function fitToPoints(map, points, opts = {}) {
   if (!map || !points || points.length === 0) return;
   const duration = opts.duration ?? (opts.animate ? 650 : 0);
+  // Закрытую панелью/шитом площадь отдаём СДВИГОМ, а не отступом (см.
+  // `map/insets.js`): большой отступ на globe роняет зум и рвёт лимб атмосферы.
+  // Явный `opts.offset` (вызыватель знает лучше) побеждает.
+  const offset = opts.offset ?? offsetForInsets(getMapInsets(map));
   if (points.length === 1) {
-    // ОДНА точка: вписывать нечего, поэтому её уводят из-под панели/шита
-    // сдвигом центра. Явный `opts.offset` (если вызыватель знает лучше)
-    // побеждает; иначе сдвиг считается от закрытой площади этой карты.
-    const offset = opts.offset ?? offsetForInsets(getMapInsets(map));
     map.easeTo({ center: points[0], zoom: opts.singleZoom ?? 7, duration, offset });
     return;
   }
   const b = new mapboxgl.LngLatBounds();
   points.forEach((p) => b.extend(p));
-  // Отступ вызова + закрытая площадь карты, и только потом кламп: кламп судит
-  // о СУММЕ, иначе он проверяет половину задачи.
-  map.fitBounds(b, { padding: clampPadding(map, withMapInsets(map, opts.padding ?? 48)), maxZoom: opts.maxZoom ?? 8, duration });
+  map.fitBounds(b, { padding: clampPadding(map, opts.padding ?? 48), offset, maxZoom: opts.maxZoom ?? 8, duration });
 }
 
 // GeoJSON LineString feature from [[lng,lat], ...].
