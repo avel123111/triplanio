@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { nearestDetent, resolveDetents } from '@/lib/sheetDetents';
+import { gestureOwner, nearestDetent, resolveDetents } from '@/lib/sheetDetents';
+import { useKeyboardOpen } from '@/lib/keyboardOpen';
 
 /**
  * PeekSheet — НЕМОДАЛЬНЫЙ постоянный боттом-шит с ДЕТЕНТАМИ: он всегда на
@@ -51,6 +52,31 @@ import { nearestDetent, resolveDetents } from '@/lib/sheetDetents';
 const FLICK_VELOCITY = 0.3; // px/мс на отпускании, выше которого бросок решает направление
 
 // Инсет домашней полоски в px (env() из JS не прочитать).
+/**
+ * ★ ВЫСОТА ВЬЮПОРТА — ЭТО `visualViewport`, А НЕ `window.innerHeight`.
+ * Клавиатура на мобиле сжимает ИМЕННО визуальный вьюпорт, и весь проект уже
+ * считает истиной его (`src/lib/keyboardOpen.js` ловит клавиатуру по нему же).
+ * `innerHeight` при этом может не измениться вовсе — тогда шит остаётся
+ * рассчитанным на полный экран, его нижняя часть уходит под клавиатуру, а
+ * видимая полоса оказывается пустой. Ровно этот дефект и приехал со скрина.
+ */
+function viewportH() {
+  if (typeof window === 'undefined') return 0;
+  return Math.round(window.visualViewport?.height || window.innerHeight || 0);
+}
+
+/**
+ * Насколько визуальный вьюпорт СМЕЩЁН вниз относительно раскладочного. С
+ * `interactive-widget=resizes-content` это ноль: раскладка сжимается вместе с
+ * видимой областью. Там, где браузер вместо сжатия СДВИГАЕТ окно (старые iOS),
+ * `position: fixed` остаётся привязан к раскладке, и без этого слагаемого низ
+ * шита оказывается под клавиатурой.
+ */
+function viewportTop() {
+  if (typeof window === 'undefined') return 0;
+  return Math.round(window.visualViewport?.offsetTop || 0);
+}
+
 /**
  * Сколько CSS-величина занимает В ПИКСЕЛЯХ. `getComputedStyle` для custom
  * property отдаёт ЗАПИСЬ (`calc(...)`, `env(...)`), а не результат, поэтому
@@ -107,7 +133,8 @@ export function PeekSheet({
   const [headPx, setHeadPx] = useState(96);
   const [dockPx, setDockPx] = useState(0);
   const [footPx, setFootPx] = useState(0);
-  const [vh, setVh] = useState(() => (typeof window === 'undefined' ? 0 : window.innerHeight));
+  const [vh, setVh] = useState(viewportH);
+  const [vTop, setVTop] = useState(viewportTop);
   const [dragY, setDragY] = useState(null); // px, пока палец на экране; иначе null
 
   // Доли → пиксели: один расчёт на рендер, он же кормит жест и стили.
@@ -122,9 +149,14 @@ export function PeekSheet({
   // шит, а не как маленький.
   const minPx = headPx + reservePx;
   const stops = useMemo(() => resolveDetents(detents, vh, minPx), [detents, vh, minPx]);
-  const index = Math.max(0, Math.min(stops.length - 1, detent));
+  // ★ КЛАВИАТУРА ПОДНИМАЕТ ШИТ НА ВЕРХНИЙ ДЕТЕНТ. Видимая область сжата, и
+  // «как было» в ней — это полоска с обрезанным содержимым; поле, ради которого
+  // клавиатуру открыли, оказывается за кадром. Детент ЭКРАНА при этом не
+  // трогаем: закрылась клавиатура — шит вернулся туда, где его оставили.
+  const keyboard = useKeyboardOpen();
+  const index = keyboard ? stops.length - 1 : Math.max(0, Math.min(stops.length - 1, detent));
   const sheetH = stops[index] ?? 0;
-  const restY = Math.max(0, vh - sheetH);
+  const restY = Math.max(0, vh - sheetH) + vTop;
 
   // Свежие пропы для однажды навешанных нативных слушателей.
   const live = useRef();
@@ -145,7 +177,8 @@ export function PeekSheet({
     // внутри). Пропа `dock` не осталось: экран не обязан знать чужую высоту.
     setDockPx(Math.round(cssPx('var(--nav-dock-h, 0px)')));
     setFootPx(Math.round(footRef.current?.getBoundingClientRect().height || 0));
-    setVh(window.innerHeight);
+    setVh(viewportH());
+    setVTop(viewportTop());
   }, []);
 
   useLayoutEffect(() => {
@@ -154,7 +187,17 @@ export function PeekSheet({
     if (ro && headRef.current) ro.observe(headRef.current);
     if (ro && footRef.current) ro.observe(footRef.current);
     window.addEventListener('resize', measure);
-    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measure); };
+    // Клавиатура двигает ТОЛЬКО визуальный вьюпорт: без этой подписки шит узнаёт
+    // о ней в лучшем случае поздно, а на iOS не узнаёт вовсе.
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', measure);
+    vv?.addEventListener('scroll', measure);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', measure);
+      vv?.removeEventListener('resize', measure);
+      vv?.removeEventListener('scroll', measure);
+    };
   }, [measure]);
 
   // Нативный не-пассивный тач — навешан один раз, текущее состояние читает через
@@ -185,12 +228,17 @@ export function PeekSheet({
       const dy = y - d.startY; // + вниз, − вверх
       if (d.mode === 'idle') {
         if (Math.abs(dy) < 4) return; // ждём намерения
-        const atTop = !bodyRef.current || bodyRef.current.scrollTop <= 0;
-        const { index: i, stops: st } = live.current;
-        const atMax = i >= st.length - 1;
-        // На верхнем детенте тело скроллится, и только тяга вниз от его верха
-        // возвращает жест шиту. Ниже — любой драг двигает шит.
-        d.mode = (!atMax || (dy > 0 && atTop)) ? 'drag' : 'scroll';
+        // Кому жест — решает чистое правило (закрыто тестами): грип и шапка
+        // всегда двигают шит, тело скроллится на ЛЮБОМ детенте, а тяга вниз от
+        // самого верха тела опускает шит.
+        const body = bodyRef.current;
+        d.mode = gestureOwner({
+          onHandle: d.onHandle,
+          dy,
+          scrollTop: body?.scrollTop ?? 0,
+          scrollHeight: body?.scrollHeight ?? 0,
+          clientHeight: body?.clientHeight ?? 0,
+        });
       }
       if (d.mode !== 'drag') return;
       e.preventDefault();

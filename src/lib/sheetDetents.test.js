@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nearestDetent, resolveDetents } from './sheetDetents.js';
+import { gestureOwner, nearestDetent, resolveDetents } from './sheetDetents.js';
 
 const VH = 800;
 const HEAD = 120; // грип + шапка + док + safe-area
@@ -58,4 +58,28 @@ test('бросок за край списка остаётся на краю', (
 
 test('пустой список детентов не роняет расчёт', () => {
   assert.equal(nearestDetent({ stops: [], height: 100, from: 0 }), 0);
+});
+
+test('жест: грип и шапка всегда двигают шит', () => {
+  assert.equal(gestureOwner({ onHandle: true, dy: -80, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'drag');
+  assert.equal(gestureOwner({ onHandle: true, dy: 80, scrollTop: 200, scrollHeight: 900, clientHeight: 300 }), 'drag');
+});
+
+test('жест: тело скроллится на ЛЮБОМ детенте, а не только на верхнем', () => {
+  // Ровно тот дефект: на среднем детенте список не скроллился вовсе.
+  assert.equal(gestureOwner({ dy: -60, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'scroll');
+  assert.equal(gestureOwner({ dy: 60, scrollTop: 120, scrollHeight: 900, clientHeight: 300 }), 'scroll');
+});
+
+test('жест: тяга вниз из самого верха опускает шит', () => {
+  assert.equal(gestureOwner({ dy: 60, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'drag');
+});
+
+test('жест: скроллить нечего — жест достаётся шиту', () => {
+  assert.equal(gestureOwner({ dy: -60, scrollTop: 0, scrollHeight: 300, clientHeight: 300 }), 'drag');
+  assert.equal(gestureOwner({ dy: -60, scrollTop: 0, scrollHeight: 301, clientHeight: 300 }), 'drag');
+});
+
+test('жест: без аргументов — шит (нечего скроллить)', () => {
+  assert.equal(gestureOwner(), 'drag');
 });
