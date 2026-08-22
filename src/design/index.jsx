@@ -56,6 +56,7 @@ export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
 export { Cover, COVER_FALLBACK } from './Cover';
 export { Carousel } from './Carousel';
+export { Skeleton } from './Skeleton';
 export { CoverPicker } from './CoverPicker';
 export { EditableText } from './EditableText';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
@@ -578,12 +579,6 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
     <div className="t-body empty-state__b">{body}</div>
     {action && <div className="empty-state__act">{action}</div>}
   </div>
-);
-
-// ----- Skeleton -----
-/** @param {{ w?: number|string, h?: number|string, r?: number|string, style?: any }} p */
-export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
-  <div className="skeleton" style={{ width: w, height: h, borderRadius: r, ...style }} />
 );
 
 // ----- Checkbox -----

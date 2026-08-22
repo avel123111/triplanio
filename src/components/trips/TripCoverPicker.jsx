@@ -10,6 +10,7 @@ import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/f
 import { uploadErrorText } from '@/lib/documentMutations';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
+import { composeCoverSlides } from '@/lib/coverSlides';
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
 
@@ -90,25 +91,24 @@ export default function TripCoverPicker({
   });
   const presetUrls = useMemo(() => presets.map((p) => p.image_url), [presets]);
 
-  // Слайды = [«без обложки»?] + свои загруженные фото + пресеты. Оба ведущих
-  // куска регистрируются СТАБИЛЬНО (единожды, не по текущему значению), иначе
-  // выбор соседнего слайда убирал бы слайд из ленты и она прыгала бы под пальцем.
+  // Состав ленты — чистая функция (`composeCoverSlides`, закрыта тестом): она
+  // кладёт ТЕКУЩУЮ обложку в список сразу, не дожидаясь каталога, и вычитает из
+  // ведущей группы всё, что в каталоге уже есть. Отсюда экран открывается на
+  // своей обложке, а не на фоллбеке, и пресетная обложка не двоится.
+  //
+  // `extraSlides` — ИСТОРИЯ своих загрузок, а не источник текущей: прежнее фото
+  // обязано остаться в ленте после выбора пресета, иначе список схлопывается
+  // ровно в тот момент, когда человек в нём листает. Поэтому пополняется
+  // эффектом (после кадра) — на первый кадр он не влияет.
   const [blankSlide] = useState(() => coverImageUrl === '');
   const [extraSlides, setExtraSlides] = useState(/** @type {string[]} */ ([]));
   useEffect(() => {
-    // ★ ЖДЁМ ОТВЕТА КАТАЛОГА, А НЕ НЕПУСТОГО СПИСКА. Пока запрос в полёте,
-    // `presetUrls` пуст — и «моей обложки нет среди пресетов» истинно ДЛЯ ЛЮБОЙ
-    // обложки, включая сам пресет. Без этой проверки трип с пресетной обложкой
-    // получал её слайдом ДВАЖДЫ (ведущим и в ряду каталога) вместе с дублем
-    // React-ключа. Ждём именно ответа (`isPending`), а не наполнения: пустой
-    // каталог — это тоже ответ, и своя загруженная фотка обязана остаться в ленте.
-    if (presetsPending || !coverImageUrl) return;
-    if (presetUrls.includes(coverImageUrl) || extraSlides.includes(coverImageUrl)) return;
+    if (!coverImageUrl || extraSlides.includes(coverImageUrl)) return;
     setExtraSlides((s) => [coverImageUrl, ...s]);
-  }, [presetsPending, coverImageUrl, presetUrls, extraSlides]);
+  }, [coverImageUrl, extraSlides]);
   const slides = useMemo(
-    () => [...(blankSlide ? [''] : []), ...extraSlides, ...presetUrls],
-    [blankSlide, extraSlides, presetUrls],
+    () => composeCoverSlides({ value: coverImageUrl, extras: extraSlides, presets: presetUrls, blank: blankSlide }),
+    [coverImageUrl, extraSlides, presetUrls, blankSlide],
   );
 
   useEffect(() => {
@@ -172,6 +172,7 @@ export default function TripCoverPicker({
       uploading={uploading}
       error={error}
       disabled={disabled}
+      loading={presetsPending}
       className={className}
       overlay={overlay}
       accept={IMAGE_ACCEPT}

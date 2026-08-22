@@ -724,6 +724,17 @@ const RECIPES = {
       ), true)],
     },
     {
+      label: 'loading — источник картинок ещё отвечает: ряд дорисован заглушками',
+      items: [it('loading', (
+        <CoverPicker
+          slides={[ctx.cpSlides[1]]}
+          value={ctx.cpSlides[1]}
+          loading
+          ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
+        />
+      ), true)],
+    },
+    {
       label: 'пустой слайд (\'\') — «без обложки», рисуется фоллбеком <Cover>',
       items: [it("slides={['']}", (
         <CoverPicker

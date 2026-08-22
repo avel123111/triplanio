@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Carousel } from './Carousel';
 import { Cover } from './Cover';
 import { IconBtn } from './IconBtn';
+import { Skeleton } from './Skeleton';
 import { Swatch } from './Swatch';
 import { useT } from '@/lib/i18n/I18nContext';
 
@@ -26,11 +27,16 @@ import { useT } from '@/lib/i18n/I18nContext';
 // сохранять сразу или ждать кнопки «Сохранить» — дело вызывателя (в планнере это
 // черновик, в настройках трипа — форма с явным сохранением).
 //
+// loading — источник картинок ещё отвечает: ряд дорисовывается заглушками.
 // slides — url-ы по порядку ленты; ПУСТАЯ строка = слайд «без обложки»
 //   (рисуется фоллбеком примитива <Cover>). value — выбранный url ('' = без
 //   обложки). onUpload(file) — не задан → кнопки загрузки нет.
 // className уезжает на КАДР обложки: он же задаёт геометрию (дефолт кадра — 4:3
 //   со скруглением; планнер перебивает на full-bleed полосу).
+// Сколько заглушек рисовать, пока едет источник картинок: ряд должен читаться
+// как «сейчас будет ещё», а не как готовый короткий список.
+const SKELETON_THUMBS = [0, 1, 2, 3, 4];
+
 /**
  * @param {{
  *   slides?: string[],
@@ -41,6 +47,7 @@ import { useT } from '@/lib/i18n/I18nContext';
  *   error?: string,
  *   overlay?: any,
  *   disabled?: boolean,
+ *   loading?: boolean,
  *   className?: string,
  *   ariaLabel: string,
  *   uploadLabel?: string,
@@ -56,6 +63,7 @@ export function CoverPicker({
   error = '',
   overlay = null,
   disabled = false,
+  loading = false,
   className = '',
   ariaLabel,
   uploadLabel = '',
@@ -98,17 +106,27 @@ export function CoverPicker({
   // в одном кадре; ряд следует за ЖИВЫМ индексом, поэтому во время свайпа он
   // идёт вместе с пальцем, а не догоняет после осадки.
   const activeIndex = slides.indexOf(activeUrl);
-  // Первая установка — без анимации: экран открывается на нужном слайде, а не
-  // приезжает к нему. Дальше всё плавно.
-  const firstSync = useRef(true);
   // Плавную доводку кадра НЕ считаем жестом (см. onTrackScroll).
   const programmatic = useRef(false);
+
+  // ★ АНИМАЦИЯ ПРИНАДЛЕЖИТ СМЕНЕ ВЫБОРА, А НЕ СМЕНЕ СПИСКА. Список меняется,
+  // когда приезжают данные: слайдов стало больше, и выбранный переехал на другую
+  // позицию — но человек ничего не выбирал, и «поехавший» кадр читался бы как
+  // сбой. Такая перекладка обязана быть мгновенной; плавно ездим только когда
+  // выбор действительно сменился. Первый рендер — частный случай смены списка
+  // (список был пуст), поэтому отдельного «первого раза» держать не нужно.
+  const slidesKey = slides.join('\u0000');
+  const prevSlidesKey = useRef(/** @type {string | null} */ (null));
+  const listChanged = prevSlidesKey.current !== slidesKey;
+  const behavior = listChanged ? 'auto' : 'smooth';
 
   useEffect(() => {
     if (activeIndex < 0) return;
     stripRef.current?.querySelector(`[data-idx="${activeIndex}"]`)?.scrollIntoView({
-      inline: 'center', block: 'nearest', behavior: firstSync.current ? 'auto' : 'smooth',
+      inline: 'center', block: 'nearest', behavior,
     });
+    // `behavior` намеренно вне зависимостей: он ПРИЗНАК этого запуска, а не
+    // повод для нового — иначе эффект перезапускался бы сам на себя.
   }, [activeIndex]);
 
   // Значение сменили НЕ свайпом (аплоад / клик по миниатюре / приехало сверху) →
@@ -125,12 +143,14 @@ export function CoverPicker({
     if (!el || slides.length === 0 || scrollUrl !== null) return;
     const target = Math.max(0, slides.indexOf(value)) * el.clientWidth;
     if (Math.abs(el.scrollLeft - target) > 2) {
-      programmatic.current = !firstSync.current;
-      el.scrollTo({ left: target, behavior: firstSync.current ? 'auto' : 'smooth' });
+      programmatic.current = behavior === 'smooth';
+      el.scrollTo({ left: target, behavior });
     }
     syncEdges();
-    firstSync.current = false;
   }, [value, slides, scrollUrl]);
+
+  // Ключ списка запоминаем ПОСЛЕ обоих доводчиков — они оба судят по нему.
+  useEffect(() => { prevSlidesKey.current = slidesKey; });
   const settle = useRef(/** @type {ReturnType<typeof setTimeout> | undefined} */ (undefined));
   useEffect(() => () => clearTimeout(settle.current), []);
   const onTrackScroll = () => {
@@ -226,6 +246,14 @@ export function CoverPicker({
             />
           );
         })}
+        {/* Пока источник картинок отвечает, ряд дорисовывается заглушками: без
+            них он вырастает с одной плитки до десятка ровно в тот момент, когда
+            данные приехали, и раскладка прыгает у человека под курсором. Форму
+            заглушка берёт у миниатюры (52×52, тот же радиус), а не выдумывает
+            свою. */}
+        {loading && SKELETON_THUMBS.map((k) => (
+          <Skeleton key={k} w={52} h={52} r={'var(--r-xs)'} />
+        ))}
       </Carousel>
 
       {onUpload && (
