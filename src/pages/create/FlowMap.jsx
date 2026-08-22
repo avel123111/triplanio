@@ -32,6 +32,13 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
 // width on the left. On phones (≤960) the map is its own top band with the sheet
 // below it, so only a little bottom room is reserved for the sheet's overlap.
 // Mirror the CSS: .flow-editcol width = min(550px, 44vw); breakpoint 960.
+// Сдвиг центра под закрытую площадь: панель слева на десктопе, шит снизу на
+// телефоне. Это СДВИГ, а не отступ вьюпорта — отступ на проекции `globe` роняет
+// зум и рассинхронивает лимб атмосферы с тайлами (замерено на живой карте:
+// нижний отступ 500px из 620 дал zoom 0.41 и кольцо вокруг планеты).
+const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+const offsetFor = (b) => [Math.round((b.left - b.right) / 2), Math.round((b.top - b.bottom) / 2)];
+
 function fitPaddingFor(w) {
   if (w > 960) {
     const panel = Math.min(550, w * 0.44);
@@ -46,12 +53,30 @@ function fitPaddingFor(w) {
 // zoom whose globe fills ~85% of the MAP's height — clamped so it never grows wider
 // than the strip left visible beside the floating panel (else it tucks behind it).
 // This is why a wide screen no longer shows a tiny planet: the size now tracks the
-// container, not a fixed zoom. Phones keep a fixed start zoom — their short map band
-// already frames the globe and Pavel asked to leave mobile un-adaptive. Coefficients
-// are eyeballed; nudge them here if the globe reads a touch big/small.
-function startGlobeView(map, pad, winW) {
+// container, not a fixed zoom. Coefficients are eyeballed; nudge them here if the
+// globe reads a touch big/small.
+//
+// ★ ТЕЛЕФОН: ДИАМЕТР ≥ ДИАГОНАЛИ СВОБОДНОГО ОКНА. Раньше здесь стоял
+// фиксированный `zoom: 2`, и это работало ровно потому, что карта на телефоне
+// была ПОЛОСОЙ в 32% высоты: шар диаметром ~650px её всегда переполнял, и был
+// виден кусок планеты. Карта во весь экран — и тот же шар в неё ПОМЕЩАЕТСЯ:
+// становится виден край, космос и тёмная ночная сторона, которую и принимают за
+// «одноцветную заливку». Поэтому размер считается от свободного окна и берётся
+// по ДИАГОНАЛИ: шар гарантированно выходит за кадр вместе с углами, и показывать
+// его край не с чего.
+function startGlobeView(map, pad, winW, insets) {
   const center = [0, 20];
-  if (winW <= 960) return { center, zoom: 2 };
+  if (winW <= 960) {
+    const el = map.getContainer?.();
+    const H = el?.clientHeight || 0;
+    const W = el?.clientWidth || 0;
+    if (!H || !W) return { center, zoom: 2 };
+    const freeW = Math.max(200, W - insets.left - insets.right);
+    const freeH = Math.max(160, H - insets.top - insets.bottom);
+    // +12% запаса: диагональ впритык оставляет край планеты ровно в углу кадра.
+    const d = Math.hypot(freeW, freeH) * 1.12;
+    return { center, zoom: Math.max(2, Math.min(5, Math.log2((d * Math.PI) / 512))) };
+  }
   const el = map.getContainer?.();
   const H = el?.clientHeight || 0;
   const W = el?.clientWidth || 0;
@@ -85,6 +110,8 @@ export default function FlowMap({
   // Map-lens-style interactivity (all optional — omit for a passive preview):
   hoveredId = null, selectedId = null, cityBadge = null,
   onCityHover, onCityClick, onMapClick,
+  // Закрытая панелью/шитом площадь канваса (px) — приходит от `<MapShell>`.
+  insets = null,
 }) {
   const t = useT();
   const { isDark } = useTheme();
@@ -174,7 +201,13 @@ export default function FlowMap({
   if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
   cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
   if (hasFinish) fitPositions.push([finishCity.longitude, finishCity.latitude]);
-  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
+  // Закрытая площадь — часть КЛЮЧА кадрирования: подняли шит — свободное окно
+  // другое, кадр обязан пересчитаться. Ref, чтобы эффект читал свежее значение.
+  const box = insets || NO_INSETS;
+  const insetsRef = useRef(box);
+  insetsRef.current = box;
+  const insetsKey = `${box.top}|${box.right}|${box.bottom}|${box.left}`;
+  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}@${insetsKey}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // A FlowMap-owned handle to the (singleton) map instance. useMapSurface nulls its
@@ -224,7 +257,11 @@ export default function FlowMap({
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
           try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
-          const offset = [Math.round((pad.left - pad.right) / 2), Math.round((pad.top - pad.bottom) / 2)];
+          // Сдвиг от воздуха вызова ПЛЮС сдвиг под панель/шит: маршрут встаёт по
+          // центру СВОБОДНОГО окна, а не канваса.
+          const air = offsetFor(pad);
+          const box2 = insetsRef.current;
+          const offset = [air[0] + offsetFor(box2)[0], air[1] + offsetFor(box2)[1]];
           calmFit(map, fitPositions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
         }
         prevHadPointsRef.current = true;
@@ -234,12 +271,18 @@ export default function FlowMap({
         // ~85% of the map's height (desktop) so a wide screen no longer shows a
         // tiny planet. Returning here from a route (draft RESET) glides back out;
         // a fresh mount / resize just snaps (the fade-in hides it).
-        try { map.setPadding(pad); } catch { /* ignore */ }
-        const view = startGlobeView(map, pad, winW);
+        // На телефоне отступ вьюпорта НЕ ставим: он и есть источник кольца вокруг
+        // планеты (замер на живой карте). Смещение под шит несёт `offset` ниже.
+        try { map.setPadding(winW > 960 ? pad : NO_INSETS); } catch { /* ignore */ }
+        const view = startGlobeView(map, pad, winW, insetsRef.current);
+        // Центрируем в СВОБОДНОМ окне: на телефоне шит съедает низ, и без сдвига
+        // шар встаёт по центру ЭКРАНА, то есть наполовину под шитом.
+        const gOffset = winW > 960 ? [0, 0] : offsetFor(insetsRef.current);
         if (prevHadPointsRef.current) {
-          try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
+          try { map.easeTo({ ...view, offset: gOffset, duration: 600 }); }
+          catch { try { map.jumpTo(view); } catch { /* ignore */ } }
         } else {
-          try { map.jumpTo(view); } catch { /* ignore */ }
+          try { map.easeTo({ ...view, offset: gOffset, duration: 0 }); } catch { /* ignore */ }
         }
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';
