@@ -7,7 +7,7 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
@@ -70,13 +70,7 @@ Deno.serve(withHandler('getUserPlan', async (req, corsHeaders) => {
     // Stale/absent token → 401 (expected; withHandler stays silent on it centrally,
     // TRIP-240). A genuine Auth-service outage is raised as a 503 inside
     // getRequestUser (AUTH_UNAVAILABLE) and reported — it never reaches here as null.
-    const user = await getRequestUser(req);
-    if (!user) {
-      return Response.json(
-        { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
-        { status: 401, headers: corsHeaders },
-      );
-    }
+    const user = await requireUser(req);
 
     // Read subscription fields from users table
     let { data: userData } = await supabaseAdmin

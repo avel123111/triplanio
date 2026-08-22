@@ -54,7 +54,11 @@ export { Donut } from './Donut';
 export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
 export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
-export { Cover } from './Cover';
+export { Cover, COVER_FALLBACK } from './Cover';
+export { Carousel } from './Carousel';
+export { Skeleton } from './Skeleton';
+export { CoverPicker } from './CoverPicker';
+export { EditableText } from './EditableText';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';
@@ -331,11 +335,11 @@ export const BTN_VARIANTS = ["primary", "secondary", "soft", "quiet", "link", "d
 /**
  * @param {{ variant: BtnVariant, size?: 'sm', icon?: string, iconRight?: string,
  *   tile?: boolean, sub?: any, block?: boolean, disabled?: boolean, loading?: boolean,
- *   children?: any, onClick?: any, className?: string, ariaLabel?: string,
+ *   children?: any, onClick?: any, onMouseDown?: any, className?: string, ariaLabel?: string,
  *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any,
  *   locked?: boolean, lockedHint?: any }} p
  */
-export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style, locked, lockedHint }) => {
+export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, onMouseDown, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style, locked, lockedHint }) => {
   // `locked` — действие недоступно текущей роли (наблюдателю). Не плодит класс:
   // приглушённый вид даёт существующий `.btn[aria-disabled]`, справа — замок,
   // клик подавлен, а причина висит тултипом. Один кирпич на все «viewer'у нельзя»
@@ -357,6 +361,10 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
     type="button"
     className={`btn btn--${variant} ${size ? `btn--${size}` : ""} ${block ? "btn--block" : ""} ${className}`}
     onClick={locked ? undefined : onClick}
+    // Forwarded so callers can suppress focus-steal (`e.preventDefault()` on a
+    // mousedown keeps the on-screen keyboard up between sends) — без него проп
+    // молча терялся и типы ругались (TS2322).
+    onMouseDown={onMouseDown}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
     aria-label={ariaLabel}
@@ -571,12 +579,6 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
     <div className="t-body empty-state__b">{body}</div>
     {action && <div className="empty-state__act">{action}</div>}
   </div>
-);
-
-// ----- Skeleton -----
-/** @param {{ w?: number|string, h?: number|string, r?: number|string, style?: any }} p */
-export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
-  <div className="skeleton" style={{ width: w, height: h, borderRadius: r, ...style }} />
 );
 
 // ----- Checkbox -----

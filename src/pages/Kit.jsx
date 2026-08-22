@@ -34,7 +34,7 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover, CoverPicker,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
@@ -64,6 +64,7 @@ const TX = {
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
     'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
+    'coverpicker': 'Пикер обложки',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -90,7 +91,8 @@ const TX = {
     'skeleton': 'Плейсхолдер загрузки, разной ширины.',
     'dialog': 'Диалог и шит — оверлеи (открываются кнопкой).',
     'accordion': 'Раскрывашка: шапка-кнопка (иконка · заголовок · статус) + вложенное тело; шеврон вправо→вниз.',
-    'cover': 'Обложка трипа: градиент из конечного набора (16, классами по data-cover) ИЛИ фото поверх.',
+    'cover': 'Обложка трипа: фото ИЛИ фоллбек-картинка из бандла (градиентов больше нет).',
+    'coverpicker': 'Выбор картинки: кадр листается свайпом и стрелками (scroll-snap), миниатюры под ним, своё фото — кнопкой в углу. Откуда картинки и куда девается загруженный файл, примитив не знает — это даёт вызыватель.',
     'tile': 'Квадрат под значок: тон · размер · форма · залитая.',
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
@@ -686,12 +688,61 @@ const RECIPES = {
 
   cover: () => [
     {
-      label: 'градиент трипа (data-cover, конечный набор из 16)',
-      items: ['gradient_1', 'gradient_5', 'gradient_9', 'gradient_14', 'gradient_16']
-        .map((g) => it(`gradient="${g}"`, <Cover gradient={g} />)),
+      label: 'обложка трипа (<Cover>): фоллбек-картинка из бандла, когда фото нет',
+      items: [it('без image (фоллбек)', <Cover />)],
     },
     {
-      items: [it('image (фото поверх градиента)', <Cover gradient="gradient_5" image="/flags/es.svg" />)],
+      items: [it('image (фото поверх фоллбека)', <Cover image="/flags/es.svg" />)],
+    },
+  ],
+
+  coverpicker: (ctx) => [
+    {
+      label: 'кадр 4:3 (дефолт) + лента миниатюр; свайп/стрелки листают сам кадр',
+      items: [it('slides + value + onChange', (
+        <CoverPicker
+          slides={ctx.cpSlides}
+          value={ctx.cpValue}
+          onChange={ctx.setCpValue}
+          onUpload={() => {}}
+          ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
+          uploadLabel={'Загрузить своё фото'/* i18n-ignore: витрина /kit */}
+        />
+      ), true)],
+    },
+    {
+      label: 'disabled — свайп ленты выключен, кнопок нет (read-only)',
+      items: [it('disabled', (
+        /* Значение — НЕ первый слайд намеренно: read-only показывает выбранную
+           миниатюру, а лента при открытии обязана быть доведена до неё. */
+        <CoverPicker
+          slides={ctx.cpSlides}
+          value={ctx.cpSlides[9]}
+          disabled
+          ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
+        />
+      ), true)],
+    },
+    {
+      label: 'loading — источник картинок ещё отвечает: ряд дорисован заглушками',
+      items: [it('loading', (
+        <CoverPicker
+          slides={[ctx.cpSlides[1]]}
+          value={ctx.cpSlides[1]}
+          loading
+          ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
+        />
+      ), true)],
+    },
+    {
+      label: 'пустой слайд (\'\') — «без обложки», рисуется фоллбеком <Cover>',
+      items: [it("slides={['']}", (
+        <CoverPicker
+          slides={['']}
+          value=""
+          ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
+        />
+      ), true)],
     },
   ],
 
@@ -712,7 +763,12 @@ const RECIPES = {
     const goTrips = <Btn variant="primary" icon="plus" block>Перейти к путешествиям</Btn>; // i18n-ignore: демо-подпись витрины /kit
     const inbox = [
       { unread: true, glyph: { mode: 'avatar', name: 'Женя Соколов' }, title: 'Женя Соколов зовёт в путешествие', message: 'Токио, весна · роль наблюдателя', time: '5 мин', actions: inviteActs },
-      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Новая бронь: отель', message: 'Токио, весна · Костя Марков', time: '2 ч', actions: link },
+      // Бронь добавлена — 4 вида (TRIP-284): заголовок «{автор} добавил(а) <вид>»,
+      // тело «<Вид> в «{трип}»». activity — новый тип (раньше не уведомлялся вовсе).
+      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) отель', message: 'Отель в «Токио, весна»', time: '2 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) переезд', message: 'Переезд в «Токио, весна»', time: '3 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) активность', message: 'Активность в «Токио, весна»', time: '3 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) услугу', message: 'Услуга в «Токио, весна»', time: '3 ч', actions: link },
       { glyph: { mode: 'avatar', name: 'Марк Лебедев' }, title: 'Марк Лебедев теперь в путешествии', message: 'Токио, весна', time: '4 ч', actions: link },
       { glyph: { mode: 'tile', icon: 'shield', tone: 'brand' }, title: 'Теперь ты администратор', message: 'Лиссабон · можно менять маршрут и бюджет', time: '2 дн', actions: link },
       { glyph: { mode: 'avatar', name: 'Ира Волкова' }, title: 'Ира Волкова зовёт в путешествие', message: 'Токио, весна', time: '2 дн', actions: acceptedActs },
@@ -724,7 +780,7 @@ const RECIPES = {
     ];
     const popover = [
       { unread: true, glyph: { mode: 'avatar', name: 'Женя Соколов' }, title: 'Женя Соколов зовёт в путешествие', message: 'Токио, весна', time: '5 мин', actions: inviteActs },
-      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Новая бронь: отель', message: 'Токио, весна · Костя Марков', time: '2 ч', actions: link },
+      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков добавил(а) отель', message: 'Отель в «Токио, весна»', time: '2 ч', actions: link },
       { glyph: { mode: 'avatar', name: 'Марк Лебедев' }, title: 'Марк Лебедев теперь в путешествии', message: 'Токио, весна', time: '4 ч', actions: link },
       { glyph: { mode: 'tile', icon: 'card', tone: 'danger' }, title: 'Оплата Pro не прошла', message: 'Обнови способ оплаты', time: '3 ч' },
     ];
@@ -1115,6 +1171,15 @@ export default function Kit() {
   const [swColor, setSwColor] = useState(swColors[0]);
   const [swIcon, setSwIcon] = useState('bed');
   const [swCover, setSwCover] = useState(0);
+  // Демо-слайды пикера обложки — картинки из бандла (флаги), чтобы витрина не
+  // ходила в сеть; пустая строка первой = слайд «без обложки». Их СПЕЦИАЛЬНО
+  // много: у пикера лента миниатюр прокручиваемая, и витрина из трёх плиток
+  // показывала бы его в состоянии, которого на экране не бывает — прокрутку и
+  // доводку к выбранной миниатюре на ней увидеть было нельзя.
+  const cpSlides = ['', '/flags/es.svg', '/flags/fr.svg', '/flags/it.svg', '/flags/pt.svg',
+    '/flags/gr.svg', '/flags/de.svg', '/flags/nl.svg', '/flags/at.svg', '/flags/ch.svg',
+    '/flags/cz.svg', '/flags/hu.svg'];
+  const [cpValue, setCpValue] = useState('');
 
   // Значения токенов/семей зависят от темы — перечитываем при переключении.
   useEffect(() => {
@@ -1133,6 +1198,7 @@ export default function Kit() {
     checked, setChecked, toggled, setToggled, segView, setSegView, segTone, setSegTone,
     chipFilter, setChipFilter, chipPage, setChipPage,
     swColors, swCovers, swColor, setSwColor, swIcon, setSwIcon, swCover, setSwCover,
+    cpSlides, cpValue, setCpValue,
   };
 
   return (

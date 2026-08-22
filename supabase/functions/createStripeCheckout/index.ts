@@ -22,7 +22,7 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, isProductCode, ENTITLING_STATUSES } from '../_shared/payments/catalog.ts';
@@ -30,8 +30,7 @@ import { ensureProviderCustomerId, saveProviderCustomerId } from '../_shared/pay
 import { originGuard } from '../_shared/originGuard.ts';
 
 Deno.serve(withHandler('createStripeCheckout', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const { tripId, productCode } = await req.json();
     if (!isProductCode(productCode)) {

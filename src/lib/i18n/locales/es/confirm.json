@@ -1,6 +1,8 @@
 {
-  "copy_trip.title": "¿Seguro que quieres copiar este viaje?",
+  "copy_trip.body": "¿Seguro que quieres copiar este viaje? Crea tu propia copia de este viaje con todas sus ciudades y reservas. La copia es tuya; las funciones Pro y los documentos no se transfieren.",
   "delete_pro_trip.body": "Este es un viaje Pro - la mejora única que pagaste se perderá. ¿Eliminar?",
   "delete_pro_trip.title": "Estás eliminando un viaje Pro",
+  "delete_trip.body": "¿Seguro que quieres eliminar este viaje? Se eliminarán todos los datos del viaje. Esta acción es irreversible.",
+  "delete_trip.title": "Eliminar el viaje",
   "leave_trip.body": "Perderás el acceso y tus documentos personales en este viaje se eliminarán de forma permanente. Solo podrás volver con una nueva invitación."
 }

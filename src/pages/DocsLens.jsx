@@ -341,7 +341,8 @@ function DocDetailDialog({ doc, open, onOpenChange, readOnly, onDelete }) {
   // the parent shows the error toast and BOTH the confirm resolves and this dialog stay put.
   async function handleDelete() {
     await confirm({
-      title: t('doc.delete_confirm', { name: doc.title }),
+      title: t('doc.delete_title'),
+      description: t('doc.delete_confirm', { name: doc.title }),
       variant: 'destructive',
       onConfirm: async () => { await onDelete?.(doc); close(); },
     });

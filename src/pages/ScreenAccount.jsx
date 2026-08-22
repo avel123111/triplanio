@@ -312,7 +312,7 @@ function ReminderChannels() {
                   <ListRow
                     key={a.id}
                     variant="raised"
-                    lead={<Cover gradient={a.cover_gradient} image={a.cover_image_url} />}
+                    lead={<Cover image={a.cover_image_url} />}
                     title={<Trunc>{a.trip_title}</Trunc>}
                     sub={nick(a)}
                     trail={<IconBtn icon="close" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />}

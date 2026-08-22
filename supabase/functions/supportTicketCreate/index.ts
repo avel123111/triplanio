@@ -17,7 +17,7 @@
  */
 
 import { withHandler, HttpError, readJson } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 
 const MAX_FILES = 3;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -47,8 +47,7 @@ function parseFiles(raw: unknown): FileEntry[] {
 }
 
 Deno.serve(withHandler('supportTicketCreate', async (req, corsHeaders) => {
-  const user = await getRequestUser(req);
-  if (!user) throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');
+  const user = await requireUser(req);
 
   const body = await readJson(req);
 

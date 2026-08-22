@@ -1,36 +1,45 @@
 // @ts-check
-import React from 'react';
+import React, { useState } from 'react';
 
-// ----- Cover ----- (TRIP-337: обложка трипа как примитив ДС)
-// Миниатюра-обложка: фото (если есть) ПОВЕРХ фирменного градиента трипа. Раньше
-// это рисовалось ИНЛАЙНОМ (`style={{ background: coverGradientCss(id) }}`) на
-// `.tr__thumb`/`.tc__bg` — а инлайн-скин запрещён (всё из ДС/в ДС). Здесь градиент
-// — КОНЕЧНЫЙ набор (16 штук, `TRIP_GRADIENTS`), поэтому он живёт КЛАССАМИ в CSS
-// (`.cover[data-cover="gradient_N"]`), а не инлайном; выбор — по `data`-атрибуту.
-// Фото — это `<img src>` (атрибут, не стиль), поверх градиента.
+// Единый путь к фоллбек-обложке (бандл/CDN Vercel, `public/covers/fallback.webp`).
+// JS-источник для мест, что рендерят обложку своим <img> (карточки трипов,
+// StepReview); CSS-подложка `.cover` держит тот же файл литералом (слои разные).
+export const COVER_FALLBACK = '/covers/fallback.webp';
+
+// ----- Cover ----- (обложка трипа как примитив ДС)
+// Нижний слой `.cover` ВСЕГДА несёт фоллбек-картинку из бандла
+// (`public/covers/fallback.webp`) поверх нейтральной подложки — она видна, когда
+// обложки нет. Фото (если есть) — `<img class="cover__img">` ПОВЕРХ фоллбека; его
+// `onError` гасит img → снова просвечивает фоллбек, поэтому один примитив закрывает
+// и «нет обложки», и «битый/протухший src» (напр. истёкший signed URL своей фотки).
+// Градиентов больше нет — дефолтная обложка = картинка, а не цвет.
 //
-// gradient — id из набора (`gradient_1`…`gradient_16`); дефолт gradient_1.
-// image    — URL фото (перекрывает градиент); пусто → виден градиент.
-// Дрейф значений CSS↔`TRIP_GRADIENTS` держит тест `Cover.test.js`.
+// image — URL фото; пусто/битый → виден фоллбек.
 export const Cover = React.forwardRef(
   /**
    * @param {{
-   *   gradient?: string,
    *   image?: string | null,
    *   className?: string,
    *   children?: any,
    * } & Record<string, any>} p
    */
-  ({ gradient, image, className = "", children, ...rest }, ref) => (
-    <span
-      ref={ref}
-      className={["cover", className].filter(Boolean).join(" ")}
-      data-cover={image ? undefined : (gradient || "gradient_1")}
-      {...rest}
-    >
-      {image ? <img className="cover__img" src={image} alt="" /> : null}
-      {children}
-    </span>
-  ),
+  ({ image, className = "", children, ...rest }, ref) => {
+    // Провал храним URL'ом, а не булевым флагом: при смене фото новый src !==
+    // failedUrl → img показывается снова без useEffect на сброс.
+    const [failedUrl, setFailedUrl] = useState(/** @type {string | null} */ (null));
+    const showImg = image && image !== failedUrl;
+    return (
+      <span
+        ref={ref}
+        className={["cover", className].filter(Boolean).join(" ")}
+        {...rest}
+      >
+        {showImg ? (
+          <img className="cover__img" src={image} alt="" onError={() => setFailedUrl(image)} />
+        ) : null}
+        {children}
+      </span>
+    );
+  },
 );
 Cover.displayName = "Cover";

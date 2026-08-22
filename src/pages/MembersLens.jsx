@@ -167,7 +167,7 @@ export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
             onChange={setRole}
             options={[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) => ({
               value: k,
-              label: <span className="col" style={{ gap: 0, alignItems: 'center' }}><span className="t-subheading">{lab}</span><span className="muted t-meta">{sub}</span></span>,
+              label: <span className="col" style={{ gap: 0, alignItems: 'center' }}><span className="t-label">{lab}</span><span className="muted t-meta">{sub}</span></span>,
             }))}
           />
         </Field>
@@ -346,7 +346,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // not at T0. On refusal: error toast, the row stays.
   function removeMember(memberId, status) {
     confirm({
-      title: t('member.remove_confirm'),
+      title: t('members.remove'),
+      description: t('member.remove_confirm'),
       variant: 'destructive',
       onConfirm: async () => {
         const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });

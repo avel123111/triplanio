@@ -24,6 +24,8 @@ export type NotifyData = {
   actor: Row;
   member: Row;
   recipients: Record<string, unknown>[];
+  /** Тип брони (`booking_added`): сырой код hotel|transfer|activity|service. */
+  kind?: string | null;
 };
 
 /** Общая часть строки уведомления для события (без `user_id` — его добавляет
@@ -40,6 +42,14 @@ export interface InAppSpec {
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
 const roleKey = (role: unknown): string => (role === 'admin' ? 'notif.role_admin' : 'notif.role_viewer');
+
+/** Per-kind заголовок брони — каждый литерал явен (гард C `check-i18n` их валидирует). */
+const BOOKING_TITLE_KEYS: Record<string, string> = {
+  hotel: 'notif.tpl_booking_added_title_hotel',
+  transfer: 'notif.tpl_booking_added_title_transfer',
+  activity: 'notif.tpl_booking_added_title_activity',
+  service: 'notif.tpl_booking_added_title_service',
+};
 
 const tripId = (d: NotifyData): string | null => str(d.trip?.id);
 const tripTitle = (d: NotifyData): string => (typeof d.trip?.title === 'string' ? d.trip.title : '');
@@ -143,6 +153,27 @@ export const INAPP: Record<string, (d: NotifyData) => InAppSpec | null> = {
   // Подписка — системные строки (см. systemSpec): без автора и без параметров.
   pro_activated: () => systemSpec('pro_activated', 'notif.tpl_pro_activated_title', 'notif.tpl_pro_activated_msg'),
   pro_payment_failed: () => systemSpec('pro_payment_failed', 'notif.tpl_pro_payment_failed_title', 'notif.tpl_pro_payment_failed_msg'),
+
+  // Бронь добавлена — получатели владелец+участники; автор = добавивший.
+  //   • ЗАГОЛОВОК: per-kind ключ (грамматика — реюз booking_kind_* запрещён;
+  //     механизм выбора ключа как у trip_role_changed по роли);
+  //   • СООБЩЕНИЕ: `tpl_booking_added_msg` («{kind} в «{trip}»»), рендер сам
+  //     локализует СЫРОЙ kind через словарь booking_kind_* (notifView.jsx);
+  //   • edge шлёт по одной брони → count всегда 1 (batch-ветка референсна ради
+  //     живости ключа: шов её не берёт, но и не даёт ключу умереть).
+  booking_added: (d) => {
+    const kind = str(d.kind) ?? 'hotel';
+    const count = 1;
+    return {
+      type: 'trip_booking_added',
+      i18n_title_key: BOOKING_TITLE_KEYS[kind] ?? BOOKING_TITLE_KEYS.hotel,
+      i18n_message_key: count > 1 ? 'notif.tpl_booking_added_batch_msg' : 'notif.tpl_booking_added_msg',
+      i18n_params: { trip: tripTitle(d), kind, count },
+      trip_id: tripId(d),
+      trip_member_id: null,
+      created_by: actorId(d),
+    };
+  },
 
   // invite_resent — только email (в реестре отсутствует намеренно): notify по
   // нему in-app не пишет, внешняя доставка идёт как прежде.

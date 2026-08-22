@@ -12,7 +12,9 @@
   "cities_count_one": "город",
   "copy_link": "Скопировать ссылку",
   "copying": "Копируем путешествие…",
+  "cover_gallery": "Галерея обложек",
   "cover_image": "Обложка",
+  "cover_preset": "Пресет обложки",
   "cover_too_large": "Файл слишком большой (макс. 4 МБ).",
   "cover_upload": "Загрузить обложку",
   "cover_upload_failed": "Не удалось загрузить. Попробуй ещё раз.",
@@ -30,10 +32,6 @@
   "enable_budget_addon": "Включить бюджет",
   "finish_city": "Финиш · {city}",
   "form_cancel": "Отмена",
-  "form_cover": "Обложка",
-  "form_description_placeholder": "Трёхнедельное приключение по…",
-  "form_notes": "Заметки (поддерживается markdown)",
-  "form_notes_placeholder": "Номера страховок, сканы паспортов, экстренные контакты…",
   "form_save": "Сохранить",
   "form_upload_image": "Загрузить изображение",
   "form_uploading": "Загрузка…",
@@ -78,6 +76,6 @@
   "tl_transfer": "Переезд",
   "to_my_trips": "К моим путешествиям",
   "update": "Обновить путешествие",
-  "who_goes": "Кто едет",
-  "viewer_locked": "Наблюдателю недоступно редактирование путешествия"
+  "viewer_locked": "Наблюдателю недоступно редактирование путешествия",
+  "who_goes": "Кто едет"
 }

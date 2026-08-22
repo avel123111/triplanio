@@ -295,7 +295,7 @@ export async function mutate(
   const effect = AFTER_WRITE[`${slug}/${actionName}`];
   if (effect) {
     try {
-      await effect({ actor: actorFull, loadedRow, result: data, outcome, scopeValue: scope, db: supabaseAdmin });
+      await effect({ actor: actorFull, loadedRow, result: data, outcome, isInsert, scopeValue: scope, db: supabaseAdmin });
     } catch (e) {
       console.error(`mutate: afterWrite ${slug}/${actionName} failed:`, e);
       // Побочка best-effort, но её тихий сбой (teardown участника, mark-read)
@@ -304,6 +304,51 @@ export async function mutate(
       // нет. В фоне (как в `withHandler`), чтобы не добавлять задержку к ответу.
       runInBackground(captureEdgeError(e, 'mutate', { afterWrite: `${slug}/${actionName}` }));
     }
+  }
+
+  // Действие пере-разложило маршрут (запись трансфера): recompute уже случился
+  // в ТОЙ ЖЕ транзакции записи (триггер `trg_recompute_transfer` на upsert/delete,
+  // либо внутри RPC layover) и закоммичен. Дочитываем АВТОРИТЕТНУЮ цепочку И полный
+  // набор трансферов трипа, отдаём их в ОДНОМ ответе — клиент реконсилит даты
+  // городов и срез трансферов из этого ответа, без второго рефетча (тот же контракт,
+  // что route-RPC, TRIP-435). Форма: `{ row, cities, transfers }` (row = записанная
+  // строка / null у delete/void-rpc).
+  //
+  // Зачем `transfers`: одиночный трансфер клиент сворачивал из `row`, но layover
+  // пишет N новых сегментов (RPC → `row:null`), которые построчный fold свернуть не
+  // мог → клиент делал второй рефетч контента, и даты «доезжали» через секунду
+  // (buildDraft выводит gap из трансферов, а они отставали). Возвращаем набор — клиент
+  // заменяет `content.transfers` целиком, одиночный и layover идут одним путём.
+  //
+  // Read-АФТЕР-WRITE, поэтому НЕ через `rpc()` (тот бросил бы → 500): запись УЖЕ
+  // закоммичена, и провал чисто-обогащающего дочитывания НЕ смеет превратить
+  // успешную запись в 500 (клиент ретраил бы → дубль трансфера). Деградируем как
+  // `afterWrite`: логируем + `null`, клиент падает на рефетч (ровно до-returnChain
+  // поведение), а не теряет запись. `transfers` — тот же `select('*')`, что и
+  // getTripDetails (та же форма строк, без обогащения → замена среза корректна).
+  if (action.returnChain) {
+    let cities: unknown = null;
+    let transfers: unknown = null;
+    try {
+      cities = await rpc('_trip_city_chain', { p_trip: scope });
+    } catch (e) {
+      console.error(`mutate: returnChain chain read failed ${slug}/${actionName}:`, e);
+      runInBackground(captureEdgeError(e, 'mutate', { returnChain: `${slug}/${actionName}` }));
+    }
+    try {
+      // Тот же запрос, что read-дверь (getTripDetails): `select('*')` по `trip_id`,
+      // БЕЗ order — клиент ищет трансферы по from/to id, порядок массива ему не важен,
+      // а лишний `order` разъехался бы с формой read-двери (фоновый рефетч вернул бы
+      // другой порядок среза). Одна форма на обе двери.
+      const { data: trows, error } = await supabaseAdmin
+        .from('transfers').select('*').eq('trip_id', scope);
+      if (error) throw error;
+      transfers = trows ?? [];
+    } catch (e) {
+      console.error(`mutate: returnChain transfers read failed ${slug}/${actionName}:`, e);
+      runInBackground(captureEdgeError(e, 'mutate', { returnChainTransfers: `${slug}/${actionName}` }));
+    }
+    return mutateSuccess({ row: data ?? null, cities: cities ?? null, transfers: transfers ?? null }, corsHeaders);
   }
 
   return mutateSuccess(data, corsHeaders);

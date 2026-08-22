@@ -25,7 +25,7 @@ import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, IconBtn, Severity, Skeleton, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, IconBtn, Severity, Skeleton, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -33,7 +33,6 @@ import { useConfirm } from '@/components/common/ConfirmProvider';
 import { telegram as tgBrand } from '@/lib/externalBrands';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
-import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -419,10 +418,16 @@ function TelegramSection({ tripId }) {
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
 // Скелетон настроек — PURE, зеркалит РЕАЛЬНУЮ разметку экрана теми же классами:
-// (1) карточка «General» = CardHeader + `.settings-identity` (обложка `__cover`
+// (1) карточка «General» = CardHeader + `.settings-identity` (пикер обложки
 // слева | форма `__fields` справа), (2) «Optional features» = `.addon-grid` из
 // тоггл-карточек, (3) `.settings-grid` в 2 колонки. Не сетка одинаковых карточек
 // (то был «выдуманный» layout). Один источник для обеих фаз загрузки. TRIP-337.
+//
+// ★ КЛАССЫ БЕРЁМ НАСТОЯЩИЕ, А НЕ ПОХОЖИЕ ЧИСЛА. Кадр обложки держит `.tcp__hero`
+// (это он знает про 4:3), ряд — `.carousel .tcp__strip` (он знает про зазор и
+// прокрутку). Иначе скелетон приходится «подгонять» высотой в пикселях, и он
+// расходится с экраном на первой же правке раскладки — ровно это и случилось:
+// он остался с превью 150px и ряда из 16 кружков, которых на экране больше нет.
 export function SettingsSkeleton() {
   return (
     <Col gap="g7" className="settings-lens" aria-busy="true">
@@ -430,17 +435,20 @@ export function SettingsSkeleton() {
       <Card>
         <CardHeader title={<Skeleton w={120} h={22} r={6} />} action={<Skeleton w={130} h={40} r={'var(--r-btn)'} />} />
         <Grid className="settings-identity">
-          <div className="settings-identity__cover">
-            <Skeleton w="100%" h={150} r={'var(--r-md)'} />
-            <div className="row row--g4 row--wrap" style={{ marginTop: 12 }}>
-              {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} w={32} h={32} r="50%" />)}
+          <div className="col col--g6 tcp">
+            <div className="tcp__hero"><Skeleton w="100%" h="100%" r={0} /></div>
+            <div className="carousel tcp__strip">
+              {/* Первая миниатюра шире — на экране так выглядит ВЫБРАННАЯ. */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} w={i === 0 ? 108 : 52} h={52} r={'var(--r-xs)'} />
+              ))}
             </div>
           </div>
           <Col gap="g7" className="settings-identity__fields">
-            {[0, 1, 2, 3].map((i) => (
+            {[0, 1].map((i) => (
               <div key={i} className="col col--g3">
                 <Skeleton w="35%" h={13} r={5} />
-                <Skeleton w="100%" h={i === 3 ? 120 : 44} r={'var(--r-btn)'} />
+                <Skeleton w="100%" h={44} r={'var(--r-btn)'} />
               </div>
             ))}
           </Col>
@@ -494,10 +502,7 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   const { startCopy, copying } = useCreateTrip();
 
   const [title,   setTitle]   = useState(trip?.title        || '');
-  const [description, setDescription] = useState(trip?.description || '');
-  const [notes,   setNotes]   = useState(trip?.notes        || '');
   const [coverImageUrl, setCoverImageUrl] = useState(trip?.cover_image_url || '');
-  const [coverGradient, setCoverGradient] = useState(trip?.cover_gradient || '');
   const [currency, setCurrency] = useState(trip?.details?.main_currency || trip?.main_currency || 'EUR');
   const [saving,  setSaving]  = useState(false);
   // Which display/feature toggle is mid-flight (key string or feature id) — drives
@@ -532,26 +537,21 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   // object would wipe the user's in-progress title edit right before they save it.
   useEffect(() => {
     if (trip?.title)        setTitle(trip.title);
-    setDescription(trip?.description || '');
-    setNotes(trip?.notes || '');
     setCoverImageUrl(trip?.cover_image_url || '');
-    setCoverGradient(trip?.cover_gradient || '');
     if (trip?.details?.main_currency || trip?.main_currency) setCurrency(trip.details?.main_currency || trip.main_currency || 'EUR');
     setFeatures(featuresFromTrip(trip));
     setBookingWarnings(trip?.details?.display?.booking_warnings !== false);
     setChatWidget(trip?.details?.display?.chat_widget !== false);
   }, [trip?.id]);
 
-  // Dirty state for the identity block (title / description / currency / cover /
-  // notes). Toggles below auto-save on click, so the Save button only governs
-  // these manually-edited fields and stays disabled until something changes.
+  // Dirty state for the identity block (title / currency / cover). Toggles below
+  // auto-save on click, so the Save button only governs these manually-edited
+  // fields and stays disabled until something changes. Обложка тоже ждёт кнопку:
+  // пикер сообщает выбор, запись идёт отсюда.
   const persistedCurrency = trip?.details?.main_currency || trip?.main_currency || 'EUR';
   const dirty =
     title.trim()    !== (trip?.title || '') ||
-    description     !== (trip?.description || '') ||
-    notes           !== (trip?.notes || '') ||
     coverImageUrl   !== (trip?.cover_image_url || '') ||
-    coverGradient   !== (trip?.cover_gradient || '') ||
     currency        !== persistedCurrency;
 
   // ЕДИНСТВЕННОЕ место, где отказ edge-функции превращается в текст тоста:
@@ -610,10 +610,11 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     setBusyToggle(null);
   }
 
-  // Save identity settings: title, description, notes, cover (gradient/image)
-  // and main currency. All these columns are whitelisted by trip-settings/settings
-  // (title/description/cover_image_url/cover_gradient/notes); currency lives
-  // under details.main_currency.
+  // Save identity settings: title, cover image and main currency. Обе колонки
+  // в вайтлисте `trip-settings/settings`; валюта живёт в details.main_currency.
+  // Обложки нет → cover_image_url=null → фоллбек-картинка. Запись ЧАСТИЧНАЯ:
+  // отсутствующий ключ колонку не трогает, поэтому description/notes (их полей
+  // в форме больше нет) сохраняются как есть, а не затираются.
   async function saveSettings() {
     if (!title.trim()) return;
     setSaving(true);
@@ -621,12 +622,7 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     const prevCoverUrl = trip?.cover_image_url || '';
     const fields = {
       title: title.trim(),
-      description: description.trim() || null,
-      notes: notes || null,
       cover_image_url: coverImageUrl || null,
-      // Invariant: keep a built-in gradient even when a photo is set (photo just
-      // renders on top). Never persist null → no legacy/procedural fallback.
-      cover_gradient: coverGradient || DEFAULT_GRADIENT_ID,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
     // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
@@ -653,14 +649,11 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip,
         title: fields.title,
-        description: fields.description,
-        notes: fields.notes,
         cover_image_url: fields.cover_image_url,
-        cover_gradient: fields.cover_gradient,
         details: { ...(old.trip.details || {}), main_currency: currency } } } : old);
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
-    queryClient?.invalidateQueries({ queryKey: ['trips'] }); // trips list shows title/cover/description
+    queryClient?.invalidateQueries({ queryKey: ['trips'] }); // trips list shows title + cover
     successToast(t, 'settings_saved');
   }
 
@@ -753,8 +746,6 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   // FK cascade wipes child rows, then Telegram teardown + Storage purge run
   // best-effort in afterWrite (post-delete).
   async function deleteTrip() {
-    if (!(await confirm({ title: t('settings.delete_confirm1'), variant: 'destructive' }))) return;
-
     // The actual irreversible delete; attached to the LAST confirm shown so its
     // button carries the spinner while trip-owner/delete (DELETE + best-effort
     // Telegram teardown + Storage purge) runs.
@@ -770,25 +761,42 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
       // Deleting an owned trip lowers the active-trip count — drop the gate cache
       // so the planner can't read a stale count and flash the limit guard.
       invalidateActiveTripsLimit(queryClient);
+      // Purge every cache keyed to the now-deleted trip. Without this the trips
+      // list keeps the deleted card for its 30s staleTime window (a tap re-opens
+      // /trip/<deleted> → getTripDetails 404), and the trip's own shell/content/
+      // chat caches linger so a Back navigation re-renders then refetches a dead
+      // id. removeQueries (not invalidate) — there is nothing to refetch for a
+      // trip that no longer exists; invalidating would re-fire the 404.
+      queryClient?.removeQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+      queryClient?.removeQueries({ queryKey: ['trip-content', tripId] });
+      queryClient?.removeQueries({ queryKey: ['chat-id', tripId] });
+      queryClient?.invalidateQueries({ queryKey: ['trips'] }); // list drops the card now, not in 30s
       track('trip_deleted', { trip_id: tripId });
       successToast(t, 'trip_deleted');
       nav('/trips');
     };
 
-    // 3rd confirm — ONLY for a trip carrying a one-time Pro purchase
-    // (is_pro_trip), which burns on delete. NOT shown when Pro comes from an
-    // account-level subscription (that survives the trip being deleted), so we
-    // key off is_pro_trip, not the merged isPro flag.
+    // Ordinary trip → ONE confirm that runs the delete. Pro trip → the first
+    // confirm only gates, then a SECOND Pro-specific confirm warns that the
+    // one-time purchase burns and carries the spinner while the delete runs.
+    // The 2nd dialog is keyed off is_pro_trip (a one-time purchase that burns on
+    // delete), NOT the merged isPro flag: an account-level subscription survives
+    // the trip being deleted, so it must NOT trigger the extra warning.
+    const proceed = await confirm({
+      title: t('confirm.delete_trip.title'),
+      description: t('confirm.delete_trip.body'),
+      variant: 'destructive',
+      ...(isProTrip ? {} : { onConfirm: runDelete }),
+    });
+    if (!proceed) return;
+
     if (isProTrip) {
-      if (!(await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive' }))) return;
       await confirm({
         title: t('confirm.delete_pro_trip.title'),
         description: t('confirm.delete_pro_trip.body'),
         variant: 'destructive',
         onConfirm: runDelete,
       });
-    } else {
-      await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive', onConfirm: runDelete });
     }
   }
 
@@ -801,9 +809,11 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
       {readOnly && (
         <Severity level="info" title={t('settings.readonly_banner_title')}>{t('settings.readonly_banner_desc')}</Severity>
       )}
-      {/* ── Identity: cover + name / description / currency / notes ──────────
+      {/* ── Identity: обложка + название + валюта ────────────────────────────
           Save here governs only these manually-edited fields; the feature and
-          display toggles below auto-save on click. */}
+          display toggles below auto-save on click. Описание и заметки убраны из
+          формы (решение Pavel): колонки и их данные остаются, вайтлист двери
+          тоже — запись частичная, поэтому мимо формы они не затираются. */}
       <Card>
         <CardHeader
           title={t('settings.section_basic')}
@@ -818,32 +828,27 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
+        {/* Обложка — тот же пикер, что на шаге создания: кадр 4:3, свайп/стрелки
+            листают саму картинку, лента миниатюр под ней. Своей подписи у него
+            нет намеренно — картинка называет себя сама, а `<Field label>` над
+            ней только добавил бы колонке высоты (поля справа ниже неё).
+            `savedUrl` = что сохранено сейчас: по нему пикер при уходе с экрана
+            подметает залитые, но не сохранённые байты. `disabled` нужен отдельно
+            от <fieldset disabled>: нативную прокрутку ленты тот не выключает. */}
         <Grid className="settings-identity">
-          <div className="settings-identity__cover">
-            <Field label={t('trip.form_cover')}>
-              <TripCoverPicker
-                coverImageUrl={coverImageUrl}
-                coverGradient={coverGradient}
-                tripId={tripId}
-                onChange={({ cover_image_url, cover_gradient }) => {
-                  setCoverImageUrl(cover_image_url);
-                  setCoverGradient(cover_gradient);
-                }}
-              />
-            </Field>
-          </div>
+          <TripCoverPicker
+            coverImageUrl={coverImageUrl}
+            savedUrl={trip?.cover_image_url || ''}
+            tripId={tripId}
+            disabled={readOnly}
+            onChange={({ cover_image_url }) => setCoverImageUrl(cover_image_url)}
+          />
           <Col gap="g7" className="settings-identity__fields">
             <Field label={t('trip.title_label')}>
               <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
             </Field>
-            <Field label={t('trip.description')}>
-              <input className="input" value={description} onChange={e => setDescription(e.target.value)} placeholder={t('trip.form_description_placeholder')} />
-            </Field>
             <Field label={t('settings.main_currency_label')} sub={t('settings.main_currency_hint')}>
               <CurrencyCombobox value={currency} onChange={setCurrency} />
-            </Field>
-            <Field label={t('trip.form_notes')}>
-              <Textarea rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('trip.form_notes_placeholder')} />
             </Field>
           </Col>
         </Grid>

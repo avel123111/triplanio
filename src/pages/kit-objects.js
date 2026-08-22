@@ -90,10 +90,14 @@ export const KIT_OBJECTS = [
   // тело, шеврон вправо→вниз. Источник — рецепт (css:false), т.к. у семьи нет
   // `--`-вариантов (только `__`-элементы и состояние .is-open).
   { id: 'accordion', family: 'acc', group: 'components', css: false, interactive: true },
-  // Обложка трипа (<Cover>, семья .cover): градиент из конечного набора (16) —
-  // классами по data-cover, фото — <img>. Источник — рецепт (css:false): вариантов
-  // `.cover--*` у семьи нет (различие по data-атрибуту, не по классу).
+  // Обложка трипа (<Cover>, семья .cover): фоллбек-картинка из бандла как подложка,
+  // фото — <img> поверх (его onError гасит img → просвечивает фоллбек). Источник —
+  // рецепт (css:false): вариантов `.cover--*` у семьи нет.
   { id: 'cover', family: 'cover', group: 'components', css: false },
+  // Пикер обложки (<CoverPicker>, семья .tcp): кадр со scroll-snap-лентой
+  // слайдов, стрелки, кнопка загрузки и лента миниатюр под ним. Источник —
+  // рецепт (css:false): у семьи только `__`-элементы, `--`-вариантов нет.
+  { id: 'coverpicker', family: 'tcp', group: 'components', css: false, interactive: true },
   { id: 'readonly-banner', family: 'readonly', group: 'components', css: false },
   // Плитка-иконка - двухосный объект (размер × тон) + булевы round/solid и тон
   // warm (только залитый). Источник оси - карты, экспортированные примитивом

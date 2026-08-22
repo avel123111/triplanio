@@ -13,8 +13,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, Card, EmptyState, Input, RoleBadge, Seg, Skeleton, Tile } from '../design/index';
-import { coverGradientCss } from '@/lib/trip-gradients';
+import { AvatarStack, Badge, Btn, Card, COVER_FALLBACK, EmptyState, Input, RoleBadge, Seg, Skeleton, Tile } from '../design/index';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
@@ -44,8 +43,8 @@ function scopeLabel(t, visits = []) {
  * components expect.
  *
  * participants = the card's participants (owner + active members, owner first):
- *   { user_id, full_name, email, avatar_url, is_owner, is_deleted }
- *   from get_my_trip_cards (TRIP-403).
+ *   { user_id, name, avatar_url, is_owner, is_deleted }
+ *   from get_my_trip_cards (TRIP-403; server-resolved `name`, no raw email — TRIP-431).
  *
  * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
@@ -71,15 +70,6 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, par
   };
 }
 
-// ─── Cover background helper ────────────────────────────────────────────────
-// Photo (when present) is rendered as a separate <img> overlay → return null so
-// the cover element has no background behind it; otherwise the trip's gradient
-// (always one of our built-in set, default-backed).
-function coverBg(trip) {
-  if (trip.cover_image_url) return null;
-  return coverGradientCss(trip.cover_gradient);
-}
-
 // ─── Avatar stack — the canonical <AvatarStack> from the design system. This
 // file used to carry its own copy (third implementation of the same element),
 // with its own `.av-stack` CSS twin of `.avatar-stack`.
@@ -99,12 +89,11 @@ const TripAvatars = ({ members, maxShow = 3, white = false }) => {
 
 // ─── Next-trip rail card / empty states ────────────────────────────────────────
 function NextTripCard({ trip, onClick, t }) {
-  const bg = coverBg(trip);
   const cd = trip.countdown;
   return (
     <Card as="button" radius="lg" interactive className="nextcard" onClick={onClick}>
-      <span className="nextcard__cover" style={{ background: bg || undefined }}>
-        {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+      <span className="nextcard__cover">
+        <img className="tc__img" src={trip.cover_image_url || COVER_FALLBACK} alt="" />
       </span>
       <span className="nextcard__tx">
         <span className="t-label tp-caption">{t('stats.next_trip_title')}</span>
@@ -176,17 +165,15 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
 // ─── Trip card (grid / poster view) ─────────────────────────────────────────
 const TripCard = ({ trip, onClick }) => {
   const { t } = useI18n();
-  const bg = coverBg(trip);
 
   return (
     <Card as="button" pad="none" radius="lg" className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
-      {/* cover layer — фото ИЛИ градиент + декоративные блобы. Всё внутри .tc__bg,
-          который и зумится на ховере: у градиентных карточек видимый зум дают блобы
-          (плоский градиент сам по себе при scale не читается — увеличивать нечего) */}
-      <div className="tc__bg" style={{ background: bg || undefined }}>
-        {trip.cover_image_url ? (
-          <img className="tc__img" src={trip.cover_image_url} alt="" />
-        ) : (
+      {/* cover layer — фото ИЛИ фоллбек-обложка + декоративные блобы. Всё внутри
+          .tc__bg, который зумится на ховере (зум дают листья: фото .tc__img и орбы).
+          Обложки нет → фоллбек-картинка из бандла (COVER_FALLBACK), градиентов нет. */}
+      <div className="tc__bg">
+        <img className="tc__img" src={trip.cover_image_url || COVER_FALLBACK} alt="" />
+        {!trip.cover_image_url && (
           <>
             <div className="tc__blob tc__b1" />
             <div className="tc__blob tc__b2" />
@@ -234,7 +221,6 @@ const TripCard = ({ trip, onClick }) => {
 // ─── Trip row (list view) ────────────────────────────────────────────────────
 const TripRow = ({ trip, onClick }) => {
   const { t } = useI18n();
-  const bg = coverBg(trip);
 
   return (
     <Card
@@ -244,12 +230,10 @@ const TripRow = ({ trip, onClick }) => {
       onClick={onClick}
       className={`tr${trip.status === 'past' ? ' tr--past' : ''}`}
     >
-      {/* thumbnail — фото переиспользует канон-класс .tc__img (убирает инлайн-стили),
-          чтобы ховер-зум был как в гриде; градиент остаётся фоном .tr__thumb */}
-      <div className="tr__thumb" style={{ background: bg || undefined }}>
-        {trip.cover_image_url && (
-          <img className="tc__img" src={trip.cover_image_url} alt="" />
-        )}
+      {/* thumbnail — фото ИЛИ фоллбек-обложка через канон-класс .tc__img (ховер-зум
+          как в гриде); обложки нет → фоллбек-картинка из бандла, градиентов нет */}
+      <div className="tr__thumb">
+        <img className="tc__img" src={trip.cover_image_url || COVER_FALLBACK} alt="" />
         <div className="tc__blob" />
         {trip.isShared && (
           <span className="tr__shared"><Icon name="users" /></span>
@@ -486,7 +470,7 @@ export default function Trips() {
     for (const tr of allTrips) {
       m[tr.id] = (tr.participants || []).map((p) => resolveAuthor({
         userId: p.user_id,
-        profiles: { [p.user_id]: { id: p.user_id, full_name: p.full_name, avatar_url: p.avatar_url, email: p.email, is_deleted: p.is_deleted } },
+        profiles: { [p.user_id]: { id: p.user_id, full_name: p.name, avatar_url: p.avatar_url, is_deleted: p.is_deleted } },
         deletedLabel: t('common.deleted_user'),
       }));
     }

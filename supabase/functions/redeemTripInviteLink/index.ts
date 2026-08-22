@@ -22,15 +22,13 @@
  *   error `code` on failure: not_found | revoked | expired | trip_missing | blocked
  */
 import { jsonError, readJson, refusalResponse, withHandler } from '../_shared/http.ts';
-import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { requireUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { emitTripReached2 } from '../_shared/analytics.ts';
 import { notify } from '../_shared/emit.ts';
 import { resolveRedeemRole } from './redeemRole.ts';
-import { displayName } from '../_shared/displayName.ts';
 
 Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return jsonError(401, 'Unauthorized', 'UNAUTHENTICATED', corsHeaders);
+    const user = await requireUser(req);
 
     const body = await readJson(req);
     const token = String(body.token ?? '').trim();
@@ -57,15 +55,6 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     if (trip.created_by === user.id) {
       return Response.json({ ok: true, tripId: trip.id, alreadyMember: true }, { headers: corsHeaders });
     }
-
-    const { data: callerUsers } = await supabaseAdmin
-      .from('users').select('full_name').eq('id', user.id).limit(1);
-    // Snapshot the DISPLAY name (full_name → e-mail local-part), never the raw
-    // address: this string is written to trip_members.user_full_name and read
-    // back verbatim by resolveAuthor after the member leaves, so storing the bare
-    // "test8@…" made them read as a full e-mail there while everywhere else the
-    // same person is "Test8". One displayName ladder on the write side too.
-    const callerName = displayName(user.email, callerUsers?.[0]?.full_name);
 
     // Find an existing membership row: first by user_id, then by pending email invite.
     const { data: byUser } = await supabaseAdmin
@@ -108,14 +97,17 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
           status: 'active',
           role: resolveRedeemRole(existing.role, link.role),
           accepted_at: new Date().toISOString(),
-          user_full_name: callerName,
+          // TRIP-431: активный участник читается из живого профиля; денорм-слепок
+          // `user_full_name` пишет только оффлайн-гость (add-offline). Здесь
+          // `user_id` всегда задан → NULL (инвариант tm_snapshot_only_offline).
+          user_full_name: null,
           user_id: user.id,
         }).eq('id', existing.id)
       : await supabaseAdmin.from('trip_members').insert({
           trip_id: trip.id,
           invite_email: user.email ?? null,
           user_id: user.id,
-          user_full_name: callerName,
+          user_full_name: null,
           role: link.role,
           status: 'active',
           accepted_at: new Date().toISOString(),

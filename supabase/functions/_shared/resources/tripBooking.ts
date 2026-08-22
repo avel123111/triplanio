@@ -24,10 +24,10 @@
  * это по определению `op:'rpc'` (`add_layover_transfer`). `p_actor` инъектит шов,
  * `created_by` строк ставит сама RPC = `p_actor`; клиент актора не называет.
  *
- * ☞ Уведомление «бронь добавлена»: пишется существующим триггером
- * `trg_notify_booking_added` (SECURITY DEFINER, бьёт и под service_role) — прод-
- * дырки нет. Снос триггера + декларативный `emit`→n8n — атомарно в TRIP-356.
- *   // TODO(TRIP-356): emit trip_booking_added (members+owner−actor, все 4 вида) → outbound n8n
+ * ☞ Уведомление «бронь добавлена»: эмитит шов через `AFTER_WRITE` (`mutateEffects.ts`,
+ * событие `booking_added`) для всех 4 видов + сложного переезда — как invite/member.
+ * Немой PG-триггер `notify_booking_added` снесён (TRIP-284): он не уведомлял активности
+ * и глушил сбой в `raise warning` мимо Sentry.
  *
  * Кэпы/энумы ниже — ЗЕРКАЛО CHECK живой схемы (baseline + замер dev 2026-08-12).
  * Расходиться нельзя: что БД отвергнет как 500 с текстом Postgres, шов обязан
@@ -116,7 +116,7 @@ const TRANSFER_FIELDS: Record<string, FieldSpec> = {
     type: 'string',
     enum: ['plane', 'train', 'bus', 'car', 'taxi', 'ferry', 'walk', 'own_transport', 'other'],
   },
-  day_change: { type: 'boolean' },
+  day_span: { type: 'number' },        // transfer duration in local days (0/1/N); the server gap
   start_datetime: ts(),
   end_datetime: ts(),
   carrier: { type: 'string', max: 300, nullable: true },
@@ -172,10 +172,14 @@ export const TRIP_BOOKING: ResourceSpec = {
     'hotel/delete': { op: 'delete', table: 'hotel_stays', requires: ['editor'], loadTarget: true },
 
     // ── Переезд (простой) ─────────────────────────────────────────────────────
+    // `returnChain`: запись переезда двигает даты городов через `day_span`
+    // (триггер `trg_recompute_transfer`). Шов дочитывает пересчитанную цепочку и
+    // отдаёт `{ row, cities }` — клиент реконсилит даты из одного ответа.
     transfer: {
       op: 'upsert',
       table: 'transfers',
       requires: ['editor'],
+      returnChain: true,
       fields: {
         ...COMMON_BOOKING_FIELDS,
         from_city_visit_id: { type: 'uuid', nullable: true },
@@ -184,7 +188,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       },
       forcedOnInsert: { created_by: '@actor' },
     },
-    'transfer/delete': { op: 'delete', table: 'transfers', requires: ['editor'], loadTarget: true },
+    'transfer/delete': { op: 'delete', table: 'transfers', requires: ['editor'], loadTarget: true, returnChain: true },
 
     // ── Активность ────────────────────────────────────────────────────────────
     // У `activities` НЕТ верхних booking_reference/booking_url — поэтому активность
@@ -235,6 +239,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       op: 'rpc',
       rpc: 'add_layover_transfer',
       requires: ['editor'],
+      returnChain: true,
       fields: {
         from_city_visit_id: { type: 'uuid', required: true },
         to_city_visit_id: { type: 'uuid', required: true },

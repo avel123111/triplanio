@@ -8,15 +8,14 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv } from '../_shared/payments/catalog.ts';
 import { getProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
 import { originGuard } from '../_shared/originGuard.ts';
 
 Deno.serve(withHandler('createBillingPortal', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     // ---------- Origin validation ----------
     const origin = originGuard(req, corsHeaders);

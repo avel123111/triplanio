@@ -32,7 +32,8 @@
     "check:raw-errors": "node scripts/ci/check-raw-error-surface.mjs",
     "check:spec-columns": "node scripts/ci/check-spec-columns.mjs",
     "check:one-helper": "node scripts/ci/check-one-helper.mjs",
-    "check:roles": "node scripts/ci/check-role-gate.mjs"
+    "check:roles": "node scripts/ci/check-role-gate.mjs",
+    "check:confirm": "node scripts/ci/check-confirm-copy.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",

@@ -26,7 +26,7 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { requireUser } from '../_shared/supabaseAdmin.ts';
 
 const STAY22_BASE = 'https://api.stay22.com/v2/accommodations';
 const AID = 'triplanio';
@@ -35,8 +35,7 @@ const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
 
 Deno.serve(withHandler('stay22Accommodations', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const apiKey = Deno.env.get('STAY22_API_KEY');
     if (!apiKey) return Response.json({ error: 'STAY22_API_KEY not configured' }, { status: 500, headers: corsHeaders });
@@ -89,8 +88,13 @@ Deno.serve(withHandler('stay22Accommodations', async (req, corsHeaders) => {
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       console.error('[stay22Accommodations] upstream error', res.status, text.slice(0, 500));
+      // Carry the real upstream status in the canonical `code` (TRIP-441): the edge
+      // seam's Sentry reporter reads `body.code`, so `upstream_429`/`upstream_5xx`
+      // reaches monitoring and the bare "responded 502" becomes diagnosable (is
+      // Stay22 rate-limiting us, down, or are we sending a bad request?). The client
+      // path is unchanged — a 502 surfaces as a transport error it already handles.
       return Response.json(
-        { error: 'stay22_upstream_error', status: res.status },
+        { error: 'stay22_upstream_error', code: `upstream_${res.status}`, status: res.status },
         { status: 502, headers: corsHeaders },
       );
     }

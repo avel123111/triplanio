@@ -119,6 +119,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseValueExemptions } from './exempt-markers.mjs';
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
 const EXEMPT = 'floor-exempt';
@@ -308,46 +309,11 @@ function allowances() {
   } catch (e) {
     die(`cannot diff against ${BASE_REF}: ${e.stderr || e.message}`);
   }
-  const byKey = new Map(METRICS.map((m) => [m.key, m]));
-  const out = Object.create(null);
-  /** ★ ОДНА ФОРМА МАРКЕРА НА ВСЕ ДЕВЯТЬ ЧИСЕЛ: `+N` — это ВЕЛИЧИНА РАЗРЕШЁННОГО
-   *  НАРУШЕНИЯ, а не дельта метрики. У метрики «только вверх» нарушение — падение,
-   *  поэтому `+N` там означает «падение на N согласовано». Автор не обязан
-   *  помнить направление каждого числа — а это ровно тот класс ошибки, который
-   *  пол и закрывает.
-   *
-   *  ★★ ЗНАК НЕОБЯЗАТЕЛЕН ДЛЯ РАЗБОРА И ОБЯЗАТЕЛЕН ДЛЯ ЗАЧЁТА, и разница
-   *  принципиальная: требуй регулярка `\+`, маркеры `dsshare 25` и `dsshare -25`
-   *  не находились бы ВОВСЕ — ноль бюджета МОЛЧА, то есть тот же отказ, ради
-   *  которого неизвестное ИМЯ метрики роняет гард, только на шаг раньше. Поэтому
-   *  знак ловится необязательным, а всё, что не `+`, роняет гард с кодом 2. */
-  const re = new RegExp(`${EXEMPT}:\\s*([a-zA-Z][\\w-]*)\\s*([+-]?)(\\d+)`, 'g');
-  for (const line of diff.split('\n')) {
-    if (!line.startsWith('+') || line.startsWith('+++')) continue;
-    for (const m of line.matchAll(re)) {
-      const metric = byKey.get(m[1]);
-      if (!metric) {
-        die(`exemption names an unknown metric \`${m[1]}\` — a typo must not read as "no exemption".`, [
-          `known metrics: ${[...byKey.keys()].join(', ')}`,
-          `the marker was: ${line.slice(1).trim()}`,
-        ]);
-      }
-      if (m[2] !== '+') {
-        const what = m[2] ? `не тот ЗНАК: ${m[2]}${m[3]}` : `НЕ НАЗВАН ЗНАК: ${m[3]}`;
-        const dir = metric.up
-          ? 'метрика может только РАСТИ, и `+N` тут означает согласованное ПАДЕНИЕ на N'
-          : 'метрика может только УБЫВАТЬ, и `+N` означает согласованный РОСТ на N';
-        die(`у исключения для \`${m[1]}\` ${what}: ${dir}.`, [
-          `нужно: ${EXEMPT}: ${m[1]} +${m[3]} — причина + апрув`,
-          `маркер был: ${line.slice(1).trim()}`,
-          'Форма одна на все метрики: +N = величина разрешённого НАРУШЕНИЯ, а не дельта числа.',
-          'Знак с ошибкой - это опечатка, а опечатка не должна читаться как «исключения не просили».',
-        ]);
-      }
-      out[m[1]] = (out[m[1]] ?? 0) + Number(m[3]);
-    }
-  }
-  return out;
+  // Разбор формы `floor-exempt: <метрика> +N` живёт в общем модуле вместе с 2r —
+  // одна форма, один парсер (см. exempt-markers.mjs, зачем он один). Знак ловится
+  // НЕОБЯЗАТЕЛЬНЫМ и обязателен для зачёта: `+N` = ВЕЛИЧИНА нарушения, а не дельта
+  // числа, поэтому у растущих (`axes`, `dsshare`) он тоже `+N`, а не `-N`.
+  return parseValueExemptions(diff, { marker: EXEMPT, metrics: METRICS, die });
 }
 
 /* --------------------------------- verdict -------------------------------- */

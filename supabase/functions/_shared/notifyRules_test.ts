@@ -78,6 +78,34 @@ Deno.test('pro_activated: системная строка — без автор�
   assertEquals(spec!.trip_id, null);
 });
 
+// ── бронь добавлена (per-kind заголовок, сырой kind в params, автор из created_by) ──
+
+Deno.test('booking_added: заголовок per-kind, сырой kind в params, имя НЕ снапшотим', () => {
+  const spec = INAPP.booking_added(data({ actor: { id: 'author-1', full_name: 'Аня' }, kind: 'hotel' }));
+  assertEquals(spec, {
+    type: 'trip_booking_added',
+    i18n_title_key: 'notif.tpl_booking_added_title_hotel',
+    i18n_message_key: 'notif.tpl_booking_added_msg',
+    i18n_params: { trip: 'Токио, весна', kind: 'hotel', count: 1 },
+    trip_id: 'trip-1',
+    trip_member_id: null,
+    created_by: 'author-1',
+  });
+  assertEquals('name' in spec!.i18n_params, false);
+});
+
+Deno.test('booking_added: заголовок выбирается по kind для всех 4 видов', () => {
+  const key = (kind: string) => INAPP.booking_added(data({ actor: { id: 'a' }, kind }))!.i18n_title_key;
+  assertEquals(key('hotel'), 'notif.tpl_booking_added_title_hotel');
+  assertEquals(key('transfer'), 'notif.tpl_booking_added_title_transfer');
+  assertEquals(key('activity'), 'notif.tpl_booking_added_title_activity');
+  assertEquals(key('service'), 'notif.tpl_booking_added_title_service');
+});
+
+Deno.test('booking_added: неизвестный/пустой kind → fallback hotel', () => {
+  assertEquals(INAPP.booking_added(data({ actor: { id: 'a' }, kind: null }))!.i18n_title_key, 'notif.tpl_booking_added_title_hotel');
+});
+
 // ── разброс по получателям ────────────────────────────────────────────────────
 
 Deno.test('buildInAppRows: общая строка × получатели, дедуп, битые id отброшены', () => {
@@ -107,7 +135,8 @@ Deno.test('EXTERNAL: внешний канал у invite_created / invite_resent
   assertEquals(EXTERNAL.has('trip_telegram_unlinked'), true);
   // In-app-only события в n8n не ходят (их ветки удалены) — POST дал бы 404.
   for (const e of ['trip_member_joined', 'trip_invite_declined', 'trip_member_left',
-    'trip_member_removed', 'trip_role_changed', 'invite_linked', 'pro_activated', 'pro_payment_failed']) {
+    'trip_member_removed', 'trip_role_changed', 'invite_linked', 'pro_activated', 'pro_payment_failed',
+    'booking_added']) {
     assertEquals(EXTERNAL.has(e), false, `${e} не должно ходить в n8n`);
   }
 });

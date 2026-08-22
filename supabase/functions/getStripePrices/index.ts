@@ -11,13 +11,12 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { requireUser } from '../_shared/supabaseAdmin.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { getCatalogPricesCached, stripeEnv } from '../_shared/payments/catalog.ts';
 
 Deno.serve(withHandler('getStripePrices', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    await requireUser(req);
 
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) {

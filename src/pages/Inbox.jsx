@@ -208,9 +208,8 @@ function InboxRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRead
   // Invite status comes with the row now (getInbox joins trip_members) — no
   // per-row `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
-  const { glyph, isInvite, titleNode, messageText, messageNode } = buildNotifView(n, t, { deletedLabel: t('common.deleted_user') });
+  const { glyph, isInvite, titleNode, messageText, messageNode, showLink } = buildNotifView(n, t, { deletedLabel: t('common.deleted_user') });
   const showPending = isInvite && memberStatus === 'pending';
-  const showLink = n.trip_id && (memberStatus === 'active' || n.type !== 'trip_invite');
   const status = isInvite && memberStatus === 'active'
     ? <Badge variant="success" icon="check">{t('notif.accepted')}</Badge>
     : isInvite && memberStatus === 'declined'

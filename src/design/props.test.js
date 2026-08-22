@@ -155,6 +155,20 @@ const LINES = [
   // разбор объявил, что третьей ступени быть не должно — пусть это краснеет в
   // редакторе, а не проходит классом `btn--md`, которого нет в CSS.
   ['error', '<Btn variant="secondary" size="lg">b</Btn>'],
+  // CoverPicker остаток НЕ пробрасывает — набор пропов закрыт законно. Первая
+  // строка пинит ВТОРОЕ направление аннотации: законный вызов со ВСЕМИ слотами
+  // (overlay/error/disabled/колбэки) обязан пройти.
+  ['clean', '<CoverPicker slides={["a"]} value="a" onChange={() => {}} onUpload={() => {}} uploading error="e" overlay={<span>t</span>} disabled className="x" ariaLabel="g" uploadLabel="u" accept="image/*" />'],
+  // ★ ОБЕ error-строки выбраны ТАК, ЧТОБЫ ИХ ЛОВИЛА ИМЕННО АННОТАЦИЯ, и это
+  // проверено мутацией «снять аннотацию», а не рассуждением. Две редакции до
+  // этого мутацию НЕ уронили: тип, выведенный из деструктуризации, сам делает
+  // проп без значения по умолчанию ОБЯЗАТЕЛЬНЫМ, поэтому любой короткий вызов
+  // краснеет и без аннотации — тест мерил бы не то, что заявляет. Отсюда форма
+  // строк: перечислено ВСЁ, у чего нет умолчания (onChange/onUpload/accept/
+  // ariaLabel), и сломан ровно один ТИП — элемент ленты (`string[]`, а не
+  // `any[]`) и сигнатура колбэка (у вывода он `any`).
+  ['error', '<CoverPicker slides={[5]} value="a" onChange={() => {}} onUpload={() => {}} accept="image/*" ariaLabel="g" />'],
+  ['error', '<CoverPicker slides={["a"]} value="a" onChange={5} onUpload={() => {}} accept="image/*" ariaLabel="g" />'],
   // ⚠️ ДАТЧИК СЛЕПОТЫ САМОЙ ПРОБЫ: `href` не бывает у `div`. Один раз конфиг
   // пробы уже был слепым (React-типы вырождались в `any`) и печатал вывод байт
   // в байт тот же при ВОЗВРАЩЁННОМ дефекте. Эта строка обязана краснеть.
@@ -163,7 +177,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Tile, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Tile, Toggle, CoverPicker, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",

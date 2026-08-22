@@ -80,7 +80,6 @@ const COLOR_WHITELIST = [
   'src/lib/map/captureMap.js',                         // canvas map-capture (share image) needs concrete hex
   'src/components/AppErrorBoundary.jsx',               // crash screen — must not depend on tokens/CSS
   // — Added with the Lumo colour finale (TRIP-53): raw-by-nature sources —
-  'src/lib/trip-gradients.js',                         // trip-cover gradient presets (colour data)
   'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
   'src/lib/map/mapTokens.js',                          // Mapbox paint fallbacks (need concrete hex)
   'src/components/site/SiteChrome.jsx',                // brand logo + country-flag SVGs

@@ -621,6 +621,30 @@ export type Database = {
           },
         ]
       }
+      cover_presets: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          image_url: string
+          sort: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url: string
+          sort?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url?: string
+          sort?: number
+        }
+        Relationships: []
+      }
       fx_rates: {
         Row: {
           base: string
@@ -1552,7 +1576,7 @@ export type Database = {
           created_at: string | null
           created_by: string
           currency: string
-          day_change: boolean
+          day_span: number
           details: Json | null
           documents: Json | null
           end_datetime: string | null
@@ -1580,7 +1604,7 @@ export type Database = {
           created_at?: string | null
           created_by: string
           currency: string
-          day_change?: boolean
+          day_span?: number
           details?: Json | null
           documents?: Json | null
           end_datetime?: string | null
@@ -1608,7 +1632,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           currency?: string
-          day_change?: boolean
+          day_span?: number
           details?: Json | null
           documents?: Json | null
           end_datetime?: string | null
@@ -2022,7 +2046,6 @@ export type Database = {
       }
       trips: {
         Row: {
-          cover_gradient: string | null
           cover_image_url: string | null
           created_at: string | null
           created_by: string
@@ -2036,7 +2059,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          cover_gradient?: string | null
           cover_image_url?: string | null
           created_at?: string | null
           created_by: string
@@ -2050,7 +2072,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          cover_gradient?: string | null
           cover_image_url?: string | null
           created_at?: string | null
           created_by?: string

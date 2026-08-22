@@ -21,7 +21,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Badge, Toggle, Btn, Card, IconBtn, Tile, Seg, Severity, useToast } from '@/design/index';
 import {
-  Trash2, ChevronDown, ArrowRight, Repeat,
+  Trash2, ArrowRight, Repeat,
   Plane, Car as CarIcon, ShieldCheck,
   BedDouble, Ticket,
 } from 'lucide-react';
@@ -145,7 +145,8 @@ import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/sto
 import { aiField } from '@/lib/ai-values';
 import { deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
-import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow } from '@/lib/trip-data';
+import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow, reconcileCityChain, reconcileTransfers } from '@/lib/trip-data';
+import { refetchTrip } from '@/lib/tripEdit';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
@@ -154,16 +155,17 @@ import './EventEditDialog.css';
 // a booking whose end precedes its start is nonsense to persist.
 const BLOCKING_CODES = new Set(['HOTEL_ORDER', 'ACT_ORDER', 'TR_ORDER', 'SVC_ORDER', 'SEG_ORDER', 'SEG_BACKSTEP']);
 
-// A transfer is "overnight" (day_change) IFF its arrival lands on a later calendar
-// day than its departure — nothing else. day_change is therefore fully DERIVED from
-// the dates, never an independent user flag: it is the single bit the server's
-// recompute_trip reads to add a +1 gap to the arrival city, so storing anything
-// other than (arrivalDay > departureDay) would desync the city layout from the
-// actual travel dates. Compares the wall-clock date parts (the "YYYY-MM-DD" slice
-// of the local datetime), matching validation.calDay and the server's day math.
-const isOvernightLocal = (startLocal, endLocal) => {
+// A transfer's DAY SPAN = arrival local calendar day − departure local calendar day
+// (0 = same day, 1 = overnight, ≥2 = a multi-day crossing). Fully DERIVED from the
+// dates, never an independent user flag: it is the number the server's recompute_trip
+// reads as the gap it adds to the arrival city (transfers.day_span), so it must always
+// equal the actual travel dates or the city layout desyncs. Compares the wall-clock
+// "YYYY-MM-DD" slices — same day math as validation.calDay and the server. Derivation
+// lives HERE (local time is known) and the int is stored; the server never re-derives.
+const daySpanLocal = (startLocal, endLocal) => {
   const sd = (startLocal || '').slice(0, 10), ed = (endLocal || '').slice(0, 10);
-  return !!(sd && ed && ed > sd);
+  if (!sd || !ed || ed <= sd) return 0;
+  return Math.max(0, Math.round((Date.parse(`${ed}T00:00:00Z`) - Date.parse(`${sd}T00:00:00Z`)) / 86400000));
 };
 
 // Assigns an AI-parsed value onto the form draft and records the key, so the
@@ -762,9 +764,9 @@ export default function EventEditDialog({
   );
   const hasBlockingError = useMemo(() => issues.some((i) => i.level === 'error'), [issues]);
 
-  // day_change is no longer a form field the user toggles: it is derived from the
-  // dates at every seam (badge display + buildTransferPayload / layover segments via
-  // isOvernightLocal), so there is nothing to auto-raise here anymore.
+  // day_span is not a form field the user toggles: it is derived from the dates at
+  // every seam (badge display + buildTransferPayload / layover segments via
+  // daySpanLocal), so there is nothing to auto-raise here anymore.
 
   // Live map route preview while creating a transfer (shaped by transport type).
   useEffect(() => {
@@ -858,12 +860,24 @@ export default function EventEditDialog({
       return upsert('service', entity, payload, tripId);
     },
     ...formWrite({
-      // Single-row create/edit → fold from the returned row (edit merges, create
-      // upserts), no full-trip refetch. A layover / complex transfer create writes
-      // several rows across cities (saveLayoverChain) and reshapes the whole timeline
-      // — reconcileWriteRow returns false there → targeted refetch (E, server owns
-      // the new shape).
+      // Hotel/activity/service (single row): fold from the returned row (edit merges,
+      // create upserts), no full-trip refetch. Transfer (single OR layover): fold the
+      // city chain + full transfers set the seam returns — see the transfer branch.
       reconcile: (/** @type {any} */ data) => {
+        // Transfer writes reshape the date chain (day_span → server recompute) AND,
+        // for a layover, add N new segment rows. The seam answers `{ row, cities,
+        // transfers }`: fold the recomputed city chain into the shell (dates) and
+        // REPLACE the content transfers slice with the authoritative set — both from
+        // THIS response, one round-trip, for single AND layover alike. buildDraft then
+        // sees the new segments at once (no stale-gap window where the dates land a
+        // beat late). refetch stays ONLY as the degrade path (seam couldn't read the
+        // set → transfers null), mirroring the cities-null degrade.
+        if (currentKind === 'transfer') {
+          if (data?.cities) reconcileCityChain(qc, tripId, data.cities);
+          if (Array.isArray(data?.transfers)) reconcileTransfers(qc, tripId, data.transfers);
+          else if (tripId) refetchTrip(qc, tripId, { shell: false, content: true });
+          return;
+        }
         const cacheKind = OPT_CACHE[currentKind];
         const folded = cacheKind && !isComplexTransferCreate
           && reconcileWriteRow(tripContentBinding(qc, tripId, cacheKind), entity ? 'update' : 'add', data);
@@ -904,11 +918,15 @@ export default function EventEditDialog({
       // Entity gone → every file it referenced (originals + any staged this
       // session) is orphaned. deleteSourceEntity sweeps best-effort on success
       // (TRIP-117); seenDocPaths is the dialog's broader set (originals + staged).
-      const { error, deleted, code } = await deleteSourceEntity(currentKind, entity.id, tripId, [...seenDocPaths.current]);
+      const { data, error, deleted, code } = await deleteSourceEntity(currentKind, entity.id, tripId, [...seenDocPaths.current]);
       if (error) throw refusalError(code);
       // deleted:false = the row is already gone (seam answered 404) → surface it
       // (rollback restores the row), don't close as a phantom success.
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
+      // Deleting a transfer (esp. an overnight one) un-shifts the downstream city
+      // dates on the server (DELETE recompute trigger); reconcile the returned chain
+      // into the shell so the timeline reflects it without a reload (returnChain).
+      if (currentKind === 'transfer' && data?.cities) reconcileCityChain(qc, tripId, data.cities);
     },
     ...withOptimism(delBinding, {
       op: 'update',     // dim the row (`_pending`), don't yank it yet
@@ -1322,13 +1340,13 @@ export default function EventEditDialog({
           </div>
           )}
 
-          {/* Footer — TRIP-186: единый канон с event view / city view (lp-f--ratio
-              + <Btn>): удалить (danger, схлоп на мобиле) + primary. Pinned снизу
-              в панельном режиме. TRIP-333 §4: класс один на оба режима, своим у
-              диалога остался только прилипший низ, и тот не нужен модалке -
-              она и так не прокручивает футер. */}
+          {/* Footer — единый канон с event view / city view: стандартный `.lp-f`
+              (кнопки справа, натуральной ширины), удалить (danger) + primary.
+              Pinned снизу в панельном режиме. TRIP-333 §4: класс один на оба
+              режима, своим у диалога остался только прилипший низ, и тот не нужен
+              модалке — она и так не прокручивает футер. */}
           <div
-            className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}
+            className="lp-f"
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
@@ -1340,7 +1358,7 @@ export default function EventEditDialog({
               <>
                 {isEdit && (
                   <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} disabled={deleteMut.isPending} ariaLabel={t('common.delete')}>
-                    <span className="btn-label-collapse">{t('common.delete')}</span>
+                    {t('common.delete')}
                   </Btn>
                 )}
                 <Btn
@@ -1444,7 +1462,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     from_city_visit_id: fromVisit?.id,
     to_city_visit_id: toVisit?.id,
     transport_type: form.transport_type,
-    day_change: isOvernightLocal(form.startLocal, form.endLocal),
+    day_span: daySpanLocal(form.startLocal, form.endLocal), // transfer duration in local days (0/1/N)
     start_datetime: localToUtc(form.startLocal, startTz),
     end_datetime: localToUtc(form.endLocal, endTz),
     carrier: form.carrier || undefined,
@@ -1499,7 +1517,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, t) {
   // One leg per segment. Booking link is shared; documents/notes ride the first leg.
   const segments = segs.map((s, i) => ({
     transport_type: s.transport_type,
-    day_change: isOvernightLocal(s.startLocal, s.endLocal),
+    day_span: daySpanLocal(s.startLocal, s.endLocal), // transfer duration in local days (0/1/N)
     start_datetime: localToUtc(s.startLocal, 'UTC'),
     end_datetime: localToUtc(s.endLocal, 'UTC'),
     carrier: s.carrier || null,
@@ -1520,7 +1538,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, t) {
 
   // Atomic layover write through the single door (TRIP-405): op:'rpc' →
   // add_layover_transfer under service_role, with p_actor injected from the JWT.
-  const { error, code } = await invokeFn('trip-booking/transfer-layover', {
+  const { data, error, code } = await invokeFn('trip-booking/transfer-layover', {
     body: {
       tripId,
       from_city_visit_id: fromVisit?.id,
@@ -1530,7 +1548,9 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, t) {
     },
   });
   if (error) throw refusalError(code);
-  return null;
+  // Seam answers { row: null, cities } (returnChain) — hand it back so the caller
+  // reconciles the recomputed city chain into the shell (dates) in one round-trip.
+  return data ?? null;
 }
 
 function buildActivityPayload(form, visit, tz) {
@@ -1745,7 +1765,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
           <div>
             <Label>{t('event.booking_ref')}</Label>
             <AiField active={aiFields.has('booking_reference')}>
-              <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+              <Input value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
             </AiField>
           </div>
         </div>
@@ -1803,7 +1823,6 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           onTimeMissing={(which, v) => setTime(which === 'dep' ? 'start' : 'end', v)}
           legNumber={null}
           isMulti={false}
-          collapsible={false}
           fromName={fromVisit?.city_name || '-'}
           toName={toVisit?.city_name || '-'}
           toCityEditable={false}
@@ -1852,7 +1871,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
 // time-missing key (`onTimeMissing`). No save-path changes — purely presentational.
 function TransferLegCard({
   leg, patch, aiHas, vf, onTimeMissing,
-  legNumber, isMulti, collapsible, open, onToggleOpen, onRemove,
+  legNumber, isMulti, open, onToggleOpen, onRemove,
   fromName, toName, toCityEditable, layoverCityPh,
   startTz, endTz, issues, color, t,
 }) {
@@ -1862,53 +1881,20 @@ function TransferLegCard({
   // Within-leg duration (departure → arrival) for the date-block hint —
   // same "minutes between two ISO locals, non-negative or null" as the layover gap.
   const durMin = layoverMins(leg.startLocal, leg.endLocal);
-  const isOpen = collapsible ? open : true;
-  // TRIP-186/343: сегмент «с пересадками» (isMulti) — поверхность-аккордеон, идёт
-  // через `<Card radius="md" pad="none" className="acc">` (рамку/заливку/скругление/
-  // обрезку держит Card + класс-остаток .acc). Одиночный (direct) трансфер оголён —
-  // обычный div без скина. Носитель поэтому ДИНАМИЧЕСКИЙ (не-Card ветка без скина).
-  const Seg = isMulti ? Card : 'div';
-  const segProps = isMulti ? { radius: 'md', pad: 'none', className: 'acc' } : {};
-  return (
-    <Seg {...segProps}>
-      {isMulti && (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
-        {/* TRIP-391 объект 1: кнопка-обёртка = ЗАГОЛОВОК аккордеона-сегмента
-            (прозрачный full-bleed, раскрывает/сворачивает) → объект 6, не примитив
-            Btn. Значок внутри — плитка 34×34, тон каналом --hl → <Tile> (объект 3). */}
-        <button type="button" onClick={collapsible ? onToggleOpen : undefined}
-          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
-          <Tile as="span" style={{ '--hl-soft': TYPE_META.transfer.soft, '--hl-ink': color }}>
-            <TIcon />
-          </Tile>
-          <span style={{ minWidth: 0, flex: 1 }}>
-            <span className="eyebrow" style={{ color, display: 'block' }}>{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
-            <span className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
-              <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
-            </span>
-          </span>
-          {collapsible && <span className="muted t-meta" style={{ flexShrink: 0 }}>{isOpen ? t('event.collapse') : t('event.expand')}</span>}
-          {collapsible && <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />}
-        </button>
-        {onRemove && (
-          <Btn variant="quiet" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
-            <Trash2 size={14} />
-          </Btn>
-        )}
-      </div>
-      )}
+  const legSpan = daySpanLocal(leg.startLocal, leg.endLocal);
+  const isOpen = isMulti ? open : true;
 
-      <div style={{ display: isOpen ? 'block' : 'none', padding: isMulti ? '4px 14px 14px' : 0, borderTop: isMulti ? '1px solid var(--line)' : 'none' }}>
-        {isMulti && <div style={{ height: 10 }} />}
+  // Тело сегмента — ОДИНАКОВО для прямого трансфера и layover-сегмента; в layover
+  // Accordion сам оборачивает его в `.acc__body` (паддинг/бордер), своей обёртки нет.
+  const body = (
+    <>
         <div className="field__label" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
         <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
 
         {/* From / To — city (readonly endpoint, or layover picker) + address */}
         <div className="fld-grid grid grid--2" style={{ marginTop: 14 }}>
           <div>
-            <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
+            <div className="eed-fromto">{t('event.from')}</div>
             <div className="eed-accrow">
               <Label>{t('event.city')}</Label>
               <input className="input" value={fromName} readOnly tabIndex={-1} title={t('event.city_from_route_title')} />
@@ -1926,7 +1912,7 @@ function TransferLegCard({
             </div>
           </div>
           <div>
-            <div className="eed-fromto" style={{ color }}>{t('event.to')}</div>
+            <div className="eed-fromto">{t('event.to')}</div>
             <div className="eed-accrow" data-vfield={toCityEditable ? vf('toCity') : undefined}>
               <Label>{t('event.city')}</Label>
               {toCityEditable ? (
@@ -1962,13 +1948,15 @@ function TransferLegCard({
           endLabel={t('event.arrival')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz} endAi={aiHas('endLocal')}
           midText={durMin != null ? fmtDur(durMin, t) : null}
         />
-        {/* Overnight — DERIVED from the dates, not a user toggle. day_change is a pure
-            function of (arrival day > departure day): the single bit recompute_trip
-            reads to add the +1 arrival-day gap, so it must always equal the actual
-            dates. Shown as the canon <Badge> (moon + label) the moment the arrival
-            date is a later day — a DS mark, not a bespoke tinted box. */}
-        {isOvernightLocal(leg.startLocal, leg.endLocal) && (
-          <Badge variant="brand" icon="moon" style={{ marginTop: 14 }}>{t('event.overnight_label')}</Badge>
+        {/* Day span — DERIVED from the dates, not a user toggle. day_span is a pure
+            function of (arrival day − departure day): the number recompute_trip reads
+            to gap the arrival city, so it must always equal the actual dates. Shown as
+            the canon <Badge> (moon + "+N дн") the moment arrival is a later day — a DS
+            mark, not a bespoke tinted box. */}
+        {legSpan > 0 && (
+          <Badge variant="brand" icon="moon" style={{ marginTop: 14 }}>
+            {t('event.overnight_label', { count: legSpan })}
+          </Badge>
         )}
 
         {/* Carrier / flight no. */}
@@ -1982,7 +1970,7 @@ function TransferLegCard({
           <div>
             <Label>{t('event.flight_train_no')}</Label>
             <AiField active={aiHas('flight_number')}>
-              <Input className="t-mono" value={leg.flight_number} onChange={(e) => patch({ flight_number: e.target.value })} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
+              <Input value={leg.flight_number} onChange={(e) => patch({ flight_number: e.target.value })} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
             </AiField>
           </div>
         </div>
@@ -1991,7 +1979,7 @@ function TransferLegCard({
           <div>
             <Label>{t('event.booking_ref')}</Label>
             <AiField active={aiHas('booking_reference')}>
-              <Input className="t-mono" value={leg.booking_reference} onChange={(e) => patch({ booking_reference: e.target.value })} placeholder="-" />
+              <Input value={leg.booking_reference} onChange={(e) => patch({ booking_reference: e.target.value })} placeholder="-" />
             </AiField>
           </div>
           <div>
@@ -2008,8 +1996,41 @@ function TransferLegCard({
             </div>
           </div>
         </div>
-      </div>
-    </Seg>
+    </>
+  );
+
+  // Прямой (одиночный) трансфер — тело без скина и без раскрывашки. Канал цвета
+  // сегмента `--seg-c` на корне (транспортный тон читают `.eed-fromto` из CSS).
+  if (!isMulti) return <div style={{ '--seg-c': color }}>{body}</div>;
+
+  // Layover-сегмент → канон-аккордеон <Accordion> (тот же, что в профиле и секциях
+  // события): скин/шеврон/анимацию/тело даёт компонент. Здесь — только богатая шапка
+  // (плитка-тинт + № сегмента + маршрут from→to) в слоте header и удаление сегмента
+  // в слоте trailing (в кнопку-заголовок <button> его вложить нельзя).
+  return (
+    <Accordion
+      open={isOpen}
+      onToggle={onToggleOpen}
+      style={{ '--seg-c': color }}
+      header={(
+        <>
+          <Tile as="span" style={{ '--hl-soft': TYPE_META.transfer.soft, '--hl-ink': color }}><TIcon /></Tile>
+          <span className="acc__titles">
+            <span className="eyebrow">{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
+            <span className="row row--g3 t-label">
+              <span className="trunc">{fromName}</span>
+              <ArrowRight size={12} className="muted" style={{ flexShrink: 0 }} />
+              <span className="trunc">{toName}</span>
+            </span>
+          </span>
+        </>
+      )}
+      trailing={onRemove ? (
+        <Btn variant="quiet" onClick={onRemove} title={t('event.remove_segment')}><Trash2 size={14} /></Btn>
+      ) : undefined}
+    >
+      {body}
+    </Accordion>
   );
 }
 
@@ -2208,7 +2229,6 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
               onTimeMissing={(which, v) => setTime(`seg${i}-${which}`, v)}
               legNumber={i + 1}
               isMulti
-              collapsible
               open={open}
               onToggleOpen={() => toggleOpen(seg, i)}
               onRemove={N > 2 ? () => removeSegment(i) : null}
@@ -2384,7 +2404,7 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
       <SectionHeader>{t('service.insurance_section')}</SectionHeader>
       <div>
         <Label>{t('service.policy_number')}</Label>
-        <Input className="t-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
+        <Input value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
       </div>
       <div className="fld-grid grid grid--2">
         <div data-vfield="date_start">
@@ -2548,7 +2568,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         />
         <div>
           <Label>{t('event.booking_ref')}</Label>
-          <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+          <Input value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
         </div>
       </div>
 

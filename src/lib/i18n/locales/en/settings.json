@@ -9,8 +9,6 @@
   "copy_trip_title": "Trip copy",
   "danger_zone": "Danger zone",
   "delete_account": "Delete account",
-  "delete_confirm1": "Delete the trip? This cannot be undone.",
-  "delete_confirm2": "Are you sure? All trip data will be deleted.",
   "delete_desc": "Irreversible. All trip data will be deleted.",
   "delete_trip": "Delete the trip",
   "feat_available": "Available",

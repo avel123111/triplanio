@@ -111,6 +111,7 @@
 
   /* Overlays / scrims */
   --scrim:            rgba(23,20,40,.45);
+  --scrim-soft:       rgba(23,20,40,.22);  /* покойная полупрозрачная подложка контролов поверх медиа (ховер поднимает до --scrim) */
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
 
   /* Event types (+ink +soft) */
@@ -131,7 +132,7 @@
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
 
   /* Radii (Lumo names + legacy aliases) */
-  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-pill:999px;
+  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-xs:4px; --r-pill:999px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
      controls derive from --r-btn directly, so every control outer shape shares
      one radius. The segment track uses it as-is; its inner buttons are
@@ -342,6 +343,7 @@
 
   /* Overlays / scrims — dark */
   --scrim:            rgba(0,0,0,.62);
+  --scrim-soft:       rgba(0,0,0,.30);
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.55));
 
   /* Event types — dark */
@@ -830,7 +832,6 @@ h4,
 .limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
 .app-header .app-header__avatar,
 .avatar--lg,
-.chat-bubble,
 .chat-ov, .chat-ta,
 .pro-hero__sub,
 .notes-block,
@@ -871,7 +872,29 @@ h4,
    visual-diff-exempt: .t-support font-weight — новый канон (400)
    visual-diff-exempt: .t-support line-height — новый канон (1.45)
    visual-diff-exempt: .t-support letter-spacing — новый канон (0) */
-.t-support { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
+/* Сообщения чата (все 3 поверхности: лента группы, виджет, AI-планер) съезжают с
+   Body(15) на Support(13) — плотнее, как в мессенджерах (запрос Pavel). `.chat-bubble`
+   = свои/чужие пузыри, `.chat-reply__text` = контейнер прозы бота, а `.chat-reply__text
+   .cm-p` — САМИ абзацы: их иначе перебивает co-selector `.card p` (Body 15) той же
+   группы, т.к. `.chat-reply__card` это `.card`, а `.card p` (0,1,1) специфичнее
+   наследования от контейнера (0,1,0). Ввод (`.chat-ta`/`.chat-ov`) НАМЕРЕННО остаётся
+   на Body — это не сообщение.
+   visual-diff-exempt: .chat-bubble font-size — сообщение Body→Support (15→13), запрос Pavel
+   visual-diff-exempt: .chat-bubble line-height — сообщение Body→Support (1.55→1.45)
+   visual-diff-exempt: .chat-reply__text font-family — проза бота на канон Support (была наследована)
+   visual-diff-exempt: .chat-reply__text font-size — проза бота Body→Support (15→13)
+   visual-diff-exempt: .chat-reply__text font-weight — канон Support (400)
+   visual-diff-exempt: .chat-reply__text line-height — канон Support (1.45)
+   visual-diff-exempt: .chat-reply__text letter-spacing — канон Support (0)
+   visual-diff-exempt: .cm-p font-size — абзацы бота Body→Support (15→13), перебивают .card p, запрос Pavel
+   visual-diff-exempt: .cm-p font-family — абзацы бота на канон Support
+   visual-diff-exempt: .cm-p font-weight — канон Support (400)
+   visual-diff-exempt: .cm-p line-height — канон Support (1.45)
+   visual-diff-exempt: .cm-p letter-spacing — канон Support (0) */
+.t-support,
+.chat-bubble,
+.chat-reply__text,
+.chat-reply__text .cm-p { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
 .t-meta,
 .pl-ai-chips .fpill,     /* TRIP-337: чипы-подсказки AI-планнера на канон Meta (у .fpill свой `font: inherit`, поэтому нужен селектор специфичнее) */
 .dock-panel__id span,    /* TRIP-337 инсп.: подзаголовок виджета чата off-canon→Meta */
@@ -1121,15 +1144,19 @@ h4,
 .sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
 .badge--tiny,  /* TRIP-337: третья ступень пилюли — статус/тариф-чипы плашки на кегль ниже (.t-micro→.t-tiny-caps), апрув Pavel */
 .cdu span { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175 инсп.: подпись таймера Micro→Tiny Caps */
-/* Моно — ОДИН источник (JetBrains Mono, --font-mono): коды/брони/рейсы/полисы/
-   share-URL/email/kbd/code. Числа/даты/времена НЕ моно — их держит Geologica с
-   tabular-nums (каноны t-display/t-title/t-heading/t-meta). kbd сохраняет свой кегль. */
+/* Моно — ОДИН источник (JetBrains Mono, --font-mono): share-URL/email/kbd/code.
+   TRIP-337: КОДЫ-ДАННЫЕ (бронь/рейс/полис) в event/service выведены из моно НА
+   УРОВНЕ РАЗМЕТКИ — их поля ввода и ряды просмотра больше не несут .t-mono/`mono`
+   (стандартный шрифт поля / канон `.t-body`, решение Pavel). Само правило .kv .v.mono
+   оставлено латентным, чтобы не двигать общий моно-каскад. Числа/даты/времена НЕ моно —
+   их держит Geologica с tabular-nums (t-display/t-title/t-heading/t-meta).
+   kbd сохраняет свой кегль. */
 .t-mono,
 .mono,
 .cm-code,
 .confirm__email,
 .kv .v.mono,
-.chat-composer__hint kbd, code { font-family: var(--font-mono); font-size: var(--fs-meta); font-weight: 500; line-height: 1.4; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-mono — JetBrains 13/500/1.4, tabular, track -0.01 (только коды) */
+.chat-composer__hint kbd, code { font-family: var(--font-mono); font-size: var(--fs-meta); font-weight: 500; line-height: 1.4; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-mono — JetBrains 13/500/1.4, tabular, track -0.01 */
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
    пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
    Применяется как class="t-mono tp-caption" — база из канона, дельта из модификатора,
@@ -1906,6 +1933,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .acc__chev { flex: none; display: inline-flex; color: var(--muted); transform: rotate(0deg); transition: transform .18s var(--ease-out); }
 .acc.is-open .acc__chev { transform: rotate(90deg); }
 .acc__body { padding: 14px; border-top: 1px solid var(--line); }
+/* Слот trailing аккордеона (кнопка удаления layover-сегмента трансфера) собран из
+   примитивов `.row` + `.grow` — новых имён и правил ноль: заголовок несёт `.grow`
+   (тянется), действие прижато справа своим паддингом. Нужен потому, что <Btn> нельзя
+   вложить в кнопку-заголовок <button>. TRIP-337 №4 — унификация рукописного
+   аккордеона-сегмента на канон `.acc` (инлайны/lucide-шеврон сняты).
+   Транспортный тон сегмента приходит каналом `--seg-c` с корня leg (Accordion/div):
+   его читают метки «Откуда/Куда» (`.eed-fromto`) — раньше цвет ставился ИНЛАЙНОМ на
+   каждой. Вне сегмента `--seg-c` не задан → `var()` невалиден → метка держит свой цвет.
+   Eyebrow «Сегмент N · тип» в шапке теперь на дефолтном тоне канона (был инлайн-цвет) —
+   транспортный тон несут плитка-иконка и метки маршрута.
+   visual-diff-exempt: .eed-fromto color — цвет сегмента перенесён из инлайна в канал --seg-c (то же значение) */
+.eed-fromto { color: var(--seg-c); }
 /* Lumo DS inputs: типографику держит канон `.t-body` (co-selector выше по
    файлу), форму - рамка `--line-strong` и кольцо фокуса `--primary-ring`.
    Числа здесь намеренно НЕ повторяются: эта шапка уже дважды расходилась с
@@ -3211,59 +3250,95 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .tile--pro color — залитая форма pro: белый значок под solid */
 .tile--solid.tile--pro { background: var(--pro-gradient); color: #fff; }
 
-/* ── Cover: обложка трипа как примитив ДС (<Cover>, TRIP-337) ─────────────────
-   Заменяет ИНЛАЙН `style={{ background: coverGradientCss(id) }}` на `.tr__thumb`/
-   `.tc__bg`: градиент — КОНЕЧНЫЙ набор (16, `TRIP_GRADIENTS`), поэтому он живёт
-   классами тут, выбор — по `data-cover`; фото — `<img class="cover__img">` (атрибут,
-   не стиль) поверх. Значения ↔ `TRIP_GRADIENTS` держит тест `Cover.test.js`.
-   prefix-exempt: cover — новый примитив-обложка (замена инлайн-скина covers на ДС), апрув Pavel
-   floor-exempt: namespaces +1 — примитив <Cover> (обложка): свой namespace вместо инлайна, апрув Pavel
-   visual-diff-exempt: .cover position — новый примитив обложки
-   visual-diff-exempt: .cover overflow — новый примитив обложки
-   visual-diff-exempt: .cover flex — новый примитив обложки
-   visual-diff-exempt: .cover width — новый примитив обложки
-   visual-diff-exempt: .cover height — новый примитив обложки
-   visual-diff-exempt: .cover border-radius — новый примитив обложки
-   visual-diff-exempt: .cover background — новый примитив обложки (дефолт-подложка)
-   visual-diff-exempt: .cover[data-cover=gradient_1] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_2] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_3] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_4] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_5] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_6] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_7] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_8] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_9] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_10] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_11] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_12] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_13] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_14] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_15] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover[data-cover=gradient_16] background — обложка трипа: градиент из TRIP_GRADIENTS
-   visual-diff-exempt: .cover__img position — новый примитив обложки
-   visual-diff-exempt: .cover__img inset — новый примитив обложки
-   visual-diff-exempt: .cover__img width — новый примитив обложки
-   visual-diff-exempt: .cover__img height — новый примитив обложки
-   visual-diff-exempt: .cover__img object-fit — новый примитив обложки */
-.cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2); }
+/* ── Cover: обложка трипа как примитив ДС (<Cover>) ───────────────────────────
+   Нижний слой `.cover` несёт фоллбек-картинку из бандла (`public/covers/
+   fallback.webp`) поверх нейтральной подложки — она видна, когда обложки нет; фото
+   — `<img class="cover__img">` поверх, его `onError` гасит img → снова просвечивает
+   фоллбек. Градиенты обложек ВЫПИЛЕНЫ (дефолт = картинка, не цвет): 16 правил
+   `.cover[data-cover="gradient_N"]` удалены вместе с `TRIP_GRADIENTS`. 2p видит
+   снятие фона у каждого юнита и смену фона у `.cover` — каждое объявлено маркером.
+   visual-diff-exempt: .cover background — дефолт-подложка теперь несёт фоллбек-картинку (выпил градиентов обложки)
+   visual-diff-exempt: .cover[data-cover=gradient_1] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_2] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_3] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_4] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_5] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_6] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_7] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_8] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_9] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_10] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_11] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_12] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_13] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_14] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_15] background — снят с выпилом градиентов обложки
+   visual-diff-exempt: .cover[data-cover=gradient_16] background — снят с выпилом градиентов обложки */
+.cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
 .cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.cover[data-cover="gradient_1"]  { background: linear-gradient(to bottom left, #F4A85A 0%, #C84060 100%); }
-.cover[data-cover="gradient_2"]  { background: linear-gradient(to bottom left, #F2E060 0%, #D08820 100%); }
-.cover[data-cover="gradient_3"]  { background: linear-gradient(to bottom left, #F09888 0%, #E03888 100%); }
-.cover[data-cover="gradient_4"]  { background: linear-gradient(to bottom left, #E05030 0%, #8C1A18 100%); }
-.cover[data-cover="gradient_5"]  { background: linear-gradient(to bottom left, #62A8F0 0%, #2050C0 100%); }
-.cover[data-cover="gradient_6"]  { background: linear-gradient(to bottom left, #40C8D0 0%, #0870A0 100%); }
-.cover[data-cover="gradient_7"]  { background: linear-gradient(to bottom left, #5470E6 0%, #0E80A8 100%); }
-.cover[data-cover="gradient_8"]  { background: linear-gradient(to bottom left, #9090E8 0%, #2828A0 100%); }
-.cover[data-cover="gradient_9"]  { background: linear-gradient(to bottom left, #80D858 0%, #1E8840 100%); }
-.cover[data-cover="gradient_10"] { background: linear-gradient(to bottom left, #F09040 0%, #A83C10 100%); }
-.cover[data-cover="gradient_11"] { background: linear-gradient(to bottom left, #48D898 0%, #107858 100%); }
-.cover[data-cover="gradient_12"] { background: linear-gradient(to bottom left, #78E0A0 0%, #3868C8 100%); }
-.cover[data-cover="gradient_13"] { background: linear-gradient(to bottom left, #B080F0 0%, #5020A8 100%); }
-.cover[data-cover="gradient_14"] { background: linear-gradient(to bottom left, #F0A0C8 0%, #C02878 100%); }
-.cover[data-cover="gradient_15"] { background: linear-gradient(to bottom left, #E070E8 0%, #8820B0 100%); }
-.cover[data-cover="gradient_16"] { background: linear-gradient(to bottom left, #70B0F0 0%, #E040A0 50%, #F08840 100%); }
+
+/* ── Carousel: горизонтальная лента-примитив ДС (<Carousel>) ──────────────────
+   Нативный scroll-snap + десктоп-стрелки (только под hover-указателем). Дети —
+   любые элементы (у нас <Swatch>-миниатюры). Новый namespace, апрув Pavel.
+   prefix-exempt: carousel — новый примитив-лента (scroll-snap + стрелки), апрув Pavel
+   floor-exempt: namespaces +2 — примитивы <Carousel> (.carousel) и <EditableText> (.editable), апрув Pavel
+   floor-exempt: classes +15 — примитивы <Carousel>/<EditableText> (вкл. .editable__input/.editable__confirm) + герой обложки планнера (.pl-cover*, .pl-cover__track/__slide, .tcp__strip, .tcp__ctl), апрув Pavel
+   floor-exempt: triage +9 — новые классы в семьях под разбором (.pl-cover*, .pl-cover__track/__slide, .tcp__strip, .tcp__upload, .tcp__nav*, .tcp__ctl), апрув Pavel
+   floor-exempt: tokens +2 — --r-xs (шаг радиуса 4px) + --scrim-soft (покойная подложка контролов на медиа), апрув Pavel
+   floor-exempt: reach +3 — скоуп-правила героя/ленты в примитивы (Swatch размер+ховер, инпут правки, карандаш) — бесшовный облик на обложке, апрув Pavel
+   floor-exempt: layout +4 — приватные классы раскладки героя/ленты обложки (вкл. .pl-cover__track/__slide), апрув Pavel
+   visual-diff-exempt: .carousel display — примитив-лента (флекс-ряд)
+   visual-diff-exempt: .carousel gap — примитив-лента
+   visual-diff-exempt: .carousel overflow-x — примитив-лента (горизонтальный скролл)
+   visual-diff-exempt: .carousel overflow-y — лента не клипает выделение/тень миниатюр по вертикали
+   visual-diff-exempt: .carousel scroll-snap-type — примитив-лента (снап)
+   visual-diff-exempt: .carousel scroll-padding-left — примитив-лента
+   visual-diff-exempt: .carousel padding-top — вертикальный воздух: кольцо выбора миниатюры не режется сверху
+   visual-diff-exempt: .carousel padding-bottom — вертикальный воздух снизу
+   visual-diff-exempt: .carousel scrollbar-width — лента без видимого скроллбара (Firefox)
+   visual-diff-exempt: .carousel::-webkit-scrollbar display — лента без видимого скроллбара (WebKit)
+   visual-diff-exempt: .carousel > * scroll-snap-align — дети ленты снапятся
+   visual-diff-exempt: .carousel > * flex — дети ленты не сжимаются */
+/* ★ КОНТЕЙНЕР ПРОКРУТКИ ОБЯЗАН ВМЕЩАТЬ КОЛЬЦО СВОЕГО РЕБЁНКА. «Выбрано» у
+   свотча нарисовано ВНЕШНИМ кольцом (`box-shadow: 0 0 0 2px`), то есть ЗА
+   границей бокса, а `overflow` ленты его режет. По вертикали место было
+   зарезервировано с самого начала (`padding-top/bottom`), по горизонтали —
+   нет, и выбранная миниатюра у левого края теряла свою половину кольца.
+   Резерв обязан быть по ОБЕИМ осям — это свойство скроллера, а не обложки,
+   поэтому правило живёт на примитиве.
+   visual-diff-exempt: .carousel padding-left — место под внешнее кольцо выбранного ребёнка (по вертикали резерв был всегда)
+   visual-diff-exempt: .carousel padding-right — то же с правого края */
+.carousel { display: flex; gap: var(--sp-4); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-left: var(--sp-4); padding-top: var(--sp-2); padding-bottom: var(--sp-2); padding-left: var(--sp-2); padding-right: var(--sp-2); scrollbar-width: none; }
+.carousel::-webkit-scrollbar { display: none; }
+.carousel > * { scroll-snap-align: start; flex: none; }
+
+/* ── EditableText: инлайн-правка текста, примитив ДС (<EditableText>) ─────────
+   Текст + карандаш → БЕСШОВНЫЙ инлайн-инпут (.editable__input: прозрачный, без
+   рамки, наследует шрифт/цвет контекста), НЕ боксовый <Input>. Облик текста —
+   от контекста (напр. .t-title + белый на обложке).
+   prefix-exempt: editable — новый примитив инлайн-правки текста, апрув Pavel
+   visual-diff-exempt: .editable display — новый примитив инлайн-правки
+   visual-diff-exempt: .editable align-items — новый примитив инлайн-правки
+   visual-diff-exempt: .editable gap — новый примитив инлайн-правки
+   visual-diff-exempt: .editable min-width — новый примитив инлайн-правки
+   visual-diff-exempt: .editable__text overflow — новый примитив (обрезка длинного текста)
+   visual-diff-exempt: .editable__text text-overflow — новый примитив (многоточие)
+   visual-diff-exempt: .editable__text white-space — новый примитив (одна строка)
+   visual-diff-exempt: .editable__edit flex — новый примитив (карандаш не сжимается)
+   visual-diff-exempt: .editable__input min-width — бесшовный инлайн-инпут правки
+   visual-diff-exempt: .editable__input background — бесшовный (прозрачный, не форменный бокс)
+   visual-diff-exempt: .editable__input border — бесшовный (без рамки)
+   visual-diff-exempt: .editable__input padding — бесшовный (без внутренних отступов бокса)
+   visual-diff-exempt: .editable__input font — наследует типографику контекста (.t-title и т.п.)
+   visual-diff-exempt: .editable__input letter-spacing — наследует трекинг контекста (точное совпадение с текстом)
+   visual-diff-exempt: .editable__input color — наследует цвет контекста (белый на обложке)
+   visual-diff-exempt: .editable__input outline — без фокус-бокса (правка = текст, не форма)
+   visual-diff-exempt: .editable__input -webkit-appearance — снимает нативный хром инпута iOS (бесшовность)
+   visual-diff-exempt: .editable__input appearance — снимает нативный хром инпута (бесшовность) */
+.editable { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.editable__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editable__edit { flex: none; }
+.editable__input { min-width: 0; background: transparent; border: 0; padding: 0; font: inherit; letter-spacing: inherit; color: inherit; outline: none; -webkit-appearance: none; appearance: none; }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -3593,21 +3668,25 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   border-radius: var(--r-btn);
   box-shadow: var(--sh-2);
 }
-/* Dark theme: the floating panel (header + body + footer) drops from the raised
-   white surface to the app background, so it reads as one dim panel over the map
-   instead of a bright card (Pavel, TRIP-337). Scoped to the planner — the shared
-   `.lp-f` keeps its `--wash` everywhere else. Body (`.lp-b`) is transparent, so it
-   inherits the panel; only the header/footer, which set their own fill, are re-set. */
-[data-theme="dark"] .flow-editcol > .lp,
-[data-theme="dark"] .flow-editcol .flow-lp-h,
-[data-theme="dark"] .flow-editcol .lp-f { background: var(--bg); }
+/* Панель флоу (планировщик): header/footer СИДЯТ на фоне приложения (--bg), а тело
+   (`.lp-b`, прозрачное → `.lp` = --surface) остаётся белой карточкой — в ОБЕИХ темах
+   (запрос Pavel: в light шапка/футер = фон, тело белое; в dark так уже было). Фон
+   header/footer задан в базе (`.flow-lp-h` + `.flow-editcol .lp-f` ниже), поэтому
+   тёмная тема отдельного правила на них не требует. В dark дополнительно тускнеет
+   САМА панель — тело перестаёт быть ярко-белым и уходит на --bg: */
+[data-theme="dark"] .flow-editcol > .lp { background: var(--bg); }
 /* Floating round "back" control on the map (canon layout, reused on other
    screens): white surface circle (icon-btn--outline) top-left, over the map.
    Hidden by default; shown on the mobile shell where the app header is removed. */
 .map-back { position: absolute; top: 12px; left: 12px; z-index: 3; box-shadow: var(--sh-1); display: none; }
 /* Progress header — non-scrolling top of the panel. Row so the reset control
    (relocated out of the action bar) sits at the top-right, quiet. */
-.flow-lp-h { flex: none; padding: var(--sp-6) var(--sp-7); border-bottom: 1px solid var(--line); background: var(--surface); display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Шапка на фоне приложения (--bg), не на белой поверхности — тело белое, шапка/футер
+   с ним контрастируют (запрос Pavel №2). В dark то же --bg (панель тускнеет целиком). */
+.flow-lp-h { flex: none; padding: var(--sp-6) var(--sp-7); border-bottom: 1px solid var(--line); background: var(--bg); display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Футер флоу — тот же фон приложения, что и шапка; scoped к .flow-editcol, поэтому
+   общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся на своём --wash (запрос Pavel №2). */
+.flow-editcol .lp-f { background: var(--bg); }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 /* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
@@ -3792,6 +3871,115 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Quick-start chips under the welcome message — a small gap below it. The empty
    `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
 .pl-ai-chips { margin-top: var(--sp-4); }
+/* ── Пикер обложки (<CoverPicker>) и его посадка в планнере ───────────────────
+   Кадр обложки, лента слайдов, стрелки, кнопка загрузки и лента миниатюр — это
+   ОДИН примитив ДС; правила ниже принадлежат ему, а не экрану. Экран отвечает
+   только за посадку кадра: `.pl-cover` вырывает обложку из падинга `.lp-b`
+   (14px верт / 15px гор) отрицательными márgins во всю ширину шага «Проверка».
+   Скрим — канон `.tc__scrim`; название с карандашом (<EditableText>) приезжает
+   в слот `overlay` и ложится на `.tcp__title`.
+
+   Семья переехала из `pl-cover*` (namespace экрана) в `tcp*` (namespace самого
+   пикера) — правила принадлежат примитиву, а не тому, кто его первым позвал:
+   visual-diff-move: pl-cover__title -> tcp__title
+   visual-diff-move: pl-cover__track -> tcp__track
+   visual-diff-move: pl-cover -> tcp__hero
+   visual-diff-move: .pl-cover .tc__scrim -> tcp__hero
+   Кадр обложки получил СВОЙ дефолт (4:3 + скругление), а посадка в планнере
+   гасит скругление, потому что full-bleed полоса упирается в края шага:
+   visual-diff-exempt: .tcp__hero aspect-ratio — кадр обложки 4:3 (дефолт примитива, настройки трипа)
+   visual-diff-exempt: .tcp__hero border-radius — скругление кадра (дефолт примитива)
+   visual-diff-exempt: .pl-cover border-radius — full-bleed полоса без скругления (гасит дефолт кадра)
+   Слайд стал примитивом <Cover> (даром достаётся фоллбек-подложка и onError):
+   переносом это НЕ объявляется, потому что перенос обязан быть один-в-один, а
+   здесь одно объявление осознанно уходит (кроп теперь на `.cover__img`) и одно
+   приходит (радиус гасится до края рамки) — значит каждое называется отдельно:
+   visual-diff-exempt: .pl-cover__slide flex — слайд переехал на .tcp__slide (примитив <Cover>)
+   visual-diff-exempt: .pl-cover__slide width — слайд переехал на .tcp__slide
+   visual-diff-exempt: .pl-cover__slide height — слайд переехал на .tcp__slide
+   visual-diff-exempt: .pl-cover__slide scroll-snap-align — слайд переехал на .tcp__slide
+   visual-diff-exempt: .pl-cover__slide object-fit — кроп уехал на .cover__img (слайд = примитив <Cover>)
+   visual-diff-exempt: .tcp__slide flex — слайд не сжимается (приехал с .pl-cover__slide)
+   visual-diff-exempt: .tcp__slide width — слайд во всю ширину кадра
+   visual-diff-exempt: .tcp__slide height — слайд во всю высоту кадра
+   visual-diff-exempt: .tcp__slide scroll-snap-align — слайд снапится по центру
+   visual-diff-exempt: .tcp__slide border-radius — слайд во всю рамку (гасит радиус <Cover>)
+   Зрителю глушим прокрутку ленты — <fieldset disabled> до неё не достаёт:
+   visual-diff-exempt: .tcp__track[data-disabled] overflow-x — read-only: свайп обложки выключен
+   Превью-карточка 120px удалена: настройки показывают тот же кадр, что и шаг
+   создания, второго облика у обложки больше нет:
+   visual-diff-exempt: .tcp__preview position — превью 120px снято (настройки показывают кадр обложки)
+   visual-diff-exempt: .tcp__preview width — превью 120px снято
+   visual-diff-exempt: .tcp__preview height — превью 120px снято
+   visual-diff-exempt: .tcp__img width — превью 120px снято
+   visual-diff-exempt: .tcp__img height — превью 120px снято
+   visual-diff-exempt: .tcp__img object-fit — превью 120px снято */
+/* ★ КОРЕНЬ ПИКЕРА ОБЯЗАН УМЕТЬ СЖИМАТЬСЯ. Внутри него горизонтальная лента
+   миниатюр; у элемента сетки/флекса `min-width` по умолчанию `auto`, то есть
+   «не уже своего содержимого» — и лента вместо прокрутки РАСПИРАЕТ колонку,
+   утаскивая за собой соседей (на мобиле карточка уезжала за экран вместе с
+   инпутами, а на десктопе колонка фиксированная и дефект не виден). Правило
+   живёт на самом примитиве, а не на экране: лента внутри — его свойство, и
+   каждый следующий вызыватель иначе открывал бы этот дефект заново. Тот же
+   `min-width: 0`, что уже стоит у колонки полей `.settings-identity__fields`.
+   visual-diff-exempt: .tcp min-width — корень пикера должен сжиматься, иначе лента миниатюр распирает колонку */
+.tcp { min-width: 0; }
+/* Кадр обложки — сам примитив <CoverPicker>. Дефолт кадра = 4:3 со скруглением
+   (настройки трипа); `.pl-cover` перебивает его на full-bleed полосу 200px:
+   высота задана явно, поэтому `aspect-ratio` на ней не действует. */
+.tcp__hero { position: relative; overflow: hidden; aspect-ratio: 4 / 3; border-radius: var(--r-md); }
+.pl-cover {
+  height: 200px; border-radius: 0;
+  margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
+}
+.tcp__title {
+  position: absolute; z-index: 4; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center;
+  padding: var(--sp-6) var(--sp-7);
+  color: #fff;
+}
+.tcp__title .icon-btn { color: #fff; }
+.tcp__title .editable { flex: 1; }
+.tcp__title .editable__input { flex: 1; }
+/* Единый облик контролов поверх обложки (загрузка + стрелки + кнопка ✓ правки
+   названия): полупрозрачный тёмный чип на токенах, белая иконка, КВАДРАТ (радиус
+   базы .icon-btn = --r-sm, БЕЗ round). Покой — --scrim-soft (лёгкая подложка),
+   ховер поднимает до --scrim. Форма/размер/тон у всех одинаковы. */
+.tcp__ctl, .editable__confirm { background: var(--scrim-soft); color: #fff; border-color: transparent; }
+.tcp__ctl:hover, .editable__confirm:hover { background: var(--scrim); color: #fff; }
+/* Загрузка своего фото — иконка-кнопка в правом верхнем углу обложки. */
+.tcp__upload { position: absolute; z-index: 4; top: var(--sp-4); right: var(--sp-4); }
+/* Стрелки смены выбранного кавера — по бокам обложки, по центру. Меняют сам
+   пресет (prev/next по каталогу), а НЕ скроллят ленту миниатюр. */
+.tcp__nav { position: absolute; z-index: 4; top: 50%; transform: translateY(-50%); }
+.tcp__nav--prev { left: var(--sp-4); }
+.tcp__nav--next { right: var(--sp-4); }
+/* Обложка = горизонтальная scroll-snap-лента слайдов (нативный свайп + доводка
+   снапом, как <Carousel>); скроллбар скрыт. Скрим НЕ ловит касания, чтобы свайп
+   доходил до ленты под ним. */
+.tcp__track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.tcp__track::-webkit-scrollbar { display: none; }
+/* Зрителю (read-only) прокрутку глушим АТРИБУТОМ, а не классом: состояние — это
+   данные. <fieldset disabled> сюда не достаёт — прокрутка не элемент формы. */
+.tcp__track[data-disabled] { overflow-x: hidden; }
+/* Слайд — примитив <Cover>: его размер/радиус тут перебиваются на «во всю
+   рамку», а фоллбек-подложка и onError достаются даром (протухший signed URL
+   своей фотки покажет фоллбек, а не битую картинку). */
+.tcp__slide { flex: none; width: 100%; height: 100%; border-radius: 0; scroll-snap-align: center; }
+.tcp__hero .tc__scrim { pointer-events: none; }
+/* Лента миниатюр пикера — примитив <Carousel> со <Swatch variant="round">.
+   Миниатюры пейзажной формы (как в референсе): размер/радиус/кольцо выбора — на
+   самом Swatch, активная расширяется. Правила приехали из `TripCoverPicker.css`
+   вместе с разметкой: их эмитит примитив ДС, а не адаптер трипа, и подключаться
+   они обязаны всем, кто примитив зовёт. */
+.carousel.tcp__strip { gap: var(--sp-3); }
+.tcp__strip .swatch--round { width: 52px; height: 52px; border-radius: var(--r-xs); transition: width .3s var(--ease-out), box-shadow .2s var(--ease-out); }
+.tcp__strip .swatch--round[aria-pressed="true"] { width: 108px; }
+@media (hover: hover) { .tcp__strip .swatch--round:hover { box-shadow: var(--sh-2); } }
+/* Скрытый файловый вход пикера + строка ошибки загрузки. */
+.tcp__file { display: none; }
+.tcp__err { margin: 0; color: var(--danger); }
+
 .pl-summary { overflow: hidden; }
 .pl-summary .tc--band { border-radius: 0; }
 /* .statbar rides a <Card> (card-homed skin) — flatten it inside the summary to a
@@ -4398,6 +4586,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      The slide needs `background-position` in the transition — the base `.chat-send`
      transition doesn't carry it, so redeclare here (mirrors the `.btn` base). */
 .chat-composer--ai .chat-composer__in { max-width: none; padding: 0; }
+/* Круглая send-кнопка (`.chat-send`) в AI-градиенте — ОСТАВЛЕНА дремлющей: на AI-шаге
+   теперь рисуется слитая `.chat-cta`, но `.chat-send` ещё живёт в чате группы/виджета,
+   и снятие этих правил не дало бы визуального эффекта, но краснило бы 2p снятием
+   объявлений. */
 .chat-composer--ai .chat-send {
   background: var(--ai-gradient); background-origin: border-box; background-size: 170% 170%;
   box-shadow: 0 6px 16px -9px var(--ai);
@@ -4405,6 +4597,36 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 .chat-composer--ai .chat-send:hover { filter: none; background-position: 100% 0; }
 .chat-composer--ai .chat-send:disabled { box-shadow: none; }
+/* Слитая кнопка «Отправить ⇄ Далее» AI-планера (ChatComposer): вариант `ai` даёт
+   AI-градиент, высота из `.btn` (min-height: --ctl-h). ПЛАВНЫЙ морф: есть текст →
+   компактная иконка отправки (`--send`), лейбл «Далее» сворачивается grid-колонкой
+   1fr→0fr (анимируемая ширина) + gap кнопки схлопывается 8→0; пусто → стрелка + «Далее».
+   floor-exempt: classes +3 — .chat-cta/.chat-cta--send/.chat-cta__lbl (слитая кнопка send⇄next AI-планера, плавный морф), апрув Pavel №7
+   floor-exempt: triage +3 — те же в семье chat (под разбором), апрув Pavel №7
+   floor-exempt: layout +2 — .chat-cta__lbl (grid, механизм морфа ширины) + .chat-cta--send (gap:0), апрув Pavel №7
+   visual-diff-exempt: .chat-cta transition — новый морф ширины кнопки (gap), апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl display — грид-обёртка лейбла для морфа ширины, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl grid-template-columns — колонка лейбла 1fr↔0fr (морф ширины), апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl transition — плавность морфа лейбла, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl opacity — затухание лейбла при сворачивании, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl > span overflow — клип сворачиваемого лейбла, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl > span white-space — лейбл в одну строку при морфе, апрув Pavel №7
+   visual-diff-exempt: .chat-cta__lbl > span min-width — 0 для корректного схлопа грид-колонки, апрув Pavel №7
+   visual-diff-exempt: .chat-cta--send gap — схлоп зазора кнопки при send-режиме (иконка без лейбла), апрув Pavel №7
+   visual-diff-exempt: .chat-cta--send grid-template-columns — лейбл свёрнут в send-режиме, апрув Pavel №7
+   visual-diff-exempt: .chat-cta--send opacity — лейбл прозрачен в send-режиме, апрув Pavel №7 */
+.chat-cta { transition: gap .22s var(--ease-out); }
+.chat-cta__lbl { display: grid; grid-template-columns: 1fr; transition: grid-template-columns .22s var(--ease-out), opacity .18s var(--ease-out); }
+.chat-cta__lbl > span { overflow: hidden; white-space: nowrap; min-width: 0; }
+.chat-cta--send { gap: 0; }
+.chat-cta--send .chat-cta__lbl { grid-template-columns: 0fr; opacity: 0; }
+/* Пилюля «Трипланио печатает»: верх был ~20px (паддинг композера 12 + собственный
+   margin-top 8 пилюли), низ 8 (шаг .col--g4) — перекос 2.5×. Верх композера подрезан
+   до того же шага, лишний margin пилюли снят → симметрия 8/8 (запрос Pavel).
+   visual-diff-exempt: .chat-composer--ai padding-top — верх композера на --sp-4 (баланс пилюли «думает»)
+   visual-diff-exempt: .chat-composer--ai margin-top — снят верхний отступ пилюли (правило .chat-composer--ai .chat-overline), баланс 8/8 */
+.chat-composer--ai { padding-top: var(--sp-4); }
+.chat-composer--ai .chat-overline { margin-top: 0; }
 /* Call the assistant without knowing the "@" convention.
    ★Тон `ai` в каноне - это ХОВЕР-тинт (так его носит крестик AI-блока). Эта
    кнопка - единственная, которая несёт тот же тинт В ПОКОЕ, поэтому заливка
@@ -4960,16 +5182,30 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (TRIP-341), а у канон-класса свой ховер, чужого `--hl` он не читает. */
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
+/* Футер диалога/панели — СТАНДАРТНЫЙ вид, как в нормальных приложениях: кнопки
+   ЗАПОЛНЯЮТ ширину бара, главная (Editar/Guardar/Crear/…) вдвое шире вторичной
+   (ratio 1:2, primary справа), деструктивная — призрак слева; одна кнопка → во
+   всю ширину. Один облик на ВСЕ состояния
+   (просмотр/редактирование/создание/подтверждение) и все окна event/service/city.
+   Старые `.lp-f--ratio` (2/8) и `.btn-label-collapse` убраны в TRIP-337 — они
+   плодили разнобой (мелкая справа vs. «во всю ширину» vs. 20/80).
+   Исключения: `flow-foot` (визард со спейсером back/reset/next) и `lp-f--single`
+   (одиночная модалка) держат свою раскладку. */
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
-/* Two-button footer (delete + primary) filling the bar in a ~2/8 ratio. On
-   phones the destructive button collapses to its icon (text via .btn-label-collapse). */
-.lp-f--ratio { justify-content: stretch; }
-.lp-f--ratio > .btn:first-child { flex: 2; }
-.lp-f--ratio > .btn:last-child  { flex: 8; }
+.lp-f:not(.flow-foot):not(.lp-f--single) > .btn { flex: 2; }
+.lp-f:not(.flow-foot):not(.lp-f--single) > .btn:first-child:not(:last-child) { flex: 1; }
+/* visual-diff-exempt: .btn flex — футер заполняет ширину поровну (нормальный паттерн, как ConfirmDialog), TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f:not(.flow-foot):not(.lp-f--single) flex — тот же fill-футер, ключ по классу-предку, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child:not(:last-child) flex — вторичная/удаление узкая (ratio 1:2), TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f--ratio justify-content — семейство растяжки футера удалено, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child flex — растяжка футера `.lp-f--ratio > .btn` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:last-child flex — растяжка футера `.lp-f--ratio > .btn` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn:first-child {@media (max-width: 640px)} flex — мобильная растяжка футера `.lp-f--ratio > .btn:first-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f--ratio flex — растяжка футера `.lp-f--ratio > .btn:last-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .lp-f--ratio {@media (max-width: 640px)} flex — растяжка футера `.lp-f--ratio > .btn:first-child` удалена, TRIP-337 апрув Pavel */
+/* visual-diff-exempt: .btn-label-collapse {@media (max-width: 640px)} display — схлопывание подписи удаления убрано, TRIP-337 апрув Pavel */
 @media (max-width: 640px) {
-  .lp-f--ratio > .btn:first-child { flex: 0 0 auto; }
   .lp-f--single > .btn { width: 100%; }
-  .btn-label-collapse { display: none; }
 }
 
 /* `.addmini` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft" size="sm">.
@@ -5592,8 +5828,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ★ОСТАТОК: зазор 22px вне шкалы; `align-items: start` удержан - у `.grid` оси
    выравнивания нет вовсе.
    visual-diff-move: settings-identity -> grid */
-.settings-identity { grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
-.settings-identity__cover { position: static; }
+/* Колонка обложки сузилась под кадр 4:3: 240px даёт обложку 240×180, при
+   которой левая колонка почти не выше пары полей справа (апрув Pavel).
+   visual-diff-exempt: .settings-identity grid-template-columns — колонка обложки 280→240 под кадр 4:3
+   visual-diff-exempt: .settings-identity__cover position — обёртка ячейки снята, пикер сам ячейка сетки
+   visual-diff-exempt: .settings-identity__cover {@media (max-width: 900px)} position — та же обёртка снята и на мобиле */
+.settings-identity { grid-template-columns: 240px 1fr; gap: 22px; align-items: start; }
 /* visual-diff-move: settings-identity__fields -> col col--g7 */
 .settings-identity__fields { min-width: 0; }
 /* Field names in the identity card match the "Leave trip" row title style. */
@@ -5615,7 +5855,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 @media (max-width: 900px) {
   .settings-identity { grid-template-columns: 1fr; gap: 16px; }
-  .settings-identity__cover { position: static; }
   .settings-grid { grid-template-columns: 1fr; }
 }
 
@@ -6552,8 +6791,14 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* ── Мобильные переопределения ─────────────────────────────── */
 @media (max-width: 640px) {
   .tc-grid { grid-template-columns: 1fr; gap: 14px; }
-  .tc { min-height: 220px; }
-  .tc__in { min-height: 220px; }
+  /* Постер-КАРТОЧКИ на мобиле выше (220), но полоса-шапка `.tc--band` (превью трипа
+     в планировщике) держит свои 120: раньше `.tc{220}` перебивал `.tc--band{120}`
+     по порядку, а внутренний `.tc__in` оставался 120 (специфичнее) — заголовок
+     повисал в СЕРЕДИНЕ 220-градиента. Исключаем band из мобильной высоты.
+     visual-diff-exempt: .tc {@media (max-width: 640px)} min-height — правило сужено до :not(.tc--band), band больше не тянется до 220 (фикс центрирования заголовка), апрув Pavel №8
+     visual-diff-exempt: .tc:not(.tc--band) {@media (max-width: 640px)} min-height — постер-карточки держат 220, band исключён, апрув Pavel №8 */
+  .tc:not(.tc--band) { min-height: 220px; }
+  .tc:not(.tc--band) .tc__in { min-height: 220px; }
   .tc-add { min-height: 220px; }
   .limitcard { padding: 16px; gap: 12px 14px; }
   /* icon + text share row 1; CTA drops to its own full-width row 2 */
@@ -7225,9 +7470,16 @@ a.doc-row__n:hover{ color: var(--brand); }
    in the app is intentionally >16px on mobile, so clamping to exactly 16px is
    safe. */
 @media (max-width: 640px) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not(.editable__input),
   textarea, select { font-size: var(--ctl-fs) !important; }
 }
+/* `.editable__input` исключён из анти-зум-гарда выше (`:not(.editable__input)`):
+   инлайн-правка наследует типографику контекста (на обложке .t-title = 20px,
+   ВСЕГДА ≥16px), поэтому фокус-зум iOS не триггерит; кламп до 16px её только
+   УМЕНЬШАЛ (заголовок 20 → инпут 16 на мобиле). Инвариант «нет поля <16px на
+   мобиле» держится: контекст правки — заголовочный (≥16).
+   visual-diff-exempt: input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not(.editable__input) {@media (max-width: 640px)} font-size — в анти-зум-гард добавлен :not(.editable__input) (правка заголовка ≥16, зум не триггерит)
+   visual-diff-exempt: input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]) {@media (max-width: 640px)} font-size — старый селектор гарда заменён версией с :not(.editable__input) (то же 16px для всех прочих полей) */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EDITOR SIDE PANELS (.lp) — Lumo design. View+edit panels in TripStructureEdit.

@@ -9,8 +9,6 @@
   "copy_trip_title": "Copia del viaje",
   "danger_zone": "Zona de peligro",
   "delete_account": "Eliminar cuenta",
-  "delete_confirm1": "¿Eliminar el viaje? Esta acción es irreversible.",
-  "delete_confirm2": "¿Estás seguro? Se eliminarán todos los datos del viaje.",
   "delete_desc": "Irreversible. Se eliminarán todos los datos del viaje.",
   "delete_trip": "Eliminar el viaje",
   "feat_available": "Disponible",

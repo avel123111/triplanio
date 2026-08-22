@@ -16,14 +16,11 @@
 // (аутентификация через getRequestUser, как getMe/getTravelStats/getActiveTrips)
 // — записи в config.toml не нужно.
 
-import { withHandler, jsonError } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { withHandler } from '../_shared/http.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 
 Deno.serve(withHandler('getTrips', async (req, corsHeaders) => {
-  // Протухший/отсутствующий токен → 401 (ожидаемо). Реальный сбой Auth-сервиса
-  // поднимается 503 внутри getRequestUser (AUTH_UNAVAILABLE) и сюда null не доезжает.
-  const user = await getRequestUser(req);
-  if (!user) return jsonError(401, 'Unauthorized', 'UNAUTHENTICATED', corsHeaders);
+  const user = await requireUser(req);
 
   // `error` здесь = только инфра-сбой БД → throw → 500 INTERNAL (ретраится, летит
   // в Sentry). Бизнес-ответа-«нет» у этого чтения нет: пустой набор — это валидный

@@ -221,6 +221,17 @@ export type ActionSpec = {
    * 500). Чистая функция (как `buildArgs`) — пинится тестом без загрузки клиента.
    */
   mapOutcome?: (data: unknown) => Refusal | { data: unknown };
+  /**
+   * Действие пере-раскладывает даты всего трипа (запись трансфера: `day_span`
+   * города двигает через триггер `trg_recompute_transfer` / RPC layover). Тогда
+   * шов после записи прикладывает к ответу АВТОРИТЕТНУЮ цепочку `city_visits`
+   * (`_trip_city_chain(scope)`) — как это делают route-RPC (add_city/reorder,
+   * TRIP-435): клиент реконсилит даты из ОДНОГО ответа (`reconcileCityChain`), а не
+   * отдельным рефетчем. Форма ответа таких действий = `{ row, cities }` (см.
+   * `mutate.ts`). Ставится ТОЛЬКО на ресурсах, чья запись реально трогает маршрут
+   * (transfer); листья (hotel/activity/service) дат не двигают → флага нет.
+   */
+  returnChain?: boolean;
 };
 
 export type ResourceSpec = {
@@ -280,7 +291,7 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
     case 'number':
       return typeof value === 'number' && Number.isFinite(value);
     case 'boolean':
-      // Строгий тип-гейт: `free_cancellation`/`day_change` — boolean-колонки БД.
+      // Строгий тип-гейт: `free_cancellation` — boolean-колонка БД.
       // Приведение `'true'`/`1` ЗАПРЕЩЕНО (как число не спутать со строкой): кривой
       // тип → 400, а не молчаливая коэрция к неверному значению.
       return typeof value === 'boolean';

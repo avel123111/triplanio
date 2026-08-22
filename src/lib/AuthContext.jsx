@@ -31,7 +31,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   // Prevent race condition: track which user ID is currently being loaded
   const loadingForRef = React.useRef(null);
@@ -68,6 +67,13 @@ export const AuthProvider = ({ children }) => {
       }
       // If isOAuthCallback and no session yet: code exchange is still in-flight.
       // Keep isLoadingAuth=true and let onAuthStateChange handle it below.
+    }).catch((error) => {
+      // getSession() rejects only on a token-refresh network failure (expired
+      // token + GoTrue unreachable) at boot. Correctness is already covered by the
+      // INITIAL_SESSION branch of onAuthStateChange below, so this does NOT touch
+      // loadUserProfile / the attribution marks — it only surfaces the otherwise
+      // silent boot-time GoTrue blip to Sentry instead of swallowing it.
+      reportAuthError(error, 'auth-boot');
     });
 
     // Secondary: react to auth changes (sign-in, sign-out, OAuth callback, token refresh)
@@ -261,7 +267,6 @@ export const AuthProvider = ({ children }) => {
       // profile-fetch blip must not flip the app to "loading" or sign the user
       // out; reconcile-on-read covers the missed refresh.
       if (!silent) {
-        setAuthError({ type: 'unknown', message: error.message });
         setIsAuthenticated(false);
         setIsLoadingAuth(false);
         setAuthChecked(true);
@@ -312,7 +317,6 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated,
       isLoadingAuth,
       isLoadingPublicSettings: false,  // kept for interface compatibility
-      authError,
       appPublicSettings: null,          // kept for interface compatibility
       authChecked,
       logout,

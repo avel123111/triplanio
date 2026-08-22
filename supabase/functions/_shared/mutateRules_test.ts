@@ -733,8 +733,8 @@ Deno.test('★ transfer-layover: buildPlan → rpc с p_-аргументами 
     to_city_visit_id: '22222222-2222-2222-2222-222222222222',
     waypoints: [{ city_name_en: 'Paris', country_code: 'FR' }],
     segments: [
-      { transport_type: 'train', currency: 'EUR', day_change: false },
-      { transport_type: 'bus', currency: 'EUR', day_change: false },
+      { transport_type: 'train', currency: 'EUR', day_span: 0 },
+      { transport_type: 'bus', currency: 'EUR', day_span: 1 },
     ],
   }, { isInsert: true });
   assert(!('status' in validated), 'валидный layover обязан пройти');

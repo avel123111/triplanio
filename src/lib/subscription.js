@@ -27,7 +27,7 @@ export function isProActive(user) {
 // Returns { isPro, isOwner, resolved }. `resolved` stays false on the FIRST resolve
 // so the upgrade banner isn't shown prematurely on pro trips during the async check;
 // `isOwner` is only meaningful once resolved (defaults to false).
-export function useTripProStatus(tripId, isProTrip = false) {
+export function useTripProStatus(tripId, isProTrip = false, hasAccess = true) {
   const q = useQuery({
     queryKey: ['trip-owner-pro', tripId],
     queryFn: async () => {
@@ -42,7 +42,14 @@ export function useTripProStatus(tripId, isProTrip = false) {
       // reads it from this shared cache instead of its own fetch.
       return { isPro: !!res.data?.isPro, isOwner: !!res.data?.isOwner };
     },
-    enabled: !!tripId,
+    // Ask the server for Pro-status ONLY once the caller is a confirmed participant
+    // of the trip (TRIP-441). A logged-in non-member opening `/trip/:id` (removed
+    // member, still-`pending` invite, a shared non-public link) would otherwise
+    // fire this off the URL's tripId alone and take a deliberate, expected 403 —
+    // pure Sentry noise for a question we already know the answer to. Gating at the
+    // source kills the 403 class instead of muting the symptom. Defaults to `true`
+    // so callers already inside an accessible trip (EventEditDialog) are unchanged.
+    enabled: !!tripId && hasAccess,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     // A transient failure of checkSubscriptionStatus (cold start / network blip)

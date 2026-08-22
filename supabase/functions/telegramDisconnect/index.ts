@@ -20,13 +20,12 @@
  */
 
 import { withHandler } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
 Deno.serve(withHandler('telegramDisconnect', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    const user = await requireUser(req);
 
     const { tripId, integrationId } = await req.json().catch(() => ({}));
     if (!tripId || !integrationId) {
