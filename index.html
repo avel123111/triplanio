@@ -27,23 +27,17 @@
     <link rel="manifest" href="/manifest.json" />
     <title>Triplanio — Your whole trip. One beautiful plan.</title>
     <meta name="description" content="Triplanio is a travel-planning app for complex multi-city trips. Build itineraries, plan together, track budgets in any currency, and get smart reminders." />
-    <!-- landing.css is owned by SiteChrome (injected only on marketing/public routes).
-         No global preload here: index.html is one file for ALL SPA routes, so a static
-         preload leaked onto /trips, /stats, /trip/* → "preloaded but not used" warning. (TRIP-202) -->
-    <!-- Self-hosted Golos Text — preload основных весов (латиница+кириллица) для скорости первого экрана (TRIP-165) -->
-    <link rel="preload" href="/fonts/golos/golos-text-400-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/golos/golos-text-400-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/golos/golos-text-600-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/golos/golos-text-600-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
-    <!-- Exo 2 больше НЕ грузится: после TRIP-410 приложение перешло на single-font
-         Geologica, у Exo 2 не осталось ни одного @font-face/font-family — его preload
-         был осиротевшим (грузился впустую → "preloaded but not used" на всех роутах).
-         Geologica здесь НЕ preload'им намеренно: index.html общий и с marketing/public
-         (там Golos), глобальный preload увёл бы тот же варнинг на лендинг — ровно ловушка
-         TRIP-202; преложка Geologica — это роут-скоуп задача (TRIP-328). -->
-    <!-- Self-hosted JetBrains Mono 500 — мета-ярус канона «Экзо» стал моно (даты/счётчики на первом экране) — preload латиница+кириллица (TRIP-183) -->
-    <link rel="preload" href="/fonts/jetbrains/jetbrains-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/jetbrains/jetbrains-mono-500-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- landing.css принадлежит SiteChrome (инжектится только на marketing/public роутах). -->
+    <!-- Шрифты НЕ предзагружаются намеренно (TRIP-328). index.html — один файл на ВСЕ
+         SPA-роуты (rewrites → /index.html), а гарнитуры разнятся по роутам: marketing/public
+         рисует Golos Text, приложение — Geologica, JetBrains Mono только для кодов. Любой
+         статический <link rel=preload as=font> здесь оказывается «unused» на части роутов →
+         варнинг "was preloaded but not used" (ловушка TRIP-202); ручной список ещё и молча
+         протухает при смене типографики (так появился мёртвый preload Exo 2 после TRIP-410).
+         Корректность и раннюю отрисовку дают сами @font-face (src/design/fonts.css):
+         font-display:swap (текст сразу в fallback, без FOIT) + unicode-range (грузится только
+         нужный сабсет). В этом SPA HEAD-preload шрифтов — нетто-вредный микро-опт: LCP задаёт
+         fallback-кадр, а лишние высокоприоритетные woff2 отнимают полосу у критичного бандла. -->
   </head>
   <body>
     <div id="root"></div>
