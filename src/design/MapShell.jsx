@@ -45,6 +45,7 @@ const NO_INSETS = Object.freeze({ top: 0, right: 0, bottom: 0, left: 0 });
  *   map: (insets: { top: number, right: number, bottom: number, left: number }) => any,
  *   panel?: any,
  *   panelHeader?: any,
+ *   panelFooter?: any,
  *   panelLabel: string,
  *   detents?: number[],
  *   detent?: number,
@@ -64,6 +65,9 @@ export function MapShell({
   // десктопе стоит над телом). Шелл обязан знать про неё отдельно: опущенный
   // шит без шапки — безымянная полоска, по которой не понять, что под ней.
   panelHeader = null,
+  // Панель действий (кнопки шага): на виду при любом скролле тела, поэтому
+  // слот отдельный, а не «последний ребёнок» содержимого.
+  panelFooter = null,
   panelLabel,
   detents = [0.15, 0.68, 1],
   detent = 0,
@@ -122,6 +126,7 @@ export function MapShell({
           onDetentChange={onDetentChange}
           onHeightChange={setSheetPx}
           header={panelHeader}
+          footer={panelFooter}
           label={panelLabel}
         >
           {panel}
@@ -141,6 +146,7 @@ export function MapShell({
             <Card pad="none" radius="btn" raised className="mapshell__card">
               {panelHeader}
               <div className="mapshell__body scrollbar-thin">{panel}</div>
+              {panelFooter}
             </Card>
           </aside>
           {/* Шов панели и карты — место, где живёт «свернуть/раскрыть»: он

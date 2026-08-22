@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { mapboxgl } from '@/lib/mapbox';
 import { calmFit } from '@/lib/map/camera';
+import { addPadding } from '@/lib/map/padding';
+import { setMapInsets } from '@/lib/map/insets';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
@@ -27,18 +29,12 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
   return legs;
 }
 
-// Desktop: the step panel FLOATS over the left of the full-bleed map, so the route
-// must be framed in the VISIBLE area (right of the panel) — reserve the panel's
-// width on the left. On phones (≤960) the map is its own top band with the sheet
-// below it, so only a little bottom room is reserved for the sheet's overlap.
-// Mirror the CSS: .flow-editcol width = min(550px, 44vw); breakpoint 960.
-function fitPaddingFor(w) {
-  if (w > 960) {
-    const panel = Math.min(550, w * 0.44);
-    return { top: 48, right: 48, bottom: 48, left: Math.round(panel + 40) };
-  }
-  return { top: 32, right: 40, bottom: 52, left: 40 };
-}
+// ВОЗДУХ вокруг маршрута — и только он. Сколько места закрыто панелью или шитом,
+// решает `<MapShell>` и сообщает отступами (`insets`); складывает их с этим
+// воздухом сама камера. Прежняя редакция считала ширину панели ЗДЕСЬ
+// (`min(550, w*0.44)`, брейкпоинт 960) — то есть дублировала CSS числом в JS,
+// и любая правка раскладки молча разъезжалась с кадрированием.
+const ROUTE_AIR = 48;
 
 // The neutral "start" globe view (before any route is picked, and what a draft
 // RESET returns to). Mapbox globe: at zoom z the equatorial circumference spans
@@ -49,15 +45,19 @@ function fitPaddingFor(w) {
 // container, not a fixed zoom. Phones keep a fixed start zoom — their short map band
 // already frames the globe and Pavel asked to leave mobile un-adaptive. Coefficients
 // are eyeballed; nudge them here if the globe reads a touch big/small.
-function startGlobeView(map, pad, winW) {
+function startGlobeView(map, pad) {
   const center = [0, 20];
-  if (winW <= 960) return { center, zoom: 2 };
   const el = map.getContainer?.();
   const H = el?.clientHeight || 0;
   const W = el?.clientWidth || 0;
   if (!H || !W) return { center, zoom: 2.4 };
-  const visW = Math.max(360, W - pad.left - pad.right); // room right of the panel
-  const targetD = Math.min(0.85 * H, 0.92 * visW);
+  // Глобус вписывается в СВОБОДНОЕ окно — и по ширине, и по высоте. Раньше
+  // высота бралась целиком (шит стоял отдельной полосой под картой); теперь шит
+  // лежит ПОВЕРХ карты, и не вычесть его высоту значило бы прятать пол-планеты
+  // под ним.
+  const visW = Math.max(320, W - pad.left - pad.right);
+  const visH = Math.max(240, H - pad.top - pad.bottom);
+  const targetD = Math.min(0.85 * visH, 0.92 * visW);
   const zoom = Math.max(0.8, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
   return { center, zoom };
 }
@@ -85,6 +85,8 @@ export default function FlowMap({
   // Map-lens-style interactivity (all optional — omit for a passive preview):
   hoveredId = null, selectedId = null, cityBadge = null,
   onCityHover, onCityClick, onMapClick,
+  // Закрытая площадь канваса (панель / шит) — приходит от `<MapShell>`.
+  insets = null,
 }) {
   const t = useT();
   const { isDark } = useTheme();
@@ -174,7 +176,14 @@ export default function FlowMap({
   if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
   cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
   if (hasFinish) fitPositions.push([finishCity.longitude, finishCity.latitude]);
-  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
+  // Закрытая площадь — часть КЛЮЧА кадрирования: подняли шит, свернули панель —
+  // свободное окно другое, значит кадр обязан пересчитаться. Без этого камера
+  // держалась бы за старую рамку и город оставался бы под шитом.
+  const insetsRef = useRef(null);
+  insetsRef.current = insets;
+  const insetsKey = [insets?.top, insets?.right, insets?.bottom, insets?.left]
+    .map((n) => Math.round(n || 0)).join(',');
+  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}@${insetsKey}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // A FlowMap-owned handle to the (singleton) map instance. useMapSurface nulls its
@@ -214,7 +223,7 @@ export default function FlowMap({
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
     if (canFit) {
-      const pad = fitPaddingFor(winW);
+      const pad = addPadding(ROUTE_AIR, insetsRef.current);
       if (fitPositions.length) {
         // Route: re-frame ONLY when the route geometry / viewport actually changed
         // (fitKey) — a step change rebuilds pins above but leaves fitKey alone, so
@@ -224,8 +233,10 @@ export default function FlowMap({
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
           try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
-          const offset = [Math.round((pad.left - pad.right) / 2), Math.round((pad.top - pad.bottom) / 2)];
-          calmFit(map, fitPositions, { padding: pad, offset, maxZoom: 7, singleZoom: 8 });
+          // Отдаём ТОЛЬКО воздух: закрытую площадь камера добавит сама (её
+          // единственный владелец — `setMapInsets` ниже), и одиночную точку она
+          // так же сама уведёт из-под панели.
+          calmFit(map, fitPositions, { padding: ROUTE_AIR, maxZoom: 7, singleZoom: 8 });
         }
         prevHadPointsRef.current = true;
       } else {
@@ -235,7 +246,7 @@ export default function FlowMap({
         // tiny planet. Returning here from a route (draft RESET) glides back out;
         // a fresh mount / resize just snaps (the fade-in hides it).
         try { map.setPadding(pad); } catch { /* ignore */ }
-        const view = startGlobeView(map, pad, winW);
+        const view = startGlobeView(map, pad);
         if (prevHadPointsRef.current) {
           try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
         } else {
@@ -252,9 +263,18 @@ export default function FlowMap({
     // ptsKey → rebuild markers (incl. the step-toggled return pin); fitKey → re-frame
     // (route geometry + viewport size, so it also covers resize). fitKey can change
     // without ptsKey (a distinct return set while off the return step), so both are deps.
-    // winW/winH are read directly inside (fitPaddingFor / startGlobeView) — listed so
+    // winW/winH are read directly inside (startGlobeView) — listed so
     // exhaustive-deps stays honest, though fitKey already carries them.
   }, [ready, canFit, ptsKey, fitKey, winW, winH]);
+
+  // Владелец закрытой площади — один на приложение: обе двери камеры читают её
+  // оттуда сами, поэтому здесь только объявление и снятие на выходе.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    setMapInsets(map, insets);
+    return () => setMapInsets(map, null);
+  }, [insetsKey, ready]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering the city list is cheap). Re-runs after a rebuild too

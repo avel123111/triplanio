@@ -27,6 +27,7 @@ import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
+import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
@@ -757,6 +758,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const qc = useQueryClient();
   const confirm = useConfirm();
 
+  // Детент шита и свёрнутость панели — состояние ЭКРАНА, а не шелла: шаг может
+  // осознанно опустить шит (например, когда просит выбрать город на карте).
+  const [detent, setDetent] = useState(1);
+  const [collapsed, setCollapsed] = useState(false);
+
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
 
@@ -1277,6 +1283,86 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   }
 
   // ── Main render ───────────────────────────────────────────────────────────
+  // Содержимое панели разложено по слотам шелла: ШАПКА (прогресс) всегда на
+  // виду — по ней читается шаг даже у опущенного шита; ТЕЛО скроллится; ФУТЕР с
+  // действиями шага стоит вне скролла, иначе кнопка «Далее» уезжает вместе со
+  // списком ровно тогда, когда она нужна.
+  const BODY = (
+    // `.flow-lp-b` — типографский контекст шага (ритм заголовков/подзаголовков),
+    // а не раскладка: раскладку и скролл держит тело шелла.
+    <div className="flow-lp-b">
+        {step === 'home' && (isAi ? (
+          <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
+        ) : (
+          <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
+        ))}
+        {step === 'cities' && (
+          <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} />
+        )}
+        {step === 'return' && (
+          <StepReturn
+            home={home}
+            lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
+            end={end}
+            setEnd={setEnd}
+          />
+        )}
+        {step === 'review' && (
+          <StepReview
+            home={home}
+            cities={cities}
+            finishCity={finishCity}
+            isStay={isStay}
+            cover={cover}
+            setCover={setCover}
+            tripTitle={tripTitle}
+            setTripTitle={setTripTitle}
+            saving={saving}
+            savedOk={savedOk}
+            savedTripId={savedTripId}
+            error={error}
+          />
+        )}
+
+      {/* AI composer — a pinned bar (flex:none) between the scrolling transcript
+          and the footer, exactly like the trip chat. Reuses <ChatComposer>: no
+          @-mention here (hideMention), the send button in the assistant gradient
+          (chat-composer--ai), and the "Triplanio печатает" pill while generating. */}
+      {step === 'home' && isAi && (
+        <ChatComposer
+          className="chat-composer--ai"
+          hideMention
+          onSend={onGenerate}
+          disabled={aiState === 'generating'}
+          isThinking={aiState === 'generating'}
+          placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
+          /* Слитая кнопка: пусто → «Далее» (переход к шагу 2, доступен когда бот
+             собрал черновик), есть текст → «Отправить». Gate тот же, что был у
+             футер-кнопки Next на AI-шаге (aiState==='draft'). */
+          nextAction={goNext}
+          nextLabel={t('planner.next')}
+          nextDisabled={aiState !== 'draft'}
+        />
+      )}
+    </div>
+  );
+  const FOOTER = (
+    <>
+      {showFooter && (
+        <div className="lp-f flow-foot">
+          {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
+          {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
+              icon in the header) — nav actions all live in the action bar. It
+              also shows on the AI entry step (step 1), where a conversation can
+              already have built a draft to clear. */}
+          {(!isFirstStep || (isAi && step === 'home')) && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+          <div className="flow-foot__spacer grow" />
+          <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="flow-page">
       {/* Header */}
@@ -1290,23 +1376,50 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         title={isAi ? t('planner.step_home_ai') : t('trips.new')}
       />
 
-      {/* Two framed cards (trip-edit layout): the full-bleed map and the white
-          .lp panel (progress header → scroll body → sticky footer). */}
-      <div className="flow-grid">
-        <div className="flow-mapcol">
-          {/* Floating round back control — shown only on the phone shell (the app
-              header is removed there); the canon `.map-back` position/visibility
-              live in CSS. */}
-          <IconBtn
-            className="map-back"
-            icon="back"
-            round
-            tone="outline"
-            ariaLabel={t('notif.to_collection')}
-            onClick={() => nav('/trips')}
-          />
-          <div className="flow-mapbox">
+      {/* Раскладку «карта во всю площадь + панель поверх / шит на телефоне»
+          держит примитив <MapShell>: он же считает, сколько места закрыто, и
+          отдаёт это карте отступами камеры. Своих `.flow-grid/-mapcol/-editcol`
+          у шага больше нет — они были третьей копией одной и той же раскладки. */}
+      <MapShell
+        panelLabel={t('trips.new')}
+        detent={detent}
+        onDetentChange={setDetent}
+        collapsed={collapsed}
+        onCollapsedChange={setCollapsed}
+        collapseLabel={t('common.panel_collapse')}
+        expandLabel={t('common.panel_expand')}
+        panelHeader={(
+          <div className="flow-lp-h">
+            {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
+                "next" hint wraps INSIDE this column instead of overflowing and
+                shoving the reset control off the narrow mobile sheet header. */}
+            <div className="grow--fit">
+              <FlowProgress
+                steps={visibleSteps}
+                current={stepIdx}
+                accent={isAi ? 'var(--ai)' : 'var(--brand)'}
+                onJump={(i) => setStep(visibleSteps[i].id)}
+              />
+            </div>
+          </div>
+        )}
+        panelFooter={FOOTER}
+        panel={BODY}
+        map={(insets) => (
+          <>
+            {/* Floating round back control — shown only on the phone shell (the app
+                header is removed there); the canon `.map-back` position/visibility
+                live in CSS. */}
+            <IconBtn
+              className="map-back"
+              icon="back"
+              round
+              tone="outline"
+              ariaLabel={t('notif.to_collection')}
+              onClick={() => nav('/trips')}
+            />
             <FlowMap
+              insets={insets}
               home={home}
               cities={cities}
               // Always pass the finish city (it feeds the camera framing). DRAW the
@@ -1325,96 +1438,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               onCityClick={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
               onMapClick={() => setSelectedMapId(null)}
             />
-          </div>
-        </div>
-
-        <div className="flow-editcol">
-          <div className="lp">
-            <div className="flow-lp-h">
-              {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
-                  "next" hint wraps INSIDE this column instead of overflowing and
-                  shoving the reset control off the narrow mobile sheet header. */}
-              <div className="grow--fit">
-                <FlowProgress
-                  steps={visibleSteps}
-                  current={stepIdx}
-                  accent={isAi ? 'var(--ai)' : 'var(--brand)'}
-                  onJump={(i) => setStep(visibleSteps[i].id)}
-                />
-              </div>
-            </div>
-
-            <div className="lp-b scrollbar-thin flow-lp-b">
-              {step === 'home' && (isAi ? (
-                <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
-              ) : (
-                <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
-              ))}
-              {step === 'cities' && (
-                <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} />
-              )}
-              {step === 'return' && (
-                <StepReturn
-                  home={home}
-                  lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
-                  end={end}
-                  setEnd={setEnd}
-                />
-              )}
-              {step === 'review' && (
-                <StepReview
-                  home={home}
-                  cities={cities}
-                  finishCity={finishCity}
-                  isStay={isStay}
-                  cover={cover}
-                  setCover={setCover}
-                  tripTitle={tripTitle}
-                  setTripTitle={setTripTitle}
-                  saving={saving}
-                  savedOk={savedOk}
-                  savedTripId={savedTripId}
-                  error={error}
-                />
-              )}
-            </div>
-
-            {/* AI composer — a pinned bar (flex:none) between the scrolling transcript
-                and the footer, exactly like the trip chat. Reuses <ChatComposer>: no
-                @-mention here (hideMention), the send button in the assistant gradient
-                (chat-composer--ai), and the "Triplanio печатает" pill while generating. */}
-            {step === 'home' && isAi && (
-              <ChatComposer
-                className="chat-composer--ai"
-                hideMention
-                onSend={onGenerate}
-                disabled={aiState === 'generating'}
-                isThinking={aiState === 'generating'}
-                placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-                /* Слитая кнопка: пусто → «Далее» (переход к шагу 2, доступен когда бот
-                   собрал черновик), есть текст → «Отправить». Gate тот же, что был у
-                   футер-кнопки Next на AI-шаге (aiState==='draft'). */
-                nextAction={goNext}
-                nextLabel={t('planner.next')}
-                nextDisabled={aiState !== 'draft'}
-              />
-            )}
-
-            {showFooter && (
-              <div className="lp-f flow-foot">
-                {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
-                {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
-                    icon in the header) — nav actions all live in the action bar. It
-                    also shows on the AI entry step (step 1), where a conversation can
-                    already have built a draft to clear. */}
-                {(!isFirstStep || (isAi && step === 'home')) && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
-                <div className="flow-foot__spacer grow" />
-                <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+          </>
+        )}
+      />
     </div>
   );
 }

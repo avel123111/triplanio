@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Icon } from '../design/icons';
-import { Card, PageHead } from '../design/index';
+import { MapShell, PageHead } from '../design/index';
 import MapView from '@/components/views/MapView';
-import { PeekSheet } from '@/components/ui/PeekSheet';
-import { useIsPhone } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { DateTime } from 'luxon';
@@ -78,13 +76,12 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
   const focus = selectedVisit ? [[selectedVisit.longitude, selectedVisit.latitude]] : null;
 
   return (
-    // The parent <main> is padding:0 + overflow:hidden for the map lens, so this
-    // fills the lens viewport; the map is absolute full-bleed, the panel floats.
-    <div className="trip-map-shell" style={{ position: 'relative', height: '100%', background: 'var(--surface)' }}>
-      <div className="trip-map-canvas" style={{
-        position: 'absolute', inset: 0, overflow: 'hidden',
-        background: isDark ? '#0e1a2e' : '#dceaf5', // design-token-exempt: map backdrop tint behind the canvas
-      }}>
+    <RoutePanel
+      route={route}
+      selectedIdx={selectedIdx}
+      onSelect={select}
+      onHover={setHoverId}
+      map={(insets) => (
         <MapView
           visits={visits}
           transfers={transfers}
@@ -99,6 +96,7 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
           focusZoom={FOCUS_ZOOM}
           cityBadge={cityBadge}
           cooperativeGestures={false}
+          insets={insets}
           onCityClick={(visitsAtPoint) => {
             const idx = route.findIndex(v => v.id === visitsAtPoint[0]?.id);
             if (idx !== -1) select(idx);
@@ -106,31 +104,22 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
           onCityHover={(visitsAtPoint) => setHoverId(visitsAtPoint ? (visitsAtPoint[0]?.id ?? null) : null)}
           onMapClick={deselect}
         />
-      </div>
-
-      <RoutePanel
-        route={route}
-        selectedIdx={selectedIdx}
-        onSelect={select}
-        onHover={setHoverId}
-      />
-    </div>
+      )}
+    />
   );
 }
 
 // ----- Route panel --------------------------------------------------------
-// Desktop: a floating glass panel top-left over the map. Phones (≤640px): the
-// same content becomes a PeekSheet — a non-modal detent bottom sheet that rests
-// at peek (grip + title) over the live map and raises to reveal the scrollable
-// route, collapsing back when a city is picked. Each stop = a leading marker
-// (transit number / interchange glyph / start·finish flag), the city name and
-// its dates.
-function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
+// Раскладку (карта во всю площадь + панель поверх / шит на телефоне) держит
+// примитив <MapShell>; здесь остаётся СОДЕРЖИМОЕ панели. Каждая остановка —
+// ведущий маркер (номер транзита / глиф пересадки / флаг старта·финиша), имя
+// города и его даты.
+function RoutePanel({ route, selectedIdx, onSelect, onHover, map }) {
   const { t } = useI18n();
-  const isPhone = useIsPhone();
-  // The mobile sheet rests at peek; picking a city collapses it (desktop has no
-  // detent state — it always shows the full list).
-  const [expanded, setExpanded] = useState(false);
+  // Шит стоит на нижнем детенте; выбор города опускает его обратно, чтобы город
+  // было видно на карте. На десктопе панель просто сворачивается кнопкой.
+  const [detent, setDetent] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
 
   const empty = route.length === 0;
   const nCities = empty ? 0 : uniqueCityCount(route); // dedup repeated cities for the count
@@ -152,8 +141,9 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
   });
 
   const hoverProps = (c) => ({ onMouseEnter: () => onHover(c.id), onMouseLeave: () => onHover(null) });
-  // Picking a city collapses the mobile sheet back to peek (desktop ignores it).
-  const pick = (i) => { onSelect(i); setExpanded(false); };
+  // Выбор города опускает шит на нижний детент — иначе выбранный город остаётся
+  // под ним (десктоп это игнорирует).
+  const pick = (i) => { onSelect(i); setDetent(0); };
 
   const head = (
     <PageHead
@@ -194,29 +184,19 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
     </div>
   );
 
-  // Phones: the non-modal detent sheet — peek over the live map, raise to browse,
-  // native scroll, no pull-to-refresh (see PeekSheet).
-  if (isPhone) {
-    return (
-      <PeekSheet
-        expanded={expanded}
-        onExpandedChange={setExpanded}
-        header={empty ? null : head}
-        label={t('trip.sidebar_route')}
-      >
-        {empty ? emptyState : list}
-      </PeekSheet>
-    );
-  }
-
-  // Desktop: панель поверх карты, слева сверху. Поверхность (грунт + рамка +
-  // скругление) несёт компонент <Card> (TRIP-337); `.map-route` теперь только
-  // раскладка. «Стекла» (блюра и тени) нет с TRIP-326, вместе с ним ушло и имя
-  // `.surface-glass`.
   return (
-    <Card as="aside" className="map-route" radius="md" pad="none">
-      {empty ? emptyState : (<>{head}{list}</>)}
-    </Card>
+    <MapShell
+      map={map}
+      panelHeader={empty ? null : head}
+      panel={empty ? emptyState : list}
+      panelLabel={t('trip.sidebar_route')}
+      detent={detent}
+      onDetentChange={setDetent}
+      collapsed={collapsed}
+      onCollapsedChange={setCollapsed}
+      collapseLabel={t('common.panel_collapse')}
+      expandLabel={t('common.panel_expand')}
+    />
   );
 }
 

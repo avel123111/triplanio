@@ -250,6 +250,12 @@
   --z-menu:      60;   /* выпадающее меню */
   --z-dock:      70;   /* кнопка чат-дока (+5 — его панель) */
   --z-peek:      90;   /* подглядывающая шторка карты */
+  /* Подложка ПОД канвасом карты: пока тайлы не пришли, видно её, а не белый лист.
+     Значения не новые — переехали из инлайна ScreenMap, где их не видел ни один гард.
+     floor-exempt: tokens +1 — --map-backdrop, подложка под канвасом карты, апрув Pavel
+     visual-diff-exempt: :root --map-backdrop — подложка под канвасом (была инлайном на .trip-map-canvas)
+     visual-diff-exempt: :root[data-theme=dark] --map-backdrop — то же в тёмной теме */
+  --map-backdrop: #dceaf5; /* design-token-exempt: это САМ токен подложки карты, а не его потребитель */
   --z-nav:       95;   /* нижняя навигация (+1 — баннер согласия) */
   --z-overlay:  100;   /* тосты, карта на весь экран */
   --z-panel:    110;   /* затемнение выезжающей панели визита (+10 — панель) */
@@ -286,6 +292,7 @@
 
 /* Dark theme */
 :root[data-theme="dark"] {
+  --map-backdrop: #0e1a2e; /* design-token-exempt: сам токен подложки карты */
   /* Brand / primary — dark */
   --primary-hover: #8AC1FF;
   --primary-press: #A8D2FF;
@@ -2020,19 +2027,24 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 /* Map lens route panel (TRIP-33): поверхность несёт компонент <Card> (TRIP-337),
    а `.map-route` держит ТОЛЬКО раскладку — из surface-co-селектора имя убрано.
    Floats top-left over the full-bleed map; collapses to a bottom sheet on phones (below). */
-.map-route {
-  position: absolute; z-index: 2;
-  top: 16px; left: 16px;
-  width: 300px; max-width: calc(100% - 32px);
-  max-height: calc(100% - 32px);
-  display: flex; flex-direction: column;
-  overflow: hidden;
-}
+/* Раскладку панели (позицию над картой, ширину, скролл) держит примитив
+   `.mapshell`; `.map-route` как обёртка больше не рендерится — от семьи остались
+   только элементы содержимого (__head/__list/__item/__marker).
+   visual-diff-exempt: .map-route position — обёртка снята, панель ставит .mapshell__panel
+   visual-diff-exempt: .map-route z-index — то же
+   visual-diff-exempt: .map-route top — то же
+   visual-diff-exempt: .map-route left — то же
+   visual-diff-exempt: .map-route width — ширину колонки держит .mapshell__panel
+   visual-diff-exempt: .map-route max-width — то же
+   visual-diff-exempt: .map-route max-height — высоту держит .mapshell__panel
+   visual-diff-exempt: .map-route display — колонку держит .mapshell__card
+   visual-diff-exempt: .map-route flex-direction — то же
+   visual-diff-exempt: .map-route overflow — клип держит .mapshell__card (<Card>) */
 /* TRIP-337: шапка панели = канон <PageHead> (title «Маршрут» + subtitle «N городов»);
    гасим его margin-bottom, разделитель и отступ несёт эта строка. */
 .map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); margin-bottom: 0; }
 .map-route__empty { padding: 32px 20px; text-align: center; }
-.map-route__list { padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.map-route__list { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
 .map-route__item {
   display: flex; align-items: center; gap: 12px; width: 100%;
   padding: 8px 10px; border: none; background: transparent; border-radius: var(--r-sm);
@@ -2058,7 +2070,10 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
    desktop panel. The route head + rows reuse the .map-route__* skin; PeekSheet's
    __body is the scroller, so the inner list must not scroll on its own. */
 .peek-sheet .map-route__head { padding-top: 2px; border-bottom: 0; }
-.peek-sheet .map-route__list { overflow: visible; padding: 8px 8px 0; }
+/* Скроллит ТЕЛО шита/панели (`.peek-sheet__body` / `.mapshell__body`), а не сам
+   список: два вложенных скроллера дают «залипающий» жест на телефоне.
+   visual-diff-exempt: .map-route__list overflow — скроллит тело шелла, не список */
+.peek-sheet .map-route__list { padding: 8px 8px 0; }
 
 /* City badge (TRIP-33): label next to the active city's pin on the Map lens.
    TRIP-326: glass снят — непрозрачный --surface. Метка passiv (не ест клики). */
@@ -3989,51 +4004,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   overflow: hidden;
   background: var(--bg, var(--wash));
 }
-/* Desktop: the map is the full-bleed canvas and the step panel floats over it
-   (Pavel 2026-08-18 — «карта весь фон, контент плавающая панель поверх»). The
-   panel is anchored LEFT so the map's own controls (top-right) and nights badge
-   (bottom-right) stay clear of it — the canonical map-app layout (list left,
-   map right). */
-.flow-grid {
-  flex: 1;
-  min-height: 0;
-  /* Positioning context: the map fills it, the panel floats over it, and the
-     city dropdown (portaled position:absolute) resolves coords against it. */
-  position: relative;
-  overflow: hidden;
-}
-.flow-mapcol { position: absolute; inset: 0; }
-/* Map is edge-to-edge — no inset frame, border or radius; it IS the background. */
-.flow-mapbox { position: absolute; inset: 0; overflow: hidden; }
-/* Floating panel column: pinned to the left with a gutter on top/left/bottom
-   (padding-right:0 so the panel's right edge sits inside the map, not doubled);
-   pointer-events pass THROUGH the column so the map stays pannable, the panel
-   re-enables them. */
-.flow-editcol {
-  position: absolute; top: 0; left: 0; bottom: 0;
-  display: flex;
-  width: min(550px, 44vw);
-  padding: var(--sp-7); padding-right: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-/* The floating panel: a single elevated white card over the map — its own
-   border / radius / shadow, no double-framing. */
-.flow-editcol > .lp {
-  flex: 1; min-width: 0; min-height: 0; margin: 0;
-  pointer-events: auto;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-btn);
-  box-shadow: var(--sh-2);
-}
-/* Панель флоу (планировщик): header/footer СИДЯТ на фоне приложения (--bg), а тело
-   (`.lp-b`, прозрачное → `.lp` = --surface) остаётся белой карточкой — в ОБЕИХ темах
-   (запрос Pavel: в light шапка/футер = фон, тело белое; в dark так уже было). Фон
-   header/footer задан в базе (`.flow-lp-h` + `.flow-editcol .lp-f` ниже), поэтому
-   тёмная тема отдельного правила на них не требует. В dark дополнительно тускнеет
-   САМА панель — тело перестаёт быть ярко-белым и уходит на --bg: */
-[data-theme="dark"] .flow-editcol > .lp { background: var(--bg); }
 /* Floating round "back" control on the map (canon layout, reused on other
    screens): white surface circle (icon-btn--outline) top-left, over the map.
    Hidden by default; shown on the mobile shell where the app header is removed. */
@@ -4043,9 +4013,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Шапка на фоне приложения (--bg), не на белой поверхности — тело белое, шапка/футер
    с ним контрастируют (запрос Pavel №2). В dark то же --bg (панель тускнеет целиком). */
 .flow-lp-h { flex: none; padding: var(--sp-6) var(--sp-7); border-bottom: 1px solid var(--line); background: var(--bg); display: flex; align-items: flex-start; gap: var(--sp-6); }
-/* Футер флоу — тот же фон приложения, что и шапка; scoped к .flow-editcol, поэтому
-   общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся на своём --wash (запрос Pavel №2). */
-.flow-editcol .lp-f { background: var(--bg); }
+/* Футер флоу — тот же фон приложения, что и шапка. Раньше правило было scoped к
+   `.flow-editcol` (колонка удалена вместе с раскладкой); теперь оно висит на
+   СВОЁМ классе футера, а общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся
+   на своём --wash.
+   visual-diff-move: .flow-editcol .lp-f -> flow-foot */
+.flow-foot { background: var(--bg); }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 /* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
@@ -4148,29 +4121,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* grid (not inline-flex): keeps the base `.icon-btn` place-items:center so the
      arrow stays centred; inline-flex would drop it to the top-left corner. */
   .map-back { display: grid; }
-  /* Grid is a fixed-height flex column that does NOT scroll; the sheet body does. */
-  .flow-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-  /* Map: fixed band at the top, edge-to-edge (no inset frame / radius). */
-  .flow-mapcol { flex: 0 0 32%; position: relative; min-height: 0; }
-  .flow-mapbox { position: absolute; inset: 0; margin: 0; border: none; border-radius: 0; }
-  /* Sheet: fills the rest and overlaps the map by 16px with a rounded top. */
-  .flow-editcol {
-    position: relative; flex: 1 1 auto; min-height: 0;
-    display: flex; width: auto; padding: 0;
-    margin-top: calc(-1 * var(--sp-7)); z-index: 2; pointer-events: auto;
-  }
-  .flow-editcol > .lp {
-    flex: 1; min-height: 0; margin: 0;
-    border: none; border-radius: var(--r-xl) var(--r-xl) 0 0;
-    /* elevation from the base .lp (var(--sh-1), token) — no raw shadow colour;
-       the rounded top over the map already reads as a sheet at the seam. */
-  }
-  /* Grabber handle at the top of the sheet header. */
-  .flow-lp-h { position: relative; padding-top: var(--sp-8); }
-  .flow-lp-h::before {
-    content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
-    width: 38px; height: 4px; border-radius: 2px; background: var(--line-strong);
-  }
+  /* Раскладка «карта + панель» уехала в примитив `.mapshell`; полосы карты и
+     статичной панели-«шита» больше нет — карта во всю площадь, панель в
+     настоящем `<PeekSheet>` с детентами. Нарисованная псевдоэлементом «ручка»
+     тоже не нужна: у настоящего шита есть свой грип, и он тянется. */
   /* The FlowProgress "next step" hint (.t-meta) is redundant with the segmented
      bar on the narrow sheet and would crowd the reset control — hide it here.
      Scoped to the sheet header, so it never touches .t-meta elsewhere. */
@@ -4230,6 +4184,84 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Quick-start chips under the welcome message — a small gap below it. The empty
    `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
 .pl-ai-chips { margin-top: var(--sp-4); }
+/* ── Снятая раскладка экранов с картой (TRIP-422) ────────────────────────────
+   Планировщик, линза карты и редактор держали одну и ту же раскладку тремя
+   своими наборами классов. Их сняли — раскладку теперь держит примитив
+   `.mapshell`, и от прежних семей остались только элементы СОДЕРЖИМОГО.
+   Ниже объявлено каждое ушедшее объявление: 2p судит по итоговым значениям, и
+   «переехало вместе с разметкой» для него не отличается от «пропало».
+   visual-diff-exempt: .flow-lp-h {@media (max-width: 960px)} padding-top — место под нарисованную «ручку» не нужно: грип у шита свой
+   visual-diff-exempt: .flow-lp-h {@media (max-width: 960px)} position — то же правило, якорь псевдоэлемента снят
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} background — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} border-radius — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} content — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} height — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} left — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} position — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} top — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} transform — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-lp-h::before {@media (max-width: 960px)} width — нарисованная «ручка» снята: у настоящего шита есть свой грип
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} border — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} border-radius — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} display — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} flex — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} margin — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} margin-top — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} min-height — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} padding — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} pointer-events — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} position — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} width — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol {@media (max-width: 960px)} z-index — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol background — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol border — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol border-radius — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol bottom — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol box-shadow — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol display — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol flex — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol left — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol margin — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol min-height — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol min-width — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol padding — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol padding-right — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol pointer-events — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol position — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol top — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol width — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-editcol z-index — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid {@media (max-width: 960px)} display — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid {@media (max-width: 960px)} flex — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid {@media (max-width: 960px)} flex-direction — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid {@media (max-width: 960px)} min-height — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid {@media (max-width: 960px)} overflow — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid flex — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid min-height — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid overflow — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-grid position — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapbox {@media (max-width: 960px)} border — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapbox {@media (max-width: 960px)} border-radius — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapbox {@media (max-width: 960px)} inset — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapbox {@media (max-width: 960px)} margin — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapbox {@media (max-width: 960px)} position — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapbox inset — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapbox overflow — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapbox position — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} flex — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} min-height — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapcol {@media (max-width: 960px)} position — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapcol inset — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .flow-mapcol position — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .lp-f background — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .lp {@media (max-width: 960px)} border — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .lp {@media (max-width: 960px)} border-radius — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .lp {@media (max-width: 960px)} flex — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .lp {@media (max-width: 960px)} margin — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .lp {@media (max-width: 960px)} min-height — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .lp min-width — раскладка колонки/панели флоу уехала в примитив .mapshell
+   visual-diff-exempt: .lp pointer-events — раскладка колонки/панели флоу уехала в примитив .mapshell */
+
 /* ══ MapShell — раскладка «карта во всю площадь + панель поверх» (TRIP-422) ══
    Один примитив на все экраны с картой: планировщик, линза карты, редактор
    маршрута. Раньше эта раскладка была написана трижды (`.flow-*`, `.trip-map-*`,
@@ -4253,6 +4285,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__map position — карта во всю площадь шелла
    visual-diff-exempt: .mapshell__map inset — карта во всю площадь шелла
    visual-diff-exempt: .mapshell__map overflow — клип канваса по краю шелла
+   visual-diff-exempt: .mapshell__map background — подложка под канвасом (была инлайном на .trip-map-canvas)
    visual-diff-exempt: .mapshell__panel position — плавающая колонка поверх карты
    visual-diff-exempt: .mapshell__panel top — плавающая колонка поверх карты
    visual-diff-exempt: .mapshell__panel left — плавающая колонка поверх карты
@@ -4285,7 +4318,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Состояние «шит раскрыт» перестало быть классом и стало детентом (data-detent):
    visual-diff-exempt: .is-expanded transform — класс снят, раскрытость выражена детентом */
 .mapshell { position: relative; flex: 1; min-height: 0; overflow: hidden; }
-.mapshell__map { position: absolute; inset: 0; overflow: hidden; }
+.mapshell__map { position: absolute; inset: 0; overflow: hidden; background: var(--map-backdrop); }
 /* Плавающая колонка слева с воздухом по трём сторонам; `padding-right: 0` —
    правый край панели уходит внутрь карты, а не двоит отступ. */
 .mapshell__panel {
@@ -6931,11 +6964,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    высоту диктует ДЕТЕНТ, иначе «100% экрана» означало бы «сколько получилось».
    visual-diff-exempt: .peek-sheet height — высоту диктует детент, а не содержимое (3 детента вместо 2)
    visual-diff-exempt: .peek-sheet max-height — то же: потолок 88dvh заменён детентом
-   visual-diff-exempt: .peek-sheet transform — сдвиг считается от детента (--sheet-y), а не от измеренного peek
    visual-diff-exempt: .peek-sheet overflow — содержимое ниже видимой полосы не рисуется за краем шита
    visual-diff-exempt: .peek-sheet.is-expanded transform — состояние «раскрыт» стало детентом (data-detent), класса нет
    visual-diff-exempt: .peek-sheet__body height — тело ростом с видимую полосу: скролл внутри неё, а не за экраном
-   visual-diff-exempt: .peek-sheet__body flex — то же правило: высоту задаёт детент */
+   visual-diff-exempt: .peek-sheet__body flex — высоту тела задаёт детент, а не содержимое
+   visual-diff-exempt: .peek-sheet__foot flex — панель действий вне скролла тела
+   visual-diff-exempt: .peek-sheet__foot padding-bottom — футер поднят над доком и домашней полоской */
+/* Панель действий шита — СНАРУЖИ скролла: она обязана быть на виду при любом
+   положении списка. Поднята над нижним навом и домашней полоской. */
+.peek-sheet__foot { flex: none; padding-bottom: calc(60px + env(safe-area-inset-bottom)); } /* design-token-exempt: 60px — высота фиксированного нижнего нава (тот же литерал, что у .peek-sheet__body), не ступень шкалы */
 .peek-sheet {
   position: fixed; left: 0; right: 0; bottom: 0;
   /* Below the fixed bottom-nav dock (--z-nav) so the dock floats on top
@@ -6961,7 +6998,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    внутри неё, а не уезжает под нижний край экрана. Во время жеста высота НЕ
    пересчитывается (`--sheet-h` фиксируется на осадке): иначе каждый кадр драга
    стоил бы перекладку всего списка. */
-.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom)); }
+.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px) - var(--sheet-foot, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom)); }
 
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).

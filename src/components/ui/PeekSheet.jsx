@@ -60,10 +60,13 @@ function safeAreaBottom() {
 /**
  * `header` — то, что видно на САМОМ НИЖНЕМ детенте (и зона перетаскивания):
  * шапка обязана читаться, когда шит опущен, иначе опущенный шит превращается в
- * безымянную полоску. `children` — тело, оно скроллится.
+ * безымянную полоску. `children` — тело, оно скроллится. `footer` — панель
+ * действий: она обязана оставаться на виду при любом скролле тела, поэтому
+ * стоит СНАРУЖИ скролл-области, а не в её конце.
  *
  * @param {{
  *   header?: any,
+ *   footer?: any,
  *   children?: any,
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
@@ -75,6 +78,7 @@ function safeAreaBottom() {
  */
 export function PeekSheet({
   header,
+  footer = null,
   children,
   detent = 0,
   onDetentChange,
@@ -86,10 +90,12 @@ export function PeekSheet({
   const sheetRef = useRef(null);
   const headRef = useRef(null);
   const bodyRef = useRef(null);
+  const footRef = useRef(null);
   const drag = useRef(null);
   // Полоса шапки (грип + header + док + safe-area) и высота вьюпорта — обе
   // измеряются, а не задаются числом: шапка у каждого экрана своя.
   const [headPx, setHeadPx] = useState(96);
+  const [footPx, setFootPx] = useState(0);
   const [vh, setVh] = useState(() => (typeof window === 'undefined' ? 0 : window.innerHeight));
   const [dragY, setDragY] = useState(null); // px, пока палец на экране; иначе null
 
@@ -108,6 +114,7 @@ export function PeekSheet({
     if (!sheet || !head) return;
     const band = head.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
     setHeadPx(Math.round(band + DOCK_PX + safeAreaBottom()));
+    setFootPx(Math.round(footRef.current?.getBoundingClientRect().height || 0));
     setVh(window.innerHeight);
   }, []);
 
@@ -115,6 +122,7 @@ export function PeekSheet({
     measure();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     if (ro && headRef.current) ro.observe(headRef.current);
+    if (ro && footRef.current) ro.observe(footRef.current);
     window.addEventListener('resize', measure);
     return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measure); };
   }, [measure]);
@@ -217,6 +225,7 @@ export function PeekSheet({
     '--sheet-y': (dragY ?? restY) + 'px',
     '--sheet-h': sheetH + 'px',
     '--sheet-head': headPx + 'px',
+    '--sheet-foot': footPx + 'px',
   };
 
   if (typeof document === 'undefined') return null;
@@ -245,6 +254,7 @@ export function PeekSheet({
       </div>
       <div ref={headRef} className="peek-sheet__head" data-peek-head>{header}</div>
       <div ref={bodyRef} className="peek-sheet__body">{children}</div>
+      {footer && <div ref={footRef} className="peek-sheet__foot">{footer}</div>}
     </div>,
     document.body,
   );
