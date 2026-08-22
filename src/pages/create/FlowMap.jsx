@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { mapboxgl, clampPadding } from '@/lib/mapbox';
+import { mapboxgl } from '@/lib/mapbox';
 import { calmFit } from '@/lib/map/camera';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
@@ -27,64 +27,43 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
   return legs;
 }
 
-// ★ ЗАКРЫТАЯ ПЛОЩАДЬ = ОТСТУП ВЬЮПОРТА (`padding`), А НЕ СДВИГ КАМЕРЫ.
-// Панель на десктопе и шит на телефоне лежат ПОВЕРХ карты, поэтому кадр обязан
-// строиться в СВОБОДНОМ окне. В Mapbox это ровно то, для чего существует
-// `padding`: он сдвигает центр проекции, и на глобусе диск планеты встаёт в
-// центр свободного окна. `offset` этого НЕ делает — он поворачивает шар под
-// камерой, а сам диск как стоял в центре канваса, так и стоит; отсюда и был
-// «глобус наполовину под шитом» и тёмный космос в верхней половине экрана.
-// Замерено на живом экране (430×900, шит 612): отступ — 0.07% тёмных пикселей в
-// свободном окне, сдвиг — 26.5%.
+// ★ КАДР СЧИТАЕТСЯ ОТ КОНТЕЙНЕРА, И ЭТОГО ДОСТАТОЧНО. Слот карты, который даёт
+// `<MapShell>`, И ЕСТЬ свободное окно: панель на десктопе и шит на телефоне —
+// граница слота, а не наложение поверх него. Поэтому здесь больше нет ни места
+// под панель в отступе кадра, ни сдвига камеры: осталcя только ВОЗДУХ вокруг
+// маршрута. Раньше ширина панели считалась ЗДЕСЬ (`min(550, 44vw)` и брейкпоинт
+// 960) — вторая копия числа из CSS, которая расходилась с ним на первой же
+// правке раскладки.
 //
-// Прежняя редакция обвиняла в кольце вокруг планеты сам `setPadding`. Это была
-// ошибка диагноза: кольцо давал `fitBounds`, которому отступ съедал канвас и
-// ронял зум почти в ноль. Лечится это клампом отступа (`clampPadding`), а не
-// отказом от отступа.
-//
-// `insets` приходят от `<MapShell>` — он один считает, сколько площади закрыто.
+// Почему не отступ вьюпорта под панель: диаметр глобуса Mapbox считает от
+// размеров КАНВАСА, а не от свободной его части, поэтому канвас во весь экран
+// даёт шар МЕНЬШЕ свободного окна — вокруг него видно дымку и космос. Замер по
+// пикселям: канвас во весь экран телефона — 22.9 % дымки и все четыре угла вне
+// планеты; слот, равный свободному окну, — ни одной точки рамки вне планеты.
 
-/** Воздух вокруг содержимого кадра. Место под панель/шит сюда НЕ входит: его
- *  несут `insets`, и складываются они уже в эффекте. */
-function fitAirFor(w) {
+function fitPaddingFor(w) {
   return w > 960 ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 52, left: 40 };
 }
 
-const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
-const addPad = (a, b) => ({
-  top: a.top + b.top, right: a.right + b.right, bottom: a.bottom + b.bottom, left: a.left + b.left,
-});
-
-// Mapbox globe: экватор занимает 512·2^z px, значит диаметр шара на экране ≈
-// 512·2^z/π. Обращаем — зум, при котором шар имеет заданный диаметр.
-const zoomForDiameter = (d) => Math.log2((d * Math.PI) / 512);
-
 // The neutral "start" globe view (before any route is picked, and what a draft
-// RESET returns to). Размер шара считается от СВОБОДНОГО окна, а не от канваса:
-// именно поэтому на dev не было видно ни края планеты, ни космоса — карта там
-// была полосой в 32% высоты, и шар её всегда переполнял.
-//
-// ТЕЛЕФОН — ПОКРЫТИЕ: диаметр ≥ диагонали свободного окна, чтобы планета
-// выходила за кадр вместе с углами и показывать её край было не с чего. Нижняя
-// граница зума — 2, ровно то значение, что стояло на dev: на детенте «как было»
-// (свободное окно 430×288) формула даёт меньше, и клип по 2 возвращает
-// в точности прежний кадр.
-// ДЕСКТОП — ВПИСЫВАНИЕ: шар виден целиком и с полями, как и был.
-function startGlobeView(map, insets, winW) {
+// RESET returns to). Mapbox globe: at zoom z the equatorial circumference spans
+// 512·2^z px, so the sphere's on-screen diameter ≈ 512·2^z/π. Invert that to the
+// zoom whose globe fills ~85% of the SLOT's height. Слот — это свободное окно
+// целиком, поэтому «место рядом с панелью» больше не вычитается: панель слот уже
+// не перекрывает. Телефон держит фиксированный стартовый зум — его полоса карты
+// и так кадрирует шар (решение Pavel). Coefficients are eyeballed; nudge them
+// here if the globe reads a touch big/small.
+function startGlobeView(map, pad, winW) {
   const center = [0, 20];
+  if (winW <= 960) return { center, zoom: 2 };
   const el = map.getContainer?.();
-  const W = el?.clientWidth || 0;
   const H = el?.clientHeight || 0;
-  if (!H || !W) return { center, zoom: winW > 960 ? 2.4 : 2 };
-  const freeW = Math.max(200, W - insets.left - insets.right);
-  const freeH = Math.max(160, H - insets.top - insets.bottom);
-  if (winW <= 960) {
-    // +5% запаса: диагональ впритык оставляет край планеты ровно в углу кадра.
-    const d = Math.hypot(freeW, freeH) * 1.05;
-    return { center, zoom: Math.max(2, Math.min(5, zoomForDiameter(d))) };
-  }
-  const d = Math.min(0.85 * freeH, 0.92 * freeW);
-  return { center, zoom: Math.max(0.8, Math.min(5, zoomForDiameter(d))) };
+  const W = el?.clientWidth || 0;
+  if (!H || !W) return { center, zoom: 2.4 };
+  const visW = Math.max(360, W - pad.left - pad.right); // за вычетом воздуха кадра
+  const targetD = Math.min(0.85 * H, 0.92 * visW);
+  const zoom = Math.max(0.8, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
+  return { center, zoom };
 }
 
 // =====================================================================
@@ -110,8 +89,6 @@ export default function FlowMap({
   // Map-lens-style interactivity (all optional — omit for a passive preview):
   hoveredId = null, selectedId = null, cityBadge = null,
   onCityHover, onCityClick, onMapClick,
-  // Закрытая панелью/шитом площадь канваса (px) — приходит от `<MapShell>`.
-  insets = null,
 }) {
   const t = useT();
   const { isDark } = useTheme();
@@ -201,13 +178,7 @@ export default function FlowMap({
   if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
   cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
   if (hasFinish) fitPositions.push([finishCity.longitude, finishCity.latitude]);
-  // Закрытая площадь — часть КЛЮЧА кадрирования: подняли шит — свободное окно
-  // другое, кадр обязан пересчитаться. Ref, чтобы эффект читал свежее значение.
-  const box = insets || NO_INSETS;
-  const insetsRef = useRef(box);
-  insetsRef.current = box;
-  const insetsKey = `${box.top}|${box.right}|${box.bottom}|${box.left}`;
-  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}@${insetsKey}`;
+  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // A FlowMap-owned handle to the (singleton) map instance. useMapSurface nulls its
@@ -223,9 +194,6 @@ export default function FlowMap({
   // route geometry unchanged (a step change) doesn't re-fit. Reset when the route
   // empties, so the next real route frames again.
   const fittedSigRef = useRef('');
-  // Камера этого экрана уже ставилась хотя бы раз: первый кадр обязан встать
-  // мгновенно (его прячет фейд), а вот смену детента надо доводить анимацией.
-  const cameraSetRef = useRef(false);
 
   // Markers + fit.
   useEffect(() => {
@@ -250,32 +218,33 @@ export default function FlowMap({
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
     if (canFit) {
-      // Закрытая площадь + воздух = ОДИН отступ вьюпорта. Кламп не даёт отступу
-      // съесть канвас: именно это (а не сам отступ) роняло зум и рисовало кольцо.
-      const box = clampPadding(map, addPad(fitAirFor(winW), insetsRef.current));
+      const pad = fitPaddingFor(winW);
       if (fitPositions.length) {
         // Route: re-frame ONLY when the route geometry / viewport actually changed
         // (fitKey) — a step change rebuilds pins above but leaves fitKey alone, so
-        // the camera holds.
+        // the camera holds. Отступ вьюпорта тут всегда нулевой: место под панель
+        // отдаёт САМ СЛОТ, а воздух кадра несёт `padding` самого фита.
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
-          calmFit(map, fitPositions, { padding: box, maxZoom: 7, singleZoom: 8 });
+          try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
+          calmFit(map, fitPositions, { padding: pad, maxZoom: 7, singleZoom: 8 });
         }
         prevHadPointsRef.current = true;
       } else {
-        // Empty globe = the neutral START view. Отступ ставит диск планеты в
-        // центр свободного окна, зум — от размера этого окна. Возврат из
-        // маршрута (draft RESET) выезжает плавно; смена детента — короткий
-        // доводочный ease (камера обязана догнать шит, но не «прыгать»); первый
-        // кадр встаёт мгновенно, его прячет фейд.
-        const view = startGlobeView(map, insetsRef.current, winW);
-        const duration = prevHadPointsRef.current ? 600 : (cameraSetRef.current ? 320 : 0);
-        try { map.easeTo({ ...view, padding: box, duration }); }
-        catch { try { map.jumpTo(view); } catch { /* ignore */ } }
+        // Empty globe = the neutral START view. Шар встаёт по центру СЛОТА и
+        // сайзится от него (~85% высоты на десктопе), поэтому отступ вьюпорта не
+        // нужен и здесь. Returning here from a route (draft RESET) glides back
+        // out; a fresh mount / resize just snaps (the fade-in hides it).
+        try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ }
+        const view = startGlobeView(map, pad, winW);
+        if (prevHadPointsRef.current) {
+          try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
+        } else {
+          try { map.jumpTo(view); } catch { /* ignore */ }
+        }
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';
       }
-      cameraSetRef.current = true;
       // Our camera is now set — safe to reveal (see `framed`). Idempotent; React
       // bails on the unchanged value after the first flip.
       setFramed(true);
@@ -284,7 +253,7 @@ export default function FlowMap({
     // ptsKey → rebuild markers (incl. the step-toggled return pin); fitKey → re-frame
     // (route geometry + viewport size, so it also covers resize). fitKey can change
     // without ptsKey (a distinct return set while off the return step), so both are deps.
-    // winW/winH are read directly inside (fitAirFor / startGlobeView) — listed so
+    // winW/winH are read directly inside (fitPaddingFor / startGlobeView) — listed so
     // exhaustive-deps stays honest, though fitKey already carries them.
   }, [ready, canFit, ptsKey, fitKey, winW, winH]);
 

@@ -4289,7 +4289,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell min-height — новый примитив раскладки
    visual-diff-exempt: .mapshell overflow — новый примитив раскладки
    visual-diff-exempt: .mapshell__map position — карта во всю площадь шелла
-   visual-diff-exempt: .mapshell__map inset — карта во всю площадь шелла
+   visual-diff-exempt: .mapshell__map top — слот карты = свободное окно шелла
+   visual-diff-exempt: .mapshell__map right — слот карты = свободное окно шелла
+   visual-diff-exempt: .mapshell__map bottom — снизу слот кончается там, где начинается шит
+   visual-diff-exempt: .mapshell__map left — слева слот кончается там, где кончается панель
    visual-diff-exempt: .mapshell__map overflow — клип канваса по краю шелла
    visual-diff-exempt: .mapshell__map background — подложка под канвасом (была инлайном на .trip-map-canvas)
    visual-diff-exempt: .mapshell__panel position — плавающая колонка поверх карты
@@ -4330,7 +4333,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    любой контейнер с определённой высотой, поэтому здесь ОБА правила.
    visual-diff-exempt: .mapshell height — примитив не имеет права зависеть от display родителя (в блочном контейнере flex:1 = ноль высоты) */
 .mapshell { position: relative; flex: 1; height: 100%; min-height: 0; overflow: hidden; }
-.mapshell__map { position: absolute; inset: 0; overflow: hidden; background: var(--map-backdrop); }
+/* Слот карты = СВОБОДНОЕ ОКНО: панель и шит не лежат поверх карты, они её
+   граница. Величины приходят от `<MapShell>` двумя переменными (ширина
+   панели · высота шита); по умолчанию слот занимает шелл целиком. */
+.mapshell__map { position: absolute; top: 0; right: 0; bottom: var(--mapshell-bottom, 0px); left: var(--mapshell-left, 0px); overflow: hidden; background: var(--map-backdrop); }
 /* Плавающая колонка слева с воздухом по трём сторонам; `padding-right: 0` —
    правый край панели уходит внутрь карты, а не двоит отступ. */
 .mapshell__panel {

@@ -85,10 +85,9 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
       selectedIdx={selectedIdx}
       onSelect={select}
       onHover={setHoverId}
-      // Камера линзы тоже НЕ следит за панелью/шитом: до этой ветки она не
-      // следила, и пока поведение не проверено на живом экране, менять его
-      // нечем. Шелл здесь — раскладка.
-      map={() => (
+      // Камере ничего передавать не нужно: слот карты И ЕСТЬ свободное окно
+      // (см. `<MapShell>`), поэтому `MapView` кадрирует по своему контейнеру.
+      map={(
         <MapView
           visits={visits}
           transfers={transfers}

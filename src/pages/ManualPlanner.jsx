@@ -1406,13 +1406,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         )}
         panelFooter={FOOTER}
         panel={BODY}
-        // ★ КАМЕРА КАРТЫ ОТ ШЕЛЛА НИЧЕГО НЕ ПОЛУЧАЕТ. Шелл здесь отвечает ТОЛЬКО
-        // за раскладку. Попытка навести камеру на свободный остаток ломала
-        // глобус: отступ вьюпорта на проекции `globe` роняет зум и рвёт лимб
-        // атмосферы (замер на живой карте — снимки в PR). Пока это не проверено
-        // на живом экране, карта работает ровно так, как работала до шелла:
-        // `FlowMap` побайтово равен версии из dev.
-        map={(insets) => (
+        // Камере ничего передавать не нужно: слот карты И ЕСТЬ свободное окно
+        // (см. `<MapShell>`), поэтому `FlowMap` побайтово равен версии из dev и
+        // считает кадр от своего контейнера, как считал всегда.
+        map={(
           <>
             {/* Floating round back control — shown only on the phone shell (the app
                 header is removed there); the canon `.map-back` position/visibility
@@ -1426,7 +1423,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               onClick={() => nav('/trips')}
             />
             <FlowMap
-              insets={insets}
               home={home}
               cities={cities}
               // Always pass the finish city (it feeds the camera framing). DRAW the
