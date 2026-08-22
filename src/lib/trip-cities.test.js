@@ -2,7 +2,7 @@
 // Run: npm test  (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { uniqueCityCount, uniqueCountryCount, transitVisits, isTransitVisit, uniqueTransitCities, cityLabel, localizeVisits } from './trip-cities.js';
+import { uniqueCityCount, uniqueCountryCount, uniqueCountryCodes, transitVisits, isTransitVisit, uniqueTransitCities, cityLabel, localizeVisits } from './trip-cities.js';
 
 // A trip: home anchor (start) → Lisbon → Porto → a pass-through waypoint →
 // Madrid → back to Lisbon → home anchor (end). Anchors + waypoint must not
@@ -25,6 +25,25 @@ test('uniqueCityCount: transit only, repeats deduped', () => {
 test('uniqueCountryCount: countries of transit cities only', () => {
   // PT + ES (DE belongs only to the anchors -> excluded)
   assert.equal(uniqueCountryCount(VISITS), 2);
+});
+
+test('uniqueCountryCodes: lowercase ISO, first-occurrence order, transit only', () => {
+  // Ряд флагов карточки трипа. DE живёт только на якорях, ES — на waypoint'е
+  // Badajoz И на транзитном Мадриде: waypoint не должен «протаскивать» страну
+  // вперёд, поэтому порядок PT → ES (по первому ТРАНЗИТНОМУ городу).
+  assert.deepEqual(uniqueCountryCodes(VISITS), ['pt', 'es']);
+});
+
+test('uniqueCountryCodes: same set as the country COUNT, empty input safe', () => {
+  assert.equal(uniqueCountryCodes(VISITS).length, uniqueCountryCount(VISITS));
+  assert.deepEqual(uniqueCountryCodes([]), []);
+  assert.deepEqual(uniqueCountryCodes(null), []);
+  // Регистр/пробелы кода — одна страна, один флаг (файл флага lowercase).
+  assert.deepEqual(uniqueCountryCodes([
+    { kind: 'transit', city_name: 'Madrid',    country_code: 'ES', external_city_id: 'es-madrid' },
+    { kind: 'transit', city_name: 'Barcelona', country_code: ' es ', external_city_id: 'es-bcn' },
+    { kind: 'transit', city_name: 'Nowhere',   country_code: '',   external_city_id: 'x' },
+  ]), ['es']);
 });
 
 test('counts ignore anchors/waypoints entirely', () => {
