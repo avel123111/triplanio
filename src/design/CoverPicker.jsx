@@ -135,7 +135,9 @@ export function CoverPicker({
   };
 
   return (
-    <div className="col col--g6">
+    /* `.tcp` на корне — не декорация: он несёт `min-width: 0`, без которого лента
+       миниатюр не сжимается и распирает контейнер (см. правило в app.css). */
+    <div className="col col--g6 tcp">
       <div className={["tcp__hero", className].filter(Boolean).join(" ")}>
         {/* Лента слайдов. `data-disabled` глушит ИМЕННО прокрутку: у зрителя
             (read-only) нативный свайп не выключается ни `disabled` у кнопок, ни
