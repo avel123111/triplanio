@@ -13,22 +13,23 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Row, Col, Grid, Grow } from '../design/Layout';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
-import { classifyError } from '@/lib/errorText';
+import { classifyError, errorText } from '@/lib/errorText';
 import { goPro } from '@/lib/goPro';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
-import { TRIP_SHELL_KEY } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, listBinding } from '@/lib/trip-data';
+import { TG_TRIP_KEY, fetchTripIntegrations, disconnectTelegram, setTelegramActive, startTelegramLink, invalidateTelegram } from '@/lib/telegramMutations';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, IconBtn, Severity, Skeleton, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
-import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { telegram as tgBrand } from '@/lib/externalBrands';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
@@ -66,10 +67,11 @@ const TG_TILE = { background: tgBrand.bg, color: tgBrand.fg };
 // сохранить: {message}"). PRO_REQUIRED — единственный код, что НЕ идёт в тост,
 // а открывает Pro-апселл (ветка в `toggleFeature`).
 //
-// ⚠️ Долг (не этот PR): `telegramSetActive` (~:354), `telegramDisconnect`
-// (~:364) и `removeTripMember` (~:708) всё ещё печатают в тост `error?.message`
-// (сырую строку SDK). Их источник кода не заполняет — ратчет сырых клиентских
-// ошибок (гард 3b) держит это число и не даёт ему расти.
+// Telegram-привязки (`telegramDisconnect`/`telegramSetActive`, TRIP-439) идут
+// через data-access слой `telegramMutations.js`: отказ приходит `code`, а тост
+// его словами через `errorText`/`classifyError` — сырой `error?.message` больше
+// не показывается. Остаток долга: `removeTripMember` (~:708) — ратчет сырых
+// клиентских ошибок (гард 3b) держит это число и не даёт ему расти.
 
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
 // with every optional/pro feature off - they never auto-enable for anyone.
@@ -132,24 +134,29 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
   const [copied, setCopied] = useState(false);
   const baselineRef = React.useRef(0);
 
-  // Snapshot current bindings, then generate the one-time deep link on open.
+  // Generate the one-time deep link when the dialog OPENS. The dialog stays mounted
+  // at a stable position (so the empty→list flip on the first link can't remount it),
+  // therefore a mount-time effect would fire on page load and go stale — gate on
+  // `open` instead. Closing resets the stage so the next open mints a fresh link.
   useEffect(() => {
+    if (!open) { setStage('generating'); return; }
     let cancelled = false;
     (async () => {
-      const { data: cur } = await invokeFn('telegramGetIntegration', { body: { tripId } });
-      baselineRef.current = cur?.integrations?.length ?? 0;
-      const { data, error } = await invokeFn('telegramStartLink', { body: { tripId } });
-      if (cancelled) return;
-      if (error || !data?.url) {
+      try {
+        const cur = await fetchTripIntegrations(tripId);
+        baselineRef.current = cur.length;
+        const link = await startTelegramLink(tripId);
+        if (cancelled) return;
+        setUrl(link);
+        setStage('idle');
+      } catch {
+        if (cancelled) return;
         setErrText(t('settings.tg_link_error'));
         setStage('error');
-        return;
       }
-      setUrl(data.url);
-      setStage('idle');
     })();
     return () => { cancelled = true; };
-  }, [tripId]);
+  }, [open, tripId]);
 
   // Countdown while waiting for Start.
   useEffect(() => {
@@ -158,16 +165,19 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
     return () => clearInterval(id);
   }, [stage]);
 
-  // Poll for the new binding while waiting.
+  // Poll for the new binding while waiting (best-effort: a transient poll error
+  // just keeps polling).
   useEffect(() => {
     if (stage !== 'connecting') return;
     const id = setInterval(async () => {
-      const { data } = await invokeFn('telegramGetIntegration', { body: { tripId } });
-      if ((data?.integrations?.length ?? 0) > baselineRef.current) {
-        clearInterval(id);
-        onLinked?.();
-        setStage('connected');
-      }
+      try {
+        const list = await fetchTripIntegrations(tripId);
+        if (list.length > baselineRef.current) {
+          clearInterval(id);
+          onLinked?.();
+          setStage('connected');
+        }
+      } catch { /* keep polling */ }
     }, 3000);
     return () => clearInterval(id);
   }, [stage, tripId, onLinked]);
@@ -178,8 +188,10 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
     setStage('connecting');
   };
   const checkNow = async () => {
-    const { data } = await invokeFn('telegramGetIntegration', { body: { tripId } });
-    if ((data?.integrations?.length ?? 0) > baselineRef.current) { onLinked?.(); setStage('connected'); }
+    try {
+      const list = await fetchTripIntegrations(tripId);
+      if (list.length > baselineRef.current) { onLinked?.(); setStage('connected'); }
+    } catch { /* ignore — user can press again */ }
   };
   const copyLink = () => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const mmss = `${String(Math.floor(countdown / 60)).padStart(2, '0')}:${String(countdown % 60).padStart(2, '0')}`;
@@ -304,25 +316,25 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 }
 
 // ─── TelegramSection ──────────────────────────────────────────────────────────
-// Lists all Telegram bindings of the trip (many chats per trip). Real API:
-// telegramGetIntegration / telegramSetActive / telegramDisconnect.
-// The remove flow uses the shared TelegramUnlinkDialog (same modal as the
-// account-level "Подключённые аккаунты" section - single source of truth).
+// Lists all Telegram bindings of the trip (many chats per trip) via the Telegram
+// data-access layer (telegramMutations.js). Unlink runs through the shared
+// async-confirm (useConfirm) — the SAME seam as the account-level "Подключённые
+// аккаунты" section, so both surfaces behave identically.
 
 function TelegramSection({ tripId }) {
   const { t } = useI18n();
   const { toast } = useToast();
-  const [accounts, setAccounts] = useState(null); // null = loading
+  const confirm = useConfirm();
+  const qc = useQueryClient();
   const [connectOpen, setConnectOpen] = useState(false);
-  const [unlinkState, setUnlinkState] = useState(null); // null | { account }
-  const [busyId, setBusyId] = useState(null); // integration id with an in-flight toggle/disconnect
+  const [busyId, setBusyId] = useState(null); // integration id with an in-flight toggle
 
-  const load = React.useCallback(async () => {
-    const { data, error } = await invokeFn('telegramGetIntegration', { body: { tripId } });
-    setAccounts(error ? [] : (data?.integrations ?? []));
-  }, [tripId]);
-
-  useEffect(() => { load(); }, [load]);
+  const { data: accounts = [], isLoading } = useQuery({
+    queryKey: TG_TRIP_KEY(tripId),
+    queryFn: () => fetchTripIntegrations(tripId),
+    enabled: !!tripId,
+  });
+  const binding = listBinding(qc, TG_TRIP_KEY(tripId));
 
   // Formats a Telegram ACCOUNT, not a person — named apart from the shared
   // people-name helpers so it cannot silently shadow one of them.
@@ -330,39 +342,60 @@ function TelegramSection({ tripId }) {
     a.telegram_first_name || (a.telegram_username ? `@${a.telegram_username}` : t('telegram.unknown_user'));
   const handle = (a) => (a.telegram_username ? `@${a.telegram_username}` : '');
 
-  // Not optimistic: an optimistic flip here misleads (the bot keeps/stops
-  // notifying based on the server state). Show a spinner on the row and only
-  // reflect the new state once the edge call confirms it.
+  // Toggle notifications for one chat. Not optimistic: the flip drives whether the
+  // bot notifies, so reflecting it before the server confirms would mislead. Show a
+  // spinner on the row and reflect the new state only once the edge call lands.
   const toggle = async (a) => {
     if (busyId) return;
     setBusyId(a.id);
-    const { error, code } = await invokeFn('telegramSetActive', {
-      body: { tripId, integrationId: a.id, isActive: !a.is_active },
-    });
-    if (error) toast({ description: classifyError(t, code).text, variant: 'destructive' });
-    else setAccounts(list => list.map(x => x.id === a.id ? { ...x, is_active: !x.is_active } : x));
-    setBusyId(null);
+    try {
+      await setTelegramActive(tripId, a.id, !a.is_active);
+      binding.update({ id: a.id, is_active: !a.is_active });
+    } catch (err) {
+      toast({ description: errorText(t, err?.code), variant: 'destructive' });
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const doRemove = async (a) => {
-    setBusyId(a.id);
-    const { error, code } = await invokeFn('telegramDisconnect', {
-      body: { tripId, integrationId: a.id },
-    });
-    if (error) toast({ description: classifyError(t, code).text, variant: 'destructive' });
-    else setAccounts(list => list.filter(x => x.id !== a.id));
-    setBusyId(null);
-  };
-  const remove = (a) => setUnlinkState({ account: a });
+  // Unlink is a real teardown (the bot stops), so it mirrors the document-delete
+  // canon: shared async-confirm (button spins until it lands) + a pessimistic drop
+  // on the response — the same seam and feel as the account screen.
+  const unlinkMut = useMutation({
+    mutationFn: (/** @type {any} */ { account }) => disconnectTelegram(tripId, account.id),
+    onSuccess: (/** @type {any} */ _d, /** @type {any} */ { account }) => {
+      binding.remove(account.id);
+      successToast(t, 'tg_unlinked');
+      invalidateTelegram(qc, tripId); // reconcile the account-screen projection too
+    },
+    onError: (/** @type {any} */ err) => {
+      toast({ description: errorText(t, err?.code), variant: 'destructive' });
+      invalidateTelegram(qc, tripId); // row may already be gone → reconcile
+    },
+  });
+  const remove = (a) => confirm({
+    title: t('telegram.unlink_title'),
+    description: t('telegram.unlink_body', { handle: handle(a) || tgName(a) }),
+    variant: 'destructive',
+    confirmLabel: t('telegram.unlink_confirm'),
+    onConfirm: () => unlinkMut.mutateAsync({ account: a }),
+  });
   const openConnect = () => setConnectOpen(true);
+  // Memoized: the connect dialog's poll effect depends on it — a new identity each
+  // render would reset the 3s interval and it could never fire.
+  const onLinked = React.useCallback(() => invalidateTelegram(qc, tripId), [qc, tripId]);
 
-  if (accounts === null) {
-    return <div className="muted t-body" style={{ padding: 8 }}>{t('common.loading')}</div>;
-  }
-
-  if (accounts.length === 0) {
-    return (
-      <>
+  // ONE dialog instance at a stable tree position (not duplicated per branch): a
+  // per-branch copy would remount on the empty→list flip that the FIRST successful
+  // link triggers, re-running its "generate link" effect and re-opening generation.
+  /* floor-exempt: dsshare +4 - удалён дубль-компонент TelegramUnlinkDialog (Dialog+2×Btn)
+     и схлопнут двойной <TelegramConnectDialog> в один узел → отвязка на каноне useConfirm;
+     это чистка дублей по rule #6, апрув Pavel TRIP-439. */
+  return (
+    <>
+      {isLoading ? (
+        <div className="muted t-body" style={{ padding: 8 }}>{t('common.loading')}</div>
+      ) : accounts.length === 0 ? (
         <EmptyState
           /* inline-style-exempt: цвета бренда Telegram из реестра tgBrand (данные) */
           boxed icon="telegram" iconStyle={TG_TILE}
@@ -374,44 +407,33 @@ function TelegramSection({ tripId }) {
             </Btn>
           }
         />
-        <TelegramConnectDialog open={connectOpen} onOpenChange={setConnectOpen} tripId={tripId} onLinked={load} />
-      </>
-    );
-  }
-
-  return (
-    <Col gap="g6">
-      {accounts.map(a => (
-        /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
-        <Card key={a.id} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
-          {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
-          <div className="tile" style={TG_TILE}>
-            <Icon name="telegram" size={17} />
-          </div>
-          <Grow fit>
-            <div className="t-subheading">{tgName(a)}</div>
-            {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
-          </Grow>
-          <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
-          {/* Отвязка = канон icon-only `<IconBtn>` (danger), та же реализация, что на
-              экране аккаунта (ScreenAccount): один объект — одна кнопка. Спиннера нет
-              намеренно — подтверждение отвязки идёт своим диалогом с busy. */}
-          <IconBtn icon="close" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} disabled={busyId === a.id} onClick={() => remove(a)} />
-        </Card>
-      ))}
-      <Btn variant="secondary" icon="plus" onClick={openConnect}>
-        {t('telegram.connect_another')}
-      </Btn>
-      <TelegramConnectDialog open={connectOpen} onOpenChange={setConnectOpen} tripId={tripId} onLinked={load} />
-      {unlinkState && (
-        <TelegramUnlinkDialog
-          open={true}
-          onOpenChange={(o) => { if (!o) setUnlinkState(null); }}
-          handle={handle(unlinkState.account) || tgName(unlinkState.account)}
-          onConfirm={() => doRemove(unlinkState.account)}
-        />
+      ) : (
+        <Col gap="g6">
+          {accounts.map(a => (
+            /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
+            <Card key={a.id} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
+              {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
+              <div className="tile" style={TG_TILE}>
+                <Icon name="telegram" size={17} />
+              </div>
+              <Grow fit>
+                <div className="t-subheading">{tgName(a)}</div>
+                {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
+              </Grow>
+              <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
+              {/* Отвязка = канон icon-only `<IconBtn>` (danger), та же реализация, что на
+                  экране аккаунта (ScreenAccount): один объект — одна кнопка. Спиннер живёт
+                  на кнопке подтверждения общего async-confirm, а не на строке. */}
+              <IconBtn icon="close" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} disabled={busyId === a.id} onClick={() => remove(a)} />
+            </Card>
+          ))}
+          <Btn variant="secondary" icon="plus" onClick={openConnect}>
+            {t('telegram.connect_another')}
+          </Btn>
+        </Col>
       )}
-    </Col>
+      <TelegramConnectDialog open={connectOpen} onOpenChange={setConnectOpen} tripId={tripId} onLinked={onLinked} />
+    </>
   );
 }
 
@@ -708,6 +730,13 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
     setFeatures(s => ({ ...s, [id]: newVal }));  // reflect only after server confirms
     patchAddons(nextAddons);                      // sync the shell cache (lenses/widget)
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+    // Turning the Telegram addon OFF tears down every binding on the server
+    // (afterWrite seam). Reconcile both Telegram projections so the account screen
+    // does not keep showing a now-dead binding — the teardown is best-effort and is
+    // not surfaced to the client, so we sync to server truth rather than trust it.
+    if (feat.addon === 'telegram_assistant' && !newVal && queryClient) {
+      invalidateTelegram(queryClient, tripId);
+    }
     successToast(t, newVal ? 'addon_enabled' : 'addon_disabled', { addon: feat ? t(feat.labelKey) : '' });
     setBusyToggle(null);
   }
