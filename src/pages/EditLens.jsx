@@ -217,8 +217,8 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, Card, Tile, PageHead, useToast } from '../design/index';
-import { Row, Grid, Trunc, Grow } from '../design/Layout';
+import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, useToast } from '../design/index';
+import { Row, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import LpSheet from '@/components/ui/LpSheet';
@@ -355,16 +355,11 @@ export default function EditLens({ tripId, shell, content }) {
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
   const isSheet = useIsPhone();
-  // TRIP-161: the two-column desktop layout (>1080px, mirrors the .ts-grid CSS
-  // breakpoint). Only there do side panels open as a full-height drawer over the
-  // left column; below it we keep the in-flow swap, ≤640 the bottom sheet.
-  const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1081px)').matches);
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1081px)');
-    const onChange = () => setIsWide(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  // Виджет редактора: свёрнут ли он (десктоп) и на каком детенте стоит шит
+  // (телефон). Оба — состояние ЭКРАНА, а не шелла: шелл раскладывает, экран
+  // помнит. Стартовый детент — средний: карта видна, список читается.
+  const [collapsed, setCollapsed] = useState(false);
+  const [detent, setDetent] = useState(1);
   // A11y: when an in-place left panel opens, move focus into it (its back button
   // if present) so keyboard/SR users land in the new context; Esc closes it.
   const leftPaneRef = useRef(null);
@@ -981,12 +976,17 @@ export default function EditLens({ tripId, shell, content }) {
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
-  // TRIP-161: on the desktop two-column layout every side panel EXCEPT "add
-  // city" opens as a full-height drawer over the left column (route rail stays
-  // mounted underneath; the map keeps interactive — no scrim). Add-city and the
-  // ≤1080 / ≤640 fallbacks keep swapping the rail in place.
+  // TRIP-161: каждая боковая панель КРОМЕ «добавить город» открывается ящиком во
+  // всю высоту виджета (рельс маршрута остаётся под ним, карта продолжает
+  // кликаться — скрима нет). «Добавить город» подменяет содержимое виджета: это
+  // продолжение того же списка, а не карточка объекта.
+  //
+  // Брейкпоинта 1081 здесь больше нет. Он делил десктоп на «ящик» и «панель
+  // вместо колонки» — то есть был третьей раскладкой у экрана, у которого их и
+  // так две. Теперь их ровно две, и границу проводит шелл: десктоп — виджет,
+  // телефон — шит.
   const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
-  const useDrawer = isWide && isDrawerPanel && !!leftPanelEl;
+  const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
 
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
@@ -1017,39 +1017,33 @@ export default function EditLens({ tripId, shell, content }) {
   // выезжающий `.ts-drawer` и ДВА инстанса TripSidebar - для рельса и для
   // ящика. Телефонного шита меню у неё не было вовсе, поэтому на ≤640 меню
   // редактора вело себя не так, как на всех остальных экранах трипа.
-  return (
-      <div className="ts-grid">
-        {/* LEFT - bordered container (same 14px inset / radius as the map box on
-            the right). The "Маршрут" header is the container's header; an open
-            side panel fills the same box. */}
-        <div className="ts-col-left" style={{ position: 'relative', minWidth: 0, display: 'flex', minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-leftbox">
-          <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1} onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
-          {/* Desktop (>1080): "add city" replaces the column; other panels open as
-              a drawer overlay (below) and the rail stays here. ≤1080: the panel
-              replaces the column. ≤640: the column keeps the cities list and the
-              panel opens as a Radix bottom-sheet (rendered below). */}
-          {(!isSheet && !useDrawer && leftPanelEl) || (<>
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'transparent' }}>
-          {/* Container header — канон `PageHead` (как на Budget): заголовок «Маршрут»
-              + сводка маршрута сабтитлом (реюз totalNights/cityCount/dateRange, без
-              новой логики), степпер старта трипа — в слот actions вместо кнопок.
-              Скроллится ВМЕСТЕ со списком (не sticky); левая панель заменяет колонку. */}
-          <PageHead
-            title={t('planner.step_cities')}
-            subtitle={[
-              totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
-              cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
-              dateRange && dateRange !== '-' ? dateRange : null,
-            ].filter(Boolean).join(' · ') || undefined}
-            actions={startDateControl}
-          />
-          <Grid className="te-thead" style={{ padding: '0 4px 6px' }}>
-            <Trunc as="span" className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</Trunc>
-            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</Trunc>
-            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</Trunc>
-            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</Trunc>
-          </Grid>
+  // ★ РАСКЛАДКА — ОБЩИЙ <MapShell>, ТОТ ЖЕ, ЧТО У ПЛАНИРОВЩИКА И ЛИНЗЫ КАРТЫ.
+  // До этого редактор был ТРЕТЬЕЙ рукописной копией «карта + панель»: своя сетка
+  // `.ts-grid`, свой брейкпоинт 1080, своя коробка карты с отступом 14px — и своё
+  // представление о том, где карта заканчивается. На телефоне карты не было
+  // ВОВСЕ (её прятал CSS), то есть редактор маршрута работал без карты маршрута.
+  //
+  // Теперь: карта во всю свободную площадь, редактор — плавающий виджет слева со
+  // сворачиванием, на телефоне тот же виджет уезжает в шит с тремя детентами.
+  const routeHead = (
+    <PageHead
+      title={t('planner.step_cities')}
+      subtitle={[
+        totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
+        cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
+        dateRange && dateRange !== '-' ? dateRange : null,
+      ].filter(Boolean).join(' · ') || undefined}
+      actions={startDateControl}
+    />
+  );
+
+  // Тело виджета: список маршрута ЛИБО панель, подменяющая его («добавить
+  // город»). Ключ на обёртке перезапускает анимацию появления при смене.
+  const routeBody = (
+    <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1}
+      onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade">
+      {(!isSheet && !useDrawer && leftPanelEl) || (
+        <>
           <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
               const next = displayNodes[displayNodes.indexOf(n) + 1];
@@ -1128,39 +1122,15 @@ export default function EditLens({ tripId, shell, content }) {
               </div>
             </Card>
           )}
-          </div>{/* /ts-leftscroll */}
-          </>)}
-          </div>{/* /te-panefade */}
+        </>
+      )}
+    </div>
+  );
 
-          {/* Mobile: the editor panel opens as a bottom sheet — the SAME shared
-              LpSheet shell as the global EventDrawerHost (native swipe +
-              keyboard-safe reposition; backdrop / swipe-down / Back all close). */}
-          {isSheet && leftPanelEl && (
-            <LpSheet open onClose={closeLeftPanel} title={t('trip.edit_structure')}>
-              {leftPanelEl}
-            </LpSheet>
-          )}
-          </div>{/* /ts-leftbox */}
-
-          {/* TRIP-161: side-panel DRAWER (city / fork / event view+edit) on the
-              desktop two-column layout. Overlays the left column edge-to-edge, up
-              to the map — no scrim, so the map (and its hotel pins) stays
-              interactive. The route rail stays mounted underneath. */}
-          {useDrawer && (
-            <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
-              {leftPanelEl}
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT - full-height map (always on; hidden on phones via CSS);
-            warnings live in a collapsible overlay widget */}
-        <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-map" style={{ position: 'absolute', inset: 14, left: 7, overflow: 'hidden', borderRadius: 'var(--r-md)', border: '1px solid var(--line)' }}>
-            {/* `visitsById` тут не было смысла: MapView его не объявляет и остаток
-                пропов не собирает, а во всём репо это было единственное вхождение -
-                то есть карта его никогда не читала, а Object.fromEntries считался
-                на каждый рендер редактора. Нашла прагма. */}
+  return (
+    <MapShell
+      className="ts-shell"
+      map={(
             <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
@@ -1174,9 +1144,28 @@ export default function EditLens({ tripId, shell, content }) {
               onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
               onHotelHover={setStayHoveredId}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
-          </div>
-          {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
-          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
+      )}
+      panelHeader={routeHead}
+      panel={routeBody}
+      panelLabel={t('planner.step_cities')}
+      collapsed={collapsed}
+      onCollapsedChange={setCollapsed}
+      collapseLabel={t('common.panel_collapse')}
+      expandLabel={t('common.panel_expand')}
+      detent={detent}
+      onDetentChange={setDetent}
+      panelOverlay={useDrawer ? (
+        /* Ящик города/события во всю высоту ВИДЖЕТА: карта под ним остаётся
+           кликабельной (скрима нет), рельс маршрута — смонтированным. */
+        <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
+          {leftPanelEl}
+        </div>
+      ) : null}
+    >
+      {/* Предупреждения: круглый FAB со счётчиком, поверх карты. Привязан к
+          СВОБОДНОМУ окну (переменные шелла), поэтому на телефоне встаёт над
+          шитом, а не под ним. */}
+      <div className="ts-warnfab">
             {showWarn && issues.length > 0 && (
               /* TRIP-343 объект 2 (канал 3): скин поверхности (--surface+рамка+радиус)
                  снят с инлайна на Card; тень поповера (--sh-3) остаётся инлайном (высота). */
@@ -1198,10 +1187,19 @@ export default function EditLens({ tripId, shell, content }) {
                 <Badge variant="count">{issues.length > 99 ? '99+' : issues.length}</Badge>
               )}
             </IconBtn>
-          </div>
-        </div>
       </div>
+
+      {/* Телефон: панель открывается тем же общим шитом, что и глобальный
+          EventDrawerHost (родной свайп, безопасная перестановка под клавиатуру,
+          закрытие по фону / свайпу вниз / Back). */}
+      {isSheet && leftPanelEl && (
+        <LpSheet open onClose={closeLeftPanel} title={t('trip.edit_structure')}>
+          {leftPanelEl}
+        </LpSheet>
+      )}
+    </MapShell>
   );
+
 }
 
 
@@ -1215,8 +1213,11 @@ function Conf({ n }) {
 // inline hotel / activity cells (design mockup HotelCell / ActCell)
 function HotelCell({ hotel, warn, onClick }) {
   const t = useT();
+  // Пустая ячейка ПОДПИСАНА. Безымянный пунктирный квадрат с иконкой кровати в
+  // карточке читается как выключенный элемент, а не как «добавить жильё»: в
+  // таблице его объясняла шапка колонки, а шапки больше нет.
   if (!hotel) return (
-    <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')} ariaLabel={t('hotel.add')} />
+    <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')}>{t('tse.col_stay')}</Btn>
   );
   return (
     <Chip variant="tone" square icon="bed" className={warn ? 'is-warn' : ''} onClick={onClick} title={hotel.name}>
@@ -1226,8 +1227,9 @@ function HotelCell({ hotel, warn, onClick }) {
 }
 function ActCell({ count, warn, onClick }) {
   const t = useT();
+  // То же: подпись вместо безымянного пунктирного квадрата (см. HotelCell).
   if (!count) return (
-    <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')} ariaLabel={t('budget.source_activity')} />
+    <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')}>{t('budget.source_activity')}</Btn>
   );
   return (
     <Chip variant="tone" square icon="ticket" className={warn ? 'is-warn' : ''} onClick={onClick} title={count + ''}>
@@ -1275,8 +1277,9 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         conf={<Conf n={cityConf} />}
         dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>
         <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled variant="bare" />
-        <div className="te-cell te-cell--hotel" />
-        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+        <div className="te-row__meta">
+          <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+        </div>
       </CityRow>
     );
   }
@@ -1288,8 +1291,13 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       conf={<Conf n={cityConf} />}
       dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
       <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} variant="bare" />
-      <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
-      <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+      {/* Мета-строка карточки остановки: жильё и активности стоят РЯДОМ под
+          именем города. В колонках им места нет — виджет не бывает шире 550px,
+          и таблица из шести колонок в него не помещается ни на одном мониторе. */}
+      <div className="te-row__meta">
+        <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
+        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+      </div>
     </CityRow>
   );
 }

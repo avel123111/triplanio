@@ -50,6 +50,7 @@ import { mapSlotInsets } from '@/lib/mapShellSlot';
  *   panelHeader?: any,
  *   panelFooter?: any,
  *   panelLabel: string,
+ *   panelOverlay?: any,
  *   detents?: number[],
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
@@ -72,6 +73,16 @@ export function MapShell({
   // слот отдельный, а не «последний ребёнок» содержимого.
   panelFooter = null,
   panelLabel,
+  // Слой ПОВЕРХ панели во всю её высоту — ящик города/события у редактора.
+  // Живёт здесь, а не в `children`: `children` лежат поверх ВСЕГО шелла (карты
+  // в том числе), а ящик обязан закрывать ровно панель и не трогать карту —
+  // по ней в этот момент продолжают кликать.
+  //
+  // Коробку слою даёт ШЕЛЛ (`.mapshell__overlay`), а не экран: воздух вокруг
+  // панели — свойство раскладки, и экран, повторяющий его у себя, разъезжается
+  // с ней на первой же правке. Без этого ящик ложился по краю шелла, а виджет
+  // под ним стоял с отступом — два разных прямоугольника у одного объекта.
+  panelOverlay = null,
   detents = [0.15, 0.68, 1],
   detent = 0,
   onDetentChange,
@@ -107,9 +118,10 @@ export function MapShell({
     return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measurePanel); };
   }, [isPhone, measurePanel, collapsed]);
 
-  // Свободное окно едет в CSS-переменных, а не в инлайне значений: слот карты
-  // описан в `app.css` одним правилом, а JS сообщает ему ровно две измеренные
-  // величины. Сам расчёт — чистая функция `mapSlotInsets` (закрыта тестами):
+  // Свободное окно едет в CSS-переменных НА КОРНЕ шелла: к нему обязаны
+  // дотягиваться и слот карты, и всё, что экран кладёт поверх карты (плавающие
+  // кнопки), иначе каждый такой элемент заведёт своё представление о том, где
+  // кончается свободное место — то самое, ради чего шелл и заведён. Сам расчёт — чистая функция `mapSlotInsets` (закрыта тестами):
   // у правила «слот равен свободному окну» нет скриншота, а его поломка не
   // роняет ни экран, ни гарды.
   const slotStyle = useMemo(() => {
@@ -122,8 +134,8 @@ export function MapShell({
   useEffect(() => () => setSheetPx(0), []);
 
   return (
-    <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef}>
-      <div className="mapshell__map" style={slotStyle}>{map}</div>
+    <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={slotStyle}>
+      <div className="mapshell__map">{map}</div>
 
       {panel && (isPhone ? (
         <PeekSheet
@@ -154,6 +166,7 @@ export function MapShell({
               <div className="mapshell__body scrollbar-thin">{panel}</div>
               {panelFooter}
             </Card>
+            {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
           </aside>
           {/* Шов панели и карты — место, где живёт «свернуть/раскрыть»: он
               принадлежит ГРАНИЦЕ между ними, а не содержимому панели, поэтому
