@@ -26,6 +26,10 @@
 3. **Убрать из галереи, не ломая выбравших:** `update public.cover_presets set active=false where image_url like '%<file>';`. **Порядок:** правь `sort`. **Проверить, что отдаст витрина:** `select id,image_url,sort from public.cover_presets where active order by sort;`.
 - ⚠️ Сид на dev наполнен агентом (16 файлов) по прямой просьбе Pavel — это НЕ деплой (данные каталога), а штатный путь управления. prod — руками Pavel/агентом после мерджа.
 
+## Выкатка набора на prod (бакеты/каталоги у проектов РАЗДЕЛЬНЫЕ)
+Мердж `dev→main` привозит на prod **схему** (бакет+таблица, миграция `20260820191733`) и код, но **не содержимое каталога** — галерея на prod открывается пустой, пока набор не перенесён. Перенос = `node scripts/sync-cover-presets.mjs [--apply]` (dev→prod: докачивает недостающие файлы бакета, вставляет недостающие строки с тем же `sort`/`active`; идемпотентно, без `--apply` только показывает план). Ключи — `.env` в корне (`DEV_SERVICE_ROLE_KEY`/`PROD_SERVICE_ROLE_KEY`, тот же файл, что у `clone-trip.mjs`): каталог deny-all, а у публичного бакета намеренно нет SELECT-политики, поэтому листинг/чтение только под service_role. **Порядок обязателен**: до зелёного деплоя бакета на prod нет, и скрипт падает с этим сообщением. Пересчёт URL dev↔prod закрыт `scripts/sync-cover-presets.test.mjs` (ошибка там не падает, а молча сеет битые ссылки).
+- Пустая галерея не ломает экраны: рендер обложки везде на `фото || COVER_FALLBACK`, а `autoSelect` в шаге создания просто не срабатывает при пустом каталоге.
+
 ## Фаза 2 — выпил колонки `trips.cover_gradient`
 Колонка была nullable `DEFAULT 'gradient_1'` (baseline). После Ф1 — мёртвая. Ф2 (миграция `20260820201544_trip_drop_cover_gradient.sql`):
 - Переопределены **4 живые RPC** (каждая с ОДНИМ edge-вызывателем под service_role, ни одна не мертва) дословно минус `cover_gradient`: `get_my_trip_cards` (edge `getTrips`), `get_user_travel_stats` (edge `getTravelStats`, security-sensitive), `update_trip_settings` (edge `trip-settings`), `copy_trip` (edge `trip-share`).
