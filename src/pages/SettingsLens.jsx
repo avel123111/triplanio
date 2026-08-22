@@ -418,10 +418,16 @@ function TelegramSection({ tripId }) {
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
 // Скелетон настроек — PURE, зеркалит РЕАЛЬНУЮ разметку экрана теми же классами:
-// (1) карточка «General» = CardHeader + `.settings-identity` (обложка `__cover`
+// (1) карточка «General» = CardHeader + `.settings-identity` (пикер обложки
 // слева | форма `__fields` справа), (2) «Optional features» = `.addon-grid` из
 // тоггл-карточек, (3) `.settings-grid` в 2 колонки. Не сетка одинаковых карточек
 // (то был «выдуманный» layout). Один источник для обеих фаз загрузки. TRIP-337.
+//
+// ★ КЛАССЫ БЕРЁМ НАСТОЯЩИЕ, А НЕ ПОХОЖИЕ ЧИСЛА. Кадр обложки держит `.tcp__hero`
+// (это он знает про 4:3), ряд — `.carousel .tcp__strip` (он знает про зазор и
+// прокрутку). Иначе скелетон приходится «подгонять» высотой в пикселях, и он
+// расходится с экраном на первой же правке раскладки — ровно это и случилось:
+// он остался с превью 150px и ряда из 16 кружков, которых на экране больше нет.
 export function SettingsSkeleton() {
   return (
     <Col gap="g7" className="settings-lens" aria-busy="true">
@@ -429,17 +435,20 @@ export function SettingsSkeleton() {
       <Card>
         <CardHeader title={<Skeleton w={120} h={22} r={6} />} action={<Skeleton w={130} h={40} r={'var(--r-btn)'} />} />
         <Grid className="settings-identity">
-          <div className="settings-identity__cover">
-            <Skeleton w="100%" h={150} r={'var(--r-md)'} />
-            <div className="row row--g4 row--wrap" style={{ marginTop: 12 }}>
-              {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} w={32} h={32} r="50%" />)}
+          <div className="col col--g6 tcp">
+            <div className="tcp__hero"><Skeleton w="100%" h="100%" r={0} /></div>
+            <div className="carousel tcp__strip">
+              {/* Первая миниатюра шире — на экране так выглядит ВЫБРАННАЯ. */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} w={i === 0 ? 108 : 52} h={52} r={'var(--r-xs)'} />
+              ))}
             </div>
           </div>
           <Col gap="g7" className="settings-identity__fields">
-            {[0, 1, 2, 3].map((i) => (
+            {[0, 1].map((i) => (
               <div key={i} className="col col--g3">
                 <Skeleton w="35%" h={13} r={5} />
-                <Skeleton w="100%" h={i === 3 ? 120 : 44} r={'var(--r-btn)'} />
+                <Skeleton w="100%" h={44} r={'var(--r-btn)'} />
               </div>
             ))}
           </Col>

@@ -713,9 +713,11 @@ const RECIPES = {
     {
       label: 'disabled — свайп ленты выключен, кнопок нет (read-only)',
       items: [it('disabled', (
+        /* Значение — НЕ первый слайд намеренно: read-only показывает выбранную
+           миниатюру, а лента при открытии обязана быть доведена до неё. */
         <CoverPicker
           slides={ctx.cpSlides}
-          value={ctx.cpSlides[0]}
+          value={ctx.cpSlides[9]}
           disabled
           ariaLabel={'Галерея обложек'/* i18n-ignore: витрина /kit */}
         />
@@ -1159,8 +1161,13 @@ export default function Kit() {
   const [swIcon, setSwIcon] = useState('bed');
   const [swCover, setSwCover] = useState(0);
   // Демо-слайды пикера обложки — картинки из бандла (флаги), чтобы витрина не
-  // ходила в сеть; пустая строка первой = слайд «без обложки».
-  const cpSlides = ['', '/flags/es.svg', '/flags/fr.svg', '/flags/it.svg'];
+  // ходила в сеть; пустая строка первой = слайд «без обложки». Их СПЕЦИАЛЬНО
+  // много: у пикера лента миниатюр прокручиваемая, и витрина из трёх плиток
+  // показывала бы его в состоянии, которого на экране не бывает — прокрутку и
+  // доводку к выбранной миниатюре на ней увидеть было нельзя.
+  const cpSlides = ['', '/flags/es.svg', '/flags/fr.svg', '/flags/it.svg', '/flags/pt.svg',
+    '/flags/gr.svg', '/flags/de.svg', '/flags/nl.svg', '/flags/at.svg', '/flags/ch.svg',
+    '/flags/cz.svg', '/flags/hu.svg'];
   const [cpValue, setCpValue] = useState('');
 
   // Значения токенов/семей зависят от темы — перечитываем при переключении.

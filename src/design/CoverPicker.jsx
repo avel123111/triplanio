@@ -77,22 +77,39 @@ export function CoverPicker({
     setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
   };
 
-  // Единая точка выбора: отдать наверх и довести миниатюру к центру ленты
-  // (адрес по data-idx). Тот же url — no-op, иначе свайп бил бы onChange на
-  // каждом кадре осадки.
+  // Единая точка выбора — ТОЛЬКО коммит наверх. Куда после этого встают обе
+  // ленты, решает эффект ниже: пока «доведи миниатюру» жило здесь, у выбора было
+  // ДВА исполнителя (клик доводил ленту сам, а открытие экрана — никак), и
+  // открытая с пресетной обложкой форма показывала невыбранный ряд.
+  // Тот же url — no-op, иначе свайп бил бы onChange на каждом кадре осадки.
   const select = (url) => {
     if (url === undefined || url === value) return;
     onChange?.(url);
-    const i = slides.indexOf(url);
-    if (i >= 0) {
-      stripRef.current?.querySelector(`[data-idx="${i}"]`)
-        ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    }
   };
 
   // Подсветка активной миниатюры — по ЖИВОМУ индексу скролла, коммит — по осадке.
   const [scrollUrl, setScrollUrl] = useState(/** @type {string | null} */ (null));
   const activeUrl = scrollUrl ?? value;
+
+  // ★ ОДИН ИНДЕКС НА ДВЕ ЛЕНТЫ. Обложка и ряд миниатюр — не два независимых
+  // скроллера, а два вида ОДНОГО положения. Раньше они двигались по очереди
+  // (кадр вставал мгновенным `scrollLeft`, а ряд догонял плавным скроллом уже
+  // после коммита) — отсюда рывок. Теперь обе едут от одного индекса и стартуют
+  // в одном кадре; ряд следует за ЖИВЫМ индексом, поэтому во время свайпа он
+  // идёт вместе с пальцем, а не догоняет после осадки.
+  const activeIndex = slides.indexOf(activeUrl);
+  // Первая установка — без анимации: экран открывается на нужном слайде, а не
+  // приезжает к нему. Дальше всё плавно.
+  const firstSync = useRef(true);
+  // Плавную доводку кадра НЕ считаем жестом (см. onTrackScroll).
+  const programmatic = useRef(false);
+
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    stripRef.current?.querySelector(`[data-idx="${activeIndex}"]`)?.scrollIntoView({
+      inline: 'center', block: 'nearest', behavior: firstSync.current ? 'auto' : 'smooth',
+    });
+  }, [activeIndex]);
 
   // Значение сменили НЕ свайпом (аплоад / клик по миниатюре / приехало сверху) →
   // подвести ленту слайдов к нему. Уже на месте — no-op (снап сам её туда привёл).
@@ -107,8 +124,12 @@ export function CoverPicker({
     const el = trackRef.current;
     if (!el || slides.length === 0 || scrollUrl !== null) return;
     const target = Math.max(0, slides.indexOf(value)) * el.clientWidth;
-    if (Math.abs(el.scrollLeft - target) > 2) el.scrollLeft = target;
+    if (Math.abs(el.scrollLeft - target) > 2) {
+      programmatic.current = !firstSync.current;
+      el.scrollTo({ left: target, behavior: firstSync.current ? 'auto' : 'smooth' });
+    }
     syncEdges();
+    firstSync.current = false;
   }, [value, slides, scrollUrl]);
   const settle = useRef(/** @type {ReturnType<typeof setTimeout> | undefined} */ (undefined));
   useEffect(() => () => clearTimeout(settle.current), []);
@@ -117,9 +138,17 @@ export function CoverPicker({
     if (!el) return;
     syncEdges();
     const at = () => slides[Math.round(el.scrollLeft / el.clientWidth)];
-    setScrollUrl(at() ?? null);
+    // Собственная плавная доводка кадра — не жест пользователя: публикуй мы её
+    // промежуточные слайды, ряд миниатюр гнался бы за каждым, через который
+    // кадр проезжает по дороге к выбранному. Флаг снимает тот же таймер осадки,
+    // что и коммитит жест, — второй механизм для этого не нужен.
+    if (!programmatic.current) setScrollUrl(at() ?? null);
     clearTimeout(settle.current);
-    settle.current = setTimeout(() => { select(at()); setScrollUrl(null); }, 120);
+    settle.current = setTimeout(() => {
+      if (programmatic.current) { programmatic.current = false; return; }
+      select(at());
+      setScrollUrl(null);
+    }, 120);
   };
 
   const page = (dir) => {
