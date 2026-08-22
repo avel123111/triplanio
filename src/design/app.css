@@ -6379,22 +6379,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      (панель тянулась по содержимому, а ниже был белый обрыв).
      visual-diff-exempt: .te-panefade min-height — грунт доходит до низа и в шите (блок-скроллер, не флекс) */
   flex: 1; min-height: 100%; display: flex; flex-direction: column; outline: none; overflow-y: auto;
-  /* ★ ГРУНТ ПОД КАРТОЧКАМИ ОСТАНОВОК. Тело виджета — не форма, а СПИСОК карточек:
-     на белом грунте белые карточки не читаются вовсе (белое на белом, тень
-     `--sh-1` съедается). Утоплённый грунт — тот же приём, каким читаются
-     карточки на остальных списках приложения. Правило живёт на СВОЁМ классе
-     редактора, а не на теле примитива: у планировщика в том же теле форма, и
-     грунт ей не нужен, — а экран, дотянувшийся селектором внутрь примитива, это
-     ровно то, что запрещает пол (метрика `reach`).
+  /* ★ СВОЕГО ФОНА У ТЕЛА НЕТ. Цвет виджета — целиком дело шелла (шапка и футер
+     на поверхности карточки в светлой теме, всё три на фоне приложения в
+     тёмной). Здесь стоял утоплённый грунт `--wash`, и в тёмной теме он давал
+     редактору фон #2a2937 против #0c0e1c у планировщика — то самое «один
+     примитив, а цвета разные». Ни один экран своего фона в виджете больше не
+     ставит.
      visual-diff-exempt: .te-panefade flex — обёртка тела списка переехала в слот шелла
      visual-diff-exempt: .te-panefade min-height — то же
      visual-diff-exempt: .te-panefade display — то же
      visual-diff-exempt: .te-panefade flex-direction — то же
      visual-diff-exempt: .te-panefade outline — то же
      visual-diff-exempt: .te-panefade overflow-y — список скроллит себя (скролл был на .ts-leftscroll)
-     visual-diff-exempt: .te-panefade background — утоплённый грунт под карточками остановок
      visual-diff-exempt: .te-panefade padding — воздух списка (был на .ts-leftscroll) */
-  background: var(--wash); padding: var(--sp-6) var(--sp-7) var(--sp-7);
+  padding: var(--sp-6) var(--sp-7) var(--sp-7);
   animation: tePaneIn .2s var(--ease-out) both;
 }
 @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
