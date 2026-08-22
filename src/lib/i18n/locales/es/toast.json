@@ -28,6 +28,8 @@
   "start_date_updated": "Fecha de inicio actualizada",
   "success_title": "Éxito",
   "feedback_sent": "Tu mensaje se ha enviado, te responderemos pronto",
+  "tg_reminders_off": "Recordatorios desactivados",
+  "tg_reminders_on": "Recordatorios activados",
   "tg_unlinked": "Telegram desvinculado",
   "trip_copied": "Viaje copiado",
   "trip_deleted": "Viaje eliminado",
