@@ -85,7 +85,10 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
       selectedIdx={selectedIdx}
       onSelect={select}
       onHover={setHoverId}
-      map={(insets) => (
+      // Камера линзы тоже НЕ следит за панелью/шитом: до этой ветки она не
+      // следила, и пока поведение не проверено на живом экране, менять его
+      // нечем. Шелл здесь — раскладка.
+      map={() => (
         <MapView
           visits={visits}
           transfers={transfers}
@@ -100,7 +103,6 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
           focusZoom={FOCUS_ZOOM}
           cityBadge={cityBadge}
           cooperativeGestures={false}
-          insets={insets}
           onCityClick={(visitsAtPoint) => {
             const idx = route.findIndex(v => v.id === visitsAtPoint[0]?.id);
             if (idx !== -1) select(idx);

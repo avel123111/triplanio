@@ -13,7 +13,6 @@
 // core for any future map surface. The pure duration math lives in ./calmDuration.js
 // (dependency-free → unit-testable).
 import { mapboxgl, fitToPoints, clampPadding } from '@/lib/mapbox';
-import { getMapInsets, offsetForInsets } from './insets';
 import { calmDuration } from '@/lib/map/calmDuration';
 
 export { calmDuration };
@@ -36,21 +35,12 @@ export function calmFlyTo(map, target = {}) {
   if (!map) return;
   const toZoom = target.zoom != null ? target.zoom : map.getZoom();
   const duration = calmDuration({ dZoom: toZoom - map.getZoom(), screens: centerScreens(map, target.center) });
-  // Точку, к которой летим, уводим из-под панели/шита — иначе камера честно
-  // прилетает в центр КАНВАСА, а половина канваса закрыта, и город оказывается
-  // под шитом. Явный offset вызывателя побеждает.
-  const offset = target.offset ?? offsetForInsets(getMapInsets(map));
-  map.flyTo({ ...target, offset, duration, essential: true });
+  map.flyTo({ ...target, duration, essential: true });
 }
 
 // Fit a set of [lng,lat] points with an adaptive calm duration. The target zoom is
 // derived from cameraForBounds so the duration matches the ACTUAL zoom delta, then
 // the existing fitToPoints does the fit (single source for the fit mechanics).
-//
-// ★ ОЦЕНКА ЛЕТИТ ПО ТОЙ ЖЕ КАМЕРЕ, ЧТО И ПОЛЁТ. Сдвиг под закрытую площадь
-// учитывается здесь ровно так же, как в `fitToPoints`; посчитай мы длительность
-// по «пустому» экрану, а полетели по свободному остатку — темп разошёлся бы с
-// расстоянием, и это читалось бы как рывок.
 export function calmFit(map, points, opts = {}) {
   if (!map || !points || points.length === 0) return;
   const padding = opts.padding ?? 60;
@@ -64,7 +54,7 @@ export function calmFit(map, points, opts = {}) {
     try {
       const b = new mapboxgl.LngLatBounds(points[0], points[0]);
       points.forEach((p) => b.extend(p));
-      const cam = map.cameraForBounds(b, { padding: clampPadding(map, padding), offset: offsetForInsets(getMapInsets(map)), maxZoom });
+      const cam = map.cameraForBounds(b, { padding: clampPadding(map, padding), maxZoom });
       if (cam?.zoom != null) { toZoom = Math.min(cam.zoom, maxZoom); center = [cam.center.lng, cam.center.lat]; }
     } catch { /* fall back to current zoom for the estimate */ }
   }
