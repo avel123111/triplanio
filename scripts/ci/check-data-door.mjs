@@ -167,6 +167,7 @@ import { mkdtempSync, rmSync, readdirSync, readFileSync, realpathSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseValueExemptions } from './exempt-markers.mjs';
 
 /** realpath, но без броска (argv[1] мог уже уехать) — для сверки «прямой вызов». */
 const realpathSafe = (p) => { try { return realpathSync(p); } catch { return p; } };
@@ -686,35 +687,10 @@ function allowances() {
   } catch (e) {
     die(`не могу сдиффить против ${BASE_REF}: ${e.stderr || e.message}`);
   }
-  const known = new Set(METRICS.map((m) => m.key));
-  const out = Object.create(null);
-  const re = new RegExp(`${EXEMPT}:\\s*([a-zA-Z][\\w-]*)\\s*\\+(\\d+)`, 'g');
-  for (const line of diff.split('\n')) {
-    if (!line.startsWith('+') || line.startsWith('+++')) continue;
-    const found = [...line.matchAll(re)];
-    /** ★ МАРКЕР, КОТОРЫЙ НЕ РАЗОБРАЛСЯ, — ОШИБКА, А НЕ ТИШИНА. `door-exempt:
-     *  writes 1` (без плюса) регулярка не берёт, и без этой проверки строка
-     *  молча не даёт ничего: автор написал исключение, увидел красноту и не
-     *  понимает, почему. Шапка обещает, что опечатка не читается как
-     *  «исключений не просили», — это делает обещание правдой. Форма маркера =
-     *  ровно то, что гард печатает в подсказке при пробитии. */
-    if (!found.length && line.includes(`${EXEMPT}:`)) {
-      die(`маркер ${EXEMPT} не разобрался — ожидается «${EXEMPT}: <метрика> +N — причина».`, [
-        `маркер был: ${line.slice(1).trim()}`,
-        `известные метрики: ${[...known].join(', ')}`,
-      ]);
-    }
-    for (const mm of found) {
-      if (!known.has(mm[1])) {
-        die(`исключение называет неизвестную метрику \`${mm[1]}\` — опечатка не должна читаться как «исключений не просили».`, [
-          `известные метрики: ${[...known].join(', ')}`,
-          `маркер был: ${line.slice(1).trim()}`,
-        ]);
-      }
-      out[mm[1]] = (out[mm[1]] ?? 0) + Number(mm[2]);
-    }
-  }
-  return out;
+  // Разбор формы `door-exempt: <метрика> +N` живёт в общем модуле вместе с 2o —
+  // одна форма, один парсер (см. exempt-markers.mjs). Пояс «маркер назван, но не
+  // разобрался → die» и сверка знака теперь у обоих гардов и разъехаться не могут.
+  return parseValueExemptions(diff, { marker: EXEMPT, metrics: METRICS, die });
 }
 
 const exempt = allowances();

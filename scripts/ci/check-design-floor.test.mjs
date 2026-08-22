@@ -441,7 +441,7 @@ test('an exemption naming an unknown metric is an ERROR, not a silent no-op', (t
   });
   const r = run(f);
   assert.equal(r.code, 2, r.out);
-  assert.match(r.out, /unknown metric/);
+  assert.match(r.out, /неизвестную метрику/);
 });
 
 /* ────────────────────────────── plumbing ────────────────────────────────── */
@@ -781,6 +781,19 @@ test('★ маркер БЕЗ знака - тоже ошибка, а не тих
   const r = run(f);
   assert.equal(r.code, 2, r.out);
   assert.match(r.out, /НЕ НАЗВАН ЗНАК/);
+});
+
+test('★ маркер ВОВСЕ без числа (TRIP-384) - «не разобрался», а не тихий ноль', (t) => {
+  // Остаток задачи: строгая форма `<имя> +N` такую строку не берёт совсем, и без
+  // пояса «маркер назван, но не разобрался» она молча не даёт бюджета — автор
+  // видит красноту роста и не понимает, что его исключение не прочитано.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2) },
+    head: { 'src/a.css': `/* floor-exempt: classes — забыл число */\n${family(3)}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /не разобрался/);
 });
 
 test('★ скачок сырых тегов ВНУТРИ ДС печатается: доля выросла бы без работы', (t) => {

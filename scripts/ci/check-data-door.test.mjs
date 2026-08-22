@@ -687,13 +687,15 @@ test('a marker naming an unknown metric is an ERROR, not a no-op', (t) => {
 });
 
 test('mutation 18 — a marker that does not PARSE is an error, not silence', (t) => {
-  // `door-exempt: writes 1` (no `+`) does not match the regex. Without an
-  // explicit check the line grants nothing SILENTLY: the author wrote an
-  // exemption, sees red, and has no idea why — while the header promises that
-  // a typo never reads as "no exemption requested".
+  // `door-exempt: writes` (нет числа ВОВСЕ) строгую форму `<имя> +N` не берёт.
+  // Без пояса «маркер назван, но не разобрался» строка молча не даёт бюджета:
+  // автор написал исключение, видит красноту и не понимает, почему — при том,
+  // что шапка обещает, что опечатка не читается как «исключений не просили».
+  // (Форма `writes 1` — без плюса, но с числом — теперь ловится сверкой знака
+  //  отдельным, более точным сообщением; см. exempt-markers.mjs и его тест.)
   const f = fixture(t, {
     base: { 'src/a.js': writes(1) },
-    head: { 'src/a.js': writes(2) + `// door-exempt: writes 1 — забыл плюс\n` },
+    head: { 'src/a.js': writes(2) + `// door-exempt: writes — забыл число\n` },
   });
   const r = run(f);
   assert.equal(r.code, 2, `нераспознанный маркер промолчал:\n${r.out}`);
