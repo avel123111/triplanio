@@ -347,10 +347,12 @@ function TelegramSection({ tripId }) {
   // spinner on the row and reflect the new state only once the edge call lands.
   const toggle = async (a) => {
     if (busyId) return;
+    const next = !a.is_active;
     setBusyId(a.id);
     try {
-      await setTelegramActive(tripId, a.id, !a.is_active);
-      binding.update({ id: a.id, is_active: !a.is_active });
+      await setTelegramActive(tripId, a.id, next);
+      binding.update({ id: a.id, is_active: next });
+      successToast(t, next ? 'tg_reminders_on' : 'tg_reminders_off');
     } catch (err) {
       toast({ description: errorText(t, err?.code), variant: 'destructive' });
     } finally {
