@@ -1,5 +1,10 @@
-/* ============ Triplanio — Landing styles ============ */
-:root {
+/* ============ Triplanio — Site styles ============ */
+/* Токены сайтовой ДС живут на html.site, а не на голом :root. Класс вешает
+   useSiteCss() (SiteChrome.jsx) на маркетинговых/публичных React-роутах, а на
+   статических /terms и /privacy — атрибут class="site" прямо в разметке. Без
+   класса токенов нет — так голый :root не может утечь на всё приложение, если
+   site.css однажды затащат в бандл (разбор специфичности — TRIP-446). */
+html.site {
   --brand: #2167e2;
   --brand-600: #1b58c4;
   --brand-700: #174aa6;
@@ -45,84 +50,6 @@
   --font-body: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --display-tracking: -0.022em;
   --h1-tracking: -0.035em;
-}
-
-/* ───────── Palettes ───────── */
-:root[data-palette="sunset"] {
-  --brand: #e2562d;
-  --brand-600: #c5471f;
-  --brand-700: #a23a18;
-  --brand-soft: rgba(226,86,45,.10);
-  --brand-soft-12: rgba(226,86,45,.14);
-  --brand-ink: #3a1607;
-  --brand-ink-2: #260e04;
-  --brand-glow: rgba(226,86,45,.10);
-  --warm: #d4a02a;
-  --warm-soft: #f6e6b3;
-  --warm-tint: rgba(212,160,42,.12);
-  --banner-photo: url("https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&w=1600&q=70");
-}
-:root[data-palette="forest"] {
-  --brand: #1f7a55;
-  --brand-600: #176243;
-  --brand-700: #114e35;
-  --brand-soft: rgba(31,122,85,.10);
-  --brand-soft-12: rgba(31,122,85,.14);
-  --brand-ink: #0c2a1e;
-  --brand-ink-2: #061a12;
-  --brand-glow: rgba(31,122,85,.10);
-  --warm: #d18b3a;
-  --warm-soft: #f3decb;
-  --warm-tint: rgba(209,139,58,.12);
-  --banner-photo: url("https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1600&q=70");
-}
-:root[data-palette="editorial"] {
-  --brand: #1a1a1a;
-  --brand-600: #0a0a0a;
-  --brand-700: #000000;
-  --brand-soft: rgba(15,15,15,.06);
-  --brand-soft-12: rgba(15,15,15,.10);
-  --brand-ink: #111111;
-  --brand-ink-2: #050505;
-  --brand-glow: rgba(15,15,15,.04);
-  --warm: #c9603a;
-  --warm-soft: #f1d9c9;
-  --warm-tint: rgba(201,96,58,.12);
-  --ink: #0a0a0a;
-  --ink-2: #1a1a1a;
-  --wash: #f4f3ef;
-  --line: #e2e0d8;
-  --line-2: #ece9df;
-  --banner-photo: url("https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=70");
-}
-
-/* ───────── Type personalities ───────── */
-/* TRIP-165 — художественные шрифты (Instrument Serif / Space Grotesk) убраны:
-   вся типографика — единая суперсемья Golos Text (наследуется из :root).
-   Персоналии оставляют ТОЛЬКО тонкую настройку трекинга, семья везде каноническая. */
-:root[data-type="editorial"] {
-  --h1-tracking: -0.018em;
-  --display-tracking: -0.012em;
-}
-:root[data-type="tech"] {
-  --h1-tracking: -0.04em;
-  --display-tracking: -0.028em;
-}
-
-/* ───────── Density ───────── */
-:root[data-density="spacious"] {
-  --sect-pad: 128px;
-  --card-pad: 36px;
-  --hero-top: 120px;
-  --hero-bot: 112px;
-  --container: 1220px;
-}
-:root[data-density="compact"] {
-  --sect-pad: 64px;
-  --card-pad: 22px;
-  --hero-top: 124px;
-  --hero-bot: 56px;
-  --container: 1100px;
 }
 
 * { box-sizing: border-box; }

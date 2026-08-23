@@ -13,6 +13,7 @@ import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { useTripProStatus } from '@/lib/subscription';
+import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { isAddonEnabled } from '@/lib/tripAddons';
 import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from '@/lib/tripMenu';
@@ -952,8 +953,15 @@ export default function TripView() {
   }, [tripId, trip, members.length, tripIsPro, myRole]);
 
   const { openProUpsell } = useProUpsell();
-  // Участник (не владелец) → инфо-апселл «подключает владелец» (app-level, TRIP-225).
-  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }) });
+  // Апселл из МЕНЮ трипа (пункт «Pro» рейла и телефонного шита): владельцу —
+  // с кнопкой апгрейда, участнику — «подключает владелец». Роль и источник едут
+  // фактами, копию и кнопки выбирает таблица в `@/lib/proUpsell`.
+  const openProInfo = () => openProUpsell({
+    role: proRole(isOwner),
+    source: 'menu',
+    ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
+    onUpgrade: openUpgrade,
+  });
   const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
   // Открытие бокового меню и мобильный док теперь на TripShell — она владеет
@@ -1160,7 +1168,8 @@ export default function TripView() {
         mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
         cities={visits.filter((v) => v.city_name)}
         onProRefusal={() => openProUpsell({
-          mode: isOwner ? 'upgrade' : 'info',
+          role: proRole(isOwner),
+          source: 'feature',
           feature: t('budget.title'),
           ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
           onUpgrade: openUpgrade,
@@ -1174,7 +1183,8 @@ export default function TripView() {
         tripId={tripId}
         existing={null}
         onProRefusal={() => openProUpsell({
-          mode: isOwner ? 'upgrade' : 'info',
+          role: proRole(isOwner),
+          source: 'feature',
           feature: t('budget.title'),
           ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
           onUpgrade: openUpgrade,
@@ -1227,15 +1237,13 @@ export default function TripView() {
       trip={trip}
       section={shownLens}
       myStep={myStep}
-      isOwner={isOwner}
       isPro={tripIsPro}
       proResolved={tripProResolved}
       title={trip?.title}
       meta={heroSub}
       onNavigate={setLens}
       onShare={() => setShareOpen(true)}
-      onUpgrade={openUpgrade}
-      onProInfo={openProInfo}
+      onProUpsell={openProInfo}
       bodyRef={screenBodyRef}
       drawer={eventDrawer}
       overlays={overlays}

@@ -29,7 +29,7 @@
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { BrandSlot } from '@/components/AppHeader';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import { useMobileNav } from '@/components/MobileBottomNav';
 import { DEFAULT_SECTION, sectionById, isSectionAvailable } from '@/lib/tripMenu';
@@ -42,30 +42,27 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { isProActive } from '@/lib/subscription';
 import { Skeleton } from '@/design/index';
 
-// Скелетон меню на время загрузки shell-запроса. Реальный TripSidebar тут
+// Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
 // нельзя: его состав зависит от аддонов и роли, а они приезжают тем же
 // запросом - подставив его раньше, мы бы показали чужой набор пунктов и
 // перерисовали меню под пользователем.
-function SidebarSkeleton() {
-  const t = useT();
-  // Ширины полос — как были: у разделов своя формула, у управления своя. Свести
-  // их в одну значило бы поменять картинку загрузки без повода.
-  const row = (w) => (i) => (
+//
+// Геометрия — ЖИВОГО пункта (иконка, под ней подпись): скелетон, нарисованный
+// по старой раскладке, показывал бы первым кадром меню, которого больше нет.
+function SidebarSkeleton({ onBack, backTitle }) {
+  const row = (i) => (
     <div key={i} className="app-side__item">
-      <Skeleton w={15} h={15} r={4} />
-      <Skeleton w={w(i)} h={12} r={4} />
+      <Skeleton w={20} h={20} r={6} />
+      <Skeleton w={30 + (i % 3) * 8} h={8} r={4} />
     </div>
   );
   return (
     <aside className="app-side">
-      <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip.sections_title')}</div>
-        {[1, 2, 3, 4, 5, 6].map(row((i) => 80 + (i % 3) * 15))}
-      </div>
-      <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-        {[1, 2, 3, 4].map(row((i) => 70 + (i % 3) * 10))}
-      </div>
+      <BrandSlot onClick={onBack} title={backTitle} back />
+      <nav className="app-side__nav">
+        <div className="app-side__group">{[1, 2, 3, 4, 5, 6].map(row)}</div>
+        <div className="app-side__group">{[7, 8, 9].map(row)}</div>
+      </nav>
     </aside>
   );
 }
@@ -75,15 +72,13 @@ export default function TripShell({
   trip,
   section = DEFAULT_SECTION,
   myStep,
-  isOwner,
   isPro,
   proResolved = true,
   title,
   meta,
   onNavigate,
   onShare,
-  onUpgrade,
-  onProInfo,
+  onProUpsell,
   bodyRef,
   loading = false,
   children,
@@ -150,6 +145,11 @@ export default function TripShell({
     return () => setTripNav((cur) => (cur === mine ? null : cur));
   }, [setTripNav, section, hidesDock, moreBadge]);
 
+  // Состояние меню теперь ЧИСТО ТЕЛЕФОННОЕ: выезжающего ящика нет, шит открывается
+  // только под `isPhone`. Не сбросив флаг на уходе с телефона, мы оставили бы его
+  // висеть - и шит сам собой открылся бы при возврате на узкую ширину.
+  useEffect(() => { if (!isPhone) setSideOpen(false); }, [isPhone]);
+
   // Дефолтная секция - «вверх» из трипа, любая другая - «вверх» в трип.
   const backTo = section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`;
 
@@ -157,52 +157,69 @@ export default function TripShell({
   // паддинга и без скролла, поверхность в край.
   const flush = sectionById(section)?.flush === true;
 
-  const menuProps = {
-    tripId, trip, lens: section, isPro, proResolved, isOwner, myStep,
-    onUpgrade, onProInfo,
-  };
+  const goBack = () => nav(backTo);
+  const backTitle = t('trip.back');
 
   return (
     <div className="trip-shell">
-      <AppHeader
-        isTrip
-        user={user}
-        isPro={isProActive(user)}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={() => nav(backTo)}
-        backTitle={t('trip.back')}
-        // Пока грузимся, бургера нет - как и было. Открывать нечего: меню ещё
-        // скелетон, а скрим и телефонный шит в этой ветке не отрисованы, то
-        // есть выехавший ящик было бы нечем закрыть.
-        onMenu={loading ? undefined : () => setSideOpen(true)}
-        title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
-        meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
-      />
-      <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
-        {loading ? <SidebarSkeleton /> : (
+      <div className="trip-body">
+        {loading ? <SidebarSkeleton onBack={goBack} backTitle={backTitle} /> : (
           <>
+            {/* Шит открывается только на телефоне, где рейла нет (CSS), поэтому
+                закрывать его отсюда некому - рейл просто переключает секцию. */}
             <TripSidebar
-              {...menuProps}
-              onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
+              tripId={tripId}
+              trip={trip}
+              lens={section}
+              myStep={myStep}
+              isPro={isPro}
+              proResolved={proResolved}
+              onProUpsell={onProUpsell}
+              onNavigate={(id) => onNavigate?.(id)}
               onShare={onShare}
+              onBack={goBack}
+              backTitle={backTitle}
             />
-            <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
-            {/* Телефоны: то же меню канон-шитом. Выезжающий drawer и его скрим
-                на этом брейкпоинте гасятся в CSS. */}
+            {/* Телефоны: то же меню канон-шитом из мобильного дока. Рейла на
+                этой ширине нет (CSS), выезжающего ящика больше нет нигде. */}
             <TripSidebarSheet
-              {...menuProps}
+              tripId={tripId}
+              trip={trip}
+              lens={section}
+              isPro={isPro}
+              proResolved={proResolved}
+              myStep={myStep}
               open={isPhone && sideOpen}
               onOpenChange={setSideOpen}
               onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
               onShare={onShare && (() => { setSideOpen(false); onShare(); })}
-              onUpgrade={onUpgrade && (() => { setSideOpen(false); onUpgrade(); })}
-              onProInfo={onProInfo && (() => { setSideOpen(false); onProInfo(); })}
+              onProUpsell={onProUpsell && (() => { setSideOpen(false); onProUpsell(); })}
               user={user}
               onAccount={() => { setSideOpen(false); nav('/settings'); }}
             />
           </>
         )}
+        {/* Шапка — СОСЕД контента, а не его потомок: к `.trip-content` абсолютом
+            привязан хост выдвижных панелей (EventDrawerHost), и внутри шапки он
+            поехал бы из-под неё. Сетка ставит её правой верхней ячейкой, на одну
+            линию с бренд-слотом рейла. */}
+        <AppHeader
+          isTrip
+          user={user}
+          isPro={isProActive(user)}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          // Кнопка «назад» — только на телефоне: на остальных ширинах выход
+          // из трипа живёт в бренд-слоте рейла, и вторая кнопка была бы
+          // дублем того же действия.
+          onBack={isPhone ? goBack : undefined}
+          backTitle={backTitle}
+          // Пока грузимся, бургера нет - как и было. Открывать нечего: меню
+          // ещё скелетон, а телефонный шит в этой ветке не отрисован.
+          onMenu={loading || !isPhone ? undefined : () => setSideOpen(true)}
+          title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
+          meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
+        />
         <div className="trip-content">
           <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
             {children}

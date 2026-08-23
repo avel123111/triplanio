@@ -74,7 +74,7 @@ test('★★★ C · разметка ВНЕ ПЕРИМЕТРА эпика не 
   // это предикатом OUT_OF_SCOPE. У 2q такого предиката не было, поэтому он судил
   // разметку, которую эпик из периметра ИСКЛЮЧИЛ: `btn--lg`/`btn--white`
   // (LandingPage, PublicTrip) и `card--wide` краснели как несуществующие, хотя
-  // правило у них есть - в `public/landing.css`, инжектируемом рантаймом.
+  // правило у них есть - в `public/site.css`, инжектируемом рантаймом.
   const dir = fixture(t, {
     'src/a.css': LADDER,
     'src/pages/Landing/LandingPage.jsx': 'const x = "row row--g9";\n',

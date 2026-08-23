@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { track } from '@/lib/analytics';
+import { proUpsellFooter } from '@/lib/proUpsell';
 
 /**
  * ProUpsellProvider — единый app-level хост Pro-апселла (TRIP-225).
@@ -24,18 +25,29 @@ export function useProUpsell() {
 }
 
 export function ProUpsellProvider({ children }) {
-  const [state, setState] = useState({ open: false, mode: 'upgrade', feature: '', ownerName: '', onUpgrade: undefined });
+  const [state, setState] = useState({ open: false, role: 'owner', source: 'feature', feature: '', ownerName: '', onUpgrade: undefined });
 
-  // openProUpsell({ mode?, feature?, ownerName?, onUpgrade? })
-  //   mode='info'    → участник: «подключает владелец» + copy-link
-  //   mode='upgrade' → владелец/free: фичи + CTA «Перейти к Pro» (onUpgrade)
+  // openProUpsell({ role, source, feature?, ownerName?, onUpgrade? })
+  //   role   — 'owner' | 'member': что человек МОЖЕТ. Решает футер модалки.
+  //   source — 'menu' | 'feature': что он СПРАШИВАЕТ. Решает копию.
+  // Вызыватель сообщает факты, решение о текстах и кнопках принимает таблица в
+  // `@/lib/proUpsell` — иначе каждый экран решает по-своему (так и было: один
+  // считал роль, другой всегда слал «участник»).
   const openProUpsell = useCallback((opts = {}) => {
     // central feature-gate impression (Revenue funnel) — the one place the Pro
     // upsell modal opens, so paywall_viewed is captured by construction.
-    track('paywall_viewed', { feature: opts.feature || undefined, mode: opts.mode || 'upgrade' });
+    // Поле `mode` осталось в ПРЕЖНИХ значениях ('upgrade' | 'info') намеренно: оно
+    // описывает, что человеку показали, и ряд в воронке доходов не должен
+    // оборваться из-за того, что внутри мы переименовали ось. Значение выводится
+    // из той же таблицы, что и футер — второго источника истины нет.
+    track('paywall_viewed', {
+      feature: opts.feature || undefined,
+      mode: proUpsellFooter(opts.role || 'owner') === 'upgrade' ? 'upgrade' : 'info',
+    });
     setState({
       open: true,
-      mode: opts.mode || 'upgrade',
+      role: opts.role || 'owner',
+      source: opts.source || 'feature',
       feature: opts.feature || '',
       ownerName: opts.ownerName || '',
       onUpgrade: opts.onUpgrade,
@@ -49,7 +61,8 @@ export function ProUpsellProvider({ children }) {
       {children}
       <ProUpsellModal
         open={state.open}
-        mode={state.mode}
+        role={state.role}
+        source={state.source}
         feature={state.feature}
         ownerName={state.ownerName}
         onOpenChange={(o) => { if (!o) closeProUpsell(); }}

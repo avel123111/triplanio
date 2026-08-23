@@ -216,6 +216,7 @@ import AddressAutocomplete from '@/components/common/AddressAutocomplete';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
 import EventAiBlock from '@/components/common/EventAiBlock';
+import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 
@@ -693,12 +694,16 @@ export default function EventEditDialog({
   };
 
   const openUpgrade = () => {
-    // Only the owner can upgrade this trip → checkout. A participant can't unlock
-    // someone else's trip by paying, so show the "ask the owner" dialog instead.
-    // Апселл рендерит app-level ProUpsellProvider (не вложенная модаль) — TRIP-225.
-    if (!isOwner) { openProUpsell({ mode: 'info' }); return; }
-    onOpenChange?.(false);
-    goPro(nav, { tripId, from: 'paywall', feature: 'event_pro' });
+    // Апселл видят ОБА: владелец с кнопкой оплаты, участник — с просьбой к
+    // владельцу (его платёж чужой трип не откроет). Раньше владелец уходил в
+    // чекаут МИМО модалки — то есть комбинация «владелец + закрытая функция»
+    // не показывалась нигде, хотя копия под неё написана.
+    // Модалку рендерит app-level ProUpsellProvider (не вложенная модаль) — TRIP-225.
+    openProUpsell({
+      role: proRole(isOwner),
+      source: 'feature',
+      onUpgrade: () => { onOpenChange?.(false); goPro(nav, { tripId, from: 'paywall', feature: 'event_pro' }); },
+    });
   };
 
   // ── Unified validation (Ф2): one engine, emits CODES; text via t('validation.'+code).

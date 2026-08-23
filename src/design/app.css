@@ -202,6 +202,25 @@
      его в списке «НЕ ТРОГАТЬ» и падает тестом, если правило ослабить. */
   --header-bg:    var(--surface);
 
+  /* Геометрия хрома — ОДИН источник на два места. Ширина рейла и высота шапки
+     держат ИНВАРИАНТ БРЕНД-СЛОТА: знак стоит в боксе --rail-w × --header-h в
+     левом верхнем углу и вне трипа (первая ячейка шапки), и внутри трипа
+     (шапка рейла). Экраны — разные ветки роутера, узел логотипа при переходе
+     перемонтируется, поэтому «не прыгает» держится ЧИСЛАМИ, а не общим DOM:
+     разъедутся эти два значения — разъедется логотип. */
+  --rail-w:       70px;
+  --header-h:     60px;
+
+  /* Рейл трипа — ИНВЕРСНАЯ поверхность: тёмный борт в ОБЕИХ темах. Своя пара
+     фон/чернила нужна именно поэтому: глобальные --ink/--wash/--line подобраны
+     под светлый фон и на тёмном борте не читаются (тот же класс дефекта, что
+     TRIP-53: login.css перекрывал --ink глобально и красил текст в текст). */
+  --nav-bg:       #071E45;
+  --nav-ink:      rgba(255,255,255,.62);
+  --nav-ink-hi:   #FFFFFF;
+  --nav-hover:    rgba(255,255,255,.08);
+  --nav-line:     rgba(255,255,255,.13);
+
   /* Гарнитуры (TRIP-410 — единственный дом токенов шрифтов). Single-font:
      Geologica несёт и текст, и заголовки (числа — tabular-nums); JetBrains Mono —
      ТОЛЬКО коды/брони/рейсы/полисы/share-URL/email/kbd/code (V2). */
@@ -304,6 +323,15 @@
   /* Канонические поверхности — тёмная (TRIP-326): непрозрачная заливка, без
      стекла. Хром (шапка + меню трипа) сливается с фоном — граница отделяет. */
   --header-bg:    var(--bg);
+
+  /* Рейл — тёмная тема. Борт уводится ГЛУБЖЕ фона (#0c0e1c) и холоднее его:
+     иначе колонка сливается со страницей и перестаёт читаться отдельным слоем.
+     Чернила чуть тише светлых — контраст белого на тёмном и так выше. */
+  --nav-bg:       #0A1428;
+  --nav-ink:      rgba(233,238,250,.60);
+  --nav-ink-hi:   #F2F6FF;
+  --nav-hover:    rgba(255,255,255,.06);
+  --nav-line:     rgba(255,255,255,.10);
 
   /* Semantic — dark */
   --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
@@ -762,7 +790,6 @@ h4,
 .te-cityname,   /* TRIP-337: названия города (строка редактора + планировщик — общий носитель .te-cityname) → Label (был Subheading). Маршрут карты идёт своим .map-route__name, тоже Label. */
 .btn,
 .field__label,
-.app-side__item,
 .eroute p,
 .invite__tx p,
 .stepper--block .ts-startctl__date,
@@ -1125,7 +1152,8 @@ h4,
    visual-diff-exempt: .t-tiny-caps line-height — новый канон
    visual-diff-exempt: .t-tiny-caps letter-spacing — новый канон
    visual-diff-exempt: .t-tiny-caps text-transform — новый канон */
-.t-tiny { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 500; line-height: 1.3; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.t-tiny,
+.app-side__label { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 500; line-height: 1.3; letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* подпись пункта рейла — тот же мелкий ярус, без своего кегля */
 /* Переносы стат-подписей на канон Tiny Caps (гард 2p) — все намеренные, апрув Pavel:
    visual-diff-exempt: .cdu span font-size — подпись таймера Micro→Tiny Caps
    visual-diff-exempt: .k font-size — стат-подпись сводки Meta→Tiny Caps
@@ -1226,13 +1254,23 @@ h4,
    =================================================================== */
 .app-header {
   display: flex; align-items: center; gap: 14px;
-  padding: 0 18px;
+  /* Слева поля НЕТ: первым в шапке стоит бренд-слот шириной --rail-w, и его
+     ширина и есть отступ. Иначе поле сложилось бы со слотом и логотип уехал бы
+     правее того места, где он стоит внутри трипа (там слот — шапка рейла). */
+  padding: 0 18px 0 0;
   position: sticky; top: 0; z-index: var(--z-header);
   background: var(--header-bg);             /* TRIP-326: всегда непрозрачный; light=#ffffff, dark=--bg */
   color: var(--ink);
-  height: 60px; min-height: 60px;           /* фикс-высота: на неё завязаны calc(100vh - 56px) лэйауты */
-  border-bottom: 1px solid var(--line);
+  height: var(--header-h); min-height: var(--header-h);   /* фикс-высота: на неё завязан бренд-слот и лэйауты */
+  /* Нижняя граница — ВНУТРЕННЕЙ тенью, тем же приёмом, что правая граница рейла:
+     бордер съедает пиксель высоты, и знак в шапке вставал бы на пол-пикселя выше
+     знака в рейле. Линия выглядит так же, инвариант держится. */
+  box-shadow: inset 0 -1px 0 var(--line);
 }
+/* Внутри трипа шапка живёт во ВТОРОЙ колонке (правее рейла), поэтому её первый
+   элемент — заголовок трипа — должен встать туда же, где вне трипа стоит
+   вордмарк: на зазор от слота, а не в край. */
+.app-header--trip { padding-left: var(--sp-6); }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 
@@ -1245,17 +1283,49 @@ h4,
 .app-header__gbtn:hover { background: var(--wash); color: var(--ink); }
 .app-header__menu { display: none; }                /* burger — shown on mobile only */
 
-/* Brand block — logo tile + wordmark */
-.app-header__brand { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 0 0 auto; min-width: 0; }
+/* Бренд-СЛОТ — бокс --rail-w × --header-h в левом верхнем углу экрана. Один и
+   тот же элемент стоит первой ячейкой шапки (вне трипа) и шапкой рейла (внутри
+   трипа), поэтому знак не смещается при переходе между ними ни на пиксель.
+   Вордмарк — СОСЕД слота, а не его содержимое: он появляется и исчезает, слот
+   держит размер. */
+.app-header__brand {
+  position: relative; flex: 0 0 auto;
+  width: var(--rail-w); height: var(--header-h);
+  display: grid; place-items: center; cursor: pointer;
+  border: 0; background: transparent; padding: 0; color: inherit;
+}
 /* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
    поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
 .app-header__logo {
-  width: 38px; height: 38px; flex: 0 0 auto; border-radius: var(--r-sm); display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center;
   overflow: hidden;
 }
 .app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
-.app-header__brand-name { color: var(--ink); }
-.app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
+.app-header__brand-name { color: var(--ink); border: 0; background: transparent; padding: 0; cursor: pointer; }
+/* Второе лицо слота — стрелка выхода из трипа. Лежит в том же боксе поверх
+   знака и проступает по наведению; правило контекстное намеренно: в шапке слот
+   это ссылка на бренд, в рейле — выход из трипа, и отдельной круглой кнопки
+   «назад» в шапке из-за этого больше нет (на телефоне рейла нет — там кнопка
+   остаётся). */
+.app-header__brandback {
+  /* Размер — РОВНО как у знака, который стрелка подменяет: слот шире (он держит
+     геометрию колонки), и подложка во весь слот читалась бы огромной кнопкой.
+     Центрируется отдельным `translate`, чтобы `transform` остался свободен под
+     анимацию подмены. */
+  position: absolute; top: 50%; left: 50%; translate: -50% -50%;
+  width: 38px; height: 38px; border-radius: var(--r-sm);
+  display: grid; place-items: center;
+  /* design-token-exempt: 5px — амплитуда подмены знака стрелкой, не шаг раскладки */
+  color: var(--nav-ink-hi); opacity: 0; transform: translateX(5px) scale(.82);
+  transition: opacity .18s ease, transform .24s var(--ease-out);
+}
+/* Режим слота в рейле — МОДИФИКАТОР на самом объекте, а не правило «слот внутри
+   меню»: ключ на том, чем элемент ЯВЛЯЕТСЯ, а не где он стоит в дереве. */
+.app-header__brand--back { width: 100%; }
+.app-header__brand--back .app-header__logo { transition: opacity .18s ease, transform .24s var(--ease-out); }
+.app-header__brand--back:hover .app-header__brandback { background: var(--nav-hover); }
+.app-header__brand--back:hover .app-header__logo { opacity: 0; transform: translateX(-4px) scale(.78); }   /* design-token-exempt: 4px — та же амплитуда в обратную сторону */
+.app-header__brand--back:hover .app-header__brandback { opacity: 1; transform: none; }
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
 .app-header__vdiv { width: 1px; height: 28px; background: var(--line); flex: 0 0 auto; }
@@ -1359,16 +1429,270 @@ h4,
 
 /* Trip side nav. The grid host that used to wrap it (.app-body) is gone — the
    живая оболочка ОДНА - .trip-shell/.trip-body (TripShell); она же владеет
-   колонкой меню и его off-canvas-поведением на всех экранах трипа. */
+   колонкой рейла и его гашением на телефоне. */
+/* ============================================================
+   СУЖЕНИЕ МЕНЮ ТРИПА ДО РЕЙЛА 70 px — объявление намеренных изменений
+   для гарда 2p. Вариант A (сплошная плитка активного), апрув Pavel:
+   пункт стал вертикальным, меню — полновысотной колонкой на тёмном борте,
+   бренд-слот переехал в её шапку, границы хрома рисуются inset-тенью.
+   ============================================================
+   visual-diff-exempt: .app-header min-height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header--trip padding-left — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand border — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand border-radius — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand place-items — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand position — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand transition — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand:focus-visible outline — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand:focus-visible outline-offset — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand:hover background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand:hover opacity — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand:hover transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback inset — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback opacity — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback place-items — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback position — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback transition — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__logo opacity — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__logo transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__logo transition — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side border-radius — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side flex — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side flex-direction — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side opacity — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side outline — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side outline-offset — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side transition — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label font-family — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label font-size — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label font-variant-numeric — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label font-weight — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label letter-spacing — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label line-height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root --header-h — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root --nav-bg — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root --nav-hover — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root --nav-ink — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root --nav-ink-hi — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root --nav-line — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root --rail-w — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root[data-theme=dark] --nav-bg — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root[data-theme=dark] --nav-hover — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root[data-theme=dark] --nav-ink — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root[data-theme=dark] --nav-ink-hi — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: :root[data-theme=dark] --nav-line — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header border-bottom — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header--trip display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand align-items — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand gap — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand min-width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand-name display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side border-right — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side border-top-color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side box-shadow — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side margin — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__group display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__group flex-direction — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__group gap — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item border-radius — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item box-shadow — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item flex-direction — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item font-family — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item font-size — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item gap — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item justify-content — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item letter-spacing — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item line-height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item min-height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item position — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item right — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item text-align — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item:focus-visible outline — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item:focus-visible outline-offset — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item:hover background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item:hover color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label -webkit-box-orient — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label -webkit-line-clamp — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label hyphens — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label max-width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label overflow — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__label overflow-wrap — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav flex — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav flex-direction — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav gap — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav min-height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav overflow-x — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav overflow-y — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav scrollbar-width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__nav::-webkit-scrollbar display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .badge--unread box-shadow — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .hr border-top-color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .hr margin — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body grid-template-columns — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side min-height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side overflow-y — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side position — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__group margin-bottom — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell align-self — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell overflow-y — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header--trip {@media (max-width: 880px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand-name {@media (max-width: 880px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__logo {@media (max-width: 880px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__vdiv {@media (max-width: 880px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} bottom — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} box-shadow — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} left — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} max-width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} position — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} transition — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side {@media (max-width: 880px)} z-index — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} opacity — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} pointer-events — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .is-menu-open {@media (max-width: 880px)} transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-template-columns — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} grid-template-columns — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} opacity — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} pointer-events — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 880px)} transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-screen-body {@media (max-width: 640px)} padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-screen-body {@media (max-width: 880px)} padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-screen-body--flush {@media (max-width: 640px)} padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-screen-body--flush {@media (max-width: 880px)} padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} bottom — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} box-shadow — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} left — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} max-width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} position — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} transition — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-shell {@media (max-width: 880px)} z-index — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 640px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} inset — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} opacity — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} pointer-events — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} position — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} transition — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-side-scrim {@media (max-width: 880px)} z-index — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .active box-shadow — обводка бейджа на залитом активном пункте рейла, апрув Pavel
+   visual-diff-exempt: .app-side__item margin-left — бейдж непрочитанного уехал из хвоста ряда в угол иконки, апрув Pavel
+   visual-diff-exempt: .badge--unread margin-left — тот же переезд бейджа в угол иконки, апрув Pavel
+   floor-exempt: classes +3 — второе лицо бренд-слота (app-header__brand--back, app-header__brandback) и Pro-облик пункта меню (app-side__item--pro); апрув Pavel
+   floor-exempt: triage +3 — те же три класса в семье `app` (она на разборе); апрув Pavel
+   floor-exempt: tokens +7 — геометрия хрома (--rail-w, --header-h) держит инвариант бренд-слота, пять --nav-* это ИНВЕРСНАЯ палитра рейла: глобальные --ink/--wash/--line подобраны под светлый фон и на тёмном борте не читаются; апрув Pavel
+   floor-exempt: layout +4 — рейл это колонка (app-side, app-side__nav, app-side__group) и слой стрелки в слоте: примитива «вертикальная полоса навигации» в ДС нет; апрув Pavel
+   visual-diff-exempt: .active --badge-ring — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand--back border-radius — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand--back transition — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand--back width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand--back:focus-visible outline — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand--back:focus-visible outline-offset — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand--back:hover background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand--back:hover opacity — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand--back:hover transform — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__group border-top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__group margin-top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__group padding-top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item --badge-ring — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header--trip {@media (max-width: 640px)} padding-left — на телефоне рейла нет, зазор шапки свой; апрув Pavel
+   visual-diff-exempt: .app-header__brand-name background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand-name border — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand-name cursor — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand-name padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__logo flex — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__menu {@media (max-width: 640px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__menu {@media (max-width: 880px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback border-radius — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback left — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback translate — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header grid-row — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header {@media (max-width: 640px)} grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side grid-row — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body grid-row — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body grid-template-rows — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-content grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-content grid-row — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-content {@media (max-width: 640px)} grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tt__b--bottom transform — подсказка подтянута к бренд-слоту на ступень шкалы; side=bottom в проекте только у него, апрув Pavel
+   visual-diff-exempt: .app-side__item--pro color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item--pro:hover color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item--pro background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tm-manage__ico background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tm-manage__ico color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tm-manage__row background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tm-manage__row color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item --pro-item — ручка Pro-чернил у носителя (одно правило вместо ветки на поверхность); апрув Pavel
+   visual-diff-exempt: .app-side__item--pro --pro-item — та же ручка на телефонном ряду; апрув Pavel
+   visual-diff-exempt: .tm-manage__row --pro-item — та же ручка на телефонном ряду; апрув Pavel
+   ============================================================ */
 .app-side {
-  border-right: 1px solid var(--line);
-  background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
-  height: calc(100vh - 56px);
-  padding: 16px 10px;
-  position: sticky; top: 56px;
-  overflow-y: auto;
+  width: var(--rail-w); flex: none; align-self: stretch;
+  display: flex; flex-direction: column; padding: 0 var(--sp-2) var(--sp-3);
+  background: var(--nav-bg); color: var(--nav-ink);
+  /* Граница — ВНУТРЕННЕЙ тенью, а не бордером: бордер съел бы пиксель из
+     --rail-w, центр рейла уехал бы на пол-пикселя, и бренд-слот перестал бы
+     совпадать со слотом в шапке. Инвариант положения знака важнее способа
+     нарисовать линию. */
+  box-shadow: inset -1px 0 0 var(--nav-line);
 }
-.app-side__group { margin-bottom: 14px; }
+/* Скроллятся ТОЛЬКО пункты: бренд-слот обязан оставаться на своём месте в углу
+   при любой высоте окна — это он держит инвариант положения знака. */
+.app-side__nav {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  scrollbar-width: none;
+}
+.app-side__nav::-webkit-scrollbar { display: none; }
+.app-side__group { display: flex; flex-direction: column; gap: var(--sp-1); }
+/* Границу между группами держит ВТОРАЯ группа, а не отдельный элемент-линия: на
+   70 px подпись группы не живёт, а заводить ради черты класс (или тянуться
+   экраном в общий `.hr`) незачем — правило ключом на том, чем элемент является. */
+.app-side__group + .app-side__group {
+  margin-top: var(--sp-3); padding-top: var(--sp-3);
+  border-top: 1px solid var(--nav-line);
+}
+/* Подпись группы живёт ТОЛЬКО в телефонном шите (`tm-caption`): на 70 px рейла
+   ей места нет, границу между группами там держит `.app-side__group + .app-side__group`. */
 .app-side__group-label {
  color: var(--muted-2); padding: 10px 10px 6px;
 }
@@ -1377,22 +1701,58 @@ h4,
    меню на время загрузки, и он не кликается. Правило по элементу вместо руки в
    вызывателе - узор из шапки гарда 2l. Все живые пункты меню это <button>,
    поэтому набор объявлений на классе не меняется, только его специфичность. */
+/* Пункт рейла: иконка, под ней подпись. Высота ФИКСИРОВАНА — одно- и
+   двухстрочные подписи иначе двигали бы соседей при переключении языка. */
 .app-side__item {
- display: flex; align-items: center; gap: 10px;
- padding: 8px 10px; border-radius: var(--r-sm);
- color: var(--ink-2);
- border: none; background: transparent; width: 100%; text-align: left;
+ position: relative;
+ display: flex; flex-direction: column; align-items: center; justify-content: center;
+ gap: var(--sp-1); padding: var(--sp-2); min-height: 52px; border-radius: var(--r-xs);
+ color: var(--nav-ink);
+ border: none; background: transparent; width: 100%; text-align: center;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
+ /* Ручки для того, что рисуют ДЕТИ ряда: кольцо бейджа и чернила Pro-облика.
+    Значение даёт носитель, а не правило поверх примитива — тот же приём, что
+    у `.badge--unread`, и благодаря ему у обоих по ОДНОМУ правилу вместо ветки
+    на каждую поверхность. */
+ --badge-ring: var(--nav-bg);
+ --pro-item: var(--pro);
 }
 button.app-side__item { cursor: pointer; }
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
 button.app-side__item:active { transform: scale(.985); }
-button.app-side__item:hover { background: var(--wash); }
-.app-side__item.active { background: var(--brand-soft); color: var(--brand); }
-/* Бейдж непрочитанного чата в пункте сайдбара — красный канон `.badge--unread`,
-   позиция ко-селектором (ряд флексовый, толкаем вправо). TRIP-354: свой класс
-   `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
-.app-side__item > .badge--unread { margin-left: auto; }
+button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink-hi); }
+.app-side__item.active { background: var(--brand); color: var(--primary-fg); }
+/* Апселл — тот же ряд меню, отличается только чернилами: сплошная Pro-заливка в
+   навигации читалась бы баннером, а именно от баннера мы и уходили.
+   Чернила приходят РУЧКОЙ `--pro-item` от носителя, потому что поверхности две:
+   на светлой (телефонный шит) читается тёмный --pro-ink, на тёмном борте рейла —
+   яркий --pro; поменяй местами, и текст пропадёт в фоне. Ховер держит тот же
+   цвет: подложка общая, но ряд не должен менять породу под курсором. */
+.app-side__item--pro,
+.app-side__item--pro:hover { color: var(--pro-item); }
+/* Фокус объектов РЕЙЛА — одним правилом на оба (пункт и бренд-слот). Канон
+   кнопки (`.btn:focus-visible`) рисует кольцо тенью --primary-ring: на светлой
+   поверхности оно и задумано, но борт рейла тёмно-синий, и синее кольцо на нём
+   не видно физически. Поэтому здесь контурная обводка внутрь — та же роль,
+   работающая на инверсной поверхности. */
+.app-side__item:focus-visible,
+.app-header__brand--back:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+/* Подпись: две строки максимум, мягкий перенос. Полное имя — в `title` пункта
+   (нативно, без своего пузыря): длинные локали иначе режутся многоточием. */
+.app-side__label {
+ /* `overflow-wrap: anywhere` — не украшение: без него длинное слово («Планирование»,
+    «Presupuesto») не переносится вовсе и обрезается на первой строке. Мягкий
+    перенос идёт первым, жёсткий — страховка на случай, когда словаря нет
+    (документ отдаётся с lang="en", а подписи бывают на трёх языках). */
+ max-width: 100%; hyphens: auto; overflow-wrap: anywhere;
+ display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* Бейдж непрочитанного чата в пункте рейла — красный канон `.badge--unread`,
+   позиция ко-селектором: пункт вертикальный, поэтому бейдж не в хвосте ряда, а
+   абсолютом в углу иконки, и `--badge-ring` даёт ему отбивку под фон носителя.
+   TRIP-354: свой класс `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
+.app-side__item.active { --badge-ring: var(--brand); }
+.app-side__item > .badge--unread { position: absolute; top: var(--sp-1); right: var(--sp-5); }
 
 
 .app-main {
@@ -1578,7 +1938,7 @@ button.app-side__item:hover { background: var(--wash); }
    «поменьше вообще», а под ЕДИНСТВЕННЫЙ случай 32px, у которого своя причина
    (ячейка таблицы), и берёт обязательный порог тач-таргета WCAG 2.2 AA (24x24).
    --lg была маркетинговой: четыре из шести её мест на лендинге и публичной
-   странице, а те берут свою копию из landing.css — там она и осталась.
+   странице, а те берут свою копию из site.css — там она и осталась.
    --icon (42x42) выпилена как мёртвая: ноль потребителей, реальные иконочные
    кнопки живут на отдельном .icon-btn (34x34). */
 .btn--sm { min-height: var(--ctl-h-sm); padding: 0 11px; }
@@ -2537,7 +2897,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (`.app-side__item`/`.tm-cell`/`.mbnav__ico` > `.badge--unread`), тот же приём,
    что у существующего `.icon-btn > .badge--count`; сведение 4 счётчиков в один
    красный канон, апрув Pavel (TRIP-354). */
-.badge--unread { background: var(--danger); color: #fff; min-width: 18px; height: 18px; padding: 0 5px; justify-content: center; letter-spacing: 0; }
+.badge--unread { background: var(--danger); color: #fff; min-width: 18px; height: 18px; padding: 0 5px; justify-content: center; letter-spacing: 0;
+  /* Кольцо отбивки читает РУЧКУ носителя: на тёмном борте рейла бейдж иначе
+     слипается с иконкой, а на залитом активном пункте — с плиткой. Значение
+     даёт тот, кто бейдж носит; примитив не знает о рейле. */
+  box-shadow: 0 0 0 2px var(--badge-ring, transparent); }
 /* TRIP-354 · ярус 2p: намеренная замена 4 самодельных счётчиков одним красным каноном .badge--unread.
    visual-diff-exempt: .tm-cell__badge align-items — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
    visual-diff-exempt: .tm-cell__badge background — TRIP-354 канон unread-бейджа: 4 счётчика (icon-btn__dot·app-side__item-badge·dock__count·tm-cell__badge) сведены в один красный .badge--unread; апрув Pavel
@@ -3340,29 +3704,24 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .editable__edit { flex: none; }
 .editable__input { min-width: 0; background: transparent; border: 0; padding: 0; font: inherit; letter-spacing: inherit; color: inherit; outline: none; -webkit-appearance: none; appearance: none; }
 
-/* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
-   three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
-   phone bottom-nav (≤640). There is no separate tablet/icon-rail state: the full
-   220px sidebar simply holds down to 881, then goes straight to the drawer. */
+/* Границ у меню трипа ОДНА: рейл --rail-w держится от самых широких экранов до
+   641, ниже — телефонный шит (TripSidebarSheet) из мобильного дока. Промежуточной
+   ступени нет намеренно: узкую колонку прятать не за чем, а выезжающий ящик
+   641–880 (бургер + скрим + своя ветка CSS) был третьим состоянием на ровном
+   месте и удалён вместе с сужением меню. */
 
 /* Mobile app shell */
 @media (max-width: 880px) {
   /* TRIP-211: the header is IDENTICAL to desktop at every width — same frosted
      glass (base `@supports` rule), same 60px height, same 18px padding / 14px gap.
      No mobile size or background override here, so it never changes by width. */
-  /* Non-trip screens keep logo + "Triplanio" on mobile (matches the design).
-     Only trip screens drop the brand block for burger + title. */
-  .app-header--trip .app-header__logo,
-  .app-header--trip .app-header__brand-name,
-  .app-header--trip .app-header__vdiv { display: none; }
-  .app-header__menu { display: grid; }                /* mobile burger appears */
+
   .app-header__trip-meta { display: none; }
   .app-header__trip-title { font-size: var(--ctl-fs); }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
-  /* NB: the trip / editor sidebars go off-canvas via their OWN shells
-     (.trip-shell .app-side @ ≤880) — not here.
-     The dead .app-body host and its .app-side drawer copy were removed. */
+  /* NB: меню трипа этой ширины не касается — рейл живёт до 641 и гасится своей
+     оболочкой (`.trip-shell .app-side` @ ≤640), не здесь. */
   .app-main { padding: 16px 14px 100px; }
   .app-header [data-mobile-toggle] { display: grid !important; }
 }
@@ -5373,16 +5732,30 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   height: 100vh; height: 100dvh; min-height: 0; overflow: hidden;
   background: var(--bg); color: var(--ink); font-family: var(--font-ui);
 }
-/* Top bar sits as a fixed-height flex row inside the shell (no document scroll). */
+/* Шапка — фикс-высотный ряд внутри правой колонки шелла (документного скролла
+   тут нет, поэтому липкость базового правила снимается). */
 .trip-shell .app-header { position: static; top: auto; flex: none; }
 
 /* Gradient hero (.trip-hero / .thead) removed — title, meta and trip actions
    now live in the unified <AppHeader> at the top of the shell. */
 
-/* ---- Body: sidebar + content ---- */
-.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
-/* Inside the shell the sidebar scrolls within its own row instead of the page. */
-.trip-shell .app-side { position: static; top: auto; height: auto; min-height: 0; overflow-y: auto; align-self: stretch; }
+/* ---- Тело: рейл слева, шапка и контент справа ----
+   Сетка 2x2: рейл занимает обе строки (он полновысотный, и его первые --header-h
+   это бренд-слот, который обязан стоять на одной линии с шапкой), шапка — правая
+   верхняя ячейка, контент — правая нижняя.
+   ⚠️ Шапка ОБЯЗАНА быть соседом `.trip-content`, а не его потомком: к этому якорю
+   абсолютом привязан хост выдвижных панелей (`.evd-drawer`/`.evd-scrim` ниже, а у
+   редактора `.ts-pdrawer`). Внеси шапку внутрь — и панель поедет из-под неё, то
+   есть своей шапкой окажется под чужой. */
+.trip-body {
+  flex: 1; min-height: 0; position: relative;
+  display: grid;
+  grid-template-columns: var(--rail-w) 1fr;
+  grid-template-rows: var(--header-h) minmax(0, 1fr);
+}
+.trip-body > .app-side { grid-column: 1; grid-row: 1 / -1; }
+.trip-body > .app-header { grid-column: 2; grid-row: 1; }
+.trip-body > .trip-content { grid-column: 2; grid-row: 2; }
 .trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
@@ -5408,34 +5781,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
 .trip-screen-body--flush { padding: 0; overflow: hidden; }
 
-/* ---- Mobile menu scrim (sidebar slides over the content) ---- */
-.trip-side-scrim { display: none; }
-
-@media (max-width: 880px) {
+/* Граница ОДНА: выше 640 — рейл, ниже — телефонный шит (TripSidebarSheet) из
+   мобильного дока. Выезжающий ящик 641–880 со скримом удалён вместе с сужением
+   меню: рейл узкий, прятать его больше незачем, а третье состояние между
+   «видно» и «шит» стоило одного бургера, одного скрима и своей ветки CSS. */
+@media (max-width: 640px) {
+  /* Рейла нет — колонка одна, и шапка с контентом переезжают в неё. */
   .trip-body { grid-template-columns: 1fr; }
-  .trip-shell .app-side {
-    position: absolute; top: 0; left: 0; bottom: 0;
-    width: 264px; max-width: 84%; z-index: calc(var(--z-side-nav) + 5);
-    transform: translateX(-104%); transition: transform .26s var(--ease-out);
-    box-shadow: var(--sh-3);
-  }
-  .trip-body.is-menu-open .app-side { transform: none; }
-  .trip-side-scrim {
-    display: block; position: absolute; inset: 0; background: var(--scrim);
-    z-index: var(--z-side-nav); opacity: 0; pointer-events: none; transition: opacity .25s var(--ease-out);
-  }
-  .trip-body.is-menu-open .trip-side-scrim { opacity: 1; pointer-events: auto; }
+  .trip-body > .app-header,
+  .trip-body > .trip-content { grid-column: 1; }
+  .trip-shell .app-side { display: none; }
+  /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
+     края ей нужен свой, а не тот, что задан под соседство с рейлом. */
+  .app-header--trip { padding-left: var(--sp-7); }
+  /* Бургер открывает телефонный шит и только его: выше 640 меню на виду, и
+     проп `onMenu` туда не приходит вовсе. Правило жило до 880 от эпохи ящика. */
+  .app-header__menu { display: grid; }
   .trip-screen-body { padding: 16px 16px 48px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
   .trip-screen-body--flush { padding: 0; }
-}
-
-/* Phones: the lens menu is shown as a bottom-sheet (TripSidebarSheet), so the
-   slide-in drawer and its scrim are suppressed below 640px. */
-@media (max-width: 640px) {
-  .trip-shell .app-side { display: none; }
-  .trip-side-scrim { display: none; }
 }
 
 /* ============================================================
@@ -5694,9 +6059,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    СЕКЦИЯ «СТРУКТУРА» (EditLens)
    ============================================================
    TRIP-349: у редактора больше нет своей оболочки. `.ts-screen` / `.ts-sidecol`
-   / `.ts-drawer` / `.ts-drawer__scrim` удалены вместе с ней - меню, шапку и
-   off-canvas на ≤880 держит общая `.trip-shell`, ровно как на всех остальных
-   экранах трипа (а на ≤640 - канон-шит, которого у редактора не было вовсе).
+   / `.ts-drawer` / `.ts-drawer__scrim` удалены вместе с ней - меню и шапку держит
+   общая `.trip-shell`, ровно как на всех остальных экранах трипа (а на ≤640 -
+   канон-шит, которого у редактора не было вовсе).
 
    Правила ниже раньше жили в теге <style> ВНУТРИ рендера компонента и
    объявлялись глобально при каждом монтировании. Ни один гард их не видел:
@@ -6455,6 +6820,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tm-manage__row.is-active .tm-manage__ico { background: var(--surface); color: var(--brand); }
 .tm-manage__row.is-active .tm-manage__chev { color: var(--brand); }
 .tm-manage__lbl { flex: 1; min-width: 0; }
+/* Апселл в шите — тот же ряд меню в Pro-цвете, что и в рейле. Правило стоит
+   ЗДЕСЬ, у родни: у `.tm-manage__row` та же специфичность, и объявленный выше
+   `--pro-ink` он перебивал просто порядком в файле — ряд выходил серым. */
+.tm-manage__row.app-side__item--pro { --pro-item: var(--pro-ink); color: var(--pro-item); }
+.tm-manage__row.app-side__item--pro .tm-manage__ico { background: var(--pro-soft); color: var(--pro-item); }
 .tm-manage__chev { color: var(--muted-2); flex: none; }
 
 .tm-account {
@@ -9059,7 +9429,10 @@ a.doc-row__n:hover{ color: var(--brand); }
   pointer-events: none;
 }
 .tt__b--top { transform: translate(-50%, -100%); }
-.tt__b--bottom { transform: translate(-50%, 0); }
+/* Пузырь снизу подтянут к триггеру на ступень шкалы: примитив отступает от него
+   8 px (позиция считается в Tooltip.jsx), и под бренд-слотом рейла подсказка
+   висела оторванной. `bottom` в проекте использует только слот, `top` не тронут. */
+.tt__b--bottom { transform: translate(-50%, calc(var(--sp-2) * -1)); }
 /* visual-diff-exempt для примитива тултип (.tt) — каждое объявление новое; апрув Pavel TRIP-274 Ф2.2:
    visual-diff-exempt: .tt__b--bottom transform — примитив тултип ДС, апрув Pavel TRIP-274
    visual-diff-exempt: .tt__b--top transform — примитив тултип ДС, апрув Pavel TRIP-274

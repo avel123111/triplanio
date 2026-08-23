@@ -7,7 +7,7 @@ import { withVisitCampaign } from '@/lib/analytics';
 import { Icon as BaseIcon } from '@/design/icons';
 
 /* =========================================================
-   SiteChrome — shared marketing header/footer + landing-CSS loader.
+   SiteChrome — shared marketing header/footer + site-CSS loader.
    Extracted verbatim from Landing/LandingPage.jsx so the public
    shared-trip page reuses the EXACT same chrome (one element, not a
    copy). `navBase` makes the in-page section anchors absolute when the
@@ -216,38 +216,35 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
 }
 
 /**
- * Dynamically load /landing.css on mount and remove it on unmount. Returns
+ * Dynamically load /site.css on mount and remove it on unmount. Returns
  * `cssReady` once the stylesheet is in. Shared by the landing and any other
  * page that renders the marketing chrome, so the CSS lifecycle lives in one
- * place. Sets the landing palette/type/density data-attrs too.
+ * place. Also toggles the `site` class on <html>: that class — not a bare
+ * `:root` — is where site.css pins its tokens, so mounting the chrome is the
+ * one gate that turns the sitewide tokens on and off (TRIP-446).
  */
-export function useLandingCss() {
+export function useSiteCss() {
   const [cssReady, setCssReady] = useState(false);
   useEffect(() => {
-    const existing = document.getElementById('landing-css');
+    const existing = document.getElementById('site-css');
     if (existing) {
       setCssReady(true);
     } else {
       const link = document.createElement('link');
-      link.id = 'landing-css';
+      link.id = 'site-css';
       link.rel = 'stylesheet';
-      link.href = '/landing.css';
+      link.href = '/site.css';
       link.addEventListener('load', () => setCssReady(true));
       if (link.sheet) setCssReady(true);
       document.head.appendChild(link);
     }
 
-    document.documentElement.setAttribute('data-palette', 'atlantic');
-    document.documentElement.setAttribute('data-type', 'modern');
-    document.documentElement.setAttribute('data-density', 'standard');
+    document.documentElement.classList.add('site');
 
     return () => {
-      const el = document.getElementById('landing-css');
+      const el = document.getElementById('site-css');
       if (el) el.parentNode.removeChild(el);
-      document.documentElement.removeAttribute('data-palette');
-      document.documentElement.removeAttribute('data-type');
-      document.documentElement.removeAttribute('data-density');
-      document.documentElement.classList.remove('reveal--ready');
+      document.documentElement.classList.remove('site', 'reveal--ready');
       setCssReady(false);
     };
   }, []);
