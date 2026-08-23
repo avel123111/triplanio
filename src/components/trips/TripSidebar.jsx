@@ -9,6 +9,28 @@ import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
 
+// СОСТАВ МЕНЮ — один расчёт на обе оболочки. Рейл и телефонный шит рисуют его
+// по-разному (колонка против плиток под палец), но отвечают на один вопрос: что
+// в этом трипе доступно ЭТОЙ роли. Пока расчёт стоял в каждой оболочке своей
+// копией, разъехаться они могли молча — правило видно только рядом, а копии
+// живут в разных концах файла.
+function useTripMenu({ tripId, trip, myStep, isPro, proResolved }) {
+  return {
+    // И аддон-гейт, и ролевой (наблюдатель видит Настройки, но не Участников —
+    // TRIP-137) живут в реестре секций одним предикатом.
+    lensItems: availableSections(trip, myStep, 'lens'),
+    mgmtItems: availableSections(trip, myStep, 'manage'),
+    canShare: clearsStep(myStep, 'participant'),
+    // Апселл показывается только когда статус Pro РАЗРЕШЁН: иначе пункт моргает
+    // на Pro-трипе, пока едет ответ.
+    showUpgrade: proResolved && !isPro,
+    // Считаем чат только когда линза чата доступна (TRIP-208 Ф2-2b): бейдж
+    // рисуется под видимым пунктом, поэтому трип без чата держит ноль подписок
+    // вместо живой, которая всё равно ничего не покажет.
+    chatUnread: useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) }),
+  };
+}
+
 // Пункт рейла — иконка, под ней подпись. Одна оболочка на обе группы: состав,
 // иконки и подписи приходят из реестра секций (`tripMenu.js`) без единого
 // исключения, рейл их только рисует.
@@ -48,17 +70,8 @@ export default function TripSidebar({
   isPro, proResolved = true, onProUpsell,
 }) {
   const { t } = useI18n();
-  // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
-  // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
-  const lensItems = availableSections(trip, myStep, 'lens');
-  const mgmtItems = availableSections(trip, myStep, 'manage');
-  const canShare = clearsStep(myStep, 'participant');
-  // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
-  // the badge only renders under a visible chat item, so a chat-off trip holds
-  // zero realtime subscriptions instead of a live one that can never show.
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
-  // Только после того, как статус Pro разрешён: иначе пункт моргает на Pro-трипе.
-  const showUpgrade = proResolved && !isPro;
+  const { lensItems, mgmtItems, canShare, showUpgrade, chatUnread } =
+    useTripMenu({ tripId, trip, myStep, isPro, proResolved });
   return (
     <aside className="app-side">
       <BrandSlot onClick={onBack} title={backTitle} back />
@@ -115,11 +128,8 @@ function SidebarSheetBody({
   onProUpsell, onShare, user, onAccount,
 }) {
   const { t } = useI18n();
-  const lensItems = availableSections(trip, myStep, 'lens');
-  const mgmtItems = availableSections(trip, myStep, 'manage');
-  const canShare = clearsStep(myStep, 'participant');
-  const showUpgrade = proResolved && !isPro;
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
+  const { lensItems, mgmtItems, canShare, showUpgrade, chatUnread } =
+    useTripMenu({ tripId, trip, myStep, isPro, proResolved });
   // Плашка «Аккаунт» ведёт во «Входящие» — на ней бейдж непрочитанных inapp-
   // уведомлений (глобальный счётчик, не про этот трип). TRIP-354.
   const inappUnread = useUnreadNotificationCount();

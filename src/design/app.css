@@ -1326,7 +1326,6 @@ h4,
 .app-header__brand--back:hover .app-header__brandback { background: var(--nav-hover); }
 .app-header__brand--back:hover .app-header__logo { opacity: 0; transform: translateX(-4px) scale(.78); }   /* design-token-exempt: 4px — та же амплитуда в обратную сторону */
 .app-header__brand--back:hover .app-header__brandback { opacity: 1; transform: none; }
-.app-header__brand--back:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
 .app-header__vdiv { width: 1px; height: 28px; background: var(--line); flex: 0 0 auto; }
@@ -1662,6 +1661,9 @@ h4,
    visual-diff-exempt: .tm-manage__ico color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .tm-manage__row background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .tm-manage__row color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item --pro-item — ручка Pro-чернил у носителя (одно правило вместо ветки на поверхность); апрув Pavel
+   visual-diff-exempt: .app-side__item--pro --pro-item — та же ручка на телефонном ряду; апрув Pavel
+   visual-diff-exempt: .tm-manage__row --pro-item — та же ручка на телефонном ряду; апрув Pavel
    ============================================================ */
 .app-side {
   width: var(--rail-w); flex: none; align-self: stretch;
@@ -1708,6 +1710,12 @@ h4,
  color: var(--nav-ink);
  border: none; background: transparent; width: 100%; text-align: center;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
+ /* Ручки для того, что рисуют ДЕТИ ряда: кольцо бейджа и чернила Pro-облика.
+    Значение даёт носитель, а не правило поверх примитива — тот же приём, что
+    у `.badge--unread`, и благодаря ему у обоих по ОДНОМУ правилу вместо ветки
+    на каждую поверхность. */
+ --badge-ring: var(--nav-bg);
+ --pro-item: var(--pro);
 }
 button.app-side__item { cursor: pointer; }
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
@@ -1716,14 +1724,19 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 .app-side__item.active { background: var(--brand); color: var(--primary-fg); }
 /* Апселл — тот же ряд меню, отличается только чернилами: сплошная Pro-заливка в
    навигации читалась бы баннером, а именно от баннера мы и уходили.
-   Чернил ДВОЕ, потому что поверхности две: на светлой (телефонный шит) читается
-   тёмный --pro-ink, на тёмном борте рейла — яркий --pro; поменяй местами, и
-   текст пропадёт в фоне. Ховер в рейле держит тот же цвет: подложка общая, но
-   ряд не должен менять породу под курсором. */
-.app-side__item--pro { color: var(--pro-ink); }
-.app-side .app-side__item--pro,
-.app-side .app-side__item--pro:hover { color: var(--pro); }
-.app-side__item:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+   Чернила приходят РУЧКОЙ `--pro-item` от носителя, потому что поверхности две:
+   на светлой (телефонный шит) читается тёмный --pro-ink, на тёмном борте рейла —
+   яркий --pro; поменяй местами, и текст пропадёт в фоне. Ховер держит тот же
+   цвет: подложка общая, но ряд не должен менять породу под курсором. */
+.app-side__item--pro,
+.app-side__item--pro:hover { color: var(--pro-item); }
+/* Фокус объектов РЕЙЛА — одним правилом на оба (пункт и бренд-слот). Канон
+   кнопки (`.btn:focus-visible`) рисует кольцо тенью --primary-ring: на светлой
+   поверхности оно и задумано, но борт рейла тёмно-синий, и синее кольцо на нём
+   не видно физически. Поэтому здесь контурная обводка внутрь — та же роль,
+   работающая на инверсной поверхности. */
+.app-side__item:focus-visible,
+.app-header__brand--back:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 /* Подпись: две строки максимум, мягкий перенос. Полное имя — в `title` пункта
    (нативно, без своего пузыря): длинные локали иначе режутся многоточием. */
 .app-side__label {
@@ -1738,7 +1751,6 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
    позиция ко-селектором: пункт вертикальный, поэтому бейдж не в хвосте ряда, а
    абсолютом в углу иконки, и `--badge-ring` даёт ему отбивку под фон носителя.
    TRIP-354: свой класс `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
-.app-side__item { --badge-ring: var(--nav-bg); }
 .app-side__item.active { --badge-ring: var(--brand); }
 .app-side__item > .badge--unread { position: absolute; top: var(--sp-1); right: var(--sp-5); }
 
@@ -6811,8 +6823,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Апселл в шите — тот же ряд меню в Pro-цвете, что и в рейле. Правило стоит
    ЗДЕСЬ, у родни: у `.tm-manage__row` та же специфичность, и объявленный выше
    `--pro-ink` он перебивал просто порядком в файле — ряд выходил серым. */
-.tm-manage__row.app-side__item--pro { color: var(--pro-ink); }
-.tm-manage__row.app-side__item--pro .tm-manage__ico { background: var(--pro-soft); color: var(--pro-ink); }
+.tm-manage__row.app-side__item--pro { --pro-item: var(--pro-ink); color: var(--pro-item); }
+.tm-manage__row.app-side__item--pro .tm-manage__ico { background: var(--pro-soft); color: var(--pro-item); }
 .tm-manage__chev { color: var(--muted-2); flex: none; }
 
 .tm-account {
