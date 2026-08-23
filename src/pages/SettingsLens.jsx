@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Row, Col, Grid, Grow } from '../design/Layout';
 import { invokeFn } from '@/lib/invokeFn';
+import { getAddons } from '@/lib/tripAddons';
 import { track } from '@/lib/analytics';
 import { classifyError, errorText } from '@/lib/errorText';
 import { goPro } from '@/lib/goPro';
@@ -77,9 +78,13 @@ const TG_TILE = { background: tgBrand.bg, color: tgBrand.fg };
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
 // with every optional/pro feature off - they never auto-enable for anyone.
 function featuresFromTrip(trip) {
-  const addons = trip?.details?.addons || {};
+  // Предикат «аддон включён» — общий (`getAddons` → `normalizeAddons`), тот же,
+  // которым состав меню решает, показывать ли Бюджет и Чат. Своя копия `=== true`
+  // тут была третьей и держалась только на том, что её никто не трогал: разойдись
+  // они — тоггл показывал бы «включено» там, где раздел в меню не появляется.
+  const addons = getAddons(trip);
   const state = {};
-  for (const f of FEATURES) state[f.id] = f.locked ? false : (addons[f.addon] === true);
+  for (const f of FEATURES) state[f.id] = f.locked ? false : addons[f.addon] === true;
   return state;
 }
 

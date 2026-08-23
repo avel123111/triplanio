@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/lib/AuthContext';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_CARD_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_CARD_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData, tripShellFacts } from '@/lib/trip-data';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { goPro } from '@/lib/goPro';
 import { useQueryGate } from '@/lib/useQueryGate';
@@ -15,7 +15,7 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { useTripProStatus } from '@/lib/subscription';
 import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
-import { getAddons, isAddonEnabled, normalizeAddons } from '@/lib/tripAddons';
+import { isAddonEnabled } from '@/lib/tripAddons';
 import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from '@/lib/tripMenu';
 import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
@@ -919,23 +919,15 @@ export default function TripView() {
   // сетевого круга, и обвязка (меню) из-за этого собиралась в два приёма.
   // `myRole` остаётся только для показа (ярлык, аналитика); правами рулит `myStep`.
   // Отсюда она уходит в TripAccessProvider — единственный канал права в поддереве.
-  // Пока дверь не ответила, берём ступень из карточки главной. Это НЕ второе
-  // понятие и не клиентский вывод права: карточке ступень проставил сервер тем же
-  // `stepFromFacts`, что стоит за `callerStep` двери, — то же правило, просто
-  // прочитанное раньше. Дверь ответит через ~400 мс и подтвердит (или поправит,
-  // если права изменились за последние секунды). Enforcement это не трогает: он
-  // серверный, и любое действие всё равно проходит через дверь.
-  // ★ Ветвление по НАЛИЧИЮ ОТВЕТА, а не через `??` по значению: ответившая дверь
-  // — окончательное слово, даже если ступени в ответе почему-то нет. С `??`
-  // пустая ступень от двери молча откатилась бы к карточке, то есть отказ
-  // подменялся бы прошлым доступом — ровно то, чего fail-closed не допускает.
-  const myStep = shellData ? (shellData.myStep ?? null) : (tripCard?.myStep ?? null);
-  // Второй факт состава меню — включённые аддоны. Тот же порядок: дверь, а до неё
-  // карточка. Оба источника проходят через ОДИН нормализатор (`normalizeAddons`),
-  // поэтому «включено» считается одинаково независимо от того, кто ответил первым.
-  const menuAddons = useMemo(
-    () => (trip ? getAddons(trip) : normalizeAddons(tripCard?.addons)),
-    [trip, tripCard],
+  // Все три факта обвязки — ОДНИМ комплектом (`tripShellFacts`, чистая функция с
+  // тестом): ступень, аддоны и вердикт Pro. Пока дверь не ответила, они берутся
+  // из карточки главной — это НЕ второе понятие и не клиентский вывод права:
+  // карточке их проставил сервер тем же правилом, что стоит за дверью, просто
+  // прочитанным раньше. Дверь отвечает через ~400 мс и подтверждает (или
+  // поправляет). Enforcement не трогается: он серверный.
+  const { step: myStep, addons: menuAddons, proSeed } = useMemo(
+    () => tripShellFacts(shellData, tripCard),
+    [shellData, tripCard],
   );
 
   const stream = useMemo(
@@ -960,11 +952,6 @@ export default function TripView() {
   // `is_trip_pro`), поэтому апселл решается на первом круге, а не третьим.
   // checkSubscriptionStatus остаётся авторитетом (в нём reconcile-on-read со
   // Stripe) и подтверждает фоном — вход в UI по-прежнему ОДИН, этот хук.
-  // Тот же порядок, что у ступени и аддонов: ответила дверь — её вердикт, не
-  // ответила — карточка главной (в ней `is_pro` считает тот же SQL-предикат
-  // `is_trip_pro`). Без этого пункт «Pro» оставался единственным, кто ждал круга,
-  // и меню всё равно доезжало на глазах.
-  const proSeed = shellData ? shellData.isPro : tripCard?.is_pro;
   const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, proSeed, hasTripAccess);
   // Edit Mode (structure editor) gate: ступень editor. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.

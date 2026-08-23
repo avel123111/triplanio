@@ -9,6 +9,7 @@
 // across the two queries.
 
 import { reportDataError } from './reportDataError.js';
+import { getAddons, normalizeAddons } from './tripAddons.js';
 
 export const TRIP_SHELL_KEY = (tripId) => ['trip-shell', tripId];
 // Карточка трипа — САМОСТОЯТЕЛЬНАЯ сущность, не тонкая версия трипа. Её отдаёт
@@ -102,6 +103,40 @@ export function cacheTripCards(qc, cards) {
   for (const card of cards) {
     if (card?.id) qc.setQueryData(TRIP_CARD_KEY(card.id), card);
   }
+}
+
+/**
+ * ФАКТЫ ОБВЯЗКИ — единственное место, где решается, чем питать шапку и меню,
+ * пока ответ read-двери в пути.
+ *
+ * Их ровно три, и все три нужны ОДНОВРЕМЕННО: ступень (ролевые пункты), аддоны
+ * (Бюджет/Чат) и Pro-вердикт (пункт апселла). Функция чистая и отдаёт их
+ * КОМПЛЕКТОМ намеренно: пока это были три отдельные строки внутри экрана, из них
+ * дважды выпадала одна — сначала подстановка ловила пустой ответ двери через
+ * `??` (ослабляя fail-closed), потом Pro остался единственным, кто ждал круга, и
+ * меню всё равно доезжало. Комплект + тест делают «забыл один факт» невозможным.
+ *
+ * ★ Приоритет — по НАЛИЧИЮ ОТВЕТА, а не по значению: ответила дверь — её слово
+ * окончательное, даже если ступени в ответе нет. Иначе отказ подменялся бы
+ * прошлым доступом из карточки, чего fail-closed не допускает.
+ *
+ * @param {any} shellData ответ двери (`getTripDetails`), либо undefined
+ * @param {any} card      карточка главной (`['trip-card', id]`), либо undefined
+ * @returns {{ step: 'owner'|'editor'|'participant'|null, addons: any, proSeed: boolean|undefined }}
+ */
+export function tripShellFacts(shellData, card) {
+  if (shellData) {
+    return {
+      step: shellData.myStep ?? null,
+      addons: getAddons(shellData.trip),
+      proSeed: shellData.isPro,
+    };
+  }
+  return {
+    step: card?.myStep ?? null,
+    addons: normalizeAddons(card?.addons),
+    proSeed: card?.is_pro,
+  };
 }
 
 export function invalidateTripData(qc, tripId) {
