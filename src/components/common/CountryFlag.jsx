@@ -12,6 +12,10 @@ import React from 'react';
  *
  * Renders nothing when the code is missing or isn't a 2-letter code (no 🌍
  * fallback, no broken-image icon); a valid-but-missing file is hidden onError.
+ *
+ * ⚠️ Аннотация обязательна: без неё TS выводит тип из деструктуризации и делает
+ * `style` ОБЯЗАТЕЛЬНЫМ у вызывателей под `// @ts-check` (напр. Trips.jsx).
+ * @param {{ code?: string, className?: string, style?: React.CSSProperties }} p
  */
 export default function CountryFlag({ code, className = '', style }) {
   const cc = typeof code === 'string' && code.trim().length === 2 ? code.trim().toLowerCase() : '';

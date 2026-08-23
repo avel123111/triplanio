@@ -113,14 +113,30 @@ export function uniqueCityCount(visits = []) {
 }
 
 /**
+ * The trip's unique countries as lowercase ISO country_code, in first-occurrence
+ * order. Anchors and waypoints are excluded (rule 1), repeats deduped (rule 2) —
+ * the SAME scope that backs the city list and every counter, so a country never
+ * shows up in one place and not the other.
+ *
+ * Backs both the country COUNT and the flag row on the trips card; the card
+ * takes the first N of this list.
+ */
+export function uniqueCountryCodes(visits = []) {
+  const seen = new Set();
+  const out = [];
+  for (const v of transitVisits(visits)) {
+    const cc = (v?.country_code || '').trim().toLowerCase();
+    if (!cc || seen.has(cc)) continue;
+    seen.add(cc);
+    out.push(cc);
+  }
+  return out;
+}
+
+/**
  * Number of unique countries across the trip's transit cities (by ISO
  * country_code). Anchors and waypoints are excluded.
  */
 export function uniqueCountryCount(visits = []) {
-  const codes = new Set();
-  for (const v of transitVisits(visits)) {
-    const cc = (v?.country_code || '').trim().toLowerCase();
-    if (cc) codes.add(cc);
-  }
-  return codes.size;
+  return uniqueCountryCodes(visits).length;
 }

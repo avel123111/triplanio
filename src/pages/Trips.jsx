@@ -14,7 +14,8 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { AvatarStack, Badge, Btn, Card, COVER_FALLBACK, EmptyState, Input, RoleBadge, Seg, Skeleton, Tile } from '../design/index';
-import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
+import CountryFlag from '@/components/common/CountryFlag';
+import { uniqueTransitCities, uniqueCountryCodes, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
 import { gateStubProps } from '@/lib/loadStateClassify';
@@ -49,9 +50,14 @@ function scopeLabel(t, visits = []) {
  * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
 function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = [], serverPro = undefined) {
+  // До 3 флагов стран — из ТОГО ЖЕ дедуплицированного transit-набора, что и
+  // список городов рядом и все счётчики (uniqueCountryCodes: старт/финиш/
+  // waypoint не считаются), поэтому ряд флагов не может разойтись с текстом.
+  const flags = uniqueCountryCodes(visits).slice(0, 3);
   return {
     ...trip,
     days:      formatTripRange(visits, '-'),
+    flags,
     scope:     scopeLabel(t, visits),
     role,
     // Owner-aware Pro badge (TRIP-121). Effective Pro = is_pro_trip OR the trip
@@ -195,11 +201,14 @@ const TripCard = ({ trip, onClick }) => {
 
         <div className="tc__spacer" />
 
-        {/* trip info */}
+        {/* trip info: города с SVG-флагами стран (канон CountryFlag/.cflag —
+            единственный источник флагов, TRIP-177); стран нет → прежний пин */}
         <div className="tc__title">{trip.title}</div>
         <div className="tc__dates tab">{trip.days}</div>
         <div className="tc__scope">
-          <Icon name="pin" />
+          {trip.flags.length > 0
+            ? trip.flags.map(cc => <CountryFlag key={cc} code={cc} />)
+            : <Icon name="pin" />}
           <span className="trunc">{trip.scope}</span>
         </div>
 
@@ -244,7 +253,9 @@ const TripRow = ({ trip, onClick }) => {
       <div className="tr__main">
         <div className="tr__title">{trip.title}</div>
         <div className="tr__sub">
-          <Icon name="pin" />
+          {trip.flags.length > 0
+            ? trip.flags.map(cc => <CountryFlag key={cc} code={cc} />)
+            : <Icon name="pin" />}
           <span className="trunc">{trip.scope}</span>
         </div>
       </div>
