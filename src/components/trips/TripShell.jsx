@@ -41,7 +41,7 @@
  * visual-diff-exempt: from {@keyframes railIn} transform — кейфрейм выезда рейла из-за левой кромки
  * visual-diff-exempt: to {@keyframes railIn} transform — то же, конечное состояние
  */
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppHeader, { BrandSlot } from '@/components/AppHeader';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
@@ -56,6 +56,17 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { isProActive } from '@/lib/subscription';
 import { Skeleton } from '@/design/index';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
+
+// Темп входа берётся из ОБЩЕГО контракта движения (`lib/surfaceMotion.js`), а не
+// пишется числом в CSS: тем же временем и той же кривой едут шит, камера карты и
+// плавающие контролы. Публикуем переменными на корне оболочки — ровно тем приёмом,
+// каким это делают MapShell и PeekSheet, и каким нав публикует свою высоту.
+// Константа МОДУЛЬНАЯ: значения приходят из модуля, зависимостей нет, и `useMemo`
+// над таким объектом только делает вид, что что-то считает.
+const MOTION_STYLE = {
+  '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
+  '--surface-ease': SURFACE_EASE_CSS,
+};
 
 // Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
 // нельзя: его состав зависит от аддонов и роли, а они приезжают тем же
@@ -109,11 +120,15 @@ export default function TripShell({
   const [sideOpen, setSideOpen] = useState(false);
   const { setTripNav } = useMobileNav();
 
-  // ★ «КАК СЮДА ПОПАЛИ» — ОДНО СОСТОЯНИЕ НА ВСЮ ОБОЛОЧКУ, А НЕ АНИМАЦИЯ НА КАЖДОЙ
-  // ДЕТАЛИ. Приход из создания трипа обязан выглядеть ОДНИМ движением: на десктопе
-  // выезжает рейл, на телефоне приезжает нижний док. Если повесить два входа
-  // порознь, они разъедутся по темпу на первой же правке — поэтому оболочка
-  // объявляет ФАКТ (`data-entering`), а CSS решает, что именно едет на этой ширине.
+  // «КАК СЮДА ПОПАЛИ» — ФАКТ НА ОБОЛОЧКЕ, а не анимация, прописанная в детали:
+  // оболочка объявляет `data-entering`, а CSS решает, что с ним делать.
+  //
+  // Сегодня единственный читатель этого факта — РЕЙЛ: он появляется только на
+  // этом переходе, поэтому и въезд у него условный. Нижний док читателем НЕ
+  // является намеренно: он монтируется на десятке других границ, и вход у него
+  // безусловный и свой (обоснование — у его правила в app.css). Раскладки эти
+  // двое не делят: рейла ниже 640 нет вовсе, дока выше 640 нет вовсе, — то есть
+  // одновременно они не едут никогда и общий темп им не нужен.
   //
   // Читаем ОДИН РАЗ, на маунте (`useState` с инициализатором), и по двум причинам:
   //   • `location.state` живёт, пока живёт запись истории, — без снимка вход
@@ -125,15 +140,6 @@ export default function TripShell({
   //     Пришли с холодным кэшем — входа просто нет, как и было до этой правки;
   //     на пути из создания кэш прогрет (ManualPlanner), и ветка всегда тёплая.
   const [entering] = useState(() => (loc.state?.from === 'create' && !loading ? 'create' : null));
-
-  // Темп входа берётся из ОБЩЕГО контракта движения (`lib/surfaceMotion.js`), а не
-  // пишется числом в CSS: тем же временем и той же кривой едут шит, камера карты и
-  // плавающие контролы. Публикуем переменными на своём корне — ровно тем приёмом,
-  // каким это делают MapShell и PeekSheet, и каким нав публикует свою высоту.
-  const motionStyle = useMemo(() => ({
-    '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
-    '--surface-ease': SURFACE_EASE_CSS,
-  }), []);
 
   // Тело - постоянный скролл-контейнер (сама оболочка не скроллится), поэтому
   // при смене секции его надо вернуть наверх. Свой ref, если снаружи не дали:
@@ -203,7 +209,7 @@ export default function TripShell({
   const backTitle = t('trip.back');
 
   return (
-    <div className="trip-shell" data-entering={entering || undefined} style={motionStyle}>
+    <div className="trip-shell" data-entering={entering || undefined} style={MOTION_STYLE}>
       <div className="trip-body">
         {loading ? <SidebarSkeleton onBack={goBack} backTitle={backTitle} /> : (
           <>
