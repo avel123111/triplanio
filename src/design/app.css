@@ -1657,6 +1657,11 @@ h4,
    visual-diff-exempt: .tt__b--bottom transform — подсказка подтянута к бренд-слоту на ступень шкалы; side=bottom в проекте только у него, апрув Pavel
    visual-diff-exempt: .app-side__item--pro color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-side__item--pro:hover color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side__item--pro background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tm-manage__ico background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tm-manage__ico color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tm-manage__row background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tm-manage__row color — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    ============================================================ */
 .app-side {
   width: var(--rail-w); flex: none; align-self: stretch;
