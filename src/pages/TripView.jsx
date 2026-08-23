@@ -45,7 +45,7 @@ import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole } from '@/lib/members';
-import { resolveMyStep, clearsStep } from '@/lib/tripStep';
+import { clearsStep } from '@/lib/tripStep';
 import { useProfileMap } from '@/lib/useProfileMap';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
@@ -847,7 +847,7 @@ export default function TripView() {
   // isPending + fetchStatus (not just isLoading/error) feed useQueryGate: while
   // OFFLINE, React Query PAUSES this query (fetchStatus 'paused') instead of
   // throwing, so the gate must read that state directly — see the gate below.
-  const { data: shellData, isLoading: loadingShell, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
+  const { data: shellData, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
     // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
     // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
@@ -856,7 +856,7 @@ export default function TripView() {
     retry: false,
   });
 
-  // Fetch content (hotels, activities, transfers) - only after shell resolves
+  // Fetch content (hotels, activities, transfers) — параллельно с shell
   const {
     data: contentData, isLoading: loadingContent,
     error: contentError, isPending: contentPending, fetchStatus: contentFetchStatus,
@@ -865,7 +865,12 @@ export default function TripView() {
     // Same self-healing path — without it a 401 here silently rendered an empty
     // trip (content error was swallowed); refresh+retry keeps the data (TRIP-56).
     queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_CONTENT_INCLUDE }),
-    enabled: !!tripId && !loadingShell,
+    // Параллельно с shell, а не после него. Ожидание было искусственным: обе
+    // группы идут в одну и ту же дверь с одним и тем же tripId, и на проде
+    // shell (2.4 КБ) стоит 500 мс против 522 мс у content (7.8 КБ) — то есть
+    // круг стоит фиксированно, а не по объёму. Последовательность покупала
+    // ~20 мс на шапке и платила ~500 мс за контент.
+    enabled: !!tripId,
     retry: false,
   });
 
@@ -904,9 +909,13 @@ export default function TripView() {
   // the SOLE source of ownership and wins over any stray trip_members row
   // (TRIP-143). Same helper as the structure editor so the two can't drift.
   const myRole = resolveMyRole(members, trip, user);
-  // Ступень доступа — ЕДИНЫЙ гейт прав (зеркало сервера), см. src/lib/tripStep.js.
+  // Ступень доступа — ЕДИНЫЙ гейт прав, и приезжает она ГОТОВОЙ из read-двери:
+  // `getTripDetails` отдаёт ту самую ступень, которой сам проверил доступ. Фронт
+  // её больше не выводит — раньше он считал её из `members`, то есть из ВТОРОГО
+  // сетевого круга, и обвязка (меню) из-за этого собиралась в два приёма.
   // `myRole` остаётся только для показа (ярлык, аналитика); правами рулит `myStep`.
-  const myStep = resolveMyStep(members, trip, user);
+  // Отсюда она уходит в TripAccessProvider — единственный канал права в поддереве.
+  const myStep = shellData?.myStep ?? null;
 
   const stream = useMemo(
     () => buildEventStream(t, hotels, activities, transfers, visits, services),
@@ -923,10 +932,14 @@ export default function TripView() {
   // re-flash when crossing the edit↔trip route boundary. See useTripProStatus.
   // Gate the server Pro-check on confirmed access (participant step): a non-member
   // opening this route must not fire checkSubscriptionStatus into an expected 403
-  // (TRIP-441). `myStep` is null until the trip+members load, so the check simply
+  // (TRIP-441). `myStep` is null until the read door answers, so the check simply
   // waits for access to resolve, then runs — never for a stranger.
   const hasTripAccess = clearsStep(myStep, 'participant');
-  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip, hasTripAccess);
+  // Вердикт для ПОКАЗА приезжает тем же ответом (`isPro` — единый предикат
+  // `is_trip_pro`), поэтому апселл решается на первом круге, а не третьим.
+  // checkSubscriptionStatus остаётся авторитетом (в нём reconcile-on-read со
+  // Stripe) и подтверждает фоном — вход в UI по-прежнему ОДИН, этот хук.
+  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, shellData?.isPro, hasTripAccess);
   // Edit Mode (structure editor) gate: ступень editor. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
   const canEditMode = clearsStep(myStep, 'editor');
@@ -1231,12 +1244,11 @@ export default function TripView() {
     // Единый доступ к праву для всего поддерева трипа: линзы, шит, диалоги
     // читают `useTripAccess()` вместо пропов права (TRIP-274 Ф2.2). Ступень
     // считается один раз в самом провайдере.
-    <TripAccessProvider members={members} trip={trip} user={user}>
+    <TripAccessProvider step={myStep}>
     <TripShell
       tripId={tripId}
       trip={trip}
       section={shownLens}
-      myStep={myStep}
       isPro={tripIsPro}
       proResolved={tripProResolved}
       title={trip?.title}

@@ -1,6 +1,6 @@
 // @ts-check
 import React, { createContext, useContext, useMemo } from 'react';
-import { resolveMyStep, clearsStep } from '@/lib/tripStep';
+import { clearsStep } from '@/lib/tripStep';
 
 // ЕДИНЫЙ доступ к праву на трипе для ВСЕГО поддерева (TRIP-274 Ф2.2).
 //
@@ -12,9 +12,17 @@ import { resolveMyStep, clearsStep } from '@/lib/tripStep';
 // ступень считается ОДИН раз здесь, любой компонент на любой глубине читает
 // `useTripAccess()` — линза, панель, диалог, кнопка. Пропов права больше нет.
 //
-// Это НЕ новое правило, а транспорт уже существующего: значения — из
-// `resolveMyStep`/`clearsStep`. Рукописный вывод права мимо лестницы ловит
-// гард 2z (`check-role-gate`).
+// Это НЕ новое правило, а транспорт уже существующего: ступень приходит ГОТОВОЙ
+// из ответа `getTripDetails` (поле `myStep` — та самая, что решила серверный
+// access-check), здесь она только читается лестницей `clearsStep`. Рукописный
+// вывод права мимо лестницы ловит гард 2z (`check-role-gate`).
+//
+// ★ Почему ступень БОЛЬШЕ НЕ СЧИТАЕТСЯ здесь. Считалась она из `members`, а те
+// приезжают вторым сетевым кругом — поэтому право «догружалось» отдельно от
+// трипа, и меню собиралось в два приёма (у не-владельца сначала без Структуры,
+// Участников и «Поделиться»). Сервер знает ответ на первом же круге и теперь его
+// отдаёт. Побочно исчезла и четвёртая копия правила о ролях: FE больше не
+// выводит ступень из ролей, а значит ей не с чем разъехаться.
 
 /** @typedef {'owner'|'editor'|'participant'|null} TripStep */
 /**
@@ -34,18 +42,19 @@ const NO_ACCESS = { step: null, canEdit: false, isOwner: false, clears: () => fa
 const TripAccessCtx = createContext(NO_ACCESS);
 
 /**
- * @param {{ members?: any[], trip?: any, user?: any, children?: any }} p
+ * `step` — из ответа read-двери. `null` = ступень ещё не известна (ответ не
+ * приехал) ИЛИ её нет: обе ситуации fail-closed, прав не даём.
+ * @param {{ step?: TripStep, children?: any }} p
  */
-export function TripAccessProvider({ members = [], trip = null, user = null, children }) {
+export function TripAccessProvider({ step = null, children }) {
   const value = useMemo(() => {
-    const step = resolveMyStep(members, trip, user);
     return {
       step,
       canEdit: clearsStep(step, 'editor'),
       isOwner: clearsStep(step, 'owner'),
       clears: (/** @type {'owner'|'editor'|'participant'} */ need) => clearsStep(step, need),
     };
-  }, [members, trip, user]);
+  }, [step]);
   return <TripAccessCtx.Provider value={value}>{children}</TripAccessCtx.Provider>;
 }
 

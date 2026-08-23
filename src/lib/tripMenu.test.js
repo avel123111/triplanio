@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SECTIONS, DEFAULT_SECTION, DOCK_SECTIONS, DOCK_SECTION_IDS,
-  sectionById, isSectionAvailable, availableSections, resolveSection,
+  sectionById, isSectionAvailable, availableSections, resolveSection, loadingSections,
 } from './tripMenu.js';
 
 // Реестр — единственный источник состава экрана трипа, а у состава нет
@@ -163,4 +163,53 @@ test('док прячут только чат и редактор, и у каж�
 test('sectionById на незнакомом id отдаёт null, а не undefined-объект', () => {
   assert.equal(sectionById('нет-такого'), null);
   assert.equal(sectionById('overview').labelKey, 'trip_menu.overview');
+});
+
+// ── Фаза загрузки: что рисует рейл, пока ответа read-двери нет ────────────────
+// У этого поведения тоже нет скриншота, а цена ошибки видна только глазом на
+// живом трипе: меню, которое доцветает со сдвигом, и есть та «дёрганость», ради
+// которой всё затевалось. Поэтому свойство пинится числами.
+
+test('loadingSections: аддонных секций нет вовсе, ролевые — местом под пункт', () => {
+  const all = [...loadingSections('lens'), ...loadingSections('manage')];
+  for (const s of all) {
+    assert.equal(!!s.addon, false, `${s.id}: аддонная секция не должна попадать в фазу загрузки`);
+    assert.equal(s.pending, !!s.canAccess, `${s.id}: место держим ровно под ролевыми`);
+  }
+  // Живых (кликабельных с первого кадра) должно быть большинство — иначе смысла
+  // рисовать рейл на загрузке нет и проще вернуть скелетон.
+  const live = all.filter((s) => !s.pending);
+  assert.ok(live.length >= all.length - live.length, `живых ${live.length} из ${all.length}`);
+});
+
+test('loadingSections: порядок — реестра, без пересортировки', () => {
+  for (const group of ['lens', 'manage']) {
+    const order = loadingSections(group).map((s) => s.id);
+    const canon = SECTIONS.filter((s) => s.group === group && !s.addon).map((s) => s.id);
+    assert.deepEqual(order, canon, group);
+  }
+});
+
+// ★ Само свойство «меню не дёргается» в самом частом случае: владелец Free-трипа
+// (аддоны у нового трипа выключены и требуют Pro). Позиция КАЖДОГО пункта в фазе
+// загрузки обязана совпасть с его позицией после ответа — включая те, что были
+// местом под пункт: место затем заполняется, а не вдвигается между живыми.
+test('★ владелец Free-трипа: позиции пунктов до и после ответа совпадают', () => {
+  const freeTrip = tripWith({});
+  for (const group of ['lens', 'manage']) {
+    const before = loadingSections(group).map((s) => s.id);
+    const after = availableSections(freeTrip, 'owner', group).map((s) => s.id);
+    assert.deepEqual(before, after, `${group}: меню сдвинулось бы`);
+  }
+});
+
+// Обратный случай — цена решения, названная вслух: у трипа с включёнными
+// аддонами пункты аддонов появляются после ответа и сдвигают тех, кто ниже.
+// Держать под них место нельзя (у большинства трипов они выключены — место
+// схлопнулось бы), поэтому сдвиг здесь принят осознанно, а не забыт.
+test('трип с аддонами: аддонные пункты приходят после ответа', () => {
+  const proTrip = tripWith({ budget: true, chat: true });
+  const before = loadingSections('lens').map((s) => s.id);
+  const after = availableSections(proTrip, 'owner', 'lens').map((s) => s.id);
+  assert.deepEqual(after.filter((id) => !before.includes(id)), ['budget', 'chat']);
 });
