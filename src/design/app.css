@@ -1308,16 +1308,22 @@ h4,
    «назад» в шапке из-за этого больше нет (на телефоне рейла нет — там кнопка
    остаётся). */
 .app-header__brandback {
-  position: absolute; inset: 0; display: grid; place-items: center;
+  /* Размер — РОВНО как у знака, который стрелка подменяет: слот шире (он держит
+     геометрию колонки), и подложка во весь слот читалась бы огромной кнопкой.
+     Центрируется отдельным `translate`, чтобы `transform` остался свободен под
+     анимацию подмены. */
+  position: absolute; top: 50%; left: 50%; translate: -50% -50%;
+  width: 38px; height: 38px; border-radius: var(--r-sm);
+  display: grid; place-items: center;
   /* design-token-exempt: 5px — амплитуда подмены знака стрелкой, не шаг раскладки */
   color: var(--nav-ink-hi); opacity: 0; transform: translateX(5px) scale(.82);
   transition: opacity .18s ease, transform .24s var(--ease-out);
 }
 /* Режим слота в рейле — МОДИФИКАТОР на самом объекте, а не правило «слот внутри
    меню»: ключ на том, чем элемент ЯВЛЯЕТСЯ, а не где он стоит в дереве. */
-.app-header__brand--back { width: 100%; border-radius: var(--r-md); transition: background .2s var(--ease-out); }
+.app-header__brand--back { width: 100%; }
 .app-header__brand--back .app-header__logo { transition: opacity .18s ease, transform .24s var(--ease-out); }
-.app-header__brand--back:hover { background: var(--nav-hover); }
+.app-header__brand--back:hover .app-header__brandback { background: var(--nav-hover); }
 .app-header__brand--back:hover .app-header__logo { opacity: 0; transform: translateX(-4px) scale(.78); }   /* design-token-exempt: 4px — та же амплитуда в обратную сторону */
 .app-header__brand--back:hover .app-header__brandback { opacity: 1; transform: none; }
 .app-header__brand--back:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
