@@ -1642,6 +1642,19 @@ h4,
    visual-diff-exempt: .app-header__brandback top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-header__brandback translate — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-header__brandback width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header grid-row — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header {@media (max-width: 640px)} grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-side grid-row — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body grid-row — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body grid-template-rows — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-content grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-content grid-row — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .trip-content {@media (max-width: 640px)} grid-column — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .tt__b--bottom transform — подсказка подтянута к бренд-слоту на ступень шкалы; side=bottom в проекте только у него, апрув Pavel
    ============================================================ */
 .app-side {
   width: var(--rail-w); flex: none; align-self: stretch;
