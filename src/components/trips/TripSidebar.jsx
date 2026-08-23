@@ -2,8 +2,8 @@ import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { BrandSlot } from '@/components/AppHeader';
-import { Avatar, Card, Sheet, UnreadBadge } from '@/design/index';
-import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
+import { Avatar, Card, Sheet, Skeleton, UnreadBadge } from '@/design/index';
+import { availableSections, isSectionAvailable, loadingSections } from '@/lib/tripMenu';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { clearsStep } from '@/lib/tripStep';
 import { displayName } from '@/lib/displayName';
@@ -36,6 +36,30 @@ function useTripMenu({ tripId, trip, isPro, proResolved }) {
     // вместо живой, которая всё равно ничего не покажет.
     chatUnread: useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) }),
   };
+}
+
+// Место под пункт, доступность которого ещё неизвестна (фаза загрузки).
+//
+// Подпись — ДВЕ плашки, а не одна, и это замер, а не вкус: `.app-side__label`
+// переносится на две строки (line-clamp 2), поэтому живой пункт с длинной
+// подписью — «Структура», «Участники» — занимает 56 px против 52 у однострочного
+// (min-height рейла). Место в одну плашку было бы на 4 px ниже пункта, который
+// его займёт, и «Настройки» под ним съезжали бы вниз ровно в тот момент, ради
+// которого всё это делалось. Две строки по 12 + зазор дают те же 56.
+// Остаточное: в локали, где подпись влезает в одну строку, место на 4 px выше
+// будущего пункта. Полностью снять это можно, только меряя саму подпись —
+// то есть отрисовав текст, которого мы ещё не имеем права показывать.
+//
+// Ширины плашек разные по индексу: ровный столбик читается как таблица, а не
+// как «сейчас подгрузится».
+function RailItemPending({ i }) {
+  return (
+    <div className="app-side__item">
+      <Skeleton w={20} h={20} r={6} />
+      <Skeleton w={30 + (i % 3) * 8} h={12} r={4} />
+      <Skeleton w={20 + (i % 2) * 8} h={12} r={4} />
+    </div>
+  );
 }
 
 // Пункт рейла — иконка, под ней подпись. Одна оболочка на обе группы: состав,
@@ -74,49 +98,48 @@ function RailItem({ icon, label, active = false, badge = 0, pro = false, onClick
 // которых на 70 px места нет. Общий у них ровно источник пунктов.
 export default function TripSidebar({
   tripId, trip, lens, onNavigate, onShare, onBack, backTitle,
-  isPro, proResolved = true, onProUpsell,
+  isPro, proResolved = true, onProUpsell, loading = false,
 }) {
   const { t } = useI18n();
   const { lensItems, mgmtItems, canShare, showUpgrade, chatUnread } =
     useTripMenu({ tripId, trip, isPro, proResolved });
+  // На фазе загрузки состав берётся из реестра (`loadingSections`), а не из
+  // отдельного скелетон-компонента: негейтованные секции известны без данных и
+  // рисуются ЖИВЫМИ — по ним можно уйти в раздел, не дожидаясь ответа.
+  const lensRows = loading ? loadingSections('lens') : lensItems;
+  const mgmtRows = loading ? loadingSections('manage') : mgmtItems;
+  // «Поделиться» и «Pro» — не секции реестра, а действия, и стоят в самом низу:
+  // их появление ничего не сдвигает, поэтому места под них не держим.
+  const showTail = !loading && (canShare || showUpgrade);
+  const row = (item, i) => (item.pending ? <RailItemPending key={item.id} i={i} /> : (
+    <RailItem
+      key={item.id}
+      icon={item.icon}
+      label={t(item.labelKey)}
+      active={lens === item.id}
+      badge={item.id === 'chat' ? chatUnread : 0}
+      onClick={() => onNavigate(item.id)}
+    />
+  ));
   return (
     <aside className="app-side">
       <BrandSlot onClick={onBack} title={backTitle} back />
       <nav className="app-side__nav">
-        <div className="app-side__group">
-          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
-          {lensItems.map((item) => (
-            <RailItem
-              key={item.id}
-              icon={item.icon}
-              label={t(item.labelKey)}
-              active={lens === item.id}
-              badge={item.id === 'chat' ? chatUnread : 0}
-              onClick={() => onNavigate(item.id)}
-            />
-          ))}
-        </div>
-        {(mgmtItems.length > 0 || canShare || showUpgrade) && (
+        {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
+        <div className="app-side__group">{lensRows.map(row)}</div>
+        {(mgmtRows.length > 0 || showTail) && (
           /* Подпись группы на 70 px не живёт — её работу делает черта, которую
              рисует сама вторая группа. Класс подписи жив: он в телефонном шите. */
           <div className="app-side__group">
-            {mgmtItems.map((item) => (
-              <RailItem
-                key={item.id}
-                icon={item.icon}
-                label={t(item.labelKey)}
-                active={lens === item.id}
-                onClick={() => onNavigate(item.id)}
-              />
-            ))}
-            {canShare && onShare && (
+            {mgmtRows.map(row)}
+            {showTail && canShare && onShare && (
               <RailItem icon="share" label={t('trip.share')} onClick={onShare} />
             )}
             {/* Апселл — ПУНКТ меню, а не баннер: тот же ряд, только в Pro-цвете,
                 и стоит он в общем списке под «Поделиться». В подвале колонки его
                 не видели: низ рейла — край экрана, туда не смотрят. */}
             {/* i18n-ignore — «Pro» имя тарифа, не переводится */}
-            {showUpgrade && <RailItem icon="pro" label="Pro" pro onClick={onProUpsell} />}
+            {showTail && showUpgrade && <RailItem icon="pro" label="Pro" pro onClick={onProUpsell} />}
           </div>
         )}
       </nav>
