@@ -5698,11 +5698,23 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Gradient hero (.trip-hero / .thead) removed — title, meta and trip actions
    now live in the unified <AppHeader> at the top of the shell. */
 
-/* ---- Тело: рейл + колонка «шапка + контент» ----
-   Шапка живёт ВНУТРИ правой колонки, а не над телом: рейл полновысотный, и его
-   первые --header-h — бренд-слот, который обязан стоять на одной линии с шапкой
-   (низ слота = низ шапки). Отсюда же берётся левый край заголовка трипа. */
-.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--rail-w) 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
+/* ---- Тело: рейл слева, шапка и контент справа ----
+   Сетка 2x2: рейл занимает обе строки (он полновысотный, и его первые --header-h
+   это бренд-слот, который обязан стоять на одной линии с шапкой), шапка — правая
+   верхняя ячейка, контент — правая нижняя.
+   ⚠️ Шапка ОБЯЗАНА быть соседом `.trip-content`, а не его потомком: к этому якорю
+   абсолютом привязан хост выдвижных панелей (`.evd-drawer`/`.evd-scrim` ниже, а у
+   редактора `.ts-pdrawer`). Внеси шапку внутрь — и панель поедет из-под неё, то
+   есть своей шапкой окажется под чужой. */
+.trip-body {
+  flex: 1; min-height: 0; position: relative;
+  display: grid;
+  grid-template-columns: var(--rail-w) 1fr;
+  grid-template-rows: var(--header-h) minmax(0, 1fr);
+}
+.trip-body > .app-side { grid-column: 1; grid-row: 1 / -1; }
+.trip-body > .app-header { grid-column: 2; grid-row: 1; }
+.trip-body > .trip-content { grid-column: 2; grid-row: 2; }
 .trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
@@ -5733,7 +5745,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    меню: рейл узкий, прятать его больше незачем, а третье состояние между
    «видно» и «шит» стоило одного бургера, одного скрима и своей ветки CSS. */
 @media (max-width: 640px) {
+  /* Рейла нет — колонка одна, и шапка с контентом переезжают в неё. */
   .trip-body { grid-template-columns: 1fr; }
+  .trip-body > .app-header,
+  .trip-body > .trip-content { grid-column: 1; }
   .trip-shell .app-side { display: none; }
   /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
      края ей нужен свой, а не тот, что задан под соседство с рейлом. */
@@ -9368,7 +9383,10 @@ a.doc-row__n:hover{ color: var(--brand); }
   pointer-events: none;
 }
 .tt__b--top { transform: translate(-50%, -100%); }
-.tt__b--bottom { transform: translate(-50%, 0); }
+/* Пузырь снизу подтянут к триггеру на ступень шкалы: примитив отступает от него
+   8 px (позиция считается в Tooltip.jsx), и под бренд-слотом рейла подсказка
+   висела оторванной. `bottom` в проекте использует только слот, `top` не тронут. */
+.tt__b--bottom { transform: translate(-50%, calc(var(--sp-2) * -1)); }
 /* visual-diff-exempt для примитива тултип (.tt) — каждое объявление новое; апрув Pavel TRIP-274 Ф2.2:
    visual-diff-exempt: .tt__b--bottom transform — примитив тултип ДС, апрув Pavel TRIP-274
    visual-diff-exempt: .tt__b--top transform — примитив тултип ДС, апрув Pavel TRIP-274

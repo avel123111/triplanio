@@ -202,26 +202,28 @@ export default function TripShell({
             />
           </>
         )}
+        {/* Шапка — СОСЕД контента, а не его потомок: к `.trip-content` абсолютом
+            привязан хост выдвижных панелей (EventDrawerHost), и внутри шапки он
+            поехал бы из-под неё. Сетка ставит её правой верхней ячейкой, на одну
+            линию с бренд-слотом рейла. */}
+        <AppHeader
+          isTrip
+          user={user}
+          isPro={isProActive(user)}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          // Кнопка «назад» — только на телефоне: на остальных ширинах выход
+          // из трипа живёт в бренд-слоте рейла, и вторая кнопка была бы
+          // дублем того же действия.
+          onBack={isPhone ? goBack : undefined}
+          backTitle={backTitle}
+          // Пока грузимся, бургера нет - как и было. Открывать нечего: меню
+          // ещё скелетон, а телефонный шит в этой ветке не отрисован.
+          onMenu={loading || !isPhone ? undefined : () => setSideOpen(true)}
+          title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
+          meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
+        />
         <div className="trip-content">
-          {/* Шапка — ВНУТРИ правой колонки: рейл полновысотный, и его первые
-              --header-h (бренд-слот) стоят на одной линии с ней. */}
-          <AppHeader
-            isTrip
-            user={user}
-            isPro={isProActive(user)}
-            isDark={isDark}
-            onToggleTheme={toggleTheme}
-            // Кнопка «назад» — только на телефоне: на остальных ширинах выход
-            // из трипа живёт в бренд-слоте рейла, и вторая кнопка была бы
-            // дублем того же действия.
-            onBack={isPhone ? goBack : undefined}
-            backTitle={backTitle}
-            // Пока грузимся, бургера нет - как и было. Открывать нечего: меню
-            // ещё скелетон, а телефонный шит в этой ветке не отрисован.
-            onMenu={loading || !isPhone ? undefined : () => setSideOpen(true)}
-            title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
-            meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
-          />
           <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
             {children}
           </main>
