@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';
 import { supabase } from '@/api/supabaseClient';
@@ -529,10 +530,10 @@ export default function Login() {
     <main className="auth">
       {/* ════ LEFT: Form ════ */}
       <section className="auth__form-col">
-        <a href="/" className="auth__brand-link">
+        <Link to="/" className="auth__brand-link">
           <BrandMark size={28} />
           <span>{BRAND_NAME}</span>
-        </a>
+        </Link>
 
         <div className="auth__form-wrap">
           <div className="auth__form">

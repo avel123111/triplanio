@@ -29,6 +29,8 @@ const ZONE = {
   'src/components/site/SiteChrome.jsx': "export const H = () => <a href=\"#features\">x</a>;\n",
   'src/pages/Landing/LandingPage.jsx': "export const L = () => <a href=\"#how\">x</a>;\n",
   'src/pages/PublicTrip.jsx': "const SITE = f();\nexport const P = () => <a href={SITE}>x</a>;\n",
+  'src/pages/Login.jsx': "import { Link } from 'react-router-dom';\nexport const Lg = () => <Link to=\"/\">home</Link>;\n",
+  'src/pages/JoinTrip.jsx': "export const J = () => { nav('/trips'); return null; };\n",
 };
 
 function put(dir, path, body) {
@@ -114,6 +116,30 @@ test('a commented-out internal link does not trip the guard', (t) => {
       "  // <a href=\"/trips\">old</a>\n" +
       "  <a href=\"#top\">up</a>\n" +
       ");\n",
+  }));
+  assert.equal(r.status, 0, r.stderr);
+});
+
+// Perimeter pins (Pavel's review). The zone must cover the pages where the
+// attribution machinery is densest. A violation placed in Login.jsx must be
+// caught — so if a future edit drops 'src/pages/Login.jsx' from SITE_ZONE, the
+// guard stops scanning the fixture's Login.jsx, passes it, and THIS test turns
+// red. That is what stops the perimeter from being silently narrowed back.
+test('a violation in Login.jsx is caught — Login is inside the perimeter', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/Login.jsx': "export const Lg = () => <a href=\"/\">home</a>;\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /src\/pages\/Login\.jsx/);
+  assert.match(r.stderr, /href="\/"/);
+});
+
+// The boundary is deliberate: the zone is NOT all of src/pages. An authed app
+// screen reloading to an internal route is fine (nothing to attribute there),
+// so a violation outside the zone stays green.
+test('a file outside the zone is not scanned (the perimeter is deliberate)', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/TripScreen.jsx': "export const T = () => <a href=\"/trips\">go</a>;\n",
   }));
   assert.equal(r.status, 0, r.stderr);
 });

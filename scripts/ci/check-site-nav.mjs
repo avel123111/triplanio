@@ -51,12 +51,23 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-// The site design-system zone as it stands (the unauthenticated pages already
-// ported to site.css + SiteChrome). Login/JoinTrip/legal join it in Ф6, when
-// this list grows with them. A mix of dirs and one file; each entry MUST exist
-// — a vanished path means the zone moved and the guard is watching an empty
-// room, which must fail loudly, not pass (TRIP-282).
-const SITE_ZONE = ['src/components/site', 'src/pages/Landing', 'src/pages/PublicTrip.jsx'];
+// The whole unauthenticated zone — every page that produces or carries a
+// campaign mark, NOT only the ones already on site.css. Login.jsx and
+// JoinTrip.jsx are where the attribution machinery is densest (the one signUp,
+// the three provider redirects, postLoginRedirect), so they are watched NOW
+// even though their CSS port waits for Ф6; the legal pages (/terms, /privacy)
+// join when they stop being static HTML (Ф6). A mix of dirs and files; each
+// entry MUST exist — a vanished path means the zone was quietly narrowed and
+// the guard is watching an empty room, which must fail loudly, not pass
+// (TRIP-282). The test pins Login.jsx/JoinTrip.jsx in the perimeter so a future
+// edit that drops them from this list turns a suite RED.
+const SITE_ZONE = [
+  'src/components/site',
+  'src/pages/Landing',
+  'src/pages/PublicTrip.jsx',
+  'src/pages/Login.jsx',
+  'src/pages/JoinTrip.jsx',
+];
 
 // A string-literal href to an internal absolute path: `href="/x"`. The `/(?!\/)`
 // excludes protocol-relative `//cdn…` (external); the `(?<!\.)` excludes the DOM
