@@ -1707,6 +1707,15 @@ button.app-side__item { cursor: pointer; }
 button.app-side__item:active { transform: scale(.985); }
 button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink-hi); }
 .app-side__item.active { background: var(--brand); color: var(--primary-fg); }
+/* Апселл — тот же ряд меню, отличается только чернилами: сплошная Pro-заливка в
+   навигации читалась бы баннером, а именно от баннера мы и уходили.
+   Чернил ДВОЕ, потому что поверхности две: на светлой (телефонный шит) читается
+   тёмный --pro-ink, на тёмном борте рейла — яркий --pro; поменяй местами, и
+   текст пропадёт в фоне. Ховер в рейле держит тот же цвет: подложка общая, но
+   ряд не должен менять породу под курсором. */
+.app-side__item--pro { color: var(--pro-ink); }
+.app-side .app-side__item--pro,
+.app-side .app-side__item--pro:hover { color: var(--pro); }
 .app-side__item:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 /* Подпись: две строки максимум, мягкий перенос. Полное имя — в `title` пункта
    (нативно, без своего пузыря): длинные локали иначе режутся многоточием. */

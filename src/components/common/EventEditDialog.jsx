@@ -696,7 +696,7 @@ export default function EventEditDialog({
     // Only the owner can upgrade this trip → checkout. A participant can't unlock
     // someone else's trip by paying, so show the "ask the owner" dialog instead.
     // Апселл рендерит app-level ProUpsellProvider (не вложенная модаль) — TRIP-225.
-    if (!isOwner) { openProUpsell({ mode: 'info' }); return; }
+    if (!isOwner) { openProUpsell({ role: 'member', source: 'feature' }); return; }
     onOpenChange?.(false);
     goPro(nav, { tripId, from: 'paywall', feature: 'event_pro' });
   };

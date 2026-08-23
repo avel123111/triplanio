@@ -2,7 +2,7 @@ import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { BrandSlot } from '@/components/AppHeader';
-import { Avatar, Badge, Btn, Card, Sheet, UnreadBadge } from '@/design/index';
+import { Avatar, Card, Sheet, UnreadBadge } from '@/design/index';
 import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
 import { clearsStep } from '@/lib/tripStep';
 import { displayName } from '@/lib/displayName';
@@ -12,10 +12,10 @@ import { useUnreadNotificationCount } from '@/lib/useNotifications';
 // Пункт рейла — иконка, под ней подпись. Одна оболочка на обе группы: состав,
 // иконки и подписи приходят из реестра секций (`tripMenu.js`) без единого
 // исключения, рейл их только рисует.
-function RailItem({ icon, label, active = false, badge = 0, onClick }) {
+function RailItem({ icon, label, active = false, badge = 0, pro = false, onClick }) {
   return (
     <button
-      className={'app-side__item' + (active ? ' active' : '')}
+      className={'app-side__item' + (active ? ' active' : '') + (pro ? ' app-side__item--pro' : '')}
       onClick={onClick}
       // `title` — нативная подсказка вместо своего пузыря: длинные локали
       // («Planificación», «Presupuesto») в 70 px режутся, и полное имя обязано
@@ -28,26 +28,6 @@ function RailItem({ icon, label, active = false, badge = 0, onClick }) {
       <span className="app-side__label">{label}</span>
       <UnreadBadge count={badge} />
     </button>
-  );
-}
-
-// "Upgrade this trip to Pro" card — shown on free trips in both the list sidebar
-// and the phone sheet, so it lives in one place.
-function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
-  const { t } = useI18n();
-  return (
-    <Card tone="brand" radius="md" className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
-      <div className="ph">
-        <Badge variant="pro" icon="pro">PRO</Badge>
-      </div>
-      <div className="pt">{t('trip_menu.free_trip_title')}</div>
-      <p>{t('trip.pro_locked_lenses')}</p>
-      {isOwner ? (
-        <Btn variant="primary" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
-      ) : (
-        <Btn variant="secondary" icon="lock" block onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
-      )}
-    </Card>
   );
 }
 
@@ -65,6 +45,7 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
 // которых на 70 px места нет. Общий у них ровно источник пунктов.
 export default function TripSidebar({
   tripId, trip, lens, onNavigate, myStep, onShare, onBack, backTitle,
+  isPro, proResolved = true, onProUpsell,
 }) {
   const { t } = useI18n();
   // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
@@ -76,6 +57,8 @@ export default function TripSidebar({
   // the badge only renders under a visible chat item, so a chat-off trip holds
   // zero realtime subscriptions instead of a live one that can never show.
   const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
+  // Только после того, как статус Pro разрешён: иначе пункт моргает на Pro-трипе.
+  const showUpgrade = proResolved && !isPro;
   return (
     <aside className="app-side">
       <BrandSlot onClick={onBack} title={backTitle} back />
@@ -112,18 +95,24 @@ export default function TripSidebar({
           </div>
         )}
       </nav>
+      {/* Апселл — ПУНКТ меню, а не баннер: тот же ряд, только в Pro-цвете. Стоит
+          в подвале, вне скролла: он не часть маршрута по трипу, и список секций
+          не должен ехать, когда трип станет Pro и пункт исчезнет. */}
+      {/* i18n-ignore — «Pro» имя тарифа, не переводится */}
+      {showUpgrade && <RailItem icon="pro" label="Pro" pro onClick={onProUpsell} />}
     </aside>
   );
 }
 
-// Phone sheet BODY (TRIP-235). Same items/role-gating/chat-badge/upgrade card as
-// the list sidebar, but laid out for touch: lenses in a 3-col grid of tiles with
+// Phone sheet BODY (TRIP-235). Тот же состав пунктов, ролевой гейт и бейдж чата,
+// что у рейла, включая апселл (он ряд меню, а не карточка), но разложено под
+// палец: lenses in a 3-col grid of tiles with
 // the open screen highlighted, management collapsed into one bordered container,
 // and an account row (moved out of the bottom nav) at the foot.
 function SidebarSheetBody({
   tripId, trip, lens, onNavigate,
-  isPro, proResolved = true, isOwner, myStep,
-  onUpgrade, onProInfo, onShare, user, onAccount,
+  isPro, proResolved = true, myStep,
+  onProUpsell, onShare, user, onAccount,
 }) {
   const { t } = useI18n();
   const lensItems = availableSections(trip, myStep, 'lens');
@@ -140,6 +129,9 @@ function SidebarSheetBody({
   const manageRows = [
     ...mgmtItems.map((item) => ({ id: item.id, icon: item.icon, labelKey: item.labelKey, active: lens === item.id, onClick: () => onNavigate(item.id) })),
     ...(canShare && onShare ? [{ id: 'share', icon: 'share', labelKey: 'trip.share', onClick: onShare }] : []),
+    // Апселл — такой же ряд меню, что и на десктопе, и ведёт в ту же модалку:
+    // одно поведение — одна реализация, только оболочки разные.
+    ...(showUpgrade ? [{ id: 'pro', icon: 'pro', label: 'Pro', pro: true, onClick: onProUpsell }] : []),   // i18n-ignore — имя тарифа
   ];
 
   return (
@@ -166,16 +158,15 @@ function SidebarSheetBody({
           <Card pad="none" radius="lg" className="tm-manage">
             {/* TRIP-391 объект 1 → объект 6: .tm-manage__row — РЯД меню управления, не кнопка-примитив. */}
             {manageRows.map((row) => (
-              <button key={row.id} className={'tm-manage__row' + (row.active ? ' is-active' : '')} onClick={row.onClick} aria-current={row.active ? 'page' : undefined}>
+              <button key={row.id} className={'tm-manage__row' + (row.active ? ' is-active' : '') + (row.pro ? ' app-side__item--pro' : '')} onClick={row.onClick} aria-current={row.active ? 'page' : undefined}>
                 <span className="tm-manage__ico"><Icon name={row.icon} size={16} /></span>
-                <span className="tm-manage__lbl t-label">{t(row.labelKey)}</span>
+                <span className="tm-manage__lbl t-label">{row.label || t(row.labelKey)}</span>
                 <Icon name="chevron" size={16} className="tm-manage__chev" />
               </button>
             ))}
           </Card>
         </>
       )}
-      {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
       {onAccount && (
         <Card as="button" radius="lg" className="tm-account" onClick={onAccount}>
           <Avatar name={accountName} photo={user?.avatar_url} seed={user?.id} size="sm" />

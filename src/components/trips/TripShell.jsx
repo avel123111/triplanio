@@ -79,8 +79,7 @@ export default function TripShell({
   meta,
   onNavigate,
   onShare,
-  onUpgrade,
-  onProInfo,
+  onProUpsell,
   bodyRef,
   loading = false,
   children,
@@ -167,15 +166,16 @@ export default function TripShell({
       <div className="trip-body">
         {loading ? <SidebarSkeleton onBack={goBack} backTitle={backTitle} /> : (
           <>
-            {/* Рейлу нужны только пункты и переходы: карточка апгрейда и
-                Pro-пропы остались у телефонного шита, где для них есть место.
-                Шит открывается только на телефоне, где рейла нет (CSS), поэтому
+            {/* Шит открывается только на телефоне, где рейла нет (CSS), поэтому
                 закрывать его отсюда некому - рейл просто переключает секцию. */}
             <TripSidebar
               tripId={tripId}
               trip={trip}
               lens={section}
               myStep={myStep}
+              isPro={isPro}
+              proResolved={proResolved}
+              onProUpsell={onProUpsell}
               onNavigate={(id) => onNavigate?.(id)}
               onShare={onShare}
               onBack={goBack}
@@ -189,14 +189,12 @@ export default function TripShell({
               lens={section}
               isPro={isPro}
               proResolved={proResolved}
-              isOwner={isOwner}
               myStep={myStep}
               open={isPhone && sideOpen}
               onOpenChange={setSideOpen}
               onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
               onShare={onShare && (() => { setSideOpen(false); onShare(); })}
-              onUpgrade={onUpgrade && (() => { setSideOpen(false); onUpgrade(); })}
-              onProInfo={onProInfo && (() => { setSideOpen(false); onProInfo(); })}
+              onProUpsell={onProUpsell && (() => { setSideOpen(false); onProUpsell(); })}
               user={user}
               onAccount={() => { setSideOpen(false); nav('/settings'); }}
             />
