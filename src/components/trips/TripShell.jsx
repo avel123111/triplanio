@@ -26,9 +26,23 @@
  * именно так стрелка с любой линзы выкидывала из трипа целиком на `/trips`.
  * Правило одно: дефолтная секция ведёт на список трипов, любая другая - на
  * дефолтную секцию этого же трипа (TRIP-349 п.3).
+ *
+ * ── Объявление изменений для гарда 2p (визуальный дифф CSS) ──────────────────
+ * Маркеры лежат ЗДЕСЬ, а не в app.css: внутри CSS многострочный блок с
+ * `{@media …}` гард начинает разбирать как правила и выдаёт ложные ключи
+ * (та же грабля разобрана в шапке EditLens.jsx). Гард читает маркеры из
+ * ДОБАВЛЕННЫХ строк диффа, поэтому файл значения не имеет.
+ *
+ * Вход оболочки при приходе из создания трипа: выезжает рейл. Апрув Pavel.
+ * visual-diff-exempt: .app-side animation — рейл выезжает при приходе из создания трипа, апрув Pavel
+ * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — тот же вход гасится при снижении движения
+ * visual-diff-exempt: .trip-shell[data-entering=create] animation — вторая единица наблюдения того же правила (селектор из двух частей)
+ * visual-diff-exempt: .trip-shell[data-entering=create] {@media (prefers-reduced-motion: reduce)} animation — то же при снижении движения
+ * visual-diff-exempt: from {@keyframes railIn} transform — кейфрейм выезда рейла из-за левой кромки
+ * visual-diff-exempt: to {@keyframes railIn} transform — то же, конечное состояние
  */
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AppHeader, { BrandSlot } from '@/components/AppHeader';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import { useMobileNav } from '@/components/MobileBottomNav';
@@ -41,6 +55,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { isProActive } from '@/lib/subscription';
 import { Skeleton } from '@/design/index';
+import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 
 // Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
 // нельзя: его состав зависит от аддонов и роли, а они приезжают тем же
@@ -87,11 +102,38 @@ export default function TripShell({
 }) {
   const t = useT();
   const nav = useNavigate();
+  const loc = useLocation();
   const { user } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPhone = useIsPhone();
   const [sideOpen, setSideOpen] = useState(false);
   const { setTripNav } = useMobileNav();
+
+  // ★ «КАК СЮДА ПОПАЛИ» — ОДНО СОСТОЯНИЕ НА ВСЮ ОБОЛОЧКУ, А НЕ АНИМАЦИЯ НА КАЖДОЙ
+  // ДЕТАЛИ. Приход из создания трипа обязан выглядеть ОДНИМ движением: на десктопе
+  // выезжает рейл, на телефоне приезжает нижний док. Если повесить два входа
+  // порознь, они разъедутся по темпу на первой же правке — поэтому оболочка
+  // объявляет ФАКТ (`data-entering`), а CSS решает, что именно едет на этой ширине.
+  //
+  // Читаем ОДИН РАЗ, на маунте (`useState` с инициализатором), и по двум причинам:
+  //   • `location.state` живёт, пока живёт запись истории, — без снимка вход
+  //     переигрывался бы при каждом ререндере этой же локации;
+  //   • `!loading` в условии не педантизм: `.app-side` МЕНЯЕТ РЕАЛИЗАЦИЮ на
+  //     границе загрузки (скелетон рейла → живой TripSidebar), то есть
+  //     размонтируется и монтируется заново, а CSS-анимация играет на каждом
+  //     маунте. Разрешив вход в фазе загрузки, мы получили бы ДВА выезда подряд.
+  //     Пришли с холодным кэшем — входа просто нет, как и было до этой правки;
+  //     на пути из создания кэш прогрет (ManualPlanner), и ветка всегда тёплая.
+  const [entering] = useState(() => (loc.state?.from === 'create' && !loading ? 'create' : null));
+
+  // Темп входа берётся из ОБЩЕГО контракта движения (`lib/surfaceMotion.js`), а не
+  // пишется числом в CSS: тем же временем и той же кривой едут шит, камера карты и
+  // плавающие контролы. Публикуем переменными на своём корне — ровно тем приёмом,
+  // каким это делают MapShell и PeekSheet, и каким нав публикует свою высоту.
+  const motionStyle = useMemo(() => ({
+    '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
+    '--surface-ease': SURFACE_EASE_CSS,
+  }), []);
 
   // Тело - постоянный скролл-контейнер (сама оболочка не скроллится), поэтому
   // при смене секции его надо вернуть наверх. Свой ref, если снаружи не дали:
@@ -161,7 +203,7 @@ export default function TripShell({
   const backTitle = t('trip.back');
 
   return (
-    <div className="trip-shell">
+    <div className="trip-shell" data-entering={entering || undefined} style={motionStyle}>
       <div className="trip-body">
         {loading ? <SidebarSkeleton onBack={goBack} backTitle={backTitle} /> : (
           <>
