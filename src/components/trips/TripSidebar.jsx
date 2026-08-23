@@ -111,16 +111,19 @@ export default function TripSidebar({
   // «Поделиться» и «Pro» — не секции реестра, а действия, и стоят в самом низу:
   // их появление ничего не сдвигает, поэтому места под них не держим.
   const showTail = !loading && (canShare || showUpgrade);
-  const row = (item, i) => (item.pending ? <RailItemPending key={item.id} i={i} /> : (
-    <RailItem
-      key={item.id}
-      icon={item.icon}
-      label={t(item.labelKey)}
-      active={lens === item.id}
-      badge={item.id === 'chat' ? chatUnread : 0}
-      onClick={() => onNavigate(item.id)}
-    />
-  ));
+  const row = (item, i) => {
+    if (item.pending) return <RailItemPending key={item.id} i={i} />;
+    return (
+      <RailItem
+        key={item.id}
+        icon={item.icon}
+        label={t(item.labelKey)}
+        active={lens === item.id}
+        badge={item.id === 'chat' ? chatUnread : 0}
+        onClick={() => onNavigate(item.id)}
+      />
+    );
+  };
   return (
     <aside className="app-side">
       <BrandSlot onClick={onBack} title={backTitle} back />
