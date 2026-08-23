@@ -2,63 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { EDITOR_ROLES, stepFromFacts, resolveMyStep, clearsStep } from './tripStep.js';
-import { resolveMyRole } from './members.js';
+import { clearsStep } from './tripStep.js';
 
-const OWNER = 'owner-uuid';
-const trip = { id: 't1', created_by: OWNER };
-
-// ── stepFromFacts — дословный миррор серверного правила ───────────────────────
-
-test('stepFromFacts: creator is owner even with a stray viewer membership', () => {
-  assert.equal(stepFromFacts(OWNER, OWNER, { role: 'viewer' }), 'owner');
-});
-
-test('stepFromFacts: no trip / no user → null', () => {
-  assert.equal(stepFromFacts(null, OWNER, null), null);
-  assert.equal(stepFromFacts(OWNER, null, null), null);
-});
-
-test('stepFromFacts: admin membership → editor', () => {
-  assert.equal(stepFromFacts(OWNER, 'u2', { role: 'admin' }), 'editor');
-});
-
-test('stepFromFacts: viewer membership → participant', () => {
-  assert.equal(stepFromFacts(OWNER, 'u3', { role: 'viewer' }), 'participant');
-});
-
-test('stepFromFacts: empty/unknown role → participant, never editor (white list)', () => {
-  assert.equal(stepFromFacts(OWNER, 'u4', { role: null }), 'participant');
-  assert.equal(stepFromFacts(OWNER, 'u4', { role: 'stranger' }), 'participant');
-});
-
-test('stepFromFacts: no membership row → null (not on trip)', () => {
-  assert.equal(stepFromFacts(OWNER, 'nobody', null), null);
-});
-
-// ── resolveMyStep — active-only, creator wins, fail-closed ────────────────────
-
-test('resolveMyStep: creator is owner with no membership row', () => {
-  assert.equal(resolveMyStep([], trip, { id: OWNER }), 'owner');
-});
-
-test('resolveMyStep: pending/declined admin row does NOT grant editor (fail-closed)', () => {
-  const members = [{ user_id: 'u2', role: 'admin', status: 'pending' }];
-  assert.equal(resolveMyStep(members, trip, { id: 'u2' }), null);
-});
-
-test('resolveMyStep: active admin → editor, active viewer → participant', () => {
-  const members = [
-    { user_id: 'u2', role: 'admin', status: 'active' },
-    { user_id: 'u3', role: 'viewer', status: 'active' },
-  ];
-  assert.equal(resolveMyStep(members, trip, { id: 'u2' }), 'editor');
-  assert.equal(resolveMyStep(members, trip, { id: 'u3' }), 'participant');
-});
-
-test('resolveMyStep: stranger → null', () => {
-  assert.equal(resolveMyStep([], trip, { id: 'nobody' }), null);
-});
+// ФРОНТ БОЛЬШЕ НЕ ВЫВОДИТ СТУПЕНЬ — он её читает (см. шапку tripStep.js).
+// Поэтому здесь остались ровно две вещи: поведение `clearsStep` и паритет
+// ЛЕСТНИЦЫ с сервером. Правило «кто на какой ступени» целиком серверное и
+// покрыто `supabase/functions/_shared/tripStep_test.ts` (включая владельца с
+// залётной строкой членства — денежный контур, правило #13).
 
 // ── clearsStep — вложенность и fail-closed на null ────────────────────────────
 
@@ -71,68 +21,34 @@ test('clearsStep: owner ⊃ editor ⊃ participant', () => {
   assert.equal(clearsStep('editor', 'owner'), false);
   assert.equal(clearsStep('participant', 'participant'), true);
   assert.equal(clearsStep('participant', 'editor'), false);
+  assert.equal(clearsStep('participant', 'owner'), false);
 });
 
+// null приходит В ДВУХ РАЗНЫХ СИТУАЦИЯХ — «ответ read-двери ещё не приехал» и
+// «вызывающий не на трипе» — и обе обязаны вести себя одинаково: прав нет.
+// Именно это делает загрузку безопасной: пока ступень неизвестна, ролевые пункты
+// меню не рисуются, а не «рисуются на всякий случай».
 test('clearsStep: null clears nothing (fail-closed)', () => {
   assert.equal(clearsStep(null, 'participant'), false);
   assert.equal(clearsStep(null, 'editor'), false);
   assert.equal(clearsStep(null, 'owner'), false);
 });
 
-// ── owner-ось: равенство old↔new по матрице ролей (TRIP-274 Ф2.1, правило #13) ──
-// Ф2.1 заменила рукописный владелец-гейт `resolveMyRole(...) === 'owner'` (питал
-// удаление трипа и режим Pro-апселла upgrade/info) на `clearsStep(resolveMyStep,
-// 'owner')`. На денежном контуре смену поведения нельзя проводить молча — этот
-// тест пинит, что новое выражение РАВНО старому во всех случаях, КРОМЕ одного
-// намеренного: не-создатель с залётной строкой членства role='owner'.
-
-const CREATOR = 'creator-uuid';
-const T = { id: 't', created_by: CREATOR };
-const oldIsOwner = (members, trip, user) => resolveMyRole(members, trip, user) === 'owner';
-const newIsOwner = (members, trip, user) => clearsStep(resolveMyStep(members, trip, user), 'owner');
-
-test('owner old↔new совпадают: создатель / admin / viewer / посторонний', () => {
-  const cases = [
-    [[], { id: CREATOR }],                                              // создатель без строки
-    [[{ user_id: CREATOR, role: 'viewer', status: 'active' }], { id: CREATOR }], // создатель + залётная viewer-строка
-    [[{ user_id: 'u2', role: 'admin', status: 'active' }], { id: 'u2' }],        // активный admin
-    [[{ user_id: 'u3', role: 'viewer', status: 'active' }], { id: 'u3' }],       // активный viewer
-    [[], { id: 'stranger' }],                                           // не на трипе
-  ];
-  for (const [members, user] of cases) {
-    assert.equal(newIsOwner(members, T, user), oldIsOwner(members, T, user),
-      `расхождение на ${JSON.stringify({ members, user })}`);
-  }
-});
-
-test('owner: ЕДИНСТВЕННАЯ намеренная дельта — не-создатель с ролью owner', () => {
-  // Залётная строка role='owner' у НЕ-создателя: старое правило звало его
-  // владельцем (resolveMyRole вернул бы 'owner'), новое — нет (владение это только
-  // trips.created_by, TRIP-143). Он теряет кнопку «Удалить трип» (её сервер и так
-  // 403-ил бы) и получает режим апселла info вместо upgrade. Это фикс эскалации.
-  const stray = [{ user_id: 'u9', role: 'owner', status: 'active' }];
-  const user = { id: 'u9' };
-  assert.equal(oldIsOwner(stray, T, user), true, 'старое (баг): звало владельцем');
-  assert.equal(newIsOwner(stray, T, user), false, 'новое (фикс): не владелец');
-  // Он остаётся редактором (owner-роль в EDITOR_ROLES), но не владельцем.
-  assert.equal(clearsStep(resolveMyStep(stray, T, user), 'editor'), true);
+test('clearsStep: незнакомая ступень не перекрывает ничего', () => {
+  // @ts-expect-error — намеренно невалидное значение: приезжает по сети, а
+  // значит теоретически может быть чем угодно; проваливаться обязано в «нельзя».
+  assert.equal(clearsStep('superadmin', 'participant'), false);
 });
 
 // ── ПАРИТЕТ с сервером — тот же приём, что viralLink.js ↔ _shared/viralLink.ts ─
-// Читаем серверный tripStep.ts как ТЕКСТ (импортировать нельзя — другой рантайм)
-// и сверяем, что FE-копия правила не разошлась с ним.
+// Читаем серверный tripStep.ts как ТЕКСТ (импортировать нельзя — другой рантайм).
+// Сверяем только ПОРЯДОК ступеней: список ролей фронт больше не держит, сверять
+// нечего — ступень приезжает готовой.
 
 const SERVER_SRC = readFileSync(
   fileURLToPath(new URL('../../supabase/functions/_shared/tripStep.ts', import.meta.url)),
   'utf8',
 );
-
-test('parity: FE EDITOR_ROLES === server EDITOR_ROLES', () => {
-  const m = SERVER_SRC.match(/export const EDITOR_ROLES = \[([^\]]*)\]/);
-  assert.ok(m, 'server EDITOR_ROLES not found — did tripStep.ts move?');
-  const serverRoles = [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
-  assert.deepEqual([...EDITOR_ROLES].sort(), serverRoles.sort());
-});
 
 test('parity: FE ladder order === server LADDER', () => {
   const m = SERVER_SRC.match(/LADDER[^=]*=\s*\{([^}]*)\}/);
@@ -144,4 +60,15 @@ test('parity: FE ladder order === server LADDER', () => {
   assert.equal(clearsStep('owner', 'editor'), serverLadder.owner >= serverLadder.editor);
   assert.equal(clearsStep('editor', 'participant'), serverLadder.editor >= serverLadder.participant);
   assert.equal(clearsStep('participant', 'editor'), serverLadder.participant >= serverLadder.editor);
+});
+
+// Значения ступеней — часть СЕТЕВОГО контракта: сервер кладёт их в `myStep`, а
+// фронт сравнивает по имени. Опечатка в любой из половин молча снимала бы права.
+test('parity: FE ladder keys === server TripStep union', () => {
+  const m = SERVER_SRC.match(/export type TripStep =([^;]*);/);
+  assert.ok(m, 'server TripStep type not found — did tripStep.ts move?');
+  const serverSteps = [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]).sort();
+  for (const step of serverSteps) {
+    assert.equal(clearsStep(step, 'participant'), true, `ступень ${step} должна быть известна фронту`);
+  }
 });
