@@ -29,8 +29,11 @@ import { clearsStep } from './tripStep.js';
 //               ПРИЧИНА, а не просто true: причины разные, и следующий, кто
 //               придёт возвращать док, должен видеть, какую из них он закрывает.
 //                 'composer'       — нижнюю кромку забрал композер чата
-//                 'pending-layout' — раскладка под док ещё не сделана
-//                                    (TRIP-349 п.2 отложен намеренно)
+//               Причина 'pending-layout' (редактор) ЗАКРЫТА: раскладку под док
+//               даёт общий <MapShell> — шит сам резервирует полосу нава
+//               (`--nav-dock-h`) и поднимает на неё минимальный детент, а
+//               плавающие контролы стоят над ним. Линза карты возит эту связку
+//               с TRIP-422; редактор был последним, кто из неё выпадал.
 export const SECTIONS = [
   { id: 'overview', group: 'lens', labelKey: 'trip_menu.overview', icon: 'grid', event: 'overview_opened' },
   { id: 'timeline', group: 'lens', labelKey: 'trip_menu.timeline', icon: 'list', event: 'timeline_opened' },
@@ -42,7 +45,7 @@ export const SECTIONS = [
   // Структурный редактор. Секция как любая другая — до TRIP-349 это был
   // отдельный роут со СВОЕЙ оболочкой, и именно из этого дубля выросло всё
   // остальное. Гейт тот же, что пускал в роут (зеркалит _can_edit_trip).
-  { id: 'edit', group: 'manage', labelKey: 'trip.edit_structure', icon: 'edit', event: 'trip_editor_opened', canAccess: (step) => clearsStep(step, 'editor'), flush: true, hidesDock: 'pending-layout' },
+  { id: 'edit', group: 'manage', labelKey: 'trip.edit_structure', icon: 'edit', event: 'trip_editor_opened', canAccess: (step) => clearsStep(step, 'editor'), flush: true },
   // Наблюдатель видит Настройки (read-only — чтобы выйти из трипа), но не
   // Участников (TRIP-137). Управление участниками — ступень editor.
   { id: 'members', group: 'manage', labelKey: 'trip.sidebar_members', icon: 'users', event: 'members_opened', canAccess: (step) => clearsStep(step, 'editor') },

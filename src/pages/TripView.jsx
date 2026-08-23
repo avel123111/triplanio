@@ -3,8 +3,8 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/lib/AuthContext';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_CARD_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
-import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { TRIP_CARD_KEY, invalidateTripData } from '@/lib/trip-data';
+import { tripShellQuery, tripContentQuery } from '@/lib/invokeTripFn';
 import { goPro } from '@/lib/goPro';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
@@ -20,7 +20,7 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, IconBtn, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
@@ -312,31 +312,81 @@ function RightRailSkeleton() {
   );
 }
 
-// Скелетон структурного редактора — PURE, зеркалит ОБЕ колонки `.ts-grid`:
-// СЛЕВА маршрут (шапка «Маршрут» + карточки-города), СПРАВА КАРТА. Раньше
-// заглушка рисовала только левую колонку — карта не учитывалась (TRIP-337).
-// Один источник для обеих фаз загрузки (shell в LoadingBody и content в editGate).
+// ── Объявление изменений для гарда 2p (визуальный дифф CSS) ──────────────────
+// Скелетон перестал размечаться под снесённую раскладку редактора, и вместе с
+// ним ушли последние мобильные правила той раскладки: без разметки они были бы
+// осиротевшими (их бы потребовал снести гард 2n).
+// visual-diff-exempt: .ts-grid {@media (max-width: 640px)} grid-template-columns — правило снесённой раскладки редактора, разметки под него не осталось
+// visual-diff-exempt: .ts-col-right {@media (max-width: 640px)} display — то же, вторая половина того же мёртвого правила
+//
+// Скелетон структурного редактора — ОДИН на обе фазы загрузки (shell и content).
+//
+// ★ РИСУЕТ ТУ ЖЕ РАСКЛАДКУ, ЧТО И САМ РЕДАКТОР, — ОБЩИЙ <MapShell>. До этого он
+// был СИРОТОЙ: размечен под `.ts-grid` / `.ts-leftscroll`, то есть под две
+// колонки, снесённые в TRIP-422 вместе со второй рукописной копией раскладки.
+// Правил у этих имён не осталось (`.ts-grid` вычислялся `display: block`), и
+// кадр загрузки выходил не «редактор без данных», а другой экран: ряды во всю
+// ширину и карты нет вовсе. Ни один гард этого не видел — 2n ловит осиротевшее
+// ПРАВИЛО, а тут осиротела РАЗМЕТКА, обратное направление.
+//
+// Карту тут отдаём ПУСТЫМ слотом, а не живой поверхностью: инстанс mapbox один
+// на всё приложение (MapProvider), и двух живых поверхностей одновременно быть
+// не может. Слот и без канваса красит подложку (`--map-backdrop`) — ровно то,
+// что видно, пока не пришли тайлы.
+//
+// ★ ДЕТЕНТ И СВОРАЧИВАНИЕ ОБЪЯВЛЕНЫ ЯВНО, И ЭТО НЕ УКРАШЕНИЕ. Оба состояния
+// принадлежат ВИДЖЕТУ, а не данным в нём, поэтому кадр загрузки обязан открыть
+// его там же, где откроет редактор. Промолчав, скелетон брал дефолт примитива
+// (детент 0 = 15%) и на телефоне показывал шит полоской, которая прыгала на 68%
+// в момент приезда content'а, — то есть ровно тот шов, который эта задача
+// убирает на десктопе. Кнопка сворачивания на шве по той же причине: без
+// `onCollapsedChange` шелл её не рисует вовсе, и она «выщёлкивалась» бы при
+// смене скелетона на редактор.
 function EditSkeleton() {
+  const { t } = useI18n();
+  const [detent, setDetent] = useState(1);
+  const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className="ts-grid">
-      <div className="ts-leftscroll" style={{ padding: '12px 12px 18px', overflow: 'hidden' }}>
-        <Skeleton w={160} h={26} r={6} style={{ marginBottom: 12 }} />
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} radius="lg" pad="none" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
-            <Skeleton w={36} h={36} r={'var(--r-sm)'} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <Skeleton w="50%" h={14} r={5} />
-              <Skeleton w="30%" h={11} r={5} />
-            </div>
-            <Skeleton w={90} h={30} r={'var(--r-pill)'} />
-          </Card>
-        ))}
-      </div>
-      {/* правая колонка — карта */}
-      <div style={{ position: 'relative', margin: 14, marginLeft: 7, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--line)' }}>
-        <Skeleton w="100%" h="100%" r={0} style={{ position: 'absolute', inset: 0 }} />
-      </div>
-    </div>
+    <MapShell
+      panelLabel={t('planner.step_cities')}
+      map={null}
+      detent={detent}
+      onDetentChange={setDetent}
+      collapsed={collapsed}
+      onCollapsedChange={setCollapsed}
+      collapseLabel={t('tse.route_hide')}
+      expandLabel={t('tse.route_show')}
+      panelHeader={(
+        <div className="col col--g2">
+          <Skeleton w={160} h={26} r={6} />
+          <Skeleton w={210} h={12} r={5} />
+        </div>
+      )}
+      panel={(
+        <div className="te-panefade">
+          {/* Граница реюза проведена по КОРОБКЕ и РИТМУ, и она намеренная.
+              `.te-panefade` (обёртка выше) берём ОСОЗНАННО: это коробка тела
+              виджета — отступы, скролл и появление, — и именно от неё отступы
+              кадра загрузки совпадают с рабочими. А вот РИТМ РЯДОВ собран общими
+              утилитами, а не `.te-table` / `.te-seamwrap`: те держат сетку колонок
+              редактора и зазоры его списка, то есть приватное устройство того,
+              чего в скелетоне нет. Дотянувшись туда, он ломался бы от каждой
+              правки редактора — ровно так он и осиротел в прошлый раз. */}
+          <div className="col col--g3">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} radius="md" className="row row--g6">
+                <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+                <div className="grow col col--g2">
+                  <Skeleton w="50%" h={14} r={5} />
+                  <Skeleton w="30%" h={11} r={5} />
+                </div>
+                <Skeleton w={90} h={30} r={'var(--r-pill)'} />
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    />
   );
 }
 
@@ -848,12 +898,12 @@ export default function TripView() {
   // OFFLINE, React Query PAUSES this query (fetchStatus 'paused') instead of
   // throwing, so the gate must read that state directly — see the gate below.
   const { data: shellData, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
-    queryKey: TRIP_SHELL_KEY(tripId),
-    // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
-    // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_SHELL_INCLUDE }),
+    // Ключ, include, фетчер И политика ретраев приезжают ОДНИМ дескриптором
+    // (`tripShellQuery`): экран их не называет, поэтому прогрев кэша из
+    // планировщика не может разъехаться с этим запросом ни по форме payload'а
+    // (TRIP-277), ни по настройкам (TRIP-56) — см. шапку дескрипторов.
+    ...tripShellQuery(tripId),
     enabled: !!tripId,
-    retry: false,
   });
 
   // Fetch content (hotels, activities, transfers) — параллельно с shell
@@ -861,17 +911,15 @@ export default function TripView() {
     data: contentData, isLoading: loadingContent,
     error: contentError, isPending: contentPending, fetchStatus: contentFetchStatus,
   } = useQuery({
-    queryKey: TRIP_CONTENT_KEY(tripId),
-    // Same self-healing path — without it a 401 here silently rendered an empty
-    // trip (content error was swallowed); refresh+retry keeps the data (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_CONTENT_INCLUDE }),
+    // Тот же дескриптор-шов, что у shell выше: самолечение 401 (refresh + retry
+    // once) живёт в fetch-слое, и без него отказ здесь молча рисовал пустой трип.
+    ...tripContentQuery(tripId),
     // Параллельно с shell, а не после него. Ожидание было искусственным: обе
     // группы идут в одну и ту же дверь с одним и тем же tripId, и на проде
     // shell (2.4 КБ) стоит 500 мс против 522 мс у content (7.8 КБ) — то есть
     // круг стоит фиксированно, а не по объёму. Последовательность покупала
     // ~20 мс на шапке и платила ~500 мс за контент.
     enabled: !!tripId,
-    retry: false,
   });
 
   // Карточка этого трипа, если главная её уже читала. `enabled: false` — только

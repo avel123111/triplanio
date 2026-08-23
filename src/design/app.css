@@ -3816,13 +3816,32 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   }
   /* TRIP-326: backdrop-filter и color-mix(transparent) сняты — непрозрачная
      поверхность с тенью достаточно отделяет нав от контента. */
+  /* Док ПРИЕЗЖАЕТ, а не возникает. Он монтируется и размонтируется на каждой
+     границе «экран с доком ↔ экран без дока» (список → создание трипа → назад,
+     чат-линза → любая другая), и до этого во всех этих местах он появлялся
+     рывком. Правило ОДНО и общее — не «только когда пришли из создания»: один и
+     тот же элемент с двумя поведениями в зависимости от того, откуда пришли, это
+     узаконенная точка расхождения, которую потом надо помнить при каждой правке.
+     Вход без выхода — грамматика всего приложения: у КАЖДОГО кейфрейма здесь
+     (ovIn, evdDrawerIn, tePaneIn, popIn, vpanelIn) анимирован только приход.
+     Кейфрейм реюзим существующий (`dockUp` — вход плавающей панели чат-дока).
+     Пересечение 640px анимацию не запускает: выше него док гасится этим же
+     медиазапросом, а не размонтируется, — то есть маунта нет.
+     ⚠️ Темп ЗДЕСЬ числом, а не из `--surface-settle`: ту переменную публикуют
+     на СВОИХ корнях поверхности (MapShell / PeekSheet / TripShell), а док им не
+     потомок — он сосед роутера. `var(--surface-settle, .26s)` выглядел бы как
+     чтение общего темпа, а на деле всегда брал бы фолбэк: мёртвая ветка `var()`,
+     которую следующий примет за работающую. Значение — то же .26s, с каким
+     `dockUp` живёт на своём первом месте. */
   .mbnav__dock {
+    animation: dockUp .26s var(--ease-out);
     pointer-events: auto; position: relative; margin: 0 auto; max-width: 460px; height: 60px;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; gap: 2px; padding: 0 6px;
     background: var(--surface);
     border: 1px solid var(--line); border-radius: var(--r-xl);
     box-shadow: 0 8px 24px -8px rgba(15,23,42,.28), 0 2px 8px -2px rgba(15,23,42,.14);
   }
+  @media (prefers-reduced-motion: reduce) { .mbnav__dock { animation: none; } }
   .mbnav__item {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     height: 100%; min-width: 0; padding: 0; border: 0; background: transparent; cursor: pointer;
@@ -4857,9 +4876,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     border: 0;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  /* Editor: no map on mobile — itinerary/panel take the full width. */
-  .ts-grid { grid-template-columns: 1fr !important; }
-  .ts-col-right { display: none !important; }
 }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
@@ -5687,7 +5703,28 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        подпись (`tse.col_activity`), а испанское «жильё» стало «Estancia».
        Колонка ночей шире остальных: её ширину диктует не подпись, а степпер. */
     .te-table, .te-thead { --te-pad-x: 13px; --te-gap: 8px; --te-w-nights: 96px; --te-w-cell: 64px; --te-cols: 16px 28px minmax(0,1fr) var(--te-w-nights) var(--te-w-cell) var(--te-w-cell); }
-    .te-row { position: relative; grid-template-columns: var(--te-cols); row-gap: 0; column-gap: var(--te-gap); align-items: center; padding: 12px var(--te-pad-x); border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+    /* ★ ЗАЗОР КОЛОНОК — СВОЙСТВО САМОГО РЯДА, А НЕ ЕГО ХОЗЯИНА. Значение
+       объявлялось ТОЛЬКО на `.te-table`/`.te-thead`, а читается здесь — и ряд
+       планировщика, который живёт ВНЕ `.te-table` (так и написано у
+       `.te-row--plan`), получал `var(--te-gap)` без значения. Такое объявление
+       браузер отбрасывает целиком: `column-gap` вставал в `normal`, то есть 0, и
+       название города прилипало к номерному бейджу. В редакторе тот же ряд
+       выглядел правильно, потому что там переменную задаёт таблица.
+       Замерено: планировщик `column-gap: normal`, редактор `8px`.
+       Ни один гард такого не видит — это `var()` без сеттера на одном из двух
+       хозяев, ровно та же ловушка, что разобрана в
+       [[triplanio-css-alias-frozen-at-root]].
+       ★ ДЕФОЛТ СТОИТ НА МЕСТЕ ЧТЕНИЯ, А НЕ ОБЪЯВЛЕНИЕМ НА САМОМ РЯДУ, И РАЗНИЦА
+       НЕСУЩАЯ. Собственное объявление у ряда ЗАТЕНЯЕТ унаследованное: хозяин
+       (`.te-table`) перестал бы влиять на свои же ряды — проверено атакой, 40px
+       с таблицы давали у ряда те же 8. Метрики здесь по построению задаёт
+       ХОЗЯИН, одним набором на шапку колонок и на ряды, иначе `.te-thead`
+       разъедется с `.te-row` на первой же правке. Фолбэк такого не ломает: он
+       действует ровно тогда, когда переменной нет вовсе.
+       Значение — СТУПЕНЬ ШКАЛЫ (`--sp-4` = 8px), а не литерал: сырое число тут
+       подняло бы храповик отступов (92 → 93), и справедливо.
+       visual-diff-exempt: .te-row column-gap — вне .te-table переменная не имела значения и зазор схлопывался в 0 вместо 8px */
+    .te-row { position: relative; grid-template-columns: var(--te-cols); row-gap: 0; column-gap: var(--te-gap, var(--sp-4)); align-items: center; padding: 12px var(--te-pad-x); border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     /* Шапка колонок: та же сетка, тот же зазор, те же поля по бокам, что у ряда.
        Первый заголовок сам встаёт в третью колонку — пустых ячеек под грип и
        узел в разметке нет. */
@@ -6105,6 +6142,30 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .trip-body > .app-header { grid-column: 2; grid-row: 1; }
 .trip-body > .trip-content { grid-column: 2; grid-row: 2; }
 .trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+
+/* ---- Вход оболочки: пришли из создания трипа ----
+   Оболочка объявляет ФАКТ (`data-entering="create"`, ставит TripShell по
+   `location.state`), а что именно едет — решает ширина. Выше 640 это РЕЙЛ: он
+   выезжает из-за левой кромки, раскладка при этом ФИНАЛЬНА с первого кадра.
+   ★ ЕДЕТ ТОЛЬКО САМ РЕЙЛ, КОЛОНКА НЕ АНИМИРУЕТСЯ, И ЭТО НЕСУЩЕЕ. Анимация
+   `grid-template-columns` меняла бы ширину слота карты покадрово, а каждый такой
+   кадр — переаллокация GL-буфера mapbox: ровно то, против чего построено правило
+   `slotChangeDelay` (замер разрыва до 351px, см. lib/mapShellInsets.js). Здесь
+   двигается один `transform` на композиторе, слот карты не трогается вовсе.
+   Темп и кривую публикует сама оболочка (--surface-settle / --surface-ease из
+   lib/surfaceMotion.js) — тот же темп, которым едут шит и камера.
+   Ниже 640 рейла нет (`display: none` в медиазапросе), там въезжает нижний док. */
+@keyframes railIn { from { transform: translateX(-100%); } to { transform: none; } }
+/* Фолбэков у переменных тут НЕТ намеренно: обе публикует сам `.trip-shell`, то
+   есть элемент из первой половины этого же селектора — значение достижимо
+   всегда, а написанный фолбэк был бы мёртвой веткой `var()`, которую следующий
+   примет за работающую (та же ловушка, что разобрана у входа нижнего дока). */
+.trip-shell[data-entering="create"] .app-side {
+  animation: railIn var(--surface-settle) var(--surface-ease) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .trip-shell[data-entering="create"] .app-side { animation: none; }
+}
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
    Used OUTSIDE the structure editor (timeline / calendar / budget / overview).

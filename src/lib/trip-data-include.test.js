@@ -7,11 +7,11 @@
 // заход в редактор ПЕРЕЗАПИСЫВАЛ общую запись payload'ом без бюджета, и виджет
 // бюджета оставался пустым до перезагрузки.
 //
-// Стало: редактор — секция внутри TripView и получает уже загруженное пропами.
-// Просящий остался ОДИН, то есть разъехаться двум include больше негде. Это
-// сильнее прежнего правила («оба обязаны просить одинаково»), поэтому тест
-// проверяет именно единственность: заведут второго читателя со своим include —
-// вернётся и старый баг, и второй набор гейтов рядом с первым.
+// Стало: редактор — секция внутри TripView и получает уже загруженное пропами,
+// а САМ ЗАПРОС собирает один модуль-дескриптор (`lib/invokeTripFn.js`): он
+// называет ключ, include, фетчер и политику ретраев, экраны передают tripId.
+// Единственность переехала с ВЫЗЫВАТЕЛЯ на ФОРМУ — почему это усиление, а не
+// ослабление, разобрано в шапке самих дескрипторов; здесь только проверки.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -57,23 +57,33 @@ test('никто не пишет include массивом на месте', () =
   );
 });
 
-test('у общих ключей трипа РОВНО ОДИН читатель', () => {
-  // Читатель = файл, который сам запрашивает трип через getTripDetails с общим
-  // include. Именно из ДВУХ читателей и вырос TRIP-277.
-  const readers = FILES
+test('форму общих ключей трипа собирает РОВНО ОДИН модуль', () => {
+  // TRIP-277: один ключ = одна форма. Читателей запроса может быть сколько
+  // угодно, а `include` и фетчер называет только модуль-дескриптор.
+  const shapers = FILES
     .filter((f) => f.code.includes('invokeGetTripDetails')
       && (f.code.includes('TRIP_SHELL_INCLUDE') || f.code.includes('TRIP_CONTENT_INCLUDE')))
     .map((f) => f.path);
   assert.deepEqual(
-    readers, ['pages/TripView.jsx'],
-    'трип грузит кто-то ещё кроме TripView; секции обязаны получать shell/content '
-      + 'ПРОПАМИ, иначе рядом появится второй include и второй набор гейтов',
+    shapers, ['lib/invokeTripFn.js'],
+    'форму общего ключа собирает кто-то ещё кроме дескрипторов: рядом появится '
+      + 'второй include и второй набор гейтов',
   );
 });
 
-test('единственный читатель просит обе половины через общие константы', () => {
-  const view = FILES.find((f) => f.path === 'pages/TripView.jsx');
-  assert.ok(view, 'pages/TripView.jsx не найден');
-  assert.ok(view.code.includes('TRIP_SHELL_INCLUDE'), 'TripView не просит shell через общую константу');
-  assert.ok(view.code.includes('TRIP_CONTENT_INCLUDE'), 'TripView не просит content через общую константу');
+test('единственный сборщик формы объявляет обе половины', () => {
+  const mod = FILES.find((f) => f.path === 'lib/invokeTripFn.js');
+  assert.ok(mod, 'lib/invokeTripFn.js не найден');
+  assert.ok(mod.code.includes('TRIP_SHELL_INCLUDE'), 'дескриптор shell не просит общую константу');
+  assert.ok(mod.code.includes('TRIP_CONTENT_INCLUDE'), 'дескриптор content не просит общую константу');
+});
+
+test('экраны не собирают запрос трипа сами — только дескриптором', () => {
+  // Прямой вызов фетчера с общего ключа из экрана — это и есть возврат к двум
+  // формам. `DocsLens` не в счёт: у него СВОЙ ключ и свой include (TRIP-399).
+  const offenders = FILES
+    .filter((f) => (f.path.startsWith('pages/') || f.path.startsWith('components/'))
+      && (f.code.includes('TRIP_SHELL_INCLUDE') || f.code.includes('TRIP_CONTENT_INCLUDE')))
+    .map((f) => f.path);
+  assert.deepEqual(offenders, [], 'экран называет общий include вместо дескриптора');
 });
