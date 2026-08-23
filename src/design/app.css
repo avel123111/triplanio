@@ -1635,6 +1635,13 @@ h4,
    visual-diff-exempt: .app-header__logo flex — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-header__menu {@media (max-width: 640px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-header__menu {@media (max-width: 880px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback border-radius — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback height — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback left — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback translate — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brandback width — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    ============================================================ */
 .app-side {
   width: var(--rail-w); flex: none; align-self: stretch;
