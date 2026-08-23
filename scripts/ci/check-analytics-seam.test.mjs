@@ -22,12 +22,28 @@ import { fileURLToPath } from 'node:url';
 
 const GUARD = fileURLToPath(new URL('./check-analytics-seam.mjs', import.meta.url));
 
-// The seam as it exists in the repo: the three files the guard allows. Every
-// fixture starts from this, so a test only has to describe what it ADDS.
+// The seam as it exists in the repo: the three files the guard allows, plus a
+// minimal auth file that satisfies the call-site rules (D/E). Every fixture
+// starts from this, so a test only has to describe what it ADDS.
+//
+// Auth.jsx is here because D fails on ZERO signUp calls (an empty room is not
+// "clean", TRIP-282): without a valid signUp somewhere, the seam-passes tests
+// would trip D. Its path is one NO other fixture overrides, so adding an A/B/C
+// violation elsewhere leaves this valid signUp/provider pair in place and only
+// the intended rule fires.
 const SEAM = {
   'src/lib/analytics.js': "import posthog from 'posthog-js';\nexport function track(e) { posthog?.capture?.(e); }\n",
   'src/lib/destinations/posthog.js': "import posthog from 'posthog-js';\nexport function boot() { posthog.init('phc_x', {}); }\n",
   'supabase/functions/_shared/analytics.ts': "const TOKEN = Deno.env.get('POSTHOG_PROJECT_KEY');\nexport function captureServer() { return TOKEN; }\n",
+  'src/pages/Auth.jsx':
+    "import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';\n" +
+    "export async function signUpEmail() {\n" +
+    "  await supabase.auth.signUp({ email, password, options: { data: { signup_attribution: getSignupMarks() || undefined } } });\n" +
+    "}\n" +
+    "export async function google() {\n" +
+    "  rememberAttributionForRedirect();\n" +
+    "  await supabase.auth.signInWithOAuth({ provider: 'google' });\n" +
+    "}\n",
 };
 
 function put(dir, path, body) {
@@ -172,6 +188,102 @@ test('C: an edge function using the shared emitter passes', (t) => {
       "import { captureServer } from '../_shared/analytics.ts';\ncaptureServer('purchase_completed', uid);\n",
   });
   assert.equal(run(dir).status, 0);
+});
+
+// ── D — the ONE signUp carries the campaign marks (TRIP-456/TRIP-335) ────────
+
+test('D: a signUp without signup_attribution is a violation', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/Auth.jsx':
+      "export async function s() { await supabase.auth.signUp({ email, password, options: { data: { full_name } } }); }\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /signup_attribution/);
+  assert.match(r.stderr, /src\/pages\/Auth\.jsx/);
+});
+
+test('D: a second signUp is a violation (two birthplaces of an account)', (t) => {
+  // Auth.jsx (the seam's valid one) stays; this adds a second, so the tree has two.
+  const r = run(fixture(t, {
+    'src/pages/Onboard.jsx':
+      "export async function s() { await supabase.auth.signUp({ email, password, options: { data: { signup_attribution: m } } }); }\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /birthplace/);
+  assert.match(r.stderr, /src\/pages\/Onboard\.jsx/);
+});
+
+test('D: zero signUp is an empty room, not clean (TRIP-282)', (t) => {
+  // Override the seam's Auth.jsx with a signUp-free version → nothing to check.
+  const r = run(fixture(t, {
+    'src/pages/Auth.jsx': "export function noop() { return 1; }\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /vanished|no supabase\.auth\.signUp/);
+});
+
+test('D: the attribution key mentioned only in a comment does not satisfy the rule', (t) => {
+  // The marks must be IN the call, not merely named nearby: masking strips the
+  // comment before the arguments are read.
+  const r = run(fixture(t, {
+    'src/pages/Auth.jsx':
+      "export async function s() {\n" +
+      "  // signup_attribution rides the data bag\n" +
+      "  await supabase.auth.signUp({ email, password });\n" +
+      "}\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /signup_attribution/);
+});
+
+// ── E — provider redirects stash the marks first, in the same function ───────
+
+test('E: a provider sign-in with no rememberAttributionForRedirect is a violation', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/Auth.jsx':
+      "export async function s() { await supabase.auth.signUp({ email, password, options: { data: { signup_attribution: m } } }); }\n" +
+      "export async function apple() { await supabase.auth.signInWithOAuth({ provider: 'apple' }); }\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /rememberAttributionForRedirect/);
+  assert.match(r.stderr, /same function/);
+});
+
+test('E: remember in a DIFFERENT function does not cover the provider call', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/Auth.jsx':
+      "export async function s() { await supabase.auth.signUp({ email, password, options: { data: { signup_attribution: m } } }); }\n" +
+      "function warmup() { rememberAttributionForRedirect(); }\n" +
+      "export async function apple() { await supabase.auth.signInWithIdToken({ provider: 'apple', token }); }\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /rememberAttributionForRedirect/);
+});
+
+test('E: remember then a provider call nested in try/catch (One Tap) passes', (t) => {
+  // The real Login shape: rememberAttributionForRedirect() at the handler body,
+  // signInWithIdToken one brace deeper inside a try. The depth test must not
+  // read the try block as a function boundary.
+  const r = run(fixture(t, {
+    'src/pages/Auth.jsx':
+      "export async function s() { await supabase.auth.signUp({ email, password, options: { data: { signup_attribution: m } } }); }\n" +
+      "export async function oneTap() {\n" +
+      "  rememberAttributionForRedirect();\n" +
+      "  try {\n" +
+      "    await supabase.auth.signInWithIdToken({ provider: 'google', token });\n" +
+      "  } catch (e) { report(e); }\n" +
+      "}\n",
+  }));
+  assert.equal(r.status, 0, r.stderr);
+});
+
+test('E: signInWithPassword is deliberately NOT covered (keeps the document)', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/Auth.jsx':
+      "export async function s() { await supabase.auth.signUp({ email, password, options: { data: { signup_attribution: m } } }); }\n" +
+      "export async function login() { await supabase.auth.signInWithPassword({ email, password }); }\n",
+  }));
+  assert.equal(r.status, 0, r.stderr);
 });
 
 test('a mention in a comment does not trip the guard', (t) => {

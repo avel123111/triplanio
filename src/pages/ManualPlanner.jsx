@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
+import { tripShellQuery, tripContentQuery } from '@/lib/invokeTripFn';
 import { refusalError } from '@/lib/refusalError';
 import { goPro } from '@/lib/goPro';
 import { errorText } from '@/lib/errorText';
@@ -653,7 +654,17 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
         body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
         action={(
           <>
-            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}`)}>{t('planner.open_trip')}</Btn>
+            {/* Экран успеха ведёт в СЕКЦИЮ РЕДАКТОРА, а не на обзор: маршрут только
+                что собран, и следующий шаг — брони, то есть ровно то, чем занят
+                редактор. `?lens=` пишем адресом — он и есть источник истины для
+                секции (единственный писатель `setLens` живёт в TripView и пишет
+                туда же).
+                `state.from` — канал «как сюда попали», НЕ часть адреса: по нему
+                оболочка один раз проигрывает вход (рейл выезжает). Именно
+                состояние навигации, а не параметр в URL и не глобал: оно не
+                переживает перезагрузку — ровно то, что нужно одноразовой
+                анимации, и закладка/копипаст ссылки её не тащат. */}
+            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=edit`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
             <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
           </>
         )}
@@ -1174,6 +1185,22 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       track('trip_created', { method, city_count: citiesPayload.length, trip_id: trip.id });
       setSavedOk(true);
       setSavedTripId(trip.id);
+      // ★ ПРОГРЕВ КЭША — В МОМЕНТ СОЗДАНИЯ, А НЕ В МОМЕНТ НАЖАТИЯ. Экран успеха
+      // человек читает секунду-другую; это и есть окно, в которое влезают оба
+      // запроса трипа. К нажатию «Открыть трип» записи уже в кэше и свежие
+      // (staleTime 30s), поэтому TripView рисует редактор ПЕРВЫМ кадром — без
+      // скелетона рейла и без скелетона редактора, то есть шов не виден.
+      //
+      // Запрос собирает ДЕСКРИПТОР, а не этот экран: `include` тут не называется
+      // вовсе, поэтому прогретая запись гарантированно той же формы, что и
+      // запрос самого TripView (TRIP-277 — прогрев чужой формой обнулил бы
+      // бюджет ровно так же, как это делал прежний второй читатель).
+      //
+      // Fire-and-forget и БЕЗ await: экран успеха обязан появиться сразу, а
+      // отказ прогрева ничего не ломает — TripView сходит за данными сам, как
+      // ходил всегда. `prefetchQuery` ошибку не пробрасывает.
+      qc.prefetchQuery(tripShellQuery(trip.id));
+      qc.prefetchQuery(tripContentQuery(trip.id));
     } catch (err) {
       console.error('Failed to save trip:', err);
       track('trip_create_failed', { method, reason: err?.message || 'unknown' });

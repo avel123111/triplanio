@@ -18,9 +18,10 @@ import { clearsStep } from './tripStep.js';
 // Поля секции:
 //   id        — значение `?lens=`; `overview` в адрес не пишется (дефолт)
 //   group     — 'lens' (разделы трипа) | 'manage' (управление)
-//   addon     — секция видна, только если аддон трипа включён явно
-//   canAccess — гейт по СТУПЕНИ доступа (`resolveMyStep`), единый словарь с
-//               сервером; принимает step ('owner'|'editor'|'participant'|null)
+//   addon     — секция видна, только если этот аддон трипа включён явно
+//   canAccess — гейт по СТУПЕНИ доступа; ступень приезжает готовой из ответа
+//               read-двери (`getTripDetails.myStep`), сравнивается `clearsStep`.
+//               Принимает step ('owner'|'editor'|'participant'|null)
 //   event     — имя события аналитики при открытии (TRIP-213 Ф2c)
 //   flush     — секция сама владеет своим скроллом: тело без паддинга и без
 //               скролла (`.trip-screen-body--flush`), поверхность в край
@@ -28,8 +29,11 @@ import { clearsStep } from './tripStep.js';
 //               ПРИЧИНА, а не просто true: причины разные, и следующий, кто
 //               придёт возвращать док, должен видеть, какую из них он закрывает.
 //                 'composer'       — нижнюю кромку забрал композер чата
-//                 'pending-layout' — раскладка под док ещё не сделана
-//                                    (TRIP-349 п.2 отложен намеренно)
+//               Причина 'pending-layout' (редактор) ЗАКРЫТА: раскладку под док
+//               даёт общий <MapShell> — шит сам резервирует полосу нава
+//               (`--nav-dock-h`) и поднимает на неё минимальный детент, а
+//               плавающие контролы стоят над ним. Линза карты возит эту связку
+//               с TRIP-422; редактор был последним, кто из неё выпадал.
 export const SECTIONS = [
   { id: 'overview', group: 'lens', labelKey: 'trip_menu.overview', icon: 'grid', event: 'overview_opened' },
   { id: 'timeline', group: 'lens', labelKey: 'trip_menu.timeline', icon: 'list', event: 'timeline_opened' },
@@ -41,7 +45,7 @@ export const SECTIONS = [
   // Структурный редактор. Секция как любая другая — до TRIP-349 это был
   // отдельный роут со СВОЕЙ оболочкой, и именно из этого дубля выросло всё
   // остальное. Гейт тот же, что пускал в роут (зеркалит _can_edit_trip).
-  { id: 'edit', group: 'manage', labelKey: 'trip.edit_structure', icon: 'edit', event: 'trip_editor_opened', canAccess: (step) => clearsStep(step, 'editor'), flush: true, hidesDock: 'pending-layout' },
+  { id: 'edit', group: 'manage', labelKey: 'trip.edit_structure', icon: 'edit', event: 'trip_editor_opened', canAccess: (step) => clearsStep(step, 'editor'), flush: true },
   // Наблюдатель видит Настройки (read-only — чтобы выйти из трипа), но не
   // Участников (TRIP-137). Управление участниками — ступень editor.
   { id: 'members', group: 'manage', labelKey: 'trip.sidebar_members', icon: 'users', event: 'members_opened', canAccess: (step) => clearsStep(step, 'editor') },
@@ -71,26 +75,71 @@ export function sectionById(id) {
   return BY_ID.get(id) || null;
 }
 
-// Доступна ли секция В ЭТОМ трипе ЭТОЙ роли. Незнакомый id недоступен всегда —
-// именно это чинит `?lens=` с опечаткой (см. resolveSection).
-export function isSectionAvailable(id, trip, myStep) {
+// Доступна ли секция при ЭТИХ аддонах и ЭТОЙ ступени. Незнакомый id недоступен
+// всегда — именно это чинит `?lens=` с опечаткой (см. resolveSection).
+//
+// Принимает ФАКТЫ (нормализованные аддоны + ступень), а не объект трипа, и это
+// не косметика: ровно эти два факта решают состав меню, и приезжают они из ДВУХ
+// источников — двери трипа и карточки главной. Приняв `trip`, реестр вынуждал бы
+// второй источник лепить трипо-подобную заглушку `{ details: { addons } }`, то
+// есть подделывать сущность ради вызова. Аддоны нормализует `normalizeAddons`
+// (`tripAddons.js`) — один предикат «включено» на оба источника.
+export function isSectionAvailable(id, addons, myStep) {
   const s = BY_ID.get(id);
   if (!s) return false;
-  if (s.addon && trip?.details?.addons?.[s.addon] !== true) return false;
+  if (s.addon && addons?.[s.addon] !== true) return false;
   if (s.canAccess && !s.canAccess(myStep)) return false;
   return true;
 }
 
-// Секции группы, доступные в этом трипе этой ступени, В ПОРЯДКЕ РЕЕСТРА.
-export function availableSections(trip, myStep, group = null) {
-  return SECTIONS.filter((s) => (group === null || s.group === group) && isSectionAvailable(s.id, trip, myStep));
+// Секции группы, доступные при этих аддонах и этой ступени, В ПОРЯДКЕ РЕЕСТРА.
+export function availableSections(addons, myStep, group = null) {
+  return SECTIONS.filter((s) => (group === null || s.group === group) && isSectionAvailable(s.id, addons, myStep));
+}
+
+// СОСТАВ МЕНЮ — одна функция на обе фазы. Возвращает секции группы В ПОРЯДКЕ
+// РЕЕСТРА, каждую с флагом `pending` (место под пункт, который ещё неизвестен).
+//
+// ★ Фаза загрузки определяется НЕ отдельным флагом «идёт запрос», а отсутствием
+// ФАКТА: пока ступень неизвестна (`step == null`), состав посчитать не из чего.
+// Это не косметика — ровно на этом сломался предыдущий заход: факты уже лежали
+// в кэше карточки и приезжали в рейл пропом, но рендер смотрел на флаг «дверь не
+// ответила» и всё равно рисовал заглушки. Меню перестраивалось на глазах при
+// полностью известном составе. Пока решение принимает флаг, а не факт, эта
+// ошибка воспроизводима; пока факт — невозможна.
+export function menuSections(group, addons, step) {
+  return step == null ? loadingSections(group) : availableSections(addons, step, group);
+}
+
+// Меню на ФАЗЕ ЗАГРУЗКИ — что рисовать, пока состав неизвестен.
+//
+// До этого оболочка рисовала СКЕЛЕТОН МЕНЮ: девять серых пунктов, набранных
+// руками по памяти. Он был копией раскладки (второй источник геометрии) и при
+// этом заведомо врал составом — столько пунктов не бывает ни у кого. А главное:
+// шесть секций из десяти не гейтованы ВООБЩЕ (ни аддоном, ни ролью), то есть
+// известны до всякой сети — их можно было рисовать живыми и кликабельными.
+//
+// Возвращает секции группы В ПОРЯДКЕ РЕЕСТРА, каждую с флагом `pending`:
+//   pending=false — доступность известна без данных → живой пункт;
+//   pending=true  — держим МЕСТО (плейсхолдер), чтобы пункт не вдвинулся потом
+//                   между живыми и не сдвинул их.
+//
+// Место держим ТОЛЬКО под ролевыми секциями и НЕ держим под аддонными — это не
+// вкусовщина, а следствие дефолтов: аддоны выключены у нового трипа и требуют
+// Pro (`tripAddons.js`), поэтому чаще всего место схлопнулось бы; ступень же
+// чаще всего owner (свой трип), поэтому место чаще всего заполнится. В самом
+// частом случае — владелец Free-трипа — меню не двигается вовсе.
+export function loadingSections(group) {
+  return SECTIONS
+    .filter((s) => s.group === group && !s.addon)
+    .map((s) => ({ ...s, pending: !!s.canAccess }));
 }
 
 // Что реально показать по значению из адреса. Недоступная секция (выключенный
 // аддон, роль без права) и НЕСУЩЕСТВУЮЩАЯ (`?lens=опечатка`) одинаково падают
 // на дефолт. До реестра незнакомый id проходил гейт насквозь и не совпадал ни с
 // одной веткой рендера — экран оставался ПУСТЫМ.
-export function resolveSection(id, trip, myStep) {
-  return isSectionAvailable(id, trip, myStep) ? id : DEFAULT_SECTION;
+export function resolveSection(id, addons, myStep) {
+  return isSectionAvailable(id, addons, myStep) ? id : DEFAULT_SECTION;
 }
 

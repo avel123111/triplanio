@@ -3,8 +3,8 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/lib/AuthContext';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
-import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { TRIP_CARD_KEY, invalidateTripData } from '@/lib/trip-data';
+import { tripShellQuery, tripContentQuery } from '@/lib/invokeTripFn';
 import { goPro } from '@/lib/goPro';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
@@ -15,12 +15,12 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { useTripProStatus } from '@/lib/subscription';
 import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
-import { isAddonEnabled } from '@/lib/tripAddons';
+import { getAddons, isAddonEnabled, normalizeAddons } from '@/lib/tripAddons';
 import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from '@/lib/tripMenu';
 import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, IconBtn, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
@@ -45,7 +45,7 @@ import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole } from '@/lib/members';
-import { resolveMyStep, clearsStep } from '@/lib/tripStep';
+import { clearsStep } from '@/lib/tripStep';
 import { useProfileMap } from '@/lib/useProfileMap';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
@@ -312,31 +312,81 @@ function RightRailSkeleton() {
   );
 }
 
-// Скелетон структурного редактора — PURE, зеркалит ОБЕ колонки `.ts-grid`:
-// СЛЕВА маршрут (шапка «Маршрут» + карточки-города), СПРАВА КАРТА. Раньше
-// заглушка рисовала только левую колонку — карта не учитывалась (TRIP-337).
-// Один источник для обеих фаз загрузки (shell в LoadingBody и content в editGate).
+// ── Объявление изменений для гарда 2p (визуальный дифф CSS) ──────────────────
+// Скелетон перестал размечаться под снесённую раскладку редактора, и вместе с
+// ним ушли последние мобильные правила той раскладки: без разметки они были бы
+// осиротевшими (их бы потребовал снести гард 2n).
+// visual-diff-exempt: .ts-grid {@media (max-width: 640px)} grid-template-columns — правило снесённой раскладки редактора, разметки под него не осталось
+// visual-diff-exempt: .ts-col-right {@media (max-width: 640px)} display — то же, вторая половина того же мёртвого правила
+//
+// Скелетон структурного редактора — ОДИН на обе фазы загрузки (shell и content).
+//
+// ★ РИСУЕТ ТУ ЖЕ РАСКЛАДКУ, ЧТО И САМ РЕДАКТОР, — ОБЩИЙ <MapShell>. До этого он
+// был СИРОТОЙ: размечен под `.ts-grid` / `.ts-leftscroll`, то есть под две
+// колонки, снесённые в TRIP-422 вместе со второй рукописной копией раскладки.
+// Правил у этих имён не осталось (`.ts-grid` вычислялся `display: block`), и
+// кадр загрузки выходил не «редактор без данных», а другой экран: ряды во всю
+// ширину и карты нет вовсе. Ни один гард этого не видел — 2n ловит осиротевшее
+// ПРАВИЛО, а тут осиротела РАЗМЕТКА, обратное направление.
+//
+// Карту тут отдаём ПУСТЫМ слотом, а не живой поверхностью: инстанс mapbox один
+// на всё приложение (MapProvider), и двух живых поверхностей одновременно быть
+// не может. Слот и без канваса красит подложку (`--map-backdrop`) — ровно то,
+// что видно, пока не пришли тайлы.
+//
+// ★ ДЕТЕНТ И СВОРАЧИВАНИЕ ОБЪЯВЛЕНЫ ЯВНО, И ЭТО НЕ УКРАШЕНИЕ. Оба состояния
+// принадлежат ВИДЖЕТУ, а не данным в нём, поэтому кадр загрузки обязан открыть
+// его там же, где откроет редактор. Промолчав, скелетон брал дефолт примитива
+// (детент 0 = 15%) и на телефоне показывал шит полоской, которая прыгала на 68%
+// в момент приезда content'а, — то есть ровно тот шов, который эта задача
+// убирает на десктопе. Кнопка сворачивания на шве по той же причине: без
+// `onCollapsedChange` шелл её не рисует вовсе, и она «выщёлкивалась» бы при
+// смене скелетона на редактор.
 function EditSkeleton() {
+  const { t } = useI18n();
+  const [detent, setDetent] = useState(1);
+  const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className="ts-grid">
-      <div className="ts-leftscroll" style={{ padding: '12px 12px 18px', overflow: 'hidden' }}>
-        <Skeleton w={160} h={26} r={6} style={{ marginBottom: 12 }} />
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} radius="lg" pad="none" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
-            <Skeleton w={36} h={36} r={'var(--r-sm)'} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <Skeleton w="50%" h={14} r={5} />
-              <Skeleton w="30%" h={11} r={5} />
-            </div>
-            <Skeleton w={90} h={30} r={'var(--r-pill)'} />
-          </Card>
-        ))}
-      </div>
-      {/* правая колонка — карта */}
-      <div style={{ position: 'relative', margin: 14, marginLeft: 7, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--line)' }}>
-        <Skeleton w="100%" h="100%" r={0} style={{ position: 'absolute', inset: 0 }} />
-      </div>
-    </div>
+    <MapShell
+      panelLabel={t('planner.step_cities')}
+      map={null}
+      detent={detent}
+      onDetentChange={setDetent}
+      collapsed={collapsed}
+      onCollapsedChange={setCollapsed}
+      collapseLabel={t('tse.route_hide')}
+      expandLabel={t('tse.route_show')}
+      panelHeader={(
+        <div className="col col--g2">
+          <Skeleton w={160} h={26} r={6} />
+          <Skeleton w={210} h={12} r={5} />
+        </div>
+      )}
+      panel={(
+        <div className="te-panefade">
+          {/* Граница реюза проведена по КОРОБКЕ и РИТМУ, и она намеренная.
+              `.te-panefade` (обёртка выше) берём ОСОЗНАННО: это коробка тела
+              виджета — отступы, скролл и появление, — и именно от неё отступы
+              кадра загрузки совпадают с рабочими. А вот РИТМ РЯДОВ собран общими
+              утилитами, а не `.te-table` / `.te-seamwrap`: те держат сетку колонок
+              редактора и зазоры его списка, то есть приватное устройство того,
+              чего в скелетоне нет. Дотянувшись туда, он ломался бы от каждой
+              правки редактора — ровно так он и осиротел в прошлый раз. */}
+          <div className="col col--g3">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} radius="md" className="row row--g6">
+                <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+                <div className="grow col col--g2">
+                  <Skeleton w="50%" h={14} r={5} />
+                  <Skeleton w="30%" h={11} r={5} />
+                </div>
+                <Skeleton w={90} h={30} r={'var(--r-pill)'} />
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    />
   );
 }
 
@@ -847,27 +897,34 @@ export default function TripView() {
   // isPending + fetchStatus (not just isLoading/error) feed useQueryGate: while
   // OFFLINE, React Query PAUSES this query (fetchStatus 'paused') instead of
   // throwing, so the gate must read that state directly — see the gate below.
-  const { data: shellData, isLoading: loadingShell, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
-    queryKey: TRIP_SHELL_KEY(tripId),
-    // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
-    // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_SHELL_INCLUDE }),
+  const { data: shellData, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
+    // Ключ, include, фетчер И политика ретраев приезжают ОДНИМ дескриптором
+    // (`tripShellQuery`): экран их не называет, поэтому прогрев кэша из
+    // планировщика не может разъехаться с этим запросом ни по форме payload'а
+    // (TRIP-277), ни по настройкам (TRIP-56) — см. шапку дескрипторов.
+    ...tripShellQuery(tripId),
     enabled: !!tripId,
-    retry: false,
   });
 
-  // Fetch content (hotels, activities, transfers) - only after shell resolves
+  // Fetch content (hotels, activities, transfers) — параллельно с shell
   const {
     data: contentData, isLoading: loadingContent,
     error: contentError, isPending: contentPending, fetchStatus: contentFetchStatus,
   } = useQuery({
-    queryKey: TRIP_CONTENT_KEY(tripId),
-    // Same self-healing path — without it a 401 here silently rendered an empty
-    // trip (content error was swallowed); refresh+retry keeps the data (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_CONTENT_INCLUDE }),
-    enabled: !!tripId && !loadingShell,
-    retry: false,
+    // Тот же дескриптор-шов, что у shell выше: самолечение 401 (refresh + retry
+    // once) живёт в fetch-слое, и без него отказ здесь молча рисовал пустой трип.
+    ...tripContentQuery(tripId),
+    // Параллельно с shell, а не после него. Ожидание было искусственным: обе
+    // группы идут в одну и ту же дверь с одним и тем же tripId, и на проде
+    // shell (2.4 КБ) стоит 500 мс против 522 мс у content (7.8 КБ) — то есть
+    // круг стоит фиксированно, а не по объёму. Последовательность покупала
+    // ~20 мс на шапке и платила ~500 мс за контент.
+    enabled: !!tripId,
   });
+
+  // Карточка этого трипа, если главная её уже читала. `enabled: false` — только
+  // чтение кэша, своего запроса хук не делает (тот же приём, что у EventViewBody).
+  const { data: tripCard } = useQuery({ queryKey: TRIP_CARD_KEY(tripId), enabled: false });
 
   const trip             = shellData?.trip;
   const visits           = useMemo(() => localizeVisits(shellData?.cityVisits || [], lang), [shellData, lang]);
@@ -904,9 +961,30 @@ export default function TripView() {
   // the SOLE source of ownership and wins over any stray trip_members row
   // (TRIP-143). Same helper as the structure editor so the two can't drift.
   const myRole = resolveMyRole(members, trip, user);
-  // Ступень доступа — ЕДИНЫЙ гейт прав (зеркало сервера), см. src/lib/tripStep.js.
+  // Ступень доступа — ЕДИНЫЙ гейт прав, и приезжает она ГОТОВОЙ из read-двери:
+  // `getTripDetails` отдаёт ту самую ступень, которой сам проверил доступ. Фронт
+  // её больше не выводит — раньше он считал её из `members`, то есть из ВТОРОГО
+  // сетевого круга, и обвязка (меню) из-за этого собиралась в два приёма.
   // `myRole` остаётся только для показа (ярлык, аналитика); правами рулит `myStep`.
-  const myStep = resolveMyStep(members, trip, user);
+  // Отсюда она уходит в TripAccessProvider — единственный канал права в поддереве.
+  // Пока дверь не ответила, берём ступень из карточки главной. Это НЕ второе
+  // понятие и не клиентский вывод права: карточке ступень проставил сервер тем же
+  // `stepFromFacts`, что стоит за `callerStep` двери, — то же правило, просто
+  // прочитанное раньше. Дверь ответит через ~400 мс и подтвердит (или поправит,
+  // если права изменились за последние секунды). Enforcement это не трогает: он
+  // серверный, и любое действие всё равно проходит через дверь.
+  // ★ Ветвление по НАЛИЧИЮ ОТВЕТА, а не через `??` по значению: ответившая дверь
+  // — окончательное слово, даже если ступени в ответе почему-то нет. С `??`
+  // пустая ступень от двери молча откатилась бы к карточке, то есть отказ
+  // подменялся бы прошлым доступом — ровно то, чего fail-closed не допускает.
+  const myStep = shellData ? (shellData.myStep ?? null) : (tripCard?.myStep ?? null);
+  // Второй факт состава меню — включённые аддоны. Тот же порядок: дверь, а до неё
+  // карточка. Оба источника проходят через ОДИН нормализатор (`normalizeAddons`),
+  // поэтому «включено» считается одинаково независимо от того, кто ответил первым.
+  const menuAddons = useMemo(
+    () => (trip ? getAddons(trip) : normalizeAddons(tripCard?.addons)),
+    [trip, tripCard],
+  );
 
   const stream = useMemo(
     () => buildEventStream(t, hotels, activities, transfers, visits, services),
@@ -923,10 +1001,19 @@ export default function TripView() {
   // re-flash when crossing the edit↔trip route boundary. See useTripProStatus.
   // Gate the server Pro-check on confirmed access (participant step): a non-member
   // opening this route must not fire checkSubscriptionStatus into an expected 403
-  // (TRIP-441). `myStep` is null until the trip+members load, so the check simply
+  // (TRIP-441). `myStep` is null until the read door answers, so the check simply
   // waits for access to resolve, then runs — never for a stranger.
   const hasTripAccess = clearsStep(myStep, 'participant');
-  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip, hasTripAccess);
+  // Вердикт для ПОКАЗА приезжает тем же ответом (`isPro` — единый предикат
+  // `is_trip_pro`), поэтому апселл решается на первом круге, а не третьим.
+  // checkSubscriptionStatus остаётся авторитетом (в нём reconcile-on-read со
+  // Stripe) и подтверждает фоном — вход в UI по-прежнему ОДИН, этот хук.
+  // Тот же порядок, что у ступени и аддонов: ответила дверь — её вердикт, не
+  // ответила — карточка главной (в ней `is_pro` считает тот же SQL-предикат
+  // `is_trip_pro`). Без этого пункт «Pro» оставался единственным, кто ждал круга,
+  // и меню всё равно доезжало на глазах.
+  const proSeed = shellData ? shellData.isPro : tripCard?.is_pro;
+  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, proSeed, hasTripAccess);
   // Edit Mode (structure editor) gate: ступень editor. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
   const canEditMode = clearsStep(myStep, 'editor');
@@ -979,7 +1066,7 @@ export default function TripView() {
   // свалил бы `?lens=chat/budget` на дефолт-обзор — тогда в загрузке мигал бы НЕ
   // тот скелетон. Пока trip нет — берём СЫРОЙ `lens` из адреса (как делал прежний
   // LoadingBody), а как приедет shell — резолвим по-настоящему (TRIP-337).
-  const shownLens = trip ? resolveSection(lens, trip, myStep) : lens;
+  const shownLens = (trip || tripCard) ? resolveSection(lens, menuAddons, myStep) : lens;
 
   // «+»-меню трипа: дескрипторы действий, которые собирает экран. Гейт единый —
   // ступень editor (+ аддон бюджета для траты/категории); «Категория» — только на
@@ -1221,7 +1308,7 @@ export default function TripView() {
     {/* Floating chat widget: requires the chat addon AND the trip-level
         "chat widget" display toggle (default ON). The full Chat lens stays
         reachable from the sidebar regardless of this toggle. */}
-    {!isPhone && isSectionAvailable('chat', trip, myStep) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
+    {!isPhone && isSectionAvailable('chat', menuAddons, myStep) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
       <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} ownerId={trip?.created_by} />
     )}
     </>
@@ -1231,12 +1318,11 @@ export default function TripView() {
     // Единый доступ к праву для всего поддерева трипа: линзы, шит, диалоги
     // читают `useTripAccess()` вместо пропов права (TRIP-274 Ф2.2). Ступень
     // считается один раз в самом провайдере.
-    <TripAccessProvider members={members} trip={trip} user={user}>
+    <TripAccessProvider step={myStep}>
     <TripShell
       tripId={tripId}
-      trip={trip}
+      addons={menuAddons}
       section={shownLens}
-      myStep={myStep}
       isPro={tripIsPro}
       proResolved={tripProResolved}
       title={trip?.title}

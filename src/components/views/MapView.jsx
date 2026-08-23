@@ -6,6 +6,7 @@ import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbl
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit, reframeTo } from '@/lib/map/camera';
 import { useMapInsets } from '@/lib/map/useMapInsets';
+import { hasFramed, markFramed } from '@/lib/map/framed';
 import MapControls from '@/lib/map/MapControls';
 import { sortVisits } from '@/lib/validation';
 
@@ -675,13 +676,21 @@ export default function MapView({
     if (canFit && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
-        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 }); // first frame after load: snap
+        // ★ СКАЧОК — ТОЛЬКО У КАРТЫ, КОТОРУЮ ЕЩЁ НИ РАЗУ НЕ КАДРИРОВАЛИ. Инстанс
+        // один на всё приложение и переживает смену экранов (MapProvider), а этот
+        // ref — нет: он обнуляется на каждом маунте. Пока «первый кадр» считался
+        // по нему, живая карта резала кадр встык при КАЖДОЙ смене экрана с картой
+        // (заметнее всего на переходе из создания трипа в редактор: холст тот же,
+        // маршрут тот же, а камера дёргается). Факт живёт на инстансе — `framed.js`.
+        if (hasFramed(map)) calmFit(map, pts, { padding: 60, maxZoom: 8 });
+        else fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 });
       } else if (revealActiveId == null) {
         calmFit(map, pts, { padding: 60, maxZoom: 8 }); // non-public: adaptive calm tempo
       } else {
         fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 650 }); // public reveal: its own tempo
       }
       fittedSigRef.current = visitsSignature;
+      markFramed(map);
     }
 
     return undefined;

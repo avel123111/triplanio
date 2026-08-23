@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invokeFn } from '@/lib/invokeFn';
 import { goPro } from '@/lib/goPro';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
@@ -18,6 +18,7 @@ import CountryFlag from '@/components/common/CountryFlag';
 import { uniqueTransitCities, uniqueCountryCodes, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
+import { cacheTripCards } from '@/lib/trip-data';
 import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
 import StatsMap from '@/components/views/StatsMap';
@@ -397,6 +398,7 @@ export default function Trips() {
   const { t, lang } = useI18n();
   const { user }  = useAuth();
   const nav       = useNavigate();
+  const qc        = useQueryClient();
 
   const { isDark, toggle: toggleTheme } = useTheme();
 
@@ -442,7 +444,14 @@ export default function Trips() {
       const { data, error, code, message } = await invokeFn('getTrips');
       // Бросаем исходный error (помечен __seamHandled) — без повторного отчёта.
       if (error || code) throw error || new Error(message || code);
-      return data || [];
+      const cards = data || [];
+      // Раскладываем карточки по их собственным ключам (`['trip-card', id]`).
+      // Экран трипа читает СВОЙ ключ и берёт оттуда два факта — ступень и
+      // аддоны, — чтобы нарисовать меню сразу, не дожидаясь двери трипа. Это не
+      // копия трипа в кэше: карточка — отдельная сущность со своей формой, и в
+      // ключ трипа она не пишется (см. `cacheTripCards`).
+      cacheTripCards(qc, cards);
+      return cards;
     },
     enabled: !!user?.id,
   });
