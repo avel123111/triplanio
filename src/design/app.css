@@ -4055,6 +4055,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Тело шага: собственные отступы и ритм. Скролл держит ТЕЛО ШЕЛЛА
    (`.mapshell__body` / `.peek-sheet__body`) — два вложенных скроллера дают
    залипающий жест на телефоне, поэтому здесь его нет.
+   visual-diff-exempt: .flow-lp-b min-height — тело шага занимает высоту виджета целиком (было на .lp-b)
    visual-diff-exempt: .flow-lp-b padding — отступы тела шага (были на .lp-b, снятом вместе с обёрткой)
    visual-diff-exempt: .flow-lp-b display — колонка содержимого шага
    visual-diff-exempt: .flow-lp-b flex-direction — то же
@@ -4316,10 +4317,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell min-height — новый примитив раскладки
    visual-diff-exempt: .mapshell overflow — новый примитив раскладки
    visual-diff-exempt: .mapshell__map position — карта во всю площадь шелла
-   visual-diff-exempt: .mapshell__map top — слот карты = свободное окно шелла
-   visual-diff-exempt: .mapshell__map right — слот карты = свободное окно шелла
-   visual-diff-exempt: .mapshell__map bottom — снизу слот кончается там, где начинается шит
-   visual-diff-exempt: .mapshell__map left — слева слот кончается там, где кончается панель
+   visual-diff-exempt: .mapshell__map inset — канвас во всю площадь шелла, закрытое отдаётся камере отступом
    visual-diff-exempt: .mapshell__map overflow — клип канваса по краю шелла
    visual-diff-exempt: .mapshell__map background — подложка под канвасом (была инлайном на .trip-map-canvas)
    visual-diff-exempt: .mapshell__panel position — плавающая колонка поверх карты
@@ -4347,8 +4345,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__body min-height — тело умеет сжиматься
    visual-diff-exempt: .mapshell__body overflow-y — скроллится тело, а не страница
    visual-diff-exempt: .mapshell__panel padding-right — правый край панели уходит внутрь карты, отступ не двоится
-   visual-diff-exempt: .mapshell__panel {@media (max-width: 640px)} display — на телефоне панель уезжает в шит
-   visual-diff-exempt: .mapshell__toggle {@media (max-width: 640px)} display — на телефоне сворачивает жест, а не кнопка
    visual-diff-exempt: .mapshell__panel[data-collapsed] left — кнопка едет к краю карты вместе с панелью
    visual-diff-exempt: .mapshell__toggle transform — та же поездка кнопки к краю
    Состояние «шит раскрыт» перестало быть классом и стало детентом (data-detent):
@@ -4359,11 +4355,28 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    линза карты открывалась пустым экраном. Примитив раскладки обязан вставать в
    любой контейнер с определённой высотой, поэтому здесь ОБА правила.
    visual-diff-exempt: .mapshell height — примитив не имеет права зависеть от display родителя (в блочном контейнере flex:1 = ноль высоты) */
-.mapshell { position: relative; flex: 1; height: 100%; min-height: 0; overflow: hidden; }
+.mapshell {
+  position: relative; flex: 1; height: 100%; min-height: 0; overflow: hidden;
+  /* ШИРИНА ПАНЕЛИ ОБЪЯВЛЕНА ЗДЕСЬ ОДИН РАЗ. Её читают и колонка, и кнопка на
+     шве, и (замером) JS — второй записи этого числа в проекте быть не должно:
+     первая же правка раскладки развела бы копии.
+     visual-diff-exempt: .mapshell --mapshell-panel-w — ширина колонки панели, один источник вместо двух литералов */
+  --mapshell-panel-w: min(550px, 44vw);
+}
 /* Слот карты = СВОБОДНОЕ ОКНО: панель и шит не лежат поверх карты, они её
    граница. Величины приходят от `<MapShell>` двумя переменными (ширина
    панели · высота шита); по умолчанию слот занимает шелл целиком. */
-.mapshell__map { position: absolute; top: 0; right: 0; bottom: var(--mapshell-bottom, 0px); left: var(--mapshell-left, 0px); overflow: hidden; background: var(--map-backdrop); }
+/* ★ СЛОТ КАРТЫ И ЕСТЬ СВОБОДНОЕ ОКНО ПО ВЕРТИКАЛИ. Шит режет ВЫСОТУ, и её
+   забирает слот: размер глобуса mapbox считает от высоты ХОЛСТА, поэтому
+   развязать их нельзя — шар начнёт то вылезать за экран, то болтаться в
+   пустоте. Панель режет ШИРИНУ, там холст целый и кадр уводит камера.
+   Момент смены высоты решает `slotChangeDelay` (растём сразу, сжимаемся после
+   приезда шита) — иначе между картой и шитом открывается полоса фона до 351 px.
+   visual-diff-exempt: .mapshell__map top — слот карты = свободное окно шелла
+   visual-diff-exempt: .mapshell__map right — слот карты = свободное окно шелла
+   visual-diff-exempt: .mapshell__map left — слот карты = свободное окно шелла
+   visual-diff-exempt: .mapshell__map bottom — снизу слот кончается там, где начинается шит */
+.mapshell__map { position: absolute; top: 0; right: 0; bottom: var(--mapshell-bottom, 0px); left: 0; overflow: hidden; background: var(--map-backdrop); }
 
 /* Новые правила этой задачи — объявлены поимённо (гард 2p сверяет НАБОР итоговых
    объявлений у каждого класса, и появление класса он тоже считает изменением):
@@ -4409,15 +4422,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   position: absolute; right: 16px; bottom: calc(var(--mapshell-bottom, 0px) + 16px);
   z-index: var(--z-nav); display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
   max-width: calc(100% - 32px);
+  /* Едет тем же временем и той же кривой, что шит и камера: переменные публикует
+     сам шелл (`lib/surfaceMotion.js`). Это НЕ канвас — здесь переход бесплатен.
+     visual-diff-exempt: .ts-warnfab transition — FAB доезжает вместе с шитом, а не прыгает за кадр */
+  transition: bottom var(--surface-settle, .32s) var(--surface-ease, ease);
 }
 /* Плавающая колонка слева с воздухом по трём сторонам; `padding-right: 0` —
    правый край панели уходит внутрь карты, а не двоит отступ. */
 .mapshell__panel {
   position: absolute; top: 0; left: 0; bottom: 0;
-  width: min(550px, 44vw);
+  width: var(--mapshell-panel-w);
   display: flex; padding: var(--sp-7); padding-right: 0;
   z-index: 2;
-  transition: transform .28s var(--ease-out);
+  transition: transform var(--surface-settle, .32s) var(--surface-ease, ease);
 }
 /* Коробка слоя поверх панели — та же, что у карточки панели (тот же воздух,
    тот же правый край, уходящий под карту). */
@@ -4441,7 +4458,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    белая карточка; в тёмной теме тускнеет вся панель. Правило раньше висело на
    `.flow-editcol > .lp` — колонка удалена, поэтому оно переехало на поверхность
    шелла, но осталось СВОИМ для планировщика (линза карты его не берёт).
-   visual-diff-exempt: .flow-shell background — тёмная тема гасит панель планировщика до --bg (правило переехало с .flow-editcol > .lp)
    visual-diff-exempt: .mapshell__card background — то же правило, вторая единица наблюдения (поверхность панели)
    visual-diff-exempt: .flow-editcol background — источник того же правила: колонка удалена вместе с раскладкой */
 /* ★ ЦВЕТА ВИДЖЕТА — ОДНО ПРАВИЛО НА ОБА ЭКРАНА (и на шит).
@@ -4466,13 +4482,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    имеет права спорить с контентом.
    visual-diff-exempt: .mapshell__toggle box-shadow — служебный контрол над картой, как .map-back */
 .mapshell__toggle {
-  position: absolute; top: 50%; left: min(550px, 44vw);
+  position: absolute; top: 50%; left: var(--mapshell-panel-w);
   transform: translate(-50%, -50%); z-index: 3;
   box-shadow: var(--sh-1);
-  transition: left .28s var(--ease-out);
+  transition: left var(--surface-settle, .32s) var(--surface-ease, ease);
 }
 .mapshell__panel[data-collapsed] ~ .mapshell__toggle { left: 0; transform: translate(6px, -50%); }
-@media (max-width: 640px) { .mapshell__panel, .mapshell__toggle { display: none; } }
 
 /* ── Пикер обложки (<CoverPicker>) и его посадка в планнере ───────────────────
    Кадр обложки, лента слайдов, стрелки, кнопка загрузки и лента миниатюр — это
@@ -5067,15 +5082,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    dock — there the composer is its own rounded surface, so a full-width rule
    above it would read as a second border. */
 .chat-composer { border-top: 1px solid var(--line); padding: 12px; position: relative; flex: none; }
-/* Лента сообщений ИИ-шага РАСТЁТ и занимает свободный остаток виджета —
-   композер стоит следом и оказывается прижат к низу. Раньше это держала
-   оболочка панели (`.lp-b`), удалённая вместе со старой раскладкой, и композер
-   повисал сразу под приветствием.
-   floor-exempt: classes +1 — .pl-ai, корень ленты ИИ-шага (рост вместо дотягивания в чужой примитив), апрув Pavel
-   visual-diff-exempt: .flow-lp-b min-height — тело шага занимает высоту виджета целиком
-   visual-diff-exempt: .pl-ai flex — лента растёт, композер прижат к низу
-   visual-diff-exempt: .pl-ai min-height — лента умеет сжиматься */
-.pl-ai { flex: 1; min-height: 0; }
+/* Композер ИИ-шага стоит в СЛОТЕ ДЕЙСТВИЙ шелла — снаружи скроллящегося тела,
+   поэтому прижимать его содержимым не нужно: слот и есть «низ виджета». */
 .chat-room .chat-composer {
   border-top: 0; padding: 0 24px 20px;
   background: linear-gradient(180deg, transparent, var(--bg) 38%);
@@ -7195,7 +7203,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--surface); border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--sh-3);
   transform: translateY(var(--sheet-y, 100%));
-  transition: transform .32s cubic-bezier(.22, 1, .36, 1);
+  transition: transform var(--surface-settle, .32s) var(--surface-ease, cubic-bezier(.22, 1, .36, 1));
   overscroll-behavior: none; /* never chain a drag to the page → no pull-to-refresh */
 }
 .peek-sheet.is-dragging { transition: none; } /* follow the finger 1:1 mid-drag */

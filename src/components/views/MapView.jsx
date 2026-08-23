@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { mapboxgl, fitToPoints, clampPadding } from '@/lib/mapbox';
+import { mapboxgl, fitToPoints, fitPadding } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
-import { calmFlyTo, calmFit } from '@/lib/map/camera';
+import { calmFlyTo, calmFit, reframeTo } from '@/lib/map/camera';
+import { useMapInsets } from '@/lib/map/useMapInsets';
 import MapControls from '@/lib/map/MapControls';
 import { sortVisits } from '@/lib/validation';
 
@@ -95,7 +96,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * пометить его обязательным значило бы уронить их в тот момент, когда они
  * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
  *
- * @param {{ camera?: any, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ * @param {{ camera?: any, slotPx?: number, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
  *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
@@ -107,8 +108,12 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
 export default function MapView({
   // Закрытая панелью площадь (отступы вьюпорта) — приезжает от `<MapShell>`.
   // Канвас при этом во всю площадь: карта видна ПОД виджетом, а кадр уходит в
-  // свободное окно. Разбор, почему не всегда так, — в `mapSlotInsets`.
+  // свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   camera = null,
+  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Кадру она не
+  // нужна (холст уже сжат), но перекадрирование обязано на неё реагировать —
+  // иначе на телефоне его нет вовсе (там отступы камеры всегда нулевые).
+  slotPx = 0,
   visits,
   transfers,
   showStartEnd = true,
@@ -230,27 +235,32 @@ export default function MapView({
     markersRef, scheme: mapScheme, projection, active, basemapTheme, cooperativeGestures,
   });
 
-  // ★ ЗАКРЫТАЯ ПЛОЩАДЬ — ОТСТУП ВЬЮПОРТА, И ЭТО СОСТОЯНИЕ КАРТЫ. Поставили — и
-  // та же цель уезжает в свободное окно сама, без повторного кадрирования
-  // (свернули виджет — карта доехала). Инстанс общий, поэтому на выходе с
-  // экрана отступ обнуляется.
-  const camRef = useRef(camera);
-  camRef.current = camera;
-  const camKey = camera ? `${camera.top}|${camera.right}|${camera.bottom}|${camera.left}` : '';
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return undefined;
-    try { map.setPadding(clampPadding(map, camera || { top: 0, right: 0, bottom: 0, left: 0 })); } catch { /* ignore */ }
-    return () => { try { map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); } catch { /* ignore */ } };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, camKey]);
-
-  /** Воздух кадра ПЛЮС закрытая площадь — один отступ вьюпорта, с клампом. */
-  const padFor = (air) => {
-    const c = camRef.current;
-    if (!c) return air;
-    return clampPadding(mapRef.current, { top: air + c.top, right: air + c.right, bottom: air + c.bottom, left: air + c.left });
-  };
+  // ═════════════════════════════════════════════════════════════════════════
+  // ЗАКРЫТАЯ ПЛОЩАДЬ — ОДНА ДВЕРЬ (TRIP-422)
+  //
+  // Отступ объявляется ОДИН раз на инстанс (`setMapInsets`), и обе двери
+  // кадрирования читают его сами — поэтому ни один из семи `fit`-вызовов ниже
+  // про закрытую площадь не знает и знать не должен. Разбор — `lib/map/insets.js`.
+  //
+  // ★ КАДРИРУЕМ ПОСЛЕ ОСАДКИ, ТЕМПОМ ПОВЕРХНОСТИ. Когда шит встаёт на детент
+  // (или сворачивается виджет), свободное окно меняется — и та же цель обязана
+  // ДОЕХАТЬ до нового окна вместе с ним: то же время, та же кривая. Отступ сам
+  // по себе камеру не перекадрирует, он только сдвигает центр вида: маршрут,
+  // вписанный в окно 770px высотой, в окне 288px останется обрезанным.
+  // ═════════════════════════════════════════════════════════════════════════
+  /** Что кадрировать прямо сейчас — читается на осадке, не на рендере. */
+  const subjectRef = useRef(/** @type {any} */ (null));
+  useMapInsets(mapRef, {
+    ready,
+    insets: camera,
+    slotPx,
+    onReframe: (map) => {
+      const sub = subjectRef.current;
+      // Ленту раскрытия и оверлей отелей не трогаем: там камерой владеют они.
+      if (!sub || sub.hideRoute || sub.revealActiveId != null || !sub.canFit) return;
+      reframeTo(map, sub.pts, { padding: sub.air, maxZoom: sub.maxZoom, singleZoom: sub.singleZoom });
+    },
+  });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);
@@ -337,6 +347,20 @@ export default function MapView({
     [ordered],
   );
 
+  const focusSig = useMemo(
+    () => (Array.isArray(focus) && focus.length ? focus.map((p) => p.join(',')).join('|') : ''),
+    [focus],
+  );
+
+  // ★ ЦЕЛЬ КАДРА ОБЪЯВЛЯЕТСЯ ЗДЕСЬ, А ЧИТАЕТСЯ НА ОСАДКЕ ДЕТЕНТА. Иначе эффект
+  // отступа тянул бы за собой `ordered`/`focus` в зависимости и перезапускался
+  // на каждую правку маршрута — то есть кадрировал бы карту заново там, где её
+  // никто не двигал. Ровно та же цель, что у штатных фитов ниже: есть фокус —
+  // он, иначе весь маршрут.
+  subjectRef.current = focusSig
+    ? { pts: focus, air: 110, maxZoom: 9, singleZoom: focusZoom, canFit, hideRoute, revealActiveId }
+    : { pts: ordered.map((v) => [v.longitude, v.latitude]), air: 60, maxZoom: 8, singleZoom: undefined, canFit, hideRoute, revealActiveId };
+
   // Route legs (consecutive ordered visits + the transport on each pair) and the
   // line signature — shared by the line-draw effect (full vs progressive reveal).
   const legs = useMemo(() => {
@@ -422,7 +446,7 @@ export default function MapView({
       drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
       applyMarkerVisibility(markersRef.current, orderIndexById, -1, false);
       if (canFit && leaving && ordered.length > 0) {
-        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: padFor(60), maxZoom: 8, animate: true });
+        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
       }
       return undefined;
     }
@@ -460,7 +484,11 @@ export default function MapView({
           try {
             const cam = map.cameraForBounds(
               new mapboxgl.LngLatBounds([from.longitude, from.latitude], [to.longitude, to.latitude]),
-              { padding: padFor(80) },
+              // Сырой `cameraForBounds` мимо наших дверей — единственный на весь
+              // файл, и отступ ему нужен полный (воздух плюс закрытая площадь),
+              // иначе оценка провала зума считалась бы по площади, которой на
+              // экране нет.
+              { padding: fitPadding(map, 80) },
             );
             if (cam && typeof cam.zoom === 'number') dip = Math.max(0, REVEAL_CITY_ZOOM - cam.zoom);
           } catch { /* ignore */ }
@@ -555,10 +583,6 @@ export default function MapView({
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
   // this flies to the focused city / fits the two transfer cities, and eases
   // back to the full route once focus clears. ---
-  const focusSig = useMemo(
-    () => (Array.isArray(focus) && focus.length ? focus.map((p) => p.join(',')).join('|') : ''),
-    [focus],
-  );
   const hadFocusRef = useRef(false);
   useEffect(() => {
     const map = mapRef.current;
@@ -570,12 +594,12 @@ export default function MapView({
       if (focus.length === 1) {
         calmFlyTo(map, { center: focus[0], zoom: focusZoom });
       } else if (canFit) {
-        calmFit(map, focus, { padding: padFor(110), maxZoom: 9 });
+        calmFit(map, focus, { padding: 110, maxZoom: 9 });
       }
     } else if (hadFocusRef.current) {
       hadFocusRef.current = false;
       if (canFit && ordered.length > 0) {
-        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: padFor(60), maxZoom: 8 });
+        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
       }
     }
   }, [ready, canFit, focusSig, revealActiveId]);
@@ -651,11 +675,11 @@ export default function MapView({
     if (canFit && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
-        fitToPoints(map, pts, { padding: padFor(60), maxZoom: 8, duration: 0 }); // first frame after load: snap
+        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 }); // first frame after load: snap
       } else if (revealActiveId == null) {
-        calmFit(map, pts, { padding: padFor(60), maxZoom: 8 }); // non-public: adaptive calm tempo
+        calmFit(map, pts, { padding: 60, maxZoom: 8 }); // non-public: adaptive calm tempo
       } else {
-        fitToPoints(map, pts, { padding: padFor(60), maxZoom: 8, duration: 650 }); // public reveal: its own tempo
+        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 650 }); // public reveal: its own tempo
       }
       fittedSigRef.current = visitsSignature;
     }
@@ -778,7 +802,7 @@ export default function MapView({
     if (!hadHotelPinsRef.current && canFit) {
       hadHotelPinsRef.current = true;
       const pts = (hotelPins2 || []).filter((h) => h.lat != null && h.lng != null).map((h) => [h.lng, h.lat]);
-      if (pts.length) calmFit(map, pts, { padding: padFor(80), maxZoom: 15 });
+      if (pts.length) calmFit(map, pts, { padding: 80, maxZoom: 15 });
     }
     renderViewport();
 

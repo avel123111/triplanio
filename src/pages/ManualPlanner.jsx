@@ -1324,29 +1324,31 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           />
         )}
 
-      {/* AI composer — a pinned bar (flex:none) between the scrolling transcript
-          and the footer, exactly like the trip chat. Reuses <ChatComposer>: no
-          @-mention here (hideMention), the send button in the assistant gradient
-          (chat-composer--ai), and the "Triplanio печатает" pill while generating. */}
-      {step === 'home' && isAi && (
-        <ChatComposer
-          className="chat-composer--ai"
-          hideMention
-          onSend={onGenerate}
-          disabled={aiState === 'generating'}
-          isThinking={aiState === 'generating'}
-          placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-          /* Слитая кнопка: пусто → «Далее» (переход к шагу 2, доступен когда бот
-             собрал черновик), есть текст → «Отправить». Gate тот же, что был у
-             футер-кнопки Next на AI-шаге (aiState==='draft'). */
-          nextAction={goNext}
-          nextLabel={t('planner.next')}
-          nextDisabled={aiState !== 'draft'}
-        />
-      )}
     </div>
   );
-  const FOOTER = (
+  // ★ КОМПОЗЕР — В СЛОТЕ ДЕЙСТВИЙ, А НЕ В ТЕЛЕ. Тело виджета СКРОЛЛИТСЯ, и всё,
+  // что лежит в нём, уезжает вместе с лентой: замерено — на диалоге в 12 реплик
+  // поле ввода оказывалось на 1300 px ниже видимой полосы, то есть чтобы
+  // ответить боту, надо было сначала домотать до конца разговора. Слот действий
+  // для того и заведён: он стоит СНАРУЖИ скролла и держит док снизу.
+  // На AI-шаге кнопок шага нет (`showFooter === false`) — «Далее» слита в сам
+  // композер, — поэтому слот занимает он один, а не они вдвоём.
+  const FOOTER = (step === 'home' && isAi) ? (
+    <ChatComposer
+      className="chat-composer--ai"
+      hideMention
+      onSend={onGenerate}
+      disabled={aiState === 'generating'}
+      isThinking={aiState === 'generating'}
+      placeholder={aiMessages.length > 1 ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
+      /* Слитая кнопка: пусто → «Далее» (переход к шагу 2, доступен когда бот
+         собрал черновик), есть текст → «Отправить». Gate тот же, что был у
+         футер-кнопки Next на AI-шаге (aiState==='draft'). */
+      nextAction={goNext}
+      nextLabel={t('planner.next')}
+      nextDisabled={aiState !== 'draft'}
+    />
+  ) : (
     <>
       {showFooter && (
         <div className="lp-f flow-foot">
@@ -1381,7 +1383,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           отдаёт это карте отступами камеры. Своих `.flow-grid/-mapcol/-editcol`
           у шага больше нет — они были третьей копией одной и той же раскладки. */}
       <MapShell
-        className="flow-shell"
         panelLabel={t('trips.new')}
         detent={detent}
         onDetentChange={setDetent}
@@ -1408,8 +1409,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         panel={BODY}
         // Закрытая площадь приезжает камере отступом вьюпорта там, где она
         // режет ширину (десктоп); на телефоне шит режет высоту, и её забирает
-        // сам слот — разбор в `mapSlotInsets`.
-        map={(camera) => (
+        // сам слот — разбор в `mapShellInsets`.
+        map={(camera, slotPx) => (
           <>
             {/* Floating round back control — shown only on the phone shell (the app
                 header is removed there); the canon `.map-back` position/visibility
@@ -1423,7 +1424,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               onClick={() => nav('/trips')}
             />
             <FlowMap
-              camera={camera}
+              camera={camera} slotPx={slotPx}
               home={home}
               cities={cities}
               // Always pass the finish city (it feeds the camera framing). DRAW the

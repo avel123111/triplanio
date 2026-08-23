@@ -82,10 +82,10 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
       onSelect={select}
       onHover={setHoverId}
       // Отступы камеры под панель (десктоп); на телефоне их нет — там слот сам
-      // равен свободному окну. Разбор — в `mapSlotInsets`.
-      map={(camera) => (
+      // равен свободному окну. Разбор — в `mapShellInsets`.
+      map={(camera, slotPx) => (
         <MapView
-          camera={camera}
+          camera={camera} slotPx={slotPx}
           visits={visits}
           transfers={transfers}
           showStartEnd

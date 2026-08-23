@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gestureOwner, nearestDetent, resolveDetents } from './sheetDetents.js';
+import { gestureOwner, nearestDetent, resolveDetents, SHEET_CONTROL_SELECTOR, tapSettles } from './sheetDetents.js';
 
 const VH = 800;
 const HEAD = 120; // грип + шапка + док + safe-area
@@ -89,4 +89,24 @@ test('жест: пока тащат карточку в содержимом, ш
   assert.equal(gestureOwner({ dragElsewhere: true, dy: 80, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'none');
   // Даже с грипа — тащат уже не шит.
   assert.equal(gestureOwner({ dragElsewhere: true, onHandle: true, dy: -40 }), 'none');
+});
+
+test('★ тап по управлению в шапке принадлежит управлению, а не шиту', () => {
+  // Гашение клика ради переключения детента убивало степпер даты и шаги
+  // прогресса, уехавшие в шапку шита вместе с раскладкой.
+  assert.equal(tapSettles({ onHandle: true, onControl: true }), false);
+  assert.equal(tapSettles({ onHandle: true, onControl: false }), true);
+});
+
+test('тап вне ручки не садит шит никогда', () => {
+  assert.equal(tapSettles({ onHandle: false, onControl: false }), false);
+  assert.equal(tapSettles({ onHandle: false, onControl: true }), false);
+  assert.equal(tapSettles(), false);
+});
+
+test('★ селектор управления перечисляет ровно то, что кликают', () => {
+  // Список — часть правила: забытая роль возвращает дефект целиком.
+  for (const need of ['button', '[role="button"]', 'input', 'a[href]', '[role="slider"]']) {
+    assert.ok(SHEET_CONTROL_SELECTOR.includes(need), need);
+  }
 });

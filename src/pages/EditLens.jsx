@@ -1146,9 +1146,8 @@ export default function EditLens({ tripId, shell, content }) {
 
   return (
     <MapShell
-      className="ts-shell"
-      map={(camera) => (
-            <MapView camera={camera} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+      map={(camera, slotPx) => (
+            <MapView camera={camera} slotPx={slotPx} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
               /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
                  «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
               cooperativeGestures={false}
@@ -1357,18 +1356,21 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   const span = t.day_span ?? 0;
   return (
     <Row justify="j-center" className="te-seam">
-      <Tooltip content={`${a.city_name} → ${b.city_name}`}>
+      {/* ★ ТУЛТИПЫ ЗДЕСЬ — СОСЕДИ, А НЕ МАТРЁШКА. Вложенный `<Tooltip>` внутри
+          `<Tooltip>` показывает ОБА пузыря разом: наведение на внутренний
+          элемент не выводит указатель из внешнего, тот остаётся раскрытым, и
+          подсказки накладываются друг на друга почти в одной точке. Поэтому
+          внешняя подсказка (маршрут переезда) висит на ПОДПИСИ, а не на всём
+          чипе — тогда у ночёвки своя, и они не пересекаются. */}
       <Chip variant="tone" icon={mismatch ? 'warning' : meta.icon} className={mismatch ? 'is-warn' : ''} disabled={disabled} onClick={click}>
-        <span className="t-meta">{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        <Tooltip content={`${a.city_name} → ${b.city_name}`}>
+          <span className="t-meta">{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        </Tooltip>
         {/* Тултип овернайта был МЁРТВ: `Icon` деструктурирует свои пропы без
             остатка, `title` до DOM не доезжал вовсе, а под ключ `tse.overnight_title`
-            написаны переводы на en/es/ru и он больше нигде не используется.
-            Носителем сделан span, а не проп `Icon`: у всех трёх веток `Icon`
-            корень - тег svg, а тултип в SVG это ДОЧЕРНИЙ элемент title, не
-            атрибут, то есть «пробросить title» в ДС - не одна строка и требует
-            апрува.
+            не было строки ни в одной локали.
             ⚠️ Угловые скобки тут писать НЕЛЬЗЯ: гард 2d читает НАПИСАНИЕ, включая
-            комментарии, и пара `<svg>` … `<title>` с текстом между ними читается
+            комментарии, и пара `svg` … `title` с текстом между ними читается
             им как сырая JSX-строка - первая редакция этого абзаца роняла CI. */}
         {span > 0 && (
           <Tooltip content={tx('tse.overnight_title', { count: span })}>
@@ -1377,7 +1379,6 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
         )}
         <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
       </Chip>
-      </Tooltip>
     </Row>
   );
 }

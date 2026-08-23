@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { gestureOwner, nearestDetent, resolveDetents } from '@/lib/sheetDetents';
+import { SHEET_CONTROL_SELECTOR, gestureOwner, nearestDetent, resolveDetents, tapSettles } from '@/lib/sheetDetents';
+import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
+import { cssPx } from '@/lib/cssPx';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
 
 /**
@@ -75,22 +77,6 @@ function viewportH() {
 function viewportTop() {
   if (typeof window === 'undefined') return 0;
   return Math.round(window.visualViewport?.offsetTop || 0);
-}
-
-/**
- * Сколько CSS-величина занимает В ПИКСЕЛЯХ. `getComputedStyle` для custom
- * property отдаёт ЗАПИСЬ (`calc(...)`, `env(...)`), а не результат, поэтому
- * единственный честный способ — дать величину настоящему элементу и померить.
- * Зонд невидим, живёт один кадр и не влияет на раскладку.
- */
-function cssPx(value) {
-  if (typeof document === 'undefined') return 0;
-  const probe = document.createElement('div');
-  probe.style.cssText = `position:fixed;bottom:0;left:0;width:0;height:${value};visibility:hidden;pointer-events:none;`;
-  document.body.appendChild(probe);
-  const h = probe.getBoundingClientRect().height || 0;
-  probe.remove();
-  return h;
 }
 
 /**
@@ -217,8 +203,13 @@ export function PeekSheet({
         max: Math.max(0, h - (st[0] ?? 0)),             // самый низкий
         last: Math.max(0, h - (st[i] ?? 0)),
         lastY: e.touches[0].clientY, lastT: e.timeStamp, vy: 0,
-        // Тап по грипу ИЛИ шапке переключает детент (не только по полоске).
+        // Тянуть шит можно за грип И за шапку (это его ручка) — откуда угодно
+        // в них, включая кнопку: палец уже поехал, намерение однозначно.
         onHandle: !!(e.target.closest && e.target.closest('[data-peek-grip],[data-peek-head]')),
+        // А вот ТАП по кнопке принадлежит кнопке. Правило разведено в
+        // `tapSettles` — разбор там же.
+        onControl: !!(e.target.closest && e.target.closest(SHEET_CONTROL_SELECTOR)
+          && !e.target.closest('[data-peek-grip]')),
         mode: 'idle',
       };
     };
@@ -268,7 +259,7 @@ export function PeekSheet({
         const flick = isFlick ? Math.sign(-vy) : 0;
         const next = nearestDetent({ stops: st, height: h - d.last, from: i, flick });
         if (next !== i) cb && cb(next);
-      } else if (d.mode === 'idle' && d.onHandle) {
+      } else if (d.mode === 'idle' && tapSettles(d)) {
         e.preventDefault(); // глушим эмулированный клик и переключаем
         const next = i >= st.length - 1 ? 0 : i + 1;
         cb && cb(next);
@@ -308,6 +299,13 @@ export function PeekSheet({
     '--sheet-h': sheetH + 'px',
     '--sheet-head': headPx + 'px',
     '--sheet-reserve': reservePx + 'px',
+    // ★ ТЕМП ДВИЖЕНИЯ ПУБЛИКУЕТ САМ ШИТ, А CSS ЕГО ЧИТАЕТ. Вместе с шитом
+    // обязаны доехать камера карты (JS) и плавающие контролы над ней (CSS) —
+    // разными механизмами, но ОДНИМ временем и одной кривой, иначе «плавно» не
+    // выйдет ни при каких значениях. Источник — `lib/surfaceMotion.js`; тем же
+    // приёмом нижний нав публикует свою высоту (`--nav-dock-h`).
+    '--surface-settle': SURFACE_SETTLE_MS + 'ms',
+    '--surface-ease': SURFACE_EASE_CSS,
   };
 
   if (typeof document === 'undefined') return null;
