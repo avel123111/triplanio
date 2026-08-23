@@ -1075,9 +1075,9 @@ export default function EditLens({ tripId, shell, content }) {
               и узел здесь нет. */}
           <div className="te-thead">
             <Trunc as="span" className="te-th">{t('tse.col_destination')}</Trunc>
-            <span className="te-th te-th--c">{t('tse.col_nights')}</span>
-            <span className="te-th te-th--c">{t('tse.col_stay')}</span>
-            <span className="te-th te-th--c">{t('budget.source_activity')}</span>
+            <Trunc as="span" className="te-th te-th--c">{t('tse.col_nights')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c">{t('tse.col_stay')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c">{t('budget.source_activity')}</Trunc>
           </div>
           <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
