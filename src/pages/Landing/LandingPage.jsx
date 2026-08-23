@@ -647,7 +647,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" themed />
       <main>
         <Hero />
         <Problem />

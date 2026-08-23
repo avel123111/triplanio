@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { openConsentBanner } from '@/lib/consent';
@@ -8,11 +8,15 @@ import { Icon as BaseIcon } from '@/design/icons';
 
 /* =========================================================
    SiteChrome — shared marketing header/footer + site-CSS loader.
-   Extracted verbatim from Landing/LandingPage.jsx so the public
-   shared-trip page reuses the EXACT same chrome (one element, not a
-   copy). `navBase` makes the in-page section anchors absolute when the
-   chrome is mounted off the landing route (e.g. /public/trip), where
-   #features/#how/#faq don't exist locally.
+   ONE header and ONE footer for every unauthenticated route (landing,
+   public shared-trip, and — from Ф6 — auth/join/legal). The composition
+   is driven by props, not by six near-identical copies:
+     • `variant` — which pieces the header carries (see SiteHeader).
+     • `themed`  — whether the header re-tints itself against the section
+                   beneath it (landing only).
+   `navBase` makes the in-page section anchors absolute when the chrome is
+   mounted off the landing route (e.g. /public/trip), where #features/#how/
+   #faq don't exist locally.
 ========================================================= */
 
 const APP_URL = '/login';
@@ -96,30 +100,74 @@ const NAV = [
   { tkey:'landing.nav.faq', hash:'#faq' },
 ];
 
+const PROBE = 35; // px from the top where the header samples the section under it
+
 /**
- * Shared marketing header.
+ * Shared marketing header — ONE element, its composition set by `variant`:
+ *   'full'    logo + section nav + language + right CTA + mobile drawer
+ *             (landing, and from Ф6 the legal pages).
+ *   'cta'     logo + language + right CTA, no landing anchors — there is
+ *             nowhere to scroll to off the landing (public trip, demo).
+ *   'minimal' logo + language only (auth, join).
+ *
+ * @param themed   Landing only: re-tint the header against the [data-hdr]
+ *                 section beneath it (on-light / on-dark / on-accent). Off →
+ *                 the header stays light. The theme is recomputed on scroll,
+ *                 AND on mount and on route change — neither fires a scroll,
+ *                 so a dark cover would otherwise keep dark text (handoff
+ *                 §11.14).
  * @param navBase  '' on the landing (same-page anchors). On other routes pass
- *                 an absolute origin (e.g. 'https://www.triplanio.com/') so the
- *                 section anchors resolve to the landing, not the current path.
+ *                 an absolute origin so the section anchors resolve to the
+ *                 landing, not the current path.
  * @param brandHref where the logo links (default '#top' for the landing).
  */
-export function SiteHeader({ lang, setLang, navBase = '', brandHref = '#top' }) {
+export function SiteHeader({ lang, setLang, variant = 'full', themed = false, navBase = '', brandHref = '#top' }) {
   const t = useT();
   const nav = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
   // Carry this visit's campaign marks onto /login so a gclid/utm survives the
   // click — gtag's url_passthrough reads them off the address (TRIP-407 PR5).
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [theme, setTheme] = useState('light'); // on-light is the safe default
   const navHref = (hash) => `${navBase}${hash}`;
 
+  const showNav = variant === 'full';
+  const showCta = variant === 'full' || variant === 'cta';
+  // Only the full header collapses its section nav into a drawer; the others
+  // have nothing to hide behind a burger, so they keep everything inline.
+  const showBurger = variant === 'full';
+
+  // Scroll state + header theme. `themed` pages sample the section under the
+  // header; everyone else is light. Re-runs on route change (location) because
+  // navigating between marketing routes does not scroll.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive:true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+    const recalc = () => {
+      setScrolled(window.scrollY > 24);
+      if (!themed) { setTheme('light'); return; }
+      const sections = document.querySelectorAll('[data-hdr]');
+      let next = 'light';
+      // Reverse DOM order so a sheet stacked over the previous section wins.
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const r = sections[i].getBoundingClientRect();
+        if (r.top <= PROBE && r.bottom >= PROBE) { next = sections[i].dataset.hdr; break; }
+      }
+      setTheme(next);
+    };
+    recalc();
+    // A second pass after layout settles (fonts/images) — the first frame can
+    // report section rects that shift once the page reflows.
+    const raf = requestAnimationFrame(recalc);
+    window.addEventListener('scroll', recalc, { passive: true });
+    window.addEventListener('resize', recalc);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', recalc);
+      window.removeEventListener('resize', recalc);
+    };
+  }, [themed, location.pathname]);
 
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : '';
@@ -128,40 +176,54 @@ export function SiteHeader({ lang, setLang, navBase = '', brandHref = '#top' }) 
 
   return (
     <>
-      <header className={`header ${scrolled ? 'is-scrolled' : ''}`}>
+      <header className={`header header--${variant} ${scrolled ? 'is-scrolled' : ''} on-${theme}`}>
         <div className="container header__inner">
           <a href={brandHref} className="brand" aria-label="Triplanio - home">
             <span className="brand__mark"><TriplanioMark /></span>
             <span>Triplanio</span>
           </a>
-          <nav className="nav" aria-label={t('nav.aria_primary')}>
-            {NAV.map(n => <a key={n.hash} href={navHref(n.hash)}>{t(n.tkey)}</a>)}
-          </nav>
+          {showNav && (
+            <nav className="nav" aria-label={t('nav.aria_primary')}>
+              {NAV.map(n => <a key={n.hash} href={navHref(n.hash)}>{t(n.tkey)}</a>)}
+            </nav>
+          )}
           <div className="header__right">
             <span className="header__lang"><LangDropdown value={lang} onChange={setLang} /></span>
-            <button className="btn btn--primary" onClick={() => nav(ctaTarget)}>{t('landing.header.cta')}</button>
-            <button className="hamburger" aria-label={t('landing.lang.label')} aria-expanded={drawerOpen}
-              onClick={() => setDrawerOpen(v => !v)}>
-              <Icon name={drawerOpen ? 'close' : 'menu'} />
-            </button>
+            {showCta && (
+              <button className="btn btn--primary header__cta" onClick={() => nav(ctaTarget)}>{t('landing.header.cta')}</button>
+            )}
+            {showBurger && (
+              <button className="hamburger" aria-label={t('nav.aria_primary')} aria-expanded={drawerOpen}
+                onClick={() => setDrawerOpen(v => !v)}>
+                <Icon name={drawerOpen ? 'close' : 'menu'} />
+              </button>
+            )}
           </div>
         </div>
       </header>
-      <div className={`drawer ${drawerOpen ? 'is-open' : ''}`} aria-hidden={!drawerOpen}>
-        <ul>
-          {NAV.map(n => (
-            <li key={n.hash}><a href={navHref(n.hash)} onClick={() => setDrawerOpen(false)}>{t(n.tkey)}</a></li>
-          ))}
-        </ul>
-        <div className="drawer__lang"><LangDropdown value={lang} onChange={setLang} /></div>
-      </div>
+      {showBurger && (
+        <div className={`drawer ${drawerOpen ? 'is-open' : ''}`} aria-hidden={!drawerOpen}>
+          <ul>
+            <li>
+              <button className="btn btn--primary btn--lg" onClick={() => { setDrawerOpen(false); nav(ctaTarget); }}>
+                {t('landing.header.cta')}
+              </button>
+            </li>
+            {NAV.map(n => (
+              <li key={n.hash}><a href={navHref(n.hash)} onClick={() => setDrawerOpen(false)}>{t(n.tkey)}</a></li>
+            ))}
+          </ul>
+        </div>
+      )}
     </>
   );
 }
 
 /**
- * Shared marketing footer. Same `navBase` semantics as SiteHeader for the
- * product-column section anchors.
+ * Shared marketing footer. One footer for every route: brand + tagline, a flat
+ * row of product / legal links, the cookie-settings entry, the language switch,
+ * and the copyright. Same `navBase` semantics as SiteHeader for the product
+ * anchors.
  */
 export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) {
   const t = useT();
@@ -171,44 +233,29 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
       <div className="container">
         <div className="footer__top">
           <div className="footer__brand">
-            <a href={brandHref} className="brand" aria-label="Triplanio - home" style={{color:'var(--ink)'}}>
+            <a href={brandHref} className="brand" aria-label="Triplanio - home">
               <span className="brand__mark"><TriplanioMark size={26}/></span>
               <span>Triplanio</span>
             </a>
             <p className="tagline">{t('landing.footer.tagline')}</p>
           </div>
-          <div className="footer__cols">
-            <div className="footer__col">
-              <h4>{t('landing.footer.product')}</h4>
-              <a href={navHref('#features')}>{t('landing.footer.features')}</a>
-              <a href={navHref('#how')}>{t('landing.footer.how')}</a>
-              <a href={navHref('#faq')}>{t('landing.footer.faq')}</a>
-            </div>
-            <div className="footer__col">
-              <h4>{t('landing.footer.company')}</h4>
-              <a href="#">{t('landing.footer.about')}</a>
-              <a href="#">{t('landing.footer.contact')}</a>
-            </div>
-            <div className="footer__col">
-              <h4>{t('landing.footer.legal')}</h4>
-              <a href="/privacy">{t('landing.footer.privacy')}</a>
-              <a href="/terms">{t('landing.footer.terms')}</a>
-              {/* Where an anonymous visitor changes their mind — the app itself has no
-                  footer, so this is the only route for someone who never signed up.
-                  Reopens the panel; nothing changes until a button in it is pressed. */}
-              <button type="button" onClick={openConsentBanner}>{t('consent.settings')}</button>
-            </div>
-          </div>
-          <div style={{display:'flex',justifyContent:'flex-end'}}>
+          <nav className="footer__nav" aria-label={t('nav.aria_primary')}>
+            <a href={navHref('#features')}>{t('landing.footer.features')}</a>
+            <a href={navHref('#how')}>{t('landing.footer.how')}</a>
+            <a href={navHref('#faq')}>{t('landing.footer.faq')}</a>
+            <a href="/privacy">{t('landing.footer.privacy')}</a>
+            <a href="/terms">{t('landing.footer.terms')}</a>
+            {/* Where an anonymous visitor changes their mind — the app itself has no
+                footer, so this is the only route for someone who never signed up.
+                Reopens the panel; nothing changes until a button in it is pressed. */}
+            <button type="button" onClick={openConsentBanner}>{t('consent.settings')}</button>
+          </nav>
+          <div className="footer__lang">
             <LangDropdown value={lang} onChange={setLang} direction="up"/>
           </div>
         </div>
         <div className="footer__bottom">
           <span>{t('landing.footer.copy')}</span>
-          <div className="footer__social" aria-label={t('nav.aria_social')}>
-            <a href="#" aria-label="Twitter / X"><Icon name="twitter" size={16}/></a>
-            <a href="#" aria-label="Instagram"><Icon name="instagram" size={16} color="#E4405F"/></a>
-          </div>
         </div>
       </div>
     </footer>
