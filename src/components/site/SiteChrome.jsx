@@ -178,7 +178,7 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
     <>
       <header className={`header header--${variant} ${scrolled ? 'is-scrolled' : ''} on-${theme}`}>
         <div className="container header__inner">
-          <a href={brandHref} className="brand" aria-label="Triplanio - home">
+          <a href={brandHref} className="brand" aria-label={t('nav.aria_home')}>
             <span className="brand__mark"><TriplanioMark /></span>
             <span>Triplanio</span>
           </a>
@@ -193,7 +193,7 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
               <button className="btn btn--primary header__cta" onClick={() => nav(ctaTarget)}>{t('landing.header.cta')}</button>
             )}
             {showBurger && (
-              <button className="hamburger" aria-label={t('nav.aria_primary')} aria-expanded={drawerOpen}
+              <button className="hamburger" aria-label={t('nav.aria_menu')} aria-expanded={drawerOpen}
                 onClick={() => setDrawerOpen(v => !v)}>
                 <Icon name={drawerOpen ? 'close' : 'menu'} />
               </button>
@@ -233,13 +233,13 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
       <div className="container">
         <div className="footer__top">
           <div className="footer__brand">
-            <a href={brandHref} className="brand" aria-label="Triplanio - home">
+            <a href={brandHref} className="brand" aria-label={t('nav.aria_home')}>
               <span className="brand__mark"><TriplanioMark size={26}/></span>
               <span>Triplanio</span>
             </a>
             <p className="tagline">{t('landing.footer.tagline')}</p>
           </div>
-          <nav className="footer__nav" aria-label={t('nav.aria_primary')}>
+          <nav className="footer__nav" aria-label={t('nav.aria_footer')}>
             <a href={navHref('#features')}>{t('landing.footer.features')}</a>
             <a href={navHref('#how')}>{t('landing.footer.how')}</a>
             <a href={navHref('#faq')}>{t('landing.footer.faq')}</a>

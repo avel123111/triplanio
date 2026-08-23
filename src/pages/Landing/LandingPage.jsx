@@ -87,7 +87,7 @@ function Hero() {
   // url_passthrough can read them off the address (TRIP-407 PR5).
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   return (
-    <section className="hero" id="top">
+    <section className="hero" id="top" data-hdr="light">
       <div className="container">
         <div className="hero__grid">
           <div className="hero__copy reveal">
@@ -563,8 +563,12 @@ function FinalCTA() {
   // Carry this visit's campaign marks onto /login (gclid/utm) so gtag's
   // url_passthrough can read them off the address (TRIP-407 PR5).
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  // data-hdr="dark": this final CTA is a dark navy band, so the fixed header
+  // goes white (on-dark) while it sits over it. The rest of the landing is
+  // light and needs no marker — SiteHeader defaults to on-light when no
+  // [data-hdr] section is under it.
   return (
-    <section className="banner">
+    <section className="banner" data-hdr="dark">
       <div className="reveal" style={{position:'relative',zIndex:1}}>
         <h2>{t('landing.finalcta.h2')}</h2>
         <p>{t('landing.finalcta.lede')}</p>

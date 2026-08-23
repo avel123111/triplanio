@@ -60,7 +60,9 @@ function walk(path, out) {
   }
 }
 
-const IMPORT_RE = /import\s[^;]*?from\s*['"]([^'"]+)['"]/g;
+// Both `import … from 'x'` and the side-effect `import 'x'` (e.g. app.css) —
+// the CSS side-effect form is exactly what §5 forbids, so it must be caught too.
+const IMPORT_RE = /import\s+(?:[^'"]*\bfrom\s*)?['"]([^'"]+)['"]/g;
 
 function main() {
   const files = [];
