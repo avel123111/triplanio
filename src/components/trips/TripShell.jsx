@@ -1,5 +1,11 @@
 /**
- * TripShell - оболочка ЛЮБОГО экрана трипа.
+ * TripShell - оболочка любого экрана ТРИПА: геометрию даёт общий `AppShell`,
+ * здесь живёт только трип-специфика (рейл секций, шапка трипа, мост к
+ * мобильному доку, счётчики непрочитанного).
+ *
+ * Геометрия уехала в примитив, когда оболочек снова оказалось две: эта и
+ * `.flow-page` у флоу создания. Разъехавшись, они и дали рывок на переходе
+ * «создал трип → открыть трип» — разбор в шапке `components/AppShell.jsx`.
  *
  * До TRIP-349 оболочки было ДВЕ, собранные руками врозь: `.trip-shell/.trip-body/
  * .trip-content` у экранов трипа и `.ts-screen/.ts-sidecol/.ts-drawer` у
@@ -44,6 +50,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppHeader, { BrandSlot } from '@/components/AppHeader';
+import AppShell from '@/components/AppShell';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import { useMobileNav } from '@/components/MobileBottomNav';
 import { DEFAULT_SECTION, sectionById, isSectionAvailable } from '@/lib/tripMenu';
@@ -55,18 +62,6 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { isProActive } from '@/lib/subscription';
 import { Skeleton } from '@/design/index';
-import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
-
-// Темп входа берётся из ОБЩЕГО контракта движения (`lib/surfaceMotion.js`), а не
-// пишется числом в CSS: тем же временем и той же кривой едут шит, камера карты и
-// плавающие контролы. Публикуем переменными на корне оболочки — ровно тем приёмом,
-// каким это делают MapShell и PeekSheet, и каким нав публикует свою высоту.
-// Константа МОДУЛЬНАЯ: значения приходят из модуля, зависимостей нет, и `useMemo`
-// над таким объектом только делает вид, что что-то считает.
-const MOTION_STYLE = {
-  '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
-  '--surface-ease': SURFACE_EASE_CSS,
-};
 
 // Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
 // нельзя: его состав зависит от аддонов и роли, а они приезжают тем же
@@ -141,13 +136,6 @@ export default function TripShell({
   //     на пути из создания кэш прогрет (ManualPlanner), и ветка всегда тёплая.
   const [entering] = useState(() => (loc.state?.from === 'create' && !loading ? 'create' : null));
 
-  // Тело - постоянный скролл-контейнер (сама оболочка не скроллится), поэтому
-  // при смене секции его надо вернуть наверх. Свой ref, если снаружи не дали:
-  // ленте он нужен для рейла городов, остальным секциям - нет.
-  const ownBodyRef = useRef(null);
-  const mainRef = bodyRef || ownBodyRef;
-  useEffect(() => { if (mainRef.current) mainRef.current.scrollTop = 0; }, [section, mainRef]);
-
   // Мост к мобильному доку. Раньше это был ГЛОБАЛ `window.__navigate`, который
   // TripView вешал на window, а док дёргал, - при том что рядом уже стоял
   // контекст, через который тот же док получал «+» и «Ещё». Два канала на одну
@@ -209,48 +197,17 @@ export default function TripShell({
   const backTitle = t('trip.back');
 
   return (
-    <div className="trip-shell" data-entering={entering || undefined} style={MOTION_STYLE}>
-      <div className="trip-body">
-        {loading ? <SidebarSkeleton onBack={goBack} backTitle={backTitle} /> : (
-          <>
-            {/* Шит открывается только на телефоне, где рейла нет (CSS), поэтому
-                закрывать его отсюда некому - рейл просто переключает секцию. */}
-            <TripSidebar
-              tripId={tripId}
-              trip={trip}
-              lens={section}
-              myStep={myStep}
-              isPro={isPro}
-              proResolved={proResolved}
-              onProUpsell={onProUpsell}
-              onNavigate={(id) => onNavigate?.(id)}
-              onShare={onShare}
-              onBack={goBack}
-              backTitle={backTitle}
-            />
-            {/* Телефоны: то же меню канон-шитом из мобильного дока. Рейла на
-                этой ширине нет (CSS), выезжающего ящика больше нет нигде. */}
-            <TripSidebarSheet
-              tripId={tripId}
-              trip={trip}
-              lens={section}
-              isPro={isPro}
-              proResolved={proResolved}
-              myStep={myStep}
-              open={isPhone && sideOpen}
-              onOpenChange={setSideOpen}
-              onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
-              onShare={onShare && (() => { setSideOpen(false); onShare(); })}
-              onProUpsell={onProUpsell && (() => { setSideOpen(false); onProUpsell(); })}
-              user={user}
-              onAccount={() => { setSideOpen(false); nav('/settings'); }}
-            />
-          </>
-        )}
-        {/* Шапка — СОСЕД контента, а не его потомок: к `.trip-content` абсолютом
-            привязан хост выдвижных панелей (EventDrawerHost), и внутри шапки он
-            поехал бы из-под неё. Сетка ставит её правой верхней ячейкой, на одну
-            линию с бренд-слотом рейла. */}
+    <AppShell
+      entering={entering}
+      flush={flush}
+      bodyRef={bodyRef}
+      resetScrollKey={section}
+      drawer={drawer}
+      overlays={overlays}
+      header={(
+        /* Шапка — СОСЕД `.trip-content`, а не его потомок: к нему абсолютом
+           привязан хост выдвижных панелей (EventDrawerHost), и внутри шапки он
+           поехал бы из-под неё. Позицию держит сетка примитива. */
         <AppHeader
           isTrip
           user={user}
@@ -267,14 +224,45 @@ export default function TripShell({
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
           meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
         />
-        <div className="trip-content">
-          <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
-            {children}
-          </main>
-          {drawer}
-        </div>
-      </div>
-      {overlays}
-    </div>
+      )}
+      rail={loading ? <SidebarSkeleton onBack={goBack} backTitle={backTitle} /> : (
+        <>
+          {/* Шит открывается только на телефоне, где рейла нет (CSS), поэтому
+              закрывать его отсюда некому - рейл просто переключает секцию. */}
+          <TripSidebar
+            tripId={tripId}
+            trip={trip}
+            lens={section}
+            myStep={myStep}
+            isPro={isPro}
+            proResolved={proResolved}
+            onProUpsell={onProUpsell}
+            onNavigate={(id) => onNavigate?.(id)}
+            onShare={onShare}
+            onBack={goBack}
+            backTitle={backTitle}
+          />
+          {/* Телефоны: то же меню канон-шитом из мобильного дока. Рейла на
+              этой ширине нет (CSS), выезжающего ящика больше нет нигде. */}
+          <TripSidebarSheet
+            tripId={tripId}
+            trip={trip}
+            lens={section}
+            isPro={isPro}
+            proResolved={proResolved}
+            myStep={myStep}
+            open={isPhone && sideOpen}
+            onOpenChange={setSideOpen}
+            onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
+            onShare={onShare && (() => { setSideOpen(false); onShare(); })}
+            onProUpsell={onProUpsell && (() => { setSideOpen(false); onProUpsell(); })}
+            user={user}
+            onAccount={() => { setSideOpen(false); nav('/settings'); }}
+          />
+        </>
+      )}
+    >
+      {children}
+    </AppShell>
   );
 }

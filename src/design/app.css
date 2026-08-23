@@ -4043,10 +4043,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   overflow: hidden;
   background: var(--bg, var(--wash));
 }
-/* Floating round "back" control on the map (canon layout, reused on other
-   screens): white surface circle (icon-btn--outline) top-left, over the map.
-   Hidden by default; shown on the mobile shell where the app header is removed. */
-.map-back { position: absolute; top: 12px; left: 12px; z-index: 3; box-shadow: var(--sh-1); display: none; }
 /* Progress header — non-scrolling top of the panel. Row so the reset control
    (relocated out of the action bar) sits at the top-right, quiet. */
 /* Шапка на фоне приложения (--bg), не на белой поверхности — тело белое, шапка/футер
@@ -4194,12 +4190,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      pattern: the document has nothing to scroll, so the iOS toolbar/keyboard
      cannot shove the static header. No <body> position:fixed lock. */
   .flow-page { height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none; }
-  /* App header removed on the phone shell (Pavel 2026-08-18): the map is the top
-     band, so navigation collapses to the floating round "back" control on it. */
-  .flow-page > .app-header { display: none; }
-  /* grid (not inline-flex): keeps the base `.icon-btn` place-items:center so the
-     arrow stays centred; inline-flex would drop it to the top-left corner. */
-  .map-back { display: grid; }
   /* Раскладка «карта + панель» уехала в примитив `.mapshell`; полосы карты и
      статичной панели-«шита» больше нет — карта во всю площадь, панель в
      настоящем `<PeekSheet>` с детентами. Нарисованная псевдоэлементом «ручка»

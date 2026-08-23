@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { mapboxgl } from '@/lib/mapbox';
 import { calmFit, reframeTo } from '@/lib/map/camera';
+import { markFramed } from '@/lib/map/framed';
 import { getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
@@ -253,6 +254,10 @@ export default function FlowMap({
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
           calmFit(map, fitPositions, { padding: air, maxZoom: 7, singleZoom: 8 });
+          // Отмечаем на ИНСТАНСЕ, что камеру уже ставили по месту: следующий
+          // экран с картой (редактор маршрута сразу после создания трипа) возьмёт
+          // этот факт и доедет плавно вместо скачка. См. `lib/map/framed.js`.
+          markFramed(map);
         }
         prevHadPointsRef.current = true;
       } else {
