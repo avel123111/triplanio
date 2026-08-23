@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/design/icons';
 import HeaderActions from '@/components/HeaderActions';
+import { Tooltip } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
@@ -18,8 +19,13 @@ import { useT } from '@/lib/i18n/I18nContext';
  * @param {{ onClick: () => void, title?: string, back?: boolean }} p
  */
 export function BrandSlot({ onClick, title, back = false }) {
-  return (
-    <button className={'app-header__brand' + (back ? ' app-header__brand--back' : '')} onClick={onClick} title={title} type="button">
+  const slot = (
+    <button
+      className={'app-header__brand' + (back ? ' app-header__brand--back' : '')}
+      onClick={onClick}
+      aria-label={title}
+      type="button"
+    >
       <span className="app-header__logo">
         <img src="/triplanio-logo.svg" alt="Triplanio" />{/* i18n-ignore — имя бренда в alt */}
       </span>
@@ -30,6 +36,11 @@ export function BrandSlot({ onClick, title, back = false }) {
       )}
     </button>
   );
+  // Подсказка — примитив ДС, а не браузерный `title`: тот рисуется системой,
+  // приезжает с задержкой в секунду и не знает ни темы, ни типографики. `block`
+  // обязателен — обёртка стоит колонкой в рейле и без него сожмётся по контенту.
+  // Пузырь снизу: слот прижат к верхней кромке, сверху ему места нет.
+  return title ? <Tooltip content={title} side="bottom" block>{slot}</Tooltip> : slot;
 }
 
 /**

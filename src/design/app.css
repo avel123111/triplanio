@@ -1645,7 +1645,10 @@ h4,
    ============================================================ */
 .app-side {
   width: var(--rail-w); flex: none; align-self: stretch;
-  display: flex; flex-direction: column; padding: 0 var(--sp-2) var(--sp-3);
+  /* Боковых полей у колонки нет: их съедала бы ширина подписи, а она в 70 px и
+     так на пределе — с полем «Календарь» и «Документы» ломались на две строки,
+     а ряд пунктов терял ровный ритм. Поле пункта (4 px) остаётся его паддингом. */
+  display: flex; flex-direction: column; padding: 0 0 var(--sp-3);
   background: var(--nav-bg); color: var(--nav-ink);
   /* Граница — ВНУТРЕННЕЙ тенью, а не бордером: бордер съел бы пиксель из
      --rail-w, центр рейла уехал бы на пол-пикселя, и бренд-слот перестал бы
@@ -1684,7 +1687,7 @@ h4,
 .app-side__item {
  position: relative;
  display: flex; flex-direction: column; align-items: center; justify-content: center;
- gap: var(--sp-1); padding: var(--sp-3) 0; min-height: 52px; border-radius: var(--r-md);
+ gap: var(--sp-1); padding: var(--sp-2); min-height: 52px; border-radius: var(--r-xs);
  color: var(--nav-ink);
  border: none; background: transparent; width: 100%; text-align: center;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
