@@ -4480,11 +4480,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Облик — как у остальных контролов над картой (`.map-back`): поверхность на
    тон приложения с рамкой и тенью, а не заливка брендом. Кнопка служебная и не
    имеет права спорить с контентом.
-   visual-diff-exempt: .mapshell__toggle box-shadow — служебный контрол над картой, как .map-back */
+   ★ ТЕНЬ ОСТАЁТСЯ НА ЭТОМ УЗЛЕ, НО ЕМУ НУЖЕН РАДИУС КНОПКИ. Узел стал обёрткой
+   (внутри — подсказка и сама кнопка) и по-прежнему обжимает её вплотную
+   (`absolute` + авторазмер), поэтому тень ложится верно — но только если углы
+   совпадают. Радиус берётся ТЕМ ЖЕ токеном, что у кнопки (`--r-btn`), а не
+   повторяется числом. Дотягиваться селектором внутрь примитива (`.mapshell__toggle
+   .btn`) нельзя — это ровно то, что считает метрика «экран дотянулся в примитив».
+   visual-diff-exempt: .mapshell__toggle border-radius — узел стал обёрткой, тени нужен контур кнопки */
 .mapshell__toggle {
   position: absolute; top: 50%; left: var(--mapshell-panel-w);
   transform: translate(-50%, -50%); z-index: 3;
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-1); border-radius: var(--r-btn);
   transition: left var(--surface-settle, .32s) var(--surface-ease, ease);
 }
 .mapshell__panel[data-collapsed] ~ .mapshell__toggle { left: 0; transform: translate(6px, -50%); }

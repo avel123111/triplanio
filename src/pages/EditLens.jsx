@@ -1179,8 +1179,11 @@ export default function EditLens({ tripId, shell, content }) {
       panelLabel={t('planner.step_cities')}
       collapsed={collapsed}
       onCollapsedChange={setCollapsed}
-      collapseLabel={t('common.panel_collapse')}
-      expandLabel={t('common.panel_expand')}
+      /* Виджет редактора — это МАРШРУТ, и подсказка обязана называть его, а не
+         «панель»: общий текст примитива на трёх разных экранах означал бы три
+         разных предмета под одним именем. */
+      collapseLabel={t('tse.route_hide')}
+      expandLabel={t('tse.route_show')}
       detent={detent}
       onDetentChange={setDetent}
       panelOverlay={useDrawer ? (

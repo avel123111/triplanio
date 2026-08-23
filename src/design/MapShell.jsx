@@ -1,6 +1,7 @@
 // @ts-check
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Card } from './index.jsx';
+import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -220,14 +221,27 @@ export function MapShell({
               кнопку рисует шелл, а не экран. Свёрнутая панель уезжает влево, и
               та же кнопка остаётся у края карты. */}
           {onCollapsedChange && (
-            <IconBtn
-              className="mapshell__toggle"
-              icon={collapsed ? 'chev' : 'chevL'}
-              tone="outline"
-              ariaLabel={collapsed ? expandLabel : collapseLabel}
-              ariaExpanded={!collapsed}
-              onClick={() => onCollapsedChange(!collapsed)}
-            />
+            /* ★ ПОЗИЦИЮ ДЕРЖИТ ОБЁРТКА, А НЕ КНОПКА, И ЭТО НЕ УКРАШЕНИЕ.
+               `<Tooltip>` оборачивает триггер своим `<span class="tt">`, а тот
+               объявлен `position: relative` НИЖЕ по таблице стилей — то есть
+               перебил бы `absolute` у кнопки, и она уехала бы из шва в начало
+               потока. Плюс сворачивание панели ловится СОСЕДНИМ селектором
+               (`.mapshell__panel[data-collapsed] ~ .mapshell__toggle`), а сосед
+               здесь — именно этот узел. Подсказка `side="bottom"`: кнопка стоит
+               по центру шва, и пузырь снизу не накрывает карту, которую она
+               открывает. Текст даёт ЭКРАН — у планировщика сворачивается шаг, у
+               редактора маршрут, и примитив не вправе называть чужой предмет. */
+            <div className="mapshell__toggle">
+              <Tooltip content={collapsed ? expandLabel : collapseLabel} side="bottom">
+                <IconBtn
+                  icon={collapsed ? 'chev' : 'chevL'}
+                  tone="outline"
+                  ariaLabel={collapsed ? expandLabel : collapseLabel}
+                  ariaExpanded={!collapsed}
+                  onClick={() => onCollapsedChange(!collapsed)}
+                />
+              </Tooltip>
+            </div>
           )}
         </>
       ))}
