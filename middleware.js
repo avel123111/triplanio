@@ -13,6 +13,7 @@ const OG_HTML = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="robots" content="noindex">
   <title>You've been invited to a Triplanio trip</title>
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Triplanio">
