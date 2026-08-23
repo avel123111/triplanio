@@ -363,6 +363,13 @@ export default function EditLens({ tripId, shell, content }) {
   // задержкой, а иногда никогда». `isDark`, а не `theme`: последний бывает
   // `system`, и сравнение с 'dark' даёт светлую карту на тёмной ОС.
   const { isDark: isDarkTheme } = useTheme();
+  // ★ ЖИЛЬЁ И АКТИВНОСТИ — ТОЛЬКО ТАМ, ГДЕ ЕСТЬ КОЛОНКИ. На телефоне виджет
+  // уезжает в шит шириной с экран: шесть колонок туда не помещаются, имена
+  // городов усекаются до «Петропа…», а даты переносятся на вторую строку. До
+  // эпика этих плиток в мобильной раскладке не было вовсе — и это было верно.
+  // Не РЕНДЕРИМ, а не прячем стилем: скрытая ячейка всё равно занимала бы свою
+  // колонку, и сетка осталась бы шестиколоночной.
+  const showCols = !isSheet;
   // Виджет редактора: свёрнут ли он (десктоп) и на каком детенте стоит шит
   // (телефон). Оба — состояние ЭКРАНА, а не шелла: шелл раскладывает, экран
   // помнит. Стартовый детент — средний: карта видна, список читается.
@@ -1072,13 +1079,17 @@ export default function EditLens({ tripId, shell, content }) {
           {/* Шапка колонок. Сетку она НЕ объявляет — берёт ту же `--te-cols`, что
               и ряд: две копии шаблона разъехались бы на первой же правке. Первый
               заголовок сам встаёт в третью колонку, поэтому пустых ячеек под грип
-              и узел здесь нет. */}
+              и узел здесь нет.
+              На телефоне колонок нет — значит нет и шапки: не скрыта, а НЕ
+              отрисована (см. `showCols`). */}
+          {showCols && (
           <div className="te-thead">
             <Trunc as="span" className="te-th">{t('tse.col_destination')}</Trunc>
             <Trunc as="span" className="te-th te-th--c">{t('tse.col_nights')}</Trunc>
             <Trunc as="span" className="te-th te-th--c">{t('tse.col_stay')}</Trunc>
-            <Trunc as="span" className="te-th te-th--c">{t('budget.source_activity')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c">{t('tse.col_activity')}</Trunc>
           </div>
+          )}
           <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
               const next = displayNodes[displayNodes.indexOf(n) + 1];
@@ -1096,14 +1107,14 @@ export default function EditLens({ tripId, shell, content }) {
                 body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeCity(n.id)} />;
               } else if (n.kind === 'waypoint') {
                 const aa = actsFor(n.id);
-                body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
+                body = <GridNode showCols={showCols} seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
                   onOpenCity={() => openCity(n.id)}
                   onAct={() => (aa.length ? openCity(n.id) : createBooking('activity', n))}
                   onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
                   drag={dragProps} />;
               } else {
                 const h = hotelFor(n.id); const aa = actsFor(n.id);
-                body = <GridNode seg={n} stayNum={stayNumById[n.id]} cityConf={cityConflicts(n.id)}
+                body = <GridNode showCols={showCols} seg={n} stayNum={stayNumById[n.id]} cityConf={cityConflicts(n.id)}
                   hotel={h} hotelWarn={hotelWarnId(h?.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
                   onOpenCity={() => openCity(n.id)}
                   onHotel={() => (h ? openEvent('hotel', h.id) : createBooking('hotel', n))}
@@ -1298,11 +1309,11 @@ function ActCell({ count, warn, onClick }) {
  * `hotel`/`stayNum`/`hotelWarn`/`onHotel` не передаёт вовсе. Остальные уходят в
  * безусловно отрендеренные узлы и обязательны.
  *
- * @param {{ seg: any, stayNum?: any, cityConf: any, hotel?: any, hotelWarn?: any,
+ * @param {{ showCols?: boolean, seg: any, stayNum?: any, cityConf: any, hotel?: any, hotelWarn?: any,
  *           acts?: any[], actWarn: any, onOpenCity: any, onHotel?: any, onAct: any,
  *           onNightsMinus: any, onNightsPlus: any, drag: any }} p
  */
-function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
+function GridNode({ showCols = true, seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
   const t = useT();
   const { lang } = useI18n();
   const stop = (e) => e.stopPropagation();
@@ -1329,8 +1340,8 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled variant="bare" />
         {/* У пересадки жилья нет — но колонка есть: пустая ячейка держит сетку,
             иначе активности уехали бы в колонку жилья и разъехались с шапкой. */}
-        <div className="te-cell te-cell--hotel" />
-        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+        {showCols && <div className="te-cell te-cell--hotel" />}
+        {showCols && <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>}
       </CityRow>
     );
   }
@@ -1342,8 +1353,8 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       conf={<Conf n={cityConf} />}
       dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
       <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} variant="bare" />
-      <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
-      <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+      {showCols && <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>}
+      {showCols && <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>}
     </CityRow>
   );
 }

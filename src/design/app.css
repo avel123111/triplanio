@@ -3768,6 +3768,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 @media (max-width: 640px) {
   .app-header__account { display: none; }
+  /* ★ НА ТЕЛЕФОНЕ КОЛОНОК ЖИЛЬЯ И АКТИВНОСТЕЙ НЕТ — их там и не рендерят
+     (`showCols`). Шаблон обязан сжаться следом: оставь шесть треков, и две
+     пустые колонки продолжали бы съедать ~120px, ради которых имя города и
+     усекалось до «Петропа…».
+     visual-diff-exempt: .te-table {@media (max-width: 640px)} --te-cols — на телефоне ряд четырёхколоночный
+     visual-diff-exempt: .te-thead {@media (max-width: 640px)} --te-cols — то же */
+  .te-table, .te-thead { --te-cols: 16px 28px minmax(0,1fr) auto; }
   .trip-screen-body { padding-bottom: 96px !important; }
   .trip-screen-body--flush { padding-bottom: 0 !important; }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
@@ -5674,22 +5681,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        и колонка «Ночи» у шапки (ширина слова) не совпадала бы с колонкой
        степпера у ряда. Заголовок стоял бы мимо своей ячейки — молча, без
        падения и без красного гарда. Поймано замером, а не глазом.
-       ★★ ШИРИНУ ДИКТУЕТ НЕ ПЛИТКА, А ЗАГОЛОВОК. Первая редакция взяла ширину
-       контрола (44px) — и метки «Жильё»/«Активность» вылезли из своих колонок,
-       налезли друг на друга, а последняя обрезалась краем виджета. Колонка
-       обязана вмещать САМОЕ ШИРОКОЕ, что в ней стоит, а это подпись: замерено —
-       «Активность» просит 91px, степпер ночей 97px. Отсюда 96 на все три
-       хвостовые колонки, и переменная поэтому ОДНА: разные имена при одном
-       значении — это приглашение развести их «на глаз». */
-    .te-table, .te-thead { --te-pad-x: 13px; --te-w-col: 96px; --te-cols: 16px 28px minmax(0,1fr) var(--te-w-col) var(--te-w-col) var(--te-w-col); }
-    .te-row { position: relative; grid-template-columns: var(--te-cols); row-gap: 0; column-gap: 12px; align-items: center; padding: 12px var(--te-pad-x); border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+       ★★ ШИРИНУ ДИКТУЕТ НЕ ПЛИТКА, А ЗАГОЛОВОК — И ЭТО ЖЕ ЗАДАЁТ ПЛОТНОСТЬ
+       ГРУППЫ. Первая редакция взяла ширину контрола (44px), и подписи вылезли из
+       колонок. Вторая взяла ширину самой длинной подписи (96px) — подписи целы,
+       но «ночи · жильё · досуг» расползлись на 312px.
+       Замерено (px, шрифт шапки): степпер ночей 97 · «Жильё» 53 · «Estancia» 63 ·
+       «Активность» 91 · «Alojamiento» 89 · «Досуг» 45 · «Ocio» 33 · «Activity» 56.
+       Отсюда 64: в неё влезают ВСЕ подписи трёх локалей, и группа сжимается до
+       240px. Держать 96 пришлось бы ради двух слов — «Активность» и
+       «Alojamiento», — поэтому у колонки активностей появилась СВОЯ короткая
+       подпись (`tse.col_activity`), а испанское «жильё» стало «Estancia».
+       Колонка ночей шире остальных: её ширину диктует не подпись, а степпер. */
+    .te-table, .te-thead { --te-pad-x: 13px; --te-gap: 8px; --te-w-nights: 96px; --te-w-cell: 64px; --te-cols: 16px 28px minmax(0,1fr) var(--te-w-nights) var(--te-w-cell) var(--te-w-cell); }
+    .te-row { position: relative; grid-template-columns: var(--te-cols); row-gap: 0; column-gap: var(--te-gap); align-items: center; padding: 12px var(--te-pad-x); border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     /* Шапка колонок: та же сетка, тот же зазор, те же поля по бокам, что у ряда.
        Первый заголовок сам встаёт в третью колонку — пустых ячеек под грип и
        узел в разметке нет. */
     /* Боковая рамка — ПРОЗРАЧНАЯ И РОВНО ТА ЖЕ, что у ряда (`border: 1px`).
        Без неё коробка шапки на 2px шире, колонка имени забирает разницу, и все
        заголовки уезжают от своих ячеек. Замерено: расхождение 1…2px. */
-    .te-thead { display: grid; grid-template-columns: var(--te-cols); column-gap: 12px; padding: 0 var(--te-pad-x) var(--sp-3); border-inline: 1px solid transparent; }
+    .te-thead { display: grid; grid-template-columns: var(--te-cols); column-gap: var(--te-gap); padding: 0 var(--te-pad-x) var(--sp-3); border-inline: 1px solid transparent; }
     .te-thead .te-th:first-child { grid-column: 3; }
     /* `min-width: 0` — чтобы длинная локаль усеклась многоточием внутри своей
        колонки, а не вылезла за неё и не съехала на соседнюю. */
@@ -9886,13 +9897,18 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .map-back {@media (max-width: 960px)} display — граница раскладки сведена к одной (640): планшетного режима у приложения нет
    visual-diff-exempt: .mapshell__toggle box-shadow — узел стал обёрткой подсказки — тень и радиус остались на нём
    visual-diff-exempt: .t-meta {@media (max-width: 960px)} display — граница раскладки сведена к одной (640): планшетного режима у приложения нет
+   visual-diff-exempt: .te-row column-gap — зазор колонок стал переменной: группа сжата с 312 до 227px
+   visual-diff-exempt: .te-table --te-gap — группа «ночи · жильё · досуг» сжата с 312 до 227px
+   visual-diff-exempt: .te-thead --te-gap — то же
+   visual-diff-exempt: .te-table --te-w-nights — ширину колонки ночей диктует степпер (97px)
+   visual-diff-exempt: .te-thead --te-w-nights — то же
+   visual-diff-exempt: .te-table --te-w-cell — 64px: влезают подписи всех трёх локалей
+   visual-diff-exempt: .te-thead --te-w-cell — то же
    visual-diff-exempt: .te-table --te-cols — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-table --te-pad-x — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
-   visual-diff-exempt: .te-table --te-w-col — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-th:first-child grid-column — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead --te-cols — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead --te-pad-x — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
-   visual-diff-exempt: .te-thead --te-w-col — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead border-inline — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead display — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead grid-column — жильё и активности вернулись в свои колонки, шапка колонок восстановлена */
