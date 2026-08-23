@@ -4038,8 +4038,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    СВОЁМ классе футера, а общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся
    на своём --wash.
    visual-diff-move: .flow-editcol .lp-f -> flow-foot */
-/* visual-diff-exempt: .flow-foot background — цвет футера несёт карточка виджета */
-.flow-foot { background: transparent; }
+/* Футер шага — БЕЗ своего фона: цвет виджета целиком на шелле (тёмная — фон
+   приложения, светлая — поверхность карточки). Селектор из ДВУХ классов не для
+   красоты: общий `.lp-f` (футер панели) несёт `--wash` и объявлен НИЖЕ по файлу,
+   поэтому при равной силе он побеждал — футер планировщика оставался серым в
+   светлой теме и #2a2937 в тёмной. У ящиков редактора `.lp-f` свой фон
+   сохраняет: там это панель внутри виджета, а не футер самого виджета.
+   visual-diff-exempt: .flow-foot background — цвет футера несёт карточка виджета */
+.lp-f.flow-foot { background: transparent; }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 /* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
