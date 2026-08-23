@@ -21,7 +21,7 @@ export function BrandSlot({ onClick, title, back = false }) {
   return (
     <button className={'app-header__brand' + (back ? ' app-header__brand--back' : '')} onClick={onClick} title={title} type="button">
       <span className="app-header__logo">
-        <img src="/triplanio-logo.svg" alt="Triplanio" />
+        <img src="/triplanio-logo.svg" alt="Triplanio" />{/* i18n-ignore — имя бренда в alt */}
       </span>
       {back && (
         <span className="app-header__brandback" aria-hidden="true">
