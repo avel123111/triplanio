@@ -919,11 +919,17 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
               <div className="pt">{t('trip_menu.free_trip_title')}</div>
               <p style={{ margin: 0 }}>{t('trip.pro_locked_lenses')}</p>
             </div>
-            {isOwner ? (
-              <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
-            ) : (
-              <Btn variant="secondary" icon="lock" onClick={() => openProUpsell({ role: proRole(isOwner), source: 'menu', ownerName, onUpgrade: openUpgrade })}>{t('trip.pro_by_owner')}</Btn>
-            )}
+            {/* Кнопка ведёт в апселл ОБОИХ: подпись разная (владелец улучшает,
+                участник просит владельца), действие одно — модалка сама решит,
+                что показать. Раньше владелец уходил в чекаут мимо неё. */}
+            <Btn
+              variant={isOwner ? 'primary' : 'secondary'}
+              icon={isOwner ? undefined : 'lock'}
+              iconRight={isOwner ? 'arrowR' : undefined}
+              onClick={() => openProUpsell({ role: proRole(isOwner), source: 'menu', ownerName, onUpgrade: openUpgrade })}
+            >
+              {isOwner ? t('trip_menu.upgrade_trip') : t('trip.pro_by_owner')}
+            </Btn>
           </Card>
         )}
         <div className="card-h">

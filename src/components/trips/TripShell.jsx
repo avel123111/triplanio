@@ -72,7 +72,6 @@ export default function TripShell({
   trip,
   section = DEFAULT_SECTION,
   myStep,
-  isOwner,
   isPro,
   proResolved = true,
   title,

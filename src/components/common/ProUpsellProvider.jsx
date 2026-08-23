@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { track } from '@/lib/analytics';
+import { proUpsellFooter } from '@/lib/proUpsell';
 
 /**
  * ProUpsellProvider — единый app-level хост Pro-апселла (TRIP-225).
@@ -35,7 +36,14 @@ export function ProUpsellProvider({ children }) {
   const openProUpsell = useCallback((opts = {}) => {
     // central feature-gate impression (Revenue funnel) — the one place the Pro
     // upsell modal opens, so paywall_viewed is captured by construction.
-    track('paywall_viewed', { feature: opts.feature || undefined, mode: opts.role || 'owner' });
+    // Поле `mode` осталось в ПРЕЖНИХ значениях ('upgrade' | 'info') намеренно: оно
+    // описывает, что человеку показали, и ряд в воронке доходов не должен
+    // оборваться из-за того, что внутри мы переименовали ось. Значение выводится
+    // из той же таблицы, что и футер — второго источника истины нет.
+    track('paywall_viewed', {
+      feature: opts.feature || undefined,
+      mode: proUpsellFooter(opts.role || 'owner') === 'upgrade' ? 'upgrade' : 'info',
+    });
     setState({
       open: true,
       role: opts.role || 'owner',

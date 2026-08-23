@@ -1237,7 +1237,6 @@ export default function TripView() {
       trip={trip}
       section={shownLens}
       myStep={myStep}
-      isOwner={isOwner}
       isPro={tripIsPro}
       proResolved={tripProResolved}
       title={trip?.title}
