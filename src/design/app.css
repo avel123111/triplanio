@@ -6803,6 +6803,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tm-manage__row.is-active .tm-manage__ico { background: var(--surface); color: var(--brand); }
 .tm-manage__row.is-active .tm-manage__chev { color: var(--brand); }
 .tm-manage__lbl { flex: 1; min-width: 0; }
+/* Апселл в шите — тот же ряд меню в Pro-цвете, что и в рейле. Правило стоит
+   ЗДЕСЬ, у родни: у `.tm-manage__row` та же специфичность, и объявленный выше
+   `--pro-ink` он перебивал просто порядком в файле — ряд выходил серым. */
+.tm-manage__row.app-side__item--pro { color: var(--pro-ink); }
+.tm-manage__row.app-side__item--pro .tm-manage__ico { background: var(--pro-soft); color: var(--pro-ink); }
 .tm-manage__chev { color: var(--muted-2); flex: none; }
 
 .tm-account {

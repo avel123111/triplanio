@@ -76,7 +76,7 @@ export default function TripSidebar({
             />
           ))}
         </div>
-        {(mgmtItems.length > 0 || canShare) && (
+        {(mgmtItems.length > 0 || canShare || showUpgrade) && (
           /* Подпись группы на 70 px не живёт — её работу делает черта, которую
              рисует сама вторая группа. Класс подписи жив: он в телефонном шите. */
           <div className="app-side__group">
@@ -92,14 +92,14 @@ export default function TripSidebar({
             {canShare && onShare && (
               <RailItem icon="share" label={t('trip.share')} onClick={onShare} />
             )}
+            {/* Апселл — ПУНКТ меню, а не баннер: тот же ряд, только в Pro-цвете,
+                и стоит он в общем списке под «Поделиться». В подвале колонки его
+                не видели: низ рейла — край экрана, туда не смотрят. */}
+            {/* i18n-ignore — «Pro» имя тарифа, не переводится */}
+            {showUpgrade && <RailItem icon="pro" label="Pro" pro onClick={onProUpsell} />}
           </div>
         )}
       </nav>
-      {/* Апселл — ПУНКТ меню, а не баннер: тот же ряд, только в Pro-цвете. Стоит
-          в подвале, вне скролла: он не часть маршрута по трипу, и список секций
-          не должен ехать, когда трип станет Pro и пункт исчезнет. */}
-      {/* i18n-ignore — «Pro» имя тарифа, не переводится */}
-      {showUpgrade && <RailItem icon="pro" label="Pro" pro onClick={onProUpsell} />}
     </aside>
   );
 }
