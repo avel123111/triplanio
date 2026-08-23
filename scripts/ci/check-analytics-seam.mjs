@@ -36,6 +36,32 @@
  *      distinct_id, and revenue filed against the wrong person is worse than
  *      revenue not filed at all.
  *
+ * Rules A–C are a banned import per file. D and E (TRIP-456) instead read WHERE
+ * a call sits — the attribution CALL SITES the unauthenticated-zone port (Ф6)
+ * rewrites Login.jsx around. Both are green today and guarded only by prose in
+ * the comments beside them; this turns that prose into a machine BEFORE the
+ * rewrite, since a rewrite is exactly when prose stops being read.
+ *
+ *   D. The ONE `supabase.auth.signUp` call carries `signup_attribution`
+ *      (TRIP-335). It is the single carrier of campaign marks across the
+ *      "confirmation email → another device" border — the link is often opened
+ *      on a phone, where the in-memory snapshot of the visit does not exist.
+ *      Drop it and the attribution of EVERY email registration dies silently.
+ *      There must be exactly ONE signUp in the browser tree: a second is a
+ *      second birthplace of an account, i.e. two different attribution stories,
+ *      so it fails on its own message. Zero means the carrier vanished (or the
+ *      seam moved) — an empty room, not "clean" (TRIP-282).
+ *
+ *   E. Every `signInWithOAuth` / `signInWithIdToken` is preceded, in the SAME
+ *      function, by `rememberAttributionForRedirect()` (TRIP-329/TRIP-335).
+ *      Each of these hands the whole document to a provider (or ends in a hard
+ *      navigation), so the in-memory snapshot dies; the stash is the carrier for
+ *      that border. A fourth provider added without the line silently loses
+ *      campaign attribution — the comment beside the three of them says exactly
+ *      that. `signInWithPassword` is deliberately NOT covered: it keeps the
+ *      document, and the hard nav after it happens once the session exists, when
+ *      there is nothing left to lose.
+ *
  * A self-consistency invariant over the whole tree (not a diff), the twin of
  * `check-invoke-seam.mjs` (2i). Tested by `check-analytics-seam.test.mjs`.
  *
@@ -132,6 +158,78 @@ function walk(dir, out = []) {
 
 const rel = (file) => file.split('\\').join('/');
 
+/**
+ * Structural view for the call-site rules (D/E): blank comment and string
+ * BODIES, length- and newline-preserving, so a brace inside a string can't skew
+ * depth and a call named in a comment can't be read as a call. Fuller than
+ * stripComments (which only kills comments): handles ' " ` and // as well.
+ */
+function maskCode(src) {
+  const out = src.split('');
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    const n = src[i + 1];
+    if (c === '/' && n === '*') {
+      let j = src.indexOf('*/', i + 2);
+      j = j === -1 ? src.length : j + 2;
+      for (; i < j; i++) if (src[i] !== '\n') out[i] = ' ';
+      continue;
+    }
+    if (c === '/' && n === '/') {
+      while (i < src.length && src[i] !== '\n') out[i++] = ' ';
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      out[i++] = ' ';
+      while (i < src.length && src[i] !== c) {
+        if (src[i] === '\\' && src[i + 1]) {
+          out[i] = ' ';
+          out[i + 1] = src[i + 1] === '\n' ? '\n' : ' ';
+          i += 2;
+          continue;
+        }
+        out[i] = src[i] === '\n' ? '\n' : ' ';
+        i++;
+      }
+      if (i < src.length) out[i++] = ' ';
+      continue;
+    }
+    i++;
+  }
+  return out.join('');
+}
+
+/** Index of the `)` matching the `(` at `open`, or -1 if unbalanced. */
+function matchParen(s, open) {
+  let d = 0;
+  for (let i = open; i < s.length; i++) {
+    if (s[i] === '(') d++;
+    else if (s[i] === ')' && --d === 0) return i;
+  }
+  return -1;
+}
+
+/** Brace-nesting depth at each index (masked source: no braces in strings). */
+function depthArray(s) {
+  const d = new Array(s.length);
+  let cur = 0;
+  for (let i = 0; i < s.length; i++) {
+    d[i] = cur;
+    if (s[i] === '{') cur++;
+    else if (s[i] === '}') cur = Math.max(0, cur - 1);
+  }
+  return d;
+}
+
+const minInRange = (arr, a, b) => {
+  let m = Infinity;
+  for (let i = a; i <= b; i++) if (arr[i] < m) m = arr[i];
+  return m;
+};
+
+const lineOf = (s, idx) => s.slice(0, idx).split('\n').length;
+
 try {
   // "Nothing to check" must never print the same verdict as "checked, clean"
   // (TRIP-282). A missing allowed file means the seam moved or the guard is being
@@ -160,17 +258,101 @@ try {
     if (offenders.length) failures.push({ rule, offenders });
   }
 
-  if (failures.length) {
+  // ── D & E — attribution call sites ────────────────────────────────────────
+  const callSiteFailures = [];
+  const browserFiles = BROWSER_ROOTS.filter(existsSync).flatMap((r) => walk(r)).map(rel);
+
+  // Rule D — the ONE birthplace of an account carries the campaign marks.
+  const SIGNUP = /\.auth\s*\.\s*signUp\s*\(/g;
+  const signups = [];
+  for (const f of browserFiles) {
+    const code = maskCode(readFileSync(f, 'utf8'));
+    for (const m of code.matchAll(SIGNUP)) {
+      const open = m.index + m[0].length - 1;
+      const close = matchParen(code, open);
+      const args = close === -1 ? code.slice(open) : code.slice(open, close + 1);
+      signups.push({ file: f, hasMarks: /signup_attribution/.test(args) });
+    }
+  }
+  if (signups.length === 0) {
+    callSiteFailures.push({
+      id: 'D',
+      title: 'no supabase.auth.signUp() found — the campaign-mark carrier vanished (or the seam moved)',
+      lines: [
+        'signUp is the single carrier of `signup_attribution` across the confirmation-email',
+        'border; with none, the attribution of every email registration is unguarded. If the',
+        'call was genuinely renamed/removed, update this guard in the same commit (TRIP-335).',
+      ],
+    });
+  } else if (signups.length > 1) {
+    callSiteFailures.push({
+      id: 'D',
+      title: `${signups.length} supabase.auth.signUp() calls — an account has ONE birthplace`,
+      lines: [
+        ...signups.map((s) => `  ✗ ${s.file}`),
+        'Two signUp sites are two different attribution stories. Keep one, in Login.jsx,',
+        'carrying `signup_attribution: getSignupMarks() || undefined` (TRIP-335).',
+      ],
+    });
+  } else if (!signups[0].hasMarks) {
+    callSiteFailures.push({
+      id: 'D',
+      title: 'supabase.auth.signUp() does not carry signup_attribution',
+      lines: [
+        `  ✗ ${signups[0].file}`,
+        'Add `signup_attribution: getSignupMarks() || undefined` to the signUp `data` — it is',
+        'the ONLY carrier of campaign marks across the confirmation-email border, read back in',
+        'AuthContext to fill users.signup_utm_* (TRIP-335). Without it email attribution dies.',
+      ],
+    });
+  }
+
+  // Rule E — every provider redirect stashes the marks first, in the same function.
+  const PROVIDER = /\.auth\s*\.\s*signInWith(?:OAuth|IdToken)\s*\(/g;
+  const REMEMBER = /rememberAttributionForRedirect\s*\(/g;
+  const uncovered = [];
+  for (const f of browserFiles) {
+    const code = maskCode(readFileSync(f, 'utf8'));
+    const depth = depthArray(code);
+    const remembers = [...code.matchAll(REMEMBER)].map((m) => m.index);
+    for (const m of code.matchAll(PROVIDER)) {
+      const at = m.index;
+      // Covered iff a rememberAttributionForRedirect() sits before this call
+      // without the brace depth ever dropping below its own level in between —
+      // i.e. they share an enclosing function (a closed `}` would drop it).
+      const covered = remembers.some((j) => j < at && minInRange(depth, j, at) >= depth[j]);
+      if (!covered) uncovered.push(`  ✗ ${f}:${lineOf(code, at)} — ${m[0].trim()}…`);
+    }
+  }
+  if (uncovered.length) {
+    callSiteFailures.push({
+      id: 'E',
+      title: 'provider sign-in without rememberAttributionForRedirect() in the same function',
+      lines: [
+        ...uncovered,
+        'Each entry that leaves the document (or ends in a hard nav) must stash the visit marks',
+        'first: call rememberAttributionForRedirect() in the same handler, BEFORE the provider',
+        'call. A fourth provider added without it silently loses campaign attribution (TRIP-329).',
+      ],
+    });
+  }
+
+  if (failures.length || callSiteFailures.length) {
     for (const { rule, offenders } of failures) {
       console.error(`::error::2j analytics seam (${rule.id}) — ${rule.title}:`);
       for (const f of offenders) console.error(`  ✗ ${f}`);
       for (const line of rule.fix) console.error(`  ${line}`);
       console.error('');
     }
+    for (const { id, title, lines } of callSiteFailures) {
+      console.error(`::error::2j analytics seam (${id}) — ${title}:`);
+      for (const line of lines) console.error(`  ${line}`);
+      console.error('');
+    }
     process.exit(1);
   }
 
-  console.log('check-analytics-seam: one door per side (events, identity, server) — OK');
+  console.log('check-analytics-seam: one door per side (events, identity, server) + attribution call sites — OK');
   process.exit(0);
 } catch (e) {
   console.error(`::error::check-analytics-seam internal error: ${e.message}`);
