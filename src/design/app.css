@@ -1622,6 +1622,13 @@ h4,
    visual-diff-exempt: .app-side__group padding-top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-side__item --badge-ring — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-header--trip {@media (max-width: 640px)} padding-left — на телефоне рейла нет, зазор шапки свой; апрув Pavel
+   visual-diff-exempt: .app-header__brand-name background — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand-name border — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand-name cursor — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__brand-name padding — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__logo flex — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__menu {@media (max-width: 640px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header__menu {@media (max-width: 880px)} display — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    ============================================================ */
 .app-side {
   width: var(--rail-w); flex: none; align-self: stretch;
