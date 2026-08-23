@@ -14,7 +14,6 @@
   "PRO_REQUIRED": "This needs a Pro trip. Upgrade to continue.",
   "RATE_LIMITED": "Too many attempts. Please try again in a moment.",
   "REMOVE_SELF": "Use \"Leave trip\" to remove yourself.",
-  "TRIP_LIMIT_REACHED": "You've reached your active-trip limit. Wait for the current one to end or upgrade to Pro.",
   "UNAUTHENTICATED": "Please sign in again.",
   "UNAUTHORIZED": "You don't have permission to do that.",
   "refusal": "This action isn't available.",
