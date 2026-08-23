@@ -19,7 +19,7 @@ import { useT } from '@/lib/i18n/I18nContext';
  */
 export function BrandSlot({ onClick, title, back = false }) {
   return (
-    <button className="app-header__brand" onClick={onClick} title={title} type="button">
+    <button className={'app-header__brand' + (back ? ' app-header__brand--back' : '')} onClick={onClick} title={title} type="button">
       <span className="app-header__logo">
         <img src="/triplanio-logo.svg" alt="Triplanio" />
       </span>

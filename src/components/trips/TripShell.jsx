@@ -61,7 +61,6 @@ function SidebarSkeleton({ onBack, backTitle }) {
       <BrandSlot onClick={onBack} title={backTitle} back />
       <nav className="app-side__nav">
         <div className="app-side__group">{[1, 2, 3, 4, 5, 6].map(row)}</div>
-        <hr className="hr" />
         <div className="app-side__group">{[7, 8, 9].map(row)}</div>
       </nav>
     </aside>

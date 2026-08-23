@@ -63,9 +63,8 @@ function RailBody({ tripId, trip, lens, onNavigate, myStep, onShare }) {
       </div>
       {(mgmtItems.length > 0 || canShare) && (
         <>
-          {/* Подпись группы на 70 px не живёт — её работу делает линия. Сам
-              класс подписи жив: его показывает телефонный шит. */}
-          <hr className="hr" />
+          {/* Подпись группы на 70 px не живёт — её работу делает черта, которую
+              рисует сама вторая группа. Класс подписи жив: он в телефонном шите. */}
           <div className="app-side__group">
             {mgmtItems.map((item) => (
               <RailItem
