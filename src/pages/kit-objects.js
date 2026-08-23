@@ -50,7 +50,10 @@
  * @type {KitObject[]} */
 export const KIT_OBJECTS = [
   // ── Компоненты ──────────────────────────────────────────────────────────
-  { id: 'pagehead', family: 'pagehead', group: 'components', css: false },
+  // `css: true` — у семьи появился первый модификатор (`pagehead--flush`:
+  // шапка без нижнего отступа там, где воздух даёт контейнер), и источник его
+  // вариантов — CSS: карты вариантов у примитива нет.
+  { id: 'pagehead', family: 'pagehead', group: 'components', prefix: 'pagehead', css: true },
   // TRIP-350: тон Stat едет союзом тонов `<Tile tone>` (event tones на .tile),
   // своих `.stat--<tone>` классов у семьи больше нет — источник вариантов = CSS
   // (`.stat--clickable`), карту STAT_TONES не заявляем.

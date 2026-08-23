@@ -1,7 +1,9 @@
 {
   "account": "Account",
+  "aria_footer": "Footer",
+  "aria_home": "Triplanio - home",
+  "aria_menu": "Menu",
   "aria_primary": "Primary",
-  "aria_social": "Social",
   "budget": "Budget",
   "notifications": "Notifications",
   "profile": "Profile",

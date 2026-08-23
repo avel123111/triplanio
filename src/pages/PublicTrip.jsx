@@ -269,7 +269,7 @@ export default function PublicTrip() {
 
   return (
     <div className="ptrip">
-      <SiteHeader lang={lang} setLang={setLang} navBase={SITE} brandHref={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="cta" navBase={SITE} brandHref={SITE} />
 
       {/* ── Masthead: full-width title + author, then a divider. ── */}
       <section className="pt-wide pt-top">

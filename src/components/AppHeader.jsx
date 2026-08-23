@@ -51,8 +51,7 @@ export function BrandSlot({ onClick, title, back = false }) {
  * bar. The trip title, meta and trip-action buttons now live here, separated
  * from the brand block and from the utility cluster by vertical dividers.
  *
- *   [menu*][back*] logo · Triplanio │ <trip title + meta> │ theme · bell · account+PRO
- *     menu  — burger, shown ONLY on mobile (opens the trip sidebar drawer)
+ *   [back*] logo · Triplanio │ <trip title + meta> │ theme · bell · account+PRO
  *     back  — round back/exit button, rendered when `onBack` is provided
  *     trip  — title / meta render only when a trip context is given
  *
@@ -65,14 +64,13 @@ export function BrandSlot({ onClick, title, back = false }) {
  *   onBrand   — click handler for the logo/brand (defaults to nav('/trips'))
  *   onBack    — optional; renders the round back button when set
  *   backTitle — tooltip / aria-label for the back button
- *   onMenu    — optional; renders the mobile-only burger (trip sidebar)
  *   title     — optional trip title (enables the trip block)
  *   meta      — optional trip meta node (e.g. dates · days · cities)
  */
 /**
  * ⚠️ Аннотация обязательна: без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ и делает
  * КАЖДЫЙ проп без дефолта ОБЯЗАТЕЛЬНЫМ, поэтому законный вызов без `onBrand` /
- * `onMenu` / `meta` (все три опциональны — у `onBrand` даже есть фолбэк
+ * `meta` (опциональны — у `onBrand` даже есть фолбэк
  * `nav('/trips')` строкой ниже) краснел TS2739 у экрана под `// @ts-check`.
  * Тот же запечатанный набор, что у компонентов `src/design/**`.
  *
@@ -84,7 +82,7 @@ export function BrandSlot({ onClick, title, back = false }) {
  *
  * Остальные три пропа того же вызова проверены тем же вопросом и необязательны
  * ПО УСТРОЙСТВУ, а не по недосмотру: `user` читается только через `?.`, `isPro`
- * стоит под `{isPro && …}`, `onBack`/`onMenu`/`meta` - под условием, `onBrand` и
+ * стоит под `{isPro && …}`, `onBack`/`meta` - под условием, `onBrand` и
  * `title` имеют фолбэк. Пограничный случай назван вслух: `isDark` выбирает
  * ЗНАЧОК (`isDark ? 'sun' : 'moon'`), без него кнопка работает, но может
  * показать не тот значок; все 7 вызывателей его передают, так что ужесточение
@@ -92,7 +90,7 @@ export function BrandSlot({ onClick, title, back = false }) {
  *
  * @param {{ user?: any, isPro?: boolean, isDark?: boolean, onToggleTheme: () => void,
  *           onBrand?: () => void, onBack?: () => void, backTitle?: string,
- *           onMenu?: () => void, title?: any, meta?: any, isTrip?: boolean }} p
+ *           title?: any, meta?: any, isTrip?: boolean }} p
  */
 export default function AppHeader({
   user,
@@ -102,7 +100,6 @@ export default function AppHeader({
   onBrand,
   onBack,
   backTitle,
-  onMenu,
   title,
   meta,
   isTrip = false,
@@ -118,11 +115,6 @@ export default function AppHeader({
         {onBack && (
           <button className="app-header__gbtn" onClick={onBack} title={backTitle} aria-label={backTitle || t('common.back')} type="button">
             <Icon name="back" size={17} />
-          </button>
-        )}
-        {onMenu && (
-          <button className="app-header__gbtn app-header__menu" onClick={onMenu} aria-label={t('common.menu')} type="button">
-            <Icon name="list" size={18} />
           </button>
         )}
 

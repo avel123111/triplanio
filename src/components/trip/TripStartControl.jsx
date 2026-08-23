@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DateTime } from 'luxon';
 import StartCalendar from '@/components/create/StartCalendar';
-import { Popover, PopoverTrigger, PopoverContent, Sheet, Stepper } from '@/design/index';
+import { Popover, PopoverTrigger, PopoverContent, Sheet, Stepper, Tooltip } from '@/design/index';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 
@@ -54,13 +54,16 @@ export default function TripStartControl({ date, onStep, onPickDate, label, bloc
       </Popover>
     );
 
+  // Подсказка — <Tooltip> из ДС, а не браузерный `title`: у браузерного нет ни
+  // облика системы, ни поведения на фокусе, и на телефоне его не видно вовсе.
   const stepper = (
-    <Stepper
-      variant={block ? 'block' : 'bare'}
-      title={t('planner.trip_start')}
-      onMinus={() => onStep?.(-1)} minusLabel={t('planner.day_earlier')}
-      onPlus={() => onStep?.(1)} plusLabel={t('planner.day_later')}
-    >{dateBtn}</Stepper>
+    <Tooltip content={t('planner.trip_start')} block={block}>
+      <Stepper
+        variant={block ? 'block' : 'bare'}
+        onMinus={() => onStep?.(-1)} minusLabel={t('planner.day_earlier')}
+        onPlus={() => onStep?.(1)} plusLabel={t('planner.day_later')}
+      >{dateBtn}</Stepper>
+    </Tooltip>
   );
 
   return (

@@ -13,8 +13,10 @@ import { useTheme } from '@/lib/ThemeContext';
 // resize() when the panel regains size.
 export default function RouteMapCard({ visits = [], transfers = [], active = true, onOpen }) {
   const { t } = useI18n();
-  const { theme } = useTheme();
-  const colorScheme = theme === 'dark' ? 'DARK' : 'LIGHT';
+  // `isDark`, а не `theme`: последний бывает `system`, и сравнение с 'dark'
+  // давало СВЕТЛУЮ карту в тёмной теме ОС — при тёмном интерфейсе вокруг.
+  const { isDark } = useTheme();
+  const colorScheme = isDark ? 'DARK' : 'LIGHT';
   const hasRoute = (visits || []).some((v) => v?.latitude && v?.longitude);
 
   return (

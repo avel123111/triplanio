@@ -58,6 +58,7 @@ export { Cover, COVER_FALLBACK } from './Cover';
 export { Carousel } from './Carousel';
 export { Skeleton } from './Skeleton';
 export { CoverPicker } from './CoverPicker';
+export { MapShell } from './MapShell';
 export { EditableText } from './EditableText';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';

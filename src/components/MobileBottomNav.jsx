@@ -18,7 +18,7 @@
  * Подписи, иконки и активность пунктов берутся из реестра секций
  * (`src/lib/tripMenu.js`), а не переписываются здесь заново.
  */
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Icon } from '@/design/icons';
 import { Avatar, IconBtn, UnreadBadge } from '@/design/index';
@@ -146,6 +146,39 @@ export default function MobileBottomNav() {
     return () => document.documentElement.classList.remove('has-bottom-dock');
   }, [bottomOwned]);
 
+  // ★ ВЫСОТУ ДОКА ПУБЛИКУЕТ САМ ДОК — и не числом, а ИЗМЕРЕНИЕМ себя.
+  // Полосу, которую он занимает, обязаны обходить трое: отступ снизу у контента
+  // экрана, футер peek-шита и минимальный детент этого шита. Раньше каждый знал
+  // её по-своему — `calc(84px + safe-area)` в `app.css`, `60px + 8px + safe-area`
+  // здесь и `const NAV_DOCK_PX = 68` в JS линзы карты, причём последний терял
+  // safe-area и сажал футер шита под домашнюю полоску. Теперь источник один, и
+  // он не число: если док станет выше, все трое узнают об этом сами.
+  // Прецедент рядом — класс `has-bottom-dock`: док уже сообщает о себе корню.
+  const navRef = useRef(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    const el = navRef.current;
+    if (hidden || !el) { root.style.removeProperty('--nav-dock-h'); return undefined; }
+    const publish = () => {
+      const h = Math.round(el.getBoundingClientRect().height);
+      root.style.setProperty('--nav-dock-h', `${h > 0 ? h : 0}px`);
+    };
+    publish();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null;
+    // ★ border-box, А НЕ content-box (дефолт). Полоса дока растёт ИМЕННО
+    // отступом — `padding-bottom: env(safe-area-inset-bottom)`, — а content-box
+    // на смену отступа не реагирует вовсе: на телефоне с домашней полоской
+    // токен молча остался бы прежним. Поймано подстановкой отступа на живом
+    // экране: нав 68 → 102, токен стоял на 68.
+    if (ro) ro.observe(el, { box: 'border-box' });
+    window.addEventListener('resize', publish);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', publish);
+      root.style.removeProperty('--nav-dock-h');
+    };
+  }, [hidden, tripNav]);
+
   if (hidden) return null;
 
   const avatarEl = (
@@ -166,7 +199,7 @@ export default function MobileBottomNav() {
       );
     });
     return (
-      <nav className="mbnav" aria-label={t('nav.trips')}>
+      <nav className="mbnav" ref={navRef} aria-label={t('nav.trips')}>
         <div className="mbnav__dock">
           {sectionItems(DOCK_SECTIONS.left)}
           <span className="mbnav__center">
@@ -181,7 +214,7 @@ export default function MobileBottomNav() {
 
   // App (non-trip) variant.
   return (
-    <nav className="mbnav" aria-label={t('nav.trips')}>
+    <nav className="mbnav" ref={navRef} aria-label={t('nav.trips')}>
       <div className="mbnav__dock mbnav__dock--app">
         <NavItem icon="grid" label={t('nav.trips')} active={path.startsWith('/trips')} onClick={() => nav('/trips')} />
         <span className="mbnav__center">

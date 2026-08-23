@@ -217,10 +217,11 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, Card, Tile, PageHead, useToast } from '../design/index';
-import { Row, Grid, Trunc, Grow } from '../design/Layout';
+import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } from '../design/index';
+import { Row, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
+import { useTheme } from '@/lib/ThemeContext';
 import LpSheet from '@/components/ui/LpSheet';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
@@ -355,16 +356,25 @@ export default function EditLens({ tripId, shell, content }) {
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
   const isSheet = useIsPhone();
-  // TRIP-161: the two-column desktop layout (>1080px, mirrors the .ts-grid CSS
-  // breakpoint). Only there do side panels open as a full-height drawer over the
-  // left column; below it we keep the in-flow swap, ≤640 the bottom sheet.
-  const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1081px)').matches);
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1081px)');
-    const onChange = () => setIsWide(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  // ★ ТЕМА КАРТЫ — ИЗ КОНТЕКСТА, А НЕ ЧТЕНИЕМ DOM В РЕНДЕРЕ. Здесь стояло
+  // `document.documentElement.dataset.theme`: атрибут читается один раз при
+  // рендере и НИ НА ЧТО НЕ ПОДПИСАН, поэтому карта узнавала о смене темы только
+  // если экран перерисовывался по какой-то посторонней причине — «с большой
+  // задержкой, а иногда никогда». `isDark`, а не `theme`: последний бывает
+  // `system`, и сравнение с 'dark' даёт светлую карту на тёмной ОС.
+  const { isDark: isDarkTheme } = useTheme();
+  // ★ ЖИЛЬЁ И АКТИВНОСТИ — ТОЛЬКО ТАМ, ГДЕ ЕСТЬ КОЛОНКИ. На телефоне виджет
+  // уезжает в шит шириной с экран: шесть колонок туда не помещаются, имена
+  // городов усекаются до «Петропа…», а даты переносятся на вторую строку. До
+  // эпика этих плиток в мобильной раскладке не было вовсе — и это было верно.
+  // Не РЕНДЕРИМ, а не прячем стилем: скрытая ячейка всё равно занимала бы свою
+  // колонку, и сетка осталась бы шестиколоночной.
+  const showCols = !isSheet;
+  // Виджет редактора: свёрнут ли он (десктоп) и на каком детенте стоит шит
+  // (телефон). Оба — состояние ЭКРАНА, а не шелла: шелл раскладывает, экран
+  // помнит. Стартовый детент — средний: карта видна, список читается.
+  const [collapsed, setCollapsed] = useState(false);
+  const [detent, setDetent] = useState(1);
   // A11y: when an in-place left panel opens, move focus into it (its back button
   // if present) so keyboard/SR users land in the new context; Esc closes it.
   const leftPaneRef = useRef(null);
@@ -981,13 +991,32 @@ export default function EditLens({ tripId, shell, content }) {
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
-  // TRIP-161: on the desktop two-column layout every side panel EXCEPT "add
-  // city" opens as a full-height drawer over the left column (route rail stays
-  // mounted underneath; the map keeps interactive — no scrim). Add-city and the
-  // ≤1080 / ≤640 fallbacks keep swapping the rail in place.
+  // TRIP-161: каждая боковая панель КРОМЕ «добавить город» открывается ящиком во
+  // всю высоту виджета (рельс маршрута остаётся под ним, карта продолжает
+  // кликаться — скрима нет). «Добавить город» подменяет содержимое виджета: это
+  // продолжение того же списка, а не карточка объекта.
+  //
+  // Брейкпоинта 1081 здесь больше нет. Он делил десктоп на «ящик» и «панель
+  // вместо колонки» — то есть был третьей раскладкой у экрана, у которого их и
+  // так две. Теперь их ровно две, и границу проводит шелл: десктоп — виджет,
+  // телефон — шит.
   const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
-  const useDrawer = isWide && isDrawerPanel && !!leftPanelEl;
+  const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
+
+  // ПЛАШКА ГОРОДА НА КАРТЕ — та же, что в линзе карты: следует за наведением, а
+  // без него за выбранным городом. Ховер работает В ОБЕ СТОРОНЫ: ряд списка
+  // подсвечивает маркер (`hoveredVisitId`), маркер подсвечивает ряд
+  // (`onCityHover` → тот же `hoveredNodeId`). Раньше связь была односторонней:
+  // с карты в список ничего не приходило.
+  const badgeNode = draft.nodes.find((n) => n.id === (hoveredNodeId || selectedNodeId)) || null;
+  const cityBadge = badgeNode?.latitude != null ? {
+    lng: badgeNode.longitude,
+    lat: badgeNode.latitude,
+    countryCode: badgeNode.country_code,
+    name: badgeNode.city_name,
+    dates: formatDateRange(badgeNode.start_date, badgeNode.end_date, (iso) => fmtD(iso, lang)),
+  } : null;
 
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
   // the whole itinerary by ±1 day; tapping the date opens a calendar to jump to
@@ -1017,39 +1046,50 @@ export default function EditLens({ tripId, shell, content }) {
   // выезжающий `.ts-drawer` и ДВА инстанса TripSidebar - для рельса и для
   // ящика. Телефонного шита меню у неё не было вовсе, поэтому на ≤640 меню
   // редактора вело себя не так, как на всех остальных экранах трипа.
-  return (
-      <div className="ts-grid">
-        {/* LEFT - bordered container (same 14px inset / radius as the map box on
-            the right). The "Маршрут" header is the container's header; an open
-            side panel fills the same box. */}
-        <div className="ts-col-left" style={{ position: 'relative', minWidth: 0, display: 'flex', minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-leftbox">
-          <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1} onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
-          {/* Desktop (>1080): "add city" replaces the column; other panels open as
-              a drawer overlay (below) and the rail stays here. ≤1080: the panel
-              replaces the column. ≤640: the column keeps the cities list and the
-              panel opens as a Radix bottom-sheet (rendered below). */}
-          {(!isSheet && !useDrawer && leftPanelEl) || (<>
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'transparent' }}>
-          {/* Container header — канон `PageHead` (как на Budget): заголовок «Маршрут»
-              + сводка маршрута сабтитлом (реюз totalNights/cityCount/dateRange, без
-              новой логики), степпер старта трипа — в слот actions вместо кнопок.
-              Скроллится ВМЕСТЕ со списком (не sticky); левая панель заменяет колонку. */}
-          <PageHead
-            title={t('planner.step_cities')}
-            subtitle={[
-              totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
-              cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
-              dateRange && dateRange !== '-' ? dateRange : null,
-            ].filter(Boolean).join(' · ') || undefined}
-            actions={startDateControl}
-          />
-          <Grid className="te-thead" style={{ padding: '0 4px 6px' }}>
-            <Trunc as="span" className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</Trunc>
-            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</Trunc>
-            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</Trunc>
-            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</Trunc>
-          </Grid>
+  // ★ РАСКЛАДКА — ОБЩИЙ <MapShell>, ТОТ ЖЕ, ЧТО У ПЛАНИРОВЩИКА И ЛИНЗЫ КАРТЫ.
+  // До этого редактор был ТРЕТЬЕЙ рукописной копией «карта + панель»: своя сетка
+  // `.ts-grid`, свой брейкпоинт 1080, своя коробка карты с отступом 14px — и своё
+  // представление о том, где карта заканчивается. На телефоне карты не было
+  // ВОВСЕ (её прятал CSS), то есть редактор маршрута работал без карты маршрута.
+  //
+  // Теперь: карта во всю свободную площадь, редактор — плавающий виджет слева со
+  // сворачиванием, на телефоне тот же виджет уезжает в шит с тремя детентами.
+  const routeHead = (
+    <PageHead
+      /* Воздух снизу даёт слот шапки шелла — модификатор снимает собственный
+         отступ примитива, иначе они складываются. */
+      className="pagehead--flush"
+      title={t('planner.step_cities')}
+      subtitle={[
+        totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
+        cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
+        dateRange && dateRange !== '-' ? dateRange : null,
+      ].filter(Boolean).join(' · ') || undefined}
+      actions={startDateControl}
+    />
+  );
+
+  // Тело виджета: список маршрута ЛИБО панель, подменяющая его («добавить
+  // город»). Ключ на обёртке перезапускает анимацию появления при смене.
+  const routeBody = (
+    <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1}
+      onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade">
+      {(!isSheet && !useDrawer && leftPanelEl) || (
+        <>
+          {/* Шапка колонок. Сетку она НЕ объявляет — берёт ту же `--te-cols`, что
+              и ряд: две копии шаблона разъехались бы на первой же правке. Первый
+              заголовок сам встаёт в третью колонку, поэтому пустых ячеек под грип
+              и узел здесь нет.
+              На телефоне колонок нет — значит нет и шапки: не скрыта, а НЕ
+              отрисована (см. `showCols`). */}
+          {showCols && (
+          <div className="te-thead">
+            <Trunc as="span" className="te-th">{t('tse.col_destination')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c">{t('tse.col_nights')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c">{t('tse.col_stay')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c">{t('tse.col_activity')}</Trunc>
+          </div>
+          )}
           <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
               const next = displayNodes[displayNodes.indexOf(n) + 1];
@@ -1067,14 +1107,14 @@ export default function EditLens({ tripId, shell, content }) {
                 body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeCity(n.id)} />;
               } else if (n.kind === 'waypoint') {
                 const aa = actsFor(n.id);
-                body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
+                body = <GridNode showCols={showCols} seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
                   onOpenCity={() => openCity(n.id)}
                   onAct={() => (aa.length ? openCity(n.id) : createBooking('activity', n))}
                   onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
                   drag={dragProps} />;
               } else {
                 const h = hotelFor(n.id); const aa = actsFor(n.id);
-                body = <GridNode seg={n} stayNum={stayNumById[n.id]} cityConf={cityConflicts(n.id)}
+                body = <GridNode showCols={showCols} seg={n} stayNum={stayNumById[n.id]} cityConf={cityConflicts(n.id)}
                   hotel={h} hotelWarn={hotelWarnId(h?.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
                   onOpenCity={() => openCity(n.id)}
                   onHotel={() => (h ? openEvent('hotel', h.id) : createBooking('hotel', n))}
@@ -1128,44 +1168,24 @@ export default function EditLens({ tripId, shell, content }) {
               </div>
             </Card>
           )}
-          </div>{/* /ts-leftscroll */}
-          </>)}
-          </div>{/* /te-panefade */}
+        </>
+      )}
+    </div>
+  );
 
-          {/* Mobile: the editor panel opens as a bottom sheet — the SAME shared
-              LpSheet shell as the global EventDrawerHost (native swipe +
-              keyboard-safe reposition; backdrop / swipe-down / Back all close). */}
-          {isSheet && leftPanelEl && (
-            <LpSheet open onClose={closeLeftPanel} title={t('trip.edit_structure')}>
-              {leftPanelEl}
-            </LpSheet>
-          )}
-          </div>{/* /ts-leftbox */}
-
-          {/* TRIP-161: side-panel DRAWER (city / fork / event view+edit) on the
-              desktop two-column layout. Overlays the left column edge-to-edge, up
-              to the map — no scrim, so the map (and its hotel pins) stays
-              interactive. The route rail stays mounted underneath. */}
-          {useDrawer && (
-            <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
-              {leftPanelEl}
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT - full-height map (always on; hidden on phones via CSS);
-            warnings live in a collapsible overlay widget */}
-        <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-map" style={{ position: 'absolute', inset: 14, left: 7, overflow: 'hidden', borderRadius: 'var(--r-md)', border: '1px solid var(--line)' }}>
-            {/* `visitsById` тут не было смысла: MapView его не объявляет и остаток
-                пропов не собирает, а во всём репо это было единственное вхождение -
-                то есть карта его никогда не читала, а Object.fromEntries считался
-                на каждый рендер редактора. Нашла прагма. */}
-            <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+  return (
+    <MapShell
+      map={(camera, slotPx) => (
+            <MapView camera={camera} slotPx={slotPx} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+              /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
+                 «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
+              cooperativeGestures={false}
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
               hoveredVisitId={hoveredNodeId}
+              cityBadge={cityBadge}
+              onCityHover={(pts) => setHoveredNodeId(pts ? ((pts || []).find((x) => !isAnchor(x)) || pts[0])?.id ?? null : null)}
               selectedLegKey={selectedLegKey}
               hideRoute={isHotelPick}
               hotelPins={hotelPins}
@@ -1173,10 +1193,32 @@ export default function EditLens({ tripId, shell, content }) {
               hoveredHotelId={stayHoveredId}
               onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
               onHotelHover={setStayHoveredId}
-              colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
-          </div>
-          {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
-          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
+              colorScheme={isDarkTheme ? 'DARK' : 'LIGHT'} />
+      )}
+      panelHeader={routeHead}
+      panel={routeBody}
+      panelLabel={t('planner.step_cities')}
+      collapsed={collapsed}
+      onCollapsedChange={setCollapsed}
+      /* Виджет редактора — это МАРШРУТ, и подсказка обязана называть его, а не
+         «панель»: общий текст примитива на трёх разных экранах означал бы три
+         разных предмета под одним именем. */
+      collapseLabel={t('tse.route_hide')}
+      expandLabel={t('tse.route_show')}
+      detent={detent}
+      onDetentChange={setDetent}
+      panelOverlay={useDrawer ? (
+        /* Ящик города/события во всю высоту ВИДЖЕТА: карта под ним остаётся
+           кликабельной (скрима нет), рельс маршрута — смонтированным. */
+        <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
+          {leftPanelEl}
+        </div>
+      ) : null}
+    >
+      {/* Предупреждения: круглый FAB со счётчиком, поверх карты. Привязан к
+          СВОБОДНОМУ окну (переменные шелла), поэтому на телефоне встаёт над
+          шитом, а не под ним. */}
+      <div className="ts-warnfab">
             {showWarn && issues.length > 0 && (
               /* TRIP-343 объект 2 (канал 3): скин поверхности (--surface+рамка+радиус)
                  снят с инлайна на Card; тень поповера (--sh-3) остаётся инлайном (высота). */
@@ -1198,10 +1240,19 @@ export default function EditLens({ tripId, shell, content }) {
                 <Badge variant="count">{issues.length > 99 ? '99+' : issues.length}</Badge>
               )}
             </IconBtn>
-          </div>
-        </div>
       </div>
+
+      {/* Телефон: панель открывается тем же общим шитом, что и глобальный
+          EventDrawerHost (родной свайп, безопасная перестановка под клавиатуру,
+          закрытие по фону / свайпу вниз / Back). */}
+      {isSheet && leftPanelEl && (
+        <LpSheet open onClose={closeLeftPanel} title={t('trip.edit_structure')}>
+          {leftPanelEl}
+        </LpSheet>
+      )}
+    </MapShell>
   );
+
 }
 
 
@@ -1209,31 +1260,43 @@ export default function EditLens({ tripId, shell, content }) {
 function Conf({ n }) {
   const t = useT();
   if (!n) return null;
-  return <Row as="span" inline gap="g1" className="te-warnbadge" title={t('tse.conflicts_n', { n })}><Icon name="warning" size={10} /> {n}</Row>;
+  return (
+    <Tooltip content={t('tse.conflicts_n', { n })}>
+      <Row as="span" inline gap="g1" className="te-warnbadge"><Icon name="warning" size={10} /> {n}</Row>
+    </Tooltip>
+  );
 }
 
 // inline hotel / activity cells (design mockup HotelCell / ActCell)
 function HotelCell({ hotel, warn, onClick }) {
   const t = useT();
   if (!hotel) return (
-    <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')} ariaLabel={t('hotel.add')} />
+    <Tooltip content={t('hotel.add')}>
+      <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} ariaLabel={t('hotel.add')} />
+    </Tooltip>
   );
   return (
-    <Chip variant="tone" square icon="bed" className={warn ? 'is-warn' : ''} onClick={onClick} title={hotel.name}>
-      {warn && <Icon name="warning" size={11} />}
-    </Chip>
+    <Tooltip content={hotel.name}>
+      <Chip variant="tone" square icon="bed" className={warn ? 'is-warn' : ''} onClick={onClick}>
+        {warn && <Icon name="warning" size={11} />}
+      </Chip>
+    </Tooltip>
   );
 }
 function ActCell({ count, warn, onClick }) {
   const t = useT();
   if (!count) return (
-    <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')} ariaLabel={t('budget.source_activity')} />
+    <Tooltip content={t('budget.source_activity')}>
+      <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} ariaLabel={t('budget.source_activity')} />
+    </Tooltip>
   );
   return (
-    <Chip variant="tone" square icon="ticket" className={warn ? 'is-warn' : ''} onClick={onClick} title={count + ''}>
-      <span className="num t-meta">{count}</span>
-      {warn && <Icon name="warning" size={11} />}
-    </Chip>
+    <Tooltip content={t('budget.source_activity')}>
+      <Chip variant="tone" square icon="ticket" className={warn ? 'is-warn' : ''} onClick={onClick}>
+        <span className="num t-meta">{count}</span>
+        {warn && <Icon name="warning" size={11} />}
+      </Chip>
+    </Tooltip>
   );
 }
 
@@ -1246,11 +1309,11 @@ function ActCell({ count, warn, onClick }) {
  * `hotel`/`stayNum`/`hotelWarn`/`onHotel` не передаёт вовсе. Остальные уходят в
  * безусловно отрендеренные узлы и обязательны.
  *
- * @param {{ seg: any, stayNum?: any, cityConf: any, hotel?: any, hotelWarn?: any,
+ * @param {{ showCols?: boolean, seg: any, stayNum?: any, cityConf: any, hotel?: any, hotelWarn?: any,
  *           acts?: any[], actWarn: any, onOpenCity: any, onHotel?: any, onAct: any,
  *           onNightsMinus: any, onNightsPlus: any, drag: any }} p
  */
-function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
+function GridNode({ showCols = true, seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
   const t = useT();
   const { lang } = useI18n();
   const stop = (e) => e.stopPropagation();
@@ -1275,8 +1338,10 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         conf={<Conf n={cityConf} />}
         dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>
         <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled variant="bare" />
-        <div className="te-cell te-cell--hotel" />
-        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+        {/* У пересадки жилья нет — но колонка есть: пустая ячейка держит сетку,
+            иначе активности уехали бы в колонку жилья и разъехались с шапкой. */}
+        {showCols && <div className="te-cell te-cell--hotel" />}
+        {showCols && <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>}
       </CityRow>
     );
   }
@@ -1288,8 +1353,8 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       conf={<Conf n={cityConf} />}
       dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
       <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} variant="bare" />
-      <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
-      <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+      {showCols && <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>}
+      {showCols && <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>}
     </CityRow>
   );
 }
@@ -1307,9 +1372,11 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   if (!t) {
     return (
       <Row justify="j-center" className="te-seam">
-        <Chip variant="placeholder" icon="plus" disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-          <span className="t-meta">{tx('tse.add_transfer')}</span>
-        </Chip>
+        <Tooltip content={`${a.city_name} → ${b.city_name}`}>
+          <Chip variant="placeholder" icon="plus" disabled={disabled} onClick={click}>
+            <span className="t-meta">{tx('tse.add_transfer')}</span>
+          </Chip>
+        </Tooltip>
       </Row>
     );
   }
@@ -1317,19 +1384,27 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   const span = t.day_span ?? 0;
   return (
     <Row justify="j-center" className="te-seam">
-      <Chip variant="tone" icon={mismatch ? 'warning' : meta.icon} className={mismatch ? 'is-warn' : ''} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-        <span className="t-meta">{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+      {/* ★ ТУЛТИПЫ ЗДЕСЬ — СОСЕДИ, А НЕ МАТРЁШКА. Вложенный `<Tooltip>` внутри
+          `<Tooltip>` показывает ОБА пузыря разом: наведение на внутренний
+          элемент не выводит указатель из внешнего, тот остаётся раскрытым, и
+          подсказки накладываются друг на друга почти в одной точке. Поэтому
+          внешняя подсказка (маршрут переезда) висит на ПОДПИСИ, а не на всём
+          чипе — тогда у ночёвки своя, и они не пересекаются. */}
+      <Chip variant="tone" icon={mismatch ? 'warning' : meta.icon} className={mismatch ? 'is-warn' : ''} disabled={disabled} onClick={click}>
+        <Tooltip content={`${a.city_name} → ${b.city_name}`}>
+          <span className="t-meta">{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        </Tooltip>
         {/* Тултип овернайта был МЁРТВ: `Icon` деструктурирует свои пропы без
             остатка, `title` до DOM не доезжал вовсе, а под ключ `tse.overnight_title`
-            написаны переводы на en/es/ru и он больше нигде не используется.
-            Носителем сделан span, а не проп `Icon`: у всех трёх веток `Icon`
-            корень - тег svg, а тултип в SVG это ДОЧЕРНИЙ элемент title, не
-            атрибут, то есть «пробросить title» в ДС - не одна строка и требует
-            апрува.
+            не было строки ни в одной локали.
             ⚠️ Угловые скобки тут писать НЕЛЬЗЯ: гард 2d читает НАПИСАНИЕ, включая
-            комментарии, и пара `<svg>` … `<title>` с текстом между ними читается
+            комментарии, и пара `svg` … `title` с текстом между ними читается
             им как сырая JSX-строка - первая редакция этого абзаца роняла CI. */}
-        {span > 0 && <span title={tx('tse.overnight_title', { count: span })}><Icon name="moon" size={11} style={{ color: 'var(--brand)' }} /></span>}
+        {span > 0 && (
+          <Tooltip content={tx('tse.overnight_title', { count: span })}>
+            <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} />
+          </Tooltip>
+        )}
         <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
       </Chip>
     </Row>

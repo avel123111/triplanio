@@ -35,7 +35,7 @@ import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { goPro } from '@/lib/goPro';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur } from '@/lib/budget/money';
 import { currencySymbol } from '@/lib/budget/currencies';
@@ -121,7 +121,7 @@ const ORPHAN_CITY = '__orphan_city__';
 // VISIT, not its label: a label frozen at save time is stuck in whatever language
 // the UI was in, and the two writers disagreed on that (TRIP-230).
 export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, open, onOpenChange, onProRefusal }) {
-  const isMobile = useIsMobile();
+  const isPhone = useIsPhone();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const isEdit = !!existing;
@@ -226,7 +226,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         {/* Обёртка остаётся ради `[data-vfield]` - по ней прокручивает к первой
             ошибке `focusField`. Красит теперь само поле. */}
         <div data-vfield="title">
-          <Input {...st('title')} value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus={!isMobile} />
+          <Input {...st('title')} value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus={!isPhone} />
         </div>
         <FieldError issues={v.displayIssues} field="title" />
       </Field>
@@ -383,7 +383,7 @@ const CAT_COLORS = CATEGORY_HEXES;
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'ticket', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 export function AddCategoryDialog({ tripId, existing, open, onOpenChange, onProRefusal }) {
-  const isMobile = useIsMobile();
+  const isPhone = useIsPhone();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   // Edit a seeded category and the field must start from what the user SEES —
@@ -434,7 +434,7 @@ export function AddCategoryDialog({ tripId, existing, open, onOpenChange, onProR
       <div className="col col--g7">
       <Field label={t('trip.title_label')} required={v.isRequired('name')}>
         <div data-vfield="name">
-          <Input {...st('name')} value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus={!isMobile} />
+          <Input {...st('name')} value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus={!isPhone} />
         </div>
         <FieldError issues={v.displayIssues} field="name" />
       </Field>
@@ -509,12 +509,12 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
 // TripView.LoadingBody и content в самом BudgetLens), поэтому «таймлайн → экран»
 // не мигает и форма совпадает с реальным экраном. TRIP-337 visual-fixes.
 export function BudgetSkeleton() {
-  const isMobile = useIsMobile();
+  const isPhone = useIsPhone();
   return (
     <div className="col col--g7 ov-anim" aria-busy="true">
       <div className="row row--j-between">
         <Skeleton w={180} h={28} r={8} />
-        {!isMobile && (
+        {!isPhone && (
           <div className="row row--g3">
             <Skeleton w={116} h={40} r="var(--r-btn)" />
             <Skeleton w={140} h={40} r="var(--r-btn)" />
@@ -525,7 +525,7 @@ export function BudgetSkeleton() {
         <Card>
           <div className="col col--g6">
             <Skeleton w="45%" h={18} r={6} />
-            <div className={isMobile ? 'col col--g6' : 'row row--g8 row--wrap'}>
+            <div className={isPhone ? 'col col--g6' : 'row row--g8 row--wrap'}>
               <Skeleton w={150} h={150} r="50%" style={{ flex: 'none' }} />
               <div className="grow col col--g4">
                 {[0, 1, 2, 3].map((i) => (
@@ -557,7 +557,7 @@ export function BudgetSkeleton() {
 export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
-  const isMobile = useIsMobile();
+  const isPhone = useIsPhone();
   // Право (editor) и владелец (owner) — из единого контекста доступа (TRIP-274
   // Ф2.2). UI прячет мутации, чтобы прямые записи не падали молчаливым 403
   // (серверная защита — edge/RLS _can_edit_trip, TRIP-124).
@@ -717,7 +717,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           навигации, «курсы» — в стат-плитке FX. */}
       <PageHead
         title={t('trip.sidebar_budget')}
-        actions={!readOnly && !isMobile && (
+        actions={!readOnly && !isPhone && (
           <>
             <Btn variant="secondary" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
             <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
@@ -729,7 +729,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         <Card>
           <CardHeader title={t('budget.by_category_title')} />
           {/* мобиль: донат сверху, легенда под ним (колонка) — иначе легенда режется */}
-          <div className={isMobile ? 'col col--g6' : 'row row--g8 row--wrap'}>
+          <div className={isPhone ? 'col col--g6' : 'row row--g8 row--wrap'}>
             <Donut
               segments={donutSegments}
               total={totalSpent}
@@ -813,8 +813,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           ariaLabel={t('budget.group_by_category')}
           value={grouping}
           onChange={setGrouping}
-          variant={isMobile ? 'fill' : 'auto'}
-          className={isMobile ? 'grow' : ''}
+          variant={isPhone ? 'fill' : 'auto'}
+          className={isPhone ? 'grow' : ''}
           options={[
             { value: 'category', label: <><Icon name="grid" size={14} />{t('budget.group_by_category')}</> },
             { value: 'city', label: <><Icon name="pin" size={14} />{t('budget.group_by_city')}</> },
@@ -822,8 +822,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         />
         {/* Распорка нужна только десктопу — толкает кнопку «Категория» вправо. На
             мобиле кнопки нет, а второй `grow` делил бы ширину с сегментом пополам. */}
-        {!isMobile && <div className="grow" />}
-        {grouping === 'category' && !readOnly && !isMobile && (
+        {!isPhone && <div className="grow" />}
+        {grouping === 'category' && !readOnly && !isPhone && (
           <Btn variant="soft" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
       </div>
@@ -867,15 +867,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         );
         return (
           <>
-            <div className={isMobile ? '' : 'grid grid--split grid--g7'}>
+            <div className={isPhone ? '' : 'grid grid--split grid--g7'}>
               <Card>
                 <div className="col col--g2">
                   {cats.map(c => {
                     const active = activeCat?.id === c.id;
                     const empty = c.itemCount === 0;
                     return (
-                      <ListRow key={c.id} variant="select" selected={active && !isMobile}
-                        role="tab" aria-selected={active} onClick={() => { setActiveCatId(c.id); if (isMobile) setCatSheet(true); }}
+                      <ListRow key={c.id} variant="select" selected={active && !isPhone}
+                        role="tab" aria-selected={active} onClick={() => { setActiveCatId(c.id); if (isPhone) setCatSheet(true); }}
                         lead={<span className="tile" style={{ background: c.color + '22', color: c.color }}><Icon name={catIcon(c)} size={17} /></span>}
                         title={<span className="row row--g4"><span className="trunc">{c.displayName}</span>{c.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</span>}
                         sub={<>{empty ? t('budget.empty_word') : `${c.itemCount} ${expensesPlural(c.itemCount)}`}{c.missingCount > 0 && <> · <span className="miss">{t('budget.no_rate_count', { n: c.missingCount })}</span></>}</>}
@@ -890,9 +890,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                   )}
                 </div>
               </Card>
-              {!isMobile && activeCat && <Card>{detailInner}</Card>}
+              {!isPhone && activeCat && <Card>{detailInner}</Card>}
             </div>
-            {isMobile && (
+            {isPhone && (
               <Sheet open={catSheet} onOpenChange={setCatSheet} title={activeCat?.displayName}>
                 {detailInner}
               </Sheet>
@@ -900,7 +900,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           </>
         );
       })() : (
-        <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc} isMobile={isMobile}
+        <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc} isPhone={isPhone}
           expensesPlural={expensesPlural} onOpen={openExpense} onAdd={openAddExpense} readOnly={readOnly} />
       )}
 
@@ -913,7 +913,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
 // ─── CityGrouping ─────────────────────────────────────────────────────────────
 
-function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onAdd, readOnly, isMobile }) {
+function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onAdd, readOnly, isPhone }) {
   const { t } = useI18n();
   // A group is keyed by city identity (`id`); `label` is what to show.
   const [activeCityId, setActiveCityId] = useState(cityGroups[0]?.id || '');
@@ -956,14 +956,14 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
   );
   return (
     <>
-      <div className={isMobile ? '' : 'grid grid--split grid--g7'}>
+      <div className={isPhone ? '' : 'grid grid--split grid--g7'}>
         <Card>
           <div className="col col--g2">
             {cityGroups.map(g => {
               const active = g.id === activeCityId;
               return (
-                <ListRow key={g.id} variant="select" selected={active && !isMobile}
-                  role="tab" aria-selected={active} onClick={() => { setActiveCityId(g.id); if (isMobile) setCitySheet(true); }}
+                <ListRow key={g.id} variant="select" selected={active && !isPhone}
+                  role="tab" aria-selected={active} onClick={() => { setActiveCityId(g.id); if (isPhone) setCitySheet(true); }}
                   lead={<span className="tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={17} /></span>}
                   title={<span className="trunc">{cityLabel(g)}</span>}
                   sub={`${g.items.length} ${expensesPlural(g.items.length)}`}
@@ -973,9 +973,9 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
             })}
           </div>
         </Card>
-        {!isMobile && <Card>{detailInner}</Card>}
+        {!isPhone && <Card>{detailInner}</Card>}
       </div>
-      {isMobile && (
+      {isPhone && (
         <Sheet open={citySheet} onOpenChange={setCitySheet} title={cityLabel(cur)}>
           {detailInner}
         </Sheet>

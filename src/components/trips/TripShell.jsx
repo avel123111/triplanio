@@ -195,7 +195,6 @@ export default function TripShell({
           backTitle={backTitle}
           // Пока грузимся, бургера нет - как и было. Открывать нечего: меню
           // ещё скелетон, а телефонный шит в этой ветке не отрисован.
-          onMenu={loading || !isPhone ? undefined : () => setSideOpen(true)}
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
           meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
         />
