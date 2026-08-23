@@ -318,6 +318,7 @@ const RECIPES = {
     { items: [it('title + actions', <PageHead title="Бюджет" actions={<><Btn variant="secondary" icon="arrowSwap">{TX.rates}</Btn><Btn variant="primary" icon="plus">{TX.add}</Btn></>} />, true)] },
     { label: 'title + subtitle', items: [it('subtitle', <PageHead title="Бюджет" subtitle="12 трат · 3 категории" />, true)] },
     { label: 'только title', items: [it('title', <PageHead title="Заголовок" />, true)] },
+    { label: 'flush — без нижнего отступа', items: [it('className="pagehead--flush"', <PageHead className="pagehead--flush" title={TX.rowTitle} subtitle={TX.rowSub} />, true)] },
   ],
   stat: () => [
     { label: 'tone (карта STAT_TONES)', items: STAT_TONES.map((t) => it(`tone="${t}"`, <Stat tone={t} icon={t === 'transfer' ? 'arrowSwap' : t === 'activity' ? 'user' : 'wallet'} label={TX.statLabel} value="724,9 тыс ₽" sub={TX.statSub} />, true)) },

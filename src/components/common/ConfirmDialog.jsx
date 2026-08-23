@@ -1,6 +1,6 @@
 import React from 'react';
 import { Btn, AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel, Sheet } from '@/design/index';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
@@ -28,14 +28,14 @@ export default function ConfirmDialog({
   onConfirm,
 }) {
   const t = useT();
-  const isMobile = useIsMobile();
+  const isPhone = useIsPhone();
   const finalConfirmLabel = confirmLabel || (singleButton ? t('common.ok') : t('common.confirm'));
   const finalCancelLabel = cancelLabel || t('common.cancel');
 
   // Mobile: render through the canonical bottom-sheet (<Sheet>) so confirms share
   // the same grip / swipe / animation as every other sheet and inherit future
   // sheet changes centrally. Desktop keeps the centred AlertDialog.
-  if (isMobile) {
+  if (isPhone) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange} title={title} titleText={title || finalConfirmLabel}>
         {description && (

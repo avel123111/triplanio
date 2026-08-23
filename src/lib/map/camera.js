@@ -12,8 +12,10 @@
 // Pairs with ./cluster.js — together they are the reusable clustering + zoom-behaviour
 // core for any future map surface. The pure duration math lives in ./calmDuration.js
 // (dependency-free → unit-testable).
-import { mapboxgl, fitToPoints, clampPadding } from '@/lib/mapbox';
+import { fitToPoints, cameraForPoints } from '@/lib/mapbox';
 import { calmDuration } from '@/lib/map/calmDuration';
+import { canFrame, getMapInsets } from '@/lib/map/insets';
+import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 
 export { calmDuration };
 
@@ -35,29 +37,50 @@ export function calmFlyTo(map, target = {}) {
   if (!map) return;
   const toZoom = target.zoom != null ? target.zoom : map.getZoom();
   const duration = calmDuration({ dZoom: toZoom - map.getZoom(), screens: centerScreens(map, target.center) });
-  map.flyTo({ ...target, duration, essential: true });
+  // Отступ передаётся ЯВНО, хотя `flyTo` без него и сохранил бы текущий: тогда
+  // правильность наводки на один город зависела бы от того, кто ходил камерой
+  // ДО этого. Здесь цель — «город по центру свободного окна», и она обязана
+  // выполняться сама по себе, а не по последствиям предыдущего вызова.
+  map.flyTo({ ...target, padding: getMapInsets(map), duration, essential: true });
 }
 
 // Fit a set of [lng,lat] points with an adaptive calm duration. The target zoom is
-// derived from cameraForBounds so the duration matches the ACTUAL zoom delta, then
-// the existing fitToPoints does the fit (single source for the fit mechanics).
+// derived from `cameraForPoints` so the duration matches the ACTUAL zoom delta, then
+// the same `fitToPoints` does the fit (single source for the fit mechanics).
 export function calmFit(map, points, opts = {}) {
   if (!map || !points || points.length === 0) return;
-  const padding = opts.padding ?? 60;
-  const maxZoom = opts.maxZoom ?? 8;
-  let toZoom = map.getZoom();
-  let center = null;
-  if (points.length === 1) {
-    toZoom = opts.singleZoom ?? 7;
-    center = points[0];
-  } else {
-    try {
-      const b = new mapboxgl.LngLatBounds(points[0], points[0]);
-      points.forEach((p) => b.extend(p));
-      const cam = map.cameraForBounds(b, { padding: clampPadding(map, padding), maxZoom });
-      if (cam?.zoom != null) { toZoom = Math.min(cam.zoom, maxZoom); center = [cam.center.lng, cam.center.lat]; }
-    } catch { /* fall back to current zoom for the estimate */ }
+  // Куда камера поедет — считает та же функция, что и сам фит: темп обязан
+  // меряться по ФАКТИЧЕСКОЙ дельте зума, а не по её оценке. Отступ (воздух плюс
+  // закрытая площадь) она берёт сама — см. `lib/map/insets.js`.
+  const cam = cameraForPoints(map, points, opts);
+  const toZoom = cam?.zoom ?? map.getZoom();
+  const duration = calmDuration({ dZoom: toZoom - map.getZoom(), screens: centerScreens(map, cam?.center ?? null) });
+  fitToPoints(map, points, { ...opts, duration });
+}
+
+/**
+ * Перекадрировать ТУ ЖЕ цель под изменившуюся закрытую площадь.
+ *
+ * ★ ПОЧЕМУ ЭТО ОТДЕЛЬНАЯ ДВЕРЬ, А НЕ `calmFit`. Здесь темп задаёт НЕ карта, а
+ * поверхность, которая поехала: шит встаёт на детент за `SURFACE_SETTLE_MS`, и
+ * камера обязана приехать вместе с ним — тем же временем и той же кривой.
+ * Адаптивный «спокойный» темп тут вреден: он растянет камеру на секунду после
+ * того, как шит уже стоит, и это читается как отставание. И перелёт всегда
+ * ровный (`linear`): дуга `flyTo` на смене отступа выглядит как рывок.
+ */
+export function reframeTo(map, points, opts = {}) {
+  if (!map) return;
+  // Свободного окна не осталось (верхний детент закрывает экран целиком) — карту
+  // не видно, и трогать камеру нельзя: см. `canFrame`.
+  const el = map.getContainer?.();
+  if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(map))) return;
+  const duration = opts.duration ?? SURFACE_SETTLE_MS;
+  const easing = (t) => surfaceEasing(t);
+  // Кадрировать нечего (пустой маршрут) — но отступ всё равно обязан доехать,
+  // иначе центр вида останется в середине КАНВАСА, а не свободного окна.
+  if (!points || points.length === 0) {
+    try { map.easeTo({ padding: getMapInsets(map), duration, easing }); } catch { /* ignore */ }
+    return;
   }
-  const duration = calmDuration({ dZoom: toZoom - map.getZoom(), screens: centerScreens(map, center) });
-  fitToPoints(map, points, { ...opts, padding, maxZoom, duration });
+  fitToPoints(map, points, { ...opts, duration, easing, linear: true });
 }
