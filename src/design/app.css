@@ -1610,8 +1610,8 @@ h4,
    visual-diff-exempt: .active box-shadow — обводка бейджа на залитом активном пункте рейла, апрув Pavel
    visual-diff-exempt: .app-side__item margin-left — бейдж непрочитанного уехал из хвоста ряда в угол иконки, апрув Pavel
    visual-diff-exempt: .badge--unread margin-left — тот же переезд бейджа в угол иконки, апрув Pavel
-   floor-exempt: classes +2 — второе лицо бренд-слота: модификатор app-header__brand--back и слой стрелки app-header__brandback; апрув Pavel
-   floor-exempt: triage +2 — те же два класса в семье `app` (она на разборе); апрув Pavel
+   floor-exempt: classes +3 — второе лицо бренд-слота (app-header__brand--back, app-header__brandback) и Pro-облик пункта меню (app-side__item--pro); апрув Pavel
+   floor-exempt: triage +3 — те же три класса в семье `app` (она на разборе); апрув Pavel
    floor-exempt: tokens +7 — геометрия хрома (--rail-w, --header-h) держит инвариант бренд-слота, пять --nav-* это ИНВЕРСНАЯ палитра рейла: глобальные --ink/--wash/--line подобраны под светлый фон и на тёмном борте не читаются; апрув Pavel
    floor-exempt: layout +4 — рейл это колонка (app-side, app-side__nav, app-side__group) и слой стрелки в слоте: примитива «вертикальная полоса навигации» в ДС нет; апрув Pavel
    visual-diff-exempt: .active --badge-ring — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
