@@ -15,7 +15,7 @@ import { useUnreadNotificationCount } from '@/lib/useNotifications';
 // в этом трипе доступно ЭТОЙ роли. Пока расчёт стоял в каждой оболочке своей
 // копией, разъехаться они могли молча — правило видно только рядом, а копии
 // живут в разных концах файла.
-function useTripMenu({ tripId, trip, isPro, proResolved }) {
+function useTripMenu({ tripId, addons, isPro, proResolved }) {
   // Ступень — из ЕДИНОГО канала права (`TripAccessProvider`), а не пропом сверху.
   // Пропом она шла через три слоя (TripView → TripShell → сюда) в обход того
   // самого контекста, который заведён, чтобы «пропов права больше не было»;
@@ -25,8 +25,8 @@ function useTripMenu({ tripId, trip, isPro, proResolved }) {
   return {
     // И аддон-гейт, и ролевой (наблюдатель видит Настройки, но не Участников —
     // TRIP-137) живут в реестре секций одним предикатом.
-    lensItems: availableSections(trip, myStep, 'lens'),
-    mgmtItems: availableSections(trip, myStep, 'manage'),
+    lensItems: availableSections(addons, myStep, 'lens'),
+    mgmtItems: availableSections(addons, myStep, 'manage'),
     canShare: clearsStep(myStep, 'participant'),
     // Апселл показывается только когда статус Pro РАЗРЕШЁН: иначе пункт моргает
     // на Pro-трипе, пока едет ответ.
@@ -34,7 +34,7 @@ function useTripMenu({ tripId, trip, isPro, proResolved }) {
     // Считаем чат только когда линза чата доступна (TRIP-208 Ф2-2b): бейдж
     // рисуется под видимым пунктом, поэтому трип без чата держит ноль подписок
     // вместо живой, которая всё равно ничего не покажет.
-    chatUnread: useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) }),
+    chatUnread: useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', addons, myStep) }),
   };
 }
 
@@ -97,12 +97,12 @@ function RailItem({ icon, label, active = false, badge = 0, pro = false, onClick
 // раскладка под палец (плитки 3-в-ряд), подписи групп и карточка апгрейда, для
 // которых на 70 px места нет. Общий у них ровно источник пунктов.
 export default function TripSidebar({
-  tripId, trip, lens, onNavigate, onShare, onBack, backTitle,
+  tripId, addons, lens, onNavigate, onShare, onBack, backTitle,
   isPro, proResolved = true, onProUpsell, loading = false,
 }) {
   const { t } = useI18n();
   const { lensItems, mgmtItems, canShare, showUpgrade, chatUnread } =
-    useTripMenu({ tripId, trip, isPro, proResolved });
+    useTripMenu({ tripId, addons, isPro, proResolved });
   // На фазе загрузки состав берётся из реестра (`loadingSections`), а не из
   // отдельного скелетон-компонента: негейтованные секции известны без данных и
   // рисуются ЖИВЫМИ — по ним можно уйти в раздел, не дожидаясь ответа.
@@ -156,13 +156,13 @@ export default function TripSidebar({
 // the open screen highlighted, management collapsed into one bordered container,
 // and an account row (moved out of the bottom nav) at the foot.
 function SidebarSheetBody({
-  tripId, trip, lens, onNavigate,
+  tripId, addons, lens, onNavigate,
   isPro, proResolved = true,
   onProUpsell, onShare, user, onAccount,
 }) {
   const { t } = useI18n();
   const { lensItems, mgmtItems, canShare, showUpgrade, chatUnread } =
-    useTripMenu({ tripId, trip, isPro, proResolved });
+    useTripMenu({ tripId, addons, isPro, proResolved });
   // Плашка «Аккаунт» ведёт во «Входящие» — на ней бейдж непрочитанных inapp-
   // уведомлений (глобальный счётчик, не про этот трип). TRIP-354.
   const inappUnread = useUnreadNotificationCount();

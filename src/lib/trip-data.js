@@ -11,6 +11,14 @@
 import { reportDataError } from './reportDataError.js';
 
 export const TRIP_SHELL_KEY = (tripId) => ['trip-shell', tripId];
+// Карточка трипа — САМОСТОЯТЕЛЬНАЯ сущность, не тонкая версия трипа. Её отдаёт
+// композит главной (`getTrips`): название, обложка, визиты, участники, роль,
+// `myStep` и включённые аддоны. Список раскладывает ответ по этим ключам
+// (`cacheTripCards`), а экран трипа читает СВОЙ ключ — он ничего не знает про
+// кэш главной, и в `TRIP_SHELL_KEY` карточка НЕ пишется никогда: это разные
+// формы, и подмена одной другой — ровно грабля TRIP-277 (тонкий payload затёр
+// общий кэш, бюджет молча опустел).
+export const TRIP_CARD_KEY = (tripId) => ['trip-card', tripId];
 export const TRIP_CONTENT_KEY = (tripId) => ['trip-content', tripId];
 
 // One key = one payload shape. Every caller of a key must request the SAME
@@ -77,6 +85,23 @@ export async function writeRows(builder, { expectRow = true } = {}) {
     throw rejected;
   }
   return data ?? [];
+}
+
+/**
+ * Разложить ответ главной по карточкам — по ключу на трип. Делает список сразу
+ * после чтения; ничего не запрашивает сам.
+ *
+ * Зачем: открывая трип с главной, экран уже знает ступень вызывающего и
+ * включённые аддоны — два факта, которые решают состав меню. Без них меню
+ * пришлось бы ждать `getTripDetails` (~400 мс платформенного пола на любой
+ * edge-вызов), и оно доезжало бы на глазах. Карточки живут своим ключом, поэтому
+ * их наличие ни на что не влияет, кроме первого кадра обвязки.
+ */
+export function cacheTripCards(qc, cards) {
+  if (!qc || !Array.isArray(cards)) return;
+  for (const card of cards) {
+    if (card?.id) qc.setQueryData(TRIP_CARD_KEY(card.id), card);
+  }
 }
 
 export function invalidateTripData(qc, tripId) {

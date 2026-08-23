@@ -18,7 +18,7 @@ import { clearsStep } from './tripStep.js';
 // Поля секции:
 //   id        — значение `?lens=`; `overview` в адрес не пишется (дефолт)
 //   group     — 'lens' (разделы трипа) | 'manage' (управление)
-//   addon     — секция видна, только если аддон трипа включён явно
+//   addon     — секция видна, только если этот аддон трипа включён явно
 //   canAccess — гейт по СТУПЕНИ доступа; ступень приезжает готовой из ответа
 //               read-двери (`getTripDetails.myStep`), сравнивается `clearsStep`.
 //               Принимает step ('owner'|'editor'|'participant'|null)
@@ -72,19 +72,26 @@ export function sectionById(id) {
   return BY_ID.get(id) || null;
 }
 
-// Доступна ли секция В ЭТОМ трипе ЭТОЙ роли. Незнакомый id недоступен всегда —
-// именно это чинит `?lens=` с опечаткой (см. resolveSection).
-export function isSectionAvailable(id, trip, myStep) {
+// Доступна ли секция при ЭТИХ аддонах и ЭТОЙ ступени. Незнакомый id недоступен
+// всегда — именно это чинит `?lens=` с опечаткой (см. resolveSection).
+//
+// Принимает ФАКТЫ (нормализованные аддоны + ступень), а не объект трипа, и это
+// не косметика: ровно эти два факта решают состав меню, и приезжают они из ДВУХ
+// источников — двери трипа и карточки главной. Приняв `trip`, реестр вынуждал бы
+// второй источник лепить трипо-подобную заглушку `{ details: { addons } }`, то
+// есть подделывать сущность ради вызова. Аддоны нормализует `normalizeAddons`
+// (`tripAddons.js`) — один предикат «включено» на оба источника.
+export function isSectionAvailable(id, addons, myStep) {
   const s = BY_ID.get(id);
   if (!s) return false;
-  if (s.addon && trip?.details?.addons?.[s.addon] !== true) return false;
+  if (s.addon && addons?.[s.addon] !== true) return false;
   if (s.canAccess && !s.canAccess(myStep)) return false;
   return true;
 }
 
-// Секции группы, доступные в этом трипе этой ступени, В ПОРЯДКЕ РЕЕСТРА.
-export function availableSections(trip, myStep, group = null) {
-  return SECTIONS.filter((s) => (group === null || s.group === group) && isSectionAvailable(s.id, trip, myStep));
+// Секции группы, доступные при этих аддонах и этой ступени, В ПОРЯДКЕ РЕЕСТРА.
+export function availableSections(addons, myStep, group = null) {
+  return SECTIONS.filter((s) => (group === null || s.group === group) && isSectionAvailable(s.id, addons, myStep));
 }
 
 // Меню на ФАЗЕ ЗАГРУЗКИ — что рисовать, пока ответ read-двери не приехал.
@@ -115,7 +122,7 @@ export function loadingSections(group) {
 // аддон, роль без права) и НЕСУЩЕСТВУЮЩАЯ (`?lens=опечатка`) одинаково падают
 // на дефолт. До реестра незнакомый id проходил гейт насквозь и не совпадал ни с
 // одной веткой рендера — экран оставался ПУСТЫМ.
-export function resolveSection(id, trip, myStep) {
-  return isSectionAvailable(id, trip, myStep) ? id : DEFAULT_SECTION;
+export function resolveSection(id, addons, myStep) {
+  return isSectionAvailable(id, addons, myStep) ? id : DEFAULT_SECTION;
 }
 

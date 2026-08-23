@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { PRO_ONLY_ADDONS } from './tripAddons.js';
+import { ADDON_KEYS, PRO_ONLY_ADDONS, getAddons, normalizeAddons } from './tripAddons.js';
 
 // Drift guard — множество Pro-аддонов живёт в ТРЁХ рантаймах (кросс-рантаймного
 // импорта нет: Vite/JS ↔ Deno/TS ↔ Postgres):
@@ -44,4 +44,37 @@ test('SQL-зеркало is_pro_addon() совпадает с фронтом', (
   const m = src.match(/is_pro_addon[\s\S]*?array\s*\[([^\]]*)\]/i);
   assert.ok(m, 'не найдено тело array[...] у is_pro_addon — гард ослеп');
   assert.deepEqual(quotedList(m[1], 'is_pro_addon'), EXPECTED);
+});
+
+
+// ── Один нормализатор на два источника ───────────────────────────────────────
+// Включённые аддоны решают состав меню трипа, а приезжают из ДВУХ мест: двери
+// трипа (`trip.details.addons`) и карточки главной (`card.addons`). Если бы
+// «включено» считалось по-разному, меню на первом кадре отличалось бы от меню на
+// втором — то самое мигание, ради которого всё затевалось. Инвариант: оба пути
+// дают побайтово один ответ.
+
+test('★ карточка и трип дают одинаковый набор аддонов', () => {
+  // В мешке НАРОЧНО есть truthy-не-true (1): если пути разойдутся хотя бы одной
+  // трактовкой «включено», тест это увидит. С однотипным {true,false} он был бы
+  // зелёным при двух разных реализациях — проверено мутацией.
+  const raw = { budget: true, chat: false, hotels_selection: 1 };
+  assert.deepEqual(normalizeAddons(raw), getAddons({ details: { addons: raw } }));
+});
+
+test('нормализатор белый: включено ТОЛЬКО при строгом true', () => {
+  for (const truthy of [1, '1', 'true', 'on', {}, []]) {
+    assert.equal(normalizeAddons({ [ADDON_KEYS.BUDGET]: truthy })[ADDON_KEYS.BUDGET], false,
+      `${JSON.stringify(truthy)} не должно включать аддон`);
+  }
+  assert.equal(normalizeAddons({ [ADDON_KEYS.BUDGET]: true })[ADDON_KEYS.BUDGET], true);
+});
+
+test('пустой/отсутствующий мешок → все аддоны выключены, ключи на месте', () => {
+  for (const empty of [undefined, null, {}]) {
+    const bag = normalizeAddons(empty);
+    for (const key of Object.values(ADDON_KEYS)) {
+      assert.equal(bag[key], false, `${key} при ${String(empty)}`);
+    }
+  }
 });
