@@ -202,6 +202,25 @@
      его в списке «НЕ ТРОГАТЬ» и падает тестом, если правило ослабить. */
   --header-bg:    var(--surface);
 
+  /* Геометрия хрома — ОДИН источник на два места. Ширина рейла и высота шапки
+     держат ИНВАРИАНТ БРЕНД-СЛОТА: знак стоит в боксе --rail-w × --header-h в
+     левом верхнем углу и вне трипа (первая ячейка шапки), и внутри трипа
+     (шапка рейла). Экраны — разные ветки роутера, узел логотипа при переходе
+     перемонтируется, поэтому «не прыгает» держится ЧИСЛАМИ, а не общим DOM:
+     разъедутся эти два значения — разъедется логотип. */
+  --rail-w:       70px;
+  --header-h:     60px;
+
+  /* Рейл трипа — ИНВЕРСНАЯ поверхность: тёмный борт в ОБЕИХ темах. Своя пара
+     фон/чернила нужна именно поэтому: глобальные --ink/--wash/--line подобраны
+     под светлый фон и на тёмном борте не читаются (тот же класс дефекта, что
+     TRIP-53: login.css перекрывал --ink глобально и красил текст в текст). */
+  --nav-bg:       #071E45;
+  --nav-ink:      rgba(255,255,255,.62);
+  --nav-ink-hi:   #FFFFFF;
+  --nav-hover:    rgba(255,255,255,.08);
+  --nav-line:     rgba(255,255,255,.13);
+
   /* Гарнитуры (TRIP-410 — единственный дом токенов шрифтов). Single-font:
      Geologica несёт и текст, и заголовки (числа — tabular-nums); JetBrains Mono —
      ТОЛЬКО коды/брони/рейсы/полисы/share-URL/email/kbd/code (V2). */
@@ -304,6 +323,15 @@
   /* Канонические поверхности — тёмная (TRIP-326): непрозрачная заливка, без
      стекла. Хром (шапка + меню трипа) сливается с фоном — граница отделяет. */
   --header-bg:    var(--bg);
+
+  /* Рейл — тёмная тема. Борт уводится ГЛУБЖЕ фона (#0c0e1c) и холоднее его:
+     иначе колонка сливается со страницей и перестаёт читаться отдельным слоем.
+     Чернила чуть тише светлых — контраст белого на тёмном и так выше. */
+  --nav-bg:       #0A1428;
+  --nav-ink:      rgba(233,238,250,.60);
+  --nav-ink-hi:   #F2F6FF;
+  --nav-hover:    rgba(255,255,255,.06);
+  --nav-line:     rgba(255,255,255,.10);
 
   /* Semantic — dark */
   --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
@@ -762,7 +790,6 @@ h4,
 .te-cityname,   /* TRIP-337: названия города (строка редактора + планировщик — общий носитель .te-cityname) → Label (был Subheading). Маршрут карты идёт своим .map-route__name, тоже Label. */
 .btn,
 .field__label,
-.app-side__item,
 .eroute p,
 .invite__tx p,
 .stepper--block .ts-startctl__date,
@@ -1125,7 +1152,8 @@ h4,
    visual-diff-exempt: .t-tiny-caps line-height — новый канон
    visual-diff-exempt: .t-tiny-caps letter-spacing — новый канон
    visual-diff-exempt: .t-tiny-caps text-transform — новый канон */
-.t-tiny { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 500; line-height: 1.3; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.t-tiny,
+.app-side__label { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 500; line-height: 1.3; letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* подпись пункта рейла — тот же мелкий ярус, без своего кегля */
 /* Переносы стат-подписей на канон Tiny Caps (гард 2p) — все намеренные, апрув Pavel:
    visual-diff-exempt: .cdu span font-size — подпись таймера Micro→Tiny Caps
    visual-diff-exempt: .k font-size — стат-подпись сводки Meta→Tiny Caps
@@ -1226,13 +1254,23 @@ h4,
    =================================================================== */
 .app-header {
   display: flex; align-items: center; gap: 14px;
-  padding: 0 18px;
+  /* Слева поля НЕТ: первым в шапке стоит бренд-слот шириной --rail-w, и его
+     ширина и есть отступ. Иначе поле сложилось бы со слотом и логотип уехал бы
+     правее того места, где он стоит внутри трипа (там слот — шапка рейла). */
+  padding: 0 18px 0 0;
   position: sticky; top: 0; z-index: var(--z-header);
   background: var(--header-bg);             /* TRIP-326: всегда непрозрачный; light=#ffffff, dark=--bg */
   color: var(--ink);
-  height: 60px; min-height: 60px;           /* фикс-высота: на неё завязаны calc(100vh - 56px) лэйауты */
-  border-bottom: 1px solid var(--line);
+  height: var(--header-h); min-height: var(--header-h);   /* фикс-высота: на неё завязан бренд-слот и лэйауты */
+  /* Нижняя граница — ВНУТРЕННЕЙ тенью, тем же приёмом, что правая граница рейла:
+     бордер съедает пиксель высоты, и знак в шапке вставал бы на пол-пикселя выше
+     знака в рейле. Линия выглядит так же, инвариант держится. */
+  box-shadow: inset 0 -1px 0 var(--line);
 }
+/* Внутри трипа шапка живёт во ВТОРОЙ колонке (правее рейла), поэтому её первый
+   элемент — заголовок трипа — должен встать туда же, где вне трипа стоит
+   вордмарк: на зазор от слота, а не в край. */
+.app-header--trip { padding-left: var(--sp-6); }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 
@@ -1245,8 +1283,17 @@ h4,
 .app-header__gbtn:hover { background: var(--wash); color: var(--ink); }
 .app-header__menu { display: none; }                /* burger — shown on mobile only */
 
-/* Brand block — logo tile + wordmark */
-.app-header__brand { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 0 0 auto; min-width: 0; }
+/* Бренд-СЛОТ — бокс --rail-w × --header-h в левом верхнем углу экрана. Один и
+   тот же элемент стоит первой ячейкой шапки (вне трипа) и шапкой рейла (внутри
+   трипа), поэтому знак не смещается при переходе между ними ни на пиксель.
+   Вордмарк — СОСЕД слота, а не его содержимое: он появляется и исчезает, слот
+   держит размер. */
+.app-header__brand {
+  position: relative; flex: 0 0 auto;
+  width: var(--rail-w); height: var(--header-h);
+  display: grid; place-items: center; cursor: pointer;
+  border: 0; background: transparent; padding: 0; color: inherit;
+}
 /* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
    поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
 .app-header__logo {
@@ -1255,7 +1302,23 @@ h4,
 }
 .app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
 .app-header__brand-name { color: var(--ink); }
-.app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
+/* Второе лицо слота — стрелка выхода из трипа. Лежит в том же боксе поверх
+   знака и проступает по наведению; правило контекстное намеренно: в шапке слот
+   это ссылка на бренд, в рейле — выход из трипа, и отдельной круглой кнопки
+   «назад» в шапке из-за этого больше нет (на телефоне рейла нет — там кнопка
+   остаётся). */
+.app-header__brandback {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  /* design-token-exempt: 5px — амплитуда подмены знака стрелкой, не шаг раскладки */
+  color: var(--nav-ink-hi); opacity: 0; transform: translateX(5px) scale(.82);
+  transition: opacity .18s ease, transform .24s var(--ease-out);
+}
+.app-side .app-header__brand { width: 100%; border-radius: var(--r-md); transition: background .2s var(--ease-out); }
+.app-side .app-header__logo { transition: opacity .18s ease, transform .24s var(--ease-out); }
+.app-side .app-header__brand:hover { background: var(--nav-hover); }
+.app-side .app-header__brand:hover .app-header__logo { opacity: 0; transform: translateX(-4px) scale(.78); }   /* design-token-exempt: 4px — та же амплитуда в обратную сторону */
+.app-side .app-header__brand:hover .app-header__brandback { opacity: 1; transform: none; }
+.app-side .app-header__brand:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
 .app-header__vdiv { width: 1px; height: 28px; background: var(--line); flex: 0 0 auto; }
@@ -1361,14 +1424,27 @@ h4,
    живая оболочка ОДНА - .trip-shell/.trip-body (TripShell); она же владеет
    колонкой меню и его off-canvas-поведением на всех экранах трипа. */
 .app-side {
-  border-right: 1px solid var(--line);
-  background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
-  height: calc(100vh - 56px);
-  padding: 16px 10px;
-  position: sticky; top: 56px;
-  overflow-y: auto;
+  width: var(--rail-w); flex: none; align-self: stretch;
+  display: flex; flex-direction: column; padding: 0 var(--sp-2) var(--sp-3);
+  background: var(--nav-bg); color: var(--nav-ink);
+  /* Граница — ВНУТРЕННЕЙ тенью, а не бордером: бордер съел бы пиксель из
+     --rail-w, центр рейла уехал бы на пол-пикселя, и бренд-слот перестал бы
+     совпадать со слотом в шапке. Инвариант положения знака важнее способа
+     нарисовать линию. */
+  box-shadow: inset -1px 0 0 var(--nav-line);
 }
-.app-side__group { margin-bottom: 14px; }
+/* Скроллятся ТОЛЬКО пункты: бренд-слот обязан оставаться на своём месте в углу
+   при любой высоте окна — это он держит инвариант положения знака. */
+.app-side__nav {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  scrollbar-width: none;
+}
+.app-side__nav::-webkit-scrollbar { display: none; }
+/* Разделитель групп — общий `.hr`, перекрашенный под тёмный борт: на 70 px
+   подпись группы не живёт, а заводить свою линию ради цвета незачем. */
+.app-side .hr { border-top-color: var(--nav-line); margin: var(--sp-3) var(--sp-6); }
+.app-side__group { display: flex; flex-direction: column; gap: var(--sp-1); }
 .app-side__group-label {
  color: var(--muted-2); padding: 10px 10px 6px;
 }
@@ -1377,22 +1453,40 @@ h4,
    меню на время загрузки, и он не кликается. Правило по элементу вместо руки в
    вызывателе - узор из шапки гарда 2l. Все живые пункты меню это <button>,
    поэтому набор объявлений на классе не меняется, только его специфичность. */
+/* Пункт рейла: иконка, под ней подпись. Высота ФИКСИРОВАНА — одно- и
+   двухстрочные подписи иначе двигали бы соседей при переключении языка. */
 .app-side__item {
- display: flex; align-items: center; gap: 10px;
- padding: 8px 10px; border-radius: var(--r-sm);
- color: var(--ink-2);
- border: none; background: transparent; width: 100%; text-align: left;
+ position: relative;
+ display: flex; flex-direction: column; align-items: center; justify-content: center;
+ gap: var(--sp-1); padding: var(--sp-3) 0; min-height: 52px; border-radius: var(--r-md);
+ color: var(--nav-ink);
+ border: none; background: transparent; width: 100%; text-align: center;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
 }
 button.app-side__item { cursor: pointer; }
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
 button.app-side__item:active { transform: scale(.985); }
-button.app-side__item:hover { background: var(--wash); }
-.app-side__item.active { background: var(--brand-soft); color: var(--brand); }
+button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink-hi); }
+.app-side__item.active { background: var(--brand); color: var(--primary-fg); }
+.app-side__item:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+/* Подпись: две строки максимум, мягкий перенос. Полное имя — в `title` пункта
+   (нативно, без своего пузыря): длинные локали иначе режутся многоточием. */
+.app-side__label {
+ /* `overflow-wrap: anywhere` — не украшение: без него длинное слово («Планирование»,
+    «Presupuesto») не переносится вовсе и обрезается на первой строке. Мягкий
+    перенос идёт первым, жёсткий — страховка на случай, когда словаря нет
+    (документ отдаётся с lang="en", а подписи бывают на трёх языках). */
+ max-width: 100%; hyphens: auto; overflow-wrap: anywhere;
+ display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 /* Бейдж непрочитанного чата в пункте сайдбара — красный канон `.badge--unread`,
    позиция ко-селектором (ряд флексовый, толкаем вправо). TRIP-354: свой класс
    `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
-.app-side__item > .badge--unread { margin-left: auto; }
+.app-side__item > .badge--unread {
+ position: absolute; top: var(--sp-1); right: var(--sp-5);
+ box-shadow: 0 0 0 2px var(--nav-bg);          /* обводка цветом борта — иначе бейдж сливается с иконкой */
+}
+.app-side__item.active > .badge--unread { box-shadow: 0 0 0 2px var(--brand); }
 
 
 .app-main {
@@ -3350,11 +3444,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* TRIP-211: the header is IDENTICAL to desktop at every width — same frosted
      glass (base `@supports` rule), same 60px height, same 18px padding / 14px gap.
      No mobile size or background override here, so it never changes by width. */
-  /* Non-trip screens keep logo + "Triplanio" on mobile (matches the design).
-     Only trip screens drop the brand block for burger + title. */
-  .app-header--trip .app-header__logo,
-  .app-header--trip .app-header__brand-name,
-  .app-header--trip .app-header__vdiv { display: none; }
   .app-header__menu { display: grid; }                /* mobile burger appears */
   .app-header__trip-meta { display: none; }
   .app-header__trip-title { font-size: var(--ctl-fs); }
@@ -5379,10 +5468,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Gradient hero (.trip-hero / .thead) removed — title, meta and trip actions
    now live in the unified <AppHeader> at the top of the shell. */
 
-/* ---- Body: sidebar + content ---- */
-.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
-/* Inside the shell the sidebar scrolls within its own row instead of the page. */
-.trip-shell .app-side { position: static; top: auto; height: auto; min-height: 0; overflow-y: auto; align-self: stretch; }
+/* ---- Тело: рейл + колонка «шапка + контент» ----
+   Шапка живёт ВНУТРИ правой колонки, а не над телом: рейл полновысотный, и его
+   первые --header-h — бренд-слот, который обязан стоять на одной линии с шапкой
+   (низ слота = низ шапки). Отсюда же берётся левый край заголовка трипа. */
+.trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--rail-w) 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
 .trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
@@ -5408,34 +5498,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
 .trip-screen-body--flush { padding: 0; overflow: hidden; }
 
-/* ---- Mobile menu scrim (sidebar slides over the content) ---- */
-.trip-side-scrim { display: none; }
-
-@media (max-width: 880px) {
+/* Граница ОДНА: выше 640 — рейл, ниже — телефонный шит (TripSidebarSheet) из
+   мобильного дока. Выезжающий ящик 641–880 со скримом удалён вместе с сужением
+   меню: рейл узкий, прятать его больше незачем, а третье состояние между
+   «видно» и «шит» стоило одного бургера, одного скрима и своей ветки CSS. */
+@media (max-width: 640px) {
   .trip-body { grid-template-columns: 1fr; }
-  .trip-shell .app-side {
-    position: absolute; top: 0; left: 0; bottom: 0;
-    width: 264px; max-width: 84%; z-index: calc(var(--z-side-nav) + 5);
-    transform: translateX(-104%); transition: transform .26s var(--ease-out);
-    box-shadow: var(--sh-3);
-  }
-  .trip-body.is-menu-open .app-side { transform: none; }
-  .trip-side-scrim {
-    display: block; position: absolute; inset: 0; background: var(--scrim);
-    z-index: var(--z-side-nav); opacity: 0; pointer-events: none; transition: opacity .25s var(--ease-out);
-  }
-  .trip-body.is-menu-open .trip-side-scrim { opacity: 1; pointer-events: auto; }
+  .trip-shell .app-side { display: none; }
   .trip-screen-body { padding: 16px 16px 48px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
   .trip-screen-body--flush { padding: 0; }
-}
-
-/* Phones: the lens menu is shown as a bottom-sheet (TripSidebarSheet), so the
-   slide-in drawer and its scrim are suppressed below 640px. */
-@media (max-width: 640px) {
-  .trip-shell .app-side { display: none; }
-  .trip-side-scrim { display: none; }
 }
 
 /* ============================================================

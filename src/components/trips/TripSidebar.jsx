@@ -1,6 +1,7 @@
 import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
+import { BrandSlot } from '@/components/AppHeader';
 import { Avatar, Badge, Btn, Card, Sheet, UnreadBadge } from '@/design/index';
 import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
 import { clearsStep } from '@/lib/tripStep';
@@ -8,30 +9,39 @@ import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
 
-// Общее ТЕЛО меню (группы + карточка апгрейда). Одинаково рисуется двумя
-// оболочками пункта меню:
-//   • TripSidebar      — <aside> для десктопа/планшета
-//   • TripSidebarSheet — телефонный bottom-sheet
-// Одно тело гарантирует, что набор пунктов, ролевые гейты, бейдж чата и
-// карточка Pro у них совпадают.
+// ТЕЛО РЕЙЛА — пункты навигации трипа в узкой колонке. Состав, иконки и подписи
+// приходят из реестра секций (`tripMenu.js`) без единого исключения: рейл это
+// ОБОЛОЧКА пунктов, а не второй список.
 //
-// Все пункты — обычные секции из реестра. Отдельного случая под структурный
-// редактор тут больше нет: до TRIP-349 он был роутом, поэтому уезжал мимо
-// onNavigate прямой навигацией и тащил за собой флаг isEditScreen, который
-// гасил подсветку у ВСЕХ остальных пунктов.
-function SidebarBody({
-  tripId, trip, lens, onNavigate,
-  isPro, proResolved = true, isOwner, myStep,
-  onUpgrade, onProInfo, onShare,
-}) {
+// Шит телефона (SidebarSheetBody ниже) собран отдельно и намеренно: у него своя
+// раскладка под палец (плитки 3-в-ряд), подписи групп и карточка апгрейда, для
+// которых на 70 px места нет. Общий у них ровно источник пунктов.
+function RailItem({ icon, label, active = false, badge = 0, onClick }) {
+  return (
+    <button
+      className={'app-side__item' + (active ? ' active' : '')}
+      onClick={onClick}
+      // `title` — нативная подсказка вместо своего пузыря: длинные локали
+      // («Planificación», «Presupuesto») в 70 px режутся, и полное имя обязано
+      // где-то остаться. Ponytail: платформа вместо кода.
+      title={label}
+      aria-current={active ? 'page' : undefined}
+      type="button"
+    >
+      <Icon name={icon} size={20} />
+      <span className="app-side__label">{label}</span>
+      <UnreadBadge count={badge} />
+    </button>
+  );
+}
+
+function RailBody({ tripId, trip, lens, onNavigate, myStep, onShare }) {
   const { t } = useI18n();
   // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
   // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
   const lensItems = availableSections(trip, myStep, 'lens');
   const mgmtItems = availableSections(trip, myStep, 'manage');
   const canShare = clearsStep(myStep, 'participant');
-  // Only after Pro state is resolved — avoids the banner flashing on pro trips.
-  const showUpgrade = proResolved && !isPro;
   // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
   // the badge only renders under a visible chat item, so a chat-off trip holds
   // zero realtime subscriptions instead of a live one that can never show.
@@ -39,44 +49,39 @@ function SidebarBody({
   return (
     <>
       <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip.sections_title')}</div>
         {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
         {lensItems.map((item) => (
-          <button
+          <RailItem
             key={item.id}
-            className={'app-side__item' + (lens === item.id ? ' active' : '')}
+            icon={item.icon}
+            label={t(item.labelKey)}
+            active={lens === item.id}
+            badge={item.id === 'chat' ? chatUnread : 0}
             onClick={() => onNavigate(item.id)}
-          >
-            <Icon name={item.icon} size={15} />
-            <span className="app-side__label">{t(item.labelKey)}</span>
-            {item.id === 'chat' && <UnreadBadge count={chatUnread} />}
-          </button>
+          />
         ))}
       </div>
       {(mgmtItems.length > 0 || canShare) && (
-        <div className="app-side__group">
-          <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (управление), не кнопка-примитив. */}
-          {mgmtItems.map((item) => (
-            <button
-              key={item.id}
-              className={'app-side__item' + (lens === item.id ? ' active' : '')}
-              onClick={() => onNavigate(item.id)}
-            >
-              <Icon name={item.icon} size={15} />
-              <span className="app-side__label">{t(item.labelKey)}</span>
-            </button>
-          ))}
-          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (шеринг), не кнопка-примитив. */}
-          {canShare && onShare && (
-            <button className="app-side__item" onClick={onShare}>
-              <Icon name="share" size={15} />
-              <span className="app-side__label">{t('trip.share')}</span>
-            </button>
-          )}
-        </div>
+        <>
+          {/* Подпись группы на 70 px не живёт — её работу делает линия. Сам
+              класс подписи жив: его показывает телефонный шит. */}
+          <hr className="hr" />
+          <div className="app-side__group">
+            {mgmtItems.map((item) => (
+              <RailItem
+                key={item.id}
+                icon={item.icon}
+                label={t(item.labelKey)}
+                active={lens === item.id}
+                onClick={() => onNavigate(item.id)}
+              />
+            ))}
+            {canShare && onShare && (
+              <RailItem icon="share" label={t('trip.share')} onClick={onShare} />
+            )}
+          </div>
+        </>
       )}
-      {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
     </>
   );
 }
@@ -101,20 +106,26 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
   );
 }
 
-// Левое меню трипа. Рисуется ОДИН раз — оболочкой TripShell, — а все секции,
-// включая структурный редактор, переключаются одним и тем же onNavigate.
+// Левое меню трипа — полновысотный рейл 70 px. Рисуется ОДИН раз оболочкой
+// TripShell, все секции переключаются одним и тем же onNavigate.
+//
+// Первые --header-h рейла — бренд-слот: тот же компонент, что стоит первой
+// ячейкой шапки на экранах вне трипа, поэтому знак при переходе не смещается.
+// В рейле он в режиме `back` — по наведению становится стрелкой выхода, и
+// круглой кнопки «назад» в шапке из-за этого больше нет (на телефоне рейла нет,
+// там кнопка остаётся).
 export default function TripSidebar({
-  tripId, trip, lens, onNavigate,
-  isPro, proResolved = true, isOwner, myStep,
-  onUpgrade, onProInfo, onShare,
+  tripId, trip, lens, onNavigate, myStep, onShare, onBack, backTitle,
 }) {
   return (
     <aside className="app-side">
-      <SidebarBody
-        tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
-        isPro={isPro} proResolved={proResolved} isOwner={isOwner} myStep={myStep}
-        onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare}
-      />
+      <BrandSlot onClick={onBack} title={backTitle} back />
+      <nav className="app-side__nav">
+        <RailBody
+          tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
+          myStep={myStep} onShare={onShare}
+        />
+      </nav>
     </aside>
   );
 }
