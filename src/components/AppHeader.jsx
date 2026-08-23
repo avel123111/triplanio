@@ -120,8 +120,9 @@ export default function AppHeader({
             где та же геометрия --rail-w × --header-h держит знак на месте. */}
         {!isTrip && (
           <>
-            <BrandSlot onClick={goBrand} title="Triplanio" />
-            <span className="app-header__brand-name" onClick={goBrand}>Triplanio</span>
+            {/* Подсказки у слота вне трипа нет намеренно: рядом стоит само слово. */}
+            <BrandSlot onClick={goBrand} />
+            <span className="app-header__brand-name" onClick={goBrand}>Triplanio</span>{/* i18n-ignore — имя бренда */}
           </>
         )}
 
