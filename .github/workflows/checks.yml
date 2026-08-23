@@ -119,6 +119,7 @@ jobs:
   #   2y check-spec-columns          — spec-поля table-DML-действия ⊆ колонки таблицы из database.types.ts (TRIP-420)
   #   2ab check-confirm-copy         — every confirm({…}) carries a title AND a description (a11y name + Radix description)
   #   2ac check-site-prefixes        — a new CSS class-name prefix in public/site.css (site DS namespace) needs approval (TRIP-446)
+  #   2ad check-site-nav             — internal <a href> in the site zone reloads the doc and drops the campaign mark (TRIP-456)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -194,6 +195,9 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-site-prefixes.mjs
+      - name: 2ad — site nav (internal links go through the router, not <a href>)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-site-nav.mjs
       - name: 2n — orphaned CSS (rule left behind after the class moved)
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }

@@ -243,7 +243,9 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
             <a href={navHref('#features')}>{t('landing.footer.features')}</a>
             <a href={navHref('#how')}>{t('landing.footer.how')}</a>
             <a href={navHref('#faq')}>{t('landing.footer.faq')}</a>
+            {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
             <a href="/privacy">{t('landing.footer.privacy')}</a>
+            {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
             <a href="/terms">{t('landing.footer.terms')}</a>
             {/* Where an anonymous visitor changes their mind — the app itself has no
                 footer, so this is the only route for someone who never signed up.

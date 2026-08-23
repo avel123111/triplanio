@@ -43,13 +43,14 @@
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import AppHeader, { BrandSlot } from '@/components/AppHeader';
+import AppHeader from '@/components/AppHeader';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import { useMobileNav } from '@/components/MobileBottomNav';
 import { DEFAULT_SECTION, sectionById, isSectionAvailable } from '@/lib/tripMenu';
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { useAuth } from '@/lib/AuthContext';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -68,36 +69,13 @@ const MOTION_STYLE = {
   '--surface-ease': SURFACE_EASE_CSS,
 };
 
-// Скелетон рейла на время загрузки shell-запроса. Реальный TripSidebar тут
-// нельзя: его состав зависит от аддонов и роли, а они приезжают тем же
-// запросом - подставив его раньше, мы бы показали чужой набор пунктов и
-// перерисовали меню под пользователем.
-//
-// Геометрия — ЖИВОГО пункта (иконка, под ней подпись): скелетон, нарисованный
-// по старой раскладке, показывал бы первым кадром меню, которого больше нет.
-function SidebarSkeleton({ onBack, backTitle }) {
-  const row = (i) => (
-    <div key={i} className="app-side__item">
-      <Skeleton w={20} h={20} r={6} />
-      <Skeleton w={30 + (i % 3) * 8} h={8} r={4} />
-    </div>
-  );
-  return (
-    <aside className="app-side">
-      <BrandSlot onClick={onBack} title={backTitle} back />
-      <nav className="app-side__nav">
-        <div className="app-side__group">{[1, 2, 3, 4, 5, 6].map(row)}</div>
-        <div className="app-side__group">{[7, 8, 9].map(row)}</div>
-      </nav>
-    </aside>
-  );
-}
-
 export default function TripShell({
   tripId,
-  trip,
+  // Обвязке нужен НЕ трип, а два факта состава меню: включённые аддоны (сюда) и
+  // ступень (из контекста доступа). Проп `trip` тут был лишней зависимостью —
+  // рейл читал из него ровно `details.addons`.
+  addons,
   section = DEFAULT_SECTION,
-  myStep,
   isPro,
   proResolved = true,
   title,
@@ -117,6 +95,8 @@ export default function TripShell({
   const { user } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPhone = useIsPhone();
+  // Ступень доступа — из единого канала права, не пропом (см. useTripMenu).
+  const { step: myStep } = useTripAccess();
   const [sideOpen, setSideOpen] = useState(false);
   const { setTripNav } = useMobileNav();
 
@@ -133,12 +113,14 @@ export default function TripShell({
   // Читаем ОДИН РАЗ, на маунте (`useState` с инициализатором), и по двум причинам:
   //   • `location.state` живёт, пока живёт запись истории, — без снимка вход
   //     переигрывался бы при каждом ререндере этой же локации;
-  //   • `!loading` в условии не педантизм: `.app-side` МЕНЯЕТ РЕАЛИЗАЦИЮ на
-  //     границе загрузки (скелетон рейла → живой TripSidebar), то есть
-  //     размонтируется и монтируется заново, а CSS-анимация играет на каждом
-  //     маунте. Разрешив вход в фазе загрузки, мы получили бы ДВА выезда подряд.
-  //     Пришли с холодным кэшем — входа просто нет, как и было до этой правки;
-  //     на пути из создания кэш прогрет (ManualPlanner), и ветка всегда тёплая.
+  //   • `!loading` — вход играем только когда оболочке УЖЕ ЕСТЬ ЧТО ПОКАЗАТЬ.
+  //     Изначально условие защищало от ДВУХ выездов подряд: рейл менял
+  //     реализацию на границе загрузки (скелетон → живой TripSidebar), то есть
+  //     монтировался дважды, а CSS-анимация играет на каждом маунте. С переходом
+  //     обвязки на один круг (PR 955) скелетона рейла больше нет и второго
+  //     маунта тоже — но условие остаётся осмысленным: въезд поверх ещё
+  //     незаполненной шапки читался бы как отдельный, второй переход. На пути из
+  //     создания кэш прогрет (ManualPlanner), и ветка всегда тёплая.
   const [entering, setEntering] = useState(() => (loc.state?.from === 'create' && !loading ? 'create' : null));
   // ★ ФЛАГ СНИМАЕТСЯ ПОСЛЕ ОСАДКИ, И ЭТО НЕ УБОРКА РАДИ УБОРКИ. `data-entering`
   // читается как СОСТОЯНИЕ («сейчас входим»), а без снятия он оставался бы на
@@ -183,7 +165,7 @@ export default function TripShell({
   // здесь, где на руках tripId и роль, и передаём числом в регистрацию дока —
   // сам док (`MobileBottomNav`) живёт выше `TripShell` и tripId не знает. Чат
   // считаем только когда линза чата доступна, иначе — ноль подписок.
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', addons, myStep) });
   const inappUnread = useUnreadNotificationCount();
   const moreBadge = chatUnread + inappUnread;
   // useLayoutEffect, а не useEffect: пассивный эффект выполняется ПОСЛЕ отрисовки,
@@ -223,41 +205,40 @@ export default function TripShell({
   return (
     <div className="trip-shell" data-entering={entering || undefined} style={MOTION_STYLE}>
       <div className="trip-body">
-        {loading ? <SidebarSkeleton onBack={goBack} backTitle={backTitle} /> : (
-          <>
-            {/* Шит открывается только на телефоне, где рейла нет (CSS), поэтому
-                закрывать его отсюда некому - рейл просто переключает секцию. */}
-            <TripSidebar
-              tripId={tripId}
-              trip={trip}
-              lens={section}
-              myStep={myStep}
-              isPro={isPro}
-              proResolved={proResolved}
-              onProUpsell={onProUpsell}
-              onNavigate={(id) => onNavigate?.(id)}
-              onShare={onShare}
-              onBack={goBack}
-              backTitle={backTitle}
-            />
-            {/* Телефоны: то же меню канон-шитом из мобильного дока. Рейла на
-                этой ширине нет (CSS), выезжающего ящика больше нет нигде. */}
-            <TripSidebarSheet
-              tripId={tripId}
-              trip={trip}
-              lens={section}
-              isPro={isPro}
-              proResolved={proResolved}
-              myStep={myStep}
-              open={isPhone && sideOpen}
-              onOpenChange={setSideOpen}
-              onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
-              onShare={onShare && (() => { setSideOpen(false); onShare(); })}
-              onProUpsell={onProUpsell && (() => { setSideOpen(false); onProUpsell(); })}
-              user={user}
-              onAccount={() => { setSideOpen(false); nav('/settings'); }}
-            />
-          </>
+        {/* Рейл и шит собирают состав САМИ — из фактов (аддоны + ступень), одной
+            функцией `menuSections`. Отдельного «идёт загрузка» у меню больше нет:
+            известен факт — пункт живой, неизвестен — место под него. Поэтому и шит
+            телефона монтируется всегда: если факты уже на руках (переход с главной),
+            «Ещё» открывает ГОТОВОЕ меню, а не заглушки. */}
+        <TripSidebar
+          tripId={tripId}
+          addons={addons}
+          lens={section}
+          isPro={isPro}
+          proResolved={proResolved}
+          onProUpsell={onProUpsell}
+          onNavigate={(id) => onNavigate?.(id)}
+          onShare={onShare}
+          onBack={goBack}
+          backTitle={backTitle}
+        />
+        {/* Телефоны: то же меню канон-шитом из мобильного дока. Рейла на
+            этой ширине нет (CSS), выезжающего ящика больше нет нигде. */}
+        {(
+          <TripSidebarSheet
+            tripId={tripId}
+            addons={addons}
+            lens={section}
+            isPro={isPro}
+            proResolved={proResolved}
+            open={isPhone && sideOpen}
+            onOpenChange={setSideOpen}
+            onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
+            onShare={onShare && (() => { setSideOpen(false); onShare(); })}
+            onProUpsell={onProUpsell && (() => { setSideOpen(false); onProUpsell(); })}
+            user={user}
+            onAccount={() => { setSideOpen(false); nav('/settings'); }}
+          />
         )}
         {/* Шапка — СОСЕД контента, а не его потомок: к `.trip-content` абсолютом
             привязан хост выдвижных панелей (EventDrawerHost), и внутри шапки он
@@ -274,8 +255,6 @@ export default function TripShell({
           // дублем того же действия.
           onBack={isPhone ? goBack : undefined}
           backTitle={backTitle}
-          // Пока грузимся, бургера нет - как и было. Открывать нечего: меню
-          // ещё скелетон, а телефонный шит в этой ветке не отрисован.
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
           meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
         />

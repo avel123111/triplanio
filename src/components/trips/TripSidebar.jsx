@@ -2,8 +2,9 @@ import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { BrandSlot } from '@/components/AppHeader';
-import { Avatar, Card, Sheet, UnreadBadge } from '@/design/index';
-import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
+import { Avatar, Card, Sheet, Skeleton, UnreadBadge } from '@/design/index';
+import { isSectionAvailable, menuSections } from '@/lib/tripMenu';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { clearsStep } from '@/lib/tripStep';
 import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
@@ -14,12 +15,22 @@ import { useUnreadNotificationCount } from '@/lib/useNotifications';
 // в этом трипе доступно ЭТОЙ роли. Пока расчёт стоял в каждой оболочке своей
 // копией, разъехаться они могли молча — правило видно только рядом, а копии
 // живут в разных концах файла.
-function useTripMenu({ tripId, trip, myStep, isPro, proResolved }) {
+function useTripMenu({ tripId, addons, isPro, proResolved }) {
+  // Ступень — из ЕДИНОГО канала права (`TripAccessProvider`), а не пропом сверху.
+  // Пропом она шла через три слоя (TripView → TripShell → сюда) в обход того
+  // самого контекста, который заведён, чтобы «пропов права больше не было»;
+  // заодно это привязывало состав меню к списку участников, т.е. ко ВТОРОМУ
+  // сетевому кругу. Теперь ступень приезжает с трипом, и меню собирается разом.
+  const { step: myStep } = useTripAccess();
   return {
     // И аддон-гейт, и ролевой (наблюдатель видит Настройки, но не Участников —
     // TRIP-137) живут в реестре секций одним предикатом.
-    lensItems: availableSections(trip, myStep, 'lens'),
-    mgmtItems: availableSections(trip, myStep, 'manage'),
+    // Состав — из ФАКТОВ (аддоны + ступень), одной функцией на обе фазы: пока
+    // ступени нет, `menuSections` сама отдаёт места под неизвестные пункты.
+    // Отдельного «идёт загрузка» здесь БОЛЬШЕ НЕТ и быть не должно — именно флаг
+    // перебивал уже известный состав и заставлял меню перестраиваться на глазах.
+    lensItems: menuSections('lens', addons, myStep),
+    mgmtItems: menuSections('manage', addons, myStep),
     canShare: clearsStep(myStep, 'participant'),
     // Апселл показывается только когда статус Pro РАЗРЕШЁН: иначе пункт моргает
     // на Pro-трипе, пока едет ответ.
@@ -27,8 +38,32 @@ function useTripMenu({ tripId, trip, myStep, isPro, proResolved }) {
     // Считаем чат только когда линза чата доступна (TRIP-208 Ф2-2b): бейдж
     // рисуется под видимым пунктом, поэтому трип без чата держит ноль подписок
     // вместо живой, которая всё равно ничего не покажет.
-    chatUnread: useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) }),
+    chatUnread: useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', addons, myStep) }),
   };
+}
+
+// Место под пункт, доступность которого ещё неизвестна (фаза загрузки).
+//
+// Подпись — ДВЕ плашки, а не одна, и это замер, а не вкус: `.app-side__label`
+// переносится на две строки (line-clamp 2), поэтому живой пункт с длинной
+// подписью — «Структура», «Участники» — занимает 56 px против 52 у однострочного
+// (min-height рейла). Место в одну плашку было бы на 4 px ниже пункта, который
+// его займёт, и «Настройки» под ним съезжали бы вниз ровно в тот момент, ради
+// которого всё это делалось. Две строки по 12 + зазор дают те же 56.
+// Остаточное: в локали, где подпись влезает в одну строку, место на 4 px выше
+// будущего пункта. Полностью снять это можно, только меряя саму подпись —
+// то есть отрисовав текст, которого мы ещё не имеем права показывать.
+//
+// Ширины плашек разные по индексу: ровный столбик читается как таблица, а не
+// как «сейчас подгрузится».
+function RailItemPending({ i }) {
+  return (
+    <div className="app-side__item">
+      <Skeleton w={20} h={20} r={6} />
+      <Skeleton w={30 + (i % 3) * 8} h={12} r={4} />
+      <Skeleton w={20 + (i % 2) * 8} h={12} r={4} />
+    </div>
+  );
 }
 
 // Пункт рейла — иконка, под ней подпись. Одна оболочка на обе группы: состав,
@@ -66,50 +101,51 @@ function RailItem({ icon, label, active = false, badge = 0, pro = false, onClick
 // раскладка под палец (плитки 3-в-ряд), подписи групп и карточка апгрейда, для
 // которых на 70 px места нет. Общий у них ровно источник пунктов.
 export default function TripSidebar({
-  tripId, trip, lens, onNavigate, myStep, onShare, onBack, backTitle,
+  tripId, addons, lens, onNavigate, onShare, onBack, backTitle,
   isPro, proResolved = true, onProUpsell,
 }) {
   const { t } = useI18n();
   const { lensItems, mgmtItems, canShare, showUpgrade, chatUnread } =
-    useTripMenu({ tripId, trip, myStep, isPro, proResolved });
+    useTripMenu({ tripId, addons, isPro, proResolved });
+  const lensRows = lensItems;
+  const mgmtRows = mgmtItems;
+  // «Поделиться» и «Pro» — не секции реестра, а действия, и стоят в самом низу:
+  // их появление ничего не сдвигает, поэтому места под них не держим. Условие —
+  // сами факты (`canShare` — ступень, `showUpgrade` — вердикт Pro), а не «идёт
+  // ли запрос»: известен факт — рисуем сразу.
+  const showTail = canShare || showUpgrade;
+  const row = (item, i) => {
+    if (item.pending) return <RailItemPending key={item.id} i={i} />;
+    return (
+      <RailItem
+        key={item.id}
+        icon={item.icon}
+        label={t(item.labelKey)}
+        active={lens === item.id}
+        badge={item.id === 'chat' ? chatUnread : 0}
+        onClick={() => onNavigate(item.id)}
+      />
+    );
+  };
   return (
     <aside className="app-side">
       <BrandSlot onClick={onBack} title={backTitle} back />
       <nav className="app-side__nav">
-        <div className="app-side__group">
-          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
-          {lensItems.map((item) => (
-            <RailItem
-              key={item.id}
-              icon={item.icon}
-              label={t(item.labelKey)}
-              active={lens === item.id}
-              badge={item.id === 'chat' ? chatUnread : 0}
-              onClick={() => onNavigate(item.id)}
-            />
-          ))}
-        </div>
-        {(mgmtItems.length > 0 || canShare || showUpgrade) && (
+        {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
+        <div className="app-side__group">{lensRows.map(row)}</div>
+        {(mgmtRows.length > 0 || showTail) && (
           /* Подпись группы на 70 px не живёт — её работу делает черта, которую
              рисует сама вторая группа. Класс подписи жив: он в телефонном шите. */
           <div className="app-side__group">
-            {mgmtItems.map((item) => (
-              <RailItem
-                key={item.id}
-                icon={item.icon}
-                label={t(item.labelKey)}
-                active={lens === item.id}
-                onClick={() => onNavigate(item.id)}
-              />
-            ))}
-            {canShare && onShare && (
+            {mgmtRows.map(row)}
+            {showTail && canShare && onShare && (
               <RailItem icon="share" label={t('trip.share')} onClick={onShare} />
             )}
             {/* Апселл — ПУНКТ меню, а не баннер: тот же ряд, только в Pro-цвете,
                 и стоит он в общем списке под «Поделиться». В подвале колонки его
                 не видели: низ рейла — край экрана, туда не смотрят. */}
             {/* i18n-ignore — «Pro» имя тарифа, не переводится */}
-            {showUpgrade && <RailItem icon="pro" label="Pro" pro onClick={onProUpsell} />}
+            {showTail && showUpgrade && <RailItem icon="pro" label="Pro" pro onClick={onProUpsell} />}
           </div>
         )}
       </nav>
@@ -123,13 +159,13 @@ export default function TripSidebar({
 // the open screen highlighted, management collapsed into one bordered container,
 // and an account row (moved out of the bottom nav) at the foot.
 function SidebarSheetBody({
-  tripId, trip, lens, onNavigate,
-  isPro, proResolved = true, myStep,
+  tripId, addons, lens, onNavigate,
+  isPro, proResolved = true,
   onProUpsell, onShare, user, onAccount,
 }) {
   const { t } = useI18n();
   const { lensItems, mgmtItems, canShare, showUpgrade, chatUnread } =
-    useTripMenu({ tripId, trip, myStep, isPro, proResolved });
+    useTripMenu({ tripId, addons, isPro, proResolved });
   // Плашка «Аккаунт» ведёт во «Входящие» — на ней бейдж непрочитанных inapp-
   // уведомлений (глобальный счётчик, не про этот трип). TRIP-354.
   const inappUnread = useUnreadNotificationCount();

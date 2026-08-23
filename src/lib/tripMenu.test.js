@@ -2,14 +2,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SECTIONS, DEFAULT_SECTION, DOCK_SECTIONS, DOCK_SECTION_IDS,
-  sectionById, isSectionAvailable, availableSections, resolveSection,
+  sectionById, isSectionAvailable, availableSections, resolveSection, loadingSections, menuSections,
 } from './tripMenu.js';
+import { normalizeAddons } from './tripAddons.js';
 
 // Реестр — единственный источник состава экрана трипа, а у состава нет
 // скриншота: ни один гард не связывает пункт меню с веткой рендера. Поэтому
 // поведение пинится здесь.
 
-const tripWith = (addons) => ({ details: { addons } });
+// Предикат принимает ФАКТЫ, а не трип: аддоны в него приходят из двух источников
+// (дверь трипа и карточка главной) и оба проходят через ОДИН нормализатор —
+// поэтому и тест гоняет их через него, а не подсовывает готовый булев объект.
+const tripWith = (addons) => normalizeAddons(addons);
 const plainTrip = tripWith({});
 
 test('у каждой секции есть id, группа, подпись, иконка и событие; id уникальны', () => {
@@ -166,4 +170,85 @@ test('док прячет только чат, и у него НАЗВАНА п�
 test('sectionById на незнакомом id отдаёт null, а не undefined-объект', () => {
   assert.equal(sectionById('нет-такого'), null);
   assert.equal(sectionById('overview').labelKey, 'trip_menu.overview');
+});
+
+// ── Фаза загрузки: что рисует рейл, пока ответа read-двери нет ────────────────
+// У этого поведения тоже нет скриншота, а цена ошибки видна только глазом на
+// живом трипе: меню, которое доцветает со сдвигом, и есть та «дёрганость», ради
+// которой всё затевалось. Поэтому свойство пинится числами.
+
+test('loadingSections: аддонных секций нет вовсе, ролевые — местом под пункт', () => {
+  const all = [...loadingSections('lens'), ...loadingSections('manage')];
+  for (const s of all) {
+    assert.equal(!!s.addon, false, `${s.id}: аддонная секция не должна попадать в фазу загрузки`);
+    assert.equal(s.pending, !!s.canAccess, `${s.id}: место держим ровно под ролевыми`);
+  }
+  // Живых (кликабельных с первого кадра) должно быть большинство — иначе смысла
+  // рисовать рейл на загрузке нет и проще вернуть скелетон.
+  const live = all.filter((s) => !s.pending);
+  assert.ok(live.length >= all.length - live.length, `живых ${live.length} из ${all.length}`);
+});
+
+test('loadingSections: порядок — реестра, без пересортировки', () => {
+  for (const group of ['lens', 'manage']) {
+    const order = loadingSections(group).map((s) => s.id);
+    const canon = SECTIONS.filter((s) => s.group === group && !s.addon).map((s) => s.id);
+    assert.deepEqual(order, canon, group);
+  }
+});
+
+// ★ Само свойство «меню не дёргается» в самом частом случае: владелец Free-трипа
+// (аддоны у нового трипа выключены и требуют Pro). Позиция КАЖДОГО пункта в фазе
+// загрузки обязана совпасть с его позицией после ответа — включая те, что были
+// местом под пункт: место затем заполняется, а не вдвигается между живыми.
+test('★ владелец Free-трипа: позиции пунктов до и после ответа совпадают', () => {
+  const freeTrip = tripWith({});
+  for (const group of ['lens', 'manage']) {
+    const before = loadingSections(group).map((s) => s.id);
+    const after = availableSections(freeTrip, 'owner', group).map((s) => s.id);
+    assert.deepEqual(before, after, `${group}: меню сдвинулось бы`);
+  }
+});
+
+// Обратный случай — цена решения, названная вслух: у трипа с включёнными
+// аддонами пункты аддонов появляются после ответа и сдвигают тех, кто ниже.
+// Держать под них место нельзя (у большинства трипов они выключены — место
+// схлопнулось бы), поэтому сдвиг здесь принят осознанно, а не забыт.
+test('трип с аддонами: аддонные пункты приходят после ответа', () => {
+  const proTrip = tripWith({ budget: true, chat: true });
+  const before = loadingSections('lens').map((s) => s.id);
+  const after = availableSections(proTrip, 'owner', 'lens').map((s) => s.id);
+  assert.deepEqual(after.filter((id) => !before.includes(id)), ['budget', 'chat']);
+});
+
+
+// ── Состав меню решают ФАКТЫ, а не «идёт ли запрос» ─────────────────────────
+// Регресс, ради которого эти тесты написаны: факты (ступень + аддоны) уже лежали
+// в кэше и приезжали в рейл, но рендер смотрел на флаг «дверь не ответила» и всё
+// равно рисовал заглушки — меню перестраивалось на глазах при полностью
+// известном составе. Теперь фаза выводится из самих фактов, и тест это пинит.
+
+test('★ ступень известна → живой состав, даже если запрос ещё идёт', () => {
+  const rows = menuSections('manage', tripWith({}), 'owner');
+  assert.deepEqual(rows.map((s) => s.id), ['edit', 'members', 'settings']);
+  assert.equal(rows.some((s) => s.pending), false, 'ни одного места под пункт быть не должно');
+});
+
+test('★ ступени нет → фаза загрузки (места под ролевые)', () => {
+  const rows = menuSections('manage', tripWith({}), null);
+  assert.deepEqual(rows.map((s) => s.id), loadingSections('manage').map((s) => s.id));
+  assert.deepEqual(rows.filter((s) => s.pending).map((s) => s.id), ['edit', 'members']);
+});
+
+test('★ аддоны из фактов сразу дают свои пункты', () => {
+  const withAddons = menuSections('lens', tripWith({ budget: true, chat: true }), 'owner').map((s) => s.id);
+  assert.ok(withAddons.includes('budget') && withAddons.includes('chat'));
+  const without = menuSections('lens', tripWith({}), 'owner').map((s) => s.id);
+  assert.equal(without.includes('budget'), false);
+  assert.equal(without.includes('chat'), false);
+});
+
+test('наблюдатель не получает ролевых пунктов, хотя ступень известна', () => {
+  const rows = menuSections('manage', tripWith({}), 'participant').map((s) => s.id);
+  assert.deepEqual(rows, ['settings']);
 });

@@ -122,14 +122,23 @@ function checkLocaleKeys() {
 /* --------------------------- B. hardcoded UI strings ------------------------ */
 
 // Added lines (with new-file line numbers) for src .jsx/.js changed in this PR.
+//
+// ★ Дифф берётся по КАТАЛОГУ `src`, а расширение отсеивается уже здесь, и это не
+// вкусовщина: pathspec `src/**/*.jsx` НЕ матчит файл, лежащий прямо в `src/` —
+// `**` требует хотя бы один промежуточный каталог. То есть `src/App.jsx` и
+// `src/main.jsx` не проверялись ВООБЩЕ, и захардкоженная в них строка проезжала
+// CI молча. Каталог + фильтр по имени такой дыры не имеют по построению.
 function addedLines() {
-  const diff = git(['diff', `${BASE_REF}...HEAD`, '--', 'src/**/*.jsx', 'src/**/*.js']);
+  const diff = git(['diff', `${BASE_REF}...HEAD`, '--', 'src']);
   const out = [];
   let file = null;
   let lineNo = 0;
   for (const line of diff.split('\n')) {
     if (line.startsWith('+++ b/')) {
-      file = line.slice(6);
+      const path = line.slice(6);
+      // Не-исходники (CSS, JSON локалей, картинки) в этой проверке не участвуют;
+      // `null` гасит их строки ниже, не сбивая счётчик.
+      file = /\.(jsx|js)$/.test(path) ? path : null;
       continue;
     }
     const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
@@ -138,7 +147,7 @@ function addedLines() {
       continue;
     }
     if (line.startsWith('+') && !line.startsWith('+++')) {
-      out.push({ file, lineNo, text: line.slice(1) });
+      if (file) out.push({ file, lineNo, text: line.slice(1) });
       lineNo++;
     } else if (!line.startsWith('-') && !line.startsWith('\\')) {
       lineNo++; // context line advances the new-file counter
@@ -159,7 +168,13 @@ function isUserFacing(s) {
   return false;
 }
 
-const TEXT_NODE_RE = />([^<>{}]+)</g;
+// Текстовый узел JSX: то, что стоит МЕЖДУ закрывающей скобкой тега и следующим
+// тегом. `(?<!=)` — не украшение: стрелка `=>` даёт регулярке тот же `>`, и без
+// этого условия обычная стрелочная функция, возвращающая JSX через тернарник
+// (`=> (cond ? <A/> : <B/>)`), читалась как «захардкоженный текст "(cond ?"».
+// Глушить такое `i18n-ignore` нельзя — маркер означает «строка намеренно без
+// t()», а строки там нет; поймано на живом PR.
+const TEXT_NODE_RE = /(?<!=)>([^<>{}]+)</g;
 const ATTR_RE = /\b(placeholder|title|aria-label|alt)\s*=\s*"([^"]+)"/g;
 
 function checkHardcoded() {
