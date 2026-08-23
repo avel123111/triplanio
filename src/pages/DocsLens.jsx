@@ -56,7 +56,7 @@ function formatDate(iso) {
 // ─── AddDocDialog ─────────────────────────────────────────────────────────────
 
 export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange }) {
-  const isMobile = useIsPhone();
+  const isPhone = useIsPhone();
   const { t } = useI18n();
   // Files are uploaded to Storage as they're picked, before the row is saved.
   // If the dialog is dismissed without saving, those staged objects are orphaned
@@ -221,7 +221,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <div data-vfield="title">
               <Input
                 {...st('title')}
-                autoFocus={!isMobile}
+                autoFocus={!isPhone}
                 value={title}
                 onChange={e => { setTitle(e.target.value); v.markTouched('title'); }}
                 placeholder={t('doc.title_ph')}

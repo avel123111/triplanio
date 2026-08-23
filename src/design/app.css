@@ -4418,12 +4418,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__overlay right — правый край уходит под карту, как у карточки панели
    visual-diff-exempt: .mapshell__overlay display — то же
    visual-diff-exempt: .mapshell__overlay z-index — слой над карточкой панели
-   visual-diff-exempt: .te-row__meta grid-column — мета-строка карточки остановки
-   visual-diff-exempt: .te-row__meta grid-row — то же
-   visual-diff-exempt: .te-row__meta display — то же
-   visual-diff-exempt: .te-row__meta align-items — то же
-   visual-diff-exempt: .te-row__meta gap — то же
-   visual-diff-exempt: .te-row__meta margin-top — то же
    visual-diff-exempt: .te-grip grid-row — грип держится первой строки карточки
    visual-diff-exempt: .te-row grid-row — тот же ключ у составного правила .te-row .te-grip
    visual-diff-exempt: .te-row__num grid-row — узел держится первой строки карточки

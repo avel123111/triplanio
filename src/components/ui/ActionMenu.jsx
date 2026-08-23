@@ -36,11 +36,11 @@ import { Sheet } from '@/components/ui/Sheet';
  */
 /** @param {{ trigger: any, items?: any[], align?: 'start'|'center'|'end', side?: 'top'|'right'|'bottom'|'left', sideOffset?: number, width?: number, title?: string }} p */
 export function ActionMenu({ trigger, items = [], align = 'end', side = 'bottom', sideOffset = 6, width, title }) {
-  const isMobile = useIsPhone();
+  const isPhone = useIsPhone();
   const [open, setOpen] = React.useState(false);
   const list = items.filter(Boolean);
 
-  if (isMobile) {
+  if (isPhone) {
     const triggerEl = React.cloneElement(trigger, {
       onClick: (e) => { trigger.props?.onClick?.(e); setOpen(true); },
     });

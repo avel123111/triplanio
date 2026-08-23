@@ -41,7 +41,7 @@ export default function SearchSelect({
   width = 264,
   disabled = false,
 }) {
-  const isMobile = useIsPhone();
+  const isPhone = useIsPhone();
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
 
@@ -81,7 +81,7 @@ export default function SearchSelect({
       <div className="ss-search">
         <Input
           icon="search"
-          autoFocus={!isMobile}
+          autoFocus={!isPhone}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={searchPlaceholder}
@@ -113,7 +113,7 @@ export default function SearchSelect({
     </>
   );
 
-  if (isMobile) {
+  if (isPhone) {
     return (
       <>
         {trigger({ onClick: () => !disabled && setOpen(true) })}
