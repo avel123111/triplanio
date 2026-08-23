@@ -3,7 +3,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { BrandSlot } from '@/components/AppHeader';
 import { Avatar, Card, Sheet, Skeleton, UnreadBadge } from '@/design/index';
-import { availableSections, isSectionAvailable, loadingSections } from '@/lib/tripMenu';
+import { isSectionAvailable, menuSections } from '@/lib/tripMenu';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { clearsStep } from '@/lib/tripStep';
 import { displayName } from '@/lib/displayName';
@@ -25,8 +25,12 @@ function useTripMenu({ tripId, addons, isPro, proResolved }) {
   return {
     // И аддон-гейт, и ролевой (наблюдатель видит Настройки, но не Участников —
     // TRIP-137) живут в реестре секций одним предикатом.
-    lensItems: availableSections(addons, myStep, 'lens'),
-    mgmtItems: availableSections(addons, myStep, 'manage'),
+    // Состав — из ФАКТОВ (аддоны + ступень), одной функцией на обе фазы: пока
+    // ступени нет, `menuSections` сама отдаёт места под неизвестные пункты.
+    // Отдельного «идёт загрузка» здесь БОЛЬШЕ НЕТ и быть не должно — именно флаг
+    // перебивал уже известный состав и заставлял меню перестраиваться на глазах.
+    lensItems: menuSections('lens', addons, myStep),
+    mgmtItems: menuSections('manage', addons, myStep),
     canShare: clearsStep(myStep, 'participant'),
     // Апселл показывается только когда статус Pro РАЗРЕШЁН: иначе пункт моргает
     // на Pro-трипе, пока едет ответ.
@@ -98,19 +102,18 @@ function RailItem({ icon, label, active = false, badge = 0, pro = false, onClick
 // которых на 70 px места нет. Общий у них ровно источник пунктов.
 export default function TripSidebar({
   tripId, addons, lens, onNavigate, onShare, onBack, backTitle,
-  isPro, proResolved = true, onProUpsell, loading = false,
+  isPro, proResolved = true, onProUpsell,
 }) {
   const { t } = useI18n();
   const { lensItems, mgmtItems, canShare, showUpgrade, chatUnread } =
     useTripMenu({ tripId, addons, isPro, proResolved });
-  // На фазе загрузки состав берётся из реестра (`loadingSections`), а не из
-  // отдельного скелетон-компонента: негейтованные секции известны без данных и
-  // рисуются ЖИВЫМИ — по ним можно уйти в раздел, не дожидаясь ответа.
-  const lensRows = loading ? loadingSections('lens') : lensItems;
-  const mgmtRows = loading ? loadingSections('manage') : mgmtItems;
+  const lensRows = lensItems;
+  const mgmtRows = mgmtItems;
   // «Поделиться» и «Pro» — не секции реестра, а действия, и стоят в самом низу:
-  // их появление ничего не сдвигает, поэтому места под них не держим.
-  const showTail = !loading && (canShare || showUpgrade);
+  // их появление ничего не сдвигает, поэтому места под них не держим. Условие —
+  // сами факты (`canShare` — ступень, `showUpgrade` — вердикт Pro), а не «идёт
+  // ли запрос»: известен факт — рисуем сразу.
+  const showTail = canShare || showUpgrade;
   const row = (item, i) => {
     if (item.pending) return <RailItemPending key={item.id} i={i} />;
     return (

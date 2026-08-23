@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SECTIONS, DEFAULT_SECTION, DOCK_SECTIONS, DOCK_SECTION_IDS,
-  sectionById, isSectionAvailable, availableSections, resolveSection, loadingSections,
+  sectionById, isSectionAvailable, availableSections, resolveSection, loadingSections, menuSections,
 } from './tripMenu.js';
 import { normalizeAddons } from './tripAddons.js';
 
@@ -216,4 +216,36 @@ test('трип с аддонами: аддонные пункты приходя
   const before = loadingSections('lens').map((s) => s.id);
   const after = availableSections(proTrip, 'owner', 'lens').map((s) => s.id);
   assert.deepEqual(after.filter((id) => !before.includes(id)), ['budget', 'chat']);
+});
+
+
+// ── Состав меню решают ФАКТЫ, а не «идёт ли запрос» ─────────────────────────
+// Регресс, ради которого эти тесты написаны: факты (ступень + аддоны) уже лежали
+// в кэше и приезжали в рейл, но рендер смотрел на флаг «дверь не ответила» и всё
+// равно рисовал заглушки — меню перестраивалось на глазах при полностью
+// известном составе. Теперь фаза выводится из самих фактов, и тест это пинит.
+
+test('★ ступень известна → живой состав, даже если запрос ещё идёт', () => {
+  const rows = menuSections('manage', tripWith({}), 'owner');
+  assert.deepEqual(rows.map((s) => s.id), ['edit', 'members', 'settings']);
+  assert.equal(rows.some((s) => s.pending), false, 'ни одного места под пункт быть не должно');
+});
+
+test('★ ступени нет → фаза загрузки (места под ролевые)', () => {
+  const rows = menuSections('manage', tripWith({}), null);
+  assert.deepEqual(rows.map((s) => s.id), loadingSections('manage').map((s) => s.id));
+  assert.deepEqual(rows.filter((s) => s.pending).map((s) => s.id), ['edit', 'members']);
+});
+
+test('★ аддоны из фактов сразу дают свои пункты', () => {
+  const withAddons = menuSections('lens', tripWith({ budget: true, chat: true }), 'owner').map((s) => s.id);
+  assert.ok(withAddons.includes('budget') && withAddons.includes('chat'));
+  const without = menuSections('lens', tripWith({}), 'owner').map((s) => s.id);
+  assert.equal(without.includes('budget'), false);
+  assert.equal(without.includes('chat'), false);
+});
+
+test('наблюдатель не получает ролевых пунктов, хотя ступень известна', () => {
+  const rows = menuSections('manage', tripWith({}), 'participant').map((s) => s.id);
+  assert.deepEqual(rows, ['settings']);
 });

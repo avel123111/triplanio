@@ -960,7 +960,12 @@ export default function TripView() {
   // `is_trip_pro`), поэтому апселл решается на первом круге, а не третьим.
   // checkSubscriptionStatus остаётся авторитетом (в нём reconcile-on-read со
   // Stripe) и подтверждает фоном — вход в UI по-прежнему ОДИН, этот хук.
-  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, shellData?.isPro, hasTripAccess);
+  // Тот же порядок, что у ступени и аддонов: ответила дверь — её вердикт, не
+  // ответила — карточка главной (в ней `is_pro` считает тот же SQL-предикат
+  // `is_trip_pro`). Без этого пункт «Pro» оставался единственным, кто ждал круга,
+  // и меню всё равно доезжало на глазах.
+  const proSeed = shellData ? shellData.isPro : tripCard?.is_pro;
+  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, proSeed, hasTripAccess);
   // Edit Mode (structure editor) gate: ступень editor. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
   const canEditMode = clearsStep(myStep, 'editor');
