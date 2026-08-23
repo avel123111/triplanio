@@ -103,6 +103,9 @@ export default function PanelAi({ aiMessages = [], onGenerate }) {
   // `.pl-ai-chips` binds their font to the Meta canon.
   const showChips = aiMessages.length <= 1;
 
+  // Лента — просто содержимое тела виджета: скроллит его ТЕЛО, а композер стоит
+  // в слоте действий шелла (снаружи скролла), поэтому расти и прижимать здесь
+  // больше нечему.
   return (
     <div>
       {aiMessages.map((m) => {

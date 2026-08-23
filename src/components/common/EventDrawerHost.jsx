@@ -25,7 +25,7 @@ export default function EventDrawerHost({ open, onClose, scrim = false, title = 
   const drawerRef = useRef(null);
 
   // ≤640 → bottom sheet, matching the `.lp-sheet` CSS breakpoint (the shared
-  // sheet-breakpoint hook, NOT the wider 768px useIsMobile menu breakpoint).
+  // единственный переключатель раскладки — граница у приложения одна).
   const isSheet = useIsPhone();
 
   // Desktop drawer: move focus into the panel on open, Esc closes.

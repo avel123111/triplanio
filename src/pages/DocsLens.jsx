@@ -30,7 +30,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, Skeleton, Seg, Tile, Dialog as DSDialog, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { resolveAuthor } from '@/lib/resolveAuthor';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -56,7 +56,7 @@ function formatDate(iso) {
 // ─── AddDocDialog ─────────────────────────────────────────────────────────────
 
 export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange }) {
-  const isMobile = useIsMobile();
+  const isPhone = useIsPhone();
   const { t } = useI18n();
   // Files are uploaded to Storage as they're picked, before the row is saved.
   // If the dialog is dismissed without saving, those staged objects are orphaned
@@ -221,7 +221,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <div data-vfield="title">
               <Input
                 {...st('title')}
-                autoFocus={!isMobile}
+                autoFocus={!isPhone}
                 value={title}
                 onChange={e => { setTitle(e.target.value); v.markTouched('title'); }}
                 placeholder={t('doc.title_ph')}

@@ -3,7 +3,7 @@
   "_cardHomedNote": "card-homed = приватный класс-остаток, чей СКИН переехал на <Card> (сам класс несёт только раскладку). Такой класс ОБЯЗАН рендериться внутри <Card>: сырой host-тег (<button>/<div>/<a>) с этим className мимо <Card> = поверхность потеряна МОЛЧА (баг трансфера F). AST-скан гарда 2z ловит это — три .css/<style>/inline-скан-режима такого не видят по построению.",
   "cardHomed": [
     "tl3-card", "records", "choice-card", "pcard", "fork-manual", "fork-partner", "ov-mapcard",
-    "tcp__preview",
+    "tcp__preview", "mapshell__card",
     "acc", "acct-chan", "acct-hero", "addon-card", "ai-blk", "cdu", "dz-lift-card", "eed-fcbox",
     "eed-nightrow", "empty-note", "ev-sec", "fork-state", "hv-card", "hv-namecard", "hv-rows",
     "invite", "limitcard", "nextcard", "nonext", "pl-lastcard", "pro-up", "statbar", "summary",
@@ -23,7 +23,6 @@
     "src/components/bookings/forkList.jsx: <a .btn>": { "verdict": "btn-legit", "reason": "внешний партнёр-CTA (href). Г33: инлайн --bg/--fg/--bd (бренд-тинт) — четвёртый канал, принят ОСТАТКОМ, не «чисто»; уедет в <Btn as=\"a\" href>, если заведём" },
     "src/pages/EditLens.jsx: <span role=button .te-grip>": { "verdict": "btn-legit", "reason": "drag-grip перестановки точки (клав. ArrowUp/Down) — ARIA-хэндл, не примитив <Btn>" },
     "src/pages/ManualPlanner.jsx: <span role=button .te-grip>": { "verdict": "btn-legit", "reason": "drag-grip перестановки (клав.) — ARIA-хэндл, не примитив <Btn>" },
-    "src/components/ui/PeekSheet.jsx: <div role=button .peek-sheet__grip>": { "verdict": "btn-legit", "reason": "grip раскрытия peek-шита — ARIA-хэндл, не примитив <Btn>" },
     "src/pages/DocsLens.jsx: <div role=button>": { "verdict": "object:2", "reason": "кликабельная КАРТА-опция видимости (data-card-btn) — поверхность объекта 2, замок cardHomed" },
     "src/components/bookings/PartnerResultCard.jsx: <div role=button>": { "verdict": "object:2", "reason": "кликабельная партнёр-КАРТА целиком (data-card-btn) — поверхность объекта 2 (класс pcard в cardHomed)" },
     "src/pages/ScreenAccount.jsx: <div role=button .acct-hero__av>": { "verdict": "object:avatar", "reason": "аватар аккаунта с click-to-change (bg-image) — объект «аватар», не кнопка-примитив" },
@@ -31,7 +30,7 @@
   },
   "_coSelectorNote": "TRIP-337 объект 2 дозакрытие: члены ко-селектора app.css:425 (и родственных 509/515) — фон+рамку несёт ОБЩЕЕ правило, радиус отдельным, поэтому предикат radius+bg+border-в-одном-правиле их не видел (слепое пятно, «закрыто но живо»). Замок 2z coSelectorSurfaceClasses теперь их ловит; каждый обязан быть в classes или cardHomed. Настоящие карточки сведены на <Card> (cardHomed), не-карточки приписаны объектом с причиной — остаток объекта 2 = 0.",
   "classes": {
-    "lp": { "object": "panel", "reason": "оболочка-панель (event/city панели редактора + флоу-лист планировщика) — своя поверхность, рендерится сырым <div>, не <Card>; планировщик доскинивает её (surface + рамка + тень + радиус) под плавающую панель над картой" },
+    "ts-pdrawer": { "object": "panel", "reason": "ящик города/события редактора — оболочка-панель, повторяющая облик виджета маршрута (радиус+подъём) в коробке, которую даёт шелл; рендерится сырым <div>, содержимое несёт своя панель .lp" },
     "card--locked": { "object": "card", "reason": "канон <Card> — модификатор locked (Pro-гейт ai)" },
     "card--parsed": { "object": "card", "reason": "канон <Card> — модификатор parsed (ai success)" },
     "card--tone-ai": { "object": "card", "reason": "канон <Card> — тон ai" },

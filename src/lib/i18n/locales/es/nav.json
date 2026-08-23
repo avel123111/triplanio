@@ -1,7 +1,9 @@
 {
   "account": "Cuenta",
+  "aria_footer": "Pie de página",
+  "aria_home": "Triplanio - inicio",
+  "aria_menu": "Menú",
   "aria_primary": "Principal",
-  "aria_social": "Redes sociales",
   "budget": "Presupuesto",
   "notifications": "Notificaciones",
   "profile": "Perfil",

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stepper } from '@/design/index';
+import { Stepper, Tooltip } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 
 // ─── NightsStepper ────────────────────────────────────────────────────────────
@@ -7,6 +7,10 @@ import { useT } from '@/lib/i18n/I18nContext';
 // wrapper over the DS <Stepper> that owns the trip-specific bits: the "Nн" value
 // suffix and stopping pointerdown/click so using the stepper inside a draggable /
 // clickable row never arms a drag or opens the city panel.
+//
+// Подсказка — <Tooltip> из ДС, а не браузерный `title`: у браузерного нет ни
+// облика системы, ни задержки, ни поведения на фокусе, и на телефоне он не
+// показывается вовсе.
 //
 // ⚠️ АННОТАЦИЯ ОБЯЗАТЕЛЬНА (TRIP-388): без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ
 // и делает `title` ОБЯЗАТЕЛЬНЫМ. Набор ЗАКРЫТЫЙ, `...rest` тут нет.
@@ -19,13 +23,14 @@ export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = 
   const t = useT();
   const stop = (e) => e.stopPropagation();
   return (
-    <Stepper
-      variant={variant}
-      value={<>{value}<span className="muted">{t('planner.night_short')}</span></>}
-      onMinus={onMinus} minusDisabled={minusDisabled} minusLabel={t('planner.fewer_nights')}
-      onPlus={onPlus} plusDisabled={plusDisabled} plusLabel={t('planner.more_nights')}
-      title={title || t('tse.col_nights')}
-      onPointerDown={stop} onClick={stop}
-    />
+    <Tooltip content={title || t('tse.col_nights')}>
+      <Stepper
+        variant={variant}
+        value={<>{value}<span className="muted">{t('planner.night_short')}</span></>}
+        onMinus={onMinus} minusDisabled={minusDisabled} minusLabel={t('planner.fewer_nights')}
+        onPlus={onPlus} plusDisabled={plusDisabled} plusLabel={t('planner.more_nights')}
+        onPointerDown={stop} onClick={stop}
+      />
+    </Tooltip>
   );
 }

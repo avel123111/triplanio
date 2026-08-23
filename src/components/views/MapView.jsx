@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { mapboxgl, fitToPoints, clampPadding } from '@/lib/mapbox';
+import { mapboxgl, fitToPoints, fitPadding } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
-import { calmFlyTo, calmFit } from '@/lib/map/camera';
+import { calmFlyTo, calmFit, reframeTo } from '@/lib/map/camera';
+import { useMapInsets } from '@/lib/map/useMapInsets';
 import MapControls from '@/lib/map/MapControls';
 import { sortVisits } from '@/lib/validation';
 
@@ -95,7 +96,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * пометить его обязательным значило бы уронить их в тот момент, когда они
  * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
  *
- * @param {{ visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ * @param {{ camera?: any, slotPx?: number, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
  *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
@@ -105,6 +106,14 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           children?: any }} p
  */
 export default function MapView({
+  // Закрытая панелью площадь (отступы вьюпорта) — приезжает от `<MapShell>`.
+  // Канвас при этом во всю площадь: карта видна ПОД виджетом, а кадр уходит в
+  // свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
+  camera = null,
+  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Кадру она не
+  // нужна (холст уже сжат), но перекадрирование обязано на неё реагировать —
+  // иначе на телефоне его нет вовсе (там отступы камеры всегда нулевые).
+  slotPx = 0,
   visits,
   transfers,
   showStartEnd = true,
@@ -226,6 +235,33 @@ export default function MapView({
     markersRef, scheme: mapScheme, projection, active, basemapTheme, cooperativeGestures,
   });
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // ЗАКРЫТАЯ ПЛОЩАДЬ — ОДНА ДВЕРЬ (TRIP-422)
+  //
+  // Отступ объявляется ОДИН раз на инстанс (`setMapInsets`), и обе двери
+  // кадрирования читают его сами — поэтому ни один из семи `fit`-вызовов ниже
+  // про закрытую площадь не знает и знать не должен. Разбор — `lib/map/insets.js`.
+  //
+  // ★ КАДРИРУЕМ ПОСЛЕ ОСАДКИ, ТЕМПОМ ПОВЕРХНОСТИ. Когда шит встаёт на детент
+  // (или сворачивается виджет), свободное окно меняется — и та же цель обязана
+  // ДОЕХАТЬ до нового окна вместе с ним: то же время, та же кривая. Отступ сам
+  // по себе камеру не перекадрирует, он только сдвигает центр вида: маршрут,
+  // вписанный в окно 770px высотой, в окне 288px останется обрезанным.
+  // ═════════════════════════════════════════════════════════════════════════
+  /** Что кадрировать прямо сейчас — читается на осадке, не на рендере. */
+  const subjectRef = useRef(/** @type {any} */ (null));
+  useMapInsets(mapRef, {
+    ready,
+    insets: camera,
+    slotPx,
+    onReframe: (map) => {
+      const sub = subjectRef.current;
+      // Ленту раскрытия и оверлей отелей не трогаем: там камерой владеют они.
+      if (!sub || sub.hideRoute || sub.revealActiveId != null || !sub.canFit) return;
+      reframeTo(map, sub.pts, { padding: sub.air, maxZoom: sub.maxZoom, singleZoom: sub.singleZoom });
+    },
+  });
+
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);
 
@@ -310,6 +346,20 @@ export default function MapView({
     () => ordered.map((v) => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|'),
     [ordered],
   );
+
+  const focusSig = useMemo(
+    () => (Array.isArray(focus) && focus.length ? focus.map((p) => p.join(',')).join('|') : ''),
+    [focus],
+  );
+
+  // ★ ЦЕЛЬ КАДРА ОБЪЯВЛЯЕТСЯ ЗДЕСЬ, А ЧИТАЕТСЯ НА ОСАДКЕ ДЕТЕНТА. Иначе эффект
+  // отступа тянул бы за собой `ordered`/`focus` в зависимости и перезапускался
+  // на каждую правку маршрута — то есть кадрировал бы карту заново там, где её
+  // никто не двигал. Ровно та же цель, что у штатных фитов ниже: есть фокус —
+  // он, иначе весь маршрут.
+  subjectRef.current = focusSig
+    ? { pts: focus, air: 110, maxZoom: 9, singleZoom: focusZoom, canFit, hideRoute, revealActiveId }
+    : { pts: ordered.map((v) => [v.longitude, v.latitude]), air: 60, maxZoom: 8, singleZoom: undefined, canFit, hideRoute, revealActiveId };
 
   // Route legs (consecutive ordered visits + the transport on each pair) and the
   // line signature — shared by the line-draw effect (full vs progressive reveal).
@@ -434,7 +484,11 @@ export default function MapView({
           try {
             const cam = map.cameraForBounds(
               new mapboxgl.LngLatBounds([from.longitude, from.latitude], [to.longitude, to.latitude]),
-              { padding: clampPadding(map, 80) },
+              // Сырой `cameraForBounds` мимо наших дверей — единственный на весь
+              // файл, и отступ ему нужен полный (воздух плюс закрытая площадь),
+              // иначе оценка провала зума считалась бы по площади, которой на
+              // экране нет.
+              { padding: fitPadding(map, 80) },
             );
             if (cam && typeof cam.zoom === 'number') dip = Math.max(0, REVEAL_CITY_ZOOM - cam.zoom);
           } catch { /* ignore */ }
@@ -529,10 +583,6 @@ export default function MapView({
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
   // this flies to the focused city / fits the two transfer cities, and eases
   // back to the full route once focus clears. ---
-  const focusSig = useMemo(
-    () => (Array.isArray(focus) && focus.length ? focus.map((p) => p.join(',')).join('|') : ''),
-    [focus],
-  );
   const hadFocusRef = useRef(false);
   useEffect(() => {
     const map = mapRef.current;

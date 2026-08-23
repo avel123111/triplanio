@@ -2,8 +2,17 @@
 // trip Map lens, the planner previews and the mini-map all render consistently.
 // Note: Mapbox uses [lng, lat] order (GeoJSON), the opposite of Leaflet/Google.
 import mapboxgl from 'mapbox-gl';
+// Путь ОТНОСИТЕЛЬНЫЙ, а не через `@/`: алиас знает только Vite, и с ним модуль
+// не импортируется в `node --test`. Та же конвенция, по которой чистым держат
+// `trip-cities.js` — узел, у которого есть тест, не имеет права зависеть от
+// сборщика.
+import { MIN_FREE_WINDOW, addBox, getMapInsets, toBox } from './map/insets.js';
 
-export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+// `?.` — не перестраховка: без него модуль нельзя ИМПОРТИРОВАТЬ вне Vite, а
+// значит нельзя и покрыть тестами (`node --test` про `import.meta.env` не
+// знает). Кадрирование ниже — самое дорогое правило этого файла, и оно обязано
+// судиться тестом, а не чтением.
+export const MAPBOX_TOKEN = import.meta.env?.VITE_MAPBOX_TOKEN;
 if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
 
 // One Mapbox Standard style for every map surface. Light/dark is the
@@ -46,35 +55,105 @@ export function applyBasemapConfig(map, scheme, theme = 'default') {
 // padding 110 needs a >220px axis. On a normal-size canvas the clamp is a no-op, so
 // the common path is unchanged — it only ever shrinks padding that literally cannot
 // fit, making the illegal camera command unrepresentable rather than papering over it.
+/** Полоса канваса, которую отступ не имеет права съесть (px). Тот же закон, что
+ *  у `canFrame`, поэтому и число ОДНО — берётся оттуда, а не пишется заново. */
+const MIN_FIT_BOX = MIN_FREE_WINDOW;
+
 export function clampPadding(map, padding = 0) {
-  if (!map || typeof padding !== 'number' || !(padding > 0)) return padding;
-  let smaller = 0;
+  const box = toBox(padding);
+  let W = 0, H = 0;
   try {
-    const el = map.getContainer();
-    smaller = Math.min(el?.clientWidth || 0, el?.clientHeight || 0);
-  } catch { return padding; }
-  if (!smaller) return padding; // unmeasured — the canFit gate should have prevented this
-  // Leave ≥16px of canvas between the two paddings so the fit stays valid.
-  const maxPad = Math.max(0, Math.floor(smaller / 2) - 8);
-  return Math.min(padding, maxPad);
+    const el = map && map.getContainer();
+    W = el?.clientWidth || 0; H = el?.clientHeight || 0;
+  } catch { return box; }
+  if (!(W > 0) || !(H > 0)) return box; // unmeasured — the canFit gate should have prevented this
+  // Один закон по каждой оси отдельно: сумма противоположных сторон обязана
+  // оставить полосу канваса. Асимметричный отступ здесь не экзотика, а основной
+  // случай — именно им выражается площадь, закрытая панелью или шитом.
+  const axis = (a, b, size) => {
+    const room = Math.max(0, size - MIN_FIT_BOX);
+    const sum = a + b;
+    if (sum <= room) return [a, b];
+    const k = sum > 0 ? room / sum : 0;
+    return [Math.floor(a * k), Math.floor(b * k)];
+  };
+  const [left, right] = axis(box.left, box.right, W);
+  const [top, bottom] = axis(box.top, box.bottom, H);
+  return { top, right, bottom, left };
 }
 
-// Fit the map to a set of [lng, lat] points. Single point → centered; empty → no-op.
-// Pass opts.animate (or opts.duration) to ease the camera to the new bounds
-// instead of jumping - used while the route is being edited so the map glides
-// out/in as cities are added, removed or reordered.
+/**
+ * ОТСТУП ФИТА для этой карты: воздух кадра ПЛЮС объявленная закрытая площадь.
+ * Единственное место, где эти два слагаемых встречаются, — поэтому забыть одно
+ * из них у вызывателя нельзя по построению.
+ */
+export function fitPadding(map, air = 0) {
+  return clampPadding(map, addBox(toBox(air), getMapInsets(map)));
+}
+
+/**
+ * Куда встанет камера, чтобы вписать точки. `null`, если вписать нельзя.
+ * Вынесено отдельно, потому что ответ нужен ДВАЖДЫ: для самого кадрирования и
+ * для расчёта темпа анимации (`calmFit` меряет по фактической дельте зума).
+ */
+export function cameraForPoints(map, points, opts = {}) {
+  if (!map || !points || points.length === 0) return null;
+  const maxZoom = opts.maxZoom ?? 8;
+  // Одиночная точка: `singleZoom` НЕ ограничивается `maxZoom` — они про разное.
+  // `maxZoom` — потолок для ВПИСЫВАНИЯ набора (не наезжать слишком близко на
+  // компактный маршрут), а одиночная точка вписывать нечего, у неё свой зум
+  // (планировщик просит 8 при потолке 7 — и это не опечатка).
+  if (points.length === 1) return { center: points[0], zoom: opts.singleZoom ?? 7 };
+  try {
+    const b = new mapboxgl.LngLatBounds();
+    points.forEach((p) => b.extend(p));
+    const cam = map.cameraForBounds(b, { padding: fitPadding(map, opts.padding ?? 48), maxZoom });
+    if (!cam || typeof cam.zoom !== 'number') return null;
+    return { center: [cam.center.lng, cam.center.lat], zoom: Math.min(cam.zoom, maxZoom) };
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// КАДРИРОВАНИЕ — ОДНА ДВЕРЬ (TRIP-422)
+//
+// ★ `map.fitBounds()` ЗДЕСЬ БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ, И ЭТО НЕ ПРИДИРКА. Проверено
+// по исходнику mapbox-gl 3.24 (`Camera._fitInternal`): он берёт отступ, которым
+// СЧИТАЛ кадр, и кладёт его же в анимацию — то есть в `transform.padding`, в
+// постоянное состояние карты. Отступ фита включает ВОЗДУХ вокруг маршрута,
+// отступ поверхности — нет. Значит каждый `fitBounds` молча сдвигает состояние
+// карты на величину воздуха, и дальше по этому испорченному значению
+// центрируется всё, что рисуется без фита. Дефект невидим глазом (при
+// симметричном воздухе сдвиг центра сокращается) и не ловится ничем.
+//
+// Поэтому кадрируем в два явных шага: `cameraForPoints` считает center+zoom по
+// отступу ФИТА, а перелёт получает отступ ПОВЕРХНОСТИ. Разбор обоих — в
+// `lib/map/insets.js`.
+//
+// `opts.padding` — ВОЗДУХ вокруг маршрута (число или коробка). Закрытую площадь
+// сюда передавать не нужно и НЕЛЬЗЯ: её карта знает сама.
+// ═══════════════════════════════════════════════════════════════════════════
 export function fitToPoints(map, points, opts = {}) {
   if (!map || !points || points.length === 0) return;
   const duration = opts.duration ?? (opts.animate ? 650 : 0);
-  if (points.length === 1) {
-    // opts.offset shifts a single centred point out from under an overlay (e.g. the
-    // planner's floating panel); [0,0] when unset keeps the point centred.
-    map.easeTo({ center: points[0], zoom: opts.singleZoom ?? 7, duration, offset: opts.offset ?? [0, 0] });
+  const cam = cameraForPoints(map, points, opts);
+  if (!cam) return;
+  const move = {
+    center: cam.center,
+    zoom: cam.zoom,
+    duration,
+    // Отступ ПОВЕРХНОСТИ — только закрытая площадь. mapbox интерполирует его
+    // сам, поэтому смена отступа едет тем же перелётом, что и сама камера.
+    padding: getMapInsets(map),
+    ...(opts.easing ? { easing: opts.easing } : null),
+  };
+  // Одиночная точка — всегда ровный наезд: дуга `flyTo` на месте выглядит как
+  // рывок. `opts.offset` остаётся ради вызывателей, которые уводят точку из-под
+  // своего оверлея вручную.
+  if (points.length === 1 || opts.linear) {
+    map.easeTo({ ...move, offset: opts.offset ?? [0, 0] });
     return;
   }
-  const b = new mapboxgl.LngLatBounds();
-  points.forEach((p) => b.extend(p));
-  map.fitBounds(b, { padding: clampPadding(map, opts.padding ?? 48), maxZoom: opts.maxZoom ?? 8, duration });
+  map.flyTo({ ...move, essential: true });
 }
 
 // GeoJSON LineString feature from [[lng,lat], ...].

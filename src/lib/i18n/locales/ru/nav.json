@@ -1,7 +1,9 @@
 {
   "account": "Аккаунт",
+  "aria_footer": "Навигация в подвале",
+  "aria_home": "Triplanio - главная",
+  "aria_menu": "Меню",
   "aria_primary": "Основная навигация",
-  "aria_social": "Соцсети",
   "budget": "Бюджет",
   "notifications": "Уведомления",
   "profile": "Профиль",
