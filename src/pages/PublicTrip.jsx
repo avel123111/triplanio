@@ -5,7 +5,7 @@ import { Plane } from 'lucide-react';
 import { invokeFn } from '@/lib/invokeFn';
 import { track, setRefTripId, withVisitCampaign } from '@/lib/analytics';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
-import { SiteHeader, SiteFooter, useLandingCss } from '@/components/site/SiteChrome';
+import { SiteHeader, SiteFooter, useSiteCss } from '@/components/site/SiteChrome';
 import MapView from '@/components/views/MapView';
 import { sortVisits } from '@/lib/validation';
 import { localizeVisits } from '@/lib/trip-cities';
@@ -67,7 +67,7 @@ function FlagImg({ cc, className }) {
 export default function PublicTrip() {
   const { lang, setLang } = useI18n();
   const { t, fmtDate, plural, locale, fmtDistance, fmtCountry } = useI18nFormat();
-  const cssReady = useLandingCss();
+  const cssReady = useSiteCss();
 
   const { tripId } = useParams();
   const [searchParams] = useSearchParams();

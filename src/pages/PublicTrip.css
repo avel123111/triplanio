@@ -2,17 +2,17 @@
    Public shared-trip reader — scoped layout styles.
    All classes are `pt-` prefixed and bound to the existing Lumo
    design tokens (src/design/app.css). No new tokens introduced.
-   The marketing header/footer come from SiteChrome (/landing.css);
+   The marketing header/footer come from SiteChrome (/site.css);
    this file styles only the page body under `.ptrip`.
    ============================================================ */
 
 .ptrip{
-  /* Pin the Lumo design-system tokens onto the page subtree. /landing.css is
+  /* Pin the Lumo design-system tokens onto the page subtree. /site.css is
      injected into <head> at runtime (after the bundled app.css) and its own
      :root would otherwise shift the body's fonts/neutrals/brand. Values mirror
      src/design/app.css — this isolates the Lumo body from the landing palette
      while the shared marketing header/footer keep their landing styling. */
-  --font-display:'Geologica',ui-sans-serif,system-ui,sans-serif;                /* TRIP-410 — single-font (пин против landing.css, что грузится после app.css) */
+  --font-display:'Geologica',ui-sans-serif,system-ui,sans-serif;                /* TRIP-410 — single-font (пин против site.css, что грузится после app.css) */
   --font-ui:'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;       /* TRIP-410 */
   --brand:#2173C8;
   --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
@@ -33,11 +33,11 @@
 .ptrip .tnum{font-variant-numeric:tabular-nums}
 .pt-wide{max-width:1180px;margin:0 auto;padding:0 28px}
 
-/* Buttons reuse the shared marketing `.btn` classes from /landing.css (loaded
+/* Buttons reuse the shared marketing `.btn` classes from /site.css (loaded
    with the header/footer chrome) — no page-specific button styles. */
 
 /* ── masthead (now the left column of the reader grid) ── */
-/* The shared marketing header (/landing.css) is fixed; clear it with the
+/* The shared marketing header (/site.css) is fixed; clear it with the
    landing's own --hero-top offset so the kick isn't tucked under the bar. */
 .pt-top{padding:var(--hero-top,96px) 0 30px}
 .pt-mast__kick{display:inline-flex;align-items:center;gap:10px;color:var(--brand)}
