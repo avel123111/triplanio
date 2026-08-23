@@ -7,11 +7,11 @@ import { track, withVisitCampaign } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { Icon as BaseIcon } from '@/design/icons';
-import { SiteHeader, SiteFooter, useLandingCss } from '@/components/site/SiteChrome';
+import { SiteHeader, SiteFooter, useSiteCss } from '@/components/site/SiteChrome';
 
 /* =========================================================
    Landing page - ported from triplanio_landing static site.
-   Marketing header/footer + the /landing.css lifecycle now live in
+   Marketing header/footer + the /site.css lifecycle now live in
    the shared @/components/site/SiteChrome module (reused by the public
    shared-trip page). This file owns only the landing's own sections.
 ========================================================= */
@@ -638,7 +638,7 @@ export default function LandingPage() {
   };
 
   // Marketing CSS lifecycle (shared with the public shared-trip page).
-  const cssReady = useLandingCss();
+  const cssReady = useSiteCss();
 
   useScrollReveal(cssReady);
 

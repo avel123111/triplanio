@@ -117,7 +117,7 @@ export function scanCss(css) {
 function listCssFiles() {
   // ВСЕ .css, затем фильтр по префиксу: `src/**/*.css` в pathspec НЕ матчит файл
   // прямо в `src/` (напр. `src/index.css` — второй канон типографики) и в
-  // `public/` (`public/landing.css`). Тот пропуск поймал e2e-тест, а не ревью.
+  // `public/` (`public/site.css`). Тот пропуск поймал e2e-тест, а не ревью.
   const out = git(['ls-files', '*.css']);
   return out
     .split('\n')

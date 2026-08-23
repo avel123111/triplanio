@@ -66,8 +66,8 @@ const ROOT = 'src';
 // собирает базовое множество через `git ls-tree … -- <пути>`, и стоит этому
 // списку разъехаться со `SCANNED`, как файл, отсутствующий на базовой стороне,
 // прочитается «новым» ЦЕЛИКОМ — красный на том самом PR, который всего лишь
-// вносит его в периметр (ровно это ждало бы подзадачу 10 с landing.css).
-const SCAN_EXTRA = ['public/landing.css'];
+// вносит его в периметр (ровно это ждало бы подзадачу 10 с site.css).
+const SCAN_EXTRA = ['public/site.css'];
 
 // Files allowed to contain raw COLOUR values (hex / palette classes).
 // RATCHET — may only shrink. See the header for the three rules; lower
@@ -88,7 +88,7 @@ const COLOR_WHITELIST = [
   'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
   'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
   'src/pages/PublicTrip.css',                          // public read-only page styles
-  'public/landing.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
+  'public/site.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
 ];
 
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
@@ -153,7 +153,7 @@ const TYPO_WHITELIST = [
 //   • app.css   — home of the 10 canons + .t-strong/.t-flush/.tp-caption + base `body`.
 //   • index.css — Tailwind preflight / reset base.
 //   • login.css — isolated auth base (pending Lumo; also a base/reset home).
-//   • landing.css — STANDALONE marketing/legal stylesheet loaded WITHOUT app.css
+//   • site.css — STANDALONE marketing/legal stylesheet loaded WITHOUT app.css
 //     (SiteChrome + static terms/privacy pages), so its bare h1..h4 + `body`
 //     ARE the typographic canon home for that subtree — its own base.
 //   • fonts.css — @font-face declarations DEFINE each font's weight axis
@@ -163,7 +163,7 @@ const TYPO_WHITELIST = [
 //     (like `body`) sets the base reading weight/line-height; the rest of the
 //     page is on the closed set.
 const WEIGHT_LH_ALLOW = [
-  'src/design/app.css', 'src/index.css', 'src/pages/login.css', 'public/landing.css',
+  'src/design/app.css', 'src/index.css', 'src/pages/login.css', 'public/site.css',
   'src/design/fonts.css', 'src/pages/PublicTrip.css',
 ];
 
@@ -173,11 +173,11 @@ const WEIGHT_LH_ALLOW = [
 //   • LandingPage      — marketing mockup chrome (fake-app visuals), not semantic app text.
 const TYPO_INLINE_VAR_ALLOW = ['src/components/AppErrorBoundary.jsx', 'src/pages/Landing/LandingPage.jsx'];
 
-// Files allowed a raw z-index (TRIP-321). landing.css is the STANDALONE marketing/
+// Files allowed a raw z-index (TRIP-321). site.css is the STANDALONE marketing/
 // legal stylesheet — it is loaded WITHOUT app.css, so the --z-* tokens do not
 // resolve there at all; it owns its own tiny ladder. Anywhere else a raw layer is
 // a bug, and a genuinely local stack takes a per-line `design-token-exempt`.
-const LAYERS_ALLOW = ['public/landing.css'];
+const LAYERS_ALLOW = ['public/site.css'];
 
 // Sanctioned responsive scale (TRIP-321). A breakpoint CANNOT be a token: custom
 // properties are not allowed in media-feature values, so `@media (max-width:
@@ -189,9 +189,9 @@ const LAYERS_ALLOW = ['public/landing.css'];
 // Comparing identities means an off-scale width may disappear, never appear.
 // Normalising an existing one moves where the layout switches, so each is a
 // visual decision, not a sweep.
-// landing.css is exempt — standalone marketing page with its own responsive design.
+// site.css is exempt — standalone marketing page with its own responsive design.
 const BREAKPOINTS = [640, 880];
-const BREAKPOINT_ALLOW = ['public/landing.css'];
+const BREAKPOINT_ALLOW = ['public/site.css'];
 
 // ── SPACING (TRIP-339) — язык значений отступа ──────────────────────────────
 // Шкала: --sp-1 2px · --sp-2 4 · --sp-3 6 · --sp-4 8 · --sp-5 10 · --sp-6 12 ·
@@ -259,7 +259,7 @@ const BREAKPOINT_ALLOW = ['public/landing.css'];
 // считает переменные на вариантах: закон 3 в правильном исполнении производит
 // их пачками, и предикат стал бы тормозом на верном движении.
 //
-// public/landing.css — вне периметра до подзадачи 10 (standalone-лендинг со
+// public/site.css — вне периметра до подзадачи 10 (standalone-лендинг со
 // своим языком; там ещё 171 сырое значение / 30 уникальных).
 const SPACING_PROPS = [
   // Longhand'ы ПЕРВЫМИ: иначе альтернатива `padding` съест префикс `padding-top`.
@@ -270,7 +270,7 @@ const SPACING_PROPS = [
   'row-gap', 'column-gap',
   'padding', 'margin', 'gap',
 ];
-const SPACING_ALLOW = ['public/landing.css'];
+const SPACING_ALLOW = ['public/site.css'];
 
 const PALETTE = '(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE = {

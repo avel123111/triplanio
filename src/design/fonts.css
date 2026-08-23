@@ -2,7 +2,7 @@
    Self-hosted webfonts. Основная система (TRIP-410): Geologica —
    единая гарнитура на весь UI и заголовки (single-font) + JetBrains
    Mono (коды/email/kbd). Golos Text — легаси: в UI приложения НЕ используется
-   (весь UI на Geologica), но НЕ мёртв — его через landing.css рендерит
+   (весь UI на Geologica), но НЕ мёртв — его через site.css рендерит
    маркетинговый/лендинговый роут, а public/privacy.html + public/terms.html
    объявляют @font-face Golos локально на те же /fonts/golos/*.woff2. Поэтому
    @font-face ниже и public/fonts/golos/ НЕ удалять (TRIP-410 Ф3). Прежняя
