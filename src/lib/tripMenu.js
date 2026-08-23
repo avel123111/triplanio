@@ -19,8 +19,9 @@ import { clearsStep } from './tripStep.js';
 //   id        — значение `?lens=`; `overview` в адрес не пишется (дефолт)
 //   group     — 'lens' (разделы трипа) | 'manage' (управление)
 //   addon     — секция видна, только если аддон трипа включён явно
-//   canAccess — гейт по СТУПЕНИ доступа (`resolveMyStep`), единый словарь с
-//               сервером; принимает step ('owner'|'editor'|'participant'|null)
+//   canAccess — гейт по СТУПЕНИ доступа; ступень приезжает готовой из ответа
+//               read-двери (`getTripDetails.myStep`), сравнивается `clearsStep`.
+//               Принимает step ('owner'|'editor'|'participant'|null)
 //   event     — имя события аналитики при открытии (TRIP-213 Ф2c)
 //   flush     — секция сама владеет своим скроллом: тело без паддинга и без
 //               скролла (`.trip-screen-body--flush`), поверхность в край

@@ -14,6 +14,12 @@
  *   'budget'    — budget + categories + expenses
  *   'documents' — documents
  *
+ * Вне групп, ВСЕГДА в ответе (отношение вызывающего к трипу, не данные):
+ *   `trip`   — строка трипа
+ *   `myStep` — ступень доступа вызывающего ('owner'|'editor'|'participant'),
+ *              та самая, что решила access-check ниже
+ *   `isPro`  — разблокирован ли трип для Pro (единый предикат `is_trip_pro`)
+ *
  * Access: authentication is REQUIRED. The caller must be the trip creator
  * (created_by == user.id) or an active TripMember. There is NO trusted
  * no-JWT path — the SPA always sends a user token, and public read-only
@@ -24,6 +30,7 @@
 import { supabaseAdmin, requireUser } from '../_shared/supabaseAdmin.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 import { callerStep } from '../_shared/tripAccess.ts';
+import { isTripPro } from '../_shared/proGate.ts';
 import { clearsStep } from '../_shared/tripStep.ts';
 import { withHandler, jsonError } from '../_shared/http.ts';
 import { fetchTripProfiles } from '../_shared/profiles.ts';
@@ -81,9 +88,17 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // already in hand — the latter would re-read `trips` a second time, and this
     // runs on every trip open. The rule itself is the shared one (TRIP-274); a
     // failed membership query throws → 5xx, never a false 403 (TRIP-208).
-    if (!clearsStep(await callerStep(tripId, user.id, trip.created_by), 'participant')) {
+    const myStep = await callerStep(tripId, user.id, trip.created_by);
+    if (!clearsStep(myStep, 'participant')) {
       return jsonError(403, 'Forbidden', undefined, corsHeaders);
     }
+
+    // Pro-вердикт — стартуем СРАЗУ, ждём при сборке ответа: он не зависит от
+    // групп и обязан ехать рядом с ними, а не после них (иначе он бы добавил
+    // свой SELECT последовательным хвостом к Promise.all ниже).
+    // Сбой RPC роняет функцию в 5xx — ровно как сбой любой запрошенной группы
+    // (readGroup): у экрана трипа один класс отказа, а не особая ветка на поле.
+    const proPromise = isTripPro(supabaseAdmin, tripId);
 
     // Build parallel fetch list — only what was requested
     const tasks: Promise<{ data: unknown[] | null; error: unknown }>[] = [];
@@ -130,8 +145,21 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
         ? readGroup(results[slots[key]] as { data: unknown[] | null; error: unknown })
         : undefined;
 
-    // Assemble response
-    const response: Record<string, unknown> = { trip };
+    // Assemble response.
+    //
+    // `myStep` / `isPro` — ОТНОШЕНИЕ ВЫЗЫВАЮЩЕГО к трипу, а не группа данных,
+    // поэтому они едут ВСЕГДА, рядом с `trip` (который тоже едет всегда), а не
+    // под каким-то `include`: условное поле («иногда есть») сделало бы контракт
+    // хуже ради одного индексного SELECT.
+    //
+    // ★ Зачем: обвязка экрана (шапка + меню) решает СВОЙ состав по этим двум
+    // фактам. Раньше фронт добывал их сам ещё двумя круговыми поездками:
+    // ступень выводилась из `members` (второй запрос, ~500 мс), а Pro — из
+    // checkSubscriptionStatus (третий, ~590 мс). Оба факта уже здесь: ступень
+    // ПОСЧИТАНА строкой выше для access-check, а Pro — тот же предикат, что
+    // питает бейдж карточки на главной (`get_my_trip_cards`). Сервер их просто
+    // перестал выбрасывать, и меню перестало собираться в три приёма.
+    const response: Record<string, unknown> = { trip, myStep, isPro: await proPromise };
 
     if (wantShell) {
       const cv = (pick('cityVisits') as any[]) ?? [];

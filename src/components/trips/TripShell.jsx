@@ -36,6 +36,7 @@ import { DEFAULT_SECTION, sectionById, isSectionAvailable } from '@/lib/tripMenu
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { useAuth } from '@/lib/AuthContext';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -71,7 +72,6 @@ export default function TripShell({
   tripId,
   trip,
   section = DEFAULT_SECTION,
-  myStep,
   isPro,
   proResolved = true,
   title,
@@ -90,6 +90,8 @@ export default function TripShell({
   const { user } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPhone = useIsPhone();
+  // Ступень доступа — из единого канала права, не пропом (см. useTripMenu).
+  const { step: myStep } = useTripAccess();
   const [sideOpen, setSideOpen] = useState(false);
   const { setTripNav } = useMobileNav();
 
@@ -171,7 +173,6 @@ export default function TripShell({
               tripId={tripId}
               trip={trip}
               lens={section}
-              myStep={myStep}
               isPro={isPro}
               proResolved={proResolved}
               onProUpsell={onProUpsell}
@@ -188,7 +189,6 @@ export default function TripShell({
               lens={section}
               isPro={isPro}
               proResolved={proResolved}
-              myStep={myStep}
               open={isPhone && sideOpen}
               onOpenChange={setSideOpen}
               onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}

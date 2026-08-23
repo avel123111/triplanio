@@ -15,19 +15,35 @@ export function isProActive(user) {
 }
 
 // Owner-aware trip Pro resolution, CACHED across page mounts via react-query.
-// Trip-level Pro = is_pro_trip (known instantly) OR the trip OWNER has an active
-// subscription (resolved server-side by checkSubscriptionStatus; a participant's
-// own sub does NOT unlock someone else's trip).
+// Trip-level Pro = is_pro_trip OR the trip OWNER has an active subscription (a
+// participant's own sub does NOT unlock someone else's trip).
+//
+// ДВА ИСТОЧНИКА ОДНОГО ФАКТА — но не два канала: вход в UI остаётся ОДИН, этот
+// хук, и он же решает, какой ответ показать.
+//   `seed`  — вердикт с read-двери (`getTripDetails.isPro`, единый SQL-предикат
+//             `is_trip_pro`). Дешёвый и приезжает ВМЕСТЕ с трипом, поэтому пункт
+//             апселла решается на первом круге. Раньше его роль играл сырой
+//             `trip.is_pro_trip`, который знал только про разовую покупку и
+//             ничего — про подписку владельца: у Pro-владельца пункт «Pro» всё
+//             равно висел до ответа проверки.
+//   запрос  — `checkSubscriptionStatus`, АВТОРИТЕТ: в нём reconcile-on-read,
+//             который сверяется со Stripe и чинит сломанный кэш энтайтлмента.
+//             Едет фоном и уточняет ответ, если он разошёлся с seed'ом — то есть
+//             ровно в том случае, ради которого reconcile и существует.
 //
 // Single source of truth shared by TripView and the structure editor. Because the
 // result is cached by trip id, crossing the edit↔trip route boundary (a full page
 // remount) reads the cache synchronously instead of re-fetching — so `resolved` is
 // already true on the second mount and the sidebar "upgrade" card no longer flashes.
 //
-// Returns { isPro, isOwner, resolved }. `resolved` stays false on the FIRST resolve
-// so the upgrade banner isn't shown prematurely on pro trips during the async check;
-// `isOwner` is only meaningful once resolved (defaults to false).
-export function useTripProStatus(tripId, isProTrip = false, hasAccess = true) {
+// Returns { isPro, isOwner, resolved }. `resolved` = «ответ известен»: сразу, если
+// пришёл seed, иначе — когда осядет запрос. Пока НЕ resolved, апселл не рисуется,
+// чтобы он не мигал на Pro-трипе; `isOwner` осмыслен только после запроса.
+//
+// @param {string} tripId
+// @param {boolean} [seed]  вердикт с read-двери; undefined = двери ещё не было
+// @param {boolean} [hasAccess]
+export function useTripProStatus(tripId, seed = undefined, hasAccess = true) {
   const q = useQuery({
     queryKey: ['trip-owner-pro', tripId],
     queryFn: async () => {
@@ -61,12 +77,17 @@ export function useTripProStatus(tripId, isProTrip = false, hasAccess = true) {
   });
   const ownerPro = q.data?.isPro === true;
   return {
-    isPro: !!isProTrip || ownerPro,
+    // Оба источника ПОДНИМАЮТ до Pro и ни один не опускает — семантика ровно та
+    // же, что была у прежнего `isProTrip` (расхождение ВНИЗ, т.е. снятый рефандом
+    // Pro внутри одной сессии, лечится следующим чтением трипа; менять приоритет
+    // вердиктов — продуктовое решение, не часть этой правки).
+    isPro: seed === true || ownerPro,
     // Trip owner (server-resolved). Only meaningful once the query settles; until
     // then defaults to false. Consumers that need it must gate on `resolved`.
     isOwner: q.data?.isOwner === true,
-    // Instant if the trip itself is Pro; otherwise once the query settles. On a
-    // warm cache the query is already success on first render → no flash.
-    resolved: !!isProTrip || q.isSuccess || q.isError,
+    // Мгновенно, если seed приехал (в т.ч. `false` — «точно не Pro», и апселл
+    // можно показать сразу); иначе — когда осядет запрос. На тёплом кэше запрос
+    // уже success на первом рендере → мигания нет.
+    resolved: seed != null || q.isSuccess || q.isError,
   };
 }

@@ -36,12 +36,28 @@ type Admin = {
 };
 
 /**
+ * САМ предикат: разблокирован ли трип для Pro-функций.
+ *
+ * Отделён от отказа, потому что у вопроса два законных потребителя: ГЕЙТ («не
+ * пустить» → `proRefusal` ниже) и ПОКАЗ («рисовать ли пункт апселла» →
+ * `getTripDetails`). Раньше существовал только гейт, и читающему экрану
+ * приходилось спрашивать Pro у `checkSubscriptionStatus` — функции с
+ * reconcile-on-read внутри, то есть с походом в Stripe: целый круг ради одной
+ * строки меню. Разложение не заводит второй формулы — SQL тот же `is_trip_pro`,
+ * источник остаётся один.
+ *
+ * Бросает на сбое RPC (→ 500), не на «не Pro»: см. ★ ИНВАРИАНТ в шапке.
+ */
+export async function isTripPro(admin: Admin, tripId: string): Promise<boolean> {
+  return unwrapDbResult(await admin.rpc('is_trip_pro', { p_trip_id: tripId })) === true;
+}
+
+/**
  * `null` — трип Pro (пропускаем). Иначе — `PRO_REQUIRED`. Бросает на сбое RPC
  * (→ 500), не на «не Pro».
  */
 export async function proRefusal(admin: Admin, tripId: string): Promise<Refusal | null> {
-  const isPro = unwrapDbResult(await admin.rpc('is_trip_pro', { p_trip_id: tripId }));
-  return isPro === true ? null : PRO_REQUIRED;
+  return await isTripPro(admin, tripId) ? null : PRO_REQUIRED;
 }
 
 /**
