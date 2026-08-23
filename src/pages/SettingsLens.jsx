@@ -28,6 +28,7 @@ import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, IconBtn, Severity, Skeleton, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -690,7 +691,7 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
       // Trip is not Pro. Only the owner can upgrade it → owner sees the upgrade
       // path; a non-owner (admin) is told to ask the owner instead of being sent
       // to checkout (their payment wouldn't unlock THIS trip).
-      openProUpsell({ mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
+      openProUpsell({ role: proRole(isOwner), source: 'feature', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
       return;
     }
     const newVal = !features[id];
@@ -722,7 +723,7 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
       // тост (kind==='upsell' у classifyError). Читается `code` от invokeFn, не
       // `data.code` - 402 оставляет `data` пустым.
       if (code === 'PRO_REQUIRED') {
-        openProUpsell({ mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
+        openProUpsell({ role: proRole(isOwner), source: 'feature', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
       } else {
         refusalToast(code);
       }
@@ -918,11 +919,17 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
               <div className="pt">{t('trip_menu.free_trip_title')}</div>
               <p style={{ margin: 0 }}>{t('trip.pro_locked_lenses')}</p>
             </div>
-            {isOwner ? (
-              <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
-            ) : (
-              <Btn variant="secondary" icon="lock" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>{t('trip.pro_by_owner')}</Btn>
-            )}
+            {/* Кнопка ведёт в апселл ОБОИХ: подпись разная (владелец улучшает,
+                участник просит владельца), действие одно — модалка сама решит,
+                что показать. Раньше владелец уходил в чекаут мимо неё. */}
+            <Btn
+              variant={isOwner ? 'primary' : 'secondary'}
+              icon={isOwner ? undefined : 'lock'}
+              iconRight={isOwner ? 'arrowR' : undefined}
+              onClick={() => openProUpsell({ role: proRole(isOwner), source: 'menu', ownerName, onUpgrade: openUpgrade })}
+            >
+              {isOwner ? t('trip_menu.upgrade_trip') : t('trip.pro_by_owner')}
+            </Btn>
           </Card>
         )}
         <div className="card-h">

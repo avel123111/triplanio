@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
 import { Btn, IconBtn, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { proUpsellCopy, proUpsellFooter } from '@/lib/proUpsell';
 
 /**
  * ProUpsellModal — единая Pro-апселл модалка (Ф4).
@@ -11,23 +12,33 @@ import { useI18n } from '@/lib/i18n/I18nContext';
  * Props:
  *   open          – boolean
  *   onOpenChange  – (open: boolean) => void
- *   mode          – 'upgrade' | 'info'
- *                     upgrade : owner/free-user → feat-list + btn--pro CTA
- *                     info    : participant → owner note + feat-list + copy link
+ *   role          – 'owner' | 'member' — что человек МОЖЕТ (владелец платит,
+ *                   участник просит владельца). Решает футер.
+ *   source        – 'menu' | 'feature' — что он СПРАШИВАЕТ (что такое Pro /
+ *                   почему это закрыто). Решает копию.
  *   feature       – optional translated feature name shown in the title
- *   ownerName     – owner display name (info mode)
- *   onUpgrade     – called after close when user taps "Перейти к Pro" (upgrade mode)
+ *   ownerName     – owner display name (участнику)
+ *   onUpgrade     – called after close when user taps "Перейти к Pro" (владелец)
+ *
+ * Обе оси — в `@/lib/proUpsell` одной таблицей: предикат там один и покрыт
+ * тестом, здесь остаётся только рендер.
+ *
+ * @param {{ open?: boolean, onOpenChange?: (o: boolean) => void,
+ *           role?: import('@/lib/proUpsell').ProRole,
+ *           source?: import('@/lib/proUpsell').ProSource,
+ *           feature?: string, ownerName?: string, onUpgrade?: () => void }} p
  */
 export default function ProUpsellModal({
   open, onOpenChange,
-  mode = 'upgrade',
+  role = 'owner', source = 'feature',
   feature, ownerName,
   onUpgrade,
 }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const close = () => onOpenChange?.(false);
-  const isInfo = mode === 'info';
+  const copy = proUpsellCopy({ role, source, feature });
+  const askOwner = proUpsellFooter(role) === 'ask-owner';
 
   const copyLink = async () => {
     try {
@@ -55,12 +66,7 @@ export default function ProUpsellModal({
                 <Icon name="pro" size={17} />
               </div>
               <DialogTitle asChild>
-                <h2>
-                  {isInfo
-                    ? (feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_heading'))
-                    : (feature ? t('sub.locked_feature_named', { feature }) : t('sub.locked_heading'))
-                  }
-                </h2>
+                <h2>{t(copy.titleKey, copy.titleParams)}</h2>
               </DialogTitle>
               <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
             </div>
@@ -69,7 +75,7 @@ export default function ProUpsellModal({
             <div className="dlg__body">
               {/* Description — differs by mode */}
               <div className="muted t-body" style={{ marginBottom: 14 }}>
-                {isInfo ? (
+                {copy.desc === 'owner-note' ? (
                   <>
                     {t('sub.trip_pro_desc_pre')}
                     <b style={{ color: 'var(--ink-2)' }}>{ownerName || t('sub.trip_owner_fallback')}</b>
@@ -95,7 +101,7 @@ export default function ProUpsellModal({
 
             {/* ── Footer ── */}
             <div className="dlg__foot">
-              {isInfo ? (
+              {askOwner ? (
                 <>
                   <Btn variant="secondary" icon={copied ? 'check' : 'copy'} onClick={copyLink}>
                     {copied ? t('common.copied') : t('trip.copy_link')}

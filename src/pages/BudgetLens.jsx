@@ -28,6 +28,7 @@ import { formWrite, reconcileWriteRow, withOptimism, tripContentBinding, TRIP_CO
 import { refusalError } from '@/lib/refusalError';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
+import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { classifyError } from '@/lib/errorText';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
@@ -571,7 +572,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   // isOwner — ступень owner лестницы (строго created_by), решено в TripView.
   const ownerName = resolveOwnerName({ trip, members, selfUser: user, deletedLabel: t('common.deleted_user') });
   const onProRefusal = () => openProUpsell({
-    mode: isOwner ? 'upgrade' : 'info',
+    role: proRole(isOwner),
+    source: 'feature',
     feature: t('budget.title'),
     ownerName,
     onUpgrade: () => goPro(nav, { tripId }),
