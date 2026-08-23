@@ -1621,6 +1621,7 @@ h4,
    visual-diff-exempt: .app-side__group margin-top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-side__group padding-top — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
    visual-diff-exempt: .app-side__item --badge-ring — сужение меню трипа до рейла 70 px (вариант A), апрув Pavel
+   visual-diff-exempt: .app-header--trip {@media (max-width: 640px)} padding-left — на телефоне рейла нет, зазор шапки свой; апрув Pavel
    ============================================================ */
 .app-side {
   width: var(--rail-w); flex: none; align-self: stretch;
@@ -5710,6 +5711,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 @media (max-width: 640px) {
   .trip-body { grid-template-columns: 1fr; }
   .trip-shell .app-side { display: none; }
+  /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
+     края ей нужен свой, а не тот, что задан под соседство с рейлом. */
+  .app-header--trip { padding-left: var(--sp-7); }
   .trip-screen-body { padding: 16px 16px 48px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
