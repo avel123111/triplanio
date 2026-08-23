@@ -5713,12 +5713,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        Замерено: планировщик `column-gap: normal`, редактор `8px`.
        Ни один гард такого не видит — это `var()` без сеттера на одном из двух
        хозяев, ровно та же ловушка, что разобрана в
-       [[triplanio-css-alias-frozen-at-root]]. Дефолт теперь на самом ряду;
-       таблица и шапка колонок продолжают задавать своё значение, и оно
-       по-прежнему побеждает на своих хозяевах.
-       visual-diff-exempt: .te-row --te-gap — дефолт зазора переехал на сам ряд: вне .te-table переменная не имела значения и зазор схлопывался в 0
-       visual-diff-exempt: .te-row column-gap — следствие того же: у ряда планировщика зазор был 0 вместо 8px */
-    .te-row { --te-gap: 8px; position: relative; grid-template-columns: var(--te-cols); row-gap: 0; column-gap: var(--te-gap); align-items: center; padding: 12px var(--te-pad-x); border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+       [[triplanio-css-alias-frozen-at-root]].
+       ★ ДЕФОЛТ СТОИТ НА МЕСТЕ ЧТЕНИЯ, А НЕ ОБЪЯВЛЕНИЕМ НА САМОМ РЯДУ, И РАЗНИЦА
+       НЕСУЩАЯ. Собственное объявление у ряда ЗАТЕНЯЕТ унаследованное: хозяин
+       (`.te-table`) перестал бы влиять на свои же ряды — проверено атакой, 40px
+       с таблицы давали у ряда те же 8. Метрики здесь по построению задаёт
+       ХОЗЯИН, одним набором на шапку колонок и на ряды, иначе `.te-thead`
+       разъедется с `.te-row` на первой же правке. Фолбэк такого не ломает: он
+       действует ровно тогда, когда переменной нет вовсе.
+       Значение — СТУПЕНЬ ШКАЛЫ (`--sp-4` = 8px), а не литерал: сырое число тут
+       подняло бы храповик отступов (92 → 93), и справедливо.
+       visual-diff-exempt: .te-row column-gap — вне .te-table переменная не имела значения и зазор схлопывался в 0 вместо 8px */
+    .te-row { position: relative; grid-template-columns: var(--te-cols); row-gap: 0; column-gap: var(--te-gap, var(--sp-4)); align-items: center; padding: 12px var(--te-pad-x); border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     /* Шапка колонок: та же сетка, тот же зазор, те же поля по бокам, что у ряда.
        Первый заголовок сам встаёт в третью колонку — пустых ячеек под грип и
        узел в разметке нет. */
