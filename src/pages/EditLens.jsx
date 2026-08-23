@@ -221,6 +221,7 @@ import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, Tooltip, use
 import { Row, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
+import { useTheme } from '@/lib/ThemeContext';
 import LpSheet from '@/components/ui/LpSheet';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
@@ -355,6 +356,13 @@ export default function EditLens({ tripId, shell, content }) {
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
   const isSheet = useIsPhone();
+  // ★ ТЕМА КАРТЫ — ИЗ КОНТЕКСТА, А НЕ ЧТЕНИЕМ DOM В РЕНДЕРЕ. Здесь стояло
+  // `document.documentElement.dataset.theme`: атрибут читается один раз при
+  // рендере и НИ НА ЧТО НЕ ПОДПИСАН, поэтому карта узнавала о смене темы только
+  // если экран перерисовывался по какой-то посторонней причине — «с большой
+  // задержкой, а иногда никогда». `isDark`, а не `theme`: последний бывает
+  // `system`, и сравнение с 'dark' даёт светлую карту на тёмной ОС.
+  const { isDark: isDarkTheme } = useTheme();
   // Виджет редактора: свёрнут ли он (десктоп) и на каком детенте стоит шит
   // (телефон). Оба — состояние ЭКРАНА, а не шелла: шелл раскладывает, экран
   // помнит. Стартовый детент — средний: карта видна, список читается.
@@ -1164,7 +1172,7 @@ export default function EditLens({ tripId, shell, content }) {
               hoveredHotelId={stayHoveredId}
               onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
               onHotelHover={setStayHoveredId}
-              colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
+              colorScheme={isDarkTheme ? 'DARK' : 'LIGHT'} />
       )}
       panelHeader={routeHead}
       panel={routeBody}
