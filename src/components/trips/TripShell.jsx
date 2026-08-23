@@ -45,7 +45,10 @@ import { Skeleton } from '@/design/index';
 
 export default function TripShell({
   tripId,
-  trip,
+  // Обвязке нужен НЕ трип, а два факта состава меню: включённые аддоны (сюда) и
+  // ступень (из контекста доступа). Проп `trip` тут был лишней зависимостью —
+  // рейл читал из него ровно `details.addons`.
+  addons,
   section = DEFAULT_SECTION,
   isPro,
   proResolved = true,
@@ -100,7 +103,7 @@ export default function TripShell({
   // здесь, где на руках tripId и роль, и передаём числом в регистрацию дока —
   // сам док (`MobileBottomNav`) живёт выше `TripShell` и tripId не знает. Чат
   // считаем только когда линза чата доступна, иначе — ноль подписок.
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', addons, myStep) });
   const inappUnread = useUnreadNotificationCount();
   const moreBadge = chatUnread + inappUnread;
   // useLayoutEffect, а не useEffect: пассивный эффект выполняется ПОСЛЕ отрисовки,
@@ -149,7 +152,7 @@ export default function TripShell({
             открывает его «Ещё» мобильного дока, и до ответа открывать нечего. */}
         <TripSidebar
           tripId={tripId}
-          trip={trip}
+          addons={addons}
           lens={section}
           isPro={isPro}
           proResolved={proResolved}
@@ -165,7 +168,7 @@ export default function TripShell({
         {!loading && (
           <TripSidebarSheet
             tripId={tripId}
-            trip={trip}
+            addons={addons}
             lens={section}
             isPro={isPro}
             proResolved={proResolved}

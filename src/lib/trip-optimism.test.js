@@ -22,6 +22,8 @@ import {
   swapOptimisticRow,
   TRIP_CONTENT_KEY,
   TRIP_SHELL_KEY,
+  TRIP_CARD_KEY,
+  cacheTripCards,
 } from './trip-data.js';
 
 const k = (key) => JSON.stringify(key);
@@ -335,4 +337,36 @@ test('withRecompute offline: a failed refetch is swallowed and commit still runs
     rollback: () => order.push('rollback'),
   });
   assert.deepEqual(order, ['reconcile', 'commit'], 'refetch failure neither blocks the commit nor rolls back');
+});
+
+
+// ── Карточки главной: своя сущность, свой ключ ───────────────────────────────
+// Соблазн «положить карточку в ключ трипа, она же про тот же трип» — ровно
+// грабля TRIP-277: тонкий payload затирает общий кэш, и экран, который ждал
+// полный трип, молча получает огрызок. Тест пинит границу.
+
+test('cacheTripCards пишет ТОЛЬКО в ключи карточек и не трогает ключ трипа', () => {
+  const writes = [];
+  const qc = { setQueryData: (key, val) => writes.push([key, val]) };
+  const cards = [{ id: 't1', myStep: 'owner' }, { id: 't2', myStep: 'participant' }];
+
+  cacheTripCards(qc, cards);
+
+  assert.deepEqual(writes.map(([key]) => key), [TRIP_CARD_KEY('t1'), TRIP_CARD_KEY('t2')]);
+  const shell = JSON.stringify(TRIP_SHELL_KEY('t1'));
+  const content = JSON.stringify(TRIP_CONTENT_KEY('t1'));
+  for (const [key] of writes) {
+    assert.notEqual(JSON.stringify(key), shell, 'карточка не должна попадать в ключ трипа');
+    assert.notEqual(JSON.stringify(key), content, 'карточка не должна попадать в ключ контента');
+  }
+});
+
+test('cacheTripCards переживает мусор на входе и строки без id', () => {
+  const writes = [];
+  const qc = { setQueryData: (key) => writes.push(key) };
+  cacheTripCards(qc, null);
+  cacheTripCards(qc, undefined);
+  cacheTripCards(null, [{ id: 't1' }]);
+  cacheTripCards(qc, [{ noId: true }, null]);
+  assert.deepEqual(writes, []);
 });

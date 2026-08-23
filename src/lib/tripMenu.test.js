@@ -4,12 +4,16 @@ import {
   SECTIONS, DEFAULT_SECTION, DOCK_SECTIONS, DOCK_SECTION_IDS,
   sectionById, isSectionAvailable, availableSections, resolveSection, loadingSections,
 } from './tripMenu.js';
+import { normalizeAddons } from './tripAddons.js';
 
 // Реестр — единственный источник состава экрана трипа, а у состава нет
 // скриншота: ни один гард не связывает пункт меню с веткой рендера. Поэтому
 // поведение пинится здесь.
 
-const tripWith = (addons) => ({ details: { addons } });
+// Предикат принимает ФАКТЫ, а не трип: аддоны в него приходят из двух источников
+// (дверь трипа и карточка главной) и оба проходят через ОДИН нормализатор —
+// поэтому и тест гоняет их через него, а не подсовывает готовый булев объект.
+const tripWith = (addons) => normalizeAddons(addons);
 const plainTrip = tripWith({});
 
 test('у каждой секции есть id, группа, подпись, иконка и событие; id уникальны', () => {
