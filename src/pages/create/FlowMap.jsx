@@ -3,6 +3,7 @@ import { mapboxgl } from '@/lib/mapbox';
 import { calmFit, reframeTo } from '@/lib/map/camera';
 import { getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
+import { PHONE_MAX_W } from '@/hooks/use-mobile';
 import { useMapInsets } from '@/lib/map/useMapInsets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 import { useMapSurface } from '@/lib/map/useMapSurface';
@@ -46,7 +47,7 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
 // планеты; слот, равный свободному окну, — ни одной точки рамки вне планеты.
 
 function fitPaddingFor(w) {
-  return w > 960 ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 32, left: 40 };
+  return w > PHONE_MAX_W ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 32, left: 40 };
 }
 
 // Нейтральный СТАРТОВЫЙ вид глобуса (до выбора маршрута; сюда же возвращает

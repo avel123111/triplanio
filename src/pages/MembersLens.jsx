@@ -25,7 +25,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 
@@ -53,7 +53,7 @@ const ROLES = [
 
 /** @param {{ tripId: any, promoteMember?: any, open: boolean, onOpenChange?: any }} p */
 export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
-  const isMobile = useIsMobile();
+  const isMobile = useIsPhone();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const [tab, setTab] = useState('email');

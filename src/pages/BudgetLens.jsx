@@ -35,7 +35,7 @@ import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { goPro } from '@/lib/goPro';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur } from '@/lib/budget/money';
 import { currencySymbol } from '@/lib/budget/currencies';
@@ -121,7 +121,7 @@ const ORPHAN_CITY = '__orphan_city__';
 // VISIT, not its label: a label frozen at save time is stuck in whatever language
 // the UI was in, and the two writers disagreed on that (TRIP-230).
 export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, open, onOpenChange, onProRefusal }) {
-  const isMobile = useIsMobile();
+  const isMobile = useIsPhone();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const isEdit = !!existing;
@@ -383,7 +383,7 @@ const CAT_COLORS = CATEGORY_HEXES;
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'ticket', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 export function AddCategoryDialog({ tripId, existing, open, onOpenChange, onProRefusal }) {
-  const isMobile = useIsMobile();
+  const isMobile = useIsPhone();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   // Edit a seeded category and the field must start from what the user SEES —
@@ -509,7 +509,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
 // TripView.LoadingBody и content в самом BudgetLens), поэтому «таймлайн → экран»
 // не мигает и форма совпадает с реальным экраном. TRIP-337 visual-fixes.
 export function BudgetSkeleton() {
-  const isMobile = useIsMobile();
+  const isMobile = useIsPhone();
   return (
     <div className="col col--g7 ov-anim" aria-busy="true">
       <div className="row row--j-between">
@@ -557,7 +557,7 @@ export function BudgetSkeleton() {
 export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
-  const isMobile = useIsMobile();
+  const isMobile = useIsPhone();
   // Право (editor) и владелец (owner) — из единого контекста доступа (TRIP-274
   // Ф2.2). UI прячет мутации, чтобы прямые записи не падали молчаливым 403
   // (серверная защита — edge/RLS _can_edit_trip, TRIP-124).

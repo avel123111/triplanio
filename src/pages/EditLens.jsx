@@ -1069,6 +1069,16 @@ export default function EditLens({ tripId, shell, content }) {
       onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade">
       {(!isSheet && !useDrawer && leftPanelEl) || (
         <>
+          {/* Шапка колонок. Сетку она НЕ объявляет — берёт ту же `--te-cols`, что
+              и ряд: две копии шаблона разъехались бы на первой же правке. Первый
+              заголовок сам встаёт в третью колонку, поэтому пустых ячеек под грип
+              и узел здесь нет. */}
+          <div className="te-thead">
+            <Trunc as="span" className="te-th">{t('tse.col_destination')}</Trunc>
+            <span className="te-th te-th--c">{t('tse.col_nights')}</span>
+            <span className="te-th te-th--c">{t('tse.col_stay')}</span>
+            <span className="te-th te-th--c">{t('budget.source_activity')}</span>
+          </div>
           <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
               const next = displayNodes[displayNodes.indexOf(n) + 1];
@@ -1317,9 +1327,10 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         conf={<Conf n={cityConf} />}
         dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>
         <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled variant="bare" />
-        <div className="te-row__meta">
-          <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
-        </div>
+        {/* У пересадки жилья нет — но колонка есть: пустая ячейка держит сетку,
+            иначе активности уехали бы в колонку жилья и разъехались с шапкой. */}
+        <div className="te-cell te-cell--hotel" />
+        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
       </CityRow>
     );
   }
@@ -1331,13 +1342,8 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       conf={<Conf n={cityConf} />}
       dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
       <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} variant="bare" />
-      {/* Мета-строка карточки остановки: жильё и активности стоят РЯДОМ под
-          именем города. В колонках им места нет — виджет не бывает шире 550px,
-          и таблица из шести колонок в него не помещается ни на одном мониторе. */}
-      <div className="te-row__meta">
-        <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
-        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
-      </div>
+      <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
+      <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
     </CityRow>
   );
 }
