@@ -1,0 +1,14 @@
+# Triplanio robots.txt (TRIP-448)
+# Отдаётся статикой из public/ ДО SPA-fallback rewrite'а (/(.*) → /index.html),
+# так же как google9ecdac7b1e922c40.html — иначе краулер получил бы 200 с HTML
+# лендинга под видом robots.txt.
+#
+# /join/ НЕ закрываем намеренно: Disallow не даёт краулеру ЗАГРУЗИТЬ страницу, а
+# значит и прочитать её noindex; к тому же middleware.js специально отдаёт ботам
+# HTML с og-тегами приглашения — Disallow сломал бы это превью. От индексации
+# приглашения защищает noindex в самом OG-HTML, а не robots.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://www.triplanio.com/sitemap.xml
