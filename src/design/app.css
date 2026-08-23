@@ -1297,11 +1297,11 @@ h4,
 /* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
    поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
 .app-header__logo {
-  width: 38px; height: 38px; flex: 0 0 auto; border-radius: var(--r-sm); display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center;
   overflow: hidden;
 }
 .app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
-.app-header__brand-name { color: var(--ink); }
+.app-header__brand-name { color: var(--ink); border: 0; background: transparent; padding: 0; cursor: pointer; }
 /* Второе лицо слота — стрелка выхода из трипа. Лежит в том же боксе поверх
    знака и проступает по наведению; правило контекстное намеренно: в шапке слот
    это ссылка на бренд, в рейле — выход из трипа, и отдельной круглой кнопки
@@ -1424,7 +1424,7 @@ h4,
 
 /* Trip side nav. The grid host that used to wrap it (.app-body) is gone — the
    живая оболочка ОДНА - .trip-shell/.trip-body (TripShell); она же владеет
-   колонкой меню и его off-canvas-поведением на всех экранах трипа. */
+   колонкой рейла и его гашением на телефоне. */
 /* ============================================================
    СУЖЕНИЕ МЕНЮ ТРИПА ДО РЕЙЛА 70 px — объявление намеренных изменений
    для гарда 2p. Вариант A (сплошная плитка активного), апрув Pavel:
@@ -1649,6 +1649,8 @@ h4,
   margin-top: var(--sp-3); padding-top: var(--sp-3);
   border-top: 1px solid var(--nav-line);
 }
+/* Подпись группы живёт ТОЛЬКО в телефонном шите (`tm-caption`): на 70 px рейла
+   ей места нет, границу между группами там держит `.app-side__group + .app-side__group`. */
 .app-side__group-label {
  color: var(--muted-2); padding: 10px 10px 6px;
 }
@@ -1683,9 +1685,10 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
  max-width: 100%; hyphens: auto; overflow-wrap: anywhere;
  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-/* Бейдж непрочитанного чата в пункте сайдбара — красный канон `.badge--unread`,
-   позиция ко-селектором (ряд флексовый, толкаем вправо). TRIP-354: свой класс
-   `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
+/* Бейдж непрочитанного чата в пункте рейла — красный канон `.badge--unread`,
+   позиция ко-селектором: пункт вертикальный, поэтому бейдж не в хвосте ряда, а
+   абсолютом в углу иконки, и `--badge-ring` даёт ему отбивку под фон носителя.
+   TRIP-354: свой класс `.app-side__item-badge` (--warm 18px) свёрнут в общий бейдж. */
 .app-side__item { --badge-ring: var(--nav-bg); }
 .app-side__item.active { --badge-ring: var(--brand); }
 .app-side__item > .badge--unread { position: absolute; top: var(--sp-1); right: var(--sp-5); }
@@ -3640,24 +3643,24 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .editable__edit { flex: none; }
 .editable__input { min-width: 0; background: transparent; border: 0; padding: 0; font: inherit; letter-spacing: inherit; color: inherit; outline: none; -webkit-appearance: none; appearance: none; }
 
-/* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
-   three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
-   phone bottom-nav (≤640). There is no separate tablet/icon-rail state: the full
-   220px sidebar simply holds down to 881, then goes straight to the drawer. */
+/* Границ у меню трипа ОДНА: рейл --rail-w держится от самых широких экранов до
+   641, ниже — телефонный шит (TripSidebarSheet) из мобильного дока. Промежуточной
+   ступени нет намеренно: узкую колонку прятать не за чем, а выезжающий ящик
+   641–880 (бургер + скрим + своя ветка CSS) был третьим состоянием на ровном
+   месте и удалён вместе с сужением меню. */
 
 /* Mobile app shell */
 @media (max-width: 880px) {
   /* TRIP-211: the header is IDENTICAL to desktop at every width — same frosted
      glass (base `@supports` rule), same 60px height, same 18px padding / 14px gap.
      No mobile size or background override here, so it never changes by width. */
-  .app-header__menu { display: grid; }                /* mobile burger appears */
+
   .app-header__trip-meta { display: none; }
   .app-header__trip-title { font-size: var(--ctl-fs); }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
-  /* NB: the trip / editor sidebars go off-canvas via their OWN shells
-     (.trip-shell .app-side @ ≤880) — not here.
-     The dead .app-body host and its .app-side drawer copy were removed. */
+  /* NB: меню трипа этой ширины не касается — рейл живёт до 641 и гасится своей
+     оболочкой (`.trip-shell .app-side` @ ≤640), не здесь. */
   .app-main { padding: 16px 14px 100px; }
   .app-header [data-mobile-toggle] { display: grid !important; }
 }
@@ -5668,7 +5671,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   height: 100vh; height: 100dvh; min-height: 0; overflow: hidden;
   background: var(--bg); color: var(--ink); font-family: var(--font-ui);
 }
-/* Top bar sits as a fixed-height flex row inside the shell (no document scroll). */
+/* Шапка — фикс-высотный ряд внутри правой колонки шелла (документного скролла
+   тут нет, поэтому липкость базового правила снимается). */
 .trip-shell .app-header { position: static; top: auto; flex: none; }
 
 /* Gradient hero (.trip-hero / .thead) removed — title, meta and trip actions
@@ -5714,6 +5718,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
      края ей нужен свой, а не тот, что задан под соседство с рейлом. */
   .app-header--trip { padding-left: var(--sp-7); }
+  /* Бургер открывает телефонный шит и только его: выше 640 меню на виду, и
+     проп `onMenu` туда не приходит вовсе. Правило жило до 880 от эпохи ящика. */
+  .app-header__menu { display: grid; }
   .trip-screen-body { padding: 16px 16px 48px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
@@ -5976,9 +5983,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    СЕКЦИЯ «СТРУКТУРА» (EditLens)
    ============================================================
    TRIP-349: у редактора больше нет своей оболочки. `.ts-screen` / `.ts-sidecol`
-   / `.ts-drawer` / `.ts-drawer__scrim` удалены вместе с ней - меню, шапку и
-   off-canvas на ≤880 держит общая `.trip-shell`, ровно как на всех остальных
-   экранах трипа (а на ≤640 - канон-шит, которого у редактора не было вовсе).
+   / `.ts-drawer` / `.ts-drawer__scrim` удалены вместе с ней - меню и шапку держит
+   общая `.trip-shell`, ровно как на всех остальных экранах трипа (а на ≤640 -
+   канон-шит, которого у редактора не было вовсе).
 
    Правила ниже раньше жили в теге <style> ВНУТРИ рендера компонента и
    объявлялись глобально при каждом монтировании. Ни один гард их не видел:

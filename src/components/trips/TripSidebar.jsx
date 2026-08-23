@@ -9,13 +9,9 @@ import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
 
-// ТЕЛО РЕЙЛА — пункты навигации трипа в узкой колонке. Состав, иконки и подписи
-// приходят из реестра секций (`tripMenu.js`) без единого исключения: рейл это
-// ОБОЛОЧКА пунктов, а не второй список.
-//
-// Шит телефона (SidebarSheetBody ниже) собран отдельно и намеренно: у него своя
-// раскладка под палец (плитки 3-в-ряд), подписи групп и карточка апгрейда, для
-// которых на 70 px места нет. Общий у них ровно источник пунктов.
+// Пункт рейла — иконка, под ней подпись. Одна оболочка на обе группы: состав,
+// иконки и подписи приходят из реестра секций (`tripMenu.js`) без единого
+// исключения, рейл их только рисует.
 function RailItem({ icon, label, active = false, badge = 0, onClick }) {
   return (
     <button
@@ -32,56 +28,6 @@ function RailItem({ icon, label, active = false, badge = 0, onClick }) {
       <span className="app-side__label">{label}</span>
       <UnreadBadge count={badge} />
     </button>
-  );
-}
-
-function RailBody({ tripId, trip, lens, onNavigate, myStep, onShare }) {
-  const { t } = useI18n();
-  // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
-  // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
-  const lensItems = availableSections(trip, myStep, 'lens');
-  const mgmtItems = availableSections(trip, myStep, 'manage');
-  const canShare = clearsStep(myStep, 'participant');
-  // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
-  // the badge only renders under a visible chat item, so a chat-off trip holds
-  // zero realtime subscriptions instead of a live one that can never show.
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
-  return (
-    <>
-      <div className="app-side__group">
-        {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
-        {lensItems.map((item) => (
-          <RailItem
-            key={item.id}
-            icon={item.icon}
-            label={t(item.labelKey)}
-            active={lens === item.id}
-            badge={item.id === 'chat' ? chatUnread : 0}
-            onClick={() => onNavigate(item.id)}
-          />
-        ))}
-      </div>
-      {(mgmtItems.length > 0 || canShare) && (
-        <>
-          {/* Подпись группы на 70 px не живёт — её работу делает черта, которую
-              рисует сама вторая группа. Класс подписи жив: он в телефонном шите. */}
-          <div className="app-side__group">
-            {mgmtItems.map((item) => (
-              <RailItem
-                key={item.id}
-                icon={item.icon}
-                label={t(item.labelKey)}
-                active={lens === item.id}
-                onClick={() => onNavigate(item.id)}
-              />
-            ))}
-            {canShare && onShare && (
-              <RailItem icon="share" label={t('trip.share')} onClick={onShare} />
-            )}
-          </div>
-        </>
-      )}
-    </>
   );
 }
 
@@ -113,17 +59,58 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
 // В рейле он в режиме `back` — по наведению становится стрелкой выхода, и
 // круглой кнопки «назад» в шапке из-за этого больше нет (на телефоне рейла нет,
 // там кнопка остаётся).
+//
+// Шит телефона (SidebarSheetBody ниже) собран отдельно и намеренно: у него своя
+// раскладка под палец (плитки 3-в-ряд), подписи групп и карточка апгрейда, для
+// которых на 70 px места нет. Общий у них ровно источник пунктов.
 export default function TripSidebar({
   tripId, trip, lens, onNavigate, myStep, onShare, onBack, backTitle,
 }) {
+  const { t } = useI18n();
+  // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
+  // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
+  const lensItems = availableSections(trip, myStep, 'lens');
+  const mgmtItems = availableSections(trip, myStep, 'manage');
+  const canShare = clearsStep(myStep, 'participant');
+  // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
+  // the badge only renders under a visible chat item, so a chat-off trip holds
+  // zero realtime subscriptions instead of a live one that can never show.
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
   return (
     <aside className="app-side">
       <BrandSlot onClick={onBack} title={backTitle} back />
       <nav className="app-side__nav">
-        <RailBody
-          tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
-          myStep={myStep} onShare={onShare}
-        />
+        <div className="app-side__group">
+          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
+          {lensItems.map((item) => (
+            <RailItem
+              key={item.id}
+              icon={item.icon}
+              label={t(item.labelKey)}
+              active={lens === item.id}
+              badge={item.id === 'chat' ? chatUnread : 0}
+              onClick={() => onNavigate(item.id)}
+            />
+          ))}
+        </div>
+        {(mgmtItems.length > 0 || canShare) && (
+          /* Подпись группы на 70 px не живёт — её работу делает черта, которую
+             рисует сама вторая группа. Класс подписи жив: он в телефонном шите. */
+          <div className="app-side__group">
+            {mgmtItems.map((item) => (
+              <RailItem
+                key={item.id}
+                icon={item.icon}
+                label={t(item.labelKey)}
+                active={lens === item.id}
+                onClick={() => onNavigate(item.id)}
+              />
+            ))}
+            {canShare && onShare && (
+              <RailItem icon="share" label={t('trip.share')} onClick={onShare} />
+            )}
+          </div>
+        )}
       </nav>
     </aside>
   );
@@ -206,9 +193,9 @@ function SidebarSheetBody({
 
 // Phone variant: the touch-optimised menu (SidebarSheetBody) inside the canonical
 // bottom-sheet (reuses <Sheet> — max-height, swipe-to-close, scrim, focus-trap).
-// On phones the slide-in drawer is suppressed via CSS and this is shown instead.
-// The parent gates `open` on the phone breakpoint and closes it through the
-// onNavigate / onShare / onAccount callbacks.
+// Ниже 640 рейл погашен в CSS, и меню целиком живёт здесь. The parent gates
+// `open` on the phone breakpoint and closes it through the onNavigate / onShare
+// / onAccount callbacks.
 export function TripSidebarSheet({ open, onOpenChange, ...rest }) {
   const { t } = useI18n();
   return (

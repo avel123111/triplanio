@@ -147,6 +147,11 @@ export default function TripShell({
     return () => setTripNav((cur) => (cur === mine ? null : cur));
   }, [setTripNav, section, hidesDock, moreBadge]);
 
+  // Состояние меню теперь ЧИСТО ТЕЛЕФОННОЕ: выезжающего ящика нет, шит открывается
+  // только под `isPhone`. Не сбросив флаг на уходе с телефона, мы оставили бы его
+  // висеть - и шит сам собой открылся бы при возврате на узкую ширину.
+  useEffect(() => { if (!isPhone) setSideOpen(false); }, [isPhone]);
+
   // Дефолтная секция - «вверх» из трипа, любая другая - «вверх» в трип.
   const backTo = section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`;
 
@@ -154,34 +159,38 @@ export default function TripShell({
   // паддинга и без скролла, поверхность в край.
   const flush = sectionById(section)?.flush === true;
 
-  const menuProps = {
-    tripId, trip, lens: section, isPro, proResolved, isOwner, myStep,
-    onUpgrade, onProInfo,
-  };
-
   const goBack = () => nav(backTo);
+  const backTitle = t('trip.back');
 
   return (
     <div className="trip-shell">
       <div className="trip-body">
-        {loading ? <SidebarSkeleton onBack={goBack} backTitle={t('trip.back')} /> : (
+        {loading ? <SidebarSkeleton onBack={goBack} backTitle={backTitle} /> : (
           <>
             {/* Рейлу нужны только пункты и переходы: карточка апгрейда и
-                Pro-пропы остались у телефонного шита, где для них есть место. */}
+                Pro-пропы остались у телефонного шита, где для них есть место.
+                Шит открывается только на телефоне, где рейла нет (CSS), поэтому
+                закрывать его отсюда некому - рейл просто переключает секцию. */}
             <TripSidebar
               tripId={tripId}
               trip={trip}
               lens={section}
               myStep={myStep}
-              onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
+              onNavigate={(id) => onNavigate?.(id)}
               onShare={onShare}
               onBack={goBack}
-              backTitle={t('trip.back')}
+              backTitle={backTitle}
             />
             {/* Телефоны: то же меню канон-шитом из мобильного дока. Рейла на
                 этой ширине нет (CSS), выезжающего ящика больше нет нигде. */}
             <TripSidebarSheet
-              {...menuProps}
+              tripId={tripId}
+              trip={trip}
+              lens={section}
+              isPro={isPro}
+              proResolved={proResolved}
+              isOwner={isOwner}
+              myStep={myStep}
               open={isPhone && sideOpen}
               onOpenChange={setSideOpen}
               onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
@@ -206,7 +215,7 @@ export default function TripShell({
             // из трипа живёт в бренд-слоте рейла, и вторая кнопка была бы
             // дублем того же действия.
             onBack={isPhone ? goBack : undefined}
-            backTitle={t('trip.back')}
+            backTitle={backTitle}
             // Пока грузимся, бургера нет - как и было. Открывать нечего: меню
             // ещё скелетон, а телефонный шит в этой ветке не отрисован.
             onMenu={loading || !isPhone ? undefined : () => setSideOpen(true)}

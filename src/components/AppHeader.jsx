@@ -32,7 +32,6 @@ export function BrandSlot({ onClick, title, back = false }) {
   );
 }
 
-
 /**
  * Unified top bar (brand gradient) used across the whole app.
  *
@@ -122,7 +121,7 @@ export default function AppHeader({
           <>
             {/* Подсказки у слота вне трипа нет намеренно: рядом стоит само слово. */}
             <BrandSlot onClick={goBrand} />
-            <span className="app-header__brand-name" onClick={goBrand}>Triplanio</span>{/* i18n-ignore — имя бренда */}
+            <button className="app-header__brand-name" onClick={goBrand} type="button">Triplanio</button>{/* i18n-ignore — имя бренда */}
           </>
         )}
 
