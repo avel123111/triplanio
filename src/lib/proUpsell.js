@@ -30,12 +30,28 @@ export const PRO_SOURCES = /** @type {const} */ (['menu', 'feature']);
 /**
  * Что показывает футер. Развилка ОДНА и зависит ТОЛЬКО от роли: участник не
  * получает кнопку оплаты ни из какого источника.
+ *
+ * Таблицей, а не сравнением роли со строкой: право сюда ПРИХОДИТ уже посчитанным
+ * по лестнице доступа (`clearsStep(myStep, 'owner')` у вызывателей), и вторая
+ * запись роли строкой развела бы два источника истины. Неизвестная роль падает
+ * в 'ask-owner' — сторона без кнопки оплаты.
+ * @type {Record<ProRole, 'upgrade'|'ask-owner'>}
+ */
+const FOOTER = { owner: 'upgrade', member: 'ask-owner' };
+
+/**
  * @param {ProRole} role
  * @returns {'upgrade'|'ask-owner'}
  */
 export function proUpsellFooter(role) {
-  return role === 'owner' ? 'upgrade' : 'ask-owner';
+  return FOOTER[role] || FOOTER.member;
 }
+
+/** Таблица копии по роли; `named` берётся, когда известно имя функции. */
+const COPY = {
+  owner: { named: 'sub.locked_feature_named', plain: 'sub.locked_heading', desc: 'locked' },
+  member: { named: 'sub.trip_pro_feature_named', plain: 'sub.trip_pro_heading', desc: 'owner-note' },
+};
 
 /**
  * Заголовок и тип описания для комбинации.
@@ -53,17 +69,11 @@ export function proUpsellFooter(role) {
  */
 export function proUpsellCopy({ role, source, feature }) {
   const named = !!feature;
-  if (role === 'owner') {
-    return {
-      titleKey: named ? 'sub.locked_feature_named' : 'sub.locked_heading',
-      titleParams: named ? { feature } : undefined,
-      desc: 'locked',
-    };
-  }
+  const row = COPY[role] || COPY.member;
   return {
-    titleKey: named ? 'sub.trip_pro_feature_named' : 'sub.trip_pro_heading',
+    titleKey: named ? row.named : row.plain,
     titleParams: named ? { feature } : undefined,
-    desc: 'owner-note',
+    desc: /** @type {'locked'|'owner-note'} */ (row.desc),
   };
 }
 
