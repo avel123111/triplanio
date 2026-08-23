@@ -4043,6 +4043,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   overflow: hidden;
   background: var(--bg, var(--wash));
 }
+/* Floating round "back" control on the map (canon layout, reused on other
+   screens): white surface circle (icon-btn--outline) top-left, over the map.
+   Hidden by default; shown on the mobile shell where the app header is removed. */
+.map-back { position: absolute; top: 12px; left: 12px; z-index: 3; box-shadow: var(--sh-1); display: none; }
 /* Progress header — non-scrolling top of the panel. Row so the reset control
    (relocated out of the action bar) sits at the top-right, quiet. */
 /* Шапка на фоне приложения (--bg), не на белой поверхности — тело белое, шапка/футер
@@ -4190,6 +4194,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      pattern: the document has nothing to scroll, so the iOS toolbar/keyboard
      cannot shove the static header. No <body> position:fixed lock. */
   .flow-page { height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none; }
+  /* App header removed on the phone shell (Pavel 2026-08-18): the map is the top
+     band, so navigation collapses to the floating round "back" control on it. */
+  .flow-page > .app-header { display: none; }
+  /* grid (not inline-flex): keeps the base `.icon-btn` place-items:center so the
+     arrow stays centred; inline-flex would drop it to the top-left corner. */
+  .map-back { display: grid; }
   /* Раскладка «карта + панель» уехала в примитив `.mapshell`; полосы карты и
      статичной панели-«шита» больше нет — карта во всю площадь, панель в
      настоящем `<PeekSheet>` с детентами. Нарисованная псевдоэлементом «ручка»
@@ -5693,7 +5703,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        подпись (`tse.col_activity`), а испанское «жильё» стало «Estancia».
        Колонка ночей шире остальных: её ширину диктует не подпись, а степпер. */
     .te-table, .te-thead { --te-pad-x: 13px; --te-gap: 8px; --te-w-nights: 96px; --te-w-cell: 64px; --te-cols: 16px 28px minmax(0,1fr) var(--te-w-nights) var(--te-w-cell) var(--te-w-cell); }
-    .te-row { position: relative; grid-template-columns: var(--te-cols); row-gap: 0; column-gap: var(--te-gap); align-items: center; padding: 12px var(--te-pad-x); border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+    /* ★ ЗАЗОР КОЛОНОК — СВОЙСТВО САМОГО РЯДА, А НЕ ЕГО ХОЗЯИНА. Значение
+       объявлялось ТОЛЬКО на `.te-table`/`.te-thead`, а читается здесь — и ряд
+       планировщика, который живёт ВНЕ `.te-table` (так и написано у
+       `.te-row--plan`), получал `var(--te-gap)` без значения. Такое объявление
+       браузер отбрасывает целиком: `column-gap` вставал в `normal`, то есть 0, и
+       название города прилипало к номерному бейджу. В редакторе тот же ряд
+       выглядел правильно, потому что там переменную задаёт таблица.
+       Замерено: планировщик `column-gap: normal`, редактор `8px`.
+       Ни один гард такого не видит — это `var()` без сеттера на одном из двух
+       хозяев, ровно та же ловушка, что разобрана в
+       [[triplanio-css-alias-frozen-at-root]]. Дефолт теперь на самом ряду;
+       таблица и шапка колонок продолжают задавать своё значение, и оно
+       по-прежнему побеждает на своих хозяевах.
+       visual-diff-exempt: .te-row --te-gap — дефолт зазора переехал на сам ряд: вне .te-table переменная не имела значения и зазор схлопывался в 0
+       visual-diff-exempt: .te-row column-gap — следствие того же: у ряда планировщика зазор был 0 вместо 8px */
+    .te-row { --te-gap: 8px; position: relative; grid-template-columns: var(--te-cols); row-gap: 0; column-gap: var(--te-gap); align-items: center; padding: 12px var(--te-pad-x); border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     /* Шапка колонок: та же сетка, тот же зазор, те же поля по бокам, что у ряда.
        Первый заголовок сам встаёт в третью колонку — пустых ячеек под грип и
        узел в разметке нет. */

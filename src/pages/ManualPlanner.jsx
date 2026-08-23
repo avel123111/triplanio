@@ -19,12 +19,11 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, EditableText, EmptyState, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
-import AppHeader, { BrandSlot } from '@/components/AppHeader';
-import AppShell from '@/components/AppShell';
+import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
@@ -35,31 +34,8 @@ import ChatComposer from '@/components/chat/ChatComposer';
 import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { useIsPhone } from '@/hooks/use-mobile';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 
-// ── Объявление изменений для гарда 2p (визуальный дифф CSS) ──────────────────
-// Маркеры здесь, а не в app.css: блок с `{@media …}` внутри CSS гард разбирает
-// как правила (грабля разобрана в шапке EditLens.jsx).
-//
-// Флоу создания переехало на общую оболочку приложения (см. комментарий у
-// `AppShell` в рендере ниже), и вместе со своей оболочкой у него отпали два
-// обхода отсутствовавшей шапки: плавающая круглая кнопка «назад» поверх карты и
-// правило, прятавшее шапку на телефоне. Шапка теперь есть на всех ширинах — та
-// же, что на экранах трипа, — поэтому обе конструкции стали мёртвыми.
-// ⚠️ Это ОТМЕНЯЕТ решение от 2026-08-18 «на телефоне у флоу шапки нет, карта —
-// верхняя полоса»: одна оболочка на два экрана несовместима с исключением у
-// одного из них, и держалось это исключение как раз на второй оболочке.
-// visual-diff-exempt: .map-back position — плавающая кнопка «назад» была обходом отсутствующей шапки, шапка появилась
-// visual-diff-exempt: .map-back top — то же
-// visual-diff-exempt: .map-back left — то же
-// visual-diff-exempt: .map-back z-index — то же
-// visual-diff-exempt: .map-back box-shadow — то же
-// visual-diff-exempt: .map-back display — то же
-// visual-diff-exempt: .map-back {@media (max-width: 640px)} display — то же, мобильная половина того же правила
-// visual-diff-exempt: .app-header {@media (max-width: 640px)} display — шапка флоу на телефоне больше не прячется: оболочка общая с экранами трипа
-// visual-diff-exempt: .flow-page {@media (max-width: 640px)} display — вторая единица наблюдения того же правила (селектор из двух частей)
-//
 // Whole days between two ISO date strings (b - a). 0 on bad input.
 function daysBetweenISO(a, b) {
   if (!a || !b) return 0;
@@ -792,9 +768,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
-  // Кнопка «назад» в шапке — только на телефоне: на остальных ширинах выход
-  // живёт в бренд-слоте рейла, ровно как на экранах трипа.
-  const isPhone = useIsPhone();
 
   // Детент шита и свёрнутость панели — состояние ЭКРАНА, а не шелла: шаг может
   // осознанно опустить шит (например, когда просит выбрать город на карте).
@@ -1419,41 +1392,19 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     </>
   );
 
-  // ★ ОБОЛОЧКА — ОБЩАЯ, ТА ЖЕ, ЧТО У ЭКРАНОВ ТРИПА. Своей (`.flow-page`) у флоу
-  // больше нет, и это не уборка ради уборки: рейл трипа занимает колонку
-  // `--rail-w`, у флоу такой колонки не было — поэтому в один кадр смены роута
-  // «создал трип → открыть трип» виджет прыгал на 70px вправо, а холст карты
-  // менял ширину. Смену размера холста анимировать нельзя (переаллокация
-  // GL-буфера на каждый кадр), значит единственное лекарство — чтобы менять
-  // было НЕЧЕГО. Теперь коробка совпадает, и через смену роута не двигается
-  // ничего, кроме содержимого виджета и приезжающих пунктов меню.
-  //
-  // Рейл здесь несёт ОДИН бренд-слот с выходом — тот же элемент и та же
-  // геометрия, что первым пунктом рейла трипа. Разница между экранами стала
-  // «рейл пустой / рейл полный» вместо «рейла нет / рейл есть»; заодно у флоу
-  // пропала своя навигационная кнопка поверх карты — она была обходом
-  // отсутствующей шапки, а не самостоятельным решением.
   return (
-    <AppShell
-      flush
-      rail={(
-        <aside className="app-side">
-          <BrandSlot onClick={() => nav('/trips')} title={t('notif.to_collection')} back />
-        </aside>
-      )}
-      header={(
-        <AppHeader
-          isTrip
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          onBack={isPhone ? () => nav('/trips') : undefined}
-          backTitle={t('notif.to_collection')}
-          title={isAi ? t('planner.step_home_ai') : t('trips.new')}
-        />
-      )}
-    >
+    <div className="flow-page">
+      {/* Header */}
+      <AppHeader
+        user={user}
+        isPro={isPro}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+        onBack={() => nav('/trips')}
+        backTitle={t('notif.to_collection')}
+        title={isAi ? t('planner.step_home_ai') : t('trips.new')}
+      />
+
       {/* Раскладку «карта во всю площадь + панель поверх / шит на телефоне»
           держит примитив <MapShell>: он же считает, сколько места закрыто, и
           отдаёт это карте отступами камеры. Своих `.flow-grid/-mapcol/-editcol`
@@ -1488,6 +1439,17 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         // сам слот — разбор в `mapShellInsets`.
         map={(camera, slotPx) => (
           <>
+            {/* Floating round back control — shown only on the phone shell (the app
+                header is removed there); the canon `.map-back` position/visibility
+                live in CSS. */}
+            <IconBtn
+              className="map-back"
+              icon="back"
+              round
+              tone="outline"
+              ariaLabel={t('notif.to_collection')}
+              onClick={() => nav('/trips')}
+            />
             <FlowMap
               camera={camera} slotPx={slotPx}
               home={home}
@@ -1511,6 +1473,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           </>
         )}
       />
-    </AppShell>
+    </div>
   );
 }
