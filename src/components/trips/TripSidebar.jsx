@@ -1,7 +1,6 @@
 import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { BrandSlot } from '@/components/AppHeader';
 import { Avatar, Card, Sheet, Skeleton, UnreadBadge } from '@/design/index';
 import { isSectionAvailable, menuSections } from '@/lib/tripMenu';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
@@ -101,7 +100,7 @@ function RailItem({ icon, label, active = false, badge = 0, pro = false, onClick
 // раскладка под палец (плитки 3-в-ряд), подписи групп и карточка апгрейда, для
 // которых на 70 px места нет. Общий у них ровно источник пунктов.
 export default function TripSidebar({
-  tripId, addons, lens, onNavigate, onShare, onBack, backTitle,
+  tripId, addons, lens, onNavigate, onShare,
   isPro, proResolved = true, onProUpsell,
 }) {
   const { t } = useI18n();
@@ -128,8 +127,11 @@ export default function TripSidebar({
     );
   };
   return (
+    /* Рейл — ПЛАВАЮЩИЙ ВИДЖЕТ под шапкой, а не левый борт экрана: знак и выход
+       из трипа уехали в шапку, которая теперь идёт во всю ширину, и держать
+       здесь бренд-слот стало не для чего. Осталось то, чем меню и является, —
+       список пунктов. */
     <aside className="app-side">
-      <BrandSlot onClick={onBack} title={backTitle} back />
       <nav className="app-side__nav">
         {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
         <div className="app-side__group">{lensRows.map(row)}</div>

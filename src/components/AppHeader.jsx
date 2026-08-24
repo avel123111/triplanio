@@ -7,21 +7,25 @@ import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * Бренд-СЛОТ — бокс `--rail-w × --header-h` в левом верхнем углу экрана.
- * Единственная реализация на два дома: первая ячейка шапки на экранах вне трипа
- * и шапка рейла внутри трипа. Второй экземпляр разъехался бы по геометрии на
- * первой же правке, а знак при переходе между экранами прыгнул бы - роуты это
- * разные ветки дерева, узел логотипа всё равно перемонтируется, и на месте его
- * держат ЧИСЛА, а не общий DOM.
  *
- * `back` включает второе лицо слота (стрелка выхода), которое проступает по
- * наведению - в рейле оно заменяет круглую кнопку «назад» в шапке.
+ * ДОМ У НЕГО ТЕПЕРЬ ОДИН: первая ячейка шапки, и шапка одна на все экраны,
+ * включая трип. Раньше домов было два (шапка вне трипа и шапка рейла внутри
+ * него), и ровно поэтому геометрия слота держалась ЧИСЛАМИ — знак обязан был не
+ * прыгнуть при переходе между двумя разными узлами DOM. Инвариант больше не
+ * нужен как страховка, но размер слота остаётся: он задаёт левое поле шапки на
+ * всех экранах разом (у самой шапки поля слева нет).
  *
- * @param {{ onClick: () => void, title?: string, back?: boolean }} p
+ * Второго лица (стрелки выхода по наведению) у слота больше нет: выход из трипа
+ * — круглая кнопка «назад» слева от знака, на всех ширинах. Пока рейл занимал
+ * весь левый борт, кнопке там было не место, и выход прятался в знак; теперь
+ * шапка идёт во всю ширину, и прятать его не за чем.
+ *
+ * @param {{ onClick: () => void, title?: string }} p
  */
-export function BrandSlot({ onClick, title, back = false }) {
+export function BrandSlot({ onClick, title }) {
   const slot = (
     <button
-      className={'app-header__brand' + (back ? ' app-header__brand--back' : '')}
+      className="app-header__brand"
       onClick={onClick}
       aria-label={title}
       type="button"
@@ -29,11 +33,6 @@ export function BrandSlot({ onClick, title, back = false }) {
       <span className="app-header__logo">
         <img src="/triplanio-logo.svg" alt="Triplanio" />{/* i18n-ignore — имя бренда в alt */}
       </span>
-      {back && (
-        <span className="app-header__brandback" aria-hidden="true">
-          <Icon name="back" size={17} />
-        </span>
-      )}
     </button>
   );
   // Подсказка — примитив ДС, а не браузерный `title`: тот рисуется системой,
@@ -58,6 +57,10 @@ export function BrandSlot({ onClick, title, back = false }) {
  * Trip actions (Share / Edit / Settings / Members / Copy) live in the left trip
  * menu (TripSidebar), NOT in this header. PRO badge + utility icons come from
  * <HeaderActions>.
+ *
+ * Шапка идёт ВО ВСЮ ШИРИНУ экрана, в том числе внутри трипа: меню трипа висит
+ * ПОД ней плавающим виджетом, а не занимает левый борт целиком. Поэтому бренд
+ * рисуется здесь всегда, а `isTrip` остался только модификатором облика.
  *
  * Props:
  *   user, isPro, isDark, onToggleTheme — forwarded to the right-hand cluster
@@ -118,19 +121,15 @@ export default function AppHeader({
           </button>
         )}
 
-        {/* Внутри трипа слот тут НЕ рисуется: он уехал в шапку рейла (TripSidebar),
-            где та же геометрия --rail-w × --header-h держит знак на месте. */}
-        {!isTrip && (
-          <>
-            {/* Подсказки у слота вне трипа нет намеренно: рядом стоит само слово. */}
-            <BrandSlot onClick={goBrand} />
-            <button className="app-header__brand-name" onClick={goBrand} type="button">Triplanio</button>{/* i18n-ignore — имя бренда */}
-          </>
-        )}
+        {/* Знак стоит в шапке на ЛЮБОМ экране, трип не исключение: шапка идёт во
+            всю ширину, и первым в ней — бренд. Подсказки у слота нет намеренно:
+            рядом стоит само слово. */}
+        <BrandSlot onClick={goBrand} />
+        <button className="app-header__brand-name" onClick={goBrand} type="button">Triplanio</button>{/* i18n-ignore — имя бренда */}
 
         {hasTrip && (
           <>
-            {!isTrip && <span className="app-header__vdiv" />}
+            <span className="app-header__vdiv" />
             <div className="app-header__trip">
               {/* div, not <h1>: a global `h1 { font-size: var(--fs-h2) !important }`
                   mobile rule would otherwise inflate the header title past desktop. */}

@@ -33,6 +33,17 @@
  * (та же грабля разобрана в шапке EditLens.jsx). Гард читает маркеры из
  * ДОБАВЛЕННЫХ строк диффа, поэтому файл значения не имеет.
  *
+ * ── ВИЗУАЛЬНЫЙ ЭКСПЕРИМЕНТ: ШАПКА ВО ВСЮ ШИРИНУ, МЕНЮ — ВИДЖЕТ (запрос Pavel) ──
+ * Было: рейл занимал ЛЕВЫЙ БОРТ от кромки до кромки, его первые --header-h были
+ * бренд-слотом со знаком, а шапка начиналась правее рейла — то есть знак стоял
+ * не в шапке, и шапка не была шапкой ЭКРАНА.
+ * Стало: шапка идёт во всю ширину и держит знак, как на всех прочих экранах;
+ * меню лежит ПОД ней плавающим виджетом с зазором со всех сторон.
+ * Следствия, каждое намеренное: выход из трипа стал видимой кнопкой (раньше
+ * прятался в знак и проступал по наведению), сетка тела схлопнулась в один ряд,
+ * а на телефоне вордмарк и разделитель уходят — иначе название трипа остаётся
+ * без ширины.
+ *
  * Вход оболочки при приходе из создания трипа: выезжает рейл. Апрув Pavel.
  * visual-diff-exempt: .app-side animation — рейл выезжает при приходе из создания трипа, апрув Pavel
  * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — тот же вход гасится при снижении движения
@@ -40,6 +51,56 @@
  * visual-diff-exempt: .trip-shell[data-entering=create] {@media (prefers-reduced-motion: reduce)} animation — то же при снижении движения
  * visual-diff-exempt: from {@keyframes railIn} transform — кейфрейм выезда рейла из-за левой кромки
  * visual-diff-exempt: to {@keyframes railIn} transform — то же, конечное состояние
+ *
+ * Раскладочный эксперимент, по одному объявлению на строку (апрув Pavel):
+ * visual-diff-exempt: .app-header__brand--back:focus-visible outline — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brand--back:focus-visible outline-offset — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brand--back:hover background — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brand--back:hover opacity — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brand--back:hover transform — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brand--back transition — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brand--back width — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brand-name {@media (max-width: 640px)} display — телефон: вордмарк и разделитель уходят, чтобы ширину забрало название трипа
+ * visual-diff-exempt: .app-header__brandback background — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback border-radius — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback display — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback height — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback left — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback opacity — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback place-items — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback position — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback top — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback transform — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback transition — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback translate — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brandback width — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__brand width — в трипе слот это просто знак: ширину борта он больше не держит, иначе сложилась бы с полем шапки
+ * visual-diff-exempt: .app-header__logo opacity — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__logo transform — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__logo transition — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
+ * visual-diff-exempt: .app-header__vdiv {@media (max-width: 640px)} display — телефон: вордмарк и разделитель уходят, чтобы ширину забрало название трипа
+ * visual-diff-exempt: .app-header--trip {@media (max-width: 640px)} display — телефон: вордмарк и разделитель уходят, чтобы ширину забрало название трипа
+ * visual-diff-exempt: .app-header--trip {@media (max-width: 640px)} padding-left — телефон: вордмарк и разделитель уходят, чтобы ширину забрало название трипа
+ * visual-diff-exempt: .app-header--trip padding-left — трип-шапка получила своё поле, равное зазору виджета меню под ней
+ * visual-diff-exempt: .app-header--trip width — в трипе слот это просто знак: ширину борта он больше не держит, иначе сложилась бы с полем шапки
+ * visual-diff-exempt: .app-header {@media (max-width: 640px)} grid-column — шапка вышла из сетки тела наверх и идёт во всю ширину
+ * visual-diff-exempt: .app-header grid-column — шапка вышла из сетки тела наверх и идёт во всю ширину
+ * visual-diff-exempt: .app-header grid-row — шапка вышла из сетки тела наверх и идёт во всю ширину
+ * visual-diff-exempt: .app-side align-self — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
+ * visual-diff-exempt: .app-side border-radius — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
+ * visual-diff-exempt: .app-side box-shadow — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
+ * visual-diff-exempt: .app-side grid-row — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
+ * visual-diff-exempt: .app-side margin — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
+ * visual-diff-exempt: .app-side max-height — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
+ * visual-diff-exempt: .app-side padding — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
+ * visual-diff-exempt: .app-side width — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
+ * visual-diff-exempt: .trip-body {@media (max-width — сетка тела осталась одним рядом: шапки в ней больше нет
+ * visual-diff-exempt: .trip-body grid-row — сетка тела осталась одним рядом: шапки в ней больше нет
+ * visual-diff-exempt: .trip-body grid-template-columns — сетка тела осталась одним рядом: шапки в ней больше нет
+ * visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-template-columns — телефонная колонка приведена к той же форме minmax(0,1fr), что и десктопная: голый 1fr не удерживает широкое содержимое
+ * visual-diff-exempt: .trip-body grid-template-rows — сетка тела осталась одним рядом: шапки в ней больше нет
+ * visual-diff-exempt: .trip-content grid-row — сетка тела осталась одним рядом: шапки в ней больше нет
+ * visual-diff-exempt: from {@keyframes railIn} transform — въезд рейла уводит его за кромку вместе с зазором
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -204,6 +265,28 @@ export default function TripShell({
 
   return (
     <div className="trip-shell" data-entering={entering || undefined} style={MOTION_STYLE}>
+      {/* ★ ШАПКА — ПЕРВЫЙ РЕБЁНОК ОБОЛОЧКИ, А НЕ ЯЧЕЙКА СЕТКИ ТЕЛА. Она идёт ВО
+          ВСЮ ШИРИНУ экрана, поэтому и стоять обязана НАД телом, а не рядом с
+          рейлом. Прежнее место (правая верхняя ячейка сетки 2×2) и было тем, что
+          обрезало её слева на ширину рейла.
+          Условие «шапка — СОСЕД `.trip-content`, а не его потомок» соблюдено и
+          усилено: к `.trip-content` абсолютом привязан хост выдвижных панелей
+          (`.evd-drawer`), и внутри шапки он поехал бы из-под неё. Здесь шапка
+          вообще не предок `.trip-content` — она этажом выше. */}
+      <AppHeader
+        isTrip
+        user={user}
+        isPro={isProActive(user)}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+        /* Выход из трипа — круглая кнопка на ВСЕХ ширинах. Раньше выше 640 его
+           прятало второе лицо бренд-слота в рейле; бренд-слота у рейла больше
+           нет, а прятать выход в знак, когда рядом есть место, незачем. */
+        onBack={goBack}
+        backTitle={backTitle}
+        title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
+        meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
+      />
       <div className="trip-body">
         {/* Рейл и шит собирают состав САМИ — из фактов (аддоны + ступень), одной
             функцией `menuSections`. Отдельного «идёт загрузка» у меню больше нет:
@@ -219,8 +302,6 @@ export default function TripShell({
           onProUpsell={onProUpsell}
           onNavigate={(id) => onNavigate?.(id)}
           onShare={onShare}
-          onBack={goBack}
-          backTitle={backTitle}
         />
         {/* Телефоны: то же меню канон-шитом из мобильного дока. Рейла на
             этой ширине нет (CSS), выезжающего ящика больше нет нигде. */}
@@ -240,24 +321,6 @@ export default function TripShell({
             onAccount={() => { setSideOpen(false); nav('/settings'); }}
           />
         )}
-        {/* Шапка — СОСЕД контента, а не его потомок: к `.trip-content` абсолютом
-            привязан хост выдвижных панелей (EventDrawerHost), и внутри шапки он
-            поехал бы из-под неё. Сетка ставит её правой верхней ячейкой, на одну
-            линию с бренд-слотом рейла. */}
-        <AppHeader
-          isTrip
-          user={user}
-          isPro={isProActive(user)}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          // Кнопка «назад» — только на телефоне: на остальных ширинах выход
-          // из трипа живёт в бренд-слоте рейла, и вторая кнопка была бы
-          // дублем того же действия.
-          onBack={isPhone ? goBack : undefined}
-          backTitle={backTitle}
-          title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
-          meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
-        />
         <div className="trip-content">
           <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
             {children}

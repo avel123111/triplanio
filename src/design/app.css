@@ -1283,10 +1283,16 @@ h4,
      знака в рейле. Линия выглядит так же, инвариант держится. */
   box-shadow: inset 0 -1px 0 var(--line);
 }
-/* Внутри трипа шапка живёт во ВТОРОЙ колонке (правее рейла), поэтому её первый
-   элемент — заголовок трипа — должен встать туда же, где вне трипа стоит
-   вордмарк: на зазор от слота, а не в край. */
-.app-header--trip { padding-left: var(--sp-6); }
+/* ★ ТРИП-ШАПКА ВЫРАВНИВАЕТСЯ ПО ВИДЖЕТУ МЕНЮ, КОТОРЫЙ ЛЕЖИТ ПОД НЕЙ. Поле
+   слева здесь СВОЁ и равно зазору виджета: тогда левый край кнопки выхода — на
+   той же вертикали, что левый край меню, и композиция читается одной линией.
+   Пока меню было бортом, роль поля играла ширина бренд-слота (`--rail-w`), и
+   собственного поля шапке не полагалось; борта больше нет, слот в трипе стал
+   просто знаком, поэтому у него тут и ширины своей нет — иначе поле сложилось бы
+   с ней и знак уехал бы на 70 px правее линии. Экраны вне трипа не тронуты: там
+   слот по-прежнему держит геометрию первой ячейки. */
+.app-header--trip { padding-left: var(--sp-8); }
+.app-header--trip .app-header__brand { width: auto; }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 
@@ -1317,30 +1323,12 @@ h4,
 }
 .app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
 .app-header__brand-name { color: var(--ink); border: 0; background: transparent; padding: 0; cursor: pointer; }
-/* Второе лицо слота — стрелка выхода из трипа. Лежит в том же боксе поверх
-   знака и проступает по наведению; правило контекстное намеренно: в шапке слот
-   это ссылка на бренд, в рейле — выход из трипа, и отдельной круглой кнопки
-   «назад» в шапке из-за этого больше нет (на телефоне рейла нет — там кнопка
-   остаётся). */
-.app-header__brandback {
-  /* Размер — РОВНО как у знака, который стрелка подменяет: слот шире (он держит
-     геометрию колонки), и подложка во весь слот читалась бы огромной кнопкой.
-     Центрируется отдельным `translate`, чтобы `transform` остался свободен под
-     анимацию подмены. */
-  position: absolute; top: 50%; left: 50%; translate: -50% -50%;
-  width: 38px; height: 38px; border-radius: var(--r-sm);
-  display: grid; place-items: center;
-  /* design-token-exempt: 5px — амплитуда подмены знака стрелкой, не шаг раскладки */
-  color: var(--nav-ink-hi); opacity: 0; transform: translateX(5px) scale(.82);
-  transition: opacity .18s ease, transform .24s var(--ease-out);
-}
-/* Режим слота в рейле — МОДИФИКАТОР на самом объекте, а не правило «слот внутри
-   меню»: ключ на том, чем элемент ЯВЛЯЕТСЯ, а не где он стоит в дереве. */
-.app-header__brand--back { width: 100%; }
-.app-header__brand--back .app-header__logo { transition: opacity .18s ease, transform .24s var(--ease-out); }
-.app-header__brand--back:hover .app-header__brandback { background: var(--nav-hover); }
-.app-header__brand--back:hover .app-header__logo { opacity: 0; transform: translateX(-4px) scale(.78); }   /* design-token-exempt: 4px — та же амплитуда в обратную сторону */
-.app-header__brand--back:hover .app-header__brandback { opacity: 1; transform: none; }
+/* Второго лица у слота больше НЕТ. Стрелка выхода проступала по наведению,
+   пока слот был шапкой рейла: круглой кнопке «назад» на левом борту места не
+   было, и выход прятался в знак. Шапка теперь во всю ширину — выход стоит
+   рядом с ним обычной кнопкой (`.app-header__gbtn`), видимой сразу, а не по
+   наведению. Правила `.app-header__brand--back` / `.app-header__brandback`
+   удалены вместе с разметкой (осиротевшее правило — гард 2n). */
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
 .app-header__vdiv { width: 1px; height: 28px; background: var(--line); flex: 0 0 auto; }
@@ -1680,18 +1668,44 @@ h4,
    visual-diff-exempt: .app-side__item--pro --pro-item — та же ручка на телефонном ряду; апрув Pavel
    visual-diff-exempt: .tm-manage__row --pro-item — та же ручка на телефонном ряду; апрув Pavel
    ============================================================ */
+/* ★ РЕЙЛ — ПЛАВАЮЩИЙ ВИДЖЕТ, А НЕ ЛЕВЫЙ БОРТ ЭКРАНА. Раньше он тянулся от
+   верхней кромки до нижней (`align-self: stretch`) и упирался в края, а границу
+   рисовал внутренней тенью справа: борт обязан был выглядеть частью рамы окна.
+   Теперь у него зазор со всех сторон, скругление и своя тень — он лежит НА
+   поверхности страницы, а не образует её.
+   ★★ ЗАЗОР ОДИН И НА ЧЕТЫРЕ СТОРОНЫ. Правый нужен наравне с остальными: за
+   рейлом сразу начинается контент, а у секций «в край» (карта, чат, редактор)
+   собственного поля нет вовсе — без него карта прилегала бы к скруглённому углу
+   виджета вплотную. Одно значение вместо четырёх и держит виджет виджетом.
+   ★★★ ГРАНИЦЫ БОЛЬШЕ НЕТ, И ЭТО НЕ ПОТЕРЯ. Внутренняя тень отделяла борт от
+   фона; у отдельно лежащего виджета эту работу делает сам зазор, а поверх него
+   ещё и тень объекта. Бордер тут по-прежнему нельзя: он съел бы пиксель из
+   `--rail-w`, а на эту ширину завязан бренд-слот шапки. */
 .app-side {
-  width: var(--rail-w); flex: none; align-self: stretch;
-  display: flex; flex-direction: column; padding: 0 var(--sp-2) var(--sp-3);
+  /* ★ ШИРЕ БОРТА НА ОДИН ЗАЗОР, И ЭТО НЕ ПРОИЗВОЛ. У борта боковое поле держал
+     САМ ЭКРАН (слева кромка окна), у отдельно лежащего виджета его нет — воздух
+     обязан быть внутри. На голых 70 px «Участники» и «Настройки» рвались
+     посередине слова («Участник|и»): подписи переносятся `overflow-wrap:
+     anywhere`, без него не влезает «Планирование». Замер: 70 → рвутся, 90 → нет.
+     Арифметика из СУЩЕСТВУЮЩИХ величин, а не новое число: ширина борта плюс шаг
+     шкалы, которым живёт весь виджет. */
+  width: calc(var(--rail-w) + var(--sp-8)); flex: none; align-self: start;
+  margin: var(--sp-8);
+  /* Виджет не тянется до низа: если пунктов мало, он ровно по ним, а если много
+     — упирается в нижний зазор и скроллит их внутри себя (`.app-side__nav`).
+     Потолок считается от высоты ТЕЛА оболочки, поэтому 100%, а не 100dvh:
+     шапку уже вычла сетка. */
+  max-height: calc(100% - var(--sp-8) * 2);
+  display: flex; flex-direction: column; padding: var(--sp-5) var(--sp-4);
   background: var(--nav-bg); color: var(--nav-ink);
-  /* Граница — ВНУТРЕННЕЙ тенью, а не бордером: бордер съел бы пиксель из
-     --rail-w, центр рейла уехал бы на пол-пикселя, и бренд-слот перестал бы
-     совпадать со слотом в шапке. Инвариант положения знака важнее способа
-     нарисовать линию. */
-  box-shadow: inset -1px 0 0 var(--nav-line);
+  /* Скругление — `--r-md`, а не `--r-xl`: у колонки шириной 90 px радиус 20
+     съедает угол целиком, и первый пункт визуально влезает в дугу. 16 читается
+     как скруглённая плитка, а не как капсула. */
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
 }
-/* Скроллятся ТОЛЬКО пункты: бренд-слот обязан оставаться на своём месте в углу
-   при любой высоте окна — это он держит инвариант положения знака. */
+/* Скроллятся ТОЛЬКО пункты — теперь просто чтобы виджет не перерастал свой
+   зазор снизу; бренд-слот, ради которого это правило появилось, уехал в шапку. */
 .app-side__nav {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   display: flex; flex-direction: column; gap: var(--sp-1);
@@ -1750,8 +1764,7 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
    поверхности оно и задумано, но борт рейла тёмно-синий, и синее кольцо на нём
    не видно физически. Поэтому здесь контурная обводка внутрь — та же роль,
    работающая на инверсной поверхности. */
-.app-side__item:focus-visible,
-.app-header__brand--back:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.app-side__item:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 /* Подпись: две строки максимум, мягкий перенос. Полное имя — в `title` пункта
    (нативно, без своего пузыря): длинные локали иначе режутся многоточием. */
 .app-side__label {
@@ -6119,23 +6132,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Gradient hero (.trip-hero / .thead) removed — title, meta and trip actions
    now live in the unified <AppHeader> at the top of the shell. */
 
-/* ---- Тело: рейл слева, шапка и контент справа ----
-   Сетка 2x2: рейл занимает обе строки (он полновысотный, и его первые --header-h
-   это бренд-слот, который обязан стоять на одной линии с шапкой), шапка — правая
-   верхняя ячейка, контент — правая нижняя.
-   ⚠️ Шапка ОБЯЗАНА быть соседом `.trip-content`, а не его потомком: к этому якорю
-   абсолютом привязан хост выдвижных панелей (`.evd-drawer`/`.evd-scrim` ниже, а у
+/* ---- Тело: рейл-виджет слева, контент справа ----
+   Шапка в этой сетке БОЛЬШЕ НЕ УЧАСТВУЕТ — она этажом выше, первым ребёнком
+   оболочки, и потому идёт во всю ширину. Здесь остались две колонки в один ряд.
+   Первая — `auto`, а не `--rail-w`: ширину колонки задаёт сам виджет вместе со
+   своими зазорами, и второй записи этой арифметики быть не должно.
+   ⚠️ Шапка ОБЯЗАНА оставаться вне `.trip-content`: к этому якорю абсолютом
+   привязан хост выдвижных панелей (`.evd-drawer`/`.evd-scrim` ниже, а у
    редактора `.ts-pdrawer`). Внеси шапку внутрь — и панель поедет из-под неё, то
    есть своей шапкой окажется под чужой. */
 .trip-body {
   flex: 1; min-height: 0; position: relative;
   display: grid;
-  grid-template-columns: var(--rail-w) 1fr;
-  grid-template-rows: var(--header-h) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
 }
-.trip-body > .app-side { grid-column: 1; grid-row: 1 / -1; }
-.trip-body > .app-header { grid-column: 2; grid-row: 1; }
-.trip-body > .trip-content { grid-column: 2; grid-row: 2; }
+.trip-body > .app-side { grid-column: 1; }
+.trip-body > .trip-content { grid-column: 2; }
 .trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ---- Вход оболочки: пришли из создания трипа ----
@@ -6150,7 +6162,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Темп и кривую публикует сама оболочка (--surface-settle / --surface-ease из
    lib/surfaceMotion.js) — тот же темп, которым едут шит и камера.
    Ниже 640 рейла нет (`display: none` в медиазапросе), там въезжает нижний док. */
-@keyframes railIn { from { transform: translateX(-100%); } to { transform: none; } }
+/* Сдвиг — на всю ширину виджета ПЛЮС его левый зазор: без слагаемого рейл
+   стартовал бы, выглядывая из-за кромки на величину зазора. */
+@keyframes railIn { from { transform: translateX(calc(-100% - var(--sp-8))); } to { transform: none; } }
 /* Фолбэков у переменных тут НЕТ намеренно: обе публикует сам `.trip-shell`, то
    есть элемент из первой половины этого же селектора — значение достижимо
    всегда, а написанный фолбэк был бы мёртвой веткой `var()`, которую следующий
@@ -6190,14 +6204,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    меню: рейл узкий, прятать его больше незачем, а третье состояние между
    «видно» и «шит» стоило одного бургера, одного скрима и своей ветки CSS. */
 @media (max-width: 640px) {
-  /* Рейла нет — колонка одна, и шапка с контентом переезжают в неё. */
-  .trip-body { grid-template-columns: 1fr; }
-  .trip-body > .app-header,
+  /* Рейла нет — колонка одна, контент переезжает в неё. */
+  .trip-body { grid-template-columns: minmax(0, 1fr); }
   .trip-body > .trip-content { grid-column: 1; }
   .trip-shell .app-side { display: none; }
-  /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
-     края ей нужен свой, а не тот, что задан под соседство с рейлом. */
-  .app-header--trip { padding-left: var(--sp-7); }
+  /* ★ НА 390 px ЧЕТЫРЁХ ВЕЩЕЙ В СТРОКЕ НЕ БЫВАЕТ. Выход, знак, вордмарк и
+     название трипа вместе не встают: вордмарк съедает ширину у названия, ради
+     которого экран и открыт. Уходит он — знак остаётся, и марка на экране
+     по-прежнему есть. Разделитель уходит следом: разделять становится нечего. */
+  .app-header--trip .app-header__brand-name,
+  .app-header--trip .app-header__vdiv { display: none; }
   .trip-screen-body { padding: 16px 16px 48px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
