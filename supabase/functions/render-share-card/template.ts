@@ -96,7 +96,7 @@ type Layout = {
   stats: { y: number; numSize: number; labSize: number; cellPad: number };
   flags: { y: number; h: number; labSize: number; circle: number; ring: number; gap: number; moreSize: number };
   footer: {
-    y: number; h: number; padX: number;
+    y: number; h: number; padX: number; padT: number;
     ctaSize: number; ctaLead: number; brandSize: number; brandGap: number; logo: number;
     scanSize: number; qr: number; qrInset: number;
   };
@@ -110,10 +110,10 @@ const LAYOUTS: Record<Format, Layout> = {
     pola: { top: 588, width: 860, padT: 32, padX: 32, padB: 24, winH: 600 },
     capSize: 52,
     stats: { y: 1416, numSize: 58, labSize: 26, cellPad: 30 },
-    flags: { y: 1524, h: 112, labSize: 26, circle: 58, ring: 3, gap: 12, moreSize: 24 },
+    flags: { y: 1512, h: 112, labSize: 26, circle: 58, ring: 3, gap: 12, moreSize: 24 },
     footer: {
-      y: 1672, h: 176, padX: 40,
-      ctaSize: 46, ctaLead: 52, brandSize: 32, brandGap: 12, logo: 50,
+      y: 1664, h: 208, padX: 40, padT: 30,
+      ctaSize: 44, ctaLead: 48, brandSize: 30, brandGap: 20, logo: 46,
       scanSize: 40, qr: 146, qrInset: 12,
     },
   },
@@ -124,10 +124,10 @@ const LAYOUTS: Record<Format, Layout> = {
     pola: { top: 356, width: 912, padT: 22, padX: 22, padB: 22, winH: 432 },
     capSize: 50,
     stats: { y: 968, numSize: 56, labSize: 26, cellPad: 26 },
-    flags: { y: 1044, h: 104, labSize: 26, circle: 56, ring: 3, gap: 10, moreSize: 24 },
+    flags: { y: 1032, h: 104, labSize: 26, circle: 56, ring: 3, gap: 10, moreSize: 24 },
     footer: {
-      y: 1156, h: 168, padX: 34,
-      ctaSize: 38, ctaLead: 44, brandSize: 28, brandGap: 10, logo: 44,
+      y: 1150, h: 184, padX: 34, padT: 24,
+      ctaSize: 38, ctaLead: 42, brandSize: 28, brandGap: 16, logo: 44,
       scanSize: 40, qr: 120, qrInset: 10,
     },
   },
@@ -431,16 +431,18 @@ function buildFooter(L: Layout, d: CardData, qrUrl: string): string {
   const midX = L.w / 2;
   const parts: string[] = [
     `<rect x="${left}" y="${f.y}" width="${boxW}" height="${f.h}" rx="34" fill="${C.footBg}"/>`,
-    `<rect x="${midX - 1}" y="${f.y + 24}" width="2" height="${f.h - 48}" fill="${C.divider}"/>`,
+    `<rect x="${midX - 1}" y="${f.y + 22}" width="2" height="${f.h - 44}" fill="${C.divider}"/>`,
   ];
-  // Левая колонка: «Plan your / own adventure» + лого + вордмарк.
+  // Левая колонка (сверху вниз, всё внутри плашки): «Plan your / own adventure»
+  // + ряд бренда [лого] TRIPLANIO. Считаем от верхнего паддинга — лого не уезжает.
   const cx0 = left + f.padX;
-  const ctaY = f.y + f.padX + f.ctaSize;
-  parts.push(text(cx0, ctaY, f.ctaSize, d.planLine1, { weight: 800 }));
-  parts.push(text(cx0, ctaY + f.ctaLead, f.ctaSize, d.planLine2, { weight: 800 }));
-  const brandY = ctaY + f.ctaLead + f.brandGap + f.logo * 0.5;
-  parts.push(`<image href="${LOGO_URI}" x="${cx0}" y="${brandY - f.logo / 2}" width="${f.logo}" height="${f.logo}"/>`);
-  parts.push(text(cx0 + f.logo + 12, brandY + f.brandSize * 0.34, f.brandSize, d.brand, { weight: 700, ls: 3 }));
+  const l1 = f.y + f.padT + f.ctaSize * 0.82; // baseline первой строки
+  const l2 = l1 + f.ctaLead;
+  parts.push(text(cx0, l1, f.ctaSize, d.planLine1, { weight: 800 }));
+  parts.push(text(cx0, l2, f.ctaSize, d.planLine2, { weight: 800 }));
+  const brandCy = l2 + f.brandGap + f.logo / 2; // центр ряда бренда
+  parts.push(`<image href="${LOGO_URI}" x="${cx0}" y="${brandCy - f.logo / 2}" width="${f.logo}" height="${f.logo}"/>`);
+  parts.push(text(cx0 + f.logo + 14, brandCy + f.brandSize * 0.34, f.brandSize, d.brand, { weight: 700, ls: 3 }));
 
   // Правая колонка: «Scan to / explore» (Caveat) + стрелка + QR у правого края.
   const q = f.qr;
