@@ -20,7 +20,9 @@
  *               URL пресет-фонов из бакета `card-bg-presets` (дверь экрана
  *               конструктора, TRIP-374: каталог фонов едет тем же кругом, что и
  *               рамка; подменяет фон КЛИЕНТ — см. src/lib/shareCardBg.js).
- *     card_svg: { svg, width, height, slot } | { code: 'no_transit_cities' }
+ *     card_svg: { svg, width, height, slot }
+ *     оба режима: { code: 'no_transit_cities' } — пустой маршрут (не сбой), отдаётся
+ *               ДО ветки по mode.
  * 4xx: Unauthorized / trip_not_found / forbidden
  *
  * verify_jwt: defaults to TRUE (user function; NOT listed in config.toml).
@@ -59,13 +61,13 @@ const IMAGE_FILE_RE = /\.(webp|png|jpe?g)$/i;
  *  Fail-soft: сбой листинга репортится и отдаёт пустой список — конструктор
  *  живёт со «Стандартом» и своим фото, рамка важнее карусели. */
 async function listCardBackgrounds(): Promise<string[]> {
-  const { data, error } = await supabaseAdmin.storage
-    .from(BG_BUCKET)
+  const bucket = supabaseAdmin.storage.from(BG_BUCKET);
+  const { data, error } = await bucket
     .list('', { limit: BG_LIST_LIMIT, sortBy: { column: 'name', order: 'asc' } });
   if (error) throw error;
   return (data || [])
     .filter((f) => IMAGE_FILE_RE.test(f.name))
-    .map((f) => supabaseAdmin.storage.from(BG_BUCKET).getPublicUrl(f.name).data.publicUrl);
+    .map((f) => bucket.getPublicUrl(f.name).data.publicUrl);
 }
 
 // The canonical host: the apex 307s here, and the campaign mark is stored

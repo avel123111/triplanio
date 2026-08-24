@@ -33,7 +33,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   const isPhone = useIsPhone();
 
   const [format, setFormat] = useState('story');
-  const [overlay, setOverlay] = useState(null); // { svg, slot, w, h }
+  const [overlay, setOverlay] = useState(null); // { svg, slot, w, h, backgrounds }
   const [overlayCode, setOverlayCode] = useState(''); // '' | 'error' | 'no_transit_cities'
   const [bg, setBg] = useState(''); // '' = штатный фон | url пресета | data-URI своего фото
   const [bgUri, setBgUri] = useState(''); // фон, готовый к инлайну в SVG

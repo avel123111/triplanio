@@ -254,6 +254,10 @@ export const BUCKETS = {
   // политики (инвариант TRIP-48) и БЕЗ политик записи — заливает только Pavel через
   // дашборд (service_role обходит RLS). Каталог читает edge getCoverPresets.
   'trip-cover-presets': { public: true, policies: [], note: 'публичный набор обложек; раздача по URL, БЕЗ SELECT (TRIP-48), запись только через дашборд/service_role' },
+  // Фоны share-карточки: публичный, БЕЗ таблицы-каталога (на фон никто не
+  // ссылается персистентно — порядок = префикс имени файла, снятие = удаление
+  // файла); листинг только edge render-share-card под service_role.
+  'card-bg-presets': { public: true, policies: [], note: 'публичные фоны share-карточки; раздача по URL, БЕЗ SELECT (TRIP-48), листинг только edge render-share-card (service_role), запись через дашборд' },
 };
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
