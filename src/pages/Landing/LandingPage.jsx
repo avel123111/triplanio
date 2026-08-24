@@ -496,6 +496,55 @@ function useCounters(ready, lang) {
 /* ── Archive ("Every journey you've taken, kept forever") ── */
 /* ── Audience ("Solo, the two of you, or the whole crew") ── */
 /* ── Collab ("One workspace. Everyone in sync.") ── */
+/* ── Assistant ("Your trip, in your pocket") — Telegram demo ── */
+function Assistant() {
+  const t = useT();
+  return (
+    <section className="tg-sec sheet-pane section-pad" data-hdr="light" id="assistant">
+      <div className="wrap tg-grid">
+        <div className="tg-demo rv-l">
+          <div className="phone device">
+            <div className="phone-screen device-screen">
+              <div className="tg-status" aria-hidden="true">
+                <span className="tg-time">9:41</span>
+                <span className="tg-island" />
+                <span className="tg-sys">
+                  <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1" /><rect x="4.5" y="5" width="3" height="6" rx="1" /><rect x="9" y="2.5" width="3" height="8.5" rx="1" /><rect x="13.5" y="0" width="3" height="11" rx="1" /></svg>
+                  <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.6c2.6 0 5 1 6.8 2.6l-1.5 1.7C11.9 5.6 10 4.8 8 4.8s-3.9.8-5.3 2.1L1.2 5.2C3 3.6 5.4 2.6 8 2.6Z" /><path d="M8 6.4c1.5 0 2.9.6 4 1.5L8 11.7 4 7.9C5.1 7 6.5 6.4 8 6.4Z" /></svg>
+                  <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="3" stroke="currentColor" strokeWidth="1" opacity=".45" /><rect x="2.6" y="2.6" width="15" height="6.8" rx="1.6" fill="currentColor" /><rect x="22.4" y="4" width="1.7" height="4" rx=".8" fill="currentColor" opacity=".45" /></svg>
+                </span>
+              </div>
+              <div className="tg-head">
+                <span className="tav"><svg width="18" height="18" style={{ color: '#fff' }}><use href="#i-tg" /></svg></span>{/* inline-style-exempt: icon tint on brand-tinted background */}
+                <div><b>Triplanio Assistant</b>{/* i18n-ignore: product+role name, no data-i18n in prototype either */}<small>{t('landing.tg.online')}</small></div>
+                <span className="tg-hicons" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M6.6 10.8c1.4 2.7 3.9 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2Z" /></svg><svg viewBox="0 0 24 24" width="17" height="17"><circle cx="12" cy="5" r="1.7" fill="currentColor" /><circle cx="12" cy="12" r="1.7" fill="currentColor" /><circle cx="12" cy="19" r="1.7" fill="currentColor" /></svg></span>
+              </div>
+              <div className="tg-chat" id="tgChat">
+                <div className="tg-date">{t('landing.tg.today')}</div>
+                <div className="tg-msg bot"><span dangerouslySetInnerHTML={{ __html: t('landing.tg.m1') }} /><small>09:00</small></div>
+                <div className="tg-msg user"><span>{t('landing.tg.m2')}</span><small>09:02 <svg className="ticks" aria-hidden="true"><use href="#i-ticks" /></svg></small></div>
+                <div className="tg-msg bot"><span dangerouslySetInnerHTML={{ __html: t('landing.tg.m3') }} /><small>09:02</small></div>
+                <div className="tg-msg user"><span>{t('landing.tg.m4')}</span><small>09:03 <svg className="ticks" aria-hidden="true"><use href="#i-ticks" /></svg></small></div>
+                <div className="tg-msg bot"><span dangerouslySetInnerHTML={{ __html: t('landing.tg.m5') }} /><small>09:03</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="rv-r">
+          <span className="brow">{t('landing.tg.eyebrow')}</span>
+          <h2 style={{ margin: '14px 0 14px' }} dangerouslySetInnerHTML={{ __html: t('landing.tg.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
+          <p style={{ color: 'var(--muted)', fontSize: '1.03rem' }}>{t('landing.tg.sub')}</p>{/* inline-style-exempt: prototype's own one-off styling */}
+          <ul className="tg-points">
+            <li><span className="cic"><svg width="19" height="19"><use href="#i-bell" /></svg></span><div><b>{t('landing.tg.p1t')}</b><p>{t('landing.tg.p1d')}</p></div></li>
+            <li><span className="cic"><svg width="19" height="19"><use href="#i-chat" /></svg></span><div><b>{t('landing.tg.p2t')}</b><p>{t('landing.tg.p2d')}</p></div></li>
+            <li><span className="cic"><svg width="19" height="19"><use href="#i-spark" /></svg></span><div><b>{t('landing.tg.p3t')}</b><p>{t('landing.tg.p3d')}</p></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Collab() {
   const t = useT();
   return (
@@ -691,6 +740,7 @@ export default function LandingPage() {
         <Archive />
         <Audience />
         <Collab />
+        <Assistant />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
