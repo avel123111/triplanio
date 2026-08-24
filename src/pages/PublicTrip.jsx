@@ -452,7 +452,7 @@ export default function PublicTrip() {
         </div>
       </section>
 
-      <SiteFooter lang={lang} setLang={setLang} navBase={SITE} brandHref={SITE} />
+      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
 
       {/* ── Mobile sticky CTA ── */}
       <div className="pt-scta">

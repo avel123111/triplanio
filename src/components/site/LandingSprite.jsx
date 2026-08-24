@@ -2,12 +2,14 @@ import React from 'react';
 
 /* =========================================================
    LandingSprite — the v5.7 prototype's icon sprite (TRIP-460).
-   An off-canvas SVG defs block carrying every symbol id the landing sections
-   reference through use-href. Rendered ONCE at the top of the page so the
-   symbols resolve everywhere below. Verbatim from the prototype sprite,
-   HTML attributes converted to JSX (stroke-width to strokeWidth, …). The brand
-   colours live inside the marks (currentColor / fixed logo fills); no external
-   assets, no hotlinks.
+   An off-canvas SVG defs block carrying every symbol id the site zone
+   references through use-href — chrome (SiteHeader's #tl-logo/#i-chev) AND
+   the landing sections. Lives in components/site (not pages/Landing) because
+   SiteChrome renders it once inside SiteHeader — every zone page that mounts
+   the shared header (landing, public-trip) gets working symbols for free, no
+   per-page plumbing. Verbatim from the prototype sprite, HTML attributes
+   converted to JSX (stroke-width to strokeWidth, …). No external assets, no
+   hotlinks.
 ========================================================= */
 export default function LandingSprite() {
   return (

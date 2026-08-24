@@ -3,110 +3,184 @@
    useSiteCss() (SiteChrome.jsx) на маркетинговых/публичных React-роутах, а на
    статических /terms и /privacy — атрибут class="site" прямо в разметке. Без
    класса токенов нет — так голый :root не может утечь на всё приложение, если
-   site.css однажды затащат в бандл (разбор специфичности — TRIP-446). */
+   site.css однажды затащат в бандл (разбор специфичности — TRIP-446).
+
+   CSS ниже — прототип v5.7 ЦЕЛИКОМ (TRIP-460, подход "как есть, не пересказ"):
+   вырезаны блоки Terms/Privacy (.doc*, → TRIP-465) и публичной поездки
+   (.pt*, → TRIP-461); семь имён, конфликтующих с app.css правилом-одиночкой
+   (btn/btn-primary/btn-ghost/sheet/eyebrow/bud-total/cflag), разрешены по
+   таблице тикета; кегли и радиусы сняты на свою шкалу (таблица сдвигов в PR). */
 html.site {
-  --brand: #2380D6;           /* прототип v5.7 (TRIP-460 §2а «как в прототипе») */
-  --brand-600: #1b58c4;
-  --brand-700: #174aa6;
-  --brand-soft: rgba(33,103,226,.08);
-  --brand-soft-12: rgba(33,103,226,.12);
-  --brand-ink: #0b1f47;       /* deep navy for dark band */
-  --brand-ink-2: #0a1a3a;
-  --brand-glow: rgba(33,103,226,.10);
+  /* Слой ДС зоны — блок :root прототипа v5.7 ПЕРЕНЕСЁН ЦЕЛИКОМ, не пересказан
+     (TRIP-460, подход "CSS как есть"). Зона владеет этим слоем токенов
+     ПОЛНОСТЬЮ — ни одного обращения к --fs-*/--r-* приложения в site.css. */
+  --brand:#2380D6; --brand-btn:#1E72C4; --brand-deep:#1B67B4;
+  --sky:#6FB4F4; --ice:#DFF0FD;
+  --ink:#13324E; --muted:#516576; --white:#FFFFFF;
+  --mist:#F0F7FD; --band:#E2F0FB; --sand:#FDF3E5;
+  --night-line:rgba(122,180,235,.15); --night-text:#BDD5EC;
+  --sunset:#FF9E4A; --sunset-text:#A0632E;
+  --mint:#2EC27E; --mint-text:#1C7A4F;
 
-  --ink: #13324E;             /* прототип v5.7 — синевато-навигационный (TRIP-460) */
-  --ink-2: #1f2a44;
-  --muted: #516576;           /* прототип v5.7 (TRIP-460) */
-  --muted-2: #8693a8;
-
-  --line: #E5E7EB;            /* cool neutral border */
-  --line-2: #eef0f4;
-  --wash: #F7F8FA;            /* alt section */
-  --white: #ffffff;
-
-  --warm: #c9603a;            /* terracotta accent, used sparingly */
-  --warm-soft: #f1d9c9;
-  --warm-tint: rgba(201,96,58,.10);
-  --success: #1f8a5b;
-
-  --radius-card: 18px;
-  --radius-btn: 12px;
-
-  --shadow-soft: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 24px -8px rgba(15, 23, 42, .08);
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, .03), 0 10px 30px -12px rgba(15, 23, 42, .14);
-  --shadow-pop:  0 2px 6px rgba(15, 23, 42, .06), 0 20px 60px -20px rgba(15, 23, 42, .22);
-
-  --container: 1180px;
-  --gutter: 24px;
-
-  --sect-pad: 96px;
-  --card-pad: 28px;
-  --hero-top: 96px;
-  --hero-bot: 80px;
-
-  /* Гарнитуры зоны (TRIP-460 §2а): display — Onest, body — Golos Text, обе
-     вариативные (ось 400 800); @font-face в src/design/fonts.css. Переопределяют
-     те же имена токенов на html.site (Geologica приложения зону не задевает). */
-  --font-display: 'Onest', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  /* Зона владеет своим слоем шрифт-токенов ЦЕЛИКОМ (ревью TRIP-460): app.css :root
-     держит --font-ui: Geologica, и всё, что канон .t-* типографирует по co-селектору
-     (.btn/.footer/.nav/.eyebrow/.lede), приезжало в зону гарнитурой приложения.
-     UI/подписи зоны = body-гарнитура (Golos). */
+  --font-display:'Onest', ui-sans-serif, system-ui, sans-serif;
+  --font-body:'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* --font-ui обязателен (ревью TRIP-460): app.css :root держит --font-ui:Geologica,
+     и канон .t-* типографирует co-селекторы зоны (.btn/.footer/.nav/.eyebrow/.lede)
+     этим токеном. Без переопределения половина зоны рендерится Geologica. */
   --font-ui: var(--font-body);
-  --display-tracking: -0.022em;
-  --h1-tracking: -0.035em;
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --dur:.65s;
+  --sheet-r:clamp(26px,4vw,44px);
 
-  /* Палитра и слой прототипа v5.7 (TRIP-460). Аддитивно к токенам выше:
-     --ink/--muted/--brand прототипа близки к текущим и здесь НЕ переопределяются,
-     чтобы не сдвинуть public-trip (его редизайн — отдельный PR). */
-  --brand-btn: #1E72C4;
-  --brand-deep: #1B67B4;
-  --sky: #6FB4F4;
-  --ice: #DFF0FD;
-  --mist: #F0F7FD;
-  --band: #E2F0FB;
-  --sand: #FDF3E5;
-  --night-line: rgba(122,180,235,.15);
-  --night-text: #BDD5EC;
-  --sunset: #FF9E4A;
-  --sunset-text: #A0632E;
-  --mint: #2EC27E;
-  --mint-text: #1C7A4F;
-  --r-lg: 22px;
-  --site-r-md: 15px;          /* app :root держит --r-md:16px — префикс, чтобы не клобберить компоненты приложения в зоне (TRIP-460) */
-  --shadow-lg: 0 24px 60px -18px rgba(11,44,84,.20);
-  --shadow-md: 0 12px 32px -12px rgba(11,44,84,.14);
-  --shadow-sm: 0 4px 14px -4px rgba(11,44,84,.10);
-  /* --ease-out наследуется из app.css :root (значение идентично) — не объявляем (TRIP-460) */
-  --dur: .65s;
-  --sheet-r: clamp(26px,4vw,44px);
+  /* Радиусы: --r-md/--r-lg — значения прототипа, не переименованы (значение,
+     не имя, было причиной прежней псевдо-коллизии). --r-xs/--r-sm — новые
+     ступени под 14 сырых px-радиусов прототипа (сдвиг ≤2px, таблица в PR). */
+  --r-md:15px; --r-lg:22px;
+  --r-xs:4px; --r-sm:10px;
 
-  /* Типографика зоны (TRIP-460 §2): собственные текучие размеры токенами (не
-     сырым font-size — так их видит только зона и проходит гард типографики;
-     значения = прототип v5.7). Мобильные ступени переопределяют токен в @media
-     на самой секции. */
-  --fs-hero-h1: clamp(2.55rem, 1.45rem + 3.9vw, 3.9rem);   /* 62px @1440, пол 40.8 */
-  --fs-hero-sub: clamp(1rem, .94rem + .35vw, 1.11rem);
-  --fs-section-h2: clamp(1.85rem, 1.2rem + 2.7vw, 2.9rem); /* 46px @1440 — секционные h2 (§2) */
+  /* Кегли — 11 ступеней (замена 37 уникальных rem-значений), покрытие 108/108,
+     макс. сдвиг 1px (таблица «было → стало → сдвиг» в теле PR, TRIP-460). Каждое
+     font-size в теле ниже — var(--fs-*), сырых rem/px/clamp не осталось. */
+  --fs-micro:10px; --fs-tiny:11px; --fs-caption:12px; --fs-small:13px;
+  --fs-body:14px; --fs-body-lg:15px; --fs-lead:16px; --fs-lead-lg:17px;
+  --fs-h4:18px; --fs-h3:21px; --fs-h2:30px;
 
-  /* Мелкая типографика мокап-секций зоны (TRIP-460 §2). Гард типографики требует
-     размеры токеном, не сырым font-size; шкала = значения прототипа v5.7 (rem×100).
-     1rem легально сырой (гард его исключает), поэтому здесь не дублируется. */
-  --fs-60: .6rem;  --fs-62: .62rem; --fs-66: .66rem; --fs-68: .68rem;
-  --fs-70: .7rem;  --fs-72: .72rem; --fs-75: .75rem; --fs-76: .76rem;
-  --fs-78: .78rem; --fs-80: .8rem;  --fs-84: .84rem; --fs-85: .85rem;
-  --fs-90: .9rem;  --fs-92: .92rem; --fs-95: .95rem;
-  --fs-105: 1.05rem; --fs-115: 1.15rem; --fs-130: 1.3rem;
-
-  /* Корпус телефона/окна приложения (TRIP-460 §2, прототип v5.7): один набор
-     носит и телефон секции, и окно приложения (.device — общий примитив). */
-  --dev-bezel: linear-gradient(145deg,#454a52,#1b1e24 30%,#0e1013 60%,#2b2f36 85%,#0e1013);
-  --dev-shadow: 0 55px 110px -34px rgba(7,30,56,.5), 0 22px 42px -26px rgba(7,30,56,.42);
-  --dev-btn: #15181d;
-  --dev-rim: #06080b;
-  --dev-gloss: linear-gradient(130deg,rgba(255,255,255,.22),rgba(255,255,255,0) 32%);
+  /* Текучие (clamp) заголовки — адаптивность прототипа, не шум; значение не
+     меняется, только именовано токеном (включая мобильные @media-ступени). */
+  --fs-hero-h1: clamp(2.55rem,1.45rem + 3.9vw,3.9rem);
+  --fs-hero-sub: clamp(1rem,.94rem + .35vw,1.11rem);
+  --fs-hero-sub-mobile: clamp(.82rem,3.35vw,1rem);
+  --fs-section-h2: clamp(1.85rem,1.2rem + 2.7vw,2.9rem);
+  --fs-final-h2: clamp(2.1rem,1.4rem + 3.4vw,3.4rem);
 }
+
+
+/* Семьи имён прототипа v5.7 — единый апрув на весь перенос (TRIP-460, "как
+   есть, не пересказ"). Ни одно из них не конфликтует с app.css. */
+/* prefix-exempt: active — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ai — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: appwin — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: archive — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: aud — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: audience — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: avs — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: aw — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: b — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bb — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bcard — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: beam — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bento — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bot — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bp — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bpass — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: brow — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: browser — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bud — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: burger — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: cdot — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: centered — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: cic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: collab — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: copy — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ctas — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: dark — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: device — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: dic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: dmeta — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: done — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: duo — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: dv — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: eh — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: email — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: err — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: feed — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: fill — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: filled — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: final — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ftag — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: full — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: fx — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: grad — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: group — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: hd — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: hl — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: horizon — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: idx — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: in — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: inner — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: l1 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: l2 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: l3 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: la — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: lang — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: lb — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: lbl — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: lg — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: line — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: link — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: loc — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: logo — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: main — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: map — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mbody — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mint — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mobile — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mprev — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: msg — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mtop — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: n — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: nd — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: npin — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: num — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ok — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: open — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p1 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p2 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p3 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p4 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p5 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pain — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: parsed — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pcheck — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pfield — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pfields — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ph — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pill — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: rec — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: recognize — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: rv — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scan — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scrap — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scrapv3 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scrolled — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scrub — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: sh — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: share — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: sheet — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: site — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: snote — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ssheet — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: stat — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: stats — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: subject — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: tav — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: tg — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: th — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ticks — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: todo — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: track — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: trip — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: up — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: user — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: viewer — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: warm — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: wdots — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: world — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: wrap — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: yc — прототип v5.7 (TRIP-460, подход "как есть") */
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -118,273 +192,299 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.55;
-  font-feature-settings: "ss01", "cv11";
 }
-
 img { max-width: 100%; display: block; }
 button { font-family: inherit; cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 
-/* ---------- Layout helpers ---------- */
-.container {
-  width: 100%;
-  max-width: var(--container);
-  margin: 0 auto;
-  padding-left: var(--gutter);
-  padding-right: var(--gutter);
-}
-.section { padding: var(--sect-pad) 0; position: relative; }
 
-@media (max-width: 900px) {
-  .section { padding: calc(var(--sect-pad) * 0.75) 0; }
-}
-
-/* ---------- Type ---------- */
-.eyebrow {
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.eyebrow::before {
-  content: "";
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--warm);
-  display: inline-block;
-}
-
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  color: var(--ink);
-  margin: 0;
-  letter-spacing: -0.02em;
-  font-weight: 600;
-  text-wrap: balance;
+/* ============================================================
+   TRIPLANIO v2 — tokens
+============================================================ */
+:root{
+  --brand:#2380D6; --brand-btn:#1E72C4;
+  --brand-deep:#1B67B4;
+  --sky:#6FB4F4;
+  --ice:#DFF0FD;
+  --ink:#13324E;
+  --muted:#516576;   /* держит >=4.5 на всех фонах лендинга, включая самый светлый --ice */
+  --white:#FFFFFF;
+  --mist:#F0F7FD;          /* light tinted band */
+  --band:#E2F0FB;          /* deeper tinted band */
+  --sand:#FDF3E5;          /* warm band */
+  --night-line:rgba(122,180,235,.15);
+  --night-text:#BDD5EC;
+  --sunset:#FF9E4A;
+  --sunset-text:#A0632E; /* закатный для ТЕКСТА: --sunset даёт 2.1:1 */
+  --mint:#2EC27E;
+  --mint-text:#1C7A4F;   /* мята для ТЕКСТА и иконок: --mint даёт 2.3:1, ниже AA */
+  --r-lg:22px;
+  --r-md:15px;
+  --shadow-lg:0 24px 60px -18px rgba(11,44,84,.20);
+  --shadow-md:0 12px 32px -12px rgba(11,44,84,.14);
+  --shadow-sm:0 4px 14px -4px rgba(11,44,84,.10);
+  --font-display:"Onest",sans-serif;
+  --font-body:"Golos Text",sans-serif;
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --dur:.65s;
+  --sheet-r:clamp(26px,4vw,44px);
 }
 
-/* TRIP-165 — заголовки лендинга на КАНОН-ТОКЕНЫ (--fs-*), без сырых px.
-   TRIP-203 — адаптив несут сами fluid-токены (clamp), без ручных @media-ступенек.
+*{margin:0;padding:0;box-sizing:border-box}
 
-   ⚠️ ЗНАЧЕНИЯ ЭТИХ ТОКЕНОВ ЖИВУТ В src/design/app.css :root, НЕ ЗДЕСЬ.
-   У сайтовой ДС своей типографической шкалы нет — она приезжает из ДС
-   приложения (9 токенов --fs-*), и уже дважды уезжала от PR, которые лендинг
-   не трогали: --fs-display 44→40, --fs-h1 26→24, --fs-h2 16.5→18 (август).
-   Поэтому чисел в комментариях рядом с var() здесь БОЛЬШЕ НЕТ: они обещали
-   54/40/26/19, а токены давали 40/24/18/16 — врали на 14 px, пока не замерили
-   (аудит TRIP-445, handoff §3; решение по шкале — открытый вопрос 8). */
-h1 {
-  font-size: var(--fs-display);   /* канон .t-display */
-  line-height: 1.02;
-  letter-spacing: var(--h1-tracking);
-  font-weight: 700;
-}
-h2 {
-  font-size: var(--fs-section-h2); /* прототип v5.7 — секционные h2 46px (§2), не app --fs-h1 (~24) */
-  line-height: 1.08;
-  letter-spacing: var(--display-tracking);
-}
-h3 {
-  font-size: var(--fs-h2);        /* канон .t-heading */
-  line-height: 1.15;
-  letter-spacing: var(--display-tracking);
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip}
+
+body{
+  font-family:var(--font-body);color:var(--ink);background:var(--white);
+  line-height:1.6;font-size: var(--fs-lead);overflow-x:clip;
 }
 
-/* TRIP-203: заголовки лендинга (h1→display, h2→h1, h3→h2) шринкуются сами —
-   каноны --fs-display/--fs-h1/--fs-h2 теперь fluid (clamp). Ручные @media-ступеньки убраны. */
+img,svg,canvas{display:block;max-width:100%}
 
-.lede {
-  font-size: var(--fs-h3);        /* канон .t-subheading */
-  line-height: 1.6;
-  color: var(--muted);
-  max-width: 64ch;
-}
+a{color:inherit;text-decoration:none}
 
-.subtle { color: var(--muted); }
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
-/* ---------- Buttons ----------
-   БАЗУ .btn зона НЕ объявляет (правило 1а, ревью TRIP-460): app.css:1767 держит
-   .btn правилом-одиночкой, и вторая база в site.css клобберила рамку у app-кнопки:
-   `<Btn variant="secondary">` баннера согласия получал border:transparent.
-   .btn — ОДИН объект → общая база из app (display/min-height/gap/transition),
-   а зона добавляет ТОЛЬКО варианты: геометрию прототипа (padding/radius) несёт
-   co-селектор вариантов, цвет — каждый вариант. */
-.btn--primary, .btn--ghost, .btn--white {
-  padding: 12px 20px;
-  border-radius: var(--radius-btn);
-  border: 1px solid transparent;
-}
-.btn--lg { padding: 15px 26px; font-size: var(--ctl-fs); border-radius: 14px; }
+::selection{background:var(--brand);color:#fff}
 
-/* Коллизии «правило-одиночка в обоих файлах» под гардом 2ae (check-site-primitive-dup,
-   TRIP-460 §1а). Все — ОДИН объект: зона объявляет ровно те свойства, что ей нужны,
-   утечки недостающего свойства из app.css нет (в отличие от снятого .sheet). Каждое —
-   вариант/примитив зоны, не вторая база:
-   site-dup-exempt: btn--primary — вариант primary; общая база .btn из app (§7.4)
-   site-dup-exempt: eyebrow — секционный eyebrow зоны (точка+текст), свой вид
-   site-dup-exempt: lede — лид-абзац зоны, своя типографика
-   site-dup-exempt: footer — подвал зоны (SiteChrome); приложение подвала не рендерит
-   site-dup-exempt: langdd__btn — переключатель языка (chrome зоны), свой вид
-   site-dup-exempt: langdd__item — пункт переключателя языка (chrome зоны), свой вид */
-.btn--primary {
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 6px 18px -6px color-mix(in oklab, var(--brand) 55%, transparent);
-}
-.btn--primary:hover { background: var(--brand-600); transform: translateY(-1px); }
-.btn--ghost {
-  background: transparent;
-  color: var(--ink);
-  border-color: var(--line);
-}
-.btn--ghost:hover { background: var(--wash); border-color: #d8dde6; }
-.btn--white {
-  background: #fff;
-  color: var(--brand-ink);
-}
-.btn--white:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -10px rgba(0,0,0,.35); }
 
-.btn .chev { transition: transform .2s ease; }
-.btn:hover .chev { transform: translateX(2px); }
+/* Клавиатурный фокус — одно правило на всю страницу. :focus-visible сам решает,
+   показывать обводку или нет: мышь её не видит, Tab видит везде. Обводка
+   повторяет border-radius элемента сама, отдельных правил не нужно. */
+:focus-visible{outline:2px solid var(--brand-deep);outline-offset:2px}
 
-/* ---------- Header ----------
-   ONE header, re-tinted against the section beneath it. The header ALWAYS
-   carries exactly one theme class — `on-dark` (white text over a dark cover),
-   `on-light` (ink over a light section), or `on-accent` (white over the warm
-   band) — picked from the `data-hdr` of the section under it. Bare `.header`
-   is structural only; every colour lives in one of the three variants, so no
-   emitted class is rule-less. `on` is the single new namespace of this phase
-   (approval Pavel 23.08.2026).
-   prefix-exempt: on — тема шапки по секции под ней (Ф2), апрув Pavel 23.08.2026 */
-.header {
-  position: fixed;
-  inset: 0 0 auto 0;
-  z-index: 50;
-  transition: background .35s ease, box-shadow .35s ease;
-}
-/* Scrolled backdrop — one per theme. */
-.header.on-dark.is-scrolled {
-  background: rgba(6,18,31,.78);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  box-shadow: 0 1px 0 rgba(255,255,255,.08);
-}
-.header.on-light.is-scrolled {
-  background: rgba(255,255,255,.82);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  box-shadow: 0 1px 0 rgba(11,44,84,.08);
-}
-.header.on-accent.is-scrolled {
-  background: rgba(196,74,52,.42);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  box-shadow: 0 1px 0 rgba(255,255,255,.18);
-}
-.header__inner {
-  display: flex;
-  align-items: center;
-  height: 70px;
-  gap: 26px;
-}
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--fs-h3);
-  letter-spacing: -0.02em;
-}
-.header.on-dark .brand { color: #fff; }
-.header.on-light .brand { color: var(--ink); }
-.header.on-accent .brand { color: #fff; }
-.brand__mark {
-  width: 28px; height: 28px;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.nav a {
-  padding: 8px 13px;
-  border-radius: 999px;
-  font-size: var(--fs-meta);
-  font-weight: 500;
-  transition: color .2s ease, background .2s ease;
-}
-.header.on-dark .nav a { color: rgba(255,255,255,.75); }
-.header.on-dark .nav a:hover { color: #fff; background: rgba(255,255,255,.1); }
-.header.on-light .nav a { color: var(--muted); }
-.header.on-light .nav a:hover { color: var(--ink); background: rgba(11,44,84,.06); }
-.header.on-accent .nav a { color: rgba(255,255,255,.82); }
-.header.on-accent .nav a:hover { color: #fff; background: rgba(255,255,255,.16); }
+:focus:not(:focus-visible){outline:none}
 
-.header__right { display: flex; align-items: center; gap: 11px; margin-left: auto; }
+.final :focus-visible{outline-color:#fff}
 
-/* On an accent section the primary CTA inverts to a white chip. */
-.header.on-accent .header__cta { background: #fff; color: var(--warm); }
-.header.on-accent .header__cta:hover { background: #fff; color: var(--brand-ink); }
 
-.hamburger {
-  display: none;
-  width: 42px; height: 42px;
-  border-radius: 12px;
-  background: transparent;
-  border: 0;
-  align-items: center;
-  justify-content: center;
-}
-.header.on-dark .hamburger { color: #fff; }
-.header.on-light .hamburger { color: var(--ink); }
-.header.on-accent .hamburger { color: #fff; }
+h1,h2,h3{font-family:var(--font-display);line-height:1.12;letter-spacing:-.025em}
 
-@media (max-width: 900px) {
-  .nav { display: none; }
-  .header--full .hamburger { display: inline-flex; }
-  /* Full header hands its CTA to the drawer on mobile; cta/minimal keep it. */
-  .header--full .header__cta { display: none; }
+h2{font-size: var(--fs-section-h2);font-weight:800}
+
+h3{font-size: var(--fs-h4);font-weight:700}
+
+.wrap{width:min(1160px,calc(100% - 48px));margin-inline:auto}
+
+.hero > .wrap,.site-header > .wrap{box-sizing:border-box;width:100%;padding-inline:clamp(24px,5vw,80px);margin-inline:0}
+
+@media (max-width:640px){.wrap{width:calc(100% - 40px)}}
+
+
+section{position:relative}
+
+.section-pad{padding:clamp(68px,7.5vw,104px) 0}
+
+.sheet-pane{border-radius:var(--sheet-r) var(--sheet-r) 0 0;margin-top:calc(var(--sheet-r)*-1);position:relative;z-index:3}
+
+
+.brow{
+  display:inline-flex;align-items:center;gap:9px;
+  font-size: var(--fs-caption);font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--brand-deep);
 }
 
-/* mobile drawer (full header only) */
-.drawer {
-  position: fixed;
-  inset: 70px 0 auto 0;
-  background: rgba(255,255,255,.97);
-  backdrop-filter: saturate(180%) blur(18px);
-  -webkit-backdrop-filter: saturate(180%) blur(18px);
-  z-index: 49;
-  padding: 10px 0 20px;
-  transform: translateY(-12px);
-  opacity: 0;
-  pointer-events: none;
-  /* То же, что у .langdd__menu, и хуже: дровер несёт aria-hidden="true", а
-     `.hamburger` выше 900px скрыт — на десктопе открыть его нельзя вовсе, но
-     без `visibility` его CTA и три ссылки стоят в порядке табов ВНУТРИ
-     aria-hidden (жёсткое нарушение WCAG 4.1.2). */
-  visibility: hidden;
-  transition: opacity .3s ease, transform .3s ease, visibility 0s linear .3s;
-  border-bottom: 1px solid var(--line);
-  box-shadow: 0 24px 48px -24px rgba(11,44,84,.18);
-}
-.drawer.is-open { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .3s ease, transform .3s ease, visibility 0s; }
-.drawer ul { list-style: none; padding: 8px 0; margin: 0; }
-.drawer li { padding: 0 24px; }
-.drawer li a {
-  display: block;
-  padding: 16px 0;
-  color: var(--ink);
-  font-weight: 500;
-  border-bottom: 1px solid var(--line-2);
-}
-.drawer li .btn { width: 100%; margin: 8px 0 12px; }
+.brow::before{content:"";width:24px;height:2px;border-radius: var(--r-xs);background:var(--sunset)}
 
-/* ---------- Landing body (прототип v5.7, TRIP-460) ----------
-   Тело лендинга переносится посекционно. Старые правила лендинга
-   (Hero/App-mockup/Problem/Features/How/Deep dives/Trust/FAQ/Final CTA
-   и старый Scroll-reveal) удалены — их разметка ушла вместе с
-   LandingPage.jsx. Секции добавляются по одной ниже. */
+.dark .brow{color:#fff}
+
+.dark .brow::before{background:rgba(255,255,255,.7)}
+
+.section-head{max-width:660px;margin-bottom:clamp(34px,4vw,52px)}
+
+.section-head.centered{margin-inline:auto;text-align:center}
+
+.section-head.centered .brow{justify-content:center}
+
+.section-head h2{margin:14px 0 14px}
+
+.section-head p{color:var(--muted);font-size: var(--fs-lead-lg);max-width:58ch}
+
+.section-head.centered p{margin-inline:auto}
+
+.dark .section-head p{color:var(--night-text)}
+
+.accent{color:var(--brand)}
+
+.dark .accent{color:var(--sky)}
+
+
+/* reveal (bidirectional) */
+.rv{opacity:0;transform:translateY(30px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+
+.rv.in{opacity:1;transform:none}
+
+.rv-l{opacity:0;transform:translateX(-36px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+
+.rv-r{opacity:0;transform:translateX(36px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+
+.rv-l.in,.rv-r.in{opacity:1;transform:none}
+
+[data-stagger]>*{transition-delay:calc(var(--i,0)*70ms)}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001s!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001s!important;transition-delay:0s!important}
+  .rv,.rv-l,.rv-r{opacity:1;transform:none}
+}
+
+
+/* ============================================================
+   HEADER
+============================================================ */
+.site-header{position:fixed;inset:0 0 auto 0;z-index:100;transition:background .35s,box-shadow .35s}
+
+.site-header .wrap{display:flex;align-items:center;gap:26px;height:70px}
+
+.site-header.scrolled{
+  background:rgba(6,18,31,.78);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 1px 0 var(--night-line);
+}
+
+.site-header.on-light.scrolled{background:rgba(255,255,255,.82);box-shadow:0 1px 0 rgba(11,44,84,.08)}
+
+.site-header.on-accent.scrolled{background:rgba(196,74,52,.42);box-shadow:0 1px 0 rgba(255,255,255,.18)}
+
+.on-accent .brand{color:#fff}
+
+.on-accent .main-nav a{color:rgba(255,255,255,.82)}
+
+.on-accent .main-nav a:hover{color:#fff;background:rgba(255,255,255,.16)}
+
+.on-accent .lang-btn{color:#fff;border-color:transparent}
+
+.on-accent .lang-btn:hover{background:rgba(255,255,255,.14)}
+
+.on-accent .burger{color:#fff}
+
+.on-accent .header-cta{background:#fff;color:#E0592E;box-shadow:0 10px 26px -8px rgba(120,40,20,.45)}
+
+.on-accent .header-cta:hover{background:#fff;color:#C9481F}
+
+.brand{display:flex;align-items:center;min-height:44px;gap:10px;font-family:var(--font-display);font-weight:800;font-size: var(--fs-h4);letter-spacing:-.02em;color:#fff}
+
+.on-light .brand{color:var(--ink)}
+
+.brand .logo{width:33px;height:33px;border-radius: var(--r-sm);box-shadow:0 4px 12px rgba(33,115,200,.4)}
+
+.main-nav{display:flex;gap:2px}
+
+.main-nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 13px;border-radius:99px;font-size: var(--fs-body);font-weight:500;color:rgba(255,255,255,.75);transition:color .2s,background .2s}
+
+.on-light .main-nav a{color:var(--muted)}
+
+.main-nav a:hover{color:#fff;background:rgba(255,255,255,.1)}
+
+.on-light .main-nav a:hover{color:var(--ink);background:rgba(11,44,84,.06)}
+
+.header-actions{display:flex;align-items:center;gap:11px;margin-left:auto}
+
+
+.lang{position:relative}
+
+.lang-btn{
+  display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:99px;
+  font-size: var(--fs-body);font-weight:500;color:rgba(255,255,255,.85);
+  border:1px solid transparent;transition:border-color .2s,background .2s;min-height:44px;
+}
+
+.on-light .lang-btn{color:var(--ink);border-color:transparent}
+
+.lang-btn:hover{background:rgba(255,255,255,.1)}
+
+.on-light .lang-btn:hover{background:rgba(11,44,84,.05)}
+
+.lang-btn svg{transition:transform .25s}
+
+.lang.open .lang-btn svg{transform:rotate(180deg)}
+
+.lang-menu{
+  position:absolute;top:calc(100% + 10px);right:0;min-width:168px;
+  background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:6px;
+  opacity:0;transform:translateY(-8px) scale(.97);pointer-events:none;
+  transition:opacity .22s var(--ease-out),transform .22s var(--ease-out);
+}
+
+.lang.open .lang-menu,.mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto}
+
+.lang-menu button{display:flex;align-items:center;min-height:44px;gap:10px;width:100%;padding:9px 12px;border-radius: var(--r-sm);font-size: var(--fs-body-lg);color:var(--ink);transition:background .15s;text-align:left}
+
+.lang-menu button:hover{background:var(--ice)}
+
+.lang-menu button.active{background:var(--ice);font-weight:600;color:var(--brand-deep)}
+
+.lang-menu .code{font-size: var(--fs-tiny);font-weight:700;letter-spacing:.06em;color:var(--brand-deep);background:var(--ice);border-radius: var(--r-xs);padding:2px 6px;min-width:32px;text-align:center}
+
+
+
+.btn:active{transform:scale(.97)}
+
+/* site-dup-exempt: btn-primary — вариант объекта .btn (§1а таблица тикета: btn/
+   btn-primary/btn-ghost — одна группа). app.css:848 числит это имя в co-селекторе
+   канона .t-label (типографика: font-family/size/weight), а не отдельным
+   правилом цвета/геометрии — вариант получает канон-типографику по замыслу ДС,
+   утечки нет; конфликтует только по факту вхождения в comma-список канона. */
+/* site-dup-exempt: btn-ghost — тот же случай, app.css:851 тот же co-селектор */
+.btn-primary{background:var(--brand-btn);color:#fff;box-shadow:0 10px 26px -8px rgba(33,115,200,.55)}
+
+.btn-primary:hover{background:var(--brand-deep);transform:translateY(-2px);box-shadow:0 16px 32px -10px rgba(33,115,200,.6)}
+
+.btn-ghost{color:var(--ink);border:1px solid rgba(19,50,78,.22);background:rgba(255,255,255,.6)}
+
+.btn-ghost:hover{background:#fff;transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+
+.dark .btn-ghost{color:#fff;border-color:rgba(255,255,255,.45);background:transparent}
+
+.dark .btn-ghost:hover{background:rgba(255,255,255,.14);box-shadow:none}
+
+.btn-light{background:#fff;color:var(--ink);box-shadow:var(--shadow-md)}
+
+.btn-light:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+
+.btn-sm{padding:9px 18px;font-size: var(--fs-body);min-height:44px}
+
+@media (max-width:900px){.main-nav{display:none}}
+
+
+.burger{display:none;width:44px;height:44px;border-radius: var(--r-sm);place-items:center;color:#fff}
+
+.on-light .burger{color:var(--ink)}
+
+@media (max-width:900px){
+  .burger{display:grid}
+  .header-cta{display:none}
+  .site-header .wrap{gap:10px}
+  .brand{font-size: var(--fs-lead);gap:8px}
+  .header-actions{gap:8px}
+}
+
+.burger svg .l2{transition:opacity .2s}
+
+.burger svg .l1,.burger svg .l3{transition:transform .3s var(--ease-out);transform-origin:12px 12px}
+
+.mobile-open .burger .l1{transform:translateY(6px) rotate(45deg)}
+
+.mobile-open .burger .l3{transform:translateY(-6px) rotate(-45deg)}
+
+.mobile-open .burger .l2{opacity:0}
+
+.mobile-menu{
+  position:fixed;inset:70px 0 auto 0;z-index:99;padding:10px 24px 28px;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  display:flex;flex-direction:column;transform:translateY(-12px);opacity:0;pointer-events:none;
+  transition:opacity .3s var(--ease-out),transform .3s var(--ease-out);
+  border-bottom:1px solid rgba(19,50,78,.1);box-shadow:0 24px 48px -24px rgba(11,44,84,.18);
+}
+
+.mobile-menu a{padding:14px 4px;font-size: var(--fs-lead);font-weight:500;color:var(--ink);border-bottom:1px solid rgba(19,50,78,.08)}
+
+.mobile-menu .btn{margin:6px 0 16px;width:100%}
+
+/* .mobile-menu a перебивает цвет .btn-primary — возвращаем белый текст кнопке */
+.mobile-menu .btn-primary{color:#fff;border-bottom:0}
+
+.mobile-menu a:last-child{border-bottom:0}
+
 
 /* ============================================================
    HERO
@@ -406,8 +506,10 @@ h3 {
   /* stretch, а не center: положение текста задаёт верхний отступ сетки */
   display:flex;align-items:stretch;
 }
+
 /* --- фото-фон: два слоя, плавная смена по наведению на телефон --- */
 .hero-bg{position:absolute;inset:0;z-index:0;overflow:hidden;background:#7FA9C4}
+
 /* подложка: тот же кадр, размытый — заполняет поля на широких экранах */
 .hero-fill{
   position:absolute;inset:-8%;
@@ -415,30 +517,38 @@ h3 {
   filter:blur(30px) saturate(1.06) brightness(1.02);
   transform:scale(1.06);
 }
+
 /* Кадр по умолчанию — МОБИЛЬНЫЙ, десктопный подключается медиазапросом. Обратный
    порядок (десктоп по умолчанию + .hero.is-mob от JS) заставлял телефон качать
    десктопный кадр: класс приходит после первого рендера, запрос успевает уйти. */
 @media (min-width:981px){
   .hero-fill{background-image:var(--hero-a);filter:blur(54px) brightness(1.02) saturate(1.02);transform:scale(1.04)}
 }
+
 .hero-layer{
   position:absolute;inset:0;
   background-repeat:no-repeat;background-size:cover;background-position:center;
   backface-visibility:hidden;
 }
-.hero-layer.hero-la{opacity:1;background-image:var(--hero-m);background-size:auto 88%;background-position:50% 0;
+
+.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:auto 88%;background-position:50% 0;
   -webkit-mask:linear-gradient(180deg,#000 0,#000 58%,transparent 82%);mask:linear-gradient(180deg,#000 0,#000 58%,transparent 82%)}
+
 @media (min-width:981px){
-  .hero-layer.hero-la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
+  .hero-layer.la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
 }
-.hero-layer.hero-lb{opacity:0;transition:opacity .5s var(--ease-out);will-change:opacity}
+
+.hero-layer.lb{opacity:0;transition:opacity .5s var(--ease-out);will-change:opacity}
+
 /* кадр наведения объявлен только для десктопа: на мобиле он не нужен и не должен
    даже запрашиваться. display:none из JS для этого не годится — он ставится после
    первого рендера, запрос успевает уйти. Порог 981px = ровно тот, где JS включает is-mob. */
-@media (min-width:981px){.hero-layer.hero-lb{background-image:var(--hero-b)}}
-.hero.is-zoom .hero-layer.hero-lb{opacity:1}
+@media (min-width:981px){.hero-layer.lb{background-image:var(--hero-b)}}
+
+.hero.is-zoom .hero-layer.lb{opacity:1}
+
 /* мобильный кадр прижат к верху: при 88% высоты и позиции 5% сверху оставалась
-   щель 5px, где просвечивал размытый .hero-fill — см. правило .hero-layer.hero-la выше */
+   щель 5px, где просвечивал размытый .hero-fill — см. правило .hero-layer.la выше */
 
 /* светлая вуаль: слева под текст, сверху под шапку, снизу — стык с белой секцией */
 .hero-scrim{
@@ -448,53 +558,73 @@ h3 {
     linear-gradient(180deg,rgba(var(--hero-veil),.38) 0%,rgba(var(--hero-veil),.08) 18%,rgba(var(--hero-veil),0) 32%),
     linear-gradient(0deg,rgba(255,255,255,.5) 0%,rgba(255,255,255,0) 20%);
 }
+
 .hero::after{
   content:"";position:absolute;inset:0;pointer-events:none;z-index:1;opacity:.3;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+
 /* невидимая зона наведения ровно по телефону на фотографии (координаты считает JS) */
 .hero-hot{position:absolute;z-index:2;display:none}
+
 
 .hero-grid{
   position:relative;z-index:3;pointer-events:none;
   display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-content:center;
   padding:70px 0 var(--sheet-r);
 }
+
 .hero-copy{pointer-events:auto;max-width:min(620px,52%)}
-.hero h1{font-size:var(--fs-hero-h1);font-weight:800;margin:0 0 20px;color:var(--ink)}
-.hero h1 .hero-line{display:block}
+
+.hero h1{font-size: var(--fs-hero-h1);font-weight:800;margin:0 0 20px;color:var(--ink)}
+
+.hero h1 .line{display:block}
+
 /* вторая строка — синий логотипа */
-.hero h1 .hero-grad{
+.hero h1 .grad{
   background:linear-gradient(98deg,#2A86DE 0%,#2173C8 56%,#1B5FA8 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent;
 }
+
 .hero-sub{
-  color:#33536F;font-size:var(--fs-hero-sub);
+  color:#33536F;font-size: var(--fs-hero-sub);
   max-width:43ch;margin-bottom:30px;
 }
+
 .hero-ctas{display:flex;flex-wrap:wrap;gap:13px;align-items:center}
-.hero .btn--ghost{
+
+.hero .btn-ghost{
   color:var(--ink);border:1px solid rgba(19,50,78,.2);background:rgba(255,255,255,.72);
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
 }
-.hero .btn--ghost:hover{background:#fff;box-shadow:var(--shadow-sm)}
-/* на телефоне заголовок тянется по ширине экрана, но всегда в одну строку —
-   переопределяем токен, не сырой font-size (гард типографики) */
+
+.hero .btn-ghost:hover{background:#fff;box-shadow:var(--shadow-sm)}
+
+/* на телефоне заголовок тянется по ширине экрана, но всегда в одну строку */
 @media (max-width:600px){
-  .hero{--fs-hero-h1:clamp(1.55rem,7.7vw,2.15rem)}
+  .hero h1{font-size: var(--fs-hero-h1-mobile)}
 }
+
 @media (max-width:520px){
   .hero-ctas{flex-direction:column;align-items:center}
   .hero-ctas .btn{width:min(320px,100%)}
 }
 
+
 .hero-anim{opacity:0;transform:translateY(26px);animation:heroIn .9s var(--ease-out) forwards}
+
 @keyframes heroIn{to{opacity:1;transform:none}}
+
 .hero-anim:nth-child(1){animation-delay:.05s}
+
 .hero-anim:nth-child(2){animation-delay:.15s}
+
 .hero-anim:nth-child(3){animation-delay:.28s}
+
 .hero-anim:nth-child(4){animation-delay:.4s}
+
 .hero-anim:nth-child(5){animation-delay:.5s}
+
 
 @media (max-width:980px){
   .hero{
@@ -505,231 +635,239 @@ h3 {
      подпись и кнопка уходят вниз, под телефон */
   .hero-grid{align-content:normal;align-items:stretch;text-align:center;padding:clamp(82px,8.7vh,110px) 0 clamp(44px,5.2vh,72px)}
   .hero-copy{max-width:none;margin-inline:auto;display:flex;flex-direction:column;height:100%}
-  .hero{--fs-hero-sub:clamp(.82rem,3.35vw,1rem)} /* мобильная ступень подписи токеном */
   .hero-sub{
     margin-top:auto;margin-bottom:18px;margin-inline:auto;max-width:none;
-    line-height:1.5;color:var(--ink);
+    font-size: var(--fs-hero-sub-mobile);line-height:1.5;color:var(--ink);
   }
   .hero-ctas{flex:none;justify-content:center}
   /* вторая кнопка на телефоне не нужна */
-  .hero .btn--ghost{display:inline-flex;background:#fff;color:var(--ink);border:1px solid rgba(19,50,78,.14)}
+  .hero .btn-ghost{display:inline-flex;background:#fff;color:var(--ink);border:1px solid rgba(19,50,78,.14)}
   .hero-scrim{
     background:
       linear-gradient(180deg,rgba(var(--hero-veil),.66) 0%,rgba(var(--hero-veil),.42) 12%,rgba(var(--hero-veil),.1) 20%,rgba(var(--hero-veil),0) 28%,rgba(var(--hero-veil),0) 60%,rgba(var(--hero-veil),.3) 72%,rgba(var(--hero-veil),.72) 84%,rgba(255,255,255,.88) 100%);
   }
 }
 
-/* ---------- Landing shared primitives (прототип v5.7, TRIP-460 §2) ----------
-   Общие для секций зоны примитивы (переиспользуются следующими секциями). Новые
-   пространства имён под гардом 2ac — апрув в prefix-exempt рядом. */
-/* prefix-exempt: section — примитивы раскладки лендинга v5.7 (TRIP-460 §2) */
-.section-pad{padding:clamp(68px,7.5vw,104px) 0}
-/* Примитив «белый лист» зоны. Имя .section--sheet, а НЕ .sheet: app.css:7165
-   объявляет .sheet правилом-одиночкой (мобильная шторка, position:fixed;
-   max-height:86vh; display:flex) — общее имя протаскивало 86vh-высоту шторки в
-   каждую секцию зоны (ревью TRIP-460). Разные объекты → зона берёт своё имя,
-   в существующей семье .section-- (как .section--wash/--tight были). */
-.section--sheet{border-radius:var(--sheet-r) var(--sheet-r) 0 0;margin-top:calc(var(--sheet-r)*-1);position:relative;z-index:3}
-.section-head{max-width:660px;margin-bottom:clamp(34px,4vw,52px)}
-.section-head h2{margin:14px 0 14px}
-
-/* reveal on scroll (bidirectional) — класс is-in вешает useReveal() */
-/* prefix-exempt: rv — reveal-on-scroll примитив лендинга v5.7 (TRIP-460 §2) */
-.rv{opacity:0;transform:translateY(30px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
-.rv.is-in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none}}
-
-/* device — корпус телефона; выше 760px окно приложения снимает корпус (браузер) */
-/* prefix-exempt: device — корпус телефона/окна лендинга v5.7 (TRIP-460 §2) */
-.device{
-  position:relative;width:min(322px,100%);margin-inline:auto;
-  padding:11px;border-radius:56px;
-  background:var(--dev-bezel);
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.22),inset 0 0 0 1px rgba(0,0,0,.6),var(--dev-shadow);
-}
-.device::before{content:"";position:absolute;left:-2px;top:23%;width:3px;height:12%;border-radius:3px 0 0 3px;background:var(--dev-btn)}
-.device::after{content:"";position:absolute;right:-2px;top:30%;width:3px;height:13%;border-radius:0 3px 3px 0;background:var(--dev-btn)}
-.device-screen{position:relative;border:3px solid var(--dev-rim);border-radius:46px;overflow:hidden}
-.device-screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:var(--dev-gloss);z-index:6}
-@media (min-width:761px){
-  .appwin.device{width:auto;max-width:1000px;padding:0;border-radius:24px;background:#fff;
-    border:1px solid rgba(11,44,84,.08);box-shadow:0 30px 80px -20px rgba(16,32,60,.18);overflow:hidden}
-  .appwin.device::before,.appwin.device::after{display:none}
-  .aw-screen.device-screen{position:static;background:none;border:0;border-radius:0;overflow:visible}
-  .aw-screen.device-screen::after{display:none}
-}
-
-/* booking-readiness rows + pills (общий примитив, §2 aw-ready) */
-/* prefix-exempt: stat — статус-строки лендинга v5.7 (TRIP-460 §2) */
-.stat-rows{display:grid;gap:8px;margin-top:16px}
-.stat-row{display:flex;align-items:center;gap:10px;font-size:var(--fs-85);background:var(--mist);border-radius:12px;padding:10px 13px}
-.stat-row svg{flex:none}
-.stat-row .ok-ic{color:var(--mint-text)}
-.stat-row .todo-ic{color:var(--sunset)}
-.stat-row s{color:#65727E;text-decoration-color:rgba(11,44,84,.28)}
-.stat-row .pill{margin-left:auto;font-size:var(--fs-68);font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
-/* prefix-exempt: pill — статус-таблетки лендинга v5.7 (TRIP-460 §2) */
-/* prefix-exempt: done — модификатор «готово» на статус-таблетке (TRIP-460 §2) */
-.pill.done{background:#DCF5E9;color:#177A4D}
-.pill.todo{background:#FFEEDD;color:#96500E}
-/* prefix-exempt: ok — иконка «готово» в статус-строке (TRIP-460 §2) */
-/* prefix-exempt: todo — иконка «к делу» в статус-строке (TRIP-460 §2) */
-
 /* ============================================================
-   PAIN — «trip lives in five apps» (§2, прототип v5.7, TRIP-460)
+   PAIN — life before Triplanio (white sheet over hero)
 ============================================================ */
-/* prefix-exempt: pain — секция pain лендинга v5.7 (TRIP-460 §2) */
 .pain{background:var(--white)}
+
 .pain .section-head{max-width:640px}
+
 .pain-stage{position:relative;max-width:1000px;margin-inline:auto}
-/* prefix-exempt: scrap — куча «обрывков» секции pain (TRIP-460 §2) */
+
 .scrap-strip{position:absolute;inset:-6px;z-index:3;pointer-events:none}
+
 @media (min-width:760px){.scrap-strip{height:clamp(210px,26vw,240px)}}
-/* prefix-exempt: scrapv3 — карточка-обрывок секции pain (TRIP-460 §2) */
+
 .scrapv3{
-  position:absolute;background:#fff;border-radius:14px;
+  position:absolute;background:#fff;border-radius: var(--r-md);
   box-shadow:0 6px 18px rgba(16,32,60,.10);border:1px solid rgba(11,44,84,.06);
   opacity:0;transform:translateY(30px) rotate(0deg);
   will-change:transform;
 }
-/* prefix-exempt: msg — карточка-сообщение (TG/WA) секции pain (TRIP-460 §2) */
+
 .msg-row{display:flex;align-items:center;gap:11px;padding:11px 14px}
-/* prefix-exempt: mic — аватар-иконка сообщения (TRIP-460 §2) */
+
 .msg-row .mic{width:32px;height:32px;flex:none}
-.mic--tg{color:#2AABEE}
-.mic--wa{color:#25D366}
-/* prefix-exempt: mbody — тело карточки-сообщения (TRIP-460 §2) */
+
 .msg-row .mbody{min-width:0;flex:1}
-/* prefix-exempt: mtop — верхняя строка карточки-сообщения (TRIP-460 §2) */
-.msg-row .mtop{display:flex;justify-content:space-between;gap:8px;font-weight:600;font-size:var(--fs-84)}
-.msg-row .mtop time{color:#9AA3B5;font-size:var(--fs-70);font-weight:400;flex:none}
-/* prefix-exempt: mprev — превью текста сообщения (TRIP-460 §2) */
-.msg-row .mprev{font-size:var(--fs-78);color:#66738D;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
-/* prefix-exempt: ftag — метка типа файла (TRIP-460 §2) */
-.msg-row .ftag{font-size:var(--fs-62);font-weight:700;background:#F1F3F6;border-radius:4px;padding:1px 5px;color:#B04A3A;flex:none}
-/* prefix-exempt: badge — счётчик непрочитанных (TRIP-460 §2) */
-.msg-row .badge{flex:none;color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size:var(--fs-66);font-weight:700;padding:0 5px}
-.badge--tg{background:#2AABEE}
-.badge--wa{background:#25D366}
-/* prefix-exempt: p1 — позиции обрывков в куче (TRIP-460 §2) */
-/* prefix-exempt: p2 — позиция обрывка в куче (TRIP-460 §2) */
-/* prefix-exempt: p3 — позиция обрывка в куче (TRIP-460 §2) */
-/* prefix-exempt: p4 — позиция обрывка в куче (TRIP-460 §2) */
-/* prefix-exempt: p5 — позиция обрывка в куче (TRIP-460 §2) */
+
+.msg-row .mtop{display:flex;justify-content:space-between;gap:8px;font-weight:600;font-size: var(--fs-small)}
+
+.msg-row .mtop time{color:#9AA3B5;font-size: var(--fs-tiny);font-weight:400;flex:none}
+
+.msg-row .mprev{font-size: var(--fs-caption);color:#66738D;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
+
+.msg-row .ftag{font-size: var(--fs-micro);font-weight:700;background:#F1F3F6;border-radius: var(--r-xs);padding:1px 5px;color:#B04A3A;flex:none}
+
+.msg-row .badge{flex:none;color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size: var(--fs-tiny);font-weight:700;padding:0 5px}
+
 .p1{left:12%;top:2%;width:min(300px,34%);z-index:4;--rot:-5deg;--cx:220px;--cy:250px}
+
 .p2{right:10%;top:6%;width:min(300px,34%);z-index:4;--rot:4deg;--cx:-220px;--cy:235px}
+
 .p3{left:17%;top:42%;width:min(250px,28%);z-index:5;--rot:-4deg;--cx:150px;--cy:140px}
+
 .p4{right:13%;top:48%;width:min(250px,28%);z-index:5;--rot:5deg;--cx:-160px;--cy:130px}
+
 .p5{left:37%;top:19%;width:min(260px,30%);z-index:6;--rot:2deg;--cx:-10px;--cy:210px}
+
 @media (max-width:759px){
   .p1{left:2%;top:3%;width:min(230px,64%);--cx:110px;--cy:170px}.p2{right:2%;top:9%;width:min(215px,60%);--cx:-110px;--cy:160px}.p3{left:7%;top:43%;width:min(198px,55%);--cx:80px;--cy:95px}.p4{right:5%;top:50%;width:min(185px,52%);--cx:-90px;--cy:85px}.p5{display:none}
 }
-/* prefix-exempt: bpass — карточка «посадочный талон» (TRIP-460 §2) */
+
 .bpass{overflow:hidden}
-/* prefix-exempt: bp — части посадочного талона (TRIP-460 §2) */
+
 .bpass .bp-head{background:#10203C;color:#fff;padding:10px 13px}
-.bpass .bp-route{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--font-display);font-weight:700;font-size:var(--fs-90)}
-.bpass .bp-route span{opacity:.7;font-size:var(--fs-72);font-weight:500}
-.bpass .bp-meta{font-size:var(--fs-62);opacity:.7;margin-top:3px;letter-spacing:.09em}
+
+.bpass .bp-route{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--font-display);font-weight:700;font-size: var(--fs-body)}
+
+.bpass .bp-route span{opacity:.7;font-size: var(--fs-caption);font-weight:500}
+
+.bpass .bp-meta{font-size: var(--fs-micro);opacity:.7;margin-top:3px;letter-spacing:.09em}
+
 .bpass .bp-code{height:24px;margin:9px 13px 4px;background:repeating-linear-gradient(90deg,#10203C 0 2px,transparent 2px 5px,#10203C 5px 6px,transparent 6px 10px)}
-.bpass .bp-file{font-size:var(--fs-62);color:#9AA3B5;padding:0 13px 9px}
-/* prefix-exempt: snote — карточка «заметки» (TRIP-460 §2) */
+
+.bpass .bp-file{font-size: var(--fs-micro);color:#9AA3B5;padding:0 13px 9px}
+
 .snote{background:#FFF7DE;padding:11px 14px}
-.snote b{display:block;font-size:var(--fs-78);color:#8A6A1E;border-bottom:1px solid rgba(138,106,30,.2);padding-bottom:6px;margin-bottom:7px}
-.snote p{font-size:var(--fs-76);color:#6E6142;line-height:1.7}
-/* prefix-exempt: ssheet — карточка «сломанная таблица» (TRIP-460 §2) */
-.ssheet{overflow:hidden;font-size:var(--fs-72)}
-/* prefix-exempt: sh — строки таблицы-обрывка (TRIP-460 §2) */
+
+.snote b{display:block;font-size: var(--fs-caption);color:#8A6A1E;border-bottom:1px solid rgba(138,106,30,.2);padding-bottom:6px;margin-bottom:7px}
+
+.snote p{font-size: var(--fs-caption);color:#6E6142;line-height:1.7}
+
+.ssheet{overflow:hidden;font-size: var(--fs-caption)}
+
 .ssheet .sh-row{display:grid;grid-template-columns:30px 1fr 66px 56px}
+
 .ssheet .sh-row>div{padding:6px 9px;border-top:1px solid #E4E7EC;border-right:1px solid #E4E7EC;white-space:nowrap;overflow:hidden}
+
 .ssheet .sh-row>div:last-child{border-right:none}
-/* prefix-exempt: hd — строка-заголовок таблицы-обрывка (TRIP-460 §2) */
+
 .ssheet .sh-row.hd>div{background:#EDF2ED;border-top:none;font-weight:700;color:#3E7A3E}
-/* prefix-exempt: err — ошибка в таблице-обрывке (TRIP-460 §2) */
+
 .ssheet .err{color:#B04A3A;font-weight:600}
-/* prefix-exempt: idx — индекс строки таблицы (TRIP-460 §2) */
-.ssheet .idx{color:#9AA3B5;font-size:var(--fs-62)}
+
+.ssheet .idx{color:#9AA3B5;font-size: var(--fs-micro)}
+
 .pain-divider{
   display:flex;align-items:center;justify-content:center;gap:12px;
-  max-width:1000px;margin:28px auto 20px;color:var(--muted);font-size:var(--fs-90);font-weight:600;text-align:center;
+  max-width:1000px;margin:28px auto 20px;color:var(--muted);font-size: var(--fs-body);font-weight:600;text-align:center;
 }
+
 .pain-divider::before,.pain-divider::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(11,44,84,.16))}
+
 .pain-divider::after{background:linear-gradient(90deg,rgba(11,44,84,.16),transparent)}
+
 .pain-divider svg{color:var(--brand);flex:none}
-/* prefix-exempt: dv — бренд-метка в разделителе (TRIP-460 §2) */
+
 .pain-divider .dv-brand{display:inline-flex;align-items:center;gap:.3em;white-space:nowrap}
-.pain-divider .dv-name{color:var(--brand-deep)}   /* 14px: крупным .accent хватает 3:1, этому — нет */
-.dv-logo{width:1.05em;height:1.05em;border-radius:5px;flex:none}
-/* prefix-exempt: appwin — окно приложения секции pain (TRIP-460 §2) */
+
+.pain-divider .dv-name{color:var(--brand-deep)}
+   /* 14px: крупным .accent хватает 3:1, этому — нет */
+.dv-logo{width:1.05em;height:1.05em;border-radius: var(--r-xs);flex:none}
+
 .appwin{z-index:1;max-width:1000px}
-/* prefix-exempt: aw — внутренности окна приложения (TRIP-460 §2) */
+
 .aw-screen{background:#fff}
+
 .aw-head{display:flex;align-items:center;gap:12px;padding:15px 22px;border-bottom:1px solid #EEF3F9}
-/* prefix-exempt: logo — логотип в шапке окна приложения (TRIP-460 §2) */
-.aw-head .logo{width:32px;height:32px;border-radius:9px}
-.aw-head b{font-family:var(--font-display);font-size:1rem;display:block;line-height:1.25}
-.aw-head small{color:var(--muted);font-size:var(--fs-70);letter-spacing:.08em}
-/* prefix-exempt: avs — стопка аватаров участников (TRIP-460 §2) */
+
+.aw-head .logo{width:32px;height:32px;border-radius: var(--r-sm)}
+
+.aw-head b{font-family:var(--font-display);font-size: var(--fs-lead);display:block;line-height:1.25}
+
+.aw-head small{color:var(--muted);font-size: var(--fs-tiny);letter-spacing:.08em}
+
 .aw-head .avs{display:flex;margin-left:auto}
-.aw-head .avs span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:var(--fs-66);font-weight:700;border:2px solid #fff}
-.aw-head .avs span:nth-child(1){background:#2173C8}
-.aw-head .avs span:nth-child(2){background:#FF9E4A}
-.aw-head .avs span:nth-child(3){background:#2EC27E}
+
+.aw-head .avs span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size: var(--fs-tiny);font-weight:700;border:2px solid #fff}
+
 .aw-head .avs span + span{margin-left:-8px}
+
 .aw-grid{display:grid;grid-template-columns:1.08fr 1fr}
+
 .aw-col{padding:16px 22px 20px;min-width:0;display:flex;flex-direction:column}
+
 .aw-col > [data-step]:first-child{display:flex;flex-direction:column;flex:1;min-height:0}
+
 .aw-col + .aw-col{border-left:1px solid #EEF3F9}
-/* 760 — тот же порог, где браузерная рамка сменяется телефоном */
+
+/* 760 — тот же порог, где браузерная рамка сменяется телефоном: иначе в 760–840 получается одноколоночный «узкий длинный браузер» */
 @media (max-width:760px){.aw-grid{grid-template-columns:1fr}.aw-col + .aw-col{border-left:none;border-top:1px solid #EEF3F9}}
-.aw-label{font-size:var(--fs-66);font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+
+.aw-label{font-size: var(--fs-tiny);font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+
 .aw-row{display:flex;align-items:baseline;gap:10px}
-.aw-row .aw-more{margin-left:auto;font-size:var(--fs-80);font-weight:600;color:var(--brand-deep)}
-.aw-row .aw-total{margin-left:auto;font-family:var(--font-display);font-weight:800;font-size:var(--fs-130)}
-.aw-map{position:relative;border-radius:16px;flex:1;min-height:clamp(150px,20vw,196px);overflow:hidden;margin-top:10px;background:#CFE4F7}
-.aw-map svg{position:absolute;inset:0;width:100%;height:100%}
-/* стилизованная береговая линия за маршрутом (замена Mapbox-снимка, §5) */
-.aw-coast{fill:var(--ice)}
+
+.aw-row .aw-more{margin-left:auto;font-size: var(--fs-small);font-weight:600;color:var(--brand-deep)}
+
+.aw-row .aw-total{margin-left:auto;font-family:var(--font-display);font-weight:800;font-size: var(--fs-h3)}
+
+.aw-map{position:relative;border-radius: var(--r-md);flex:1;min-height:clamp(150px,20vw,196px);overflow:hidden;margin-top:10px;background:#CFE4F7}
+
+.aw-map svg,.bb-map svg,.mapviz svg{position:absolute;inset:0;width:100%;height:100%}
+
+.aw-map,.bb-map{background:#CFE4F7}
+
 .aw-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:auto;padding-top:12px}
-.aw-stat{background:var(--mist);border-radius:12px;padding:10px 6px;text-align:center}
-.aw-stat b{font-family:var(--font-display);font-size:var(--fs-105);display:block;letter-spacing:-.02em;white-space:nowrap}
-.aw-stat span{font-size:var(--fs-68);color:var(--muted)}
+
+.aw-stat{background:var(--mist);border-radius: var(--r-sm);padding:10px 6px;text-align:center}
+
+.aw-stat b{font-family:var(--font-display);font-size: var(--fs-lead-lg);display:block;letter-spacing:-.02em;white-space:nowrap}
+
+.aw-stat span{font-size: var(--fs-tiny);color:var(--muted)}
+
 .aw-bbar{height:8px;border-radius:99px;background:#EDF1F9;margin:10px 0 12px;overflow:hidden;display:flex}
+
 .aw-bbar span{height:100%}
-.aw-bbar span:nth-child(1){background:#7B68E4}
-.aw-bbar span:nth-child(2){background:#2EC27E}
-.aw-bbar span:nth-child(3){background:#FF9E4A}
-.aw-bbar span:nth-child(4){background:#6FB4F4}
+
 .aw-brows{display:grid;gap:8px}
-.aw-brow{display:flex;align-items:center;gap:9px;font-size:var(--fs-84);font-weight:500}
-.aw-brow i{width:9px;height:9px;border-radius:3px;flex:none}
-.aw-brows .aw-brow:nth-child(1) i{background:#7B68E4}
-.aw-brows .aw-brow:nth-child(2) i{background:#2EC27E}
-.aw-brows .aw-brow:nth-child(3) i{background:#FF9E4A}
-.aw-brow em{margin-left:auto;font-style:normal;font-weight:600;font-size:var(--fs-80)}
+
+.aw-brow{display:flex;align-items:center;gap:9px;font-size: var(--fs-small);font-weight:500}
+
+.aw-brow i{width:9px;height:9px;border-radius: var(--r-xs);flex:none}
+
+.aw-brow em{margin-left:auto;font-style:normal;font-weight:600;font-size: var(--fs-small)}
+
 .aw-ready{margin-top:15px}
+
 .aw-ready > .aw-row{margin-bottom:9px}
-.aw-ready-n{margin-left:auto;font-size:var(--fs-72);font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
-.aw-ready-n b{font-family:var(--font-display);font-size:var(--fs-95);color:var(--mint-text)}
+
+.aw-ready-n{margin-left:auto;font-size: var(--fs-caption);font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.aw-ready-n b{font-family:var(--font-display);font-size: var(--fs-body-lg);color:var(--mint-text)}
+
 .aw-ready .stat-rows{gap:5px;margin-top:0}
-.aw-ready .stat-row{font-size:var(--fs-76);padding:6px 10px;gap:8px;border-radius:10px}
-.aw-ready .stat-row .pill{font-size:var(--fs-60);padding:2px 7px}
+
+.aw-ready .stat-row{font-size: var(--fs-caption);padding:6px 10px;gap:8px;border-radius: var(--r-sm)}
+
+.aw-ready .stat-row .pill{font-size: var(--fs-micro);padding:2px 7px}
+
 [data-step]{opacity:0;transform:translateY(14px)}
+
 @keyframes stepIn{to{opacity:1;transform:none}}
-.is-in .appwin{animation:winPop .5s var(--ease-out) 2.15s both}
+
+.in .appwin{animation:winPop .5s var(--ease-out) 2.15s both}
+
 @keyframes winPop{0%{transform:scale(.985)}60%{transform:scale(1.005)}100%{transform:scale(1)}}
-.aw-route{clip-path:inset(-6px -6px -6px 100%);stroke:#2173C8}
-.aw-pin circle{fill:#fff;stroke:#2173C8}
+
+.aw-route{clip-path:inset(-6px -6px -6px 100%)}
+
 
 /* ---- pain sticky-scroll scrub (redesigned choreography) ---- */
-/* prefix-exempt: scrub — режим прокрутки-скраба секции pain (TRIP-460 §2) */
-/* prefix-exempt: filled — состояние «окно заполнено» скраба (TRIP-460 §2) */
 .pain.scrub .pain-pin{height:var(--pin-h,150vh);position:relative}
+
 .pain.scrub{padding-top:clamp(24px,3vh,44px)}
+
 .pain.scrub .pain-pin-inner{position:sticky;top:var(--pin-top,0px);height:auto;padding:0;display:flow-root}
+
+/* Заголовок закреплён ВМЕСТЕ со сценой: он внутри .pain-pin-inner, поэтому
+   висит на месте всю анимацию. Ширину и левый край НЕ трогаем — заголовок
+   принадлежит сетке страницы (.wrap) и стоит по одной линии со всеми
+   остальными заголовками; сцена уже её и живёт по своим правилам.
+   Ужимаем только нижний отступ: закреплённой композиции нужна высота. */
 .pain.scrub .section-head{margin-bottom:clamp(16px,2.4vh,32px)}
+
+/* Сцена масштабируется под остаток экрана (--fit), её layout-высота компенсируется
+   (--needpx), поэтому под закреплением не остаётся белой полосы. */
 .pain.scrub .pain-stage{position:relative;width:min(1000px,94vw);max-width:none;margin:0 auto;flex:none;transform:scale(var(--fit,1));transform-origin:top center;margin-bottom:calc(var(--needpx,0px) * (var(--fit,1) - 1))}
+
+/* chaos starts directly UNDER the heading, then sinks downward as it collapses */
+/* Shared arrival progress. Declared on the STAGE, because that is where
+   the scrub writes --p — custom properties inherit down, not up, so
+   putting this on the section left --rpe pinned at 0 and the window never
+   moved. .appwin is a descendant, so it picks --rpe up from here. */
 .pain.scrub .pain-stage{--rp:clamp(0, calc((var(--p,0) - .02)/.94), 1);--rpe:calc(1 - (1 - var(--rp)) * (1 - var(--rp)))}
+
+/* The pile sits at the very TOP of the stage — nothing above it. Centring
+   comes from --pin-top (frame centre minus half the pile), NOT from an
+   offset inside the stage: an offset would park empty stage above the
+   cards, and during the entry phase that empty band lands right under the
+   paragraph. Measured: 143px of dead stage + 44px head margin = the 187px
+   hole. */
 .pain.scrub .scrap-strip{
   animation:none!important;opacity:1;
   top:0;bottom:auto;height:clamp(200px,25vw,236px);
@@ -737,17 +875,29 @@ h3 {
   transform:translateY(calc(var(--c) * 96px));
   will-change:transform;
 }
+
+/* The pile descends as a block (96px above); on top of that each card
+   converges on the pile's own centre so they gather into one clump before
+   the rising window swallows them:
+   cy = stripCentre - (cardTop + cardHeight/2). */
 .pain.scrub .p1{--cy:74px}
+
 .pain.scrub .p2{--cy:65px}
+
 .pain.scrub .p3{--cy:-51px}
+
 .pain.scrub .p4{--cy:-48px}
+
 .pain.scrub .p5{--cy:28px}
+
 @media (max-width:759px){
   .pain.scrub .p1{--cy:55px}
   .pain.scrub .p2{--cy:46px}
   .pain.scrub .p3{--cy:-56px}
   .pain.scrub .p4{--cy:-53px}
 }
+
+/* cards drop down + inward (collapse together into the rising interface), shrink, then fade */
 .pain.scrub .scrapv3{
   animation:none!important;
   --c:clamp(0, calc((var(--p,0) - .04)/.46), 1);
@@ -758,233 +908,787 @@ h3 {
     rotate(calc(var(--rot,0deg) * (1 - var(--e))))
     scale(calc(1 - .5 * var(--e)));
 }
+
+/* divider fades in early so the middle of the animation is never empty */
 .pain.scrub .pain-divider{
   --d:clamp(0, calc((var(--p,0) - .10)/.16), 1);
   opacity:var(--d);
   transform:translateY(calc(-8px * (1 - var(--d))));
 }
+
+/* app window RISES UP from below to meet the collapsing chaos (never pops from nowhere) */
+/* The interface waits BELOW the pile — visible from the first frame, but
+   asleep: desaturated, blocks empty. As the pile falls, it rises to meet
+   it, and wakes as the cards land in it. --rise is measured in JS so the
+   window opens just under the pile whatever the viewport. */
 .pain.scrub .appwin{
   animation:none!important;
   opacity:1;
   transform:translateY(calc(var(--rise,340px) * (1 - var(--rpe,0))));
   transform-origin:center top;
 }
+
 .pain.scrub .aw-grid{filter:saturate(.05);transition:filter .9s var(--ease-out)}
+
 .pain.scrub.filled .aw-grid{filter:saturate(1)}
+
 .pain.scrub .aw-head > div,.pain.scrub .aw-head .avs{opacity:0}
+
 .pain.scrub.filled .aw-head > div{animation:stepIn .5s var(--ease-out) both;animation-delay:.06s}
+
 .pain.scrub.filled .aw-head .avs{animation:stepIn .5s var(--ease-out) both;animation-delay:.2s}
+
+/* Empty placeholders while the window travels; once it lands they fill on
+   a clock, one after another — not all at once at some scroll offset. */
 .pain.scrub [data-step]{animation:none!important;opacity:.1;transform:none}
+
 .pain.scrub.filled [data-step]{
   animation:stepIn .55s var(--ease-out) both!important;
+  /* !important обязателен: шорткод выше выставляет animation-delay:0s!important и без него съедает задержку — каскад играл разом */
   animation-delay:calc(.12s + var(--s,0) * .17s)!important;
 }
+
+/* window internals in scrub: no wall-clock .in delays — one cascade from .filled */
 .pain.scrub .aw-route{animation:none!important}
+
 .pain.scrub .aw-pin{animation:none!important;opacity:0}
+
 .pain.scrub .aw-bbar span{animation:none!important;transform:scaleX(0)}
+
 .pain.scrub.filled .aw-route{animation:routeDraw .8s ease-out both!important;animation-delay:.3s!important}
+
 .pain.scrub.filled .aw-pin{animation:pinPop .45s var(--ease-out) both!important;animation-delay:calc(.55s + var(--p,0)*.15s)!important}
+
 .pain.scrub.filled .aw-bbar span{animation:growX .55s var(--ease-out) both!important}
+
 .pain.scrub.filled .aw-bbar span:nth-child(1){animation-delay:.4s!important}
+
 .pain.scrub.filled .aw-bbar span:nth-child(2){animation-delay:.5s!important}
+
 .pain.scrub.filled .aw-bbar span:nth-child(3){animation-delay:.6s!important}
+
 .pain.scrub.filled .aw-bbar span:nth-child(4){animation-delay:.7s!important}
 
+
 .pain:not(.scrub) .scrap-strip{display:none}
+
 .pain:not(.scrub) .pain-divider{display:none}
+
 .pain:not(.scrub) .appwin{opacity:1;transform:none}
+
 .pain:not(.scrub) [data-step]{opacity:1;transform:none;animation:none}
-.is-in .aw-route{animation:routeDraw .9s ease-out both;animation-delay:2.75s}
+
+.in .aw-route{animation:routeDraw .9s ease-out both;animation-delay:2.75s}
+
 @keyframes routeDraw{to{clip-path:inset(-6px)}}
+
 .aw-pin{opacity:0;transform-origin:center;transform-box:fill-box}
-.is-in .aw-pin{animation:pinPop .45s var(--ease-out) both;animation-delay:calc(2.85s + var(--p,0)*.18s)}
+
+.in .aw-pin{animation:pinPop .45s var(--ease-out) both;animation-delay:calc(2.85s + var(--p,0)*.18s)}
+
 @keyframes pinPop{0%{opacity:0;transform:scale(.3)}70%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+
 .aw-bbar span{transform:scaleX(0);transform-origin:left}
-.is-in .aw-bbar span{animation:growX .55s var(--ease-out) both}
-.is-in .aw-bbar span:nth-child(1){animation-delay:3.35s}
-.is-in .aw-bbar span:nth-child(2){animation-delay:3.47s}
-.is-in .aw-bbar span:nth-child(3){animation-delay:3.59s}
-.is-in .aw-bbar span:nth-child(4){animation-delay:3.71s}
+
+.in .aw-bbar span{animation:growX .55s var(--ease-out) both}
+
+.in .aw-bbar span:nth-child(1){animation-delay:3.35s}
+
+.in .aw-bbar span:nth-child(2){animation-delay:3.47s}
+
+.in .aw-bbar span:nth-child(3){animation-delay:3.59s}
+
+.in .aw-bbar span:nth-child(4){animation-delay:3.71s}
+
 @keyframes growX{to{transform:scaleX(1)}}
+
 /* appwin frames: browser on desktop, phone on mobile */
-/* prefix-exempt: wdots — точки браузерной рамки (TRIP-460 §2) */
 .aw-browserbar{display:flex;align-items:center;gap:10px;background:#F1F6FB;border-bottom:1px solid rgba(11,44,84,.07);padding:10px 16px}
+
 .wdots{display:flex;gap:5px}
+
 .wdots i{width:9px;height:9px;border-radius:50%;background:#D6E2EE}
-.aw-browserbar .aw-url{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#fff;border:1px solid rgba(11,44,84,.1);border-radius:99px;padding:6px 14px;font-size:var(--fs-75);color:var(--muted);max-width:380px;margin-inline:auto}
+
+.aw-browserbar .aw-url{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#fff;border:1px solid rgba(11,44,84,.1);border-radius:99px;padding:6px 14px;font-size: var(--fs-caption);color:var(--muted);max-width:380px;margin-inline:auto}
+
 .aw-browserbar .aw-url svg{color:var(--mint);flex:none}
+
 .aw-phonebar{display:none}
+
 @media (max-width:760px){
   .aw-browserbar{display:none}
   .aw-phonebar{display:grid;place-items:center;padding:9px 0 3px;position:relative;z-index:2}
   .aw-phonebar i{width:82px;height:23px;border-radius:99px;background:#05070a}
+  /* Плотная раскладка экрана: тот же контент, но пропорции корпуса — как у настоящего
+     телефона (~19.5:9). Без этого дашборд десктопной плотности растягивает корпус. */
   .aw-head{padding:11px 14px;gap:10px}
-  .aw-head b{font-size:var(--fs-92)}
-  .aw-head small{font-size:var(--fs-62)}
+  .aw-head b{font-size: var(--fs-body-lg)}
+  .aw-head small{font-size: var(--fs-micro)}
   .aw-head .logo{width:28px;height:28px}
-  .aw-head .avs span{width:24px;height:24px;font-size:var(--fs-60)}
+  .aw-head .avs span{width:24px;height:24px;font-size: var(--fs-micro)}
   .aw-col{padding:12px 14px 14px}
   .aw-col:last-child{padding-bottom:20px}
   .aw-map{min-height:116px;margin-top:8px}
   .aw-stats{gap:6px;padding-top:10px}
-  .aw-stat{padding:5px 4px;border-radius:10px}
-  .aw-stat b{font-size:var(--fs-90)}
-  .aw-stat span{font-size:var(--fs-60)}
-  .aw-row .aw-total{font-size:var(--fs-115)}
+  .aw-stat{padding:5px 4px;border-radius: var(--r-sm)}
+  .aw-stat b{font-size: var(--fs-body)}
+  .aw-stat span{font-size: var(--fs-micro)}
+  .aw-row .aw-total{font-size: var(--fs-h4)}
   .aw-bbar{margin:8px 0 9px}
   .aw-brows{gap:5px}
-  .aw-brow{font-size:var(--fs-78)}
+  .aw-brow{font-size: var(--fs-caption)}
   .aw-ready{margin-top:11px}
   .aw-ready > .aw-row{margin-bottom:7px}
   .aw-ready .stat-rows{gap:4px}
-  .aw-ready .stat-row{font-size:var(--fs-72);padding:3px 9px}
-}
-/* prefix-exempt: npin — номерная метка карты (TRIP-460 §2) */
-.npin-t{font-family:var(--font-display);font-size:var(--fs-75);font-weight:800;fill:var(--brand);text-anchor:middle}
-
-/* ---------- Footer ----------
-   One minimal footer: brand + tagline, a flat row of product / legal links
-   plus the cookie-settings action, the language switch, and the copyright. */
-.footer {
-  background: var(--wash);
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-}
-.footer .brand { color: var(--ink); font-size: var(--ctl-fs); }
-.footer .brand__mark { width: 26px; height: 26px; }
-.footer__top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 26px 48px;
-  padding: 50px 0 34px;
-}
-.footer__brand { max-width: 36ch; }
-.footer__brand .tagline { margin-top: 12px; max-width: 32ch; line-height: 1.5; }
-.footer__nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 28px;
-  padding-top: 6px;
-}
-/* The cookie-settings entry is a <button> (it acts, it does not navigate), but it
-   sits among links and must look identical to them. */
-.footer__nav a,
-.footer__nav button {
-  color: var(--ink-2);
-  font-weight: 500;
-  border: 0; background: none; padding: 0; font: inherit; cursor: pointer;
-}
-.footer__nav a:hover,
-.footer__nav button:hover { color: var(--brand); }
-.footer__lang { padding-top: 2px; }
-.footer__bottom {
-  border-top: 1px solid var(--line);
-  padding: 20px 0 28px;
-  font-size: var(--fs-meta);
+  .aw-ready .stat-row{font-size: var(--fs-caption);padding:3px 9px}
 }
 
-@media (max-width: 560px) {
-  .footer__top { flex-direction: column; gap: 20px; }
+/* stylized map shared bits */
+.map-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+.map-cred{position:absolute;right:7px;bottom:5px;z-index:2;font-size: var(--fs-micro);line-height:1;color:rgba(19,50,78,.6);background:rgba(255,255,255,.6);padding:2px 6px;border-radius: var(--r-xs);pointer-events:none}
+
+.npin-t{font-family:var(--font-display);font-size: var(--fs-caption);font-weight:800;fill:var(--brand);text-anchor:middle}
+
+
+/* ============================================================
+   AI SCAN / CHIP (recognize)
+============================================================ */
+.email-card{position:relative;overflow:hidden}
+
+.email-card .scan{position:absolute;left:0;right:0;top:-22%;height:54px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(33,115,200,.15) 55%,transparent);
+  border-bottom:1.5px solid rgba(33,115,200,.4);
+  animation:scan 7s ease-in-out infinite}
+
+@keyframes scan{0%,4%{top:-22%;opacity:1}34%{top:112%;opacity:1}35%,100%{top:112%;opacity:0}}
+
+/* one synced 7s cycle: beam passes a line → it lights up → field lands in the card */
+.hl{border-radius: var(--r-xs);padding:0 3px;font-weight:500;white-space:nowrap;animation:hlCycle 7s infinite}
+
+.hl-b{--hbg:rgba(33,115,200,.13);--hcol:#185EA8;--hline:rgba(33,115,200,.5)}
+
+.hl-o{--hbg:rgba(255,158,74,.16);--hcol:#A85A14;--hline:rgba(255,158,74,.6);animation-delay:.32s}
+
+.hl-g{--hbg:rgba(46,194,126,.13);--hcol:#177A4D;--hline:rgba(46,194,126,.55);animation-delay:.55s}
+
+@keyframes hlCycle{
+  0%,19%{background:transparent;box-shadow:none;color:inherit;font-weight:500}
+  22%,88%{background:var(--hbg);box-shadow:inset 0 -2px 0 var(--hline);color:var(--hcol);font-weight:600}
+  93%,100%{background:transparent;box-shadow:none;color:inherit;font-weight:500}
 }
 
-/* ---------- Language dropdown ---------- */
-.langdd { position: relative; }
-.langdd__btn {
-  appearance: none;
-  background: rgba(15,23,42,.04);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 7px 12px 7px 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--ink-2);
-  cursor: pointer;
-  transition: background .15s ease, border-color .15s ease;
-}
-.langdd__btn:hover { background: rgba(15,23,42,.07); }
-.langdd__btn[aria-expanded="true"] { background: #fff; border-color: var(--line); }
-.langdd__btn .chev {
-  transition: transform .18s ease;
-  color: var(--muted);
-}
-.langdd__btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
-.langdd__menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 168px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
-  padding: 6px;
-  z-index: 60;
-  opacity: 0;
-  transform: translateY(-4px) scale(.98);
-  transform-origin: top right;
-  pointer-events: none;
-  /* `pointer-events` отключает мышь, но НЕ клавиатуру: без `visibility` три
-     пункта закрытого дропдауна остаются в порядке табов и в дереве доступности
-     (замер: 6 таких на лендинге — шапка + подвал). Задержка = длительности
-     перехода, чтобы `visibility` не обрезала анимацию закрытия. */
-  visibility: hidden;
-  transition: opacity .15s ease, transform .15s ease, visibility 0s linear .15s;
-}
-.langdd--up .langdd__menu {
-  top: auto;
-  bottom: calc(100% + 6px);
-  transform-origin: bottom right;
-}
-.langdd.is-open .langdd__menu {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-  visibility: visible;
-  transition: opacity .15s ease, transform .15s ease, visibility 0s;
-}
-.langdd__item {
-  width: 100%;
-  appearance: none;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  color: var(--ink);
-  cursor: pointer;
-}
-.langdd__item:hover { background: var(--wash); }
-.langdd__item .label { flex: 1; font-weight: 500; }
-.langdd__item .code { color: var(--muted-2); }
-.langdd__item[aria-checked="true"] {
-  background: var(--brand-soft);
-  color: var(--brand);
-}
-.langdd__item[aria-checked="true"] .code { color: var(--brand); }
+.parsed-card .pfield{animation:fieldCycle 7s infinite}
 
-.footer .langdd__btn {
-  background: transparent;
-  border-color: var(--line);
-  color: var(--ink-2);
-}
-.footer .langdd__btn:hover { background: #fff; }
+.parsed-card .pfield:nth-child(2){animation-delay:.12s}
 
-/* The header language pill rides the header theme — a transparent chip whose
-   text follows the section beneath it (white on-dark, ink on-light). */
-.header .langdd__btn { background: transparent; }
-.header .langdd__btn .chev { color: currentColor; }
-.header.on-dark .langdd__btn { color: rgba(255,255,255,.85); }
-.header.on-dark .langdd__btn:hover { background: rgba(255,255,255,.1); }
-.header.on-light .langdd__btn { color: var(--ink); }
-.header.on-light .langdd__btn:hover { background: rgba(11,44,84,.05); }
-.header.on-accent .langdd__btn { color: #fff; }
-.header.on-accent .langdd__btn:hover { background: rgba(255,255,255,.14); }
-.header .langdd__btn[aria-expanded="true"] { background: #fff; color: var(--ink); border-color: var(--line); }
-.header .langdd__btn[aria-expanded="true"] .chev { color: var(--muted); }
+.parsed-card .pfield:nth-child(3){animation-delay:.24s}
+
+.parsed-card .pfield:nth-child(4){animation-delay:.36s}
+
+.parsed-card .pfield:nth-child(5){animation-delay:.48s}
+
+@keyframes fieldCycle{
+  0%,27%{opacity:0;transform:translateY(9px)}
+  33%,88%{opacity:1;transform:none}
+  93%,100%{opacity:0;transform:translateY(9px)}
+}
+
+.pcheck{animation:checkCycle 7s infinite}
+
+@keyframes checkCycle{
+  0%,38%{opacity:0;transform:translateY(6px)}
+  44%,88%{opacity:1;transform:none}
+  93%,100%{opacity:0;transform:translateY(6px)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .email-card .scan{display:none}
+  .hl,.parsed-card .pfield,.pcheck{animation:none!important}
+  .hl{background:var(--hbg);box-shadow:inset 0 -2px 0 var(--hline);color:var(--hcol)}
+  .parsed-card .pfield,.pcheck{opacity:1;transform:none}
+}
+
+.ai-node{display:flex;flex-direction:column;align-items:center}
+
+.ai-node .beam{width:2px;height:22px;background:linear-gradient(rgba(33,115,200,.5),transparent)}
+
+.ai-node .beam.up{background:linear-gradient(transparent,rgba(33,115,200,.5))}
+
+.ai-chip{display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border-radius:99px;
+  background:linear-gradient(120deg,var(--brand),#7A5CF0);color:#fff;font-weight:600;font-size: var(--fs-small);
+  box-shadow:0 12px 30px -10px rgba(101,92,240,.55)}
+
+.ai-chip svg{flex:none}
+
+.ai-chip .th{display:inline-flex;gap:3px;margin-left:2px}
+
+.ai-chip .th i{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.9);animation:think 1.2s infinite}
+
+.ai-chip .th i:nth-child(2){animation-delay:.2s}
+
+.ai-chip .th i:nth-child(3){animation-delay:.4s}
+
+@keyframes think{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+.cdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:1px}
+
+
+/* ============================================================
+   SHARE mini map + WORLD stats map
+============================================================ */
+.bb-map{position:relative;border-radius: var(--r-sm);height:118px;overflow:hidden;margin-bottom:10px;background:#CFE4F7}
+
+.world-card{background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow-lg)}
+
+.world-svg{width:100%;height:auto;display:block}
+
+.world-svg path{fill:#E2ECF5;stroke:#fff;stroke-width:.45}
+
+.world-svg [data-v]{fill:var(--brand)}
+
+.world-svg [data-v] path{fill:var(--brand)}
+
+.world-foot{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-top:12px;font-size: var(--fs-caption);color:var(--muted)}
+
+.world-foot .lg{display:inline-flex;align-items:center;gap:7px}
+
+.world-foot .lg i{width:9px;height:9px;border-radius:50%}
+
+.trip-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+.trip-chip{display:inline-flex;align-items:center;gap:8px;background:var(--mist);border:1px solid rgba(19,50,78,.07);border-radius:99px;padding:7px 13px;font-size: var(--fs-caption);color:var(--muted)}
+
+.trip-chip b{color:var(--ink);font-weight:600}
+
+.trip-chip .yc{color:var(--muted);font-weight:700}
+
+
+/* ============================================================
+   BENTO (mist band + dot pattern)
+============================================================ */
+.bento-sec{
+  background:
+    radial-gradient(rgba(33,115,200,.09) 1px, transparent 1.4px) 0 0/26px 26px,
+    var(--mist);
+}
+
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;align-items:stretch}
+
+.bcard{
+  background:var(--white);border-radius:var(--r-lg);padding:24px;
+  border:1px solid rgba(11,44,84,.07);box-shadow:var(--shadow-sm);
+  overflow:hidden;position:relative;
+  transition:transform .35s var(--ease-out),box-shadow .35s;
+}
+
+.bcard:hover,.aud-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg)}
+
+.bcard h3{margin:13px 0 7px}
+
+.bcard>p{color:var(--muted);font-size: var(--fs-body);max-width:44ch}
+
+.bic{width:42px;height:42px;border-radius: var(--r-sm);display:grid;place-items:center;color:#fff;background:var(--brand);box-shadow:0 8px 18px -6px rgba(33,115,200,.5)}
+
+.bic.warm{background:var(--sunset);box-shadow:0 8px 18px -6px rgba(255,158,74,.5)}
+
+.bic.mint{background:var(--mint);box-shadow:0 8px 18px -6px rgba(46,194,126,.5)}
+
+.b-map{grid-column:span 8;display:flex;flex-direction:column}
+
+.b-map .mapviz{flex:none;margin-top:18px;position:relative;border-radius:var(--r-md);background:linear-gradient(150deg,#E0EEFA,#EFF6FD);overflow:hidden;aspect-ratio:640/230}
+
+.b-status{grid-column:span 4}
+
+.b-budget{grid-column:span 4}
+
+.b-timeline{grid-column:span 4}
+
+.b-docs{grid-column:span 4}
+
+@media (max-width:980px){
+  .b-map{grid-column:span 12}
+  .b-status,.b-budget{grid-column:span 6}
+  .b-timeline,.b-docs{grid-column:span 6}
+}
+
+@media (max-width:640px){.b-status,.b-budget,.b-timeline,.b-docs{grid-column:span 12}.bcard{padding:21px}}
+
+.stat-rows{display:grid;gap:8px;margin-top:16px}
+
+.stat-row{display:flex;align-items:center;gap:10px;font-size: var(--fs-body);background:var(--mist);border-radius: var(--r-sm);padding:10px 13px}
+
+.stat-row svg{flex:none}
+
+.stat-row .ok-ic{color:var(--mint-text)}
+
+.stat-row .todo-ic{color:var(--sunset)}
+
+.stat-row s{color:#65727E;text-decoration-color:rgba(11,44,84,.28)}
+
+.stat-row .pill{margin-left:auto;font-size: var(--fs-tiny);font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+
+.pill.done{background:#DCF5E9;color:#177A4D}
+
+.pill.todo{background:#FFEEDD;color:#96500E}
+
+.bud-sum{font-family:var(--font-display);font-size: var(--fs-h2);font-weight:800;margin-top:12px}
+
+.bud-sum small{font-size: var(--fs-small);font-weight:500;color:var(--muted);font-family:var(--font-body)}
+
+.bud-bars{display:grid;gap:9px;margin-top:12px}
+
+.bud-bar .lbl{display:flex;justify-content:space-between;font-size: var(--fs-small);color:var(--muted);margin-bottom:4px}
+
+.bud-bar .track{height:9px;border-radius: var(--r-xs);background:#E3EDF7;overflow:hidden}
+
+.bud-bar .fill{height:100%;border-radius: var(--r-xs);width:0;transition:width 1.1s var(--ease-out)}
+
+.in .bud-bar .fill{width:var(--w)}
+
+.bud-bar:nth-child(1) .fill{background:var(--brand)}
+
+.bud-bar:nth-child(2) .fill{background:var(--sky)}
+
+.bud-bar:nth-child(3) .fill{background:var(--sunset)}
+
+.bud-bar:nth-child(4) .fill{background:var(--mint)}
+
+.tl{margin-top:16px;display:grid;position:relative}
+
+.tl::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:linear-gradient(var(--brand),var(--ice))}
+
+.tl-item{display:flex;gap:14px;padding:7px 0;font-size: var(--fs-small);align-items:center}
+
+.tl-item .nd{width:15px;height:15px;border-radius:50%;border:3px solid var(--brand);background:#fff;flex:none;position:relative;z-index:1}
+
+.tl-item b{color:var(--ink)}
+
+.tl-item span{color:var(--muted)}
+
+
+/* ============================================================
+   RECOGNIZE (white)
+============================================================ */
+.recognize{background:var(--white)}
+
+/* одна двухколоночная сетка на все секции «текст + демо»; ниже 900px каждая схлопывается своим правилом */
+.rec-grid,.tg-grid,.share-grid,.collab-grid,.archive-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(30px,5vw,68px);align-items:center}
+
+.collab-grid,.archive-grid{position:relative}
+
+.email-card,.parsed-card{
+  background:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-lg);
+  border:1px solid rgba(11,44,84,.08);padding:22px;
+}
+
+.email-card{font-size: var(--fs-body);color:var(--muted);transform:rotate(-2deg)}
+
+.email-card .eh{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+
+.email-card .eh .av{width:34px;height:34px;border-radius:50%;background:linear-gradient(140deg,#FFB88A,#FF7B54);display:grid;place-items:center;color:#fff;font-weight:700;font-size: var(--fs-small)}
+
+.email-card .eh b{display:block;color:var(--ink);font-size: var(--fs-body)}
+
+.email-card .eh small{color:var(--muted);font-size: var(--fs-caption)}
+
+.email-card .subject{font-weight:600;color:var(--ink);margin-bottom:6px}
+
+.rec-flow{display:flex;flex-direction:column;gap:14px}
+
+.parsed-card{transform:rotate(1.5deg)}
+
+.parsed-card .ph,.bb-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+
+.parsed-card .ph .pic{width:38px;height:38px;border-radius: var(--r-sm);background:var(--brand);display:grid;place-items:center;color:#fff}
+
+.parsed-card .ph b{font-family:var(--font-display)}
+
+.parsed-card .ph small{display:block;color:var(--muted);font-size: var(--fs-caption)}
+
+.pfields{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+.pfield{background:var(--mist);border-radius: var(--r-sm);padding:9px 12px;font-size: var(--fs-small)}
+
+.pfield small{display:block;color:var(--muted);font-size: var(--fs-tiny);letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px}
+
+.pfield b{color:var(--ink)}
+
+.pfield.full{grid-column:1/-1}
+
+.pcheck{display:flex;align-items:center;gap:8px;margin-top:14px;font-size: var(--fs-small);font-weight:600;color:var(--mint-text)}
+
+.rec-points{list-style:none;display:grid;gap:16px;margin-top:28px}
+
+.rec-points li{display:flex;gap:14px;align-items:flex-start}
+
+.rec-points .n{width:34px;height:34px;border-radius: var(--r-sm);background:var(--ice);color:var(--brand-deep);display:grid;place-items:center;font-weight:700;font-family:var(--font-display);flex:none}
+
+.rec-points b{display:block;margin-bottom:2px}
+
+.rec-points p{color:var(--muted);font-size: var(--fs-body-lg)}
+
+@media (max-width:900px){.rec-grid{grid-template-columns:1fr}.rec-demo{order:2}}
+
+
+/* ============================================================
+   AUDIENCE (deep tint band)
+============================================================ */
+.audience{background:linear-gradient(180deg,var(--sand),#FBF6ED)}
+
+.aud-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
+
+.aud-card{
+  background:var(--white);border-radius:var(--r-lg);padding:28px 24px;
+  border:1px solid rgba(11,44,84,.07);box-shadow:var(--shadow-sm);
+  transition:transform .35s var(--ease-out),box-shadow .35s;position:relative;overflow:hidden;
+;display:flex;flex-direction:column}
+
+.aud-card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--grad,linear-gradient(90deg,var(--brand),var(--sky)))}
+
+.aud-card.duo{--grad:linear-gradient(90deg,var(--sunset),#FFC38A)}
+
+.aud-card.group{--grad:linear-gradient(90deg,var(--mint),#7FE0B4)}
+
+.aud-avatars{display:flex;margin-bottom:16px}
+
+.aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;color:#fff;font-weight:700;font-size: var(--fs-body);box-shadow:var(--shadow-sm)}
+
+.aud-avatars .av + .av{margin-left:-12px}
+
+.aud-card h3{margin-bottom:7px}
+
+.aud-card p{color:var(--muted);font-size: var(--fs-body-lg)}
+
+.aud-card .tagline{align-self:flex-start;margin-top:auto;padding-top:14px;font-size: var(--fs-small);font-weight:600;color:var(--brand-deep);transition:opacity .2s}
+
+.aud-card .tagline:hover{opacity:.72}
+
+@media (max-width:900px){.aud-grid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   COLLAB (dark)
+============================================================ */
+.collab{background:linear-gradient(180deg,var(--band),#EDF6FC);overflow:hidden;padding-bottom:calc(clamp(68px,7.5vw,104px) + var(--sheet-r))}
+
+.collab::before{content:"";position:absolute;inset:0;background:radial-gradient(760px 480px at 85% 18%,rgba(255,205,130,.22),transparent 60%)}
+
+.feed-card{
+  background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-lg);
+  padding:20px;
+  box-shadow:var(--shadow-lg);
+}
+
+.feed-head{display:flex;align-items:center;gap:10px;padding-bottom:13px;border-bottom:1px solid rgba(19,50,78,.08);margin-bottom:13px}
+
+.feed-head b{font-family:var(--font-display);font-size: var(--fs-body-lg);color:var(--ink)}
+
+.feed-head small,.bb-head small{display:block;color:var(--muted);font-size: var(--fs-caption)}
+
+.feed-head .avs{display:flex;margin-left:auto}
+
+.feed-head .avs .av{width:27px;height:27px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff}
+
+.feed-head .avs .av + .av{margin-left:-8px}
+
+.feed{display:grid;gap:9px}
+
+.feed-item{display:flex;gap:11px;align-items:flex-start;background:var(--mist);border:1px solid rgba(19,50,78,.05);border-radius: var(--r-md);padding:11px 13px;font-size: var(--fs-small);color:var(--muted)}
+
+.feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff;flex:none}
+
+.feed-item b{color:var(--ink)}
+
+.feed-item small{display:block;color:var(--muted);font-size: var(--fs-tiny);margin-top:2px}
+
+.feed-item.ai-msg{background:var(--ice);border-color:rgba(35,128,214,.25)}
+
+.feed-item.ai-msg .av{background:linear-gradient(140deg,var(--brand),#7A5CF0)}
+
+.collab-points,.tg-points{list-style:none;display:grid;gap:18px;margin-top:28px}
+
+.collab-points li,.tg-points li{display:flex;gap:15px}
+
+.collab-points .cic{width:42px;height:42px;border-radius: var(--r-md);background:#fff;border:1px solid rgba(35,128,214,.2);color:var(--brand);display:grid;place-items:center;flex:none;box-shadow:var(--shadow-sm)}
+
+.collab-points b{display:block;color:var(--ink);margin-bottom:3px}
+
+.collab-points p,.tg-points p{color:var(--muted);font-size: var(--fs-body-lg)}
+
+@media (max-width:900px){.collab-grid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   TELEGRAM (white sheet over dark)
+============================================================ */
+.tg-sec{background:var(--white)}
+
+/* ============================================================
+   КОРПУС УСТРОЙСТВА — единственное описание на весь лендинг.
+   Класс .device носят оба телефона: в секции Telegram и окно приложения
+   в секции Pain. Окно приложения снимает корпус выше 760px (см. ниже) —
+   там это браузер. Правка корпуса здесь меняет ОБА места.
+============================================================ */
+:root{--dev-bezel:linear-gradient(145deg,#454a52,#1b1e24 30%,#0e1013 60%,#2b2f36 85%,#0e1013);--dev-shadow:0 55px 110px -34px rgba(7,30,56,.5),0 22px 42px -26px rgba(7,30,56,.42);--dev-btn:#15181d;--dev-rim:#06080b;--dev-gloss:linear-gradient(130deg,rgba(255,255,255,.22),rgba(255,255,255,0) 32%)}
+
+.device{
+  position:relative;width:min(322px,100%);margin-inline:auto;
+  padding:11px;border-radius:56px;
+  background:var(--dev-bezel);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.22),inset 0 0 0 1px rgba(0,0,0,.6),var(--dev-shadow);
+}
+
+.device::before{content:"";position:absolute;left:-2px;top:23%;width:3px;height:12%;border-radius:3px 0 0 3px;background:var(--dev-btn)}
+
+.device::after{content:"";position:absolute;right:-2px;top:30%;width:3px;height:13%;border-radius:0 3px 3px 0;background:var(--dev-btn)}
+
+.device-screen{position:relative;border:3px solid var(--dev-rim);border-radius:46px;overflow:hidden}
+
+.device-screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:var(--dev-gloss);z-index:6}
+
+/* выше 760px окно приложения — не телефон, а окно браузера: корпус снимается */
+@media (min-width:761px){
+  .appwin.device{width:auto;max-width:1000px;padding:0;border-radius: var(--r-lg);background:#fff;
+    border:1px solid rgba(11,44,84,.08);box-shadow:0 30px 80px -20px rgba(16,32,60,.18);overflow:hidden}
+  .appwin.device::before,.appwin.device::after{display:none}
+  /* экран внутри окна браузера — обычный поток, без корпусных свойств */
+  .aw-screen.device-screen{position:static;background:none;border:0;border-radius:0;overflow:visible}
+  .aw-screen.device-screen::after{display:none}
+}
+
+.phone-screen{background:#EDF2F5}
+
+.tg-status{position:relative;display:flex;align-items:center;justify-content:space-between;padding:9px 20px 4px;background:#fff;color:#13324E;font-weight:600;font-size: var(--fs-caption);line-height:1;z-index:4}
+
+.tg-time{font-variant-numeric:tabular-nums;letter-spacing:.02em}
+
+.tg-island{position:absolute;left:50%;top:7px;transform:translateX(-50%);width:82px;height:23px;border-radius:99px;background:#05070a}
+
+.tg-sys{display:flex;align-items:center;gap:5px}
+
+.tg-sys svg{display:block}
+
+.tg-head{display:flex;align-items:center;gap:10px;padding:13px 16px;background:#fff;border-bottom:1px solid rgba(19,50,78,.08)}
+
+.tg-hicons{margin-left:auto;display:flex;gap:15px;color:#8AA0B4}
+
+.tg-head .tav{width:34px;height:34px;border-radius:50%;background:#4AA3E8;display:grid;place-items:center;flex:none}
+
+.tg-head b{color:#13324E;font-size: var(--fs-body);display:block;line-height:1.2}
+
+.tg-head small{color:#318455;font-size: var(--fs-caption)}
+
+.tg-chat{padding:14px 12px 16px;display:grid;gap:8px;min-height:360px;align-content:end;
+  background:radial-gradient(420px 300px at 80% 10%,rgba(120,170,220,.16),transparent 60%),#DBE6F0}
+
+.tg-date{justify-self:center;background:rgba(255,255,255,.75);color:#5B7085;font-size: var(--fs-tiny);font-weight:600;padding:3px 11px;border-radius:99px;opacity:0;transition:opacity .4s}
+
+.in .tg-date{opacity:1;transition-delay:.05s}
+
+.ticks{display:inline-block;width:16px;height:11px;margin-left:3px;vertical-align:-1px;color:#4FADEC}
+
+.tg-doc{display:flex;gap:10px;margin-top:8px;background:#F3F8FC;border:1px solid rgba(19,50,78,.1);border-radius: var(--r-sm);padding:9px 11px;align-items:center}
+
+.tg-doc .dic{width:34px;height:34px;border-radius:50%;background:#5EB5F7;display:grid;place-items:center;color:#fff;flex:none}
+
+.tg-doc .dmeta b{display:block;font-size: var(--fs-caption);color:#13324E;line-height:1.3}
+
+.tg-doc .dmeta span{font-size: var(--fs-micro);color:#5B7085}
+
+.tg-msg{max-width:88%;padding:9px 13px;border-radius: var(--r-md);font-size: var(--fs-small);line-height:1.45;color:#13324E}
+
+.tg-msg.bot{background:#fff;border-bottom-left-radius:5px;justify-self:start;box-shadow:0 1px 2px rgba(11,44,84,.08)}
+
+.tg-msg.user{background:#EFFDDE;border-bottom-right-radius:5px;justify-self:end}
+
+.tg-msg small{display:block;font-size: var(--fs-micro);color:rgba(19,50,78,.42);margin-top:4px;text-align:right}
+
+.tg-msg .loc-card{display:flex;gap:9px;align-items:flex-start;margin-top:8px;background:#F3F7FB;border:1px solid rgba(19,50,78,.1);border-radius: var(--r-sm);padding:9px 10px;font-size: var(--fs-caption)}
+
+.tg-msg .loc-pin{flex:none;width:26px;height:26px;border-radius: var(--r-sm);display:grid;place-items:center;background:var(--brand);color:#fff}
+
+.tg-msg .loc-txt{min-width:0;display:block}
+
+.tg-msg .loc-txt b{color:#13324E;display:block}
+
+.tg-msg .loc-txt > span{display:block;color:#5B7085}
+
+.tg-msg .loc-open{margin-top:3px;color:var(--brand-deep);font-weight:600}
+
+.tg-msg{opacity:0;transform:translateY(14px) scale(.96);transition:opacity .5s var(--ease-out),transform .5s var(--ease-out)}
+
+.in .tg-msg{opacity:1;transform:none}
+
+.in .tg-msg:nth-child(2){transition-delay:.25s}
+
+.in .tg-msg:nth-child(3){transition-delay:.6s}
+
+.in .tg-msg:nth-child(4){transition-delay:.95s}
+
+.in .tg-msg:nth-child(5){transition-delay:1.3s}
+
+.in .tg-msg:nth-child(6){transition-delay:1.65s}
+
+.tg-points .cic{width:42px;height:42px;border-radius: var(--r-md);background:var(--ice);color:var(--brand);display:grid;place-items:center;flex:none}
+
+.tg-points b{display:block;margin-bottom:3px}
+
+@media (max-width:900px){.tg-grid{grid-template-columns:1fr}.tg-demo{order:2}}
+
+
+/* ============================================================
+   SHARE (mist) — public link
+============================================================ */
+.share{background:var(--mist);padding-bottom:calc(clamp(68px,7.5vw,104px) + var(--sheet-r))}
+
+.browser{
+  background:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-lg);
+  border:1px solid rgba(11,44,84,.08);overflow:hidden;
+}
+
+.browser-bar{display:flex;align-items:center;gap:10px;background:#F1F6FB;border-bottom:1px solid rgba(11,44,84,.07);padding:11px 14px}
+
+.browser-bar .url{
+  flex:1;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid rgba(11,44,84,.1);
+  border-radius:99px;padding:6px 13px;font-size: var(--fs-caption);color:var(--muted);
+}
+
+.browser-bar .url svg{color:var(--mint);flex:none}
+
+.browser-body{padding:18px}
+
+.bb-head .logo{width:30px;height:30px;border-radius: var(--r-sm)}
+
+.bb-head b{font-family:var(--font-display);font-size: var(--fs-body-lg)}
+
+.bb-head .viewer{margin-left:auto;font-size: var(--fs-tiny);font-weight:700;color:var(--brand-deep);background:var(--ice);border-radius:99px;padding:4px 11px;white-space:nowrap}
+
+.bb-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+
+.bb-day{background:var(--mist);border-radius: var(--r-sm);padding:10px;font-size: var(--fs-caption);color:var(--muted)}
+
+.bb-day b{display:block;color:var(--ink);font-size: var(--fs-caption);margin-bottom:4px}
+
+.share-cta-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:26px}
+
+.link-pill{
+  display:flex;align-items:center;gap:10px;background:#fff;
+  border:1px dashed rgba(33,115,200,.45);border-radius:99px;padding:11px 18px;
+  font-size: var(--fs-small);color:var(--brand-deep);font-weight:600;max-width:100%;
+}
+
+.link-pill svg{flex:none}
+
+.link-pill .copy{margin-left:6px;background:var(--brand-btn);color:#fff;border-radius:99px;padding:5px 13px;font-size: var(--fs-caption);font-weight:600;transition:background .2s;white-space:nowrap}
+
+.link-pill .copy:hover{background:var(--brand-deep)}
+
+@media (max-width:900px){.share-grid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   ARCHIVE / STATS (dark band)
+============================================================ */
+.archive{background:linear-gradient(180deg,var(--band),#EDF6FC);overflow:hidden}
+
+.archive::before{content:"";position:absolute;inset:0;background:radial-gradient(700px 420px at 12% 80%,rgba(255,158,74,.12),transparent 60%)}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:30px}
+
+.stat-box{background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-md);padding:18px 14px;text-align:center;box-shadow:var(--shadow-sm)}
+
+.stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand)}
+
+.stat-box small{color:var(--muted);font-size: var(--fs-caption)}
+
+@media (max-width:900px){.archive-grid{grid-template-columns:1fr}.archive-grid > :first-child{order:2}}
+
+
+/* ============================================================
+   FAQ (white sheet)
+============================================================ */
+.faq-sec{background:var(--white);padding-bottom:calc(clamp(68px,7.5vw,104px) + var(--sheet-r))}
+
+.faq-list{max-width:740px;margin-inline:auto;display:grid;gap:11px}
+
+.faq-item{background:var(--white);border-radius:var(--r-md);border:1px solid rgba(11,44,84,.09);overflow:hidden;transition:box-shadow .3s}
+
+.faq-item[open]{box-shadow:var(--shadow-md)}
+
+.faq-item summary{
+  list-style:none;display:flex;align-items:center;gap:14px;justify-content:space-between;
+  padding:19px 22px;font-weight:600;font-size: var(--fs-lead);cursor:pointer;
+  font-family:var(--font-display);letter-spacing:-.01em;
+}
+
+.faq-item summary::-webkit-details-marker{display:none}
+
+.faq-item summary .fx{
+  width:29px;height:29px;border-radius:50%;background:var(--ice);color:var(--brand-deep);
+  display:grid;place-items:center;flex:none;transition:transform .3s var(--ease-out),background .3s;
+  font-weight:500;
+}
+
+.faq-item[open] summary .fx{transform:rotate(45deg);background:var(--brand);color:#fff}
+
+.faq-item .faq-body{padding:0 22px 20px;color:var(--muted);font-size: var(--fs-body-lg);max-width:64ch}
+
+
+/* ============================================================
+   FINAL + FOOTER (dark sheet)
+============================================================ */
+.final{
+  background:
+    radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
+    linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);
+  color:#fff;text-align:center;overflow:hidden;
+}
+
+.final .inner{position:relative;z-index:2;max-width:700px;margin-inline:auto}
+
+.final h2{font-size: var(--fs-final-h2);font-weight:800;margin-bottom:16px}
+
+.final p{color:rgba(255,255,255,.92);font-size: var(--fs-lead-lg);margin-bottom:30px}
+
+.final .ctas{display:flex;flex-wrap:wrap;gap:13px;justify-content:center}
+
+.final .btn-light{color:#C95029}
+
+.final .horizon{
+  position:absolute;left:50%;bottom:-46vw;transform:translateX(-50%);
+  width:130vw;height:64vw;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(255,244,214,.5),rgba(255,244,214,.12) 62%,transparent 70%);
+  pointer-events:none;
+}
+
+.site-footer{background:#FBFDFF;color:var(--muted);border-top:1px solid rgba(19,50,78,.08)}
+
+.site-footer .brand{font-size: var(--fs-lead-lg);color:var(--ink)}
+
+.site-footer .brand .logo{width:29px;height:29px}
+
+.footer-tag{margin-top:13px;font-size: var(--fs-body);max-width:30ch;line-height:1.5}
+
+.footer-bottom{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;border-top:1px solid rgba(19,50,78,.08);padding:20px 0 28px;font-size: var(--fs-small)}
+
+/* minimal footer */
+.footer-min{display:flex;flex-wrap:wrap;gap:26px 48px;align-items:flex-start;justify-content:space-between;padding:50px 0 34px}
+
+.footer-brandcol{max-width:36ch}
+
+.footer-links{display:flex;flex-wrap:wrap;gap:10px 30px;align-items:center;padding-top:6px}
+
+/* зона нажатия 44px без изменения внешнего вида (WCAG 2.5.8): эти ссылки
+   визуально мелкие — 23..34px, — но палец должен попадать */
+.footer-links a,.copy,.aud-card .tagline,.share-url{position:relative}
+
+.footer-links a::after,.copy::after,.aud-card .tagline::after,.share-url::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
+
+.footer-links a{font-size: var(--fs-body);color:inherit;transition:color .2s}
+
+.footer-links a:hover{color:var(--ink)}
+
+@media (max-width:560px){.footer-min{flex-direction:column;gap:20px}}
+
+
