@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { WORLD_MAP_SVG } from './WorldMapSvg';
 import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
 } from '@/components/site/SiteChrome';
@@ -450,6 +451,84 @@ function Bento() {
   );
 }
 
+/**
+ * Count-up numbers (§11), ported from the prototype's `[data-count]` IIFE.
+ * IntersectionObserver at threshold .6 animates 0 → target over 1400ms
+ * (cubic ease-out), locale-formatted (`lang`-aware, matching the prototype's
+ * CURRENT_LANG switch), with an optional suffix (`data-suffix`, e.g. "k").
+ * Resets to "0" on leaving upward so it re-plays on re-entry, same as the
+ * prototype's bidirectional reveal.
+ */
+function useCounters(ready, lang) {
+  useEffect(() => {
+    if (!ready) return undefined;
+    const targets = [...document.querySelectorAll('[data-count]')];
+    if (!targets.length) return undefined;
+    const fmt = new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : lang === 'es' ? 'es-ES' : 'en-US');
+    const reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        const el = en.target;
+        if (en.isIntersecting && !el.dataset.done) {
+          el.dataset.done = '1';
+          const target = +el.dataset.count;
+          const suf = el.dataset.suffix || '';
+          const t0 = performance.now();
+          const dur = reduce ? 1 : 1400;
+          const step = (t) => {
+            const k = Math.min((t - t0) / dur, 1);
+            const ease = 1 - (1 - k) ** 3;
+            el.textContent = fmt.format(Math.round(target * ease)) + suf;
+            if (k < 1) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        } else if (!en.isIntersecting && en.boundingClientRect.top > 0) {
+          delete el.dataset.done;
+          el.textContent = '0';
+        }
+      });
+    }, { threshold: 0.6 });
+    targets.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [ready, lang]);
+}
+
+/* ── Archive ("Every journey you've taken, kept forever") ── */
+function Archive() {
+  const t = useT();
+  return (
+    <section className="archive section-pad" data-hdr="light" id="stats">
+      <div className="wrap archive-grid">
+        <div className="rv-l">
+          <div className="world-card">
+            <div className="world-map-holder" dangerouslySetInnerHTML={{ __html: WORLD_MAP_SVG }} />
+            <div className="world-foot">
+              <span className="lg"><i style={{ background: 'var(--brand)' }} /><span>{t('landing.wm.visited')}</span></span>{/* inline-style-exempt: legend swatch colour */}
+              <span className="lg"><i style={{ background: '#E2ECF5' }} /><span>{t('landing.wm.next')}</span></span>{/* inline-style-exempt: legend swatch colour */}
+            </div>
+            <div className="trip-chips">
+              <span className="trip-chip"><b>{t('landing.wm.c1')}</b><span className="yc">2027</span></span>
+              <span className="trip-chip"><b>{t('landing.wm.c2')}</b><span className="yc">2026</span></span>
+              <span className="trip-chip"><b>{t('landing.wm.c3')}</b><span className="yc">2025</span></span>
+              <span className="trip-chip"><b>{t('landing.wm.c4')}</b><span className="yc">2024</span></span>
+            </div>
+          </div>
+        </div>
+        <div className="rv-r">
+          <span className="brow">{t('landing.ar.eyebrow')}</span>
+          <h2 style={{ margin: '14px 0 14px' }} dangerouslySetInnerHTML={{ __html: t('landing.ar.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
+          <p style={{ color: 'var(--muted)', fontSize: '1.03rem' }}>{t('landing.ar.sub')}</p>{/* inline-style-exempt: prototype's own one-off styling */}
+          <div className="stats-row">
+            <div className="stat-box"><div className="num" data-count="23">0</div><small>{t('landing.ar.s1')}</small></div>
+            <div className="stat-box"><div className="num" data-count="61">0</div><small>{t('landing.ar.s2')}</small></div>
+            <div className="stat-box"><div className="num" data-count="118" data-suffix="k">0</div><small>{t('landing.ar.s3')}</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── Recognize ("The AI reads bookings so you don't have to") ── */
 function Recognize() {
   const t = useT();
@@ -459,7 +538,7 @@ function Recognize() {
         <div className="rec-demo rv-l">
           <div className="rec-flow">
             <div className="email-card"><span className="scan" aria-hidden="true" />
-              <div className="eh"><span className="av">VY</span><div><b>Vueling</b><small>{t('landing.rec.mailMeta')}</small></div></div>
+              <div className="eh"><span className="av">VY</span><div><b>Vueling</b>{/* i18n-ignore: airline brand name, not translated */}<small>{t('landing.rec.mailMeta')}</small></div></div>
               <div className="subject">{t('landing.rec.mailSubj')}</div>
               <span dangerouslySetInnerHTML={{ __html: t('landing.rec.mailBody') }} />
             </div>
@@ -510,6 +589,7 @@ export default function LandingPage() {
   useHeroFrame(cssReady);
   usePainScrub(cssReady);
   useReveal(cssReady);
+  useCounters(cssReady, lang);
 
   useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
 
@@ -523,6 +603,7 @@ export default function LandingPage() {
         <Pain />
         <Bento />
         <Recognize />
+        <Archive />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
