@@ -1,6 +1,10 @@
 import { invokeFn } from '@/lib/invokeFn';
 import { blobToDataUri } from '@/lib/map/captureMap';
 
+// Чистая строковая хирургия фона живёт отдельным модулем (тестируется под
+// node --test без mapbox/supabase-цепочки); здесь — только IO конструктора.
+export { cardBgUri, applyCardBg } from '@/lib/shareCardBg';
+
 // Must match MAP_PLACEHOLDER in the render-share-card edge function (card_svg mode).
 export const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
 
@@ -21,35 +25,19 @@ export async function invokeCard(body, tries = 3) {
   return last;
 }
 
-// Фон карточки в SVG шаблона (обоих режимов) — ЕДИНСТВЕННЫЙ jpeg-data-URI
-// (template.ts рисует его первым `<image>`; карта, самолётики и QR — png/svg).
-// Подмена фона поэтому — замена этого URI, БЕЗ правки edge-функции: выбранный
-// фон встаёт и в живое превью (overlay), и в финальный PNG (card_svg) прямо
-// сейчас, против уже задеплоенного шаблона.
-// ponytail: строковая хирургия — мост до серверного параметра фона; когда
-// появится своя коллекция фонов (bg-параметр в render-share-card), подмену
-// заменить на параметр запроса.
-const BG_URI_RE = /data:image\/jpeg;base64,[^"']*/;
-
-/** Штатный фон карточки из SVG шаблона — data-URI для миниатюры «Стандарт». */
-export function cardBgUri(svg) {
-  return svg?.match(BG_URI_RE)?.[0] || '';
-}
-
-/** Вернуть SVG карточки с подменённым фоном; пустой bgDataUri = штатный фон. */
-export function applyCardBg(svg, bgDataUri) {
-  if (!svg || !bgDataUri) return svg;
-  return svg.replace(BG_URI_RE, bgDataUri);
-}
-
 // Картинка по URL → data-URI (для инлайна в SVG: canvas при растеризации не
 // должен тейнтиться внешним href). Мемо на сессию — пресеты статичны.
+// maxBytes — тот же кэп, что у загрузки своего фото: фон едет data-URI прямо
+// в SVG, тяжелее — растеризация встанет; провал сбрасывает кэш для ретрая.
 const uriCache = new Map();
-export function fetchImageDataUri(url) {
+export function fetchImageDataUri(url, maxBytes = 0) {
   if (!uriCache.has(url)) {
     const p = fetch(url)
       .then((r) => { if (!r.ok) throw new Error(`bg fetch ${r.status}`); return r.blob(); })
-      .then(blobToDataUri)
+      .then((blob) => {
+        if (maxBytes && blob.size > maxBytes) throw new Error(`bg too large: ${blob.size}`);
+        return blobToDataUri(blob);
+      })
       .catch((e) => { uriCache.delete(url); throw e; });
     uriCache.set(url, p);
   }

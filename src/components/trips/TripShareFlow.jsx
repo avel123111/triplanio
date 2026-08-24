@@ -15,8 +15,14 @@ import ShareCardDialog from './ShareCardDialog';
 function useShareLink(tripId, active) {
   const [state, setState] = useState({ url: '', error: false, loading: false });
   const promiseRef = useRef(null);
+  const forTripRef = useRef(null);
   useEffect(() => {
-    if (!active || !tripId || promiseRef.current) return;
+    if (!active || !tripId) return;
+    // Смена трипа БЕЗ ремаунта (роут /trip/:id не ремаунтит TripView: переход по
+    // колокольчику/виджету чата/копии трипа) обязана сбросить закэшированный
+    // токен — иначе в буфер уехала бы публичная ссылка ПРЕДЫДУЩЕГО трипа.
+    if (forTripRef.current !== tripId) { promiseRef.current = null; forTripRef.current = tripId; }
+    if (promiseRef.current) return;
     setState({ url: '', error: false, loading: true });
     const p = invokeFn('trip-share/share', { body: { tripId } })
       .then(({ data, error }) => {
@@ -80,7 +86,11 @@ export default function TripShareFlow({ trip, open, onOpenChange, visits = [], t
   function copyFromDialog() {
     if (!link.url) return;
     track('trip_share_link_copied', { trip_id: trip?.id });
-    navigator.clipboard?.writeText(link.url).then(() => successToast(t, 'link_copied'));
+    navigator.clipboard?.writeText(link.url)
+      .then(() => successToast(t, 'link_copied'))
+      // Буфер не дался и здесь — молчим без unhandled rejection: ссылка стоит
+      // в инпуте рядом, руками выделить и скопировать можно всегда.
+      .catch(() => {});
   }
 
   // Меню и фолбэк-диалог остаются СМОНТИРОВАННЫМИ с open-флагом (как канон

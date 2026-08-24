@@ -8,14 +8,11 @@ import { Icon } from '@/design/icons';
 import LpSheet from '@/components/ui/LpSheet';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
+import { report } from '@/lib/reportDataError';
 import { invokeCard, applyCardBg, cardBgUri, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
-import { fetchCoverPresets } from './TripCoverPicker';
+import { fetchCoverPresets, MAX_UPLOAD_BYTES } from './TripCoverPicker';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
-
-// Тот же потолок, что у загрузки обложки трипа (TripCoverPicker.MAX_UPLOAD_BYTES):
-// фон уходит data-URI прямо в SVG, тяжелее — растеризация встанет.
-const MAX_BG_BYTES = 4 * 1024 * 1024; // 4 MB
 
 // Заглушки миниатюр, пока едет каталог фонов (как у CoverPicker: ряд должен
 // читаться «сейчас будет ещё», а не прыгать с одной плитки до десятка).
@@ -88,18 +85,29 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     let cancelled = false;
     if (!bg) { setBgUri(''); return undefined; }
     if (bg.startsWith('data:')) { setBgUri(bg); return undefined; }
-    fetchImageDataUri(bg)
+    fetchImageDataUri(bg, MAX_UPLOAD_BYTES)
       .then((uri) => { if (!cancelled) setBgUri(uri); })
       .catch(() => { if (!cancelled) { setBg(''); setBgUri(''); } });
     return () => { cancelled = true; };
   }, [bg]);
 
-  // Смена входов обнуляет собранный PNG.
-  useEffect(() => { builtRef.current = null; setBuildError(''); }, [format, bg, camera]);
+  // Смена входов обнуляет собранный PNG и помечает in-flight сборку устаревшей
+  // (поколение читает цикл buildPng — устаревший результат в кэш не попадает).
+  const buildGenRef = useRef(0);
+  useEffect(() => { buildGenRef.current += 1; builtRef.current = null; setBuildError(''); }, [format, bg, camera]);
 
   const framedSvg = useMemo(() => (overlay ? applyCardBg(overlay.svg, bgUri) : null), [overlay, bgUri]);
   // Миниатюра «Стандарт» — штатный фон, вытащенный из самого шаблона.
   const standardThumb = useMemo(() => (overlay ? cardBgUri(overlay.svg) : ''), [overlay]);
+
+  // Сторож контракта подмены фона (см. src/lib/shareCardBg.js): jpeg-фон из
+  // шаблона пропал (перегенерирован в другой формат?) — подмена стала no-op,
+  // юзер молча остаётся со штатным фоном. Кричим, а не гадаем.
+  useEffect(() => {
+    if (overlay && !cardBgUri(overlay.svg)) {
+      report(new Error('render-share-card: в SVG шаблона нет jpeg-фона — applyCardBg стал no-op'), { surface: 'data', source: 'share-card-bg' });
+    }
+  }, [overlay]);
 
   const ready = Boolean(overlay) && !overlayCode;
   // Пропорция сцены едет двумя каналами (см. ShareCardDialog.css): --sc-ar для
@@ -122,59 +130,80 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
 
   // Доводчик ряда миниатюр — тот же ход, что у CoverPicker (data-idx +
   // scrollIntoView к центру): стрелки листают фон, а ряд едет за выбором;
-  // без него выбранная миниатюра оставалась за краем ленты.
+  // без него выбранная миниатюра оставалась за краем ленты. Deps по (bg, slides),
+  // а не по индексу: вставка своего фото на МЕСТО выбранного пресета сдвигает
+  // список при том же индексе — довозить всё равно надо.
   useEffect(() => {
-    if (bgIdx < 0) return;
-    stripRef.current?.querySelector(`[data-idx="${bgIdx}"]`)?.scrollIntoView({
+    const idx = slides.indexOf(bg);
+    if (idx < 0) return;
+    stripRef.current?.querySelector(`[data-idx="${idx}"]`)?.scrollIntoView({
       inline: 'center', block: 'nearest', behavior: 'smooth',
     });
-  }, [bgIdx]);
+  }, [bg, slides]);
 
   function handleFile(e) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!isAllowedUpload(file, ALLOWED_IMAGE_EXTENSIONS)) { setUploadError(t('doc.bad_format')); return; }
-    if (file.size > MAX_BG_BYTES) { setUploadError(t('trip.cover_too_large')); return; }
+    if (!isAllowedUpload(file, ALLOWED_IMAGE_EXTENSIONS)) { setUploadError(t('doc.bad_format', { name: file.name })); return; }
+    if (file.size > MAX_UPLOAD_BYTES) { setUploadError(t('trip.cover_too_large')); return; }
     setUploadError('');
     blobToDataUri(file)
       .then((uri) => { setUploaded(uri); setBg(uri); })
       .catch(() => setUploadError(t('trip.cover_upload_failed')));
   }
 
+  // Входы сборки читаются ЧЕРЕЗ ref, а не из замыкания рендера: сборка идёт
+  // секунды, клик по фону/формату во время неё меняет состояние — замыкание
+  // хендлера осталось бы со старыми значениями, а повтор цикла ниже обязан
+  // видеть актуальные.
+  const inputsRef = useRef(null);
+  inputsRef.current = { format, bg, camera, overlay };
+
   // Финальный PNG: карта в полном разрешении слота (камера превью или редактора)
   // → card_svg с подменённым фоном → растеризация в браузере. Кэш на неизменных
   // входах — повторное «Скачать» после «Поделиться» не пересобирает.
   async function buildPng() {
-    if (builtRef.current) return builtRef.current;
-    const comp = camera || previewRef.current?.getComposition?.();
-    const slot = overlay?.slot;
-    if (!comp || !slot) throw new Error('preview not ready');
-    // Фон разрешается ЗДЕСЬ из выбора (bg), а не из стейта превью (bgUri):
-    // клик «Скачать» в окно, пока data-URI пресета ещё качается, иначе собрал
-    // бы и закэшировал карточку со штатным фоном. Кэш fetchImageDataUri общий
-    // с превью — второй раз пресет не качается.
-    const finalBgUri = bg ? (bg.startsWith('data:') ? bg : await fetchImageDataUri(bg)) : '';
-    const mapBlob = await renderCardMapPng({ visits, transfers, ...comp, width: slot.w, height: slot.h });
-    if (!mapBlob) throw new Error('map render failed');
-    const mapUri = await blobToDataUri(mapBlob);
-    const { data, error } = await invokeCard({ trip_id: trip.id, format, lang, mode: 'card_svg' });
-    if (error || !data?.svg) throw new Error('card svg failed');
-    const svg = applyCardBg(data.svg, finalBgUri).split(MAP_PLACEHOLDER).join(mapUri);
-    const blob = await rasterizeSvgToPng(svg, data.width || overlay.w, data.height || overlay.h);
-    builtRef.current = blob;
-    track('share_card_generated', { trip_id: trip.id, format, bg: bg ? 'custom' : 'standard' });
-    return blob;
+    // Цикл, а не одиночный проход: сменились входы ПОКА собирали (buildGenRef
+    // ушёл вперёд) — устаревший PNG не попадает ни в кэш, ни юзеру; пересборка
+    // идёт по актуальным значениям из inputsRef.
+    for (;;) {
+      if (builtRef.current) return builtRef.current;
+      const gen = buildGenRef.current;
+      const { format, bg, camera, overlay } = inputsRef.current;
+      const comp = camera || previewRef.current?.getComposition?.();
+      const slot = overlay?.slot;
+      if (!comp || !slot) throw new Error('preview not ready');
+      // Фон разрешается ЗДЕСЬ из выбора (bg), а не из стейта превью (bgUri):
+      // клик «Скачать» в окно, пока data-URI пресета ещё качается, иначе собрал
+      // бы карточку со штатным фоном. Кэш fetchImageDataUri общий с превью —
+      // второй раз пресет не качается.
+      const finalBgUri = bg ? (bg.startsWith('data:') ? bg : await fetchImageDataUri(bg, MAX_UPLOAD_BYTES)) : '';
+      const mapBlob = await renderCardMapPng({ visits, transfers, ...comp, width: slot.w, height: slot.h });
+      if (!mapBlob) throw new Error('map render failed');
+      const mapUri = await blobToDataUri(mapBlob);
+      const { data, error } = await invokeCard({ trip_id: trip.id, format, lang, mode: 'card_svg' });
+      if (error || !data?.svg) throw new Error('card svg failed');
+      const svg = applyCardBg(data.svg, finalBgUri).split(MAP_PLACEHOLDER).join(mapUri);
+      const blob = await rasterizeSvgToPng(svg, data.width || overlay.w, data.height || overlay.h);
+      if (gen !== buildGenRef.current) continue;
+      builtRef.current = blob;
+      track('share_card_generated', { trip_id: trip.id, format, bg: bg ? 'custom' : 'standard' });
+      return blob;
+    }
   }
 
   function saveBlob(blob) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `triplanio-${format}.png`;
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = `triplanio-${inputsRef.current.format}.png`;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(a.href);
+    // Отложенный revoke: Safari стартует скачивание асинхронно, мгновенный
+    // revoke обрывал его гонкой.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   async function downloadCard() {
@@ -191,7 +220,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     setBuildError('');
     try {
       const blob = await buildPng();
-      const file = new File([blob], `triplanio-${format}.png`, { type: 'image/png' });
+      const file = new File([blob], `triplanio-${inputsRef.current.format}.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file] });
       } else {
@@ -285,7 +314,10 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
         )}
         {slides.slice(1).map((url, i) => (
           <Swatch
-            key={url.slice(0, 80) || `bg-${i}`}
+            /* Ключ — ПОЛНЫЙ url: общий префикс public-URL пресетов длиннее 80,
+               обрезка давала дубли ключей у всех свотчей. Своё фото (data-URI
+               в мегабайты) — стабильный маркер, оно в списке одно. */
+            key={url.startsWith('data:') ? 'uploaded' : url || `bg-${i}`}
             variant="round"
             on={bg === url}
             onClick={() => setBg(url)}
@@ -307,7 +339,10 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             variant="fill"
             ariaLabel={t('share.card_title')}
             value={format}
-            onChange={setFormat}
+            /* Оверлей чистится СИНХРОННО со сменой формата: пассивная чистка
+               эффектом успевала отдать ремаунту превью СТАРЫЙ slot — лишняя
+               инициализация mapbox-карты и кадр прежней рамки в новой пропорции. */
+            onChange={(v) => { if (v !== format) { setFormat(v); setOverlay(null); setOverlayCode(''); } }}
             options={[
               { value: 'story', label: t('share.card_story') },
               { value: 'post', label: t('share.card_post') },

@@ -9,7 +9,15 @@
  */
 import { BG_DEFAULT_B64 } from './assets_b64.ts';
 
-/** The default background as a base64 data URI (no decode needed - already b64). */
+/** The default background as a base64 data URI (no decode needed - already b64).
+ *
+ * ⚠️ КОНТРАКТ С ФРОНТОМ (src/lib/shareCardBg.js): этот фон обязан оставаться
+ * ЕДИНСТВЕННЫМ jpeg-data-URI во всём SVG карточки — клиент подменяет его
+ * регэкспом `data:image/jpeg;base64,…` на пользовательский фон (превью И
+ * финальный PNG). Перегенерация фона в webp/png или второй jpeg-ассет в
+ * шаблоне МОЛЧА превращают подмену в no-op (фронт кричит в Sentry сторожем в
+ * ShareCardDialog): меняешь формат здесь — меняй регэксп там, либо заводи
+ * bg-параметр запроса (upgrade-path описан в shareCardBg.js). */
 export function defaultBgDataUri(): string {
   return `data:image/jpeg;base64,${BG_DEFAULT_B64}`;
 }

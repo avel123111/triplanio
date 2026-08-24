@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { MAPBOX_TOKEN, SHARE_MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
-import { buildRoute, drawTripRoute, SC_WEIGHTS, buildBadgeImages, placeCityBadges } from '@/lib/map/captureMap';
+import { buildRoute, drawTripRoute, SC_WEIGHTS, buildBadgeImages, placeCityBadges, rescaleZoom } from '@/lib/map/captureMap';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Btn, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -108,12 +108,9 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       if (userMoved) return;
       const cam = cameraRef.current;
       if (cam) {
-        // `|| 1` в хвосте — страховка от NaN (log2(0/0)), когда и контейнер, и
-        // композиция без ширины: тогда зум просто не пересчитывается.
-        const w = holderRef.current?.clientWidth || cam.previewCssWidth || 1;
         map.jumpTo({
           center: cam.center,
-          zoom: cam.zoom + Math.log2(w / (cam.previewCssWidth || w)),
+          zoom: rescaleZoom(cam.zoom, cam.previewCssWidth, holderRef.current?.clientWidth),
           bearing: cam.bearing || 0,
           pitch: cam.pitch || 0,
         });
