@@ -450,6 +450,55 @@ function Bento() {
   );
 }
 
+/* ── Recognize ("The AI reads bookings so you don't have to") ── */
+function Recognize() {
+  const t = useT();
+  return (
+    <section className="recognize section-pad" data-hdr="light">
+      <div className="wrap rec-grid">
+        <div className="rec-demo rv-l">
+          <div className="rec-flow">
+            <div className="email-card"><span className="scan" aria-hidden="true" />
+              <div className="eh"><span className="av">VY</span><div><b>Vueling</b><small>{t('landing.rec.mailMeta')}</small></div></div>
+              <div className="subject">{t('landing.rec.mailSubj')}</div>
+              <span dangerouslySetInnerHTML={{ __html: t('landing.rec.mailBody') }} />
+            </div>
+            <div className="ai-node" aria-hidden="true">
+              <span className="beam up" />
+              <span className="ai-chip"><svg width="15" height="15"><use href="#i-spark" /></svg><span>{t('landing.rec.chip')}</span><span className="th"><i /><i /><i /></span></span>
+              <span className="beam" />
+            </div>
+            <div className="parsed-card">
+              <div className="ph">
+                <span className="pic"><svg width="18" height="18"><use href="#i-plane" /></svg></span>
+                <div><b>{t('landing.rec.cardT')}</b><small>{t('landing.rec.cardS')}</small></div>
+              </div>
+              <div className="pfields">
+                <div className="pfield"><small><i className="cdot" style={{ background: 'var(--sunset)' }} /><span>{t('landing.rec.f1')}</span></small><b>{t('landing.rec.f1v')}</b></div>{/* inline-style-exempt: category colour */}
+                <div className="pfield"><small><i className="cdot" style={{ background: 'var(--brand)' }} />PNR</small><b>X9K2LM</b></div>{/* inline-style-exempt: category colour */}
+                <div className="pfield"><small>{t('landing.rec.f3')}</small><b>{t('landing.rec.f3v')}</b></div>
+                <div className="pfield"><small><i className="cdot" style={{ background: 'var(--mint)' }} /><span>{t('landing.rec.f4')}</span></small><b>€860</b></div>{/* inline-style-exempt: category colour */}
+                <div className="pfield full"><small>{t('landing.rec.f5')}</small><b>{t('landing.rec.f5v')}</b></div>
+              </div>
+              <div className="pcheck"><svg width="16" height="16"><use href="#i-check" /></svg><span>{t('landing.rec.saved')}</span></div>
+            </div>
+          </div>
+        </div>
+        <div className="rv-r">
+          <span className="brow">{t('landing.rec.eyebrow')}</span>
+          <h2 style={{ margin: '14px 0 14px' }} dangerouslySetInnerHTML={{ __html: t('landing.rec.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing (TRIP-460, CSS as-is) */}
+          <p style={{ color: 'var(--muted)', fontSize: '1.03rem' }}>{t('landing.rec.sub')}</p>{/* inline-style-exempt: prototype's own one-off styling */}
+          <ul className="rec-points">
+            <li><span className="n">1</span><div><b>{t('landing.rec.p1t')}</b><p>{t('landing.rec.p1d')}</p></div></li>
+            <li><span className="n">2</span><div><b>{t('landing.rec.p2t')}</b><p>{t('landing.rec.p2d')}</p></div></li>
+            <li><span className="n">3</span><div><b>{t('landing.rec.p3t')}</b><p>{t('landing.rec.p3d')}</p></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── Main LandingPage ── */
 export default function LandingPage() {
   const { lang, setLang } = useI18n();
@@ -473,6 +522,7 @@ export default function LandingPage() {
         <Hero />
         <Pain />
         <Bento />
+        <Recognize />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
