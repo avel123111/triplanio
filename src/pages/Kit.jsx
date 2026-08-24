@@ -134,6 +134,7 @@ const TX = {
   sevBody: 'Текст сообщения на одну-две строки.', sevTitle: 'Заголовок плашки',
   emptyTitle: 'Пока пусто', emptyBody: 'Здесь появятся элементы.',
   emptyBoxTitle: 'Пусто', emptyBoxBody: 'В рамке (boxed).',
+  devTitle: 'Итоги года', devBody: 'Раздел находится в разработке. Загляните чуть позже.',
   openDialog: 'Открыть диалог', openSheet: 'Открыть шит', readonly: 'Режим только для чтения.',
   toastTitle: 'Готово', toastBody: 'Изменения сохранены.',
   toastLab: 'Появятся в правом нижнем углу (на мобиле — сверху); наведи или тапни стопку, чтобы развернуть.',
@@ -647,6 +648,9 @@ const RECIPES = {
   'empty-state': (ctx) => [{
     items: [
       it('base', <div className="grow"><EmptyState title={TX.emptyTitle} body={TX.emptyBody} action={<Btn variant="primary">{TX.save}</Btn>} /></div>, true),
+      // Канон «раздел в разработке» (TRIP-302): тот же EmptyState с иконкой-молотком
+      // и тоном warning — вид, который показывается модалкой на неготовом разделе.
+      it('в разработке', <div className="grow"><EmptyState icon="hammer" kind="warning" title={TX.devTitle} body={TX.devBody} /></div>, true),
       ...ctx.declared.filter((c) => c.startsWith('empty-state')).map((c) => it(c, <div className="grow"><EmptyState boxed title={TX.emptyBoxTitle} body={TX.emptyBoxBody} /></div>, true)),
     ],
   }],

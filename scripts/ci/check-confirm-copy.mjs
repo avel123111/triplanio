@@ -3,13 +3,16 @@
  * CI guard 2ab — every confirm() carries an accessible name AND a description.
  *
  * Policy: the app-wide promise-based `confirm({...})` (useConfirm → ConfirmDialog,
- * a Radix alert-dialog) MUST be given both a `title` and a `description`. Without
- * a description Radix logs "Missing `Description` or `aria-describedby`" on every
+ * a Radix alert-dialog) MUST be given a `title` (accessible name) AND a body —
+ * either a `description` string OR a rich `content` node (e.g. <EmptyState/>).
+ * Without a body Radix logs "Missing `Description` or `aria-describedby`" on every
  * open (a real a11y gap for screen-reader users), and a title-less dialog has no
- * accessible name at all. ConfirmDialog carries a runtime opt-out so the warning
- * can never fire, but the opt-out is a safety net — the contract is that a caller
- * ALWAYS supplies real copy. This guard makes "a confirm without a title or a
- * description" structurally unrepresentable: a call site missing either key fails
+ * accessible name at all. In the `content` case ConfirmDialog supplies the sr-only
+ * title and Radix's sanctioned `aria-describedby={undefined}` opt-out, so a11y is
+ * satisfied by construction. ConfirmDialog carries a runtime opt-out too, but that
+ * is a safety net — the contract is that a caller ALWAYS supplies real copy. This
+ * guard makes "a confirm without a title or a body" structurally unrepresentable:
+ * a call site missing the title, or missing BOTH description and content, fails
  * the PR.
  *
  * This is a self-consistency invariant over the whole `src/` tree (like 2e/2f),
@@ -130,7 +133,11 @@ try {
     while ((m = re.exec(src))) {
       const openIdx = src.indexOf('{', m.index);
       const keys = depth1Keys(src, openIdx);
-      const missing = ['title', 'description'].filter((k) => !keys.has(k));
+      // Title is always required; the body may be a `description` string OR a
+      // rich `content` node (either satisfies the a11y/description contract).
+      const missing = [];
+      if (!keys.has('title')) missing.push('title');
+      if (!keys.has('description') && !keys.has('content')) missing.push('description');
       if (missing.length) {
         const line = src.slice(0, m.index).split('\n').length;
         offenders.push(`${rel}:${line} — confirm() missing ${missing.join(' + ')}`);
@@ -141,13 +148,13 @@ try {
   if (offenders.length) {
     console.error('✗ 2ab confirm-copy guard: confirm() call without a title and/or description:');
     for (const o of offenders) console.error(`    ${o}`);
-    console.error('\nEvery confirm({…}) needs BOTH `title` and `description` (accessible name +');
-    console.error('Radix description). Add the missing i18n-backed prop — do not pass an empty');
-    console.error('string and do not rely on the ConfirmDialog aria-describedby opt-out.');
+    console.error('\nEvery confirm({…}) needs a `title` (accessible name) AND a body — either a');
+    console.error('`description` string or a rich `content` node. Add the missing i18n-backed');
+    console.error('prop — do not pass an empty string and do not rely on the runtime opt-out.');
     process.exit(1);
   }
 
-  console.log('✓ 2ab confirm-copy guard: every confirm() carries a title and a description');
+  console.log('✓ 2ab confirm-copy guard: every confirm() carries a title and a body (description or content)');
   process.exit(0);
 } catch (e) {
   console.error('2ab confirm-copy guard: internal error', e);

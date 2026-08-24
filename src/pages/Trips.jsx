@@ -23,8 +23,10 @@ import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
 import StatsMap from '@/components/views/StatsMap';
 import {
-  Greeting, StatBar, WorldMini, AllStatsCta,
+  Greeting, StatBar, WorldMini, StatBarCta,
 } from '@/components/stats/widgets';
+import { useConfirm } from '@/components/common/ConfirmProvider';
+import { track } from '@/lib/analytics';
 
 import { useCreateTrip, ChoiceCard } from '@/components/create/CreateTripProvider';
 import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
@@ -137,7 +139,7 @@ function NoNextCard({ variant, onPlan, t }) {
 }
 
 // ─── Map hero + rail (shared by filled + empty screens) ────────────────────────
-function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onPlan, onOpenNext, t, ghost = false }) {
+function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onYearReview, onPlan, onOpenNext, t, ghost = false }) {
   const items = [
     { key: 'countries', value: home.countries, label: t('stats.sb_countries'), icon: <Icon name="globe" /> },
     { key: 'cities',    value: home.cities,    label: t('stats.sb_cities'),     tone: 'city',     icon: <Icon name="buildings" /> },
@@ -147,7 +149,14 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
   return (
     <>
       <div className="t-label tp-caption" style={{ margin: '36px 0 12px' }}>{t('stats.trips_summary')}</div>
-      <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
+      <StatBar
+        items={items}
+        cta={<>
+          <StatBarCta label={t('stats.year_review')} onClick={onYearReview} variant="secondary" leadingIcon="calendar" />
+          <StatBarCta label={t('stats.all_stats')} onClick={onAllStats} variant="soft" icon="arrowR" />
+        </>}
+        className={ghost ? 'is-ghost' : ''}
+      />
       <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
         <div className="mapwrap">
           {showMap
@@ -399,6 +408,7 @@ export default function Trips() {
   const { user }  = useAuth();
   const nav       = useNavigate();
   const qc        = useQueryClient();
+  const confirm   = useConfirm();
 
   const { isDark, toggle: toggleTheme } = useTheme();
 
@@ -660,6 +670,27 @@ export default function Trips() {
               scheme={scheme}
               nextTrip={nextTrip}
               onAllStats={() => nav('/stats')}
+              onYearReview={() => {
+                // Клик по кнопке и есть измеряемое действие — событие шлём до
+                // модалки (ждать её закрытия смысла нет). Реюз шва track()
+                // (src/lib/analytics.js), имя по конвенции object_action.
+                track('year_result');
+                // Раздел ещё не готов: показываем канон «в разработке» —
+                // EmptyState (плитка-молоток + заголовок + текст) в штатной
+                // модалке подтверждения с одной кнопкой «OK».
+                confirm({
+                  title: t('stats.year_review'),
+                  content: (
+                    <EmptyState
+                      icon="hammer"
+                      kind="warning"
+                      title={t('stats.year_review')}
+                      body={t('stats.year_review_soon')}
+                    />
+                  ),
+                  singleButton: true,
+                });
+              }}
               onPlan={() => openChoice()}
               onOpenNext={() => nextTrip && nav(`/trip/${nextTrip.id}`)}
               t={t}

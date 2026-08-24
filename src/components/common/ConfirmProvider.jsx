@@ -12,6 +12,10 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
  *   // info-only:
  *   await confirm({ title: t('…'), singleButton: true });
  *
+ *   // rich body — pass a `content` node (e.g. <EmptyState/>) to replace the plain
+ *   // title/description block; the dialog keeps its footer button and a11y title:
+ *   await confirm({ title: t('…'), content: <EmptyState … />, singleButton: true });
+ *
  *   // async action — the dialog keeps a spinner on the confirm button and stays
  *   // open until the work resolves (Esc / overlay / cancel are locked meanwhile).
  *   // Use this whenever the confirmed action calls a slow edge function so the
@@ -81,6 +85,7 @@ export function ConfirmProvider({ children }) {
         onOpenChange={handleOpenChange}
         title={opts.title}
         description={opts.description}
+        content={opts.content}
         confirmLabel={opts.confirmLabel}
         cancelLabel={opts.cancelLabel}
         variant={opts.variant || 'default'}
