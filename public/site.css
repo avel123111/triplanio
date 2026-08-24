@@ -3,1206 +3,1775 @@
    useSiteCss() (SiteChrome.jsx) на маркетинговых/публичных React-роутах, а на
    статических /terms и /privacy — атрибут class="site" прямо в разметке. Без
    класса токенов нет — так голый :root не может утечь на всё приложение, если
-   site.css однажды затащат в бандл (разбор специфичности — TRIP-446). */
+   site.css однажды затащат в бандл (разбор специфичности — TRIP-446).
+
+   CSS ниже — прототип v5.7 ЦЕЛИКОМ (TRIP-460, подход "как есть, не пересказ"):
+   вырезаны блоки Terms/Privacy (.doc*, → TRIP-465) и публичной поездки
+   (.pt*, → TRIP-461); семь имён, конфликтующих с app.css правилом-одиночкой
+   (btn/btn-primary/btn-ghost/sheet/eyebrow/bud-total/cflag), разрешены по
+   таблице тикета; кегли и радиусы сняты на свою шкалу (таблица сдвигов в PR). */
 html.site {
-  --brand: #2167e2;
-  --brand-600: #1b58c4;
-  --brand-700: #174aa6;
-  --brand-soft: rgba(33,103,226,.08);
-  --brand-soft-12: rgba(33,103,226,.12);
-  --brand-ink: #0b1f47;       /* deep navy for dark band */
-  --brand-ink-2: #0a1a3a;
-  --brand-glow: rgba(33,103,226,.10);
-  --banner-photo: url("https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=70");
+  /* Слой ДС зоны — блок :root прототипа v5.7 ПЕРЕНЕСЁН ЦЕЛИКОМ, не пересказан
+     (TRIP-460, подход "CSS как есть"). Зона владеет этим слоем токенов
+     ПОЛНОСТЬЮ — ни одного обращения к app-токенам "fs"/"r" в site.css. */
+  --brand:#2380D6; --brand-btn:#1E72C4; --brand-deep:#1B67B4;
+  --sky:#6FB4F4; --ice:#DFF0FD;
+  --ink:#13324E; --muted:#516576; --white:#FFFFFF;
+  --mist:#F0F7FD; --band:#E2F0FB; --sand:#FDF3E5;
+  --night-line:rgba(122,180,235,.15); --night-text:#BDD5EC;
+  --sunset:#FF9E4A; --sunset-text:#A0632E; --sunset-tint:#FDECDC;
+  --mint:#2EC27E; --mint-text:#1C7A4F; --mint-tint:#DCF5E8;
+  /* violet/coral — новые пары фон/текст (ревью TRIP-460, «не потерять»/контраст):
+     #fff не проходит AA ни на одном сыром акценте прототипа (--brand 4.09,
+     --sky 2.21, --mint 2.30, --sunset 2.05, аватарные градиенты 2.56/1.68).
+     Пары взяты с публичной поездки — светлый tint под фон, тёмный вариант
+     оттенка под текст, оба ≥4.5:1 на своей паре. */
+  --violet-text:#4B3FA8; --violet-tint:#E7E4FB;
+  --coral-text:#A32B60; --coral-tint:#FBE3EC;
 
-  --ink: #0F172A;             /* near-black body */
-  --ink-2: #1f2a44;
-  --muted: #5a657a;           /* secondary text */
-  --muted-2: #8693a8;
+  --font-display:'Onest', ui-sans-serif, system-ui, sans-serif;
+  --font-body:'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* --font-ui обязателен (ревью TRIP-460): app.css :root держит --font-ui:Geologica,
+     и канон .t-* типографирует co-селекторы зоны (.btn/.footer/.nav/.eyebrow/.lede)
+     этим токеном. Без переопределения половина зоны рендерится Geologica. */
+  --font-ui: var(--font-body);
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --dur:.65s;
+  --sheet-r:clamp(26px,4vw,44px);
 
-  --line: #E5E7EB;            /* cool neutral border */
-  --line-2: #eef0f4;
-  --wash: #F7F8FA;            /* alt section */
-  --white: #ffffff;
+  /* Радиусы: --r-md/--r-lg — значения прототипа, не переименованы (значение,
+     не имя, было причиной прежней псевдо-коллизии). --r-xs/--r-sm — новые
+     ступени под 14 сырых px-радиусов прототипа (сдвиг ≤2px, таблица в PR). */
+  --r-md:15px; --r-lg:22px;
+  --r-xs:4px; --r-sm:10px;
 
-  --warm: #c9603a;            /* terracotta accent, used sparingly */
-  --warm-soft: #f1d9c9;
-  --warm-tint: rgba(201,96,58,.10);
-  --success: #1f8a5b;
+  --shadow-lg:0 24px 60px -18px rgba(11,44,84,.20);
+  --shadow-md:0 12px 32px -12px rgba(11,44,84,.14);
+  --shadow-sm:0 4px 14px -4px rgba(11,44,84,.10);
 
-  --radius-card: 18px;
-  --radius-btn: 12px;
+  /* Корпус устройства (.device — Pain/Telegram) — было на голом :root, тот же
+     утечка-баг, что и первый (ревью TRIP-460, найдено при работе над контрастом). */
+  --dev-bezel:linear-gradient(145deg,#454a52,#1b1e24 30%,#0e1013 60%,#2b2f36 85%,#0e1013);
+  --dev-shadow:0 55px 110px -34px rgba(7,30,56,.5),0 22px 42px -26px rgba(7,30,56,.42);
+  --dev-btn:#15181d; --dev-rim:#06080b;
+  --dev-gloss:linear-gradient(130deg,rgba(255,255,255,.22),rgba(255,255,255,0) 32%);
 
-  --shadow-soft: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 24px -8px rgba(15, 23, 42, .08);
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, .03), 0 10px 30px -12px rgba(15, 23, 42, .14);
-  --shadow-pop:  0 2px 6px rgba(15, 23, 42, .06), 0 20px 60px -20px rgba(15, 23, 42, .22);
+  /* Кегли — 11 ступеней (замена 37 уникальных rem-значений), покрытие 108/108,
+     макс. сдвиг 1px (таблица «было → стало → сдвиг» в теле PR, TRIP-460). Каждое
+     font-size в теле ниже — var(--fs-*), сырых rem/px/clamp не осталось. */
+  --fs-micro:9.6px; --fs-tiny:10.56px; --fs-caption:11.52px; --fs-small:12.64px;
+  --fs-body:13.6px; --fs-body-lg:14.72px; --fs-lead:15.68px; --fs-lead-lg:16.8px;
+  --fs-h4:18.08px; --fs-h3:20.8px; --fs-h2:30.4px;
 
-  --container: 1180px;
-  --gutter: 24px;
-
-  --sect-pad: 96px;
-  --card-pad: 28px;
-  --hero-top: 96px;
-  --hero-bot: 80px;
-
-  /* TRIP-165 — единая суперсемья Golos Text (никаких маркетинговых шрифтов) */
-  --font-display: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --display-tracking: -0.022em;
-  --h1-tracking: -0.035em;
-}
-
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  font-family: var(--font-body);
-  color: var(--ink);
-  background: var(--white);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.55;
-  font-feature-settings: "ss01", "cv11";
-}
-
-img { max-width: 100%; display: block; }
-button { font-family: inherit; cursor: pointer; }
-a { color: inherit; text-decoration: none; }
-
-/* ---------- Layout helpers ---------- */
-.container {
-  width: 100%;
-  max-width: var(--container);
-  margin: 0 auto;
-  padding-left: var(--gutter);
-  padding-right: var(--gutter);
-}
-.section { padding: var(--sect-pad) 0; position: relative; }
-.section--wash { background: var(--wash); }
-.section--tight { padding: calc(var(--sect-pad) * 0.75) 0; }
-
-@media (max-width: 900px) {
-  .section { padding: calc(var(--sect-pad) * 0.75) 0; }
-  .section--tight { padding: calc(var(--sect-pad) * 0.6) 0; }
+  /* Текучие (clamp) заголовки — адаптивность прототипа, не шум; значение не
+     меняется, только именовано токеном (включая мобильные @media-ступени). */
+  --fs-hero-h1: clamp(2.55rem,1.45rem + 3.9vw,3.9rem);
+  --fs-hero-sub: clamp(1rem,.94rem + .35vw,1.11rem);
+  --fs-hero-sub-mobile: clamp(.82rem,3.35vw,1rem);
+  --fs-section-h2: clamp(1.85rem,1.2rem + 2.7vw,2.9rem);
+  --fs-final-h2: clamp(2.1rem,1.4rem + 3.4vw,3.4rem);
 }
 
-/* ---------- Type ---------- */
-.eyebrow {
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.eyebrow::before {
-  content: "";
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--warm);
-  display: inline-block;
+
+/* Семьи имён прототипа v5.7 — единый апрув на весь перенос (TRIP-460, "как
+   есть, не пересказ"). Ни одно из них не конфликтует с app.css. */
+/* prefix-exempt: active — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ai — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: appwin — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: archive — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: aud — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: audience — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: avs — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: aw — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: b — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bb — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bcard — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: beam — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bento — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bot — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bp — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bpass — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: brow — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: browser — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: bud — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: burger — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: cdot — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: centered — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: cic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: collab — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: copy — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ctas — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: dark — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: device — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: dic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: dmeta — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: doc — чипы документов лендинга, срезаны с .doc* Terms/Privacy (ревью TRIP-460 п.3) */
+/* prefix-exempt: done — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: duo — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: dv — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: eh — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: email — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: err — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: feed — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: fill — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: filled — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: final — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ftag — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: full — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: fx — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: grad — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: group — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: hd — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: hl — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: horizon — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: idx — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: in — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: inner — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: l1 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: l2 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: l3 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: la — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: lang — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: lb — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: lbl — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: lg — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: line — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: link — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: loc — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: logo — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: main — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: map — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mbody — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mint — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mobile — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mprev — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: msg — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: mtop — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: n — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: nd — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: npin — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: num — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ok — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: open — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p1 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p2 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p3 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p4 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: p5 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pain — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: parsed — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pcheck — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pfield — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pfields — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ph — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pic — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: pill — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: rec — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: recognize — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: rv — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scan — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scrap — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scrapv3 — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scrolled — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: scrub — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: sh — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: share — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: sheet — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: site — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: snote — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ssheet — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: stat — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: stats — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: subject — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: tav — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: tg — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: th — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: ticks — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: todo — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: track — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: trip — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: up — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: user — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: viewer — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: warm — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: wdots — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: world — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: wrap — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: yc — прототип v5.7 (TRIP-460, подход "как есть") */
+
+/* Гард-фикс (ревью TRIP-460, найдено при работе над контрастом): здесь стоял
+   хвост черновой обвязки ДО перехода на подход "CSS как есть" — ручной
+   reset + ВТОРОЙ, полностью дублирующий html.site{} блок токенов, но на
+   голом :root{} (та самая утечка, которую класс на html.site должен был
+   исключить по построению, TRIP-446). Удалены оба: значения совпадали 1:1
+   с html.site{} (--shadow-lg/md/sm — единственное, чего там не было —
+   перенесены в html.site{} выше). Ниже — подлинный reset прототипа v5.7. */
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* scroll-padding-top — фикс-шапка 70px перекрывала заголовок при клике по
+   якорям меню (#together/#stats/#assistant); отступ сдвигает точку доводки
+   всех внутренних якорей на высоту шапки + воздух (ревью TRIP-460 V2). */
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;scroll-padding-top:86px}
+
+body{
+  font-family:var(--font-body);color:var(--ink);background:var(--white);
+  line-height:1.6;font-size: var(--fs-lead);overflow-x:clip;
+  /* Зона владеет ВЕСОМ так же, как гарнитурой и кеглем: app.css держит
+     `body{font-weight:500}` (текст приложения плотнее), прототип веса не
+     объявляет — то есть 400. Без этой строки 500 наследовался на ВЕСЬ текст
+     лендинга: буквы шире, строки переносятся раньше, и секции разъезжались
+     вниз по всей странице (замер: подзаголовок «Ассистента» 3 строки в
+     макете против 4 в реализации). Вес, заданный точечно правилом, этим
+     объявлением не затрагивается. */
+  font-weight:400;
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  color: var(--ink);
-  margin: 0;
-  letter-spacing: -0.02em;
-  font-weight: 600;
-  text-wrap: balance;
+img,svg,canvas{display:block;max-width:100%}
+
+a{color:inherit;text-decoration:none}
+
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+::selection{background:var(--brand);color:#fff}
+
+
+/* Клавиатурный фокус — одно правило на всю страницу. :focus-visible сам решает,
+   показывать обводку или нет: мышь её не видит, Tab видит везде. Обводка
+   повторяет border-radius элемента сама, отдельных правил не нужно. */
+:focus-visible{outline:2px solid var(--brand-deep);outline-offset:2px}
+
+:focus:not(:focus-visible){outline:none}
+
+.final :focus-visible{outline-color:#fff}
+
+
+/* Восьмая коллизия «вторая база» (ревью TRIP-460, найдена при проверке контраста
+   на скриншоте, не в диффе): app.css держит глобальный h1,h2,h3,h4{color:var(--ink)}
+   И ЕЩЁ text-wrap:balance — приложение выравнивает длину строк заголовка, а
+   макет переносит обычным потоком. Балансировка МЕНЯЕТ РАЗБИВКУ: у «bento»
+   макет даёт «The whole trip, in one clear / picture», реализация с balance —
+   «The whole trip, in / one clear picture» при идентичных ширине (660px),
+   кегле (46.4px), трекинге и разметке. Возвращаем поток макета.
+   (bare tag-селектор, гард 2ae его не видит — проверяет только классы). Заголовок
+   ПРЯМО таргетится — сильнее любого унаследованного цвета от .final/.dark, порядок
+   загрузки роли не играет. html.site-скоуп поднимает specificity и возвращает
+   заголовку цвет его секции (белый в .final, --ink по умолчанию — то же самое). */
+html.site h1, html.site h2, html.site h3, html.site h4{color:inherit;text-wrap:wrap}
+
+h1,h2,h3{font-family:var(--font-display);line-height:1.12;letter-spacing:-.025em}
+
+h2{font-size: var(--fs-section-h2);font-weight:800}
+
+h3{font-size: var(--fs-h4);font-weight:700}
+
+.wrap{width:min(1160px,calc(100% - 48px));margin-inline:auto}
+
+.hero > .wrap,.site-header > .wrap{box-sizing:border-box;width:100%;padding-inline:clamp(24px,5vw,80px);margin-inline:0}
+
+@media (max-width:640px){.wrap{width:calc(100% - 40px)}}
+
+
+section{position:relative}
+
+.section-pad{padding:clamp(68px,7.5vw,104px) 0}
+
+.sheet-pane{border-radius:var(--sheet-r) var(--sheet-r) 0 0;margin-top:calc(var(--sheet-r)*-1);position:relative;z-index:3}
+
+
+.brow{
+  display:inline-flex;align-items:center;gap:9px;
+  font-size: var(--fs-caption);font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--brand-deep);
 }
 
-/* TRIP-165 — заголовки лендинга на КАНОН-ТОКЕНЫ (--fs-*), без сырых px.
-   TRIP-203 — адаптив несут сами fluid-токены (clamp), без ручных @media-ступенек.
+.brow::before{content:"";width:24px;height:2px;border-radius: var(--r-xs);background:var(--sunset)}
 
-   ⚠️ ЗНАЧЕНИЯ ЭТИХ ТОКЕНОВ ЖИВУТ В src/design/app.css :root, НЕ ЗДЕСЬ.
-   У сайтовой ДС своей типографической шкалы нет — она приезжает из ДС
-   приложения (9 токенов --fs-*), и уже дважды уезжала от PR, которые лендинг
-   не трогали: --fs-display 44→40, --fs-h1 26→24, --fs-h2 16.5→18 (август).
-   Поэтому чисел в комментариях рядом с var() здесь БОЛЬШЕ НЕТ: они обещали
-   54/40/26/19, а токены давали 40/24/18/16 — врали на 14 px, пока не замерили
-   (аудит TRIP-445, handoff §3; решение по шкале — открытый вопрос 8). */
-h1 {
-  font-size: var(--fs-display);   /* канон .t-display */
-  line-height: 1.02;
-  letter-spacing: var(--h1-tracking);
-  font-weight: 700;
-}
-h2 {
-  font-size: var(--fs-h1);        /* канон .t-title — секционные */
-  line-height: 1.08;
-  letter-spacing: var(--display-tracking);
-}
-h3 {
-  font-size: var(--fs-h2);        /* канон .t-heading */
-  line-height: 1.15;
-  letter-spacing: var(--display-tracking);
-}
+.dark .brow{color:#fff}
 
-/* TRIP-203: заголовки лендинга (h1→display, h2→h1, h3→h2) шринкуются сами —
-   каноны --fs-display/--fs-h1/--fs-h2 теперь fluid (clamp). Ручные @media-ступеньки убраны. */
+.dark .brow::before{background:rgba(255,255,255,.7)}
 
-.lede {
-  font-size: var(--fs-h3);        /* канон .t-subheading */
-  line-height: 1.6;
-  color: var(--muted);
-  max-width: 64ch;
-}
+.section-head{max-width:660px;margin-bottom:clamp(34px,4vw,52px)}
 
-.subtle { color: var(--muted); }
+.section-head.centered{margin-inline:auto;text-align:center}
 
-/* ---------- Buttons ---------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border-radius: var(--radius-btn);
-  border: 1px solid transparent;
-  transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
-  white-space: nowrap;
-}
-.btn--lg { padding: 15px 26px; font-size: var(--ctl-fs); border-radius: 14px; }
-.btn--primary {
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 6px 18px -6px color-mix(in oklab, var(--brand) 55%, transparent);
-}
-.btn--primary:hover { background: var(--brand-600); transform: translateY(-1px); }
-.btn--ghost {
-  background: transparent;
-  color: var(--ink);
-  border-color: var(--line);
-}
-.btn--ghost:hover { background: var(--wash); border-color: #d8dde6; }
-.btn--white {
-  background: #fff;
-  color: var(--brand-ink);
-}
-.btn--white:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -10px rgba(0,0,0,.35); }
+.section-head.centered .brow{justify-content:center}
 
-.btn .chev { transition: transform .2s ease; }
-.btn:hover .chev { transform: translateX(2px); }
+.section-head h2{margin:14px 0 14px}
 
-/* ---------- Header ----------
-   ONE header, re-tinted against the section beneath it. The header ALWAYS
-   carries exactly one theme class — `on-dark` (white text over a dark cover),
-   `on-light` (ink over a light section), or `on-accent` (white over the warm
-   band) — picked from the `data-hdr` of the section under it. Bare `.header`
-   is structural only; every colour lives in one of the three variants, so no
-   emitted class is rule-less. `on` is the single new namespace of this phase
-   (approval Pavel 23.08.2026).
-   prefix-exempt: on — тема шапки по секции под ней (Ф2), апрув Pavel 23.08.2026 */
-.header {
-  position: fixed;
-  inset: 0 0 auto 0;
-  z-index: 50;
-  transition: background .35s ease, box-shadow .35s ease;
-}
-/* Scrolled backdrop — one per theme. */
-.header.on-dark.is-scrolled {
-  background: rgba(6,18,31,.78);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  box-shadow: 0 1px 0 rgba(255,255,255,.08);
-}
-.header.on-light.is-scrolled {
-  background: rgba(255,255,255,.82);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  box-shadow: 0 1px 0 rgba(11,44,84,.08);
-}
-.header.on-accent.is-scrolled {
-  background: rgba(196,74,52,.42);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  box-shadow: 0 1px 0 rgba(255,255,255,.18);
-}
-.header__inner {
-  display: flex;
-  align-items: center;
-  height: 70px;
-  gap: 26px;
-}
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--fs-h3);
-  letter-spacing: -0.02em;
-}
-.header.on-dark .brand { color: #fff; }
-.header.on-light .brand { color: var(--ink); }
-.header.on-accent .brand { color: #fff; }
-.brand__mark {
-  width: 28px; height: 28px;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.nav a {
-  padding: 8px 13px;
-  border-radius: 999px;
-  font-size: var(--fs-meta);
-  font-weight: 500;
-  transition: color .2s ease, background .2s ease;
-}
-.header.on-dark .nav a { color: rgba(255,255,255,.75); }
-.header.on-dark .nav a:hover { color: #fff; background: rgba(255,255,255,.1); }
-.header.on-light .nav a { color: var(--muted); }
-.header.on-light .nav a:hover { color: var(--ink); background: rgba(11,44,84,.06); }
-.header.on-accent .nav a { color: rgba(255,255,255,.82); }
-.header.on-accent .nav a:hover { color: #fff; background: rgba(255,255,255,.16); }
+.section-head p{color:var(--muted);font-size: var(--fs-lead-lg);max-width:58ch}
 
-.header__right { display: flex; align-items: center; gap: 11px; margin-left: auto; }
+.section-head.centered p{margin-inline:auto}
 
-/* On an accent section the primary CTA inverts to a white chip. */
-.header.on-accent .header__cta { background: #fff; color: var(--warm); }
-.header.on-accent .header__cta:hover { background: #fff; color: var(--brand-ink); }
+.dark .section-head p{color:var(--night-text)}
 
-.hamburger {
-  display: none;
-  width: 42px; height: 42px;
-  border-radius: 12px;
-  background: transparent;
-  border: 0;
-  align-items: center;
-  justify-content: center;
-}
-.header.on-dark .hamburger { color: #fff; }
-.header.on-light .hamburger { color: var(--ink); }
-.header.on-accent .hamburger { color: #fff; }
+.accent{color:var(--brand)}
 
-@media (max-width: 900px) {
-  .nav { display: none; }
-  .header--full .hamburger { display: inline-flex; }
-  /* Full header hands its CTA to the drawer on mobile; cta/minimal keep it. */
-  .header--full .header__cta { display: none; }
+.dark .accent{color:var(--sky)}
+
+
+/* reveal (bidirectional) */
+.rv{opacity:0;transform:translateY(30px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+
+.rv.in{opacity:1;transform:none}
+
+.rv-l{opacity:0;transform:translateX(-36px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+
+.rv-r{opacity:0;transform:translateX(36px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+
+.rv-l.in,.rv-r.in{opacity:1;transform:none}
+
+/* На мобиле боковой заезд заменяем вертикальным: до-reveal translateX(±36px)
+   выносит колонку за узкий вьюпорт (при боковом зазоре < 36px — а он 20–24px),
+   overflow-x:clip это прячет, но текст правой колонки «Узнавания» физически
+   срезан справа, пока reveal не сработал (ревью TRIP-460 V1). Заезд сохранён —
+   просто по Y, как у .rv, без горизонтального переполнения. */
+@media (max-width:760px){
+  .rv-l,.rv-r{transform:translateY(30px)}
 }
 
-/* mobile drawer (full header only) */
-.drawer {
-  position: fixed;
-  inset: 70px 0 auto 0;
-  background: rgba(255,255,255,.97);
-  backdrop-filter: saturate(180%) blur(18px);
-  -webkit-backdrop-filter: saturate(180%) blur(18px);
-  z-index: 49;
-  padding: 10px 0 20px;
-  transform: translateY(-12px);
-  opacity: 0;
-  pointer-events: none;
-  /* То же, что у .langdd__menu, и хуже: дровер несёт aria-hidden="true", а
-     `.hamburger` выше 900px скрыт — на десктопе открыть его нельзя вовсе, но
-     без `visibility` его CTA и три ссылки стоят в порядке табов ВНУТРИ
-     aria-hidden (жёсткое нарушение WCAG 4.1.2). */
-  visibility: hidden;
-  transition: opacity .3s ease, transform .3s ease, visibility 0s linear .3s;
-  border-bottom: 1px solid var(--line);
-  box-shadow: 0 24px 48px -24px rgba(11,44,84,.18);
-}
-.drawer.is-open { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .3s ease, transform .3s ease, visibility 0s; }
-.drawer ul { list-style: none; padding: 8px 0; margin: 0; }
-.drawer li { padding: 0 24px; }
-.drawer li a {
-  display: block;
-  padding: 16px 0;
-  color: var(--ink);
-  font-weight: 500;
-  border-bottom: 1px solid var(--line-2);
-}
-.drawer li .btn { width: 100%; margin: 8px 0 12px; }
+[data-stagger]>*{transition-delay:calc(var(--i,0)*70ms)}
 
-/* ---------- Hero ---------- */
-.hero {
-  position: relative;
-  padding: var(--hero-top) 0 var(--hero-bot);
-  overflow: hidden;
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001s!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001s!important;transition-delay:0s!important}
+  .rv,.rv-l,.rv-r{opacity:1;transform:none}
 }
-/* On desktop the hero fills the viewport and the content block is
-   centred vertically, so the H1 + CTAs sit in the middle of the screen
-   on first open. Mobile keeps the simpler stacked layout from the
-   media query below. */
-@media (min-width: 981px) {
-  .hero {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
+
+
+/* ============================================================
+   HEADER
+============================================================ */
+.site-header{position:fixed;inset:0 0 auto 0;z-index:100;transition:background .35s,box-shadow .35s}
+
+.site-header .wrap{display:flex;align-items:center;gap:26px;height:70px}
+
+.site-header.scrolled{
+  background:rgba(6,18,31,.78);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 1px 0 var(--night-line);
+}
+
+.site-header.on-light.scrolled{background:rgba(255,255,255,.82);box-shadow:0 1px 0 rgba(11,44,84,.08)}
+
+.site-header.on-accent.scrolled{background:rgba(196,74,52,.42);box-shadow:0 1px 0 rgba(255,255,255,.18)}
+
+.on-accent .brand{color:#fff}
+
+/* было rgba(255,255,255,.82) = 3.77:1 на фоне шапки, ниже AA (ревью TRIP-460 V3);
+   полный #fff = 4.76:1 */
+.on-accent .main-nav a{color:#fff}
+
+.on-accent .main-nav a:hover{color:#fff;background:rgba(255,255,255,.16)}
+
+.on-accent .lang-btn{color:#fff;border-color:transparent}
+
+.on-accent .lang-btn:hover{background:rgba(255,255,255,.14)}
+
+.on-accent .burger{color:#fff}
+
+/* было #E0592E = 3.72:1 на белой кнопке, ниже AA (ревью TRIP-460 V3); #C9481F = 4.74:1 */
+.on-accent .header-cta{background:#fff;color:#C9481F;box-shadow:0 10px 26px -8px rgba(120,40,20,.45)}
+
+.on-accent .header-cta:hover{background:#fff;color:#B84019}
+
+.brand{display:flex;align-items:center;min-height:44px;gap:10px;font-family:var(--font-display);font-weight:800;font-size: var(--fs-h4);letter-spacing:-.02em;color:#fff}
+
+.on-light .brand{color:var(--ink)}
+
+.brand .logo{width:33px;height:33px;border-radius: var(--r-sm);box-shadow:0 4px 12px rgba(33,115,200,.4)}
+
+.main-nav{display:flex;gap:2px}
+
+.main-nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 13px;border-radius:99px;font-size: var(--fs-body);font-weight:500;color:rgba(255,255,255,.75);transition:color .2s,background .2s}
+
+.on-light .main-nav a{color:var(--muted)}
+
+.main-nav a:hover{color:#fff;background:rgba(255,255,255,.1)}
+
+.on-light .main-nav a:hover{color:var(--ink);background:rgba(11,44,84,.06)}
+
+.header-actions{display:flex;align-items:center;gap:11px;margin-left:auto}
+
+
+.lang{position:relative}
+
+.lang-btn{
+  display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:99px;
+  font-size: var(--fs-body);font-weight:500;color:rgba(255,255,255,.85);
+  border:1px solid transparent;transition:border-color .2s,background .2s;min-height:44px;
+}
+
+.on-light .lang-btn{color:var(--ink);border-color:transparent}
+
+.lang-btn:hover{background:rgba(255,255,255,.1)}
+
+.on-light .lang-btn:hover{background:rgba(11,44,84,.05)}
+
+.lang-btn svg{transition:transform .25s}
+
+.lang.open .lang-btn svg{transform:rotate(180deg)}
+
+.lang-menu{
+  position:absolute;top:calc(100% + 10px);right:0;min-width:168px;
+  background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:6px;
+  opacity:0;transform:translateY(-8px) scale(.97);pointer-events:none;
+  transition:opacity .22s var(--ease-out),transform .22s var(--ease-out);
+}
+
+.lang.open .lang-menu,.mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto}
+
+.lang-menu button{display:flex;align-items:center;min-height:44px;gap:10px;width:100%;padding:9px 12px;border-radius: var(--r-sm);font-size: var(--fs-body-lg);color:var(--ink);transition:background .15s;text-align:left}
+
+.lang-menu button:hover{background:var(--ice)}
+
+.lang-menu button.active{background:var(--ice);font-weight:600;color:var(--brand-deep)}
+
+.lang-menu .code{font-size: var(--fs-tiny);font-weight:700;letter-spacing:.06em;color:var(--brand-deep);background:var(--ice);border-radius: var(--r-xs);padding:2px 6px;min-width:32px;text-align:center}
+
+
+
+/* site-dup-exempt: btn — база геометрии кнопки прототипа. Прежнее решение «зона
+   не объявляет базу, только вариант» было НЕВЕРНО (ревью TRIP-460, п.1): объект
+   не один — у app-кнопки другой радиус/паддинг/кегль/gap. Пилюля прототипа =
+   99px + padding 13px 24px + gap 9px; вариант .btn-primary/.btn-ghost нёс только
+   цвет, вся геометрия оставалась в невзятой app-базе. site.css грузится после
+   app.css → эта база выигрывает и даёт кнопку прототипа. */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 24px;border-radius:99px;font-weight:600;font-size: var(--fs-body-lg);transition:transform .2s var(--ease-out),box-shadow .25s,background .2s;min-height:46px;
+  /* Рамки у базовой кнопки в макете НЕТ. app.css:1776 держит border:1px solid
+     var(--bd) — без явного гашения она проступала у КАЖДОЙ кнопки лендинга.
+     Вариант .btn-ghost рисует свою рамку сам и этим не затронут. */
+  border:0}
+
+.btn:active{transform:scale(.97)}
+
+/* site-dup-exempt: btn-primary — вариант объекта .btn (§1а таблица тикета: btn/
+   btn-primary/btn-ghost — одна группа). app.css:848 числит это имя в co-селекторе
+   канона .t-label (типографика: font-family/size/weight), а не отдельным
+   правилом цвета/геометрии — вариант получает канон-типографику по замыслу ДС,
+   утечки нет; конфликтует только по факту вхождения в comma-список канона. */
+/* site-dup-exempt: btn-ghost — тот же случай, app.css:851 тот же co-селектор */
+.btn-primary{background:var(--brand-btn);color:#fff;box-shadow:0 10px 26px -8px rgba(33,115,200,.55)}
+
+.btn-primary:hover{background:var(--brand-deep);transform:translateY(-2px);box-shadow:0 16px 32px -10px rgba(33,115,200,.6)}
+
+.btn-ghost{color:var(--ink);border:1px solid rgba(19,50,78,.22);background:rgba(255,255,255,.6)}
+
+.btn-ghost:hover{background:#fff;transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+
+.dark .btn-ghost{color:#fff;border-color:rgba(255,255,255,.45);background:transparent}
+
+.dark .btn-ghost:hover{background:rgba(255,255,255,.14);box-shadow:none}
+
+.btn-light{background:#fff;color:var(--ink);box-shadow:var(--shadow-md)}
+
+.btn-light:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+
+.btn-sm{padding:9px 18px;font-size: var(--fs-body);min-height:44px}
+
+@media (max-width:900px){.main-nav{display:none}}
+
+
+.burger{display:none;width:44px;height:44px;border-radius: var(--r-sm);place-items:center;color:#fff}
+
+.on-light .burger{color:var(--ink)}
+
+@media (max-width:900px){
+  .burger{display:grid}
+  .header-cta{display:none}
+  .site-header .wrap{gap:10px}
+  .brand{font-size: var(--fs-lead);gap:8px}
+  .header-actions{gap:8px}
+}
+
+.burger svg .l2{transition:opacity .2s}
+
+.burger svg .l1,.burger svg .l3{transition:transform .3s var(--ease-out);transform-origin:12px 12px}
+
+.mobile-open .burger .l1{transform:translateY(6px) rotate(45deg)}
+
+.mobile-open .burger .l3{transform:translateY(-6px) rotate(-45deg)}
+
+.mobile-open .burger .l2{opacity:0}
+
+.mobile-menu{
+  position:fixed;inset:70px 0 auto 0;z-index:99;padding:10px 24px 28px;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  display:flex;flex-direction:column;transform:translateY(-12px);opacity:0;pointer-events:none;
+  transition:opacity .3s var(--ease-out),transform .3s var(--ease-out);
+  border-bottom:1px solid rgba(19,50,78,.1);box-shadow:0 24px 48px -24px rgba(11,44,84,.18);
+}
+
+.mobile-menu a{padding:14px 4px;font-size: var(--fs-lead);font-weight:500;color:var(--ink);border-bottom:1px solid rgba(19,50,78,.08)}
+
+.mobile-menu .btn{margin:6px 0 16px;width:100%}
+
+/* .mobile-menu a перебивает цвет .btn-primary — возвращаем белый текст кнопке */
+.mobile-menu .btn-primary{color:#fff;border-bottom:0}
+
+.mobile-menu a:last-child{border-bottom:0}
+
+
+/* ============================================================
+   HERO
+============================================================ */
+.hero{
+  /* image-set: обычный экран берёт 1x (1700px), Retina — 2x (3400px).
+     -webkit- нужен Safari 16 и старше, он не понимает беспрефиксный вариант. */
+  --hero-a:-webkit-image-set(url("/hero/desk-flatlay.webp") 1x, url("/hero/desk-flatlay@2x.webp") 2x);
+  --hero-a:image-set(url("/hero/desk-flatlay.webp") 1x, url("/hero/desk-flatlay@2x.webp") 2x);
+  --hero-b:-webkit-image-set(url("/hero/desk-app.webp") 1x, url("/hero/desk-app@2x.webp") 2x);
+  --hero-b:image-set(url("/hero/desk-app.webp") 1x, url("/hero/desk-app@2x.webp") 2x);
+  --hero-m:url("/site/hero-mobile.webp");
+  --hero-veil:236,246,253;          /* цвет светлой вуали поверх фотографии */
+  background:#7FA9C4;color:var(--ink);overflow:hidden;
+  padding-bottom:var(--sheet-r);
+  /* ровно один экран: белая «простыня» следующей секции начинается на самом сгибе */
+  min-height:calc(100vh + var(--sheet-r));
+  min-height:calc(100dvh + var(--sheet-r)); /* dvh перекрывает vh там, где поддержан */
+  /* stretch, а не center: положение текста задаёт верхний отступ сетки */
+  display:flex;align-items:stretch;
+}
+
+/* --- фото-фон: два слоя, плавная смена по наведению на телефон --- */
+.hero-bg{position:absolute;inset:0;z-index:0;overflow:hidden;background:#7FA9C4}
+
+/* подложка: тот же кадр, размытый — заполняет поля на широких экранах */
+.hero-fill{
+  position:absolute;inset:-8%;
+  background-image:var(--hero-m);background-size:cover;background-position:center;
+  filter:blur(30px) saturate(1.06) brightness(1.02);
+  transform:scale(1.06);
+}
+
+/* Кадр по умолчанию — МОБИЛЬНЫЙ, десктопный подключается медиазапросом. Обратный
+   порядок (десктоп по умолчанию + .hero.is-mob от JS) заставлял телефон качать
+   десктопный кадр: класс приходит после первого рендера, запрос успевает уйти. */
+@media (min-width:981px){
+  .hero-fill{background-image:var(--hero-a);filter:blur(54px) brightness(1.02) saturate(1.02);transform:scale(1.04)}
+}
+
+.hero-layer{
+  position:absolute;inset:0;
+  background-repeat:no-repeat;background-size:cover;background-position:center;
+  backface-visibility:hidden;
+}
+
+.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:auto 88%;background-position:50% 0;
+  -webkit-mask:linear-gradient(180deg,#000 0,#000 58%,transparent 82%);mask:linear-gradient(180deg,#000 0,#000 58%,transparent 82%)}
+
+@media (min-width:981px){
+  .hero-layer.la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
+}
+
+.hero-layer.lb{opacity:0;transition:opacity .5s var(--ease-out);will-change:opacity}
+
+/* кадр наведения объявлен только для десктопа: на мобиле он не нужен и не должен
+   даже запрашиваться. display:none из JS для этого не годится — он ставится после
+   первого рендера, запрос успевает уйти. Порог 981px = ровно тот, где JS включает is-mob. */
+@media (min-width:981px){.hero-layer.lb{background-image:var(--hero-b)}}
+
+.hero.is-zoom .hero-layer.lb{opacity:1}
+
+/* мобильный кадр прижат к верху: при 88% высоты и позиции 5% сверху оставалась
+   щель 5px, где просвечивал размытый .hero-fill — см. правило .hero-layer.la выше */
+
+/* светлая вуаль: слева под текст, сверху под шапку, снизу — стык с белой секцией */
+.hero-scrim{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:
+    linear-gradient(101deg,rgba(var(--hero-veil),.80) 0%,rgba(var(--hero-veil),.84) 26%,rgba(var(--hero-veil),.80) 42%,rgba(var(--hero-veil),.54) 53%,rgba(var(--hero-veil),.2) 63%,rgba(var(--hero-veil),0) 73%),
+    linear-gradient(180deg,rgba(var(--hero-veil),.38) 0%,rgba(var(--hero-veil),.08) 18%,rgba(var(--hero-veil),0) 32%),
+    linear-gradient(0deg,rgba(255,255,255,.5) 0%,rgba(255,255,255,0) 20%);
+}
+
+.hero::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;opacity:.3;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* невидимая зона наведения ровно по телефону на фотографии (координаты считает JS) */
+.hero-hot{position:absolute;z-index:2;display:none}
+
+
+.hero-grid{
+  position:relative;z-index:3;pointer-events:none;
+  display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-content:center;
+  padding:70px 0 var(--sheet-r);
+}
+
+.hero-copy{pointer-events:auto;max-width:min(620px,52%)}
+
+.hero h1{font-size: var(--fs-hero-h1);font-weight:800;margin:0 0 20px;color:var(--ink)}
+
+.hero h1 .line{display:block}
+
+/* вторая строка — синий логотипа */
+.hero h1 .grad{
+  background:linear-gradient(98deg,#2A86DE 0%,#2173C8 56%,#1B5FA8 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+
+.hero-sub{
+  color:#33536F;font-size: var(--fs-hero-sub);
+  max-width:43ch;margin-bottom:30px;
+}
+
+.hero-ctas{display:flex;flex-wrap:wrap;gap:13px;align-items:center}
+
+.hero .btn-ghost{
+  color:var(--ink);border:1px solid rgba(19,50,78,.2);background:rgba(255,255,255,.72);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+
+.hero .btn-ghost:hover{background:#fff;box-shadow:var(--shadow-sm)}
+
+/* на телефоне заголовок тянется по ширине экрана, но всегда в одну строку */
+@media (max-width:600px){
+  .hero h1{font-size: var(--fs-hero-h1-mobile)}
+}
+
+@media (max-width:520px){
+  .hero-ctas{flex-direction:column;align-items:center}
+  .hero-ctas .btn{width:min(320px,100%)}
+}
+
+
+.hero-anim{opacity:0;transform:translateY(26px);animation:heroIn .9s var(--ease-out) forwards}
+
+@keyframes heroIn{to{opacity:1;transform:none}}
+
+.hero-anim:nth-child(1){animation-delay:.05s}
+
+.hero-anim:nth-child(2){animation-delay:.15s}
+
+.hero-anim:nth-child(3){animation-delay:.28s}
+
+.hero-anim:nth-child(4){animation-delay:.4s}
+
+.hero-anim:nth-child(5){animation-delay:.5s}
+
+
+@media (max-width:980px){
+  .hero{
+    min-height:calc(100vh + var(--sheet-r));min-height:calc(100dvh + var(--sheet-r));
+    align-items:stretch;
   }
-  .hero > .container { width: 100%; }
-}
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(60% 45% at 75% 28%, var(--brand-glow) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hero__grid {
-  display: grid;
-  grid-template-columns: 1fr 1.05fr;
-  gap: 64px;
-  align-items: center;
-}
-.hero__copy { max-width: 560px; }
-.hero h1 .break { display: block; }
-.hero h1 .accent { color: var(--brand); }
-.hero__lede {
-  margin-top: 22px;
-  font-size: var(--fs-h3);   /* канон .t-subheading (TRIP-165) */
-  color: var(--muted);
-  line-height: 1.55;
-}
-.hero__ctas {
-  display: flex;
-  gap: 12px;
-  margin-top: 32px;
-  flex-wrap: wrap;
-}
-.hero__trust {
-  margin-top: 22px;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  font-size: var(--fs-base);
-  color: var(--muted);
-  flex-wrap: wrap;
-}
-.hero__trust .dot { width: 3px; height: 3px; background: var(--muted-2); border-radius: 50%; display:inline-block; }
-
-.hero__visual { position: relative; min-height: 540px; }
-
-@media (max-width: 980px) {
-  .hero { padding-top: 120px; padding-bottom: 48px; }
-  .hero__grid { grid-template-columns: 1fr; gap: 40px; }
-  .hero__visual { min-height: 460px; }
+  /* сверху только заголовок; телефон с кадра — посередине;
+     подпись и кнопка уходят вниз, под телефон */
+  .hero-grid{align-content:normal;align-items:stretch;text-align:center;padding:clamp(82px,8.7vh,110px) 0 clamp(44px,5.2vh,72px)}
+  .hero-copy{max-width:none;margin-inline:auto;display:flex;flex-direction:column;height:100%}
+  .hero-sub{
+    margin-top:auto;margin-bottom:18px;margin-inline:auto;max-width:none;
+    font-size: var(--fs-hero-sub-mobile);line-height:1.5;color:var(--ink);
+  }
+  .hero-ctas{flex:none;justify-content:center}
+  /* вторая кнопка на телефоне не нужна */
+  .hero .btn-ghost{display:inline-flex;background:#fff;color:var(--ink);border:1px solid rgba(19,50,78,.14)}
+  .hero-scrim{
+    background:
+      linear-gradient(180deg,rgba(var(--hero-veil),.66) 0%,rgba(var(--hero-veil),.42) 12%,rgba(var(--hero-veil),.1) 20%,rgba(var(--hero-veil),0) 28%,rgba(var(--hero-veil),0) 60%,rgba(var(--hero-veil),.3) 72%,rgba(var(--hero-veil),.72) 84%,rgba(255,255,255,.88) 100%);
+  }
 }
 
-/* Floating bits around the hero mockup */
-.float {
-  position: absolute;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card);
-  padding: 12px 14px;
-  animation: floaty 6s ease-in-out infinite;
-}
-.float--budget { top: 56px; left: -18px; }
-.float--chat { bottom: 64px; right: -12px; animation-delay: -2s; }
-.float--pins { top: 10px; right: 30px; animation-delay: -4s; padding: 8px 10px; }
-@media (max-width: 600px) {
-  .float--budget { left: 4px; }
-  .float--chat { right: 4px; }
-  .float--pins { right: 8px; }
+/* ============================================================
+   PAIN — life before Triplanio (white sheet over hero)
+============================================================ */
+.pain{background:var(--white)}
+
+.pain .section-head{max-width:640px}
+
+.pain-stage{position:relative;max-width:1000px;margin-inline:auto}
+
+.scrap-strip{position:absolute;inset:-6px;z-index:3;pointer-events:none}
+
+@media (min-width:760px){.scrap-strip{height:clamp(210px,26vw,240px)}}
+
+.scrapv3{
+  position:absolute;background:#fff;border-radius: var(--r-md);
+  box-shadow:0 6px 18px rgba(16,32,60,.10);border:1px solid rgba(11,44,84,.06);
+  opacity:0;transform:translateY(30px) rotate(0deg);
+  will-change:transform;
 }
 
-@keyframes floaty {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+.msg-row{display:flex;align-items:center;gap:11px;padding:11px 14px}
+
+.msg-row .mic{width:32px;height:32px;flex:none}
+
+.msg-row .mbody{min-width:0;flex:1}
+
+.msg-row .mtop{display:flex;justify-content:space-between;gap:8px;font-weight:600;font-size: var(--fs-small)}
+
+.msg-row .mtop time{color:#9AA3B5;font-size: var(--fs-tiny);font-weight:400;flex:none}
+
+.msg-row .mprev{font-size: var(--fs-caption);color:#66738D;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
+
+.msg-row .ftag{font-size: var(--fs-micro);font-weight:700;background:#F1F3F6;border-radius: var(--r-xs);padding:1px 5px;color:#B04A3A;flex:none}
+
+/* site-base-exempt: badge — база не нужна: имя в разметке только внутри .msg-row,
+   scoped-правило ниже перебивает app-базу по специфичности (ревью TRIP-460 п.3) */
+.msg-row .badge{flex:none;color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size: var(--fs-tiny);font-weight:700;padding:0 5px}
+
+.p1{left:12%;top:2%;width:min(300px,34%);z-index:4;--rot:-5deg;--cx:220px;--cy:250px}
+
+.p2{right:10%;top:6%;width:min(300px,34%);z-index:4;--rot:4deg;--cx:-220px;--cy:235px}
+
+.p3{left:17%;top:42%;width:min(250px,28%);z-index:5;--rot:-4deg;--cx:150px;--cy:140px}
+
+.p4{right:13%;top:48%;width:min(250px,28%);z-index:5;--rot:5deg;--cx:-160px;--cy:130px}
+
+.p5{left:37%;top:19%;width:min(260px,30%);z-index:6;--rot:2deg;--cx:-10px;--cy:210px}
+
+@media (max-width:759px){
+  .p1{left:2%;top:3%;width:min(230px,64%);--cx:110px;--cy:170px}.p2{right:2%;top:9%;width:min(215px,60%);--cx:-110px;--cy:160px}.p3{left:7%;top:43%;width:min(198px,55%);--cx:80px;--cy:95px}.p4{right:5%;top:50%;width:min(185px,52%);--cx:-90px;--cy:85px}.p5{display:none}
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .float { animation: none; }
+.bpass{overflow:hidden}
+
+.bpass .bp-head{background:#10203C;color:#fff;padding:10px 13px}
+
+.bpass .bp-route{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--font-display);font-weight:700;font-size: var(--fs-body)}
+
+.bpass .bp-route span{opacity:.7;font-size: var(--fs-caption);font-weight:500}
+
+.bpass .bp-meta{font-size: var(--fs-micro);opacity:.7;margin-top:3px;letter-spacing:.09em}
+
+.bpass .bp-code{height:24px;margin:9px 13px 4px;background:repeating-linear-gradient(90deg,#10203C 0 2px,transparent 2px 5px,#10203C 5px 6px,transparent 6px 10px)}
+
+.bpass .bp-file{font-size: var(--fs-micro);color:#9AA3B5;padding:0 13px 9px}
+
+.snote{background:#FFF7DE;padding:11px 14px}
+
+.snote b{display:block;font-size: var(--fs-caption);color:#8A6A1E;border-bottom:1px solid rgba(138,106,30,.2);padding-bottom:6px;margin-bottom:7px}
+
+.snote p{font-size: var(--fs-caption);color:#6E6142;line-height:1.7}
+
+.ssheet{overflow:hidden;font-size: var(--fs-caption)}
+
+.ssheet .sh-row{display:grid;grid-template-columns:30px 1fr 66px 56px}
+
+.ssheet .sh-row>div{padding:6px 9px;border-top:1px solid #E4E7EC;border-right:1px solid #E4E7EC;white-space:nowrap;overflow:hidden}
+
+.ssheet .sh-row>div:last-child{border-right:none}
+
+.ssheet .sh-row.hd>div{background:#EDF2ED;border-top:none;font-weight:700;color:#3E7A3E}
+
+/* site-base-exempt: err — имя только внутри .ssheet, scoped-правило перебивает app (TRIP-460 п.3) */
+.ssheet .err{color:#B04A3A;font-weight:600}
+
+.ssheet .idx{color:#9AA3B5;font-size: var(--fs-micro)}
+
+.pain-divider{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  max-width:1000px;margin:28px auto 20px;color:var(--muted);font-size: var(--fs-body);font-weight:600;text-align:center;
 }
 
-/* ---------- App mockup (Timeline) ---------- */
-.app-frame {
-  position: relative;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  box-shadow: var(--shadow-pop);
-  overflow: hidden;
-  animation: floatBig 7s ease-in-out infinite;
-}
-@keyframes floatBig {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .app-frame { animation: none; }
-}
-.app-frame__bar {
-  display: flex; align-items: center; gap: 6px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--line-2);
-  background: linear-gradient(#fdfdfe, #f7f8fa);
-}
-.app-frame__bar .dot { width: 10px; height: 10px; border-radius: 50%; }
-.app-frame__bar .dot--r { background: #ff5f57; }
-.app-frame__bar .dot--y { background: #febc2e; }
-.app-frame__bar .dot--g { background: #28c840; }
-.app-frame__bar .url {
-  margin-left: 14px;
-  font-size: var(--fs-meta);
-  color: var(--muted);
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 4px 12px;
-  flex: 1;
-  max-width: 360px;
-  text-align: center;
-}
-.app-frame__body {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  min-height: 460px;
-}
-.app-sidebar {
-  border-right: 1px solid var(--line-2);
-  padding: 18px 14px;
-  background: #fbfcfd;
-}
-.app-sidebar__group {
-  color: var(--muted-2);
-  margin: 14px 6px 6px;
-}
-.app-sidebar__item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  color: var(--ink-2);
-  font-weight: 500;
-}
-.app-sidebar__item.is-active {
-  background: var(--brand-soft);
-  color: var(--brand);
-}
-.app-sidebar__item .swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-2); }
-.app-sidebar__item .swatch--lisbon { background: var(--brand); }
-.app-sidebar__item .swatch--porto { background: var(--warm); }
-.app-sidebar__item .swatch--bcn { background: #1f8a5b; }
+.pain-divider::before,.pain-divider::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(11,44,84,.16))}
 
-.app-main { padding: 18px 22px; }
-.app-main__head {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 14px;
-}
-.app-main__subtitle { color: var(--muted); }
-.app-tabs { display: inline-flex; padding: 3px; background: var(--wash); border-radius: 8px; gap: 2px; }
-.app-tab { padding: 5px 10px; color: var(--muted); border-radius: 6px; }
-.app-tab.is-active { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(15,23,42,.08); }
+.pain-divider::after{background:linear-gradient(90deg,rgba(11,44,84,.16),transparent)}
 
-.tl { position: relative; padding-left: 90px; }
-.tl::before {
-  content: "";
-  position: absolute;
-  left: 75px;
-  top: 4px;
-  bottom: 4px;
-  width: 2px;
-  background: var(--line);
-  border-radius: 2px;
-}
-.tl__day {
-  position: relative;
-  padding: 6px 0 14px;
-}
-.tl__day::before {
-  content: attr(data-day);
-  position: absolute;
-  left: -90px;
-  top: 8px;
-  width: 64px;
-  font-size: var(--fs-micro);
-  color: var(--muted);
-  font-weight: 600;
-  letter-spacing: .02em;
-  text-align: right;
-}
-.tl__day::after {
-  content: "";
-  position: absolute;
-  left: -19px;
-  top: 14px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid var(--brand);
-}
-.tl__day--accent::after { border-color: var(--warm); }
-.tl__day--green::after { border-color: var(--success); }
+.pain-divider svg{color:var(--brand);flex:none}
 
-.tl-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-}
-.tl-card .icon { color: var(--muted); flex: 0 0 auto; }
-.tl-card .meta {
-  margin-left: auto;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.tl-card strong { font-weight: 600; color: var(--ink); }
-.tl-card .tag { background: var(--brand-soft); color: var(--brand); padding: 2px 8px; border-radius: 999px; }
-.tl-card .tag--warm { background: var(--warm-tint); color: var(--warm); }
-.tl-card .tag--green { background: rgba(31,138,91,.10); color: var(--success); }
+.pain-divider .dv-brand{display:inline-flex;align-items:center;gap:.3em;white-space:nowrap}
 
-@media (max-width: 720px) {
-  .app-frame__body { grid-template-columns: 1fr; }
-  .app-sidebar { display: none; }
-  .tl { padding-left: 78px; }
-  .tl__day::before { left: -78px; width: 56px; }
-  .tl::before { left: 63px; }
+.pain-divider .dv-name{color:var(--brand-deep)}
+   /* 14px: крупным .accent хватает 3:1, этому — нет */
+.dv-logo{width:1.05em;height:1.05em;border-radius: var(--r-xs);flex:none}
+
+.appwin{z-index:1;max-width:1000px}
+
+.aw-screen{background:#fff}
+
+.aw-head{display:flex;align-items:center;gap:12px;padding:15px 22px;border-bottom:1px solid #EEF3F9}
+
+.aw-head .logo{width:32px;height:32px;border-radius: var(--r-sm)}
+
+.aw-head b{font-family:var(--font-display);font-size: var(--fs-lead);display:block;line-height:1.25}
+
+.aw-head small{color:var(--muted);font-size: var(--fs-tiny);letter-spacing:.08em}
+
+.aw-head .avs{display:flex;margin-left:auto}
+
+/* color больше не белый по умолчанию — контраст держит инлайн (JSX) на каждом
+   инстансе, tint/text-пара под его цвет (ревью TRIP-460); белая обводка (border)
+   декоративная, текста не несёт, не тронута */
+.aw-head .avs span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size: var(--fs-tiny);font-weight:700;border:2px solid #fff}
+
+.aw-head .avs span + span{margin-left:-8px}
+
+.aw-grid{display:grid;grid-template-columns:1.08fr 1fr}
+
+.aw-col{padding:16px 22px 20px;min-width:0;display:flex;flex-direction:column}
+
+.aw-col > [data-step]:first-child{display:flex;flex-direction:column;flex:1;min-height:0}
+
+.aw-col + .aw-col{border-left:1px solid #EEF3F9}
+
+/* 760 — тот же порог, где браузерная рамка сменяется телефоном: иначе в 760–840 получается одноколоночный «узкий длинный браузер» */
+@media (max-width:760px){.aw-grid{grid-template-columns:1fr}.aw-col + .aw-col{border-left:none;border-top:1px solid #EEF3F9}}
+
+.aw-label{font-size: var(--fs-tiny);font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+
+.aw-row{display:flex;align-items:baseline;gap:10px}
+
+.aw-row .aw-more{margin-left:auto;font-size: var(--fs-small);font-weight:600;color:var(--brand-deep)}
+
+.aw-row .aw-total{margin-left:auto;font-family:var(--font-display);font-weight:800;font-size: var(--fs-h3)}
+
+.aw-map{position:relative;border-radius: var(--r-md);flex:1;min-height:clamp(150px,20vw,196px);overflow:hidden;margin-top:10px;background:#CFE4F7}
+
+.aw-map svg,.bb-map svg,.mapviz svg{position:absolute;inset:0;width:100%;height:100%}
+
+.aw-map,.bb-map{background:#CFE4F7}
+
+/* .aw-coast — NOT prototype CSS (TRIP-460 §5): the prototype used a Mapbox
+   Static Images API raster with an embedded token; replaced with a decorative
+   hand-drawn coastline under the kept route/pin SVG. Own class, own rule. */
+.aw-coast{fill:#DFF0FD}
+
+.aw-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:auto;padding-top:12px}
+
+.aw-stat{background:var(--mist);border-radius: var(--r-sm);padding:10px 6px;text-align:center}
+
+.aw-stat b{font-family:var(--font-display);font-size: var(--fs-lead-lg);display:block;letter-spacing:-.02em;white-space:nowrap}
+
+.aw-stat span{font-size: var(--fs-tiny);color:var(--muted)}
+
+.aw-bbar{height:8px;border-radius:99px;background:#EDF1F9;margin:10px 0 12px;overflow:hidden;display:flex}
+
+.aw-bbar span{height:100%}
+
+.aw-brows{display:grid;gap:8px}
+
+.aw-brow{display:flex;align-items:center;gap:9px;font-size: var(--fs-small);font-weight:500}
+
+.aw-brow i{width:9px;height:9px;border-radius: var(--r-xs);flex:none}
+
+.aw-brow em{margin-left:auto;font-style:normal;font-weight:600;font-size: var(--fs-small)}
+
+.aw-ready{margin-top:15px}
+
+.aw-ready > .aw-row{margin-bottom:9px}
+
+.aw-ready-n{margin-left:auto;font-size: var(--fs-caption);font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.aw-ready-n b{font-family:var(--font-display);font-size: var(--fs-body-lg);color:var(--mint-text)}
+
+.aw-ready .stat-rows{gap:5px;margin-top:0}
+
+.aw-ready .stat-row{font-size: var(--fs-caption);padding:6px 10px;gap:8px;border-radius: var(--r-sm)}
+
+.aw-ready .stat-row .pill{font-size: var(--fs-micro);padding:2px 7px}
+
+[data-step]{opacity:0;transform:translateY(14px)}
+
+@keyframes stepIn{to{opacity:1;transform:none}}
+
+.in .appwin{animation:winPop .5s var(--ease-out) 2.15s both}
+
+@keyframes winPop{0%{transform:scale(.985)}60%{transform:scale(1.005)}100%{transform:scale(1)}}
+
+.aw-route{clip-path:inset(-6px -6px -6px 100%)}
+
+
+/* ---- pain sticky-scroll scrub (redesigned choreography) ---- */
+.pain.scrub .pain-pin{height:var(--pin-h,150vh);position:relative}
+
+.pain.scrub{padding-top:clamp(24px,3vh,44px)}
+
+.pain.scrub .pain-pin-inner{position:sticky;top:var(--pin-top,0px);height:auto;padding:0;display:flow-root}
+
+/* Заголовок закреплён ВМЕСТЕ со сценой: он внутри .pain-pin-inner, поэтому
+   висит на месте всю анимацию. Ширину и левый край НЕ трогаем — заголовок
+   принадлежит сетке страницы (.wrap) и стоит по одной линии со всеми
+   остальными заголовками; сцена уже её и живёт по своим правилам.
+   Ужимаем только нижний отступ: закреплённой композиции нужна высота. */
+.pain.scrub .section-head{margin-bottom:clamp(16px,2.4vh,32px)}
+
+/* Сцена масштабируется под остаток экрана (--fit), её layout-высота компенсируется
+   (--needpx), поэтому под закреплением не остаётся белой полосы. */
+.pain.scrub .pain-stage{position:relative;width:min(1000px,94vw);max-width:none;margin:0 auto;flex:none;transform:scale(var(--fit,1));transform-origin:top center;margin-bottom:calc(var(--needpx,0px) * (var(--fit,1) - 1))}
+
+/* chaos starts directly UNDER the heading, then sinks downward as it collapses */
+/* Shared arrival progress. Declared on the STAGE, because that is where
+   the scrub writes --p — custom properties inherit down, not up, so
+   putting this on the section left --rpe pinned at 0 and the window never
+   moved. .appwin is a descendant, so it picks --rpe up from here. */
+.pain.scrub .pain-stage{--rp:clamp(0, calc((var(--p,0) - .02)/.94), 1);--rpe:calc(1 - (1 - var(--rp)) * (1 - var(--rp)))}
+
+/* The pile sits at the very TOP of the stage — nothing above it. Centring
+   comes from --pin-top (frame centre minus half the pile), NOT from an
+   offset inside the stage: an offset would park empty stage above the
+   cards, and during the entry phase that empty band lands right under the
+   paragraph. Measured: 143px of dead stage + 44px head margin = the 187px
+   hole. */
+.pain.scrub .scrap-strip{
+  animation:none!important;opacity:1;
+  top:0;bottom:auto;height:clamp(200px,25vw,236px);
+  --c:clamp(0, calc((var(--p,0) - .04)/.62), 1);
+  transform:translateY(calc(var(--c) * 96px));
+  will-change:transform;
 }
 
-/* ---------- Problem section ---------- */
-.problem {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 64px;
-  align-items: center;
-}
-.problem__handoff {
-  margin-top: 56px;
-  text-align: center;
-  color: var(--brand);
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);   /* канон .t-subheading (TRIP-165) */
-  letter-spacing: -0.02em;
-  font-weight: 500;
-}
-.collage {
-  position: relative;
-  min-height: 380px;
-}
-.collage__card {
-  position: absolute;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
-  padding: 14px;
-}
-.collage__card--mail { top: 0; left: 4%; width: 70%; transform: rotate(-3deg); }
-.collage__card--notes { bottom: 16%; right: 0; width: 60%; transform: rotate(2.5deg); background: #fffceb; border-color: #f1e6b8; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-.collage__card--tabs { bottom: 0; left: 6%; width: 78%; transform: rotate(-1.5deg); padding: 0; }
-.tabstrip { display: flex; gap: 4px; padding: 8px 10px; background: #f4f6f9; border-radius: 11px 11px 0 0; }
-.tabstrip .t {
-  flex: 1;
-  height: 22px;
-  background: #fff;
-  border-radius: 6px 6px 0 0;
-  border: 1px solid var(--line);
-  border-bottom: 0;
-  color: var(--muted);
-  padding: 4px 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tabstrip .t:nth-child(2) { background: var(--wash); }
-.tabstrip .t:nth-child(3) { background: var(--wash); }
-.tabsbody { padding: 14px; color: var(--muted); }
+/* The pile descends as a block (96px above); on top of that each card
+   converges on the pile's own centre so they gather into one clump before
+   the rising window swallows them:
+   cy = stripCentre - (cardTop + cardHeight/2). */
+.pain.scrub .p1{--cy:74px}
 
-.mailrow { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line-2); }
-.mailrow:last-child { border: 0; }
-.mailrow .avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--wash); flex: 0 0 auto; font-size: var(--fs-nano); display: flex; align-items: center; justify-content: center; color: var(--muted); font-weight: 700; }
-.mailrow .lines { flex: 1; min-width: 0; }
-.mailrow .from { color: var(--ink); }
-.mailrow .subj { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pain.scrub .p2{--cy:65px}
 
-@media (max-width: 880px) {
-  .problem { grid-template-columns: 1fr; gap: 32px; }
+.pain.scrub .p3{--cy:-51px}
+
+.pain.scrub .p4{--cy:-48px}
+
+.pain.scrub .p5{--cy:28px}
+
+@media (max-width:759px){
+  .pain.scrub .p1{--cy:55px}
+  .pain.scrub .p2{--cy:46px}
+  .pain.scrub .p3{--cy:-56px}
+  .pain.scrub .p4{--cy:-53px}
 }
 
-/* ---------- Feature grid ---------- */
-.section__head {
-  max-width: 720px;
-  margin: 0 auto 56px;
-  text-align: center;
-}
-.section__head--left { margin-left: 0; text-align: left; }
-.section__head h2 { margin-top: 14px; }
-.section__head p { margin-top: 14px; }
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-.features .card:nth-child(4) { grid-column: 1 / span 1; }
-.features .card:nth-child(5) { grid-column: 2 / span 2; }
-
-@media (max-width: 980px) {
-  .features { grid-template-columns: repeat(2, 1fr); }
-  .features .card:nth-child(4) { grid-column: auto; }
-  .features .card:nth-child(5) { grid-column: 1 / span 2; }
-}
-@media (max-width: 640px) {
-  .features { grid-template-columns: 1fr; }
-  .features .card:nth-child(5) { grid-column: auto; }
+/* cards drop down + inward (collapse together into the rising interface), shrink, then fade */
+.pain.scrub .scrapv3{
+  animation:none!important;
+  --c:clamp(0, calc((var(--p,0) - .04)/.46), 1);
+  --e:calc(var(--c) * var(--c) * (3 - 2 * var(--c)));
+  opacity:calc(1 - clamp(0, calc((var(--p,0) - .36)/.14), 1));
+  transform:
+    translate(calc(var(--cx,0px) * var(--e)), calc(var(--cy,0px) * var(--e)))
+    rotate(calc(var(--rot,0deg) * (1 - var(--e))))
+    scale(calc(1 - .5 * var(--e)));
 }
 
-.card {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  padding: var(--card-pad);
-  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-}
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
-  border-color: #dbe1ec;
-}
-.card__icon {
-  width: 42px; height: 42px;
-  border-radius: 11px;
-  background: var(--brand-soft);
-  color: var(--brand);
-  display: inline-flex; align-items: center; justify-content: center;
-  margin-bottom: 18px;
-}
-.card__icon--warm { background: var(--warm-tint); color: var(--warm); }
-.card h3 { margin-bottom: 8px; }
-.card p { color: var(--muted); margin: 0; }
-
-/* Feature card visuals for the wide last card */
-.card--wide { display: grid; grid-template-columns: 1fr 1.1fr; align-items: center; gap: 24px; }
-.card--wide .preview {
-  background: linear-gradient(180deg, #f7f9fc, #eef2f9);
-  border: 1px solid var(--line-2);
-  border-radius: 12px;
-  padding: 14px;
-}
-@media (max-width: 700px) {
-  .card--wide { grid-template-columns: 1fr; }
+/* divider fades in early so the middle of the animation is never empty */
+.pain.scrub .pain-divider{
+  --d:clamp(0, calc((var(--p,0) - .10)/.16), 1);
+  opacity:var(--d);
+  transform:translateY(calc(-8px * (1 - var(--d))));
 }
 
-/* ---------- How it works ---------- */
-.steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
-  position: relative;
-}
-.steps::before {
-  content: "";
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 28px;
-  height: 1px;
-  background: repeating-linear-gradient(to right, var(--line) 0 6px, transparent 6px 12px);
-}
-.step { position: relative; }
-.step__num {
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: #fff;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-soft);
-  color: var(--brand);
-  display: inline-flex; align-items: center; justify-content: center;
-  position: relative;
-  z-index: 1;
-}
-.step h3 { margin: 20px 0 8px; }
-.step p { color: var(--muted); margin: 0 0 16px; }
-.step__thumb {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: var(--shadow-soft);
+/* app window RISES UP from below to meet the collapsing chaos (never pops from nowhere) */
+/* The interface waits BELOW the pile — visible from the first frame, but
+   asleep: desaturated, blocks empty. As the pile falls, it rises to meet
+   it, and wakes as the cards land in it. --rise is measured in JS so the
+   window opens just under the pile whatever the viewport. */
+.pain.scrub .appwin{
+  animation:none!important;
+  opacity:1;
+  transform:translateY(calc(var(--rise,340px) * (1 - var(--rpe,0))));
+  transform-origin:center top;
 }
 
-@media (max-width: 880px) {
-  .steps { grid-template-columns: 1fr; gap: 28px; }
-  .steps::before { display: none; }
+.pain.scrub .aw-grid{filter:saturate(.05);transition:filter .9s var(--ease-out)}
+
+.pain.scrub.filled .aw-grid{filter:saturate(1)}
+
+.pain.scrub .aw-head > div,.pain.scrub .aw-head .avs{opacity:0}
+
+.pain.scrub.filled .aw-head > div{animation:stepIn .5s var(--ease-out) both;animation-delay:.06s}
+
+.pain.scrub.filled .aw-head .avs{animation:stepIn .5s var(--ease-out) both;animation-delay:.2s}
+
+/* Empty placeholders while the window travels; once it lands they fill on
+   a clock, one after another — not all at once at some scroll offset. */
+.pain.scrub [data-step]{animation:none!important;opacity:.1;transform:none}
+
+.pain.scrub.filled [data-step]{
+  animation:stepIn .55s var(--ease-out) both!important;
+  /* !important обязателен: шорткод выше выставляет animation-delay:0s!important и без него съедает задержку — каскад играл разом */
+  animation-delay:calc(.12s + var(--s,0) * .17s)!important;
 }
 
-/* ---------- Deep dives ---------- */
-.deep {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 80px;
-  padding: 64px 0;
-}
-.deep + .deep { border-top: 1px solid var(--line-2); }
-.deep--reverse .deep__copy { order: 2; }
-.deep__copy h3 { margin: 14px 0 16px; font-size: var(--fs-h2); }   /* канон .t-heading (TRIP-165) */
-.deep__copy p { color: var(--muted); font-size: var(--ctl-fs); line-height: 1.6; }   /* канон .t-label */
-.deep__highlights {
-  list-style: none;
-  margin: 22px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-}
-.deep__highlights li {
-  display: flex; gap: 10px;
-  align-items: flex-start;
-  color: var(--ink-2);
-}
-.deep__highlights .check {
-  flex: 0 0 auto;
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: rgba(31,138,91,.12);
-  color: var(--success);
-  display: inline-flex; align-items: center; justify-content: center;
-  margin-top: 2px;
+/* window internals in scrub: no wall-clock .in delays — one cascade from .filled */
+.pain.scrub .aw-route{animation:none!important}
+
+.pain.scrub .aw-pin{animation:none!important;opacity:0}
+
+.pain.scrub .aw-bbar span{animation:none!important;transform:scaleX(0)}
+
+.pain.scrub.filled .aw-route{animation:routeDraw .8s ease-out both!important;animation-delay:.3s!important}
+
+.pain.scrub.filled .aw-pin{animation:pinPop .45s var(--ease-out) both!important;animation-delay:calc(.55s + var(--p,0)*.15s)!important}
+
+.pain.scrub.filled .aw-bbar span{animation:growX .55s var(--ease-out) both!important}
+
+.pain.scrub.filled .aw-bbar span:nth-child(1){animation-delay:.4s!important}
+
+.pain.scrub.filled .aw-bbar span:nth-child(2){animation-delay:.5s!important}
+
+.pain.scrub.filled .aw-bbar span:nth-child(3){animation-delay:.6s!important}
+
+.pain.scrub.filled .aw-bbar span:nth-child(4){animation-delay:.7s!important}
+
+
+.pain:not(.scrub) .scrap-strip{display:none}
+
+.pain:not(.scrub) .pain-divider{display:none}
+
+.pain:not(.scrub) .appwin{opacity:1;transform:none}
+
+.pain:not(.scrub) [data-step]{opacity:1;transform:none;animation:none}
+
+.in .aw-route{animation:routeDraw .9s ease-out both;animation-delay:2.75s}
+
+@keyframes routeDraw{to{clip-path:inset(-6px)}}
+
+.aw-pin{opacity:0;transform-origin:center;transform-box:fill-box}
+
+.in .aw-pin{animation:pinPop .45s var(--ease-out) both;animation-delay:calc(2.85s + var(--p,0)*.18s)}
+
+@keyframes pinPop{0%{opacity:0;transform:scale(.3)}70%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+
+.aw-bbar span{transform:scaleX(0);transform-origin:left}
+
+/* Мобилка: маршрут/точки/бары окна приложения показываем СТАТИЧНО в финальном
+   состоянии keyframe'ов. Их анимирует либо scrub (только ≥760), либо .in-reveal,
+   но .appwin — не .rv, поэтому на телефоне не срабатывает НИ ОДИН триггер: маршрут
+   оставался клипнут на 100%, точки opacity:0, сегменты бюджета scaleX(0) — карта
+   «Боли» выглядела пустой (ревью TRIP-460 V6). Значения = концы routeDraw/pinPop/growX. */
+@media (max-width:760px){
+  .aw-route{clip-path:inset(-6px)}
+  .aw-pin{opacity:1}
+  .aw-bbar span{transform:scaleX(1)}
 }
 
-.deep__visual {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-  position: relative;
+.in .aw-bbar span{animation:growX .55s var(--ease-out) both}
+
+.in .aw-bbar span:nth-child(1){animation-delay:3.35s}
+
+.in .aw-bbar span:nth-child(2){animation-delay:3.47s}
+
+.in .aw-bbar span:nth-child(3){animation-delay:3.59s}
+
+.in .aw-bbar span:nth-child(4){animation-delay:3.71s}
+
+@keyframes growX{to{transform:scaleX(1)}}
+
+/* appwin frames: browser on desktop, phone on mobile */
+.aw-browserbar{display:flex;align-items:center;gap:10px;background:#F1F6FB;border-bottom:1px solid rgba(11,44,84,.07);padding:10px 16px}
+
+.wdots{display:flex;gap:5px}
+
+.wdots i{width:9px;height:9px;border-radius:50%;background:#D6E2EE}
+
+.aw-browserbar .aw-url{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#fff;border:1px solid rgba(11,44,84,.1);border-radius:99px;padding:6px 14px;font-size: var(--fs-caption);color:var(--muted);max-width:380px;margin-inline:auto}
+
+.aw-browserbar .aw-url svg{color:var(--mint);flex:none}
+
+.aw-phonebar{display:none}
+
+@media (max-width:760px){
+  .aw-browserbar{display:none}
+  .aw-phonebar{display:grid;place-items:center;padding:9px 0 3px;position:relative;z-index:2}
+  .aw-phonebar i{width:82px;height:23px;border-radius:99px;background:#05070a}
+  /* Плотная раскладка экрана: тот же контент, но пропорции корпуса — как у настоящего
+     телефона (~19.5:9). Без этого дашборд десктопной плотности растягивает корпус. */
+  .aw-head{padding:11px 14px;gap:10px}
+  .aw-head b{font-size: var(--fs-body-lg)}
+  .aw-head small{font-size: var(--fs-micro)}
+  .aw-head .logo{width:28px;height:28px}
+  .aw-head .avs span{width:24px;height:24px;font-size: var(--fs-micro)}
+  .aw-col{padding:12px 14px 14px}
+  .aw-col:last-child{padding-bottom:20px}
+  .aw-map{min-height:116px;margin-top:8px}
+  .aw-stats{gap:6px;padding-top:10px}
+  .aw-stat{padding:5px 4px;border-radius: var(--r-sm)}
+  .aw-stat b{font-size: var(--fs-body)}
+  .aw-stat span{font-size: var(--fs-micro)}
+  .aw-row .aw-total{font-size: var(--fs-h4)}
+  .aw-bbar{margin:8px 0 9px}
+  .aw-brows{gap:5px}
+  .aw-brow{font-size: var(--fs-caption)}
+  .aw-ready{margin-top:11px}
+  .aw-ready > .aw-row{margin-bottom:7px}
+  .aw-ready .stat-rows{gap:4px}
+  .aw-ready .stat-row{font-size: var(--fs-caption);padding:3px 9px}
 }
 
-@media (max-width: 980px) {
-  .deep { grid-template-columns: 1fr; gap: 36px; padding: 48px 0; }
-  .deep--reverse .deep__copy { order: 0; }
+/* stylized map shared bits */
+.map-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+.map-cred{position:absolute;right:7px;bottom:5px;z-index:2;font-size: var(--fs-micro);line-height:1;color:rgba(19,50,78,.6);background:rgba(255,255,255,.6);padding:2px 6px;border-radius: var(--r-xs);pointer-events:none}
+
+.npin-t{font-family:var(--font-display);font-size: var(--fs-caption);font-weight:800;fill:var(--brand);text-anchor:middle}
+
+
+/* ============================================================
+   AI SCAN / CHIP (recognize)
+============================================================ */
+.email-card{position:relative;overflow:hidden}
+
+.email-card .scan{position:absolute;left:0;right:0;top:-22%;height:54px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(33,115,200,.15) 55%,transparent);
+  border-bottom:1.5px solid rgba(33,115,200,.4);
+  animation:scan 7s ease-in-out infinite}
+
+@keyframes scan{0%,4%{top:-22%;opacity:1}34%{top:112%;opacity:1}35%,100%{top:112%;opacity:0}}
+
+/* one synced 7s cycle: beam passes a line → it lights up → field lands in the card */
+.hl{border-radius: var(--r-xs);padding:0 3px;font-weight:500;white-space:nowrap;animation:hlCycle 7s infinite}
+
+.hl-b{--hbg:rgba(33,115,200,.13);--hcol:#185EA8;--hline:rgba(33,115,200,.5)}
+
+.hl-o{--hbg:rgba(255,158,74,.16);--hcol:#A85A14;--hline:rgba(255,158,74,.6);animation-delay:.32s}
+
+.hl-g{--hbg:rgba(46,194,126,.13);--hcol:#177A4D;--hline:rgba(46,194,126,.55);animation-delay:.55s}
+
+@keyframes hlCycle{
+  0%,19%{background:transparent;box-shadow:none;color:inherit;font-weight:500}
+  22%,88%{background:var(--hbg);box-shadow:inset 0 -2px 0 var(--hline);color:var(--hcol);font-weight:600}
+  93%,100%{background:transparent;box-shadow:none;color:inherit;font-weight:500}
 }
 
-/* Map visual */
-.mapviz {
-  position: relative;
-  height: 320px;
+.parsed-card .pfield{animation:fieldCycle 7s infinite}
+
+.parsed-card .pfield:nth-child(2){animation-delay:.12s}
+
+.parsed-card .pfield:nth-child(3){animation-delay:.24s}
+
+.parsed-card .pfield:nth-child(4){animation-delay:.36s}
+
+.parsed-card .pfield:nth-child(5){animation-delay:.48s}
+
+@keyframes fieldCycle{
+  0%,27%{opacity:0;transform:translateY(9px)}
+  33%,88%{opacity:1;transform:none}
+  93%,100%{opacity:0;transform:translateY(9px)}
+}
+
+.pcheck{animation:checkCycle 7s infinite}
+
+@keyframes checkCycle{
+  0%,38%{opacity:0;transform:translateY(6px)}
+  44%,88%{opacity:1;transform:none}
+  93%,100%{opacity:0;transform:translateY(6px)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .email-card .scan{display:none}
+  .hl,.parsed-card .pfield,.pcheck{animation:none!important}
+  .hl{background:var(--hbg);box-shadow:inset 0 -2px 0 var(--hline);color:var(--hcol)}
+  .parsed-card .pfield,.pcheck{opacity:1;transform:none}
+}
+
+.ai-node{display:flex;flex-direction:column;align-items:center}
+
+.ai-node .beam{width:2px;height:22px;background:linear-gradient(rgba(33,115,200,.5),transparent)}
+
+.ai-node .beam.up{background:linear-gradient(transparent,rgba(33,115,200,.5))}
+
+.ai-chip{display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border-radius:99px;
+  /* Градиент и белый текст — как в макете. Сырые тона макета (#2380D6 -> #7A5CF0)
+     дают белому 4.09 и 4.55, поэтому оба углублены на 15% (#1D6CB5 -> #674ECC):
+     контраст 5.43 и 5.93, оттенок и направление градиента сохранены. Плоский
+     violet-tint, стоявший здесь ради AA, гасил акцент — а это единственный
+     ярлык ИИ на странице, он обязан читаться акцентом. */
+  background:linear-gradient(120deg,#1D6CB5,#674ECC);color:#fff;font-weight:600;font-size: var(--fs-small);
+  box-shadow:0 12px 30px -10px rgba(101,92,240,.55)}
+
+.ai-chip svg{flex:none}
+
+.ai-chip .th{display:inline-flex;gap:3px;margin-left:2px}
+
+.ai-chip .th i{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.9);animation:think 1.2s infinite}
+
+.ai-chip .th i:nth-child(2){animation-delay:.2s}
+
+.ai-chip .th i:nth-child(3){animation-delay:.4s}
+
+@keyframes think{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+.cdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:1px}
+
+
+/* ============================================================
+   SHARE mini map + WORLD stats map
+============================================================ */
+.bb-map{position:relative;border-radius: var(--r-sm);height:118px;overflow:hidden;margin-bottom:10px;background:#CFE4F7}
+
+.world-card{background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow-lg)}
+
+.world-svg{width:100%;height:auto;display:block}
+
+.world-svg path{fill:#E2ECF5;stroke:#fff;stroke-width:.45}
+
+.world-svg [data-v]{fill:var(--brand)}
+
+.world-svg [data-v] path{fill:var(--brand)}
+
+.world-foot{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-top:12px;font-size: var(--fs-caption);color:var(--muted)}
+
+.world-foot .lg{display:inline-flex;align-items:center;gap:7px}
+
+.world-foot .lg i{width:9px;height:9px;border-radius:50%}
+
+.trip-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+.trip-chip{display:inline-flex;align-items:center;gap:8px;background:var(--mist);border:1px solid rgba(19,50,78,.07);border-radius:99px;padding:7px 13px;font-size: var(--fs-caption);color:var(--muted)}
+
+.trip-chip b{color:var(--ink);font-weight:600}
+
+.trip-chip .yc{color:var(--muted);font-weight:700}
+
+
+/* ============================================================
+   BENTO (mist band + dot pattern)
+============================================================ */
+.bento-sec{
   background:
-    radial-gradient(circle at 30% 40%, var(--brand-soft), transparent 50%),
-    radial-gradient(circle at 70% 60%, var(--warm-tint), transparent 50%),
-    linear-gradient(#f6f8fc, #eef2f9);
-}
-.mapviz svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.pin {
-  position: absolute;
-  transform: translate(-50%, -100%);
-  display: flex; flex-direction: column; align-items: center;
-}
-.pin__dot {
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: var(--brand);
-  border: 3px solid #fff;
-  box-shadow: 0 2px 6px color-mix(in oklab, var(--brand) 45%, transparent);
-}
-.pin__lbl {
-  margin-top: 6px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 3px 10px;
-  color: var(--ink);
-  white-space: nowrap;
+    radial-gradient(rgba(33,115,200,.09) 1px, transparent 1.4px) 0 0/26px 26px,
+    var(--mist);
 }
 
-/* AI planner chat */
-.chat {
-  padding: 22px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.bubble {
-  max-width: 88%;
-  padding: 12px 14px;
-  border-radius: 14px;
-}
-.bubble--user {
-  align-self: flex-end;
-  background: var(--brand);
-  color: #fff;
-  border-bottom-right-radius: 4px;
-}
-.bubble--ai {
-  align-self: flex-start;
-  background: #f4f6fa;
-  color: var(--ink);
-  border-bottom-left-radius: 4px;
-}
-.bubble--ai .typing {
-  display: inline-flex; gap: 4px;
-}
-.typing span {
-  width: 6px; height: 6px;
-  background: var(--muted-2);
-  border-radius: 50%;
-  animation: blink 1.2s infinite ease-in-out;
-}
-.typing span:nth-child(2) { animation-delay: .15s; }
-.typing span:nth-child(3) { animation-delay: .3s; }
-@keyframes blink { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;align-items:stretch}
 
-.chat .planresult {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--fs-meta);
-}
-.chat .planresult .badge {
-  background: var(--wash);
-  color: var(--muted);
-  padding: 3px 7px;
-  border-radius: 6px;
+.bcard{
+  background:var(--white);border-radius:var(--r-lg);padding:24px;
+  border:1px solid rgba(11,44,84,.07);box-shadow:var(--shadow-sm);
+  overflow:hidden;position:relative;
+  transition:transform .35s var(--ease-out),box-shadow .35s;
 }
 
-/* Concierge / phone */
-.phone {
-  width: 280px;
-  max-width: 100%;
-  margin: 18px auto;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 28px;
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-.phone__head {
-  display: flex; align-items: center; gap: 10px;
-  padding: 14px 16px;
-  background: #f7f9fd;
-  border-bottom: 1px solid var(--line-2);
-}
-.phone__head .av {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--brand), #5b8fff);
-  color: #fff;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: var(--fs-meta); font-weight: 700;
-}
-.phone__head .sub { color: var(--muted); }
-.phone__body { padding: 14px; display: flex; flex-direction: column; gap: 10px; min-height: 320px; }
-.phone .bubble { max-width: 82%; }
-.phone .bubble--ai { background: #eef2f9; }
-.phone .bubble--user { background: var(--brand); color: #fff; }
-.phone__time { text-align: center; color: var(--muted); margin: 4px 0; }
+.bcard:hover,.aud-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg)}
 
-/* Budget chart */
-.budget { padding: 22px; }
-.budget__total {
-  display: flex; align-items: baseline; gap: 12px;
-  margin-bottom: 18px;
-}
-.budget__total .big {
-  font-variant-numeric: tabular-nums;
-}
-.budget__total .delta {
-  color: var(--success);
-  background: rgba(31,138,91,.10);
-  padding: 3px 8px;
-  border-radius: 999px;
-}
-.budget__bar {
-  display: flex;
-  height: 10px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--wash);
-  margin-bottom: 14px;
-}
-.budget__bar i { display: block; height: 100%; }
-.budget__rows { display: grid; gap: 10px; }
-.budget__row { display: grid; grid-template-columns: 14px 1fr auto auto; gap: 10px; align-items: center; }
-.budget__row .sw { width: 10px; height: 10px; border-radius: 50%; }
-.budget__row .ccy { color: var(--muted); font-variant-numeric: tabular-nums; }
-.budget__row .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+.bcard h3{margin:13px 0 7px}
 
-/* ---------- Trust strip ---------- */
-.trust {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-}
-.trust__item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 20px 24px;
-  border-right: 1px solid var(--line);
-  color: var(--ink-2);
-}
-.trust__item:last-child { border-right: 0; }
-.trust__item .icon {
-  width: 36px; height: 36px;
-  border-radius: 10px;
-  background: var(--brand-soft);
-  color: var(--brand);
-  display: inline-flex; align-items: center; justify-content: center;
-  flex: 0 0 auto;
-}
-@media (max-width: 880px) {
-  .trust { grid-template-columns: repeat(2, 1fr); }
-  .trust__item { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  .trust__item:nth-child(2n) { border-right: 0; }
-  .trust__item:nth-child(n+3) { border-bottom: 0; }
+.bcard>p{color:var(--muted);font-size: var(--fs-body);max-width:44ch}
+
+.bic{width:42px;height:42px;border-radius: var(--r-sm);display:grid;place-items:center;color:#fff;background:var(--brand);box-shadow:0 8px 18px -6px rgba(33,115,200,.5)}
+
+.bic.warm{background:var(--sunset);box-shadow:0 8px 18px -6px rgba(255,158,74,.5)}
+
+.bic.mint{background:var(--mint);box-shadow:0 8px 18px -6px rgba(46,194,126,.5)}
+
+.b-map{grid-column:span 8;display:flex;flex-direction:column}
+
+.b-map .mapviz{flex:none;margin-top:18px;position:relative;border-radius:var(--r-md);background:linear-gradient(150deg,#E0EEFA,#EFF6FD);overflow:hidden;aspect-ratio:640/230}
+
+.b-status{grid-column:span 4}
+
+.b-budget{grid-column:span 4}
+
+.b-timeline{grid-column:span 4}
+
+.b-docs{grid-column:span 4}
+
+/* Чипы документов бенто-тайла (ревью TRIP-460, п.3): два правила прототипа были
+   срезаны вместе с блоком Terms/Privacy — вырезка шла по префиксу `.doc*` и
+   захватила правила ЛЕНДИНГА. Без них `.doc-chip` — инлайн-span, а глобальное
+   `svg{display:block}` выносило иконку на строку выше имени файла. */
+.doc-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+
+.doc-chip{display:flex;align-items:center;gap:7px;font-size: var(--fs-small);font-weight:600;background:var(--mist);border:1px solid rgba(11,44,84,.08);border-radius:99px;padding:7px 13px}
+
+@media (max-width:980px){
+  .b-map{grid-column:span 12}
+  .b-status,.b-budget{grid-column:span 6}
+  .b-timeline,.b-docs{grid-column:span 6}
 }
 
-/* ---------- FAQ ---------- */
-.faq {
-  display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
-  gap: 80px;
-  align-items: start;
-}
-.faq__intro h2 { margin-top: 14px; }
-.faq__intro p { color: var(--muted); margin-top: 14px; }
+@media (max-width:640px){.b-status,.b-budget,.b-timeline,.b-docs{grid-column:span 12}.bcard{padding:21px}}
 
-.faq__list { display: grid; gap: 0; border-top: 1px solid var(--line); }
-.faq__item { border-bottom: 1px solid var(--line); }
-.faq__q {
-  width: 100%;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  padding: 22px 0;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 18px;
-  color: var(--ink);
-}
-.faq__q .plus {
-  width: 22px; height: 22px;
-  display: inline-flex; align-items: center; justify-content: center;
-  color: var(--brand);
-  flex: 0 0 auto;
-  transition: transform .2s ease;
-}
-.faq__item.is-open .faq__q .plus { transform: rotate(45deg); }
-.faq__a {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height .25s ease;
-}
-.faq__a-inner {
-  padding: 0 0 22px;
-  color: var(--muted);
-  line-height: 1.65;
-  max-width: 60ch;
-}
-.faq__item.is-open .faq__a { max-height: 360px; }
+.stat-rows{display:grid;gap:8px;margin-top:16px}
 
-@media (max-width: 880px) {
-  .faq { grid-template-columns: 1fr; gap: 24px; }
+.stat-row{display:flex;align-items:center;gap:10px;font-size: var(--fs-body);background:var(--mist);border-radius: var(--r-sm);padding:10px 13px}
+
+.stat-row svg{flex:none}
+
+.stat-row .ok-ic{color:var(--mint-text)}
+
+.stat-row .todo-ic{color:var(--sunset)}
+
+.stat-row s{color:#65727E;text-decoration-color:rgba(11,44,84,.28)}
+
+.stat-row .pill{margin-left:auto;font-size: var(--fs-tiny);font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+
+.pill.done{background:#DCF5E9;color:#177A4D}
+
+.pill.todo{background:#FFEEDD;color:#96500E}
+
+.bud-sum{font-family:var(--font-display);font-size: var(--fs-h2);font-weight:800;margin-top:12px}
+
+.bud-sum small{font-size: var(--fs-small);font-weight:500;color:var(--muted);font-family:var(--font-body)}
+
+.bud-bars{display:grid;gap:9px;margin-top:12px}
+
+/* site-dup-exempt: bud-bar — восьмая коллизия имён (ревью TRIP-460, п.2). В
+   app.css:6269 `.bud-bar` — САМА полоска (height:11px;display:flex;overflow:hidden;
+   margin:12px 0 14px), в прототипе `.bud-bar` — КОНТЕЙНЕР СТРОКИ (метка над треком).
+   Без своей базы app-правило сплющивало строку: .lbl 76×7 вместо 326×20, .track
+   width:0. Прототип базы `.bud-bar` не объявляет (обычный блок) — возвращаем блок,
+   снимая flex/height/overflow/фон/радиус/margin приложения. */
+.bud-bar{display:block;height:auto;overflow:visible;margin:0;background:none;border-radius:0}
+
+.bud-bar .lbl{display:flex;justify-content:space-between;font-size: var(--fs-small);color:var(--muted);margin-bottom:4px}
+
+.bud-bar .track{height:9px;border-radius: var(--r-xs);background:#E3EDF7;overflow:hidden}
+
+.bud-bar .fill{height:100%;border-radius: var(--r-xs);width:0;transition:width 1.1s var(--ease-out)}
+
+.in .bud-bar .fill{width:var(--w)}
+
+.bud-bar:nth-child(1) .fill{background:var(--brand)}
+
+.bud-bar:nth-child(2) .fill{background:var(--sky)}
+
+.bud-bar:nth-child(3) .fill{background:var(--sunset)}
+
+.bud-bar:nth-child(4) .fill{background:var(--mint)}
+
+.tl{margin-top:16px;display:grid;position:relative}
+
+.tl::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:linear-gradient(var(--brand),var(--ice))}
+
+.tl-item{display:flex;gap:14px;padding:7px 0;font-size: var(--fs-small);align-items:center}
+
+.tl-item .nd{width:15px;height:15px;border-radius:50%;border:3px solid var(--brand);background:#fff;flex:none;position:relative;z-index:1}
+
+.tl-item b{color:var(--ink)}
+
+.tl-item span{color:var(--muted)}
+
+
+/* ============================================================
+   RECOGNIZE (white)
+============================================================ */
+.recognize{background:var(--white)}
+
+/* одна двухколоночная сетка на все секции «текст + демо»; ниже 900px каждая схлопывается своим правилом */
+.rec-grid,.tg-grid,.share-grid,.collab-grid,.archive-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(30px,5vw,68px);align-items:center}
+
+.collab-grid,.archive-grid{position:relative}
+
+.email-card,.parsed-card{
+  background:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-lg);
+  border:1px solid rgba(11,44,84,.08);padding:22px;
 }
 
-/* ---------- Final CTA banner ---------- */
-.banner {
+.email-card{font-size: var(--fs-body);color:var(--muted);transform:rotate(-2deg)}
+
+.email-card .eh{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+
+/* было white на #FFB88A→#FF7B54 — 2.56:1/1.68:1 на концах градиента, далеко
+   ниже AA (ревью TRIP-460, контраст); плоский coral-tint/coral-text держит 5.63:1 */
+.email-card .eh .av{width:34px;height:34px;border-radius:50%;background:var(--coral-tint);display:grid;place-items:center;color:var(--coral-text);font-weight:700;font-size: var(--fs-small)}
+
+.email-card .eh b{display:block;color:var(--ink);font-size: var(--fs-body)}
+
+.email-card .eh small{color:var(--muted);font-size: var(--fs-caption)}
+
+.email-card .subject{font-weight:600;color:var(--ink);margin-bottom:6px}
+
+.rec-flow{display:flex;flex-direction:column;gap:14px}
+
+.parsed-card{transform:rotate(1.5deg)}
+
+.parsed-card .ph,.bb-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+
+.parsed-card .ph .pic{width:38px;height:38px;border-radius: var(--r-sm);background:var(--brand);display:grid;place-items:center;color:#fff}
+
+.parsed-card .ph b{font-family:var(--font-display)}
+
+.parsed-card .ph small{display:block;color:var(--muted);font-size: var(--fs-caption)}
+
+.pfields{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+.pfield{background:var(--mist);border-radius: var(--r-sm);padding:9px 12px;font-size: var(--fs-small)}
+
+.pfield small{display:block;color:var(--muted);font-size: var(--fs-tiny);letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px}
+
+.pfield b{color:var(--ink)}
+
+.pfield.full{grid-column:1/-1}
+
+.pcheck{display:flex;align-items:center;gap:8px;margin-top:14px;font-size: var(--fs-small);font-weight:600;color:var(--mint-text)}
+
+.rec-points{list-style:none;display:grid;gap:16px;margin-top:28px}
+
+.rec-points li{display:flex;gap:14px;align-items:flex-start}
+
+.rec-points .n{width:34px;height:34px;border-radius: var(--r-sm);background:var(--ice);color:var(--brand-deep);display:grid;place-items:center;font-weight:700;font-family:var(--font-display);flex:none}
+
+.rec-points b{display:block;margin-bottom:2px}
+
+.rec-points p{color:var(--muted);font-size: var(--fs-body-lg)}
+
+@media (max-width:900px){.rec-grid{grid-template-columns:1fr}.rec-demo{order:2}}
+
+
+/* ============================================================
+   AUDIENCE (deep tint band)
+============================================================ */
+.audience{background:linear-gradient(180deg,var(--sand),#FBF6ED)}
+
+.aud-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
+
+.aud-card{
+  background:var(--white);border-radius:var(--r-lg);padding:28px 24px;
+  border:1px solid rgba(11,44,84,.07);box-shadow:var(--shadow-sm);
+  transition:transform .35s var(--ease-out),box-shadow .35s;position:relative;overflow:hidden;
+;display:flex;flex-direction:column}
+
+.aud-card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--grad,linear-gradient(90deg,var(--brand),var(--sky)))}
+
+.aud-card.duo{--grad:linear-gradient(90deg,var(--sunset),#FFC38A)}
+
+.aud-card.group{--grad:linear-gradient(90deg,var(--mint),#7FE0B4)}
+
+.aud-avatars{display:flex;margin-bottom:16px}
+
+/* color инлайном на каждом инстансе — см. .aw-head .avs span выше (ревью TRIP-460) */
+.aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-weight:700;font-size: var(--fs-body);box-shadow:var(--shadow-sm)}
+
+.aud-avatars .av + .av{margin-left:-12px}
+
+.aud-card h3{margin-bottom:7px}
+
+.aud-card p{color:var(--muted);font-size: var(--fs-body-lg)}
+
+.aud-card .tagline{align-self:flex-start;margin-top:auto;padding-top:14px;font-size: var(--fs-small);font-weight:600;color:var(--brand-deep);transition:opacity .2s}
+
+.aud-card .tagline:hover{opacity:.72}
+
+@media (max-width:900px){.aud-grid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   COLLAB (dark)
+============================================================ */
+.collab{background:linear-gradient(180deg,var(--band),#EDF6FC);overflow:hidden;padding-bottom:calc(clamp(68px,7.5vw,104px) + var(--sheet-r))}
+
+.collab::before{content:"";position:absolute;inset:0;background:radial-gradient(760px 480px at 85% 18%,rgba(255,205,130,.22),transparent 60%)}
+
+.feed-card{
+  background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-lg);
+  padding:20px;
+  box-shadow:var(--shadow-lg);
+}
+
+.feed-head{display:flex;align-items:center;gap:10px;padding-bottom:13px;border-bottom:1px solid rgba(19,50,78,.08);margin-bottom:13px}
+
+.feed-head b{font-family:var(--font-display);font-size: var(--fs-body-lg);color:var(--ink)}
+
+.feed-head small,.bb-head small{display:block;color:var(--muted);font-size: var(--fs-caption)}
+
+.feed-head .avs{display:flex;margin-left:auto}
+
+/* color инлайном на каждом инстансе — см. .aw-head .avs span выше (ревью TRIP-460) */
+.feed-head .avs .av{width:27px;height:27px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff}
+
+.feed-head .avs .av + .av{margin-left:-8px}
+
+.feed{display:grid;gap:9px}
+
+.feed-item{display:flex;gap:11px;align-items:flex-start;background:var(--mist);border:1px solid rgba(19,50,78,.05);border-radius: var(--r-md);padding:11px 13px;font-size: var(--fs-small);color:var(--muted)}
+
+/* color инлайном на каждом текстовом инстансе — см. .aw-head .avs span выше
+   (ревью TRIP-460); .ai-msg ниже — единственный без текста (SVG-иконка
+   currentColor), белый на нём остаётся явным правилом отдельно */
+.feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;flex:none}
+
+.feed-item b{color:var(--ink)}
+
+.feed-item small{display:block;color:var(--muted);font-size: var(--fs-tiny);margin-top:2px}
+
+.feed-item.ai-msg{background:var(--ice);border-color:rgba(35,128,214,.25)}
+
+.feed-item.ai-msg .av{background:linear-gradient(140deg,var(--brand),#7A5CF0);color:#fff}
+
+.collab-points,.tg-points{list-style:none;display:grid;gap:18px;margin-top:28px}
+
+.collab-points li,.tg-points li{display:flex;gap:15px}
+
+.collab-points .cic{width:42px;height:42px;border-radius: var(--r-md);background:#fff;border:1px solid rgba(35,128,214,.2);color:var(--brand);display:grid;place-items:center;flex:none;box-shadow:var(--shadow-sm)}
+
+.collab-points b{display:block;color:var(--ink);margin-bottom:3px}
+
+.collab-points p,.tg-points p{color:var(--muted);font-size: var(--fs-body-lg)}
+
+@media (max-width:900px){.collab-grid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   TELEGRAM (white sheet over dark)
+============================================================ */
+.tg-sec{background:var(--white)}
+
+/* ============================================================
+   КОРПУС УСТРОЙСТВА — единственное описание на весь лендинг.
+   Класс .device носят оба телефона: в секции Telegram и окно приложения
+   в секции Pain. Окно приложения снимает корпус выше 760px (см. ниже) —
+   там это браузер. Правка корпуса здесь меняет ОБА места.
+============================================================ */
+.device{
+  position:relative;width:min(322px,100%);margin-inline:auto;
+  padding:11px;border-radius:56px;
+  background:var(--dev-bezel);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.22),inset 0 0 0 1px rgba(0,0,0,.6),var(--dev-shadow);
+}
+
+.device::before{content:"";position:absolute;left:-2px;top:23%;width:3px;height:12%;border-radius:3px 0 0 3px;background:var(--dev-btn)}
+
+.device::after{content:"";position:absolute;right:-2px;top:30%;width:3px;height:13%;border-radius:0 3px 3px 0;background:var(--dev-btn)}
+
+.device-screen{position:relative;border:3px solid var(--dev-rim);border-radius:46px;overflow:hidden}
+
+.device-screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:var(--dev-gloss);z-index:6}
+
+/* выше 760px окно приложения — не телефон, а окно браузера: корпус снимается */
+@media (min-width:761px){
+  .appwin.device{width:auto;max-width:1000px;padding:0;border-radius: var(--r-lg);background:#fff;
+    border:1px solid rgba(11,44,84,.08);box-shadow:0 30px 80px -20px rgba(16,32,60,.18);overflow:hidden}
+  .appwin.device::before,.appwin.device::after{display:none}
+  /* экран внутри окна браузера — обычный поток, без корпусных свойств */
+  .aw-screen.device-screen{position:static;background:none;border:0;border-radius:0;overflow:visible}
+  .aw-screen.device-screen::after{display:none}
+}
+
+.phone-screen{background:#EDF2F5}
+
+.tg-status{position:relative;display:flex;align-items:center;justify-content:space-between;padding:9px 20px 4px;background:#fff;color:#13324E;font-weight:600;font-size: var(--fs-caption);line-height:1;z-index:4}
+
+.tg-time{font-variant-numeric:tabular-nums;letter-spacing:.02em}
+
+.tg-island{position:absolute;left:50%;top:7px;transform:translateX(-50%);width:82px;height:23px;border-radius:99px;background:#05070a}
+
+.tg-sys{display:flex;align-items:center;gap:5px}
+
+.tg-sys svg{display:block}
+
+.tg-head{display:flex;align-items:center;gap:10px;padding:13px 16px;background:#fff;border-bottom:1px solid rgba(19,50,78,.08)}
+
+.tg-hicons{margin-left:auto;display:flex;gap:15px;color:#8AA0B4}
+
+.tg-head .tav{width:34px;height:34px;border-radius:50%;background:#4AA3E8;display:grid;place-items:center;flex:none}
+
+.tg-head b{color:#13324E;font-size: var(--fs-body);display:block;line-height:1.2}
+
+.tg-head small{color:#318455;font-size: var(--fs-caption)}
+
+.tg-chat{padding:14px 12px 16px;display:grid;gap:8px;min-height:360px;align-content:end;
+  background:radial-gradient(420px 300px at 80% 10%,rgba(120,170,220,.16),transparent 60%),#DBE6F0}
+
+.tg-date{justify-self:center;background:rgba(255,255,255,.75);color:#5B7085;font-size: var(--fs-tiny);font-weight:600;padding:3px 11px;border-radius:99px;opacity:0;transition:opacity .4s}
+
+.in .tg-date{opacity:1;transition-delay:.05s}
+
+.ticks{display:inline-block;width:16px;height:11px;margin-left:3px;vertical-align:-1px;color:#4FADEC}
+
+.tg-doc{display:flex;gap:10px;margin-top:8px;background:#F3F8FC;border:1px solid rgba(19,50,78,.1);border-radius: var(--r-sm);padding:9px 11px;align-items:center}
+
+.tg-doc .dic{width:34px;height:34px;border-radius:50%;background:#5EB5F7;display:grid;place-items:center;color:#fff;flex:none}
+
+.tg-doc .dmeta b{display:block;font-size: var(--fs-caption);color:#13324E;line-height:1.3}
+
+.tg-doc .dmeta span{font-size: var(--fs-micro);color:#5B7085}
+
+.tg-msg{max-width:88%;padding:9px 13px;border-radius: var(--r-md);font-size: var(--fs-small);line-height:1.45;color:#13324E}
+
+.tg-msg.bot{background:#fff;border-bottom-left-radius:5px;justify-self:start;box-shadow:0 1px 2px rgba(11,44,84,.08)}
+
+.tg-msg.user{background:#EFFDDE;border-bottom-right-radius:5px;justify-self:end}
+
+.tg-msg small{display:block;font-size: var(--fs-micro);color:rgba(19,50,78,.42);margin-top:4px;text-align:right}
+
+.tg-msg .loc-card{display:flex;gap:9px;align-items:flex-start;margin-top:8px;background:#F3F7FB;border:1px solid rgba(19,50,78,.1);border-radius: var(--r-sm);padding:9px 10px;font-size: var(--fs-caption)}
+
+.tg-msg .loc-pin{flex:none;width:26px;height:26px;border-radius: var(--r-sm);display:grid;place-items:center;background:var(--brand);color:#fff}
+
+.tg-msg .loc-txt{min-width:0;display:block}
+
+.tg-msg .loc-txt b{color:#13324E;display:block}
+
+.tg-msg .loc-txt > span{display:block;color:#5B7085}
+
+.tg-msg .loc-open{margin-top:3px;color:var(--brand-deep);font-weight:600}
+
+.tg-msg{opacity:0;transform:translateY(14px) scale(.96);transition:opacity .5s var(--ease-out),transform .5s var(--ease-out)}
+
+.in .tg-msg{opacity:1;transform:none}
+
+.in .tg-msg:nth-child(2){transition-delay:.25s}
+
+.in .tg-msg:nth-child(3){transition-delay:.6s}
+
+.in .tg-msg:nth-child(4){transition-delay:.95s}
+
+.in .tg-msg:nth-child(5){transition-delay:1.3s}
+
+.in .tg-msg:nth-child(6){transition-delay:1.65s}
+
+.tg-points .cic{width:42px;height:42px;border-radius: var(--r-md);background:var(--ice);color:var(--brand);display:grid;place-items:center;flex:none}
+
+.tg-points b{display:block;margin-bottom:3px}
+
+@media (max-width:900px){.tg-grid{grid-template-columns:1fr}.tg-demo{order:2}}
+
+
+/* ============================================================
+   SHARE (mist) — public link
+============================================================ */
+.share{background:var(--mist);padding-bottom:calc(clamp(68px,7.5vw,104px) + var(--sheet-r))}
+
+.browser{
+  background:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-lg);
+  border:1px solid rgba(11,44,84,.08);overflow:hidden;
+}
+
+.browser-bar{display:flex;align-items:center;gap:10px;background:#F1F6FB;border-bottom:1px solid rgba(11,44,84,.07);padding:11px 14px}
+
+.browser-bar .url{
+  flex:1;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid rgba(11,44,84,.1);
+  border-radius:99px;padding:6px 13px;font-size: var(--fs-caption);color:var(--muted);
+}
+
+.browser-bar .url svg{color:var(--mint);flex:none}
+
+.browser-body{padding:18px}
+
+.bb-head .logo{width:30px;height:30px;border-radius: var(--r-sm)}
+
+.bb-head b{font-family:var(--font-display);font-size: var(--fs-body-lg)}
+
+.bb-head .viewer{margin-left:auto;font-size: var(--fs-tiny);font-weight:700;color:var(--brand-deep);background:var(--ice);border-radius:99px;padding:4px 11px;white-space:nowrap}
+
+.bb-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+
+.bb-day{background:var(--mist);border-radius: var(--r-sm);padding:10px;font-size: var(--fs-caption);color:var(--muted)}
+
+.bb-day b{display:block;color:var(--ink);font-size: var(--fs-caption);margin-bottom:4px}
+
+.share-cta-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:26px}
+
+.link-pill{
+  display:flex;align-items:center;gap:10px;background:#fff;
+  border:1px dashed rgba(33,115,200,.45);border-radius:99px;padding:11px 18px;
+  font-size: var(--fs-small);color:var(--brand-deep);font-weight:600;max-width:100%;
+}
+
+.link-pill svg{flex:none}
+
+.link-pill .copy{margin-left:6px;background:var(--brand-btn);color:#fff;border-radius:99px;padding:5px 13px;font-size: var(--fs-caption);font-weight:600;transition:background .2s;white-space:nowrap}
+
+.link-pill .copy:hover{background:var(--brand-deep)}
+
+@media (max-width:900px){.share-grid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   ARCHIVE / STATS (dark band)
+============================================================ */
+.archive{background:linear-gradient(180deg,var(--band),#EDF6FC);overflow:hidden}
+
+.archive::before{content:"";position:absolute;inset:0;background:radial-gradient(700px 420px at 12% 80%,rgba(255,158,74,.12),transparent 60%)}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:30px}
+
+.stat-box{background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-md);padding:18px 14px;text-align:center;box-shadow:var(--shadow-sm)}
+
+/* site-base-exempt: num — имя только внутри .stat-box, scoped-правило перебивает app (TRIP-460 п.3) */
+.stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand)}
+
+.stat-box small{color:var(--muted);font-size: var(--fs-caption)}
+
+@media (max-width:900px){.archive-grid{grid-template-columns:1fr}.archive-grid > :first-child{order:2}}
+
+
+/* ============================================================
+   FAQ (white sheet)
+============================================================ */
+.faq-sec{background:var(--white);padding-bottom:calc(clamp(68px,7.5vw,104px) + var(--sheet-r))}
+
+.faq-list{max-width:740px;margin-inline:auto;display:grid;gap:11px}
+
+.faq-item{background:var(--white);border-radius:var(--r-md);border:1px solid rgba(11,44,84,.09);overflow:hidden;transition:box-shadow .3s}
+
+.faq-item[open]{box-shadow:var(--shadow-md)}
+
+.faq-item summary{
+  list-style:none;display:flex;align-items:center;gap:14px;justify-content:space-between;
+  padding:19px 22px;font-weight:600;font-size: var(--fs-lead);cursor:pointer;
+  font-family:var(--font-display);letter-spacing:-.01em;
+}
+
+.faq-item summary::-webkit-details-marker{display:none}
+
+.faq-item summary .fx{
+  width:29px;height:29px;border-radius:50%;background:var(--ice);color:var(--brand-deep);
+  display:grid;place-items:center;flex:none;transition:transform .3s var(--ease-out),background .3s;
+  font-weight:500;
+}
+
+.faq-item[open] summary .fx{transform:rotate(45deg);background:var(--brand);color:#fff}
+
+.faq-item .faq-body{padding:0 22px 20px;color:var(--muted);font-size: var(--fs-body-lg);max-width:64ch}
+
+
+/* ============================================================
+   FINAL + FOOTER (dark sheet)
+============================================================ */
+.final{
+  /* Яркий закатный градиент прототипа — БЕЗ секционного скрима (ревью TRIP-460
+     п.4: заливка rgba(20,10,5,.42) ради AA превращала закат в грязь, диф 98%).
+     Контраст держат сами элементы: заголовок — крупный (порог AA 3:1), кнопка
+     .btn-light — тёмный текст на белом фоне (пара), подзаголовок — .92 белого. */
   background:
-    linear-gradient(135deg, color-mix(in oklab, var(--brand-ink) 92%, transparent), color-mix(in oklab, var(--brand-700) 88%, transparent)),
-    radial-gradient(80% 60% at 20% 0%, color-mix(in oklab, var(--brand) 35%, transparent), transparent 60%),
-    radial-gradient(60% 50% at 90% 100%, color-mix(in oklab, var(--warm) 35%, transparent), transparent 65%),
-    var(--banner-photo) center/cover;
-  color: #fff;
-  text-align: center;
-  padding: 112px 24px;
-  position: relative;
-  overflow: hidden;
-}
-/* Финальный CTA-баннер — крупнейший заголовок вне hero → канон t-display,
-   с адаптивной ступенькой на токенах (TRIP-165). */
-.banner h2 { color: #fff; max-width: 18ch; margin: 0 auto; font-size: var(--fs-display); }   /* TRIP-203: fluid --fs-display шринкует сам */
-.banner p { color: rgba(255,255,255,.78); margin: 18px auto 0; max-width: 36ch; }
-.banner .btn--white { margin-top: 32px; }
-
-/* ---------- Footer ----------
-   One minimal footer: brand + tagline, a flat row of product / legal links
-   plus the cookie-settings action, the language switch, and the copyright. */
-.footer {
-  background: var(--wash);
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-}
-.footer .brand { color: var(--ink); font-size: var(--ctl-fs); }
-.footer .brand__mark { width: 26px; height: 26px; }
-.footer__top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 26px 48px;
-  padding: 50px 0 34px;
-}
-.footer__brand { max-width: 36ch; }
-.footer__brand .tagline { margin-top: 12px; max-width: 32ch; line-height: 1.5; }
-.footer__nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 28px;
-  padding-top: 6px;
-}
-/* The cookie-settings entry is a <button> (it acts, it does not navigate), but it
-   sits among links and must look identical to them. */
-.footer__nav a,
-.footer__nav button {
-  color: var(--ink-2);
-  font-weight: 500;
-  border: 0; background: none; padding: 0; font: inherit; cursor: pointer;
-}
-.footer__nav a:hover,
-.footer__nav button:hover { color: var(--brand); }
-.footer__lang { padding-top: 2px; }
-.footer__bottom {
-  border-top: 1px solid var(--line);
-  padding: 20px 0 28px;
-  font-size: var(--fs-meta);
+    radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
+    linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);
+  color:#fff;text-align:center;overflow:hidden;
 }
 
-@media (max-width: 560px) {
-  .footer__top { flex-direction: column; gap: 20px; }
+.final .inner{position:relative;z-index:2;max-width:700px;margin-inline:auto}
+
+.final h2{font-size: var(--fs-final-h2);font-weight:800;margin-bottom:16px}
+
+.final p{color:rgba(255,255,255,.92);font-size: var(--fs-lead-lg);margin-bottom:30px}
+
+.final .ctas{display:flex;flex-wrap:wrap;gap:13px;justify-content:center}
+
+.final .btn-light{color:#C95029}
+
+.final .horizon{
+  position:absolute;left:50%;bottom:-46vw;transform:translateX(-50%);
+  width:130vw;height:64vw;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(255,244,214,.5),rgba(255,244,214,.12) 62%,transparent 70%);
+  pointer-events:none;
 }
 
-/* ---------- Scroll-reveal ----------
-   Content is visible by default. When JS adds .reveal--ready on the <html>
-   element (only when document.timeline is actually running), we hide the
-   .reveal items off-screen and animate them in on intersection. In contexts
-   where the timeline is frozen (some embed iframes), we never add --ready,
-   so nothing hides. */
-@keyframes revealIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.reveal { opacity: 1; transform: none; }
-html.reveal--ready .reveal { opacity: 0; transform: translateY(12px); }
-html.reveal--ready .reveal.is-in { animation: revealIn .6s ease both; }
-@media (prefers-reduced-motion: reduce) {
-  html.reveal--ready .reveal { opacity: 1; transform: none; }
-  html.reveal--ready .reveal.is-in { animation: none; }
-}
+.site-footer{background:#FBFDFF;color:var(--muted);border-top:1px solid rgba(19,50,78,.08)}
 
-/* image placeholders */
-.photo {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  display: block;
-}
+.site-footer .brand{font-size: var(--fs-lead-lg);color:var(--ink)}
 
-/* Section eyebrow tag (deep dives) */
-.tag-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--brand-soft);
-  color: var(--brand);
-}
-.tag-eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); }
+.site-footer .brand .logo{width:29px;height:29px}
 
-/* Mobile: tighten the header row and shrink whatever CTA stays inline
-   (cta/minimal variants keep theirs; the full header moves its CTA to the drawer). */
-@media (max-width: 600px) {
-  .header__inner { gap: 10px; }
-  .btn--lg { padding: 12px 18px; font-size: var(--fs-base); }
-  .header .btn { padding: 10px 14px; font-size: var(--fs-base); }
-}
+.footer-tag{margin-top:13px;font-size: var(--fs-body);max-width:30ch;line-height:1.5}
 
-/* ---------- Language dropdown ---------- */
-.langdd { position: relative; }
-.langdd__btn {
-  appearance: none;
-  background: rgba(15,23,42,.04);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 7px 12px 7px 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--ink-2);
-  cursor: pointer;
-  transition: background .15s ease, border-color .15s ease;
-}
-.langdd__btn:hover { background: rgba(15,23,42,.07); }
-.langdd__btn[aria-expanded="true"] { background: #fff; border-color: var(--line); }
-.langdd__btn .chev {
-  transition: transform .18s ease;
-  color: var(--muted);
-}
-.langdd__btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
-.langdd__menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 168px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
-  padding: 6px;
-  z-index: 60;
-  opacity: 0;
-  transform: translateY(-4px) scale(.98);
-  transform-origin: top right;
-  pointer-events: none;
-  /* `pointer-events` отключает мышь, но НЕ клавиатуру: без `visibility` три
-     пункта закрытого дропдауна остаются в порядке табов и в дереве доступности
-     (замер: 6 таких на лендинге — шапка + подвал). Задержка = длительности
-     перехода, чтобы `visibility` не обрезала анимацию закрытия. */
-  visibility: hidden;
-  transition: opacity .15s ease, transform .15s ease, visibility 0s linear .15s;
-}
-.langdd--up .langdd__menu {
-  top: auto;
-  bottom: calc(100% + 6px);
-  transform-origin: bottom right;
-}
-.langdd.is-open .langdd__menu {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-  visibility: visible;
-  transition: opacity .15s ease, transform .15s ease, visibility 0s;
-}
-.langdd__item {
-  width: 100%;
-  appearance: none;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  color: var(--ink);
-  cursor: pointer;
-}
-.langdd__item:hover { background: var(--wash); }
-.langdd__item .label { flex: 1; font-weight: 500; }
-.langdd__item .code { color: var(--muted-2); }
-.langdd__item[aria-checked="true"] {
-  background: var(--brand-soft);
-  color: var(--brand);
-}
-.langdd__item[aria-checked="true"] .code { color: var(--brand); }
+.footer-bottom{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;border-top:1px solid rgba(19,50,78,.08);padding:20px 0 28px;font-size: var(--fs-small)}
 
-.footer .langdd__btn {
-  background: transparent;
-  border-color: var(--line);
-  color: var(--ink-2);
-}
-.footer .langdd__btn:hover { background: #fff; }
+/* minimal footer */
+.footer-min{display:flex;flex-wrap:wrap;gap:26px 48px;align-items:flex-start;justify-content:space-between;padding:50px 0 34px}
 
-/* The header language pill rides the header theme — a transparent chip whose
-   text follows the section beneath it (white on-dark, ink on-light). */
-.header .langdd__btn { background: transparent; }
-.header .langdd__btn .chev { color: currentColor; }
-.header.on-dark .langdd__btn { color: rgba(255,255,255,.85); }
-.header.on-dark .langdd__btn:hover { background: rgba(255,255,255,.1); }
-.header.on-light .langdd__btn { color: var(--ink); }
-.header.on-light .langdd__btn:hover { background: rgba(11,44,84,.05); }
-.header.on-accent .langdd__btn { color: #fff; }
-.header.on-accent .langdd__btn:hover { background: rgba(255,255,255,.14); }
-.header .langdd__btn[aria-expanded="true"] { background: #fff; color: var(--ink); border-color: var(--line); }
-.header .langdd__btn[aria-expanded="true"] .chev { color: var(--muted); }
+.footer-brandcol{max-width:36ch}
+
+.footer-links{display:flex;flex-wrap:wrap;gap:10px 30px;align-items:center;padding-top:6px}
+
+/* зона нажатия 44px без изменения внешнего вида (WCAG 2.5.8): эти ссылки
+   визуально мелкие — 23..34px, — но палец должен попадать */
+.footer-links a,.copy,.aud-card .tagline,.share-url{position:relative}
+
+.footer-links a::after,.copy::after,.aud-card .tagline::after,.share-url::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
+
+/* Кнопка «Cookies» стоит в одном ряду со ссылками и обязана выглядеть так же.
+   В макете это <a>; здесь нужен <button> (перевызов баннера согласия — не
+   переход), а правило таргетило только a, и кнопка оставалась на кегле body:
+   15.68px против 13.6px у соседей. */
+.footer-links a, .footer-links button{font-size: var(--fs-body);color:inherit;transition:color .2s}
+
+.footer-links a:hover{color:var(--ink)}
+
+@media (max-width:560px){.footer-min{flex-direction:column;gap:20px}}
+
+

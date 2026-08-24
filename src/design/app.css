@@ -718,8 +718,7 @@ h1,
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
 .rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
 .brand-col__tag,   /* TRIP-410: бренд-строка логина → Title (был локальный --fs-h1/600/-0.032em) */
-.pt-cta h2,        /* TRIP-410: заголовок CTA публичного трипа → Title (был локальный --fs-h1/-.03em; color:#fff остаётся локально) */
-.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular */
+.pt-cta h2 { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* .budget__total .big снят: мокап лендинга удалён (TRIP-460) */   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
@@ -769,9 +768,6 @@ h3,
 .brand-col__logo,
 .trip-head__title,
 .trip-foot__total .big,
-.app-main__title,
-.step__num,
-.faq__q,
 .step h3,
 .drawer li a,
 .wdg-h h4,         /* TRIP-175 инсп.: Label→Subheading (заголовки виджетов обзора) */
@@ -855,7 +851,6 @@ h4,
 .auth__switch button,
 .btn-ghost,
 .brand-col__sub,
-.faq__a-inner,
 .input-unit,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→Label (легенда бюджета; .t-strong сохранён) */
@@ -893,9 +888,10 @@ h4,
 .bubble,
 .card p,
 .step p,
-.deep__highlights li,
 .trust__item,
-.langdd__item,
+/* .langdd__item снят (TRIP-460): язык-переключатель зоны переехал на
+   прототипные .lang-btn/.lang-menu, у которых typography полностью своя
+   (site.css задаёт font-size явно) — канон-запись больше не читалась. */
 /* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
    `.t-label` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
    как надпись НА кнопке (канон .t-label, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
@@ -1073,28 +1069,9 @@ h4,
 .appnudge .ttl,
 .appnudge .sub,
 .brand-col__trust,
-.app-main__subtitle,
-.app-tab,
-.tag-eyebrow,
-.pin__lbl,
-.budget__rows,
-.budget__row .ccy,
-.budget__total .delta,
-.app-sidebar,
-.tl-card,
-.tl-card .meta,
-.tl-card .tag,
-.collage__card,
-.tabstrip .t,
-.tabsbody,
-.mailrow .from,
-.mailrow .subj,
-.phone__head .name,
-.phone__head .sub,
 .phone .bubble,
-.phone__time,
-.langdd__btn,
-.langdd__item .code,
+/* .langdd__btn/.langdd__item .code сняты (TRIP-460): та же причина, .lang-btn/
+   .lang-menu .code typography полностью своя в site.css. */
 .s22-count,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .fork-or span,
 .addon-card__desc, /* инсп.: Meta (описание аддона) */
@@ -1133,8 +1110,6 @@ h4,
 .trip-tl__day,
 .trip-foot__lab,
 .footer__col h4,
-.chat .planresult .badge,
-.app-sidebar__group,
 .mbnav__lbl,
 .fork-partner__mid span,
 .mbrow .badge--warning, /* TRIP-410 моно-аудит: бейдж роли «Владелец» → Geologica CAPS (был .t-mono; эйбрау/бейджи = t-micro) */
@@ -1757,13 +1732,13 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 .app-side__item > .badge--unread { position: absolute; top: var(--sp-1); right: var(--sp-5); }
 
 
-.app-main {
-  padding: 22px 24px 80px;
-  min-height: calc(100vh - 56px - 45px);
-  overflow-x: clip;
-  min-width: 0;
-  max-width: 100%;
-}
+/* Map lens (TRIP-33): full-bleed map with a floating glass route panel. The
+   panel (.map-route) is positioned absolutely over the map; its own block and
+   the ≤640px bottom-sheet variant live in the PRIMITIVES section below. */
+/* `.app-main` (+ его @media-варианты) — класс МОКАПА старого лендинга (dev), а не
+   оболочки приложения: на dev литерал `className="app-main"` жил только в старом
+   LandingPage.jsx. TRIP-460 переписал лендинг на прототип и снёс мокап — правило
+   осиротело, удалено вместе с разметкой (гард 2n; ср. `.app-main__*` ниже). */
 
 /* =================================================================
    PRIMITIVES — buttons, fields, badges, cards
@@ -3743,7 +3718,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
   /* NB: меню трипа этой ширины не касается — рейл живёт до 641 и гасится своей
      оболочкой (`.trip-shell .app-side` @ ≤640), не здесь. */
-  .app-main { padding: 16px 14px 100px; }
   .app-header [data-mobile-toggle] { display: grid !important; }
 }
 
@@ -4720,7 +4694,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .eed-dtbtn.is-empty { color: var(--muted); }
 @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
 @media (max-width: 720px) {
-  .app-main { padding: 12px 12px 100px; }
   .dlg-backdrop { padding: 12px; }
   .dlg__head { padding: 14px 16px; }
   .dlg__body { padding: 14px 16px; }
@@ -10010,3 +9983,207 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .te-thead border-inline — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead display — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead grid-column — жильё и активности вернулись в свои колонки, шапка колонок восстановлена */
+
+/* ── TRIP-460: сносы co-селекторов мёртвых классов мокапа лендинга из
+   канонов .t-*. Классов нет в разметке (греп 0), визуального эффекта нет;
+   маркеры 2p per-PR удостоверяют намеренность и живут ровно этот PR. ── */
+/* visual-diff-exempt: .app-main__subtitle font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .meta font-size — агрегация по общему хвосту при сносе co-селектора мокапа; живой .tl3-card .meta со своим правилом не затронут (TRIP-460) */
+/* visual-diff-exempt: .meta font-weight — агрегация по общему хвосту при сносе co-селектора мокапа; живой .tl3-card .meta со своим правилом не затронут (TRIP-460) */
+/* visual-diff-exempt: .pin__lbl font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main {@media (max-width: 720px)} padding — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main {@media (max-width: 880px)} padding — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main max-width — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main min-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main min-width — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main overflow-x — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main padding — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group text-transform — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat text-transform — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult text-transform — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+
+/* ── TRIP-460 (продолжение): снос .langdd* (язык-переключатель зоны переехал
+   на прототипные .lang-btn/.lang-menu) + скоуп login.css .btn-primary/.btn-ghost
+   под .auth (ревью — глобальная утечка). ── */
+/* visual-diff-exempt: .auth background — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth color — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .code font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .auth border — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth border-color — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth box-shadow — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth cursor — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth justify-content — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth opacity — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth padding — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth text-decoration — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth transform — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth transition — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */

@@ -241,7 +241,13 @@
 }
 /* The checkbox is the design system's `.checkbox` (app.css) — no local copy. */
 
-.btn-primary {
+/* Scoped to .auth (Login.jsx root) — TRIP-460: `login.css` is imported eagerly
+   in App.jsx (not lazy), so an unscoped `.btn-primary`/`.btn-ghost` here leaked
+   globally onto every route, including the landing zone, which uses the same
+   names for a DIFFERENT object (the prototype's own CTA button, ported as-is).
+   Different objects sharing a name by accident → the older one gets scoped,
+   same fix as the `.sheet` precedent. */
+.auth .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -258,11 +264,11 @@
               0 8px 20px -8px rgba(33,103,226,.55);
   transition: background .15s ease, transform .15s ease;
 }
-.btn-primary:hover { background: var(--brand-600); transform: translateY(-1px); }
-.btn-primary:active { transform: translateY(0); }
-.btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; }
-.btn-primary .arrow { transition: transform .2s ease; }
-.btn-primary:hover:not(:disabled) .arrow { transform: translateX(2px); }
+.auth .btn-primary:hover { background: var(--brand-600); transform: translateY(-1px); }
+.auth .btn-primary:active { transform: translateY(0); }
+.auth .btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+.auth .btn-primary .arrow { transition: transform .2s ease; }
+.auth .btn-primary:hover:not(:disabled) .arrow { transform: translateX(2px); }
 
 .auth__switch {
   margin-top: 26px;
@@ -356,7 +362,8 @@
   gap: 10px;
   margin-top: 28px;
 }
-.btn-ghost {
+/* Scoped to .auth — same login.css/site.css `.btn-primary` leak (see above). */
+.auth .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 46px; padding: 0 16px;
   border: 1px solid var(--line);
@@ -367,7 +374,7 @@
   cursor: pointer;
   transition: background .15s ease, border-color .15s ease;
 }
-.btn-ghost:hover { background: var(--wash); border-color: #d8dde6; }
+.auth .btn-ghost:hover { background: var(--wash); border-color: #d8dde6; }
 
 /* ── Brand panel ── */
 .auth__brand-col {

@@ -1,4 +1,4 @@
-@import './design/fonts.css';   /* self-hosted Geologica (UI+заголовки) + JetBrains Mono (коды); Golos — легаси, TRIP-410 */
+@import './design/fonts.css';   /* self-hosted: Geologica (UI приложения) + JetBrains Mono (коды) + Onest/Golos (гарнитуры сайтовой зоны, TRIP-460) */
 
 /* ===================================================================
    Reset — was Tailwind's `@tailwind base` (Preflight). Inlined verbatim
