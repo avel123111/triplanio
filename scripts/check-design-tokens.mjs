@@ -82,11 +82,14 @@ const COLOR_WHITELIST = [
   // — Added with the Lumo colour finale (TRIP-53): raw-by-nature sources —
   'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
   'src/lib/map/mapTokens.js',                          // Mapbox paint fallbacks (need concrete hex)
-  'src/components/site/SiteChrome.jsx',                // brand logo + country-flag SVGs
   'src/pages/Login.jsx',                               // Google + Triplanio logo SVGs
   // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
-  // (TRIP-460) LandingPage.jsx retired: the v5.7 rewrite carries ZERO raw colour —
-  // all demo/brand visuals moved to public/site.css. Entry removed, limit 16→15.
+  // (TRIP-460) LandingPage.jsx re-added: retiring it after the Hero-only draft
+  // (which briefly had 0 raw colour) was premature — the full 11-section 1:1
+  // port carries the prototype's own demo/brand-mock colours verbatim
+  // (avatars, Telegram/WhatsApp icon tints, budget bar segments, map pins),
+  // matching its original origin/dev reason ("demo visuals + brand icons").
+  'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
   'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
   'src/pages/PublicTrip.css',                          // public read-only page styles
   'public/site.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
