@@ -9,36 +9,34 @@
    врали. Все адаптивные правила ниже — @container ncal. */
 .ncal { display: flex; flex-direction: column; gap: 16px; container-type: inline-size; container-name: ncal; }
 
-/* ── Header — крупный месяц слева, единый по высоте кластер управления справа.
-   Все контролы одной высоты (--ctl-h), общий пилюльный радиус → цельная панель.
-   Текуче-гибкий: без фикс-ширины сегмента и без прибитого пина. */
-.ncal-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
-.ncal-title-row { display: flex; align-items: baseline; gap: 8px; margin: 0; min-width: 0; flex: 0 1 auto; }
-/* размер/вес/гарнитура — каноны .t-title / .t-subheading (className в JSX) */
-.ncal-month-lbl { color: var(--ink); text-transform: capitalize; line-height: 1.05; }
-.ncal-year-lbl  { color: var(--muted-2); font-variant-numeric: tabular-nums; }
+/* ── Header — календарный паттерн: ‹ Месяц Год › · Сегодня  |  вид · К поездке.
+   Стрелки фланкируют название (узнаваемая навигация по времени), контролы
+   одной высоты (--ctl-h). Текуче-гибкий (обе зоны переносятся). */
+.ncal-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
 
-.ncal-bar-ctl { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-/* Сегмент месяц/неделя — высота как у остальных контролов */
-.ncal-seg { height: var(--ctl-h); }
-/* Nav cluster: ‹ Сегодня › */
-.ncal-nav { display: flex; align-items: center; gap: 2px; height: var(--ctl-h); padding: 0 4px; background: var(--surface-2); border-radius: var(--r-pill); }
+/* Левая зона — навигация по времени */
+.ncal-hd-l { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ncal-title-row { display: flex; align-items: baseline; gap: 8px; margin: 0 4px; min-width: 0; }
+/* размер/вес/гарнитура — канон .t-title (className в JSX) */
+.ncal-month-lbl { color: var(--ink); text-transform: capitalize; line-height: 1.05; white-space: nowrap; }
+.ncal-year-lbl  { color: var(--muted-2); font-variant-numeric: tabular-nums; }
+/* Стрелки prev/next — призрачные (канон IconBtn tone=quiet), чуть приглушены */
+.ncal-navbtn { color: var(--muted); flex: none; }
+/* «Сегодня» — тихая outline-пилюля той же высоты */
 .ncal-today {
-  height: calc(var(--ctl-h) - 8px); padding: 0 12px; border-radius: var(--r-pill);
-  background: transparent; border: none; color: var(--ink-2); cursor: pointer;
-  transition: background .15s, color .15s;
+  height: var(--ctl-h); padding: 0 14px; margin-left: 4px; border-radius: var(--r-pill);
+  display: inline-flex; align-items: center; flex: none;
+  background: transparent; border: 1px solid var(--line-strong); color: var(--ink-2); cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
 }
-.ncal-today:hover { background: var(--surface); color: var(--ink); }
+.ncal-today:hover { background: var(--surface-2); border-color: var(--line-hover); color: var(--ink); }
 .ncal-today:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
-/* «К поездке» — иконка-кнопка той же высоты */
-.ncal-trip-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-pill);
-  background: var(--brand-soft); color: var(--brand); border: none; cursor: pointer; flex: none;
-  transition: background .15s;
-}
-.ncal-trip-btn:hover { background: var(--brand-soft-12); }
-.ncal-trip-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+
+/* Правая зона — вид + переход к поездке */
+.ncal-hd-r { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.ncal-seg { height: var(--ctl-h); }
+/* «К поездке» = канон <Btn variant="soft">; высота матчится по --ctl-h */
+.ncal-trip { height: var(--ctl-h); flex: none; }
 
 /* View toggle: канон <Seg>.
    visual-diff-exempt: .ncal-vtgl background — копия снята, разметка на канон .seg (TRIP-344 PR6)
@@ -215,14 +213,14 @@
    сводка уходит вниз, ячейки компактные, события точками, неделя скроллит
    страницу; хедер — сегмент на всю ширину, навигация+пин пакуются рядом. */
 @container ncal (max-width: 760px) {
-  /* Header: заголовок на всю строку, ниже — сегмент во всю ширину, ещё ниже —
-     навигация ‹ Сегодня › и пин, упакованные слева (пин не «прибит» к краю). */
-  .ncal-title-row { flex: 1 1 100%; }
-  .ncal-bar-ctl { flex: 1 1 100%; justify-content: flex-start; gap: 10px; }
-  .ncal-bar-ctl > .ncal-seg { flex: 1 1 100%; display: flex; }
-  .ncal-bar-ctl > .ncal-seg button { flex: 1; }
-  .ncal-nav { flex: 0 0 auto; }
-  .ncal-trip-btn { flex: 0 0 auto; }
+  /* Header: строка 1 — ‹ Месяц Год › · Сегодня; строка 2 — сегмент (тянется) +
+     «К поездке» иконкой. Обе зоны на всю ширину. */
+  .ncal-hd-l { flex: 1 1 100%; flex-wrap: wrap; }
+  .ncal-hd-r { flex: 1 1 100%; justify-content: flex-start; gap: 10px; }
+  .ncal-hd-r > .ncal-seg { flex: 1 1 auto; display: flex; }
+  .ncal-hd-r > .ncal-seg button { flex: 1; }
+  .ncal-trip { flex: 0 0 auto; }
+  .ncal-trip-lbl { display: none; }        /* «К поездке» — иконкой на мобиле */
 
   /* Month: компактные ячейки (без гигантской пустоты), события — точками */
   .ncal-dc { min-height: 64px; padding: 12px 5px 7px; gap: 2px; }

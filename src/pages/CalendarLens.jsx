@@ -23,7 +23,7 @@
  */
 import React, { useState, useMemo, useRef, useLayoutEffect, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, IconBtn, Seg, eventFamily } from '../design/index';
+import { Skeleton, IconBtn, Seg, Btn, eventFamily } from '../design/index';
 import { Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { isTransitVisit } from '@/lib/trip-cities';
@@ -48,13 +48,6 @@ const cityPal  = (idx) => CITY_PALETTE[idx % CITY_PALETTE.length];
 const cityVars = (idx) => { const p = cityPal(idx); return { '--cc': p.c, '--cc-soft': p.soft, '--cc-ink': p.ink }; };
 
 const evCls = (type) => `ev-${eventFamily(type)}`;
-
-const IcoPin = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2"/>
-  </svg>
-);
 
 // ─── MonthView ────────────────────────────────────────────────────────────────
 function MonthView({ cells, weekdays, onOpenEvent, t }) {
@@ -404,14 +397,20 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
 
   return (
     <div className="ncal ov-anim--cal">
-      {/* ── Header — месяц + управление; статистику НЕ дублируем (она в шапке трипа) ── */}
+      {/* ── Header — календарный паттерн: стрелки по бокам месяца, «Сегодня»
+          рядом; справа — переключатель вида и «К поездке». ── */}
       <header className="ncal-bar">
-        <h2 className="ncal-title-row">
-          <span className="ncal-month-lbl t-title">{MONTH_NAMES[headMonth]}</span>
-          <span className="ncal-year-lbl t-subheading">{headYear}</span>
-        </h2>
+        <div className="ncal-hd-l">
+          <IconBtn icon="chevL" tone="quiet" size="md" round ariaLabel={t('calendar.prev')} onClick={goBack} className="ncal-navbtn" />
+          <h2 className="ncal-title-row">
+            <span className="ncal-month-lbl t-title">{MONTH_NAMES[headMonth]}</span>
+            <span className="ncal-year-lbl t-title">{headYear}</span>
+          </h2>
+          <IconBtn icon="chev" tone="quiet" size="md" round ariaLabel={t('calendar.next')} onClick={goFwd} className="ncal-navbtn" />
+          <button className="ncal-today t-label" onClick={goToday}>{t('calendar.today')}</button>
+        </div>
 
-        <div className="ncal-bar-ctl">
+        <div className="ncal-hd-r">
           <Seg
             className="ncal-seg"
             ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
@@ -419,14 +418,9 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
             onChange={setView}
             options={[{ value: 'month', label: t('calendar.month') }, { value: 'week', label: t('calendar.week') }]}
           />
-          <div className="ncal-nav">
-            <IconBtn icon="chevL" tone="soft" size="sm" round ariaLabel={t('calendar.prev')} onClick={goBack} />
-            <button className="ncal-today t-label" onClick={goToday}>{t('calendar.today')}</button>
-            <IconBtn icon="chev" tone="soft" size="sm" round ariaLabel={t('calendar.next')} onClick={goFwd} />
-          </div>
-          <button className="ncal-trip-btn" onClick={goHome} aria-label={t('calendar.to_trip_start')} title={t('calendar.to_trip_start')}>
-            <IcoPin />
-          </button>
+          <Btn variant="soft" icon="pin" onClick={goHome} className="ncal-trip" ariaLabel={t('calendar.to_trip_start')}>
+            <span className="ncal-trip-lbl">{t('calendar.to_trip_start')}</span>
+          </Btn>
         </div>
       </header>
 
