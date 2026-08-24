@@ -1220,23 +1220,25 @@ export default function TripView() {
   const cityPanel = (() => {
     const v = cityView.visit;
     if (!v?.id) return null;
-    let no = 0; const noById = new Map();
-    [...visits].filter(x => x.kind === 'transit')
-      .sort((a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')))
-      .forEach(x => noById.set(x.id, ++no));
+    const transit = visits.filter(x => x.kind === 'transit')
+      .sort((a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')));
+    const idx = transit.findIndex(x => x.id === v.id);
     return {
-      cityNo: noById.get(v.id) || 1,
+      cityNo: idx >= 0 ? idx + 1 : 1,
       hotels: hotels.filter(h => h.city_visit_id === v.id),
       acts: activities.filter(a => a.city_visit_id === v.id),
-      arrival: transfers.find(tr => tr.to_city_visit_id === v.id) || undefined,
-      departure: transfers.find(tr => tr.from_city_visit_id === v.id) || undefined,
+      arrival: transfers.find(tr => tr.to_city_visit_id === v.id),
+      departure: transfers.find(tr => tr.from_city_visit_id === v.id),
     };
   })();
 
+  const closeDrawer = cityView.open ? closeCityView
+    : bookingCreate.open ? closeBookingCreate
+    : () => setEventView(s => ({ ...s, open: false }));
   const eventDrawer = (
     <EventDrawerHost
       open={drawerOpen}
-      onClose={cityView.open ? closeCityView : bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
+      onClose={closeDrawer}
       scrim
     >
       {cityView.open && cityPanel ? (
