@@ -750,6 +750,13 @@ h2,
 .flow-lp-b .section-sub, /* TRIP-222: инспектор канонов — саб-заголовки шагов планирования Subheading→Heading */
 .pt-cstop__ht h2,  /* TRIP-410: заголовок остановки публичного трипа → Heading (был локальный --fs-h2/-.03em) */
 .pt-h-lead,        /* TRIP-410: лид-заголовок публичного трипа → Heading (был локальный --fs-h2/-.025em; вес держит .t-strong) */
+.empty-state__t,   /* TRIP-302: заголовок пустого состояния — ИНТРИНСИК Heading. До этого он был Heading только внутри .card (через `.card h3`), а в портале модалки (.dlg, не .card) проваливался в body-кегль (15px = как подпись). Канон на самом классе чинит это во всех контекстах.
+   visual-diff-exempt: .empty-state__t font-family — заголовок пустого состояния получил канон .t-heading (был Heading только через .card h3) (TRIP-302)
+   visual-diff-exempt: .empty-state__t font-size — заголовок пустого состояния получил канон .t-heading (TRIP-302)
+   visual-diff-exempt: .empty-state__t font-weight — заголовок пустого состояния получил канон .t-heading (TRIP-302)
+   visual-diff-exempt: .empty-state__t line-height — заголовок пустого состояния получил канон .t-heading (TRIP-302)
+   visual-diff-exempt: .empty-state__t letter-spacing — заголовок пустого состояния получил канон .t-heading (TRIP-302)
+   visual-diff-exempt: .empty-state__t font-variant-numeric — заголовок пустого состояния получил канон .t-heading (TRIP-302) */
 .acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-heading — Geologica 18/700/1.25, tabular (карьер .acct-sectitle) */
 .t-subheading,
 .dock-panel__id b,    /* TRIP-337 инсп.: заголовок виджета чата Label→Subheading */
@@ -8974,6 +8981,15 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-state--boxed > .tile { margin-bottom: 12px; }
 .empty-state--boxed .empty-state__t { margin-bottom: 4px; }
 .empty-state--boxed .empty-state__act { margin-top: 12px; }
+/* TRIP-302: когда пустое состояние — это КОНТЕНТ модалки подтверждения (десктоп
+   `.dlg`, телефон `.sheet`), полноэкранный паддинг 48px даёт большой разрыв
+   «текст → кнопка OK» (заметнее всего в шите). Здесь оно не полноэкранное, а
+   тело диалога — сжимаем ритм под диалог; тон/структуру/типографику не трогаем.
+   visual-diff-exempt: .empty-state padding — паддинг пустого состояния как контента модалки (TRIP-302)
+   visual-diff-exempt: .dlg padding — тот же паддинг, приписан .dlg по правилу .dlg .empty-state (TRIP-302)
+   visual-diff-exempt: .sheet padding — тот же паддинг, приписан .sheet по правилу .sheet .empty-state (TRIP-302) */
+.dlg .empty-state,
+.sheet .empty-state { padding: var(--sp-8) var(--sp-8) var(--sp-4); }
 
 /* TRIP-343 PR-2: тон-brand пустого нотиса на `<Card tone="brand" radius="md">`.
    ⚠ ОБЛИК СВЕДЁН К КАНОНУ (решение Pavel, апрув по скрину «было светлее → стало
