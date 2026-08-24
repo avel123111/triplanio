@@ -95,6 +95,18 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     });
     mapRef.current = map;
 
+    // Mapbox-логотип — DOM-оверлей (не часть WebGL-canvas): в финальный PNG,
+    // снимаемый с canvas, он НЕ попадает, а в превью-кальке висел поверх
+    // стилизованной карточки (Pavel: «аттрибуция посередине карты»). Снимаем его
+    // в превью, чтобы превью == финал. LogoControl добавляется синхронно в
+    // конструкторе Map; на всякий случай повторяем на 'load' (переинициализация
+    // стиля могла бы вернуть узел).
+    const stripMapboxChrome = () => {
+      holderRef.current?.querySelectorAll('.mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib').forEach((el) => el.remove());
+    };
+    stripMapboxChrome();
+    map.once('load', stripMapboxChrome);
+
     let userMoved = false;
     // ★ Жест — только событие С originalEvent: mapbox шлёт zoomstart/movestart и
     // на ПРОГРАММНОЕ движение (fitToPoints/jumpTo). Без проверки первый же
