@@ -303,9 +303,9 @@ function Pain() {
                   <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
                   <div><b>{t('landing.aw.title')}</b><small>{t('landing.aw.dates')}</small></div>
                   <div className="avs">
-                    <span style={{ background: 'var(--ice)', color: 'var(--brand-deep)' }}>M</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-                    <span style={{ background: 'var(--sunset-tint)', color: 'var(--sunset-text)' }}>A</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-                    <span style={{ background: 'var(--mint-tint)', color: 'var(--mint-text)' }}>K</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
+                    <span style={{ background: 'var(--ice)', color: 'var(--brand-deep)' }}>M</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+                    <span style={{ background: 'var(--sunset-tint)', color: 'var(--sunset-text)' }}>A</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+                    <span style={{ background: 'var(--mint-tint)', color: 'var(--mint-text)' }}>K</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
                   </div>
                 </div>
                 <div className="aw-grid">
@@ -731,17 +731,17 @@ function Collab() {
               <svg className="logo" width="30" height="30" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
               <div><b>{t('landing.col.tripT')}</b><small>{t('landing.col.tripS')}</small></div>
               <div className="avs">
-                <span className="av" style={{ background: 'var(--ice)', color: 'var(--brand-deep)' }}>A</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-                <span className="av" style={{ background: 'var(--sunset-tint)', color: 'var(--sunset-text)' }}>D</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-                <span className="av" style={{ background: 'var(--mint-tint)', color: 'var(--mint-text)' }}>S</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-                <span className="av" style={{ background: 'var(--violet-tint)', color: 'var(--violet-text)' }}>M</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
+                <span className="av" aria-hidden="true" style={{ background: '#2173C8' }}>A</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+                <span className="av" aria-hidden="true" style={{ background: '#FF9E4A' }}>D</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+                <span className="av" aria-hidden="true" style={{ background: '#2EC27E' }}>S</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+                <span className="av" aria-hidden="true" style={{ background: '#7A5CF0' }}>M</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
               </div>
             </div>
             <div className="feed" data-stagger="">
-              <div className="feed-item rv" style={{ '--i': 0 }}><span className="av" style={{ background: 'var(--sunset-tint)', color: 'var(--sunset-text)' }}>D</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f1') }} /></div></div>{/* inline-style-exempt: stagger index + mock avatar colour, AA pair (TRIP-460) */}
-              <div className="feed-item rv" style={{ '--i': 1 }}><span className="av" style={{ background: 'var(--mint-tint)', color: 'var(--mint-text)' }}>S</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f2') }} /></div></div>{/* inline-style-exempt: stagger index + mock avatar colour, AA pair (TRIP-460) */}
+              <div className="feed-item rv" style={{ '--i': 0 }}><span className="av" aria-hidden="true" style={{ background: '#FF9E4A' }}>D</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f1') }} /></div></div>{/* inline-style-exempt: индекс каскада + цвет аватара мокапа — как в макете (TRIP-460) */}
+              <div className="feed-item rv" style={{ '--i': 1 }}><span className="av" aria-hidden="true" style={{ background: '#2EC27E' }}>S</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f2') }} /></div></div>{/* inline-style-exempt: индекс каскада + цвет аватара мокапа — как в макете (TRIP-460) */}
               <div className="feed-item ai-msg rv" style={{ '--i': 2 }}><span className="av"><svg width="13" height="13"><use href="#i-spark" /></svg></span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f3') }} /></div></div>{/* inline-style-exempt: stagger index */}
-              <div className="feed-item rv" style={{ '--i': 3 }}><span className="av" style={{ background: 'var(--ice)', color: 'var(--brand-deep)' }}>A</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f4') }} /></div></div>{/* inline-style-exempt: stagger index + mock avatar colour, AA pair (TRIP-460) */}
+              <div className="feed-item rv" style={{ '--i': 3 }}><span className="av" aria-hidden="true" style={{ background: '#2173C8' }}>A</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f4') }} /></div></div>{/* inline-style-exempt: индекс каскада + цвет аватара мокапа — как в макете (TRIP-460) */}
             </div>
           </div>
         </div>
@@ -762,15 +762,15 @@ function Audience() {
         </div>
         <div className="aud-grid" data-stagger="">
           <article className="aud-card rv" style={{ '--i': 0 }}>{/* inline-style-exempt: stagger reveal index */}
-            <div className="aud-avatars"><span className="av" style={{ background: 'var(--ice)', color: 'var(--brand-deep)' }}>Y</span></div>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
+            <div className="aud-avatars"><span className="av" aria-hidden="true" style={{ background: 'linear-gradient(140deg,#2173C8,#6FB4F4)' }}>Y</span></div>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
             <h3>{t('landing.aud.c1t')}</h3>
             <p>{t('landing.aud.c1d')}</p>
             <a className="tagline" href="#assistant">{t('landing.aud.c1tag')}</a>
           </article>
           <article className="aud-card duo rv" style={{ '--i': 1 }}>{/* inline-style-exempt: stagger reveal index */}
             <div className="aud-avatars">
-              <span className="av" style={{ background: 'var(--sunset-tint)', color: 'var(--sunset-text)' }}>M</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-              <span className="av" style={{ background: 'var(--ice)', color: 'var(--brand-deep)' }}>K</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
+              <span className="av" aria-hidden="true" style={{ background: 'linear-gradient(140deg,#FF9E4A,#FFC38A)' }}>M</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+              <span className="av" aria-hidden="true" style={{ background: 'linear-gradient(140deg,#2173C8,#6FB4F4)' }}>K</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
             </div>
             <h3>{t('landing.aud.c2t')}</h3>
             <p>{t('landing.aud.c2d')}</p>
@@ -778,10 +778,10 @@ function Audience() {
           </article>
           <article className="aud-card group rv" style={{ '--i': 2 }}>{/* inline-style-exempt: stagger reveal index */}
             <div className="aud-avatars">
-              <span className="av" style={{ background: 'var(--mint-tint)', color: 'var(--mint-text)' }}>A</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-              <span className="av" style={{ background: 'var(--ice)', color: 'var(--brand-deep)' }}>D</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-              <span className="av" style={{ background: 'var(--coral-tint)', color: 'var(--coral-text)' }}>S</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
-              <span className="av" style={{ background: 'var(--violet-tint)', color: 'var(--violet-text)' }}>+3</span>{/* inline-style-exempt: mock avatar colour, AA pair (TRIP-460) */}
+              <span className="av" aria-hidden="true" style={{ background: 'linear-gradient(140deg,#2EC27E,#7FE0B4)' }}>A</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+              <span className="av" aria-hidden="true" style={{ background: 'linear-gradient(140deg,#2173C8,#6FB4F4)' }}>D</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+              <span className="av" aria-hidden="true" style={{ background: 'linear-gradient(140deg,#FF6B5E,#FFA599)' }}>S</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
+              <span className="av" aria-hidden="true" style={{ background: 'linear-gradient(140deg,#7A5CF0,#B39CFF)' }}>+3</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
             </div>
             <h3>{t('landing.aud.c3t')}</h3>
             <p>{t('landing.aud.c3d')}</p>

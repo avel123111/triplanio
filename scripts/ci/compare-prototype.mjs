@@ -61,6 +61,7 @@ const arg = (name, def) => {
 };
 const PROTO = arg('proto'), IMPL = arg('impl');
 const W = +arg('width', 1440), H = +arg('height', 900);
+const LANG = arg('lang', 'en');
 if (!PROTO || !IMPL) {
   console.error('нужны --proto <url> и --impl <url>; см. докблок');
   process.exit(2);
@@ -77,6 +78,30 @@ async function capture(browser, url, tag) {
   await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
   await page.waitForTimeout(2500);
   await page.addStyleTag({ content: SETTLE });
+
+  // Локаль: макет и реализация переключаются своими же кнопками языка, иначе
+  // сравнивается английская вёрстка с русской. Русские строки длиннее — часть
+  // расхождений видна ТОЛЬКО на ru.
+  if (LANG && LANG !== 'en') {
+    await page.evaluate(async (lang) => {
+      const opener = document.querySelector('.lang-btn') || document.querySelector('.lang button');
+      if (opener) { opener.click(); await new Promise((r) => setTimeout(r, 350)); }
+      // строгий выбор: сначала data-lang, потом ТОЧНОЕ имя языка. Свободный
+      // regex по тексту цеплял последний подходящий пункт и уводил на другую
+      // локаль (ru → es), а раскрытое меню ещё и закрывало пол-секции.
+      const label = { ru: 'Русский', es: 'Español', en: 'English' }[lang];
+      const items = [...document.querySelectorAll('[data-lang], .lang-menu button, .lang-menu a, .mobile-menu button')];
+      const target = items.find((el) => el.dataset?.lang === lang)
+        || items.find((el) => (el.textContent || '').trim() === label)
+        || items.find((el) => (el.textContent || '').trim().startsWith(lang.toUpperCase()));
+      if (target) target.click();
+      await new Promise((r) => setTimeout(r, 400));
+      // закрыть выпадающее меню, чтобы оно не попало в кадр
+      document.body.click();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    }, LANG);
+    await page.waitForTimeout(1200);
+  }
 
   const found = {};
   // hero снимается ПЕРВЫМ, на нетронутой странице: он живёт на первом экране и

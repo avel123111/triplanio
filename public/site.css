@@ -791,7 +791,7 @@ section{position:relative}
 /* color больше не белый по умолчанию — контраст держит инлайн (JSX) на каждом
    инстансе, tint/text-пара под его цвет (ревью TRIP-460); белая обводка (border)
    декоративная, текста не несёт, не тронута */
-.aw-head .avs span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-tiny);font-weight:700;border:2px solid #fff}
+.aw-head .avs span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size: var(--fs-tiny);font-weight:700;border:2px solid #fff}
 
 .aw-head .avs span + span{margin-left:-8px}
 
@@ -1454,7 +1454,7 @@ section{position:relative}
 .feed-head .avs{display:flex;margin-left:auto}
 
 /* color инлайном на каждом инстансе — см. .aw-head .avs span выше (ревью TRIP-460) */
-.feed-head .avs .av{width:27px;height:27px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700}
+.feed-head .avs .av{width:27px;height:27px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff}
 
 .feed-head .avs .av + .av{margin-left:-8px}
 
