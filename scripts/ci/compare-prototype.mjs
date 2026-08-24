@@ -70,6 +70,13 @@ if (!PROTO || !IMPL) {
 /** Обе стороны — в одном состоянии: без баннера согласия, анимации доиграны. */
 const SETTLE = `
   .consent, .ci-root, [class*="ci-launch"] { display: none !important; }
+  /* Только ВИДИМОСТЬ. Reveal на этом лендинге ДВУНАПРАВЛЕННЫЙ: наблюдатель
+     снимает класс in, когда секция уходит вверх, — и блок, добавленный нами
+     руками, снова гаснет к моменту съёмки (телефон «Ассистента» пропадал
+     целиком, хотя в DOM он на месте: top 604, высота 719).
+     transform НЕ трогаем: forced transform:none перебивает конечное
+     состояние анимации и раздувает диф (hero 11% против 48%). */
+  .rv, .rv-l, .rv-r { opacity: 1 !important; }
 `;
 
 async function capture(browser, url, tag) {
@@ -147,7 +154,12 @@ async function capture(browser, url, tag) {
     const box = await el.boundingBox();
     if (!box) continue;
     const file = path.join(OUT, `${tag}-${name}.png`);
-    await page.screenshot({ path: file, clip: { x: 0, y: Math.max(0, box.y), width: W, height: Math.min(box.height, 2400) } });
+    // Снимок САМОГО элемента, а не окна: секция бывает выше вьюпорта (на 390
+    // «Ассистент» — 1391px против 844), и кадр по вьюпорту ловил у сторон РАЗНЫЕ
+    // куски. Так телефон-мокап попадал в кадр макета и не попадал в кадр
+    // реализации — на глаз читалось как «блок пропал», хотя он на месте (замер
+    // --elements: top 606/604, высота 726/719).
+    await el.screenshot({ path: file });
     found[name] = file;
   }
   await ctx.close();
