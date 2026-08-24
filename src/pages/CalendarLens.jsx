@@ -258,6 +258,10 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
     .map((v, idx) => ({ ...v, idx, s: parseNaive(v.start_date), e: parseNaive(v.end_date) }))
     .filter(v => v.kind !== 'start' && v.kind !== 'end' && v.s && v.e), [visits]);
 
+  // Пересадки/переезды в календаре не показываем — только «содержательные»
+  // события (отели, активности, дедлайны и т.п.). Семейство transfer отсеиваем.
+  const calStream = useMemo(() => stream.filter(e => eventFamily(e.type) !== 'transfer'), [stream]);
+
   // ── Month grid ───────────────────────────────────────────────────────────────
   const monthData = useMemo(() => {
     if (!currentMonth) return null;
@@ -268,7 +272,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
     const totalCells = Math.ceil((offset + dim) / 7) * 7;
 
     const evByDay = {};
-    for (const e of stream) {
+    for (const e of calStream) {
       if (!e.date) continue;
       const dt = parseNaive(e.date + 'T00:00:00');
       if (!dt || dt.year !== y || dt.month !== m) continue;
@@ -290,7 +294,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       cells.push({ day, isToday: day === todayDay, events: evByDay[day] || [], cities });
     }
     return { y, m, cells };
-  }, [currentMonth, stream, tripVisits, today]);
+  }, [currentMonth, calStream, tripVisits, today]);
 
   // ── Week time-grid (full day) ─────────────────────────────────────────────────
   const weekData = useMemo(() => {
@@ -311,7 +315,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
 
     let firstHour = 8;
     let any = false;
-    for (const e of stream) {
+    for (const e of calStream) {
       if (!e.date) continue;
       const di = days.findIndex(d => d.dateStr === e.date);
       if (di < 0) continue;
@@ -358,7 +362,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       cities.push({ name, colorIdx: v.idx, range: fmt(v.s, v.e) });
     });
     const days = Math.round(end.diff(start, 'days').days) + 1;
-    return { cities, stats: { days, cities: cities.length, events: stream.length }, rangeLabel: fmt(start, end) };
+    return { cities, stats: { days, cities: cities.length, events: calStream.length }, rangeLabel: fmt(start, end) };
   }, [tripVisits, stream, MONTH_SHORT]);
 
   // ── Navigation ────────────────────────────────────────────────────────────────
@@ -399,6 +403,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
 
         <div className="ncal-bar-ctl">
           <Seg
+            className="ncal-seg"
             ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
             value={view}
             onChange={setView}

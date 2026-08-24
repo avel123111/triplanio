@@ -217,13 +217,16 @@
 
 @media (max-width: 640px) {
   .ncal { gap: 12px; }
-  /* Header: title on top; controls in two tidy rows (seg+pin / nav) */
+  /* Header: title on top; controls in two tidy rows.
+     Row 1 — сегмент месяц/неделя на всю ширину (настоящий segmented control).
+     Row 2 — навигация ‹ Сегодня › слева, «к поездке» справа. */
   .ncal-bar { align-items: stretch; gap: 10px; }
-  .ncal-bar-ctl { flex-wrap: wrap; align-items: center; gap: 8px; }
-  .ncal-bar-ctl > .seg { order: 1; }
-  .ncal-trip-btn { order: 2; margin-left: auto; }
-  .ncal-nav { order: 3; flex: 1 1 100%; justify-content: space-between; }
-  .ncal-today { flex: 1; text-align: center; }
+  .ncal-bar-ctl { flex-wrap: wrap; align-items: center; gap: 10px; }
+  .ncal-bar-ctl > .ncal-seg { order: 1; display: flex; width: 100%; }
+  .ncal-bar-ctl > .ncal-seg button { flex: 1; }
+  .ncal-nav { order: 2; flex: 0 0 auto; }
+  .ncal-trip-btn { order: 3; margin-left: auto; }
+  .ncal-today { padding: 6px 16px; }
 
   /* Month: compact — события точками, полоса города остаётся */
   .ncal-dc { min-height: 62px; padding: 11px 4px 7px; gap: 2px; }
@@ -233,10 +236,12 @@
   .ncal-evl { display: none; }
   .ncal-dots { display: flex; }
 
-  /* Week: tighter gutter; horizontal scroll of the whole grid (columns keep min width) */
-  .ncal-week { --ncal-gut: 44px; overflow-x: auto; }
+  /* Week на мобиле: НЕТ вложенного вертикального скролла — по вертикали
+     скроллится страница (по часам), по горизонтали свайпается сама неделя
+     (колонки держат мин. ширину). Так нет «ловушки скролла». */
+  .ncal-week { --ncal-gut: 44px; overflow-x: auto; overflow-y: hidden; }
   .ncal-wk-head, .ncal-wk-allday { min-width: 620px; }
-  .ncal-wk-scroll { min-width: 620px; max-height: calc(100vh - 210px); }
+  .ncal-wk-scroll { min-width: 620px; max-height: none; overflow: visible; }
   .ncal-wk-dn { min-width: 26px; height: 26px; font-size: var(--fs-h3); /* design-token-exempt: TRIP-410 */ }
   .ncal-wk-cseg { font-size: var(--fs-tiny); /* design-token-exempt: TRIP-410 */ }
 
