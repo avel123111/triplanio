@@ -28,7 +28,7 @@ import { PLANE_DATA_URI } from './journeyAssets.ts';
 
 export type Format = 'story' | 'post';
 
-export type CardData = {
+type CardData = {
   title: string;
   route: string; // "Париж - Мадрид"
   dateMonth: string; // "СЕН."

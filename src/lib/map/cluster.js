@@ -13,13 +13,13 @@ import Supercluster from 'supercluster';
 
 // supercluster `radius` is in SCREEN PIXELS (points within this on-screen distance
 // merge at a given zoom) — NOT kilometres. Default is 40; 48 is a touch looser.
-export const CLUSTER_RADIUS = 48;
+const CLUSTER_RADIUS = 48;
 // Above this zoom points never cluster — high enough that pins a few metres apart
 // separate by zooming, leaving only truly coincident pins for spiderfy.
-export const CLUSTER_MAX_ZOOM = 20;
+const CLUSTER_MAX_ZOOM = 20;
 // Fraction of the visible span queried BEYOND each edge so markers stay mounted a
 // little past the viewport instead of popping out the moment they touch the border.
-export const VIEWPORT_PAD = 0.25;
+const VIEWPORT_PAD = 0.25;
 
 export function buildClusterIndex(points, { radius = CLUSTER_RADIUS, maxZoom = CLUSTER_MAX_ZOOM, map, reduce } = {}) {
   const index = new Supercluster({ radius, maxZoom, ...(map && { map }), ...(reduce && { reduce }) });
