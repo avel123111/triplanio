@@ -17,14 +17,16 @@
  * Montserrat/Rubik и фоновый jpeg (BG_DEFAULT_B64) выпилены: новый дизайн —
  * прозрачный стикер на Geologica, фон приходит подложкой с фронта.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 const OUT = resolve(root, 'supabase/functions/render-share-card/assets_b64.ts');
+const FLAGS_OUT = resolve(root, 'supabase/functions/render-share-card/flags_b64.ts');
 const FONT_DIR = resolve(root, 'public/fonts/geologica');
+const FLAGS_DIR = resolve(root, 'public/flags');
 const LOGO = resolve(root, 'public/triplanio-logo.svg');
 
 // Существующие байты Caveat (ttf) из текущего assets_b64 — переносим без изменений.
@@ -66,3 +68,21 @@ writeFileSync(OUT, out);
 console.log('wrote', OUT);
 console.log('font entries:', fonts.map((f) => f.length));
 console.log('logo b64 len:', logoB64.length);
+
+// ---- флаги стран (ISO2) для ряда «Visited Countries» -----------------------
+// Встроены на edge (а не инлайнятся клиентом): детерминированно, превью == финал,
+// без хрупкого async-fetch /flags/*. Только 2-буквенные коды (страны), не субъекты
+// (us-ak и т.п.). Флаг несёт свой круглый clip внутри — рисуем как есть в <image>.
+const flagFiles = readdirSync(FLAGS_DIR).filter((f) => /^[a-z]{2}\.svg$/.test(f));
+const flagEntries = flagFiles
+  .map((f) => `  ${f.slice(0, 2)}: "${readFileSync(resolve(FLAGS_DIR, f)).toString('base64')}",`)
+  .join('\n');
+const flagsOut = `// AUTO-GENERATED (TRIP-443) — base64-встроенные SVG-флаги стран (ISO2) для ряда
+// «Visited Countries» share-карточки. Воспроизводимо: scripts/gen-share-card-assets.mjs.
+// РУКАМИ НЕ ПРАВИТЬ. Ключ = нижний регистр ISO2; значение = base64 SVG-флага.
+export const FLAGS_B64: Record<string, string> = {
+${flagEntries}
+};
+`;
+writeFileSync(FLAGS_OUT, flagsOut);
+console.log('wrote', FLAGS_OUT, '-', flagFiles.length, 'flags');
