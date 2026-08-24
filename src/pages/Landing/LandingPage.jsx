@@ -153,55 +153,98 @@ function usePainScrub(ready) {
     const sec = document.querySelector('.pain');
     if (!pin || !stage || !sec) return undefined;
     const inner = pin.querySelector('.pain-pin-inner');
-    const mq = window.matchMedia('(min-width:760px)');
     const reduce = window.matchMedia('(prefers-reduced-motion:reduce)');
     let active = false;
     let ticking = false;
-    let pinH = 0;
 
+    // Прогресс считается от РАЗНИЦЫ высот полосы и закреплённой композиции —
+    // ровно как в макете. Прежняя формула (-r.top / (pinH - innerHeight)) брала
+    // высоту окна вместо высоты композиции и уезжала от макета тем сильнее, чем
+    // выше сцена. Порог `filled` с гистерезисом (.50 / .36), иначе флаг дребезжит.
     const upd = () => {
       if (!active) return;
       const r = pin.getBoundingClientRect();
-      const p = Math.min(1, Math.max(0, -r.top / Math.max(1, pinH - window.innerHeight)));
+      const top = parseFloat(getComputedStyle(inner).top) || 0;
+      const total = pin.offsetHeight - inner.offsetHeight;
+      const p = Math.max(0, Math.min(1, total > 0 ? (top - r.top) / total : 0));
       stage.style.setProperty('--p', p.toFixed(4));
-      sec.classList.toggle('filled', p > 0.5);
+      if (p >= 0.5) sec.classList.add('filled');
+      else if (p < 0.36) sec.classList.remove('filled');
     };
     const onScroll = () => {
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(() => { upd(); ticking = false; });
     };
+
+    // Подгонка сцены под экран. Прежняя версия задавала только высоту полосы
+    // (2.2 экрана) и вешала её на САМ закреплённый элемент, из-за чего пин
+    // прилипал к нулю: --pin-top, --pin-h, --fit, --needpx и --rise не
+    // выставлялись вовсе, и скраб шёл не по той траектории.
     const fit = () => {
-      // The pin band is tall enough to give the scrub room to run; height is
-      // a multiple of the viewport, capped so short viewports don't get an
-      // absurdly long pin track.
-      pinH = Math.round(window.innerHeight * 2.2);
-      inner.style.height = `${pinH}px`;
+      if (!active || !inner) {
+        stage.style.removeProperty('--fit');
+        stage.style.removeProperty('--needpx');
+        return;
+      }
+      stage.style.setProperty('--fit', '1');
+      stage.style.setProperty('--needpx', '0px');
+      const aw = stage.querySelector('.appwin');
+      // разделитель + окно; куча карточек абсолютная и в поток не входит
+      const need = aw ? (aw.offsetTop + aw.offsetHeight) : stage.scrollHeight;
+      const head = inner.querySelector('.section-head');
+      const headH = head ? head.offsetHeight + (parseFloat(getComputedStyle(head).marginBottom) || 0) : 0;
+      // считаем в полосе ПОД фиксированной шапкой, иначе подпись разделителя уезжает под неё
+      const hdr = document.querySelector('.site-header');
+      const hdrH = hdr ? hdr.offsetHeight : 0;
+      const band = window.innerHeight - hdrH;
+      const gutter = Math.max(20, band * 0.05);
+      const avail = Math.max(120, band - gutter * 2 - headH);
+      const f = need > 0 ? Math.min(1, avail / need) : 1;
+      stage.style.setProperty('--needpx', `${need}px`);
+      stage.style.setProperty('--fit', f.toFixed(3));
+      sec.style.setProperty('--pin-top', `${hdrH + Math.max(gutter, (band - headH - need * f) / 2)}px`);
+      // прокрутки на анимацию даём столько же, сколько занимает сама композиция сверх экрана
+      sec.style.setProperty('--pin-h', `${Math.round(headH + need * f + window.innerHeight * 0.85)}px`);
+      // окно выезжает из-под кучи карточек и встаёт на место
+      const cards = [...stage.querySelectorAll('.scrapv3')].filter((c) => c.offsetHeight > 0);
+      const pileBot = cards.length ? Math.max(...cards.map((c) => c.offsetTop + c.offsetHeight)) : 0;
+      sec.style.setProperty('--rise', `${Math.max(0, (pileBot - (aw ? aw.offsetTop : 0)) * f + 34)}px`);
     };
+
+    // Единственное условие макета — уважение prefers-reduced-motion. Порога по
+    // ширине там НЕТ: на 390 скраб работает так же, как на десктопе. Прежний
+    // `min-width:760px` оставлял мобильную секцию статичным стеком — карточки и
+    // сборка окна не проигрывались вовсе.
     const mode = () => {
-      const on = mq.matches && !reduce.matches;
+      const on = !reduce.matches;
       if (on === active) return;
       active = on;
       sec.classList.toggle('scrub', on);
       if (on) { fit(); upd(); } else {
         stage.style.removeProperty('--p');
+        stage.style.removeProperty('--fit');
+        sec.style.removeProperty('--pin-top');
+        sec.style.removeProperty('--pin-h');
         sec.classList.remove('filled');
-        inner.style.removeProperty('height');
       }
     };
-    const onResize = () => { mode(); if (active) fit(); };
-    mode();
+    const onResize = () => { mode(); fit(); upd(); };
+    mode(); fit(); upd();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize, { passive: true });
-    mq.addEventListener('change', mode);
-    reduce.addEventListener('change', mode);
+    reduce.addEventListener('change', onResize);
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
-      mq.removeEventListener('change', mode);
-      reduce.removeEventListener('change', mode);
+      reduce.removeEventListener('change', onResize);
       sec.classList.remove('scrub', 'filled');
       stage.style.removeProperty('--p');
+      stage.style.removeProperty('--fit');
+      stage.style.removeProperty('--needpx');
+      sec.style.removeProperty('--pin-top');
+      sec.style.removeProperty('--pin-h');
+      sec.style.removeProperty('--rise');
     };
   }, [ready]);
 }

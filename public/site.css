@@ -437,7 +437,11 @@ section{position:relative}
    99px + padding 13px 24px + gap 9px; вариант .btn-primary/.btn-ghost нёс только
    цвет, вся геометрия оставалась в невзятой app-базе. site.css грузится после
    app.css → эта база выигрывает и даёт кнопку прототипа. */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 24px;border-radius:99px;font-weight:600;font-size: var(--fs-body-lg);transition:transform .2s var(--ease-out),box-shadow .25s,background .2s;min-height:46px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 24px;border-radius:99px;font-weight:600;font-size: var(--fs-body-lg);transition:transform .2s var(--ease-out),box-shadow .25s,background .2s;min-height:46px;
+  /* Рамки у базовой кнопки в макете НЕТ. app.css:1776 держит border:1px solid
+     var(--bd) — без явного гашения она проступала у КАЖДОЙ кнопки лендинга.
+     Вариант .btn-ghost рисует свою рамку сам и этим не затронут. */
+  border:0}
 
 .btn:active{transform:scale(.97)}
 
@@ -1160,10 +1164,13 @@ section{position:relative}
 .ai-node .beam.up{background:linear-gradient(transparent,rgba(33,115,200,.5))}
 
 .ai-chip{display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border-radius:99px;
-  /* было white на brand→violet градиенте — 4.09:1/белый ниже AA (ревью TRIP-460,
-     контраст); плоский violet-tint/violet-text держит 6.56:1 */
-  background:var(--violet-tint);color:var(--violet-text);font-weight:600;font-size: var(--fs-small);
-  box-shadow:0 12px 30px -10px rgba(101,92,240,.2)}
+  /* Градиент и белый текст — как в макете. Сырые тона макета (#2380D6 -> #7A5CF0)
+     дают белому 4.09 и 4.55, поэтому оба углублены на 15% (#1D6CB5 -> #674ECC):
+     контраст 5.43 и 5.93, оттенок и направление градиента сохранены. Плоский
+     violet-tint, стоявший здесь ради AA, гасил акцент — а это единственный
+     ярлык ИИ на странице, он обязан читаться акцентом. */
+  background:linear-gradient(120deg,#1D6CB5,#674ECC);color:#fff;font-weight:600;font-size: var(--fs-small);
+  box-shadow:0 12px 30px -10px rgba(101,92,240,.55)}
 
 .ai-chip svg{flex:none}
 
@@ -1757,7 +1764,11 @@ section{position:relative}
 
 .footer-links a::after,.copy::after,.aud-card .tagline::after,.share-url::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
 
-.footer-links a{font-size: var(--fs-body);color:inherit;transition:color .2s}
+/* Кнопка «Cookies» стоит в одном ряду со ссылками и обязана выглядеть так же.
+   В макете это <a>; здесь нужен <button> (перевызов баннера согласия — не
+   переход), а правило таргетило только a, и кнопка оставалась на кегле body:
+   15.68px против 13.6px у соседей. */
+.footer-links a, .footer-links button{font-size: var(--fs-body);color:inherit;transition:color .2s}
 
 .footer-links a:hover{color:var(--ink)}
 

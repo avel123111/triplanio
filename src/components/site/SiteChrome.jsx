@@ -243,9 +243,12 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
             <a href="mailto:support@triplanio.com">{t('landing.ft.contact')}</a>
           </nav>
         </div>
+        {/* В макете подвал несёт ТОЛЬКО копирайт. Переключатель языка стоял здесь
+            вторым экземпляром, и его выпадающее меню — абсолютное, но раскрытое
+            вниз у самого низа страницы — растягивало документ на 116px пустоты
+            под футером. Язык переключается в шапке, на всех ширинах. */}
         <div className="footer-bottom">
           <span>{t('landing.ft.copy')}</span>
-          <LangSwitch value={lang} onChange={setLang} />
         </div>
       </div>
     </footer>
