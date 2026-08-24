@@ -1,9 +1,9 @@
 /* Share-card builder (share-UX эксперимент поверх TRIP-193). Заменяет прежний
    ShareDialog.css целиком: публичная ссылка уехала в меню (TripShareFlow), этот
    диалог собирает ТОЛЬКО карточку. Раскладка:
-     десктоп → превью слева (карусель фонов под ним), управление справа;
+     десктоп → превью слева, справа управление и ПОД НИМ карусель фонов;
      ≤640    → колонка в полноэкранном шите .lp-sheet (канон панелей редактора),
-               превью почти во весь экран.
+               превью почти во весь экран, карусель под ним.
    Сцена (.sc-stage) обязана держать ТОЧНУЮ пропорцию карточки — проценты дыры
    слота считаются от её коробки; поэтому высота НЕ задаётся: ширина = потолок
    высоты (--sc-max, задаёт контекст) × числовая пропорция (--sc-arw, из данных
@@ -89,7 +89,6 @@
    visual-diff-exempt: .sc-side {@media (max-width: 640px)} flex-wrap — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-side {@media (max-width: 640px)} gap — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-edit --sc-max — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-edit {@media (max-width: 640px)} --sc-max — новый класс конструктора (share-UX)
    Мобильный full-bleed редактора (`.sc-edit .sc-stage`) — объявления пишутся
    обоим классам составного правила, ключи по печати гарда:
    visual-diff-exempt: .sc-edit {@media (max-width: 640px)} width — full-bleed карта редактора на телефоне (share-UX)
@@ -102,6 +101,7 @@
    visual-diff-exempt: .sc-stage {@media (max-width: 640px)} aspect-ratio — full-bleed карта редактора на телефоне (share-UX)
    visual-diff-exempt: .sc-stage {@media (max-width: 640px)} flex — full-bleed карта редактора на телефоне (share-UX)
    visual-diff-exempt: .sc-stage {@media (max-width: 640px)} min-height — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-note {@media (max-width: 640px)} flex-basis — новый класс конструктора: строка ошибки на всю ширину ряда (share-UX)
 */
 
 /* Один DOM — две раскладки именованными областями (тот же приём, что у прежней
@@ -159,6 +159,10 @@
     --sc-max: calc(100dvh - 330px);
   }
   .sc-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-5); }
+  /* Строки ошибок в мобильном РЯДУ управления переносятся на свою строку —
+     иначе текст встаёт узкой колонкой рядом с кнопкой. В десктоп-колонке
+     правило не нужно (и flex-basis там мерил бы высоту). */
+  .sc-note { flex-basis: 100%; }
   /* Редактор на телефоне: карта full-bleed на всю высоту шита (пропорция слота
      дала бы пустой подвал — экран уже слота). По ширине кадр совпадает со
      слотом (камера ездит previewCssWidth), по вертикали слот возьмёт

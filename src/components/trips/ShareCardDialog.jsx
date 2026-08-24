@@ -25,8 +25,9 @@ const SKELETON_THUMBS = [0, 1, 2];
 // Одна сцена вместо двух стадий edit→card:
 //   · превью = живая карта-калька (без жестов) под рамкой-SVG с выбранным фоном —
 //     ровно то, что уйдёт в PNG; «Скачать»/«Поделиться» собирают файл на месте;
-//   · фон — стрелки по бокам превью + карусель миниатюр под ним (язык CoverPicker:
-//     классы tcp__*, Swatch, Carousel); своё фото едет data-URI без Storage;
+//   · фон — стрелки по бокам превью + карусель миниатюр (десктоп — справа под
+//     управлением, ≤640 — под превью; язык CoverPicker: классы tcp__*, Swatch,
+//     Carousel); своё фото едет data-URI без Storage;
 //   · карта — ОТДЕЛЬНЫЙ полноэкранный под-флоу (кнопка «Настроить карту»):
 //     тот же ShareMapPreview, но живой и крупный; Done возвращает композицию.
 // Оболочка: десктоп — Dialog wide, телефон — полноэкранный шит .lp-sheet
@@ -101,9 +102,11 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   const standardThumb = useMemo(() => (overlay ? cardBgUri(overlay.svg) : ''), [overlay]);
 
   const ready = Boolean(overlay) && !overlayCode;
-  const arStyle = overlay
-    ? { '--sc-ar': `${overlay.w} / ${overlay.h}`, '--sc-arw': overlay.w / overlay.h }
-    : undefined;
+  // Пропорция сцены едет двумя каналами (см. ShareCardDialog.css): --sc-ar для
+  // aspect-ratio и числовой --sc-arw, от которого считается ширина. Конструктор
+  // меряется рамкой целиком, редактор карты — слотом (дырой под карту).
+  const arVars = (w, h) => ({ '--sc-ar': `${w} / ${h}`, '--sc-arw': w / h });
+  const arStyle = overlay ? arVars(overlay.w, overlay.h) : undefined;
 
   // Фон миниатюр — картинка ИЗ ДАННЫХ (data-URI шаблона / url пресета), классом
   // её не выразить; едет переменной, как у CoverPicker.
@@ -286,8 +289,8 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
           {t('share.edit_map')}
         </Btn>
         {!isPhone && <div className="muted t-body">{t('share.menu_card_hint')}</div>}
-        {uploadError && <p className="tcp__err">{uploadError}</p>}
-        {buildError && <Severity level="error">{buildError}</Severity>}
+        {uploadError && <p className="tcp__err sc-note">{uploadError}</p>}
+        {buildError && <div className="sc-note"><Severity level="error">{buildError}</Severity></div>}
       </div>
 
       <input ref={fileRef} type="file" accept={IMAGE_ACCEPT} onChange={handleFile} className="tcp__file" />
@@ -310,11 +313,8 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   // ГОЛАЯ и крупная: без рамки карточки, в пропорции СЛОТА (дыры под карту) —
   // редактируешь карту, а не карточку; кадр по ширине совпадает с дырой
   // (камера ездит композицией с пересчётом зума под ширину поверхности).
-  const editorAr = overlay
-    ? { '--sc-ar': `${overlay.slot.w} / ${overlay.slot.h}`, '--sc-arw': overlay.slot.w / overlay.slot.h }
-    : undefined;
   const editorStage = overlay && (
-    <div className="sc-stage" style={editorAr}>
+    <div className="sc-stage" style={arVars(overlay.slot.w, overlay.slot.h)}>
       <ShareMapPreview
         ref={editorRef}
         visits={visits}
