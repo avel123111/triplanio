@@ -19,8 +19,15 @@ html.site {
   --ink:#13324E; --muted:#516576; --white:#FFFFFF;
   --mist:#F0F7FD; --band:#E2F0FB; --sand:#FDF3E5;
   --night-line:rgba(122,180,235,.15); --night-text:#BDD5EC;
-  --sunset:#FF9E4A; --sunset-text:#A0632E;
-  --mint:#2EC27E; --mint-text:#1C7A4F;
+  --sunset:#FF9E4A; --sunset-text:#A0632E; --sunset-tint:#FDECDC;
+  --mint:#2EC27E; --mint-text:#1C7A4F; --mint-tint:#DCF5E8;
+  /* violet/coral — новые пары фон/текст (ревью TRIP-460, «не потерять»/контраст):
+     #fff не проходит AA ни на одном сыром акценте прототипа (--brand 4.09,
+     --sky 2.21, --mint 2.30, --sunset 2.05, аватарные градиенты 2.56/1.68).
+     Пары взяты с публичной поездки — светлый tint под фон, тёмный вариант
+     оттенка под текст, оба ≥4.5:1 на своей паре. */
+  --violet-text:#4B3FA8; --violet-tint:#E7E4FB;
+  --coral-text:#A32B60; --coral-tint:#FBE3EC;
 
   --font-display:'Onest', ui-sans-serif, system-ui, sans-serif;
   --font-body:'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -37,6 +44,17 @@ html.site {
      ступени под 14 сырых px-радиусов прототипа (сдвиг ≤2px, таблица в PR). */
   --r-md:15px; --r-lg:22px;
   --r-xs:4px; --r-sm:10px;
+
+  --shadow-lg:0 24px 60px -18px rgba(11,44,84,.20);
+  --shadow-md:0 12px 32px -12px rgba(11,44,84,.14);
+  --shadow-sm:0 4px 14px -4px rgba(11,44,84,.10);
+
+  /* Корпус устройства (.device — Pain/Telegram) — было на голом :root, тот же
+     утечка-баг, что и первый (ревью TRIP-460, найдено при работе над контрастом). */
+  --dev-bezel:linear-gradient(145deg,#454a52,#1b1e24 30%,#0e1013 60%,#2b2f36 85%,#0e1013);
+  --dev-shadow:0 55px 110px -34px rgba(7,30,56,.5),0 22px 42px -26px rgba(7,30,56,.42);
+  --dev-btn:#15181d; --dev-rim:#06080b;
+  --dev-gloss:linear-gradient(130deg,rgba(255,255,255,.22),rgba(255,255,255,0) 32%);
 
   /* Кегли — 11 ступеней (замена 37 уникальных rem-значений), покрытие 108/108,
      макс. сдвиг 1px (таблица «было → стало → сдвиг» в теле PR, TRIP-460). Каждое
@@ -182,54 +200,13 @@ html.site {
 /* prefix-exempt: wrap — прототип v5.7 (TRIP-460, подход "как есть") */
 /* prefix-exempt: yc — прототип v5.7 (TRIP-460, подход "как есть") */
 
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  font-family: var(--font-body);
-  color: var(--ink);
-  background: var(--white);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.55;
-}
-img { max-width: 100%; display: block; }
-button { font-family: inherit; cursor: pointer; }
-a { color: inherit; text-decoration: none; }
-
-
-/* ============================================================
-   TRIPLANIO v2 — tokens
-============================================================ */
-:root{
-  --brand:#2380D6; --brand-btn:#1E72C4;
-  --brand-deep:#1B67B4;
-  --sky:#6FB4F4;
-  --ice:#DFF0FD;
-  --ink:#13324E;
-  --muted:#516576;   /* держит >=4.5 на всех фонах лендинга, включая самый светлый --ice */
-  --white:#FFFFFF;
-  --mist:#F0F7FD;          /* light tinted band */
-  --band:#E2F0FB;          /* deeper tinted band */
-  --sand:#FDF3E5;          /* warm band */
-  --night-line:rgba(122,180,235,.15);
-  --night-text:#BDD5EC;
-  --sunset:#FF9E4A;
-  --sunset-text:#A0632E; /* закатный для ТЕКСТА: --sunset даёт 2.1:1 */
-  --mint:#2EC27E;
-  --mint-text:#1C7A4F;   /* мята для ТЕКСТА и иконок: --mint даёт 2.3:1, ниже AA */
-  --r-lg:22px;
-  --r-md:15px;
-  --shadow-lg:0 24px 60px -18px rgba(11,44,84,.20);
-  --shadow-md:0 12px 32px -12px rgba(11,44,84,.14);
-  --shadow-sm:0 4px 14px -4px rgba(11,44,84,.10);
-  --font-display:"Onest",sans-serif;
-  --font-body:"Golos Text",sans-serif;
-  --ease-out:cubic-bezier(.22,1,.36,1);
-  --dur:.65s;
-  --sheet-r:clamp(26px,4vw,44px);
-}
-
+/* Гард-фикс (ревью TRIP-460, найдено при работе над контрастом): здесь стоял
+   хвост черновой обвязки ДО перехода на подход "CSS как есть" — ручной
+   reset + ВТОРОЙ, полностью дублирующий html.site{} блок токенов, но на
+   голом :root{} (та самая утечка, которую класс на html.site должен был
+   исключить по построению, TRIP-446). Удалены оба: значения совпадали 1:1
+   с html.site{} (--shadow-lg/md/sm — единственное, чего там не было —
+   перенесены в html.site{} выше). Ниже — подлинный reset прототипа v5.7. */
 *{margin:0;padding:0;box-sizing:border-box}
 
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip}
@@ -257,6 +234,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 .final :focus-visible{outline-color:#fff}
 
+
+/* Восьмая коллизия «вторая база» (ревью TRIP-460, найдена при проверке контраста
+   на скриншоте, не в диффе): app.css держит глобальный h1,h2,h3,h4{color:var(--ink)}
+   (bare tag-селектор, гард 2ae его не видит — проверяет только классы). Заголовок
+   ПРЯМО таргетится — сильнее любого унаследованного цвета от .final/.dark, порядок
+   загрузки роли не играет. html.site-скоуп поднимает specificity и возвращает
+   заголовку цвет его секции (белый в .final, --ink по умолчанию — то же самое). */
+html.site h1, html.site h2, html.site h3, html.site h4{color:inherit}
 
 h1,h2,h3{font-family:var(--font-display);line-height:1.12;letter-spacing:-.025em}
 
@@ -763,7 +748,10 @@ section{position:relative}
 
 .aw-head .avs{display:flex;margin-left:auto}
 
-.aw-head .avs span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size: var(--fs-tiny);font-weight:700;border:2px solid #fff}
+/* color больше не белый по умолчанию — контраст держит инлайн (JSX) на каждом
+   инстансе, tint/text-пара под его цвет (ревью TRIP-460); белая обводка (border)
+   декоративная, текста не несёт, не тронута */
+.aw-head .avs span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-tiny);font-weight:700;border:2px solid #fff}
 
 .aw-head .avs span + span{margin-left:-8px}
 
@@ -1121,8 +1109,10 @@ section{position:relative}
 .ai-node .beam.up{background:linear-gradient(transparent,rgba(33,115,200,.5))}
 
 .ai-chip{display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border-radius:99px;
-  background:linear-gradient(120deg,var(--brand),#7A5CF0);color:#fff;font-weight:600;font-size: var(--fs-small);
-  box-shadow:0 12px 30px -10px rgba(101,92,240,.55)}
+  /* было white на brand→violet градиенте — 4.09:1/белый ниже AA (ревью TRIP-460,
+     контраст); плоский violet-tint/violet-text держит 6.56:1 */
+  background:var(--violet-tint);color:var(--violet-text);font-weight:600;font-size: var(--fs-small);
+  box-shadow:0 12px 30px -10px rgba(101,92,240,.2)}
 
 .ai-chip svg{flex:none}
 
@@ -1291,7 +1281,9 @@ section{position:relative}
 
 .email-card .eh{display:flex;gap:10px;align-items:center;margin-bottom:12px}
 
-.email-card .eh .av{width:34px;height:34px;border-radius:50%;background:linear-gradient(140deg,#FFB88A,#FF7B54);display:grid;place-items:center;color:#fff;font-weight:700;font-size: var(--fs-small)}
+/* было white на #FFB88A→#FF7B54 — 2.56:1/1.68:1 на концах градиента, далеко
+   ниже AA (ревью TRIP-460, контраст); плоский coral-tint/coral-text держит 5.63:1 */
+.email-card .eh .av{width:34px;height:34px;border-radius:50%;background:var(--coral-tint);display:grid;place-items:center;color:var(--coral-text);font-weight:700;font-size: var(--fs-small)}
 
 .email-card .eh b{display:block;color:var(--ink);font-size: var(--fs-body)}
 
@@ -1357,7 +1349,8 @@ section{position:relative}
 
 .aud-avatars{display:flex;margin-bottom:16px}
 
-.aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;color:#fff;font-weight:700;font-size: var(--fs-body);box-shadow:var(--shadow-sm)}
+/* color инлайном на каждом инстансе — см. .aw-head .avs span выше (ревью TRIP-460) */
+.aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-weight:700;font-size: var(--fs-body);box-shadow:var(--shadow-sm)}
 
 .aud-avatars .av + .av{margin-left:-12px}
 
@@ -1393,7 +1386,8 @@ section{position:relative}
 
 .feed-head .avs{display:flex;margin-left:auto}
 
-.feed-head .avs .av{width:27px;height:27px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff}
+/* color инлайном на каждом инстансе — см. .aw-head .avs span выше (ревью TRIP-460) */
+.feed-head .avs .av{width:27px;height:27px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700}
 
 .feed-head .avs .av + .av{margin-left:-8px}
 
@@ -1401,7 +1395,10 @@ section{position:relative}
 
 .feed-item{display:flex;gap:11px;align-items:flex-start;background:var(--mist);border:1px solid rgba(19,50,78,.05);border-radius: var(--r-md);padding:11px 13px;font-size: var(--fs-small);color:var(--muted)}
 
-.feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff;flex:none}
+/* color инлайном на каждом текстовом инстансе — см. .aw-head .avs span выше
+   (ревью TRIP-460); .ai-msg ниже — единственный без текста (SVG-иконка
+   currentColor), белый на нём остаётся явным правилом отдельно */
+.feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;flex:none}
 
 .feed-item b{color:var(--ink)}
 
@@ -1409,7 +1406,7 @@ section{position:relative}
 
 .feed-item.ai-msg{background:var(--ice);border-color:rgba(35,128,214,.25)}
 
-.feed-item.ai-msg .av{background:linear-gradient(140deg,var(--brand),#7A5CF0)}
+.feed-item.ai-msg .av{background:linear-gradient(140deg,var(--brand),#7A5CF0);color:#fff}
 
 .collab-points,.tg-points{list-style:none;display:grid;gap:18px;margin-top:28px}
 
@@ -1435,8 +1432,6 @@ section{position:relative}
    в секции Pain. Окно приложения снимает корпус выше 760px (см. ниже) —
    там это браузер. Правка корпуса здесь меняет ОБА места.
 ============================================================ */
-:root{--dev-bezel:linear-gradient(145deg,#454a52,#1b1e24 30%,#0e1013 60%,#2b2f36 85%,#0e1013);--dev-shadow:0 55px 110px -34px rgba(7,30,56,.5),0 22px 42px -26px rgba(7,30,56,.42);--dev-btn:#15181d;--dev-rim:#06080b;--dev-gloss:linear-gradient(130deg,rgba(255,255,255,.22),rgba(255,255,255,0) 32%)}
-
 .device{
   position:relative;width:min(322px,100%);margin-inline:auto;
   padding:11px;border-radius:56px;
@@ -1644,7 +1639,12 @@ section{position:relative}
    FINAL + FOOTER (dark sheet)
 ============================================================ */
 .final{
+  /* Скрим первым слоем — белый текст на сыром градиенте держал 1.83–3.03:1
+     (закатная семья прототипа, ниже AA везде; ревью TRIP-460, контраст).
+     rgba(20,10,5,.42) поверх каждой из трёх точек градиента даёт 4.68/5.64/6.81 —
+     оттенок и форма прототипа не меняются, только глубина. */
   background:
+    linear-gradient(rgba(20,10,5,.42),rgba(20,10,5,.42)),
     radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
     linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);
   color:#fff;text-align:center;overflow:hidden;
