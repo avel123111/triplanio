@@ -400,28 +400,31 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       {/* ── Header — календарный паттерн: стрелки по бокам месяца, «Сегодня»
           рядом; справа — переключатель вида и «К поездке». ── */}
       <header className="ncal-bar">
-        <div className="ncal-hd-l">
+        {/* Навигатор месяца: ‹ Август 2026 › */}
+        <div className="ncal-hd-nav">
           <IconBtn icon="chevL" tone="quiet" size="md" round ariaLabel={t('calendar.prev')} onClick={goBack} className="ncal-navbtn" />
           <h2 className="ncal-title-row">
             <span className="ncal-month-lbl t-title">{MONTH_NAMES[headMonth]}</span>
             <span className="ncal-year-lbl t-title">{headYear}</span>
           </h2>
           <IconBtn icon="chev" tone="quiet" size="md" round ariaLabel={t('calendar.next')} onClick={goFwd} className="ncal-navbtn" />
-          <button className="ncal-today t-label" onClick={goToday}>{t('calendar.today')}</button>
         </div>
 
-        <div className="ncal-hd-r">
-          <Seg
-            className="ncal-seg"
-            ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
-            value={view}
-            onChange={setView}
-            options={[{ value: 'month', label: t('calendar.month') }, { value: 'week', label: t('calendar.week') }]}
-          />
-          <Btn variant="soft" icon="pin" onClick={goHome} className="ncal-trip" ariaLabel={t('calendar.to_trip_start')}>
-            <span className="ncal-trip-lbl">{t('calendar.to_trip_start')}</span>
-          </Btn>
-        </div>
+        {/* Быстрые действия — справа на row1 (мобайл) / в правой зоне (десктоп) */}
+        <button className="ncal-today t-label" onClick={goToday}>{t('calendar.today')}</button>
+
+        {/* Переключатель вида — на всю ширину row2 на мобиле */}
+        <Seg
+          className="ncal-seg"
+          ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
+          value={view}
+          onChange={setView}
+          options={[{ value: 'month', label: t('calendar.month') }, { value: 'week', label: t('calendar.week') }]}
+        />
+
+        <Btn variant="soft" icon="pin" onClick={goHome} className="ncal-trip" ariaLabel={t('calendar.to_trip_start')}>
+          <span className="ncal-trip-lbl">{t('calendar.to_trip_start')}</span>
+        </Btn>
       </header>
 
       {/* ── Calendar (full width) ─────────────────────────────────── */}

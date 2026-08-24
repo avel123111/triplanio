@@ -9,22 +9,25 @@
    врали. Все адаптивные правила ниже — @container ncal. */
 .ncal { display: flex; flex-direction: column; gap: 16px; container-type: inline-size; container-name: ncal; }
 
-/* ── Header — календарный паттерн: ‹ Месяц Год › · Сегодня  |  вид · К поездке.
-   Стрелки фланкируют название (узнаваемая навигация по времени), контролы
-   одной высоты (--ctl-h). Текуче-гибкий (обе зоны переносятся). */
-.ncal-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+/* ── Header — 4 контрола одной высоты (--ctl-h), текуче-гибкие.
+   ДЕСКТОП (1 строка): ‹ Август 2026 › ....... Сегодня · [Месяц|Неделя] · К поездке.
+   МОБАЙЛ (2 строки):  строка1 ‹ Август 2026 › ...... [Сегодня][📍]
+                       строка2 [   Месяц   |   Неделя   ]  (сегмент на всю ширину).
+   Раскладка — порядком flex + margin-right:auto у навигатора, без оконных @media. */
+.ncal-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 
-/* Левая зона — навигация по времени */
-.ncal-hd-l { display: flex; align-items: center; gap: 4px; min-width: 0; }
+/* Навигатор месяца: ‹ Август 2026 › — прижат влево (толкает остальное вправо) */
+.ncal-hd-nav { display: flex; align-items: center; gap: 4px; min-width: 0; margin-right: auto; }
 .ncal-title-row { display: flex; align-items: baseline; gap: 8px; margin: 0 4px; min-width: 0; }
 /* размер/вес/гарнитура — канон .t-title (className в JSX) */
 .ncal-month-lbl { color: var(--ink); text-transform: capitalize; line-height: 1.05; white-space: nowrap; }
 .ncal-year-lbl  { color: var(--muted-2); font-variant-numeric: tabular-nums; }
-/* Стрелки prev/next — призрачные (канон IconBtn tone=quiet), чуть приглушены */
+/* Стрелки prev/next — призрачные (канон IconBtn tone=quiet) */
 .ncal-navbtn { color: var(--muted); flex: none; }
+
 /* «Сегодня» — тихая outline-пилюля той же высоты */
 .ncal-today {
-  height: var(--ctl-h); padding: 0 14px; margin-left: 4px; border-radius: var(--r-pill);
+  height: var(--ctl-h); padding: 0 14px; border-radius: var(--r-pill);
   display: inline-flex; align-items: center; flex: none;
   background: transparent; border: 1px solid var(--line-strong); color: var(--ink-2); cursor: pointer;
   transition: background .15s, color .15s, border-color .15s;
@@ -32,10 +35,8 @@
 .ncal-today:hover { background: var(--surface-2); border-color: var(--line-hover); color: var(--ink); }
 .ncal-today:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 
-/* Правая зона — вид + переход к поездке */
-.ncal-hd-r { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-.ncal-seg { height: var(--ctl-h); }
-/* «К поездке» = канон <Btn variant="soft">; высота матчится по --ctl-h */
+.ncal-seg { height: var(--ctl-h); flex: none; }
+/* «К поездке» = канон <Btn variant="soft"> той же высоты */
 .ncal-trip { height: var(--ctl-h); flex: none; }
 
 /* View toggle: канон <Seg>.
@@ -213,13 +214,12 @@
    сводка уходит вниз, ячейки компактные, события точками, неделя скроллит
    страницу; хедер — сегмент на всю ширину, навигация+пин пакуются рядом. */
 @container ncal (max-width: 760px) {
-  /* Header: строка 1 — ‹ Месяц Год › · Сегодня; строка 2 — сегмент (тянется) +
-     «К поездке» иконкой. Обе зоны на всю ширину. */
-  .ncal-hd-l { flex: 1 1 100%; flex-wrap: wrap; }
-  .ncal-hd-r { flex: 1 1 100%; justify-content: flex-start; gap: 10px; }
-  .ncal-hd-r > .ncal-seg { flex: 1 1 auto; display: flex; }
-  .ncal-hd-r > .ncal-seg button { flex: 1; }
-  .ncal-trip { flex: 0 0 auto; }
+  /* Header в 2 строки, влезает на любой ширине:
+     строка1 — ‹ Август 2026 › .......... [Сегодня]  (навигатор растянут margin-auto)
+     строка2 — [====== Месяц | Неделя ======]  [📍]  (сегмент растягивается, пин справа)
+     Перенос — сам, через flex-basis сегмента (не влезает в row1 → уходит на row2). */
+  .ncal-seg { flex: 1 1 200px; display: flex; }
+  .ncal-seg button { flex: 1; }
   .ncal-trip-lbl { display: none; }        /* «К поездке» — иконкой на мобиле */
 
   /* Month: компактные ячейки (без гигантской пустоты), события — точками */
