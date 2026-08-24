@@ -1,187 +1,136 @@
 /**
- * Share-card SVG template (TRIP-193) - the Journey design, ported pixel-for-pixel
- * from the design source (journey-preview) into a data-driven template.
+ * Share-card SVG template (TRIP-443) — новый дизайн: прозрачный стикер поверх
+ * подложки. Порт раскладки прототипа share-card-prototype-v13 в data-driven SVG.
  *
- * The map "window" is a CUSTOM CUTOUT (organic blob, rotated -5°), not a plain
- * rectangle: the map lives BEHIND the frame, independent of it. `overlay` mode
- * punches that exact shape as a transparent hole so the client lays this PNG over
- * the live interactive map (which shows through the hole); `card` mode bakes the
- * captured map into the shape. The cutout's bounding box is exported as the map
- * slot so the client positions the live map to fill the hole.
+ * Композиция (сверху вниз): заголовок Geologica + маршрут «город → город» ·
+ * полароид (кремовая рамка -2.5°, окно карты, «My trip!» + сердечко) · ряд
+ * статистики (km/Days/Cities/Countries) · ряд флагов «Visited Countries» + «+N» ·
+ * футер «Plan your own adventure» + лого + вордмарк + «Scan to explore» + QR.
  *
- * The decorative red pin + Google-style map chips from the mockup are NOT baked
- * here: our map is the live Mapbox map, which draws its own route + city points.
+ * Контракт с клиентом (src/lib/map/captureMap.js, ShareCardDialog):
+ *  - Карта — axis-aligned `<image>` в bbox окна, обрезанная повёрнутым окном
+ *    (clip). Плейсхолдер `__SHARE_CARD_MAP__` в card_svg; в overlay окно —
+ *    прозрачная дыра (маска), сквозь неё видно живую карту. `mapSlot()` = bbox
+ *    окна (axis-aligned), клиент кладёт карту туда. Так превью == финал.
+ *  - Фон — full-bleed `<image href="__SHARE_CARD_BG__">` в самом низу; клиент
+ *    подменяет токен на выбранную подложку ЛИБО удаляет элемент (прозрачно) —
+ *    см. src/lib/shareCardBg.js. В overlay фон маскируется дырой окна.
+ *  - Флаги — `<image href="__SC_FLAG_<cc>__">` в круге; клиент инлайнит
+ *    /flags/<cc>.svg в data-URI (нет доступа к public/ в рантайме edge).
  *
- * Fonts: the embedded set is Caveat 700, Montserrat 700 and Rubik ExtraBold 800
- * (both latin + cyrillic subsets). The design also asks Montserrat 600/800 - those
- * nearest-match to the bundled 700 in BOTH resvg and the browser, so preview and
- * final agree. The footer brand uses family "Rubik ExtraBold" (the actual name in
- * the font file); referencing plain "Rubik" made resvg silently fall back to
- * Montserrat. On the browser path the same bytes are attached via @font-face (see
- * fontFaces.ts) so text is device-invariant.
- *
- * Per project content rule: hyphen "-", never the em dash "—".
+ * Палитра/шрифты/скругления фиксированы (часть дизайна). Правило проекта: дефис
+ * "-", не длинное тире.
  */
 
 import { qrSvg } from './qr.ts';
-import { PLANE_DATA_URI } from './journeyAssets.ts';
+import { LOGO_SVG_B64 } from './assets_b64.ts';
+
+const LOGO_URI = `data:image/svg+xml;base64,${LOGO_SVG_B64}`;
 
 export type Format = 'story' | 'post';
 
-type CardData = {
+export type CardData = {
   title: string;
-  route: string; // "Париж - Мадрид"
-  dateMonth: string; // "СЕН."
-  dateDay: string; // "11" (shown in the yellow chip)
-  dateRest: string; // "- 3 ОКТ 2026"
-  facts: string;
-  distanceStr: string; // "10 584"
-  distanceLabel: string; // "км в пути"
-  cta: string;
-  tagline: string; // "спланируй свой трип"
-  promo: string; // "бесплатно за пару минут"
-  site: string; // "triplanio.com"
-  brand: string;
+  from: string; // первый город маршрута
+  to: string; // последний город (пусто/равен from ⇒ маршрут без стрелки)
+  distanceStr: string; // "10 741"
+  days: string; // "51"
+  cities: string; // "7"
+  countries: string; // "15"
+  flags: string[]; // ISO2-коды стран по порядку маршрута (нижний регистр)
+  // Локализованные подписи (пекутся сервером, см. _shared/shareCardText.ts).
+  kmLabel: string;
+  daysLabel: string;
+  citiesLabel: string;
+  countriesLabel: string;
+  visitedLabel: string; // "Visited Countries" (может быть в 2 строки по \n)
+  planLine1: string; // "Plan your"
+  planLine2: string; // "own adventure"
+  scanLine1: string; // "Scan to"
+  scanLine2: string; // "explore"
+  myTrip: string; // "My trip!"
+  brand: string; // "TRIPLANIO"
 };
 
-// ---- map cutout (blob) -----------------------------------------------------
-// The blob is authored in a 591×820 box and placed on the card by `transform`
-// (centre + rotate + scale). Server mask/clip, the white border and the exported
-// slot all derive from this single source, so they always agree.
-const BLOB_W = 591;
-const BLOB_H = 820;
-const BLOB_D =
-  'M55.9,7.9 Q103.8,11.7 151.8,7.0 Q199.7,2.3 247.6,0.2 Q295.5,-1.9 343.4,-0.8 Q391.3,0.3 439.3,-1.9 Q487.2,-4.0 537.7,2.0 Q588.2,8.0 589.2,75.0 Q590.2,142.0 586.7,209.0 Q583.1,276.0 582.8,343.0 Q582.6,410.0 582.7,477.0 Q582.8,544.0 587.8,611.0 Q592.9,678.0 587.9,749.0 Q583.0,820.0 535.1,815.0 Q487.2,810.1 439.3,811.6 Q391.3,813.2 343.4,815.6 Q295.5,817.9 247.6,809.8 Q199.7,801.7 151.8,809.0 Q103.8,816.3 57.2,814.1 Q10.6,812.0 15.1,745.0 Q19.6,678.0 18.9,611.0 Q18.3,544.0 14.0,477.0 Q9.6,410.0 5.2,343.0 Q0.8,276.0 6.9,209.0 Q13.0,142.0 10.5,73.1 Q8.0,4.2 55.9,7.9 Z';
+// Токены, которые подменяет клиент.
+export const MAP_TOKEN = '__SHARE_CARD_MAP__';
+export const BG_TOKEN = '__SHARE_CARD_BG__';
+export const flagToken = (cc: string) => `__SC_FLAG_${cc}__`;
 
-const ROT_DEG = -5;
-const CUTOUT: Record<Format, { cx: number; cy: number; scale: number }> = {
-  story: { cx: 540, cy: 1055, scale: 1.18 },
-  post: { cx: 540, cy: 795, scale: 0.88 },
+// Палитра (из прототипа).
+const C = {
+  navy: '#11304E',
+  navyDeep: '#0E2740',
+  gold: '#B08D50',
+  cream: '#F3ECDD',
+  script: '#3E6FB6',
+  route: '#2C63C6',
+  white: '#FFFFFF',
+  footBg: 'rgba(255,255,255,0.72)',
+  flagBg: 'rgba(14,30,50,0.62)',
+  divider: 'rgba(70,80,95,0.35)',
+  numShadow: 'rgba(10,18,30,0.45)',
 };
 
-function cutoutTransform(format: Format): string {
-  const { cx, cy, scale } = CUTOUT[format];
-  return `translate(${cx} ${cy}) rotate(${ROT_DEG}) scale(${scale}) translate(${-BLOB_W / 2} ${-BLOB_H / 2})`;
-}
+const FONT = "'Geologica'";
+const SCRIPT_FONT = "'Caveat'";
+const POLA_ROT = -2.5;
 
-function cutoutBBox(format: Format): { x: number; y: number; w: number; h: number } {
-  const { cx, cy, scale } = CUTOUT[format];
-  const th = (ROT_DEG * Math.PI) / 180;
-  const cos = Math.cos(th);
-  const sin = Math.sin(th);
-  const xs: number[] = [];
-  const ys: number[] = [];
-  for (const [px, py] of [[0, 0], [BLOB_W, 0], [BLOB_W, BLOB_H], [0, BLOB_H]]) {
-    const tx = (px - BLOB_W / 2) * scale;
-    const ty = (py - BLOB_H / 2) * scale;
-    xs.push(tx * cos - ty * sin + cx);
-    ys.push(tx * sin + ty * cos + cy);
-  }
-  const x = Math.min(...xs);
-  const y = Math.min(...ys);
-  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
-}
-
-// ---- decorative corner ribbons ---------------------------------------------
-// Top-left ribbon is identical in both formats; bottom-right differs.
-const RIBBON_TL = {
-  shadow: 'M0,190 L9.0,189.0 L32.7,160.5 L49.7,162.8 L72.4,141.6 L103.9,125.0 L116.0,88.8 L145.3,82.1 L173.8,71.9 L202.4,47.5 L225.1,28.2 L239.0,9.0 L0,0 Z',
-  cream: 'M0,189 L9.0,189.0 L32.7,160.5 L49.7,162.8 L72.4,141.6 L103.9,125.0 L116.0,88.8 L145.3,82.1 L173.8,71.9 L202.4,47.5 L225.1,28.2 L239.0,9.0 L0,0 Z',
-  blue: 'M0,180 L0.0,180.0 L23.7,151.5 L40.7,153.8 L63.4,132.6 L94.9,116.0 L107.0,79.8 L136.3,73.1 L164.8,62.9 L193.4,38.5 L216.1,19.2 L230.0,0.0 L0,0 Z',
-};
-const RIBBON_BR: Record<Format, { shadow: string; cream: string; blue: string }> = {
-  story: {
-    shadow: 'M730,1920 L731.0,1911.0 L759.4,1904.8 L784.0,1879.9 L812.6,1849.0 L839.8,1835.6 L878.3,1806.3 L896.7,1770.2 L927.8,1773.7 L958.8,1733.9 L997.2,1727.2 L1003.7,1686.8 L1032.0,1672.0 L1071.0,1651.0 L1080,1920 Z',
-    cream: 'M731,1920 L731.0,1911.0 L759.4,1904.8 L784.0,1879.9 L812.6,1849.0 L839.8,1835.6 L878.3,1806.3 L896.7,1770.2 L927.8,1773.7 L958.8,1733.9 L997.2,1727.2 L1003.7,1686.8 L1032.0,1672.0 L1071.0,1651.0 L1080,1920 Z',
-    blue: 'M740,1920 L740.0,1920.0 L768.4,1913.8 L793.0,1888.9 L821.6,1858.0 L848.8,1844.6 L887.3,1815.3 L905.7,1779.2 L936.8,1782.7 L967.8,1742.9 L1006.2,1736.2 L1012.7,1695.8 L1041.0,1681.0 L1080.0,1660.0 L1080,1920 Z',
-  },
-  post: {
-    shadow: 'M770,1350 L771.0,1341.0 L796.0,1339.4 L817.5,1318.6 L842.8,1291.6 L866.7,1282.6 L901.3,1257.2 L917.0,1224.8 L944.6,1233.4 L972.1,1197.1 L1006.5,1195.0 L1010.9,1158.2 L1035.9,1147.8 L1071.0,1131.0 L1080,1350 Z',
-    cream: 'M771,1350 L771.0,1341.0 L796.0,1339.4 L817.5,1318.6 L842.8,1291.6 L866.7,1282.6 L901.3,1257.2 L917.0,1224.8 L944.6,1233.4 L972.1,1197.1 L1006.5,1195.0 L1010.9,1158.2 L1035.9,1147.8 L1071.0,1131.0 L1080,1350 Z',
-    blue: 'M780,1350 L780.0,1350.0 L805.0,1348.4 L826.5,1327.6 L851.8,1300.6 L875.7,1291.6 L910.3,1266.2 L926.0,1233.8 L953.6,1242.4 L981.1,1206.1 L1015.5,1204.0 L1019.9,1167.2 L1044.9,1156.8 L1080.0,1140.0 L1080,1350 Z',
-  },
-};
-
-// ---- per-format layout (all numbers transcribed from the design source) -----
+// ---- per-format geometry (числа транскрибированы из прототипа v13) -----------
 type Layout = {
   w: number;
   h: number;
-  topFadeH: number;
-  botFadeY: number;
-  botFadeH: number;
-  titleSizeBase: number;
-  titleY: number;
-  arrow: string;
-  arrowHead: string;
-  pin: { x: number; y: number; s: number };
-  route: { x: number; y: number; size: number };
-  plane: { x: number; y: number; size: number };
-  cal: { x: number; y: number; s: number };
-  date: { monthX: number; y: number; monthSize: number; chipY: number; chipH: number; chipSize: number; restSize: number };
-  facts: { x: number; y: number; size: number };
-  dist: { x: number; y: number; w: number; h: number; rx: number; size: number };
-  cta: { x: number; y: number; w: number; h: number; rx: number; size: number };
+  padX: number;
+  titleAlign: 'center' | 'left';
+  titleLeft: number; // используется при titleAlign==='left'
+  titleTop: number; // baseline первой строки
+  titleSize: number;
+  routeGap: number; // от низа заголовка до baseline маршрута
+  routeSize: number;
+  pola: { top: number; width: number; padT: number; padX: number; padB: number; winH: number };
+  capSize: number;
+  stats: { y: number; numSize: number; labSize: number; cellPad: number; gap: number };
+  flags: { y: number; h: number; labSize: number; circle: number; ring: number; gap: number; moreSize: number };
   footer: {
-    planeX: number; planeY: number; planeSize: number;
-    x: number; brandY: number; brandSize: number; brandLetter: number;
-    oneLine: boolean; taglineY: number; taglineSize: number;
-    siteX: number; siteY: number; siteSize: number;
+    y: number; h: number; padX: number;
+    ctaSize: number; ctaLead: number; brandSize: number; brandGap: number; logo: number;
+    scanSize: number; qr: number; qrInset: number;
   };
-  qr: { box: number; x: number; y: number; rx: number; inset: number };
 };
 
 const LAYOUTS: Record<Format, Layout> = {
   story: {
-    w: 1080, h: 1920, topFadeH: 440, botFadeY: 1500, botFadeH: 420,
-    titleSizeBase: 128, titleY: 205,
-    arrow: 'M120,120 C80,150 78,215 128,252 C160,276 200,282 232,278',
-    arrowHead: 'M232,278 L200,258 L212,288 Z',
-    pin: { x: 300, y: 318, s: 1.1 },
-    route: { x: 330, y: 312, size: 36 },
-    plane: { x: 936, y: 86, size: 70 },
-    cal: { x: 84, y: 404, s: 1 },
-    date: { monthX: 150, y: 438, monthSize: 36, chipY: 404, chipH: 46, chipSize: 34, restSize: 34 },
-    facts: { x: 84, y: 502, size: 28 },
-    dist: { x: 150, y: 1408, w: 360, h: 66, rx: 30, size: 32 },
-    cta: { x: 330, y: 1520, w: 420, h: 64, rx: 30, size: 44 },
+    w: 1080, h: 1920, padX: 66,
+    titleAlign: 'center', titleLeft: 0, titleTop: 250, titleSize: 132,
+    routeGap: 74, routeSize: 56,
+    pola: { top: 588, width: 860, padT: 32, padX: 32, padB: 24, winH: 600 },
+    capSize: 52,
+    stats: { y: 1416, numSize: 58, labSize: 26, cellPad: 30, gap: 0 },
+    flags: { y: 1524, h: 112, labSize: 26, circle: 58, ring: 3, gap: 12, moreSize: 24 },
     footer: {
-      planeX: 80, planeY: 1680, planeSize: 64,
-      x: 162, brandY: 1706, brandSize: 34, brandLetter: 2,
-      oneLine: false, taglineY: 1742, taglineSize: 24,
-      siteX: 80, siteY: 1806, siteSize: 24,
+      y: 1672, h: 176, padX: 40,
+      ctaSize: 46, ctaLead: 52, brandSize: 32, brandGap: 12, logo: 50,
+      scanSize: 40, qr: 146, qrInset: 12,
     },
-    qr: { box: 120, x: 884, y: 1676, rx: 16, inset: 14 },
   },
   post: {
-    w: 1080, h: 1350, topFadeH: 360, botFadeY: 990, botFadeH: 360,
-    titleSizeBase: 106, titleY: 180,
-    arrow: 'M118,100 C86,124 84,176 124,206 C150,226 182,231 208,228',
-    arrowHead: 'M208,228 L180,211 L190,237 Z',
-    pin: { x: 306, y: 268, s: 1 },
-    route: { x: 336, y: 262, size: 33 },
-    plane: { x: 940, y: 64, size: 64 },
-    cal: { x: 84, y: 330, s: 0.95 },
-    date: { monthX: 148, y: 362, monthSize: 33, chipY: 330, chipH: 44, chipSize: 32, restSize: 32 },
-    facts: { x: 84, y: 422, size: 26 },
-    dist: { x: 150, y: 1102, w: 340, h: 62, rx: 28, size: 30 },
-    cta: { x: 340, y: 1186, w: 400, h: 60, rx: 28, size: 42 },
+    w: 1080, h: 1350, padX: 60,
+    titleAlign: 'left', titleLeft: 84, titleTop: 196, titleSize: 96,
+    routeGap: 66, routeSize: 50,
+    pola: { top: 356, width: 912, padT: 22, padX: 22, padB: 22, winH: 432 },
+    capSize: 50,
+    stats: { y: 968, numSize: 56, labSize: 26, cellPad: 26, gap: 0 },
+    flags: { y: 1044, h: 104, labSize: 26, circle: 56, ring: 3, gap: 10, moreSize: 24 },
     footer: {
-      planeX: 80, planeY: 1252, planeSize: 56,
-      x: 152, brandY: 1278, brandSize: 28, brandLetter: 1,
-      oneLine: true, taglineY: 0, taglineSize: 0,
-      siteX: 152, siteY: 1312, siteSize: 22,
+      y: 1156, h: 168, padX: 34,
+      ctaSize: 38, ctaLead: 44, brandSize: 28, brandGap: 10, logo: 44,
+      scanSize: 40, qr: 120, qrInset: 10,
     },
-    qr: { box: 102, x: 904, y: 1228, rx: 14, inset: 12 },
   },
 };
 
 export function cardSize(format: Format): { w: number; h: number } {
   return { w: LAYOUTS[format].w, h: LAYOUTS[format].h };
-}
-
-export function mapSlot(format: Format): { x: number; y: number; w: number; h: number } {
-  const b = cutoutBBox(format);
-  return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h) };
 }
 
 // ---- helpers ----------------------------------------------------------------
@@ -190,179 +139,314 @@ function escapeXml(s: string): string {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c] as string));
 }
 
-/** Rough text advance (px). Montserrat caps ≈ 0.6·size; Caveat ≈ 0.42·size. */
-function advance(text: string, size: number, factor = 0.6): number {
+/** Грубый advance (px). Geologica ~0.54·size на средних весах; Caveat ~0.42. */
+function advance(text: string, size: number, factor = 0.54): number {
   return text.length * size * factor;
 }
 
-type TextOpts = { anchor?: 'start' | 'middle' | 'end'; ls?: number; weight?: number; opacity?: number };
-
-/** A text element (no shadow). */
-function textEl(x: number, y: number, font: string, size: number, fill: string, text: string, o: TextOpts = {}): string {
+type TextOpts = { anchor?: 'start' | 'middle' | 'end'; weight?: number; ls?: number; font?: string; fill?: string };
+function text(x: number, y: number, size: number, t: string, o: TextOpts = {}): string {
   const a = o.anchor ? ` text-anchor="${o.anchor}"` : '';
   const ls = o.ls ? ` letter-spacing="${o.ls}"` : '';
-  const op = o.opacity != null ? ` opacity="${o.opacity}"` : '';
-  return `<text x="${x}" y="${y}" font-family="${font}" font-weight="${o.weight ?? 700}" font-size="${size}" fill="${fill}"${a}${ls}${op}>${escapeXml(text)}</text>`;
+  return `<text x="${x}" y="${y}" font-family="${o.font || FONT}" font-weight="${o.weight ?? 700}" `
+    + `font-size="${size}" fill="${o.fill || C.navy}"${a}${ls}>${escapeXml(t)}</text>`;
 }
 
-/** Shadowed white text: a dark copy offset down/right, then the white text. The
- *  shadow is a plain offset (NOT a gaussian blur) - blur filters are what pushed
- *  the edge resvg render over its CPU limit (HTTP 546); a hard offset reads the
- *  same for legibility over the photo and is essentially free. */
-function label(x: number, y: number, font: string, size: number, text: string, o: TextOpts = {}): string {
-  const shadow = textEl(x + 1, y + 3, font, size, '#14161A', text, { ...o, opacity: 0.55 });
-  return shadow + textEl(x, y, font, size, '#fff', text, o);
+/** Белая цифра с мягкой тенью (читается на тёмной подложке/карте) — плоский
+ *  offset, без blur. */
+function numText(x: number, y: number, size: number, t: string, anchor: 'start' | 'middle' | 'end'): string {
+  return `<text x="${x + 1}" y="${y + 2}" font-family="${FONT}" font-weight="700" font-size="${size}" `
+    + `fill="${C.numShadow}" text-anchor="${anchor}" font-variant-numeric="tabular-nums" letter-spacing="-1">${escapeXml(t)}</text>`
+    + `<text x="${x}" y="${y}" font-family="${FONT}" font-weight="700" font-size="${size}" `
+    + `fill="${C.white}" text-anchor="${anchor}" font-variant-numeric="tabular-nums" letter-spacing="-1">${escapeXml(t)}</text>`;
+}
+
+/** Заголовок в ≤2 строки с усадкой кегля. Жадный перенос по словам; кегль
+ *  уменьшается, пока не влезет по ширине и в 2 строки. */
+function wrapTitle(title: string, maxW: number, base: number): { lines: string[]; size: number } {
+  const words = title.trim().split(/\s+/).filter(Boolean);
+  for (let size = base; size >= base * 0.55; size -= 4) {
+    const lines: string[] = [];
+    let cur = '';
+    for (const wd of words) {
+      const cand = cur ? `${cur} ${wd}` : wd;
+      if (advance(cand, size, 0.56) <= maxW || !cur) cur = cand;
+      else { lines.push(cur); cur = wd; }
+    }
+    if (cur) lines.push(cur);
+    if (lines.length <= 2 && lines.every((l) => advance(l, size, 0.56) <= maxW)) {
+      return { lines: lines.slice(0, 2), size };
+    }
+  }
+  // Крайний случай (одно очень длинное слово): в 2 строки на минимальном кегле.
+  const size = Math.round(base * 0.55);
+  return { lines: [title], size };
+}
+
+// Повернуть точку вокруг центра.
+function rot(px: number, py: number, cx: number, cy: number, deg: number): [number, number] {
+  const th = (deg * Math.PI) / 180;
+  const c = Math.cos(th);
+  const s = Math.sin(th);
+  const dx = px - cx;
+  const dy = py - cy;
+  return [dx * c - dy * s + cx, dx * s + dy * c + cy];
+}
+
+// Геометрия окна карты (до поворота) + центр полароида + bbox повёрнутого окна.
+function windowGeom(format: Format) {
+  const L = LAYOUTS[format];
+  const p = L.pola;
+  const polaX = (L.w - p.width) / 2;
+  const winX = polaX + p.padX;
+  const winY = p.top + p.padT;
+  const winW = p.width - p.padX * 2;
+  const winH = p.winH;
+  // Высота всей рамки: окно + подпись + нижний паддинг.
+  const capBlock = Math.round(L.capSize * 1.1) + 18;
+  const polaH = p.padT + winH + capBlock + p.padB;
+  const cx = polaX + p.width / 2;
+  const cy = p.top + polaH / 2;
+  return { L, p, polaX, polaY: p.top, polaW: p.width, polaH, winX, winY, winW, winH, cx, cy };
+}
+
+export function mapSlot(format: Format): { x: number; y: number; w: number; h: number } {
+  const g = windowGeom(format);
+  const corners: Array<[number, number]> = [
+    [g.winX, g.winY], [g.winX + g.winW, g.winY],
+    [g.winX + g.winW, g.winY + g.winH], [g.winX, g.winY + g.winH],
+  ].map(([x, y]) => rot(x, y, g.cx, g.cy, POLA_ROT));
+  const xs = corners.map((c) => c[0]);
+  const ys = corners.map((c) => c[1]);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x: Math.round(x), y: Math.round(y), w: Math.round(Math.max(...xs) - x), h: Math.round(Math.max(...ys) - y) };
 }
 
 // ---- render -----------------------------------------------------------------
 export function buildCardSvg(
   format: Format,
   data: CardData,
-  bgDataUri: string,
   mapDataUri: string | null,
   qrUrl: string,
   overlay = false,
   fontCss = '',
 ): string {
-  const L = LAYOUTS[format];
+  const g = windowGeom(format);
+  const L = g.L;
   const { w: W, h: H } = L;
-  const B = cutoutBBox(format);
-  const xf = cutoutTransform(format);
+  const slot = mapSlot(format);
+  const polaXf = `rotate(${POLA_ROT} ${g.cx} ${g.cy})`;
 
-  // Background photo + top/bottom fades. In overlay mode the whole thing is
-  // masked so the blob hole is transparent (live map shows through).
-  const bgFill = `<image href="${bgDataUri}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>` +
-    `<rect x="0" y="0" width="${W}" height="${L.topFadeH}" fill="url(#topfade)"/>` +
-    `<rect x="0" y="${L.botFadeY}" width="${W}" height="${L.botFadeH}" fill="url(#botfade)"/>`;
-  const bg = overlay ? `<g mask="url(#slothole)">${bgFill}</g>` : bgFill;
+  // --- фон (подложка). Клиент подменит токен или удалит элемент (прозрачно).
+  // В overlay окно вырезано маской, чтобы сквозь него была видна живая карта.
+  const bgImg = `<image href="${BG_TOKEN}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`;
+  const bg = overlay ? `<g mask="url(#winhole)">${bgImg}</g>` : bgImg;
 
-  // Corner ribbons (shadow + cream + blue), then the map frame. Shadows are the
-  // ribbon's own offset dark path (no blur - see label()).
-  const br = RIBBON_BR[format];
-  const ribbons =
-    `<path d="${RIBBON_TL.shadow}" fill="#000" opacity="0.3"/>` +
-    `<path d="${RIBBON_TL.cream}" fill="#F5EFE2"/><path d="${RIBBON_TL.blue}" fill="#2267E2"/>` +
-    `<path d="${br.shadow}" fill="#000" opacity="0.3"/>` +
-    `<path d="${br.cream}" fill="#F5EFE2"/><path d="${br.blue}" fill="#2267E2"/>`;
+  // --- заголовок (навы, ≤2 строки с усадкой) ---
+  const maxTitleW = L.titleAlign === 'left' ? W - L.titleLeft - L.padX : W - L.padX * 2;
+  const { lines, size: tSize } = wrapTitle(data.title, maxTitleW, L.titleSize);
+  const lineH = Math.round(tSize * 0.94);
+  const titleW = Math.max(...lines.map((l) => advance(l, tSize, 0.56)));
+  const titleX = L.titleAlign === 'left' ? L.titleLeft : Math.round((W - titleW) / 2);
+  const titleSvg = lines
+    .map((l, i) => text(titleX, L.titleTop + i * lineH, tSize, l, { weight: 700, ls: -0.5 }))
+    .join('');
+  const lastTitleY = L.titleTop + (lines.length - 1) * lineH;
 
-  // Map: drop-shadow blob (offset, no blur), then the map (baked, blob-clipped)
-  // or nothing (overlay - live map shows through the hole), then white border.
-  // In overlay (preview) mode the map is a transparent hole with the LIVE map
-  // behind, so this drop-shadow would otherwise tint ~the whole map area 28% and
-  // make the preview look darker than the final (where the baked map image hides
-  // the same region). Mask it with the slot hole so only the outer crescent shows
-  // - exactly what the final card composites - keeping preview == final (TRIP-193).
-  const blobShadowRaw = `<g transform="${xf}"><path d="${BLOB_D}" fill="#000" opacity="0.28" transform="translate(10,16)"/></g>`;
-  const blobShadow = overlay ? `<g mask="url(#slothole)">${blobShadowRaw}</g>` : blobShadowRaw;
+  // --- маршрут «from → to» (стрелка рисуется, глиф → не в сабсете Geologica) ---
+  const routeY = lastTitleY + L.routeGap;
+  const hasTo = data.to && data.to !== data.from;
+  const fromW = advance(data.from, L.routeSize, 0.56);
+  const arrowGap = 26;
+  const arrowW = 70;
+  let routeSvg = text(titleX, routeY, L.routeSize, data.from, { weight: 600, fill: C.navy });
+  if (hasTo) {
+    const ax = titleX + fromW + arrowGap;
+    const ay = routeY - L.routeSize * 0.28;
+    routeSvg += `<g stroke="${C.navy}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">`
+      + `<line x1="${ax}" y1="${ay}" x2="${ax + arrowW - 12}" y2="${ay}"/>`
+      + `<path d="M${ax + arrowW - 20},${ay - 9} L${ax + arrowW},${ay} L${ax + arrowW - 20},${ay + 9}"/></g>`;
+    routeSvg += text(ax + arrowW + arrowGap, routeY, L.routeSize, data.to, { weight: 600, fill: C.navy });
+  }
+
+  // --- полароид: кремовая рамка с ВЫРЕЗАННЫМ окном (evenodd), карта, подпись ---
+  const winPath = roundedRectPath(g.winX, g.winY, g.winW, g.winH, 22);
+  const cream = `<path d="${roundedRectPath(g.polaX, g.polaY, g.polaW, g.polaH, 30)} ${winPath}" `
+    + `fill="${C.cream}" fill-rule="evenodd" transform="${polaXf}"/>`;
+  const creamShadow = `<path d="${roundedRectPath(g.polaX, g.polaY, g.polaW, g.polaH, 30)}" `
+    + `fill="#000" opacity="0.22" transform="${polaXf} translate(6,14)"/>`;
+  // Карта: axis-aligned image в bbox, обрезка повёрнутым окном. overlay ⇒ дыра.
   const mapImg = overlay
     ? ''
     : (mapDataUri
-      ? `<image href="${mapDataUri}" x="${B.x}" y="${B.y}" width="${B.w}" height="${B.h}" preserveAspectRatio="xMidYMid slice" clip-path="url(#mapclip)"/>`
-      : `<rect x="${B.x}" y="${B.y}" width="${B.w}" height="${B.h}" fill="#dbe6ef" clip-path="url(#mapclip)"/>`);
-  const blobBorder = `<path d="${BLOB_D}" transform="${xf}" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linejoin="round"/>`;
+      ? `<image href="${mapDataUri}" x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" `
+        + `preserveAspectRatio="xMidYMid slice" clip-path="url(#winclip)"/>`
+      : `<rect x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" fill="#dbe6ef" clip-path="url(#winclip)"/>`);
+  // Подпись «My trip!» + сердечко (в кремовой зоне под окном, повёрнуты с рамкой).
+  const capY = g.winY + g.winH + Math.round(L.capSize * 0.9);
+  const heartX = g.polaX + g.polaW - 58;
+  const heartY = g.winY + g.winH + 20;
+  const caption = `<g transform="${polaXf}">`
+    + text(g.winX + 6, capY, L.capSize, data.myTrip, { font: SCRIPT_FONT, weight: 700, fill: C.script })
+    + `<path d="M${heartX},${heartY + 6} c-4,-6 -13,-3 -13,4 c0,6 13,14 13,14 c0,0 13,-8 13,-14 c0,-7 -9,-10 -13,-4 Z" `
+    + `fill="none" stroke="${C.script}" stroke-width="2.4"/></g>`;
 
-  // Title (shadow + white, tilted). Shrinks when long so it never overflows.
-  const tSize = Math.min(L.titleSizeBase, Math.round((W - 140) / (advance(data.title, 1, 0.5) || 1)));
-  const rot = (y: number) => `transform="rotate(-2 ${W / 2} ${y})"`;
-  const title =
-    `<text x="${W / 2 + 1}" y="${L.titleY + 3}" font-family="Caveat" font-weight="700" font-size="${tSize}" fill="#14161A" text-anchor="middle" opacity="0.5" ${rot(L.titleY + 3)}>${escapeXml(data.title)}</text>` +
-    `<text x="${W / 2}" y="${L.titleY}" font-family="Caveat" font-weight="700" font-size="${tSize}" fill="#fff" text-anchor="middle" ${rot(L.titleY)}>${escapeXml(data.title)}</text>`;
+  // --- ряд статистики (4 ячейки, золотые разделители, белые цифры) ---
+  const stats = buildStats(L, data);
 
-  // Hand-drawn arrow (offset shadow + white) + arrowhead.
-  const arrow =
-    `<path d="${L.arrow}" stroke="#14161A" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.5" transform="translate(2,4)"/>` +
-    `<path d="${L.arrow}" stroke="#FFFFFF" stroke-width="9" fill="none" stroke-linecap="round"/>` +
-    `<path d="${L.arrowHead}" fill="#FFFFFF"/>`;
+  // --- ряд флагов «Visited Countries» + «+N» ---
+  const flags = buildFlags(L, data);
 
-  // Location pin icon + route text.
-  const pin =
-    `<g transform="translate(${L.pin.x},${L.pin.y}) scale(${L.pin.s})" stroke="#FFFFFF" stroke-width="3.4" fill="none">` +
-    `<path d="M0,0 C-8,-10 -13,-17 -13,-25 a13,13 0 1 1 26,0 C13,-17 8,-10 0,0 Z"/><circle cx="0" cy="-24" r="5"/></g>`;
-  const route = label(L.route.x, L.route.y, 'Montserrat', L.route.size, data.route, { weight: 600 });
-  const plane = `<image x="${L.plane.x}" y="${L.plane.y}" width="${L.plane.size}" height="${L.plane.size}" href="${PLANE_DATA_URI}"/>`;
-
-  // Calendar icon.
-  const cal =
-    `<g transform="translate(${L.cal.x},${L.cal.y}) scale(${L.cal.s})" stroke="#FFFFFF" stroke-width="3.4" fill="none" stroke-linecap="round">` +
-    '<rect x="0" y="4" width="40" height="36" rx="6"/><line x1="0" y1="16" x2="40" y2="16"/>' +
-    '<line x1="10" y1="0" x2="10" y2="8"/><line x1="30" y1="0" x2="30" y2="8"/>' +
-    '<line x1="8" y1="24" x2="14" y2="24"/><line x1="18" y1="24" x2="24" y2="24"/><line x1="28" y1="24" x2="34" y2="24"/>' +
-    '<line x1="8" y1="32" x2="14" y2="32"/><line x1="18" y1="32" x2="24" y2="32"/></g>';
-
-  // Date row: month + yellow day-chip + rest. Chip x/width and rest x flow from
-  // the month/day advances so other dates don't overlap.
-  const d = L.date;
-  const chipX = Math.round(d.monthX + advance(data.dateMonth, d.monthSize, 0.62) + 12);
-  const chipW = Math.round(advance(data.dateDay, d.chipSize, 0.62) + d.chipSize * 0.6);
-  const restX = chipX + chipW + 20;
-  const dateRow =
-    label(d.monthX, d.y, 'Montserrat', d.monthSize, data.dateMonth, { weight: 800, ls: 1 }) +
-    `<rect x="${chipX}" y="${d.chipY}" width="${chipW}" height="${d.chipH}" rx="10" fill="#F2C233"/>` +
-    textEl(chipX + chipW / 2, d.y, 'Montserrat', d.chipSize, '#22252A', data.dateDay, { weight: 800, anchor: 'middle' }) +
-    label(restX, d.y, 'Montserrat', d.restSize, data.dateRest, { weight: 700 });
-
-  const facts = label(L.facts.x, L.facts.y, 'Montserrat', L.facts.size, data.facts, { weight: 600 });
-
-  // Distance pill (pointer + shadow + white + text). Widen for long distances.
-  const distText = `${data.distanceStr} ${data.distanceLabel}`;
-  const distW = Math.max(L.dist.w, Math.round(advance(distText, L.dist.size, 0.58) + 64));
-  const dp = L.dist;
-  const distPill =
-    `<rect x="${dp.x + 3}" y="${dp.y + 5}" width="${distW}" height="${dp.h}" rx="${dp.rx}" fill="#14161A" opacity="0.28"/>` +
-    `<path d="M${dp.x + 60},${dp.y} L${dp.x + 88},${dp.y - 26} L${dp.x + 108},${dp.y} Z" fill="#FFFFFF"/>` +
-    `<rect x="${dp.x}" y="${dp.y}" width="${distW}" height="${dp.h}" rx="${dp.rx}" fill="#FFFFFF"/>` +
-    textEl(dp.x + distW / 2, dp.y + dp.h / 2 + dp.size * 0.36, 'Montserrat', dp.size, '#22252A', distText, { weight: 700, anchor: 'middle' });
-
-  // CTA pill (shadow + white + handwritten text). Widen for long copy.
-  const cp = L.cta;
-  const ctaW = Math.max(cp.w, Math.round(advance(data.cta, cp.size, 0.42) + 60));
-  const ctaX = Math.min(cp.x, W - 40 - ctaW); // keep it on-canvas if widened
-  const ctaPill =
-    `<rect x="${ctaX + 3}" y="${cp.y + 5}" width="${ctaW}" height="${cp.h}" rx="${cp.rx}" fill="#14161A" opacity="0.28"/>` +
-    `<rect x="${ctaX}" y="${cp.y}" width="${ctaW}" height="${cp.h}" rx="${cp.rx}" fill="#FFFFFF"/>` +
-    textEl(ctaX + ctaW / 2, cp.y + cp.h / 2 + cp.size * 0.34, 'Caveat', cp.size, '#22252A', data.cta, { weight: 700, anchor: 'middle' });
-
-  // Footer: plane + brand (+ tagline) + site line. Post packs brand+tagline on
-  // one line; story stacks them.
-  const f = L.footer;
-  const footerPlane = `<image x="${f.planeX}" y="${f.planeY}" width="${f.planeSize}" height="${f.planeSize}" href="${PLANE_DATA_URI}"/>`;
-  const brandText = f.oneLine ? `${data.brand} - ${data.tagline}` : data.brand;
-  const footer =
-    footerPlane +
-    label(f.x, f.brandY, 'Rubik ExtraBold', f.brandSize, brandText, { weight: 800, ls: f.brandLetter }) +
-    (f.oneLine ? '' : label(f.x, f.taglineY, 'Montserrat', f.taglineSize, data.tagline, { weight: 600 })) +
-    label(f.siteX, f.siteY, 'Montserrat', f.siteSize, `${data.site} · ${data.promo}`, { weight: 600 });
-
-  // QR: white rounded box + QR modules inset.
-  const q = L.qr;
-  const qr =
-    `<rect x="${q.x}" y="${q.y}" width="${q.box}" height="${q.box}" rx="${q.rx}" fill="#FFFFFF"/>` +
-    qrSvg(qrUrl, q.x + q.inset, q.y + q.inset, q.box - q.inset * 2);
+  // --- футер ---
+  const footer = buildFooter(L, data, qrUrl);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
  ${fontCss}
- <linearGradient id="topfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101820" stop-opacity="0.45"/><stop offset="1" stop-color="#101820" stop-opacity="0"/></linearGradient>
- <linearGradient id="botfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101820" stop-opacity="0"/><stop offset="1" stop-color="#101820" stop-opacity="0.5"/></linearGradient>
- <clipPath id="mapclip"><path d="${BLOB_D}" transform="${xf}"/></clipPath>
- <mask id="slothole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${BLOB_D}" transform="${xf}" fill="black"/></mask>
+ <clipPath id="winclip"><path d="${winPath}" transform="${polaXf}"/></clipPath>
+ <mask id="winhole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${winPath}" transform="${polaXf}" fill="black"/></mask>
 </defs>
 ${bg}
-${ribbons}
-${title}
-${arrow}
-${pin}
-${route}
-${plane}
-${cal}
-${dateRow}
-${facts}
-${blobShadow}
+${creamShadow}
+${cream}
 ${mapImg}
-${blobBorder}
-${distPill}
-${ctaPill}
+${caption}
+${titleSvg}
+${routeSvg}
+${stats}
+${flags}
 ${footer}
-${qr}
 </svg>`;
+}
+
+function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
+  const rr = Math.min(r, w / 2, h / 2);
+  return `M${x + rr},${y} h${w - 2 * rr} a${rr},${rr} 0 0 1 ${rr},${rr} v${h - 2 * rr} `
+    + `a${rr},${rr} 0 0 1 ${-rr},${rr} h${-(w - 2 * rr)} a${rr},${rr} 0 0 1 ${-rr},${-rr} `
+    + `v${-(h - 2 * rr)} a${rr},${rr} 0 0 1 ${rr},${-rr} Z`;
+}
+
+// Ряд статистики: 4 ячейки, центрированы; между ячейками золотой разделитель.
+function buildStats(L: Layout, d: CardData): string {
+  const cells = [
+    { num: d.distanceStr, lab: d.kmLabel },
+    { num: d.days, lab: d.daysLabel },
+    { num: d.cities, lab: d.citiesLabel },
+    { num: d.countries, lab: d.countriesLabel },
+  ];
+  const s = L.stats;
+  const widths = cells.map((c) =>
+    Math.max(advance(c.num, s.numSize, 0.6), advance(c.lab, s.labSize, 0.6)) + s.cellPad * 2);
+  const total = widths.reduce((a, b) => a + b, 0);
+  let x = (L.w - total) / 2;
+  const parts: string[] = [];
+  cells.forEach((c, i) => {
+    const cw = widths[i];
+    const cxc = x + cw / 2;
+    if (i > 0) {
+      parts.push(`<rect x="${Math.round(x)}" y="${s.y - s.numSize + 6}" width="2" height="${s.numSize + 4}" fill="${C.gold}" opacity="0.7"/>`);
+    }
+    parts.push(numText(cxc, s.y, s.numSize, c.num, 'middle'));
+    parts.push(text(cxc, s.y + s.labSize + 6, s.labSize, c.lab, { weight: 500, anchor: 'middle', fill: C.gold }));
+    x += cw;
+  });
+  return parts.join('');
+}
+
+// Ряд флагов: плашка + «Visited Countries» + круглые флаги (сколько влезло) + «+N».
+function buildFlags(L: Layout, d: CardData): string {
+  const f = L.flags;
+  const left = L.padX;
+  const right = L.w - L.padX;
+  const boxW = right - left;
+  const cy = f.y + f.h / 2;
+  const parts: string[] = [
+    `<rect x="${left}" y="${f.y}" width="${boxW}" height="${f.h}" rx="${f.h / 2}" fill="${C.flagBg}"/>`,
+  ];
+  // Подпись слева (до 2 строк по \n).
+  const labX = left + 34;
+  const labLines = d.visitedLabel.split('\n');
+  const labLead = f.labSize + 4;
+  const labY0 = cy - ((labLines.length - 1) * labLead) / 2 + f.labSize * 0.34;
+  labLines.forEach((l, i) => parts.push(text(labX, labY0 + i * labLead, f.labSize, l, { weight: 400, fill: C.white })));
+  const labW = Math.max(...labLines.map((l) => advance(l, f.labSize, 0.56)));
+  // Зона под флаги: от конца подписи до правого края (место под «+N» резервируем).
+  const listLeft = labX + labW + 28;
+  const chipD = f.circle;
+  const rightPad = 26;
+  // Сколько кругов влезает, если N > 0 — резервируем место под чип «+N».
+  const total = d.flags.length;
+  const step = f.circle + f.gap;
+  const avail = right - rightPad - listLeft;
+  let shown = Math.max(0, Math.min(total, Math.floor((avail + f.gap) / step)));
+  const needChip = shown < total;
+  if (needChip) {
+    const availWithChip = avail - (chipD + f.gap);
+    shown = Math.max(0, Math.min(total, Math.floor((availWithChip + f.gap) / step)));
+  }
+  let fx = listLeft + f.circle / 2;
+  for (let i = 0; i < shown; i++) {
+    const cc = d.flags[i];
+    parts.push(flagCircle(fx, cy, f.circle, f.ring, cc));
+    fx += step;
+  }
+  if (needChip) {
+    const more = total - shown;
+    const chipX = right - rightPad - chipD / 2;
+    parts.push(`<circle cx="${chipX}" cy="${cy}" r="${chipD / 2}" fill="${C.gold}"/>`);
+    parts.push(text(chipX, cy + f.moreSize * 0.34, f.moreSize, `+${more}`, { weight: 700, anchor: 'middle', fill: C.navyDeep }));
+  }
+  return parts.join('');
+}
+
+// Круглый флаг: белое кольцо + флаг, обрезанный кругом. Клиент инлайнит /flags/<cc>.svg.
+function flagCircle(cx: number, cy: number, d: number, ring: number, cc: string): string {
+  const r = d / 2;
+  const id = `fl-${cc}-${Math.round(cx)}`;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.white}"/>`
+    + `<clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r - ring}"/></clipPath>`
+    + `<image href="${flagToken(cc)}" x="${cx - r}" y="${cy - r}" width="${d}" height="${d}" `
+    + `preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`;
+}
+
+// Футер: бело-полупрозрачная плашка, серый разделитель по центру; слева CTA+лого,
+// справа «Scan to explore» + стрелка + QR.
+function buildFooter(L: Layout, d: CardData, qrUrl: string): string {
+  const f = L.footer;
+  const left = L.padX;
+  const right = L.w - L.padX;
+  const boxW = right - left;
+  const midX = L.w / 2;
+  const parts: string[] = [
+    `<rect x="${left}" y="${f.y}" width="${boxW}" height="${f.h}" rx="34" fill="${C.footBg}"/>`,
+    `<rect x="${midX - 1}" y="${f.y + 24}" width="2" height="${f.h - 48}" fill="${C.divider}"/>`,
+  ];
+  // Левая колонка: «Plan your / own adventure» + лого + вордмарк.
+  const cx0 = left + f.padX;
+  const ctaY = f.y + f.padX + f.ctaSize;
+  parts.push(text(cx0, ctaY, f.ctaSize, d.planLine1, { weight: 800 }));
+  parts.push(text(cx0, ctaY + f.ctaLead, f.ctaSize, d.planLine2, { weight: 800 }));
+  const brandY = ctaY + f.ctaLead + f.brandGap + f.logo * 0.5;
+  parts.push(`<image href="${LOGO_URI}" x="${cx0}" y="${brandY - f.logo / 2}" width="${f.logo}" height="${f.logo}"/>`);
+  parts.push(text(cx0 + f.logo + 12, brandY + f.brandSize * 0.34, f.brandSize, d.brand, { weight: 700, ls: 3 }));
+
+  // Правая колонка: «Scan to / explore» (Caveat) + стрелка + QR у правого края.
+  const q = f.qr;
+  const qrX = right - f.padX - q;
+  const qrY = f.y + (f.h - q) / 2;
+  const scanX = midX + 30;
+  const scanY0 = f.y + f.h / 2 - f.scanSize * 0.1;
+  parts.push(text(scanX, scanY0, f.scanSize, d.scanLine1, { font: SCRIPT_FONT, weight: 700 }));
+  parts.push(text(scanX, scanY0 + f.scanSize * 0.9, f.scanSize, d.scanLine2, { font: SCRIPT_FONT, weight: 700 }));
+  // Стрелка между текстом и QR (синяя, вверх-вправо).
+  const arX = qrX - 76;
+  const arY = f.y + f.h / 2;
+  parts.push(`<g stroke="${C.navy}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">`
+    + `<path d="M${arX},${arY + 14} C${arX + 26},${arY + 20} ${arX + 44},${arY} ${arX + 52},${arY - 24}"/>`
+    + `<path d="M${arX + 44},${arY - 22} L${arX + 52},${arY - 26} L${arX + 54},${arY - 12}"/></g>`);
+  // QR: белый бокс + модули.
+  parts.push(`<rect x="${qrX}" y="${qrY}" width="${q}" height="${q}" rx="16" fill="${C.white}"/>`);
+  parts.push(qrSvg(qrUrl, qrX + f.qrInset, qrY + f.qrInset, q - f.qrInset * 2));
+  return parts.join('');
 }

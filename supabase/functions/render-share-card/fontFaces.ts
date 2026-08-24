@@ -1,57 +1,63 @@
 /**
- * @font-face CSS for the share-card frame when it is rasterised IN THE BROWSER
- * (TRIP-193). The frame SVG is drawn by the client (overlay preview now; the final
- * raster later), so its text must not depend on whatever fonts the device happens
- * to have loaded - that is exactly what made the card "разъезжается на разных
- * устройствах". We embed the SAME font bytes the server render (resvg) uses, so
- * preview == final and the layout is device-invariant.
+ * @font-face CSS для share-карточки, которую растеризует БРАУЗЕР (TRIP-193→443).
+ * Карточка рисуется клиентом (превью-overlay и финальный растр), поэтому её текст
+ * не должен зависеть от шрифтов устройства — «разъезжается на разных девайсах».
+ * Встраиваем ТЕ ЖЕ байты в @font-face, что и в приложении, чтобы превью == финал
+ * и раскладка была device-invariant.
  *
- * The families/weights below are the REAL contents of the embedded FONT_B64 set
- * (verified from each file's `name`/`OS/2` tables), mapped to what the template
- * asks for:
- *   - Caveat 700          -> title + CTA (exact)
- *   - Montserrat 700      -> everything Montserrat; the template also asks 600/800,
- *                            which CSS nearest-matches to 700 (same as resvg), so a
- *                            single embedded 700 keeps preview == final.
- *   - Rubik ExtraBold 800 -> footer brand (the file's family name is literally
- *                            "Rubik ExtraBold"; the template references that name).
- * Each family ships as two subset files: digits + latin glyphs live ONLY in the
- * latin subset, cyrillic letters only in the cyrillic subset, so unicode-range
- * MUST route codepoints to the right file or numbers render as tofu.
+ * Набор (TRIP-443):
+ *   - Geologica 400..800 — заголовок/маршрут/цифры/подписи/футер. Вариативный woff2
+ *     (одна ось веса на сабсет), 4 сабсета из public/fonts/geologica — те же файлы
+ *     и unicode-range, что грузит src/design/fonts.css.
+ *   - Caveat 700 — рукописные «My trip!» и «Scan to explore» (ttf, перенесены as-is).
+ * Montserrat/Rubik выпилены (старый дизайн Journey).
  *
- * resvg ignores @font-face (it renders from the fontBuffers passed to it), so this
- * <style> is emitted only on the browser path and never reaches the edge renderer.
+ * Server-side resvg больше НЕ используется (растр только в браузере), так что этот
+ * <style> — единственный путь шрифтов; woff2 подходит (браузер), ttf у Caveat тоже.
  */
 import { FONT_B64 } from './assets_b64.ts';
 
-// fontsource subset ranges (verbatim), so codepoints hit the file that has them.
-const RANGE_LATIN =
-  'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,' +
-  'U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
-const RANGE_CYRILLIC = 'U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116';
+// unicode-range Geologica — verbatim из src/design/fonts.css (сабсеты fontsource).
+const GEO_CYRILLIC = 'U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116';
+const GEO_CYRILLIC_EXT = 'U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F';
+const GEO_LATIN =
+  'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,'
+  + 'U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
+const GEO_LATIN_EXT =
+  'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,'
+  + 'U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF';
 
-type Face = { family: string; weight: number; subset: 'latin' | 'cyrillic'; idx: number };
+// Caveat сабсеты (fontsource, verbatim) — латиница/цифры в latin, кириллица в cyrillic.
+const CAVEAT_LATIN =
+  'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,'
+  + 'U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
+const CAVEAT_CYRILLIC = 'U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116';
 
-// Index -> file mapping is fixed by how FONT_B64 was generated (even = cyrillic
-// subset, odd = latin subset). Montserrat 400 was dropped from FONT_B64 entirely
-// (its two subset files used to sit at idx 4/5): the template never asks for a
-// weight below 600, and 600/800 nearest-match to 700, so nothing ever read them.
+type Face = {
+  family: string;
+  weight: string; // "700" или диапазон "400 800" для вариативного
+  format: 'woff2' | 'truetype';
+  range: string;
+  idx: number;
+};
+
+// idx → элемент FONT_B64 (порядок задан scripts/gen-share-card-assets.mjs).
 const FONT_FACES: Face[] = [
-  { family: 'Caveat', weight: 700, subset: 'cyrillic', idx: 0 },
-  { family: 'Caveat', weight: 700, subset: 'latin', idx: 1 },
-  { family: 'Montserrat', weight: 700, subset: 'cyrillic', idx: 2 },
-  { family: 'Montserrat', weight: 700, subset: 'latin', idx: 3 },
-  { family: 'Rubik ExtraBold', weight: 800, subset: 'cyrillic', idx: 4 },
-  { family: 'Rubik ExtraBold', weight: 800, subset: 'latin', idx: 5 },
+  { family: 'Caveat', weight: '700', format: 'truetype', range: CAVEAT_CYRILLIC, idx: 0 },
+  { family: 'Caveat', weight: '700', format: 'truetype', range: CAVEAT_LATIN, idx: 1 },
+  { family: 'Geologica', weight: '400 800', format: 'woff2', range: GEO_CYRILLIC, idx: 2 },
+  { family: 'Geologica', weight: '400 800', format: 'woff2', range: GEO_CYRILLIC_EXT, idx: 3 },
+  { family: 'Geologica', weight: '400 800', format: 'woff2', range: GEO_LATIN, idx: 4 },
+  { family: 'Geologica', weight: '400 800', format: 'woff2', range: GEO_LATIN_EXT, idx: 5 },
 ];
 
-/** The <style> block with every @font-face, embedding the font bytes as data URIs. */
+const MIME: Record<Face['format'], string> = { woff2: 'font/woff2', truetype: 'font/ttf' };
+
+/** <style> со всеми @font-face, шрифты — data-URI. */
 export function fontFaceStyle(): string {
-  const rules = FONT_FACES.map((f) => {
-    const range = f.subset === 'latin' ? RANGE_LATIN : RANGE_CYRILLIC;
-    return `@font-face{font-family:'${f.family}';font-style:normal;font-weight:${f.weight};`
-      + `font-display:block;src:url(data:font/ttf;base64,${FONT_B64[f.idx]}) format('truetype');`
-      + `unicode-range:${range};}`;
-  }).join('');
+  const rules = FONT_FACES.map((f) =>
+    `@font-face{font-family:'${f.family}';font-style:normal;font-weight:${f.weight};`
+    + `font-display:block;src:url(data:${MIME[f.format]};base64,${FONT_B64[f.idx]}) format('${f.format}');`
+    + `unicode-range:${f.range};}`).join('');
   return `<style type="text/css">${rules}</style>`;
 }
