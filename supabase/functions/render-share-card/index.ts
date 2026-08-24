@@ -16,7 +16,11 @@
  * POST { trip_id, format?: 'story'|'post', lang?: 'ru'|'en'|'es',
  *        mode?: 'overlay'|'card_svg' }
  *   auth: JWT; caller must be an active participant of the trip.
- * 200 { svg, width, height, slot } | { code: 'no_transit_cities' }
+ * 200 overlay:  { svg, width, height, slot, backgrounds } — backgrounds = публичные
+ *               URL пресет-фонов из бакета `card-bg-presets` (дверь экрана
+ *               конструктора, TRIP-374: каталог фонов едет тем же кругом, что и
+ *               рамка; подменяет фон КЛИЕНТ — см. src/lib/shareCardBg.js).
+ *     card_svg: { svg, width, height, slot } | { code: 'no_transit_cities' }
  * 4xx: Unauthorized / trip_not_found / forbidden
  *
  * verify_jwt: defaults to TRUE (user function; NOT listed in config.toml).
@@ -41,6 +45,28 @@ import { defaultBgDataUri } from './render.ts';
 
 // Token the client swaps for its own high-res map data URI in card_svg mode.
 const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
+
+// Публичный бакет пресет-фонов карточки. Таблицы-каталога НЕТ намеренно: на фон
+// никто не ссылается персистентно (карточка = PNG в момент генерации), порядок
+// задаёт префикс имени файла, снятие с витрины = удаление файла (см. миграцию
+// card_bg_presets_bucket). Листинг только здесь, под service_role — политик на
+// бакете ноль (TRIP-48), фронт напрямую не листает.
+const BG_BUCKET = 'card-bg-presets';
+const BG_LIST_LIMIT = 60;
+const IMAGE_FILE_RE = /\.(webp|png|jpe?g)$/i;
+
+/** Публичные URL пресет-фонов, по возрастанию имени (префикс = порядок).
+ *  Fail-soft: сбой листинга репортится и отдаёт пустой список — конструктор
+ *  живёт со «Стандартом» и своим фото, рамка важнее карусели. */
+async function listCardBackgrounds(): Promise<string[]> {
+  const { data, error } = await supabaseAdmin.storage
+    .from(BG_BUCKET)
+    .list('', { limit: BG_LIST_LIMIT, sortBy: { column: 'name', order: 'asc' } });
+  if (error) throw error;
+  return (data || [])
+    .filter((f) => IMAGE_FILE_RE.test(f.name))
+    .map((f) => supabaseAdmin.storage.from(BG_BUCKET).getPublicUrl(f.name).data.publicUrl);
+}
 
 // The canonical host: the apex 307s here, and the campaign mark is stored
 // per host, so a QR pointing at the apex would strand the mark in the wrong jar.
@@ -136,7 +162,11 @@ Deno.serve(async (req) => {
     // device-invariant, no dependence on page fonts. ----
     if (mode === 'overlay') {
       const svg = buildCardSvg(format, data, defaultBgDataUri(), null, qrUrlFor(tripId, format), true, fontFaceStyle());
-      return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
+      const backgrounds = await listCardBackgrounds().catch(async (e) => {
+        await captureEdgeError(e, 'render-share-card');
+        return [] as string[];
+      });
+      return Response.json({ svg, width: outW, height: outH, slot, backgrounds }, { headers: cors });
     }
 
     // ---- card_svg mode (default): the FULL card SVG (fonts embedded, map left as

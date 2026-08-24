@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { track } from '@/lib/analytics';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -10,7 +9,7 @@ import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/ca
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
 import { report } from '@/lib/reportDataError';
 import { invokeCard, applyCardBg, cardBgUri, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
-import { fetchCoverPresets, MAX_UPLOAD_BYTES } from './TripCoverPicker';
+import { MAX_UPLOAD_BYTES } from './TripCoverPicker';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
 
@@ -61,24 +60,21 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
         if (cancelled) return;
         if (data?.code) { setOverlayCode(data.code); return; }
         if (error || !data?.svg) { setOverlayCode('error'); return; }
-        setOverlay({ svg: data.svg, slot: data.slot, w: data.width, h: data.height });
+        setOverlay({ svg: data.svg, slot: data.slot, w: data.width, h: data.height, backgrounds: data.backgrounds || [] });
       })
       .catch((e) => { if (!cancelled) { console.error('overlay fetch failed', e); setOverlayCode('error'); } });
     return () => { cancelled = true; };
   }, [open, trip?.id, format, lang]);
 
-  // Каталог фонов = пресеты обложек (одна коллекция и один query-ключ с пикером
-  // обложки; своя коллекция фонов приедет позже — источник уже один).
-  const presetsQ = useQuery({
-    queryKey: ['coverPresets'],
-    queryFn: fetchCoverPresets,
-    staleTime: 60 * 60 * 1000,
-    enabled: open,
-  });
-  const slides = useMemo(() => {
-    const urls = (presetsQ.data || []).map((p) => p.image_url);
-    return ['', ...(uploaded ? [uploaded] : []), ...urls];
-  }, [presetsQ.data, uploaded]);
+  // Каталог фонов приезжает В overlay-ответе (`backgrounds`) — публичные URL из
+  // бакета `card-bg-presets`, отлистанные edge под service_role: дверь экрана
+  // конструктора одна (TRIP-374), отдельного запроса каталога нет. Таблицы
+  // пресетов нет намеренно — на фон никто не ссылается персистентно (см.
+  // миграцию card_bg_presets_bucket).
+  const slides = useMemo(
+    () => ['', ...(uploaded ? [uploaded] : []), ...(overlay?.backgrounds || [])],
+    [overlay, uploaded],
+  );
 
   // Выбранный фон → data-URI (пресет качается и мемоизируется, своё фото уже URI).
   useEffect(() => {
@@ -326,7 +322,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             data-idx={i + 1}
           />
         ))}
-        {(presetsQ.isLoading || !overlay) && SKELETON_THUMBS.map((k) => (
+        {!overlay && SKELETON_THUMBS.map((k) => (
           <Skeleton key={k} w={52} h={52} r={'var(--r-xs)'} />
         ))}
       </Carousel>
