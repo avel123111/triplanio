@@ -437,6 +437,25 @@ const RECIPES = {
   stepper: () => [
     { label: 'variant="pill" (база)', items: [it('pill', <Stepper value={3} onMinus={() => {}} onPlus={() => {}} minusLabel="−" plusLabel="+" />)] },
     { label: 'variant (карта STEPPER_VARIANTS)', items: STEPPER_VARIANTS.map((v) => it(`variant="${v}"`, <Stepper variant={v} value={v === 'block' ? '14 авг' : 2} onMinus={() => {}} onPlus={() => {}} minusLabel="−" plusLabel="+" />, v === 'block')) },
+    // `readOnly` — СОСТОЯНИЕ, а не ось: в `STEPPER_VARIANTS` его нет и быть не
+    // должно (карта оси типизирует `variant`), поэтому строка собрана руками.
+    // Смысл показа — разница между «значением без контрола» и «контролом с
+    // выключенными кнопками»: она видна только сравнением с базой выше, а
+    // перепутать легко, и тогда вернутся disabled-кнопки, которые всё ещё
+    // обещают нажатие.
+    //
+    // `block` тут НЕ показан намеренно. У этого варианта центр держит не сам
+    // степпер, а потомок вызывателя (`.ts-startctl__date` с `flex: 1`), поэтому
+    // синтетический образец со строкой вместо него нарисовал бы облик, которого
+    // у варианта нет — витрина врала бы. Живого сочетания `block + readOnly`
+    // сегодня не существует: read-only ставит только «Маршрут», и он инлайновый.
+    {
+      label: 'readOnly — ЗНАЧЕНИЕ без контрола (наблюдатель на «Маршруте»)',
+      items: [
+        it('pill · readOnly', <Stepper readOnly value={3} />),
+        it('bare · readOnly (ряд маршрута)', <Stepper variant="bare" readOnly value={<>3<span className="muted">н</span></>} />),
+      ],
+    },
   ],
 
   swatch: (ctx) => [
@@ -879,7 +898,6 @@ const RECIPES = {
             </div>
           </Card>
         )),
-        it('.map-route__marker (pill + рамка 2px + состояние is-active)', <span className="map-route__marker"><span className="num t-meta">3</span></span>),
         it('.te-step (степпер-контрол, дом <IconBtn>)', <button type="button" className="te-step te-step--del"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg></button>),
         it('.acct-hero__av (аватар, дом Avatar — bg-image / градиент)', <div className="acct-hero__av" style={{ background: 'linear-gradient(135deg, var(--brand), var(--ai))' }} />), // i18n-ignore: подпись демо-образца витрины /kit (dev-only, не UI-строка); inline-style-exempt: демо-фон-градиент — форма аватара видна в витрине (в проде bg-image из данных)
       ],

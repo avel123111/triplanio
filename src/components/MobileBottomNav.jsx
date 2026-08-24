@@ -4,7 +4,7 @@
  *
  * A floating frosted-glass "capsule dock" with a raised, glowing primary "+" in
  * the centre. Two context-aware variants:
- *   • trip — Обзор · Хронология · (+) · Календарь · Ещё
+ *   • trip — Обзор · Маршрут · (+) · Хронология · Ещё
  *   • app  — Поездки · (+) · Профиль
  *
  * Какой вариант показать, решает РЕГИСТРАЦИЯ, а не разбор адреса: пока на
