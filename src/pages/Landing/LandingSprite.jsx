@@ -1,0 +1,62 @@
+import React from 'react';
+
+/* =========================================================
+   LandingSprite — the v5.7 prototype's icon sprite (TRIP-460).
+   An off-canvas <svg><defs> carrying every <symbol> the landing sections
+   reference through <use href="#id">. Rendered ONCE at the top of the page so
+   the symbols resolve everywhere below. Verbatim from the prototype sprite,
+   HTML attributes converted to JSX (stroke-width → strokeWidth, …). The brand
+   colours live inside the marks (currentColor / fixed logo fills); no external
+   assets, no hotlinks.
+========================================================= */
+export default function LandingSprite() {
+  return (
+    <svg
+      width="0" height="0" aria-hidden="true"
+      style={{ position: 'absolute' }} // inline-style-exempt: off-canvas sprite defs, декоративный
+    >
+      <defs>
+        <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" d="M4 12.5 9.5 18 20 6.5" /></symbol>
+        <symbol id="i-plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21.4 2.6c.5.5.6 1.2.3 1.8l-3.2 6.6 2.6 2.6c.4.4.4 1 0 1.4l-.7.7c-.3.3-.8.4-1.2.2l-3.5-1.5-3.4 3.4.7 2.4c.1.4 0 .8-.3 1.1l-.6.6c-.5.5-1.3.4-1.6-.2l-1.8-3.3-3.3-1.8c-.6-.4-.7-1.2-.2-1.6l.6-.6c.3-.3.7-.4 1.1-.3l2.4.7 3.4-3.4-1.5-3.5c-.2-.4-.1-.9.2-1.2l.7-.7c.4-.4 1-.4 1.4 0l2.6 2.6 6.6-3.2c.6-.3 1.3-.2 1.8.3Z" /></symbol>
+        <symbol id="i-map" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4Zm0 0v14m6-12v14" /></symbol>
+        <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="3" fill="none" stroke="currentColor" strokeWidth="2" /><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M8 3v4m8-4v4M3.5 10h17" /></symbol>
+        <symbol id="i-doc" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" /><path fill="none" stroke="currentColor" strokeWidth="2" d="M14 3v5h5" /></symbol>
+        <symbol id="i-wallet" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M3.5 7.5A2.5 2.5 0 0 1 6 5h11a2 2 0 0 1 2 2v1" /><rect x="3.5" y="8" width="17" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="16" cy="13.5" r="1.4" fill="currentColor" /></symbol>
+        <symbol id="i-spark" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5 14 9l6.5 2L14 13l-2 6.5L10 13l-6.5-2L10 9l2-6.5ZM19 15.5l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" /></symbol>
+        <symbol id="i-bell" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9Zm-4.3 10a2 2 0 0 1-3.4 0" /></symbol>
+        <symbol id="i-users" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16.5 20v-1.8a3.6 3.6 0 0 0-3.6-3.6H6.6A3.6 3.6 0 0 0 3 18.2V20" /><circle cx="9.75" cy="7.5" r="3.5" fill="none" stroke="currentColor" strokeWidth="2" /><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M21 20v-1.8a3.6 3.6 0 0 0-2.7-3.48M15.2 4.2a3.5 3.5 0 0 1 0 6.6" /></symbol>
+        <symbol id="i-chat" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M21 12a8.5 8.5 0 0 1-12.4 7.5L3.5 21l1.5-5.1A8.5 8.5 0 1 1 21 12Z" /></symbol>
+        <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="2" /><path fill="none" stroke="currentColor" strokeWidth="2" d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.2 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.2-3.6-8.5s1.2-6.2 3.6-8.5Z" /></symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z" /><circle cx="12" cy="10" r="2.6" fill="none" stroke="currentColor" strokeWidth="2" /></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M12 3 5 6v5.5c0 4.5 3 8 7 9.5 4-1.5 7-5 7-9.5V6l-7-3Z" /><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4.5" /></symbol>
+        <symbol id="i-tg" viewBox="0 0 24 24"><path fill="currentColor" d="M21.7 4.4 2.9 11.6c-.9.35-.85 1.6.05 1.9l4.7 1.5 1.8 5.6c.25.8 1.3 1 1.85.4l2.6-2.85 4.9 3.6c.7.5 1.7.1 1.85-.75l3-15.1c.2-1-.75-1.8-1.95-1.5ZM8.7 14.55l9.3-6.9c.25-.2.5.15.3.35l-7.6 7.3-.3 3.2-1.7-3.95Z" /></symbol>
+        <symbol id="i-chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></symbol>
+        <symbol id="i-arrow-r" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M4 12h15m-6-7 7 7-7 7" /></symbol>
+        <symbol id="i-ticks" viewBox="0 0 18 12"><g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6.4 4.3 9.8 11.2 2" /><path d="M6.6 6.4 9.9 9.8 16.8 2" /></g></symbol>
+        <symbol id="i-bed" viewBox="0 0 24 24"><path fill="currentColor" d="M3.4 5.5a1.4 1.4 0 0 0-1.4 1.4V19a1.4 1.4 0 0 0 2.8 0v-2.2h14.4V19a1.4 1.4 0 0 0 2.8 0v-4.4a4.6 4.6 0 0 0-4.6-4.6h-7.6v4.2H4.8V6.9a1.4 1.4 0 0 0-1.4-1.4Z" /><circle cx="7.4" cy="10.6" r="2.6" fill="currentColor" /></symbol>
+        <symbol id="i-train" viewBox="0 0 24 24"><path fill="currentColor" d="M8 2.5h8A4.5 4.5 0 0 1 20.5 7v8a4.5 4.5 0 0 1-4.5 4.5H8A4.5 4.5 0 0 1 3.5 15V7A4.5 4.5 0 0 1 8 2.5Zm-2 4.9v2.9h12V7.4H6Zm2.6 5.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Zm6.8 0a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Z" /><path fill="currentColor" d="M7.9 20.6 6.3 22.9a1 1 0 1 1-1.6-1.2l1.4-2h1.8Zm8.2 0 1.6 2.3a1 1 0 1 0 1.6-1.2l-1.4-2h-1.8Z" /></symbol>
+        <symbol id="i-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 9V3.5h11V9" /><rect x="3.5" y="9" width="17" height="7.5" rx="2" /><path d="M6.5 14h11v6.5h-11z" /></symbol>
+        <symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3v18" /><path d="M5 4h12l-2 4 2 4H5" /></symbol>
+        <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 7h13l-4-4M17 17H4l4 4" /></symbol>
+        <symbol id="i-route" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="19" r="2.4" /><circle cx="18" cy="5" r="2.4" /><path d="M8.4 19h6.1a3.5 3.5 0 0 0 0-7H9.5a3.5 3.5 0 0 1 0-7h6.1" /></symbol>
+        <symbol id="i-globe2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8.6" fill="currentColor" fillOpacity=".22" /><circle cx="12" cy="12" r="8.6" /><path d="M3.4 12h17.2M12 3.4a14 14 0 0 1 0 17.2a14 14 0 0 1 0-17.2z" /></symbol>
+        <symbol id="i-cal2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+        <symbol id="i-pin2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" /><circle cx="12" cy="10" r="2.6" /></symbol>
+        <symbol id="i-pinoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-6.3 7-11a7 7 0 0 0-11.6-5.3" /><path d="M5.6 7.4A7 7 0 0 0 5 10c0 4.7 7 11 7 11" /><path d="M3 3l18 18" /></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.6 6.6 0 0 0 10.5 10.5z" /></symbol>
+        <symbol id="i-bus" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="13" rx="2.5" /><path d="M4 10h16M7 20v1M17 20v1M8 16h.01M16 16h.01" /></symbol>
+        <symbol id="i-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14M4 17v-4l2-5h12l2 5v4" /><circle cx="7.5" cy="17.5" r="1.6" /><circle cx="16.5" cy="17.5" r="1.6" /></symbol>
+        <symbol id="i-ferry" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18.5c1.6 0 1.6 1.2 3.2 1.2s1.6-1.2 3.2-1.2 1.6 1.2 3.2 1.2 1.6-1.2 3.2-1.2 1.6 1.2 3.2 1.2" /><path d="M5 15l1.6-5.2h10.8L19 15" /><path d="M12 9.8V5M9 5h6" /></symbol>
+        <symbol id="i-walk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13" cy="4.5" r="1.8" /><path d="M11 21l1.6-5.4L10 13l1-5 3.5 2 2.5 1M10 8l-3 2-1 3M12.6 15.6 16 21" /></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2" /><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></symbol>
+        <symbol id="tl-logo" viewBox="0 0 342 341">
+          <rect x="0.14" width="341" height="341" rx="33" fill="#2173C8" />{/* design-token-exempt: бренд-лого Triplanio (двухтоновая марка, как в SiteChrome) */}
+          <path d="M94.6416 341C83.8772 329.659 76.5128 317.121 75.0413 301.509C73.1449 281.388 79.1121 263.296 89.6892 246.622C94.5557 238.951 100.565 232.004 106.427 224.236C100.18 219.706 93.7372 215.059 87.3228 210.374C81.5862 206.183 81.717 205.395 86.9609 200.869C92.3663 196.203 97.8246 195.183 104.364 198.499C109.684 201.197 115.313 203.318 120.912 205.405C122.074 205.838 124.313 205.516 125.036 204.67C136.721 191.015 148.244 177.22 159.785 163.442C160.083 163.086 160.178 162.56 160.369 162.109C138.373 140.245 116.431 118.437 94.5376 96.6751C104.546 85.2901 116.91 84.6208 126.739 94.4252C167.55 135.132 208.337 175.864 249.061 216.658C259.315 226.93 259.147 240.014 248.868 249.501C227.016 227.621 205.157 205.734 182.905 183.454C179.866 186.065 177.283 188.314 174.669 190.525C163.607 199.879 152.579 209.274 141.434 218.529C139.035 220.521 138.347 222.2 139.803 225.247C142.808 231.535 145.495 237.993 147.971 244.51C150.021 249.907 146.003 259.324 140.751 261.408C139.688 261.83 137.352 260.766 136.489 259.682C132.242 254.345 128.31 248.757 124.232 243.285C122.867 241.454 121.397 239.7 119.839 237.74C104.16 253.787 93.0867 271.57 93.0853 294.35C93.084 316.373 107.094 333.849 128.491 339.366C129.94 339.739 131.539 340.273 133.142 341H94.6416Z" fill="#fff" />
+          <path d="M0.142077 214.673C0.627545 214.991 1.29188 215.72 1.57264 216.574C11.9076 248.025 39.1435 261.295 70.3393 250.034C72.7814 249.152 75.1838 248.16 78.2836 246.956C75.2743 254.472 72.6732 261.356 69.6796 268.065C69.1743 269.198 67.0518 269.92 65.5489 270.249C40.5611 275.722 18.4789 269.885 0.141602 251.223C-0.177652 239.098 0.142077 227.162 0.142077 214.673Z" fill="#fff" />
+          <path d="M206.222 121.124C231.732 146.52 256.606 172.071 282.401 196.654C296.793 210.37 296.231 222.785 285.311 237.797C225.767 178.254 166.141 118.63 106.337 58.8275C110.727 54.529 116.932 51.2758 124.167 50.2368C130.621 49.31 136.166 51.0851 140.943 55.8946C162.537 77.6363 184.282 99.2281 206.222 121.124Z" fill="#fff" />
+          <path d="M238.721 88.6644C242.438 87.6459 245.775 86.3565 249.194 86.083C255.962 85.5416 259.176 88.965 258.541 95.7017C257.773 103.846 254.697 111.233 249.737 117.63C244.971 123.776 239.635 129.48 234.054 135.953C229.699 131.516 225.784 127.529 221.869 123.541C217.918 119.516 213.967 115.49 209.617 111.058C218.073 102.23 226.699 93.6271 238.721 88.6644Z" fill="#fff" />
+        </symbol>
+      </defs>
+    </svg>
+  );
+}
