@@ -7,8 +7,7 @@ import { Icon } from '@/design/icons';
 import LpSheet from '@/components/ui/LpSheet';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
-import { report } from '@/lib/reportDataError';
-import { invokeCard, applyCardBg, cardBgUri, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
+import { invokeCard, applyCardBg, inlineFlags, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
 import { MAX_UPLOAD_BYTES } from './TripCoverPicker';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
@@ -92,18 +91,19 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   const buildGenRef = useRef(0);
   useEffect(() => { buildGenRef.current += 1; builtRef.current = null; setBuildError(''); }, [format, bg, camera]);
 
-  const framedSvg = useMemo(() => (overlay ? applyCardBg(overlay.svg, bgUri) : null), [overlay, bgUri]);
-  // Миниатюра «Стандарт» — штатный фон, вытащенный из самого шаблона.
-  const standardThumb = useMemo(() => (overlay ? cardBgUri(overlay.svg) : ''), [overlay]);
-
-  // Сторож контракта подмены фона (см. src/lib/shareCardBg.js): jpeg-фон из
-  // шаблона пропал (перегенерирован в другой формат?) — подмена стала no-op,
-  // юзер молча остаётся со штатным фоном. Кричим, а не гадаем.
+  // Превью-SVG: подложка (пусто = прозрачно) + инлайн флагов. Флаги качаются с
+  // /flags/<cc>.svg, поэтому шаг асинхронный; промах инлайна оставляет карточку с
+  // фоном без флагов, а не пустой.
+  const [framedSvg, setFramedSvg] = useState(null);
   useEffect(() => {
-    if (overlay && !cardBgUri(overlay.svg)) {
-      report(new Error('render-share-card: в SVG шаблона нет jpeg-фона — applyCardBg стал no-op'), { surface: 'data', source: 'share-card-bg' });
-    }
-  }, [overlay]);
+    if (!overlay) { setFramedSvg(null); return undefined; }
+    let cancelled = false;
+    const withBg = applyCardBg(overlay.svg, bgUri);
+    inlineFlags(withBg)
+      .then((svg) => { if (!cancelled) setFramedSvg(svg); })
+      .catch(() => { if (!cancelled) setFramedSvg(withBg); });
+    return () => { cancelled = true; };
+  }, [overlay, bgUri]);
 
   const ready = Boolean(overlay) && !overlayCode;
   // Пропорция сцены едет двумя каналами (см. ShareCardDialog.css): --sc-ar для
@@ -180,7 +180,8 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
       const mapUri = await blobToDataUri(mapBlob);
       const { data, error } = await invokeCard({ trip_id: trip.id, format, lang, mode: 'card_svg' });
       if (error || !data?.svg) throw new Error('card svg failed');
-      const svg = applyCardBg(data.svg, finalBgUri).split(MAP_PLACEHOLDER).join(mapUri);
+      const withBgMap = applyCardBg(data.svg, finalBgUri).split(MAP_PLACEHOLDER).join(mapUri);
+      const svg = await inlineFlags(withBgMap);
       const blob = await rasterizeSvgToPng(svg, data.width || overlay.w, data.height || overlay.h);
       if (gen !== buildGenRef.current) continue;
       builtRef.current = blob;
@@ -297,17 +298,16 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
           ПРАВУЮ колонку под подсказку, мобила — под превью (см. areas в CSS).
           data-idx — адрес для доводчика выбора (как у CoverPicker). */}
       <Carousel className="tcp__strip sc-strip" ariaLabel={t('share.card_bg')} ref={stripRef} data-vaul-no-drag>
-        {standardThumb && (
-          <Swatch
-            variant="round"
-            on={bg === ''}
-            onClick={() => setBg('')}
-            aria-label={t('share.card_bg_standard')}
-            title={t('share.card_bg_standard')}
-            style={thumbStyle(standardThumb)}
-            data-idx={0}
-          />
-        )}
+        {/* «Стандарт» — БЕЗ подложки (прозрачный стикер): картинки-фона у него нет,
+            пустой свотч читается как «нет фона». */}
+        <Swatch
+          variant="round"
+          on={bg === ''}
+          onClick={() => setBg('')}
+          aria-label={t('share.card_bg_standard')}
+          title={t('share.card_bg_standard')}
+          data-idx={0}
+        />
         {slides.slice(1).map((url, i) => (
           <Swatch
             /* Ключ — ПОЛНЫЙ url: общий префикс public-URL пресетов длиннее 80,

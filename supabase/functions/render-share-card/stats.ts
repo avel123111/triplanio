@@ -55,12 +55,18 @@ export function uniqueCityCount(visits: Visit[]): number {
 }
 
 export function uniqueCountryCount(visits: Visit[]): number {
-  const codes = new Set<string>();
+  return orderedCountryCodes(visits).length;
+}
+
+/** Distinct ISO2 country codes (lowercased) in transit-route order — the flag row. */
+export function orderedCountryCodes(visits: Visit[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
   for (const v of visits.filter(isTransit)) {
     const cc = (v.country_code || '').trim().toLowerCase();
-    if (cc) codes.add(cc);
+    if (cc && !seen.has(cc)) { seen.add(cc); out.push(cc); }
   }
-  return codes.size;
+  return out;
 }
 
 function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
