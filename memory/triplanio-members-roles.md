@@ -15,7 +15,7 @@ metadata:
 - Кнопка выхода из трипа в SettingsLens: ключ `settings.leave_btn` («Выйти»/«Salir»/«Leave»), НЕ `auth.logout` (в ES было «Cerrar sesión» = выход из аккаунта, неверно).
 - removeTripMember (единая точка для «исключить» и «выйти»): чистит notifications по trip_member_id ПЕРЕД delete + проверяет error (раньше глотал → ok:true но не удалял). Миграция 0011 выровняла prod FK notifications→trip_members на ON DELETE CASCADE (dev уже был). leaveTrip/removeMember на фронте проверяют ответ.
 - edgeErrorMessage(error,data) в MembersLens читает error.context.json() — иначе supabase-js прячет реальную ошибку за «non-2xx status code» (self-invite, 409 already-invited).
-- «Поделиться» теперь и в хедере, и в левом меню (группа «Управление»), общий ShareDialog; обе скрыты от viewer (ensureShareToken owner/admin-only). Иконка settings в icons.jsx заменена на чистый cog (lucide-style).
+- «Поделиться» теперь и в хедере, и в левом меню (группа «Управление»), общий share-флоу (сегодня TripShareFlow: меню ссылка/карточка); обе скрыты от viewer (ensureShareToken owner/admin-only). Иконка settings в icons.jsx заменена на чистый cog (lucide-style).
 - Док Notion: «Участники трипа — роли, приглашения, статусы» (id 3712c9f1-427e-8189-8654-fb91b2c11594).
 
 Связано: [[triplanio-memberslens-paramname-bug]], [[triplanio-trip-settings-display]], [[triplanio-dev-parallel-env]] (дрифт prod/dev схем).

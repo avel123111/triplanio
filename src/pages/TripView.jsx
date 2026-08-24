@@ -18,7 +18,7 @@ import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { getAddons, isAddonEnabled, normalizeAddons } from '@/lib/tripAddons';
 import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from '@/lib/tripMenu';
 import TripShell from '@/components/trips/TripShell';
-import ShareDialog from '@/components/trips/ShareDialog';
+import TripShareFlow from '@/components/trips/TripShareFlow';
 import { Icon } from '../design/icons';
 import { Btn, Card, Dialog, EmptyState, IconBtn, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
@@ -1243,7 +1243,7 @@ export default function TripView() {
   // колонок, ровно как было.
   const overlays = (
     <>
-    <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
+    <TripShareFlow open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
   
     {/* Trip-level create dialogs opened by the bottom-nav "+" (addActions above) —
         render over ANY lens without navigating (same pattern as the event dialogs

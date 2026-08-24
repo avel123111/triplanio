@@ -12,11 +12,15 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { composeCoverSlides } from '@/lib/coverSlides';
 
-const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
+// Экспорт: тот же потолок держит фон share-карточки (ShareCardDialog) — картинка
+// одного класса, кэп один.
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
 
 // Каталог пресетов читаем через edge-витрину getCoverPresets (дверь auth,
 // service_role) — прямого клиентского SELECT нет (эпик «единая дверь» TRIP-374).
-async function fetchCoverPresets() {
+// Экспорт: тот же каталог (и тот же react-query ключ ['coverPresets']) листает
+// фоны share-карточки (ShareCardDialog) — источник картинок один.
+export async function fetchCoverPresets() {
   const { data, error } = await invokeFn('getCoverPresets', { body: {} });
   if (error) throw new Error('getCoverPresets failed');
   return data?.presets || [];

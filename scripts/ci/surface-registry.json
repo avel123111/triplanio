@@ -26,7 +26,8 @@
     "src/pages/DocsLens.jsx: <div role=button>": { "verdict": "object:2", "reason": "кликабельная КАРТА-опция видимости (data-card-btn) — поверхность объекта 2, замок cardHomed" },
     "src/components/bookings/PartnerResultCard.jsx: <div role=button>": { "verdict": "object:2", "reason": "кликабельная партнёр-КАРТА целиком (data-card-btn) — поверхность объекта 2 (класс pcard в cardHomed)" },
     "src/pages/ScreenAccount.jsx: <div role=button .acct-hero__av>": { "verdict": "object:avatar", "reason": "аватар аккаунта с click-to-change (bg-image) — объект «аватар», не кнопка-примитив" },
-    "src/components/common/EventAiBlock.jsx: <div role=button .ai-blk-hd>": { "verdict": "object:6", "reason": "ЗАГОЛОВОК AI-блока (раскрывашка) — объект 6, как <button>-заголовки #817" }
+    "src/components/common/EventAiBlock.jsx: <div role=button .ai-blk-hd>": { "verdict": "object:6", "reason": "ЗАГОЛОВОК AI-блока (раскрывашка) — объект 6, как <button>-заголовки #817" },
+    "src/components/trips/ShareCardDialog.jsx: <label .icon-btn.tcp__ctl.tcp__upload>": { "verdict": "btn-legit", "reason": "нативный <label> вокруг .sr-only файлового инпута («загрузить фон» share-карточки): пикер открывает БРАУЗЕР активацией label — программный input.click() из-под vaul/Radix-модалки на iOS ненадёжен; <Btn>/<IconBtn> = <button>, форвардить активацию на инпут не умеет" }
   },
   "_coSelectorNote": "TRIP-337 объект 2 дозакрытие: члены ко-селектора app.css:425 (и родственных 509/515) — фон+рамку несёт ОБЩЕЕ правило, радиус отдельным, поэтому предикат radius+bg+border-в-одном-правиле их не видел (слепое пятно, «закрыто но живо»). Замок 2z coSelectorSurfaceClasses теперь их ловит; каждый обязан быть в classes или cardHomed. Настоящие карточки сведены на <Card> (cardHomed), не-карточки приписаны объектом с причиной — остаток объекта 2 = 0.",
   "classes": {
