@@ -893,13 +893,13 @@ export default function LandingPage() {
 
   // <html lang> — снимок + восстановление на unmount, как у useSiteTheme
   // (ревью TRIP-460 C1): раньше атрибут выставлялся без очистки и «протекал» —
-  // уходишь с лендинга, а lang остаётся landing'овым.
-  const prevLang = useRef(null);
+  // уходишь с лендинга, а lang остаётся landing'овым. Идиома дословно как в
+  // useSiteTheme: локальный prev в mount-once эффекте, без ref.
   useEffect(() => {
     const r = document.documentElement;
-    if (prevLang.current === null) prevLang.current = r.getAttribute('lang');
+    const prev = r.getAttribute('lang');
     return () => {
-      if (prevLang.current != null) r.setAttribute('lang', prevLang.current);
+      if (prev != null) r.setAttribute('lang', prev);
       else r.removeAttribute('lang');
     };
   }, []);

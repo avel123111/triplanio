@@ -86,9 +86,12 @@ const COLOR_WHITELIST = [
   // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
   // (TRIP-460) LandingPage.jsx re-added: retiring it after the Hero-only draft
   // (which briefly had 0 raw colour) was premature — the full 11-section 1:1
-  // port carries the prototype's own demo/brand-mock colours verbatim
+  // port carries demo/brand-mock colours from the prototype verbatim
   // (avatars, Telegram/WhatsApp icon tints, budget bar segments, map pins),
-  // matching its original origin/dev reason ("demo visuals + brand icons").
+  // matching its original origin/dev reason (demo visuals + brand icons).
+  // NB: keep this block free of apostrophes — the guard test parses
+  // COLOR_WHITELIST by single-quote pairs, so a stray one mis-seeds the
+  // fixture and the whole spacing suite goes red (TRIP-460 B3).
   'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
   'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
   'src/pages/PublicTrip.css',                          // public read-only page styles
