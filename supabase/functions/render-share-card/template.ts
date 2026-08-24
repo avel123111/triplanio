@@ -29,7 +29,9 @@ const LOGO_URI = `data:image/svg+xml;base64,${LOGO_SVG_B64}`;
 
 export type Format = 'story' | 'post';
 
-export type CardData = {
+// Данные карточки собирает index.ts и передаёт литералом; тип живёт для сигнатуры
+// buildCardSvg, наружу не экспортируется (никто не импортирует).
+type CardData = {
   title: string;
   from: string; // первый город маршрута
   to: string; // последний город (пусто/равен from ⇒ маршрут без стрелки)
@@ -52,10 +54,12 @@ export type CardData = {
   brand: string; // "TRIPLANIO"
 };
 
-// Токены, которые подменяет клиент.
+// Токены, которые подменяет клиент. Только MAP_TOKEN нужен снаружи (index.ts →
+// card_svg); BG_TOKEN и flagToken клиент знает по своим копиям строк (Deno-модуль
+// не импортируется во фронт), поэтому наружу не экспортируются.
 export const MAP_TOKEN = '__SHARE_CARD_MAP__';
-export const BG_TOKEN = '__SHARE_CARD_BG__';
-export const flagToken = (cc: string) => `__SC_FLAG_${cc}__`;
+const BG_TOKEN = '__SHARE_CARD_BG__';
+const flagToken = (cc: string) => `__SC_FLAG_${cc}__`;
 
 // Палитра (из прототипа).
 const C = {
@@ -64,7 +68,6 @@ const C = {
   gold: '#B08D50',
   cream: '#F3ECDD',
   script: '#3E6FB6',
-  route: '#2C63C6',
   white: '#FFFFFF',
   footBg: 'rgba(255,255,255,0.72)',
   flagBg: 'rgba(14,30,50,0.62)',
@@ -89,7 +92,7 @@ type Layout = {
   routeSize: number;
   pola: { top: number; width: number; padT: number; padX: number; padB: number; winH: number };
   capSize: number;
-  stats: { y: number; numSize: number; labSize: number; cellPad: number; gap: number };
+  stats: { y: number; numSize: number; labSize: number; cellPad: number };
   flags: { y: number; h: number; labSize: number; circle: number; ring: number; gap: number; moreSize: number };
   footer: {
     y: number; h: number; padX: number;
@@ -105,7 +108,7 @@ const LAYOUTS: Record<Format, Layout> = {
     routeGap: 74, routeSize: 56,
     pola: { top: 588, width: 860, padT: 32, padX: 32, padB: 24, winH: 600 },
     capSize: 52,
-    stats: { y: 1416, numSize: 58, labSize: 26, cellPad: 30, gap: 0 },
+    stats: { y: 1416, numSize: 58, labSize: 26, cellPad: 30 },
     flags: { y: 1524, h: 112, labSize: 26, circle: 58, ring: 3, gap: 12, moreSize: 24 },
     footer: {
       y: 1672, h: 176, padX: 40,
@@ -119,7 +122,7 @@ const LAYOUTS: Record<Format, Layout> = {
     routeGap: 66, routeSize: 50,
     pola: { top: 356, width: 912, padT: 22, padX: 22, padB: 22, winH: 432 },
     capSize: 50,
-    stats: { y: 968, numSize: 56, labSize: 26, cellPad: 26, gap: 0 },
+    stats: { y: 968, numSize: 56, labSize: 26, cellPad: 26 },
     flags: { y: 1044, h: 104, labSize: 26, circle: 56, ring: 3, gap: 10, moreSize: 24 },
     footer: {
       y: 1156, h: 168, padX: 34,
@@ -207,7 +210,7 @@ function windowGeom(format: Format) {
   const polaH = p.padT + winH + capBlock + p.padB;
   const cx = polaX + p.width / 2;
   const cy = p.top + polaH / 2;
-  return { L, p, polaX, polaY: p.top, polaW: p.width, polaH, winX, winY, winW, winH, cx, cy };
+  return { L, polaX, polaY: p.top, polaW: p.width, polaH, winX, winY, winW, winH, cx, cy };
 }
 
 export function mapSlot(format: Format): { x: number; y: number; w: number; h: number } {

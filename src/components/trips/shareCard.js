@@ -14,7 +14,9 @@ export const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
 // внешним href). Промах флага → пустой href (белый круг остаётся). Кэш общий с фоном.
 const FLAG_TOKEN_RE = /__SC_FLAG_([a-z]{2})__/g;
 export async function inlineFlags(svg) {
-  if (!svg || !FLAG_TOKEN_RE.test(svg)) return svg;
+  // includes (не FLAG_TOKEN_RE.test): у /g-регэкспа test двигает lastIndex —
+  // stateful-страж между вызовами. Дешёвая подстрока-проверка без состояния.
+  if (!svg || !svg.includes('__SC_FLAG_')) return svg;
   const codes = [...new Set([...svg.matchAll(FLAG_TOKEN_RE)].map((m) => m[1]))];
   const entries = await Promise.all(codes.map((cc) =>
     fetchImageDataUri(`/flags/${cc}.svg`).then((uri) => [cc, uri]).catch(() => [cc, ''])));
