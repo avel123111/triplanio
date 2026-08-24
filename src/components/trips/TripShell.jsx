@@ -49,8 +49,7 @@
  * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — тот же вход гасится при снижении движения
  * visual-diff-exempt: .trip-shell[data-entering=create] animation — вторая единица наблюдения того же правила (селектор из двух частей)
  * visual-diff-exempt: .trip-shell[data-entering=create] {@media (prefers-reduced-motion: reduce)} animation — то же при снижении движения
- * visual-diff-exempt: from {@keyframes railIn} transform — кейфрейм выезда рейла из-за левой кромки
- * visual-diff-exempt: to {@keyframes railIn} transform — то же, конечное состояние
+ * visual-diff-exempt: to {@keyframes railIn} transform — конечное состояние выезда рейла
  *
  * Раскладочный эксперимент, по одному объявлению на строку (апрув Pavel):
  * visual-diff-exempt: .app-header__brand--back:focus-visible outline — снято второе лицо бренд-слота: выход из трипа теперь обычная кнопка в шапке, а не стрелка по наведению
@@ -94,13 +93,13 @@
  * visual-diff-exempt: .app-side max-height — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
  * visual-diff-exempt: .app-side padding — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
  * visual-diff-exempt: .app-side width — рейл стал плавающим виджетом: зазор, скругление, тень, своя высота
- * visual-diff-exempt: .trip-body {@media (max-width — сетка тела осталась одним рядом: шапки в ней больше нет
  * visual-diff-exempt: .trip-body grid-row — сетка тела осталась одним рядом: шапки в ней больше нет
  * visual-diff-exempt: .trip-body grid-template-columns — сетка тела осталась одним рядом: шапки в ней больше нет
  * visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-template-columns — телефонная колонка приведена к той же форме minmax(0,1fr), что и десктопная: голый 1fr не удерживает широкое содержимое
  * visual-diff-exempt: .trip-body grid-template-rows — сетка тела осталась одним рядом: шапки в ней больше нет
  * visual-diff-exempt: .trip-content grid-row — сетка тела осталась одним рядом: шапки в ней больше нет
  * visual-diff-exempt: from {@keyframes railIn} transform — въезд рейла уводит его за кромку вместе с зазором
+ * visual-diff-exempt: .app-header__brand position — `relative` держался ради абсолютной стрелки выхода, которая снята: других абсолютных потомков у слота нет
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -265,14 +264,10 @@ export default function TripShell({
 
   return (
     <div className="trip-shell" data-entering={entering || undefined} style={MOTION_STYLE}>
-      {/* ★ ШАПКА — ПЕРВЫЙ РЕБЁНОК ОБОЛОЧКИ, А НЕ ЯЧЕЙКА СЕТКИ ТЕЛА. Она идёт ВО
-          ВСЮ ШИРИНУ экрана, поэтому и стоять обязана НАД телом, а не рядом с
-          рейлом. Прежнее место (правая верхняя ячейка сетки 2×2) и было тем, что
-          обрезало её слева на ширину рейла.
-          Условие «шапка — СОСЕД `.trip-content`, а не его потомок» соблюдено и
-          усилено: к `.trip-content` абсолютом привязан хост выдвижных панелей
-          (`.evd-drawer`), и внутри шапки он поехал бы из-под неё. Здесь шапка
-          вообще не предок `.trip-content` — она этажом выше. */}
+      {/* ⚠️ ШАПКА ОБЯЗАНА ОСТАВАТЬСЯ ВНЕ `.trip-content`: к нему абсолютом привязан
+          хост выдвижных панелей (`.evd-drawer`), и внутри шапки он поехал бы
+          из-под неё. Здесь она вообще не его предок — этажом выше, во всю ширину
+          экрана. Зачем так — в шапке файла. */}
       <AppHeader
         isTrip
         user={user}
