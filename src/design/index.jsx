@@ -11,6 +11,8 @@ import { faviconUrl } from '@/lib/booking-platforms';
 import { detectPartner } from '@/lib/externalBrands';
 import { transferKind } from '@/lib/transport';
 import FileTypeBadge from '@/components/common/FileTypeBadge';
+import { eventFamily } from './eventFamily';
+export { eventFamily } from './eventFamily';
 
 // =====================================================================
 // Primitive layer (Radix-backed) — single import surface.
@@ -63,6 +65,8 @@ export { EditableText } from './EditableText';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';
+export { CityBar, CITYBAR_VARIANTS, CITY_TONES, cityTone, cityToneVars } from './CityBar';
+export { EventChip, EVENTCHIP_VARIANTS } from './EventChip';
 export { NotifRow } from './NotifRow';
 export { Swatch, SWATCH_VARIANTS } from './Swatch';
 import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
@@ -853,13 +857,6 @@ const _EV_TOK = {
 // buildEventStream (TripView): flight/transfer, hotel-checkin/-checkout/-deadline,
 // car-pickup/-return, activity. Семейство совпадает с суффиксом токенов --ev-*
 // и с CSS-классом .ev-* — на нём же держится раскраска чипов календаря.
-export function eventFamily(type) {
-  if (type === "flight" || type === "transfer") return "transfer";
-  if (type === "hotel-checkin" || type === "hotel-checkout") return "hotel";
-  if (type === "hotel-deadline") return "deadline";
-  if (type === "car-pickup" || type === "car-return") return "car";
-  return "activity";
-}
 function _evTok(e) {
   return _EV_TOK[eventFamily(e.type)];
 }

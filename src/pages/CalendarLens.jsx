@@ -23,7 +23,7 @@
  */
 import React, { useState, useMemo, useRef, useLayoutEffect, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, IconBtn, Seg, Btn, eventFamily } from '../design/index';
+import { Skeleton, IconBtn, Seg, Btn, Card, ListRow, Chip, CityBar, EventChip, cityTone, eventFamily } from '../design/index';
 import { Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { isTransitVisit } from '@/lib/trip-cities';
@@ -34,20 +34,6 @@ import './CalendarLens.css';
 const monthNames   = (lang) => ['', ...Info.months('long',  { locale: localeTag(lang) })];
 const monthShort   = (lang) => ['', ...Info.months('short', { locale: localeTag(lang) })];
 const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) });
-
-// City palette — existing ev-*/ai/warm tokens (no new hues).
-const CITY_PALETTE = [
-  { c: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)' },
-  { c: 'var(--ev-hotel)',    soft: 'var(--ev-hotel-soft)',    ink: 'var(--ev-hotel-ink)'    },
-  { c: 'var(--ev-car)',      soft: 'var(--ev-car-soft)',      ink: 'var(--ev-car-ink)'      },
-  { c: 'var(--ai)',          soft: 'var(--ai-soft)',          ink: 'var(--ai-ink)'          },
-  { c: 'var(--warm)',        soft: 'var(--warm-soft)',        ink: 'var(--warm-ink)'        },
-  { c: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)' },
-];
-const cityPal  = (idx) => CITY_PALETTE[idx % CITY_PALETTE.length];
-const cityVars = (idx) => { const p = cityPal(idx); return { '--cc': p.c, '--cc-soft': p.soft, '--cc-ink': p.ink }; };
-
-const evCls = (type) => `ev-${eventFamily(type)}`;
 
 // ─── MonthView ────────────────────────────────────────────────────────────────
 function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
@@ -86,7 +72,7 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
   };
 
   return (
-    <div className="ncal-month">
+    <Card radius="md" pad="none" className="ncal-month">
       <div className="ncal-wdrow">
         {weekdays.map(w => <div key={w} className="ncal-wd t-micro">{w}</div>)}
       </div>
@@ -108,13 +94,12 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
                 const shown = isOpen ? c.events : c.events.slice(0, 2);
                 return (
                   <div key={di} className={`${cls.join(' ')}${isOpen ? ' is-open' : ''}`}>
-                    {/* полоса(ы) города дня — только цвет; клик открывает панель.
-                        Название рисует общий слой прогона `.ncal-names` ниже. */}
+                    {/* полоса(ы) города дня — канон <CityBar> (только цвет); клик
+                        открывает панель. Имя ведёт слой-прогон `.ncal-names` ниже. */}
                     {c.cities.length > 0 && (
                       <div className="ncal-daytop">
                         {c.cities.map((x, xi) => (
-                          <button key={xi} type="button" className="ncal-daytop-s"
-                            style={cityVars(x.colorIdx)} onClick={() => onOpenCity?.(x.v)} aria-label={x.name} />
+                          <CityBar key={xi} tone={x.colorIdx} onClick={() => onOpenCity?.(x.v)} ariaLabel={x.name} />
                         ))}
                       </div>
                     )}
@@ -127,20 +112,17 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
                       <>
                         <div className="ncal-evl">
                           {shown.map((e, ei) => (
-                            <button key={ei} type="button" className={`ncal-ev t-tiny ${evCls(e.type)}`}
-                              onClick={() => onOpenEvent?.(e)} aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}>
-                              {e.time && <span className="tm">{e.time}</span>}
-                              <span className="t">{e.title}</span>
-                            </button>
+                            <EventChip key={ei} variant="inline" type={e.type} time={e.time} title={e.title}
+                              onClick={() => onOpenEvent?.(e)} ariaLabel={`${e.time ? e.time + ' ' : ''}${e.title}`} className="t-tiny" />
                           ))}
                           {c.events.length > 2 && (
-                            <button type="button" className="ncal-more t-tiny" onClick={() => toggle(ci)}>
+                            <Chip variant="soft" sm square className="ncal-more t-tiny" onClick={() => toggle(ci)}>
                               {isOpen ? t('calendar.collapse') : `+${c.events.length - 2} ${t('calendar.more_count')}`}
-                            </button>
+                            </Chip>
                           )}
                         </div>
                         <div className="ncal-dots" aria-hidden="true">
-                          {c.events.slice(0, 5).map((e, ei) => <span key={ei} className={`ncal-dot ${evCls(e.type)}`} />)}
+                          {c.events.slice(0, 5).map((e, ei) => <span key={ei} className={`ncal-dot ev-${eventFamily(e.type)}`} />)}
                         </div>
                       </>
                     )}
@@ -155,7 +137,7 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
                 <div className="ncal-names" aria-hidden="true">
                   {runs.map((r, ri) => (
                     <span key={ri} className="ncal-runname t-tiny"
-                      style={{ gridColumn: `${r.start + 1} / span ${r.span}`, color: cityPal(r.city.colorIdx).ink }}>
+                      style={{ gridColumn: `${r.start + 1} / span ${r.span}`, color: cityTone(r.city.colorIdx).ink }}>
                       {r.city.name}
                     </span>
                   ))}
@@ -165,7 +147,7 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -185,7 +167,7 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
   }, [weekKey]);
 
   return (
-    <div className="ncal-week">
+    <Card radius="md" pad="none" className="ncal-week">
       <div className="ncal-wk-head">
         <div className="ncal-wk-gut" />
         {days.map((d, di) => (
@@ -196,8 +178,8 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
             </div>
             <div className="ncal-wk-city">
               {d.cities.map((c, ci) => (
-                <button key={ci} type="button" className="ncal-wk-cseg t-tiny" style={cityVars(c.colorIdx)}
-                  onClick={() => onOpenCity?.(c.v)} aria-label={c.name}>{c.name}</button>
+                <CityBar key={ci} variant="strip" tone={c.colorIdx} label={c.name} className="t-tiny"
+                  onClick={() => onOpenCity?.(c.v)} ariaLabel={c.name} />
               ))}
             </div>
           </div>
@@ -210,8 +192,8 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
           {days.map((d, di) => (
             <div key={di} className={`ncal-wk-adcell${d.isToday ? ' is-today' : ''}`}>
               {d.allDay.map((e, ei) => (
-                <button key={ei} type="button" className={`ncal-chip t-tiny ${evCls(e.type)}`}
-                  onClick={() => onOpenEvent?.(e)} aria-label={e.title}><span className="t">{e.title}</span></button>
+                <EventChip key={ei} variant="allday" type={e.type} title={e.title}
+                  onClick={() => onOpenEvent?.(e)} ariaLabel={e.title} className="t-tiny" />
               ))}
             </div>
           ))}
@@ -234,23 +216,21 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
             {days.map((d, di) => (
               <div key={di} className={`ncal-wk-col${d.isToday ? ' is-today' : ''}`}>
                 {d.timed.map((it, ii) => (
-                  <button key={ii} type="button" className={`ncal-tev ${evCls(it.ev.type)}`}
+                  <EventChip key={ii} variant="block" type={it.ev.type} time={it.ev.time} title={it.ev.title}
+                    className="t-tiny"
                     style={{
                       top: it.top, height: Math.max(it.height, 30),
                       left: `calc(${(it.lane / it.lanes) * 100}% + 2px)`,
                       width: `calc(${(1 / it.lanes) * 100}% - 4px)`,
                     }}
-                    onClick={() => onOpenEvent?.(it.ev)} aria-label={`${it.ev.time} ${it.ev.title}`}>
-                    <span className="ncal-tev-tm t-tiny">{it.ev.time}</span>
-                    <span className="ncal-tev-t t-tiny">{it.ev.title}</span>
-                  </button>
+                    onClick={() => onOpenEvent?.(it.ev)} ariaLabel={`${it.ev.time} ${it.ev.title}`} />
                 ))}
               </div>
             ))}
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -261,19 +241,18 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
 function CitiesAside({ cities, onOpenCity, t }) {
   if (!cities.length) return null;
   return (
-    <aside className="ncal-aside">
+    <Card as="aside" radius="md" pad="none" className="ncal-aside">
       <div className="ncal-aside-h t-label">{t('calendar.legend_group_cities')}</div>
       <div className="ncal-aside-list">
         {cities.map((c, i) => (
-          <button key={i} type="button" className="ncal-ci" onClick={() => onOpenCity?.(c.v)}
-            aria-label={`${c.name}${c.range ? ', ' + c.range : ''}`}>
-            <span className="ncal-ci-dot" style={{ background: cityPal(c.colorIdx).c }} />
-            <span className="ncal-ci-name t-label">{c.name}</span>
-            <span className="ncal-ci-range t-tiny">{c.range}</span>
-          </button>
+          <ListRow key={i} variant="compact" className="ncal-ci" onClick={() => onOpenCity?.(c.v)}
+            lead={<span className="ncal-ci-dot" style={{ background: cityTone(c.colorIdx).bar }} />}
+            title={c.name}
+            trail={<span className="ncal-ci-range t-tiny">{c.range}</span>}
+            aria-label={`${c.name}${c.range ? ', ' + c.range : ''}`} />
         ))}
       </div>
-    </aside>
+    </Card>
   );
 }
 

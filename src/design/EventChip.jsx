@@ -1,0 +1,38 @@
+// @ts-check
+import React from 'react';
+import { eventFamily } from './eventFamily';
+
+// ----- EventChip ----- (TRIP-321 линза «Календарь» — апрув Pavel)
+// Компактный «эвент-токен» календаря: до этого три почти одинаковые формы под
+// своими классами — чип события в СЕТКЕ МЕСЯЦА (`.ncal-ev`), all-day-чип в
+// ШАПКЕ НЕДЕЛИ (`.ncal-chip`) и timed-карточка в ТАЙМ-ГРИДЕ недели (`.ncal-tev`).
+// Один примитив, ось `variant`:
+//   · `inline` — строка чипа (время слева + заголовок), левый цветной кант;
+//   · `allday` — плоская пилюля-плашка (заголовок);
+//   · `block`  — позиционируемая карточка (время над заголовком; координаты
+//                приходят `style`-ом от тайм-грида).
+// Цвет — семейство события (`eventFamily(type)` → класс `ev-<fam>` + токены
+// `--ev-*`), тот же источник, что у таймлайна.
+//
+// ★ БАЗА `<button>` при `onClick` (открыть панель события), иначе `<div>`.
+
+/** @typedef {'inline'|'allday'|'block'} EventChipVariant */
+export const EventChip = ({ type, variant = 'inline', time, title, onClick, ariaLabel, className = '', style }) => {
+  const El = /** @type {any} */ (onClick ? 'button' : 'div');
+  const fam = `ev-${eventFamily(type)}`;
+  return (
+    <El
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className={['evchip', `evchip--${variant}`, fam, className].filter(Boolean).join(' ')}
+      style={style}
+    >
+      {time != null && time !== '' && <span className="evchip__tm">{time}</span>}
+      <span className="evchip__t">{title}</span>
+    </El>
+  );
+};
+
+/** @type {readonly EventChipVariant[]} */
+export const EVENTCHIP_VARIANTS = ['inline', 'allday', 'block'];

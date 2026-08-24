@@ -61,29 +61,17 @@
 .ncal-body { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 16px; align-items: start; }
 .ncal-main { min-width: 0; }
 
-/* Правый виджет городов */
-.ncal-aside {
-  display: flex; flex-direction: column; gap: 4px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
-  padding: 12px 10px; position: sticky; top: 12px;
-}
+/* Правый виджет городов — поверхность/рамку/радиус даёт канон <Card>; строки =
+   канон <ListRow variant="compact">. Здесь — раскладка виджета + лид/трейл. */
+.card.ncal-aside { display: flex; flex-direction: column; gap: 4px; padding: 12px 10px; position: sticky; top: 12px; }
 .ncal-aside-h { color: var(--muted); padding: 2px 6px 6px; }
 .ncal-aside-list { display: flex; flex-direction: column; gap: 1px; }
-.ncal-ci {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px;
-  width: 100%; text-align: left; border: none; cursor: pointer;
-  background: transparent; color: var(--ink-2);
-  padding: 7px 8px; border-radius: var(--r-sm);
-  transition: background .14s;
-}
-.ncal-ci:hover { background: var(--surface-3); }
-.ncal-ci:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .ncal-ci-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
-.ncal-ci-name { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ncal-ci-range { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ── Month board ───────────────────────────────────────────────── */
-.ncal-month { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+/* Поверхность/рамку/радиус/overflow даёт канон <Card radius="md" pad="none">;
+   здесь — только внутренняя раскладка доски. */
 .ncal-wdrow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--surface-3); border-bottom: 1px solid var(--line); }
 .ncal-wd { text-align: center; color: var(--muted); padding: 9px 0; }
 /* Доска = стопка НЕДЕЛЬНЫХ рядов (нужна для слоя сплошных имён-прогонов).
@@ -110,16 +98,9 @@
 .ncal-names { position: absolute; top: 0; left: 0; right: 0; height: 19px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); pointer-events: none; z-index: 2; }
 .ncal-runname { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 0 7px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Город(а) дня — сплошная цветная полоса сверху с названием; транзит делит её
-   поровну. Полоса — кликабельные кнопки (открытие панели города). */
+/* Ряд полос города дня — контейнер; сами полосы = канон <CityBar> (.citybar).
+   Транзит (2+ города) делит ряд поровну (flex у .citybar). */
 .ncal-daytop { position: absolute; top: 0; left: 0; right: 0; height: 19px; display: flex; gap: 1px; z-index: 1; }
-.ncal-daytop-s {
-  flex: 1; min-width: 0; border: none; cursor: pointer;
-  background: var(--cc-soft); box-shadow: inset 0 2px 0 var(--cc);
-  transition: filter .14s, background .14s;
-}
-.ncal-daytop-s:hover { filter: brightness(1.05); }
-.ncal-daytop-s:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 
 .ncal-dc-top { display: flex; align-items: center; gap: 6px; min-height: 22px; margin-top: 12px; }
 .ncal-dn {
@@ -130,32 +111,10 @@
 }
 .ncal-dc.is-today .ncal-dn { background: var(--brand); color: var(--primary-fg); box-shadow: 0 4px 14px -4px var(--brand-glow); }
 
-.ncal-evl { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
-.ncal-ev {
-  display: flex; align-items: center; gap: 6px; position: relative;
-  padding: 2px 7px 2px 9px; border-radius: var(--r-xs);
-  overflow: hidden; border: none; cursor: pointer; text-align: left; width: 100%;
-  background: var(--surface); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line);
-  transition: filter .14s;
-}
-.ncal-ev::before { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3px; border-radius: 0 2px 2px 0; background: currentColor; }
-.ncal-ev:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-hover); }
-.ncal-ev .tm { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
-.ncal-ev .t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--ink-2); }
-.ncal-ev.ev-hotel { color: var(--ev-hotel-ink); }
-.ncal-ev.ev-activity { color: var(--ev-activity-ink); }
-.ncal-ev.ev-transfer { color: var(--ev-transfer-ink); }
-.ncal-ev.ev-deadline { color: var(--ev-deadline-ink); }
-.ncal-ev.ev-car { color: var(--ev-car-ink); }
-/* «+N ещё» / «Свернуть» — рабочая кнопка (разворачивает день) */
-.ncal-more {
-  display: inline-block; width: 100%; text-align: left;
-  color: var(--muted); background: transparent; border: none; cursor: pointer;
-  padding: 1px 8px; border-radius: var(--r-xs);
-  transition: background .14s, color .14s;
-}
-.ncal-more:hover { background: var(--surface-2); color: var(--ink-2); }
-.ncal-more:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* Список событий дня; сами чипы = канон <EventChip variant="inline">, «+N ещё»
+   = канон <Chip variant="soft" sm square>. */
+.ncal-evl { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; align-items: flex-start; }
+.ncal-evl .evchip--inline { width: 100%; }
 /* раскрытый день поднимается над соседями, чтобы показать все события */
 .ncal-dc.is-open { z-index: 2; }
 
@@ -168,7 +127,9 @@
 .ncal-dot.ev-car { background: var(--ev-car); }
 
 /* ── Week time-grid (full day, capped height) ──────────────────── */
-.ncal-week { --ncal-gut: 54px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; display: flex; flex-direction: column; }
+/* Поверхность/рамку/радиус/overflow даёт канон <Card radius="md" pad="none">;
+   здесь — раскладка тайм-грида. */
+.ncal-week { --ncal-gut: 54px; display: flex; flex-direction: column; }
 .ncal-wk-head, .ncal-wk-allday { display: grid; grid-template-columns: var(--ncal-gut) repeat(7, minmax(0, 1fr)); flex: none; }
 .ncal-wk-head { border-bottom: 1px solid var(--line); background: var(--surface); }
 .ncal-wk-gut { border-right: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted-2); position: sticky; left: 0; z-index: 3; background: var(--surface); }
@@ -178,26 +139,14 @@
 .ncal-wk-wd { color: var(--muted); }
 .ncal-wk-dn { color: var(--ink); display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; border-radius: var(--r-pill); font-variant-numeric: tabular-nums; line-height: 1; }
 .ncal-wk-hcell.is-today .ncal-wk-dn { background: var(--brand); color: var(--primary-fg); box-shadow: 0 4px 14px -4px var(--brand-glow); }
-/* полоса города с названием */
+/* полоса города с названием = канон <CityBar variant="strip"> */
 .ncal-wk-city { display: flex; width: 100%; min-height: 0; }
-.ncal-wk-cseg {
-  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;
-  padding: 3px 6px; background: var(--cc-soft); color: var(--cc-ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ncal-wk-cseg + .ncal-wk-cseg { border-left: 1px solid var(--surface); }
 
 .ncal-wk-allday { border-bottom: 1px solid var(--line); background: var(--surface-3); min-height: 34px; }
 .ncal-wk-allday .ncal-wk-gut { color: var(--muted-2); background: var(--surface-3); }
+/* all-day плашки = канон <EventChip variant="allday"> */
 .ncal-wk-adcell { display: flex; flex-direction: column; gap: 3px; padding: 5px; border-left: 1px solid var(--line); }
 .ncal-wk-adcell.is-today { background: var(--brand-soft); }
-.ncal-chip { display: flex; align-items: center; padding: 3px 8px; border-radius: var(--r-xs); border: none; cursor: pointer; text-align: left; background: var(--surface-2); color: var(--ink-2); overflow: hidden; }
-.ncal-chip .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ncal-chip.ev-hotel { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
-.ncal-chip.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.ncal-chip.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
-.ncal-chip.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
-.ncal-chip.ev-car { background: var(--ev-car-soft); color: var(--ev-car-ink); }
 
 /* Внутренний скролл: календарь всегда в пределах экрана на десктопе, скроллит
    только сетка; снизу — воздух (padding-bottom), чтобы последний час не липнул. */
@@ -214,28 +163,11 @@
 .ncal-wk-line { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
 .ncal-wk-col { position: relative; border-left: 1px solid var(--line); }
 .ncal-wk-col.is-today { background: var(--brand-soft); }
-.ncal-tev {
-  position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden;
-  padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; text-align: left;
-  background: var(--surface); color: var(--ink-2); box-shadow: var(--sh-1);
-  transition: filter .14s, transform .1s var(--ease-spring);
-}
-.ncal-tev:hover { filter: brightness(1.04); }
-.ncal-tev:active { transform: scale(.98); }
-.ncal-tev-tm { color: var(--muted); font-variant-numeric: tabular-nums; }
-.ncal-tev-t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
-.ncal-tev.ev-hotel { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
-.ncal-tev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.ncal-tev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
-.ncal-tev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
-.ncal-tev.ev-car { background: var(--ev-car-soft); color: var(--ev-car-ink); }
-.ncal-tev.ev-hotel .ncal-tev-tm, .ncal-tev.ev-activity .ncal-tev-tm, .ncal-tev.ev-transfer .ncal-tev-tm,
-.ncal-tev.ev-deadline .ncal-tev-tm, .ncal-tev.ev-car .ncal-tev-tm { color: inherit; opacity: .72; }
+/* timed-карточки = канон <EventChip variant="block"> (позиционируются style-ом) */
 
 @keyframes ncalFadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ncal-month, .ncal-week { animation: ncalFadeSlideIn .22s var(--ease-out) both; }
 .ncal-empty { padding: 48px 24px; text-align: center; color: var(--muted); }
-.ncal-ev:focus-visible, .ncal-tev:focus-visible, .ncal-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 
 /* ── Adaptive (container queries — по ширине САМОГО календаря) ────────
    ОДИН порог. Календарь живёт в узком мобильном фрейме, поэтому меряем его
