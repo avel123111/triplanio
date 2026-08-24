@@ -36,7 +36,8 @@
     "check:spec-columns": "node scripts/ci/check-spec-columns.mjs",
     "check:one-helper": "node scripts/ci/check-one-helper.mjs",
     "check:roles": "node scripts/ci/check-role-gate.mjs",
-    "check:confirm": "node scripts/ci/check-confirm-copy.mjs"
+    "check:confirm": "node scripts/ci/check-confirm-copy.mjs",
+    "check:site-dup": "node scripts/ci/check-site-primitive-dup.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",

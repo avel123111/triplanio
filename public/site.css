@@ -214,6 +214,17 @@ h3 {
   border: 1px solid transparent;
 }
 .btn--lg { padding: 15px 26px; font-size: var(--ctl-fs); border-radius: 14px; }
+
+/* Коллизии «правило-одиночка в обоих файлах» под гардом 2ae (check-site-primitive-dup,
+   TRIP-460 §1а). Все — ОДИН объект: зона объявляет ровно те свойства, что ей нужны,
+   утечки недостающего свойства из app.css нет (в отличие от снятого .sheet). Каждое —
+   вариант/примитив зоны, не вторая база:
+   site-dup-exempt: btn--primary — вариант primary; общая база .btn из app (§7.4)
+   site-dup-exempt: eyebrow — секционный eyebrow зоны (точка+текст), свой вид
+   site-dup-exempt: lede — лид-абзац зоны, своя типографика
+   site-dup-exempt: footer — подвал зоны (SiteChrome); приложение подвала не рендерит
+   site-dup-exempt: langdd__btn — переключатель языка (chrome зоны), свой вид
+   site-dup-exempt: langdd__item — пункт переключателя языка (chrome зоны), свой вид */
 .btn--primary {
   background: var(--brand);
   color: #fff;
