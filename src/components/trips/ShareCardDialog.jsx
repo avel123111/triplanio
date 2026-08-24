@@ -210,62 +210,62 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     />
   ) : (
     <div className="sc-body">
-      <div className="sc-view">
-        <div className="sc-stage" style={arStyle}>
-          {overlay ? (
-            <ShareMapPreview
-              key={format}
-              ref={previewRef}
-              visits={visits}
-              transfers={transfers}
-              lang={lang}
-              overlaySvg={framedSvg}
-              slot={overlay.slot}
-              cardW={overlay.w}
-              cardH={overlay.h}
-              interactive={false}
-              camera={camera}
-            />
-          ) : (
-            <Skeleton w="100%" h="100%" r={0} />
-          )}
-          {ready && canPrevBg && (
-            <IconBtn icon="chevL" className="tcp__ctl tcp__nav tcp__nav--prev" ariaLabel={t('common.prev')} onClick={() => stepBg(-1)} />
-          )}
-          {ready && canNextBg && (
-            <IconBtn icon="chev" className="tcp__ctl tcp__nav tcp__nav--next" ariaLabel={t('common.next')} onClick={() => stepBg(1)} />
-          )}
-          {ready && (
-            <IconBtn icon="image-up" className="tcp__ctl tcp__upload" ariaLabel={t('share.bg_upload')} title={t('share.bg_upload')} onClick={pickFile} />
-          )}
-        </div>
-        <Carousel className="tcp__strip" ariaLabel={t('share.card_bg')}>
-          {standardThumb && (
-            <Swatch
-              variant="round"
-              on={bg === ''}
-              onClick={() => setBg('')}
-              aria-label={t('share.card_bg_standard')}
-              title={t('share.card_bg_standard')}
-              style={thumbStyle(standardThumb)}
-            />
-          )}
-          {slides.slice(1).map((url, i) => (
-            <Swatch
-              key={url.slice(0, 80) || `bg-${i}`}
-              variant="round"
-              on={bg === url}
-              onClick={() => setBg(url)}
-              aria-label={t('share.card_bg')}
-              style={thumbStyle(url)}
-            />
-          ))}
-          {(presetsQ.isLoading || !overlay) && SKELETON_THUMBS.map((k) => (
-            <Skeleton key={k} w={52} h={52} r={'var(--r-xs)'} />
-          ))}
-        </Carousel>
-        {uploadError && <p className="tcp__err">{uploadError}</p>}
+      <div className="sc-stage" style={arStyle}>
+        {overlay ? (
+          <ShareMapPreview
+            key={format}
+            ref={previewRef}
+            visits={visits}
+            transfers={transfers}
+            lang={lang}
+            overlaySvg={framedSvg}
+            slot={overlay.slot}
+            cardW={overlay.w}
+            cardH={overlay.h}
+            interactive={false}
+            camera={camera}
+          />
+        ) : (
+          <Skeleton w="100%" h="100%" r={0} />
+        )}
+        {ready && canPrevBg && (
+          <IconBtn icon="chevL" className="tcp__ctl tcp__nav tcp__nav--prev" ariaLabel={t('common.prev')} onClick={() => stepBg(-1)} />
+        )}
+        {ready && canNextBg && (
+          <IconBtn icon="chev" className="tcp__ctl tcp__nav tcp__nav--next" ariaLabel={t('common.next')} onClick={() => stepBg(1)} />
+        )}
+        {ready && (
+          <IconBtn icon="image-up" className="tcp__ctl tcp__upload" ariaLabel={t('share.bg_upload')} title={t('share.bg_upload')} onClick={pickFile} />
+        )}
       </div>
+
+      {/* Карусель фонов — свой грид-остров (.sc-strip): десктоп ставит её в
+          ПРАВУЮ колонку под подсказку, мобила — под превью (см. areas в CSS). */}
+      <Carousel className="tcp__strip sc-strip" ariaLabel={t('share.card_bg')}>
+        {standardThumb && (
+          <Swatch
+            variant="round"
+            on={bg === ''}
+            onClick={() => setBg('')}
+            aria-label={t('share.card_bg_standard')}
+            title={t('share.card_bg_standard')}
+            style={thumbStyle(standardThumb)}
+          />
+        )}
+        {slides.slice(1).map((url, i) => (
+          <Swatch
+            key={url.slice(0, 80) || `bg-${i}`}
+            variant="round"
+            on={bg === url}
+            onClick={() => setBg(url)}
+            aria-label={t('share.card_bg')}
+            style={thumbStyle(url)}
+          />
+        ))}
+        {(presetsQ.isLoading || !overlay) && SKELETON_THUMBS.map((k) => (
+          <Skeleton key={k} w={52} h={52} r={'var(--r-xs)'} />
+        ))}
+      </Carousel>
 
       <div className="sc-side">
         {/* .grow: на мобиле управление встаёт РЯДОМ (формат + карта), сегмент
@@ -286,6 +286,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
           {t('share.edit_map')}
         </Btn>
         {!isPhone && <div className="muted t-body">{t('share.menu_card_hint')}</div>}
+        {uploadError && <p className="tcp__err">{uploadError}</p>}
         {buildError && <Severity level="error">{buildError}</Severity>}
       </div>
 
@@ -305,25 +306,29 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   );
 
   // Живая карта под-флоу — ОДНА на оба шасси (шит на телефоне, диалог на
-  // десктопе): один ref и одна рамка, иначе Done забрал бы композицию не той.
+  // десктопе): один ref, иначе Done забрал бы композицию не той. Карта здесь
+  // ГОЛАЯ и крупная: без рамки карточки, в пропорции СЛОТА (дыры под карту) —
+  // редактируешь карту, а не карточку; кадр по ширине совпадает с дырой
+  // (камера ездит композицией с пересчётом зума под ширину поверхности).
+  const editorAr = overlay
+    ? { '--sc-ar': `${overlay.slot.w} / ${overlay.slot.h}`, '--sc-arw': overlay.slot.w / overlay.slot.h }
+    : undefined;
   const editorStage = overlay && (
-    <div className="sc-stage" style={arStyle}>
+    <div className="sc-stage" style={editorAr}>
       <ShareMapPreview
         ref={editorRef}
         visits={visits}
         transfers={transfers}
         lang={lang}
-        overlaySvg={framedSvg}
-        slot={overlay.slot}
-        cardW={overlay.w}
-        cardH={overlay.h}
+        bare
+        cardW={overlay.slot.w}
         camera={camera}
       />
     </div>
   );
 
-  // Полноэкранный под-флоу «Настроить карту»: живая карта с жестами в той же
-  // рамке (и с тем же фоном), Done забирает композицию, крестик — отменяет.
+  // Полноэкранный под-флоу «Настроить карту»: крупная живая карта с жестами,
+  // Done забирает композицию, крестик — отменяет.
   const editor = editorOpen && overlay && (isPhone ? (
     <LpSheet open onClose={closeEditor} title={t('share.edit_map')}>
       <div className="lp">
@@ -347,6 +352,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
       title={t('share.edit_map')}
       subtitle={t('share.card_map_hint')}
       icon="map"
+      size="wide"
       open
       onOpenChange={(o) => { if (!o) closeEditor(); }}
       foot={<Btn variant="primary" icon="check" onClick={applyEditor}>{t('common.done')}</Btn>}

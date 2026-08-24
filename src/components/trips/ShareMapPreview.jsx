@@ -22,8 +22,12 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 //
 // slot/cardW/cardH come from the overlay render (source of truth for the hole
 // geometry); until they arrive the map fills the whole box.
+// bare — режим редактора карты: НЕТ рамки-SVG и лоадера под неё, карта во весь
+// контейнер (пропорцию слота держит вызыватель), тогглы темы/проекции живут без
+// рамки; cardW при этом = ширина СЛОТА, чтобы веса линий/бейджей масштабились
+// от финального разрешения карты.
 const ShareMapPreview = forwardRef(function ShareMapPreview(
-  { visits = [], transfers = [], lang, showSE = false, overlaySvg, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null },
+  { visits = [], transfers = [], lang, showSE = false, overlaySvg, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
   ref,
 ) {
   const { t } = useI18n();
@@ -108,7 +112,11 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
           pitch: cam.pitch || 0,
         });
       } else if (pts.length) {
-        fitToPoints(map, pts, { padding: 40, maxZoom: 9 });
+        // Отступ фита ОТНОСИТЕЛЬНЫЙ (пол 40px = прежнее поведение малого превью):
+        // в крупном редакторе абсолютные 40px прижимали бы города к краям, и
+        // стартовый кадр редактора расходился бы с кадром превью.
+        const w = holderRef.current?.clientWidth || 0;
+        fitToPoints(map, pts, { padding: Math.max(40, Math.round(w * 0.14)), maxZoom: 9 });
       }
     };
     syncRef.current = fit;
@@ -230,7 +238,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   }
 
   const pct = (v, total) => `${(v / total) * 100}%`;
-  const holeStyle = slot
+  const holeStyle = !bare && slot
     ? { left: pct(slot.x, cardW), top: pct(slot.y, cardH), width: pct(slot.w, cardW), height: pct(slot.h, cardH) }
     : { inset: 0 };
   // Фон задаём через КАНАЛ примитива `--bg`, а не инлайновым `background`: канон
@@ -258,13 +266,14 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
         />
       )}
       {/* Until the frame SVG arrives the map would sit BARE in the box; cover it
-          with a loader so the user never sees a frameless map (TRIP-193). */}
-      {!frameSvg && (
+          with a loader so the user never sees a frameless map (TRIP-193). В bare-
+          режиме рамки нет по замыслу — карта и есть содержимое. */}
+      {!frameSvg && !bare && (
         <div style={{ position: 'absolute', inset: 0 }}>
           <Skeleton w="100%" h="100%" r={0} />
         </div>
       )}
-      {interactive && frameSvg && (
+      {interactive && (frameSvg || bare) && (
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <Btn variant="secondary" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
           <Btn variant="secondary" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />

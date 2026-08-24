@@ -58,16 +58,19 @@
    visual-diff-exempt: .sc-body display — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-body gap — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-body grid-template-columns — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body grid-template-rows — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body grid-template-areas — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-body align-items — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-body {@media (max-width: 640px)} display — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-body {@media (max-width: 640px)} flex-direction — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body --sc-max — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-body {@media (max-width: 640px)} gap — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-view --sc-max — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-view display — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-view flex-direction — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-view gap — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-view min-width — новый класс конструктора (share-UX)
-   visual-diff-exempt: .sc-view {@media (max-width: 640px)} --sc-max — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} grid-template-columns — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} grid-template-rows — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} grid-template-areas — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} --sc-max — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-strip grid-area — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-strip min-width — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage grid-area — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side grid-area — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-stage aspect-ratio — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-stage background — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-stage border-radius — новый класс конструктора (share-UX)
@@ -75,6 +78,7 @@
    visual-diff-exempt: .sc-stage overflow — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-stage position — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-stage width — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage max-width — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-side display — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-side flex-direction — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-side gap — новый класс конструктора (share-UX)
@@ -86,28 +90,78 @@
    visual-diff-exempt: .sc-side {@media (max-width: 640px)} gap — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-edit --sc-max — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-edit {@media (max-width: 640px)} --sc-max — новый класс конструктора (share-UX)
+   Мобильный full-bleed редактора (`.sc-edit .sc-stage`) — объявления пишутся
+   обоим классам составного правила, ключи по печати гарда:
+   visual-diff-exempt: .sc-edit {@media (max-width: 640px)} width — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-edit {@media (max-width: 640px)} max-width — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-edit {@media (max-width: 640px)} aspect-ratio — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-edit {@media (max-width: 640px)} flex — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-edit {@media (max-width: 640px)} min-height — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-stage {@media (max-width: 640px)} width — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-stage {@media (max-width: 640px)} max-width — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-stage {@media (max-width: 640px)} aspect-ratio — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-stage {@media (max-width: 640px)} flex — full-bleed карта редактора на телефоне (share-UX)
+   visual-diff-exempt: .sc-stage {@media (max-width: 640px)} min-height — full-bleed карта редактора на телефоне (share-UX)
 */
 
-.sc-body { display: grid; grid-template-columns: minmax(0, auto) minmax(220px, 1fr); gap: var(--sp-4) var(--sp-8); align-items: start; }
-.sc-view { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; --sc-max: min(56vh, 500px); }
+/* Один DOM — две раскладки именованными областями (тот же приём, что у прежней
+   .sc-card): десктоп — превью слева на все ряды, справа управление и ПОД НИМ
+   карусель фонов; ≤640 — колонка превью → карусель → управление. Обе колонки
+   грида с явным минимумом (0 / 220px) — это и рвёт min-content-цепочку ленты
+   миниатюр: без явного минимума ряд фонов интринзикой распирал .lp (ряд-флекс
+   шита) и весь контент уезжал за экран. */
+.sc-body {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(220px, 1fr);
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas:
+    "stage side"
+    "stage strip"
+    "stage .";
+  gap: var(--sp-6) var(--sp-8);
+  align-items: start;
+  --sc-max: min(56vh, 500px);
+}
 .sc-stage {
+  grid-area: stage;
   position: relative;
-  width: min(100%, calc(var(--sc-max, 56vh) * var(--sc-arw, 0.5625)));
+  /* Ширина БЕЗ процента в основном терме: в auto-треке грида процент цикличен
+     (трек от содержимого, содержимое от трека) и схлопывает сцену в 0.
+     calc от vh/px определён всегда; max-width добирает кап на мобиле, где трек
+     definite (minmax(0,1fr)). */
+  width: calc(var(--sc-max, 56vh) * var(--sc-arw, 0.5625));
+  max-width: 100%;
   aspect-ratio: var(--sc-ar, 9 / 16);
   margin-inline: auto;
   border-radius: var(--r-md);
   overflow: hidden;
   background: var(--surface-2);
 }
-.sc-side { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-6); min-width: 0; }
-/* Под-флоу «Настроить карту»: карта крупнее, потолок задаёт тот же канал --sc-max. */
-.sc-edit { --sc-max: min(62vh, 560px); }
+/* Грид-элемент не сжимается ниже min-content сам — min-width: 0 обязателен,
+   иначе скроллер-карусель всё равно вылезает из своего трека. */
+.sc-strip { grid-area: strip; min-width: 0; }
+.sc-side { grid-area: side; display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-6); min-width: 0; }
+/* Под-флоу «Настроить карту»: ГОЛАЯ карта в пропорции слота (не карточка с
+   рамкой) и заметно крупнее — потолок тем же каналом --sc-max. */
+.sc-edit { --sc-max: min(68vh, 640px); }
 
 @media (max-width: 640px) {
-  .sc-body { display: flex; flex-direction: column; gap: var(--sp-6); }
-  /* Превью почти во весь экран: потолок = вьюпорт минус хром шита
-     (шапка + карусель + управление + футер). */
-  .sc-view { --sc-max: calc(100dvh - 330px); }
+  .sc-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      "stage"
+      "strip"
+      "side";
+    gap: var(--sp-6);
+    /* Превью почти во весь экран: потолок = вьюпорт минус хром шита
+       (шапка + карусель + управление + футер). */
+    --sc-max: calc(100dvh - 330px);
+  }
   .sc-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-5); }
-  .sc-edit { --sc-max: calc(100dvh - 250px); }
+  /* Редактор на телефоне: карта full-bleed на всю высоту шита (пропорция слота
+     дала бы пустой подвал — экран уже слота). По ширине кадр совпадает со
+     слотом (камера ездит previewCssWidth), по вертикали слот возьмёт
+     центральный кроп увиденного. */
+  .sc-edit .sc-stage { width: 100%; max-width: none; aspect-ratio: auto; flex: 1; min-height: 0; }
 }
