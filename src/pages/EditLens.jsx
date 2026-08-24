@@ -194,9 +194,6 @@
  * visual-diff-exempt: .te-seam background — то же (scoped surface плашки переезда)
  * visual-diff-exempt: .te-seam border-color — плашка переезда: цветная рамка --hl
  * visual-diff-exempt: .te-seam color — плашка переезда: цветной текст --hl-ink
- * visual-diff-exempt: .map-route background — surface-роль ушла на <Card>, .map-route только раскладка
- * visual-diff-exempt: .map-route border — то же
- * visual-diff-exempt: .map-route__head margin-bottom — гашу margin канона PageHead в панели маршрута
  * visual-diff-exempt: .tile {@media (hover: hover) and (pointer: fine)} color — иконка плейсхолдера красится в тон ховера --a
  * visual-diff-exempt: .pop-flush border-radius — контейнер search/select (города/адреса/язык/валюта) на радиус поля --r-btn (10); был --r-card (24) от базы .pop
  * visual-diff-exempt: .menu border-radius — канон action-меню на --r-btn (10, попап аккаунта и все меню); был --r-md (16)
@@ -233,6 +230,7 @@ import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { useStay22Bundle } from '@/lib/stay22';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import TripStartControl from '@/components/trip/TripStartControl';
 import { transferKind } from '@/lib/transport';
 
@@ -345,6 +343,24 @@ export default function EditLens({ tripId, shell, content }) {
   const { fmtMoney } = useI18nFormat();
   const qc = useQueryClient();
   const { toast } = useToast();
+  // ★ ПРАВО ЧИТАЕТСЯ ОДИН РАЗ И ЗДЕСЬ (TRIP-459). Секция «Маршрут» открыта ВСЕМ —
+  // ступени у неё в реестре больше нет, — поэтому решать, что показывать, обязан
+  // экран. Ступень приезжает готовой из ответа read-двери через
+  // `TripAccessProvider`; своего вывода права тут нет и быть не может (гард 2z).
+  //
+  // ★ ВНИЗ ЕДЕТ НЕ ПРАВО, А СОСТОЯНИЕ КОНТРОЛА (`readOnly`), и это не вкусовщина.
+  // `NightsStepper`, `TripStartControl` и `useRouteDnD` ШАРЯТСЯ с флоу создания
+  // трипа (`ManualPlanner`), где `TripAccessProvider` не стоит вовсе: начни они
+  // читать контекст сами — получили бы fail-closed `canEdit:false` и молча
+  // сломали бы создание трипа. Контекст читают только те, кто живёт исключительно
+  // внутри трипа (`CityPanel`, `EventSourcePanel`, панели броней).
+  //
+  // Пол безопасности от этого не зависит: все пять RPC маршрута гейтует сервер
+  // (`_shared/resources/tripRoute.ts`, `requires:['editor']`). Здесь — честный UI,
+  // а не защита, поэтому обработчики записи НЕ обвешаны копиями проверки: до них
+  // просто не дотянуться, раз аффорданс не отрисован. Пять `if (!canEdit) return`
+  // были бы пятью копиями правила, которые расходятся молча.
+  const { canEdit } = useTripAccess();
   const [draft, setDraft] = useState(null);
   // Left-column panel FSM (replaces the old view/add modals). null = the city
   // list; otherwise the left pane swaps in-place to a panel:
@@ -862,10 +878,16 @@ export default function EditLens({ tripId, shell, content }) {
     );
   } else if (leftPanel?.type === 'event') {
     leftPanelEl = (
+      /* ★ ПРАВО ИЗ КОНТЕКСТА, А НЕ ЛИТЕРАЛ. Здесь стояло `canEdit` без значения,
+         то есть жёсткое `true`: пока в секцию пускали только editor, это было
+         безвредно и потому невидимо. С открытием «Маршрута» всем (TRIP-459)
+         литерал нарисовал бы наблюдателю «Изменить/Удалить» в панели брони —
+         сервер бы отказал, а UI обещал. Тот же шов, что у глобального ящика
+         событий в TripView. */
       <EventSourcePanel
         tripId={tripId}
         kind={leftPanel.kind} id={leftPanel.id} warning={leftPanel.warning}
-        autoEdit={leftPanel.autoEdit} canEdit onClose={closePanelAndSync}
+        autoEdit={leftPanel.autoEdit} canEdit={canEdit} onClose={closePanelAndSync}
       />
     );
   } else if (leftPanel?.type === 'pick' || leftPanel?.type === 'create') {
@@ -1019,7 +1041,7 @@ export default function EditLens({ tripId, shell, content }) {
   // Shared trip-start control (one element with the planner). The editor steps
   // by ±1 day via shiftStart and jumps via pickStart (delta → shiftStart).
   const startDateControl = draft ? (
-    <TripStartControl date={draft.startDate} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
+    <TripStartControl date={draft.startDate} readOnly={!canEdit} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
   ) : null;
 
   // Trip actions (Share / Settings / Members) all live in the left trip menu
@@ -1049,7 +1071,12 @@ export default function EditLens({ tripId, shell, content }) {
       /* Воздух снизу даёт слот шапки шелла — модификатор снимает собственный
          отступ примитива, иначе они складываются. */
       className="pagehead--flush"
-      title={t('planner.step_cities')}
+      /* Ключ ОДИН на весь экран — `trip.sidebar_route` (TRIP-459). Здесь стоял
+         `planner.step_cities`: подпись ШАГА ВИЗАРДА создания трипа, взятая в
+         экран трипа за одинаковое значение («Маршрут»). Значение совпадает, а
+         предметы разные, и правка копирайта в визарде молча переименовала бы
+         секцию трипа. Визард свой ключ сохраняет. */
+      title={t('trip.sidebar_route')}
       subtitle={[
         totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
         cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
@@ -1094,17 +1121,17 @@ export default function EditLens({ tripId, shell, content }) {
               };
               let body;
               if (isAnchor(n)) {
-                body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeCity(n.id)} />;
+                body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={canEdit ? () => removeCity(n.id) : null} />;
               } else if (n.kind === 'waypoint') {
                 const aa = actsFor(n.id);
-                body = <GridNode showCols={showCols} seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
+                body = <GridNode showCols={showCols} readOnly={!canEdit} seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
                   onOpenCity={() => openCity(n.id)}
                   onAct={() => (aa.length ? openCity(n.id) : createBooking('activity', n))}
                   onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
                   drag={dragProps} />;
               } else {
                 const h = hotelFor(n.id); const aa = actsFor(n.id);
-                body = <GridNode showCols={showCols} seg={n} stayNum={stayNumById[n.id]} cityConf={cityConflicts(n.id)}
+                body = <GridNode showCols={showCols} readOnly={!canEdit} seg={n} stayNum={stayNumById[n.id]} cityConf={cityConflicts(n.id)}
                   hotel={h} hotelWarn={hotelWarnId(h?.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
                   onOpenCity={() => openCity(n.id)}
                   onHotel={() => (h ? openEvent('hotel', h.id) : createBooking('hotel', n))}
@@ -1141,7 +1168,9 @@ export default function EditLens({ tripId, shell, content }) {
               {t('tse.move_to_end')}
             </div>
           )}
-          <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
+          {/* Добавление города — запись. Наблюдателю кнопки нет, а значит нет и
+              единственного входа в панель `cityadd`. */}
+          {canEdit && <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />}
           {outOfPlanTransfers.length > 0 && (
             /* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash+рамка+радиус)
                снята с инлайна на <Card recessed>; остался раскладочный инлайн. */
@@ -1187,7 +1216,7 @@ export default function EditLens({ tripId, shell, content }) {
       )}
       panelHeader={routeHead}
       panel={routeBody}
-      panelLabel={t('planner.step_cities')}
+      panelLabel={t('trip.sidebar_route')}
       collapsed={collapsed}
       onCollapsedChange={setCollapsed}
       /* Виджет редактора — это МАРШРУТ, и подсказка обязана называть его, а не
@@ -1239,7 +1268,7 @@ export default function EditLens({ tripId, shell, content }) {
           EventDrawerHost (родной свайп, безопасная перестановка под клавиатуру,
           закрытие по фону / свайпу вниз / Back). */}
       {isSheet && leftPanelEl && (
-        <LpSheet open onClose={closeLeftPanel} title={t('trip.edit_structure')}>
+        <LpSheet open onClose={closeLeftPanel} title={t('trip.sidebar_route')}>
           {leftPanelEl}
         </LpSheet>
       )}
@@ -1302,35 +1331,56 @@ function ActCell({ count, warn, onClick }) {
  * `hotel`/`stayNum`/`hotelWarn`/`onHotel` не передаёт вовсе. Остальные уходят в
  * безусловно отрендеренные узлы и обязательны.
  *
- * @param {{ showCols?: boolean, seg: any, stayNum?: any, cityConf: any, hotel?: any, hotelWarn?: any,
- *           acts?: any[], actWarn: any, onOpenCity: any, onHotel?: any, onAct: any,
- *           onNightsMinus: any, onNightsPlus: any, drag: any }} p
+ * `readOnly` — ряд наблюдателя (TRIP-459): без грипа и со степпером-значением.
+ * `drag` при этом остаётся ОБЯЗАТЕЛЬНЫМ: ряд гасит его сам (`rowDrag`), а не
+ * ждёт, что вызыватель не передаст. Право знает ОДНО место — экран, — и ряд
+ * получает от него ровно факт «править нельзя», а не отсутствие пропа: `drag`
+ * без `readOnly` означал бы, что состояние ряда выводится из того, забыли ли
+ * его прокинуть.
+ *
+ * @param {{ showCols?: boolean, readOnly?: boolean, seg: any, stayNum?: any, cityConf: any,
+ *           hotel?: any, hotelWarn?: any, acts?: any[], actWarn: any, onOpenCity: any,
+ *           onHotel?: any, onAct: any, onNightsMinus: any, onNightsPlus: any, drag: any }} p
  */
-function GridNode({ showCols = true, seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
+function GridNode({ showCols = true, readOnly = false, seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
   const t = useT();
   const { lang } = useI18n();
   const stop = (e) => e.stopPropagation();
-  // Drag handle: pointer-drag (lifts the row) + keyboard reorder (a11y). Click is
-  // stopped so grabbing the grip never opens the city panel.
-  const gripEl = (
+  // Наблюдателю перестановка недоступна — ряд отдаётся БЕЗ ручек (TRIP-459).
+  // Гасить их нечем: `.te-grip` несёт `cursor: grab` и невидимую зону нажатия
+  // 44×44 (`::after`), то есть выключенный грип продолжал бы обещать хват и
+  // съедать тапы по ряду.
+  const rowDrag = readOnly ? null : drag;
+  // Грип занимает ПЕРВУЮ колонку сетки (`--te-cols: 16px 28px …`), поэтому
+  // снять его насовсем нельзя: номер города переехал бы в 16px и вся строка
+  // разъехалась бы с шапкой колонок. Место держит пустая ячейка — тем же
+  // приёмом, каким ниже держится колонка жилья у пересадки.
+  const gripEl = rowDrag ? (
+    // Drag handle: pointer-drag (lifts the row) + keyboard reorder (a11y). Click is
+    // stopped so grabbing the grip never opens the city panel.
     <span className="te-grip" role="button" tabIndex={0} aria-label={t('tse.move_up')}
       onClick={stop}
       onKeyDown={(e) => {
-        if (e.key === 'ArrowUp') { e.preventDefault(); drag.onMove(-1); }
-        else if (e.key === 'ArrowDown') { e.preventDefault(); drag.onMove(1); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); rowDrag.onMove(-1); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); rowDrag.onMove(1); }
       }}>
       <Icon name="drag" size={14} />
     </span>
-  );
+  ) : <span aria-hidden="true" />;
   if (seg.kind === 'waypoint') {
     return (
-      <CityRow variant="editor" dragging={drag.dragging} pressing={drag.pressing} onArm={drag.onArm} onClick={onOpenCity}
+      <CityRow variant="editor" dragging={rowDrag?.dragging} pressing={rowDrag?.pressing} onArm={rowDrag?.onArm} onClick={onOpenCity}
         grip={gripEl}
         lead={<Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>}
         name={seg.city_name}
         conf={<Conf n={cityConf} />}
         dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>
-        <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled variant="bare" />
+        {/* Ночи — ТАКАЯ ЖЕ ячейка ряда, как жильё и активности: выравнивание в
+            колонке объявляет `.te-cell`, а не содержимое. Пока ночи стояли в
+            сетке голым контролом, колонка держалась на том, что «− 3н +» её
+            заполняет собой. Класс уходит на ТРИГГЕР тултипа — он и есть элемент
+            сетки; отдельная обёртка была бы узлом, который ничего не держит. */}
+        <NightsStepper className="te-cell" value={0} readOnly={readOnly} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled variant="bare" />
         {/* У пересадки жилья нет — но колонка есть: пустая ячейка держит сетку,
             иначе активности уехали бы в колонку жилья и разъехались с шапкой. */}
         {showCols && <div className="te-cell te-cell--hotel" />}
@@ -1339,13 +1389,13 @@ function GridNode({ showCols = true, seg, stayNum, cityConf, hotel, hotelWarn, a
     );
   }
   return (
-    <CityRow variant="editor" dragging={drag.dragging} pressing={drag.pressing} onArm={drag.onArm} onClick={onOpenCity}
+    <CityRow variant="editor" dragging={rowDrag?.dragging} pressing={rowDrag?.pressing} onArm={rowDrag?.onArm} onClick={onOpenCity}
       grip={gripEl}
       lead={<Tile as="span" className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</Tile>}
       name={seg.city_name}
       conf={<Conf n={cityConf} />}
       dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
-      <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} variant="bare" />
+      <NightsStepper className="te-cell" value={seg.nights} readOnly={readOnly} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} variant="bare" />
       {showCols && <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>}
       {showCols && <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>}
     </CityRow>
@@ -1424,7 +1474,9 @@ function GridEndpoint({ node, date, onRemove }) {
           {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(date || node.start_date || node.end_date, lang)}
         </Row>
       </Grow>
-      <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>
+      {/* Удаление якоря — запись, наблюдателю его нет вовсе (TRIP-459). Ряд
+          якоря раскладывает flex, не сетка, поэтому место держать не нужно. */}
+      {onRemove && <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>}
     </Card>
   );
 }
