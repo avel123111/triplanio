@@ -6,23 +6,9 @@ import { blobToDataUri } from '@/lib/map/captureMap';
 export { applyCardBg } from '@/lib/shareCardBg';
 
 // Must match MAP_TOKEN in the render-share-card edge function (card_svg mode).
+// Флаги стран в ряду «Visited Countries» edge встраивает сам (FLAGS_B64) —
+// клиентского инлайна нет.
 export const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
-
-// Флаги стран в ряду «Visited Countries» рисует edge токенами `__SC_FLAG_<cc>__`
-// (в рантайме у функции нет доступа к public/flags). Клиент инлайнит /flags/<cc>.svg
-// в data-URI — тем же механизмом, что карту/фон (canvas при растеризации не тейнтится
-// внешним href). Промах флага → пустой href (белый круг остаётся). Кэш общий с фоном.
-const FLAG_TOKEN_RE = /__SC_FLAG_([a-z]{2})__/g;
-export async function inlineFlags(svg) {
-  // includes (не FLAG_TOKEN_RE.test): у /g-регэкспа test двигает lastIndex —
-  // stateful-страж между вызовами. Дешёвая подстрока-проверка без состояния.
-  if (!svg || !svg.includes('__SC_FLAG_')) return svg;
-  const codes = [...new Set([...svg.matchAll(FLAG_TOKEN_RE)].map((m) => m[1]))];
-  const entries = await Promise.all(codes.map((cc) =>
-    fetchImageDataUri(`/flags/${cc}.svg`).then((uri) => [cc, uri]).catch(() => [cc, ''])));
-  const byCc = new Map(entries);
-  return svg.replace(FLAG_TOKEN_RE, (_, cc) => byCc.get(cc) || '');
-}
 
 // A short retry to ride out a transient invoke failure (network / cold isolate).
 // overlay and card_svg both return an SVG string; we retry only transient failures
