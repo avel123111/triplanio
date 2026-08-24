@@ -60,63 +60,106 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
     return next;
   }), []);
 
+  // Доска рисуется НЕДЕЛЬНЫМИ рядами: так название города можно вести СПЛОШНЫМ
+  // поверх всего прогона одинакового города (по центру), а не втискивать в первую
+  // узкую ячейку (где на мобиле оно превращалось в «В..»). Полосы-цвета остаются
+  // по ячейкам (непрерывность + деление дня-пересадки), имена — отдельным слоем.
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  // Прогоны одного города внутри недели: подряд идущие дни с ОДНИМ и тем же
+  // городом сливаются в один спан. Дни-пересадки (2+ города) и пустые дни рвут
+  // прогон и имя над ними не рисуется (там видно деление цветом самих полос).
+  const cityRuns = (week) => {
+    const runs = [];
+    let i = 0;
+    while (i < week.length) {
+      const cs = week[i].cities;
+      if (cs.length === 1) {
+        let j = i;
+        while (j + 1 < week.length && week[j + 1].cities.length === 1 && week[j + 1].cities[0].name === cs[0].name) j++;
+        runs.push({ start: i, span: j - i + 1, city: cs[0] });
+        i = j + 1;
+      } else i++;
+    }
+    return runs;
+  };
+
   return (
     <div className="ncal-month">
       <div className="ncal-wdrow">
         {weekdays.map(w => <div key={w} className="ncal-wd t-micro">{w}</div>)}
       </div>
       <div className="ncal-grid">
-        {cells.map((c, ci) => {
-          const cls = ['ncal-dc'];
-          if (c.day == null) cls.push('is-out');
-          else {
-            if (c.isToday) cls.push('is-today');
-            if (c.events.length) cls.push('has-ev');
-            if (c.cities.length) cls.push('is-trip');
-          }
-          const isOpen = open.has(ci);
-          const shown = isOpen ? c.events : c.events.slice(0, 2);
+        {weeks.map((week, wi) => {
+          const runs = cityRuns(week);
           return (
-            <div key={ci} className={`${cls.join(' ')}${isOpen ? ' is-open' : ''}`}>
-              {/* город(а) дня — сплошная цветная полоса сверху с НАЗВАНИЕМ (в
-                  первый день визита); транзит делит полосу поровну. Клик по
-                  полосе открывает панель города. */}
-              {c.cities.length > 0 && (
-                <div className="ncal-daytop">
-                  {c.cities.map((x, xi) => (
-                    <button key={xi} type="button" className="ncal-daytop-s"
-                      style={cityVars(x.colorIdx)} onClick={() => onOpenCity?.(x.v)}
-                      aria-label={x.name}>
-                      {x.first && <span className="ncal-daytop-nm t-tiny">{x.name}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div key={wi} className="ncal-wk-row">
+              {week.map((c, di) => {
+                const ci = wi * 7 + di;
+                const cls = ['ncal-dc'];
+                if (c.day == null) cls.push('is-out');
+                else {
+                  if (c.isToday) cls.push('is-today');
+                  if (c.events.length) cls.push('has-ev');
+                  if (c.cities.length) cls.push('is-trip');
+                }
+                const isOpen = open.has(ci);
+                const shown = isOpen ? c.events : c.events.slice(0, 2);
+                return (
+                  <div key={di} className={`${cls.join(' ')}${isOpen ? ' is-open' : ''}`}>
+                    {/* полоса(ы) города дня — только цвет; клик открывает панель.
+                        Название рисует общий слой прогона `.ncal-names` ниже. */}
+                    {c.cities.length > 0 && (
+                      <div className="ncal-daytop">
+                        {c.cities.map((x, xi) => (
+                          <button key={xi} type="button" className="ncal-daytop-s"
+                            style={cityVars(x.colorIdx)} onClick={() => onOpenCity?.(x.v)} aria-label={x.name} />
+                        ))}
+                      </div>
+                    )}
 
-              <div className="ncal-dc-top">
-                {c.day != null && <span className="ncal-dn t-label">{c.day}</span>}
-              </div>
+                    <div className="ncal-dc-top">
+                      {c.day != null && <span className="ncal-dn t-label">{c.day}</span>}
+                    </div>
 
-              {c.events.length > 0 && (
-                <>
-                  <div className="ncal-evl">
-                    {shown.map((e, ei) => (
-                      <button key={ei} type="button" className={`ncal-ev t-tiny ${evCls(e.type)}`}
-                        onClick={() => onOpenEvent?.(e)} aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}>
-                        {e.time && <span className="tm">{e.time}</span>}
-                        <span className="t">{e.title}</span>
-                      </button>
-                    ))}
-                    {c.events.length > 2 && (
-                      <button type="button" className="ncal-more t-tiny" onClick={() => toggle(ci)}>
-                        {isOpen ? t('calendar.collapse') : `+${c.events.length - 2} ${t('calendar.more_count')}`}
-                      </button>
+                    {c.events.length > 0 && (
+                      <>
+                        <div className="ncal-evl">
+                          {shown.map((e, ei) => (
+                            <button key={ei} type="button" className={`ncal-ev t-tiny ${evCls(e.type)}`}
+                              onClick={() => onOpenEvent?.(e)} aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}>
+                              {e.time && <span className="tm">{e.time}</span>}
+                              <span className="t">{e.title}</span>
+                            </button>
+                          ))}
+                          {c.events.length > 2 && (
+                            <button type="button" className="ncal-more t-tiny" onClick={() => toggle(ci)}>
+                              {isOpen ? t('calendar.collapse') : `+${c.events.length - 2} ${t('calendar.more_count')}`}
+                            </button>
+                          )}
+                        </div>
+                        <div className="ncal-dots" aria-hidden="true">
+                          {c.events.slice(0, 5).map((e, ei) => <span key={ei} className={`ncal-dot ${evCls(e.type)}`} />)}
+                        </div>
+                      </>
                     )}
                   </div>
-                  <div className="ncal-dots" aria-hidden="true">
-                    {c.events.slice(0, 5).map((e, ei) => <span key={ei} className={`ncal-dot ${evCls(e.type)}`} />)}
-                  </div>
-                </>
+                );
+              })}
+
+              {/* Названия городов — сплошным поверх полос, по центру прогона.
+                  Слой поверх, но НЕ перехватывает клики (pointer-events:none),
+                  чтобы клик уходил в цветную полосу-кнопку под ним. */}
+              {runs.length > 0 && (
+                <div className="ncal-names" aria-hidden="true">
+                  {runs.map((r, ri) => (
+                    <span key={ri} className="ncal-runname t-tiny"
+                      style={{ gridColumn: `${r.start + 1} / span ${r.span}`, color: cityPal(r.city.colorIdx).ink }}>
+                      {r.city.name}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           );
