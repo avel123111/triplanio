@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
@@ -497,6 +497,67 @@ function useCounters(ready, lang) {
 /* ── Audience ("Solo, the two of you, or the whole crew") ── */
 /* ── Collab ("One workspace. Everyone in sync.") ── */
 /* ── Assistant ("Your trip, in your pocket") — Telegram demo ── */
+/* ── Share ("One link. The whole trip.") ── */
+const SHARE_URL = 'triplanio.app/t/spain-may-27';
+
+function Share() {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    try { await navigator.clipboard.writeText(`https://${SHARE_URL}`); } catch { /* clipboard denied — button label stays */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+  return (
+    <section className="share section-pad" data-hdr="light">
+      <div className="wrap share-grid">
+        <div className="rv-l">
+          <span className="brow">{t('landing.sh.eyebrow')}</span>
+          <h2 style={{ margin: '14px 0 14px' }} dangerouslySetInnerHTML={{ __html: t('landing.sh.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
+          <p style={{ color: 'var(--muted)', fontSize: '1.03rem' }}>{t('landing.sh.sub')}</p>{/* inline-style-exempt: prototype's own one-off styling */}
+          <div className="share-cta-row">
+            <div className="link-pill">
+              <svg width="15" height="15"><use href="#i-globe" /></svg>
+              <a className="share-url" href={`https://${SHARE_URL}`} target="_blank" rel="noopener noreferrer">{SHARE_URL}</a>{/* i18n-ignore: demo URL, not user-facing copy */}
+              <button className="copy" type="button" onClick={onCopy}>{copied ? t('landing.sh.copied') : t('landing.sh.copy')}</button>
+            </div>
+          </div>
+        </div>
+        <div className="rv-r">
+          <div className="browser">
+            <div className="browser-bar">
+              <span className="wdots"><i /><i /><i /></span>
+              <span className="url"><svg width="12" height="12"><use href="#i-lock" /></svg>{SHARE_URL}</span>{/* i18n-ignore: demo URL */}
+            </div>
+            <div className="browser-body">
+              <div className="bb-head">
+                <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
+                <div><b>{t('landing.sh.bT')}</b><small>{t('landing.sh.bS')}</small></div>
+                <span className="viewer">{t('landing.sh.viewer')}</span>
+              </div>
+              <div className="bb-map" aria-hidden="true">
+                {/* §5: Mapbox static image removed — hand-drawn SVG coastline (no token, no api.mapbox.com). */}
+                <svg viewBox="0 0 598 130" preserveAspectRatio="xMidYMid slice">
+                  <path className="aw-coast" d="M598 0 L598 130 L0 130 L0 100 C40 92 70 76 110 74 C150 72 175 86 210 82 C250 78 270 58 310 58 C350 58 372 76 410 68 C450 60 470 34 512 26 C548 20 572 8 590 2 C594 1 596 0 598 0 Z" />
+                  <path d="M357.3 40.0 C348.9 48.3 326.2 85.8 306.8 90.0 C287.3 94.2 251.7 69.6 240.7 65.5" fill="none" stroke="#2173C8" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
+                  <g><circle cx="357" cy="40" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="357" y="44" fontSize="10">1</text></g>
+                  <g><circle cx="307" cy="90" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="307" y="94" fontSize="10">2</text></g>
+                  <g><circle cx="241" cy="65" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="241" y="69" fontSize="10">3</text></g>
+                </svg>
+              </div>
+              <div className="bb-strip">
+                <div className="bb-day"><b>{t('landing.sh.d1t')}</b><span>{t('landing.sh.d1d')}</span></div>
+                <div className="bb-day"><b>{t('landing.sh.d2t')}</b><span>{t('landing.sh.d2d')}</span></div>
+                <div className="bb-day"><b>{t('landing.sh.d3t')}</b><span>{t('landing.sh.d3d')}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Assistant() {
   const t = useT();
   return (
@@ -741,6 +802,7 @@ export default function LandingPage() {
         <Audience />
         <Collab />
         <Assistant />
+        <Share />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
