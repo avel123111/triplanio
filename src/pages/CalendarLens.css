@@ -1,52 +1,49 @@
 /* =================================================================
-   CalendarLens — Lumo redesign (ncal-* namespace)
-   All colours via existing app.css tokens — no new values introduced.
+   CalendarLens — редизайн (ncal-* namespace).
 
-   Радиусы: тоже токены (--r-card / --r-md / --r-sm / --r-pill). Сырыми
-   осознанно оставлены только микро-скругления, лежащие НИЖЕ шкалы
-   (её минимум - --r-sm): чип события, точка, полоска agenda-события
-   и свотч легенды. Свой токен под них не заводим.
+   Язык: единая «доска» календаря — одна карточка с бордюром и волосяными
+   разделителями между ячейками (без тени на каждой ячейке). Мягкие цветовые
+   акценты городов (софт-фон + цветной текст), а не сплошные насыщенные полосы.
+
+   Цвета/радиусы/тени/кегли — только токены app.css. Города берут цвет через
+   инлайновые CSS-переменные (--cc / --cc-soft / --cc-ink), выставленные из JSX
+   из палитры ev-*/ai/warm — новых токенов ноль.
    ================================================================= */
 
+/* ── Root ──────────────────────────────────────────────────────── */
+.ncal { display: flex; flex-direction: column; }
+
 /* ── Toolbar / Header ──────────────────────────────────────────── */
-/* раскладка уехала: ncal-hd -> row */
 .ncal-hd {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
-/* Базовое правило снято - буквальный .grow--fit. Класс остаётся: у него есть
-   своё мобильное правило ниже.
-   visual-diff-move: ncal-hd-l -> grow--fit */
-/* Контейнер БЕЗ зазора: у примитива дефолт 10px, поэтому нулевой зазор назван
-   явно (см. тот же приём в chat).
-   раскладка уехала: ncal-title-row -> row */
+.ncal-hd-l { min-width: 0; }
 .ncal-title-row {
   gap: 0;
+  align-items: baseline;
 }
+/* размер/вес/гарнитура — из канона .t-display (className в JSX) */
 .ncal-month-lbl {
   color: var(--ink);
+  line-height: 1.05;
 }
+/* размер/вес — из канона .t-subheading (className в JSX) */
 .ncal-year-lbl {
   color: var(--muted);
-  margin-left: 12px;
+  margin-left: 10px;
+  font-variant-numeric: tabular-nums;
 }
-/* ★ОСТАТОК: gap 9px вне шкалы (--sp даёт 8 и 10) - удержан приватным.
-   раскладка уехала: ncal-hd-r -> col */
 .ncal-hd-r {
   gap: 9px;
   flex: none;
 }
 
 /* ── Nav pill ──────────────────────────────────────────────────── */
-/* раскладка уехала: ncal-nav -> row */
 .ncal-nav {
   background: var(--surface-2);
   border-radius: var(--r-pill);
   padding: 4px;
 }
-/* `.ncal-nav-ico` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft"
-   size="sm">. Обе стрелки пилюли навигации пересажены в этом же PR, поэтому
-   приватного правила в этом файле больше нет - включая строку фокуса ниже
-   (у канон-класса свой :focus-visible). */
 .ncal-nav-txt {
   padding: 5px 12px;
   border-radius: var(--r-pill);
@@ -62,8 +59,6 @@
   margin: 0 2px; flex: none; align-self: center;
 }
 .ncal-nav-trip {
-  /* ★ОСТАТОК: gap 5px вне шкалы - удержан.
-     раскладка уехала: ncal-nav-trip -> row */
   gap: 5px;
   padding: 5px 12px; border-radius: var(--r-pill);
   background: var(--brand-soft); color: var(--brand);
@@ -74,14 +69,7 @@
 .ncal-nav-trip svg { width: 13px; height: 13px; flex: none; }
 .ncal-nav-trip:hover { background: var(--brand-soft-12); }
 
-/* View toggle: переключатель месяц/неделя сведён на канон `<Seg>` (`.seg`,
-   TRIP-344 PR 6). Приватная копия `.ncal-vtgl`/`.ncal-vtgl-btn` (свой трек и
-   состояние `.is-on`) удалена — трек-подложку и активный тон несёт канон.
-
-   Ниже — объявление УДАЛЕНИЙ для 2p: класс-копия снят, разметка переехала на
-   канон `.seg` с унифицированным обликом (не перенос значения, потому точечный
-   exempt, а не visual-diff-move). Ключи `.ncal-vtgl-btn button`/`.seg button` —
-   блайнд-спот TRIP-366 (`.класс button` немаркируем), их не грайндим.
+/* View toggle: канон <Seg>. Приватных правил нет.
    visual-diff-exempt: .ncal-vtgl background — копия снята, разметка на канон .seg (TRIP-344 PR6)
    visual-diff-exempt: .ncal-vtgl border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
    visual-diff-exempt: .ncal-vtgl padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
@@ -102,227 +90,247 @@
    visual-diff-exempt: .ncal-vtgl-btn:focus-visible outline — копия снята, фокус несёт канон .seg (TRIP-344 PR6)
    visual-diff-exempt: .ncal-vtgl-btn:focus-visible outline-offset — копия снята, фокус несёт канон .seg (TRIP-344 PR6)
    visual-diff-exempt: .ncal-vtgl-btn {@media (max-width: 640px)} padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .is-on box-shadow — состояние .is-on снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
+   visual-diff-exempt: .is-on box-shadow — состояние снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
 
-/* ── Month: weekday header ─────────────────────────────────────── */
-/* Неделя календаря НЕ схлопывается в .grid--2 (у неё своя семантика, так решено
-   при вводе примитива) - на общий класс уезжает только display, а треки и зазор
-   остаются своими. ★ОСТАТОК: gap 3px вне шкалы.
-   раскладка уехала: ncal-wd-row -> grid */
+/* ── Month: unified board card ─────────────────────────────────── */
+.ncal-month {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+/* Weekday header */
 .ncal-wd-row {
+  display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  margin-bottom: 7px;
+  background: var(--surface-3);
+  border-bottom: 1px solid var(--line);
 }
 .ncal-wd {
   text-align: center;
-  color: var(--muted); padding: 5px 0;   /* TRIP-280 инсп.: цвет muted-2 → muted */
+  color: var(--muted);
+  padding: 9px 0;
 }
 
-/* ── Month: week row + day grid ────────────────────────────────── */
-.ncal-wk { margin-bottom: 3px; }
-/* ★ОСТАТОК: gap 3px вне шкалы.
-   раскладка уехала: ncal-dgrid -> grid */
-.ncal-dgrid {
+/* Hairline day grid — единая сетка на весь месяц, разделители = зазор 1px
+   поверх фона --line (без тени на каждой ячейке). */
+.ncal-grid {
+  display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+  gap: 1px;
+  background: var(--line);
 }
 
 /* ── Day cell ──────────────────────────────────────────────────── */
 .ncal-dc {
-  border-radius: var(--r-md);
-  overflow: hidden;
-  padding: 0 0 8px;
-  min-height: 100px;
-  background: var(--surface-3);
-  box-shadow: var(--sh-1);
-  transition: background .18s var(--ease-out), transform .14s var(--ease-spring), box-shadow .18s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 116px;
+  padding: 6px 6px 8px;
+  background: var(--surface);
+  transition: background .16s var(--ease-out);
   cursor: pointer;
 }
-.ncal-dc:hover {
-  background: var(--surface-2);
-  box-shadow: var(--sh-2);   /* ступень вверх от базовой --sh-1, как у .ncal-wdc */
+.ncal-dc:hover { background: var(--surface-3); }
+.ncal-dc.is-out {
+  background: var(--surface-3);
+  opacity: .55;
+  pointer-events: none;
 }
-.ncal-dc.is-out { opacity: .22; pointer-events: none; box-shadow: none; }
 .ncal-dc.is-trip { background: var(--brand-soft); }
 .ncal-dc.is-trip:hover { background: var(--brand-soft-12); }
-
-/* ── City strip ────────────────────────────────────────────────── */
-.ncal-cstrip {
-  /* раскладка уехала: ncal-cstrip -> row */
-  height: 20px;
-  gap: 0;
-  padding: 0 9px;
-  color: rgba(255,255,255,.92);
-  white-space: nowrap; overflow: hidden;
-  margin-bottom: 8px;
-  flex: none;
-}
-.ncal-cstrip.cs-empty {
-  background: transparent;
-  height: 20px; margin-bottom: 8px;
-}
-/* Split: multiple city segments */
-.ncal-cstrip.is-split {
-  padding: 0; gap: 1.5px;
-}
-.ncal-cstrip-seg {
-  /* раскладка уехала: ncal-cstrip-seg -> row */
-  height: 100%;
-  gap: 0;
-  padding: 0 6px;
-  color: rgba(255,255,255,.9);
-  overflow: hidden; white-space: nowrap; min-width: 0;
+.ncal-dc.is-today {
+  box-shadow: inset 0 0 0 1.5px var(--brand);
 }
 
-/* ── Day number ────────────────────────────────────────────────── */
-.ncal-dn-wrap { padding: 0 8px 4px; }
+/* Top row: day number */
+.ncal-dc-top {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 2px;
+}
 .ncal-dn {
   color: var(--ink-2);
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 27px; padding: 0;
+  min-width: 24px; height: 24px; padding: 0 6px;
+  border-radius: var(--r-pill);
+  font-variant-numeric: tabular-nums;
 }
-.ncal-dc.is-trip .ncal-dn { color: var(--brand); }
+.ncal-dc.is-trip .ncal-dn { color: var(--brand-ink); }
 .ncal-dc.is-today .ncal-dn {
   background: var(--brand); color: var(--primary-fg);
-  border-radius: var(--r-pill);
-  padding: 4px 8px; min-width: 0;
   box-shadow: 0 4px 14px -4px var(--brand-glow);
+}
+
+/* ── City strip (soft pill) ────────────────────────────────────── */
+.ncal-cstrip {
+  display: flex; align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--r-xs);
+  background: var(--cc-soft, transparent);
+  color: var(--cc-ink, var(--ink-2));
+  white-space: nowrap; overflow: hidden;
+  flex: none;
+  position: relative;
+}
+/* левый цветной кант — «корешок» города */
+.ncal-cstrip:not(.cs-empty)::before {
+  content: ''; position: absolute; left: 0; top: 3px; bottom: 3px;
+  width: 3px; border-radius: 2px; background: var(--cc, transparent);
+}
+.ncal-cstrip:not(.cs-empty) { padding-left: 12px; }
+.ncal-cstrip.cs-empty { background: transparent; }
+/* Split: несколько городов в транзитный день */
+.ncal-cstrip.is-split { padding: 0; gap: 2px; background: transparent; overflow: visible; }
+.ncal-cstrip.is-split::before { display: none; }
+.ncal-cstrip-seg {
+  display: flex; align-items: center;
+  flex: 1; min-width: 0;
+  height: 20px; padding: 0 6px;
+  border-radius: var(--r-xs);
+  border-left: 3px solid var(--cc, transparent);
+  background: var(--cc-soft, transparent);
+  color: var(--cc-ink, var(--ink-2));
+  overflow: hidden; white-space: nowrap;
 }
 
 /* ── Events list in month cell ─────────────────────────────────── */
 .ncal-evl {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 0 6px;
+  display: flex; flex-direction: column; gap: 3px;
 }
-/* Event chip: dot + optional time + title */
 .ncal-ev {
-  display: flex; align-items: center; gap: 4px;
-  padding: 3px 7px; border-radius: 7px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 8px 3px 7px; border-radius: var(--r-xs);
   overflow: hidden; border: none; cursor: pointer;
   text-align: left; width: 100%;
-  transition: filter .14s;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  transition: filter .14s, background .14s;
 }
-.ncal-ev:hover { filter: brightness(.96); }
+.ncal-ev:hover { filter: brightness(.97); }
 .ncal-ev .dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  flex: none; background: currentColor; opacity: .85;
+  width: 6px; height: 6px; border-radius: 2px;
+  flex: none; background: currentColor;
 }
-.ncal-ev .tm { opacity: .65; flex: none; font-variant-numeric: tabular-nums; }
-.ncal-ev .t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.ncal-ev .tm { color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
+.ncal-ev .t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--ink-2); }
 
 .ncal-ev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
 .ncal-ev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .ncal-ev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 .ncal-ev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
 .ncal-ev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
+.ncal-ev .t { color: inherit; }
 
 /* "+N more" — примитив <Chip sm square variant="soft"> (полная ширина ячейки). */
 
-/* ── Week view ─────────────────────────────────────────────────── */
-.ncal-wv-scroll {
-  overflow-x: auto;
-  padding-bottom: 8px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+/* ── Week view — columns board ─────────────────────────────────── */
+.ncal-week {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
 }
-.ncal-wv-scroll::-webkit-scrollbar { height: 5px; }
-.ncal-wv-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
-
-.ncal-wcols {
+.ncal-wgrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-  min-width: 680px;
+  gap: 1px;
+  background: var(--line);
+  align-items: stretch;
 }
 
-/* Day card */
-.ncal-wdc {
-  border-radius: var(--r-card);
-  overflow: hidden;
-  box-shadow: var(--sh-1);
+/* Day column */
+.ncal-wcol {
   display: flex; flex-direction: column;
-  transition: transform .2s var(--ease-spring), box-shadow .22s;
+  background: var(--surface);
+  min-height: 340px;
 }
-.ncal-wdc:hover { transform: translateY(-3px); box-shadow: var(--sh-2); }
+.ncal-wcol.is-today { background: var(--brand-soft); }
 
-/* City colour bar at very top of card */
-.ncal-wdc-cbar { height: 5px; flex: none; }
-.ncal-wdc-cbar.is-split { display: flex; gap: 1.5px; }
-.ncal-wdc-cbar.is-split .ncal-cstrip-seg { flex: 1; height: 100%; }
-
-/* Card header */
-.ncal-wdc-h {
-  padding: 13px 13px 10px; flex: none;
+/* Column header */
+.ncal-wcol-h {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 12px 8px 10px;
   border-bottom: 1px solid var(--line);
+  flex: none;
 }
-.ncal-wdc-num {
+.ncal-wcol-wd {
+  color: var(--muted);
+}
+/* размер/вес/гарнитура — из канона .t-heading (className в JSX) */
+.ncal-wcol-dn {
   color: var(--ink);
-  display: inline-block;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 30px; padding: 0 8px;
+  border-radius: var(--r-pill);
+  font-variant-numeric: tabular-nums; line-height: 1;
 }
-.ncal-wdc.is-today .ncal-wdc-num {
+.ncal-wcol.is-today .ncal-wcol-dn {
   background: var(--brand); color: var(--primary-fg);
-  border-radius: var(--r-pill); padding: 3px 10px;
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
-.ncal-wdc-wd {
-  color: var(--muted); margin-top: 5px;   /* TRIP-280: близнец .ncal-wd — тот же цвет */
-}
 
-/* Card body — events list */
-.ncal-wdc-b {
-  padding: 9px 10px 13px; flex: 1;
+/* City bar under header */
+.ncal-cbar { display: flex; height: 4px; flex: none; }
+.ncal-cbar-seg { flex: 1; background: var(--cc, transparent); }
+.ncal-cbar-seg + .ncal-cbar-seg { margin-left: 1px; }
+
+/* Column body — events */
+.ncal-wcol-b {
   display: flex; flex-direction: column; gap: 5px;
+  padding: 10px 9px 12px; flex: 1;
 }
-/* Empty day state */
-.ncal-wdc-empty {
+.ncal-wcol-empty {
   text-align: center; color: var(--muted-2);
-  padding: 14px 0 6px;
+  padding: 16px 0 6px;
 }
 
 /* Agenda event item */
 .ncal-aev {
-  display: flex; flex-direction: column; gap: 1px;
-  padding: 6px 9px 6px 11px; border-radius: var(--r-sm);
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 7px 9px 7px 11px; border-radius: var(--r-sm);
   border: none; cursor: pointer; text-align: left;
   position: relative; overflow: hidden;
+  background: var(--surface-2); color: var(--ink-2);
   transition: filter .14s, transform .12s var(--ease-spring);
 }
 .ncal-aev::before {
   content: ''; position: absolute;
-  left: 0; top: 6px; bottom: 6px;
-  width: 3px; border-radius: 2px;
-  background: currentColor; opacity: .75;
+  left: 0; top: 7px; bottom: 7px;
+  width: 3px; border-radius: 0 2px 2px 0;
+  background: currentColor;
 }
 .ncal-aev:hover { filter: brightness(.97); }
 .ncal-aev:active { transform: scale(.98); }
 .ncal-aev .atm {
-  opacity: .7; font-variant-numeric: tabular-nums;
+  color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .ncal-aev .atl {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit;
 }
 .ncal-aev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
 .ncal-aev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .ncal-aev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 .ncal-aev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
 .ncal-aev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
+.ncal-aev.ev-hotel .atm, .ncal-aev.ev-activity .atm,
+.ncal-aev.ev-transfer .atm, .ncal-aev.ev-deadline .atm,
+.ncal-aev.ev-car .atm { color: inherit; opacity: .72; }
 
 /* ── Legend ────────────────────────────────────────────────────── */
-/* gap 10px = дефолт .col (var(--sp-5)), поэтому модификатор не нужен.
-   раскладка уехала: ncal-legend -> col */
 .ncal-legend {
-  margin-top: 24px;
+  margin-top: 20px;
 }
-/* ★ОСТАТОК: gap 14px вне шкалы (--sp даёт 12 и 16) - удержан.
-   раскладка уехала: ncal-legend-group -> row */
 .ncal-legend-group {
   gap: 14px;
 }
 .ncal-legend-lbl {
-  color: var(--muted-2); width: 64px; flex: none;
+  color: var(--muted-2); flex: none;
 }
-/* раскладка уехала: ncal-leg -> row */
 .ncal-leg {
   color: var(--muted);
 }
@@ -336,7 +344,7 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 .ncal-month,
-.ncal-wv-scroll {
+.ncal-week {
   animation: ncalFadeSlideIn .22s var(--ease-out) both;
 }
 
@@ -355,127 +363,72 @@
 }
 
 /* ── Responsive ──────────────────────────────────────────────────
-   TRIP-410: @media ниже меняют только КЕГЛЬ ячеек календаря по санкц. шкале
-   --fs-* (адаптивная плотность); гарнитуру/вес держит канон co-selector'ом
-   (см. .t-meta/.t-subheading в app.css). Все — design-token-exempt. */
+   @media меняют кегль/плотность по санкц. шкале --fs-*; гарнитуру/вес держит
+   канон. Все — design-token-exempt. */
 @media (max-width: 768px) {
-  .ncal-wdc-num { font-size: var(--fs-h3); /* design-token-exempt: адаптивный кегль ячейки, TRIP-410 */ }
-  .ncal-wdc-h   { padding: 11px 11px 9px; }
+  .ncal-wcol-dn { font-size: var(--fs-h3); /* design-token-exempt: адаптивный кегль ячейки, TRIP-410 */ }
 }
 
 @media (max-width: 640px) {
   /* Header: stack */
-  .ncal-hd { flex-direction: column; gap: 10px; align-items: stretch; margin-bottom: 14px; }
+  .ncal-hd { flex-direction: column; gap: 12px; align-items: stretch; margin-bottom: 14px; }
   .ncal-hd-l { width: 100%; }
-  .ncal-month-lbl { font-size: var(--fs-h2); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
+  .ncal-month-lbl { font-size: var(--fs-h1); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
   .ncal-year-lbl  { font-size: var(--fs-base); margin-left: 8px; /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  /* Controls: nav + toggle in one row */
   .ncal-hd-r {
     flex-direction: row; align-items: center;
     justify-content: space-between; width: 100%; gap: 8px;
   }
   .ncal-nav { gap: 1px; padding: 3px; }
-  /* Hide "К поездке" label, keep icon */
   .ncal-nav-trip .ncal-trip-label { display: none; }
   .ncal-nav-trip { padding: 5px 9px; gap: 0; }
-  /* размер не перебиваем: канон .t-mono уже даёт нужный кегль (--fs-micro) */
   .ncal-nav-txt { padding: 5px 10px; }
 
   /* Month cells */
-  .ncal-wd-row { gap: 2px; margin-bottom: 5px; }
-  .ncal-dgrid  { gap: 2px; }
-  .ncal-wk     { margin-bottom: 2px; }
-  .ncal-dc     { min-height: 64px; padding: 0 0 5px; border-radius: var(--r-sm); }
-  .ncal-cstrip { height: 14px; font-size: 0; padding: 0; margin-bottom: 5px; }
-  .ncal-cstrip-seg { font-size: 0; padding: 0; }
-  .ncal-dn     { font-size: var(--fs-base); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-dn-wrap { padding: 0 4px 3px; }
-  .ncal-ev     { padding: 2px 4px; border-radius: 5px; }
+  .ncal-dc     { min-height: 74px; padding: 4px 4px 6px; gap: 3px; }
+  .ncal-dc-top { min-height: 20px; }
+  .ncal-dn     { min-width: 20px; height: 20px; font-size: var(--fs-base); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
+  .ncal-cstrip { height: 16px; font-size: 0; padding: 0; }
+  .ncal-cstrip:not(.cs-empty) { padding-left: 0; }
+  .ncal-cstrip:not(.cs-empty)::before { left: 0; top: 0; bottom: 0; width: 100%; border-radius: var(--r-xs); opacity: .9; }
+  .ncal-cstrip-seg { font-size: 0; padding: 0; border-left-width: 0; }
+  .ncal-cstrip.is-split .ncal-cstrip-seg { background: var(--cc, transparent); }
+  .ncal-ev     { padding: 2px 5px; gap: 4px; }
   .ncal-ev .tm { display: none; }
+  .ncal-ev .dot { display: none; }
   .ncal-ev .t  { font-size: var(--fs-nano); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-evl    { padding: 0 3px; gap: 2px; }
+  .ncal-evl    { gap: 2px; }
 
-  /* Week cards: horizontal scroll */
-  .ncal-wcols {
-    grid-template-columns: repeat(7, minmax(130px, 1fr));
-    gap: 6px; min-width: unset;
+  /* Week columns: horizontal scroll, snap */
+  .ncal-week { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .ncal-week::-webkit-scrollbar { height: 6px; }
+  .ncal-week::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
+  .ncal-wgrid {
+    grid-template-columns: repeat(7, minmax(140px, 1fr));
+    min-width: max-content;
+    scroll-snap-type: x proximity;
   }
-  .ncal-wdc         { border-radius: var(--r-md); }
-  .ncal-wdc-cbar    { height: 4px; }
-  .ncal-wdc-h       { padding: 10px 10px 8px; }
-  .ncal-wdc-num     { font-size: var(--fs-h3); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-wdc-b       { padding: 7px 8px 10px; gap: 4px; }
-  .ncal-aev         { padding: 5px 7px 5px 9px; border-radius: var(--r-sm); }
-  .ncal-aev .atl    { font-size: var(--fs-nano); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
+  .ncal-wcol { scroll-snap-align: start; min-height: 300px; }
+  .ncal-wcol-h { padding: 10px 8px 9px; }
+  .ncal-wcol-dn { font-size: var(--fs-h3); min-width: 26px; height: 26px; /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
+  .ncal-wcol-b { padding: 9px 8px 11px; gap: 4px; }
+  .ncal-aev    { padding: 6px 8px 6px 10px; }
+  .ncal-aev .atl { font-size: var(--fs-nano); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
 
   /* Legend */
-  .ncal-legend     { gap: 8px; margin-top: 18px; }
-  /* размер не перебиваем: каноны .t-micro/.t-meta уже дают нужный кегль */
+  .ncal-legend     { gap: 8px; margin-top: 16px; }
   .ncal-legend-lbl { width: 52px; }
   .ncal-leg        { gap: 5px; }
 }
 
 @media (max-width: 400px) {
-  .ncal-dc     { min-height: 50px; }
-  .ncal-cstrip { height: 12px; }
-  /* Hide event list, show single dot instead */
+  .ncal-dc     { min-height: 58px; }
   .ncal-evl { display: none; }
-  .ncal-dc.has-ev .ncal-dn-wrap::after {
+  .ncal-dc.has-ev .ncal-dc-top::after {
     content: ''; display: block;
     width: 5px; height: 5px; border-radius: 50%;
-    background: var(--brand); margin: 2px auto 0;
+    background: var(--brand); margin-left: auto; align-self: center;
   }
-  .ncal-dn     { font-size: var(--fs-base); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
   .ncal-nav-txt { padding: 4px 8px; }
   .ncal-hd-r   { flex-wrap: wrap; }
 }
-
-/* ═══ TRIP-342: ОБЪЯВЛЕННЫЕ ИЗМЕНЕНИЯ (календарь) ═════════════════════════
-   Почему тут exempt, а не visual-diff-move. Маркер переноса требует, чтобы ВСЕ
-   ушедшие с источника объявления лежали на ОДНОЙ названной цели. Раскладка же
-   уезжает на КОМПОЗИЦИЮ - примитив плюс модификаторы его осей (.row + .row--g7 +
-   .row--wrap), и второй маркер на ту же пару делает проверку строже, а не
-   полнее: гард начинает требовать display и от .row--g7 тоже. Плюс он сверяет
-   значения ТЕКСТОМ и не резолвит var(), поэтому честный перенос сырых 16px на
-   ступень var(--sp-7) читается как смена значения. Оба ограничения названы в
-   отчёте по задаче; здесь каждый ключ объявлен поимённо, без бланкетного гашения.
-   visual-diff-exempt: .ncal-cstrip-seg gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
-   visual-diff-exempt: .ncal-hd-r align-items — align-items:flex-end уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-hd align-items — align-items:flex-start уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-hd flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-hd gap — зазор 16px уехал на ступень шкалы .--g7 (var(--sp-7)=16px), значение то же
-   visual-diff-exempt: .ncal-hd justify-content — justify-content:space-between уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-leg display — inline-flex уехал на .row--inline, значение то же
-   visual-diff-exempt: .ncal-legend-group flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-leg gap — зазор 6px уехал на ступень шкалы .--g3 (var(--sp-3)=6px), значение то же
-   visual-diff-exempt: .ncal-nav-trip display — inline-flex уехал на .row--inline, значение то же
-   visual-diff-exempt: .ncal-nav display — inline-flex уехал на .row--inline, значение то же
-   visual-diff-exempt: .ncal-nav gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
-   visual-diff-exempt: .ncal-title-row align-items — align-items:baseline уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-title-row flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-title-row gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* TRIP-342: продолжение объявленных изменений (календарь).
-   visual-diff-exempt: .ncal-cstrip-seg align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-cstrip-seg display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-cstrip align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-cstrip display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-dgrid display — display:grid уехал на .grid, значение то же
-   visual-diff-exempt: .ncal-hd-r display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-hd-r flex-direction — flex-direction:column уехал на .col, значение то же
-   visual-diff-exempt: .ncal-hd display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-leg align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-legend-group align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-legend-group display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-nav-trip align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-nav align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-title-row display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-wd-row display — display:grid уехал на .grid, значение то же
-   */
-
-/* TRIP-342: легенда - раскладка на .col.
-   visual-diff-exempt: .ncal-legend display — display:flex уехал на .col, значение то же
-   visual-diff-exempt: .ncal-legend flex-direction — flex-direction:column уехал на .col, значение то же
-   visual-diff-exempt: .ncal-legend gap — 10px это ДЕФОЛТ .col (var(--sp-5)=10px), модификатор не нужен
-   */
