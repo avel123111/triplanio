@@ -494,6 +494,50 @@ function useCounters(ready, lang) {
 }
 
 /* ── Archive ("Every journey you've taken, kept forever") ── */
+/* ── Audience ("Solo, the two of you, or the whole crew") ── */
+function Audience() {
+  const t = useT();
+  return (
+    <section className="audience section-pad" data-hdr="light">
+      <div className="wrap">
+        <div className="section-head centered rv">
+          <span className="brow">{t('landing.aud.eyebrow')}</span>
+          <h2 dangerouslySetInnerHTML={{ __html: t('landing.aud.h2') }} />
+          <p>{t('landing.aud.sub')}</p>
+        </div>
+        <div className="aud-grid" data-stagger="">
+          <article className="aud-card rv" style={{ '--i': 0 }}>{/* inline-style-exempt: stagger reveal index */}
+            <div className="aud-avatars"><span className="av" style={{ background: 'linear-gradient(140deg,#2173C8,#6FB4F4)' }}>Y</span></div>{/* inline-style-exempt: mock avatar gradient */}
+            <h3>{t('landing.aud.c1t')}</h3>
+            <p>{t('landing.aud.c1d')}</p>
+            <a className="tagline" href="#assistant">{t('landing.aud.c1tag')}</a>
+          </article>
+          <article className="aud-card duo rv" style={{ '--i': 1 }}>{/* inline-style-exempt: stagger reveal index */}
+            <div className="aud-avatars">
+              <span className="av" style={{ background: 'linear-gradient(140deg,#FF9E4A,#FFC38A)' }}>M</span>{/* inline-style-exempt: mock avatar gradient */}
+              <span className="av" style={{ background: 'linear-gradient(140deg,#2173C8,#6FB4F4)' }}>K</span>{/* inline-style-exempt: mock avatar gradient */}
+            </div>
+            <h3>{t('landing.aud.c2t')}</h3>
+            <p>{t('landing.aud.c2d')}</p>
+            <a className="tagline" href="#together" style={{ color: 'var(--sunset-text)' }}>{t('landing.aud.c2tag')}</a>{/* inline-style-exempt: category colour */}
+          </article>
+          <article className="aud-card group rv" style={{ '--i': 2 }}>{/* inline-style-exempt: stagger reveal index */}
+            <div className="aud-avatars">
+              <span className="av" style={{ background: 'linear-gradient(140deg,#2EC27E,#7FE0B4)' }}>A</span>{/* inline-style-exempt: mock avatar gradient */}
+              <span className="av" style={{ background: 'linear-gradient(140deg,#2173C8,#6FB4F4)' }}>D</span>{/* inline-style-exempt: mock avatar gradient */}
+              <span className="av" style={{ background: 'linear-gradient(140deg,#FF6B5E,#FFA599)' }}>S</span>{/* inline-style-exempt: mock avatar gradient */}
+              <span className="av" style={{ background: 'linear-gradient(140deg,#7A5CF0,#B39CFF)' }}>+3</span>{/* inline-style-exempt: mock avatar gradient */}
+            </div>
+            <h3>{t('landing.aud.c3t')}</h3>
+            <p>{t('landing.aud.c3d')}</p>
+            <a className="tagline" href="#together" style={{ color: 'var(--mint-text)' }}>{t('landing.aud.c3tag')}</a>{/* inline-style-exempt: category colour */}
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Archive() {
   const t = useT();
   return (
@@ -604,6 +648,7 @@ export default function LandingPage() {
         <Bento />
         <Recognize />
         <Archive />
+        <Audience />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
