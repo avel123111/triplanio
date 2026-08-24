@@ -201,17 +201,17 @@ h3 {
 
 .subtle { color: var(--muted); }
 
-/* ---------- Buttons ---------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+/* ---------- Buttons ----------
+   БАЗУ .btn зона НЕ объявляет (правило 1а, ревью TRIP-460): app.css:1767 держит
+   .btn правилом-одиночкой, и вторая база в site.css клобберила рамку у app-кнопки:
+   `<Btn variant="secondary">` баннера согласия получал border:transparent.
+   .btn — ОДИН объект → общая база из app (display/min-height/gap/transition),
+   а зона добавляет ТОЛЬКО варианты: геометрию прототипа (padding/radius) несёт
+   co-селектор вариантов, цвет — каждый вариант. */
+.btn--primary, .btn--ghost, .btn--white {
   padding: 12px 20px;
   border-radius: var(--radius-btn);
   border: 1px solid transparent;
-  transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
-  white-space: nowrap;
 }
 .btn--lg { padding: 15px 26px; font-size: var(--ctl-fs); border-radius: 14px; }
 .btn--primary {
