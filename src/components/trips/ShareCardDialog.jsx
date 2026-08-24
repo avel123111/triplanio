@@ -50,7 +50,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
 
   const previewRef = useRef(null);
   const editorRef = useRef(null);
-  const fileRef = useRef(null);
+  const stripRef = useRef(null);
   const builtRef = useRef(null); // последний собранный PNG (blob); обнуляется на смену входов
 
   // Рамка (и слот карты) — с edge-функции, отдельно на каждый формат.
@@ -120,7 +120,15 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     if (next !== undefined) setBg(next);
   };
 
-  function pickFile() { fileRef.current?.click(); }
+  // Доводчик ряда миниатюр — тот же ход, что у CoverPicker (data-idx +
+  // scrollIntoView к центру): стрелки листают фон, а ряд едет за выбором;
+  // без него выбранная миниатюра оставалась за краем ленты.
+  useEffect(() => {
+    if (bgIdx < 0) return;
+    stripRef.current?.querySelector(`[data-idx="${bgIdx}"]`)?.scrollIntoView({
+      inline: 'center', block: 'nearest', behavior: 'smooth',
+    });
+  }, [bgIdx]);
   function handleFile(e) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -213,7 +221,10 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     />
   ) : (
     <div className="sc-body">
-      <div className="sc-stage" style={arStyle}>
+      {/* data-vaul-no-drag на сцене и ленте: внутри мобильного шита vaul трекает
+          вертикальный драг с любого pointerdown — тап по кнопкам сцены и
+          горизонтальный скролл ленты не должны с ним конкурировать. */}
+      <div className="sc-stage" style={arStyle} data-vaul-no-drag>
         {overlay ? (
           <ShareMapPreview
             key={format}
@@ -238,13 +249,28 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
           <IconBtn icon="chev" className="tcp__ctl tcp__nav tcp__nav--next" ariaLabel={t('common.next')} onClick={() => stepBg(1)} />
         )}
         {ready && (
-          <IconBtn icon="image-up" className="tcp__ctl tcp__upload" ariaLabel={t('share.bg_upload')} title={t('share.bg_upload')} onClick={pickFile} />
+          /* «Загрузить своё фото» — НАТИВНЫЙ label вокруг инпута, а не
+             программный input.click(): синтетический клик из-под vaul/Radix-
+             модалки на iOS открывал пикер ненадёжно (кнопка «не реагировала»),
+             активация label'ом идёт самим браузером. Инпут .sr-only (не
+             display:none) — остаётся фокусируемым для клавиатуры. */
+          <label className="icon-btn tcp__ctl tcp__upload" title={t('share.bg_upload')}>
+            <Icon name="image-up" size={16} />
+            <input
+              type="file"
+              accept={IMAGE_ACCEPT}
+              onChange={handleFile}
+              className="sr-only"
+              aria-label={t('share.bg_upload')}
+            />
+          </label>
         )}
       </div>
 
       {/* Карусель фонов — свой грид-остров (.sc-strip): десктоп ставит её в
-          ПРАВУЮ колонку под подсказку, мобила — под превью (см. areas в CSS). */}
-      <Carousel className="tcp__strip sc-strip" ariaLabel={t('share.card_bg')}>
+          ПРАВУЮ колонку под подсказку, мобила — под превью (см. areas в CSS).
+          data-idx — адрес для доводчика выбора (как у CoverPicker). */}
+      <Carousel className="tcp__strip sc-strip" ariaLabel={t('share.card_bg')} ref={stripRef} data-vaul-no-drag>
         {standardThumb && (
           <Swatch
             variant="round"
@@ -253,6 +279,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             aria-label={t('share.card_bg_standard')}
             title={t('share.card_bg_standard')}
             style={thumbStyle(standardThumb)}
+            data-idx={0}
           />
         )}
         {slides.slice(1).map((url, i) => (
@@ -263,6 +290,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             onClick={() => setBg(url)}
             aria-label={t('share.card_bg')}
             style={thumbStyle(url)}
+            data-idx={i + 1}
           />
         ))}
         {(presetsQ.isLoading || !overlay) && SKELETON_THUMBS.map((k) => (
@@ -292,8 +320,6 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
         {uploadError && <p className="tcp__err sc-note">{uploadError}</p>}
         {buildError && <div className="sc-note"><Severity level="error">{buildError}</Severity></div>}
       </div>
-
-      <input ref={fileRef} type="file" accept={IMAGE_ACCEPT} onChange={handleFile} className="tcp__file" />
     </div>
   );
 

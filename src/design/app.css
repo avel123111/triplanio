@@ -4587,6 +4587,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ховер поднимает до --scrim. Форма/размер/тон у всех одинаковы. */
 .tcp__ctl, .editable__confirm { background: var(--scrim-soft); color: #fff; border-color: transparent; }
 .tcp__ctl:hover, .editable__confirm:hover { background: var(--scrim); color: #fff; }
+/* Носитель контрола — не всегда <button>: «загрузить фото» в share-карточке —
+   нативный <label> вокруг файлового инпута (курсор тег-правилом не приходит).
+   visual-diff-exempt: .tcp__ctl cursor — контрол на <label>-носителе (share-UX), у <button> курсор и так pointer */
+.tcp__ctl { cursor: pointer; }
 /* Загрузка своего фото — иконка-кнопка в правом верхнем углу обложки. */
 .tcp__upload { position: absolute; z-index: 4; top: var(--sp-4); right: var(--sp-4); }
 /* Стрелки смены выбранного кавера — по бокам обложки, по центру. Меняют сам
