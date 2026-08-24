@@ -17,7 +17,8 @@
  *        mode?: 'overlay'|'card_svg' }
  *   auth: JWT; caller must be an active participant of the trip.
  * 200 overlay:  { svg, width, height, slot, backgrounds } — backgrounds = публичные
- *               URL пресет-фонов из бакета `card-bg-presets` (дверь экрана
+ *               URL пресет-фонов ЗАПРОШЕННОГО format из бакета `card-bg-presets`
+ *               (папки story/ и post/ — у форматов разный арт; дверь экрана
  *               конструктора, TRIP-374: каталог фонов едет тем же кругом, что и
  *               рамка; подменяет фон КЛИЕНТ — см. src/lib/shareCardBg.js).
  *     card_svg: { svg, width, height, slot }
@@ -53,21 +54,29 @@ const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
 // задаёт префикс имени файла, снятие с витрины = удаление файла (см. миграцию
 // card_bg_presets_bucket). Листинг только здесь, под service_role — политик на
 // бакете ноль (TRIP-48), фронт напрямую не листает.
+//
+// ★ ФОРМАТ = ОСЬ ОДНОЙ КОЛЛЕКЦИИ, НЕ ВТОРОЙ БАКЕТ (решение Pavel 2026-08-24):
+// у 9:16 и 4:5 разный арт, поэтому фоны живут ПАПКАМИ `story/` и `post/`, и
+// overlay отдаёт фоны формата ИЗ ЗАПРОСА — отдельного параметра не нужно,
+// format уже в контракте. Второй бакет кодировал бы тот же enum второй строкой
+// миграции + манифеста 2e + вторым местом кураторства. Файлы в КОРНЕ бакета в
+// витрину не попадают по построению.
 const BG_BUCKET = 'card-bg-presets';
 const BG_LIST_LIMIT = 60;
 const IMAGE_FILE_RE = /\.(webp|png|jpe?g)$/i;
 
-/** Публичные URL пресет-фонов, по возрастанию имени (префикс = порядок).
- *  Fail-soft: сбой листинга репортится и отдаёт пустой список — конструктор
- *  живёт со «Стандартом» и своим фото, рамка важнее карусели. */
-async function listCardBackgrounds(): Promise<string[]> {
+/** Публичные URL пресет-фонов ФОРМАТА (папка story/ либо post/), по возрастанию
+ *  имени (префикс = порядок). Fail-soft: сбой листинга репортится и отдаёт
+ *  пустой список — конструктор живёт со «Стандартом» и своим фото, рамка
+ *  важнее карусели. */
+async function listCardBackgrounds(format: Format): Promise<string[]> {
   const bucket = supabaseAdmin.storage.from(BG_BUCKET);
   const { data, error } = await bucket
-    .list('', { limit: BG_LIST_LIMIT, sortBy: { column: 'name', order: 'asc' } });
+    .list(format, { limit: BG_LIST_LIMIT, sortBy: { column: 'name', order: 'asc' } });
   if (error) throw error;
   return (data || [])
     .filter((f) => IMAGE_FILE_RE.test(f.name))
-    .map((f) => bucket.getPublicUrl(f.name).data.publicUrl);
+    .map((f) => bucket.getPublicUrl(`${format}/${f.name}`).data.publicUrl);
 }
 
 // The canonical host: the apex 307s here, and the campaign mark is stored
@@ -164,7 +173,7 @@ Deno.serve(async (req) => {
     // device-invariant, no dependence on page fonts. ----
     if (mode === 'overlay') {
       const svg = buildCardSvg(format, data, defaultBgDataUri(), null, qrUrlFor(tripId, format), true, fontFaceStyle());
-      const backgrounds = await listCardBackgrounds().catch(async (e) => {
+      const backgrounds = await listCardBackgrounds(format).catch(async (e) => {
         await captureEdgeError(e, 'render-share-card');
         return [] as string[];
       });

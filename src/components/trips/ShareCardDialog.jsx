@@ -338,7 +338,16 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             /* Оверлей чистится СИНХРОННО со сменой формата: пассивная чистка
                эффектом успевала отдать ремаунту превью СТАРЫЙ slot — лишняя
                инициализация mapbox-карты и кадр прежней рамки в новой пропорции. */
-            onChange={(v) => { if (v !== format) { setFormat(v); setOverlay(null); setOverlayCode(''); } }}
+            onChange={(v) => {
+              if (v === format) return;
+              setFormat(v);
+              setOverlay(null);
+              setOverlayCode('');
+              // Пресеты форматные (папки story/ и post/ бакета) — выбор чужого
+              // формата на новой пропорции невалиден, откат на «Стандарт».
+              // Своё фото (data-URI) переживает смену: slice-кроп берёт центр.
+              if (bg && !bg.startsWith('data:')) setBg('');
+            }}
             options={[
               { value: 'story', label: t('share.card_story') },
               { value: 'post', label: t('share.card_post') },
