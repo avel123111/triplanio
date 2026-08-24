@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
@@ -352,10 +352,10 @@ function Pain() {
                       </div>
                       <div className="stat-rows">
                         <div className="stat-row" data-step="" style={{ '--s': 3.6 }}>{/* inline-style-exempt: scrub step index */}<svg className="ok-ic" width="15" height="15"><use href="#i-check" /></svg><s>{t('landing.aw.rd1')}</s><span className="pill done">{t('landing.pill.done')}</span></div>
-                        <div className="stat-row" data-step="" style={{ '--s': 4.2 }}>{/* inline-style-exempt: scrub step index */}<svg className="ok-ic" width="15" height="15"><use href="#i-check" /></svg><s dangerouslySetInnerHTML={{ __html: t('landing.aw.rd2') }} /><span className="pill done">{t('landing.pill.done')}</span></div>
-                        <div className="stat-row" data-step="" style={{ '--s': 4.8 }}>{/* inline-style-exempt: scrub step index */}<svg className="todo-ic" width="15" height="15"><use href="#i-bed" /></svg><span>{t('landing.aw.rd3')}</span><span className="pill todo" dangerouslySetInnerHTML={{ __html: t('landing.pill.todo') }} /></div>
-                        <div className="stat-row" data-step="" style={{ '--s': 5.4 }}>{/* inline-style-exempt: scrub step index */}<svg className="todo-ic" width="15" height="15"><use href="#i-train" /></svg><span dangerouslySetInnerHTML={{ __html: t('landing.aw.rd4') }} /><span className="pill todo" dangerouslySetInnerHTML={{ __html: t('landing.pill.todo') }} /></div>
-                        <div className="stat-row" data-step="" style={{ '--s': 6 }}>{/* inline-style-exempt: scrub step index */}<svg className="todo-ic" width="15" height="15"><use href="#i-bed" /></svg><span>{t('landing.aw.rd5')}</span><span className="pill todo" dangerouslySetInnerHTML={{ __html: t('landing.pill.todo') }} /></div>
+                        <div className="stat-row" data-step="" style={{ '--s': 4.2 }}>{/* inline-style-exempt: scrub step index */}<svg className="ok-ic" width="15" height="15"><use href="#i-check" /></svg><s>{t('landing.aw.rd2')}</s><span className="pill done">{t('landing.pill.done')}</span></div>
+                        <div className="stat-row" data-step="" style={{ '--s': 4.8 }}>{/* inline-style-exempt: scrub step index */}<svg className="todo-ic" width="15" height="15"><use href="#i-bed" /></svg><span>{t('landing.aw.rd3')}</span><span className="pill todo">{t('landing.pill.todo')}</span></div>
+                        <div className="stat-row" data-step="" style={{ '--s': 5.4 }}>{/* inline-style-exempt: scrub step index */}<svg className="todo-ic" width="15" height="15"><use href="#i-train" /></svg><span>{t('landing.aw.rd4')}</span><span className="pill todo">{t('landing.pill.todo')}</span></div>
+                        <div className="stat-row" data-step="" style={{ '--s': 6 }}>{/* inline-style-exempt: scrub step index */}<svg className="todo-ic" width="15" height="15"><use href="#i-bed" /></svg><span>{t('landing.aw.rd5')}</span><span className="pill todo">{t('landing.pill.todo')}</span></div>
                       </div>
                     </div>
                   </div>
@@ -400,13 +400,13 @@ function Bento() {
 
           <article className="bcard b-status rv" style={{ '--i': 1 }}>{/* inline-style-exempt: stagger reveal index */}
             <div className="bic mint"><svg width="21" height="21"><use href="#i-check" /></svg></div>
-            <h3 dangerouslySetInnerHTML={{ __html: t('landing.bento.stT') }} />
-            <p dangerouslySetInnerHTML={{ __html: t('landing.bento.stD') }} />
+            <h3>{t('landing.bento.stT')}</h3>
+            <p>{t('landing.bento.stD')}</p>
             <div className="stat-rows">
               <div className="stat-row"><svg className="ok-ic" width="15" height="15"><use href="#i-check" /></svg><s>{t('landing.bento.st1')}</s><span className="pill done">{t('landing.pill.done')}</span></div>
               <div className="stat-row"><svg className="ok-ic" width="15" height="15"><use href="#i-check" /></svg><s>{t('landing.bento.st2')}</s><span className="pill done">{t('landing.pill.done2')}</span></div>
-              <div className="stat-row"><svg className="todo-ic" width="15" height="15"><use href="#i-plane" /></svg><span>{t('landing.bento.st3')}</span><span className="pill todo" dangerouslySetInnerHTML={{ __html: t('landing.pill.todo') }} /></div>
-              <div className="stat-row"><svg className="todo-ic" width="15" height="15"><use href="#i-shield" /></svg><span>{t('landing.bento.st4')}</span><span className="pill todo" dangerouslySetInnerHTML={{ __html: t('landing.pill.todo2') }} /></div>
+              <div className="stat-row"><svg className="todo-ic" width="15" height="15"><use href="#i-plane" /></svg><span>{t('landing.bento.st3')}</span><span className="pill todo">{t('landing.pill.todo')}</span></div>
+              <div className="stat-row"><svg className="todo-ic" width="15" height="15"><use href="#i-shield" /></svg><span>{t('landing.bento.st4')}</span><span className="pill todo">{t('landing.pill.todo2')}</span></div>
             </div>
           </article>
 
@@ -418,7 +418,7 @@ function Bento() {
             <div className="bud-bars">
               <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.flights')}</span><span>€860</span></div><div className="track"><div className="fill" style={{ '--w': '86%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
               <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.stays')}</span><span>€720</span></div><div className="track"><div className="fill" style={{ '--w': '64%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
-              <div className="bud-bar"><div className="lbl"><span dangerouslySetInnerHTML={{ __html: t('landing.bud.food') }} /><span>€390</span></div><div className="track"><div className="fill" style={{ '--w': '42%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+              <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.food')}</span><span>€390</span></div><div className="track"><div className="fill" style={{ '--w': '42%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
               <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.transport')}</span><span>€170</span></div><div className="track"><div className="fill" style={{ '--w': '24%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
             </div>
           </article>
@@ -430,7 +430,7 @@ function Bento() {
             <div className="tl">
               <div className="tl-item"><span className="nd" /><div><b>09:40</b> <span>{t('landing.tl.1')}</span></div></div>
               <div className="tl-item"><span className="nd" style={{ borderColor: 'var(--sunset)' }} /><div><b>13:00</b> <span>{t('landing.tl.2')}</span></div></div>{/* inline-style-exempt: category colour */}
-              <div className="tl-item"><span className="nd" style={{ borderColor: 'var(--mint)' }} /><div><b>16:30</b> <span dangerouslySetInnerHTML={{ __html: t('landing.tl.3') }} /></div></div>{/* inline-style-exempt: category colour */}
+              <div className="tl-item"><span className="nd" style={{ borderColor: 'var(--mint)' }} /><div><b>16:30</b> <span>{t('landing.tl.3')}</span></div></div>{/* inline-style-exempt: category colour */}
             </div>
           </article>
 
@@ -466,6 +466,9 @@ function useCounters(ready, lang) {
     if (!targets.length) return undefined;
     const fmt = new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : lang === 'es' ? 'es-ES' : 'en-US');
     const reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+    // rAF-хендлы копятся в Set и отменяются на unmount (ревью TRIP-460 C4):
+    // раньше IO дисконнектился, а кадр счётчика продолжал тикать по detached-узлу.
+    const rafs = new Set();
     const io = new IntersectionObserver((entries) => {
       entries.forEach((en) => {
         const el = en.target;
@@ -479,9 +482,9 @@ function useCounters(ready, lang) {
             const k = Math.min((t - t0) / dur, 1);
             const ease = 1 - (1 - k) ** 3;
             el.textContent = fmt.format(Math.round(target * ease)) + suf;
-            if (k < 1) requestAnimationFrame(step);
+            if (k < 1) rafs.add(requestAnimationFrame(step));
           };
-          requestAnimationFrame(step);
+          rafs.add(requestAnimationFrame(step));
         } else if (!en.isIntersecting && en.boundingClientRect.top > 0) {
           delete el.dataset.done;
           el.textContent = '0';
@@ -489,7 +492,7 @@ function useCounters(ready, lang) {
       });
     }, { threshold: 0.6 });
     targets.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+    return () => { io.disconnect(); rafs.forEach(cancelAnimationFrame); };
   }, [ready, lang]);
 }
 
@@ -498,7 +501,10 @@ function useCounters(ready, lang) {
 /* ── Collab ("One workspace. Everyone in sync.") ── */
 /* ── Assistant ("Your trip, in your pocket") — Telegram demo ── */
 /* ── Share ("One link. The whole trip.") ── */
-const SHARE_URL = 'triplanio.app/t/spain-may-27';
+// Демо-ссылка шеринга. Домен — продуктовый triplanio.com (не triplanio.app:
+// на чужой домен нельзя пускать ни клик, ни clipboard — ревью TRIP-460 V4);
+// путь /d/<slug> — маршрут демо-трипа (эпик TRIP-445, приезжает в TRIP-461).
+const SHARE_URL = 'triplanio.com/d/spain-may-27';
 
 /**
  * FAQ — native <details>/<summary>, "close others" on open (ported from the
@@ -593,10 +599,15 @@ function Faq() {
 function Share() {
   const t = useT();
   const [copied, setCopied] = useState(false);
+  // таймер сброса лейбла — в ref, чистится на unmount и при повторном клике
+  // (ревью TRIP-460 C3): без этого setState прилетал в размонтированный компонент.
+  const copyTimer = useRef(null);
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
   const onCopy = async () => {
     try { await navigator.clipboard.writeText(`https://${SHARE_URL}`); } catch { /* clipboard denied — button label stays */ }
     setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 1800);
   };
   return (
     <section className="share section-pad" data-hdr="light">
@@ -608,7 +619,10 @@ function Share() {
           <div className="share-cta-row">
             <div className="link-pill">
               <svg width="15" height="15"><use href="#i-globe" /></svg>
-              <a className="share-url" href={`https://${SHARE_URL}`} target="_blank" rel="noopener noreferrer">{SHARE_URL}</a>{/* i18n-ignore: demo URL, not user-facing copy */}
+              {/* некликабельный span, не <a>: демо-маршрут /d/ приезжает только в
+                  TRIP-461, живой клик вёл бы в 404 (ревью TRIP-460 V4). Копирование —
+                  через кнопку ниже, это и есть демо-взаимодействие «скопируй ссылку». */}
+              <span className="share-url">{SHARE_URL}</span>{/* i18n-ignore: demo URL, not user-facing copy */}
               <button className="copy" type="button" onClick={onCopy}>{copied ? t('landing.sh.copied') : t('landing.sh.copy')}</button>
             </div>
           </div>
@@ -877,6 +891,18 @@ export default function LandingPage() {
   useCounters(cssReady, lang);
   useFaqCloseOthers(cssReady);
 
+  // <html lang> — снимок + восстановление на unmount, как у useSiteTheme
+  // (ревью TRIP-460 C1): раньше атрибут выставлялся без очистки и «протекал» —
+  // уходишь с лендинга, а lang остаётся landing'овым.
+  const prevLang = useRef(null);
+  useEffect(() => {
+    const r = document.documentElement;
+    if (prevLang.current === null) prevLang.current = r.getAttribute('lang');
+    return () => {
+      if (prevLang.current != null) r.setAttribute('lang', prevLang.current);
+      else r.removeAttribute('lang');
+    };
+  }, []);
   useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
 
   if (!cssReady) return null;

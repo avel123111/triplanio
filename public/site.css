@@ -13,7 +13,7 @@
 html.site {
   /* Слой ДС зоны — блок :root прототипа v5.7 ПЕРЕНЕСЁН ЦЕЛИКОМ, не пересказан
      (TRIP-460, подход "CSS как есть"). Зона владеет этим слоем токенов
-     ПОЛНОСТЬЮ — ни одного обращения к --fs-*/--r-* приложения в site.css. */
+     ПОЛНОСТЬЮ — ни одного обращения к app-токенам "fs"/"r" в site.css. */
   --brand:#2380D6; --brand-btn:#1E72C4; --brand-deep:#1B67B4;
   --sky:#6FB4F4; --ice:#DFF0FD;
   --ink:#13324E; --muted:#516576; --white:#FFFFFF;
@@ -209,7 +209,10 @@ html.site {
    перенесены в html.site{} выше). Ниже — подлинный reset прототипа v5.7. */
 *{margin:0;padding:0;box-sizing:border-box}
 
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip}
+/* scroll-padding-top — фикс-шапка 70px перекрывала заголовок при клике по
+   якорям меню (#together/#stats/#assistant); отступ сдвигает точку доводки
+   всех внутренних якорей на высоту шапки + воздух (ревью TRIP-460 V2). */
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;scroll-padding-top:86px}
 
 body{
   font-family:var(--font-body);color:var(--ink);background:var(--white);
@@ -305,6 +308,15 @@ section{position:relative}
 
 .rv-l.in,.rv-r.in{opacity:1;transform:none}
 
+/* На мобиле боковой заезд заменяем вертикальным: до-reveal translateX(±36px)
+   выносит колонку за узкий вьюпорт (при боковом зазоре < 36px — а он 20–24px),
+   overflow-x:clip это прячет, но текст правой колонки «Узнавания» физически
+   срезан справа, пока reveal не сработал (ревью TRIP-460 V1). Заезд сохранён —
+   просто по Y, как у .rv, без горизонтального переполнения. */
+@media (max-width:760px){
+  .rv-l,.rv-r{transform:translateY(30px)}
+}
+
 [data-stagger]>*{transition-delay:calc(var(--i,0)*70ms)}
 
 @media (prefers-reduced-motion:reduce){
@@ -332,7 +344,9 @@ section{position:relative}
 
 .on-accent .brand{color:#fff}
 
-.on-accent .main-nav a{color:rgba(255,255,255,.82)}
+/* было rgba(255,255,255,.82) = 3.77:1 на фоне шапки, ниже AA (ревью TRIP-460 V3);
+   полный #fff = 4.76:1 */
+.on-accent .main-nav a{color:#fff}
 
 .on-accent .main-nav a:hover{color:#fff;background:rgba(255,255,255,.16)}
 
@@ -342,9 +356,10 @@ section{position:relative}
 
 .on-accent .burger{color:#fff}
 
-.on-accent .header-cta{background:#fff;color:#E0592E;box-shadow:0 10px 26px -8px rgba(120,40,20,.45)}
+/* было #E0592E = 3.72:1 на белой кнопке, ниже AA (ревью TRIP-460 V3); #C9481F = 4.74:1 */
+.on-accent .header-cta{background:#fff;color:#C9481F;box-shadow:0 10px 26px -8px rgba(120,40,20,.45)}
 
-.on-accent .header-cta:hover{background:#fff;color:#C9481F}
+.on-accent .header-cta:hover{background:#fff;color:#B84019}
 
 .brand{display:flex;align-items:center;min-height:44px;gap:10px;font-family:var(--font-display);font-weight:800;font-size: var(--fs-h4);letter-spacing:-.02em;color:#fff}
 
@@ -982,6 +997,17 @@ section{position:relative}
 @keyframes pinPop{0%{opacity:0;transform:scale(.3)}70%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
 
 .aw-bbar span{transform:scaleX(0);transform-origin:left}
+
+/* Мобилка: маршрут/точки/бары окна приложения показываем СТАТИЧНО в финальном
+   состоянии keyframe'ов. Их анимирует либо scrub (только ≥760), либо .in-reveal,
+   но .appwin — не .rv, поэтому на телефоне не срабатывает НИ ОДИН триггер: маршрут
+   оставался клипнут на 100%, точки opacity:0, сегменты бюджета scaleX(0) — карта
+   «Боли» выглядела пустой (ревью TRIP-460 V6). Значения = концы routeDraw/pinPop/growX. */
+@media (max-width:760px){
+  .aw-route{clip-path:inset(-6px)}
+  .aw-pin{opacity:1}
+  .aw-bbar span{transform:scaleX(1)}
+}
 
 .in .aw-bbar span{animation:growX .55s var(--ease-out) both}
 
