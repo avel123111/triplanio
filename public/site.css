@@ -13,7 +13,6 @@ html.site {
   --brand-ink: #0b1f47;       /* deep navy for dark band */
   --brand-ink-2: #0a1a3a;
   --brand-glow: rgba(33,103,226,.10);
-  --banner-photo: url("https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=70");
 
   --ink: #0F172A;             /* near-black body */
   --ink-2: #1f2a44;
@@ -45,11 +44,38 @@ html.site {
   --hero-top: 96px;
   --hero-bot: 80px;
 
-  /* TRIP-165 — единая суперсемья Golos Text (никаких маркетинговых шрифтов) */
-  --font-display: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  /* Гарнитуры зоны (TRIP-460 §2а): display — Onest, body — Golos Text, обе
+     вариативные (ось 400 800); @font-face в src/design/fonts.css. Переопределяют
+     те же имена токенов на html.site (Geologica приложения зону не задевает). */
+  --font-display: 'Onest', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --display-tracking: -0.022em;
   --h1-tracking: -0.035em;
+
+  /* Палитра и слой прототипа v5.7 (TRIP-460). Аддитивно к токенам выше:
+     --ink/--muted/--brand прототипа близки к текущим и здесь НЕ переопределяются,
+     чтобы не сдвинуть public-trip (его редизайн — отдельный PR). */
+  --brand-btn: #1E72C4;
+  --brand-deep: #1B67B4;
+  --sky: #6FB4F4;
+  --ice: #DFF0FD;
+  --mist: #F0F7FD;
+  --band: #E2F0FB;
+  --sand: #FDF3E5;
+  --night-line: rgba(122,180,235,.15);
+  --night-text: #BDD5EC;
+  --sunset: #FF9E4A;
+  --sunset-text: #A0632E;
+  --mint: #2EC27E;
+  --mint-text: #1C7A4F;
+  --r-lg: 22px;
+  --r-md: 15px;
+  --shadow-lg: 0 24px 60px -18px rgba(11,44,84,.20);
+  --shadow-md: 0 12px 32px -12px rgba(11,44,84,.14);
+  --shadow-sm: 0 4px 14px -4px rgba(11,44,84,.10);
+  --ease-out: cubic-bezier(.22,1,.36,1);
+  --dur: .65s;
+  --sheet-r: clamp(26px,4vw,44px);
 }
 
 * { box-sizing: border-box; }
@@ -1001,8 +1027,7 @@ h3 {
   background:
     linear-gradient(135deg, color-mix(in oklab, var(--brand-ink) 92%, transparent), color-mix(in oklab, var(--brand-700) 88%, transparent)),
     radial-gradient(80% 60% at 20% 0%, color-mix(in oklab, var(--brand) 35%, transparent), transparent 60%),
-    radial-gradient(60% 50% at 90% 100%, color-mix(in oklab, var(--warm) 35%, transparent), transparent 65%),
-    var(--banner-photo) center/cover;
+    radial-gradient(60% 50% at 90% 100%, color-mix(in oklab, var(--warm) 35%, transparent), transparent 65%);
   color: #fff;
   text-align: center;
   padding: 112px 24px;
