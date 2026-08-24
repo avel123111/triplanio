@@ -691,6 +691,8 @@ section{position:relative}
 
 .msg-row .ftag{font-size: var(--fs-micro);font-weight:700;background:#F1F3F6;border-radius: var(--r-xs);padding:1px 5px;color:#B04A3A;flex:none}
 
+/* site-base-exempt: badge — база не нужна: имя в разметке только внутри .msg-row,
+   scoped-правило ниже перебивает app-базу по специфичности (ревью TRIP-460 п.3) */
 .msg-row .badge{flex:none;color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size: var(--fs-tiny);font-weight:700;padding:0 5px}
 
 .p1{left:12%;top:2%;width:min(300px,34%);z-index:4;--rot:-5deg;--cx:220px;--cy:250px}
@@ -737,6 +739,7 @@ section{position:relative}
 
 .ssheet .sh-row.hd>div{background:#EDF2ED;border-top:none;font-weight:700;color:#3E7A3E}
 
+/* site-base-exempt: err — имя только внутри .ssheet, scoped-правило перебивает app (TRIP-460 п.3) */
 .ssheet .err{color:#B04A3A;font-weight:600}
 
 .ssheet .idx{color:#9AA3B5;font-size: var(--fs-micro)}
@@ -1649,6 +1652,7 @@ section{position:relative}
 
 .stat-box{background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-md);padding:18px 14px;text-align:center;box-shadow:var(--shadow-sm)}
 
+/* site-base-exempt: num — имя только внутри .stat-box, scoped-правило перебивает app (TRIP-460 п.3) */
 .stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand)}
 
 .stat-box small{color:var(--muted);font-size: var(--fs-caption)}
