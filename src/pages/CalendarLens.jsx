@@ -21,7 +21,7 @@
  *
  * Props: stream, visits, isLoading, onOpenEvent.
  */
-import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
 import { Skeleton, IconBtn, Seg, eventFamily } from '../design/index';
 import { Grow } from '../design/Layout';
@@ -58,6 +58,15 @@ const IcoPin = () => (
 
 // ─── MonthView ────────────────────────────────────────────────────────────────
 function MonthView({ cells, weekdays, onOpenEvent, t }) {
+  // Раскрытые дни (по ключу день+месяц). «+N ещё» разворачивает ячейку и
+  // показывает ВСЕ события дня; повторный клик сворачивает. Не мёртвая кнопка.
+  const [open, setOpen] = useState(() => new Set());
+  const toggle = useCallback((key) => setOpen(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  }), []);
+
   return (
     <div className="ncal-month">
       <div className="ncal-wdrow">
@@ -73,8 +82,10 @@ function MonthView({ cells, weekdays, onOpenEvent, t }) {
             if (c.cities.length) cls.push('is-trip');
           }
           const labelCity = c.cities.find(x => x.first);
+          const isOpen = open.has(ci);
+          const shown = isOpen ? c.events : c.events.slice(0, 2);
           return (
-            <div key={ci} className={cls.join(' ')}>
+            <div key={ci} className={`${cls.join(' ')}${isOpen ? ' is-open' : ''}`}>
               {/* город(а) дня — сплошная полоса сверху, транзит делит поровну */}
               {c.cities.length > 0 && (
                 <div className="ncal-daytop" aria-hidden="true">
@@ -92,14 +103,18 @@ function MonthView({ cells, weekdays, onOpenEvent, t }) {
               {c.events.length > 0 && (
                 <>
                   <div className="ncal-evl">
-                    {c.events.slice(0, 2).map((e, ei) => (
+                    {shown.map((e, ei) => (
                       <button key={ei} type="button" className={`ncal-ev t-tiny ${evCls(e.type)}`}
                         onClick={() => onOpenEvent?.(e)} aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}>
                         {e.time && <span className="tm">{e.time}</span>}
                         <span className="t">{e.title}</span>
                       </button>
                     ))}
-                    {c.events.length > 2 && <div className="ncal-more t-tiny">+{c.events.length - 2} {t('calendar.more_count')}</div>}
+                    {c.events.length > 2 && (
+                      <button type="button" className="ncal-more t-tiny" onClick={() => toggle(ci)}>
+                        {isOpen ? t('calendar.collapse') : `+${c.events.length - 2} ${t('calendar.more_count')}`}
+                      </button>
+                    )}
                   </div>
                   <div className="ncal-dots" aria-hidden="true">
                     {c.events.slice(0, 5).map((e, ei) => <span key={ei} className={`ncal-dot ${evCls(e.type)}`} />)}
@@ -196,33 +211,22 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
   );
 }
 
-// ─── Aside — trip summary ─────────────────────────────────────────────────────
-function TripAside({ cities, stats, t }) {
-  if (!cities.length && !stats) return null;
+// ─── City legend ──────────────────────────────────────────────────────────────
+// Тонкая горизонтальная легенда цветов городов под календарём — КЛЮЧ к цветным
+// полосам, а не статистика. Никаких счётчиков дней/городов/событий (они уже в
+// шапке приложения — не дублируем).
+function CityLegend({ cities }) {
+  if (!cities.length) return null;
   return (
-    <aside className="ncal-aside">
-      {stats && (
-        <div className="ncal-card ncal-stats">
-          <div className="ncal-stat"><span className="ncal-stat-n t-heading">{stats.days}</span><span className="ncal-stat-l t-tiny">{t('calendar.stat_days')}</span></div>
-          <div className="ncal-stat"><span className="ncal-stat-n t-heading">{stats.cities}</span><span className="ncal-stat-l t-tiny">{t('calendar.stat_cities')}</span></div>
-          <div className="ncal-stat"><span className="ncal-stat-n t-heading">{stats.events}</span><span className="ncal-stat-l t-tiny">{t('calendar.stat_events')}</span></div>
-        </div>
-      )}
-      {cities.length > 0 && (
-        <div className="ncal-card ncal-cities">
-          <div className="ncal-card-h t-micro">{t('calendar.legend_group_cities')}</div>
-          <ul className="ncal-clist">
-            {cities.map((c, i) => (
-              <li key={i} className="ncal-crow">
-                <span className="ncal-cdot" style={{ background: cityPal(c.colorIdx).c }} />
-                <span className="ncal-cname t-label">{c.name}</span>
-                <span className="ncal-crange t-tiny">{c.range}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </aside>
+    <div className="ncal-legend">
+      {cities.map((c, i) => (
+        <span key={i} className="ncal-leg t-meta">
+          <span className="ncal-leg-dot" style={{ background: cityPal(c.colorIdx).c }} />
+          <span className="ncal-leg-name">{c.name}</span>
+          <span className="ncal-leg-range t-tiny">{c.range}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -400,23 +404,12 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
 
   return (
     <div className="ncal ov-anim--cal">
-      {/* ── Header ───────────────────────────────────────────────── */}
+      {/* ── Header — месяц + управление; статистику НЕ дублируем (она в шапке трипа) ── */}
       <header className="ncal-bar">
-        <div className="ncal-bar-title">
-          <h2 className="ncal-title-row">
-            <span className="ncal-month-lbl t-title">{MONTH_NAMES[headMonth]}</span>
-            <span className="ncal-year-lbl t-subheading">{headYear}</span>
-          </h2>
-          {tripMeta && (
-            <div className="ncal-sub t-meta">
-              <span className="ncal-sub-range">{tripMeta.rangeLabel}</span>
-              <span className="ncal-sub-dot" />
-              <span>{tripMeta.stats.cities}&nbsp;{t('calendar.stat_cities')}</span>
-              <span className="ncal-sub-dot" />
-              <span>{tripMeta.stats.events}&nbsp;{t('calendar.stat_events')}</span>
-            </div>
-          )}
-        </div>
+        <h2 className="ncal-title-row">
+          <span className="ncal-month-lbl t-title">{MONTH_NAMES[headMonth]}</span>
+          <span className="ncal-year-lbl t-subheading">{headYear}</span>
+        </h2>
 
         <div className="ncal-bar-ctl">
           <Seg
@@ -437,15 +430,15 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
         </div>
       </header>
 
-      {/* ── Body ─────────────────────────────────────────────────── */}
-      <div className="ncal-body">
-        <div className="ncal-main">
-          {view === 'month'
-            ? <MonthView cells={monthData.cells} weekdays={WD_NAMES} onOpenEvent={onOpenEvent} t={t} />
-            : <WeekGrid days={weekData.days} hours={weekData.hours} lines={weekData.lines} gridH={weekData.gridH} startHour={weekData.startHour} hasAllDay={weekData.hasAllDay} scrollToHour={weekData.scrollToHour} onOpenEvent={onOpenEvent} t={t} />}
-        </div>
-        <TripAside cities={tripMeta?.cities || []} stats={tripMeta?.stats} t={t} />
+      {/* ── Calendar (full width) ─────────────────────────────────── */}
+      <div className="ncal-main">
+        {view === 'month'
+          ? <MonthView cells={monthData.cells} weekdays={WD_NAMES} onOpenEvent={onOpenEvent} t={t} />
+          : <WeekGrid days={weekData.days} hours={weekData.hours} lines={weekData.lines} gridH={weekData.gridH} startHour={weekData.startHour} hasAllDay={weekData.hasAllDay} scrollToHour={weekData.scrollToHour} onOpenEvent={onOpenEvent} t={t} />}
       </div>
+
+      {/* ── City colour legend (slim, below) ──────────────────────── */}
+      <CityLegend cities={tripMeta?.cities || []} />
     </div>
   );
 }

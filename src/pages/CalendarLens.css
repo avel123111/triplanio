@@ -9,31 +9,31 @@
    врали. Все адаптивные правила ниже — @container ncal. */
 .ncal { display: flex; flex-direction: column; gap: 16px; container-type: inline-size; container-name: ncal; }
 
-/* ── Header (текуче-гибкий, без фикс-ширины и без прибитого пина) ── */
-.ncal-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap; }
-.ncal-bar-title { min-width: 0; display: flex; flex-direction: column; gap: 4px; flex: 1 1 auto; }
-.ncal-title-row { display: flex; align-items: baseline; gap: 9px; margin: 0; }
+/* ── Header — крупный месяц слева, единый по высоте кластер управления справа.
+   Все контролы одной высоты (--ctl-h), общий пилюльный радиус → цельная панель.
+   Текуче-гибкий: без фикс-ширины сегмента и без прибитого пина. */
+.ncal-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+.ncal-title-row { display: flex; align-items: baseline; gap: 8px; margin: 0; min-width: 0; flex: 0 1 auto; }
 /* размер/вес/гарнитура — каноны .t-title / .t-subheading (className в JSX) */
 .ncal-month-lbl { color: var(--ink); text-transform: capitalize; line-height: 1.05; }
 .ncal-year-lbl  { color: var(--muted-2); font-variant-numeric: tabular-nums; }
-.ncal-sub { display: flex; align-items: center; gap: 8px; color: var(--muted); flex-wrap: wrap; }
-.ncal-sub-range { color: var(--ink-2); }
-.ncal-sub-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-2); flex: none; }
 
-.ncal-bar-ctl { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; flex: 0 1 auto; }
+.ncal-bar-ctl { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+/* Сегмент месяц/неделя — высота как у остальных контролов */
+.ncal-seg { height: var(--ctl-h); }
 /* Nav cluster: ‹ Сегодня › */
-.ncal-nav { display: flex; align-items: center; gap: 2px; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
+.ncal-nav { display: flex; align-items: center; gap: 2px; height: var(--ctl-h); padding: 0 4px; background: var(--surface-2); border-radius: var(--r-pill); }
 .ncal-today {
-  padding: 6px 12px; border-radius: var(--r-pill);
+  height: calc(var(--ctl-h) - 8px); padding: 0 12px; border-radius: var(--r-pill);
   background: transparent; border: none; color: var(--ink-2); cursor: pointer;
   transition: background .15s, color .15s;
 }
 .ncal-today:hover { background: var(--surface); color: var(--ink); }
 .ncal-today:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
-/* «К поездке» — компактная иконка (без обрезаемого текста) */
+/* «К поездке» — иконка-кнопка той же высоты */
 .ncal-trip-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: var(--ctl-h-sm); height: var(--ctl-h-sm); border-radius: var(--r-pill);
+  width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-pill);
   background: var(--brand-soft); color: var(--brand); border: none; cursor: pointer; flex: none;
   transition: background .15s;
 }
@@ -64,7 +64,7 @@
    visual-diff-exempt: .is-on box-shadow — состояние снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
 
 /* ── Body ───────────────────────────────────────────────────────── */
-.ncal-body { display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: 16px; align-items: start; }
+/* Календарь на всю ширину; сводки-сайдбара нет (статистику не дублируем). */
 .ncal-main { min-width: 0; }
 
 /* ── Month board ───────────────────────────────────────────────── */
@@ -115,7 +115,17 @@
 .ncal-ev.ev-transfer { color: var(--ev-transfer-ink); }
 .ncal-ev.ev-deadline { color: var(--ev-deadline-ink); }
 .ncal-ev.ev-car { color: var(--ev-car-ink); }
-.ncal-more { color: var(--muted); padding-left: 9px; }
+/* «+N ещё» / «Свернуть» — рабочая кнопка (разворачивает день) */
+.ncal-more {
+  display: inline-block; width: 100%; text-align: left;
+  color: var(--muted); background: transparent; border: none; cursor: pointer;
+  padding: 1px 8px; border-radius: var(--r-xs);
+  transition: background .14s, color .14s;
+}
+.ncal-more:hover { background: var(--surface-2); color: var(--ink-2); }
+.ncal-more:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* раскрытый день поднимается над соседями, чтобы показать все события */
+.ncal-dc.is-open { z-index: 2; }
 
 .ncal-dots { display: none; gap: 4px; flex-wrap: wrap; padding: 2px 2px 0; }
 .ncal-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted-2); }
@@ -187,20 +197,12 @@
 .ncal-tev.ev-hotel .ncal-tev-tm, .ncal-tev.ev-activity .ncal-tev-tm, .ncal-tev.ev-transfer .ncal-tev-tm,
 .ncal-tev.ev-deadline .ncal-tev-tm, .ncal-tev.ev-car .ncal-tev-tm { color: inherit; opacity: .72; }
 
-/* ── Aside ─────────────────────────────────────────────────────── */
-.ncal-aside { display: flex; flex-direction: column; gap: 14px; }
-.ncal-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 15px 16px; }
-.ncal-card-h { color: var(--muted-2); margin-bottom: 12px; }
-.ncal-stats { display: flex; justify-content: space-between; gap: 8px; }
-.ncal-stat { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
-.ncal-stat-n { color: var(--ink); font-variant-numeric: tabular-nums; }
-.ncal-stat-l { color: var(--muted); }
-.ncal-stat + .ncal-stat { border-left: 1px solid var(--line); }
-.ncal-clist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
-.ncal-crow { display: flex; align-items: center; gap: 9px; }
-.ncal-cdot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
-.ncal-cname { color: var(--ink-2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ncal-crange { color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
+/* ── City colour legend (slim strip under the calendar) ────────── */
+.ncal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 16px; }
+.ncal-leg { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); }
+.ncal-leg-dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.ncal-leg-name { color: var(--ink-2); }
+.ncal-leg-range { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 @keyframes ncalFadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ncal-month, .ncal-week { animation: ncalFadeSlideIn .22s var(--ease-out) both; }
@@ -213,19 +215,14 @@
    сводка уходит вниз, ячейки компактные, события точками, неделя скроллит
    страницу; хедер — сегмент на всю ширину, навигация+пин пакуются рядом. */
 @container ncal (max-width: 760px) {
-  /* Header: сегмент во всю ширину (тянется/сжимается), под ним — навигация+пин */
-  .ncal-bar-title { flex: 1 1 100%; }
+  /* Header: заголовок на всю строку, ниже — сегмент во всю ширину, ещё ниже —
+     навигация ‹ Сегодня › и пин, упакованные слева (пин не «прибит» к краю). */
+  .ncal-title-row { flex: 1 1 100%; }
   .ncal-bar-ctl { flex: 1 1 100%; justify-content: flex-start; gap: 10px; }
   .ncal-bar-ctl > .ncal-seg { flex: 1 1 100%; display: flex; }
   .ncal-bar-ctl > .ncal-seg button { flex: 1; }
   .ncal-nav { flex: 0 0 auto; }
   .ncal-trip-btn { flex: 0 0 auto; }
-  .ncal-today { padding: 6px 16px; }
-
-  /* Сводка — под календарь */
-  .ncal-body { grid-template-columns: 1fr; }
-  .ncal-aside { flex-direction: column; }
-  .ncal-crange { color: var(--muted-2); }
 
   /* Month: компактные ячейки (без гигантской пустоты), события — точками */
   .ncal-dc { min-height: 64px; padding: 12px 5px 7px; gap: 2px; }
