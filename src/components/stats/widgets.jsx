@@ -72,9 +72,18 @@ export function WorldMini({ world, title, subCaption }) {
   );
 }
 
-// CTA helper for the stat-bar action so callers don't reach for Btn directly.
-export function AllStatsCta({ label, onClick }) {
-  return <Btn variant="soft" onClick={onClick}>{label}<Icon name="arrowR" size={16} /></Btn>;
+// CTA helper for the stat-bar actions so callers don't reach for Btn directly.
+// One helper for every stat-bar button: `variant` picks the DS button tone and
+// `icon` is optional and sits after the label (arrow → next screen) or is passed
+// as a leading node when it belongs before the label (calendar on «Итоги года»).
+export function StatBarCta({ label, onClick, variant = 'soft', icon = null, leadingIcon = null }) {
+  return (
+    <Btn variant={variant} onClick={onClick}>
+      {leadingIcon && <Icon name={leadingIcon} size={16} />}
+      {label}
+      {icon && <Icon name={icon} size={16} />}
+    </Btn>
+  );
 }
 
 // ─── Ф5 widgets (My-statistics screen) ───────────────────────────────────────

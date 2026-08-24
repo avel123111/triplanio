@@ -3,9 +3,11 @@ import { blobToDataUri } from '@/lib/map/captureMap';
 
 // Чистая строковая хирургия фона живёт отдельным модулем (тестируется под
 // node --test без mapbox/supabase-цепочки); здесь — только IO конструктора.
-export { cardBgUri, applyCardBg } from '@/lib/shareCardBg';
+export { applyCardBg } from '@/lib/shareCardBg';
 
-// Must match MAP_PLACEHOLDER in the render-share-card edge function (card_svg mode).
+// Must match MAP_TOKEN in the render-share-card edge function (card_svg mode).
+// Флаги стран в ряду «Visited Countries» edge встраивает сам (FLAGS_B64) —
+// клиентского инлайна нет.
 export const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
 
 // A short retry to ride out a transient invoke failure (network / cold isolate).

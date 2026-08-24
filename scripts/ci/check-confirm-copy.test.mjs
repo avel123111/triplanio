@@ -47,7 +47,14 @@ test('passes when every confirm has title + description (nested + quoted keys)',
   assert.equal(r.code, 0, r.out);
 });
 
-test('RED: fails when description is missing', () => {
+test('passes when a rich content node stands in for the description', () => {
+  const r = run({
+    'src/a.jsx': `confirm({ title: t('x'), content: <EmptyState title={t('x')} body={t('y')} />, singleButton: true });`,
+  });
+  assert.equal(r.code, 0, r.out);
+});
+
+test('RED: fails when neither description nor content is present', () => {
   const r = run({ 'src/a.jsx': `confirm({ title: t('x'), variant: 'destructive' });` });
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, /a\.jsx:1 — confirm\(\) missing description/);

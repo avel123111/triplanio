@@ -1,36 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cardBgUri, applyCardBg } from './shareCardBg.js';
+import { applyCardBg } from './shareCardBg.js';
 
-// Фикстура повторяет структуру шаблона render-share-card: фон — единственный
-// jpeg-data-URI, остальные <image> — png (самолётик, карта).
+// Фикстура повторяет структуру шаблона render-share-card (TRIP-443): фон —
+// full-bleed <image> с токеном __SHARE_CARD_BG__ в самом низу; карта — свой токен.
 const SVG =
-  '<svg><image href="data:image/png;base64,PLANE=="/>' +
-  '<image href="data:image/jpeg;base64,BG+DEFAULT/0=" x="0"/>' +
-  '<image href="data:image/png;base64,MAP=="/><text>t</text></svg>';
+  '<svg><image href="__SHARE_CARD_BG__" x="0" y="0" width="1080" height="1920" preserveAspectRatio="xMidYMid slice"/>' +
+  '<image href="__SHARE_CARD_MAP__" x="10" y="10"/><text>t</text></svg>';
 
-test('cardBgUri вытаскивает единственный jpeg-фон шаблона', () => {
-  assert.equal(cardBgUri(SVG), 'data:image/jpeg;base64,BG+DEFAULT/0=');
-});
-
-test('cardBgUri: нет jpeg — пусто (сторож контракта в ShareCardDialog)', () => {
-  assert.equal(cardBgUri('<svg><image href="data:image/png;base64,A"/></svg>'), '');
-  assert.equal(cardBgUri(''), '');
-  assert.equal(cardBgUri(undefined), '');
-});
-
-test('applyCardBg подменяет ТОЛЬКО фон, png-ассеты не трогает', () => {
+test('applyCardBg подставляет выбранную подложку в токен фона', () => {
   const out = applyCardBg(SVG, 'data:image/webp;base64,USER+PIC/9=');
-  assert.ok(out.includes('data:image/webp;base64,USER+PIC/9='));
-  assert.ok(!out.includes('BG+DEFAULT'));
-  assert.ok(out.includes('data:image/png;base64,PLANE=='));
-  assert.ok(out.includes('data:image/png;base64,MAP=='));
+  assert.ok(out.includes('href="data:image/webp;base64,USER+PIC/9="'));
+  assert.ok(!out.includes('__SHARE_CARD_BG__'));
+  // Токен карты не трогаем.
+  assert.ok(out.includes('__SHARE_CARD_MAP__'));
 });
 
-test('applyCardBg: пустой bgDataUri / нет матча = SVG без изменений', () => {
-  assert.equal(applyCardBg(SVG, ''), SVG);
-  const noJpeg = '<svg><rect fill="#fff"/></svg>';
-  assert.equal(applyCardBg(noJpeg, 'data:image/webp;base64,A'), noJpeg);
+test('applyCardBg: пустой bgDataUri удаляет элемент фона (прозрачно)', () => {
+  const out = applyCardBg(SVG, '');
+  assert.ok(!out.includes('__SHARE_CARD_BG__'));
+  assert.ok(!out.includes('<image href="data:'));
+  // Удалён только фон — карта и текст на месте.
+  assert.ok(out.includes('__SHARE_CARD_MAP__'));
+  assert.ok(out.includes('<text>t</text>'));
+});
+
+test('applyCardBg: пустой/битый вход', () => {
+  assert.equal(applyCardBg('', 'data:image/webp;base64,A'), '');
+  assert.equal(applyCardBg(undefined, 'data:image/webp;base64,A'), undefined);
 });
 
 test('applyCardBg не интерпретирует спецпаттерны replace в подменяемом URI', () => {

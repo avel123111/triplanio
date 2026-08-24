@@ -37,7 +37,7 @@ export function buildRoute(visits, transfers, showSE) {
 // `dot` is a red marker (Pavel's request). `badge` = base icon-size for the city
 // label image (1 = its native pixels; the preview downscales it by the same `s`).
 export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11, badge: 1 };
-export const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
+const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
 
 // City-label badge geometry (all logical px). The badge is composited to ONE image
 // (flag + name), so alignment is pixel-exact and the name size is whatever we draw

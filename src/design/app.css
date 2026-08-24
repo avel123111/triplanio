@@ -8746,8 +8746,15 @@ a.doc-row__n:hover{ color: var(--brand); }
    mono face already reads as spaced in caps, and widening it both truncated the
    longest labels and pushed the one-row minimum from 765px to 845px. */
 .statbar .k { color: var(--muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* капс — из канона .t-tiny-caps (co-selector) */
-.statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
-.statbar .cta button { width: 100%; }
+/* TRIP-302: ячейка CTA держит теперь ДВЕ кнопки («Итоги года» + «Вся статистика»),
+   поэтому появился gap; ширину каждой больше не пиним (width:100% на двух детях в
+   ряду схлопывало их) — на десктопе кнопки идут по своему контенту, на телефоне
+   растягиваются align-items:stretch в колонке (медиа ≤640 ниже). Апрув Pavel.
+   visual-diff-exempt: .cta gap — вторая кнопка в ячейке CTA (TRIP-302)
+   visual-diff-exempt: .statbar gap — тот же gap, приписан .statbar по правилу .statbar .cta (TRIP-302)
+   visual-diff-exempt: .statbar .cta button width — снят width:100%: два ребёнка в ряду вместо одного (TRIP-302)
+*/
+.statbar .cta { display: flex; align-items: center; gap: var(--sp-4); padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
 /* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */
 .ov-col .statbar { margin-top: 0; }
 /* 2-col wrap — one shape for both bars (mockup v01): the vertical hairline stays
@@ -8761,7 +8768,14 @@ a.doc-row__n:hover{ color: var(--brand); }
   .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
   .statbar .s.c-duration { order: 0; }
   .statbar .s.c-distance { flex: 1 0 100%; }
-  .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line); padding: 12px; }
+  /* TRIP-302: на телефоне две кнопки CTA встают друг под другом (Итоги года
+     сверху — порядок в DOM), полосой во всю ширину ячейки.
+     visual-diff-exempt: .cta {@media (max-width: 640px)} flex-direction — кнопки CTA в колонку на телефоне (TRIP-302)
+     visual-diff-exempt: .cta {@media (max-width: 640px)} align-items — кнопки CTA растянуты на всю ширину (TRIP-302)
+     visual-diff-exempt: .statbar {@media (max-width: 640px)} flex-direction — то же, приписано .statbar по правилу .statbar .cta (TRIP-302)
+     visual-diff-exempt: .statbar {@media (max-width: 640px)} align-items — то же, приписано .statbar по правилу .statbar .cta (TRIP-302)
+  */
+  .statbar .cta { flex: 1 0 100%; flex-direction: column; align-items: stretch; border-left: 0; border-top: 1px solid var(--line); padding: 12px; }
 }
 /* The overview bar sizes on its own (column) width, not the viewport — at 880 the
    sidebar goes off-canvas AND .ovwrap collapses to one column, so the available
