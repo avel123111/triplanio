@@ -50,8 +50,6 @@
   "per_month_short": "/мес",
   "per_year_short": "/год",
   "plan_current": "Текущий тариф",
-  "free_tariff": "Бесплатный тариф",
-  "access_until": "доступ до {date}",
   "pref_language": "Язык",
   "pref_language_sub": "Язык интерфейса",
   "pref_theme_sub": "Светлое или тёмное оформление",

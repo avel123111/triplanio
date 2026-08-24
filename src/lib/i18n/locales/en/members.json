@@ -3,6 +3,7 @@
   "badge_admin": "Admin",
   "badge_owner": "Owner",
   "badge_viewer": "Viewer",
+  "blocked_title": "Blocked",
   "change_role": "Change role",
   "empty": "It's just you. Invite someone!",
   "invite": "Invite",
@@ -10,8 +11,10 @@
   "offline_name": "Name",
   "pending": "pending",
   "remove": "Remove from trip",
+  "remove_and_block": "Remove and block",
   "resend": "Resend",
   "send_invite": "Send invitation",
   "title": "Members",
+  "unblock": "Unblock",
   "you": "you"
 }

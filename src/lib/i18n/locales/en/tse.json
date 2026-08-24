@@ -56,6 +56,7 @@
   "route_show": "Show route",
   "section_road": "Travel",
   "start_already_set": "Start is already set, remove the current one first",
+  "tk_plane": "Flight",
   "transfers_out_of_plan": "Transfers out of plan",
   "warns_short": "{n} warn."
 }
