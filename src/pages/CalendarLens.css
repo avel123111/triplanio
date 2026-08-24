@@ -12,13 +12,15 @@
    floor-exempt: classes +16 — новые каноны CityBar/EventChip + раскладка сетки; апрув Pavel
    floor-exempt: namespaces +1 — namespace citybar/evchip за вычетом снятых старых ncal; апрув Pavel
    floor-exempt: triage +7 — семья ncal (раскладка) выросла на структуру недельной сетки; апрув Pavel
-   floor-exempt: layout +16 — приватная раскладка календаря (сетка/тайм-грид/слой имён/ужим по высоте); апрув Pavel
+   floor-exempt: layout +17 — приватная раскладка календаря (сетка/тайм-грид/слой имён/ужим по высоте; .ncal-main стал flex-колонкой тянущей month/week под высоту экрана); апрув Pavel
    floor-exempt: dsshare +18 — сетка календаря структурно div-тяжёлая; −0.18% доли ДС; апрув Pavel */
 
 /* Календарь реагирует на СВОЮ ширину (контейнер), а не на ширину окна —
    он рендерится в узком мобильном фрейме приложения, поэтому оконные @media
    врали. Все адаптивные правила ниже — @container ncal. */
-.ncal { display: flex; flex-direction: column; gap: var(--sp-7); container-type: inline-size; container-name: ncal; }
+/* Десктоп: линза заполняет видимую высоту скроллящегося <main> (flex-цепочка,
+   без магических чисел) → месяц ужимается ПОД экран, а не тянет страницу. */
+.ncal { display: flex; flex-direction: column; gap: var(--sp-7); height: 100%; min-height: 0; container-type: inline-size; container-name: ncal; }
 
 /* ── Header — 4 контрола одной высоты (--ctl-h), текуче-гибкие.
    ДЕСКТОП (1 строка): ‹ Август 2026 › ....... Сегодня · [Месяц|Неделя] · К поездке.
@@ -69,12 +71,12 @@
 /* ── Body — календарь + правый виджет городов ───────────────────── */
 /* Десктоп: две колонки (календарь тянется, виджет фикс). Мобайл (@container
    ниже): виджет уходит ПОД календарь. */
-.ncal-body { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: var(--sp-7); align-items: start; }
-.ncal-main { min-width: 0; }
+.ncal-body { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: var(--sp-7); align-items: stretch; flex: 1; min-height: 0; }
+.ncal-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 
 /* Правый виджет городов — поверхность/рамку/радиус даёт канон <Card>; строки =
    канон <ListRow variant="compact">. Здесь — раскладка виджета + лид/трейл. */
-.card.ncal-aside { display: flex; flex-direction: column; gap: 4px; padding: 12px 10px; position: sticky; top: 12px; }
+.card.ncal-aside { display: flex; flex-direction: column; gap: 4px; padding: 12px 10px; position: sticky; top: 12px; align-self: start; }
 .ncal-aside-h { color: var(--muted); padding: 2px 6px 6px; }
 .ncal-aside-list { display: flex; flex-direction: column; gap: 1px; }
 .ncal-ci-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
@@ -84,7 +86,7 @@
 /* Поверхность/рамку/радиус/overflow даёт канон <Card radius="md" pad="none">;
    здесь — только внутренняя раскладка доски. ДЕСКТОП: доска ужимается по высоте
    экрана (недели делят высоту поровну, без страничного скролла), как неделя. */
-.ncal-month { display: flex; flex-direction: column; max-height: calc(100vh - 200px); }
+.ncal-month { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .ncal-wdrow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--surface-3); border-bottom: 1px solid var(--line); flex: none; }
 .ncal-wd { text-align: center; color: var(--muted); padding: 9px 0; }
 /* Доска = стопка НЕДЕЛЬНЫХ рядов (нужна для слоя сплошных имён-прогонов).
@@ -143,7 +145,7 @@
 /* ── Week time-grid (full day, capped height) ──────────────────── */
 /* Поверхность/рамку/радиус/overflow даёт канон <Card radius="md" pad="none">;
    здесь — раскладка тайм-грида. */
-.ncal-week { --ncal-gut: 54px; display: flex; flex-direction: column; }
+.ncal-week { --ncal-gut: 54px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .ncal-wk-head, .ncal-wk-allday { display: grid; grid-template-columns: var(--ncal-gut) repeat(7, minmax(0, 1fr)); flex: none; }
 .ncal-wk-head { border-bottom: 1px solid var(--line); background: var(--surface); }
 .ncal-wk-gut { border-right: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted-2); position: sticky; left: 0; z-index: 3; background: var(--surface); }
@@ -164,7 +166,7 @@
 
 /* Внутренний скролл: календарь всегда в пределах экрана на десктопе, скроллит
    только сетка; снизу — воздух (padding-bottom), чтобы последний час не липнул. */
-.ncal-wk-scroll { flex: 1; min-height: 0; max-height: calc(100vh - 260px); overflow-y: auto; padding-bottom: 20px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.ncal-wk-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 20px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 .ncal-wk-scroll::-webkit-scrollbar { width: 8px; }
 .ncal-wk-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
 /* Сетка = grid [ось времени][колонки]; ось времени sticky влево → при
@@ -198,13 +200,14 @@
   .ncal-trip-lbl { display: none; }        /* «К поездке» — иконкой на мобиле */
 
   /* Виджет городов уходит ПОД календарь (одна колонка), не липнет */
-  .ncal-body { grid-template-columns: 1fr; }
+  .ncal { height: auto; }
+  .ncal-body { grid-template-columns: 1fr; flex: none; align-items: start; }
   .ncal-aside { position: static; }
   .ncal-aside-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px; }
 
-  /* Month: НЕ ужимаем по высоте — на мобиле страница скроллит, ячейки растут.
+  /* Month/Week: НЕ ужимаем по высоте — на мобиле страница скроллит, ячейки растут.
      Компактные ячейки (без гигантской пустоты), события — точками. */
-  .ncal-month { max-height: none; }
+  .ncal-month, .ncal-week { flex: none; }
   .ncal-grid { flex: none; }
   .ncal-wk-row { flex: none; }
   .ncal-dc { min-height: 66px; overflow: visible; padding: var(--sp-8) 5px 7px; gap: 2px; }
@@ -959,11 +962,30 @@
 /* visual-diff-exempt: .ncal-grid {@container ncal (max-width: 760px)} flex — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
 /* visual-diff-exempt: .ncal-grid flex — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
 /* visual-diff-exempt: .ncal-grid min-height — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
-/* visual-diff-exempt: .ncal-month {@container ncal (max-width: 760px)} max-height — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
 /* visual-diff-exempt: .ncal-month display — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
 /* visual-diff-exempt: .ncal-month flex-direction — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
-/* visual-diff-exempt: .ncal-month max-height — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
 /* visual-diff-exempt: .ncal-wdrow flex — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
 /* visual-diff-exempt: .ncal-wk-row {@container ncal (max-width: 760px)} flex — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
 /* visual-diff-exempt: .ncal-wk-row flex — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
 /* visual-diff-exempt: .ncal-wk-row min-height — month-view ужимается по высоте экрана на десктопе; апрув Pavel */
+/* Флекс-цепочка «месяц/неделя под высоту экрана» (замена vh-костыля на flex:1
+   от .ncal height:100% вниз); мобайл возвращает auto-высоту (страница скроллит).
+   Облик проверен рендером (месяц заполняет экран, скролла страницы нет). Апрув Pavel. */
+/* visual-diff-exempt: .ncal height — month-view заполняет высоту экрана флекс-цепочкой; апрув Pavel */
+/* visual-diff-exempt: .ncal min-height — month-view заполняет высоту экрана флекс-цепочкой; апрув Pavel */
+/* visual-diff-exempt: .ncal {@container ncal (max-width: 760px)} height — на мобиле страница скроллит; апрув Pavel */
+/* visual-diff-exempt: .ncal-body flex — month-view заполняет высоту экрана флекс-цепочкой; апрув Pavel */
+/* visual-diff-exempt: .ncal-body min-height — month-view заполняет высоту экрана флекс-цепочкой; апрув Pavel */
+/* visual-diff-exempt: .ncal-body {@container ncal (max-width: 760px)} flex — на мобиле тело не тянется; апрув Pavel */
+/* visual-diff-exempt: .ncal-body {@container ncal (max-width: 760px)} align-items — на мобиле одна колонка; апрув Pavel */
+/* visual-diff-exempt: .ncal-main display — колонка-обёртка тянет month/week по высоте; апрув Pavel */
+/* visual-diff-exempt: .ncal-main flex-direction — колонка-обёртка тянет month/week по высоте; апрув Pavel */
+/* visual-diff-exempt: .ncal-main min-height — колонка-обёртка тянет month/week по высоте; апрув Pavel */
+/* visual-diff-exempt: .ncal-month flex — month-view заполняет высоту экрана флекс-цепочкой; апрув Pavel */
+/* visual-diff-exempt: .ncal-month min-height — month-view заполняет высоту экрана флекс-цепочкой; апрув Pavel */
+/* visual-diff-exempt: .ncal-month {@container ncal (max-width: 760px)} flex — на мобиле месяц auto-высота; апрув Pavel */
+/* visual-diff-exempt: .ncal-week flex — week-view заполняет высоту экрана флекс-цепочкой; апрув Pavel */
+/* visual-diff-exempt: .ncal-week min-height — week-view заполняет высоту экрана флекс-цепочкой; апрув Pavel */
+/* visual-diff-exempt: .ncal-week {@container ncal (max-width: 760px)} flex — на мобиле неделя auto-высота; апрув Pavel */
+/* visual-diff-exempt: .card align-self — правый виджет городов не тянется на всю высоту доски; апрув Pavel */
+/* visual-diff-exempt: .ncal-aside align-self — правый виджет городов не тянется на всю высоту доски; апрув Pavel */
