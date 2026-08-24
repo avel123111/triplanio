@@ -110,20 +110,28 @@ h1, h2, h3, h4 {
 }
 
 /* TRIP-165 — заголовки лендинга на КАНОН-ТОКЕНЫ (--fs-*), без сырых px.
-   TRIP-203 — адаптив несут сами fluid-токены (clamp), без ручных @media-ступенек. */
+   TRIP-203 — адаптив несут сами fluid-токены (clamp), без ручных @media-ступенек.
+
+   ⚠️ ЗНАЧЕНИЯ ЭТИХ ТОКЕНОВ ЖИВУТ В src/design/app.css :root, НЕ ЗДЕСЬ.
+   У сайтовой ДС своей типографической шкалы нет — она приезжает из ДС
+   приложения (9 токенов --fs-*), и уже дважды уезжала от PR, которые лендинг
+   не трогали: --fs-display 44→40, --fs-h1 26→24, --fs-h2 16.5→18 (август).
+   Поэтому чисел в комментариях рядом с var() здесь БОЛЬШЕ НЕТ: они обещали
+   54/40/26/19, а токены давали 40/24/18/16 — врали на 14 px, пока не замерили
+   (аудит TRIP-445, handoff §3; решение по шкале — открытый вопрос 8). */
 h1 {
-  font-size: var(--fs-display);   /* 54 — крупнейший */
+  font-size: var(--fs-display);   /* канон .t-display */
   line-height: 1.02;
   letter-spacing: var(--h1-tracking);
   font-weight: 700;
 }
 h2 {
-  font-size: var(--fs-h1);        /* 40 — секционные */
+  font-size: var(--fs-h1);        /* канон .t-title — секционные */
   line-height: 1.08;
   letter-spacing: var(--display-tracking);
 }
 h3 {
-  font-size: var(--fs-h2);        /* 26 */
+  font-size: var(--fs-h2);        /* канон .t-heading */
   line-height: 1.15;
   letter-spacing: var(--display-tracking);
 }
@@ -132,7 +140,7 @@ h3 {
    каноны --fs-display/--fs-h1/--fs-h2 теперь fluid (clamp). Ручные @media-ступеньки убраны. */
 
 .lede {
-  font-size: var(--fs-h3);        /* 19 — канон t-subheading */
+  font-size: var(--fs-h3);        /* канон .t-subheading */
   line-height: 1.6;
   color: var(--muted);
   max-width: 64ch;
@@ -152,7 +160,7 @@ h3 {
   transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
   white-space: nowrap;
 }
-.btn--lg { padding: 15px 26px; font-size: var(--fs-h4); border-radius: 14px; }
+.btn--lg { padding: 15px 26px; font-size: var(--ctl-fs); border-radius: 14px; }
 .btn--primary {
   background: var(--brand);
   color: #fff;
@@ -287,11 +295,16 @@ h3 {
   transform: translateY(-12px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity .3s ease, transform .3s ease;
+  /* То же, что у .langdd__menu, и хуже: дровер несёт aria-hidden="true", а
+     `.hamburger` выше 900px скрыт — на десктопе открыть его нельзя вовсе, но
+     без `visibility` его CTA и три ссылки стоят в порядке табов ВНУТРИ
+     aria-hidden (жёсткое нарушение WCAG 4.1.2). */
+  visibility: hidden;
+  transition: opacity .3s ease, transform .3s ease, visibility 0s linear .3s;
   border-bottom: 1px solid var(--line);
   box-shadow: 0 24px 48px -24px rgba(11,44,84,.18);
 }
-.drawer.is-open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.drawer.is-open { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .3s ease, transform .3s ease, visibility 0s; }
 .drawer ul { list-style: none; padding: 8px 0; margin: 0; }
 .drawer li { padding: 0 24px; }
 .drawer li a {
@@ -339,7 +352,7 @@ h3 {
 .hero h1 .accent { color: var(--brand); }
 .hero__lede {
   margin-top: 22px;
-  font-size: var(--fs-h3);   /* 19 — канон t-subheading (TRIP-165) */
+  font-size: var(--fs-h3);   /* канон .t-subheading (TRIP-165) */
   color: var(--muted);
   line-height: 1.55;
 }
@@ -557,7 +570,7 @@ h3 {
   text-align: center;
   color: var(--brand);
   font-family: var(--font-display);
-  font-size: var(--fs-h3);   /* 19 — канон t-subheading (TRIP-165) */
+  font-size: var(--fs-h3);   /* канон .t-subheading (TRIP-165) */
   letter-spacing: -0.02em;
   font-weight: 500;
 }
@@ -722,8 +735,8 @@ h3 {
 }
 .deep + .deep { border-top: 1px solid var(--line-2); }
 .deep--reverse .deep__copy { order: 2; }
-.deep__copy h3 { margin: 14px 0 16px; font-size: var(--fs-h2); }   /* 26 — канон t-heading (TRIP-165) */
-.deep__copy p { color: var(--muted); font-size: var(--fs-h4); line-height: 1.6; }   /* 16 — канон t-label (TRIP-165) */
+.deep__copy h3 { margin: 14px 0 16px; font-size: var(--fs-h2); }   /* канон .t-heading (TRIP-165) */
+.deep__copy p { color: var(--muted); font-size: var(--ctl-fs); line-height: 1.6; }   /* канон .t-label */
 .deep__highlights {
   list-style: none;
   margin: 22px 0 0;
@@ -1010,7 +1023,7 @@ h3 {
   border-top: 1px solid var(--line);
   color: var(--muted);
 }
-.footer .brand { color: var(--ink); font-size: var(--fs-h4); }
+.footer .brand { color: var(--ink); font-size: var(--ctl-fs); }
 .footer .brand__mark { width: 26px; height: 26px; }
 .footer__top {
   display: flex;
@@ -1132,7 +1145,12 @@ html.reveal--ready .reveal.is-in { animation: revealIn .6s ease both; }
   transform: translateY(-4px) scale(.98);
   transform-origin: top right;
   pointer-events: none;
-  transition: opacity .15s ease, transform .15s ease;
+  /* `pointer-events` отключает мышь, но НЕ клавиатуру: без `visibility` три
+     пункта закрытого дропдауна остаются в порядке табов и в дереве доступности
+     (замер: 6 таких на лендинге — шапка + подвал). Задержка = длительности
+     перехода, чтобы `visibility` не обрезала анимацию закрытия. */
+  visibility: hidden;
+  transition: opacity .15s ease, transform .15s ease, visibility 0s linear .15s;
 }
 .langdd--up .langdd__menu {
   top: auto;
@@ -1143,6 +1161,8 @@ html.reveal--ready .reveal.is-in { animation: revealIn .6s ease both; }
   opacity: 1;
   transform: translateY(0) scale(1);
   pointer-events: auto;
+  visibility: visible;
+  transition: opacity .15s ease, transform .15s ease, visibility 0s;
 }
 .langdd__item {
   width: 100%;
