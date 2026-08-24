@@ -521,6 +521,35 @@ function useFaqCloseOthers(ready) {
 }
 
 /* ── FAQ ── */
+/* ── Final CTA ── data-hdr="accent" is the producer for the 9 on-accent
+   header rules (§4) — SiteHeader's on-<theme> class only ever renders
+   'accent' when a [data-hdr] section actually carries that value; this
+   section is the only one in the prototype that does. */
+function FinalCta() {
+  const t = useT();
+  const nav = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  return (
+    <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
+      <span className="horizon" aria-hidden="true" />
+      <div className="wrap inner">
+        <div className="rv">
+          <span className="brow" style={{ justifyContent: 'center' }}>{t('landing.fin.eyebrow')}</span>{/* inline-style-exempt: prototype's own one-off centering */}
+          <h2 style={{ marginTop: '14px' }} dangerouslySetInnerHTML={{ __html: t('landing.fin.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
+          <p>{t('landing.fin.sub')}</p>
+          <div className="ctas">
+            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
+              <span>{t('landing.fin.cta1')}</span>
+              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Faq() {
   const t = useT();
   return (
@@ -866,6 +895,7 @@ export default function LandingPage() {
         <Assistant />
         <Share />
         <Faq />
+        <FinalCta />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
