@@ -59,9 +59,9 @@ html.site {
   /* Кегли — 11 ступеней (замена 37 уникальных rem-значений), покрытие 108/108,
      макс. сдвиг 1px (таблица «было → стало → сдвиг» в теле PR, TRIP-460). Каждое
      font-size в теле ниже — var(--fs-*), сырых rem/px/clamp не осталось. */
-  --fs-micro:10px; --fs-tiny:11px; --fs-caption:12px; --fs-small:13px;
-  --fs-body:14px; --fs-body-lg:15px; --fs-lead:16px; --fs-lead-lg:17px;
-  --fs-h4:18px; --fs-h3:21px; --fs-h2:30px;
+  --fs-micro:9.6px; --fs-tiny:10.56px; --fs-caption:11.52px; --fs-small:12.64px;
+  --fs-body:13.6px; --fs-body-lg:14.72px; --fs-lead:15.68px; --fs-lead-lg:16.8px;
+  --fs-h4:18.08px; --fs-h3:20.8px; --fs-h2:30.4px;
 
   /* Текучие (clamp) заголовки — адаптивность прототипа, не шум; значение не
      меняется, только именовано токеном (включая мобильные @media-ступени). */
