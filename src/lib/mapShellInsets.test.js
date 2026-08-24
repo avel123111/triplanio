@@ -8,40 +8,59 @@ test('★★ ТЕЛЕФОН: шит режет ВЫСОТУ — её забир�
   // Размер глобуса mapbox считает от высоты ХОЛСТА. Оставь холст во весь экран,
   // а свободным местом полоску — и высоты разойдутся втрое: шар считается от
   // одной, показывается в другой. Именно так его и сломали.
-  assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 612, cornerPx: 20 }), { slotBottom: 592, camera: NONE });
-  assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 135, cornerPx: 20 }), { slotBottom: 115, camera: NONE });
+  assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 612, cornerPx: 20 }), { slotBottom: 592, slotUnder: 20, camera: NONE });
+  assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 135, cornerPx: 20 }), { slotBottom: 115, slotUnder: 20, camera: NONE });
 });
 
 test('★★ ДЕСКТОП: панель режет ШИРИНУ — холст целый, кадр уводит камера', () => {
   // По вертикали не закрыто ничего, высота холста = высоте свободного окна →
   // размер шара попадает точно и без сжатия холста.
-  assert.deepEqual(mapShellInsets({ panelPx: 550 }), { slotBottom: 0, camera: { ...NONE, left: 550 } });
+  assert.deepEqual(mapShellInsets({ panelPx: 550 }), { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 } });
 });
 
 test('свёрнутая панель не закрывает ничего', () => {
-  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true }), { slotBottom: 0, camera: NONE });
+  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true }), { slotBottom: 0, slotUnder: 0, camera: NONE });
 });
 
 test('★ режимы не смешиваются: чужая величина не читается', () => {
   // Шит в портале успевает подержать прошлую высоту на переходе в десктоп —
   // прочитать её значит отрезать у десктопной карты низ по призраку.
   assert.deepEqual(mapShellInsets({ phone: false, sheetPx: 612, panelPx: 550, cornerPx: 20 }),
-    { slotBottom: 0, camera: { ...NONE, left: 550 } });
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 } });
   assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 612, panelPx: 550, cornerPx: 20 }),
-    { slotBottom: 592, camera: NONE });
+    { slotBottom: 592, slotUnder: 20, camera: NONE });
 });
 
 test('заход под скругление не уводит слот в минус', () => {
-  assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 12, cornerPx: 20 }), { slotBottom: 0, camera: NONE });
+  assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 12, cornerPx: 20 }), { slotBottom: 0, slotUnder: 12, camera: NONE });
 });
 
 test('★ немеряное вырождается в «карта во всю площадь», а не в минус', () => {
   for (const bad of [0, -40, NaN, Infinity, undefined, null, '550']) {
     assert.deepEqual(mapShellInsets({ phone: true, sheetPx: /** @type {any} */ (bad) }),
-      { slotBottom: 0, camera: NONE });
+      { slotBottom: 0, slotUnder: 0, camera: NONE });
     assert.deepEqual(mapShellInsets({ panelPx: /** @type {any} */ (bad) }),
-      { slotBottom: 0, camera: NONE });
+      { slotBottom: 0, slotUnder: 0, camera: NONE });
   }
+});
+
+test('★ ЗАХОД ПОД ШИТ — ВТОРАЯ ПОЛОВИНА СЛОТА, И ОН НЕ БОЛЬШЕ САМОГО ШИТА', () => {
+  // Его читает то, что экран кладёт ПОВЕРХ карты: «низ карты» у такого элемента —
+  // низ КАНВАСА, а канвас намеренно уходит под шит на радиус скруглений. Без этой
+  // величины отступ считается от точки под шитом — так пилюля планировщика и
+  // оказывалась лежащей на нём.
+  // Инвариант: слот + заход = высота шита ровно, на любых входах.
+  for (const [sheet, corner] of [[612, 20], [135, 20], [12, 20], [0, 20], [400, 0]]) {
+    const box = mapShellInsets({ phone: true, sheetPx: sheet, cornerPx: corner });
+    assert.equal(box.slotBottom + box.slotUnder, Math.max(0, sheet), `${sheet}/${corner}`);
+    // Условие разбито на две строки не для красоты: знаки «больше» и «меньше» на
+    // ОДНОЙ строке сканер i18n читает как JSX-текст (та же ловушка, что у разбора
+    // жеста в `sheetDetents`).
+    assert.ok(box.slotUnder >= 0, `заход не бывает отрицательным, ${sheet}/${corner}`);
+    assert.ok(box.slotUnder <= Math.max(0, sheet), `заход не бывает больше шита, ${sheet}/${corner}`);
+  }
+  // Десктоп: шита нет — заходить не подо что, и читатель обязан получить ноль.
+  assert.equal(mapShellInsets({ panelPx: 550 }).slotUnder, 0);
 });
 
 test('дробные измерения округляются (пиксель — целое)', () => {
@@ -50,7 +69,7 @@ test('дробные измерения округляются (пиксель �
 });
 
 test('без аргументов — карта во всю площадь', () => {
-  assert.deepEqual(mapShellInsets(), { slotBottom: 0, camera: NONE });
+  assert.deepEqual(mapShellInsets(), { slotBottom: 0, slotUnder: 0, camera: NONE });
 });
 
 // ── момент смены размера слота ───────────────────────────────────────────────

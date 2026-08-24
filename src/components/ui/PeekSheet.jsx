@@ -198,6 +198,7 @@ export function PeekSheet({
       const { index: i, stops: st, vh: h } = live.current;
       drag.current = {
         startY: e.touches[0].clientY,
+        startX: e.touches[0].clientX,
         base: Math.max(0, h - (st[i] ?? 0)),
         min: Math.max(0, h - (st[st.length - 1] ?? 0)), // самый высокий детент
         max: Math.max(0, h - (st[0] ?? 0)),             // самый низкий
@@ -219,6 +220,7 @@ export function PeekSheet({
       const dy = y - d.startY; // + вниз, − вверх
       if (d.mode === 'idle') {
         if (Math.abs(dy) < 4) return; // ждём намерения
+        const dx = e.touches[0].clientX - d.startX; // + вправо, − влево
         // Кому жест — решает чистое правило (закрыто тестами): грип и шапка
         // всегда двигают шит, тело скроллится на ЛЮБОМ детенте, а тяга вниз от
         // самого верха тела опускает шит.
@@ -227,6 +229,10 @@ export function PeekSheet({
           onHandle: d.onHandle,
           // В содержимом уже тащат карточку (перестановка городов) — жест не наш.
           dragElsewhere: document.documentElement.hasAttribute('data-dragging'),
+          // Осевой замок: горизонтальный свайп принадлежит содержимому (лента
+          // обложек листается нативным scroll-snap'ом), а не шиту — разбор в
+          // `gestureOwner`.
+          dx,
           dy,
           scrollTop: body?.scrollTop ?? 0,
           scrollHeight: body?.scrollHeight ?? 0,

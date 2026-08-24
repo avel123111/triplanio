@@ -84,6 +84,29 @@ test('жест: без аргументов — шит (нечего скрол�
   assert.equal(gestureOwner(), 'drag');
 });
 
+test('★ ОСЕВОЙ ЗАМОК: горизонтальный свайп шиту не принадлежит', () => {
+  // Лента обложек на шаге проверки трипа листается нативным scroll-snap'ом по
+  // горизонтали. Палец проезжает сотню пикселей вбок и десяток вниз — по одному
+  // `dy` это «тянут вниз от верха тела», то есть «опустить шит»: лента листалась,
+  // а шит уезжал вниз и закрывался.
+  assert.equal(gestureOwner({ dx: 120, dy: 10, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'none');
+  assert.equal(gestureOwner({ dx: -120, dy: 10, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'none');
+  // Замок сильнее ручки: свайп вбок по шапке — тоже не тяга шита.
+  assert.equal(gestureOwner({ onHandle: true, dx: 120, dy: -10 }), 'none');
+  // …и сильнее «скроллить нечего» (иначе горизонталь снова доставалась бы шиту).
+  assert.equal(gestureOwner({ dx: 120, dy: 10, scrollTop: 0, scrollHeight: 300, clientHeight: 300 }), 'none');
+});
+
+test('★ ОСЕВОЙ ЗАМОК: вертикаль с боковым сносом остаётся у шита', () => {
+  // Иначе замок съел бы обычный свайп: палец по диагонали ведут постоянно.
+  assert.equal(gestureOwner({ dx: 20, dy: 80, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'drag');
+  assert.equal(gestureOwner({ dx: -20, dy: -80, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'scroll');
+  // Ровная диагональ — вертикаль: это поверхность шита, сравнение строгое.
+  assert.equal(gestureOwner({ dx: 60, dy: 60, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'drag');
+  // Без `dx` (старые вызыватели) поведение прежнее.
+  assert.equal(gestureOwner({ dy: 60, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'drag');
+});
+
 test('жест: пока тащат карточку в содержимом, шит не берёт его вовсе', () => {
   // Иначе перестановка города на телефоне невозможна: шит уезжает вместе с ним.
   assert.equal(gestureOwner({ dragElsewhere: true, dy: 80, scrollTop: 0, scrollHeight: 900, clientHeight: 300 }), 'none');
