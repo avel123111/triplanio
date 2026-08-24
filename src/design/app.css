@@ -888,7 +888,9 @@ h4,
 .card p,
 .step p,
 .trust__item,
-.langdd__item,
+/* .langdd__item снят (TRIP-460): язык-переключатель зоны переехал на
+   прототипные .lang-btn/.lang-menu, у которых typography полностью своя
+   (site.css задаёт font-size явно) — канон-запись больше не читалась. */
 /* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
    `.t-label` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
    как надпись НА кнопке (канон .t-label, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
@@ -1068,8 +1070,8 @@ h4,
 .appnudge .sub,
 .brand-col__trust,
 .phone .bubble,
-.langdd__btn,
-.langdd__item .code,
+/* .langdd__btn/.langdd__item .code сняты (TRIP-460): та же причина, .lang-btn/
+   .lang-menu .code typography полностью своя в site.css. */
 .s22-count,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .fork-or span,
 .addon-card__desc, /* инсп.: Meta (описание аддона) */
@@ -10096,3 +10098,37 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* visual-diff-exempt: .tl-card font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
 /* visual-diff-exempt: .tl-card letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
 /* visual-diff-exempt: .tl-card line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+
+/* ── TRIP-460 (продолжение): снос .langdd* (язык-переключатель зоны переехал
+   на прототипные .lang-btn/.lang-menu) + скоуп login.css .btn-primary/.btn-ghost
+   под .auth (ревью — глобальная утечка). ── */
+/* visual-diff-exempt: .auth background — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth color — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .code font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .auth border — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth border-color — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth box-shadow — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth cursor — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth justify-content — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth opacity — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth padding — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth text-decoration — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth transform — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth transition — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */

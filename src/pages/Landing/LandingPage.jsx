@@ -317,9 +317,9 @@ function Pain() {
                         <svg viewBox="0 0 608 190" preserveAspectRatio="xMidYMid slice">
                           <path className="aw-coast" d="M608 0 L608 190 L0 190 L0 150 C40 140 70 120 110 118 C150 116 175 132 210 128 C250 123 270 96 310 96 C350 96 372 120 410 110 C450 100 470 66 512 60 C548 55 572 30 590 16 C596 10 602 4 608 0 Z" />
                           <path d="M390.3 58.0 C377.8 70.3 344.3 125.7 315.5 132.0 C286.7 138.3 234.0 101.8 217.7 95.7" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" className="aw-route" />
-                          <g className="aw-pin" style={{ '--p': 0 }}><circle cx="390" cy="58" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="390" y="62" fontSize="12">1</text></g>
-                          <g className="aw-pin" style={{ '--p': 1 }}><circle cx="316" cy="132" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="316" y="136" fontSize="12">2</text></g>
-                          <g className="aw-pin" style={{ '--p': 2 }}><circle cx="218" cy="96" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="218" y="100" fontSize="12">3</text></g>
+                          <g className="aw-pin" style={{ '--p': 0 }}><circle cx="390" cy="58" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="390" y="62" fontSize="12">1</text></g>{/* inline-style-exempt: --p pin stagger delay (TRIP-460) */}
+                          <g className="aw-pin" style={{ '--p': 1 }}><circle cx="316" cy="132" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="316" y="136" fontSize="12">2</text></g>{/* inline-style-exempt: --p pin stagger delay */}
+                          <g className="aw-pin" style={{ '--p': 2 }}><circle cx="218" cy="96" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="218" y="100" fontSize="12">3</text></g>{/* inline-style-exempt: --p pin stagger delay */}
                         </svg>
                       </div>
                     </div>
