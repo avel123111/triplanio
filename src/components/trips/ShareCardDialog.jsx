@@ -7,7 +7,7 @@ import { Icon } from '@/design/icons';
 import LpSheet from '@/components/ui/LpSheet';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
-import { invokeCard, applyCardBg, inlineFlags, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
+import { invokeCard, applyCardBg, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
 import { MAX_UPLOAD_BYTES } from './TripCoverPicker';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
@@ -70,10 +70,24 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   // конструктора одна (TRIP-374), отдельного запроса каталога нет. Таблицы
   // пресетов нет намеренно — на фон никто не ссылается персистентно (см.
   // миграцию card_bg_presets_bucket).
+  // Заглушки «без фона» нет: своё фото (если загружено) + пресеты карусели.
   const slides = useMemo(
-    () => ['', ...(uploaded ? [uploaded] : []), ...(overlay?.backgrounds || [])],
+    () => [...(uploaded ? [uploaded] : []), ...(overlay?.backgrounds || [])],
     [overlay, uploaded],
   );
+
+  // Фон сразу встаёт на ПЕРВЫЙ пресет карусели, как только приехал overlay: юзер
+  // видит готовую карточку с подложкой, а не голый градиент. Своё фото и уже
+  // валидный выбор переживают; пресетов нет (пустой бакет) → '' (базовый градиент).
+  useEffect(() => {
+    if (!overlay) return;
+    const presets = overlay.backgrounds || [];
+    setBg((cur) => {
+      if (cur && cur.startsWith('data:')) return cur; // своё фото
+      if (cur && presets.includes(cur)) return cur; // валидный пресет
+      return presets[0] || '';
+    });
+  }, [overlay]);
 
   // Выбранный фон → data-URI (пресет качается и мемоизируется, своё фото уже URI).
   useEffect(() => {
@@ -91,19 +105,9 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   const buildGenRef = useRef(0);
   useEffect(() => { buildGenRef.current += 1; builtRef.current = null; setBuildError(''); }, [format, bg, camera]);
 
-  // Превью-SVG: подложка (пусто = прозрачно) + инлайн флагов. Флаги качаются с
-  // /flags/<cc>.svg, поэтому шаг асинхронный; промах инлайна оставляет карточку с
-  // фоном без флагов, а не пустой.
-  const [framedSvg, setFramedSvg] = useState(null);
-  useEffect(() => {
-    if (!overlay) { setFramedSvg(null); return undefined; }
-    let cancelled = false;
-    const withBg = applyCardBg(overlay.svg, bgUri);
-    inlineFlags(withBg)
-      .then((svg) => { if (!cancelled) setFramedSvg(svg); })
-      .catch(() => { if (!cancelled) setFramedSvg(withBg); });
-    return () => { cancelled = true; };
-  }, [overlay, bgUri]);
+  // Превью-SVG: подложка (пусто = базовый градиент шаблона, не прозрачно). Флаги
+  // уже встроены edge'ом, инлайнить нечего — чистая синхронная подмена фона.
+  const framedSvg = useMemo(() => (overlay ? applyCardBg(overlay.svg, bgUri) : null), [overlay, bgUri]);
 
   const ready = Boolean(overlay) && !overlayCode;
   // Пропорция сцены едет двумя каналами (см. ShareCardDialog.css): --sc-ar для
@@ -180,8 +184,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
       const mapUri = await blobToDataUri(mapBlob);
       const { data, error } = await invokeCard({ trip_id: trip.id, format, lang, mode: 'card_svg' });
       if (error || !data?.svg) throw new Error('card svg failed');
-      const withBgMap = applyCardBg(data.svg, finalBgUri).split(MAP_PLACEHOLDER).join(mapUri);
-      const svg = await inlineFlags(withBgMap);
+      const svg = applyCardBg(data.svg, finalBgUri).split(MAP_PLACEHOLDER).join(mapUri);
       const blob = await rasterizeSvgToPng(svg, data.width || overlay.w, data.height || overlay.h);
       if (gen !== buildGenRef.current) continue;
       builtRef.current = blob;
@@ -297,18 +300,11 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
       {/* Карусель фонов — свой грид-остров (.sc-strip): десктоп ставит её в
           ПРАВУЮ колонку под подсказку, мобила — под превью (см. areas в CSS).
           data-idx — адрес для доводчика выбора (как у CoverPicker). */}
+      {/* floor-exempt: dsshare +2 — снят свотч «Стандарт» (DS-компонент Swatch)
+          по просьбе Pavel: заглушки «без фона» нет, фон сразу = первый пресет
+          карусели. Апрув Pavel 24.08.2026. */}
       <Carousel className="tcp__strip sc-strip" ariaLabel={t('share.card_bg')} ref={stripRef} data-vaul-no-drag>
-        {/* «Стандарт» — БЕЗ подложки (прозрачный стикер): картинки-фона у него нет,
-            пустой свотч читается как «нет фона». */}
-        <Swatch
-          variant="round"
-          on={bg === ''}
-          onClick={() => setBg('')}
-          aria-label={t('share.card_bg_standard')}
-          title={t('share.card_bg_standard')}
-          data-idx={0}
-        />
-        {slides.slice(1).map((url, i) => (
+        {slides.map((url, i) => (
           <Swatch
             /* Ключ — ПОЛНЫЙ url: общий префикс public-URL пресетов длиннее 80,
                обрезка давала дубли ключей у всех свотчей. Своё фото (data-URI
@@ -319,7 +315,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             onClick={() => setBg(url)}
             aria-label={t('share.card_bg')}
             style={thumbStyle(url)}
-            data-idx={i + 1}
+            data-idx={i}
           />
         ))}
         {!overlay && SKELETON_THUMBS.map((k) => (

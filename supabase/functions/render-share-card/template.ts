@@ -24,8 +24,10 @@
 
 import { qrSvg } from './qr.ts';
 import { LOGO_SVG_B64 } from './assets_b64.ts';
+import { FLAGS_B64 } from './flags_b64.ts';
 
 const LOGO_URI = `data:image/svg+xml;base64,${LOGO_SVG_B64}`;
+const flagUri = (cc: string) => (FLAGS_B64[cc] ? `data:image/svg+xml;base64,${FLAGS_B64[cc]}` : '');
 
 export type Format = 'story' | 'post';
 
@@ -55,11 +57,10 @@ type CardData = {
 };
 
 // Токены, которые подменяет клиент. Только MAP_TOKEN нужен снаружи (index.ts →
-// card_svg); BG_TOKEN и flagToken клиент знает по своим копиям строк (Deno-модуль
-// не импортируется во фронт), поэтому наружу не экспортируются.
+// card_svg); BG_TOKEN клиент знает по своей копии строки (Deno-модуль во фронт не
+// импортируется). Флаги встроены на edge (FLAGS_B64), клиентского токена нет.
 export const MAP_TOKEN = '__SHARE_CARD_MAP__';
 const BG_TOKEN = '__SHARE_CARD_BG__';
-const flagToken = (cc: string) => `__SC_FLAG_${cc}__`;
 
 // Палитра (из прототипа).
 const C = {
@@ -95,9 +96,9 @@ type Layout = {
   stats: { y: number; numSize: number; labSize: number; cellPad: number };
   flags: { y: number; h: number; labSize: number; circle: number; ring: number; gap: number; moreSize: number };
   footer: {
-    y: number; h: number; padX: number;
+    y: number; h: number; padX: number; padT: number;
     ctaSize: number; ctaLead: number; brandSize: number; brandGap: number; logo: number;
-    scanSize: number; qr: number; qrInset: number;
+    scanSize: number; qr: number;
   };
 };
 
@@ -109,11 +110,11 @@ const LAYOUTS: Record<Format, Layout> = {
     pola: { top: 588, width: 860, padT: 32, padX: 32, padB: 24, winH: 600 },
     capSize: 52,
     stats: { y: 1416, numSize: 58, labSize: 26, cellPad: 30 },
-    flags: { y: 1524, h: 112, labSize: 26, circle: 58, ring: 3, gap: 12, moreSize: 24 },
+    flags: { y: 1512, h: 112, labSize: 26, circle: 58, ring: 3, gap: 12, moreSize: 24 },
     footer: {
-      y: 1672, h: 176, padX: 40,
-      ctaSize: 46, ctaLead: 52, brandSize: 32, brandGap: 12, logo: 50,
-      scanSize: 40, qr: 146, qrInset: 12,
+      y: 1664, h: 208, padX: 40, padT: 30,
+      ctaSize: 44, ctaLead: 48, brandSize: 30, brandGap: 20, logo: 46,
+      scanSize: 40, qr: 146,
     },
   },
   post: {
@@ -123,11 +124,11 @@ const LAYOUTS: Record<Format, Layout> = {
     pola: { top: 356, width: 912, padT: 22, padX: 22, padB: 22, winH: 432 },
     capSize: 50,
     stats: { y: 968, numSize: 56, labSize: 26, cellPad: 26 },
-    flags: { y: 1044, h: 104, labSize: 26, circle: 56, ring: 3, gap: 10, moreSize: 24 },
+    flags: { y: 1032, h: 104, labSize: 26, circle: 56, ring: 3, gap: 10, moreSize: 24 },
     footer: {
-      y: 1156, h: 168, padX: 34,
-      ctaSize: 38, ctaLead: 44, brandSize: 28, brandGap: 10, logo: 44,
-      scanSize: 40, qr: 120, qrInset: 10,
+      y: 1150, h: 184, padX: 34, padT: 24,
+      ctaSize: 38, ctaLead: 42, brandSize: 28, brandGap: 16, logo: 44,
+      scanSize: 40, qr: 120,
     },
   },
 };
@@ -241,10 +242,12 @@ export function buildCardSvg(
   const slot = mapSlot(format);
   const polaXf = `rotate(${POLA_ROT} ${g.cx} ${g.cy})`;
 
-  // --- фон (подложка). Клиент подменит токен или удалит элемент (прозрачно).
-  // В overlay окно вырезано маской, чтобы сквозь него была видна живая карта.
-  const bgImg = `<image href="${BG_TOKEN}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`;
-  const bg = overlay ? `<g mask="url(#winhole)">${bgImg}</g>` : bgImg;
+  // --- фон: базовый градиент (ВСЕГДА, «Стандарт» = он, не прозрачно) + фото-
+  // подложка поверх. Клиент подменяет токен фото на выбранный пресет ЛИБО удаляет
+  // <image> (тогда виден градиент). В overlay окно вырезано маской (живая карта).
+  const bgBase = `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#bgGrad)"/>`
+    + `<image href="${BG_TOKEN}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`;
+  const bg = overlay ? `<g mask="url(#winhole)">${bgBase}</g>` : bgBase;
 
   // --- заголовок (навы, ≤2 строки с усадкой) ---
   const maxTitleW = L.titleAlign === 'left' ? W - L.titleLeft - L.padX : W - L.padX * 2;
@@ -307,6 +310,7 @@ export function buildCardSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
  ${fontCss}
+ <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c7e6"/><stop offset="0.32" stop-color="#cfe0ec"/><stop offset="0.62" stop-color="#7fa7b3"/><stop offset="1" stop-color="#274b63"/></linearGradient>
  <clipPath id="winclip"><path d="${winPath}" transform="${polaXf}"/></clipPath>
  <mask id="winhole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${winPath}" transform="${polaXf}" fill="black"/></mask>
 </defs>
@@ -403,13 +407,17 @@ function buildFlags(L: Layout, d: CardData): string {
   return parts.join('');
 }
 
-// Круглый флаг: белое кольцо + флаг, обрезанный кругом. Клиент инлайнит /flags/<cc>.svg.
+// Круглый флаг: белое кольцо + флаг (встроен на edge), обрезанный кругом. Нет
+// флага для кода ⇒ только белый круг (не битая картинка).
 function flagCircle(cx: number, cy: number, d: number, ring: number, cc: string): string {
   const r = d / 2;
+  const uri = flagUri(cc);
+  const ring0 = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.white}"/>`;
+  if (!uri) return ring0;
   const id = `fl-${cc}-${Math.round(cx)}`;
-  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.white}"/>`
+  return ring0
     + `<clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r - ring}"/></clipPath>`
-    + `<image href="${flagToken(cc)}" x="${cx - r}" y="${cy - r}" width="${d}" height="${d}" `
+    + `<image href="${uri}" x="${cx - r}" y="${cy - r}" width="${d}" height="${d}" `
     + `preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`;
 }
 
@@ -423,16 +431,18 @@ function buildFooter(L: Layout, d: CardData, qrUrl: string): string {
   const midX = L.w / 2;
   const parts: string[] = [
     `<rect x="${left}" y="${f.y}" width="${boxW}" height="${f.h}" rx="34" fill="${C.footBg}"/>`,
-    `<rect x="${midX - 1}" y="${f.y + 24}" width="2" height="${f.h - 48}" fill="${C.divider}"/>`,
+    `<rect x="${midX - 1}" y="${f.y + 22}" width="2" height="${f.h - 44}" fill="${C.divider}"/>`,
   ];
-  // Левая колонка: «Plan your / own adventure» + лого + вордмарк.
+  // Левая колонка (сверху вниз, всё внутри плашки): «Plan your / own adventure»
+  // + ряд бренда [лого] TRIPLANIO. Считаем от верхнего паддинга — лого не уезжает.
   const cx0 = left + f.padX;
-  const ctaY = f.y + f.padX + f.ctaSize;
-  parts.push(text(cx0, ctaY, f.ctaSize, d.planLine1, { weight: 800 }));
-  parts.push(text(cx0, ctaY + f.ctaLead, f.ctaSize, d.planLine2, { weight: 800 }));
-  const brandY = ctaY + f.ctaLead + f.brandGap + f.logo * 0.5;
-  parts.push(`<image href="${LOGO_URI}" x="${cx0}" y="${brandY - f.logo / 2}" width="${f.logo}" height="${f.logo}"/>`);
-  parts.push(text(cx0 + f.logo + 12, brandY + f.brandSize * 0.34, f.brandSize, d.brand, { weight: 700, ls: 3 }));
+  const l1 = f.y + f.padT + f.ctaSize * 0.82; // baseline первой строки
+  const l2 = l1 + f.ctaLead;
+  parts.push(text(cx0, l1, f.ctaSize, d.planLine1, { weight: 800 }));
+  parts.push(text(cx0, l2, f.ctaSize, d.planLine2, { weight: 800 }));
+  const brandCy = l2 + f.brandGap + f.logo / 2; // центр ряда бренда
+  parts.push(`<image href="${LOGO_URI}" x="${cx0}" y="${brandCy - f.logo / 2}" width="${f.logo}" height="${f.logo}"/>`);
+  parts.push(text(cx0 + f.logo + 14, brandCy + f.brandSize * 0.34, f.brandSize, d.brand, { weight: 700, ls: 3 }));
 
   // Правая колонка: «Scan to / explore» (Caveat) + стрелка + QR у правого края.
   const q = f.qr;
@@ -448,8 +458,8 @@ function buildFooter(L: Layout, d: CardData, qrUrl: string): string {
   parts.push(`<g stroke="${C.navy}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">`
     + `<path d="M${arX},${arY + 14} C${arX + 26},${arY + 20} ${arX + 44},${arY} ${arX + 52},${arY - 24}"/>`
     + `<path d="M${arX + 44},${arY - 22} L${arX + 52},${arY - 26} L${arX + 54},${arY - 12}"/></g>`);
-  // QR: белый бокс + модули.
-  parts.push(`<rect x="${qrX}" y="${qrY}" width="${q}" height="${q}" rx="16" fill="${C.white}"/>`);
-  parts.push(qrSvg(qrUrl, qrX + f.qrInset, qrY + f.qrInset, q - f.qrInset * 2));
+  // QR: qrSvg сам рисует белую скруглённую подложку + тихую зону 8% вокруг
+  // модулей, поэтому внешний белый прямоугольник был дублем (белое на белом).
+  parts.push(qrSvg(qrUrl, qrX, qrY, q));
   return parts.join('');
 }
