@@ -218,6 +218,14 @@ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;scroll
 body{
   font-family:var(--font-body);color:var(--ink);background:var(--white);
   line-height:1.6;font-size: var(--fs-lead);overflow-x:clip;
+  /* Зона владеет ВЕСОМ так же, как гарнитурой и кеглем: app.css держит
+     `body{font-weight:500}` (текст приложения плотнее), прототип веса не
+     объявляет — то есть 400. Без этой строки 500 наследовался на ВЕСЬ текст
+     лендинга: буквы шире, строки переносятся раньше, и секции разъезжались
+     вниз по всей странице (замер: подзаголовок «Ассистента» 3 строки в
+     макете против 4 в реализации). Вес, заданный точечно правилом, этим
+     объявлением не затрагивается. */
+  font-weight:400;
 }
 
 img,svg,canvas{display:block;max-width:100%}
