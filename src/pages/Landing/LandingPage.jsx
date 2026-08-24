@@ -111,20 +111,22 @@ function useHeroFrame(ready) {
 }
 
 /**
- * Scroll-reveal (§11). The prototype fades blocks up as they enter the
- * viewport by toggling `is-in` on `.rv` elements; ported as one
- * IntersectionObserver, bidirectional (re-arms leaving upward, matching the
- * prototype). Runs once the site CSS is in (the nodes exist).
+ * Scroll-reveal (§11), ported verbatim from the prototype's own IIFE. Fades
+ * blocks up as they enter the viewport by toggling `in` on `.rv`/`.rv-l`/
+ * `.rv-r` — the CSS is the prototype's own (`.rv.in{opacity:1}` etc, "CSS as
+ * is" §1), so the class name matches its selectors exactly, not a repo
+ * convention. One IntersectionObserver, bidirectional (re-arms leaving
+ * upward). Runs once the site CSS is in (the nodes exist).
  */
 function useReveal(ready) {
   useEffect(() => {
     if (!ready) return undefined;
-    const targets = [...document.querySelectorAll('.rv')];
+    const targets = [...document.querySelectorAll('.rv,.rv-l,.rv-r')];
     if (!targets.length) return undefined;
     const io = new IntersectionObserver((entries) => {
       entries.forEach((en) => {
-        if (en.isIntersecting) en.target.classList.add('is-in');
-        else if (en.boundingClientRect.top > 0) en.target.classList.remove('is-in');
+        if (en.isIntersecting) en.target.classList.add('in');
+        else if (en.boundingClientRect.top > 0) en.target.classList.remove('in');
       });
     }, { threshold: 0.16, rootMargin: '0px 0px -5% 0px' });
     targets.forEach((el) => io.observe(el));
@@ -366,6 +368,88 @@ function Pain() {
   );
 }
 
+/* ── Bento ("The whole trip, in one clear picture") ── */
+function Bento() {
+  const t = useT();
+  return (
+    <section className="bento-sec section-pad" data-hdr="light" id="product">
+      <div className="wrap">
+        <div className="section-head rv">
+          <span className="brow">{t('landing.bento.eyebrow')}</span>
+          <h2 dangerouslySetInnerHTML={{ __html: t('landing.bento.h2') }} />
+          <p>{t('landing.bento.sub')}</p>
+        </div>
+        <div className="bento" data-stagger="">
+          <article className="bcard b-map rv" style={{ '--i': 0 }}>{/* inline-style-exempt: stagger reveal index (TRIP-460) */}
+            <div className="bic"><svg width="21" height="21"><use href="#i-map" /></svg></div>
+            <h3>{t('landing.bento.mapT')}</h3>
+            <p>{t('landing.bento.mapD')}</p>
+            <div className="mapviz" aria-hidden="true">
+              {/* §5: Mapbox static image removed — hand-drawn SVG coastline (no token, no api.mapbox.com). */}
+              <svg viewBox="0 0 640 230" preserveAspectRatio="xMidYMid slice">
+                <path className="aw-coast" d="M640 0 L640 230 L0 230 L0 180 C60 168 100 140 150 136 C210 130 250 158 310 150 C370 142 400 96 470 84 C520 76 560 40 600 20 C614 12 628 4 640 0 Z" />
+                <path d="M160.5 140.2 C175.3 148.2 223.9 198.3 249.5 188.0 C275.1 177.7 275.5 102.5 313.8 78.2 C352.2 53.9 451.9 48.0 479.5 42.0" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" />
+                <g><circle cx="160" cy="140" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="160" y="144" fontSize="12">1</text></g>
+                <g><circle cx="250" cy="188" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="250" y="192" fontSize="12">2</text></g>
+                <g><circle cx="314" cy="78" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="314" y="82" fontSize="12">3</text></g>
+                <g><circle cx="480" cy="42" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="480" y="46" fontSize="12">4</text></g>
+              </svg>
+            </div>
+          </article>
+
+          <article className="bcard b-status rv" style={{ '--i': 1 }}>{/* inline-style-exempt: stagger reveal index */}
+            <div className="bic mint"><svg width="21" height="21"><use href="#i-check" /></svg></div>
+            <h3 dangerouslySetInnerHTML={{ __html: t('landing.bento.stT') }} />
+            <p dangerouslySetInnerHTML={{ __html: t('landing.bento.stD') }} />
+            <div className="stat-rows">
+              <div className="stat-row"><svg className="ok-ic" width="15" height="15"><use href="#i-check" /></svg><s>{t('landing.bento.st1')}</s><span className="pill done">{t('landing.pill.done')}</span></div>
+              <div className="stat-row"><svg className="ok-ic" width="15" height="15"><use href="#i-check" /></svg><s>{t('landing.bento.st2')}</s><span className="pill done">{t('landing.pill.done2')}</span></div>
+              <div className="stat-row"><svg className="todo-ic" width="15" height="15"><use href="#i-plane" /></svg><span>{t('landing.bento.st3')}</span><span className="pill todo" dangerouslySetInnerHTML={{ __html: t('landing.pill.todo') }} /></div>
+              <div className="stat-row"><svg className="todo-ic" width="15" height="15"><use href="#i-shield" /></svg><span>{t('landing.bento.st4')}</span><span className="pill todo" dangerouslySetInnerHTML={{ __html: t('landing.pill.todo2') }} /></div>
+            </div>
+          </article>
+
+          <article className="bcard b-budget rv" style={{ '--i': 2 }}>{/* inline-style-exempt: stagger reveal index */}
+            <div className="bic warm"><svg width="21" height="21"><use href="#i-wallet" /></svg></div>
+            <h3>{t('landing.bento.budT')}</h3>
+            <p>{t('landing.bento.budD')}</p>
+            <div className="bud-sum">€2,140 <small>{t('landing.bento.budOf')}</small></div>
+            <div className="bud-bars">
+              <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.flights')}</span><span>€860</span></div><div className="track"><div className="fill" style={{ '--w': '86%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+              <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.stays')}</span><span>€720</span></div><div className="track"><div className="fill" style={{ '--w': '64%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+              <div className="bud-bar"><div className="lbl"><span dangerouslySetInnerHTML={{ __html: t('landing.bud.food') }} /><span>€390</span></div><div className="track"><div className="fill" style={{ '--w': '42%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+              <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.transport')}</span><span>€170</span></div><div className="track"><div className="fill" style={{ '--w': '24%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+            </div>
+          </article>
+
+          <article className="bcard b-timeline rv" style={{ '--i': 3 }}>{/* inline-style-exempt: stagger reveal index */}
+            <div className="bic"><svg width="21" height="21"><use href="#i-cal" /></svg></div>
+            <h3>{t('landing.bento.tlT')}</h3>
+            <p>{t('landing.bento.tlD')}</p>
+            <div className="tl">
+              <div className="tl-item"><span className="nd" /><div><b>09:40</b> <span>{t('landing.tl.1')}</span></div></div>
+              <div className="tl-item"><span className="nd" style={{ borderColor: 'var(--sunset)' }} /><div><b>13:00</b> <span>{t('landing.tl.2')}</span></div></div>{/* inline-style-exempt: category colour */}
+              <div className="tl-item"><span className="nd" style={{ borderColor: 'var(--mint)' }} /><div><b>16:30</b> <span dangerouslySetInnerHTML={{ __html: t('landing.tl.3') }} /></div></div>{/* inline-style-exempt: category colour */}
+            </div>
+          </article>
+
+          <article className="bcard b-docs rv" style={{ '--i': 4 }}>{/* inline-style-exempt: stagger reveal index */}
+            <div className="bic"><svg width="21" height="21"><use href="#i-doc" /></svg></div>
+            <h3>{t('landing.bento.docT')}</h3>
+            <p>{t('landing.bento.docD')}</p>
+            <div className="doc-chips">
+              <span className="doc-chip"><svg width="13" height="13"><use href="#i-plane" /></svg>e-tickets.pdf</span>
+              <span className="doc-chip"><svg width="13" height="13"><use href="#i-shield" /></svg>insurance.pdf</span>
+              <span className="doc-chip"><svg width="13" height="13"><use href="#i-doc" /></svg>visa-scan.jpg</span>
+              <span className="doc-chip"><svg width="13" height="13"><use href="#i-pin" /></svg>hotel-voucher.pdf</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── Main LandingPage ── */
 export default function LandingPage() {
   const { lang, setLang } = useI18n();
@@ -388,6 +472,7 @@ export default function LandingPage() {
       <main>
         <Hero />
         <Pain />
+        <Bento />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
