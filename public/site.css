@@ -111,12 +111,9 @@ a { color: inherit; text-decoration: none; }
   padding-right: var(--gutter);
 }
 .section { padding: var(--sect-pad) 0; position: relative; }
-.section--wash { background: var(--wash); }
-.section--tight { padding: calc(var(--sect-pad) * 0.75) 0; }
 
 @media (max-width: 900px) {
   .section { padding: calc(var(--sect-pad) * 0.75) 0; }
-  .section--tight { padding: calc(var(--sect-pad) * 0.6) 0; }
 }
 
 /* ---------- Type ---------- */
