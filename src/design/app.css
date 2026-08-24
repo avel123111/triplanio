@@ -3205,12 +3205,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    `bar` (умолчание) — полоса-цвет с солид-кантом сверху (сетка месяца); `strip`
    — та же полоса с именем по центру (шапка недели), разделитель между сегментами.
    prefix-exempt: citybar — новый примитив ДС «полоса города», апрув Pavel 2026 */
-.citybar { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; background: var(--cc-soft); box-shadow: inset 0 2px 0 var(--cc); transition: filter .14s, background .14s; }
+.citybar { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; background: var(--cc-soft); box-shadow: inset 0 2px 0 var(--cc); transition: filter .14s, background .14s; }   /* design-token-exempt: 2px — солид-кант полосы (деталь примитива, не --sp) */
 .citybar:hover { filter: brightness(1.05); }
 .citybar:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .citybar__lbl { color: var(--cc-ink); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.citybar--strip { padding: 3px 6px; }
-.citybar--strip + .citybar--strip { border-left: 1px solid var(--surface); }
+.citybar--strip { padding: 3px var(--sp-3); }
+.citybar--strip + .citybar--strip { border-left: 1px solid var(--surface); }   /* design-token-exempt: 1px — хайрлайн-разделитель сегментов */
 
 /* ----- EventChip ----- (TRIP-321 линза «Календарь») компактный эвент-токен.
    Цвет — семейство события `ev-<fam>` (`eventFamily`). Три облика осью `variant`:
@@ -3221,8 +3221,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .evchip__t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .evchip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 /* inline — чип события в сетке месяца */
-.evchip--inline { display: flex; align-items: center; gap: 6px; position: relative; padding: 2px 7px 2px 9px; border-radius: var(--r-xs); overflow: hidden; border: none; cursor: pointer; text-align: left; width: 100%; background: var(--surface); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); transition: filter .14s; }
-.evchip--inline::before { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3px; border-radius: 0 2px 2px 0; background: currentColor; }
+.evchip--inline { display: flex; align-items: center; gap: var(--sp-3); position: relative; padding: 2px 7px 2px 9px; border-radius: var(--r-xs); overflow: hidden; border: none; cursor: pointer; text-align: left; width: 100%; background: var(--surface); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); transition: filter .14s; }   /* design-token-exempt: 2px/7px/9px/1px — компактный чип события (детали примитива) */
+.evchip--inline::before { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3px; border-radius: 0 2px 2px 0; background: currentColor; }   /* design-token-exempt: 3px/2px — левый цветной кант (деталь примитива) */
 .evchip--inline:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-hover); }
 .evchip--inline .evchip__t { flex: 1; color: var(--ink-2); }
 .evchip--inline.ev-hotel { color: var(--ev-hotel-ink); }
@@ -3233,7 +3233,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* allday — плоская плашка события на весь день */
 .evchip--allday { display: flex; align-items: center; padding: 3px 8px; border-radius: var(--r-xs); border: none; cursor: pointer; text-align: left; background: var(--surface-2); color: var(--ink-2); overflow: hidden; }
 /* block — позиционируемая timed-карточка в тайм-гриде недели */
-.evchip--block { position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden; padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; text-align: left; background: var(--surface); color: var(--ink-2); box-shadow: var(--sh-1); transition: filter .14s, transform .1s var(--ease-spring); }
+.evchip--block { position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden; padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; text-align: left; background: var(--surface); color: var(--ink-2); box-shadow: var(--sh-1); transition: filter .14s, transform .1s var(--ease-spring); }   /* design-token-exempt: 1px/6px — радиус 6 карточки события (апрув Pavel), 1px gap */
 .evchip--block:hover { filter: brightness(1.04); }
 .evchip--block:active { transform: scale(.98); }
 .evchip--block .evchip__tm { color: var(--muted); }

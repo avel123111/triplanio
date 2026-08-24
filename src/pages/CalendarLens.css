@@ -18,7 +18,7 @@
 /* Календарь реагирует на СВОЮ ширину (контейнер), а не на ширину окна —
    он рендерится в узком мобильном фрейме приложения, поэтому оконные @media
    врали. Все адаптивные правила ниже — @container ncal. */
-.ncal { display: flex; flex-direction: column; gap: 16px; container-type: inline-size; container-name: ncal; }
+.ncal { display: flex; flex-direction: column; gap: var(--sp-7); container-type: inline-size; container-name: ncal; }
 
 /* ── Header — 4 контрола одной высоты (--ctl-h), текуче-гибкие.
    ДЕСКТОП (1 строка): ‹ Август 2026 › ....... Сегодня · [Месяц|Неделя] · К поездке.
@@ -31,7 +31,7 @@
 .ncal-hd-nav { display: flex; align-items: center; gap: 4px; min-width: 0; margin-right: auto; }
 .ncal-title-row { display: flex; align-items: baseline; gap: 8px; margin: 0 4px; min-width: 0; }
 /* размер/вес/гарнитура — канон .t-title (className в JSX) */
-.ncal-month-lbl { color: var(--ink); text-transform: capitalize; line-height: 1.05; white-space: nowrap; }
+.ncal-month-lbl { color: var(--ink); text-transform: capitalize; white-space: nowrap; }
 .ncal-year-lbl  { color: var(--muted-2); font-variant-numeric: tabular-nums; }
 /* Стрелки prev/next — призрачные (канон IconBtn tone=quiet) */
 .ncal-navbtn { color: var(--muted); flex: none; }
@@ -69,7 +69,7 @@
 /* ── Body — календарь + правый виджет городов ───────────────────── */
 /* Десктоп: две колонки (календарь тянется, виджет фикс). Мобайл (@container
    ниже): виджет уходит ПОД календарь. */
-.ncal-body { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 16px; align-items: start; }
+.ncal-body { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: var(--sp-7); align-items: start; }
 .ncal-main { min-width: 0; }
 
 /* Правый виджет городов — поверхность/рамку/радиус даёт канон <Card>; строки =
@@ -107,13 +107,13 @@
 /* Слой сплошных имён городов — поверх полос, по центру прогона; клики уходят
    в полосу-кнопку под ним. Колонки совпадают с ячейками (repeat(7)). */
 .ncal-names { position: absolute; top: 0; left: 0; right: 0; height: 19px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); pointer-events: none; z-index: 2; }
-.ncal-runname { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 0 7px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncal-runname { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 0 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Ряд полос города дня — контейнер; сами полосы = канон <CityBar> (.citybar).
    Транзит (2+ города) делит ряд поровну (flex у .citybar). */
 .ncal-daytop { position: absolute; top: 0; left: 0; right: 0; height: 19px; display: flex; gap: 1px; z-index: 1; }
 
-.ncal-dc-top { display: flex; align-items: center; gap: 6px; min-height: 22px; margin-top: 12px; }
+.ncal-dc-top { display: flex; align-items: center; gap: var(--sp-3); min-height: 22px; margin-top: 12px; }
 .ncal-dn {
   color: var(--ink-2); flex: none;
   display: inline-flex; align-items: center; justify-content: center;
@@ -148,7 +148,7 @@
 .ncal-wk-hcell.is-today { background: var(--brand-soft); }
 .ncal-wk-hd { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px 8px; }
 .ncal-wk-wd { color: var(--muted); }
-.ncal-wk-dn { color: var(--ink); display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; border-radius: var(--r-pill); font-variant-numeric: tabular-nums; line-height: 1; }
+.ncal-wk-dn { color: var(--ink); display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; border-radius: var(--r-pill); font-variant-numeric: tabular-nums; }
 .ncal-wk-hcell.is-today .ncal-wk-dn { background: var(--brand); color: var(--primary-fg); box-shadow: 0 4px 14px -4px var(--brand-glow); }
 /* полоса города с названием = канон <CityBar variant="strip"> */
 .ncal-wk-city { display: flex; width: 100%; min-height: 0; }
@@ -201,7 +201,7 @@
 
   /* Month: компактные ячейки (без гигантской пустоты), события — точками.
      Полоса города тоньше; имя ведётся сплошным поверх прогона (слой .ncal-names). */
-  .ncal-dc { min-height: 66px; padding: 22px 5px 7px; gap: 2px; }
+  .ncal-dc { min-height: 66px; padding: var(--sp-8) 5px 7px; gap: 2px; }
   .ncal-daytop { height: 16px; }
   .ncal-names { height: 16px; }
   .ncal-dc-top { min-height: 18px; margin-top: 0; }
