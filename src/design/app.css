@@ -3733,13 +3733,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 @media (max-width: 640px) {
   .app-header__account { display: none; }
-  /* ★ НА ТЕЛЕФОНЕ КОЛОНОК ЖИЛЬЯ И АКТИВНОСТЕЙ НЕТ — их там и не рендерят
-     (`showCols`). Шаблон обязан сжаться следом: оставь шесть треков, и две
-     пустые колонки продолжали бы съедать ~120px, ради которых имя города и
-     усекалось до «Петропа…».
-     visual-diff-exempt: .te-table {@media (max-width: 640px)} --te-cols — на телефоне ряд четырёхколоночный
-     visual-diff-exempt: .te-thead {@media (max-width: 640px)} --te-cols — то же */
-  .te-table, .te-thead { --te-cols: 16px 28px minmax(0,1fr) auto; }
   .trip-screen-body { padding-bottom: 96px !important; }
   .trip-screen-body--flush { padding-bottom: 0 !important; }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
@@ -4070,7 +4063,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .flow-map__canvas { position: absolute; inset: 0; opacity: 0; transition: opacity .3s ease; }
 .flow-map__canvas.is-revealed { opacity: 1; }
 .flow-map__cover { position: absolute; inset: 0; display: grid; place-items: center; background: var(--surface); z-index: 2; }
-.flow-map__stat { position: absolute; right: 14px; bottom: 14px; display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
+/* ★ НИЗ ОТСЧИТЫВАЕТСЯ ОТ ШИТА, А НЕ ОТ НИЗА КАНВАСА. Канвас намеренно уходит под
+   шит на радиус скруглений (иначе в вырезах углов виден фон страницы), поэтому
+   честные 14px от собственного низа оказывались НА шите: 14 − 20 = −6px. Заход
+   объявляет сам шелл (`--mapshell-under`, `lib/mapShellInsets.js`) — второй
+   записи радиуса здесь нет намеренно, она разъехалась бы с токеном на первой же
+   правке. На десктопе шита нет, переменная = 0, и отступ остаётся прежним.
+   visual-diff-exempt: .flow-map__stat bottom — прибавлен заход канваса под шит (на десктопе значение то же) */
+.flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-under, 0px) + 14px); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
 .flow-map__stat-hl { color: var(--ink-2); }
 /* Section sub-heading — the missing mid-tier between the title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…). */
@@ -4407,35 +4407,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .te-row__num grid-row — узел держится первой строки карточки
    visual-diff-exempt: .te-row__node grid-row — то же для узла-пересадки
    visual-diff-exempt: .ts-pdrawer min-width — ящик заполняет коробку слоя
-   visual-diff-exempt: .ts-warnfab position — позиция FAB переехала из инлайна в CSS
-   visual-diff-exempt: .ts-warnfab right — то же
-   visual-diff-exempt: .ts-warnfab bottom — то же, плюс привязка к свободному окну шелла
-   visual-diff-exempt: .ts-warnfab z-index — то же
-   visual-diff-exempt: .ts-warnfab display — то же
-   visual-diff-exempt: .ts-warnfab flex-direction — то же
-   visual-diff-exempt: .ts-warnfab align-items — то же
-   visual-diff-exempt: .ts-warnfab gap — то же
-   visual-diff-exempt: .ts-warnfab max-width — то же */
-/* Предупреждения редактора — поверх карты, в её СВОБОДНОМ углу: снизу отступ
-   считается от той же переменной, которой шелл сообщает высоту шита, поэтому на
-   телефоне кнопка встаёт НАД шитом, а не под ним. Раньше эта позиция жила
-   инлайном в рендере редактора, где её не видел ни один гард. */
-/* ★ ГРУНТ ПОД КАРТОЧКАМИ ОСТАНОВОК. Тело виджета — не форма, а СПИСОК карточек:
-   на белом грунте белые карточки не читаются вовсе (белое на белом, тень
-   `--sh-1` съедается). Утоплённый грунт — тот же приём, каким читаются карточки
-   на остальных списках приложения.
-   Правило на СВОЁМ классе редактора, а не на теле примитива: у планировщика в
-   том же теле форма, и грунт ей не нужен, — а экран, дотянувшийся селектором
-   внутрь примитива, это ровно то, что запрещает пол (метрика `reach`). */
-.ts-warnfab {
-  position: absolute; right: 16px; bottom: calc(var(--mapshell-bottom, 0px) + 16px);
-  z-index: var(--z-nav); display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
-  max-width: calc(100% - 32px);
-  /* Едет тем же временем и той же кривой, что шит и камера: переменные публикует
-     сам шелл (`lib/surfaceMotion.js`). Это НЕ канвас — здесь переход бесплатен.
-     visual-diff-exempt: .ts-warnfab transition — FAB доезжает вместе с шитом, а не прыгает за кадр */
-  transition: bottom var(--surface-settle, .32s) var(--surface-ease, ease);
-}
+*/
 /* Плавающая колонка слева с воздухом по трём сторонам; `padding-right: 0` —
    правый край панели уходит внутрь карты, а не двоит отступ. */
 .mapshell__panel {
@@ -5667,6 +5639,29 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        подпись (`tse.col_activity`), а испанское «жильё» стало «Estancia».
        Колонка ночей шире остальных: её ширину диктует не подпись, а степпер. */
     .te-table, .te-thead { --te-pad-x: 13px; --te-gap: 8px; --te-w-nights: 96px; --te-w-cell: 64px; --te-cols: 16px 28px minmax(0,1fr) var(--te-w-nights) var(--te-w-cell) var(--te-w-cell); }
+    /* ★ НА ТЕЛЕФОНЕ КОЛОНОК ЖИЛЬЯ И АКТИВНОСТЕЙ НЕТ — их там и не рендерят
+       (`showCols`), и шаблон обязан сжаться следом: шесть треков при четырёх
+       ячейках означают, что степпер ночей встаёт в ЧЕТВЁРТУЮ колонку, а пятая и
+       шестая (64+64+зазоры ≈ 144px) остаются пустой полосой справа. Ровно так
+       это и выглядело: «−3+» прижат к названию города, дальше воздух до края.
+       ★★ ОБЪЯВЛЕНО ПОСЛЕ БАЗОВОГО ШАБЛОНА, И ЭТО НЕ КОСМЕТИКА. Телефонная
+       правка уже была — в общем блоке `@media (max-width: 640px)` ВЫШЕ по файлу.
+       Медиазапрос специфичности не добавляет, селектор тот же (`.te-table`),
+       поэтому побеждало ПОСЛЕДНЕЕ объявление — то есть базовые шесть колонок, а
+       телефонное было мёртвым. Дефект молчаливый: ни падения, ни красного гарда,
+       правило в файле есть и читается как работающее.
+       ★★★ ГАРД 2p ЭТОЙ ПРАВКИ НЕ ВИДИТ, И МАРКЕРА ТУТ НЕТ НАМЕРЕННО. Он сводит
+       объявления по ключу «единица + @media + состояние + свойство» и порядок
+       правил ВНУТРИ одного ключа не моделирует — то есть на базе уже считал
+       телефонное значение действующим, а браузер считал иначе. Замер живым
+       Chromium, ряд на 390px:
+         база: `16px 28px 54px 96px 64px 64px` — шесть треков, правый край
+               степпера в 158px от края ряда, имя города сжато до 54px;
+         HEAD: `16px 28px 212px 82px` — четыре трека, степпер в 14px от края
+               (поле ряда 13px + рамка), имя города получило 212px. */
+    @media (max-width: 640px) {
+      .te-table, .te-thead { --te-cols: 16px 28px minmax(0,1fr) auto; }
+    }
     /* ★ ЗАЗОР КОЛОНОК — СВОЙСТВО САМОГО РЯДА, А НЕ ЕГО ХОЗЯИНА. Значение
        объявлялось ТОЛЬКО на `.te-table`/`.te-thead`, а читается здесь — и ряд
        планировщика, который живёт ВНЕ `.te-table` (так и написано у

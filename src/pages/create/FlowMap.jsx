@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { mapboxgl } from '@/lib/mapbox';
-import { calmFit, reframeTo } from '@/lib/map/camera';
+import { calmFit } from '@/lib/map/camera';
 import { markFramed } from '@/lib/map/framed';
 import { getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
@@ -82,9 +82,10 @@ export default function FlowMap({
   // ВЬЮПОРТА: канвас остаётся во всю площадь (карта видна под виджетом), а кадр
   // уходит в свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   camera = null,
-  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Кадру она не
-  // нужна (холст уже сжат), но перекадрирование обязано на неё реагировать —
-  // иначе на телефоне его нет вовсе (там отступы камеры всегда нулевые).
+  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Маршрут по ней
+  // не перекадрируется (автофокус — только на изменение маршрута); её читает
+  // ПУСТОЙ ГЛОБУС, чей диаметр считается от высоты холста. На телефоне это
+  // единственный сигнал: отступы камеры там всегда нулевые.
   slotPx = 0,
   home, cities = [], finishCity, transport = {}, isStay = false,
   // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
@@ -183,10 +184,10 @@ export default function FlowMap({
   if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
   cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
   if (hasFinish) fitPositions.push([finishCity.longitude, finishCity.latitude]);
-  // ★ ЗАКРЫТАЯ ПЛОЩАДЬ В `fitKey` НЕ ВХОДИТ. Смена детента — не новая цель кадра,
-  // а та же самая, снятая в другое окно: её обслуживает перекадрирование темпом
-  // поверхности (`useMapInsets`). Положи её сюда — и осадка детента поехала бы
-  // ДВАЖДЫ: «спокойным» темпом фита и темпом шита, обгоняя саму себя.
+  // ★ ЗАКРЫТАЯ ПЛОЩАДЬ В `fitKey` НЕ ВХОДИТ, и теперь по более простой причине,
+  // чем раньше: смена свободного окна камеру НЕ ДВИГАЕТ ВОВСЕ (★★ ниже). Детент —
+  // не новая цель кадра, а та же самая, снятая в другое окно; положи её сюда, и
+  // каждая осадка шита заново вписывала бы маршрут — ровно то, что этот PR снял.
   const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
@@ -203,21 +204,34 @@ export default function FlowMap({
   // Объявлена ДО эффекта маркеров намеренно: React зовёт эффекты в порядке
   // объявления, и первый же фит обязан считаться по уже известному отступу.
   // ═════════════════════════════════════════════════════════════════════════
-  /** Что кадрировать на осадке детента — цель та же, что у штатного фита. */
-  const subjectRef = useRef(/** @type {any} */ (null));
-  subjectRef.current = { pts: fitPositions, air: fitPaddingFor(winW), canFit };
+  // ★ МАРШРУТ НА СМЕНУ СВОБОДНОГО ОКНА НЕ ПЕРЕКАДРИРУЕТСЯ (решение Pavel):
+  // автофокус случается ТОЛЬКО при изменении маршрута (`fitKey` ниже). Прежде
+  // осадка детента и сворачивание панели вписывали маршрут заново — со стороны
+  // это «карта сама наводится», хотя ничего не менялось. Под РАЗМЕР окна карта
+  // при этом подстраивается по-прежнему: отступ доводит сам хук, без зума.
+  //
+  // ★★ ПУСТОЙ ГЛОБУС — ИСКЛЮЧЕНИЕ, И ЭТО НЕ ПОБЛАЖКА. Здесь нет маршрута, и
+  // кадрировать нечего: ДИАМЕТР ШАРА считается от высоты ХОЛСТА
+  // (`startGlobeZoom`), поэтому смена слота меняет не кадр, а размер самого
+  // предмета. Оставь зум как есть — и шар, посчитанный для холста в 700px,
+  // окажется обрезан краями холста в 250px. Это ровно тот случай, ради которого
+  // у `useMapInsets` осталась дверь: цель считается от холста, а не от точек.
+  //
+  // Ref'а под цель здесь НЕТ, и это не упущение: `useMapInsets` переприсваивает
+  // `reframeRef.current` в теле КАЖДОГО рендера, то есть зовёт самое свежее
+  // замыкание. Прежней конструкции ref был нужен, пока из эффекта читали цель
+  // маршрута; теперь он фиксировал бы ровно то, что и так актуально.
   useMapInsets(mapRef, {
     ready,
     insets: camera,
     slotPx,
     onReframe: (map) => {
-      const sub = subjectRef.current;
-      if (!sub.canFit) return;
-      if (sub.pts.length) { reframeTo(map, sub.pts, { padding: sub.air, maxZoom: 7, singleZoom: 8 }); return; }
-      // Пустой глобус: точек нет, зато есть РАЗМЕР — а размер шара считается от
-      // свободного окна, поэтому он тоже обязан доехать, тем же темпом.
-      const view = startGlobeView(map, sub.air, getMapInsets(map));
+      // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
+      // НЕ перекадрирование: зум и границы маршрута он не трогает.
+      if (!canFit || fitPositions.length) return false;
+      const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
       try { map.easeTo({ ...view, padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
+      return true; // отступ уехал вместе с видом — хуку добавлять нечего
     },
   });
 

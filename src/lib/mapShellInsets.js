@@ -15,7 +15,14 @@
  *   `cornerPx` — радиус скруглений шита (`--r-xl`): на столько слот заходит под
  *   него, иначе в вырезах углов виден фон страницы. Значение ЧИТАЕТСЯ ИЗ CSS
  *   вызывателем — второй записи этого числа в JS быть не должно.
- * @returns {{ slotBottom: number, camera: { top: number, right: number, bottom: number, left: number } }}
+ *
+ * `slotUnder` — НА СКОЛЬКО НИЗ СЛОТА ЗАШЁЛ ПОД ШИТ (тот самый радиус). Это не
+ * дубль `slotBottom`, а его вторая половина, и без неё всё, что экран кладёт
+ * ПОВЕРХ карты, врёт на эту величину: у него «низ карты» — низ слота, а он уже
+ * под шитом. Ровно так пилюля «6 городов · 12 ночей» планировщика оказывалась
+ * лежащей на шите, хотя честно отступала 14px от своего низа.
+ *
+ * @returns {{ slotBottom: number, slotUnder: number, camera: { top: number, right: number, bottom: number, left: number } }}
  */
 export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, collapsed = false, cornerPx = 0 } = {}) {
   // Из DOM приходят 0, NaN и отрицательные (первый кадр, размонтирование) —
@@ -25,8 +32,14 @@ export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, collap
   // Режимы не смешиваются: шит живёт в портале и на переходе десктоп↔телефон
   // успевает подержать прошлое значение — прочитать его значит отрезать полосу
   // по призраку.
-  if (phone) return { slotBottom: Math.max(0, px(sheetPx) - px(cornerPx)), camera: none };
-  return { slotBottom: 0, camera: { ...none, left: collapsed ? 0 : px(panelPx) } };
+  if (phone) {
+    const slotBottom = Math.max(0, px(sheetPx) - px(cornerPx));
+    // Заход считается ВЫЧИТАНИЕМ, а не повтором `cornerPx`: шит ниже своего
+    // радиуса не бывает, но если бы стал (нулевая высота на первом кадре),
+    // повтор объявил бы заход больше самого шита.
+    return { slotBottom, slotUnder: px(sheetPx) - slotBottom, camera: none };
+  }
+  return { slotBottom: 0, slotUnder: 0, camera: { ...none, left: collapsed ? 0 : px(panelPx) } };
 }
 
 /**
