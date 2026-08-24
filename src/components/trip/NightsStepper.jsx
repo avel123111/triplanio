@@ -15,21 +15,38 @@ import { useT } from '@/lib/i18n/I18nContext';
 // ⚠️ АННОТАЦИЯ ОБЯЗАТЕЛЬНА (TRIP-388): без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ
 // и делает `title` ОБЯЗАТЕЛЬНЫМ. Набор ЗАКРЫТЫЙ, `...rest` тут нет.
 /**
+ * `readOnly` — наблюдатель на «Маршруте» (TRIP-459): ночи только показываются.
+ * Гашение событий при этом СНИМАЕТСЯ, и это не мелочь: `stop` стоит здесь ради
+ * драга и открытия панели города, то есть гасит ЧУЖИЕ жесты ради своего
+ * контрола. Контрола нет — гасить нечего, а оставленный `stop` превратил бы
+ * число в мёртвую зону посреди кликабельного ряда.
+ *
+ * `className` уходит на ТРИГГЕР тултипа, а не на степпер, и это несущее: в ряду
+ * маршрута элементом сетки является именно триггер (`<Tooltip>` оборачивает
+ * контрол), поэтому ячейку колонки объявлять нужно на нём. Обёртки-«ещё один
+ * div» это не требует — лишний узел ничего бы не держал.
+ *
  * @param {{ value: any, onMinus: any, onPlus: any,
  *           minusDisabled?: boolean, plusDisabled?: boolean, title?: string,
- *           variant?: 'pill'|'block'|'bare' }} p
+ *           readOnly?: boolean, variant?: 'pill'|'block'|'bare', className?: string }} p
  */
-export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = false, plusDisabled = false, title, variant }) {
+export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = false, plusDisabled = false, title, readOnly = false, variant, className }) {
   const t = useT();
   const stop = (e) => e.stopPropagation();
+  // Предмет числа у наблюдателя несёт ТОЛЬКО подпись колонки, а на телефоне
+  // колонок нет вовсе (`showCols=false`) — там «3н» осталось бы без предмета.
+  // У правящего имя дают aria-подписи кнопок ±; снимая кнопки, возвращаем то же
+  // имя текстом для читалки (`.sr-only` — утилита репозитория).
+  const srName = readOnly ? <span className="sr-only"> {title || t('tse.col_nights')}</span> : null;
   return (
-    <Tooltip content={title || t('tse.col_nights')}>
+    <Tooltip content={title || t('tse.col_nights')} className={className}>
       <Stepper
         variant={variant}
-        value={<>{value}<span className="muted">{t('planner.night_short')}</span></>}
+        readOnly={readOnly}
+        value={<>{value}<span className="muted">{t('planner.night_short')}</span>{srName}</>}
         onMinus={onMinus} minusDisabled={minusDisabled} minusLabel={t('planner.fewer_nights')}
         onPlus={onPlus} plusDisabled={plusDisabled} plusLabel={t('planner.more_nights')}
-        onPointerDown={stop} onClick={stop}
+        onPointerDown={readOnly ? undefined : stop} onClick={readOnly ? undefined : stop}
       />
     </Tooltip>
   );

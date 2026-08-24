@@ -683,7 +683,7 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
                 состояние навигации, а не параметр в URL и не глобал: оно не
                 переживает перезагрузку — ровно то, что нужно одноразовой
                 анимации, и закладка/копипаст ссылки её не тащат. */}
-            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=edit`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
+            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
             <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
           </>
         )}

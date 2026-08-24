@@ -18,7 +18,7 @@ import './PublicTrip.css';
 
 // Where the marketing chrome's section anchors / brand should point when this
 // page is rendered off the landing route. Our OWN origin, like the two links in
-// ShareDialog / MembersLens and for the same reason: the campaign mark is stored
+// TripShareFlow / MembersLens and for the same reason: the campaign mark is stored
 // per host (analytics.js), so a link leaving for another host strands it. Every
 // host that serves this route serves the landing at `/` too — it is one SPA — so
 // the address always resolves, and on prod it resolves to the very literal that

@@ -53,11 +53,18 @@ import React from 'react';
  *   не передаётся вовсе  onClick - у ряда планировщика клика нет (см. список
  *                        пропов выше); замерено прогоном с `// @ts-check` в
  *                        `ManualPlanner`: обязательный `onClick` = TS2741
- * Остальные обязательны: `onArm` уходит обработчиком на БЕЗУСЛОВНО отрендеренный
- * корень, `grip`/`lead`/`children` - его безусловное содержимое.
+ *   read-only ряд        onArm - у ряда наблюдателя перестановки нет вовсе
+ *                        (TRIP-459), обработчик не передаётся; `grip` при этом
+ *                        всё равно ПРИХОДИТ - пустой ячейкой, потому что он
+ *                        занимает первую колонку сетки (`--te-cols: 16px …`) и
+ *                        без него номер города уехал бы в 16px, разойдясь с
+ *                        шапкой колонок. То есть `?` появился у `onArm`, а
+ *                        `grip` остался обязательным СОДЕРЖИМЫМ - это разные
+ *                        причины, и они не схлопываются
+ * Остальные обязательны: `grip`/`lead`/`children` - безусловное содержимое корня.
  *
  * @param {{ variant?: 'planner'|'editor', dragging?: boolean, pressing?: boolean,
- *           invalid?: boolean, onArm: any, onClick?: any, grip: any, lead: any,
+ *           invalid?: boolean, onArm?: any, onClick?: any, grip: any, lead: any,
  *           name?: any, country?: any, conf?: any, dates?: any, editingSlot?: any,
  *           stopCellPointer?: boolean, className?: string, children: any }} p
  */

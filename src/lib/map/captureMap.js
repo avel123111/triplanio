@@ -37,7 +37,7 @@ export function buildRoute(visits, transfers, showSE) {
 // `dot` is a red marker (Pavel's request). `badge` = base icon-size for the city
 // label image (1 = its native pixels; the preview downscales it by the same `s`).
 export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11, badge: 1 };
-export const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
+const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
 
 // City-label badge geometry (all logical px). The badge is composited to ONE image
 // (flag + name), so alignment is pixel-exact and the name size is whatever we draw
@@ -267,6 +267,15 @@ export function drawTripRoute(map, ordered, legs, opts = {}) {
 // PNG blob.
 
 /**
+ * Перенос зума композиции между поверхностями РАЗНОЙ ширины — единственный дом
+ * формулы (читают capture ниже и живой ShareMapPreview): зум mapbox мерит мир в
+ * пикселях, та же геосцена на вдвое широкой поверхности = +1 зум. Неизвестная
+ * ширина с любой стороны → зум не пересчитывается (сдвиг 0), NaN невозможен.
+ */
+export const rescaleZoom = (zoom, fromW, toW) =>
+  zoom + Math.log2((toW || fromW || 1) / (fromW || toW || 1));
+
+/**
  * Render the trip route map to a PNG blob at `width`x`height`, reproducing the
  * camera the user composed in the preview. A throwaway offscreen map is used so
  * we can render at the card's real resolution instead of the tiny on-screen
@@ -288,7 +297,7 @@ export function renderCardMapPng({
     holder.style.cssText = `position:absolute;left:-99999px;top:0;width:${width}px;height:${height}px;`;
     document.body.appendChild(holder);
 
-    const zoomAdj = previewCssWidth > 0 ? zoom + Math.log2(width / previewCssWidth) : zoom;
+    const zoomAdj = rescaleZoom(zoom, previewCssWidth, width);
     const map = new mapboxgl.Map({
       container: holder,
       style: SHARE_MAP_STYLE,

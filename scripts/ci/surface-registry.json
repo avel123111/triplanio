@@ -12,7 +12,7 @@
     "tm-manage", "tm-account", "tm-cell", "eroute", "s22f-panel", "hv-notes"
   ],
   "_tileHomedNote": "TRIP-391 объект 3 (плитка). tile-homed = приватный класс-остаток, чей СКИН квадрата-иконки уехал на примитив <Tile> (сам класс несёт только раскладку/канал --hl). Такой класс ОБЯЗАН рендериться внутри <Tile>: сырой host-тег (<div>/<span>) с этим className мимо <Tile> = плитка потеряна МОЛЧА (та же дыра, что облысила трансфер-карточку в объекте 2). AST-скан гарда 2z ловит это; три .css/<style>/inline-режима такого не видят по построению.",
-  "_tileFamilyResidual": "TRIP-391 объект 3: семьи плитки, что НЕ уходят из переписи целиком, — остаток назван причиной. `acct-hero__av` (80px, role=button, bg-image) = АВАТАР, свой примитив <Avatar>, НЕ плитка-иконка (предикат ловит как ложный квадрат); в <Tile> не тащим, переезд на <Avatar> — отдельная работа. `te-step` (26px) = степпер-КОНТРОЛ (`<button className='te-step te-step--del'>`, удалить точку) — объект 1/контрол, дом <IconBtn>, не декор-плитка; остаётся классом семьи te. `map-route__marker` (26px) = pill-маркер маршрута с РАМКОЙ 2px + состоянием is-active (--hl фон/рамка/fg) — у примитива <Tile> рамки нет, это не голая плитка-иконка; остаётся классом семьи map. `fork-si` (66px) = рич-медальон hero-состояний форка: ГРАДИЕНТ (surface→hl) + рамка + box-shadow (глубина + inset-хайлайт) + радиальный glow + угловой spark-бейдж — осознанный приподнятый приём, а <Tile> плоский (soft-тинт, без рамки/тени); флэттеринг на <Tile 2xl> = визуальный даунгрейд (A/B-рендер, решение Pavel 2026-08-13: остаётся как есть). Остаётся классом семьи fork. Иконочные плитки этих семей собраны из системы (tileHomed ниже).",
+  "_tileFamilyResidual": "TRIP-391 объект 3: семьи плитки, что НЕ уходят из переписи целиком, — остаток назван причиной. `acct-hero__av` (80px, role=button, bg-image) = АВАТАР, свой примитив <Avatar>, НЕ плитка-иконка (предикат ловит как ложный квадрат); в <Tile> не тащим, переезд на <Avatar> — отдельная работа. `te-step` (26px) = степпер-КОНТРОЛ (`<button className='te-step te-step--del'>`, удалить точку) — объект 1/контрол, дом <IconBtn>, не декор-плитка; остаётся классом семьи te. `fork-si` (66px) = рич-медальон hero-состояний форка: ГРАДИЕНТ (surface→hl) + рамка + box-shadow (глубина + inset-хайлайт) + радиальный glow + угловой spark-бейдж — осознанный приподнятый приём, а <Tile> плоский (soft-тинт, без рамки/тени); флэттеринг на <Tile 2xl> = визуальный даунгрейд (A/B-рендер, решение Pavel 2026-08-13: остаётся как есть). Остаётся классом семьи fork. Иконочные плитки этих семей собраны из системы (tileHomed ниже).",
   "tileHomed": [
     "dl-empty__ic", "dl-addcard__ic", "acct-lang__flag",
     "te-row__num", "te-row__node", "lp-stepper__ic", "invite__ic", "invite-banner__ic", "lp-ic"
@@ -26,7 +26,8 @@
     "src/pages/DocsLens.jsx: <div role=button>": { "verdict": "object:2", "reason": "кликабельная КАРТА-опция видимости (data-card-btn) — поверхность объекта 2, замок cardHomed" },
     "src/components/bookings/PartnerResultCard.jsx: <div role=button>": { "verdict": "object:2", "reason": "кликабельная партнёр-КАРТА целиком (data-card-btn) — поверхность объекта 2 (класс pcard в cardHomed)" },
     "src/pages/ScreenAccount.jsx: <div role=button .acct-hero__av>": { "verdict": "object:avatar", "reason": "аватар аккаунта с click-to-change (bg-image) — объект «аватар», не кнопка-примитив" },
-    "src/components/common/EventAiBlock.jsx: <div role=button .ai-blk-hd>": { "verdict": "object:6", "reason": "ЗАГОЛОВОК AI-блока (раскрывашка) — объект 6, как <button>-заголовки #817" }
+    "src/components/common/EventAiBlock.jsx: <div role=button .ai-blk-hd>": { "verdict": "object:6", "reason": "ЗАГОЛОВОК AI-блока (раскрывашка) — объект 6, как <button>-заголовки #817" },
+    "src/components/trips/ShareCardDialog.jsx: <label .icon-btn.tcp__ctl.tcp__upload>": { "verdict": "btn-legit", "reason": "нативный <label> вокруг .sr-only файлового инпута («загрузить фон» share-карточки): пикер открывает БРАУЗЕР активацией label — программный input.click() из-под vaul/Radix-модалки на iOS ненадёжен; <Btn>/<IconBtn> = <button>, форвардить активацию на инпут не умеет" }
   },
   "_coSelectorNote": "TRIP-337 объект 2 дозакрытие: члены ко-селектора app.css:425 (и родственных 509/515) — фон+рамку несёт ОБЩЕЕ правило, радиус отдельным, поэтому предикат radius+bg+border-в-одном-правиле их не видел (слепое пятно, «закрыто но живо»). Замок 2z coSelectorSurfaceClasses теперь их ловит; каждый обязан быть в classes или cardHomed. Настоящие карточки сведены на <Card> (cardHomed), не-карточки приписаны объектом с причиной — остаток объекта 2 = 0.",
   "classes": {
@@ -77,7 +78,6 @@
     "cr-dot": { "object": "badge", "reason": "точка-маркер — объект «точка/бейдж»" },
 
     "mapwrap": { "object": "map", "reason": "обёртка карты — объект «карта»" },
-    "map-route__item": { "object": "map", "reason": "элемент маршрута на карте — объект «карта»" },
     "flow-map__stat": { "object": "map", "reason": "плашка счётчика городов/ночей поверх карты создания (FlowMap) — объект «карта»" },
     "s22mk__core": { "object": "map", "reason": "ядро маркера Stay22 — объект «карта/маркер» (движение оставлено, см. E)" },
 

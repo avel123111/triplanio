@@ -34,6 +34,14 @@ function revealLegDuration(from, to) {
 // on this reader map (a city sits in its region, not filling the frame).
 const REVEAL_CITY_ZOOM = 5.6;
 
+// Зум, на который камера садится, когда родитель фокусирует ОДИН город (открыл
+// панель города/брони). Был пропом `focusZoom`: единственным, кто передавал своё
+// значение, была линза карты — она держала 6, «город в регионе», потому что была
+// читалкой. С её схлопыванием в «Маршрут» (TRIP-459) вариативность осталась без
+// носителя, а проп с дефолтом, который никто не переопределяет, — это ручка,
+// которую нельзя повернуть. Значение то же, что было дефолтом.
+const FOCUS_CITY_ZOOM = 9.5;
+
 // Apply marker visibility (and a one-shot pop on first appearance) for a reveal
 // state. `markerMax` = highest ordered-index allowed to show; revealing=false ⇒
 // show all. Kept module-level so the build effect and the reveal controller share
@@ -84,8 +92,8 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *   дефолт в сигнатуре   showStartEnd · colorScheme · selectedVisitId · hoveredVisitId
  *                        selectedLegKey · focus · revealActiveId · active · mapControls
  *                        basemapTheme · hideRoute · hotelPins · selectedHotelId
- *                        hoveredHotelId · cityBadge · focusZoom · cooperativeGestures
- *   вызов под гардом     onMapClick `if (cb) cb(e)` · onCityHover `if (cb) cb(…)`
+ *                        hoveredHotelId · cityBadge · cooperativeGestures
+ *   вызов под гардом     onCityHover `if (cb) cb(…)`
  *                        onCityClick `if (cb) cb(g.data)` · onHotelClick /
  *                        onHotelHover через `?.()`
  *   children             оверлейный хром родителя; `{children}` от `undefined`
@@ -103,7 +111,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
  *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
  *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
- *           focusZoom?: number, onMapClick?: any, cooperativeGestures?: boolean,
+ *           cooperativeGestures?: boolean,
  *           children?: any }} p
  */
 export default function MapView({
@@ -183,16 +191,9 @@ export default function MapView({
   // ACTIVE city. Off (null) everywhere else so the shared surfaces are untouched.
   // Shape: { lng, lat, countryCode, name, dates } | null.
   cityBadge = null,
-  // Optional: notified when a city pin is hovered (Map lens badge tooltip). Gets
-  // the visits at that pin on enter, null on leave. Off elsewhere.
+  // Optional: notified when a city pin is hovered (badge tooltip on «Маршрут»).
+  // Gets the visits at that pin on enter, null on leave. Off elsewhere.
   onCityHover,
-  // Camera zoom used when the parent focuses a SINGLE city via `focus` (a pulled-
-  // back reader zoom on the Map lens; the editor keeps the default city zoom).
-  focusZoom = 9.5,
-  // Optional: fired on a real click on empty map (canvas), not a drag and not a
-  // marker click (markers stop the event in their own DOM layer). Map lens uses it
-  // to clear the active city. Off elsewhere.
-  onMapClick,
   // When false, lift the map's cooperative-gestures guard ("use two fingers /
   // ctrl+scroll") for as long as this surface owns the singleton; restored on
   // unmount so other screens keep it. Defaults to the singleton's setting (on).
@@ -261,8 +262,6 @@ export default function MapView({
   useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
   const onCityHoverRef = useRef(onCityHover);
   useEffect(() => { onCityHoverRef.current = onCityHover; }, [onCityHover]);
-  const onMapClickRef = useRef(onMapClick);
-  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
 
   // Same for the hotel-badge callbacks (stable across renders → badges aren't
   // rebuilt just because the parent passes a fresh closure).
@@ -549,18 +548,6 @@ export default function MapView({
     return () => { if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; } };
   }, [ready, hideRoute, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode]);
 
-  // --- Click on empty map (Map lens) → clear the active city. Mapbox fires
-  // 'click' only for a real click on the canvas: a drag emits move events, not a
-  // click, and HTML markers swallow their own clicks in a separate DOM layer, so
-  // this never fires for pin clicks or while panning. ---
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return undefined;
-    const handler = (e) => { const cb = onMapClickRef.current; if (cb) cb(e); };
-    map.on('click', handler);
-    return () => { map.off('click', handler); };
-  }, [ready]);
-
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
   // this flies to the focused city / fits the two transfer cities, and eases
@@ -574,7 +561,7 @@ export default function MapView({
     if (focusSig) {
       hadFocusRef.current = true;
       if (focus.length === 1) {
-        calmFlyTo(map, { center: focus[0], zoom: focusZoom });
+        calmFlyTo(map, { center: focus[0], zoom: FOCUS_CITY_ZOOM });
       } else if (canFit) {
         calmFit(map, focus, { padding: 110, maxZoom: 9 });
       }

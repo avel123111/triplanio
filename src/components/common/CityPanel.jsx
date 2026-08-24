@@ -12,6 +12,7 @@ import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
 import { Btn, IconBtn, ListRow, Stepper, Tile } from '@/design/index';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
@@ -95,6 +96,15 @@ export default function CityPanel({
   // stepper turns it back into a city when raised above 0.
   const isWaypoint = node.kind === 'waypoint';
   const nights = isWaypoint ? 0 : (node.nights || 0);
+  // Право — из общего контекста (TRIP-459). Панель города живёт ТОЛЬКО внутри
+  // трипа, под `TripAccessProvider`, поэтому читает ступень сама и не принимает
+  // её пропом — ровно как панели броней (`AddBookingPanel`/`ForkPartnerModal`).
+  //
+  // Что решает это право: ночи (степпер → значение) и удаление города. Входы в
+  // ФОРК (добавить переезд / жильё / активность) остаются живыми у всех: витрина
+  // партнёров открыта наблюдателю, а вход в ручное создание гасит сама панель
+  // брони — там этот гейт уже стоит и второй раз его тут писать нельзя.
+  const { canEdit } = useTripAccess();
 
   return (
     <div className="lp lp--wide">
@@ -125,6 +135,7 @@ export default function CityPanel({
         </div>
         <Stepper
           variant="bare"
+          readOnly={!canEdit}
           title={t('tse.nights_label')}
           value={nights}
           onMinus={onNightsMinus} minusDisabled={nights <= 0} minusLabel={t('tse.nights_remove')}
@@ -177,8 +188,14 @@ export default function CityPanel({
         <GhostAdd icon="ticket" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />
       </div>
       </div>
-      <div className="lp-f">
-        <Btn variant="danger" icon="trash" onClick={onRemove} ariaLabel={t('common.delete')}>{t('common.delete')}</Btn>
+      {/* Футер с ОДНОЙ кнопкой — это `lp-f--single`, существующий модификатор
+          «одиночной модалки»: без него правило заливки (`> .btn { flex: 2 }`)
+          растянуло бы «Готово» во всю ширину, чего у одиночной кнопки быть не
+          должно. Свой класс тут не нужен — случай уже назван. */}
+      <div className={'lp-f' + (canEdit ? '' : ' lp-f--single')}>
+        {/* Удалить город — запись; наблюдателю кнопки нет. «Готово» остаётся:
+            это закрытие панели, а не правка. */}
+        {canEdit && <Btn variant="danger" icon="trash" onClick={onRemove} ariaLabel={t('common.delete')}>{t('common.delete')}</Btn>}
         <Btn variant="primary" icon="check" onClick={onBack}>{t('common.done')}</Btn>
       </div>
     </div>

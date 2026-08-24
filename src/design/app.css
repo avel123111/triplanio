@@ -800,7 +800,7 @@ h4,
 .eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
 .hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
 .seg button,   /* TRIP-337: сегмент-контрол = канон типографики .t-label. Был `font: inherit` → у одного примитива было три разных кегля (Trips-фильтр 13px, а /kit и прочие экраны наследовали крупный контекст). Экранный патч `.trips-toolbar .seg--filter button` снят как дубль этого канона. */
-.te-cityname,   /* TRIP-337: названия города (строка редактора + планировщик — общий носитель .te-cityname) → Label (был Subheading). Маршрут карты идёт своим .map-route__name, тоже Label. */
+.te-cityname,   /* TRIP-337: названия города (строка редактора + планировщик — общий носитель .te-cityname) → Label (был Subheading). */
 .btn,
 .field__label,
 .eroute p,
@@ -1748,6 +1748,13 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 /* Map lens (TRIP-33): full-bleed map with a floating glass route panel. The
    panel (.map-route) is positioned absolutely over the map; its own block and
    the ≤640px bottom-sheet variant live in the PRIMITIVES section below. */
+.app-main {
+  padding: 22px 24px 80px;
+  min-height: calc(100vh - 56px - 45px);
+  overflow-x: clip;
+  min-width: 0;
+  max-width: 100%;
+}
 
 /* =================================================================
    PRIMITIVES — buttons, fields, badges, cards
@@ -2000,56 +2007,63 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
    однозначным, когда оболочка останется одна. */
 /* .hv-notes border-radius уехал на .card--r-md (radius="md", TRIP-337 объект 2). */
 
-/* Map lens route panel (TRIP-33): поверхность несёт компонент <Card> (TRIP-337),
-   а `.map-route` держит ТОЛЬКО раскладку — из surface-co-селектора имя убрано.
-   Floats top-left over the full-bleed map; collapses to a bottom sheet on phones (below). */
-/* Раскладку панели (позицию над картой, ширину, скролл) держит примитив
-   `.mapshell`; `.map-route` как обёртка больше не рендерится — от семьи остались
-   только элементы содержимого (__head/__list/__item/__marker).
-   visual-diff-exempt: .map-route position — обёртка снята, панель ставит .mapshell__panel
-   visual-diff-exempt: .map-route z-index — то же
-   visual-diff-exempt: .map-route top — то же
-   visual-diff-exempt: .map-route left — то же
-   visual-diff-exempt: .map-route width — ширину колонки держит .mapshell__panel
-   visual-diff-exempt: .map-route max-width — то же
-   visual-diff-exempt: .map-route max-height — высоту держит .mapshell__panel
-   visual-diff-exempt: .map-route display — колонку держит .mapshell__card
-   visual-diff-exempt: .map-route flex-direction — то же
-   visual-diff-exempt: .map-route overflow — клип держит .mapshell__card (<Card>) */
-/* TRIP-337: шапка панели = канон <PageHead> (title «Маршрут» + subtitle «N городов»);
-   гасим его margin-bottom, разделитель и отступ несёт эта строка. */
-.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); margin-bottom: 0; }
-.map-route__empty { padding: 32px 20px; text-align: center; }
-.map-route__list { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-.map-route__item {
-  display: flex; align-items: center; gap: 12px; width: 100%;
-  padding: 8px 10px; border: none; background: transparent; border-radius: var(--r-sm);
-  cursor: pointer; text-align: left; color: var(--ink);
-  transition: background .15s ease;
-}
-@media (hover: hover) and (pointer: fine) {
-  .map-route__item:hover { background: var(--wash); } /* app-wide list hover (app-side/icon-btn) */
-}
-.map-route__item.is-active { background: var(--brand-soft); }
-.map-route__marker {
-  flex: none; width: 26px; height: 26px; border-radius: var(--r-pill);
-  display: grid; place-items: center;
-  background: var(--surface); color: var(--brand);
-  border: 2px solid var(--brand-soft-12);
-  font-variant-numeric: tabular-nums;
-}
-.map-route__marker svg { width: 13px; height: 13px; }
-.map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.map-route__dates { color: var(--muted); }
-/* Phones (≤640px): the route panel is rendered inside <PeekSheet> (the non-modal
-   detent sheet — see .peek-sheet in the C6 section) instead of the floating glass
-   desktop panel. The route head + rows reuse the .map-route__* skin; PeekSheet's
-   __body is the scroller, so the inner list must not scroll on its own. */
-.peek-sheet .map-route__head { padding-top: 2px; border-bottom: 0; }
-/* Скроллит ТЕЛО шита/панели (`.peek-sheet__body` / `.mapshell__body`), а не сам
-   список: два вложенных скроллера дают «залипающий» жест на телефоне.
-   visual-diff-exempt: .map-route__list overflow — скроллит тело шелла, не список */
-.peek-sheet .map-route__list { padding: 8px 8px 0; }
+/* Семья `.map-route__*` УДАЛЕНА ЦЕЛИКОМ (TRIP-459). Линза карты схлопнута с
+   редактором в один экран «Маршрут», и список остановок там свой — ряды
+   `.te-row` через общий <CityRow>. Своей копии списка у карты больше нет, а
+   вместе с ней ушли и её приватные правила: осиротевшее правило удаляется
+   вместе с именем (гард 2n), иначе то, что оно держало, уходит молча.
+   Токены `--map-route` / `--map-route-ring` к семье НЕ относятся — это hex для
+   заливки линий Mapbox (в paint переменные CSS не подставить), их читает MapView.
+
+   Каждое снятое объявление объявлено ПОИМЁННО: у 2p ключ = единица + состояние +
+   @media + свойство, а не «файл», поэтому одного маркера на семью не бывает.
+   Ключи взяты ДОСЛОВНО из вывода гарда, а не набраны по памяти: составное правило
+   он печатает поклассово (`.peek-sheet .map-route__head` → и на `.peek-sheet`,
+   и на `.map-route__head`), и угаданный «составной» маркер он не разбирает вовсе.
+   visual-diff-exempt: .is-active background — артефакт одного победителя на ключ: снят `.map-route__item.is-active .map-route__marker`, победителем стал `.tm-manage__row.is-active .tm-manage__ico` — его значение не менялось
+   visual-diff-exempt: .map-route__body display — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__body flex-direction — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__body gap — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__body min-width — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__empty padding — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__empty text-align — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__head border-bottom — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__head margin-bottom — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__head padding — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__head padding-top — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item:hover {@media (hover: hover) and (pointer: fine)} background — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item align-items — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item background — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item border — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item border-color — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item border-radius — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item cursor — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item display — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item gap — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item padding — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item text-align — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item transition — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__item width — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__list display — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__list flex-direction — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__list gap — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__list padding — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker svg height — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker svg width — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker background — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker border — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker border-color — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker border-radius — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker display — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker flex — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker font-variant-numeric — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker height — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker place-items — семья снята вместе с линзой карты
+   visual-diff-exempt: .map-route__marker width — семья снята вместе с линзой карты
+   visual-diff-exempt: .peek-sheet border-bottom — артефакт одного победителя на ключ: снято СОСТАВНОЕ правило `.peek-sheet .map-route__*`, у предка своего объявления не было
+   visual-diff-exempt: .peek-sheet padding — артефакт одного победителя на ключ: снято СОСТАВНОЕ правило `.peek-sheet .map-route__*`, у предка своего объявления не было
+   visual-diff-exempt: .peek-sheet padding-top — артефакт одного победителя на ключ: снято СОСТАВНОЕ правило `.peek-sheet .map-route__*`, у предка своего объявления не было
+   */
 
 /* City badge (TRIP-33): label next to the active city's pin on the Map lens.
    TRIP-326: glass снят — непрозрачный --surface. Метка passiv (не ест клики). */
@@ -3435,7 +3449,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    видны вовсе; исключение и снято тем же PR - именно потому, что кольцо стало
    свойством семьи, а не отдельного экрана.
    Кольцо то же, что у поля и чекбокса (--primary-ring), а не своё. */
-.icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+/* :has(:focus-visible) — тот же контрол на <label>-носителе (share-UX:
+   «загрузить своё фото» = label вокруг .sr-only файлового инпута): фокус
+   получает ИНПУТ, а не носитель класса, и без этой ветки кольцо не приходило
+   бы вовсе. Именно :has(:focus-visible), а не :focus-within — кольцо только с
+   клавиатуры, как у кнопок; у обычной кнопки-иконки фокусируемых детей нет.
+   visual-diff-exempt: .icon-btn:has(:focus-visible) outline — кольцо фокуса для label-носителя контрола (share-UX)
+   visual-diff-exempt: .icon-btn:has(:focus-visible) box-shadow — кольцо фокуса для label-носителя контрола (share-UX) */
+.icon-btn:focus-visible, .icon-btn:has(:focus-visible) { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .icon-btn[disabled] { opacity: .45; pointer-events: none; }
 /* Нажато = бренд-заливка, тот же канон, что у `.btn[aria-pressed]` выше и у Chip.
    Глобус карты Статистики красится этим правилом (`.map-ctl button.on` снят). */
@@ -4636,8 +4657,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    вариант рендерится без обёртки. Кнопка-дата — центр степпера. */
 .ts-startctl { display: inline-flex; align-items: center; gap: 2px; border-radius: var(--r-sm); padding: 2px; }
 .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
-.ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: var(--r-sm); color: var(--ink); white-space: nowrap; }
-.ts-startctl__date:hover { background: var(--wash); }
+/* Коробка даты одна на оба режима (падинг, радиус, «не переносить») — у
+   наблюдателя дата ТА ЖЕ, просто не нажимается (TRIP-459). А вот обещание
+   нажатия — курсор и ховер-подложка — принадлежит интерактивной форме, и
+   ключ у него по тому, ЧЕМ элемент является: `role="button"` ставит только
+   кликабельный вариант.
+   visual-diff-exempt: .ts-startctl__date cursor — обещание нажатия уехало на интерактивную форму [role=button]; у нетыкаемой даты курсор дефолтный
+   visual-diff-exempt: .ts-startctl__date:hover background — ховер-подложка там же: у нетыкаемой даты её быть не должно
+   visual-diff-exempt: .ts-startctl__date[role=button] cursor — та же пара, сторона ПРИБЫТИЯ: у кликабельной даты курсор не менялся
+   visual-diff-exempt: .ts-startctl__date:hover[role=button] background — та же пара, сторона прибытия: ховер кликабельной даты не менялся */
+.ts-startctl__date { border: none; background: transparent; padding: 3px 8px; border-radius: var(--r-sm); color: var(--ink); white-space: nowrap; }
+.ts-startctl__date[role="button"] { cursor: pointer; }
+.ts-startctl__date[role="button"]:hover { background: var(--wash); }
 /* block: дата тянется во всю ячейку (полный клик-таргет). */
 .stepper--block .n { display: flex; }
 .stepper--block .ts-startctl__date { flex: 1; text-align: center; }
@@ -4866,6 +4897,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 .dlg--wide { max-width: 760px; }
 .dlg--sm { max-width: 420px; }
+/* Ступень «по содержимому» (share-UX, редактор карты по заданию Pavel): карточка
+   диалога обнимает контент с ОПРЕДЕЛЁННОЙ шириной (сцена карты считает её от
+   vh), а не растягивается на всю ширину обёртки .dlg-modal; margin-inline
+   центрирует внутри неё. На ≤640 не живёт — там такие поверхности идут шитом.
+   visual-diff-exempt: .dlg--fit width — новая ступень размера диалога (share-UX, апрув = прямое задание Pavel)
+   visual-diff-exempt: .dlg--fit margin-inline — новая ступень размера диалога (share-UX) */
+.dlg--fit { width: fit-content; margin-inline: auto; }
 .dlg__head {
   padding: 18px 22px;
   border-bottom: 1px solid var(--line);
@@ -5751,9 +5789,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-step:hover { background: var(--surface); }
     .te-step:active:not(:disabled) { transform: scale(0.9); }
     .te-step:disabled { color: var(--muted-2); cursor: default; }
-    .te-cell { flex-shrink: 0; }
-    .te-cell--hotel { justify-self: center; min-width: 0; }
-    .te-cell--act { justify-self: center; }
+    /* `justify-self` поднят с модификаторов на САМУ ЯЧЕЙКУ (TRIP-459). Колонки
+       ряда центрованы по шапке (`.te-th--c`), и объявляли это две ячейки из трёх:
+       жильё и активности. Ночи ячейкой не были вовсе — их содержимое стояло в
+       сетке голым, и колонка держалась на совпадении: контрол «− 3н +» её просто
+       заполнял. Стоило снять кнопки у наблюдателя, как значение уехало из-под
+       шапки на 28px. Это не баг read-only, а несимметрия ряда, которую read-only
+       проявил, — поэтому чиним несимметрию: ячейка объявляет своё выравнивание
+       ОДНА для всех трёх, а ночи наконец ею становятся.
+       Для жилья и активностей значение то же, что было на модификаторах.
+       visual-diff-exempt: .te-cell justify-self — выравнивание поднято с модификаторов на общую ячейку
+       visual-diff-exempt: .te-cell--hotel justify-self — то же правило, теперь на .te-cell (значение не изменилось)
+       visual-diff-exempt: .te-cell--act justify-self — то же правило, теперь на .te-cell (значение не изменилось) */
+    .te-cell { flex-shrink: 0; justify-self: center; }
+    .te-cell--hotel { min-width: 0; }
     /* Пустая ячейка отеля/активности — это `Btn variant="dashed" size="sm"`, и
        своих правил у неё больше НЕТ. Ушли вместе с классом: собственная высота
        34px (теперь `--ctl-h-sm` 32), собственный пунктир и `scale` на нажатии.
@@ -9235,7 +9284,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    «включено» кнопки держит канон `.icon-btn[aria-pressed]` (бренд-заливка),
    глобус Статистики перешёл на `aria-pressed`. Подсветка ВЫБРАННОГО МАРКЕРА
    маршрута — своё правило, тот же hl-облик (запятая-хвост убрана, ревью Codex). */
-.map-route__item.is-active .map-route__marker { background: var(--hl); border-color: var(--hl); color: var(--hl-fg); }
 
 /* Свой цвет у места = переопределённая ручка, а не своё правило подсветки. */
 .te-cell--hotel { --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
