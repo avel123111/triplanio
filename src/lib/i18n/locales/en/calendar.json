@@ -1,4 +1,5 @@
 {
+  "all_day": "All day",
   "free_day": "Free day",
   "legend_group_cities": "Cities",
   "month": "Month",
@@ -6,6 +7,9 @@
   "next": "Next",
   "no_dates": "Add trip dates to see the calendar",
   "prev": "Previous",
+  "stat_cities": "cities",
+  "stat_days": "days",
+  "stat_events": "events",
   "to_trip_start": "To trip start",
   "today": "Today",
   "week": "Week",

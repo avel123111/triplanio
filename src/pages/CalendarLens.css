@@ -1,75 +1,57 @@
 /* =================================================================
-   CalendarLens — редизайн (ncal-* namespace).
+   CalendarLens — полный редизайн (ncal-* namespace).
 
-   Язык: единая «доска» календаря — одна карточка с бордюром и волосяными
-   разделителями между ячейками (без тени на каждой ячейке). Мягкие цветовые
-   акценты городов (софт-фон + цветной текст), а не сплошные насыщенные полосы.
-
-   Цвета/радиусы/тени/кегли — только токены app.css. Города берут цвет через
-   инлайновые CSS-переменные (--cc / --cc-soft / --cc-ink), выставленные из JSX
-   из палитры ev-*/ai/warm — новых токенов ноль.
+   Страница из трёх зон: командная панель · календарь · сводка поездки.
+   Месяц — доска с непрерывными лентами городов через дни. Неделя — сетка
+   колонок с осью времени. Цвета/радиусы/тени/кегли — только токены app.css.
+   Города красятся инлайновыми CSS-переменными (--cc/--cc-soft/--cc-ink).
    ================================================================= */
 
-/* ── Root ──────────────────────────────────────────────────────── */
-.ncal { display: flex; flex-direction: column; }
+.ncal { display: flex; flex-direction: column; gap: 18px; }
 
-/* ── Toolbar / Header ──────────────────────────────────────────── */
-.ncal-hd {
-  margin-bottom: 18px;
+/* ── Command bar ───────────────────────────────────────────────── */
+.ncal-bar {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-1);
 }
-.ncal-hd-l { min-width: 0; }
-.ncal-title-row {
-  gap: 0;
-  align-items: baseline;
-}
-/* размер/вес/гарнитура — из канона .t-display (className в JSX) */
-.ncal-month-lbl {
-  color: var(--ink);
-  line-height: 1.05;
-}
-/* размер/вес — из канона .t-subheading (className в JSX) */
-.ncal-year-lbl {
-  color: var(--muted);
-  margin-left: 10px;
-  font-variant-numeric: tabular-nums;
-}
-.ncal-hd-r {
-  gap: 9px;
-  flex: none;
-}
+.ncal-bar-title { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ncal-title-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+/* размер/вес/гарнитура — каноны .t-display / .t-heading (className в JSX) */
+.ncal-month-lbl { color: var(--ink); line-height: 1; }
+.ncal-year-lbl  { color: var(--muted); font-variant-numeric: tabular-nums; }
 
-/* ── Nav pill ──────────────────────────────────────────────────── */
-.ncal-nav {
-  background: var(--surface-2);
-  border-radius: var(--r-pill);
-  padding: 4px;
+.ncal-sub {
+  display: flex; align-items: center; gap: 9px;
+  color: var(--muted); flex-wrap: wrap;
 }
+.ncal-sub-range { color: var(--ink-2); }
+.ncal-sub-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-2); flex: none; }
+
+.ncal-bar-ctl { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; flex: none; }
+
+/* Nav pill */
+.ncal-nav { background: var(--surface-2); border-radius: var(--r-pill); padding: 4px; }
 .ncal-nav-txt {
-  padding: 5px 12px;
-  border-radius: var(--r-pill);
-  background: transparent; border: none;
-  color: var(--muted);
-  transition: background .15s, color .15s;
-  cursor: pointer;
+  padding: 5px 12px; border-radius: var(--r-pill);
+  background: transparent; border: none; color: var(--muted);
+  transition: background .15s, color .15s; cursor: pointer;
 }
 .ncal-nav-txt:hover { background: var(--surface); color: var(--ink); }
-.ncal-nav-div {
-  width: 1px; height: 16px;
-  background: var(--line-strong);
-  margin: 0 2px; flex: none; align-self: center;
-}
+.ncal-nav-div { width: 1px; height: 16px; background: var(--line-strong); margin: 0 2px; flex: none; align-self: center; }
 .ncal-nav-trip {
-  gap: 5px;
-  padding: 5px 12px; border-radius: var(--r-pill);
-  background: var(--brand-soft); color: var(--brand);
-  border: none;
-  transition: background .15s, color .15s;
-  cursor: pointer;
+  gap: 5px; padding: 5px 12px; border-radius: var(--r-pill);
+  background: var(--brand-soft); color: var(--brand); border: none;
+  transition: background .15s, color .15s; cursor: pointer;
 }
 .ncal-nav-trip svg { width: 13px; height: 13px; flex: none; }
 .ncal-nav-trip:hover { background: var(--brand-soft-12); }
 
-/* View toggle: канон <Seg>. Приватных правил нет.
+/* View toggle: канон <Seg>.
    visual-diff-exempt: .ncal-vtgl background — копия снята, разметка на канон .seg (TRIP-344 PR6)
    visual-diff-exempt: .ncal-vtgl border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
    visual-diff-exempt: .ncal-vtgl padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
@@ -92,71 +74,54 @@
    visual-diff-exempt: .ncal-vtgl-btn {@media (max-width: 640px)} padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
    visual-diff-exempt: .is-on box-shadow — состояние снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
 
-/* ── Month: unified board card ─────────────────────────────────── */
+/* ── Body layout: calendar + aside ─────────────────────────────── */
+.ncal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 268px;
+  gap: 18px;
+  align-items: start;
+}
+.ncal-main { min-width: 0; }
+
+/* ── Month board ───────────────────────────────────────────────── */
 .ncal-month {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   overflow: hidden;
 }
-
-/* Weekday header */
-.ncal-wd-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  background: var(--surface-3);
-  border-bottom: 1px solid var(--line);
+.ncal-wdrow {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  background: var(--surface-3); border-bottom: 1px solid var(--line);
 }
-.ncal-wd {
-  text-align: center;
-  color: var(--muted);
-  padding: 9px 0;
-}
+.ncal-wd { text-align: center; color: var(--muted); padding: 9px 0; }
 
-/* Hairline day grid — единая сетка на весь месяц, разделители = зазор 1px
-   поверх фона --line (без тени на каждой ячейке). */
-.ncal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  background: var(--line);
-}
+.ncal-weeks { display: flex; flex-direction: column; }
+.ncal-wk { position: relative; }
+.ncal-wk + .ncal-wk { border-top: 1px solid var(--line); }
 
-/* ── Day cell ──────────────────────────────────────────────────── */
+/* Day cells — hairline columns, full height */
+.ncal-cells {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px; background: var(--line);
+}
 .ncal-dc {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 116px;
-  padding: 6px 6px 8px;
+  display: flex; flex-direction: column;
+  min-height: 128px; padding: 7px 7px 8px;
   background: var(--surface);
   transition: background .16s var(--ease-out);
   cursor: pointer;
 }
 .ncal-dc:hover { background: var(--surface-3); }
-.ncal-dc.is-out {
-  background: var(--surface-3);
-  opacity: .55;
-  pointer-events: none;
-}
-.ncal-dc.is-trip { background: var(--brand-soft); }
-.ncal-dc.is-trip:hover { background: var(--brand-soft-12); }
-.ncal-dc.is-today {
-  box-shadow: inset 0 0 0 1.5px var(--brand);
-}
+.ncal-dc.is-out { background: var(--surface-3); opacity: .5; pointer-events: none; }
+.ncal-dc.is-trip { background: color-mix(in srgb, var(--brand) 5%, var(--surface)); }
+.ncal-dc.is-trip:hover { background: color-mix(in srgb, var(--brand) 9%, var(--surface)); }
 
-/* Top row: day number */
-.ncal-dc-top {
-  display: flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 2px;
-}
+.ncal-dc-top { display: flex; align-items: center; min-height: 22px; padding: 0 1px; }
 .ncal-dn {
   color: var(--ink-2);
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 24px; height: 24px; padding: 0 6px;
-  border-radius: var(--r-pill);
+  min-width: 24px; height: 22px; padding: 0 6px; border-radius: var(--r-pill);
   font-variant-numeric: tabular-nums;
 }
 .ncal-dc.is-trip .ncal-dn { color: var(--brand-ink); }
@@ -164,271 +129,210 @@
   background: var(--brand); color: var(--primary-fg);
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
+/* room reserved for ribbon lanes (lane height 22px + 3px gap) */
+.ncal-dc-lanes { height: calc(var(--lanes, 0) * 25px); flex: none; }
 
-/* ── City strip (soft pill) ────────────────────────────────────── */
-.ncal-cstrip {
-  display: flex; align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: var(--r-xs);
-  background: var(--cc-soft, transparent);
-  color: var(--cc-ink, var(--ink-2));
-  white-space: nowrap; overflow: hidden;
-  flex: none;
-  position: relative;
-}
-/* левый цветной кант — «корешок» города */
-.ncal-cstrip:not(.cs-empty)::before {
-  content: ''; position: absolute; left: 0; top: 3px; bottom: 3px;
-  width: 3px; border-radius: 2px; background: var(--cc, transparent);
-}
-.ncal-cstrip:not(.cs-empty) { padding-left: 12px; }
-.ncal-cstrip.cs-empty { background: transparent; }
-/* Split: несколько городов в транзитный день */
-.ncal-cstrip.is-split { padding: 0; gap: 2px; background: transparent; overflow: visible; }
-.ncal-cstrip.is-split::before { display: none; }
-.ncal-cstrip-seg {
-  display: flex; align-items: center;
-  flex: 1; min-width: 0;
-  height: 20px; padding: 0 6px;
-  border-radius: var(--r-xs);
-  border-left: 3px solid var(--cc, transparent);
-  background: var(--cc-soft, transparent);
-  color: var(--cc-ink, var(--ink-2));
-  overflow: hidden; white-space: nowrap;
-}
-
-/* ── Events list in month cell ─────────────────────────────────── */
-.ncal-evl {
-  display: flex; flex-direction: column; gap: 3px;
-}
+.ncal-evl { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
 .ncal-ev {
   display: flex; align-items: center; gap: 6px;
-  padding: 3px 8px 3px 7px; border-radius: var(--r-xs);
-  overflow: hidden; border: none; cursor: pointer;
-  text-align: left; width: 100%;
-  background: var(--surface-2);
-  color: var(--ink-2);
-  transition: filter .14s, background .14s;
+  padding: 2px 7px; border-radius: var(--r-xs);
+  overflow: hidden; border: none; cursor: pointer; text-align: left; width: 100%;
+  background: var(--surface-2); color: var(--ink-2);
+  transition: filter .14s;
 }
 .ncal-ev:hover { filter: brightness(.97); }
-.ncal-ev .dot {
-  width: 6px; height: 6px; border-radius: 2px;
-  flex: none; background: currentColor;
-}
-.ncal-ev .tm { color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
-.ncal-ev .t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--ink-2); }
-
+.ncal-ev .tm { flex: none; opacity: .7; font-variant-numeric: tabular-nums; }
+.ncal-ev .t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: inherit; }
 .ncal-ev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
 .ncal-ev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .ncal-ev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 .ncal-ev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
 .ncal-ev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
-.ncal-ev .t { color: inherit; }
+.ncal-more { color: var(--muted); padding: 1px 7px; }
 
-/* "+N more" — примитив <Chip sm square variant="soft"> (полная ширина ячейки). */
+/* City ribbons — continuous multi-day bands overlaid on the week */
+.ncal-bands {
+  position: absolute; left: 0; right: 0; top: 30px;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px 1px;
+  pointer-events: none;
+}
+.ncal-ribbon {
+  height: 22px; display: flex; align-items: center;
+  padding: 0 8px; min-width: 0;
+  background: var(--cc-soft);
+  color: var(--cc-ink);
+  border-left: 3px solid transparent;
+}
+.ncal-ribbon.is-start { border-top-left-radius: var(--r-pill); border-bottom-left-radius: var(--r-pill); border-left: 3px solid var(--cc); margin-left: 2px; }
+.ncal-ribbon.is-end   { border-top-right-radius: var(--r-pill); border-bottom-right-radius: var(--r-pill); margin-right: 2px; }
+.ncal-ribbon-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ── Week view — columns board ─────────────────────────────────── */
+/* ── Week time-grid ────────────────────────────────────────────── */
 .ncal-week {
+  --ncal-gut: 54px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   overflow: hidden;
 }
-.ncal-wgrid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--line);
-  align-items: stretch;
+.ncal-wk-head, .ncal-wk-allday {
+  display: grid; grid-template-columns: var(--ncal-gut) repeat(7, minmax(0, 1fr));
 }
-
-/* Day column */
-.ncal-wcol {
-  display: flex; flex-direction: column;
-  background: var(--surface);
-  min-height: 340px;
+.ncal-wk-head { border-bottom: 1px solid var(--line); background: var(--surface); }
+.ncal-wk-gut { border-right: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted-2); }
+.ncal-wk-hcell {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 11px 6px 0; border-left: 1px solid var(--line);
 }
-.ncal-wcol.is-today { background: var(--brand-soft); }
-
-/* Column header */
-.ncal-wcol-h {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 12px 8px 10px;
-  border-bottom: 1px solid var(--line);
-  flex: none;
-}
-.ncal-wcol-wd {
-  color: var(--muted);
-}
-/* размер/вес/гарнитура — из канона .t-heading (className в JSX) */
-.ncal-wcol-dn {
-  color: var(--ink);
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 30px; height: 30px; padding: 0 8px;
-  border-radius: var(--r-pill);
+.ncal-wk-hcell.is-today { background: var(--brand-soft); }
+.ncal-wk-wd { color: var(--muted); }
+.ncal-wk-dn {
+  color: var(--ink); display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 30px; border-radius: var(--r-pill);
   font-variant-numeric: tabular-nums; line-height: 1;
 }
-.ncal-wcol.is-today .ncal-wcol-dn {
+.ncal-wk-hcell.is-today .ncal-wk-dn {
   background: var(--brand); color: var(--primary-fg);
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
+.ncal-wk-cbar { display: flex; width: 100%; height: 3px; margin-top: 2px; }
+.ncal-wk-cseg { flex: 1; }
+.ncal-wk-cseg + .ncal-wk-cseg { margin-left: 1px; }
 
-/* City bar under header */
-.ncal-cbar { display: flex; height: 4px; flex: none; }
-.ncal-cbar-seg { flex: 1; background: var(--cc, transparent); }
-.ncal-cbar-seg + .ncal-cbar-seg { margin-left: 1px; }
-
-/* Column body — events */
-.ncal-wcol-b {
-  display: flex; flex-direction: column; gap: 5px;
-  padding: 10px 9px 12px; flex: 1;
-}
-.ncal-wcol-empty {
-  text-align: center; color: var(--muted-2);
-  padding: 16px 0 6px;
-}
-
-/* Agenda event item */
-.ncal-aev {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 7px 9px 7px 11px; border-radius: var(--r-sm);
+/* all-day strip */
+.ncal-wk-allday { border-bottom: 1px solid var(--line); background: var(--surface-3); min-height: 34px; }
+.ncal-wk-allday .ncal-wk-gut { color: var(--muted-2); }
+.ncal-wk-adcell { display: flex; flex-direction: column; gap: 3px; padding: 5px; border-left: 1px solid var(--line); }
+.ncal-wk-adcell.is-today { background: var(--brand-soft); }
+.ncal-chip {
+  display: flex; align-items: center; padding: 3px 8px; border-radius: var(--r-xs);
   border: none; cursor: pointer; text-align: left;
-  position: relative; overflow: hidden;
+  background: var(--surface-2); color: var(--ink-2); overflow: hidden;
+}
+.ncal-chip .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncal-chip.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
+.ncal-chip.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.ncal-chip.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
+.ncal-chip.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
+.ncal-chip.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
+
+/* scrollable body */
+.ncal-wk-scroll { max-height: 560px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.ncal-wk-scroll::-webkit-scrollbar { width: 7px; }
+.ncal-wk-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
+.ncal-wk-body { position: relative; }
+
+.ncal-wk-times { position: absolute; left: 0; top: 0; width: var(--ncal-gut); height: 100%; }
+.ncal-wk-time { position: absolute; right: 8px; transform: translateY(-50%); color: var(--muted-2); }
+
+.ncal-wk-cols {
+  position: relative; margin-left: var(--ncal-gut); height: 100%;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.ncal-wk-lines { position: absolute; inset: 0; pointer-events: none; }
+.ncal-wk-line { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
+.ncal-wk-col { position: relative; border-left: 1px solid var(--line); }
+.ncal-wk-col.is-today { background: var(--brand-soft); }
+
+.ncal-tev {
+  position: absolute;
+  display: flex; flex-direction: column; gap: 1px; overflow: hidden;
+  padding: 4px 7px; border-radius: var(--r-sm);
+  border: none; cursor: pointer; text-align: left;
   background: var(--surface-2); color: var(--ink-2);
-  transition: filter .14s, transform .12s var(--ease-spring);
+  box-shadow: var(--sh-1);
+  transition: filter .14s, transform .1s var(--ease-spring);
 }
-.ncal-aev::before {
-  content: ''; position: absolute;
-  left: 0; top: 7px; bottom: 7px;
-  width: 3px; border-radius: 0 2px 2px 0;
-  background: currentColor;
+.ncal-tev::before {
+  content: ''; position: absolute; left: 0; top: 5px; bottom: 5px;
+  width: 3px; border-radius: 0 2px 2px 0; background: currentColor;
 }
-.ncal-aev:hover { filter: brightness(.97); }
-.ncal-aev:active { transform: scale(.98); }
-.ncal-aev .atm {
-  color: var(--muted); font-variant-numeric: tabular-nums;
-}
-.ncal-aev .atl {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit;
-}
-.ncal-aev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
-.ncal-aev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.ncal-aev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
-.ncal-aev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
-.ncal-aev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
-.ncal-aev.ev-hotel .atm, .ncal-aev.ev-activity .atm,
-.ncal-aev.ev-transfer .atm, .ncal-aev.ev-deadline .atm,
-.ncal-aev.ev-car .atm { color: inherit; opacity: .72; }
+.ncal-tev:hover { filter: brightness(.97); }
+.ncal-tev:active { transform: scale(.98); }
+.ncal-tev-tm { opacity: .72; font-variant-numeric: tabular-nums; }
+.ncal-tev-t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
+.ncal-tev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
+.ncal-tev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.ncal-tev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
+.ncal-tev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
+.ncal-tev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
 
-/* ── Legend ────────────────────────────────────────────────────── */
-.ncal-legend {
-  margin-top: 20px;
+/* ── Aside — trip summary ──────────────────────────────────────── */
+.ncal-aside { display: flex; flex-direction: column; gap: 14px; }
+.ncal-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 16px; box-shadow: var(--sh-1);
 }
-.ncal-legend-group {
-  gap: 14px;
-}
-.ncal-legend-lbl {
-  color: var(--muted-2); flex: none;
-}
-.ncal-leg {
-  color: var(--muted);
-}
-.ncal-leg-sw {
-  width: 10px; height: 10px; border-radius: 3px; flex: none;
-}
+.ncal-card-h { color: var(--muted-2); margin-bottom: 12px; }
+.ncal-stats { display: flex; justify-content: space-between; gap: 8px; }
+.ncal-stat { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+.ncal-stat-n { color: var(--ink); font-variant-numeric: tabular-nums; }
+.ncal-stat-l { color: var(--muted); }
+.ncal-stat + .ncal-stat { border-left: 1px solid var(--line); }
 
-/* ── View fade-in animation ────────────────────────────────────── */
-@keyframes ncalFadeSlideIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.ncal-month,
-.ncal-week {
-  animation: ncalFadeSlideIn .22s var(--ease-out) both;
-}
+.ncal-clist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
+.ncal-crow { display: flex; align-items: center; gap: 9px; }
+.ncal-cdot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.ncal-cname { color: var(--ink-2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncal-crange { color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
 
-/* ── Empty / no-dates ──────────────────────────────────────────── */
-.ncal-empty {
-  padding: 48px 24px; text-align: center;
-  color: var(--muted);
-}
+/* ── Fade-in ───────────────────────────────────────────────────── */
+@keyframes ncalFadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.ncal-month, .ncal-week { animation: ncalFadeSlideIn .22s var(--ease-out) both; }
 
-/* ── Focus visibility (keyboard nav) ───────────────────────────── */
-.ncal-ev:focus-visible,
-.ncal-aev:focus-visible,
-.ncal-nav-txt:focus-visible,
-.ncal-nav-trip:focus-visible {
+/* ── Empty ─────────────────────────────────────────────────────── */
+.ncal-empty { padding: 48px 24px; text-align: center; color: var(--muted); }
+
+/* ── Focus ─────────────────────────────────────────────────────── */
+.ncal-ev:focus-visible, .ncal-tev:focus-visible, .ncal-chip:focus-visible,
+.ncal-nav-txt:focus-visible, .ncal-nav-trip:focus-visible {
   outline: 2px solid var(--brand); outline-offset: 1px;
 }
 
-/* ── Responsive ──────────────────────────────────────────────────
-   @media меняют кегль/плотность по санкц. шкале --fs-*; гарнитуру/вес держит
-   канон. Все — design-token-exempt. */
-@media (max-width: 768px) {
-  .ncal-wcol-dn { font-size: var(--fs-h3); /* design-token-exempt: адаптивный кегль ячейки, TRIP-410 */ }
+/* ── Responsive ─────────────────────────────────────────────────
+   Кегли — по санкц. шкале --fs-*; всё design-token-exempt. */
+@media (max-width: 1000px) {
+  /* aside moves below the calendar */
+  .ncal-body { grid-template-columns: 1fr; }
+  .ncal-aside { flex-direction: row; flex-wrap: wrap; }
+  .ncal-stats { flex: 1 1 240px; }
+  .ncal-cities { flex: 2 1 320px; }
+  .ncal-clist { flex-direction: row; flex-wrap: wrap; gap: 8px 16px; }
+  .ncal-crow { flex: 0 1 auto; }
+  .ncal-crange { color: var(--muted-2); }
 }
 
 @media (max-width: 640px) {
-  /* Header: stack */
-  .ncal-hd { flex-direction: column; gap: 12px; align-items: stretch; margin-bottom: 14px; }
-  .ncal-hd-l { width: 100%; }
+  .ncal { gap: 12px; }
+  .ncal-bar { flex-direction: column; align-items: stretch; gap: 12px; padding: 14px 14px; }
   .ncal-month-lbl { font-size: var(--fs-h1); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-year-lbl  { font-size: var(--fs-base); margin-left: 8px; /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-hd-r {
-    flex-direction: row; align-items: center;
-    justify-content: space-between; width: 100%; gap: 8px;
-  }
+  .ncal-bar-ctl { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
   .ncal-nav { gap: 1px; padding: 3px; }
   .ncal-nav-trip .ncal-trip-label { display: none; }
   .ncal-nav-trip { padding: 5px 9px; gap: 0; }
   .ncal-nav-txt { padding: 5px 10px; }
 
   /* Month cells */
-  .ncal-dc     { min-height: 74px; padding: 4px 4px 6px; gap: 3px; }
-  .ncal-dc-top { min-height: 20px; }
-  .ncal-dn     { min-width: 20px; height: 20px; font-size: var(--fs-base); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-cstrip { height: 16px; font-size: 0; padding: 0; }
-  .ncal-cstrip:not(.cs-empty) { padding-left: 0; }
-  .ncal-cstrip:not(.cs-empty)::before { left: 0; top: 0; bottom: 0; width: 100%; border-radius: var(--r-xs); opacity: .9; }
-  .ncal-cstrip-seg { font-size: 0; padding: 0; border-left-width: 0; }
-  .ncal-cstrip.is-split .ncal-cstrip-seg { background: var(--cc, transparent); }
-  .ncal-ev     { padding: 2px 5px; gap: 4px; }
+  .ncal-dc { min-height: 82px; padding: 4px 4px 6px; }
+  .ncal-dn { min-width: 20px; height: 20px; font-size: var(--fs-nano); /* design-token-exempt: TRIP-410 */ }
+  .ncal-dc-lanes { height: calc(var(--lanes, 0) * 18px); }
+  .ncal-bands { top: 26px; gap: 2px 1px; padding: 0 2px; }
+  .ncal-ribbon { height: 15px; padding: 0 5px; }
+  .ncal-ribbon-t { font-size: 0; }
+  .ncal-ribbon.is-start { border-left-width: 4px; padding: 0; margin-left: 1px; }
+  .ncal-ev { padding: 2px 5px; }
   .ncal-ev .tm { display: none; }
-  .ncal-ev .dot { display: none; }
-  .ncal-ev .t  { font-size: var(--fs-nano); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-evl    { gap: 2px; }
+  .ncal-ev .t { font-size: var(--fs-nano); /* design-token-exempt: TRIP-410 */ }
 
-  /* Week columns: horizontal scroll, snap */
-  .ncal-week { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
-  .ncal-week::-webkit-scrollbar { height: 6px; }
-  .ncal-week::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
-  .ncal-wgrid {
-    grid-template-columns: repeat(7, minmax(140px, 1fr));
-    min-width: max-content;
-    scroll-snap-type: x proximity;
-  }
-  .ncal-wcol { scroll-snap-align: start; min-height: 300px; }
-  .ncal-wcol-h { padding: 10px 8px 9px; }
-  .ncal-wcol-dn { font-size: var(--fs-h3); min-width: 26px; height: 26px; /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-wcol-b { padding: 9px 8px 11px; gap: 4px; }
-  .ncal-aev    { padding: 6px 8px 6px 10px; }
-  .ncal-aev .atl { font-size: var(--fs-nano); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
+  /* Week grid: tighter gutter, horizontal scroll of the whole grid */
+  .ncal-week { --ncal-gut: 42px; overflow-x: auto; }
+  .ncal-wk-head, .ncal-wk-allday { min-width: 640px; }
+  .ncal-wk-scroll { min-width: 640px; max-height: 480px; }
+  .ncal-wk-dn { min-width: 26px; height: 26px; font-size: var(--fs-h3); /* design-token-exempt: TRIP-410 */ }
 
-  /* Legend */
-  .ncal-legend     { gap: 8px; margin-top: 16px; }
-  .ncal-legend-lbl { width: 52px; }
-  .ncal-leg        { gap: 5px; }
-}
-
-@media (max-width: 400px) {
-  .ncal-dc     { min-height: 58px; }
-  .ncal-evl { display: none; }
-  .ncal-dc.has-ev .ncal-dc-top::after {
-    content: ''; display: block;
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--brand); margin-left: auto; align-self: center;
-  }
-  .ncal-nav-txt { padding: 4px 8px; }
-  .ncal-hd-r   { flex-wrap: wrap; }
+  /* Aside stacks — reset the row-mode flex so basis doesn't become height */
+  .ncal-aside { flex-direction: column; }
+  .ncal-stats, .ncal-cities { flex: none; }
+  .ncal-clist { flex-direction: column; }
 }

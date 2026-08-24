@@ -1,13 +1,19 @@
 // @ts-check
 /**
- * CalendarLens — Lumo redesign (ncal-* system).
+ * CalendarLens — полный редизайн (ncal-* namespace).
  *
- * Month view: 7-column grid where each day cell carries an inline city strip
- * (solid for single city, split segments for transit days) at the top.
- * City name appears only on the first day of each visit within the visible month.
+ * Экран собран как страница из трёх зон:
+ *   • Командная панель (ncal-bar): крупный месяц/год, подзаголовок поездки
+ *     (диапазон дат · города · события), навигация и переключатель вида.
+ *   • Календарь (ncal-main):
+ *       — Месяц: доска 7×N с НЕПРЕРЫВНЫМИ лентами городов, тянущимися через
+ *         подряд идущие дни недели (как многодневные события в Google/Notion),
+ *         под ними — точечные события дня.
+ *       — Неделя: настоящая сетка колонок с осью времени слева, all-day полосой
+ *         сверху и позиционированными по часам блоками событий.
+ *   • Сводка поездки (ncal-aside): статистика + список городов с датами.
  *
- * Week view: 7 agenda cards (ncal-wdc) — no time grid, events listed
- * chronologically with time label above each entry.
+ * Цвета/радиусы/тени/кегли — только токены app.css. Новых цветов ноль.
  *
  * Props:
  *   stream      - array of stream events (from buildEventStream)
@@ -15,10 +21,10 @@
  *   isLoading   - boolean
  *   onOpenEvent - (streamEvent) => void
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, IconBtn, Seg, Chip, eventFamily } from '../design/index';
-import { Row, Col, Grow } from '../design/Layout';
+import { Skeleton, IconBtn, Seg, eventFamily } from '../design/index';
+import { Row, Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
@@ -26,13 +32,11 @@ import './CalendarLens.css';
 
 // Localized names
 const monthNames   = (lang) => ['', ...Info.months('long',  { locale: localeTag(lang) })];
+const monthShort   = (lang) => ['', ...Info.months('short', { locale: localeTag(lang) })];
 const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) });
 
-// ── City colour palette (Lumo event-type tokens, 6 distinct) ────────────────
-// Colours are drawn from existing ev-*/ai/warm tokens so they stay coherent with
-// the timeline and event panels — no new hues introduced. Each city gets a triad
-// (accent / soft-fill / ink-text) so strips read as soft tinted pills rather than
-// saturated bars with white text.
+// ── City colour palette (existing ev-*/ai/warm tokens — no new hues) ────────
+// Каждый город — триада (акцент / soft-фон / ink-текст).
 const CITY_PALETTE = [
   { c: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)' },
   { c: 'var(--ev-hotel)',    soft: 'var(--ev-hotel-soft)',    ink: 'var(--ev-hotel-ink)'    },
@@ -41,24 +45,16 @@ const CITY_PALETTE = [
   { c: 'var(--warm)',        soft: 'var(--warm-soft)',        ink: 'var(--warm-ink)'        },
   { c: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)' },
 ];
-
-const cityPal = (idx) => CITY_PALETTE[idx % CITY_PALETTE.length];
-// CSS-переменные города для инлайн-style — цвет города течёт в CSS одним носителем.
+const cityPal  = (idx) => CITY_PALETTE[idx % CITY_PALETTE.length];
 const cityVars = (idx) => {
   const p = cityPal(idx);
   return { '--cc': p.c, '--cc-soft': p.soft, '--cc-ink': p.ink };
 };
 
-// Раскраска чипа события — через общий классификатор семейства (design/index.jsx),
-// тот же, что красит таймлайн. Своей копии словаря типов тут нет: она разъезжалась
-// с потоком (ключ `car` вместо car-pickup/car-return → аренда рендерилась без цвета).
+// Раскраска события — через общий классификатор семейства (тот же, что красит
+// таймлайн). Своей копии словаря типов тут нет.
 const evCls = (type) => `ev-${eventFamily(type)}`;
 
-// ── Inline SVG icons (no extra dependency) ──────────────────────────────────
-// `IcoBack`/`IcoFwd` УДАЛЕНЫ (TRIP-344 PR 2): стрелки навигации уехали на
-// <IconBtn icon="chevL|chev" tone="soft" size="sm" round>, глиф приходит из
-// реестра — именно ШЕВРОН, а не стрелка: рисованные тут пути были chevron-left
-// и chevron-right, и `back`/`arrow` подменили бы глиф.
 const IcoPin = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -68,238 +64,240 @@ const IcoPin = () => (
 );
 
 // ─── MonthView ────────────────────────────────────────────────────────────────
+// weeksData: [{ cells:[{day,inTrip,isToday,events}], bands:[{startCol,span,label,
+//   colorIdx,roundStart,roundEnd,lane}], lanes:Number }]
 
-function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpenEvent, lang }) {
-  const { t } = useI18n();
-  const WD_NAMES = weekdayNames(lang);
-  const [expanded, setExpanded] = useState(() => new Set());
-
-  const toggle = useCallback((day) => {
-    setExpanded(prev => {
-      const next = new Set(prev);
-      next.has(day) ? next.delete(day) : next.add(day);
-      return next;
-    });
-  }, []);
-
-  // Returns city ranges that are active on the given calendar day.
-  const citiesForDay = useCallback((day) => {
-    if (day == null) return [];
-    return cityRanges
-      .filter(r => day >= r.startDay && day <= r.endDay)
-      .sort((a, b) => a.startDay - b.startDay || a.colorIdx - b.colorIdx);
-  }, [cityRanges]);
-
-  const cells = weeks.flat();
-
+function MonthView({ weeksData, weekdays, onOpenEvent, t }) {
   return (
     <div className="ncal-month">
-      {/* Weekday header */}
-      <div className="ncal-wd-row" role="row">
-        {WD_NAMES.map(w => (
-          <div key={w} className="ncal-wd t-micro" role="columnheader">{w}</div>
-        ))}
+      <div className="ncal-wdrow">
+        {weekdays.map(w => <div key={w} className="ncal-wd t-micro">{w}</div>)}
       </div>
 
-      {/* Single hairline day grid */}
-      <div className="ncal-grid" role="rowgroup">
-        {cells.map((d, ci) => {
-          const inTrip = d != null && inTripDays.has(d);
-          const isToday = d === todayDay;
-          const ev     = d != null ? (eventsByDay[d] || []) : [];
-          const cities = citiesForDay(d);
-          const isOpen = d != null && expanded.has(d);
-          const shown  = isOpen ? ev : ev.slice(0, 2);
-
-          const cls = ['ncal-dc'];
-          if (d == null)  cls.push('is-out');
-          else {
-            if (inTrip)      cls.push('is-trip');
-            if (isToday)     cls.push('is-today');
-            if (ev.length > 0) cls.push('has-ev');
-          }
-
-          // ── City strip ────────────────────────────────────
-          let cityStrip;
-          if (!cities.length) {
-            cityStrip = <div className="ncal-cstrip cs-empty" />;
-          } else if (cities.length === 1) {
-            const c = cities[0];
-            // Show city name only on the first day of this visit in the month
-            const showLabel = d === c.startDay;
-            cityStrip = (
-              <div className="ncal-cstrip t-tiny" style={cityVars(c.colorIdx)}>
-                {showLabel ? c.label : ''}
-              </div>
-            );
-          } else {
-            // Transit day: split strip — always show all city names
-            cityStrip = (
-              <div className="ncal-cstrip is-split">
-                {cities.map((c, si) => (
-                  <span key={si} className="ncal-cstrip-seg t-tiny" style={cityVars(c.colorIdx)}>
-                    {c.label}
-                  </span>
-                ))}
-              </div>
-            );
-          }
-
-          return (
-            <div key={ci} className={cls.join(' ')} role="gridcell">
-              <div className="ncal-dc-top">
-                {d != null && <span className="ncal-dn t-subheading">{d}</span>}
-              </div>
-
-              {cityStrip}
-
-              {d != null && ev.length > 0 && (
-                <div className="ncal-evl">
-                  {shown.map((e, ei) => (
-                    <button
-                      key={ei}
-                      type="button"
-                      className={`ncal-ev t-tiny ${evCls(e.type)}`}
-                      onClick={() => onOpenEvent?.(e)}
-                      aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}
-                    >
-                      <span className="dot" />
-                      {e.time && <span className="tm">{e.time}</span>}
-                      <span className="t">{e.title}</span>
-                    </button>
-                  ))}
-                  {ev.length > 2 && (
-                    <Chip sm square variant="soft" onClick={() => toggle(d)} style={{ width: '100%' }}>
-                      {/* inline-style-exempt: полная ширина ячейки дня — «+N ещё»
-                          встаёт четвёртой строкой в ряд с событиями (эталон секции E). */}
-                      {isOpen ? '−' : `+${ev.length - 2} ${t('calendar.more_count')}`}
-                    </Chip>
-                  )}
-                </div>
-              )}
+      <div className="ncal-weeks">
+        {weeksData.map((wk, wi) => (
+          <div key={wi} className="ncal-wk" style={{ '--lanes': wk.lanes }}>
+            {/* Day cells (background layer — hairlines, tint, numbers, events) */}
+            <div className="ncal-cells">
+              {wk.cells.map((c, ci) => {
+                const cls = ['ncal-dc'];
+                if (c.day == null) cls.push('is-out');
+                else {
+                  if (c.inTrip)  cls.push('is-trip');
+                  if (c.isToday) cls.push('is-today');
+                  if (c.events.length) cls.push('has-ev');
+                }
+                return (
+                  <div key={ci} className={cls.join(' ')}>
+                    <div className="ncal-dc-top">
+                      {c.day != null && <span className="ncal-dn t-label">{c.day}</span>}
+                    </div>
+                    {/* reserve vertical room for the city-ribbon lanes */}
+                    <div className="ncal-dc-lanes" aria-hidden="true" />
+                    {c.day != null && c.events.length > 0 && (
+                      <div className="ncal-evl">
+                        {c.events.slice(0, 3).map((e, ei) => (
+                          <button
+                            key={ei}
+                            type="button"
+                            className={`ncal-ev t-tiny ${evCls(e.type)}`}
+                            onClick={() => onOpenEvent?.(e)}
+                            aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}
+                          >
+                            {e.time && <span className="tm">{e.time}</span>}
+                            <span className="t">{e.title}</span>
+                          </button>
+                        ))}
+                        {c.events.length > 3 && (
+                          <div className="ncal-more t-tiny">+{c.events.length - 3} {t('calendar.more_count')}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+
+            {/* City ribbons — continuous multi-day bands over the week */}
+            {wk.bands.length > 0 && (
+              <div className="ncal-bands">
+                {wk.bands.map((b, bi) => {
+                  const bc = ['ncal-ribbon'];
+                  if (b.roundStart) bc.push('is-start');
+                  if (b.roundEnd)   bc.push('is-end');
+                  return (
+                    <div
+                      key={bi}
+                      className={bc.join(' ')}
+                      style={{ ...cityVars(b.colorIdx), gridColumn: `${b.startCol + 1} / span ${b.span}`, gridRow: b.lane + 1 }}
+                    >
+                      {b.label && <span className="ncal-ribbon-t t-tiny">{b.label}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// ─── WeekView ─────────────────────────────────────────────────────────────────
-// Agenda-card design: one ncal-wdc per day, events listed chronologically — no
-// hour grid. `days` тут всегда ровно 7: пустой массив мемо отдаёт только при
-// отсутствии baseDate, а этот случай отсечён экраном «нет дат» до рендера.
-function WeekView({ days, eventsByDayArr, onOpenEvent }) {
-  const { t } = useI18n();
+// ─── WeekGrid ─────────────────────────────────────────────────────────────────
+// Полноценная колоночная сетка с осью времени.
+// days: [{ wd, date, dateStr, isToday, cities:[{colorIdx}], allDay:[ev], timed:[{ev,top,height,lane,lanes}] }]
+// hours: [Number], hourH: px, startHour
+const HOUR_H = 46;
+
+function WeekGrid({ days, hours, startHour, hasAllDay, onOpenEvent, t }) {
+  const gridH = hours.length * HOUR_H;
 
   return (
     <div className="ncal-week">
-      <div className="ncal-wgrid" role="row">
-        {days.map((d, di) => {
-          const events = eventsByDayArr[di] || [];
-          const cities = d.cities || [];
+      {/* Header row: time-gutter spacer + day headers */}
+      <div className="ncal-wk-head">
+        <div className="ncal-wk-gut" />
+        {days.map((d, di) => (
+          <div key={di} className={`ncal-wk-hcell${d.isToday ? ' is-today' : ''}`}>
+            <span className="ncal-wk-wd t-micro">{d.wd}</span>
+            <span className="ncal-wk-dn t-heading">{d.date}</span>
+            <div className="ncal-wk-cbar">
+              {d.cities.length
+                ? d.cities.map((c, ci) => <span key={ci} className="ncal-wk-cseg" style={{ background: cityPal(c.colorIdx).c }} />)
+                : null}
+            </div>
+          </div>
+        ))}
+      </div>
 
-          // ── City colour bar under header ──────────────────────
-          const cbar = cities.length ? (
-            <div className="ncal-cbar">
-              {cities.map((c, ci) => (
-                <span key={ci} className="ncal-cbar-seg" style={cityVars(c.colorIdx)} />
+      {/* All-day / untimed strip */}
+      {hasAllDay && (
+        <div className="ncal-wk-allday">
+          <div className="ncal-wk-gut t-tiny">{t('calendar.all_day')}</div>
+          {days.map((d, di) => (
+            <div key={di} className={`ncal-wk-adcell${d.isToday ? ' is-today' : ''}`}>
+              {d.allDay.map((e, ei) => (
+                <button
+                  key={ei}
+                  type="button"
+                  className={`ncal-chip t-tiny ${evCls(e.type)}`}
+                  onClick={() => onOpenEvent?.(e)}
+                  aria-label={e.title}
+                >
+                  <span className="t">{e.title}</span>
+                </button>
               ))}
             </div>
-          ) : (
-            <div className="ncal-cbar" />
-          );
+          ))}
+        </div>
+      )}
 
-          return (
-            <div key={di} className={`ncal-wcol${d.isToday ? ' is-today' : ''}`} role="gridcell">
-              <div className="ncal-wcol-h">
-                <span className="ncal-wcol-wd t-micro">{d.wd}</span>
-                <span className="ncal-wcol-dn t-heading">{d.date}</span>
+      {/* Scrollable time grid */}
+      <div className="ncal-wk-scroll">
+        <div className="ncal-wk-body" style={{ height: gridH }}>
+          {/* time gutter */}
+          <div className="ncal-wk-times">
+            {hours.map((h, hi) => (
+              <div key={hi} className="ncal-wk-time" style={{ top: hi * HOUR_H }}>
+                <span className="t-tiny">{String(h).padStart(2, '0')}:00</span>
               </div>
+            ))}
+          </div>
 
-              {cbar}
-
-              <div className="ncal-wcol-b">
-                {events.length === 0 ? (
-                  <div className="ncal-wcol-empty t-meta">
-                    {cities.length > 0 ? t('calendar.free_day') : '—'}
-                  </div>
-                ) : (
-                  events.map((e, ei) => (
-                    <button
-                      key={ei}
-                      type="button"
-                      className={`ncal-aev ${evCls(e.type)}`}
-                      onClick={() => onOpenEvent?.(e)}
-                      aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}
-                    >
-                      {e.time && <div className="atm t-tiny">{e.time}</div>}
-                      <div className="atl t-label">{e.title}</div>
-                    </button>
-                  ))
-                )}
-              </div>
+          {/* day columns */}
+          <div className="ncal-wk-cols">
+            {/* hour gridlines (span all columns) */}
+            <div className="ncal-wk-lines" aria-hidden="true">
+              {hours.map((h, hi) => <div key={hi} className="ncal-wk-line" style={{ top: hi * HOUR_H }} />)}
             </div>
-          );
-        })}
+
+            {days.map((d, di) => (
+              <div key={di} className={`ncal-wk-col${d.isToday ? ' is-today' : ''}`}>
+                {d.timed.length === 0 && d.allDay.length === 0 && (
+                  <div className="ncal-wk-free t-tiny">{d.cities.length ? '' : ''}</div>
+                )}
+                {d.timed.map((it, ii) => (
+                  <button
+                    key={ii}
+                    type="button"
+                    className={`ncal-tev ${evCls(it.ev.type)}`}
+                    style={{
+                      top: it.top,
+                      height: Math.max(it.height, 34),
+                      left: `calc(${(it.lane / it.lanes) * 100}% + 2px)`,
+                      width: `calc(${(1 / it.lanes) * 100}% - 4px)`,
+                    }}
+                    onClick={() => onOpenEvent?.(it.ev)}
+                    aria-label={`${it.ev.time} ${it.ev.title}`}
+                  >
+                    <span className="ncal-tev-tm t-tiny">{it.ev.time}</span>
+                    <span className="ncal-tev-t t-tiny">{it.ev.title}</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Legend ──────────────────────────────────────────────────────────────────
-// Только города: цвет полосы ↔ город. Легенда нужна, потому что имя города полоса
-// печатает лишь в первый день визита, а на телефоне текст в ней скрыт совсем.
-// Легенды типов событий нет — чип события несёт свой заголовок сам.
-
-function Legend({ visits }) {
-  const { t } = useI18n();
-
-  // Deduplicate cities by name, preserving colour index from visit order
-  const uniqueCities = useMemo(() => {
-    const seen = new Set();
-    return visits
-      // colorIdx must stay tied to the original visit index so colours match
-      // the timeline; map first (keeps idx), then filter.
-      .map((v, idx) => ({ name: v.city_name, colorIdx: idx, kind: v.kind }))
-      .filter(({ name, kind }) => {
-        if (kind === 'start' || kind === 'end') return false; // anchors hidden in calendar
-        if (!name || seen.has(name)) return false;
-        seen.add(name);
-        return true;
-      });
-  }, [visits]);
-
-  if (!uniqueCities.length) return null;
-
+// ─── Aside — trip summary ─────────────────────────────────────────────────────
+function TripAside({ cities, stats, t }) {
+  if (!cities.length && !stats) return null;
   return (
-    <Col className="ncal-legend">
-      <Row wrap className="ncal-legend-group">
-        <span className="ncal-legend-lbl">{t('calendar.legend_group_cities')}</span>
-        {uniqueCities.map((c, i) => (
-          <Row as="span" key={i} inline gap="g3" className="ncal-leg t-meta">
-            <span className="ncal-leg-sw" style={{ background: cityPal(c.colorIdx).c }} />
-            {c.name}
-          </Row>
-        ))}
-      </Row>
-    </Col>
+    <aside className="ncal-aside">
+      {stats && (
+        <div className="ncal-card ncal-stats">
+          <div className="ncal-stat">
+            <span className="ncal-stat-n t-heading">{stats.days}</span>
+            <span className="ncal-stat-l t-tiny">{t('calendar.stat_days')}</span>
+          </div>
+          <div className="ncal-stat">
+            <span className="ncal-stat-n t-heading">{stats.cities}</span>
+            <span className="ncal-stat-l t-tiny">{t('calendar.stat_cities')}</span>
+          </div>
+          <div className="ncal-stat">
+            <span className="ncal-stat-n t-heading">{stats.events}</span>
+            <span className="ncal-stat-l t-tiny">{t('calendar.stat_events')}</span>
+          </div>
+        </div>
+      )}
+      {cities.length > 0 && (
+        <div className="ncal-card ncal-cities">
+          <div className="ncal-card-h t-micro">{t('calendar.legend_group_cities')}</div>
+          <ul className="ncal-clist">
+            {cities.map((c, i) => (
+              <li key={i} className="ncal-crow">
+                <span className="ncal-cdot" style={{ background: cityPal(c.colorIdx).c }} />
+                <span className="ncal-cname t-label">{c.name}</span>
+                <span className="ncal-crange t-tiny">{c.range}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </aside>
   );
 }
 
 // ─── CalendarLens (main export) ───────────────────────────────────────────────
 
-// Скелетон календаря — PURE (панель управления + большое поле сетки). Один
-// источник для обеих фаз загрузки (shell в TripView.LoadingBody и content). TRIP-337.
+// Скелетон — командная панель + доска + сводка. Один источник для обеих фаз.
 export function CalendarSkeleton() {
   return (
     <div className="col col--g6 ov-anim" aria-busy="true">
       <div className="row row--g4">
-        <Skeleton w={200} h={32} r={'var(--r-sm)'} />
+        <Skeleton w={240} h={44} r={'var(--r-md)'} />
         <Grow />
-        <Skeleton w={220} h={32} r={'var(--r-xl)'} />
+        <Skeleton w={240} h={40} r={'var(--r-pill)'} />
       </div>
-      <Skeleton w="100%" h={500} r={'var(--r-md)'} />
+      <div className="row row--g6">
+        <Grow><Skeleton w="100%" h={560} r={'var(--r-md)'} /></Grow>
+        <Skeleton w={260} h={560} r={'var(--r-md)'} />
+      </div>
     </div>
   );
 }
@@ -307,6 +305,7 @@ export function CalendarSkeleton() {
 export default function CalendarLens({ stream, visits, isLoading, onOpenEvent }) {
   const { t, lang } = useI18n();
   const MONTH_NAMES = useMemo(() => monthNames(lang),   [lang]);
+  const MONTH_SHORT = useMemo(() => monthShort(lang),   [lang]);
   const WD_NAMES    = useMemo(() => weekdayNames(lang), [lang]);
 
   const [view,        setView]        = useState('month');
@@ -316,155 +315,177 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
   // Base date: first dated visit
   const firstDatedVisit = visits.find(v => v.start_date);
   const baseDateStr = firstDatedVisit ? naiveDayKey(firstDatedVisit.start_date) : null;
-  const baseDate     = baseDateStr ? parseNaive(baseDateStr + 'T00:00:00') : null;
+  const baseDate    = baseDateStr ? parseNaive(baseDateStr + 'T00:00:00') : null;
   const currentMonth = baseDate ? baseDate.plus({ months: monthOffset }) : null;
   const today        = DateTime.now();
 
-  // ── Month grid ───────────────────────────────────────────────────────────
-  const month = useMemo(() => {
+  // Trip visits without anchors, with parsed dates.
+  const tripVisits = useMemo(() => visits
+    .map((v, idx) => ({ ...v, idx, s: parseNaive(v.start_date), e: parseNaive(v.end_date) }))
+    .filter(v => v.kind !== 'start' && v.kind !== 'end' && v.s && v.e), [visits]);
+
+  // ── Month grid + continuous city ribbons ────────────────────────────────────
+  const monthData = useMemo(() => {
     if (!currentMonth) return null;
-    const y      = currentMonth.year;
-    const m      = currentMonth.month;
-    const first  = currentMonth.startOf('month');
-    const dim    = currentMonth.daysInMonth;
-    const offset = first.weekday - 1; // Luxon 1=Mon → 0-based
-    const total  = Math.ceil((offset + dim) / 7) * 7;
-    const cells  = [];
-    for (let i = 0; i < total; i++) {
-      const day = i - offset + 1;
-      cells.push(day >= 1 && day <= dim ? day : null);
-    }
-    const weeks = [];
-    for (let w = 0; w < total / 7; w++) weeks.push(cells.slice(w * 7, w * 7 + 7));
-    return { y, m, offset, dim, weeks };
-  }, [currentMonth]);
+    const y = currentMonth.year, m = currentMonth.month;
+    const first = currentMonth.startOf('month');
+    const dim = currentMonth.daysInMonth;
+    const offset = first.weekday - 1;
+    const totalCells = Math.ceil((offset + dim) / 7) * 7;
 
-  // City ranges clamped to the visible month, with colour index.
-  // startDay here is the first day of the visit visible in this month
-  // (used to decide when to render the city label in the strip).
-  const cityRanges = useMemo(() => {
-    if (!month) return [];
-    const out = [];
-    visits.forEach((v, idx) => {
-      if (v.kind === 'start' || v.kind === 'end') return; // anchors hidden in calendar
-      const s = parseNaive(v.start_date);
-      const e = parseNaive(v.end_date);
-      if (!s || !e) return;
-      const mStart = currentMonth.startOf('month');
-      // ⚠️ ТОТ ЖЕ ЗАПЕЧАТАННЫЙ НАБОР, ЧТО У КОМПОНЕНТОВ ДС, НО В ЧУЖОЙ БИБЛИОТЕКЕ.
-      // luxon НЕ поставляет `.d.ts`, и TS выводит сигнатуру из его исходника:
-      // `startOf(unit, {…} = {})` имеет дефолт и вызывается одним аргументом
-      // спокойно, а у `endOf(unit, opts)` дефолта НЕТ - параметр выведен
-      // ОБЯЗАТЕЛЬНЫМ, хотя внутри `opts` уходит в тот же `startOf`, который его
-      // и подставляет. Рантайм верен, неверен только выведенный тип.
-      // Взят `@ts-expect-error`, а не `@ts-ignore` и не дописанный `{}` в вызов:
-      // он ЕДИНСТВЕННЫЙ маркер, который сам краснеет, когда перестаёт быть
-      // нужным (появятся типы luxon - строка упадёт и её снимут). Это первое
-      // подавление в репозитории; в `src` ровно ОДИН вызов `.endOf(` - вот этот.
-      // @ts-expect-error luxon без типов: `endOf(unit, opts)` без дефолта у opts
-      const mEnd   = currentMonth.endOf('month');
-      const cs = s < mStart ? mStart : s;
-      const ce = e > mEnd   ? mEnd   : e;
-      if (cs > ce) return;
-      out.push({
-        startDay: cs.day,
-        endDay:   ce.day,
-        label:    v.city_name || '—',
-        colorIdx: idx,
-      });
-    });
-    return out;
-  }, [visits, currentMonth, month]);
-
-  // Events keyed by day number for the visible month
-  const eventsByDay = useMemo(() => {
-    const map = {};
-    if (!month) return map;
+    // events per day-number
+    const evByDay = {};
     for (const e of stream) {
       if (!e.date) continue;
       const dt = parseNaive(e.date + 'T00:00:00');
-      if (!dt || dt.year !== month.y || dt.month !== month.m) continue;
-      (map[dt.day] ||= []).push(e);
+      if (!dt || dt.year !== y || dt.month !== m) continue;
+      (evByDay[dt.day] ||= []).push(e);
     }
-    return map;
-  }, [stream, month]);
+    Object.values(evByDay).forEach(arr => arr.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')));
 
-  // Set of trip-days in the visible month (for the blue cell tint)
-  const inTripDays = useMemo(() => {
-    const set = new Set();
-    if (!month) return set;
-    for (const v of visits) {
-      const s = parseNaive(v.start_date);
-      const e = parseNaive(v.end_date);
-      if (!s || !e) continue;
-      let cur = s;
-      while (cur <= e) {
-        if (cur.year === month.y && cur.month === month.m) set.add(cur.day);
-        cur = cur.plus({ days: 1 });
+    // trip-days set
+    const tripDays = new Set();
+    for (const v of tripVisits) {
+      let cur = v.s;
+      while (cur <= v.e) { if (cur.year === y && cur.month === m) tripDays.add(cur.day); cur = cur.plus({ days: 1 }); }
+    }
+    const todayDay = today.year === y && today.month === m ? today.day : null;
+
+    const weeks = [];
+    const nWeeks = totalCells / 7;
+    for (let w = 0; w < nWeeks; w++) {
+      const cells = [];
+      for (let i = 0; i < 7; i++) {
+        const day = w * 7 + i - offset + 1;
+        const valid = day >= 1 && day <= dim;
+        cells.push({
+          day: valid ? day : null,
+          inTrip: valid && tripDays.has(day),
+          isToday: valid && day === todayDay,
+          events: valid ? (evByDay[day] || []) : [],
+        });
       }
+      // first / last real day-number in this week
+      const dayNums = cells.map(c => c.day).filter(d => d != null);
+      const wkStart = dayNums[0], wkEnd = dayNums[dayNums.length - 1];
+
+      // bands: intersect each trip visit with this week's day span
+      const bands = [];
+      tripVisits.forEach((v) => {
+        const vs = (v.s.year === y && v.s.month === m) ? v.s.day : -Infinity;
+        const ve = (v.e.year === y && v.e.month === m) ? v.e.day : Infinity;
+        const segStart = Math.max(vs, wkStart);
+        const segEnd   = Math.min(ve, wkEnd);
+        if (segStart > segEnd) return;
+        const startCol = cells.findIndex(c => c.day === segStart);
+        const endCol   = cells.findIndex(c => c.day === segEnd);
+        if (startCol < 0 || endCol < 0) return;
+        bands.push({
+          colorIdx: v.idx,
+          startCol,
+          span: endCol - startCol + 1,
+          // rounded end where the visit actually begins/ends (not clamped by week edge)
+          roundStart: vs !== -Infinity && vs >= wkStart,
+          roundEnd:   ve !== Infinity  && ve <= wkEnd,
+          // label only on the true first day of the visit within the month
+          label: (vs !== -Infinity && vs >= wkStart) ? (v.city_name || '—') : '',
+          _sortStart: segStart,
+        });
+      });
+      // lane assignment: sequential by start day
+      bands.sort((a, b) => a._sortStart - b._sortStart || a.colorIdx - b.colorIdx);
+      bands.forEach((b, i) => { b.lane = i; });
+      weeks.push({ cells, bands, lanes: Math.max(bands.length, 0) });
     }
-    return set;
-  }, [visits, month]);
+    return { y, m, weeks };
+  }, [currentMonth, stream, tripVisits, today]);
 
-  const todayDay = month && today.year === month.y && today.month === month.m
-    ? today.day
-    : null;
-
-  // ── Week view data ───────────────────────────────────────────────────────
-  const week = useMemo(() => {
-    if (!baseDate) return { days: [], eventsByDayArr: [], label: '' };
-
+  // ── Week time-grid data ─────────────────────────────────────────────────────
+  const weekData = useMemo(() => {
+    if (!baseDate) return null;
     const weekStart = baseDate.startOf('week').plus({ weeks: weekOffset });
     const weekEnd   = weekStart.plus({ days: 6 });
     const todayStr  = naiveDayKey(today.toISO());
 
     const days = [];
     for (let i = 0; i < 7; i++) {
-      const d      = weekStart.plus({ days: i });
+      const d = weekStart.plus({ days: i });
       const dayStr = naiveDayKey(d.toISO());
-
-      // All visits active on this day — sorted by start date (L→R = chronological)
-      const activeCities = visits
-        .map((v, idx) => {
-          const s = parseNaive(v.start_date);
-          const e = parseNaive(v.end_date);
-          return { v, idx, s, e };
-        })
-        .filter(({ v, s, e }) => v.kind !== 'start' && v.kind !== 'end' && s && e && d >= s && d <= e)
-        .map(({ v, idx, s }) => ({
-          name:     v.city_name || '—',
-          colorIdx: idx,
-          startMs:  s.toMillis(),
-        }))
+      const cities = tripVisits
+        .filter(v => d >= v.s && d <= v.e)
+        .map(v => ({ colorIdx: v.idx, startMs: v.s.toMillis() }))
         .sort((a, b) => a.startMs - b.startMs || a.colorIdx - b.colorIdx);
-
-      days.push({
-        wd:       WD_NAMES[i],
-        date:     d.day,
-        dateStr:  dayStr,
-        cities:   activeCities,
-        isToday:  dayStr === todayStr,
-      });
+      days.push({ wd: WD_NAMES[i], date: d.day, dateStr: dayStr, isToday: dayStr === todayStr, cities, allDay: [], timed: [] });
     }
 
-    // Events per day — timed events sorted by time, allDay appended after
-    const eventsByDayArr = Array.from({ length: 7 }, () => []);
+    // distribute events
+    let minH = 24, maxH = 0, anyTimed = false;
     for (const e of stream) {
       if (!e.date) continue;
-      const dayIdx = days.findIndex(d => d.dateStr === e.date);
-      if (dayIdx < 0) continue;
-      eventsByDayArr[dayIdx].push(e);
+      const di = days.findIndex(d => d.dateStr === e.date);
+      if (di < 0) continue;
+      const mt = /^(\d{1,2}):(\d{2})/.exec(e.time || '');
+      if (mt) {
+        const h = +mt[1]; const mi = +mt[2];
+        days[di].timed.push({ ev: e, startMin: h * 60 + mi });
+        minH = Math.min(minH, h); maxH = Math.max(maxH, h); anyTimed = true;
+      } else {
+        days[di].allDay.push(e);
+      }
     }
-    eventsByDayArr.forEach(arr =>
-      arr.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'))
-    );
+    // hour range
+    let startHour = anyTimed ? Math.max(0, minH - 1) : 8;
+    let endHour   = anyTimed ? Math.min(24, maxH + 2) : 21;
+    if (endHour - startHour < 6) endHour = Math.min(24, startHour + 6);
+    const hours = [];
+    for (let h = startHour; h <= endHour; h++) hours.push(h);
 
-    return {
-      days,
-      eventsByDayArr,
-      label: `${weekStart.day} – ${weekEnd.day}`,
-    };
-  }, [stream, visits, baseDate, weekOffset, WD_NAMES, today]);
+    // position timed events + lane-pack overlaps per column
+    days.forEach(day => {
+      day.timed.sort((a, b) => a.startMin - b.startMin);
+      const laneEnds = []; // end minute per lane
+      day.timed.forEach(it => {
+        const top = ((it.startMin - startHour * 60) / 60) * HOUR_H;
+        const durMin = 60;
+        const height = (durMin / 60) * HOUR_H;
+        const endMin = it.startMin + durMin;
+        let lane = laneEnds.findIndex(end => end <= it.startMin);
+        if (lane < 0) { lane = laneEnds.length; laneEnds.push(endMin); }
+        else laneEnds[lane] = endMin;
+        it.top = top; it.height = height; it.lane = lane;
+      });
+      const lanes = Math.max(1, day.timed.reduce((mx, it) => Math.max(mx, it.lane + 1), 1));
+      day.timed.forEach(it => { it.lanes = lanes; });
+    });
+
+    const hasAllDay = days.some(d => d.allDay.length > 0);
+    return { days, hours, startHour, hasAllDay, weekStart, weekEnd };
+  }, [baseDate, weekOffset, stream, tripVisits, WD_NAMES, today]);
+
+  // ── Trip meta (subtitle + aside) ────────────────────────────────────────────
+  const tripMeta = useMemo(() => {
+    if (!tripVisits.length) return null;
+    const start = tripVisits.reduce((m, v) => v.s < m ? v.s : m, tripVisits[0].s);
+    const end   = tripVisits.reduce((m, v) => v.e > m ? v.e : m, tripVisits[0].e);
+    // unique cities (first occurrence order)
+    const seen = new Set();
+    const cities = [];
+    tripVisits.forEach(v => {
+      const name = v.city_name || '—';
+      if (seen.has(name)) return;
+      seen.add(name);
+      const rs = v.s, re = v.e;
+      const range = rs.month === re.month
+        ? `${rs.day}–${re.day} ${MONTH_SHORT[rs.month]}`
+        : `${rs.day} ${MONTH_SHORT[rs.month]} – ${re.day} ${MONTH_SHORT[re.month]}`;
+      cities.push({ name, colorIdx: v.idx, range });
+    });
+    const days = Math.round(end.diff(start, 'days').days) + 1;
+    const rangeLabel = start.month === end.month
+      ? `${start.day} – ${end.day} ${MONTH_SHORT[start.month]}`
+      : `${start.day} ${MONTH_SHORT[start.month]} – ${end.day} ${MONTH_SHORT[end.month]}`;
+    return { cities, stats: { days, cities: cities.length, events: stream.length }, rangeLabel };
+  }, [tripVisits, stream, MONTH_SHORT]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   const goBack  = () => view === 'month' ? setMonthOffset(o => o - 1) : setWeekOffset(o => o - 1);
@@ -472,59 +493,47 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
   const goHome  = () => { setMonthOffset(0); setWeekOffset(0); };
   const goToday = () => {
     const now = today.startOf('day');
-    if (view === 'month') {
-      setMonthOffset((now.year - baseDate.year) * 12 + (now.month - baseDate.month));
-    } else {
-      const diff = now.startOf('week').diff(baseDate.startOf('week'), 'weeks').weeks;
-      setWeekOffset(Math.round(diff));
-    }
+    if (view === 'month') setMonthOffset((now.year - baseDate.year) * 12 + (now.month - baseDate.month));
+    else setWeekOffset(Math.round(now.startOf('week').diff(baseDate.startOf('week'), 'weeks').weeks));
   };
 
-  // ── Loading ──────────────────────────────────────────────────────────────
   if (isLoading) return <CalendarSkeleton />;
+  if (!baseDate)  return <div className="ncal-empty">{t('calendar.no_dates')}</div>;
 
-  // ── No dates ─────────────────────────────────────────────────────────────
-  if (!baseDate) {
-    return <div className="ncal-empty">{t('calendar.no_dates')}</div>;
-  }
+  const headMonth = view === 'month' ? currentMonth.month : weekData.weekStart.month;
+  const headYear  = view === 'month' ? currentMonth.year  : weekData.weekStart.year;
 
   return (
-    <div className="ov-anim--cal ncal">
-      {/* ── Toolbar ────────────────────────────────────────────── */}
-      <Row align="a-start" justify="j-between" gap="g7" wrap className="ncal-hd">
-        <Grow fit className="ncal-hd-l">
-          <Row align="a-baseline" wrap className="ncal-title-row">
-            <span className="ncal-month-lbl t-display">{MONTH_NAMES[
-              view === 'month' ? currentMonth.month : (baseDate.startOf('week').plus({ weeks: weekOffset }).month)
-            ]}</span>
-            <span className="ncal-year-lbl t-subheading">
-              {view === 'month'
-                ? currentMonth.year
-                : `${baseDate.startOf('week').plus({ weeks: weekOffset }).year}`
-              }
-              {view === 'week' && week.label && (
-                <span className="t-meta" style={{ marginLeft: 10, color: 'var(--muted-2)' }}>
-                  · {t('calendar.week_word')} {week.label}
-                </span>
-              )}
-            </span>
-          </Row>
-        </Grow>
+    <div className="ncal ov-anim--cal">
+      {/* ── Command bar ─────────────────────────────────────────── */}
+      <div className="ncal-bar">
+        <div className="ncal-bar-title">
+          <div className="ncal-title-row">
+            <span className="ncal-month-lbl t-display">{MONTH_NAMES[headMonth]}</span>
+            <span className="ncal-year-lbl t-heading">{headYear}</span>
+          </div>
+          {tripMeta && (
+            <div className="ncal-sub t-meta">
+              <span className="ncal-sub-range">{tripMeta.rangeLabel}</span>
+              <span className="ncal-sub-dot" />
+              <span>{tripMeta.stats.cities}&nbsp;{t('calendar.stat_cities')}</span>
+              <span className="ncal-sub-dot" />
+              <span>{tripMeta.stats.events}&nbsp;{t('calendar.stat_events')}</span>
+            </div>
+          )}
+        </div>
 
-        <Col align="a-end" className="ncal-hd-r">
-          {/* Nav pill */}
+        <div className="ncal-bar-ctl">
           <Row inline gap="g1" className="ncal-nav">
             <IconBtn icon="chevL" tone="soft" size="sm" round ariaLabel={t('calendar.prev')} onClick={goBack} />
-            <button className="ncal-nav-txt" onClick={goToday}>{t('calendar.today')}</button>
+            <button className="ncal-nav-txt t-label" onClick={goToday}>{t('calendar.today')}</button>
             <span className="ncal-nav-div" aria-hidden="true" />
-            <button className="row row--inline ncal-nav-trip" onClick={goHome}>
+            <button className="row row--inline ncal-nav-trip t-label" onClick={goHome}>
               <IcoPin />
               <span className="ncal-trip-label">{t('calendar.to_trip_start')}</span>
             </button>
             <IconBtn icon="chev" tone="soft" size="sm" round ariaLabel={t('calendar.next')} onClick={goFwd} />
           </Row>
-
-          {/* View toggle — канон `<Seg>` (было `.ncal-vtgl`, TRIP-344 PR 6) */}
           <Seg
             ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
             value={view}
@@ -534,30 +543,33 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
               { value: 'week', label: t('calendar.week') },
             ]}
           />
-        </Col>
-      </Row>
+        </div>
+      </div>
 
-      {/* ── Views ──────────────────────────────────────────────── */}
-      {view === 'month' ? (
-        <MonthView
-          weeks={month.weeks}
-          eventsByDay={eventsByDay}
-          cityRanges={cityRanges}
-          inTripDays={inTripDays}
-          todayDay={todayDay}
-          onOpenEvent={onOpenEvent}
-          lang={lang}
-        />
-      ) : (
-        <WeekView
-          days={week.days}
-          eventsByDayArr={week.eventsByDayArr}
-          onOpenEvent={onOpenEvent}
-        />
-      )}
+      {/* ── Body: calendar + aside ──────────────────────────────── */}
+      <div className="ncal-body">
+        <div className="ncal-main">
+          {view === 'month' ? (
+            <MonthView
+              weeksData={monthData.weeks}
+              weekdays={WD_NAMES}
+              onOpenEvent={onOpenEvent}
+              t={t}
+            />
+          ) : (
+            <WeekGrid
+              days={weekData.days}
+              hours={weekData.hours}
+              startHour={weekData.startHour}
+              hasAllDay={weekData.hasAllDay}
+              onOpenEvent={onOpenEvent}
+              t={t}
+            />
+          )}
+        </div>
 
-      {/* ── Legend ─────────────────────────────────────────────── */}
-      <Legend visits={visits} />
+        <TripAside cities={tripMeta?.cities || []} stats={tripMeta?.stats} t={t} />
+      </div>
     </div>
   );
 }
