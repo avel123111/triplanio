@@ -5,7 +5,7 @@ import { Plane } from 'lucide-react';
 import { invokeFn } from '@/lib/invokeFn';
 import { track, setRefTripId, withVisitCampaign } from '@/lib/analytics';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
-import { SiteHeader, SiteFooter, useSiteCss } from '@/components/site/SiteChrome';
+import { SiteHeader, SiteFooter, useSiteCss, useSiteTheme } from '@/components/site/SiteChrome';
 import MapView from '@/components/views/MapView';
 import { sortVisits } from '@/lib/validation';
 import { localizeVisits } from '@/lib/trip-cities';
@@ -68,16 +68,13 @@ export default function PublicTrip() {
   const { lang, setLang } = useI18n();
   const { t, fmtDate, plural, locale, fmtDistance, fmtCountry } = useI18nFormat();
   const cssReady = useSiteCss();
+  // The public reader follows the landing: light-only, restored on exit
+  // (TRIP-460 §7.2 — previously forced light with no cleanup and leaked it).
+  useSiteTheme();
 
   const { tripId } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('t') || '';
-
-  // The public reader follows the landing: light theme only.
-  useEffect(() => {
-    const r = document.documentElement;
-    r.setAttribute('data-theme', 'light');
-  }, []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['public-trip', tripId, token],

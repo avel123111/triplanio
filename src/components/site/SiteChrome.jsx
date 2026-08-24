@@ -101,6 +101,11 @@ const NAV = [
 ];
 
 const PROBE = 35; // px from the top where the header samples the section under it
+// The only three header tints that have `on-*` rules in site.css. recalc reads
+// `data-hdr` straight off the DOM, so a typo (`data-hdr="acent"`) would mint an
+// `on-acent` class with no rule and silently leave the header untinted — clamp
+// to the known set instead (TRIP-460 §4).
+const HDR_THEMES = new Set(['light', 'dark', 'accent']);
 
 /**
  * Shared marketing header — ONE element, its composition set by `variant`:
@@ -152,7 +157,11 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
       // Reverse DOM order so a sheet stacked over the previous section wins.
       for (let i = sections.length - 1; i >= 0; i--) {
         const r = sections[i].getBoundingClientRect();
-        if (r.top <= PROBE && r.bottom >= PROBE) { next = sections[i].dataset.hdr; break; }
+        if (r.top <= PROBE && r.bottom >= PROBE) {
+          const hdr = sections[i].dataset.hdr;
+          next = HDR_THEMES.has(hdr) ? hdr : 'light';
+          break;
+        }
       }
       setTheme(next);
     };
@@ -271,31 +280,100 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
  * place. Also toggles the `site` class on <html>: that class — not a bare
  * `:root` — is where site.css pins its tokens, so mounting the chrome is the
  * one gate that turns the sitewide tokens on and off (TRIP-446).
+ *
+ * Ref-counted (TRIP-460 §7.1): the <link> and `html.site` come in on the FIRST
+ * consumer and go out only with the LAST. Two consumers on one page (page +
+ * nested block) no longer strip each other's CSS on unmount, and a client
+ * navigation between two zone pages (footer → /terms, CTA → demo) keeps the
+ * one shared <link> in place instead of tearing it down and rebuilding it —
+ * which flipped `cssReady` to false and flashed unstyled content each hop.
  */
+let siteCssRefs = 0;
 export function useSiteCss() {
-  const [cssReady, setCssReady] = useState(false);
+  const [cssReady, setCssReady] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    const el = document.getElementById('site-css');
+    return !!(el && el.sheet);
+  });
   useEffect(() => {
-    const existing = document.getElementById('site-css');
-    if (existing) {
-      setCssReady(true);
+    siteCssRefs += 1;
+    let link = document.getElementById('site-css');
+    if (link) {
+      if (link.sheet) setCssReady(true);
+      else link.addEventListener('load', () => setCssReady(true));
     } else {
-      const link = document.createElement('link');
+      link = document.createElement('link');
       link.id = 'site-css';
       link.rel = 'stylesheet';
       link.href = '/site.css';
       link.addEventListener('load', () => setCssReady(true));
-      if (link.sheet) setCssReady(true);
       document.head.appendChild(link);
+      if (link.sheet) setCssReady(true);
     }
 
     document.documentElement.classList.add('site');
 
     return () => {
+      siteCssRefs = Math.max(0, siteCssRefs - 1);
+      if (siteCssRefs > 0) return; // another consumer still needs the site CSS
       const el = document.getElementById('site-css');
       if (el) el.parentNode.removeChild(el);
       document.documentElement.classList.remove('site', 'reveal--ready');
-      setCssReady(false);
     };
   }, []);
   return cssReady;
+}
+
+/**
+ * Force the always-light zone theme and restore whatever the app had on unmount
+ * (TRIP-460 §7.2). The unauthenticated zone is light-only; a dark theme stored
+ * by the authed app sets [data-theme=dark] on <html> and leaks dark text onto
+ * the light zone. This was copy-pasted three times and only Login restored it —
+ * PublicTrip and the landing left `data-theme=light` behind, so a dark-mode
+ * user stayed light after leaving until a reload. One hook, next to the CSS
+ * lifecycle it already shares.
+ */
+export function useSiteTheme() {
+  useEffect(() => {
+    const r = document.documentElement;
+    const prev = r.getAttribute('data-theme');
+    r.setAttribute('data-theme', 'light');
+    return () => {
+      if (prev) r.setAttribute('data-theme', prev);
+      else r.removeAttribute('data-theme');
+    };
+  }, []);
+}
+
+/**
+ * Per-route <title>/<meta name="description"> (TRIP-460 §7.3). The app has no
+ * such mechanism — every route shows the single <title> from index.html — so
+ * this is net-new, kept to ~a dozen lines rather than pulling in a helmet lib.
+ * Sets on mount, restores the previous values on unmount so leaving a zone page
+ * hands the document meta back untouched.
+ */
+export function useDocumentMeta(title, description) {
+  useEffect(() => {
+    const prevTitle = document.title;
+    let meta = document.querySelector('meta[name="description"]');
+    const hadMeta = !!meta;
+    const prevDesc = meta ? meta.getAttribute('content') : null;
+
+    if (title != null) document.title = title;
+    if (description != null) {
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'description');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', description);
+    }
+
+    return () => {
+      document.title = prevTitle;
+      if (description == null) return;
+      if (hadMeta) meta.setAttribute('content', prevDesc ?? '');
+      else if (meta && meta.parentNode) meta.parentNode.removeChild(meta);
+    };
+  }, [title, description]);
 }

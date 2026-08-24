@@ -9,6 +9,7 @@ import { authErrorText } from '@/lib/authErrorText';
 import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Checkbox } from '@/design/index';
+import { useSiteTheme } from '@/components/site/SiteChrome';
 import './login.css';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -199,15 +200,9 @@ export default function Login() {
   // The auth screen is light-only by design (white form + photo brand panel).
   // A dark theme stored from the authed app sets [data-theme=dark] on <html>,
   // which flips --ink/--surface and breaks the right-panel preview (white text
-  // on white, dark plates). Force light here, restore the user's theme on exit.
-  useEffect(() => {
-    const r = document.documentElement;
-    const prevTheme = r.getAttribute('data-theme');
-    r.setAttribute('data-theme', 'light');
-    return () => {
-      if (prevTheme) r.setAttribute('data-theme', prevTheme);
-    };
-  }, []);
+  // on white, dark plates). The shared zone hook forces light and restores the
+  // user's theme on exit (TRIP-460 §7.2).
+  useSiteTheme();
 
   // Unlock the form after returning from a Google/Apple OAuth redirect.
   // signInWithOAuth navigates the whole page away with isLoading=true; pressing
