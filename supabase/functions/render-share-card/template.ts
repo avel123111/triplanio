@@ -98,7 +98,7 @@ type Layout = {
   footer: {
     y: number; h: number; padX: number; padT: number;
     ctaSize: number; ctaLead: number; brandSize: number; brandGap: number; logo: number;
-    scanSize: number; qr: number; qrInset: number;
+    scanSize: number; qr: number;
   };
 };
 
@@ -114,7 +114,7 @@ const LAYOUTS: Record<Format, Layout> = {
     footer: {
       y: 1664, h: 208, padX: 40, padT: 30,
       ctaSize: 44, ctaLead: 48, brandSize: 30, brandGap: 20, logo: 46,
-      scanSize: 40, qr: 146, qrInset: 12,
+      scanSize: 40, qr: 146,
     },
   },
   post: {
@@ -128,7 +128,7 @@ const LAYOUTS: Record<Format, Layout> = {
     footer: {
       y: 1150, h: 184, padX: 34, padT: 24,
       ctaSize: 38, ctaLead: 42, brandSize: 28, brandGap: 16, logo: 44,
-      scanSize: 40, qr: 120, qrInset: 10,
+      scanSize: 40, qr: 120,
     },
   },
 };
@@ -458,8 +458,8 @@ function buildFooter(L: Layout, d: CardData, qrUrl: string): string {
   parts.push(`<g stroke="${C.navy}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">`
     + `<path d="M${arX},${arY + 14} C${arX + 26},${arY + 20} ${arX + 44},${arY} ${arX + 52},${arY - 24}"/>`
     + `<path d="M${arX + 44},${arY - 22} L${arX + 52},${arY - 26} L${arX + 54},${arY - 12}"/></g>`);
-  // QR: белый бокс + модули.
-  parts.push(`<rect x="${qrX}" y="${qrY}" width="${q}" height="${q}" rx="16" fill="${C.white}"/>`);
-  parts.push(qrSvg(qrUrl, qrX + f.qrInset, qrY + f.qrInset, q - f.qrInset * 2));
+  // QR: qrSvg сам рисует белую скруглённую подложку + тихую зону 8% вокруг
+  // модулей, поэтому внешний белый прямоугольник был дублем (белое на белом).
+  parts.push(qrSvg(qrUrl, qrX, qrY, q));
   return parts.join('');
 }
