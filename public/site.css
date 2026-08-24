@@ -1253,7 +1253,7 @@ section{position:relative}
    `svg{display:block}` выносило иконку на строку выше имени файла. */
 .doc-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 
-.doc-chip{display:flex;align-items:center;gap:7px;font-size: var(--fs-caption);font-weight:600;background:var(--mist);border:1px solid rgba(11,44,84,.08);border-radius:99px;padding:7px 13px}
+.doc-chip{display:flex;align-items:center;gap:7px;font-size: var(--fs-small);font-weight:600;background:var(--mist);border:1px solid rgba(11,44,84,.08);border-radius:99px;padding:7px 13px}
 
 @media (max-width:980px){
   .b-map{grid-column:span 12}

@@ -27,6 +27,15 @@
  *        --impl  http://localhost:8910/ \
  *        --width 1440 --height 900
  *
+ * КАК ЧИТАТЬ ПРОЦЕНТ. Это доля различающихся пикселей, и на плотном тексте она
+ * ЗАВЫШАЕТ: сдвиг строки на 1px перекрашивает все глифы строки, давая 15-25%
+ * там, где вёрстка совпадает. Проверено на этом лендинге: share 19.6%, tg-sec
+ * 19.0% — а структурный разбор показал сдвиги 1-9px, то есть совпадение.
+ * Поэтому процент — ТРИАЖ, а не вердикт: он говорит «посмотри сюда», а что
+ * именно разъехалось, отвечает режим --elements (позиции, размеры и кегли
+ * элементов секции). Настоящий дефект виден там сдвигом в десятки пикселей:
+ * у `pain` высота 1507 против 985 и смещение блоков на 667px.
+ *
  * ЧТО ХАРНЕСС УБИРАЕТ ИЗ ЗАМЕРА (иначе числа врут и гонят чинить исправное):
  *   · баннер согласия (.consent) и его плавающая кнопка (.ci-root/.ci-launch) —
  *     компоненты приложения, в прототипе их нет;
@@ -122,6 +131,76 @@ async function capture(browser, url, tag) {
 
 fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
+
+/** Структурный разбор одной секции: что и на сколько сдвинуто. */
+async function elements(url, section) {
+  const ctx = await browser.newContext({ viewport: { width: W, height: H } });
+  const page = await ctx.newPage();
+  await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
+  await page.waitForTimeout(2500);
+  await page.addStyleTag({ content: SETTLE });
+  await page.evaluate(async () => {
+    for (let y = 0; y < document.body.scrollHeight; y += 350) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); }
+    document.querySelectorAll('.rv,.rv-l,.rv-r').forEach((el) => el.classList.add('in'));
+  });
+  await page.waitForTimeout(1200);
+  const data = await page.evaluate((sel) => {
+    const root = document.querySelector('section.' + sel);
+    if (!root) return null;
+    const base = root.getBoundingClientRect();
+    const items = [];
+    const walk = (node, depth) => {
+      if (depth > 4) return;
+      for (const child of node.children) {
+        const r = child.getBoundingClientRect();
+        if (r.width >= 2 && r.height >= 2) {
+          const cls = String(child.className || '').split(' ').filter(Boolean).slice(0, 2).join('.');
+          items.push({
+            k: child.tagName.toLowerCase() + (cls ? '.' + cls : ''),
+            t: Math.round(r.top - base.top), l: Math.round(r.left),
+            w: Math.round(r.width), h: Math.round(r.height),
+            fs: getComputedStyle(child).fontSize,
+          });
+        }
+        walk(child, depth + 1);
+      }
+    };
+    walk(root, 0);
+    return { h: Math.round(base.height), items };
+  }, section);
+  await ctx.close();
+  return data;
+}
+
+const SECTION = arg('elements');
+if (SECTION) {
+  const [p, i] = [await elements(PROTO, SECTION), await elements(IMPL, SECTION)];
+  if (!p || !i) { console.error(`секции .${SECTION} нет с одной из сторон`); await browser.close(); process.exit(2); }
+  console.log(`\nsection.${SECTION} · ${W}px · высота: макет ${p.h} / реализация ${i.h} (${i.h - p.h >= 0 ? '+' : ''}${i.h - p.h})\n`);
+  console.log('элемент'.padEnd(30) + 'top'.padStart(15) + 'left'.padStart(15) + 'высота'.padStart(15) + '   кегль');
+  const byKey = new Map();
+  for (const it of p.items) { if (!byKey.has(it.k)) byKey.set(it.k, []); byKey.get(it.k).push(it); }
+  const seen = new Map();
+  let shown = 0;
+  for (const it of i.items) {
+    const bucket = byKey.get(it.k);
+    if (!bucket) continue;
+    const n = seen.get(it.k) || 0;
+    if (n >= bucket.length) continue;
+    seen.set(it.k, n + 1);
+    const was = bucket[n];
+    const dt = it.t - was.t, dl = it.l - was.l, dh = it.h - was.h;
+    if (Math.abs(dt) < 3 && Math.abs(dl) < 3 && Math.abs(dh) < 3) continue;
+    shown++;
+    const fs = was.fs !== it.fs ? `  ${was.fs}→${it.fs}` : '';
+    const cell = (a, bq, d) => `${a}/${bq} (${d >= 0 ? '+' : ''}${d})`.padStart(15);
+    console.log(it.k.slice(0, 29).padEnd(30) + cell(was.t, it.t, dt) + cell(was.l, it.l, dl) + cell(was.h, it.h, dh) + fs);
+  }
+  if (!shown) console.log('  расхождений больше 2px нет — секция совпадает');
+  console.log('\nсдвиги в единицы пикселей — совпадение; десятки — разбирать.\n');
+  await browser.close();
+  process.exit(0);
+}
 const proto = await capture(browser, PROTO, 'proto');
 const impl = await capture(browser, IMPL, 'impl');
 
