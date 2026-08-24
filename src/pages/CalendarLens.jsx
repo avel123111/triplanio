@@ -247,9 +247,11 @@ function CitiesAside({ cities, onOpenCity, t }) {
         {cities.map((c, i) => (
           <ListRow key={i} variant="compact" className="ncal-ci" onClick={() => onOpenCity?.(c.v)}
             lead={<span className="ncal-ci-dot" style={{ background: cityTone(c.colorIdx).bar }} />}
-            title={c.name}
             trail={<span className="ncal-ci-range t-tiny">{c.range}</span>}
-            aria-label={`${c.name}${c.range ? ', ' + c.range : ''}`} />
+            aria-label={`${c.name}${c.range ? ', ' + c.range : ''}`}>
+            {/* имя города — канон .t-meta (не bold .t-strong заголовка ListRow: канон-инспектор TRIP-175); .trunc — канон-обрезка */}
+            <span className="t-meta trunc">{c.name}</span>
+          </ListRow>
         ))}
       </div>
     </Card>
