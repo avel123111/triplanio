@@ -249,11 +249,16 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* Восьмая коллизия «вторая база» (ревью TRIP-460, найдена при проверке контраста
    на скриншоте, не в диффе): app.css держит глобальный h1,h2,h3,h4{color:var(--ink)}
+   И ЕЩЁ text-wrap:balance — приложение выравнивает длину строк заголовка, а
+   макет переносит обычным потоком. Балансировка МЕНЯЕТ РАЗБИВКУ: у «bento»
+   макет даёт «The whole trip, in one clear / picture», реализация с balance —
+   «The whole trip, in / one clear picture» при идентичных ширине (660px),
+   кегле (46.4px), трекинге и разметке. Возвращаем поток макета.
    (bare tag-селектор, гард 2ae его не видит — проверяет только классы). Заголовок
    ПРЯМО таргетится — сильнее любого унаследованного цвета от .final/.dark, порядок
    загрузки роли не играет. html.site-скоуп поднимает specificity и возвращает
    заголовку цвет его секции (белый в .final, --ink по умолчанию — то же самое). */
-html.site h1, html.site h2, html.site h3, html.site h4{color:inherit}
+html.site h1, html.site h2, html.site h3, html.site h4{color:inherit;text-wrap:wrap}
 
 h1,h2,h3{font-family:var(--font-display);line-height:1.12;letter-spacing:-.025em}
 
