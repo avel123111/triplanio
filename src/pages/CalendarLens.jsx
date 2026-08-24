@@ -10,8 +10,10 @@
  * непрерывную полосу. Транзитный день (2+ города) делит полосу поровну. Имя
  * города — в первый день визита. События: чипы (десктоп) / точки (мобайл).
  *
- * Неделя: колонки + ось времени на ВЕСЬ день (00–24) со скроллом внутри
- * (не выше экрана); в шапке каждого дня — полоса города с НАЗВАНИЕМ.
+ * Неделя: колонки + ось времени на дневное окно 06–23 (растягивается под
+ * ранние/поздние события). Десктоп — внутренний скролл, не выше экрана; мобайл
+ * — скроллит страница, колонки свайпаются по горизонтали. В шапке каждого дня
+ * — полоса города с НАЗВАНИЕМ. Цвет города — по имени (синхронно со сводкой).
  *
  * Сводка: счётчики (дни/города/события) + список городов с датами.
  *
@@ -114,15 +116,15 @@ function MonthView({ cells, weekdays, onOpenEvent, t }) {
 // ─── WeekGrid — columns + full-day time axis ──────────────────────────────────
 const HOUR_H = 44;
 
-function WeekGrid({ days, hours, lines, hasAllDay, scrollToHour, onOpenEvent, t }) {
-  const gridH = 24 * HOUR_H;
+function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHour, onOpenEvent, t }) {
   const scrollRef = useRef(/** @type {HTMLDivElement | null} */(null));
 
-  // Прокрутить к первому событию (или к утру) при монтировании/смене недели.
+  // Прокрутить к первому событию (или к утру) при монтировании/смене недели
+  // (десктоп — внутренний скролл; на мобиле сетка обрезана и скроллит страница).
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = Math.max(0, (scrollToHour - 0.5) * HOUR_H);
-  }, [scrollToHour, days]);
+    if (el) el.scrollTop = Math.max(0, (scrollToHour - startHour - 0.5) * HOUR_H);
+  }, [scrollToHour, startHour, days]);
 
   return (
     <div className="ncal-week">
@@ -161,14 +163,14 @@ function WeekGrid({ days, hours, lines, hasAllDay, scrollToHour, onOpenEvent, t 
         <div className="ncal-wk-body" style={{ height: gridH }}>
           <div className="ncal-wk-times">
             {hours.map(h => (
-              <div key={h} className="ncal-wk-time" style={{ top: h * HOUR_H }}>
+              <div key={h} className="ncal-wk-time" style={{ top: (h - startHour) * HOUR_H }}>
                 <span className="t-tiny">{String(h).padStart(2, '0')}:00</span>
               </div>
             ))}
           </div>
           <div className="ncal-wk-cols">
             <div className="ncal-wk-lines" aria-hidden="true">
-              {lines.map(h => <div key={h} className="ncal-wk-line" style={{ top: h * HOUR_H }} />)}
+              {lines.map(h => <div key={h} className="ncal-wk-line" style={{ top: (h - startHour) * HOUR_H }} />)}
             </div>
             {days.map((d, di) => (
               <div key={di} className={`ncal-wk-col${d.isToday ? ' is-today' : ''}`}>
@@ -262,6 +264,16 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
   // события (отели, активности, дедлайны и т.п.). Семейство transfer отсеиваем.
   const calStream = useMemo(() => stream.filter(e => eventFamily(e.type) !== 'transfer'), [stream]);
 
+  // Цвет города — по ИМЕНИ, а не по индексу визита: один город (напр. возврат
+  // в Рим) должен быть одного цвета в календаре И в сводке. Иначе цвета
+  // рассинхронятся (сводка дедуплицирует по имени, календарь красил по idx).
+  const cityColorMap = useMemo(() => {
+    const m = new Map(); let n = 0;
+    tripVisits.forEach(v => { const name = v.city_name || '—'; if (!m.has(name)) m.set(name, n++); });
+    return m;
+  }, [tripVisits]);
+  const cityColor = (name) => cityColorMap.get(name ?? '—') ?? 0;
+
   // ── Month grid ───────────────────────────────────────────────────────────────
   const monthData = useMemo(() => {
     if (!currentMonth) return null;
@@ -290,11 +302,11 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       const cities = tripVisits
         .filter(v => dayDt >= v.s.startOf('day') && dayDt <= v.e.startOf('day'))
         .sort((a, b) => a.s - b.s || a.idx - b.idx)
-        .map(v => ({ colorIdx: v.idx, first: v.s.hasSame(dayDt, 'day'), name: v.city_name || '—' }));
+        .map(v => ({ colorIdx: cityColor(v.city_name), first: v.s.hasSame(dayDt, 'day'), name: v.city_name || '—' }));
       cells.push({ day, isToday: day === todayDay, events: evByDay[day] || [], cities });
     }
     return { y, m, cells };
-  }, [currentMonth, calStream, tripVisits, today]);
+  }, [currentMonth, calStream, tripVisits, cityColorMap, today]);
 
   // ── Week time-grid (full day) ─────────────────────────────────────────────────
   const weekData = useMemo(() => {
@@ -309,30 +321,33 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       const cities = tripVisits
         .filter(v => dd >= v.s.startOf('day') && dd <= v.e.startOf('day'))
         .sort((a, b) => a.s - b.s || a.idx - b.idx)
-        .map(v => ({ colorIdx: v.idx, name: v.city_name || '—' }));
+        .map(v => ({ colorIdx: cityColor(v.city_name), name: v.city_name || '—' }));
       days.push({ wd: WD_NAMES[i], date: d.day, dateStr: naiveDayKey(d.toISO()), isToday: naiveDayKey(d.toISO()) === todayStr, cities, allDay: [], timed: [] });
     }
 
-    let firstHour = 8;
-    let any = false;
+    let minH = 24, maxH = 0, any = false;
     for (const e of calStream) {
       if (!e.date) continue;
       const di = days.findIndex(d => d.dateStr === e.date);
       if (di < 0) continue;
       const mt = /^(\d{1,2}):(\d{2})/.exec(e.time || '');
-      if (mt) { const h = +mt[1]; days[di].timed.push({ ev: e, startMin: h * 60 + +mt[2] }); if (!any || h < firstHour) firstHour = h; any = true; }
+      if (mt) { const h = +mt[1]; days[di].timed.push({ ev: e, startMin: h * 60 + +mt[2] }); minH = Math.min(minH, h); maxH = Math.max(maxH, h); any = true; }
       else days[di].allDay.push(e);
     }
 
-    // full day 00..24
-    const hours = []; for (let h = 0; h <= 23; h++) hours.push(h);
-    const lines = []; for (let h = 0; h <= 24; h++) lines.push(h);
+    // Разумное «дневное» окно 06–23, растягиваемое под ранние/поздние события.
+    // НЕ 00–24: на мобиле страница скроллит сетку, а пустая ночь = мёртвый скролл.
+    const startHour = any ? Math.min(6, Math.max(0, minH - 1)) : 6;
+    const endHour   = any ? Math.max(23, Math.min(24, maxH + 2)) : 23;
+    const hours = []; for (let h = startHour; h < endHour; h++) hours.push(h);
+    const lines = []; for (let h = startHour; h <= endHour; h++) lines.push(h);
+    const gridH = (endHour - startHour) * HOUR_H;
 
     days.forEach(day => {
       day.timed.sort((a, b) => a.startMin - b.startMin);
       const laneEnds = [];
       day.timed.forEach(it => {
-        const top = (it.startMin / 60) * HOUR_H;
+        const top = (it.startMin / 60 - startHour) * HOUR_H;
         const endMin = it.startMin + 60;
         let lane = laneEnds.findIndex(end => end <= it.startMin);
         if (lane < 0) { lane = laneEnds.length; laneEnds.push(endMin); } else laneEnds[lane] = endMin;
@@ -342,8 +357,8 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       day.timed.forEach(it => { it.lanes = lanes; });
     });
 
-    return { days, hours, lines, hasAllDay: days.some(d => d.allDay.length > 0), weekStart, scrollToHour: any ? Math.max(0, firstHour - 1) : 7 };
-  }, [baseDate, weekOffset, stream, tripVisits, WD_NAMES, today]);
+    return { days, hours, lines, gridH, startHour, hasAllDay: days.some(d => d.allDay.length > 0), weekStart, scrollToHour: any ? Math.max(0, minH - 1) : 7 };
+  }, [baseDate, weekOffset, calStream, tripVisits, cityColorMap, WD_NAMES, today]);
 
   // ── Trip meta ────────────────────────────────────────────────────────────────
   const tripMeta = useMemo(() => {
@@ -359,11 +374,11 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       const name = v.city_name || '—';
       if (seen.has(name)) return;
       seen.add(name);
-      cities.push({ name, colorIdx: v.idx, range: fmt(v.s, v.e) });
+      cities.push({ name, colorIdx: cityColor(name), range: fmt(v.s, v.e) });
     });
     const days = Math.round(end.diff(start, 'days').days) + 1;
     return { cities, stats: { days, cities: cities.length, events: calStream.length }, rangeLabel: fmt(start, end) };
-  }, [tripVisits, stream, MONTH_SHORT]);
+  }, [tripVisits, calStream, cityColorMap, MONTH_SHORT]);
 
   // ── Navigation ────────────────────────────────────────────────────────────────
   const goBack  = () => view === 'month' ? setMonthOffset(o => o - 1) : setWeekOffset(o => o - 1);
@@ -425,7 +440,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
         <div className="ncal-main">
           {view === 'month'
             ? <MonthView cells={monthData.cells} weekdays={WD_NAMES} onOpenEvent={onOpenEvent} t={t} />
-            : <WeekGrid days={weekData.days} hours={weekData.hours} lines={weekData.lines} hasAllDay={weekData.hasAllDay} scrollToHour={weekData.scrollToHour} onOpenEvent={onOpenEvent} t={t} />}
+            : <WeekGrid days={weekData.days} hours={weekData.hours} lines={weekData.lines} gridH={weekData.gridH} startHour={weekData.startHour} hasAllDay={weekData.hasAllDay} scrollToHour={weekData.scrollToHour} onOpenEvent={onOpenEvent} t={t} />}
         </div>
         <TripAside cities={tripMeta?.cities || []} stats={tripMeta?.stats} t={t} />
       </div>
