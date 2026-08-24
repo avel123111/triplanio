@@ -2,7 +2,7 @@
   "regions": ["fra1"],
   "headers": [
     {
-      "source": "/:dir(hero|site|flags|covers)/:path*",
+      "source": "/:dir(hero|site|flags|covers|fonts)/:path*",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]

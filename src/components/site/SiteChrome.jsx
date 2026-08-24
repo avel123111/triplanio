@@ -282,11 +282,17 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
  * one gate that turns the sitewide tokens on and off (TRIP-446).
  *
  * Ref-counted (TRIP-460 §7.1): the <link> and `html.site` come in on the FIRST
- * consumer and go out only with the LAST. Two consumers on one page (page +
- * nested block) no longer strip each other's CSS on unmount, and a client
- * navigation between two zone pages (footer → /terms, CTA → demo) keeps the
- * one shared <link> in place instead of tearing it down and rebuilding it —
- * which flipped `cssReady` to false and flashed unstyled content each hop.
+ * consumer and go out only with the LAST. Two consumers alive at once on one
+ * page (page + nested block) no longer strip each other's CSS on unmount.
+ *
+ * Teardown is also deferred to a microtask so a CLIENT navigation between two
+ * zone pages (footer → /terms, CTA → demo) stops flashing. React runs the old
+ * tree's passive-destroy BEFORE the new tree's passive-create, so a bare
+ * counter would still go 1→0 (teardown fires, <link> removed) and only then
+ * 0→1. Deferring the check by a microtask lets the incoming consumer bump the
+ * count back to 1 first, so the shared <link> stays put and `cssReady` never
+ * flips to false mid-hop. The <link> is removed only when the count is still 0
+ * after the microtask — i.e. the last consumer really left.
  */
 let siteCssRefs = 0;
 export function useSiteCss() {
@@ -297,16 +303,17 @@ export function useSiteCss() {
   });
   useEffect(() => {
     siteCssRefs += 1;
+    const onLoad = () => setCssReady(true);
     let link = document.getElementById('site-css');
     if (link) {
       if (link.sheet) setCssReady(true);
-      else link.addEventListener('load', () => setCssReady(true));
+      else link.addEventListener('load', onLoad);
     } else {
       link = document.createElement('link');
       link.id = 'site-css';
       link.rel = 'stylesheet';
       link.href = '/site.css';
-      link.addEventListener('load', () => setCssReady(true));
+      link.addEventListener('load', onLoad);
       document.head.appendChild(link);
       if (link.sheet) setCssReady(true);
     }
@@ -314,11 +321,14 @@ export function useSiteCss() {
     document.documentElement.classList.add('site');
 
     return () => {
+      link.removeEventListener('load', onLoad);
       siteCssRefs = Math.max(0, siteCssRefs - 1);
-      if (siteCssRefs > 0) return; // another consumer still needs the site CSS
-      const el = document.getElementById('site-css');
-      if (el) el.parentNode.removeChild(el);
-      document.documentElement.classList.remove('site', 'reveal--ready');
+      queueMicrotask(() => {
+        if (siteCssRefs > 0) return; // an incoming consumer already re-claimed it
+        const el = document.getElementById('site-css');
+        if (el) el.parentNode.removeChild(el);
+        document.documentElement.classList.remove('site', 'reveal--ready');
+      });
     };
   }, []);
   return cssReady;
