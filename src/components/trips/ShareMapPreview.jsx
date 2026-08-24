@@ -6,18 +6,24 @@ import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Btn, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
-// Interactive live map for the share card (TRIP-193). The map sits in the card
-// frame's "hole" and the frame SVG (transparent where the map goes) is laid on
-// top with pointer-events:none, so the map spins behind while the frame owns all
-// the framing (rounding/border/shape). The user composes the shot with native
+// Live map for the share card (TRIP-193). The map sits in the card frame's
+// "hole" and the frame SVG (transparent where the map goes) is laid on top with
+// pointer-events:none, so the map spins behind while the frame owns all the
+// framing (rounding/border/shape). The user composes the shot with native
 // gestures (drag/pinch/rotate/tilt) - NO movement buttons; only theme (light/dark)
 // and projection (flat/globe) toggles. getComposition() hands the composed camera
 // to renderCardMapPng, which re-renders the map at full card resolution.
 //
+// Two roles, one component (share-UX эксперимент): конструктор карточки рендерит
+// его КАЛЬКОЙ (interactive=false — карта без жестов и тогглов, камера приезжает
+// пропом `camera`), а полноэкранный редактор карты — живым (interactive). Обе
+// поверхности считают зум от СВОЕЙ ширины контейнера, поэтому камера возится
+// композицией {center, zoom, previewCssWidth, …} и пересчитывается на месте.
+//
 // slot/cardW/cardH come from the overlay render (source of truth for the hole
 // geometry); until they arrive the map fills the whole box.
 const ShareMapPreview = forwardRef(function ShareMapPreview(
-  { visits = [], transfers = [], lang, showSE = false, overlaySvg, slot, cardW = 1080, cardH = 1920 },
+  { visits = [], transfers = [], lang, showSE = false, overlaySvg, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null },
   ref,
 ) {
   const { t } = useI18n();
@@ -42,9 +48,15 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     const s = cw && sw ? Math.min(1.5, Math.max(0.15, cw / sw)) : 1;
     return { cw, ch, s };
   };
-  const [scheme, setScheme] = useState('LIGHT');
-  const [projection, setProjection] = useState('mercator');
+  const [scheme, setScheme] = useState(camera?.scheme || 'LIGHT');
+  const [projection, setProjection] = useState(camera?.projection || 'mercator');
   const [fontTick, setFontTick] = useState(0);
+  // Свежая камера для замыканий create-once эффекта (как slotRef выше).
+  const cameraRef = useRef(camera);
+  cameraRef.current = camera;
+  // «Подвести карту к текущей камере/фиту» — заполняется create-once эффектом,
+  // дёргается эффектом на смену пропа `camera` (apply из редактора).
+  const syncRef = useRef(/** @type {null | (() => void)} */ (null));
 
   // The frame SVG carries its fonts as @font-face (embedded data URIs). They load
   // from the data URI ~instantly, but font-display:block hides the text until the
@@ -71,13 +83,35 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       projection,
       center: ordered[0] ? [ordered[0].longitude, ordered[0].latitude] : [0, 20],
       zoom: 2,
+      // Калька конструктора живёт без жестов ВООБЩЕ (жесты — в редакторе карты);
+      // с `interactive: false` mapbox не вешает обработчики, и свайпы уходят
+      // родителю (на мобиле — vaul-шиту).
+      interactive,
       attributionControl: false,
     });
     mapRef.current = map;
 
     let userMoved = false;
     ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((e) => map.on(e, () => { userMoved = true; }));
-    const fit = () => { if (!userMoved && pts.length) fitToPoints(map, pts, { padding: 40, maxZoom: 9 }); };
+    // Пока пользователь не взялся за карту сам: с приехавшей камерой — держим её
+    // (зум пересчитан под ширину ЭТОГО контейнера из previewCssWidth композиции),
+    // без камеры — авто-фит по точкам маршрута.
+    const fit = () => {
+      if (userMoved) return;
+      const cam = cameraRef.current;
+      if (cam) {
+        const w = holderRef.current?.clientWidth || cam.previewCssWidth;
+        map.jumpTo({
+          center: cam.center,
+          zoom: cam.zoom + Math.log2(w / (cam.previewCssWidth || w)),
+          bearing: cam.bearing || 0,
+          pitch: cam.pitch || 0,
+        });
+      } else if (pts.length) {
+        fitToPoints(map, pts, { padding: 40, maxZoom: 9 });
+      }
+    };
+    syncRef.current = fit;
 
     // Draw the route only once the map is FULLY ready to accept sources+layers.
     // On the Mapbox Standard style, 'style.load' (and even isStyleLoaded()===true)
@@ -131,6 +165,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       map.off('moveend', placeNow);
       map.remove();
       mapRef.current = null;
+      syncRef.current = null;
     };
     // Create once per mount; visits/transfers are stable for an open dialog.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,8 +190,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     },
   }), [scheme, projection]);
 
-  function toggleTheme() {
-    const next = scheme === 'DARK' ? 'LIGHT' : 'DARK';
+  function applyScheme(next) {
     setScheme(next);
     const m = mapRef.current;
     if (!m) return;
@@ -168,6 +202,24 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       if (cw) placeCityBadges(m, orderedRef.current, { cw, ch, iconScale: SC_WEIGHTS.badge * s });
     }).catch(() => { /* keep old badges on failure */ });
   }
+
+  function toggleTheme() {
+    applyScheme(scheme === 'DARK' ? 'LIGHT' : 'DARK');
+  }
+
+  // Камера приехала/сменилась снаружи (Done в редакторе карты): подвести карту
+  // и согласовать тему/проекцию с композицией.
+  useEffect(() => {
+    if (!camera) return;
+    if (camera.projection && camera.projection !== projection) {
+      setProjection(camera.projection);
+      try { mapRef.current?.setProjection(camera.projection); } catch { /* projection unsupported */ }
+    }
+    if (camera.scheme && camera.scheme !== scheme) applyScheme(camera.scheme);
+    syncRef.current?.();
+    // scheme/projection здесь — производные той же камеры, не отдельные триггеры.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera]);
 
   function toggleProjection() {
     const next = projection === 'globe' ? 'mercator' : 'globe';
@@ -212,7 +264,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
           <Skeleton w="100%" h="100%" r={0} />
         </div>
       )}
-      {frameSvg && (
+      {interactive && frameSvg && (
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <Btn variant="secondary" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
           <Btn variant="secondary" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />

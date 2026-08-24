@@ -1,0 +1,113 @@
+/* Share-card builder (share-UX эксперимент поверх TRIP-193). Заменяет прежний
+   ShareDialog.css целиком: публичная ссылка уехала в меню (TripShareFlow), этот
+   диалог собирает ТОЛЬКО карточку. Раскладка:
+     десктоп → превью слева (карусель фонов под ним), управление справа;
+     ≤640    → колонка в полноэкранном шите .lp-sheet (канон панелей редактора),
+               превью почти во весь экран.
+   Сцена (.sc-stage) обязана держать ТОЧНУЮ пропорцию карточки — проценты дыры
+   слота считаются от её коробки; поэтому высота НЕ задаётся: ширина = потолок
+   высоты (--sc-max, задаёт контекст) × числовая пропорция (--sc-arw, из данных
+   оверлея), высота выводится aspect-ratio.
+
+   Прежние классы двухстадийного диалога (edit→card) снесены ВМЕСТЕ с разметкой;
+   наследники — canon-оболочки (.dlg / .lp) и язык CoverPicker (.tcp__*).
+   Построчные подтверждения сноса для гарда 2p:
+   visual-diff-exempt: .sc-wrap margin-top — семья снесена вместе с разметкой (share-UX: конструктор на canon dlg/lp)
+   visual-diff-exempt: .sc-wrap border-top — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-wrap padding-top — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card display — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card gap — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card grid-template-columns — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card grid-template-rows — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card grid-template-areas — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card {@media (max-width: 640px)} gap — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card {@media (max-width: 640px)} grid-template-columns — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card {@media (max-width: 640px)} grid-template-rows — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-card {@media (max-width: 640px)} grid-template-areas — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-head grid-area — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-preview grid-area — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-preview align-self — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-preview {@media (max-width: 640px)} justify-self — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-controls grid-area — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-controls align-self — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-controls margin-top — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-controls {@media (max-width: 640px)} margin-top — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-hint margin — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-build margin-top — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-build {@media (max-width: 640px)} width — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions display — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions gap — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions align-items — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions {@media (max-width: 640px)} flex-direction — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions {@media (max-width: 640px)} align-items — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions-sec display — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions-sec {@media (max-width: 640px)} display — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions-sec {@media (max-width: 640px)} gap — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-actions-sec {@media (max-width: 640px)} flex — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-share order — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-share {@media (max-width: 640px)} order — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .sc-share {@media (max-width: 640px)} width — семья снесена вместе с разметкой (share-UX)
+   Составные правила .btn.sc-* приписывались и классу .btn — их снос называется
+   селектором-источником целиком (скоуп маркера = сам селектор, .btn не задет):
+   visual-diff-exempt: .btn.sc-build margin-top — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .btn.sc-share order — семья снесена вместе с разметкой (share-UX)
+   visual-diff-exempt: .btn.sc-share {@media (max-width: 640px)} order — семья снесена вместе с разметкой (share-UX)
+
+   Новые классы конструктора (5 взамен 10 снесённых, нетто −5) — объявления
+   новые, сравнивать не с чем; каждое названо для 2p:
+   visual-diff-exempt: .sc-body display — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body gap — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body grid-template-columns — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body align-items — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} display — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} flex-direction — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} gap — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-view --sc-max — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-view display — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-view flex-direction — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-view gap — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-view min-width — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-view {@media (max-width: 640px)} --sc-max — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage aspect-ratio — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage background — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage border-radius — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage margin-inline — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage overflow — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage position — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage width — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side display — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side flex-direction — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side gap — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side min-width — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side align-items — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side {@media (max-width: 640px)} align-items — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side {@media (max-width: 640px)} flex-direction — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side {@media (max-width: 640px)} flex-wrap — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-side {@media (max-width: 640px)} gap — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-edit --sc-max — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-edit {@media (max-width: 640px)} --sc-max — новый класс конструктора (share-UX)
+*/
+
+.sc-body { display: grid; grid-template-columns: minmax(0, auto) minmax(220px, 1fr); gap: var(--sp-4) var(--sp-8); align-items: start; }
+.sc-view { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; --sc-max: min(56vh, 500px); }
+.sc-stage {
+  position: relative;
+  width: min(100%, calc(var(--sc-max, 56vh) * var(--sc-arw, 0.5625)));
+  aspect-ratio: var(--sc-ar, 9 / 16);
+  margin-inline: auto;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.sc-side { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-6); min-width: 0; }
+/* Под-флоу «Настроить карту»: карта крупнее, потолок задаёт тот же канал --sc-max. */
+.sc-edit { --sc-max: min(62vh, 560px); }
+
+@media (max-width: 640px) {
+  .sc-body { display: flex; flex-direction: column; gap: var(--sp-6); }
+  /* Превью почти во весь экран: потолок = вьюпорт минус хром шита
+     (шапка + карусель + управление + футер). */
+  .sc-view { --sc-max: calc(100dvh - 330px); }
+  .sc-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-5); }
+  .sc-edit { --sc-max: calc(100dvh - 250px); }
+}
