@@ -500,6 +500,67 @@ function useCounters(ready, lang) {
 /* ── Share ("One link. The whole trip.") ── */
 const SHARE_URL = 'triplanio.app/t/spain-may-27';
 
+/**
+ * FAQ — native <details>/<summary>, "close others" on open (ported from the
+ * prototype's `toggle` event listener: opening one item closes every other
+ * open `.faq-item`). Handled via a native DOM `toggle` listener rather than
+ * React state, matching the prototype's own approach (uncontrolled
+ * <details>, no extra re-render on every keystroke-free open/close).
+ */
+function useFaqCloseOthers(ready) {
+  useEffect(() => {
+    if (!ready) return undefined;
+    const items = [...document.querySelectorAll('.faq-item')];
+    const onToggle = (e) => {
+      const d = e.target;
+      if (d.open) items.forEach((o) => { if (o !== d) o.open = false; });
+    };
+    items.forEach((d) => d.addEventListener('toggle', onToggle));
+    return () => items.forEach((d) => d.removeEventListener('toggle', onToggle));
+  }, [ready]);
+}
+
+/* ── FAQ ── */
+function Faq() {
+  const t = useT();
+  return (
+    <section className="faq-sec sheet-pane section-pad" data-hdr="light" id="faq">
+      <div className="wrap">
+        <div className="section-head centered rv">
+          <span className="brow">FAQ</span>{/* i18n-ignore: universal acronym, no data-i18n in prototype either */}
+          <h2>{t('landing.faq.h2')}</h2>
+        </div>
+        <div className="faq-list" data-stagger="">
+          <details className="faq-item rv" style={{ '--i': 0 }}>{/* inline-style-exempt: stagger reveal index */}
+            <summary><span>{t('landing.faq.q1')}</span><span className="fx">+</span></summary>
+            <div className="faq-body">{t('landing.faq.a1')}</div>
+          </details>
+          <details className="faq-item rv" style={{ '--i': 1 }}>{/* inline-style-exempt: stagger reveal index */}
+            <summary><span>{t('landing.faq.q2')}</span><span className="fx">+</span></summary>
+            <div className="faq-body">{t('landing.faq.a2')}</div>
+          </details>
+          <details className="faq-item rv" style={{ '--i': 2 }}>{/* inline-style-exempt: stagger reveal index */}
+            <summary><span>{t('landing.faq.q3')}</span><span className="fx">+</span></summary>
+            <div className="faq-body">{t('landing.faq.a3')}</div>
+          </details>
+          <details className="faq-item rv" style={{ '--i': 3 }}>{/* inline-style-exempt: stagger reveal index */}
+            <summary><span>{t('landing.faq.q4')}</span><span className="fx">+</span></summary>
+            <div className="faq-body">{t('landing.faq.a4')}</div>
+          </details>
+          <details className="faq-item rv" style={{ '--i': 4 }}>{/* inline-style-exempt: stagger reveal index */}
+            <summary><span>{t('landing.faq.q5')}</span><span className="fx">+</span></summary>
+            <div className="faq-body">{t('landing.faq.a5')}</div>
+          </details>
+          <details className="faq-item rv" style={{ '--i': 5 }}>{/* inline-style-exempt: stagger reveal index */}
+            <summary><span>{t('landing.faq.q6')}</span><span className="fx">+</span></summary>
+            <div className="faq-body">{t('landing.faq.a6')}</div>
+          </details>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Share() {
   const t = useT();
   const [copied, setCopied] = useState(false);
@@ -785,6 +846,7 @@ export default function LandingPage() {
   usePainScrub(cssReady);
   useReveal(cssReady);
   useCounters(cssReady, lang);
+  useFaqCloseOthers(cssReady);
 
   useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
 
@@ -803,6 +865,7 @@ export default function LandingPage() {
         <Collab />
         <Assistant />
         <Share />
+        <Faq />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
