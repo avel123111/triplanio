@@ -379,12 +379,17 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCityId]);
   // Встроенный режим (`embedded`): EditLens смонтирован в ящике поверх другого
-  // экрана (календарь) и рисует ТОЛЬКО панель города — та же машинерия, те же
-  // кнопки. Когда панель закрывают (onBack → leftPanel=null), гасим ящик хоста.
+  // экрана (календарь) и рисует ТОЛЬКО панель. Когда панель ЗАКРЫВАЮТ
+  // (onBack → leftPanel=null), гасим ящик хоста. Ключевое: гасим ТОЛЬКО если
+  // панель уже была открыта (ref), иначе первый кадр (leftPanel ещё null до
+  // эффекта-открывашки) закрыл бы ящик в тот же тик — «клик ничего не делает».
+  const embeddedOpenedRef = useRef(false);
   useEffect(() => {
-    if (embedded && draft && !leftPanel) onClose?.();
+    if (!embedded) return;
+    if (leftPanel) embeddedOpenedRef.current = true;
+    else if (embeddedOpenedRef.current) onClose?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [embedded, draft, leftPanel]);
+  }, [embedded, leftPanel]);
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
   const isSheet = useIsPhone();

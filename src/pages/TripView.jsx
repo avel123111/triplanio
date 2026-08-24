@@ -954,8 +954,9 @@ export default function TripView() {
   // is resolved — createStay22 reads trip.details, so it must not run in the TDZ.
   const serviceViewOpen = eventView.open && eventView.kind === 'service';
   const eventDrawerOpen = eventView.open && !!eventView.kind && eventView.kind !== 'service';
-  // The global drawer hosts EITHER a booking-create panel OR an event view/edit.
-  const drawerOpen = eventDrawerOpen || bookingCreate.open;
+  // The global drawer hosts a booking-create panel, an event view/edit, OR the
+  // city panel (embedded EditLens) opened from the calendar.
+  const drawerOpen = eventDrawerOpen || bookingCreate.open || !!cityDrawerId;
   const closeBookingCreate = () => setBookingCreate((s) => ({ ...s, open: false }));
   // Hotel "find" list bundle for the add-booking drawer (only when creating a
   // hotel — transfer/activity "find" tabs are partner chips, no Stay22 pool).
@@ -1216,10 +1217,23 @@ export default function TripView() {
   const eventDrawer = (
     <EventDrawerHost
       open={drawerOpen}
-      onClose={bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
+      onClose={cityDrawerId ? closeCityDrawer : bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
       scrim
     >
-      {bookingCreate.open ? (
+      {cityDrawerId ? (
+        // Панель города из календаря — тот же редактируемый CityPanel, что и в
+        // «Маршруте», НА МЕСТЕ: монтируем EditLens в режиме `embedded` (только
+        // панель, без карты/рельса), все кнопки/состояния (ночи, удаление,
+        // добавление броней, переезды) — живые и те же самые.
+        <EditLens
+          embedded
+          tripId={tripId}
+          shell={shellData}
+          content={contentData}
+          openCityId={cityDrawerId}
+          onClose={closeCityDrawer}
+        />
+      ) : bookingCreate.open ? (
         <AddBookingPanel
           kind={bookingCreate.kind}
           tripId={tripId}
@@ -1246,30 +1260,10 @@ export default function TripView() {
     </EventDrawerHost>
   );
 
-  // Панель города из календаря — тот же редактируемый CityPanel, что и в
-  // «Маршруте», НА МЕСТЕ: в ящик монтируется EditLens в режиме `embedded`
-  // (рисует только панель, без карты/рельса), поэтому все кнопки/состояния
-  // (ночи, удаление, добавление броней, переезды) — живые и те же самые.
-  const cityDrawer = (
-    <EventDrawerHost open={!!cityDrawerId} onClose={closeCityDrawer} scrim>
-      {cityDrawerId && (
-        <EditLens
-          embedded
-          tripId={tripId}
-          shell={shellData}
-          content={contentData}
-          openCityId={cityDrawerId}
-          onClose={closeCityDrawer}
-        />
-      )}
-    </EventDrawerHost>
-  );
-
   // Слот `overlays`: диалоги, шиты и плавающий виджет — внутри оболочки, но вне
   // колонок, ровно как было.
   const overlays = (
     <>
-    {cityDrawer}
     <TripShareFlow open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
   
     {/* Trip-level create dialogs opened by the bottom-nav "+" (addActions above) —
