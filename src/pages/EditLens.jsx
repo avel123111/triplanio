@@ -229,7 +229,6 @@ import CityPanel from '@/components/common/CityPanel';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import AddBookingPanel from '@/components/bookings/AddBookingPanel';
-import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { useStay22Bundle } from '@/lib/stay22';
@@ -383,7 +382,6 @@ export default function EditLens({ tripId, shell, content }) {
     const el = leftPaneRef.current.querySelector('button, [tabindex]') || leftPaneRef.current;
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
-  const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
   const confirm = useConfirm(); // city delete → shared confirm (sheet on mobile)
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
@@ -588,7 +586,7 @@ export default function EditLens({ tripId, shell, content }) {
       entityKind: i.entityKind,
       entityId: i.entityId,
       values: i.values,
-      // aliases consumed by openConflict / cityConflicts / transferMismatch:
+      // aliases consumed by cityConflicts / transferMismatch / openEvent:
       cityId: i.entityKind === 'city' ? i.entityId : undefined,
       hotelId: i.entityKind === 'hotel' ? i.entityId : undefined,
       activityId: i.entityKind === 'activity' ? i.entityId : undefined,
@@ -597,8 +595,6 @@ export default function EditLens({ tripId, shell, content }) {
       toId: i.toId,
     }));
   }, [draft, liveHotels, liveActivities, liveTransfers, t]);
-  const errors = issues.filter((i) => i.level === 'error').length; // always 0 now (all issues are 'warn')
-  const warns = issues.length - errors;
 
   // ---- structural edits ----
   // Trip start (d.startDate) is FIXED until shiftStart changes it. recompute chains
@@ -783,13 +779,7 @@ export default function EditLens({ tripId, shell, content }) {
     addCity({ ...c, timezone: tz }, kind);
   };
 
-  // ---- conflict / transfer dialogs (REAL app dialogs → write to DB → refetch) ----
-  const openConflict = (c) => {
-    if (c.hotelId) setLeftPanel({ type: 'event', kind: 'hotel', id: c.hotelId, warning: c.message });
-    else if (c.activityId) setLeftPanel({ type: 'event', kind: 'activity', id: c.activityId, warning: c.message });
-    else if (c.transferId) setLeftPanel({ type: 'event', kind: 'transfer', id: c.transferId, warning: c.message });
-    else toast({ description: `${c.message} ${t('tse.fix_hint_suffix')}`, variant: 'warning' });
-  };
+  // ---- transfer dialogs (REAL app dialogs → write to DB → refetch) ----
   const openTransferRow = (a, b, tr) => {
     if (tr) {
       // Hierarchy guarantees ≤1 issue per transfer → show that real message.
@@ -1004,12 +994,13 @@ export default function EditLens({ tripId, shell, content }) {
   const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
 
-  // ПЛАШКА ГОРОДА НА КАРТЕ — та же, что в линзе карты: следует за наведением, а
-  // без него за выбранным городом. Ховер работает В ОБЕ СТОРОНЫ: ряд списка
-  // подсвечивает маркер (`hoveredVisitId`), маркер подсвечивает ряд
-  // (`onCityHover` → тот же `hoveredNodeId`). Раньше связь была односторонней:
-  // с карты в список ничего не приходило.
-  const badgeNode = draft.nodes.find((n) => n.id === (hoveredNodeId || selectedNodeId)) || null;
+  // ПЛАШКА ГОРОДА НА КАРТЕ — та же, что в линзе карты, и по тому же закону:
+  // ТОЛЬКО ПО ЯВНОМУ НАЖАТИЮ (Pavel). Здесь «выбран» = открыта панель этого
+  // города, то есть по нему кликнули — в списке или на карте.
+  // Ховер остаётся ПОДСВЕТКОЙ и работает В ОБЕ СТОРОНЫ: ряд списка подсвечивает
+  // маркер (`hoveredVisitId`), маркер подсвечивает ряд (`onCityHover` → тот же
+  // `hoveredNodeId`). Плашку он больше не открывает.
+  const badgeNode = draft.nodes.find((n) => n.id === selectedNodeId) || null;
   const cityBadge = badgeNode?.latitude != null ? {
     lng: badgeNode.longitude,
     lat: badgeNode.latitude,
@@ -1175,8 +1166,8 @@ export default function EditLens({ tripId, shell, content }) {
 
   return (
     <MapShell
-      map={(camera, slotPx) => (
-            <MapView camera={camera} slotPx={slotPx} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+      map={(camera) => (
+            <MapView camera={camera} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
               /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
                  «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
               cooperativeGestures={false}
@@ -1215,33 +1206,36 @@ export default function EditLens({ tripId, shell, content }) {
         </div>
       ) : null}
     >
-      {/* Предупреждения: круглый FAB со счётчиком, поверх карты. Привязан к
-          СВОБОДНОМУ окну (переменные шелла), поэтому на телефоне встаёт над
-          шитом, а не под ним. */}
-      <div className="ts-warnfab">
-            {showWarn && issues.length > 0 && (
-              /* TRIP-343 объект 2 (канал 3): скин поверхности (--surface+рамка+радиус)
-                 снят с инлайна на Card; тень поповера (--sh-3) остаётся инлайном (высота). */
-              <Card radius="md" pad="none" className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', boxShadow: 'var(--sh-3)', padding: 8 }}>
-                <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
-              </Card>
-            )}
-            <IconBtn
-              size="fab"
-              tone={issues.length ? 'warning' : 'success'}
-              icon={issues.length ? 'warning' : 'check'}
-              onClick={() => { if (issues.length) setShowWarn((v) => !v); }}
-              ariaLabel={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
-              title={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
-            >
-              {/* Счётчик — дочерним, реюзом `.badge--count` (прецедент — колокольчик):
-                  позиция ко-селектором `.icon-btn > .badge--count`. */}
-              {issues.length > 0 && (
-                <Badge variant="count">{issues.length > 99 ? '99+' : issues.length}</Badge>
-              )}
-            </IconBtn>
-      </div>
+      {/* ★ ВИДЖЕТА ПРОБЛЕМ ЗДЕСЬ БОЛЬШЕ НЕТ (решение Pavel). Круглый FAB со
+          счётчиком и выпадающий `<ConflictsPanel>` сняты целиком — визуал
+          проблем на этом экране рисуется заново отдельной задачей.
+          ДВИЖОК ОСТАЛСЯ НА МЕСТЕ И ЖИВОЙ: `issues` считается как считался и
+          продолжает кормить метки в рядах (`cityConflicts`, `hotelWarnId`,
+          `actWarnId`, `transferMismatch`) и текст проблемы, который приезжает в
+          открытую панель объекта (`openEvent`). Снят ровно один
+          потребитель — этот. Сам `ConflictsPanel` в `ValidationUI` НЕ удалён:
+          он и есть то, что новый визуал будет переиспользовать.
+          ★ Виджет был СОБРАН ИЗ ДС (Card + IconBtn + Badge + ConflictsPanel), и
+          его снятие роняет долю ДС — метрику, которая ходит только вверх. Это не
+          деградация языка, а удаление узла целиком: с ним ушли и его сырые
+          обёртки. Апрув Pavel — постановка «убрать виджет проблем, визуал новый
+          будет позже».
+          floor-exempt: dsshare +4 — снят виджет проблем целиком (узлов ДС стало меньше вместе с самим узлом), апрув Pavel
 
+          Вместе с виджетом ушёл и его класс `.ts-warnfab` со всеми правилами —
+          осиротевшее правило удалять обязательно (гард 2n). Объявляю каждое
+          снятое объявление: у 2p ключ = единица + свойство, а не «файл», поэтому
+          маркеры и живут рядом с ПРИЧИНОЙ, а не в CSS, где их предмета больше нет.
+          visual-diff-exempt: .ts-warnfab position — класс снят вместе с виджетом проблем
+          visual-diff-exempt: .ts-warnfab right — то же
+          visual-diff-exempt: .ts-warnfab bottom — то же
+          visual-diff-exempt: .ts-warnfab z-index — то же
+          visual-diff-exempt: .ts-warnfab display — то же
+          visual-diff-exempt: .ts-warnfab flex-direction — то же
+          visual-diff-exempt: .ts-warnfab align-items — то же
+          visual-diff-exempt: .ts-warnfab gap — то же
+          visual-diff-exempt: .ts-warnfab max-width — то же
+          visual-diff-exempt: .ts-warnfab transition — то же */}
       {/* Телефон: панель открывается тем же общим шитом, что и глобальный
           EventDrawerHost (родной свайп, безопасная перестановка под клавиатуру,
           закрытие по фону / свайпу вниз / Back). */}

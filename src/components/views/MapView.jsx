@@ -4,7 +4,7 @@ import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
-import { calmFlyTo, calmFit, reframeTo } from '@/lib/map/camera';
+import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import { useMapInsets } from '@/lib/map/useMapInsets';
 import { hasFramed, markFramed } from '@/lib/map/framed';
 import MapControls from '@/lib/map/MapControls';
@@ -97,7 +97,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * пометить его обязательным значило бы уронить их в тот момент, когда они
  * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
  *
- * @param {{ camera?: any, slotPx?: number, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ * @param {{ camera?: any, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
  *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
@@ -111,10 +111,6 @@ export default function MapView({
   // Канвас при этом во всю площадь: карта видна ПОД виджетом, а кадр уходит в
   // свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   camera = null,
-  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Кадру она не
-  // нужна (холст уже сжат), но перекадрирование обязано на неё реагировать —
-  // иначе на телефоне его нет вовсе (там отступы камеры всегда нулевые).
-  slotPx = 0,
   visits,
   transfers,
   showStartEnd = true,
@@ -243,25 +239,13 @@ export default function MapView({
   // кадрирования читают его сами — поэтому ни один из семи `fit`-вызовов ниже
   // про закрытую площадь не знает и знать не должен. Разбор — `lib/map/insets.js`.
   //
-  // ★ КАДРИРУЕМ ПОСЛЕ ОСАДКИ, ТЕМПОМ ПОВЕРХНОСТИ. Когда шит встаёт на детент
-  // (или сворачивается виджет), свободное окно меняется — и та же цель обязана
-  // ДОЕХАТЬ до нового окна вместе с ним: то же время, та же кривая. Отступ сам
-  // по себе камеру не перекадрирует, он только сдвигает центр вида: маршрут,
-  // вписанный в окно 770px высотой, в окне 288px останется обрезанным.
+  // ★ СМЕНА СВОБОДНОГО ОКНА КАМЕРУ НЕ ДВИГАЕТ (решение Pavel). Прежде осадка
+  // детента и сворачивание виджета ВПИСЫВАЛИ маршрут заново — то есть меняли
+  // зум и центр, хотя маршрут не менялся. Автофокус случается только при
+  // изменении маршрута (фит по `visitsSignature` ниже); здесь отступ лишь
+  // ОБЪЯВЛЯЕТСЯ, и следующий фит возьмёт его сам.
   // ═════════════════════════════════════════════════════════════════════════
-  /** Что кадрировать прямо сейчас — читается на осадке, не на рендере. */
-  const subjectRef = useRef(/** @type {any} */ (null));
-  useMapInsets(mapRef, {
-    ready,
-    insets: camera,
-    slotPx,
-    onReframe: (map) => {
-      const sub = subjectRef.current;
-      // Ленту раскрытия и оверлей отелей не трогаем: там камерой владеют они.
-      if (!sub || sub.hideRoute || sub.revealActiveId != null || !sub.canFit) return;
-      reframeTo(map, sub.pts, { padding: sub.air, maxZoom: sub.maxZoom, singleZoom: sub.singleZoom });
-    },
-  });
+  useMapInsets(mapRef, { ready, insets: camera });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);
@@ -352,15 +336,6 @@ export default function MapView({
     () => (Array.isArray(focus) && focus.length ? focus.map((p) => p.join(',')).join('|') : ''),
     [focus],
   );
-
-  // ★ ЦЕЛЬ КАДРА ОБЪЯВЛЯЕТСЯ ЗДЕСЬ, А ЧИТАЕТСЯ НА ОСАДКЕ ДЕТЕНТА. Иначе эффект
-  // отступа тянул бы за собой `ordered`/`focus` в зависимости и перезапускался
-  // на каждую правку маршрута — то есть кадрировал бы карту заново там, где её
-  // никто не двигал. Ровно та же цель, что у штатных фитов ниже: есть фокус —
-  // он, иначе весь маршрут.
-  subjectRef.current = focusSig
-    ? { pts: focus, air: 110, maxZoom: 9, singleZoom: focusZoom, canFit, hideRoute, revealActiveId }
-    : { pts: ordered.map((v) => [v.longitude, v.latitude]), air: 60, maxZoom: 8, singleZoom: undefined, canFit, hideRoute, revealActiveId };
 
   // Route legs (consecutive ordered visits + the transport on each pair) and the
   // line signature — shared by the line-draw effect (full vs progressive reveal).

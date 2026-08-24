@@ -1066,9 +1066,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     if (finishCity?.latitude != null) m.finish = { lng: finishCity.longitude, lat: finishCity.latitude, countryCode: finishCity.country_code, name: finishCity.city_name, dates: null };
     return m;
   }, [home, cities, finishCity, lang]);
-  // The tooltip follows the hovered pin/row, otherwise the selected one.
-  const activeMapId = hoveredMapId || selectedMapId;
-  const cityBadge = activeMapId ? mapPointById[activeMapId] || null : null;
+  // ★ ПЛАШКА ГОРОДА — ТОЛЬКО ПО ЯВНОМУ НАЖАТИЮ (Pavel). Раньше её показывал
+  // ЛЮБОЙ ховер, включая ряд списка, — и это давало плашку, которую нельзя
+  // снять: подтверждение города оставляет палец/курсор ВНУТРИ ряда, ховер уже
+  // взведён, город получает координаты — плашка выскакивает сама. Клик по карте
+  // при этом гасит только ВЫБОР (`selectedMapId`), до ховера ему дела нет, то
+  // есть штатного способа её убрать не существовало.
+  // Ховер остался тем, чем и был, — ПОДСВЕТКОЙ (`.is-hover` на маркере и ряде):
+  // он ничего не открывает и снимать его не нужно.
+  const cityBadge = selectedMapId ? mapPointById[selectedMapId] || null : null;
   // Clear map selection/hover on step change: a pin drawn on one step (e.g. the
   // return pin, only shown on return/review) must not leave a tooltip floating at
   // its coordinate once the step no longer renders it.
