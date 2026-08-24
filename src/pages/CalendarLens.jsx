@@ -116,7 +116,7 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
                               onClick={() => onOpenEvent?.(e)} ariaLabel={`${e.time ? e.time + ' ' : ''}${e.title}`} className="t-tiny" />
                           ))}
                           {c.events.length > 2 && (
-                            <Chip variant="soft" sm square className="ncal-more t-tiny" onClick={() => toggle(ci)}>
+                            <Chip variant="soft" sm square className="t-tiny" onClick={() => toggle(ci)}>
                               {isOpen ? t('calendar.collapse') : `+${c.events.length - 2} ${t('calendar.more_count')}`}
                             </Chip>
                           )}
@@ -334,7 +334,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
       const cities = tripVisits
         .filter(v => dayDt >= v.s.startOf('day') && dayDt <= v.e.startOf('day'))
         .sort((a, b) => a.s - b.s || a.idx - b.idx)
-        .map(v => ({ colorIdx: cityColor(v.city_name), first: v.s.hasSame(dayDt, 'day'), name: v.city_name || '—', v }));
+        .map(v => ({ colorIdx: cityColor(v.city_name), name: v.city_name || '—', v }));
       cells.push({ day, isToday: day === todayDay, events: evByDay[day] || [], cities });
     }
     return { y, m, cells };
