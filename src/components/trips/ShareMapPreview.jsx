@@ -100,7 +100,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     // на ПРОГРАММНОЕ движение (fitToPoints/jumpTo). Без проверки первый же
     // авто-фит взводил userMoved, и синк камеры из редактора («Done») навсегда
     // блокировался — превью карточки не обновлялось.
-    ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((e) => map.on(e, (ev) => { if (ev?.originalEvent) userMoved = true; }));
+    ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((type) => map.on(type, (e) => { if (e?.originalEvent) userMoved = true; }));
     // Пока пользователь не взялся за карту сам: с приехавшей камерой — держим её
     // (зум пересчитан под ширину ЭТОГО контейнера из previewCssWidth композиции),
     // без камеры — авто-фит по точкам маршрута.
@@ -108,7 +108,9 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       if (userMoved) return;
       const cam = cameraRef.current;
       if (cam) {
-        const w = holderRef.current?.clientWidth || cam.previewCssWidth;
+        // `|| 1` в хвосте — страховка от NaN (log2(0/0)), когда и контейнер, и
+        // композиция без ширины: тогда зум просто не пересчитывается.
+        const w = holderRef.current?.clientWidth || cam.previewCssWidth || 1;
         map.jumpTo({
           center: cam.center,
           zoom: cam.zoom + Math.log2(w / (cam.previewCssWidth || w)),
@@ -154,7 +156,13 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     };
     const drawIfNeeded = () => {
       if (!pts.length) return;
-      if (map.getSource('sc-solid')) { applyWeights(); fit(); return; }
+      // ★ На уже нарисованном маршруте fit() с idle-пути НЕ зовётся: jumpTo шлёт
+      // moveend БЕЗУСЛОВНО (даже без смены камеры) → placeNow → setData → снова
+      // idle — вечный цикл. Раньше его случайно тормозил дефектный userMoved
+      // (взводился программным фитом); с починкой жеста тормоза нет, поэтому у
+      // фита остаются только реальные поводы: первый рендер маршрута (ниже),
+      // resize (ResizeObserver) и смена камеры (эффект [camera]).
+      if (map.getSource('sc-solid')) { applyWeights(); return; }
       const { cw, ch, s } = currentScale();
       try { drawTripRoute(map, ordered, legs, { scheme, cw, ch, iconScale: SC_WEIGHTS.badge * s }); } catch (err) { console.error('share preview draw failed', err); }
       applyWeights();
