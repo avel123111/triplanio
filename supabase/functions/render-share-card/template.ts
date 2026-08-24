@@ -24,8 +24,10 @@
 
 import { qrSvg } from './qr.ts';
 import { LOGO_SVG_B64 } from './assets_b64.ts';
+import { FLAGS_B64 } from './flags_b64.ts';
 
 const LOGO_URI = `data:image/svg+xml;base64,${LOGO_SVG_B64}`;
+const flagUri = (cc: string) => (FLAGS_B64[cc] ? `data:image/svg+xml;base64,${FLAGS_B64[cc]}` : '');
 
 export type Format = 'story' | 'post';
 
@@ -55,11 +57,10 @@ type CardData = {
 };
 
 // Токены, которые подменяет клиент. Только MAP_TOKEN нужен снаружи (index.ts →
-// card_svg); BG_TOKEN и flagToken клиент знает по своим копиям строк (Deno-модуль
-// не импортируется во фронт), поэтому наружу не экспортируются.
+// card_svg); BG_TOKEN клиент знает по своей копии строки (Deno-модуль во фронт не
+// импортируется). Флаги встроены на edge (FLAGS_B64), клиентского токена нет.
 export const MAP_TOKEN = '__SHARE_CARD_MAP__';
 const BG_TOKEN = '__SHARE_CARD_BG__';
-const flagToken = (cc: string) => `__SC_FLAG_${cc}__`;
 
 // Палитра (из прототипа).
 const C = {
@@ -241,10 +242,12 @@ export function buildCardSvg(
   const slot = mapSlot(format);
   const polaXf = `rotate(${POLA_ROT} ${g.cx} ${g.cy})`;
 
-  // --- фон (подложка). Клиент подменит токен или удалит элемент (прозрачно).
-  // В overlay окно вырезано маской, чтобы сквозь него была видна живая карта.
-  const bgImg = `<image href="${BG_TOKEN}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`;
-  const bg = overlay ? `<g mask="url(#winhole)">${bgImg}</g>` : bgImg;
+  // --- фон: базовый градиент (ВСЕГДА, «Стандарт» = он, не прозрачно) + фото-
+  // подложка поверх. Клиент подменяет токен фото на выбранный пресет ЛИБО удаляет
+  // <image> (тогда виден градиент). В overlay окно вырезано маской (живая карта).
+  const bgBase = `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#bgGrad)"/>`
+    + `<image href="${BG_TOKEN}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`;
+  const bg = overlay ? `<g mask="url(#winhole)">${bgBase}</g>` : bgBase;
 
   // --- заголовок (навы, ≤2 строки с усадкой) ---
   const maxTitleW = L.titleAlign === 'left' ? W - L.titleLeft - L.padX : W - L.padX * 2;
@@ -307,6 +310,7 @@ export function buildCardSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
  ${fontCss}
+ <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c7e6"/><stop offset="0.32" stop-color="#cfe0ec"/><stop offset="0.62" stop-color="#7fa7b3"/><stop offset="1" stop-color="#274b63"/></linearGradient>
  <clipPath id="winclip"><path d="${winPath}" transform="${polaXf}"/></clipPath>
  <mask id="winhole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${winPath}" transform="${polaXf}" fill="black"/></mask>
 </defs>
@@ -403,13 +407,17 @@ function buildFlags(L: Layout, d: CardData): string {
   return parts.join('');
 }
 
-// Круглый флаг: белое кольцо + флаг, обрезанный кругом. Клиент инлайнит /flags/<cc>.svg.
+// Круглый флаг: белое кольцо + флаг (встроен на edge), обрезанный кругом. Нет
+// флага для кода ⇒ только белый круг (не битая картинка).
 function flagCircle(cx: number, cy: number, d: number, ring: number, cc: string): string {
   const r = d / 2;
+  const uri = flagUri(cc);
+  const ring0 = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.white}"/>`;
+  if (!uri) return ring0;
   const id = `fl-${cc}-${Math.round(cx)}`;
-  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.white}"/>`
+  return ring0
     + `<clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r - ring}"/></clipPath>`
-    + `<image href="${flagToken(cc)}" x="${cx - r}" y="${cy - r}" width="${d}" height="${d}" `
+    + `<image href="${uri}" x="${cx - r}" y="${cy - r}" width="${d}" height="${d}" `
     + `preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`;
 }
 
