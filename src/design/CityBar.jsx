@@ -45,8 +45,10 @@ export const CityBar = ({ tone = 0, variant = 'bar', label, onClick, ariaLabel, 
       onClick={onClick}
       aria-label={ariaLabel}
       className={['citybar', variant !== 'bar' && `citybar--${variant}`, className].filter(Boolean).join(' ')}
-      // inline-style-exempt: тон города приходит данными (индекс → CSS-переменные --cc*), классом не выразить — как `tint` у Swatch
-      style={{ ...cityToneVars(tone), ...style }}
+      style={{
+        // inline-style-exempt: тон города приходит данными (индекс → CSS-переменные --cc*), классом не выразить — как `tint` у Swatch
+        ...cityToneVars(tone), ...style,
+      }}
     >
       {label != null && <span className="citybar__lbl">{label}</span>}
     </El>
