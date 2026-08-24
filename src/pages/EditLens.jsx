@@ -337,7 +337,7 @@ function buildDraft(shell, transfers = [], lang) {
 // дефолтной — то есть по прямому адресу `?lens=edit` наблюдатель просто не
 // попадёт. Своего ролевого гарда здесь нет намеренно, второй такой проверки
 // быть не должно.
-export default function EditLens({ tripId, shell, content, openCityId, onCityOpened }) {
+export default function EditLens({ tripId, shell, content, openCityId, onCityOpened, embedded = false, onClose }) {
   const t = useT();
   const { lang } = useI18n();
   const { fmtMoney } = useI18nFormat();
@@ -378,6 +378,13 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
     onCityOpened?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCityId]);
+  // Встроенный режим (`embedded`): EditLens смонтирован в ящике поверх другого
+  // экрана (календарь) и рисует ТОЛЬКО панель города — та же машинерия, те же
+  // кнопки. Когда панель закрывают (onBack → leftPanel=null), гасим ящик хоста.
+  useEffect(() => {
+    if (embedded && draft && !leftPanel) onClose?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, draft, leftPanel]);
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
   const isSheet = useIsPhone();
@@ -1201,6 +1208,11 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       )}
     </div>
   );
+
+  // Встроенный режим: рендерим ТОЛЬКО панель (город/бронь/переезд) как есть — её
+  // `.lp` заполняет ящик хоста (EventDrawerHost), который сам даёт хром, фокус и
+  // Esc. Без карты и рельса маршрута; вся машинерия панели — та же.
+  if (embedded) return leftPanelEl || null;
 
   return (
     <MapShell

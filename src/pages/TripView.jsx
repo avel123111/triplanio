@@ -852,10 +852,13 @@ export default function TripView() {
   // replacing the old ForkPartnerModal → EventEditDialog modal chain.
   const [bookingCreate, setBookingCreate] = useState({ open: false, kind: null, visit: null, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
-  // Клик по городу в календаре открывает ЕДИНУЮ панель города там, где она живёт —
-  // в лензе «Маршрут» (EditLens): переключаем секцию и передаём id города, чтобы
-  // EditLens открыл его своей штатной `openCity`. Никакой отдельной копии панели.
-  const [routeCityId, setRouteCityId] = useState(null);
+  // Клик по городу в календаре открывает ЕДИНУЮ панель города НА МЕСТЕ — тот же
+  // редактируемый CityPanel из «Маршрута», со всеми кнопками/состояниями. Это не
+  // копия: в ящик монтируется EditLens в режиме `embedded` (только панель, без
+  // карты/рельса) — вся машинерия (черновик/recompute/ночи/удаление/брони) та же.
+  const [cityDrawerId, setCityDrawerId] = useState(null);
+  const openCityDrawer = (visit) => { if (visit?.id) setCityDrawerId(visit.id); };
+  const closeCityDrawer = () => setCityDrawerId(null);
   const openUpgrade = () => goPro(nav, { tripId });
   // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
 
@@ -891,9 +894,6 @@ export default function TripView() {
     setSearchParams(sp, { replace: false });
     // Событие открытия секции шлёт НЕ этот обработчик, а эффект ниже — см. там.
   };
-
-  // Клик по городу в календаре → «Маршрут» с открытой панелью этого города.
-  const openCityInRoute = (visit) => { if (visit?.id) { setRouteCityId(visit.id); setLens('route'); } };
 
   // Opening a service from the services widget — one distinct event per type.
   // Concrete names (for grep): esim_opened, insurance_opened, car_rental_opened.
@@ -1246,10 +1246,30 @@ export default function TripView() {
     </EventDrawerHost>
   );
 
+  // Панель города из календаря — тот же редактируемый CityPanel, что и в
+  // «Маршруте», НА МЕСТЕ: в ящик монтируется EditLens в режиме `embedded`
+  // (рисует только панель, без карты/рельса), поэтому все кнопки/состояния
+  // (ночи, удаление, добавление броней, переезды) — живые и те же самые.
+  const cityDrawer = (
+    <EventDrawerHost open={!!cityDrawerId} onClose={closeCityDrawer} scrim>
+      {cityDrawerId && (
+        <EditLens
+          embedded
+          tripId={tripId}
+          shell={shellData}
+          content={contentData}
+          openCityId={cityDrawerId}
+          onClose={closeCityDrawer}
+        />
+      )}
+    </EventDrawerHost>
+  );
+
   // Слот `overlays`: диалоги, шиты и плавающий виджет — внутри оболочки, но вне
   // колонок, ровно как было.
   const overlays = (
     <>
+    {cityDrawer}
     <TripShareFlow open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
   
     {/* Trip-level create dialogs opened by the bottom-nav "+" (addActions above) —
@@ -1497,7 +1517,7 @@ export default function TripView() {
               visits={visits}
               isLoading={shellLoading || loadingContent}
               onOpenEvent={openEventView}
-              onOpenCity={openCityInRoute}
+              onOpenCity={openCityDrawer}
             />
           )}
           {shownLens === 'docs' && (
@@ -1539,7 +1559,7 @@ export default function TripView() {
               // фазе shell и в фазе content — не размонтируется, не прыгает (TRIP-337).
               ? <EditSkeleton />
               : editGate === 'ok'
-                ? <EditLens tripId={tripId} shell={shellData} content={contentData} openCityId={routeCityId} onCityOpened={() => setRouteCityId(null)} />
+                ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
                 : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
           )}
           {shownLens === 'settings' && (
