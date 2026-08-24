@@ -33,15 +33,16 @@ const RANGE_CYRILLIC = 'U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116';
 type Face = { family: string; weight: number; subset: 'latin' | 'cyrillic'; idx: number };
 
 // Index -> file mapping is fixed by how FONT_B64 was generated (even = cyrillic
-// subset, odd = latin subset). Montserrat 400 (idx 4/5) is intentionally omitted:
-// the template never asks for a weight below 600, and 600/800 nearest-match to 700.
-export const FONT_FACES: Face[] = [
+// subset, odd = latin subset). Montserrat 400 was dropped from FONT_B64 entirely
+// (its two subset files used to sit at idx 4/5): the template never asks for a
+// weight below 600, and 600/800 nearest-match to 700, so nothing ever read them.
+const FONT_FACES: Face[] = [
   { family: 'Caveat', weight: 700, subset: 'cyrillic', idx: 0 },
   { family: 'Caveat', weight: 700, subset: 'latin', idx: 1 },
   { family: 'Montserrat', weight: 700, subset: 'cyrillic', idx: 2 },
   { family: 'Montserrat', weight: 700, subset: 'latin', idx: 3 },
-  { family: 'Rubik ExtraBold', weight: 800, subset: 'cyrillic', idx: 6 },
-  { family: 'Rubik ExtraBold', weight: 800, subset: 'latin', idx: 7 },
+  { family: 'Rubik ExtraBold', weight: 800, subset: 'cyrillic', idx: 4 },
+  { family: 'Rubik ExtraBold', weight: 800, subset: 'latin', idx: 5 },
 ];
 
 /** The <style> block with every @font-face, embedding the font bytes as data URIs. */

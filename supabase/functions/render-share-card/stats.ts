@@ -19,7 +19,7 @@ export type Visit = {
   end_date: string | null;
 };
 
-export type Lang = 'ru' | 'en' | 'es';
+type Lang = 'ru' | 'en' | 'es';
 
 /** Localized display name of a visit: name_i18n[lang] -> en -> city_name_en. */
 export function cityLabel(v: Visit, lang: Lang): string {
