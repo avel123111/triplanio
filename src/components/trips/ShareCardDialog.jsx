@@ -129,6 +129,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
       inline: 'center', block: 'nearest', behavior: 'smooth',
     });
   }, [bgIdx]);
+
   function handleFile(e) {
     const file = e.target.files?.[0];
     e.target.value = '';

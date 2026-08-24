@@ -3467,7 +3467,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    видны вовсе; исключение и снято тем же PR - именно потому, что кольцо стало
    свойством семьи, а не отдельного экрана.
    Кольцо то же, что у поля и чекбокса (--primary-ring), а не своё. */
-.icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+/* :has(:focus-visible) — тот же контрол на <label>-носителе (share-UX:
+   «загрузить своё фото» = label вокруг .sr-only файлового инпута): фокус
+   получает ИНПУТ, а не носитель класса, и без этой ветки кольцо не приходило
+   бы вовсе. Именно :has(:focus-visible), а не :focus-within — кольцо только с
+   клавиатуры, как у кнопок; у обычной кнопки-иконки фокусируемых детей нет.
+   visual-diff-exempt: .icon-btn:has(:focus-visible) outline — кольцо фокуса для label-носителя контрола (share-UX)
+   visual-diff-exempt: .icon-btn:has(:focus-visible) box-shadow — кольцо фокуса для label-носителя контрола (share-UX) */
+.icon-btn:focus-visible, .icon-btn:has(:focus-visible) { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .icon-btn[disabled] { opacity: .45; pointer-events: none; }
 /* Нажато = бренд-заливка, тот же канон, что у `.btn[aria-pressed]` выше и у Chip.
    Глобус карты Статистики красится этим правилом (`.map-ctl button.on` снят). */
@@ -4587,10 +4594,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ховер поднимает до --scrim. Форма/размер/тон у всех одинаковы. */
 .tcp__ctl, .editable__confirm { background: var(--scrim-soft); color: #fff; border-color: transparent; }
 .tcp__ctl:hover, .editable__confirm:hover { background: var(--scrim); color: #fff; }
-/* Носитель контрола — не всегда <button>: «загрузить фото» в share-карточке —
-   нативный <label> вокруг файлового инпута (курсор тег-правилом не приходит).
-   visual-diff-exempt: .tcp__ctl cursor — контрол на <label>-носителе (share-UX), у <button> курсор и так pointer */
-.tcp__ctl { cursor: pointer; }
 /* Загрузка своего фото — иконка-кнопка в правом верхнем углу обложки. */
 .tcp__upload { position: absolute; z-index: 4; top: var(--sp-4); right: var(--sp-4); }
 /* Стрелки смены выбранного кавера — по бокам обложки, по центру. Меняют сам
