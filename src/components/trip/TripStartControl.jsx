@@ -23,13 +23,21 @@ import { useT, useI18n } from '@/lib/i18n/I18nContext';
 //                so the control matches the adjacent .input; the compact inline
 //                variant (header / review) is the default.
 //   popoverAlign Popover alignment ('start' planner | 'end' editor header).
+//   readOnly     дата ТОЛЬКО показывается (наблюдатель на «Маршруте», TRIP-459):
+//                ни ±1 дня, ни календаря. Коробка при этом ОСТАЁТСЯ той же
+//                (`.ts-startctl__date` со своим падингом) — меняется не облик, а
+//                интерактивность: снимаются `role`/`tabIndex`/клик, и вместе с
+//                ними курсор и ховер (в CSS они висят на `[role="button"]`).
+//                Первый заход рисовал дату голым текстом центра степпера — она
+//                теряла падинг и выглядела СЖАТОЙ; правка read-only не должна
+//                менять раскладку, только отнимать нажатие.
 function fmtDW(iso, loc = 'ru') {
   if (!iso) return '—';
   const d = DateTime.fromISO(iso, { zone: 'utc' });
   return d.isValid ? d.setLocale(loc).toFormat('d MMM, ccc') : '—';
 }
 
-export default function TripStartControl({ date, onStep, onPickDate, label, block = false, popoverAlign = 'start' }) {
+export default function TripStartControl({ date, onStep, onPickDate, label, block = false, popoverAlign = 'start', readOnly = false }) {
   const t = useT();
   const { lang } = useI18n();
   const [calOpen, setCalOpen] = useState(false);
@@ -60,9 +68,21 @@ export default function TripStartControl({ date, onStep, onPickDate, label, bloc
     <Tooltip content={t('planner.trip_start')} block={block}>
       <Stepper
         variant={block ? 'block' : 'bare'}
+        readOnly={readOnly}
         onMinus={() => onStep?.(-1)} minusLabel={t('planner.day_earlier')}
         onPlus={() => onStep?.(1)} plusLabel={t('planner.day_later')}
-      >{dateBtn}</Stepper>
+      >{readOnly ? (
+        <span className="ts-startctl__date">
+          {/* ПОДПИСЬ ДЛЯ ЧИТАЛКИ ЭКРАНА. У кликабельной даты имя даёт
+              `aria-label` на её `role="button"`; у нетыкаемой роли нет, и
+              `aria-label` на голом <span> читалки игнорируют. Видимый ярлык
+              «Старт» не спасает: ниже 520px он `display: none`, то есть уходит
+              и из дерева доступности — на телефоне дата осталась бы просто
+              числом без предмета. `.sr-only` — утилита репозитория. */}
+          <span className="sr-only">{t('planner.trip_start')} </span>
+          {fmtDW(date, lang)}
+        </span>
+      ) : dateBtn}</Stepper>
     </Tooltip>
   );
 
@@ -74,7 +94,9 @@ export default function TripStartControl({ date, onStep, onPickDate, label, bloc
           {stepper}
         </span>
       )}
-      {isSheet && (
+      {/* Телефонный шит календаря — потребитель `dateBtn`, а в read-only его
+          некому открыть: держать смонтированным нечего. */}
+      {isSheet && !readOnly && (
         <Sheet open={calOpen} onOpenChange={setCalOpen} title={t('planner.trip_start')}>
           <StartCalendar value={date} lang={lang} onPick={pick} />
         </Sheet>

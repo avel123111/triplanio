@@ -1,23 +1,20 @@
 {
-  "card_back": "Editar",
+  "bg_upload": "Sube tu foto",
   "card_bg": "Fondo",
   "card_bg_standard": "Estándar",
-  "card_build": "Crear tarjeta",
   "card_download": "Descargar",
   "card_error": "No se pudo crear la imagen. Intentalo de nuevo.",
-  "card_map_hint": "Puedes acercar, alejar y mover el mapa",
   "card_new": "NUEVO",
   "card_no_cities": "Anade ciudades a la ruta para crear una tarjeta.",
   "card_post": "Post 4:5",
-  "card_preview": "Vista previa",
-  "card_ready_badge": "Listo",
-  "card_ready_desc": "Tu imagen está lista: descárgala o compártela con amigos",
   "card_share": "Compartir",
   "card_story": "Historia 9:16",
   "card_title": "Imagen para redes",
   "copy": "Copiar",
   "dialog_title": "Compartir viaje",
+  "edit_map": "Ajustar el mapa",
   "generating": "Generando enlace…",
   "map_projection": "Proyeccion",
-  "map_theme": "Tema"
+  "map_theme": "Tema",
+  "menu_card_hint": "Ruta, cifras y un QR: una imagen para una historia o un post"
 }

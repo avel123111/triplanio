@@ -1,0 +1,455 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { track } from '@/lib/analytics';
+import { useI18n } from '@/lib/i18n/I18nContext';
+import { useIsPhone } from '@/hooks/use-mobile';
+import { Btn, Carousel, Dialog, EmptyState, IconBtn, Seg, Severity, Skeleton, Swatch, Tile } from '@/design/index';
+import { Icon } from '@/design/icons';
+import LpSheet from '@/components/ui/LpSheet';
+import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
+import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
+import { report } from '@/lib/reportDataError';
+import { invokeCard, applyCardBg, cardBgUri, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
+import { MAX_UPLOAD_BYTES } from './TripCoverPicker';
+import ShareMapPreview from './ShareMapPreview';
+import './ShareCardDialog.css';
+
+// Заглушки миниатюр, пока едет каталог фонов (как у CoverPicker: ряд должен
+// читаться «сейчас будет ещё», а не прыгать с одной плитки до десятка).
+const SKELETON_THUMBS = [0, 1, 2];
+
+// Конструктор share-карточки (share-UX эксперимент поверх TRIP-193).
+// Одна сцена вместо двух стадий edit→card:
+//   · превью = живая карта-калька (без жестов) под рамкой-SVG с выбранным фоном —
+//     ровно то, что уйдёт в PNG; «Скачать»/«Поделиться» собирают файл на месте;
+//   · фон — стрелки по бокам превью + карусель миниатюр (десктоп — справа под
+//     управлением, ≤640 — под превью; язык CoverPicker: классы tcp__*, Swatch,
+//     Carousel); своё фото едет data-URI без Storage;
+//   · карта — ОТДЕЛЬНЫЙ полноэкранный под-флоу (кнопка «Настроить карту»):
+//     тот же ShareMapPreview, но живой и крупный; Done возвращает композицию.
+// Оболочка: десктоп — Dialog wide, телефон — полноэкранный шит .lp-sheet
+// (единственный канон 100%-высоты, тот же, что у панелей редактора).
+export default function ShareCardDialog({ trip, open, onOpenChange, visits = [], transfers = [] }) {
+  const { t, lang } = useI18n();
+  const isPhone = useIsPhone();
+
+  const [format, setFormat] = useState('story');
+  const [overlay, setOverlay] = useState(null); // { svg, slot, w, h, backgrounds }
+  const [overlayCode, setOverlayCode] = useState(''); // '' | 'error' | 'no_transit_cities'
+  const [bg, setBg] = useState(''); // '' = штатный фон | url пресета | data-URI своего фото
+  const [bgUri, setBgUri] = useState(''); // фон, готовый к инлайну в SVG
+  const [uploaded, setUploaded] = useState(''); // data-URI своего фото (слайд этой сессии)
+  const [uploadError, setUploadError] = useState('');
+  const [camera, setCamera] = useState(null); // композиция из редактора карты; null = авто-фит
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [building, setBuilding] = useState(''); // '' | 'share' | 'download'
+  const [buildError, setBuildError] = useState('');
+
+  const previewRef = useRef(null);
+  const editorRef = useRef(null);
+  const stripRef = useRef(null);
+  const builtRef = useRef(null); // последний собранный PNG (blob); обнуляется на смену входов
+
+  // Рамка (и слот карты) — с edge-функции, отдельно на каждый формат.
+  useEffect(() => {
+    if (!open || !trip?.id) return undefined;
+    let cancelled = false;
+    setOverlay(null);
+    setOverlayCode('');
+    invokeCard({ trip_id: trip.id, format, lang, mode: 'overlay' })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (data?.code) { setOverlayCode(data.code); return; }
+        if (error || !data?.svg) { setOverlayCode('error'); return; }
+        setOverlay({ svg: data.svg, slot: data.slot, w: data.width, h: data.height, backgrounds: data.backgrounds || [] });
+      })
+      .catch((e) => { if (!cancelled) { console.error('overlay fetch failed', e); setOverlayCode('error'); } });
+    return () => { cancelled = true; };
+  }, [open, trip?.id, format, lang]);
+
+  // Каталог фонов приезжает В overlay-ответе (`backgrounds`) — публичные URL из
+  // бакета `card-bg-presets`, отлистанные edge под service_role: дверь экрана
+  // конструктора одна (TRIP-374), отдельного запроса каталога нет. Таблицы
+  // пресетов нет намеренно — на фон никто не ссылается персистентно (см.
+  // миграцию card_bg_presets_bucket).
+  const slides = useMemo(
+    () => ['', ...(uploaded ? [uploaded] : []), ...(overlay?.backgrounds || [])],
+    [overlay, uploaded],
+  );
+
+  // Выбранный фон → data-URI (пресет качается и мемоизируется, своё фото уже URI).
+  useEffect(() => {
+    let cancelled = false;
+    if (!bg) { setBgUri(''); return undefined; }
+    if (bg.startsWith('data:')) { setBgUri(bg); return undefined; }
+    fetchImageDataUri(bg, MAX_UPLOAD_BYTES)
+      .then((uri) => { if (!cancelled) setBgUri(uri); })
+      .catch(() => { if (!cancelled) { setBg(''); setBgUri(''); } });
+    return () => { cancelled = true; };
+  }, [bg]);
+
+  // Смена входов обнуляет собранный PNG и помечает in-flight сборку устаревшей
+  // (поколение читает цикл buildPng — устаревший результат в кэш не попадает).
+  const buildGenRef = useRef(0);
+  useEffect(() => { buildGenRef.current += 1; builtRef.current = null; setBuildError(''); }, [format, bg, camera]);
+
+  const framedSvg = useMemo(() => (overlay ? applyCardBg(overlay.svg, bgUri) : null), [overlay, bgUri]);
+  // Миниатюра «Стандарт» — штатный фон, вытащенный из самого шаблона.
+  const standardThumb = useMemo(() => (overlay ? cardBgUri(overlay.svg) : ''), [overlay]);
+
+  // Сторож контракта подмены фона (см. src/lib/shareCardBg.js): jpeg-фон из
+  // шаблона пропал (перегенерирован в другой формат?) — подмена стала no-op,
+  // юзер молча остаётся со штатным фоном. Кричим, а не гадаем.
+  useEffect(() => {
+    if (overlay && !cardBgUri(overlay.svg)) {
+      report(new Error('render-share-card: в SVG шаблона нет jpeg-фона — applyCardBg стал no-op'), { surface: 'data', source: 'share-card-bg' });
+    }
+  }, [overlay]);
+
+  const ready = Boolean(overlay) && !overlayCode;
+  // Пропорция сцены едет двумя каналами (см. ShareCardDialog.css): --sc-ar для
+  // aspect-ratio и числовой --sc-arw, от которого считается ширина. Конструктор
+  // меряется рамкой целиком, редактор карты — слотом (дырой под карту).
+  const arVars = (w, h) => ({ '--sc-ar': `${w} / ${h}`, '--sc-arw': w / h });
+  const arStyle = overlay ? arVars(overlay.w, overlay.h) : undefined;
+
+  // Фон миниатюр — картинка ИЗ ДАННЫХ (data-URI шаблона / url пресета), классом
+  // её не выразить; едет переменной, как у CoverPicker.
+  const thumbStyle = (url) => ({ backgroundImage: `url(${url})`, backgroundSize: 'cover', backgroundPosition: 'center' });
+
+  const bgIdx = slides.indexOf(bg);
+  const canPrevBg = bgIdx > 0;
+  const canNextBg = bgIdx !== -1 && bgIdx < slides.length - 1;
+  const stepBg = (dir) => {
+    const next = slides[bgIdx + dir];
+    if (next !== undefined) setBg(next);
+  };
+
+  // Доводчик ряда миниатюр — тот же ход, что у CoverPicker (data-idx +
+  // scrollIntoView к центру): стрелки листают фон, а ряд едет за выбором;
+  // без него выбранная миниатюра оставалась за краем ленты. Deps по (bg, slides),
+  // а не по индексу: вставка своего фото на МЕСТО выбранного пресета сдвигает
+  // список при том же индексе — довозить всё равно надо.
+  useEffect(() => {
+    const idx = slides.indexOf(bg);
+    if (idx < 0) return;
+    stripRef.current?.querySelector(`[data-idx="${idx}"]`)?.scrollIntoView({
+      inline: 'center', block: 'nearest', behavior: 'smooth',
+    });
+  }, [bg, slides]);
+
+  function handleFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!isAllowedUpload(file, ALLOWED_IMAGE_EXTENSIONS)) { setUploadError(t('doc.bad_format', { name: file.name })); return; }
+    if (file.size > MAX_UPLOAD_BYTES) { setUploadError(t('trip.cover_too_large')); return; }
+    setUploadError('');
+    blobToDataUri(file)
+      .then((uri) => { setUploaded(uri); setBg(uri); })
+      .catch(() => setUploadError(t('trip.cover_upload_failed')));
+  }
+
+  // Входы сборки читаются ЧЕРЕЗ ref, а не из замыкания рендера: сборка идёт
+  // секунды, клик по фону/формату во время неё меняет состояние — замыкание
+  // хендлера осталось бы со старыми значениями, а повтор цикла ниже обязан
+  // видеть актуальные.
+  const inputsRef = useRef(null);
+  inputsRef.current = { format, bg, camera, overlay };
+
+  // Финальный PNG: карта в полном разрешении слота (камера превью или редактора)
+  // → card_svg с подменённым фоном → растеризация в браузере. Кэш на неизменных
+  // входах — повторное «Скачать» после «Поделиться» не пересобирает.
+  async function buildPng() {
+    // Цикл, а не одиночный проход: сменились входы ПОКА собирали (buildGenRef
+    // ушёл вперёд) — устаревший PNG не попадает ни в кэш, ни юзеру; пересборка
+    // идёт по актуальным значениям из inputsRef.
+    for (;;) {
+      if (builtRef.current) return builtRef.current;
+      const gen = buildGenRef.current;
+      const { format, bg, camera, overlay } = inputsRef.current;
+      const comp = camera || previewRef.current?.getComposition?.();
+      const slot = overlay?.slot;
+      if (!comp || !slot) throw new Error('preview not ready');
+      // Фон разрешается ЗДЕСЬ из выбора (bg), а не из стейта превью (bgUri):
+      // клик «Скачать» в окно, пока data-URI пресета ещё качается, иначе собрал
+      // бы карточку со штатным фоном. Кэш fetchImageDataUri общий с превью —
+      // второй раз пресет не качается.
+      const finalBgUri = bg ? (bg.startsWith('data:') ? bg : await fetchImageDataUri(bg, MAX_UPLOAD_BYTES)) : '';
+      const mapBlob = await renderCardMapPng({ visits, transfers, ...comp, width: slot.w, height: slot.h });
+      if (!mapBlob) throw new Error('map render failed');
+      const mapUri = await blobToDataUri(mapBlob);
+      const { data, error } = await invokeCard({ trip_id: trip.id, format, lang, mode: 'card_svg' });
+      if (error || !data?.svg) throw new Error('card svg failed');
+      const svg = applyCardBg(data.svg, finalBgUri).split(MAP_PLACEHOLDER).join(mapUri);
+      const blob = await rasterizeSvgToPng(svg, data.width || overlay.w, data.height || overlay.h);
+      if (gen !== buildGenRef.current) continue;
+      builtRef.current = blob;
+      track('share_card_generated', { trip_id: trip.id, format, bg: bg ? 'custom' : 'standard' });
+      return blob;
+    }
+  }
+
+  function saveBlob(blob) {
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = `triplanio-${inputsRef.current.format}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Отложенный revoke: Safari стартует скачивание асинхронно, мгновенный
+    // revoke обрывал его гонкой.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
+
+  async function downloadCard() {
+    setBuilding('download');
+    setBuildError('');
+    try { saveBlob(await buildPng()); } catch (e) {
+      console.error('card build failed', e);
+      setBuildError(t('share.card_error'));
+    } finally { setBuilding(''); }
+  }
+
+  async function shareCard() {
+    setBuilding('share');
+    setBuildError('');
+    try {
+      const blob = await buildPng();
+      const file = new File([blob], `triplanio-${inputsRef.current.format}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        saveBlob(blob);
+      }
+    } catch (e) {
+      // AbortError = человек закрыл системный шит шаринга; это не сбой.
+      if (e?.name !== 'AbortError') { console.error('share card failed', e); setBuildError(t('share.card_error')); }
+    } finally { setBuilding(''); }
+  }
+
+  const closeEditor = () => setEditorOpen(false);
+  function applyEditor() {
+    const comp = editorRef.current?.getComposition?.();
+    if (comp) setCamera(comp);
+    closeEditor();
+  }
+
+  const close = () => onOpenChange?.(false);
+
+  // «Городов нет» — не сбой, а пустой маршрут: заглушка другого тона и текста.
+  const noCities = overlayCode === 'no_transit_cities';
+  const body = overlayCode ? (
+    <EmptyState
+      kind={noCities ? 'empty' : 'error'}
+      icon="map"
+      title={noCities ? t('share.card_no_cities') : t('share.card_error')}
+    />
+  ) : (
+    <div className="sc-body">
+      {/* data-vaul-no-drag на сцене и ленте: внутри мобильного шита vaul трекает
+          вертикальный драг с любого pointerdown — тап по кнопкам сцены и
+          горизонтальный скролл ленты не должны с ним конкурировать. */}
+      <div className="sc-stage" style={arStyle} data-vaul-no-drag>
+        {overlay ? (
+          <ShareMapPreview
+            key={format}
+            ref={previewRef}
+            visits={visits}
+            transfers={transfers}
+            lang={lang}
+            overlaySvg={framedSvg}
+            slot={overlay.slot}
+            cardW={overlay.w}
+            cardH={overlay.h}
+            interactive={false}
+            camera={camera}
+          />
+        ) : (
+          <Skeleton w="100%" h="100%" r={0} />
+        )}
+        {ready && canPrevBg && (
+          <IconBtn icon="chevL" className="tcp__ctl tcp__nav tcp__nav--prev" ariaLabel={t('common.prev')} onClick={() => stepBg(-1)} />
+        )}
+        {ready && canNextBg && (
+          <IconBtn icon="chev" className="tcp__ctl tcp__nav tcp__nav--next" ariaLabel={t('common.next')} onClick={() => stepBg(1)} />
+        )}
+        {ready && (
+          /* «Загрузить своё фото» — НАТИВНЫЙ label вокруг инпута, а не
+             программный input.click(): синтетический клик из-под vaul/Radix-
+             модалки на iOS открывал пикер ненадёжно (кнопка «не реагировала»),
+             активация label'ом идёт самим браузером. Инпут .sr-only (не
+             display:none) — остаётся фокусируемым для клавиатуры. */
+          <label className="icon-btn tcp__ctl tcp__upload" title={t('share.bg_upload')}>
+            <Icon name="image-up" size={16} />
+            <input
+              type="file"
+              accept={IMAGE_ACCEPT}
+              onChange={handleFile}
+              className="sr-only"
+              aria-label={t('share.bg_upload')}
+            />
+          </label>
+        )}
+      </div>
+
+      {/* Карусель фонов — свой грид-остров (.sc-strip): десктоп ставит её в
+          ПРАВУЮ колонку под подсказку, мобила — под превью (см. areas в CSS).
+          data-idx — адрес для доводчика выбора (как у CoverPicker). */}
+      <Carousel className="tcp__strip sc-strip" ariaLabel={t('share.card_bg')} ref={stripRef} data-vaul-no-drag>
+        {standardThumb && (
+          <Swatch
+            variant="round"
+            on={bg === ''}
+            onClick={() => setBg('')}
+            aria-label={t('share.card_bg_standard')}
+            title={t('share.card_bg_standard')}
+            style={thumbStyle(standardThumb)}
+            data-idx={0}
+          />
+        )}
+        {slides.slice(1).map((url, i) => (
+          <Swatch
+            /* Ключ — ПОЛНЫЙ url: общий префикс public-URL пресетов длиннее 80,
+               обрезка давала дубли ключей у всех свотчей. Своё фото (data-URI
+               в мегабайты) — стабильный маркер, оно в списке одно. */
+            key={url.startsWith('data:') ? 'uploaded' : url || `bg-${i}`}
+            variant="round"
+            on={bg === url}
+            onClick={() => setBg(url)}
+            aria-label={t('share.card_bg')}
+            style={thumbStyle(url)}
+            data-idx={i + 1}
+          />
+        ))}
+        {!overlay && SKELETON_THUMBS.map((k) => (
+          <Skeleton key={k} w={52} h={52} r={'var(--r-xs)'} />
+        ))}
+      </Carousel>
+
+      <div className="sc-side">
+        {/* .grow: на мобиле управление встаёт РЯДОМ (формат + карта), сегмент
+            забирает остаток ряда; в десктоп-колонке просто растянут. */}
+        <span className="grow">
+          <Seg
+            variant="fill"
+            ariaLabel={t('share.card_title')}
+            value={format}
+            /* Оверлей чистится СИНХРОННО со сменой формата: пассивная чистка
+               эффектом успевала отдать ремаунту превью СТАРЫЙ slot — лишняя
+               инициализация mapbox-карты и кадр прежней рамки в новой пропорции. */
+            onChange={(v) => {
+              if (v === format) return;
+              setFormat(v);
+              setOverlay(null);
+              setOverlayCode('');
+              // Пресеты форматные (папки story/ и post/ бакета) — выбор чужого
+              // формата на новой пропорции невалиден, откат на «Стандарт».
+              // Своё фото (data-URI) переживает смену: slice-кроп берёт центр.
+              if (bg && !bg.startsWith('data:')) setBg('');
+            }}
+            options={[
+              { value: 'story', label: t('share.card_story') },
+              { value: 'post', label: t('share.card_post') },
+            ]}
+          />
+        </span>
+        <Btn variant="secondary" icon="map" disabled={!ready} onClick={() => setEditorOpen(true)}>
+          {t('share.edit_map')}
+        </Btn>
+        {!isPhone && <div className="muted t-body">{t('share.menu_card_hint')}</div>}
+        {uploadError && <p className="tcp__err sc-note">{uploadError}</p>}
+        {buildError && <div className="sc-note"><Severity level="error">{buildError}</Severity></div>}
+      </div>
+    </div>
+  );
+
+  const foot = (
+    <>
+      <Btn variant="secondary" icon="download" loading={building === 'download'} disabled={!ready || !!building} onClick={downloadCard}>
+        {t('share.card_download')}
+      </Btn>
+      <Btn variant="primary" icon="share" loading={building === 'share'} disabled={!ready || !!building} onClick={shareCard}>
+        {t('share.card_share')}
+      </Btn>
+    </>
+  );
+
+  // Живая карта под-флоу — ОДНА на оба шасси (шит на телефоне, диалог на
+  // десктопе): один ref, иначе Done забрал бы композицию не той. Карта здесь
+  // ГОЛАЯ и крупная: без рамки карточки, в пропорции СЛОТА (дыры под карту) —
+  // редактируешь карту, а не карточку; кадр по ширине совпадает с дырой
+  // (камера ездит композицией с пересчётом зума под ширину поверхности).
+  const editorStage = overlay && (
+    <div className="sc-stage" style={arVars(overlay.slot.w, overlay.slot.h)}>
+      <ShareMapPreview
+        ref={editorRef}
+        visits={visits}
+        transfers={transfers}
+        lang={lang}
+        bare
+        cardW={overlay.slot.w}
+        camera={camera}
+      />
+    </div>
+  );
+
+  // Полноэкранный под-флоу «Настроить карту»: крупная живая карта с жестами,
+  // Done забирает композицию, крестик — отменяет.
+  const editor = editorOpen && overlay && (isPhone ? (
+    <LpSheet open onClose={closeEditor} title={t('share.edit_map')}>
+      <div className="lp">
+        <div className="lp-h">
+          <Tile as="span" className="lp-ic"><Icon name="map" size={17} /></Tile>
+          <div className="lp-ti"><div className="lp-tirow"><b className="t-title">{t('share.edit_map')}</b></div></div>
+          <IconBtn icon="close" onClick={closeEditor} ariaLabel={t('common.close')} />
+        </div>
+        {/* data-vaul-no-drag: жесты карты не должны утаскивать сам шит */}
+        <div className="lp-b sc-edit" data-vaul-no-drag>
+          {editorStage}
+        </div>
+        <div className="lp-f lp-f--single">
+          <Btn variant="primary" icon="check" block onClick={applyEditor}>{t('common.done')}</Btn>
+        </div>
+      </div>
+    </LpSheet>
+  ) : (
+    <Dialog
+      title={t('share.edit_map')}
+      icon="map"
+      size="fit"
+      open
+      onOpenChange={(o) => { if (!o) closeEditor(); }}
+      foot={<Btn variant="primary" icon="check" onClick={applyEditor}>{t('common.done')}</Btn>}
+    >
+      <div className="sc-edit">{editorStage}</div>
+    </Dialog>
+  ));
+
+  if (isPhone) {
+    return (
+      <>
+        <LpSheet open={open} onClose={close} title={t('share.card_title')}>
+          <div className="lp">
+            <div className="lp-h">
+              <Tile as="span" className="lp-ic"><Icon name="image" size={17} /></Tile>
+              <div className="lp-ti"><div className="lp-tirow"><b className="t-title">{t('share.card_title')}</b></div></div>
+              <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
+            </div>
+            <div className="lp-b">{body}</div>
+            {!overlayCode && <div className="lp-f">{foot}</div>}
+          </div>
+        </LpSheet>
+        {editor}
+      </>
+    );
+  }
+  return (
+    <>
+      <Dialog title={t('share.card_title')} icon="image" size="wide" open={open} onOpenChange={onOpenChange} foot={overlayCode ? undefined : foot}>
+        {body}
+      </Dialog>
+      {editor}
+    </>
+  );
+}

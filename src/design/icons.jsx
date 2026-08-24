@@ -8,7 +8,7 @@ import {
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus, AtSign,
   Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair, SlidersHorizontal,
-  Footprints, Headset, LogOut, Mail,
+  Footprints, Headset, LogOut, Mail, Image,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -129,6 +129,10 @@ const LUCIDE = {
   // lucide `Footprints`. Сажаем `walk` на тот же lucide — иконка в пилюле и в
   // выборе теперь одна, легаси-глиф ниже становится мёртвым и удалён.
   walk: Footprints,
+  // Share-меню (share-UX эксперимент): пункт «картинка для соцсетей». Реестр знал
+  // только `image-up` (СЕМАНТИКА ЗАГРУЗКИ) и `cam` (съёмка) — самой «картинки» не
+  // было. Тот же lucide, симметрия с `image-up`.
+  image: Image,
 };
 
 // ── Легаси-набор (fallback для имён вне LUCIDE/BRAND) ─────────────────────────

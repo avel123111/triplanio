@@ -15,7 +15,7 @@ metadata:
 - Ряды редизайн: GridEndpoint (`.te-end` flex, флаг/check-узел + Старт/Финиш + Вылет/Прилёт·дата), waypoint (`.te-wp` flex, пунктирный узел + тег «пересадка» + «транзит·дата» + степпер ночей [вернул после фидбэка] + act-cell если есть). rowStyle() удалён.
 - **DnD = FLIP live-reorder** (НЕ placeholder): displayNodes = превью-порядок (перетаскиваемый узел показан уже в целевом слоте), useLayoutEffect делает FLIP (translateY transition .18s) — города плавно переезжают вслед за курсором. rowElRefs/prevRectsRef/captureRects. onRowDragOver(nodeId) ключуется по origIdx (стабильно, без осцилляции), commitDrag пишет порядок в драфт одним editDraft. Старые moveTo/dropAt/te-dropspacer выпилены. Прыжка на dragstart нет (раскладка не меняется до dragover).
 
-**Сайдбар:** общий `src/components/trips/TripSidebar.jsx` (+ `ShareDialog.jsx`) — в TripView полный, в редакторе collapsed-вариант (`app-side--rail`, 56px icon-only, разворачивается оверлеем по hover до 220px). Лейблы обёрнуты в `.app-side__label`. Редактор резолвит pro (checkSubscriptionStatus owner-aware) + роль из content.members.
+**Сайдбар:** общий `src/components/trips/TripSidebar.jsx` (+ share-флоу `TripShareFlow.jsx`) — в TripView полный, в редакторе collapsed-вариант (`app-side--rail`, 56px icon-only, разворачивается оверлеем по hover до 220px). Лейблы обёрнуты в `.app-side__label`. Редактор резолвит pro (checkSubscriptionStatus owner-aware) + роль из content.members.
 
 **Кнопка варнингов:** круглый FAB 56px (как `.dock` чат-виджета), иконка warning + бейдж-счётчик, правый-нижний угол карты. Mapbox-атрибуция уведена в bottom-left (перехватывала клики).
 

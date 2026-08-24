@@ -26,7 +26,43 @@
     <meta name="impact-site-verification" value="75cd6594-dce5-4983-9116-8ad4086f84a6" />
     <link rel="manifest" href="/manifest.json" />
     <title>Triplanio — Your whole trip. One beautiful plan.</title>
+    <!-- ★ ОДИН текст на три тега: description / og:description / twitter:description.
+         Две формулировки одного и того же разъезжаются на первой правке — а поиск
+         и мессенджер должны обещать одно и то же (аудит TRIP-445). Меняешь —
+         меняй все три. -->
     <meta name="description" content="Triplanio is a travel-planning app for complex multi-city trips. Build itineraries, plan together, track budgets in any currency, and get smart reminders." />
+    <!-- SEO/social preview (TRIP-448). index.html — ОДИН файл на ВСЕ SPA-роуты
+         (rewrites → /index.html), поэтому эти теги становятся превью ПО УМОЛЧАНИЮ
+         для любого адреса без своего механизма. Это осознанно: лендинг — то, чем
+         делятся, и он получает правильное превью; /join/* перекрывается раньше
+         своим OG (middleware.js), /public/trip/:id получит своё позже, а внутренние
+         экраны приложения наружу ссылками не расходятся. НЕ считать «багом», что
+         они общие — не «чинить» это добавлением per-route значений сюда.
+
+         ★ canonical и og:url СЮДА НЕ КЛАДЁМ НАМЕРЕННО. Любой абсолютный URL здесь
+         был бы ОДИН на всём сайте: <link rel=canonical href=".../"> сказал бы
+         Google, что КАЖДАЯ страница — дубль главной (первой погибла бы будущая
+         демо-страница), а og:url свёл бы любую расшаренную ссылку к лендингу. Без
+         них поведение верное: Google само-канонизирует каждый URL. Понадобится
+         canonical — только по-маршрутно из React (Ф6), не здесь.
+
+         ★ hreflang НЕ добавляем: язык не в адресе (I18nContext держит его в
+         состоянии, маршрутов /en/, /ru/ нет), а hreflang связывает РАЗНЫЕ URL —
+         связывать нечего. Появится только вместе с i18n на уровне адресов.
+
+         ★ og:image / twitter:image — АБСОЛЮТНЫМ URL: относительный путь молча не
+         подхватывается частью краулеров. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Triplanio" />
+    <meta property="og:title" content="Triplanio — Your whole trip. One beautiful plan." />
+    <meta property="og:description" content="Triplanio is a travel-planning app for complex multi-city trips. Build itineraries, plan together, track budgets in any currency, and get smart reminders." />
+    <meta property="og:image" content="https://www.triplanio.com/og-cover.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Triplanio — Your whole trip. One beautiful plan." />
+    <meta name="twitter:description" content="Triplanio is a travel-planning app for complex multi-city trips. Build itineraries, plan together, track budgets in any currency, and get smart reminders." />
+    <meta name="twitter:image" content="https://www.triplanio.com/og-cover.jpg" />
     <!-- site.css принадлежит SiteChrome (инжектится только на marketing/public роутах). -->
     <!-- Шрифты НЕ предзагружаются намеренно (TRIP-328). index.html — один файл на ВСЕ
          SPA-роуты (rewrites → /index.html), а гарнитуры разнятся по роутам: marketing/public

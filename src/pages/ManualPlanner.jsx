@@ -464,9 +464,28 @@ function StepCities({ cities, setCities, home, setHome, startDate, setStartDate,
               <div
                 key={c.id}
                 ref={setRowRef(c.id)}
-                // Skip enter-hover mid-drag: a FLIP reorder slides rows under a
-                // held pointer, which would otherwise churn the highlight.
-                onMouseEnter={onHover ? () => { if (!draggingId) onHover(rowId); } : undefined}
+                /* ★ РЯД, КОТОРЫЙ ЕЩЁ НЕ ГОРОД, ХОВЕР КАРТЫ НЕ ЗАБИРАЕТ. Здесь
+                   город ВЫДЕЛЯЛСЯ САМ сразу после добавления, и виноват не въезд
+                   под курсор, а ПОРЯДОК: новый ряд открывается ПИКЕРОМ, города в
+                   нём ещё нет. Чтобы ткнуть в подсказку, мышь реально въезжает в
+                   ряд — ховер честно армится, но показывать нечего (координат
+                   нет, маркера нет). Кнопка «✓» стоит В ТОМ ЖЕ ряду, курсор из
+                   него не выходит, поэтому `mouseleave` не приходит; а когда
+                   подтверждение выдаёт координаты, маркер РОЖДАЕТСЯ уже
+                   наведённым — с подсветкой и плашкой. Снять это было нечем:
+                   клик по карте гасит только ВЫБОР, до ховера ему дела нет.
+                   Визуально `.is-hover` от `.is-sel` почти неотличим (scale 1.1
+                   против 1.12) — отсюда и «город автоселектится».
+                   Условие сравнивает КООРДИНАТЫ, а не режим ряда: «есть ли у него
+                   точка на карте» — это ровно тот же предикат, по которому пин
+                   вообще рисуется (`FlowMap`: `if (c.latitude == null) return`).
+                   Ховер к пину и привязан, поэтому и спрашивать надо про пин, а
+                   не про внутреннее состояние ряда, до которого этому месту дела
+                   нет. Дальше всё как было: въехал мышью в готовый ряд — пин
+                   подсветился, выехал — погас.
+                   Пропуск въезда во время перетаскивания остаётся: FLIP-перестановка
+                   возит ряды под удержанным пальцем и иначе дёргала бы подсветку. */
+                onMouseEnter={onHover ? () => { if (!draggingId && c.latitude != null) onHover(rowId); } : undefined}
                 onMouseLeave={onHover ? () => onHover(null) : undefined}
               >
                 <CityRow
@@ -664,7 +683,7 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
                 состояние навигации, а не параметр в URL и не глобал: оно не
                 переживает перезагрузку — ровно то, что нужно одноразовой
                 анимации, и закладка/копипаст ссылки её не тащат. */}
-            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=edit`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
+            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
             <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
           </>
         )}

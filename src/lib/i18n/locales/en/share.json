@@ -1,23 +1,20 @@
 {
-  "card_back": "Edit",
+  "bg_upload": "Upload your photo",
   "card_bg": "Background",
   "card_bg_standard": "Standard",
-  "card_build": "Build card",
   "card_download": "Download",
   "card_error": "Could not build the image. Try again.",
-  "card_map_hint": "You can zoom and move the map",
   "card_new": "NEW",
   "card_no_cities": "Add cities to the route to build a card.",
   "card_post": "Post 4:5",
-  "card_preview": "Preview",
-  "card_ready_badge": "Done",
-  "card_ready_desc": "Your image is ready - download it or share with friends",
   "card_share": "Share",
   "card_story": "Story 9:16",
   "card_title": "Image for social",
   "copy": "Copy",
   "dialog_title": "Share trip",
+  "edit_map": "Adjust the map",
   "generating": "Generating link…",
   "map_projection": "Projection",
-  "map_theme": "Theme"
+  "map_theme": "Theme",
+  "menu_card_hint": "Route, numbers and a QR — an image for a story or a post"
 }
