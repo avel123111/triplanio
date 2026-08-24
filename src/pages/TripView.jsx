@@ -50,7 +50,6 @@ import { useProfileMap } from '@/lib/useProfileMap';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
-import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 // Событие открытия секции (TRIP-213 Ф2c — по одному на секцию, чтобы было видно,
@@ -348,7 +347,10 @@ function EditSkeleton() {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <MapShell
-      panelLabel={t('planner.step_cities')}
+      /* Тот же ключ, что у готовой секции (`trip.sidebar_route`): скелетон и
+         экран обязаны называться одинаково, иначе подпись меняется на глазах
+         в момент загрузки. */
+      panelLabel={t('trip.sidebar_route')}
       map={null}
       detent={detent}
       onDetentChange={setDetent}
@@ -1414,7 +1416,7 @@ export default function TripView() {
               contentLoading={shellLoading || loadingContent}
               active={shownLens === 'overview'}
               budgetEnabled={isAddonEnabled(trip, 'budget')}
-              onOpenMap={() => setLens('map')}
+              onOpenMap={() => setLens('route')}
               onOpenBudget={() => setLens('budget')}
               onOpenMembers={() => setLens('members')}
               onAddService={openServiceChoice}
@@ -1498,18 +1500,32 @@ export default function TripView() {
               profiles={memberProfiles}
             />
           )}
-          {/* Структурный редактор. До TRIP-349 — отдельный роут /trip/:id/edit со
-              своей оболочкой; теперь такая же секция, как остальные, и получает
-              те же shell/content, что уже загружены здесь (ключи и include у его
-              прежних запросов совпадали с этими — общий кэш, но ВТОРОЙ набор
-              гейтов). Роль не передаём: право в реестре секций. */}
+          {/* МАРШРУТ — карта трипа и его структура одним экраном (TRIP-459;
+              до этого «Карта» и «Планирование» были двумя, и карта была
+              подмножеством редактора). Получает те же shell/content, что уже
+              загружены здесь.
+
+              Роль не передаём — и теперь по ДРУГОЙ причине, чем раньше: до
+              TRIP-459 право стояло гейтом в реестре секций, а сейчас секция
+              открыта всем и право читает сама линза из `TripAccessProvider`
+              (им обёрнут весь экран ниже). Проп сюда вернуть нельзя: он не
+              достанет до диалогов внутри, ради чего провайдер и заводился.
+
+              Рендерится ТОЛЬКО когда активна. Инстанс Mapbox — общий синглтон
+              (MapProvider) и переживает этот mount/unmount, но одновременно
+              смонтированным может быть лишь один <MapView>: держать секцию
+              скрытой вместо условия значило бы стравить две поверхности за одну
+              карту. */}
           {/* Гейт CONTENT'а нужен ТОЛЬКО здесь. Остальные секции переживают
               отсутствие content: рисуют пусто и дозаполняются. Редактор из него
               СТРОИТ ДРАФТ — без content'а показывать нечего, а если запрос
               упадёт после успешного shell (офлайн, 500), пустота останется
               навсегда. Формулировка из TRIP-220: «gate to retry rather than
-              render an empty editor». */}
-          {shownLens === 'edit' && (
+              render an empty editor».
+              ★ Гейт стал строже по ОХВАТУ, а не по правилу: с TRIP-459 маршрут
+              смотрят все, поэтому падение content'а теперь разворачивает в
+              retry и наблюдателя — у него это единственный экран с картой. */}
+          {shownLens === 'route' && (
             (shellLoading || editGate === 'loading')
               // ОДИН скелетон редактора (обе колонки: маршрут + карта), тот же в
               // фазе shell и в фазе content — не размонтируется, не прыгает (TRIP-337).
@@ -1538,18 +1554,6 @@ export default function TripView() {
               profiles={memberProfiles}
               myRole={myRole}
               ownerId={trip?.created_by}
-            />
-          )}
-          {/* Map lens: rendered only while active. The Mapbox instance itself is
-              the app-wide singleton (see MapProvider) — it survives this mount/
-              unmount, so the map isn't re-initialised on tab switches. Only one
-              MapView may be mounted at a time, so this must be conditional (not
-              kept hidden) to avoid two surfaces fighting over the single map. */}
-          {shownLens === 'map' && (
-            <ScreenMap
-              visits={visits ?? []}
-              transfers={transfers ?? []}
-              active
             />
           )}
           </ErrorBoundary>

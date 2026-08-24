@@ -24,6 +24,19 @@ import { Icon } from './icons';
 // гасят арминг драга у ночей в перетаскиваемой строке — без них степпер внутри
 // строки арсенит перетаскивание). Закрыта СВОЯ ось: `variant="compact"` —
 // ошибка типа.
+//
+// ★ `readOnly` — ЗНАЧЕНИЕ БЕЗ КОНТРОЛА, а не выключенные кнопки (TRIP-459).
+// Наблюдателю на «Маршруте» ночи и дата старта только ПОКАЗЫВАЮТСЯ, и просьба
+// была буквальная: «только цифра». Disabled-кнопки этого не дают — они всё ещё
+// рисуют контрол и обещают, что он когда-то нажмётся.
+//
+// Кнопки не рендерятся вовсе, а корень и `.n` остаются: `.n` несёт
+// `min-width:40px; text-align:center`, и без него число уехало бы влево в своей
+// колонке и разошлось бы с центрованной шапкой «Ночи». На `bare` (ряд маршрута)
+// корень прозрачный и без падинга — на экране остаётся ровно цифра.
+//
+// НОВОГО ИМЕНИ НЕТ намеренно: это состояние того же объекта, класса
+// `.stepper--readonly` не заводится, CSS не трогается, ось `variant` не растёт.
 /** @typedef {'pill'|'block'|'bare'} StepperVariant */
 export const Stepper = React.forwardRef(
   /**
@@ -33,12 +46,12 @@ export const Stepper = React.forwardRef(
    *   onPlus?: React.MouseEventHandler<HTMLButtonElement>,
    *   minusDisabled?: boolean, plusDisabled?: boolean,
    *   minusLabel?: string, plusLabel?: string,
-   *   variant?: StepperVariant,
+   *   variant?: StepperVariant, readOnly?: boolean,
    * }} p
    */
   ({
     value, onMinus, onPlus, minusDisabled, plusDisabled,
-    minusLabel, plusLabel, variant = "pill",
+    minusLabel, plusLabel, variant = "pill", readOnly = false,
     className = "", children, ...rest
   }, ref) => (
     <div
@@ -50,13 +63,17 @@ export const Stepper = React.forwardRef(
       ].filter(Boolean).join(" ")}
       {...rest}
     >
-      <button type="button" onClick={onMinus} disabled={minusDisabled || undefined} aria-label={minusLabel}>
-        <Icon name="minus" size={15} />
-      </button>
+      {readOnly ? null : (
+        <button type="button" onClick={onMinus} disabled={minusDisabled || undefined} aria-label={minusLabel}>
+          <Icon name="minus" size={15} />
+        </button>
+      )}
       <span className="n">{children ?? value}</span>
-      <button type="button" onClick={onPlus} disabled={plusDisabled || undefined} aria-label={plusLabel}>
-        <Icon name="plus" size={15} />
-      </button>
+      {readOnly ? null : (
+        <button type="button" onClick={onPlus} disabled={plusDisabled || undefined} aria-label={plusLabel}>
+          <Icon name="plus" size={15} />
+        </button>
+      )}
     </div>
   ),
 );

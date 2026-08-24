@@ -56,12 +56,16 @@ function screenOpenEvent(pathname) {
   return null;
 }
 
-// Старый адрес редактора → секция того же трипа. Событие `trip_editor_opened`
-// отсюда УБРАНО намеренно: оно переехало на саму секцию (реестр секций), то есть
-// теперь считается и при переходе из меню, а не только при заходе по адресу.
+// Старый адрес редактора → секция того же трипа. Событие `route_opened` отсюда
+// УБРАНО намеренно: оно переехало на саму секцию (реестр секций), то есть теперь
+// считается и при переходе из меню, а не только при заходе по адресу.
+//
+// Целится в 'route': редактор и линза карты схлопнуты в один экран «Маршрут»
+// (TRIP-459). Сам `?lens=edit` из чужих закладок тоже жив — его разворачивает
+// карта легаси-имён в реестре секций.
 function RedirectToEditSection() {
   const { tripId } = useParams();
-  return <Navigate to={`/trip/${tripId}?lens=edit`} replace />;
+  return <Navigate to={`/trip/${tripId}?lens=route`} replace />;
 }
 
 const AuthenticatedApp = () => {
@@ -178,7 +182,7 @@ const AuthenticatedApp = () => {
       <Route path="/stats" element={<Statistics />} />
       <Route path="/new-trip" element={<ManualPlanner />} />
       <Route path="/trip/:tripId" element={<TripView />} />
-      {/* TRIP-349: редактор стал секцией (?lens=edit). Роут оставлен РЕДИРЕКТОМ -
+      {/* TRIP-349: редактор стал секцией (сегодня ?lens=route). Роут оставлен РЕДИРЕКТОМ -
           по нему живут закладки, история браузера и ссылки в уже отправленных
           письмах; replace, чтобы «назад» не возвращало в редирект. */}
       <Route path="/trip/:tripId/edit" element={<RedirectToEditSection />} />

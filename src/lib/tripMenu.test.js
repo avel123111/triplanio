@@ -68,7 +68,7 @@ test('бюджет и чат закрыты, пока аддон не включ
 });
 
 test('секции без аддона не зависят от трипа', () => {
-  for (const id of ['overview', 'timeline', 'map', 'calendar', 'docs', 'settings']) {
+  for (const id of ['overview', 'route', 'timeline', 'calendar', 'docs', 'settings']) {
     assert.equal(isSectionAvailable(id, null, 'owner'), true, id);
   }
 });
@@ -89,9 +89,9 @@ test('наблюдатель (participant) не видит Участников,
 
 test('availableSections отдаёт группу в порядке реестра', () => {
   const lenses = availableSections(tripWith({ budget: true, chat: true }), 'owner', 'lens');
-  assert.deepEqual(lenses.map((s) => s.id), ['overview', 'timeline', 'map', 'calendar', 'budget', 'docs', 'chat']);
+  assert.deepEqual(lenses.map((s) => s.id), ['overview', 'route', 'timeline', 'calendar', 'budget', 'docs', 'chat']);
   const manage = availableSections(plainTrip, 'owner', 'manage');
-  assert.deepEqual(manage.map((s) => s.id), ['edit', 'members', 'settings']);
+  assert.deepEqual(manage.map((s) => s.id), ['members', 'settings']);
 });
 
 test('availableSections режет и по аддону, и по ступени одновременно', () => {
@@ -119,17 +119,60 @@ test('несуществующая секция падает на дефолт, 
   assert.equal(resolveSection(undefined, plainTrip, 'owner'), DEFAULT_SECTION);
 });
 
-test('редактор структуры закрыт наблюдателю и открыт правящим ролям', () => {
-  // Это ЕДИНСТВЕННЫЙ гард на вход в редактор: своей проверки роли у секции
-  // больше нет (была — в отдельном роуте), а по прямому `?lens=edit`
-  // наблюдателя разворачивает resolveSection. Ломается предикат — открывается
-  // экран записи тому, кто писать не может.
-  assert.equal(isSectionAvailable('edit', plainTrip, 'participant'), false);
-  assert.equal(resolveSection('edit', plainTrip, 'participant'), DEFAULT_SECTION);
-  assert.equal(isSectionAvailable('edit', plainTrip, null), false); // не на трипе — тоже нет
-  for (const step of ['owner', 'editor']) {
-    assert.equal(isSectionAvailable('edit', plainTrip, step), true, step);
-    assert.equal(resolveSection('edit', plainTrip, step), 'edit', step);
+test('Маршрут открыт ВСЕМ — ступень у секции снята (TRIP-459)', () => {
+  // Раньше здесь стоял ЕДИНСТВЕННЫЙ гард на вход в структурный редактор, и он
+  // разворачивал наблюдателя на дефолт. Теперь маршрут смотрят все: право решает
+  // не доступ к экрану, а СОСТАВ его контролов внутри (`EditLens` читает ступень
+  // из TripAccessProvider). Возврат `canAccess` сюда молча отнял бы у наблюдателя
+  // карту трипа — за это и держится проверка.
+  for (const step of ['owner', 'editor', 'participant']) {
+    assert.equal(isSectionAvailable('route', plainTrip, step), true, step);
+    assert.equal(resolveSection('route', plainTrip, step), 'route', step);
+  }
+  assert.equal(sectionById('route').canAccess, undefined, 'у Маршрута снова появилась ступень');
+  // Не на трипе (step=null) секция без гейта доступна — как overview/timeline.
+  // Сюда такой пользователь не попадает вовсе: его разворачивает дверь трипа.
+  assert.equal(isSectionAvailable('route', plainTrip, null), true);
+});
+
+test('снятые id ведут на наследника, а не на дефолт', () => {
+  // `?lens=edit` и `?lens=map` лежат в чужих закладках и в истории браузера.
+  // Молчаливый снос увёл бы человека с сохранённого экрана на «Обзор» — ровно
+  // туда же, куда падает опечатка, то есть неотличимо от поломки.
+  for (const step of ['owner', 'editor', 'participant']) {
+    assert.equal(resolveSection('edit', plainTrip, step), 'route', `edit @ ${step}`);
+    assert.equal(resolveSection('map', plainTrip, step), 'route', `map @ ${step}`);
+  }
+  // Легаси-имя — это ПЕРЕАДРЕСАЦИЯ, а не второе имя живой секции: в реестре его
+  // нет, поэтому пункт меню и ветка рендера у него не заводятся.
+  for (const id of ['edit', 'map']) assert.equal(sectionById(id), null, id);
+});
+
+test('★ резолв НИКОГДА не отдаёт недоступную секцию — включая легаси-имена', () => {
+  // Инвариант, а не пример: что бы ни пришло из адреса, показать можно только то,
+  // что прошло `isSectionAvailable`. Ради него алиас и разворачивается ДО проверки,
+  // а не вместо неё — иначе он был бы дырой в обход аддона и ступени.
+  //
+  // ★ ЧЕСТНО О ГРАНИЦЕ: сегодня единственный наследник ('route') не гейтован
+  // ВООБЩЕ, поэтому мутация «вернуть наследника без проверки» этим тестом НЕ
+  // ловится — ловить нечего, обе ветки дают один ответ. Проверка написана
+  // прогоном по всему произведению именно поэтому: она станет кусачей в тот
+  // день, когда в карту легаси попадёт имя с гейтованным наследником, и не
+  // потребует вспоминать, что тогда надо дописать тест. Пример вместо прогона
+  // (проверить `budget`/`members`, которые вообще не легаси) выглядел бы
+  // проверкой этой ветки, не будучи ею.
+  const ids = [...SECTIONS.map((s) => s.id), 'edit', 'map', 'опечатка', '', undefined];
+  const addonSets = [plainTrip, tripWith({ budget: true }), tripWith({ budget: true, chat: true })];
+  for (const id of ids) {
+    for (const addons of addonSets) {
+      for (const step of ['owner', 'editor', 'participant', null]) {
+        const shown = resolveSection(id, addons, step);
+        assert.ok(
+          isSectionAvailable(shown, addons, step),
+          `resolveSection(${String(id)}) отдал недоступную секцию ${shown} на ступени ${String(step)}`,
+        );
+      }
+    }
   }
 });
 
@@ -144,7 +187,9 @@ test('недоступная секция падает на дефолт, дос
 
 test('flush стоит ровно у секций, которые сами владеют своим скроллом', () => {
   const flush = SECTIONS.filter((s) => s.flush).map((s) => s.id);
-  assert.deepEqual(flush, ['map', 'chat', 'edit']);
+  // Маршрут (бывшие 'map' + 'edit') сам скроллит свои колонки — он в списке
+  // ОДНОЙ записью вместо двух, ровно потому что экран стал один.
+  assert.deepEqual(flush, ['route', 'chat']);
 });
 
 test('док прячет только чат, и у него НАЗВАНА причина', () => {
@@ -230,14 +275,14 @@ test('трип с аддонами: аддонные пункты приходя
 
 test('★ ступень известна → живой состав, даже если запрос ещё идёт', () => {
   const rows = menuSections('manage', tripWith({}), 'owner');
-  assert.deepEqual(rows.map((s) => s.id), ['edit', 'members', 'settings']);
+  assert.deepEqual(rows.map((s) => s.id), ['members', 'settings']);
   assert.equal(rows.some((s) => s.pending), false, 'ни одного места под пункт быть не должно');
 });
 
 test('★ ступени нет → фаза загрузки (места под ролевые)', () => {
   const rows = menuSections('manage', tripWith({}), null);
   assert.deepEqual(rows.map((s) => s.id), loadingSections('manage').map((s) => s.id));
-  assert.deepEqual(rows.filter((s) => s.pending).map((s) => s.id), ['edit', 'members']);
+  assert.deepEqual(rows.filter((s) => s.pending).map((s) => s.id), ['members']);
 });
 
 test('★ аддоны из фактов сразу дают свои пункты', () => {
