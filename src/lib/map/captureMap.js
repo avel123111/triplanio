@@ -253,9 +253,14 @@ export function drawTripRoute(map, ordered, legs, opts = {}) {
     solidWidth: SC_WEIGHTS.solid, dashedWidth: SC_WEIGHTS.dashed,
   });
   drawPointLayer(map, ordered);
-  ensureBadgeLayer(map);
+  // Порядок в КОРНЕ убирает гонку `Image "sc-badge-N" could not be loaded`
+  // (TRIP-261): слой `sc-labels` ссылается на иконки `sc-badge-<i>` с
+  // `icon-optional:false`, поэтому добавлять его МОЖНО только ПОСЛЕ того, как
+  // `buildBadgeImages` (async — ждёт шрифты+флаги) эти иконки положил. Сборка
+  // иконок → слой → расстановка; слой никогда не смотрит на несуществующую иконку.
   map.__scLabels = (async () => {
     await buildBadgeImages(map, ordered, scheme);
+    ensureBadgeLayer(map);
     placeCityBadges(map, ordered, { cw, ch, iconScale });
   })();
 }
