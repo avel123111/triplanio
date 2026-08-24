@@ -1,6 +1,5 @@
 {
   "free_day": "Free day",
-  "legend_group_cities": "Cities",
   "month": "Month",
   "more_count": "more",
   "next": "Next",
@@ -8,6 +7,5 @@
   "prev": "Previous",
   "to_trip_start": "To trip start",
   "today": "Today",
-  "week": "Week",
-  "week_word": "week"
+  "week": "Week"
 }

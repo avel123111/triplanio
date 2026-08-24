@@ -1,481 +1,1124 @@
 /* =================================================================
-   CalendarLens — Lumo redesign (ncal-* namespace)
-   All colours via existing app.css tokens — no new values introduced.
+   CalendarLens — календарь путешествия (ncal-*)
 
-   Радиусы: тоже токены (--r-card / --r-md / --r-sm / --r-pill). Сырыми
-   осознанно оставлены только микро-скругления, лежащие НИЖЕ шкалы
-   (её минимум - --r-sm): чип события, точка, полоска agenda-события
-   и свотч легенды. Свой токен под них не заводим.
+   Оба вида — СЕТКИ, и это несущее решение, а не оформление:
+   • месяц — одна поверхность с волосяными линиями (было 35 карточек
+     со своей тенью и радиусом, сетки как объекта не читалось);
+   • неделя — ось времени: колонка на день, час по вертикали, блок
+     высотой в длительность. Списком она быть не может — список
+     «день → события» в продукте уже есть, это лента таймлайна.
+
+   Ярусов цвета РОВНО ДВА. Насыщенная полоса города (она одна на ряд)
+   и точка типа события. Заливки у события в месяце нет: тридцать
+   пастельных прямоугольников читаются как шум, а не как список.
+
+   Тон города приезжает переменной `--c` (единственное, что знает
+   разметка) и разводится тут через color-mix, поэтому обе темы
+   получаются из ОДНОГО объявления. Тон события — общий канал
+   `--hl`/`--hl-soft`/`--hl-ink`, тот же, которым красится плитка
+   таймлайна, а не вторая копия словаря цветов.
    ================================================================= */
 
-/* ── Toolbar / Header ──────────────────────────────────────────── */
-/* раскладка уехала: ncal-hd -> row */
-.ncal-hd {
-  margin-bottom: 20px;
-}
-/* Базовое правило снято - буквальный .grow--fit. Класс остаётся: у него есть
-   своё мобильное правило ниже.
-   visual-diff-move: ncal-hd-l -> grow--fit */
-/* Контейнер БЕЗ зазора: у примитива дефолт 10px, поэтому нулевой зазор назван
-   явно (см. тот же приём в chat).
-   раскладка уехала: ncal-title-row -> row */
-.ncal-title-row {
-  gap: 0;
-}
-.ncal-month-lbl {
-  color: var(--ink);
-}
-.ncal-year-lbl {
-  color: var(--muted);
-  margin-left: 12px;
-}
-/* ★ОСТАТОК: gap 9px вне шкалы (--sp даёт 8 и 10) - удержан приватным.
-   раскладка уехала: ncal-hd-r -> col */
-.ncal-hd-r {
-  gap: 9px;
-  flex: none;
+.ncal {
+  --ncal-hh: 46px;   /* высота часа в сетке недели */
+  --ncal-gut: 44px;  /* жёлоб часовых меток */
 }
 
-/* ── Nav pill ──────────────────────────────────────────────────── */
-/* раскладка уехала: ncal-nav -> row */
-.ncal-nav {
-  background: var(--surface-2);
-  border-radius: var(--r-pill);
-  padding: 4px;
-}
-/* `.ncal-nav-ico` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft"
-   size="sm">. Обе стрелки пилюли навигации пересажены в этом же PR, поэтому
-   приватного правила в этом файле больше нет - включая строку фокуса ниже
-   (у канон-класса свой :focus-visible). */
-.ncal-nav-txt {
-  padding: 5px 12px;
-  border-radius: var(--r-pill);
-  background: transparent; border: none;
-  color: var(--muted);
-  transition: background .15s, color .15s;
-  cursor: pointer;
-}
-.ncal-nav-txt:hover { background: var(--surface); color: var(--ink); }
-.ncal-nav-div {
-  width: 1px; height: 16px;
-  background: var(--line-strong);
-  margin: 0 2px; flex: none; align-self: center;
-}
-.ncal-nav-trip {
-  /* ★ОСТАТОК: gap 5px вне шкалы - удержан.
-     раскладка уехала: ncal-nav-trip -> row */
-  gap: 5px;
-  padding: 5px 12px; border-radius: var(--r-pill);
-  background: var(--brand-soft); color: var(--brand);
-  border: none;
-  transition: background .15s, color .15s;
-  cursor: pointer;
-}
-.ncal-nav-trip svg { width: 13px; height: 13px; flex: none; }
-.ncal-nav-trip:hover { background: var(--brand-soft-12); }
+/* ── Панель управления ─────────────────────────────────────────── */
+/* Раскладка на примитивах (.row/.col): тут только то, чем панель отличается. */
+.ncal-per { min-width: 0; }
+.ncal-per__t { margin: 0; }
+/* Месяц и диапазон приезжают из luxon строчными; заглавная нужна ОДНА —
+   первая, поэтому ::first-letter, а не capitalize (тот поднял бы «Авг.» и
+   «Сентября» внутри диапазона). */
+.ncal-per__t::first-letter { text-transform: uppercase; }
+.ncal-per__y { color: var(--muted); margin-left: var(--sp-4); }
+.ncal-acts { flex: none; }
+.ncal-jump:disabled { opacity: .45; }
 
-/* View toggle: переключатель месяц/неделя сведён на канон `<Seg>` (`.seg`,
-   TRIP-344 PR 6). Приватная копия `.ncal-vtgl`/`.ncal-vtgl-btn` (свой трек и
-   состояние `.is-on`) удалена — трек-подложку и активный тон несёт канон.
+/* ── Общая поверхность обоих видов ─────────────────────────────── */
+/* Скругление несёт <Card radius="card">; overflow подрезает под него линии. */
+.ncal-sheet {
+  overflow: hidden;
+  animation: ncalIn .2s var(--ease-out) both;
+}
+@keyframes ncalIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
-   Ниже — объявление УДАЛЕНИЙ для 2p: класс-копия снят, разметка переехала на
-   канон `.seg` с унифицированным обликом (не перенос значения, потому точечный
-   exempt, а не visual-diff-move). Ключи `.ncal-vtgl-btn button`/`.seg button` —
-   блайнд-спот TRIP-366 (`.класс button` немаркируем), их не грайндим.
-   visual-diff-exempt: .ncal-vtgl background — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn background — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn border — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn box-shadow — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn color — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn cursor — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn font-family — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn font-size — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn font-weight — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn letter-spacing — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn line-height — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn transition — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn white-space — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn:focus-visible outline — копия снята, фокус несёт канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn:focus-visible outline-offset — копия снята, фокус несёт канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .ncal-vtgl-btn {@media (max-width: 640px)} padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
-   visual-diff-exempt: .is-on box-shadow — состояние .is-on снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
+/* ── МЕСЯЦ ─────────────────────────────────────────────────────── */
 
-/* ── Month: weekday header ─────────────────────────────────────── */
-/* Неделя календаря НЕ схлопывается в .grid--2 (у неё своя семантика, так решено
-   при вводе примитива) - на общий класс уезжает только display, а треки и зазор
-   остаются своими. ★ОСТАТОК: gap 3px вне шкалы.
-   раскладка уехала: ncal-wd-row -> grid */
-.ncal-wd-row {
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  margin-bottom: 7px;
+.ncal-wdrow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
 }
 .ncal-wd {
   text-align: center;
-  color: var(--muted); padding: 5px 0;   /* TRIP-280 инсп.: цвет muted-2 → muted */
+  color: var(--muted-2);
+  padding: 10px 0;
 }
 
-/* ── Month: week row + day grid ────────────────────────────────── */
-.ncal-wk { margin-bottom: 3px; }
-/* ★ОСТАТОК: gap 3px вне шкалы.
-   раскладка уехала: ncal-dgrid -> grid */
-.ncal-dgrid {
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+.ncal-wk + .ncal-wk { border-top: 1px solid var(--line); }
+
+.ncal-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
-/* ── Day cell ──────────────────────────────────────────────────── */
+/* Ячейка дня. Цвета в ней НЕТ: структуру держит тон поверхности (день трипа
+   белый, день без трипа утопленный), а цвет отдан полосе города и точкам. */
 .ncal-dc {
-  border-radius: var(--r-md);
-  overflow: hidden;
-  padding: 0 0 8px;
-  min-height: 100px;
-  background: var(--surface-3);
-  box-shadow: var(--sh-1);
-  transition: background .18s var(--ease-out), transform .14s var(--ease-spring), box-shadow .18s;
-  cursor: pointer;
+  position: relative;
+  min-height: 104px;
+  padding: 7px var(--sp-3) 9px;
+  background: var(--surface);
 }
-.ncal-dc:hover {
-  background: var(--surface-2);
-  box-shadow: var(--sh-2);   /* ступень вверх от базовой --sh-1, как у .ncal-wdc */
-}
-.ncal-dc.is-out { opacity: .22; pointer-events: none; box-shadow: none; }
-.ncal-dc.is-trip { background: var(--brand-soft); }
-.ncal-dc.is-trip:hover { background: var(--brand-soft-12); }
+.ncal-dc + .ncal-dc { border-left: 1px solid var(--line); }
+.ncal-dc.is-off { background: var(--surface-3); }
+/* Дни соседних месяцев больше не призраки (было opacity .22 + pointer-events:
+   none, из-за чего их события просто пропадали): тон тот же, номер приглушён. */
+.ncal-dc.is-out { background: var(--surface-3); }
+.ncal-dc.is-out .ncal-dn { color: var(--muted-2); }
 
-/* ── City strip ────────────────────────────────────────────────── */
-.ncal-cstrip {
-  /* раскладка уехала: ncal-cstrip -> row */
-  height: 20px;
-  gap: 0;
-  padding: 0 9px;
-  color: rgba(255,255,255,.92);
-  white-space: nowrap; overflow: hidden;
-  margin-bottom: 8px;
-  flex: none;
-}
-.ncal-cstrip.cs-empty {
-  background: transparent;
-  height: 20px; margin-bottom: 8px;
-}
-/* Split: multiple city segments */
-.ncal-cstrip.is-split {
-  padding: 0; gap: 1.5px;
-}
-.ncal-cstrip-seg {
-  /* раскладка уехала: ncal-cstrip-seg -> row */
-  height: 100%;
-  gap: 0;
-  padding: 0 6px;
-  color: rgba(255,255,255,.9);
-  overflow: hidden; white-space: nowrap; min-width: 0;
-}
-
-/* ── Day number ────────────────────────────────────────────────── */
-.ncal-dn-wrap { padding: 0 8px 4px; }
+/* Номер дня — настоящая кнопка: открывает день в сетке недели. */
 .ncal-dn {
+  border: none;
+  background: none;
+  cursor: pointer;
   color: var(--ink-2);
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 27px; padding: 0;
-}
-.ncal-dc.is-trip .ncal-dn { color: var(--brand); }
-.ncal-dc.is-today .ncal-dn {
-  background: var(--brand); color: var(--primary-fg);
+  min-width: 24px;
+  padding: 3px var(--sp-3);
   border-radius: var(--r-pill);
-  padding: 4px 8px; min-width: 0;
+  font-variant-numeric: tabular-nums;
+  transition: background .14s, color .14s;
+}
+.ncal-dn:hover { background: var(--surface-2); color: var(--ink); }
+.ncal-dc.is-today .ncal-dn {
+  background: var(--brand);
+  color: var(--primary-fg);
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
+.ncal-dc.is-today .ncal-dn:hover { background: var(--brand-600); }
 
-/* ── Events list in month cell ─────────────────────────────────── */
+/* Список событий дня */
 .ncal-evl {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 5px;
 }
-/* Event chip: dot + optional time + title */
+/* Событие в месяце — СТРОКА, а не плитка: точка типа, время, название.
+   Заливка уходит в ховер, поэтому тридцать событий на экране остаются
+   списком, а не мозаикой пастельных прямоугольников. */
 .ncal-ev {
-  display: flex; align-items: center; gap: 4px;
-  padding: 3px 7px; border-radius: 7px;
-  overflow: hidden; border: none; cursor: pointer;
-  text-align: left; width: 100%;
-  transition: filter .14s;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 2px 5px;
+  border-radius: var(--r-xs);
+  transition: background .14s;
 }
-.ncal-ev:hover { filter: brightness(.96); }
-.ncal-ev .dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  flex: none; background: currentColor; opacity: .85;
+.ncal-ev:hover { background: var(--hl-soft); }
+.ncal-ev__dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--hl);
+  flex: none;
 }
-.ncal-ev .tm { opacity: .65; flex: none; font-variant-numeric: tabular-nums; }
-.ncal-ev .t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.ncal-ev__tm { color: var(--muted); flex: none; }
+.ncal-ev__n  { color: var(--ink-2); min-width: 0; }
 
-.ncal-ev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
-.ncal-ev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.ncal-ev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
-.ncal-ev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
-.ncal-ev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
+/* «+N ещё» — примитив <Chip sm square> (нейтральный тон: он служебный и не
+   должен спорить с содержимым дня). */
+.ncal-more { width: 100%; margin-top: 2px; }
 
-/* "+N more" — примитив <Chip sm square variant="soft"> (полная ширина ячейки). */
+/* ── НЕДЕЛЯ: сетка часов ───────────────────────────────────────── */
 
-/* ── Week view ─────────────────────────────────────────────────── */
-.ncal-wv-scroll {
-  overflow-x: auto;
-  padding-bottom: 8px;
+/* ОДИН холст на три ряда (шапка дней · полоса «весь день» · сетка часов) и одна
+   прокрутка на оба направления. Три отдельных скролла синхронизировать нечем —
+   колонки разъезжаются с заголовками на первом же сдвиге, и это не поправимо
+   стилями. Первая колонка — жёлоб часов, дальше семь дней.
+
+   `--ncal-colmin` — вот ради чего всё это: на телефоне колонка не ужимается до
+   46px (в них не помещается ни одно название), а держит читаемую ширину, и
+   неделя листается вбок, ОСТАВАЯСЬ СЕТКОЙ. На десктопе минимум нулевой, семь
+   дней просто делят ширину. */
+.ncal-tg__pane {
+  position: relative;   /* база отсчёта для offsetLeft колонки при автоскролле */
+  display: grid;
+  grid-template-columns: var(--ncal-gut) repeat(7, minmax(var(--ncal-colmin, 0px), 1fr));
+  max-height: min(700px, 68vh);
+  overflow: auto;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
-.ncal-wv-scroll::-webkit-scrollbar { height: 5px; }
-.ncal-wv-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
+.ncal-tg__pane::-webkit-scrollbar { width: 6px; height: 6px; }
+.ncal-tg__pane::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
 
-.ncal-wcols {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-  min-width: 680px;
-}
-
-/* Day card */
-.ncal-wdc {
-  border-radius: var(--r-card);
-  overflow: hidden;
-  box-shadow: var(--sh-1);
-  display: flex; flex-direction: column;
-  transition: transform .2s var(--ease-spring), box-shadow .22s;
-}
-.ncal-wdc:hover { transform: translateY(-3px); box-shadow: var(--sh-2); }
-
-/* City colour bar at very top of card */
-.ncal-wdc-cbar { height: 5px; flex: none; }
-.ncal-wdc-cbar.is-split { display: flex; gap: 1.5px; }
-.ncal-wdc-cbar.is-split .ncal-cstrip-seg { flex: 1; height: 100%; }
-
-/* Card header */
-.ncal-wdc-h {
-  padding: 13px 13px 10px; flex: none;
+/* Приколотые край и шапка. Ярусы: блок события 1–3 · линия «сейчас» 4 ·
+   жёлоб 5 · полоса «весь день» 6 · шапка дней 7 · угол 8. Все ниже 10 —
+   это локальный стек компонента, а не новый этаж лестницы --z-*. */
+.ncal-tg__corner,
+.ncal-tg__d {
+  position: sticky;
+  top: 0;
+  height: var(--ncal-headh);
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
+  z-index: 7;
 }
-.ncal-wdc-num {
-  color: var(--ink);
+.ncal-tg__corner,
+.ncal-tg__bandgut,
+.ncal-tg__hours { position: sticky; left: 0; background: var(--surface); }
+.ncal-tg__corner { z-index: 8; }
+.ncal-tg__bandgut { z-index: 6; background: var(--surface-3); border-bottom: 1px solid var(--line); }
+.ncal-tg__hours { z-index: 5; }
+
+/* Шапка дня */
+.ncal-tg__d {
+  text-align: center;
+  padding: 9px 4px 0;
+  border-left: 1px solid var(--line);
+}
+.ncal-tg__d.is-out { background: var(--surface-3); }
+.ncal-tg__wd { display: block; color: var(--muted-2); }
+.ncal-tg__num {
   display: inline-block;
+  margin-top: 4px;
+  color: var(--ink);
+  min-width: 30px;
+  padding: 3px var(--sp-4);
+  border-radius: var(--r-pill);
+  font-variant-numeric: tabular-nums;
 }
-.ncal-wdc.is-today .ncal-wdc-num {
-  background: var(--brand); color: var(--primary-fg);
-  border-radius: var(--r-pill); padding: 3px 10px;
+.ncal-tg__d.is-out .ncal-tg__num { color: var(--muted-2); }
+.ncal-tg__d.is-today .ncal-tg__num {
+  background: var(--brand);
+  color: var(--primary-fg);
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
-.ncal-wdc-wd {
-  color: var(--muted); margin-top: 5px;   /* TRIP-280: близнец .ncal-wd — тот же цвет */
+
+/* Полоса «весь день»: города и события без времени (переезд без start_datetime —
+   на оси времени ему места нет, а терять его нельзя). Приколота ПОД шапкой:
+   город — это контекст всей колонки, и он не должен уезжать при прокрутке. */
+.ncal-tg__band {
+  grid-column: span 7;
+  position: sticky;
+  top: var(--ncal-headh);
+  z-index: 6;
+  background: var(--surface-3);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--sp-3);
+}
+.ncal-tg__allday {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 5px;
+}
+.ncal-tg__adcell { padding: 0 3px; min-width: 0; }
+
+/* Жёлоб часов */
+.ncal-tg__hours {
+  height: calc(var(--rows) * var(--ncal-hh));
+  border-right: 1px solid var(--line);
+}
+.ncal-tg__h {
+  display: block;
+  height: var(--ncal-hh);
+  padding-right: 8px;
+  text-align: right;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Card body — events list */
-.ncal-wdc-b {
-  padding: 9px 10px 13px; flex: 1;
-  display: flex; flex-direction: column; gap: 5px;
+/* Колонка дня. Часовые линии рисует градиент НА КОЛОНКЕ, а не на общем поле: у
+   колонки есть свой тон (сегодня / вне трипа), и фон родителя он бы перекрыл. */
+.ncal-tg__col {
+  position: relative;
+  height: calc(var(--rows) * var(--ncal-hh));
+  border-left: 1px solid var(--line);
+  background-color: var(--surface);
+  background-image: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--ncal-hh));
 }
-/* Empty day state */
-.ncal-wdc-empty {
-  text-align: center; color: var(--muted-2);
-  padding: 14px 0 6px;
+.ncal-tg__col.is-out { background-color: var(--surface-3); }
+.ncal-tg__col.is-today { background-color: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
+.ncal-tg__free {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted-2);
+  pointer-events: none;
 }
-
-/* Agenda event item */
-.ncal-aev {
-  display: flex; flex-direction: column; gap: 1px;
-  padding: 6px 9px 6px 11px; border-radius: var(--r-sm);
-  border: none; cursor: pointer; text-align: left;
-  position: relative; overflow: hidden;
-  transition: filter .14s, transform .12s var(--ease-spring);
+.ncal-tg__now {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: var(--danger);
+  z-index: 4;
+  pointer-events: none;
 }
-.ncal-aev::before {
-  content: ''; position: absolute;
-  left: 0; top: 6px; bottom: 6px;
-  width: 3px; border-radius: 2px;
-  background: currentColor; opacity: .75;
-}
-.ncal-aev:hover { filter: brightness(.97); }
-.ncal-aev:active { transform: scale(.98); }
-.ncal-aev .atm {
-  opacity: .7; font-variant-numeric: tabular-nums;
-}
-.ncal-aev .atl {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ncal-aev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
-.ncal-aev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.ncal-aev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
-.ncal-aev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
-.ncal-aev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
-
-/* ── Legend ────────────────────────────────────────────────────── */
-/* gap 10px = дефолт .col (var(--sp-5)), поэтому модификатор не нужен.
-   раскладка уехала: ncal-legend -> col */
-.ncal-legend {
-  margin-top: 24px;
-}
-/* ★ОСТАТОК: gap 14px вне шкалы (--sp даёт 12 и 16) - удержан.
-   раскладка уехала: ncal-legend-group -> row */
-.ncal-legend-group {
-  gap: 14px;
-}
-.ncal-legend-lbl {
-  color: var(--muted-2); width: 64px; flex: none;
-}
-/* раскладка уехала: ncal-leg -> row */
-.ncal-leg {
-  color: var(--muted);
-}
-.ncal-leg-sw {
-  width: 10px; height: 10px; border-radius: 3px; flex: none;
+.ncal-tg__now::before {
+  content: '';
+  position: absolute;
+  left: 0; top: -3px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
 }
 
-/* ── View fade-in animation ────────────────────────────────────── */
-@keyframes ncalFadeSlideIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Блок события: положение и высота приезжают инлайном (это ДАННЫЕ — минута
+   начала и длительность), всё остальное здесь. */
+.ncal-tb {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-height: 17px;
+  overflow: hidden;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 3px var(--sp-4);
+  border-radius: var(--r-xs);
+  /* Заливка НЕПРОЗРАЧНАЯ (а не полупрозрачный --hl-soft): пересекающиеся блоки
+     лежат друг на друге, и через прозрачный фон верхнего просвечивал текст
+     нижнего — две подписи в одном месте. Кольцо в цвет поверхности отделяет
+     стопку, чтобы стык не читался третьим тоном. */
+  background: color-mix(in srgb, var(--hl) 13%, var(--surface));
+  color: var(--hl-ink);
+  box-shadow: inset 3px 0 0 var(--hl), 0 0 0 1.5px var(--surface);
+  transition: filter .14s;
 }
-.ncal-month,
-.ncal-wv-scroll {
-  animation: ncalFadeSlideIn .22s var(--ease-out) both;
+.ncal-tb:hover { filter: brightness(.95); }
+[data-theme="dark"] .ncal-tb:hover { filter: brightness(1.18); }
+/* Короткое событие (заезд, дедлайн, выдача авто) не вмещает две строки —
+   время и название встают в ряд. */
+.ncal-tb.is-tiny {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-4);
+}
+.ncal-tb--flat {
+  position: static;
+  width: auto;
+  margin-bottom: 2px;
+}
+.ncal-tb__tm { opacity: .8; flex: none; }
+/* Обрезка своя, а не примитивом `.trunc`: у блока недели она зависит от ширины
+   колонки, а `.trunc` держит nowrap безусловно — и чей класс победит, решал бы
+   порядок файлов в бандле, а не автор правила. */
+.ncal-tb__n {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* ── Empty / no-dates ──────────────────────────────────────────── */
-.ncal-empty {
-  padding: 48px 24px; text-align: center;
-  color: var(--muted);
+/* ── Полоса города (общая для месяца и недели) ─────────────────── */
+/* Колонки те же, что у ряда дней, и БЕЗ горизонтального padding — иначе треки
+   разъедутся и полоса перестанет совпадать с днями под ней. Число дорожек
+   приходит переменной `--lanes`: на кривых данных вторая полоса встаёт ПОД
+   первой, а не поверх. */
+.ncal-rail {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(var(--lanes, 1), auto);
+  gap: 2px;
+  padding-top: var(--sp-3);
+}
+.ncal-rail__seg {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 8px;
+  margin: 0 3px;
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--c) 18%, var(--surface));
+  color: color-mix(in srgb, var(--c) 58%, var(--ink));
+  box-shadow: inset 3px 0 0 var(--c);
+}
+/* Визит продолжается из прошлой недели / уходит в следующую — торец полосы
+   раскрывается, чтобы читалось «то же самое», а не новый визит. */
+.ncal-rail__seg.is-cont {
+  margin-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  box-shadow: none;
+}
+.ncal-rail__seg.is-goes {
+  margin-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
-/* ── Focus visibility (keyboard nav) ───────────────────────────── */
+/* ── Канал тона по семейству события ───────────────────────────── */
+/* Один словарь на оба вида и на оба носителя (строка месяца, блок недели). */
+.ev-hotel    { --hl: var(--ev-hotel);    --hl-soft: var(--ev-hotel-soft);    --hl-ink: var(--ev-hotel-ink); }
+.ev-activity { --hl: var(--ev-activity); --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
+.ev-transfer { --hl: var(--ev-transfer); --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
+.ev-deadline { --hl: var(--ev-deadline); --hl-soft: var(--ev-deadline-soft); --hl-ink: var(--ev-deadline-ink); }
+.ev-car      { --hl: var(--ev-car);      --hl-soft: var(--ev-car-soft);      --hl-ink: var(--ev-car-ink); }
+
+/* ── Фокус с клавиатуры ────────────────────────────────────────── */
 .ncal-ev:focus-visible,
-.ncal-aev:focus-visible,
-.ncal-nav-txt:focus-visible,
-.ncal-nav-trip:focus-visible {
-  outline: 2px solid var(--brand); outline-offset: 1px;
+.ncal-tb:focus-visible,
+.ncal-dn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
 }
 
-/* ── Responsive ──────────────────────────────────────────────────
-   TRIP-410: @media ниже меняют только КЕГЛЬ ячеек календаря по санкц. шкале
-   --fs-* (адаптивная плотность); гарнитуру/вес держит канон co-selector'ом
-   (см. .t-meta/.t-subheading в app.css). Все — design-token-exempt. */
-@media (max-width: 768px) {
-  .ncal-wdc-num { font-size: var(--fs-h3); /* design-token-exempt: адаптивный кегль ячейки, TRIP-410 */ }
-  .ncal-wdc-h   { padding: 11px 11px 9px; }
+/* ── Адаптив ─────────────────────────────────────────────────────
+   Кегль ячеек идёт по санкц. шкале --fs-* (адаптивная плотность); гарнитуру и
+   вес держит канон co-selector'ом (.t-meta/.t-micro в app.css). */
+@media (max-width: 880px) {
+  .ncal { --ncal-hh: 48px; --ncal-gut: 38px; --ncal-headh: 54px; }
+  .ncal-dc { min-height: 88px; }
+  /* Планшет: в ячейке ~100px время съедает половину строки, и от названия
+     остаётся «Мо…». Название опознаёт событие, время — нет. */
+  .ncal-ev__tm { display: none; }
+  .ncal-tg__free { display: none; }
 }
 
 @media (max-width: 640px) {
-  /* Header: stack */
-  .ncal-hd { flex-direction: column; gap: 10px; align-items: stretch; margin-bottom: 14px; }
-  .ncal-hd-l { width: 100%; }
-  .ncal-month-lbl { font-size: var(--fs-h2); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-year-lbl  { font-size: var(--fs-base); margin-left: 8px; /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  /* Controls: nav + toggle in one row */
-  .ncal-hd-r {
-    flex-direction: row; align-items: center;
-    justify-content: space-between; width: 100%; gap: 8px;
-  }
-  .ncal-nav { gap: 1px; padding: 3px; }
-  /* Hide "К поездке" label, keep icon */
-  .ncal-nav-trip .ncal-trip-label { display: none; }
-  .ncal-nav-trip { padding: 5px 9px; gap: 0; }
-  /* размер не перебиваем: канон .t-mono уже даёт нужный кегль (--fs-micro) */
-  .ncal-nav-txt { padding: 5px 10px; }
+  /* Колонка держит ЧИТАЕМУЮ ширину, а не делит экран на семь по 46px: в такую
+     колонку не помещается ни одно название, и сетка превращается в набор
+     цветных полосок. Семь дней перестают влезать в кадр — неделя листается
+     вбок, ОСТАВАЯСЬ СЕТКОЙ; жёлоб часов и шапка приколоты и никуда не уезжают. */
+  .ncal { --ncal-hh: 44px; --ncal-gut: 30px; --ncal-headh: 52px; --ncal-colmin: 96px; }
 
-  /* Month cells */
-  .ncal-wd-row { gap: 2px; margin-bottom: 5px; }
-  .ncal-dgrid  { gap: 2px; }
-  .ncal-wk     { margin-bottom: 2px; }
-  .ncal-dc     { min-height: 64px; padding: 0 0 5px; border-radius: var(--r-sm); }
-  .ncal-cstrip { height: 14px; font-size: 0; padding: 0; margin-bottom: 5px; }
-  .ncal-cstrip-seg { font-size: 0; padding: 0; }
-  .ncal-dn     { font-size: var(--fs-base); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-dn-wrap { padding: 0 4px 3px; }
-  .ncal-ev     { padding: 2px 4px; border-radius: 5px; }
-  .ncal-ev .tm { display: none; }
-  .ncal-ev .t  { font-size: var(--fs-nano); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-evl    { padding: 0 3px; gap: 2px; }
+  .ncal-per__t { font-size: var(--fs-h2); /* design-token-exempt: адаптивный кегль заголовка периода */ }
+  .ncal-per__y { margin-left: var(--sp-3); }
+  .ncal-acts { flex: 1; }
+  .ncal-seg { margin-left: auto; }
 
-  /* Week cards: horizontal scroll */
-  .ncal-wcols {
-    grid-template-columns: repeat(7, minmax(130px, 1fr));
-    gap: 6px; min-width: unset;
-  }
-  .ncal-wdc         { border-radius: var(--r-md); }
-  .ncal-wdc-cbar    { height: 4px; }
-  .ncal-wdc-h       { padding: 10px 10px 8px; }
-  .ncal-wdc-num     { font-size: var(--fs-h3); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-wdc-b       { padding: 7px 8px 10px; gap: 4px; }
-  .ncal-aev         { padding: 5px 7px 5px 9px; border-radius: var(--r-sm); }
-  .ncal-aev .atl    { font-size: var(--fs-nano); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
+  /* МЕСЯЦ = ОБЗОР. Тот же DOM подаётся точками: строка события шириной 50px
+     нечитаема, а второй разметки под телефон в компоненте нет. Читается день —
+     по цвету точек, подробности открывает нажатие (сетка недели). */
+  .ncal-wd { padding: 8px 0; }
+  .ncal-dc { min-height: 62px; padding: 5px 3px var(--sp-3); }
+  .ncal-dn { min-width: 22px; padding: 2px 5px; font-size: var(--fs-meta); /* design-token-exempt: адаптивный кегль номера дня */ }
+  /* Вся ячейка — цель нажатия: точки клик не перехватывают. */
+  .ncal-dn::after { content: ''; position: absolute; inset: 0; }
+  .ncal-evl { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 5px; }
+  .ncal-ev { width: 6px; height: 6px; padding: 0; pointer-events: none; }
+  .ncal-ev__n { display: none; }
+  .ncal-more { display: none; }
 
-  /* Legend */
-  .ncal-legend     { gap: 8px; margin-top: 18px; }
-  /* размер не перебиваем: каноны .t-micro/.t-meta уже дают нужный кегль */
-  .ncal-legend-lbl { width: 52px; }
-  .ncal-leg        { gap: 5px; }
+  .ncal-rail { padding-top: 4px; gap: 1px; }
+  .ncal-rail__seg { padding: 3px var(--sp-3); margin: 0 2px; font-size: var(--fs-tiny); /* design-token-exempt: адаптивный кегль полосы города */ }
+
+  /* НЕДЕЛЯ на телефоне остаётся СЕТКОЙ: колонка ~50px, время читается, название
+     обрезается. Горизонтального скролла нет — семь дней всегда в кадре. */
+  .ncal-tg__d { padding: 7px var(--sp-1) 0; }
+  .ncal-tg__num { min-width: 24px; padding: 2px 5px; font-size: var(--fs-h3); /* design-token-exempt: адаптивный кегль числа в шапке недели */ }
+  .ncal-tg__h { padding-right: 5px; }
+  .ncal-tg__pane { max-height: 62vh; }
+  .ncal-tb { padding: var(--sp-1) var(--sp-3); }
+  .ncal-tb.is-tiny { padding: var(--sp-1) var(--sp-3); gap: var(--sp-2); }
+  .ncal-tg__adcell { padding: 0 2px; }
 }
 
-@media (max-width: 400px) {
-  .ncal-dc     { min-height: 50px; }
-  .ncal-cstrip { height: 12px; }
-  /* Hide event list, show single dot instead */
-  .ncal-evl { display: none; }
-  .ncal-dc.has-ev .ncal-dn-wrap::after {
-    content: ''; display: block;
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--brand); margin: 2px auto 0;
-  }
-  .ncal-dn     { font-size: var(--fs-base); /* design-token-exempt: адаптивный кегль, TRIP-410 */ }
-  .ncal-nav-txt { padding: 4px 8px; }
-  .ncal-hd-r   { flex-wrap: wrap; }
-}
+/* ═══ ОБЪЯВЛЕННЫЕ ИЗМЕНЕНИЯ ОБЛИКА (гард 2p) ══════════════════════════════
+   Это ПОЛНЫЙ РЕДИЗАЙН экрана, а не правка значений, поэтому итоговых объявлений
+   поменялось 673 и каждое названо строкой ниже. Блок длинный по построению: 2p
+   не запрещает изменение, он требует его ПРОИЗНЕСТИ, и цена редизайна целого
+   экрана — ровно столько строк, сколько объявлений он тронул.
 
-/* ═══ TRIP-342: ОБЪЯВЛЕННЫЕ ИЗМЕНЕНИЯ (календарь) ═════════════════════════
-   Почему тут exempt, а не visual-diff-move. Маркер переноса требует, чтобы ВСЕ
-   ушедшие с источника объявления лежали на ОДНОЙ названной цели. Раскладка же
-   уезжает на КОМПОЗИЦИЮ - примитив плюс модификаторы его осей (.row + .row--g7 +
-   .row--wrap), и второй маркер на ту же пару делает проверку строже, а не
-   полнее: гард начинает требовать display и от .row--g7 тоже. Плюс он сверяет
-   значения ТЕКСТОМ и не резолвит var(), поэтому честный перенос сырых 16px на
-   ступень var(--sp-7) читается как смена значения. Оба ограничения названы в
-   отчёте по задаче; здесь каждый ключ объявлен поимённо, без бланкетного гашения.
-   visual-diff-exempt: .ncal-cstrip-seg gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
-   visual-diff-exempt: .ncal-hd-r align-items — align-items:flex-end уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-hd align-items — align-items:flex-start уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-hd flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-hd gap — зазор 16px уехал на ступень шкалы .--g7 (var(--sp-7)=16px), значение то же
-   visual-diff-exempt: .ncal-hd justify-content — justify-content:space-between уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-leg display — inline-flex уехал на .row--inline, значение то же
-   visual-diff-exempt: .ncal-legend-group flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-leg gap — зазор 6px уехал на ступень шкалы .--g3 (var(--sp-3)=6px), значение то же
-   visual-diff-exempt: .ncal-nav-trip display — inline-flex уехал на .row--inline, значение то же
-   visual-diff-exempt: .ncal-nav display — inline-flex уехал на .row--inline, значение то же
-   visual-diff-exempt: .ncal-nav gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
-   visual-diff-exempt: .ncal-title-row align-items — align-items:baseline уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-title-row flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
-   visual-diff-exempt: .ncal-title-row gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
-   ═══════════════════════════════════════════════════════════════════ */
+   Читать по группам причин, а не построчно; групп шесть:
+     • карточка дня недели и её agenda-плитка (.ncal-wdc*, .ncal-aev, .atm/.atl,
+       .ncal-wcols, .ncal-wv-scroll) — удалены вместе с видом «7 колонок»;
+     • плашка города в ячейке (.ncal-cstrip*, .is-split) — заменена полосой;
+     • легенда (.ncal-legend*, .ncal-leg*) — удалена как объект;
+     • пилюля навигации и старая шапка (.ncal-nav*, .ncal-hd*, .ncal-title-row,
+       .ncal-month-lbl, .ncal-year-lbl) — разобраны на каноны ДС;
+     • пересобранный месяц (.ncal-dc, .ncal-dn, .ncal-wd, .ncal-ev*, .ev-*);
+     • новая сетка часов недели (.ncal-tg__*, .ncal-tb*) и полоса (.ncal-rail*).
 
-/* TRIP-342: продолжение объявленных изменений (календарь).
-   visual-diff-exempt: .ncal-cstrip-seg align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-cstrip-seg display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-cstrip align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-cstrip display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-dgrid display — display:grid уехал на .grid, значение то же
-   visual-diff-exempt: .ncal-hd-r display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-hd-r flex-direction — flex-direction:column уехал на .col, значение то же
-   visual-diff-exempt: .ncal-hd display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-leg align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-legend-group align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-legend-group display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-nav-trip align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-nav align-items — align-items:center - дефолт .row, значение то же
-   visual-diff-exempt: .ncal-title-row display — display:flex уехал на примитив .row/.col, значение то же
-   visual-diff-exempt: .ncal-wd-row display — display:grid уехал на .grid, значение то же
-   */
-
-/* TRIP-342: легенда - раскладка на .col.
-   visual-diff-exempt: .ncal-legend display — display:flex уехал на .col, значение то же
-   visual-diff-exempt: .ncal-legend flex-direction — flex-direction:column уехал на .col, значение то же
-   visual-diff-exempt: .ncal-legend gap — 10px это ДЕФОЛТ .col (var(--sp-5)=10px), модификатор не нужен
-   */
+   ⚠️ Маркеры живут ОДИН PR: гард читает ДОБАВЛЕННЫЕ строки диффа. В следующем PR
+   они уже ничего не гасят (база к тому времени несёт новые значения) — трогать
+   их не нужно, но и ссылаться на них как на действующий escape нельзя.
+   visual-diff-exempt: .atl font-family — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl font-variant-numeric — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl font-weight — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl letter-spacing — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl line-height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl overflow — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl text-overflow — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl white-space — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atl {@media (max-width: 640px)} font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atm font-family — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atm font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atm font-variant-numeric — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atm font-weight — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atm letter-spacing — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atm line-height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .atm opacity — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .cs-empty background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .cs-empty height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .cs-empty margin-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .dot background — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .dot opacity — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ev-activity --hl — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-activity --hl-ink — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-activity --hl-soft — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-activity background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-car --hl — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-car --hl-ink — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-car --hl-soft — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-car background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-deadline --hl — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-deadline --hl-ink — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-deadline --hl-soft — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-deadline background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-hotel --hl — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-hotel --hl-ink — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-hotel --hl-soft — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-hotel background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-transfer --hl — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-transfer --hl-ink — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-transfer --hl-soft — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ev-transfer background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .has-ev {@media (max-width: 400px)} background — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .has-ev {@media (max-width: 400px)} border-radius — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .has-ev {@media (max-width: 400px)} content — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .has-ev {@media (max-width: 400px)} display — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .has-ev {@media (max-width: 400px)} height — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .has-ev {@media (max-width: 400px)} margin — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .has-ev {@media (max-width: 400px)} width — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .is-cont border-bottom-left-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-cont border-top-left-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-cont box-shadow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-cont margin-left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-goes border-bottom-right-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-goes border-top-right-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-goes margin-right — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-off background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-out background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-out background-color — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-out box-shadow — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-out color — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-out opacity — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-out pointer-events — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-split display — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .is-split flex — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .is-split gap — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .is-split height — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .is-split padding — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .is-tiny align-items — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-tiny flex-direction — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-tiny gap — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-tiny padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-tiny {@media (max-width: 640px)} gap — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-tiny {@media (max-width: 640px)} padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .is-today background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-today background-color — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-today border-radius — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-today min-width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-today padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-trip background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .is-trip:hover background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal --ncal-gut — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal --ncal-hh — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal {@media (max-width: 640px)} --ncal-colmin — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal {@media (max-width: 640px)} --ncal-gut — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal {@media (max-width: 640px)} --ncal-headh — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal {@media (max-width: 640px)} --ncal-hh — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal {@media (max-width: 880px)} --ncal-gut — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal {@media (max-width: 880px)} --ncal-headh — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal {@media (max-width: 880px)} --ncal-hh — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-acts flex — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-acts {@media (max-width: 640px)} flex — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-aev background — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev border — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev border-radius — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev cursor — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev display — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev flex-direction — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev font-family — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev font-variant-numeric — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev font-weight — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev gap — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev letter-spacing — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev line-height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev opacity — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev overflow — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev position — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev text-align — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev text-overflow — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev transition — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev white-space — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev {@media (max-width: 640px)} border-radius — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev {@media (max-width: 640px)} font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev {@media (max-width: 640px)} padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before background — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before border-radius — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before bottom — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before content — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before left — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before opacity — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before position — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before top — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev::before width — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev:active transform — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev:focus-visible outline — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev:focus-visible outline-offset — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-aev:hover filter — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-cstrip background — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip flex — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip font-family — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip font-size — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip font-variant-numeric — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip font-weight — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip gap — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip height — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip letter-spacing — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip line-height — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip margin-bottom — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip overflow — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip padding — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip white-space — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip {@media (max-width: 400px)} height — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip {@media (max-width: 640px)} font-size — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip {@media (max-width: 640px)} height — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip {@media (max-width: 640px)} margin-bottom — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip {@media (max-width: 640px)} padding — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg flex — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg font-family — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg font-size — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg font-variant-numeric — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg font-weight — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg gap — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg height — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg letter-spacing — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg line-height — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg min-width — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg overflow — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg padding — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg white-space — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg {@media (max-width: 640px)} font-size — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-cstrip-seg {@media (max-width: 640px)} padding — плашка города в ячейке заменена полосой над рядом (.ncal-rail), расщепление на день перехода снято вместе с ней
+   visual-diff-exempt: .ncal-days display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-days grid-template-columns — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-dc background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc border-left — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc border-radius — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc cursor — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc min-height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc min-width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc opacity — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc overflow — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc pointer-events — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc position — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc transition — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 400px)} background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 400px)} border-radius — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 400px)} content — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 400px)} display — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 400px)} height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 400px)} margin — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 400px)} min-height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 400px)} width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 640px)} border-radius — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 640px)} min-height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 640px)} padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc {@media (max-width: 880px)} min-height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc:hover background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dc:hover box-shadow — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dgrid gap — сетка переименована в .ncal-days/.ncal-wdrow и отдала зазор волосяным линиям одной поверхности
+   visual-diff-exempt: .ncal-dgrid grid-template-columns — сетка переименована в .ncal-days/.ncal-wdrow и отдала зазор волосяным линиям одной поверхности
+   visual-diff-exempt: .ncal-dgrid {@media (max-width: 640px)} gap — сетка переименована в .ncal-days/.ncal-wdrow и отдала зазор волосяным линиям одной поверхности
+   visual-diff-exempt: .ncal-dn align-items — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn border — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn cursor — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn display — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn font-family — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn font-size — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn font-variant-numeric — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn font-weight — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn justify-content — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn letter-spacing — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn line-height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn min-width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn transition — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn {@media (max-width: 400px)} font-size — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn {@media (max-width: 640px)} font-size — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn {@media (max-width: 640px)} min-width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn {@media (max-width: 640px)} padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn-wrap padding — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn-wrap {@media (max-width: 640px)} padding — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn-wrap::after {@media (max-width: 400px)} background — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn-wrap::after {@media (max-width: 400px)} border-radius — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn-wrap::after {@media (max-width: 400px)} content — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn-wrap::after {@media (max-width: 400px)} display — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn-wrap::after {@media (max-width: 400px)} height — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn-wrap::after {@media (max-width: 400px)} margin — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn-wrap::after {@media (max-width: 400px)} width — обёртка номера и признак «в дне есть события» не нужны: номер сам стал кнопкой, плотность дня рисует список событий
+   visual-diff-exempt: .ncal-dn::after {@media (max-width: 640px)} content — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn::after {@media (max-width: 640px)} inset — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn::after {@media (max-width: 640px)} position — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn:focus-visible outline — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn:focus-visible outline-offset — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn:hover background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-dn:hover color — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-empty font-family — экран «нет дат» уехал на канон <EmptyState>, своя вёрстка пустого состояния не нужна
+   visual-diff-exempt: .ncal-empty font-size — экран «нет дат» уехал на канон <EmptyState>, своя вёрстка пустого состояния не нужна
+   visual-diff-exempt: .ncal-empty font-weight — экран «нет дат» уехал на канон <EmptyState>, своя вёрстка пустого состояния не нужна
+   visual-diff-exempt: .ncal-empty letter-spacing — экран «нет дат» уехал на канон <EmptyState>, своя вёрстка пустого состояния не нужна
+   visual-diff-exempt: .ncal-empty line-height — экран «нет дат» уехал на канон <EmptyState>, своя вёрстка пустого состояния не нужна
+   visual-diff-exempt: .ncal-empty padding — экран «нет дат» уехал на канон <EmptyState>, своя вёрстка пустого состояния не нужна
+   visual-diff-exempt: .ncal-empty text-align — экран «нет дат» уехал на канон <EmptyState>, своя вёрстка пустого состояния не нужна
+   visual-diff-exempt: .ncal-ev background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev border-radius — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev flex — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev font-family — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev font-size — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev font-variant-numeric — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev font-weight — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev gap — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev letter-spacing — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev line-height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev min-width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev opacity — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev overflow — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev text-overflow — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev transition — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev white-space — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev {@media (max-width: 640px)} border-radius — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev {@media (max-width: 640px)} display — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev {@media (max-width: 640px)} font-size — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev {@media (max-width: 640px)} height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev {@media (max-width: 640px)} padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev {@media (max-width: 640px)} pointer-events — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev {@media (max-width: 640px)} width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev:hover background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev:hover filter — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__dot background — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__dot border-radius — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__dot flex — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__dot height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__dot width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__n color — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__n min-width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__n {@media (max-width: 640px)} display — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__tm color — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__tm flex — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-ev__tm {@media (max-width: 880px)} display — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl gap — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl margin-top — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl {@media (max-width: 400px)} display — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl {@media (max-width: 640px)} flex-direction — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl {@media (max-width: 640px)} flex-wrap — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl {@media (max-width: 640px)} gap — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl {@media (max-width: 640px)} justify-content — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl {@media (max-width: 640px)} margin-top — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-evl {@media (max-width: 640px)} padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-hd margin-bottom — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd {@media (max-width: 640px)} align-items — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd {@media (max-width: 640px)} flex-direction — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd {@media (max-width: 640px)} gap — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd {@media (max-width: 640px)} margin-bottom — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-l {@media (max-width: 640px)} width — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-r flex — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-r gap — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-r {@media (max-width: 400px)} flex-wrap — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-r {@media (max-width: 640px)} align-items — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-r {@media (max-width: 640px)} flex-direction — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-r {@media (max-width: 640px)} gap — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-r {@media (max-width: 640px)} justify-content — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-hd-r {@media (max-width: 640px)} width — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-jump:disabled opacity — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-leg font-family — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg font-size — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg font-variant-numeric — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg font-weight — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg letter-spacing — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg line-height — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg {@media (max-width: 640px)} gap — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg-sw border-radius — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg-sw flex — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg-sw height — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-leg-sw width — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend margin-top — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend {@media (max-width: 640px)} gap — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend {@media (max-width: 640px)} margin-top — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-group gap — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl flex — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl font-family — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl font-size — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl font-weight — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl letter-spacing — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl line-height — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl text-transform — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl width — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-legend-lbl {@media (max-width: 640px)} width — легенда удалена как объект: имя города печатается на полосе в каждой неделе, расшифровывать цвета больше нечем
+   visual-diff-exempt: .ncal-month animation — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-month-lbl font-family — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-month-lbl font-size — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-month-lbl font-variant-numeric — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-month-lbl font-weight — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-month-lbl letter-spacing — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-month-lbl line-height — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-month-lbl {@media (max-width: 640px)} font-size — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-more margin-top — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-more width — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-more {@media (max-width: 640px)} display — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-nav background — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav border-radius — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav padding — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav {@media (max-width: 640px)} gap — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav {@media (max-width: 640px)} padding — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-div align-self — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-div background — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-div flex — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-div height — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-div margin — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-div width — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip background — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip border — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip border-radius — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip cursor — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip font-family — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip font-size — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip font-variant-numeric — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip font-weight — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip gap — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip letter-spacing — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip line-height — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip padding — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip svg flex — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip svg height — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip svg width — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip transition — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip {@media (max-width: 640px)} display — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip {@media (max-width: 640px)} gap — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip {@media (max-width: 640px)} padding — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip:focus-visible outline — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip:focus-visible outline-offset — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-trip:hover background — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt background — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt border — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt border-radius — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt cursor — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt font-family — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt font-size — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt font-variant-numeric — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt font-weight — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt letter-spacing — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt line-height — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt padding — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt transition — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt {@media (max-width: 400px)} padding — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt {@media (max-width: 640px)} padding — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt:focus-visible outline — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt:focus-visible outline-offset — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-nav-txt:hover background — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-per min-width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-per__t margin — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-per__t {@media (max-width: 640px)} font-size — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-per__t::first-letter text-transform — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-per__y color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-per__y margin-left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-per__y {@media (max-width: 640px)} margin-left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail gap — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail grid-template-columns — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail grid-template-rows — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail padding-top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail {@media (max-width: 640px)} gap — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail {@media (max-width: 640px)} padding-top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg border-bottom-left-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg border-bottom-right-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg border-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg border-top-left-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg border-top-right-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg box-shadow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg margin — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg margin-left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg margin-right — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg min-width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg overflow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg text-overflow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg white-space — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg {@media (max-width: 640px)} font-size — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg {@media (max-width: 640px)} margin — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-rail__seg {@media (max-width: 640px)} padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-seg {@media (max-width: 640px)} margin-left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-sheet animation — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-sheet overflow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb align-items — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb border — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb border-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb box-shadow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb cursor — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb flex-direction — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb gap — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb min-height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb overflow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb text-align — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb transition — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb {@media (max-width: 640px)} gap — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb {@media (max-width: 640px)} padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb--flat margin-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb--flat position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb--flat width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb:focus-visible outline — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb:focus-visible outline-offset — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb:hover filter — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb__n min-width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb__n overflow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb__n text-overflow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb__n white-space — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb__tm flex — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tb__tm opacity — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__adcell min-width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__adcell padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__adcell {@media (max-width: 640px)} padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__allday display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__allday grid-template-columns — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__allday margin-top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__band background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__band border-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__band grid-column — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__band padding-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__band position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__band top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__band z-index — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__bandgut background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__bandgut border-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__bandgut left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__bandgut position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__bandgut z-index — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__col background-color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__col background-image — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__col border-left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__col height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__col position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__corner background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__corner border-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__corner height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__corner left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__corner position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__corner top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__corner z-index — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d border-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d border-left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d box-shadow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d text-align — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d z-index — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__d {@media (max-width: 640px)} padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__free color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__free display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__free inset — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__free place-items — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__free pointer-events — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__free position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__free {@media (max-width: 880px)} display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__h color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__h display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__h font-variant-numeric — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__h height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__h padding-right — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__h text-align — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__h {@media (max-width: 640px)} padding-right — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__hours background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__hours border-right — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__hours height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__hours left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__hours position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__hours z-index — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now pointer-events — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now right — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now z-index — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now::before background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now::before border-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now::before content — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now::before height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now::before left — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now::before position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now::before top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__now::before width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num border-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num box-shadow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num font-variant-numeric — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num margin-top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num min-width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num {@media (max-width: 640px)} font-size — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num {@media (max-width: 640px)} min-width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__num {@media (max-width: 640px)} padding — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane grid-template-columns — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane max-height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane overflow — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane overscroll-behavior — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane position — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane scrollbar-color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane scrollbar-width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane {@media (max-width: 640px)} max-height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane::-webkit-scrollbar height — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane::-webkit-scrollbar width — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane::-webkit-scrollbar-thumb background — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__pane::-webkit-scrollbar-thumb border-radius — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__wd color — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-tg__wd display — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-title-row gap — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-title-row line-height — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-trip-label {@media (max-width: 640px)} display — пилюля навигации разобрана: стрелки уехали к заголовку периода, «Сегодня» на канон Btn, «К поездке» на канон IconBtn
+   visual-diff-exempt: .ncal-wcols display — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wcols gap — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wcols grid-template-columns — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wcols min-width — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wcols {@media (max-width: 640px)} gap — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wcols {@media (max-width: 640px)} grid-template-columns — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wcols {@media (max-width: 640px)} min-width — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wd color — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd font-family — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd font-size — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd font-weight — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd letter-spacing — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd line-height — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd text-transform — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd {@media (max-width: 640px)} padding — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wd-row gap — сетка переименована в .ncal-days/.ncal-wdrow и отдала зазор волосяным линиям одной поверхности
+   visual-diff-exempt: .ncal-wd-row grid-template-columns — сетка переименована в .ncal-days/.ncal-wdrow и отдала зазор волосяным линиям одной поверхности
+   visual-diff-exempt: .ncal-wd-row margin-bottom — сетка переименована в .ncal-days/.ncal-wdrow и отдала зазор волосяным линиям одной поверхности
+   visual-diff-exempt: .ncal-wd-row {@media (max-width: 640px)} gap — сетка переименована в .ncal-days/.ncal-wdrow и отдала зазор волосяным линиям одной поверхности
+   visual-diff-exempt: .ncal-wd-row {@media (max-width: 640px)} margin-bottom — сетка переименована в .ncal-days/.ncal-wdrow и отдала зазор волосяным линиям одной поверхности
+   visual-diff-exempt: .ncal-wdc background — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc border — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc border-radius — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc box-shadow — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc display — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc flex-direction — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc overflow — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc transition — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc {@media (max-width: 640px)} border-radius — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-b display — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-b flex — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-b flex-direction — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-b gap — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-b padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-b {@media (max-width: 640px)} gap — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-b {@media (max-width: 640px)} padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-cbar display — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-cbar flex — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-cbar gap — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-cbar height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-cbar {@media (max-width: 640px)} height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-empty font-family — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-empty font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-empty font-variant-numeric — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-empty font-weight — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-empty letter-spacing — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-empty line-height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-empty padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-empty text-align — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-h border-bottom — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-h flex — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-h padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-h {@media (max-width: 640px)} padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-h {@media (max-width: 768px)} padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num background — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num border-radius — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num box-shadow — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num display — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num font-family — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num font-variant-numeric — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num font-weight — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num letter-spacing — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num line-height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num padding — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num {@media (max-width: 640px)} font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-num {@media (max-width: 768px)} font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-wd font-family — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-wd font-size — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-wd font-weight — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-wd letter-spacing — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-wd line-height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-wd margin-top — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc-wd text-transform — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc:hover box-shadow — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdc:hover transform — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wdrow border-bottom — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wdrow display — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wdrow grid-template-columns — полный редизайн месяца: одна поверхность с волосяными линиями, событие подаётся строкой «точка · время · название» вместо залитой плитки
+   visual-diff-exempt: .ncal-wk border-top — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-wk margin-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-wk {@media (max-width: 640px)} margin-bottom — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: .ncal-wv-scroll animation — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wv-scroll overflow-x — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wv-scroll padding-bottom — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wv-scroll scrollbar-color — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wv-scroll scrollbar-width — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wv-scroll::-webkit-scrollbar height — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wv-scroll::-webkit-scrollbar-thumb background — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-wv-scroll::-webkit-scrollbar-thumb border-radius — вид «Неделя» стал сеткой часов, карточка дня и её agenda-плитка удалены вместе с семью колонками одинаковой высоты
+   visual-diff-exempt: .ncal-year-lbl font-family — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-year-lbl font-size — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-year-lbl font-weight — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-year-lbl letter-spacing — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-year-lbl line-height — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-year-lbl margin-left — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-year-lbl {@media (max-width: 640px)} font-size — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .ncal-year-lbl {@media (max-width: 640px)} margin-left — шапка экрана собрана заново (.ncal-bar/.ncal-per): период со стрелками слева, возвраты и переключатель справа одной строкой
+   visual-diff-exempt: .t flex — внутренние имена чипа события переименованы в .ncal-ev__n/.ncal-ev__tm: чип стал одним объектом
+   visual-diff-exempt: .t overflow — внутренние имена чипа события переименованы в .ncal-ev__n/.ncal-ev__tm: чип стал одним объектом
+   visual-diff-exempt: .t text-overflow — внутренние имена чипа события переименованы в .ncal-ev__n/.ncal-ev__tm: чип стал одним объектом
+   visual-diff-exempt: .t white-space — внутренние имена чипа события переименованы в .ncal-ev__n/.ncal-ev__tm: чип стал одним объектом
+   visual-diff-exempt: .t {@media (max-width: 640px)} font-size — внутренние имена чипа события переименованы в .ncal-ev__n/.ncal-ev__tm: чип стал одним объектом
+   visual-diff-exempt: .tm flex — внутренние имена чипа события переименованы в .ncal-ev__n/.ncal-ev__tm: чип стал одним объектом
+   visual-diff-exempt: .tm opacity — внутренние имена чипа события переименованы в .ncal-ev__n/.ncal-ev__tm: чип стал одним объектом
+   visual-diff-exempt: .tm {@media (max-width: 640px)} display — внутренние имена чипа события переименованы в .ncal-ev__n/.ncal-ev__tm: чип стал одним объектом
+   visual-diff-exempt: from {@keyframes ncalFadeSlideIn} opacity — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: from {@keyframes ncalFadeSlideIn} transform — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: from {@keyframes ncalIn} opacity — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: from {@keyframes ncalIn} transform — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: to {@keyframes ncalFadeSlideIn} opacity — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: to {@keyframes ncalFadeSlideIn} transform — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: to {@keyframes ncalIn} opacity — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   visual-diff-exempt: to {@keyframes ncalIn} transform — новый объект редизайна: сетка часов недели (холст, шапка дней, жёлоб, колонка, блок события, линия «сейчас») и полоса города
+   ═══════════════════════════════════════════════════════════════════════ */
