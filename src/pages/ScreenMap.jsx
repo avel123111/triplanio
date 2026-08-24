@@ -62,15 +62,15 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
   const select = (i) => setSelectedIdx((cur) => (cur === i ? null : i));
   const deselect = () => setSelectedIdx(null);
 
-  // ★ ПЛАШКА ГОРОДА — ТОЛЬКО ПО ЯВНОМУ НАЖАТИЮ (Pavel): один закон на все карты
-  // с плашкой (планировщик, эта линза, редактор маршрута). Ховер остаётся
-  // ПОДСВЕТКОЙ пина и ряда (`hoveredVisitId`) и ничего не открывает.
-  const cityBadge = selectedVisit ? {
-    lng: selectedVisit.longitude,
-    lat: selectedVisit.latitude,
-    countryCode: selectedVisit.country_code,
-    name: selectedVisit.city_name,
-    dates: fmtRange(selectedVisit.start_date, selectedVisit.end_date),
+  // The badge follows the hovered city (tooltip) and otherwise the selected one.
+  const hoverVisit = hoverId != null ? route.find(v => v.id === hoverId) : null;
+  const badgeVisit = hoverVisit || selectedVisit;
+  const cityBadge = badgeVisit ? {
+    lng: badgeVisit.longitude,
+    lat: badgeVisit.latitude,
+    countryCode: badgeVisit.country_code,
+    name: badgeVisit.city_name,
+    dates: fmtRange(badgeVisit.start_date, badgeVisit.end_date),
   } : null;
 
   const focus = selectedVisit ? [[selectedVisit.longitude, selectedVisit.latitude]] : null;
@@ -83,9 +83,9 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
       onHover={setHoverId}
       // Отступы камеры под панель (десктоп); на телефоне их нет — там слот сам
       // равен свободному окну. Разбор — в `mapShellInsets`.
-      map={(camera) => (
+      map={(camera, slotPx) => (
         <MapView
-          camera={camera}
+          camera={camera} slotPx={slotPx}
           visits={visits}
           transfers={transfers}
           showStartEnd

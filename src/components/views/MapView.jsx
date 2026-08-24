@@ -97,7 +97,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * пометить его обязательным значило бы уронить их в тот момент, когда они
  * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
  *
- * @param {{ camera?: any, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ * @param {{ camera?: any, slotPx?: number, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
  *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
@@ -111,6 +111,11 @@ export default function MapView({
   // Канвас при этом во всю площадь: карта видна ПОД виджетом, а кадр уходит в
   // свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   camera = null,
+  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. На телефоне
+  // это ЕДИНСТВЕННЫЙ сигнал, что окно поехало, — отступы камеры там всегда
+  // нулевые, и без него подстройка под новый размер на телефоне не случилась бы
+  // вовсе.
+  slotPx = 0,
   visits,
   transfers,
   showStartEnd = true,
@@ -239,13 +244,14 @@ export default function MapView({
   // кадрирования читают его сами — поэтому ни один из семи `fit`-вызовов ниже
   // про закрытую площадь не знает и знать не должен. Разбор — `lib/map/insets.js`.
   //
-  // ★ СМЕНА СВОБОДНОГО ОКНА КАМЕРУ НЕ ДВИГАЕТ (решение Pavel). Прежде осадка
-  // детента и сворачивание виджета ВПИСЫВАЛИ маршрут заново — то есть меняли
-  // зум и центр, хотя маршрут не менялся. Автофокус случается только при
-  // изменении маршрута (фит по `visitsSignature` ниже); здесь отступ лишь
-  // ОБЪЯВЛЯЕТСЯ, и следующий фит возьмёт его сам.
+  // ★ ОКНО ПОЕХАЛО — ВИД ПОДСТРАИВАЕТСЯ, МАРШРУТ НЕ ПЕРЕКАДРИРУЕТСЯ. Осадка
+  // детента и сворачивание виджета доводят ОТСТУП: вид переезжает в новое
+  // свободное окно вместе с поверхностью, а зум и границы маршрута не
+  // пересчитываются. Прежде здесь вписывался весь маршрут — то есть менялись и
+  // зум, и центр, хотя маршрут не менялся. Автофокус остался ровно один: фит по
+  // `visitsSignature` ниже. Механика — в `lib/map/useMapInsets.js`.
   // ═════════════════════════════════════════════════════════════════════════
-  useMapInsets(mapRef, { ready, insets: camera });
+  useMapInsets(mapRef, { ready, insets: camera, slotPx });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);

@@ -207,7 +207,8 @@ export default function FlowMap({
   // ★ МАРШРУТ НА СМЕНУ СВОБОДНОГО ОКНА НЕ ПЕРЕКАДРИРУЕТСЯ (решение Pavel):
   // автофокус случается ТОЛЬКО при изменении маршрута (`fitKey` ниже). Прежде
   // осадка детента и сворачивание панели вписывали маршрут заново — со стороны
-  // это «карта сама наводится», хотя ничего не менялось.
+  // это «карта сама наводится», хотя ничего не менялось. Под РАЗМЕР окна карта
+  // при этом подстраивается по-прежнему: отступ доводит сам хук, без зума.
   //
   // ★★ ПУСТОЙ ГЛОБУС — ИСКЛЮЧЕНИЕ, И ЭТО НЕ ПОБЛАЖКА. Здесь нет маршрута, и
   // кадрировать нечего: ДИАМЕТР ШАРА считается от высоты ХОЛСТА
@@ -225,9 +226,12 @@ export default function FlowMap({
     insets: camera,
     slotPx,
     onReframe: (map) => {
-      if (!canFit || fitPositions.length) return;
+      // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
+      // НЕ перекадрирование: зум и границы маршрута он не трогает.
+      if (!canFit || fitPositions.length) return false;
       const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
       try { map.easeTo({ ...view, padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
+      return true; // отступ уехал вместе с видом — хуку добавлять нечего
     },
   });
 

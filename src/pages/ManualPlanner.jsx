@@ -464,9 +464,28 @@ function StepCities({ cities, setCities, home, setHome, startDate, setStartDate,
               <div
                 key={c.id}
                 ref={setRowRef(c.id)}
-                // Skip enter-hover mid-drag: a FLIP reorder slides rows under a
-                // held pointer, which would otherwise churn the highlight.
-                onMouseEnter={onHover ? () => { if (!draggingId) onHover(rowId); } : undefined}
+                /* ★ РЯД, КОТОРЫЙ ЕЩЁ НЕ ГОРОД, ХОВЕР КАРТЫ НЕ ЗАБИРАЕТ. Здесь
+                   город ВЫДЕЛЯЛСЯ САМ сразу после добавления, и виноват не въезд
+                   под курсор, а ПОРЯДОК: новый ряд открывается ПИКЕРОМ, города в
+                   нём ещё нет. Чтобы ткнуть в подсказку, мышь реально въезжает в
+                   ряд — ховер честно армится, но показывать нечего (координат
+                   нет, маркера нет). Кнопка «✓» стоит В ТОМ ЖЕ ряду, курсор из
+                   него не выходит, поэтому `mouseleave` не приходит; а когда
+                   подтверждение выдаёт координаты, маркер РОЖДАЕТСЯ уже
+                   наведённым — с подсветкой и плашкой. Снять это было нечем:
+                   клик по карте гасит только ВЫБОР, до ховера ему дела нет.
+                   Визуально `.is-hover` от `.is-sel` почти неотличим (scale 1.1
+                   против 1.12) — отсюда и «город автоселектится».
+                   Условие сравнивает КООРДИНАТЫ, а не режим ряда: «есть ли у него
+                   точка на карте» — это ровно тот же предикат, по которому пин
+                   вообще рисуется (`FlowMap`: `if (c.latitude == null) return`).
+                   Ховер к пину и привязан, поэтому и спрашивать надо про пин, а
+                   не про внутреннее состояние ряда, до которого этому месту дела
+                   нет. Дальше всё как было: въехал мышью в готовый ряд — пин
+                   подсветился, выехал — погас.
+                   Пропуск въезда во время перетаскивания остаётся: FLIP-перестановка
+                   возит ряды под удержанным пальцем и иначе дёргала бы подсветку. */
+                onMouseEnter={onHover ? () => { if (!draggingId && c.latitude != null) onHover(rowId); } : undefined}
                 onMouseLeave={onHover ? () => onHover(null) : undefined}
               >
                 <CityRow
@@ -1066,15 +1085,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     if (finishCity?.latitude != null) m.finish = { lng: finishCity.longitude, lat: finishCity.latitude, countryCode: finishCity.country_code, name: finishCity.city_name, dates: null };
     return m;
   }, [home, cities, finishCity, lang]);
-  // ★ ПЛАШКА ГОРОДА — ТОЛЬКО ПО ЯВНОМУ НАЖАТИЮ (Pavel). Раньше её показывал
-  // ЛЮБОЙ ховер, включая ряд списка, — и это давало плашку, которую нельзя
-  // снять: подтверждение города оставляет палец/курсор ВНУТРИ ряда, ховер уже
-  // взведён, город получает координаты — плашка выскакивает сама. Клик по карте
-  // при этом гасит только ВЫБОР (`selectedMapId`), до ховера ему дела нет, то
-  // есть штатного способа её убрать не существовало.
-  // Ховер остался тем, чем и был, — ПОДСВЕТКОЙ (`.is-hover` на маркере и ряде):
-  // он ничего не открывает и снимать его не нужно.
-  const cityBadge = selectedMapId ? mapPointById[selectedMapId] || null : null;
+  // The tooltip follows the hovered pin/row, otherwise the selected one.
+  const activeMapId = hoveredMapId || selectedMapId;
+  const cityBadge = activeMapId ? mapPointById[activeMapId] || null : null;
   // Clear map selection/hover on step change: a pin drawn on one step (e.g. the
   // return pin, only shown on return/review) must not leave a tooltip floating at
   // its coordinate once the step no longer renders it.

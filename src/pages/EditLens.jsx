@@ -994,13 +994,12 @@ export default function EditLens({ tripId, shell, content }) {
   const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
 
-  // ПЛАШКА ГОРОДА НА КАРТЕ — та же, что в линзе карты, и по тому же закону:
-  // ТОЛЬКО ПО ЯВНОМУ НАЖАТИЮ (Pavel). Здесь «выбран» = открыта панель этого
-  // города, то есть по нему кликнули — в списке или на карте.
-  // Ховер остаётся ПОДСВЕТКОЙ и работает В ОБЕ СТОРОНЫ: ряд списка подсвечивает
-  // маркер (`hoveredVisitId`), маркер подсвечивает ряд (`onCityHover` → тот же
-  // `hoveredNodeId`). Плашку он больше не открывает.
-  const badgeNode = draft.nodes.find((n) => n.id === selectedNodeId) || null;
+  // ПЛАШКА ГОРОДА НА КАРТЕ — та же, что в линзе карты: следует за наведением, а
+  // без него за выбранным городом. Ховер работает В ОБЕ СТОРОНЫ: ряд списка
+  // подсвечивает маркер (`hoveredVisitId`), маркер подсвечивает ряд
+  // (`onCityHover` → тот же `hoveredNodeId`). Раньше связь была односторонней:
+  // с карты в список ничего не приходило.
+  const badgeNode = draft.nodes.find((n) => n.id === (hoveredNodeId || selectedNodeId)) || null;
   const cityBadge = badgeNode?.latitude != null ? {
     lng: badgeNode.longitude,
     lat: badgeNode.latitude,
@@ -1166,8 +1165,8 @@ export default function EditLens({ tripId, shell, content }) {
 
   return (
     <MapShell
-      map={(camera) => (
-            <MapView camera={camera} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
+      map={(camera, slotPx) => (
+            <MapView camera={camera} slotPx={slotPx} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls initialProjection="globe"
               /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
                  «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
               cooperativeGestures={false}
