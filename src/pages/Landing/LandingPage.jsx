@@ -495,6 +495,47 @@ function useCounters(ready, lang) {
 
 /* ── Archive ("Every journey you've taken, kept forever") ── */
 /* ── Audience ("Solo, the two of you, or the whole crew") ── */
+/* ── Collab ("One workspace. Everyone in sync.") ── */
+function Collab() {
+  const t = useT();
+  return (
+    <section className="collab section-pad" data-hdr="light" id="together">
+      <div className="wrap collab-grid">
+        <div className="rv-l">
+          <span className="brow">{t('landing.col.eyebrow')}</span>
+          <h2 style={{ margin: '14px 0 14px' }} dangerouslySetInnerHTML={{ __html: t('landing.col.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
+          <p style={{ color: 'var(--muted)', fontSize: '1.03rem' }}>{t('landing.col.sub')}</p>{/* inline-style-exempt: prototype's own one-off styling */}
+          <ul className="collab-points">
+            <li><span className="cic"><svg width="19" height="19"><use href="#i-users" /></svg></span><div><b>{t('landing.col.p1t')}</b><p>{t('landing.col.p1d')}</p></div></li>
+            <li><span className="cic"><svg width="19" height="19"><use href="#i-check" /></svg></span><div><b>{t('landing.col.p2t')}</b><p>{t('landing.col.p2d')}</p></div></li>
+            <li><span className="cic"><svg width="19" height="19"><use href="#i-chat" /></svg></span><div><b>{t('landing.col.p3t')}</b><p>{t('landing.col.p3d')}</p></div></li>
+          </ul>
+        </div>
+        <div className="rv-r">
+          <div className="feed-card">
+            <div className="feed-head">
+              <svg className="logo" width="30" height="30" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
+              <div><b>{t('landing.col.tripT')}</b><small>{t('landing.col.tripS')}</small></div>
+              <div className="avs">
+                <span className="av" style={{ background: '#2173C8' }}>A</span>{/* inline-style-exempt: mock avatar colour */}
+                <span className="av" style={{ background: '#FF9E4A' }}>D</span>{/* inline-style-exempt: mock avatar colour */}
+                <span className="av" style={{ background: '#2EC27E' }}>S</span>{/* inline-style-exempt: mock avatar colour */}
+                <span className="av" style={{ background: '#7A5CF0' }}>M</span>{/* inline-style-exempt: mock avatar colour */}
+              </div>
+            </div>
+            <div className="feed" data-stagger="">
+              <div className="feed-item rv" style={{ '--i': 0 }}><span className="av" style={{ background: '#FF9E4A' }}>D</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f1') }} /></div></div>{/* inline-style-exempt: stagger index + mock avatar colour */}
+              <div className="feed-item rv" style={{ '--i': 1 }}><span className="av" style={{ background: '#2EC27E' }}>S</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f2') }} /></div></div>{/* inline-style-exempt: stagger index + mock avatar colour */}
+              <div className="feed-item ai-msg rv" style={{ '--i': 2 }}><span className="av"><svg width="13" height="13"><use href="#i-spark" /></svg></span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f3') }} /></div></div>{/* inline-style-exempt: stagger index */}
+              <div className="feed-item rv" style={{ '--i': 3 }}><span className="av" style={{ background: '#2173C8' }}>A</span><div><span dangerouslySetInnerHTML={{ __html: t('landing.col.f4') }} /></div></div>{/* inline-style-exempt: stagger index + mock avatar colour */}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Audience() {
   const t = useT();
   return (
@@ -649,6 +690,7 @@ export default function LandingPage() {
         <Recognize />
         <Archive />
         <Audience />
+        <Collab />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>
