@@ -86,7 +86,6 @@ export default function CityPanel({
   isHotelWarn, isActWarn, arrivalWarn = false, departureWarn = false, onBack, onRemove,
   onNightsMinus, onNightsPlus,
   onOpenHotel, onAddHotel, onOpenActivity, onAddActivity, onOpenTransfer, onAddArrival, onAddDeparture,
-  readOnly = false,
 }) {
   const { t } = useI18n();
   // Country name is derived live from the ISO country_code (TRIP-223) — the legacy
@@ -105,11 +104,7 @@ export default function CityPanel({
   // ФОРК (добавить переезд / жильё / активность) остаются живыми у всех: витрина
   // партнёров открыта наблюдателю, а вход в ручное создание гасит сама панель
   // брони — там этот гейт уже стоит и второй раз его тут писать нельзя.
-  // `readOnly` — просмотр из read-поверхности (напр. календаря): панель показывает
-  // только существующее (без степпера/удаления/пунктирных «добавить»), брони
-  // открываются в своём drawer. Иначе — обычный edit-режим по праву из контекста.
-  const { canEdit: ctxCanEdit } = useTripAccess();
-  const canEdit = ctxCanEdit && !readOnly;
+  const { canEdit } = useTripAccess();
 
   return (
     <div className="lp lp--wide">
@@ -154,16 +149,16 @@ export default function CityPanel({
         <SectionLabel color="var(--ev-transfer-ink)">{t('tse.section_road')}</SectionLabel>
         {arrival
           ? <FlightLine transfer={arrival} dir="in" warn={arrivalWarn} onClick={() => onOpenTransfer(arrival)} t={t} />
-          : (!readOnly && prevCity) && <GhostAdd icon="plane" accent="var(--ev-transfer)" label={t('tse.add_arrival')} sub={prevCity} onClick={onAddArrival} />}
+          : prevCity && <GhostAdd icon="plane" accent="var(--ev-transfer)" label={t('tse.add_arrival')} sub={prevCity} onClick={onAddArrival} />}
         {departure
           ? <FlightLine transfer={departure} dir="out" warn={departureWarn} onClick={() => onOpenTransfer(departure)} t={t} />
-          : (!readOnly && nextCity) && <GhostAdd icon="plane" accent="var(--ev-transfer)" label={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
+          : nextCity && <GhostAdd icon="plane" accent="var(--ev-transfer)" label={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
       </div>
 
       {/* hotels — cities only (a 0-night waypoint has no overnight stay). */}
-      {!isWaypoint && !(readOnly && hotels.length === 0) && (
+      {!isWaypoint && (
       <div className="col col--g4">
-        <SectionLabel color="var(--ev-hotel-ink)" action={(!readOnly && hotels.length > 0) ? <IconBtn icon="plus" tone="soft" size="sm" onClick={onAddHotel} ariaLabel={t('hotel.add')} /> : null}>
+        <SectionLabel color="var(--ev-hotel-ink)" action={hotels.length > 0 ? <IconBtn icon="plus" tone="soft" size="sm" onClick={onAddHotel} ariaLabel={t('hotel.add')} /> : null}>
           {t('budget.cat_accommodation')}{hotels.length > 0 ? ` · ${hotels.length}` : ''}
         </SectionLabel>
         {hotels.length === 0 ? (
@@ -179,9 +174,8 @@ export default function CityPanel({
       )}
 
       {/* activities */}
-      {!(readOnly && acts.length === 0) && (
       <div className="col col--g4">
-        <SectionLabel color="var(--ev-activity-ink)" action={(!readOnly && acts.length > 0) ? <IconBtn icon="plus" tone="soft" size="sm" onClick={onAddActivity} ariaLabel={t('activity.add')} /> : null}>
+        <SectionLabel color="var(--ev-activity-ink)" action={acts.length > 0 ? <IconBtn icon="plus" tone="soft" size="sm" onClick={onAddActivity} ariaLabel={t('activity.add')} /> : null}>
           {t('budget.source_activity')}{acts.length > 0 ? ` · ${acts.length}` : ''}
         </SectionLabel>
         {acts.map((a) => (
@@ -191,9 +185,8 @@ export default function CityPanel({
             warn={isActWarn ? isActWarn(a) : false}
             onClick={() => onOpenActivity(a.id)} />
         ))}
-        {!readOnly && <GhostAdd icon="ticket" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />}
+        <GhostAdd icon="ticket" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />
       </div>
-      )}
       </div>
       {/* Футер с ОДНОЙ кнопкой — это `lp-f--single`, существующий модификатор
           «одиночной модалки»: без него правило заливки (`> .btn { flex: 2 }`)

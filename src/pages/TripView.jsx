@@ -28,7 +28,6 @@ import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import EventDrawerHost from '@/components/common/EventDrawerHost';
-import CityPanel from '@/components/common/CityPanel';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { useStay22Bundle } from '@/lib/stay22';
@@ -853,11 +852,10 @@ export default function TripView() {
   // replacing the old ForkPartnerModal → EventEditDialog modal chain.
   const [bookingCreate, setBookingCreate] = useState({ open: false, kind: null, visit: null, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
-  // Просмотр города из read-поверхности (календарь) — read-only CityPanel в том же
-  // drawer, что и события. Открывается кликом по полосе города в календаре.
-  const [cityView, setCityView] = useState({ open: false, visit: null });
-  const openCityView = (visit) => { if (visit?.id) setCityView({ open: true, visit }); };
-  const closeCityView = () => setCityView(s => ({ ...s, open: false }));
+  // Клик по городу в календаре открывает ЕДИНУЮ панель города там, где она живёт —
+  // в лензе «Маршрут» (EditLens): переключаем секцию и передаём id города, чтобы
+  // EditLens открыл его своей штатной `openCity`. Никакой отдельной копии панели.
+  const [routeCityId, setRouteCityId] = useState(null);
   const openUpgrade = () => goPro(nav, { tripId });
   // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
 
@@ -893,6 +891,9 @@ export default function TripView() {
     setSearchParams(sp, { replace: false });
     // Событие открытия секции шлёт НЕ этот обработчик, а эффект ниже — см. там.
   };
+
+  // Клик по городу в календаре → «Маршрут» с открытой панелью этого города.
+  const openCityInRoute = (visit) => { if (visit?.id) { setRouteCityId(visit.id); setLens('route'); } };
 
   // Opening a service from the services widget — one distinct event per type.
   // Concrete names (for grep): esim_opened, insurance_opened, car_rental_opened.
@@ -953,9 +954,8 @@ export default function TripView() {
   // is resolved — createStay22 reads trip.details, so it must not run in the TDZ.
   const serviceViewOpen = eventView.open && eventView.kind === 'service';
   const eventDrawerOpen = eventView.open && !!eventView.kind && eventView.kind !== 'service';
-  // The global drawer hosts a booking-create panel, an event view/edit, OR a
-  // read-only city panel (from the calendar).
-  const drawerOpen = eventDrawerOpen || bookingCreate.open || cityView.open;
+  // The global drawer hosts EITHER a booking-create panel OR an event view/edit.
+  const drawerOpen = eventDrawerOpen || bookingCreate.open;
   const closeBookingCreate = () => setBookingCreate((s) => ({ ...s, open: false }));
   // Hotel "find" list bundle for the add-booking drawer (only when creating a
   // hotel — transfer/activity "find" tabs are partner chips, no Stay22 pool).
@@ -1213,49 +1213,13 @@ export default function TripView() {
   // остаются на модалке (выше). Создание открывается из ленты (onAddTransfer/
   // Hotel/Activity); просмотр/правка — из ленты/календаря (openEventView) и из
   // бюджета (onOpenSource, поднят сюда).
-  // Read-only city panel data — брони/переезды города собираем из уже
-  // загруженных массивов (city_visit_id / from|to_city_visit_id), номер стоянки
-  // — порядковый по transit-визитам. prev/next не нужны (ghost-«добавить» скрыты
-  // в readOnly). Считаем только когда панель открыта.
-  const cityPanel = (() => {
-    const v = cityView.visit;
-    if (!v?.id) return null;
-    const transit = visits.filter(x => x.kind === 'transit')
-      .sort((a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')));
-    const idx = transit.findIndex(x => x.id === v.id);
-    return {
-      cityNo: idx >= 0 ? idx + 1 : 1,
-      hotels: hotels.filter(h => h.city_visit_id === v.id),
-      acts: activities.filter(a => a.city_visit_id === v.id),
-      arrival: transfers.find(tr => tr.to_city_visit_id === v.id),
-      departure: transfers.find(tr => tr.from_city_visit_id === v.id),
-    };
-  })();
-
-  const closeDrawer = cityView.open ? closeCityView
-    : bookingCreate.open ? closeBookingCreate
-    : () => setEventView(s => ({ ...s, open: false }));
   const eventDrawer = (
     <EventDrawerHost
       open={drawerOpen}
-      onClose={closeDrawer}
+      onClose={bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
       scrim
     >
-      {cityView.open && cityPanel ? (
-        <CityPanel
-          readOnly
-          node={cityView.visit}
-          cityNo={cityPanel.cityNo}
-          hotels={cityPanel.hotels}
-          acts={cityPanel.acts}
-          arrival={cityPanel.arrival}
-          departure={cityPanel.departure}
-          onBack={closeCityView}
-          onOpenHotel={(id) => { closeCityView(); setEventView({ open: true, kind: 'hotel', id, warning: null }); }}
-          onOpenActivity={(id) => { closeCityView(); setEventView({ open: true, kind: 'activity', id, warning: null }); }}
-          onOpenTransfer={(tr) => { closeCityView(); setEventView({ open: true, kind: 'transfer', id: tr.id, warning: null }); }}
-        />
-      ) : bookingCreate.open ? (
+      {bookingCreate.open ? (
         <AddBookingPanel
           kind={bookingCreate.kind}
           tripId={tripId}
@@ -1533,7 +1497,7 @@ export default function TripView() {
               visits={visits}
               isLoading={shellLoading || loadingContent}
               onOpenEvent={openEventView}
-              onOpenCity={openCityView}
+              onOpenCity={openCityInRoute}
             />
           )}
           {shownLens === 'docs' && (
@@ -1575,7 +1539,7 @@ export default function TripView() {
               // фазе shell и в фазе content — не размонтируется, не прыгает (TRIP-337).
               ? <EditSkeleton />
               : editGate === 'ok'
-                ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
+                ? <EditLens tripId={tripId} shell={shellData} content={contentData} openCityId={routeCityId} onCityOpened={() => setRouteCityId(null)} />
                 : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
           )}
           {shownLens === 'settings' && (
