@@ -4900,6 +4900,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 .dlg--wide { max-width: 760px; }
 .dlg--sm { max-width: 420px; }
+/* Ступень «по содержимому» (share-UX, редактор карты по заданию Pavel): карточка
+   диалога обнимает контент с ОПРЕДЕЛЁННОЙ шириной (сцена карты считает её от
+   vh), а не растягивается на всю ширину обёртки .dlg-modal; margin-inline
+   центрирует внутри неё. На ≤640 не живёт — там такие поверхности идут шитом.
+   visual-diff-exempt: .dlg--fit width — новая ступень размера диалога (share-UX, апрув = прямое задание Pavel)
+   visual-diff-exempt: .dlg--fit margin-inline — новая ступень размера диалога (share-UX) */
+.dlg--fit { width: fit-content; margin-inline: auto; }
 .dlg__head {
   padding: 18px 22px;
   border-bottom: 1px solid var(--line);

@@ -339,7 +339,6 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
         </div>
         {/* data-vaul-no-drag: жесты карты не должны утаскивать сам шит */}
         <div className="lp-b sc-edit" data-vaul-no-drag>
-          <div className="muted t-body">{t('share.card_map_hint')}</div>
           {editorStage}
         </div>
         <div className="lp-f lp-f--single">
@@ -350,9 +349,8 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   ) : (
     <Dialog
       title={t('share.edit_map')}
-      subtitle={t('share.card_map_hint')}
       icon="map"
-      size="wide"
+      size="fit"
       open
       onOpenChange={(o) => { if (!o) closeEditor(); }}
       foot={<Btn variant="primary" icon="check" onClick={applyEditor}>{t('common.done')}</Btn>}

@@ -67,6 +67,9 @@
    visual-diff-exempt: .sc-body {@media (max-width: 640px)} grid-template-rows — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-body {@media (max-width: 640px)} grid-template-areas — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-body {@media (max-width: 640px)} --sc-max — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} flex — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-body {@media (max-width: 640px)} min-height — новый класс конструктора (share-UX)
+   visual-diff-exempt: .sc-stage {@media (max-width: 640px)} align-self — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-strip grid-area — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-strip min-width — новый класс конструктора (share-UX)
    visual-diff-exempt: .sc-stage grid-area — новый класс конструктора (share-UX)
@@ -148,7 +151,12 @@
 @media (max-width: 640px) {
   .sc-body {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
+    /* Первый ряд тянется (flex:1 от .lp-b): весь запас высоты достаётся
+       ПРЕВЬЮ, а карусель и управление прижимаются к футеру — между ними и
+       кнопками не остаётся дыры. */
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) auto auto;
     grid-template-areas:
       "stage"
       "strip"
@@ -156,8 +164,11 @@
     gap: var(--sp-6);
     /* Превью почти во весь экран: потолок = вьюпорт минус хром шита
        (шапка + карусель + управление + футер). */
-    --sc-max: calc(100dvh - 330px);
+    --sc-max: calc(100dvh - 285px);
   }
+  /* Внутри тянущегося ряда превью центрируется по вертикали (пост 4:5 ниже
+     сторис — остаток делится поровну, а не копится снизу). */
+  .sc-stage { align-self: center; }
   .sc-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-5); }
   /* Строки ошибок в мобильном РЯДУ управления переносятся на свою строку —
      иначе текст встаёт узкой колонкой рядом с кнопкой. В десктоп-колонке

@@ -96,7 +96,11 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     mapRef.current = map;
 
     let userMoved = false;
-    ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((e) => map.on(e, () => { userMoved = true; }));
+    // ★ Жест — только событие С originalEvent: mapbox шлёт zoomstart/movestart и
+    // на ПРОГРАММНОЕ движение (fitToPoints/jumpTo). Без проверки первый же
+    // авто-фит взводил userMoved, и синк камеры из редактора («Done») навсегда
+    // блокировался — превью карточки не обновлялось.
+    ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((e) => map.on(e, (ev) => { if (ev?.originalEvent) userMoved = true; }));
     // Пока пользователь не взялся за карту сам: с приехавшей камерой — держим её
     // (зум пересчитан под ширину ЭТОГО контейнера из previewCssWidth композиции),
     // без камеры — авто-фит по точкам маршрута.
