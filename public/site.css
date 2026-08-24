@@ -106,6 +106,7 @@ html.site {
 /* prefix-exempt: device — прототип v5.7 (TRIP-460, подход "как есть") */
 /* prefix-exempt: dic — прототип v5.7 (TRIP-460, подход "как есть") */
 /* prefix-exempt: dmeta — прототип v5.7 (TRIP-460, подход "как есть") */
+/* prefix-exempt: doc — чипы документов лендинга, срезаны с .doc* Terms/Privacy (ревью TRIP-460 п.3) */
 /* prefix-exempt: done — прототип v5.7 (TRIP-460, подход "как есть") */
 /* prefix-exempt: duo — прототип v5.7 (TRIP-460, подход "как есть") */
 /* prefix-exempt: dv — прототип v5.7 (TRIP-460, подход "как есть") */
@@ -416,6 +417,14 @@ section{position:relative}
 .lang-menu .code{font-size: var(--fs-tiny);font-weight:700;letter-spacing:.06em;color:var(--brand-deep);background:var(--ice);border-radius: var(--r-xs);padding:2px 6px;min-width:32px;text-align:center}
 
 
+
+/* site-dup-exempt: btn — база геометрии кнопки прототипа. Прежнее решение «зона
+   не объявляет базу, только вариант» было НЕВЕРНО (ревью TRIP-460, п.1): объект
+   не один — у app-кнопки другой радиус/паддинг/кегль/gap. Пилюля прототипа =
+   99px + padding 13px 24px + gap 9px; вариант .btn-primary/.btn-ghost нёс только
+   цвет, вся геометрия оставалась в невзятой app-базе. site.css грузится после
+   app.css → эта база выигрывает и даёт кнопку прототипа. */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 24px;border-radius:99px;font-weight:600;font-size: var(--fs-body-lg);transition:transform .2s var(--ease-out),box-shadow .25s,background .2s;min-height:46px}
 
 .btn:active{transform:scale(.97)}
 
@@ -1227,6 +1236,14 @@ section{position:relative}
 
 .b-docs{grid-column:span 4}
 
+/* Чипы документов бенто-тайла (ревью TRIP-460, п.3): два правила прототипа были
+   срезаны вместе с блоком Terms/Privacy — вырезка шла по префиксу `.doc*` и
+   захватила правила ЛЕНДИНГА. Без них `.doc-chip` — инлайн-span, а глобальное
+   `svg{display:block}` выносило иконку на строку выше имени файла. */
+.doc-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+
+.doc-chip{display:flex;align-items:center;gap:7px;font-size: var(--fs-caption);font-weight:600;background:var(--mist);border:1px solid rgba(11,44,84,.08);border-radius:99px;padding:7px 13px}
+
 @media (max-width:980px){
   .b-map{grid-column:span 12}
   .b-status,.b-budget{grid-column:span 6}
@@ -1258,6 +1275,14 @@ section{position:relative}
 .bud-sum small{font-size: var(--fs-small);font-weight:500;color:var(--muted);font-family:var(--font-body)}
 
 .bud-bars{display:grid;gap:9px;margin-top:12px}
+
+/* site-dup-exempt: bud-bar — восьмая коллизия имён (ревью TRIP-460, п.2). В
+   app.css:6269 `.bud-bar` — САМА полоска (height:11px;display:flex;overflow:hidden;
+   margin:12px 0 14px), в прототипе `.bud-bar` — КОНТЕЙНЕР СТРОКИ (метка над треком).
+   Без своей базы app-правило сплющивало строку: .lbl 76×7 вместо 326×20, .track
+   width:0. Прототип базы `.bud-bar` не объявляет (обычный блок) — возвращаем блок,
+   снимая flex/height/overflow/фон/радиус/margin приложения. */
+.bud-bar{display:block;height:auto;overflow:visible;margin:0;background:none;border-radius:0}
 
 .bud-bar .lbl{display:flex;justify-content:space-between;font-size: var(--fs-small);color:var(--muted);margin-bottom:4px}
 
@@ -1665,12 +1690,11 @@ section{position:relative}
    FINAL + FOOTER (dark sheet)
 ============================================================ */
 .final{
-  /* Скрим первым слоем — белый текст на сыром градиенте держал 1.83–3.03:1
-     (закатная семья прототипа, ниже AA везде; ревью TRIP-460, контраст).
-     rgba(20,10,5,.42) поверх каждой из трёх точек градиента даёт 4.68/5.64/6.81 —
-     оттенок и форма прототипа не меняются, только глубина. */
+  /* Яркий закатный градиент прототипа — БЕЗ секционного скрима (ревью TRIP-460
+     п.4: заливка rgba(20,10,5,.42) ради AA превращала закат в грязь, диф 98%).
+     Контраст держат сами элементы: заголовок — крупный (порог AA 3:1), кнопка
+     .btn-light — тёмный текст на белом фоне (пара), подзаголовок — .92 белого. */
   background:
-    linear-gradient(rgba(20,10,5,.42),rgba(20,10,5,.42)),
     radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
     linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);
   color:#fff;text-align:center;overflow:hidden;
