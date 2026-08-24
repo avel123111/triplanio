@@ -19,6 +19,7 @@ export default function ConfirmDialog({
   onOpenChange,
   title,
   description,
+  content, // rich body node (e.g. <EmptyState/>) — replaces title/description block
   confirmLabel,
   cancelLabel,
   variant = 'default', // 'default' | 'destructive'
@@ -37,15 +38,18 @@ export default function ConfirmDialog({
   // sheet changes centrally. Desktop keeps the centred AlertDialog.
   if (isPhone) {
     return (
-      <Sheet open={open} onOpenChange={onOpenChange} title={title} titleText={title || finalConfirmLabel}>
-        {description && (
+      // With a rich `content` node the body carries its own heading (EmptyState),
+      // so the sheet skips its visible title bar to avoid a duplicate — the
+      // accessible name still rides `titleText` (sr-only Drawer.Title).
+      <Sheet open={open} onOpenChange={onOpenChange} title={content ? undefined : title} titleText={title || finalConfirmLabel}>
+        {content || (description && (
           <p
             className="muted t-body"
             style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
           >
             {description}
           </p>
-        )}
+        ))}
         <div className="dlg__foot" style={{ border: 'none', background: 'none', padding: '14px 0 4px' }}>
           {!singleButton && (
             <Btn variant="secondary" disabled={busy} style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenChange?.(false)}>
@@ -72,14 +76,24 @@ export default function ConfirmDialog({
           for the braces: CI guard 2ab forbids a title/description-less confirm at
           the call site, so in practice `description` is always present. */}
       <AlertDialogContent {...(description ? {} : { 'aria-describedby': undefined })}>
-        <AlertDialogHeader>
-          {title && <AlertDialogTitle>{title}</AlertDialogTitle>}
-          {description && (
-            <AlertDialogDescription className="whitespace-pre-wrap break-words">
-              {description}
-            </AlertDialogDescription>
-          )}
-        </AlertDialogHeader>
+        {content ? (
+          // Rich body (EmptyState) carries its own visible heading AND its own
+          // padding, so it sits straight in the card (no .dlg__body, which would
+          // double the padding). Radix still needs a Title for a11y → sr-only one.
+          <>
+            <AlertDialogTitle className="sr-only">{title || finalConfirmLabel}</AlertDialogTitle>
+            {content}
+          </>
+        ) : (
+          <AlertDialogHeader>
+            {title && <AlertDialogTitle>{title}</AlertDialogTitle>}
+            {description && (
+              <AlertDialogDescription className="whitespace-pre-wrap break-words">
+                {description}
+              </AlertDialogDescription>
+            )}
+          </AlertDialogHeader>
+        )}
         <AlertDialogFooter>
           {!singleButton && <AlertDialogCancel disabled={busy}>{finalCancelLabel}</AlertDialogCancel>}
           {asyncMode ? (
