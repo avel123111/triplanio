@@ -1748,13 +1748,10 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 /* Map lens (TRIP-33): full-bleed map with a floating glass route panel. The
    panel (.map-route) is positioned absolutely over the map; its own block and
    the ≤640px bottom-sheet variant live in the PRIMITIVES section below. */
-.app-main {
-  padding: 22px 24px 80px;
-  min-height: calc(100vh - 56px - 45px);
-  overflow-x: clip;
-  min-width: 0;
-  max-width: 100%;
-}
+/* `.app-main` (+ его @media-варианты) — класс МОКАПА старого лендинга (dev), а не
+   оболочки приложения: на dev литерал `className="app-main"` жил только в старом
+   LandingPage.jsx. TRIP-460 переписал лендинг на прототип и снёс мокап — правило
+   осиротело, удалено вместе с разметкой (гард 2n; ср. `.app-main__*` ниже). */
 
 /* =================================================================
    PRIMITIVES — buttons, fields, badges, cards
