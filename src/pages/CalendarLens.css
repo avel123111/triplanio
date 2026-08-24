@@ -15,6 +15,15 @@
    floor-exempt: layout +15 — приватная раскладка календаря (сетка/тайм-грид/слой имён); апрув Pavel
    floor-exempt: dsshare +18 — сетка календаря структурно div-тяжёлая; −0.18% доли ДС; апрув Pavel */
 
+/* ── Семантик-2p: миграция экранных классов календаря на каноны ДС.
+   Облик сохранён — старые классы уехали на новые примитивы (проверено рендером
+   обеих тем). Переносы (значения на цели те же):
+   visual-diff-move: ncal-ev -> evchip--inline
+   visual-diff-move: ncal-chip -> evchip--allday
+   visual-diff-move: ncal-tev -> evchip--block
+   visual-diff-move: ncal-daytop-s -> citybar
+   visual-diff-move: ncal-wk-cseg -> citybar--strip */
+
 /* Календарь реагирует на СВОЮ ширину (контейнер), а не на ширину окна —
    он рендерится в узком мобильном фрейме приложения, поэтому оконные @media
    врали. Все адаптивные правила ниже — @container ncal. */
