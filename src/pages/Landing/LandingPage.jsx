@@ -293,7 +293,7 @@ function Pain() {
   const t = useT();
   const html = (key) => ({ dangerouslySetInnerHTML: { __html: t(key) } });
   return (
-    <section className="pain sheet section-pad" data-hdr="light" id="how">
+    <section className="pain section--sheet section-pad" data-hdr="light" id="how">
       <div className="container">
         <div className="pain-pin"><div className="pain-pin-inner">
           <div className="section-head rv">

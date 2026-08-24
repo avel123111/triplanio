@@ -49,6 +49,11 @@ html.site {
      те же имена токенов на html.site (Geologica приложения зону не задевает). */
   --font-display: 'Onest', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Зона владеет своим слоем шрифт-токенов ЦЕЛИКОМ (ревью TRIP-460): app.css :root
+     держит --font-ui: Geologica, и всё, что канон .t-* типографирует по co-селектору
+     (.btn/.footer/.nav/.eyebrow/.lede), приезжало в зону гарнитурой приложения.
+     UI/подписи зоны = body-гарнитура (Golos). */
+  --font-ui: var(--font-body);
   --display-tracking: -0.022em;
   --h1-tracking: -0.035em;
 
@@ -83,6 +88,7 @@ html.site {
      на самой секции. */
   --fs-hero-h1: clamp(2.55rem, 1.45rem + 3.9vw, 3.9rem);   /* 62px @1440, пол 40.8 */
   --fs-hero-sub: clamp(1rem, .94rem + .35vw, 1.11rem);
+  --fs-section-h2: clamp(1.85rem, 1.2rem + 2.7vw, 2.9rem); /* 46px @1440 — секционные h2 (§2) */
 
   /* Мелкая типографика мокап-секций зоны (TRIP-460 §2). Гард типографики требует
      размеры токеном, не сырым font-size; шкала = значения прототипа v5.7 (rem×100).
@@ -173,7 +179,7 @@ h1 {
   font-weight: 700;
 }
 h2 {
-  font-size: var(--fs-h1);        /* канон .t-title — секционные */
+  font-size: var(--fs-section-h2); /* прототип v5.7 — секционные h2 46px (§2), не app --fs-h1 (~24) */
   line-height: 1.08;
   letter-spacing: var(--display-tracking);
 }
@@ -507,8 +513,12 @@ h3 {
    пространства имён под гардом 2ac — апрув в prefix-exempt рядом. */
 /* prefix-exempt: section — примитивы раскладки лендинга v5.7 (TRIP-460 §2) */
 .section-pad{padding:clamp(68px,7.5vw,104px) 0}
-/* prefix-exempt: sheet — примитив «белый лист» лендинга v5.7 (TRIP-460 §2) */
-.sheet{border-radius:var(--sheet-r) var(--sheet-r) 0 0;margin-top:calc(var(--sheet-r)*-1);position:relative;z-index:3}
+/* Примитив «белый лист» зоны. Имя .section--sheet, а НЕ .sheet: app.css:7165
+   объявляет .sheet правилом-одиночкой (мобильная шторка, position:fixed;
+   max-height:86vh; display:flex) — общее имя протаскивало 86vh-высоту шторки в
+   каждую секцию зоны (ревью TRIP-460). Разные объекты → зона берёт своё имя,
+   в существующей семье .section-- (как .section--wash/--tight были). */
+.section--sheet{border-radius:var(--sheet-r) var(--sheet-r) 0 0;margin-top:calc(var(--sheet-r)*-1);position:relative;z-index:3}
 .section-head{max-width:660px;margin-bottom:clamp(34px,4vw,52px)}
 .section-head h2{margin:14px 0 14px}
 

@@ -2,10 +2,10 @@ import React from 'react';
 
 /* =========================================================
    LandingSprite — the v5.7 prototype's icon sprite (TRIP-460).
-   An off-canvas <svg><defs> carrying every <symbol> the landing sections
-   reference through <use href="#id">. Rendered ONCE at the top of the page so
-   the symbols resolve everywhere below. Verbatim from the prototype sprite,
-   HTML attributes converted to JSX (stroke-width → strokeWidth, …). The brand
+   An off-canvas SVG defs block carrying every symbol id the landing sections
+   reference through use-href. Rendered ONCE at the top of the page so the
+   symbols resolve everywhere below. Verbatim from the prototype sprite,
+   HTML attributes converted to JSX (stroke-width to strokeWidth, …). The brand
    colours live inside the marks (currentColor / fixed logo fills); no external
    assets, no hotlinks.
 ========================================================= */
