@@ -1,84 +1,119 @@
-import React, {
-  useState,
-  useEffect,
-} from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
-import { Icon as BaseIcon } from '@/design/icons';
-import { SiteHeader, SiteFooter, useSiteCss } from '@/components/site/SiteChrome';
+import {
+  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+} from '@/components/site/SiteChrome';
 
 /* =========================================================
-   Landing page - ported from triplanio_landing static site.
-   Marketing header/footer + the /site.css lifecycle now live in
-   the shared @/components/site/SiteChrome module (reused by the public
-   shared-trip page). This file owns only the landing's own sections.
+   Landing page — ported from the v5.7 prototype (TRIP-460).
+   Marketing header/footer + the /site.css lifecycle live in the shared
+   @/components/site/SiteChrome module (reused by the public shared-trip page).
+   This file owns only the landing's own sections, which are being ported one
+   at a time. Section CSS lives in public/site.css under "Landing body".
 ========================================================= */
 
 const APP_URL = '/login';
 
-/* ── i18n ── (translations live in src/lib/i18n/locales/{en,ru,es}/landing.js)
-   All keys are prefixed with “landing.” in the central store.
-   useT() and useI18n() are imported from the central I18nContext above.
-*/
+/**
+ * Hero three-layer photo composite (TRIP-460 §10). The DESKTOP hero is a single
+ * flat-lay photo fitted BY HEIGHT so the phone in it holds ~62% of the viewport
+ * height on any monitor; a hover over the phone cross-fades to the "screen on"
+ * frame. All of that geometry is measured off the fixed desktop frames
+ * (desk-flatlay / desk-app, 3400×1914) and lives in the `FRAME` data object —
+ * those images do not change. The MOBILE frame (the one Pavel swaps later) is a
+ * plain CSS `cover` layer with NO JS geometry, so replacing /site/hero-mobile.webp
+ * never touches FRAME. Runs only once the site CSS is in (the .hero nodes exist).
+ */
+function useHeroFrame(ready) {
+  useEffect(() => {
+    if (!ready) return undefined;
+    const hero = document.querySelector('.hero');
+    if (!hero) return undefined;
+    const bg = hero.querySelector('.hero-bg');
+    const la = hero.querySelector('.hero-layer.hero-la');
+    const lb = hero.querySelector('.hero-layer.hero-lb');
+    const hot = hero.querySelector('.hero-hot');
+    if (!bg || !la || !lb || !hot) return undefined;
 
-// Иконки лендинга идут через единый набор (@/design/icons → lucide + бренд).
-// Тонкая обёртка сохраняет дефолтный размер 20 этого экрана.
-const Icon = (props) => <BaseIcon size={20} {...props} />;
+    // Phone measured off the 3400×1914 frame (x 1461..1957, y 365..1485):
+    // cx/cy = phone centre in frame fractions; box = its extent for the hot zone.
+    const FRAME = { ar: 3400 / 1914, zoom: 1.08, cx: 0.5026, cy: 0.4833, box: [0.4297, 0.1907, 0.5756, 0.7759] };
+    const A = FRAME, B = FRAME;
+    const TX = 0.68, TY = 0.452; // where the phone centre lands inside the viewport
+    const mq = window.matchMedia('(max-width:980px)');
 
-/* ── Hero ── */
-function HeroMockup() {
-  const t = useT();
-  return (
-    <div className="app-frame" role="img" aria-label={t('landing.mockup.trip_title')}>
-      <div className="app-frame__bar">
-        <span className="dot dot--r"/><span className="dot dot--y"/><span className="dot dot--g"/>
-        <span className="url">triplanio.com / iberia-summer-26</span>
-      </div>
-      <div className="app-frame__body">
-        <aside className="app-sidebar" aria-hidden="true">
-          <div className="app-sidebar__group">{t('landing.mockup.trips')}</div>
-          <div className="app-sidebar__item is-active"><span className="swatch swatch--lisbon"/>{t('landing.mockup.trip_title')}</div>
-          <div className="app-sidebar__item"><span className="swatch" style={{background:'#8693a8'}}/>{t('landing.mockup.other_trip_1')}</div>
-          <div className="app-sidebar__item"><span className="swatch" style={{background:'#8693a8'}}/>{t('landing.mockup.other_trip_2')}</div>
-          <div className="app-sidebar__group">{t('landing.mockup.this_trip')}</div>
-          <div className="app-sidebar__item"><span className="swatch swatch--lisbon"/>{t('landing.mockup.nights_4')}</div>
-          <div className="app-sidebar__item"><span className="swatch swatch--porto"/>{t('landing.mockup.nights_2')}</div>
-          <div className="app-sidebar__item"><span className="swatch swatch--bcn"/>{t('landing.mockup.nights_5')}</div>
-        </aside>
-        <div className="app-main">
-          <div className="app-main__head">
-            <div>
-              <div className="app-main__title">{t('landing.mockup.trip_title')}</div>
-              <div className="app-main__subtitle">{t('landing.mockup.subtitle')}</div>
-            </div>
-            <div className="app-tabs" aria-hidden="true">
-              <span className="app-tab is-active">{t('landing.mockup.tab_timeline')}</span>
-              <span className="app-tab">{t('landing.mockup.tab_calendar')}</span>
-              <span className="app-tab">{t('landing.mockup.tab_map')}</span>
-            </div>
-          </div>
-          <div className="tl">
-            <div className="tl__day" data-day={t('landing.mockup.day1')}>
-              <div className="tl-card"><span className="icon"><Icon name="plane"/></span><span><strong>LHR → LIS</strong> · British Airways 503</span><span className="tag">{t('landing.mockup.tag_flight')}</span><span className="meta">10:25</span></div>
-              <div className="tl-card"><span className="icon"><Icon name="bed"/></span><span><strong>Memmo Alfama</strong> · {t('landing.mockup.checkin')}</span><span className="tag tag--green">{t('landing.mockup.tag_hotel')}</span><span className="meta">15:00</span></div>
-            </div>
-            <div className="tl__day tl__day--accent" data-day={t('landing.mockup.day2')}>
-              <div className="tl-card"><span className="icon"><Icon name="ticket"/></span><span><strong>Tram 28</strong> · Alfama loop</span><span className="tag tag--warm">{t('landing.mockup.tag_activity')}</span><span className="meta">10:00</span></div>
-              <div className="tl-card"><span className="icon"><Icon name="ticket"/></span><span><strong>Pastéis de Belém</strong> · pastry crawl</span><span className="tag tag--warm">{t('landing.mockup.tag_activity')}</span><span className="meta">15:30</span></div>
-            </div>
-            <div className="tl__day tl__day--green" data-day={t('landing.mockup.day3')}>
-              <div className="tl-card"><span className="icon"><Icon name="train"/></span><span><strong>Lisbon → Porto</strong> · Alfa Pendular</span><span className="tag">{t('landing.mockup.tag_transfer')}</span><span className="meta">08:39</span></div>
-              <div className="tl-card"><span className="icon"><Icon name="bed"/></span><span><strong>Torel Avantgarde</strong> · {t('landing.mockup.checkin')}</span><span className="tag tag--green">{t('landing.mockup.tag_hotel')}</span><span className="meta">14:00</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    const apply = (el, w, h, l, t) => {
+      el.style.backgroundSize = `${w.toFixed(1)}px ${h.toFixed(1)}px`;
+      el.style.backgroundPosition = `${l.toFixed(1)}px ${t.toFixed(1)}px`;
+      // Dissolve a leftover top/left margin into the blurred fill behind it.
+      let m = '';
+      if (t > 2) {
+        const fv = Math.min(200, Math.max(110, t));
+        m = `linear-gradient(180deg,rgba(0,0,0,0) ${t.toFixed(0)}px,rgba(0,0,0,1) ${(t + fv).toFixed(0)}px)`;
+      } else if (l > 2) {
+        const fh = Math.min(220, Math.max(90, l));
+        m = `linear-gradient(90deg,rgba(0,0,0,0) ${l.toFixed(0)}px,rgba(0,0,0,1) ${(l + fh).toFixed(0)}px)`;
+      }
+      el.style.webkitMaskImage = m;
+      el.style.maskImage = m;
+    };
+
+    const place = () => {
+      const mob = mq.matches;
+      hero.classList.toggle('is-mob', mob);
+      if (mob) {
+        // Mobile: the photo is a plain CSS cover — strip any desktop geometry.
+        [la, lb].forEach((el) => {
+          el.style.backgroundSize = '';
+          el.style.backgroundPosition = '';
+          el.style.webkitMaskImage = '';
+          el.style.maskImage = '';
+        });
+        hot.style.display = 'none';
+        hero.classList.remove('is-zoom');
+        return;
+      }
+      const cw = bg.clientWidth, ch = bg.clientHeight;
+      if (!cw || !ch) return;
+      const fit = (el, c) => {
+        const h = ch * c.zoom, w = h * c.ar;
+        const l = cw * TX - w * c.cx;
+        const t = ch * TY - h * c.cy;
+        apply(el, w, h, l, t);
+        return { w, h, l, t };
+      };
+      const g = fit(la, A);
+      fit(lb, B);
+      const b = A.box;
+      hot.style.display = 'block';
+      hot.style.left = `${(g.l + g.w * b[0]).toFixed(1)}px`;
+      hot.style.top = `${(g.t + g.h * b[1]).toFixed(1)}px`;
+      hot.style.width = `${(g.w * (b[2] - b[0])).toFixed(1)}px`;
+      hot.style.height = `${(g.h * (b[3] - b[1])).toFixed(1)}px`;
+    };
+
+    const onEnter = () => { if (!mq.matches) hero.classList.add('is-zoom'); };
+    const onLeave = () => hero.classList.remove('is-zoom');
+    hot.addEventListener('pointerenter', onEnter);
+    hot.addEventListener('pointerleave', onLeave);
+    place();
+    window.addEventListener('resize', place, { passive: true });
+    window.addEventListener('orientationchange', place);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+
+    return () => {
+      hot.removeEventListener('pointerenter', onEnter);
+      hot.removeEventListener('pointerleave', onLeave);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('orientationchange', place);
+    };
+  }, [ready]);
 }
 
+/* ── Hero ── */
 function Hero() {
   const t = useT();
   const nav = useNavigate();
@@ -88,565 +123,51 @@ function Hero() {
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   return (
     <section className="hero" id="top" data-hdr="light">
-      <div className="container">
-        <div className="hero__grid">
-          <div className="hero__copy reveal">
-            <h1>{t('landing.hero.h1_a')}<span className="break"><span className="accent">{t('landing.hero.h1_b_accent')}</span> {t('landing.hero.h1_c')}</span></h1>
-            <p className="hero__lede">{t('landing.hero.lede')}</p>
-            <div className="hero__ctas">
-              <button className="btn btn--primary btn--lg" onClick={() => { track('cta_clicked', { location: 'hero' }); nav(ctaTarget); }}>{t('landing.hero.cta_primary')} <Icon name="arrowRight" size={16} className="chev"/></button>
-              <a className="btn btn--ghost btn--lg" href="#how">{t('landing.hero.cta_secondary')}</a>
-            </div>
-            <div className="hero__trust">
-              <span>{t('landing.hero.trust_free')}</span><span className="dot"/><span>{t('landing.hero.trust_no_card')}</span><span className="dot"/><span>{t('landing.hero.trust_languages')}</span>
-            </div>
-          </div>
-          <div className="hero__visual reveal" style={{transitionDelay:'120ms'}}>
-            <HeroMockup/>
-            <div className="float float--budget" aria-hidden="true">
-              <div className="t-micro" style={{color:'var(--muted)'}}>{t('landing.float.trip_budget')}</div>
-              <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:4}}>
-                <strong className="t-heading" style={{fontVariantNumeric:'tabular-nums'}}>€4,820</strong>
-                <span style={{fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>· $5,210 · ₽491k</span>
-              </div>
-            </div>
-            <div className="float float--chat" aria-hidden="true">
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span className="t-micro" style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg, var(--brand), #5b8fff)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>AI</span>
-                <div className="t-meta">
-                  <div>{t('landing.float.leave_at_title')}</div>
-                  <div style={{color:'var(--muted)',fontSize: 'var(--fs-micro)'}}>{t('landing.float.leave_at_sub')}</div>
-                </div>
-              </div>
-            </div>
-            <div className="float float--pins" aria-hidden="true">
-              <div className="t-micro" style={{display:'flex',alignItems:'center',gap:6,textTransform:'none'}}>
-                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--brand)'}}/>{t('landing.city.lisbon')}
-                <span style={{width:14,height:1,background:'var(--line)'}}/>
-                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--warm)'}}/>{t('landing.city.porto')}
-                <span style={{width:14,height:1,background:'var(--line)'}}/>
-                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--success)'}}/>{t('landing.city.barcelona')}
-              </div>
-            </div>
+      <div className="hero-bg" aria-hidden="true">
+        <div className="hero-fill" />
+        <div className="hero-layer hero-la" />
+        <div className="hero-layer hero-lb" />
+      </div>
+      <div className="hero-scrim" aria-hidden="true" />
+      <div className="hero-hot" aria-hidden="true" />
+      <div className="container hero-grid">
+        <div className="hero-copy">
+          <h1>
+            <span className="hero-line hero-anim">{t('landing.hero.h1a')}</span>
+            <span className="hero-line hero-grad hero-anim">{t('landing.hero.h1b')}</span>
+          </h1>
+          {/* hero.sub carries a <br> line break — rendered as HTML like the prototype. */}
+          <p className="hero-sub hero-anim" dangerouslySetInnerHTML={{ __html: t('landing.hero.sub') }} />
+          <div className="hero-ctas hero-anim">
+            <button className="btn btn--primary" onClick={() => { track('cta_clicked', { location: 'hero' }); nav(ctaTarget); }}>
+              {t('landing.hero.cta1')}
+            </button>
+            <button className="btn btn--ghost" onClick={() => nav(ctaTarget)}>
+              {t('landing.hero.cta2')}
+            </button>
           </div>
         </div>
       </div>
     </section>
   );
-}
-
-/* ── Problem ── */
-function Problem() {
-  const t = useT();
-  return (
-    <section className="section section--wash">
-      <div className="container">
-        <div className="problem reveal">
-          <div>
-            <span className="eyebrow">{t('landing.problem.eyebrow')}</span>
-            <h2 style={{marginTop:16}}>{t('landing.problem.h2_a')}<br/>{t('landing.problem.h2_b')}</h2>
-            <p className="lede" style={{marginTop:18}}>{t('landing.problem.lede')}</p>
-          </div>
-          <div className="collage" aria-hidden="true">
-            <div className="collage__card collage__card--mail">
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-                <span style={{width:8,height:8,borderRadius:2,background:'#ea4335'}}/>
-                <span className="t-micro" style={{color:'var(--muted)'}}>{t('landing.problem.inbox')}</span>
-              </div>
-              {[['B',t('landing.problem.mail1_from'),t('landing.problem.mail1_subj')],['BA',t('landing.problem.mail2_from'),t('landing.problem.mail2_subj')],['CP',t('landing.problem.mail3_from'),t('landing.problem.mail3_subj')]].map(([av,from,subj]) => (
-                <div className="mailrow" key={from}>
-                  <span className="avatar">{av}</span>
-                  <div className="lines"><div className="from">{from}</div><div className="subj">{subj}</div></div>
-                </div>
-              ))}
-            </div>
-            <div className="collage__card collage__card--notes">
-              <div className="t-label" style={{marginBottom:8}}>{t('landing.problem.notes_title')}</div>
-              <div className="t-body" style={{color:'#7c6b3a'}} dangerouslySetInnerHTML={{__html:t('landing.problem.notes_body_html')}}/>
-            </div>
-            <div className="collage__card collage__card--tabs">
-              <div className="tabstrip">
-                {[t('landing.problem.tab1'),t('landing.problem.tab2'),t('landing.problem.tab3'),t('landing.problem.tab4')].map(tab => <span className="t" key={tab}>{tab}</span>)}
-              </div>
-              <div className="tabsbody">{t('landing.problem.tabs_body')}</div>
-            </div>
-          </div>
-        </div>
-        <p className="problem__handoff reveal">{t('landing.problem.handoff')}</p>
-      </div>
-    </section>
-  );
-}
-
-/* ── Features ── */
-function BudgetMini() {
-  const t = useT();
-  const rows = [
-    {k:'landing.mini.hotels',pct:42,amt:'€2,025',ccy:'$2,190',color:'#2167e2'},
-    {k:'landing.mini.flights',pct:28,amt:'€1,350',ccy:'$1,460',color:'#5b8fff'},
-    {k:'landing.mini.activities',pct:18,amt:'€868',ccy:'$938',color:'#c9603a'},
-    {k:'landing.mini.food',pct:12,amt:'€577',ccy:'$624',color:'#1f8a5b'},
-  ];
-  return (
-    <div className="budget" style={{padding:0}}>
-      <div className="budget__total" style={{marginBottom:12}}>
-        <span className="big" style={{fontSize: 'var(--fs-h2)'}}>€4,820</span>
-        <span className="delta">{t('landing.mini.under')}</span>
-      </div>
-      <div className="budget__bar" style={{marginBottom:12}}>
-        {rows.map(r => <i key={r.k} style={{width:`${r.pct}%`,background:r.color}}/>)}
-      </div>
-      <div className="budget__rows">
-        {rows.map(r => (
-          <div className="budget__row" key={r.k}>
-            <span className="sw" style={{background:r.color}}/><span>{t(r.k)}</span>
-            <span className="amt">{r.amt}</span><span className="ccy">{r.ccy}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Features() {
-  const t = useT();
-  const FEATURES = [
-    {icon:'timeline',titleKey:'landing.f.timeline.title',bodyKey:'landing.f.timeline.body'},
-    {icon:'users',titleKey:'landing.f.together.title',bodyKey:'landing.f.together.body'},
-    {icon:'sparkles',titleKey:'landing.f.ai.title',bodyKey:'landing.f.ai.body',warm:true},
-    {icon:'telegram',titleKey:'landing.f.concierge.title',bodyKey:'landing.f.concierge.body'},
-    {icon:'wallet',titleKey:'landing.f.budget.title',bodyKey:'landing.f.budget.body',wide:true},
-  ];
-  return (
-    <section className="section" id="features">
-      <div className="container">
-        <div className="section__head reveal">
-          <span className="eyebrow">{t('landing.features.eyebrow')}</span>
-          <h2>{t('landing.features.h2')}</h2>
-          <p className="lede" style={{margin:'14px auto 0'}}>{t('landing.features.lede')}</p>
-        </div>
-        <div className="features">
-          {FEATURES.map(f => (
-            <article className={`card reveal ${f.wide?'card--wide':''}`} key={f.titleKey}>
-              <div>
-                <span className={`card__icon ${f.warm?'card__icon--warm':''}`}><Icon name={f.icon} size={22}/></span>
-                <h3>{t(f.titleKey)}</h3>
-                <p>{t(f.bodyKey)}</p>
-              </div>
-              {f.wide && <div className="preview" aria-hidden="true"><BudgetMini/></div>}
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── How It Works ── */
-function StepThumb({ kind }) {
-  const t = useT();
-  if (kind === 'create') return (
-    <div className="step__thumb" aria-hidden="true">
-      <div className="t-micro" style={{color:'var(--muted)',marginBottom:8}}>{t('landing.thumb.new_trip')}</div>
-      <div style={{display:'grid',gap:8}}>
-        <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)',color:'var(--ink)'}}>
-          <span style={{color:'var(--muted)',marginRight:8}}>{t('landing.thumb.where')}</span>{t('landing.city.lisbon')} · {t('landing.city.porto')} · {t('landing.city.barcelona')}
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)'}}><span style={{color:'var(--muted)',marginRight:6}}>{t('landing.thumb.from')}</span>{t('landing.thumb.from_date')}</div>
-          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)'}}><span style={{color:'var(--muted)',marginRight:6}}>{t('landing.thumb.to')}</span>{t('landing.thumb.to_date')}</div>
-        </div>
-        <div style={{display:'flex',gap:6,fontSize: 'var(--fs-micro)'}}>
-          <span className="t-micro" style={{background:'rgba(33,103,226,.08)',color:'var(--brand)',padding:'3px 10px',borderRadius:999,textTransform:'none'}}>{t('landing.thumb.organizer')}</span>
-          <span className="t-micro" style={{background:'var(--wash)',color:'var(--muted)',padding:'3px 10px',borderRadius:999,textTransform:'none'}}>{t('landing.thumb.travelers')}</span>
-        </div>
-      </div>
-    </div>
-  );
-  if (kind === 'ai') return (
-    <div className="step__thumb" aria-hidden="true">
-      <div className="t-micro" style={{color:'var(--muted)',marginBottom:8}}>{t('landing.thumb.ai_planner')}</div>
-      <div className="t-body" style={{background:'var(--wash)',borderRadius:8,padding:'10px 12px',color:'var(--ink-2)'}}>{t('landing.thumb.ai_prompt')}</div>
-      <div style={{display:'grid',gap:6,marginTop:10}}>
-        {['landing.thumb.ai_result_1','landing.thumb.ai_result_2','landing.thumb.ai_result_3'].map(k => (
-          <div key={k} style={{fontSize: 'var(--fs-meta)',padding:'8px 10px',background:'#fff',border:'1px solid var(--line)',borderRadius:8,display:'flex',alignItems:'center',gap:8}}>
-            <span style={{width:6,height:6,borderRadius:'50%',background:'var(--brand)'}}/>{t(k)}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-  return (
-    <div className="step__thumb" aria-hidden="true">
-      <div className="t-micro" style={{color:'var(--muted)',marginBottom:8}}>{t('landing.thumb.day_of_travel')}</div>
-      <div style={{display:'grid',gap:8}}>
-        <div style={{display:'flex',alignItems:'center',gap:8,fontSize: 'var(--fs-meta)'}}>
-          <span className="t-micro" style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg, var(--brand), #5b8fff)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>AI</span>
-          <div style={{background:'#eef2f9',padding:'8px 10px',borderRadius:10,borderBottomLeftRadius:4}}>{t('landing.thumb.cancel_msg')}</div>
-        </div>
-        <div style={{alignSelf:'flex-end',background:'var(--brand)',color:'#fff',padding:'8px 10px',borderRadius:10,borderBottomRightRadius:4,fontSize: 'var(--fs-meta)',maxWidth:'80%'}}>{t('landing.thumb.confirm')}</div>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>
-          <span style={{width:6,height:6,borderRadius:50,background:'var(--success)'}}/>{t('landing.thumb.confirmed')}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HowItWorks() {
-  const t = useT();
-  const steps = [
-    {num:'1',kind:'create',titleKey:'landing.how.s1.title',bodyKey:'landing.how.s1.body'},
-    {num:'2',kind:'ai',titleKey:'landing.how.s2.title',bodyKey:'landing.how.s2.body'},
-    {num:'3',kind:'travel',titleKey:'landing.how.s3.title',bodyKey:'landing.how.s3.body'},
-  ];
-  return (
-    <section className="section" id="how">
-      <div className="container">
-        <div className="section__head reveal" style={{marginBottom:64}}>
-          <span className="eyebrow">{t('landing.how.eyebrow')}</span>
-          <h2>{t('landing.how.h2')}</h2>
-        </div>
-        <div className="steps">
-          {steps.map((s,i) => (
-            <div className="step reveal" key={s.num} style={{transitionDelay:`${i*80}ms`}}>
-              <span className="step__num">{s.num}</span>
-              <h3>{t(s.titleKey)}</h3>
-              <p>{t(s.bodyKey)}</p>
-              <StepThumb kind={s.kind}/>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Deep Dives ── */
-function ThreeViewsVisual() {
-  const t = useT();
-  const [view, setView] = useState('Map');
-  const tabs = [{id:'Timeline',labelKey:'landing.mockup.tab_timeline'},{id:'Calendar',labelKey:'landing.mockup.tab_calendar'},{id:'Map',labelKey:'landing.mockup.tab_map'}];
-  return (
-    <div>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid var(--line)'}}>
-        <div className="t-meta" style={{color:'var(--muted)',textTransform:'uppercase'}}>{t('landing.mockup.trip_title')}</div>
-        <div className="app-tabs">
-          {tabs.map(tab => (
-            <button key={tab.id} type="button" className={`app-tab ${view===tab.id?'is-active':''}`}
-              onClick={() => setView(tab.id)} style={{cursor:'pointer',border:0}}>{t(tab.labelKey)}</button>
-          ))}
-        </div>
-      </div>
-      {view === 'Map' && (
-        <div className="mapviz">
-          <svg viewBox="0 0 600 320" preserveAspectRatio="none">
-            <defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#dde3ee" strokeWidth="0.6"/></pattern></defs>
-            <rect width="600" height="320" fill="url(#grid)"/>
-            <path d="M40,240 Q90,200 130,210 T220,190 Q260,170 320,180 T440,160 Q500,150 560,170" fill="none" stroke="#cfd6e3" strokeWidth="1.5" strokeDasharray="4 4"/>
-            <path d="M120,210 C200,180 240,200 290,170 C360,130 420,150 470,130" fill="none" stroke="#2167e2" strokeWidth="2.4" strokeLinecap="round" strokeDasharray="6 6">
-              <animate attributeName="stroke-dashoffset" from="0" to="-12" dur="1.2s" repeatCount="indefinite"/>
-            </path>
-          </svg>
-          <div className="pin" style={{left:'20%',top:'70%'}}><span className="pin__dot"/><span className="pin__lbl">{t('landing.city.lisbon')}</span></div>
-          <div className="pin" style={{left:'48%',top:'55%'}}><span className="pin__dot" style={{background:'var(--warm)'}}/><span className="pin__lbl">{t('landing.city.porto')}</span></div>
-          <div className="pin" style={{left:'78%',top:'44%'}}><span className="pin__dot" style={{background:'var(--success)'}}/><span className="pin__lbl">{t('landing.city.barcelona')}</span></div>
-        </div>
-      )}
-      {view === 'Calendar' && (
-        <div style={{padding:22}}>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(7, 1fr)',gap:6,fontSize: 'var(--fs-micro)'}}>
-            {['M','T','W','T','F','S','S'].map((d,i) => <div key={i} className="t-micro" style={{textAlign:'center',color:'var(--muted)',padding:'4px 0',textTransform:'none'}}>{d}</div>)}
-            {Array.from({length:28}).map((_,i) => {
-              const day=i+1, inTrip=day>=12&&day<=23;
-              const city=day<16?'lis':day<18?'transfer':day<19?'por':'bcn';
-              const bg=!inTrip?'transparent':city==='lis'?'rgba(33,103,226,.18)':city==='por'?'rgba(201,96,58,.18)':city==='transfer'?'repeating-linear-gradient(45deg, rgba(33,103,226,.15) 0 4px, rgba(201,96,58,.15) 4px 8px)':'rgba(31,138,91,.18)';
-              return <div key={i} className="t-micro" style={{height:38,background:bg,borderRadius:8,display:'flex',alignItems:'flex-start',justifyContent:'flex-start',padding:6,color:inTrip?'var(--ink)':'var(--muted-2)',border:inTrip?0:'1px solid var(--line)',textTransform:'none'}}>{day}</div>;
-            })}
-          </div>
-          <div style={{display:'flex',gap:14,marginTop:12,fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>
-            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(33,103,226,.5)',borderRadius:3,marginRight:6}}/>{t('landing.city.lisbon')}</span>
-            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(201,96,58,.5)',borderRadius:3,marginRight:6}}/>{t('landing.city.porto')}</span>
-            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(31,138,91,.5)',borderRadius:3,marginRight:6}}/>{t('landing.city.barcelona')}</span>
-          </div>
-        </div>
-      )}
-      {view === 'Timeline' && (
-        <div style={{padding:22}}>
-          <div style={{display:'grid',gap:8}}>
-            {[
-              {d:'Jul 12',title:`${t('landing.mockup.tag_flight')} LHR → LIS`,tagKey:'landing.mockup.tag_flight',color:'var(--brand)'},
-              {d:'Jul 13',title:'Tram 28',tagKey:'landing.mockup.tag_activity',color:'var(--warm)'},
-              {d:'Jul 16',title:`${t('landing.mockup.tag_transfer')} ${t('landing.city.lisbon')} → ${t('landing.city.porto')}`,tagKey:'landing.mockup.tag_transfer',color:'var(--brand)'},
-              {d:'Jul 18',title:`${t('landing.mockup.tag_flight')} ${t('landing.city.porto')} → BCN`,tagKey:'landing.mockup.tag_flight',color:'var(--brand)'},
-              {d:'Jul 21',title:'Sagrada Família',tagKey:'landing.mockup.tag_activity',color:'var(--warm)'},
-            ].map((r,i) => (
-              <div key={i} style={{display:'grid',gridTemplateColumns:'70px 1fr auto',alignItems:'center',gap:10,background:'#fff',border:'1px solid var(--line)',borderRadius:10,padding:'10px 12px',fontSize: 'var(--fs-base)'}}>
-                <span className="t-micro" style={{color:'var(--muted)',textTransform:'none'}}>{r.d}</span>
-                <span>{r.title}</span>
-                <span className="t-micro" style={{padding:'2px 8px',borderRadius:999,background:'rgba(33,103,226,.08)',color:r.color,textTransform:'none'}}>{t(r.tagKey)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PlannerVisual() {
-  const t = useT();
-  return (
-    <div className="chat" aria-hidden="true">
-      <div className="bubble bubble--user">{t('landing.planner.user_msg')}</div>
-      <div className="bubble bubble--ai">{t('landing.planner.ai_msg')}<div style={{marginTop:6}}><span className="typing"><span/><span/><span/></span></div></div>
-      <div style={{display:'grid',gap:8,marginTop:4}}>
-        {[
-          {icon:'bed',name:t('landing.planner.res_lisbon'),sub:t('landing.planner.res_lisbon_sub'),badge:t('landing.planner.badge_stay')},
-          {icon:'train',name:t('landing.planner.res_train'),sub:t('landing.planner.res_train_sub'),badge:t('landing.planner.badge_transfer')},
-          {icon:'bed',name:t('landing.planner.res_porto'),sub:t('landing.planner.res_porto_sub'),badge:t('landing.planner.badge_stay')},
-          {icon:'plane',name:t('landing.planner.res_flight'),sub:t('landing.planner.res_flight_sub'),badge:t('landing.planner.badge_flight')},
-        ].map((r,i) => (
-          <div className="planresult" key={i}>
-            <Icon name={r.icon}/><div><strong>{r.name}</strong><div style={{color:'var(--muted)',fontSize: 'var(--fs-micro)'}}>{r.sub}</div></div>
-            <span className="badge">{r.badge}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ConciergeVisual() {
-  const t = useT();
-  return (
-    <div style={{background:'linear-gradient(180deg, #eef2f9, #f6f8fc)',padding:24}}>
-      <div className="phone">
-        <div className="phone__head">
-          <span className="av">T</span>
-          <div><div className="name">Triplanio</div><div className="sub">{t('landing.phone.via')}</div></div>
-          <Icon name="telegram" size={16} color="#229ED9" style={{marginLeft:'auto'}}/>
-        </div>
-        <div className="phone__body">
-          <div className="phone__time">{t('landing.phone.today')}</div>
-          <div className="bubble bubble--ai">{t('landing.phone.b1')}</div>
-          <div className="bubble bubble--user" style={{alignSelf:'flex-end'}}>{t('landing.phone.u1')}</div>
-          <div className="bubble bubble--ai">{t('landing.phone.b2')}</div>
-          <div className="bubble bubble--user" style={{alignSelf:'flex-end'}}>{t('landing.phone.u2')}</div>
-          <div className="bubble bubble--ai">{t('landing.phone.b3')}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BudgetVisual() {
-  const t = useT();
-  const rows = [
-    {k:'landing.mini.hotels',pct:42,amt:'€2,025',ccy:'$2,190',color:'#2167e2'},
-    {k:'landing.mini.flights',pct:28,amt:'€1,350',ccy:'$1,460',color:'#5b8fff'},
-    {k:'landing.mini.transfers',pct:9,amt:'€434',ccy:'$469',color:'#9bb6ff'},
-    {k:'landing.mini.activities',pct:13,amt:'€627',ccy:'$678',color:'#c9603a'},
-    {k:'landing.mini.food_misc',pct:8,amt:'€384',ccy:'$415',color:'#1f8a5b'},
-  ];
-  return (
-    <div className="budget">
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-        <span className="t-meta" style={{color:'var(--muted)',textTransform:'uppercase'}}>{t('landing.mini.total')}</span>
-        <span style={{fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>{t('landing.mini.home_ccy')}</span>
-      </div>
-      <div className="budget__total"><span className="big">€4,820</span><span className="delta">{t('landing.mini.under_plan')}</span></div>
-      <div className="budget__bar">{rows.map(r => <i key={r.k} style={{width:`${r.pct}%`,background:r.color}}/>)}</div>
-      <div className="budget__rows" style={{marginTop:8}}>
-        {rows.map(r => <div className="budget__row" key={r.k}><span className="sw" style={{background:r.color}}/><span>{t(r.k)}</span><span className="amt">{r.amt}</span><span className="ccy">{r.ccy}</span></div>)}
-      </div>
-    </div>
-  );
-}
-
-function DeepDive({ reverse, eyebrowKey, titleKey, bodyKey, highlightKeys, children }) {
-  const t = useT();
-  return (
-    <div className={`deep ${reverse?'deep--reverse':''} reveal`}>
-      <div className="deep__copy">
-        <span className="tag-eyebrow"><span className="dot"/>{t(eyebrowKey)}</span>
-        <h3>{t(titleKey)}</h3>
-        <p>{t(bodyKey)}</p>
-        <ul className="deep__highlights">
-          {highlightKeys.map(k => (
-            <li key={k}><span className="check"><Icon name="check" size={12} strokeWidth={2.4}/></span><span>{t(k)}</span></li>
-          ))}
-        </ul>
-      </div>
-      <div className="deep__visual">{children}</div>
-    </div>
-  );
-}
-
-function DeepDives() {
-  const t = useT();
-  return (
-    <section className="section section--wash">
-      <div className="container">
-        <div className="section__head section__head--left reveal" style={{marginBottom:16}}>
-          <span className="eyebrow">{t('landing.dd.eyebrow')}</span>
-          <h2 style={{maxWidth:'18ch'}}>{t('landing.dd.h2')}</h2>
-        </div>
-        <DeepDive eyebrowKey="landing.dd.threeviews.eyebrow" titleKey="landing.dd.threeviews.title" bodyKey="landing.dd.threeviews.body" highlightKeys={['landing.dd.threeviews.h1','landing.dd.threeviews.h2','landing.dd.threeviews.h3']}><ThreeViewsVisual/></DeepDive>
-        <DeepDive reverse eyebrowKey="landing.dd.planner.eyebrow" titleKey="landing.dd.planner.title" bodyKey="landing.dd.planner.body" highlightKeys={['landing.dd.planner.h1','landing.dd.planner.h2','landing.dd.planner.h3']}><PlannerVisual/></DeepDive>
-        <DeepDive eyebrowKey="landing.dd.concierge.eyebrow" titleKey="landing.dd.concierge.title" bodyKey="landing.dd.concierge.body" highlightKeys={['landing.dd.concierge.h1','landing.dd.concierge.h2','landing.dd.concierge.h3']}><ConciergeVisual/></DeepDive>
-        <DeepDive reverse eyebrowKey="landing.dd.budget.eyebrow" titleKey="landing.dd.budget.title" bodyKey="landing.dd.budget.body" highlightKeys={['landing.dd.budget.h1','landing.dd.budget.h2','landing.dd.budget.h3']}><BudgetVisual/></DeepDive>
-      </div>
-    </section>
-  );
-}
-
-/* ── Trust ── */
-function Trust() {
-  const t = useT();
-  const items = [{icon:'globe',key:'landing.trust.languages'},{icon:'devices',key:'landing.trust.devices'},{icon:'lock',key:'landing.trust.privacy'},{icon:'gift',key:'landing.trust.free'}];
-  return (
-    <section className="section section--tight">
-      <div className="container">
-        <div className="trust reveal" style={{border:'1px solid var(--line)',borderRadius:16}}>
-          {items.map(it => (
-            <div className="trust__item" key={it.key}>
-              <span className="icon"><Icon name={it.icon} size={18}/></span><span>{t(it.key)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── FAQ ── */
-const FAQ_KEYS = ['landing.faq.q1','landing.faq.q2','landing.faq.q3','landing.faq.q4','landing.faq.q5','landing.faq.q6','landing.faq.q7'].map((q,i) => ({q,a:`landing.faq.a${i+1}`}));
-
-function FAQ() {
-  const t = useT();
-  const [open, setOpen] = useState(null);
-  return (
-    <section className="section" id="faq">
-      <div className="container">
-        <div className="faq">
-          <div className="faq__intro reveal">
-            <span className="eyebrow">{t('landing.faq.eyebrow')}</span>
-            <h2>{t('landing.faq.h2')}</h2>
-            <p>{t('landing.faq.lede')}</p>
-          </div>
-          <div className="faq__list reveal">
-            {FAQ_KEYS.map((f,i) => {
-              const isOpen = open === i;
-              return (
-                <div className={`faq__item ${isOpen?'is-open':''}`} key={f.q}>
-                  <button className="faq__q" aria-expanded={isOpen} onClick={() => setOpen(isOpen?null:i)}>
-                    <span>{t(f.q)}</span>
-                    <span className="plus"><Icon name="plus" size={16} strokeWidth={2.2}/></span>
-                  </button>
-                  <div className="faq__a"><div className="faq__a-inner">{t(f.a)}</div></div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Final CTA ── */
-function FinalCTA() {
-  const t = useT();
-  const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  // Carry this visit's campaign marks onto /login (gclid/utm) so gtag's
-  // url_passthrough can read them off the address (TRIP-407 PR5).
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
-  // data-hdr="dark": this final CTA is a dark navy band, so the fixed header
-  // goes white (on-dark) while it sits over it. The rest of the landing is
-  // light and needs no marker — SiteHeader defaults to on-light when no
-  // [data-hdr] section is under it.
-  return (
-    <section className="banner" data-hdr="dark">
-      <div className="reveal" style={{position:'relative',zIndex:1}}>
-        <h2>{t('landing.finalcta.h2')}</h2>
-        <p>{t('landing.finalcta.lede')}</p>
-        <button className="btn btn--white btn--lg" style={{marginTop:32}} onClick={() => { track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
-          {t('landing.finalcta.cta')} <Icon name="arrowRight" size={16} className="chev"/>
-        </button>
-      </div>
-    </section>
-  );
-}
-
-/* ── Scroll reveal ──
-   Runs only AFTER cssReady - earlier we kicked the effect off at mount
-   with [] deps, which meant LandingPage was still in its `return null`
-   path: querySelectorAll('.reveal') found nothing, the IntersectionObserver
-   was left observing zero elements, and below-the-fold sections never
-   revealed. Gating on `ready` (passed from cssReady) guarantees the DOM
-   already contains the .reveal nodes. */
-function useScrollReveal(ready) {
-  useEffect(() => {
-    if (!ready) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    if (typeof IntersectionObserver === 'undefined') return;
-    document.documentElement.classList.add('reveal--ready');
-    const io = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-in');
-          io.unobserve(entry.target);
-        }
-      }
-    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.01 });
-    document.querySelectorAll('.reveal:not(.is-in)').forEach(el => io.observe(el));
-    // Safety net: force-show anything already in the viewport after
-    // layout settles (fonts/images), in case IO misses a fast shift.
-    const flush = () => {
-      const vh = window.innerHeight;
-      document.querySelectorAll('.reveal:not(.is-in)').forEach(el => {
-        const r = el.getBoundingClientRect();
-        if (r.top < vh && r.bottom > 0) el.classList.add('is-in');
-      });
-    };
-    const timers = [setTimeout(flush, 50), setTimeout(flush, 300), setTimeout(flush, 1200)];
-    return () => {
-      timers.forEach(clearTimeout);
-      io.disconnect();
-      document.documentElement.classList.remove('reveal--ready');
-    };
-  }, [ready]);
 }
 
 /* ── Main LandingPage ── */
 export default function LandingPage() {
-  const { lang, setLang: setLangCentral } = useI18n();
+  const { lang, setLang } = useI18n();
+  const t = useT();
 
-  // Landing has only a light theme. A dark theme stored from the authed app
-  // sets [data-theme=dark] on <html>, which leaked dark TEXT colors onto the
-  // always-light landing. Force light here.
-  useEffect(() => {
-    const r = document.documentElement;
-    r.setAttribute('data-theme', 'light');
-  }, []);
-
-  // Update <html lang> attribute whenever central lang changes
-  useEffect(() => {
-    document.documentElement.setAttribute('lang', lang);
-  }, [lang]);
-
-  const setLang = (next) => {
-    setLangCentral(next);
-  };
-
-  // Marketing CSS lifecycle (shared with the public shared-trip page).
+  // Zone lifecycle: light-only theme (restored on unmount), the shared /site.css
+  // link (ref-counted), and per-route <title>/<meta> (TRIP-460 §7).
+  useSiteTheme();
   const cssReady = useSiteCss();
+  useDocumentMeta(t('landing.meta.title'), t('landing.meta.description'));
+  useHeroFrame(cssReady);
 
-  useScrollReveal(cssReady);
+  // Keep <html lang> in sync with the active language.
+  useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
 
-  /* Don't render until landing CSS is loaded - prevents flash of unstyled content */
+  // Don't render until the site CSS is loaded — prevents a flash of unstyled content.
   if (!cssReady) return null;
 
   return (
@@ -654,13 +175,6 @@ export default function LandingPage() {
       <SiteHeader lang={lang} setLang={setLang} variant="full" themed />
       <main>
         <Hero />
-        <Problem />
-        <Features />
-        <HowItWorks />
-        <DeepDives />
-        <Trust />
-        <FAQ />
-        <FinalCTA />
       </main>
       <SiteFooter lang={lang} setLang={setLang} />
     </>

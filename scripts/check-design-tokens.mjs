@@ -85,7 +85,8 @@ const COLOR_WHITELIST = [
   'src/components/site/SiteChrome.jsx',                // brand logo + country-flag SVGs
   'src/pages/Login.jsx',                               // Google + Triplanio logo SVGs
   // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
-  'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
+  // (TRIP-460) LandingPage.jsx retired: the v5.7 rewrite carries ZERO raw colour —
+  // all demo/brand visuals moved to public/site.css. Entry removed, limit 16→15.
   'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
   'src/pages/PublicTrip.css',                          // public read-only page styles
   'public/site.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
@@ -93,7 +94,7 @@ const COLOR_WHITELIST = [
 
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
 // lowering this number in the same commit; nothing may ever raise it.
-const WHITELIST_LIMIT = 16;
+const WHITELIST_LIMIT = 15;
 
 // The ceiling on the PR base, so raising it cannot be self-approved by editing
 // this file. null = base not resolvable (no such ref, or the base predates this
