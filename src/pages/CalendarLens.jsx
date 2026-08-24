@@ -26,6 +26,7 @@ import { Info, DateTime } from 'luxon';
 import { Skeleton, IconBtn, Seg, eventFamily } from '../design/index';
 import { Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
+import { isTransitVisit } from '@/lib/trip-cities';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
 import './CalendarLens.css';
@@ -256,13 +257,14 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
   const currentMonth = baseDate ? baseDate.plus({ months: monthOffset }) : null;
   const today        = DateTime.now();
 
+  // Города календаря = РЕАЛЬНЫЕ пункты со ночёвкой. Убираем:
+  //   • якоря (start/end) и waypoints — через канон isTransitVisit (kind==='transit');
+  //   • пересадки/pass-through БЕЗ ночёвки (start_date === end_date) — даже если
+  //     помечены transit: это проезд насквозь, а не остановка (напр. Москва 21–21
+  //     перед Ярославлем). «Нет ночёвки» = не показываем в календаре.
   const tripVisits = useMemo(() => visits
     .map((v, idx) => ({ ...v, idx, s: parseNaive(v.start_date), e: parseNaive(v.end_date) }))
-    .filter(v => v.kind !== 'start' && v.kind !== 'end' && v.s && v.e), [visits]);
-
-  // Пересадки/переезды в календаре не показываем — только «содержательные»
-  // события (отели, активности, дедлайны и т.п.). Семейство transfer отсеиваем.
-  const calStream = useMemo(() => stream.filter(e => eventFamily(e.type) !== 'transfer'), [stream]);
+    .filter(v => isTransitVisit(v) && v.s && v.e && !v.s.hasSame(v.e, 'day')), [visits]);
 
   // Цвет города — по ИМЕНИ, а не по индексу визита: один город (напр. возврат
   // в Рим) должен быть одного цвета в календаре И в сводке. Иначе цвета
@@ -284,7 +286,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
     const totalCells = Math.ceil((offset + dim) / 7) * 7;
 
     const evByDay = {};
-    for (const e of calStream) {
+    for (const e of stream) {
       if (!e.date) continue;
       const dt = parseNaive(e.date + 'T00:00:00');
       if (!dt || dt.year !== y || dt.month !== m) continue;
@@ -306,7 +308,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       cells.push({ day, isToday: day === todayDay, events: evByDay[day] || [], cities });
     }
     return { y, m, cells };
-  }, [currentMonth, calStream, tripVisits, cityColorMap, today]);
+  }, [currentMonth, stream, tripVisits, cityColorMap, today]);
 
   // ── Week time-grid (full day) ─────────────────────────────────────────────────
   const weekData = useMemo(() => {
@@ -326,7 +328,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
     }
 
     let minH = 24, maxH = 0, any = false;
-    for (const e of calStream) {
+    for (const e of stream) {
       if (!e.date) continue;
       const di = days.findIndex(d => d.dateStr === e.date);
       if (di < 0) continue;
@@ -358,7 +360,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
     });
 
     return { days, hours, lines, gridH, startHour, hasAllDay: days.some(d => d.allDay.length > 0), weekStart, scrollToHour: any ? Math.max(0, minH - 1) : 7 };
-  }, [baseDate, weekOffset, calStream, tripVisits, cityColorMap, WD_NAMES, today]);
+  }, [baseDate, weekOffset, stream, tripVisits, cityColorMap, WD_NAMES, today]);
 
   // ── Trip meta ────────────────────────────────────────────────────────────────
   const tripMeta = useMemo(() => {
@@ -377,8 +379,8 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       cities.push({ name, colorIdx: cityColor(name), range: fmt(v.s, v.e) });
     });
     const days = Math.round(end.diff(start, 'days').days) + 1;
-    return { cities, stats: { days, cities: cities.length, events: calStream.length }, rangeLabel: fmt(start, end) };
-  }, [tripVisits, calStream, cityColorMap, MONTH_SHORT]);
+    return { cities, stats: { days, cities: cities.length, events: stream.length }, rangeLabel: fmt(start, end) };
+  }, [tripVisits, stream, cityColorMap, MONTH_SHORT]);
 
   // ── Navigation ────────────────────────────────────────────────────────────────
   const goBack  = () => view === 'month' ? setMonthOffset(o => o - 1) : setWeekOffset(o => o - 1);
