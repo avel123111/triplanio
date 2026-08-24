@@ -5,7 +5,7 @@
    класса токенов нет — так голый :root не может утечь на всё приложение, если
    site.css однажды затащат в бандл (разбор специфичности — TRIP-446). */
 html.site {
-  --brand: #2167e2;
+  --brand: #2380D6;           /* прототип v5.7 (TRIP-460 §2а «как в прототипе») */
   --brand-600: #1b58c4;
   --brand-700: #174aa6;
   --brand-soft: rgba(33,103,226,.08);
@@ -14,9 +14,9 @@ html.site {
   --brand-ink-2: #0a1a3a;
   --brand-glow: rgba(33,103,226,.10);
 
-  --ink: #0F172A;             /* near-black body */
+  --ink: #13324E;             /* прототип v5.7 — синевато-навигационный (TRIP-460) */
   --ink-2: #1f2a44;
-  --muted: #5a657a;           /* secondary text */
+  --muted: #516576;           /* прототип v5.7 (TRIP-460) */
   --muted-2: #8693a8;
 
   --line: #E5E7EB;            /* cool neutral border */
@@ -69,11 +69,11 @@ html.site {
   --mint: #2EC27E;
   --mint-text: #1C7A4F;
   --r-lg: 22px;
-  --r-md: 15px;
+  --site-r-md: 15px;          /* app :root держит --r-md:16px — префикс, чтобы не клобберить компоненты приложения в зоне (TRIP-460) */
   --shadow-lg: 0 24px 60px -18px rgba(11,44,84,.20);
   --shadow-md: 0 12px 32px -12px rgba(11,44,84,.14);
   --shadow-sm: 0 4px 14px -4px rgba(11,44,84,.10);
-  --ease-out: cubic-bezier(.22,1,.36,1);
+  /* --ease-out наследуется из app.css :root (значение идентично) — не объявляем (TRIP-460) */
   --dur: .65s;
   --sheet-r: clamp(26px,4vw,44px);
 }
