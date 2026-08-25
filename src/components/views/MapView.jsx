@@ -260,7 +260,7 @@ export default function MapView({
   // зум, и центр, хотя маршрут не менялся. Автофокус остался ровно один: фит по
   // `visitsSignature` ниже. Механика — в `lib/map/useMapInsets.js`.
   // ═════════════════════════════════════════════════════════════════════════
-  useMapInsets(mapRef, { ready, insets: camera, slotPx });
+  useMapInsets(mapRef, { ready, insets: camera, slotPx, focusing: Array.isArray(focus) && focus.length > 0 });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);
