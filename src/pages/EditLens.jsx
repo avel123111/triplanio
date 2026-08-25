@@ -1201,6 +1201,10 @@ export default function EditLens({ tripId, shell, content }) {
               cooperativeGestures={false}
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
+              /* Клик по ПУСТОЙ карте снимает выделение — как в планировщике.
+                 Пины гасят свой клик сами. В hotel-pick не трогаем: там картой
+                 владеет оверлей отелей (его бейджи всплывают до 'click'). */
+              onMapClick={() => { if (isHotelPick || !leftPanel) return; closePanelAndSync(); }}
               selectedVisitId={selectedNodeId}
               hoveredVisitId={hoveredNodeId}
               cityBadge={cityBadge}

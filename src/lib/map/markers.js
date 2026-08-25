@@ -39,18 +39,24 @@ export function iconForKinds(kinds = []) {
 }
 
 // Group points that share a location (a city visited twice) into one pin that
-// carries every label + kind at that spot.
-// points: [{ lng, lat, label, kind?, data? }] → [{ lng, lat, labels:[], kinds:[], data:[] }]
+// carries every label + kind + id at that spot.
+// points: [{ lng, lat, label, kind?, id?, data? }] → [{ lng, lat, labels:[], kinds:[], ids:[], data:[] }]
+// `ids` is the stable id of each point at this spot (falsy when the caller has
+// none — e.g. the stats map, which never reads it). It is the ONE source the
+// shared marker builder tags onto `data-mids` so the selection/hover toggle can
+// address a pin without a rebuild — replacing the old per-screen `data-vids`
+// (MapView, from visit.id) / `data-mid` (FlowMap, from the raw id) split.
 // `precision` = coordinate rounding for the "same place" test (5 dp ≈ ~1 m).
 export function groupByLocation(points, precision = 5) {
   const groups = new Map();
   points.forEach((p) => {
     if (p == null || p.lat == null || p.lng == null) return;
     const key = `${(+p.lat).toFixed(precision)},${(+p.lng).toFixed(precision)}`;
-    if (!groups.has(key)) groups.set(key, { lng: +p.lng, lat: +p.lat, labels: [], kinds: [], data: [] });
+    if (!groups.has(key)) groups.set(key, { lng: +p.lng, lat: +p.lat, labels: [], kinds: [], ids: [], data: [] });
     const g = groups.get(key);
     g.labels.push(p.label);
     g.kinds.push(p.kind);
+    g.ids.push(p.id);
     if (p.data !== undefined) g.data.push(p.data);
   });
   return [...groups.values()];
