@@ -2082,12 +2082,16 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 /* visual-diff-exempt: .cbadge__go[data-on] max-width — раскрытое состояние CTA, апрув Pavel */
 /* visual-diff-exempt: .cbadge__go[data-on] opacity — раскрытое состояние CTA, апрув Pavel */
 /* visual-diff-exempt: .cbadge__go[data-on] margin-left — раскрытое состояние CTA, апрув Pavel */
-.cbadge__go {
+/* Селектор с тегом (`button.cbadge__go`, 0-1-1) НАМЕРЕННО: у `.cbadge__go`
+   (0-1-0) та же специфичность, что у `.icon-btn`, а он объявлен НИЖЕ в файле и
+   перебивал бы `transition` — ширина бы прыгала, а не ехала. Тег поднимает вес,
+   ключи гардов остаются на классе `.cbadge__go`. */
+button.cbadge__go {
   pointer-events: auto; align-self: center;
   max-width: 0; opacity: 0; margin-left: calc(var(--sp-4) * -1); overflow: hidden;
   transition: max-width .2s ease, opacity .2s ease, margin-left .2s ease;
 }
-.cbadge__go[data-on] { max-width: 44px; opacity: 1; margin-left: 0; }
+button.cbadge__go[data-on] { max-width: 44px; opacity: 1; margin-left: 0; }
 /* The badge rides a mapboxgl.Popup so it auto-flips to stay on-screen near map
    edges. Strip the popup's default chrome (white bubble + tip) — the glass
    .cbadge IS the surface; passive so it never eats a map click. */
