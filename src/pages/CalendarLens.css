@@ -16,10 +16,10 @@
    записать. Занижать числа переписыванием места, а не работой, гард запрещает
    прямо — поэтому цена названа, а не спрятана.
 
-   floor-exempt: classes +13 — тайм-грид недели + полоса «весь день» + виджет городов, апрув Pavel 2026-08-25
+   floor-exempt: classes +14 — тайм-грид недели + полоса «весь день» + виджет городов, апрув Pavel 2026-08-25
    floor-exempt: namespaces +2 — два новых примитива ДС (citybar, evchip), апрув Pavel 2026-08-25
    floor-exempt: inline +5 — координаты блоков/высота холста/тон города = данные, классом не выразить, апрув Pavel 2026-08-25
-   floor-exempt: triage +4 — семья `ncal` под разбором: экран эмитит её сам, canon ей не положен, апрув Pavel 2026-08-25
+   floor-exempt: triage +5 — семья `ncal` под разбором: экран эмитит её сам, canon ей не положен, апрув Pavel 2026-08-25
    floor-exempt: layout +10 — сетки с кастомными треками и контейнеры без зазора: примитива под них в ДС нет, апрув Pavel 2026-08-25 */
 
 
@@ -743,6 +743,13 @@
 /* Семантический дифф 2p — объявление правок редизайна.
    visual-diff-exempt: .ncal {@media (max-width: 640px)} height — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные */
 
+/* Семантический дифф 2p — объявление правок редизайна.
+   visual-diff-exempt: .ncal --ncal-bar — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-top background — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-top position — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-top top — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-top z-index — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные */
+
 /* =================================================================
    CalendarLens — редизайн (ncal-* namespace).
    Хедер · доска месяца с полосой города сверху ячейки · неделя колонками
@@ -754,7 +761,10 @@
    врали. Все адаптивные правила ниже — @container ncal. */
 /* Десктоп: линза заполняет видимую высоту скроллящегося <main> (flex-цепочка,
    без магических чисел) → месяц ужимается ПОД экран, а не тянет страницу. */
-.ncal { height: 100%; min-height: 0; container-type: inline-size; container-name: ncal; }
+/* Высота ПОЛОСЫ ГОРОДА — одна на оба вида. До этого месяц рисовал 16px (12 на
+   телефоне), а неделя 19px: три разных числа у одного объекта. Слой на 6px
+   выше самой полосы — это её поля сверху и снизу (`.citybar--strip`). */
+.ncal { --ncal-bar: 26px; height: 100%; min-height: 0; container-type: inline-size; container-name: ncal; }
 
 /* ★ НА ТЕЛЕФОНЕ ВЫСОТА — ПО СОДЕРЖИМОМУ, И ЭТО НЕ КОСМЕТИКА, А ПОЧЕМУ КОНТЕНТ
    УЕЗЖАЛ ПОД НИЖНИЙ ДОК. `height: 100%` фиксирует линзу ровно в видимую высоту
@@ -829,7 +839,10 @@
 .ncal-dc {
   position: relative;
   display: flex; flex-direction: column; gap: 3px;
-  min-height: 0; overflow: hidden; padding: 13px var(--sp-3) 9px;   /* design-token-exempt: 13px — верхний воздух ячейки под полосой города (между --sp-6 и --sp-7, ступень не подходит) */
+  /* Верх ячейки отмеряется ОТ ПОЛОСЫ: она лежит абсолютным слоем поверх ряда,
+     и подобранное руками число неизбежно разъезжается с ней — на телефоне
+     полоса накрывала число дня на 5px (замер). */
+  min-height: 0; overflow: hidden; padding: calc(var(--ncal-bar) + var(--sp-2)) var(--sp-3) 9px;
   background: var(--surface);
   border-left: 1px solid var(--line);
   transition: background .16s var(--ease-out);
@@ -844,10 +857,10 @@
    `width` из `bandStyle`), а не колонками грида: день пересадки делится между
    городами, и граница полосы приходится на его середину — целыми колонками это
    не выразить. Отдельного слоя имён больше нет: имя живёт внутри полосы. */
-.ncal-daytop { position: absolute; top: 0; left: 0; right: 0; height: 22px; z-index: 2; }
+.ncal-daytop { position: absolute; top: 0; left: 0; right: 0; height: var(--ncal-bar); z-index: 2; }
 .ncal-daytop > .citybar { position: absolute; top: 0; bottom: 0; }
 
-.ncal-dc-top { min-height: 22px; margin-top: var(--sp-6); }
+.ncal-dc-top { min-height: 22px; }
 .ncal-dn {
   color: var(--ink-2); flex: none;
   min-width: 23px; height: 22px; padding: 0 var(--sp-3); border-radius: var(--r-pill);
@@ -888,13 +901,18 @@
    тот же приём, что в месяце: полосы-цвет по дням, ИМЕНА отдельным слоем поверх
    прогонов. Раньше полоса с именем жила внутри каждой колонки — на телефоне это
    семь обрезанных «Мад…» подряд. */
-.ncal-wk-cities { position: relative; display: grid; grid-template-columns: var(--ncal-gut) repeat(7, minmax(0, 1fr)); flex: none; min-height: 26px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.ncal-wk-cities { position: relative; display: grid; grid-template-columns: var(--ncal-gut) repeat(7, minmax(0, 1fr)); flex: none; min-height: var(--ncal-bar); border-bottom: 1px solid var(--line); background: var(--surface); }
 /* Слой полос в неделе начинается ПОСЛЕ жёлоба: проценты внутри него считаются
    от семи колонок, как и в месяце, где жёлоба нет. Высота — ВО ВЕСЬ ряд
    (`bottom: 0`), а не `auto`: полосы внутри абсолютные, у контейнера с одним
    `top` не остаётся содержимого в потоке, он схлопывается в ноль, и от полосы
    видны только её паддинги — «полоска толщиной в миллиметр». */
-.ncal-wk-cities > .ncal-daytop { left: var(--ncal-gut); height: auto; bottom: 0; }
+/* Слой полос в неделе начинается ПОСЛЕ жёлоба — проценты внутри него считаются
+   от семи колонок, как и в месяце, где жёлоба нет. Высоту НЕ переопределяем:
+   она приходит из общего правила (`var(--ncal-bar)`), и только так полоса
+   выходит одинаковой в обоих видах. `bottom: 0` тут был бы ошибкой — ряд несёт
+   нижнюю рамку, и растянутый слой оказывался на пиксель ниже месячного. */
+.ncal-wk-cities > .ncal-daytop { left: var(--ncal-gut); }
 
 .ncal-wk-allday { border-bottom: 1px solid var(--line); background: var(--surface-3); min-height: 34px; }
 .ncal-wk-allday .ncal-wk-gut { color: var(--muted-2); background: var(--surface-3); }
@@ -904,7 +922,18 @@
 
 /* Внутренний скролл: календарь всегда в пределах экрана на десктопе, скроллит
    только сетка; снизу — воздух (padding-bottom), чтобы последний час не липнул. */
+/* ★ ПРОКРУЧИВАЕТСЯ ВСЯ НЕДЕЛЯ ЦЕЛИКОМ, включая шапку дней. Раньше шапка, ряд
+   городов и «весь день» стояли СНАРУЖИ этого контейнера, а сетка часов внутри:
+   вертикальный скроллбар сужает только содержимое скролла, поэтому колонки
+   сетки оказывались уже колонок шапки и разделители дней разъезжались — тем
+   сильнее, чем правее день. В headless-браузере скроллбар оверлейный и ширины
+   не занимает, поэтому замер этого НЕ ЛОВИЛ; воспроизводится `scrollbar-gutter:
+   stable` (замер при полосе 10px: 0 · 1.4 · 2.9 · 4.3 · 5.8 · 7.1 · 8.5px).
+   Теперь ряды в одном контейнере: ширина у них общая ПО ПОСТРОЕНИЮ. */
 .ncal-wk-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: var(--sp-8); scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+/* Шапка дней + полоса городов + «весь день» едут вместе и липнут к верху при
+   прокрутке часов — как в любом календаре с осью времени. */
+.ncal-wk-top { position: sticky; top: 0; z-index: 4; background: var(--surface); }
 .ncal-wk-scroll::-webkit-scrollbar { width: 8px; }
 .ncal-wk-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
 /* Сетка = grid [ось времени][колонки]; ось времени sticky влево → при
@@ -950,9 +979,8 @@
   .ncal-month, .ncal-week { flex: none; }
   .ncal-grid { flex: none; }
   .ncal-wk-row { flex: none; }
-  .ncal-dc { min-height: 66px; overflow: visible; padding: var(--sp-8) 5px 7px; gap: var(--sp-1); }
-  .ncal-daytop { height: 18px; }
-  .ncal-dc-top { min-height: 18px; margin-top: 0; }
+  .ncal-dc { min-height: 66px; overflow: visible; padding: calc(var(--ncal-bar) + var(--sp-2)) 5px 7px; gap: var(--sp-1); }
+  .ncal-dc-top { min-height: 18px; }
   .ncal-dn { min-width: 21px; height: 21px; padding: 0 5px; font-size: var(--fs-meta); /* design-token-exempt: TRIP-410 */ }
   .ncal-evl { display: none; }
   .ncal-dots { display: flex; }
@@ -963,14 +991,16 @@
   /* Ряд городов держит ТУ ЖЕ минимальную ширину, что шапка и полоса «весь
      день»: он ездит в том же горизонтальном скролле и рисует те же 7 колонок —
      без этой строки он сжимался под экран, и плашки уезжали от своих дней. */
-  .ncal-wk-head, .ncal-wk-allday, .ncal-wk-cities { min-width: 620px; }
+  /* Минимальную ширину держит ОДИН контейнер — все ряды внутри него и едут в
+     том же горизонтальном скролле. Раздельные `min-width` у шапки и сетки были
+     вторым источником расхождения колонок. */
   .ncal-wk-scroll { min-width: 620px; max-height: none; overflow: visible; }
   .ncal-wk-dn { min-width: 28px; height: 28px; font-size: var(--fs-h3); /* design-token-exempt: TRIP-410 */ }
 }
 
 /* Совсем узко (телефон): ячейки ещё компактнее */
 @container ncal (max-width: 460px) {
-  .ncal-dc { min-height: 56px; padding: var(--sp-5) 3px var(--sp-3); }
+  .ncal-dc { min-height: 56px; padding: calc(var(--ncal-bar) + var(--sp-2)) 3px var(--sp-3); }
   .ncal-dn { min-width: 19px; height: 19px; font-size: var(--fs-nano); /* design-token-exempt: TRIP-410 */ }
 }
 

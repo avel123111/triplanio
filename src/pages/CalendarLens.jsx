@@ -149,12 +149,30 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
   // скролл сетки. Зависимость — weekKey, а не свежая ссылка `days`.
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = Math.max(0, (scrollToHour - startHour - 0.5) * HOUR_H);
+    if (!el) return;
+    // Шапка теперь ВНУТРИ прокручиваемой области и липнет сверху, поэтому нужный
+    // час отсчитывается от начала СЕТКИ, а не от начала контейнера, и к нему
+    // прибавляется высота залипшей шапки — иначе она накрыла бы искомый час.
+    const grid = /** @type {HTMLElement | null} */ (el.querySelector('.ncal-wk-body'));
+    const top = /** @type {HTMLElement | null} */ (el.querySelector('.ncal-wk-top'));
+    const gridTop = grid ? grid.offsetTop : 0;
+    const stuck = top ? top.getBoundingClientRect().height : 0;
+    el.scrollTop = Math.max(0, gridTop - stuck + (scrollToHour - startHour - 0.5) * HOUR_H);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekKey]);
 
   return (
     <Card radius="md" pad="none" className="ncal-week">
+      {/* ★ ВСЁ В ОДНОМ СКРОЛЛЕ, А ШАПКА — STICKY. Шапка дней, полоса городов и
+          «весь день» стояли СНАРУЖИ прокручиваемой области, а сетка часов —
+          внутри. Вертикальный скроллбар сужает только содержимое скролла,
+          поэтому колонки сетки становились уже колонок шапки и разделители
+          дней разъезжались тем сильнее, чем правее день (замер при полосе
+          10px: 0 · 1.4 · 2.9 · 4.3 · 5.8 · 7.1 · 8.5px). Общий контейнер
+          снимает это по построению: у всех рядов одна ширина и один скролл —
+          и вертикальный, и горизонтальный. */}
+      <div className="ncal-wk-scroll" ref={scrollRef}>
+      <div className="ncal-wk-top">
       <div className="ncal-wk-head">
         <Row justify="j-center" className="ncal-wk-gut" />
         {days.map((d, di) => (
@@ -210,7 +228,8 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
         </div>
       )}
 
-      <div className="ncal-wk-scroll" ref={scrollRef}>
+      </div>
+
         <div className="ncal-wk-body" style={{ height: gridH }}>
           <div className="ncal-wk-times">
             {hours.map(h => (
