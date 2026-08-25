@@ -1677,7 +1677,7 @@ function CityAdder({ onAdd, hasStart, hasEnd }) {
   const [city, setCity] = useState(null);
   const [kind, setKind] = useState('transit');
   const rootRef = useRef(null); // десктоп-композер целиком
-  const typeRef = useRef(null); // шаг 2 (плитки типа) — появляется после выбора города
+  const footRef = useRef(null); // футер с кнопками — последний элемент композера
   const close = () => { setOpen(false); setCity(null); setKind('transit'); };
   const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
   const submit = () => { if (city) { onAdd(city, kind); close(); } };
@@ -1686,15 +1686,16 @@ function CityAdder({ onAdd, hasStart, hasEnd }) {
   // Докрутка тем же приёмом scrollIntoView, что и по всему аппу (ValidationUI,
   // CoverPicker, …) — в ЛЮБОМ скролл-контейнере (тело виджета на десктопе / тело
   // <Sheet> на телефоне), без платформенных веток и вычислений вьюпорта:
-  //   • выбран город → появились плитки типа: докручиваем К НИМ на ОБЕИХ
-  //     платформах (без этого их не видно — ровно об этом просьба);
+  //   • выбран город → появились плитки + кнопки: докручиваем К ФУТЕРУ (он
+  //     последний), так в кадр попадают и плитки, и кнопки «Добавить/Отмена» —
+  //     на ОБЕИХ платформах;
   //   • только открыли, города ещё нет: на десктопе — к самому композеру; на
   //     телефоне открытие ведёт <Sheet>/платформа, скролл не трогаем.
   // Небольшая задержка — дать разметке (появление плиток, закрытие клавиатуры)
   // осесть перед замером.
   useEffect(() => {
     if (!open) return;
-    const target = city ? typeRef.current : (isPhone ? null : rootRef.current);
+    const target = city ? footRef.current : (isPhone ? null : rootRef.current);
     if (!target) return;
     const id = setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
     return () => clearTimeout(id);
@@ -1720,7 +1721,7 @@ function CityAdder({ onAdd, hasStart, hasEnd }) {
       {/* Шаг 2 — тип (появляется после выбора города). aria-pressed несёт выбор
           в AT; тон активной плитки — из .te-add-type[aria-pressed="true"]. */}
       {city && (
-        <Col gap="g2" ref={typeRef}>
+        <Col gap="g2">
           <span className="eyebrow">{t('tse.pt_type_label')}</span>
           <div className="te-add-grid" role="group" aria-label={t('tse.pt_type_label')}>
             {POINT_TYPES.map((pt) => {
@@ -1741,7 +1742,7 @@ function CityAdder({ onAdd, hasStart, hasEnd }) {
       )}
 
       {/* Шаг 3 — осознанное подтверждение, которого не было у мгновенного add. */}
-      <Row gap="g3" justify="j-between" className="te-add-ft">
+      <Row gap="g3" justify="j-between" className="te-add-ft" ref={footRef}>
         <Btn variant="secondary" onClick={close}>{t('common.cancel')}</Btn>
         <Btn variant="primary" disabled={!city} onClick={submit}>
           <Icon name="plus" size={15} /> {t('common.add')}
