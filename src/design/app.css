@@ -3181,7 +3181,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .citybar:hover { filter: brightness(1.05); }
 .citybar:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .citybar__lbl { color: var(--cc-ink); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.citybar--strip { padding: 3px var(--sp-3); }
+/* `strip` — плашка города в НЕДЕЛЕ: цельная на весь прогон, имя внутри. Канта
+   сверху у неё нет (он остался обличью `bar` в сетке месяца, где полоса лежит
+   вплотную к краю ячейки): здесь плашка отделена воздухом сверху и снизу, и
+   кант на скруглённом теле читался бы как ошибка отрисовки, а не как акцент. */
+.citybar--strip { padding: 3px var(--sp-3); margin: 3px 0; border-radius: var(--r-xs); box-shadow: none; }
+.citybar--strip + .citybar--strip { margin-left: 2px; }   /* design-token-exempt: 2px — зазор между половинками дня-пересадки */
 .citybar--strip + .citybar--strip { border-left: 1px solid var(--surface); }   /* design-token-exempt: 1px — хайрлайн-разделитель сегментов */
 
 /* ----- EventChip ----- (TRIP-321 линза «Календарь») компактный эвент-токен.
@@ -3787,7 +3792,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 @media (max-width: 640px) {
   .app-header__account { display: none; }
-  .trip-screen-body { padding-bottom: 96px !important; }
+  /* Полосу нижнего нава называет САМ нав (`--nav-dock-h`, safe-area уже внутри) —
+     ровно тот же источник, что у `.app-shell > main` ниже. До этого здесь стояло
+     `96px` числом: safe-area в него не входила, поэтому на телефонах с домашней
+     полоской низ экрана трипа уезжал под док.
+     visual-diff-exempt: .trip-screen-body {@media (max-width: 640px)} padding-bottom — фикс 96px → полоса нава + воздух, safe-area учтена (просьба Pavel 2026-08-25) */
+  .trip-screen-body { padding-bottom: calc(var(--nav-dock-h) + 16px) !important; }
   .trip-screen-body--flush { padding-bottom: 0 !important; }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
      become a fixed-height shell — the global header pins (never scrolls), the
@@ -6228,7 +6238,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 @media (prefers-reduced-motion: reduce) { .evd-drawer, .evd-scrim { animation: none; } }
 
 /* ---- Scrollable screen body ---- */
-.trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
+/* Низ был 60px — вдвое больше остальных сторон. Столько воздуха под контентом
+   не нужно ни одному экрану трипа, а линзе, которая тянется в высоту экрана
+   (календарь), он мешал: 100% высоты + 60px снизу = лишний скролл на ровном
+   месте. Отступ равномерный, высоту держит сам флекс.
+   visual-diff-exempt: .trip-screen-body padding — низ 60px → 28px, как остальные стороны (просьба Pavel 2026-08-25) */
+.trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px; }
 .trip-screen-body--flush { padding: 0; overflow: hidden; }
 
 /* Граница ОДНА: выше 640 — рейл, ниже — телефонный шит (TripSidebarSheet) из
@@ -6244,7 +6259,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
      края ей нужен свой, а не тот, что задан под соседство с рейлом. */
   .app-header--trip { padding-left: var(--sp-7); }
-  .trip-screen-body { padding: 16px 16px 48px; }
+  /* Низ здесь НЕ называем: его держит полоса нава выше по файлу
+     (`--nav-dock-h` + воздух, с `!important`). Прежние 48px были мёртвым
+     числом — их перебивало то правило, и читать их как действующие нельзя. */
+  .trip-screen-body { padding: 16px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
   .trip-screen-body--flush { padding: 0; }

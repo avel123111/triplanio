@@ -16,11 +16,11 @@
    записать. Занижать числа переписыванием места, а не работой, гард запрещает
    прямо — поэтому цена названа, а не спрятана.
 
-   floor-exempt: classes +15 — тайм-грид недели + полоса «весь день» + виджет городов, апрув Pavel 2026-08-25
+   floor-exempt: classes +16 — тайм-грид недели + полоса «весь день» + виджет городов, апрув Pavel 2026-08-25
    floor-exempt: namespaces +2 — два новых примитива ДС (citybar, evchip), апрув Pavel 2026-08-25
    floor-exempt: inline +6 — координаты блоков/высота холста/тон города = данные, классом не выразить, апрув Pavel 2026-08-25
-   floor-exempt: triage +6 — семья `ncal` под разбором: экран эмитит её сам, canon ей не положен, апрув Pavel 2026-08-25
-   floor-exempt: layout +12 — сетки с кастомными треками и контейнеры без зазора: примитива под них в ДС нет, апрув Pavel 2026-08-25 */
+   floor-exempt: triage +7 — семья `ncal` под разбором: экран эмитит её сам, canon ей не положен, апрув Pavel 2026-08-25
+   floor-exempt: layout +13 — сетки с кастомными треками и контейнеры без зазора: примитива под них в ДС нет, апрув Pavel 2026-08-25 */
 
 
 
@@ -704,6 +704,22 @@
    visual-diff-exempt: .ev-transfer --hl-ink — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
    visual-diff-exempt: .ev-transfer --hl-soft — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные */
 
+/* Семантический дифф 2p — объявление правок редизайна.
+   visual-diff-exempt: .citybar--strip border-radius — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .citybar--strip box-shadow — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .citybar--strip margin — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .citybar--strip margin-left — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities {@container ncal (max-width: 760px)} min-width — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities background — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities border-bottom — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities display — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities flex — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities grid-template-columns — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities min-height — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cseg display — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cseg min-width — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .trip-screen-body {@media (max-width: 640px)} padding — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные */
+
 /* =================================================================
    CalendarLens — редизайн (ncal-* namespace).
    Хедер · доска месяца с полосой города сверху ячейки · неделя колонками
@@ -828,7 +844,13 @@
 .ncal-wk-dn { color: var(--ink); min-width: 30px; height: 30px; border-radius: var(--r-pill); font-variant-numeric: tabular-nums; }
 .ncal-wk-hcell.is-today .ncal-wk-dn { background: var(--brand); color: var(--primary-fg); box-shadow: 0 4px 14px -4px var(--brand-glow); }
 /* полоса города с названием = канон <CityBar variant="strip"> */
-.ncal-wk-city { display: flex; width: 100%; min-height: 0; }
+/* Ряд городов недели — те же треки, что у шапки дней (жёлоб + 7 колонок), и
+   тот же приём, что в месяце: полосы-цвет по дням, ИМЕНА отдельным слоем поверх
+   прогонов. Раньше полоса с именем жила внутри каждой колонки — на телефоне это
+   семь обрезанных «Мад…» подряд. */
+.ncal-wk-cities { display: grid; grid-template-columns: var(--ncal-gut) repeat(7, minmax(0, 1fr)); flex: none; min-height: 26px; border-bottom: 1px solid var(--line); background: var(--surface); }
+/* Сегмент дня-пересадки: та же плашка, но поделённая между городами дня. */
+.ncal-wk-cseg { display: flex; min-width: 0; }
 
 .ncal-wk-allday { border-bottom: 1px solid var(--line); background: var(--surface-3); min-height: 34px; }
 .ncal-wk-allday .ncal-wk-gut { color: var(--muted-2); background: var(--surface-3); }
@@ -895,7 +917,10 @@
   /* Week: без вложенного вертикального скролла — вертикаль скроллит страница,
      горизонталь свайпается (колонки держат мин. ширину). */
   .ncal-week { --ncal-gut: 46px; overflow-x: auto; overflow-y: hidden; }
-  .ncal-wk-head, .ncal-wk-allday { min-width: 620px; }
+  /* Ряд городов держит ТУ ЖЕ минимальную ширину, что шапка и полоса «весь
+     день»: он ездит в том же горизонтальном скролле и рисует те же 7 колонок —
+     без этой строки он сжимался под экран, и плашки уезжали от своих дней. */
+  .ncal-wk-head, .ncal-wk-allday, .ncal-wk-cities { min-width: 620px; }
   .ncal-wk-scroll { min-width: 620px; max-height: none; overflow: visible; }
   .ncal-wk-dn { min-width: 28px; height: 28px; font-size: var(--fs-h3); /* design-token-exempt: TRIP-410 */ }
 }

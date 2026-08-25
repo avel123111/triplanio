@@ -35,6 +35,35 @@ const monthNames   = (lang) => ['', ...Info.months('long',  { locale: localeTag(
 const monthShort   = (lang) => ['', ...Info.months('short', { locale: localeTag(lang) })];
 const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) });
 
+/** Разбор ряда дней на СЕГМЕНТЫ города: подряд идущие дни с одним и тем же
+ *  городом сливаются в один спан; день-пересадка (2+ города) — свой сегмент
+ *  шириной в день, который делится между городами; пустой день сегмента не даёт.
+ *  ОДИН источник на оба вида — вопрос «где кончается город» у них общий. */
+const citySegments = (row) => {
+  const segs = [];
+  let i = 0;
+  while (i < row.length) {
+    const cs = row[i].cities;
+    if (cs.length === 0) { i++; continue; }
+    if (cs.length === 1) {
+      let j = i;
+      while (j + 1 < row.length && row[j + 1].cities.length === 1 && row[j + 1].cities[0].name === cs[0].name) j++;
+      segs.push({ start: i, span: j - i + 1, cities: cs });
+      i = j + 1;
+    } else {
+      segs.push({ start: i, span: 1, cities: cs });
+      i++;
+    }
+  }
+  return segs;
+};
+
+/** Сегменты, у которых город ОДИН — только они несут имя. Месяц печатает имена
+ *  отдельным слоем поверх полос, поэтому ему нужна именно эта выборка. */
+const cityRuns = (row) => citySegments(row)
+  .filter(s => s.cities.length === 1)
+  .map(s => ({ ...s, city: s.cities[0] }));
+
 /** День попадает в окно визита (границы включительно). ОДИН предикат на оба
  *  вида: месяц и неделя спрашивали одно и то же двумя копиями строки. */
 const visitCoversDay = (v, dt) => dt >= v.s.startOf('day') && dt <= v.e.startOf('day'); // i18n-ignore: не UI-строка — сравнение дат; `>=` в стрелке гард 2d читает как закрытие тега и принимает хвост выражения за текст JSX
@@ -56,24 +85,6 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
   // по ячейкам (непрерывность + деление дня-пересадки), имена — отдельным слоем.
   const weeks = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
-
-  // Прогоны одного города внутри недели: подряд идущие дни с ОДНИМ и тем же
-  // городом сливаются в один спан. Дни-пересадки (2+ города) и пустые дни рвут
-  // прогон и имя над ними не рисуется (там видно деление цветом самих полос).
-  const cityRuns = (week) => {
-    const runs = [];
-    let i = 0;
-    while (i < week.length) {
-      const cs = week[i].cities;
-      if (cs.length === 1) {
-        let j = i;
-        while (j + 1 < week.length && week[j + 1].cities.length === 1 && week[j + 1].cities[0].name === cs[0].name) j++;
-        runs.push({ start: i, span: j - i + 1, city: cs[0] });
-        i = j + 1;
-      } else i++;
-    }
-    return runs;
-  };
 
   return (
     <Card radius="md" pad="none" className="ncal-month">
@@ -180,15 +191,38 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
               <span className="ncal-wk-wd t-micro">{d.wd}</span>
               <Row as="span" inline justify="j-center" className="ncal-wk-dn t-heading">{d.date}</Row>
             </div>
-            <div className="ncal-wk-city">
-              {d.cities.map((c, ci) => (
-                <CityBar key={ci} variant="strip" tone={c.colorIdx} label={c.name} className="t-tiny"
-                  onClick={() => onOpenCity?.(c.v)} ariaLabel={c.name} />
-              ))}
-            </div>
           </div>
         ))}
       </div>
+
+      {/* Полоса городов — ОТДЕЛЬНЫЙ ряд под шапкой дней, и плашка ЦЕЛЬНАЯ на
+          весь прогон, а не нарезанная по дням. Имя стоит ВНУТРИ неё и печатается
+          один раз: в колонку 96px на телефоне название не влезало и рвалось в
+          «Мад…» семь раз подряд, а нарезка по дням делала прогон рваным.
+          День-пересадка — свой сегмент шириной в день, поделённый между
+          городами: там имя не печатается, деление видно цветом. */}
+      {days.some(d => d.cities.length > 0) && (
+        <div className="ncal-wk-cities">
+          <div className="ncal-wk-gut" />
+          {citySegments(days).map((s, si) => {
+            const col = { gridColumn: `${s.start + 2} / span ${s.span}` };
+            // Один город — плашка с именем; пересадка — тот же облик, но
+            // поделённый между городами дня, поэтому имя опускаем.
+            return s.cities.length === 1 ? (
+              <CityBar key={si} variant="strip" tone={s.cities[0].colorIdx} label={s.cities[0].name}
+                className="t-tiny" style={col}
+                onClick={() => onOpenCity?.(s.cities[0].v)} ariaLabel={s.cities[0].name} />
+            ) : (
+              <div key={si} className="ncal-wk-cseg" style={col}>
+                {s.cities.map((c, ci) => (
+                  <CityBar key={ci} variant="strip" tone={c.colorIdx}
+                    onClick={() => onOpenCity?.(c.v)} ariaLabel={c.name} />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {hasAllDay && (
         <div className="ncal-wk-allday">
