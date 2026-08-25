@@ -50,8 +50,6 @@
   "per_month_short": "/mes",
   "per_year_short": "/año",
   "plan_current": "Plan actual",
-  "free_tariff": "Plan gratuito",
-  "access_until": "acceso hasta {date}",
   "pref_language": "Idioma",
   "pref_language_sub": "Idioma de la interfaz",
   "pref_theme_sub": "Apariencia clara u oscura",

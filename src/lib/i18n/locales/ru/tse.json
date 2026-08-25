@@ -56,6 +56,7 @@
   "route_show": "Показать маршрут",
   "section_road": "Дорога",
   "start_already_set": "Старт уже задан, сначала убери текущий",
+  "tk_plane": "Перелёт",
   "transfers_out_of_plan": "Переезды вне плана",
   "warns_short": "{n} предупр"
 }
