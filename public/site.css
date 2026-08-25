@@ -1926,14 +1926,15 @@ section{position:relative}
 @keyframes artDrift{to{transform:scale(1.07) translate3d(-1.2%,-.8%,0)}}
 .authv{
   font-family:var(--font-body);   /* зона рисует Onest/Golos; бьёт app-CSS .authv (TRIP-410 Geologica), т.к. site-CSS грузится позже */
+  line-height:1.55;   /* база текста зоны auth = body прототипа v5.7 (не app-CSS 1.6); заголовки перебивают своим 1.14 */
   /* Токены зоны auth: общие роли наследуются с html.site (бренд, ink, muted,
      радиусы, тени, шрифты, ease, ice). Прототипные синонимы АЛИАСЯТСЯ на зонные —
      ported-правила дословны, сверка в одной точке. На .authv (не :root/html.site):
      не течёт на другие страницы, не повторяет утечку старый лист логина. TRIP-464. */
   --form-bg:var(--white); --pop-bg:var(--white); --field-bg-f:var(--white);
   --art-base:var(--white); --social-bg:var(--white);
-  --faint:var(--muted); --placeholder:var(--muted);
-  --accent:var(--sunset); --accent-text:var(--sunset-text); --soft:var(--mist);
+  --muted:#5B7085; --faint:#59728D; --placeholder:#5E768D;
+  --accent:var(--sunset); --accent-text:var(--sunset-text); --soft:#F4F9FD;
   --pop-bd:var(--hair); --art-kicker:var(--brand-text); --art-grain-op:.3;
   --label:#274762; --field-bg:#F8FBFE; --field-bd:#DBE8F2; --field-bd-h:#BDD3E6;
   --ring:rgba(35,128,214,.18); --ring-danger:rgba(224,70,75,.16); --focus:#1668BC;
@@ -2009,8 +2010,8 @@ section{position:relative}
 .authv .or::before, .authv .or::after{content:"";flex:1;height:1px;background:var(--hair)}
 .authv .av-field{margin-bottom:10px}
 .authv .field-top{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
-.authv .av-field label{font-size:var(--fs-body);font-weight:600;color:var(--label)}
-.authv .field-top .aux{margin-left:auto;font-size:var(--fs-body-lg);font-weight:600;color:var(--brand-text);padding:6px 4px;margin:-6px -4px;border-radius:8px;text-underline-offset:3px;transition:color .16s ease}
+.authv .av-field label{font-size:var(--fs-small);font-weight:600;color:var(--label)}
+.authv .field-top .aux{margin-left:auto;font-size:var(--fs-body);font-weight:600;color:var(--brand-text);padding:6px 4px;margin:-6px -4px;border-radius:8px;text-underline-offset:3px;transition:color .16s ease}
 .authv .field-top .aux:hover{color:var(--brand-deep-text);text-decoration:underline}
 .authv .control{position:relative;display:flex;align-items:center}
 .authv .control>.lead{position:absolute;left:15px;width:19px;height:19px;color:var(--faint);pointer-events:none;transition:color .18s ease}
@@ -2092,7 +2093,7 @@ section{position:relative}
 .authv .alt{margin-top:12px;text-align:center;font-size:var(--fs-body-lg);color:var(--muted)}
 .authv .alt a{font-weight:600;color:var(--brand-text);padding:11px 5px;margin-block:-11px;display:inline-block;border-radius:8px}
 .authv .alt a:hover{color:var(--brand-deep-text);text-decoration:underline;text-underline-offset:3px}
-.authv .legal{margin-top:10px;font-size:var(--fs-small);line-height:1.45;color:var(--faint);text-align:center}
+.authv .legal{margin-top:10px;font-size:var(--fs-caption);line-height:1.45;color:var(--faint);text-align:center}
 .authv .legal a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:8px 2px;margin-block:-8px;display:inline-block}
 .authv .legal a:hover{color:var(--ink)}
 .authv .status-icon{width:60px;height:60px;border-radius:var(--r-lg);display:grid;place-items:center;margin-bottom:18px;
