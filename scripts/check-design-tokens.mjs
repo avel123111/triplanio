@@ -82,6 +82,10 @@ const COLOR_WHITELIST = [
   'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
   'src/lib/map/mapTokens.js',                          // Mapbox paint fallbacks (need concrete hex)
   'src/pages/Login.jsx',                               // Google + Triplanio logo SVGs
+  // login.css — МЁРТВЫЙ лист старого логина (не импортируется), удерживается до
+  // Ф6 CSS-teardown (TRIP-460): экран переехал на зонную ДС site.css §AUTH. Его
+  // сырые цвета остаются как были на dev — трогать умирающий файл смысла нет.
+  'src/pages/login.css',                               // dead (pending Ф6 teardown); raw colours untouched
   // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
   // (TRIP-460) LandingPage.jsx re-added: retiring it after the Hero-only draft
   // (which briefly had 0 raw colour) was premature — the full 11-section 1:1
@@ -92,7 +96,6 @@ const COLOR_WHITELIST = [
   // COLOR_WHITELIST by single-quote pairs, so a stray one mis-seeds the
   // fixture and the whole spacing suite goes red (TRIP-460 B3).
   'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
-  'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
   'src/pages/PublicTrip.css',                          // public read-only page styles
   'public/site.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
 ];

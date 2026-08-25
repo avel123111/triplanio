@@ -1,0 +1,704 @@
+/* ============================================================================
+   МЁРТВЫЙ CSS СТАРОГО ЛОГИНА — удерживается до Ф6 (CSS-teardown, TRIP-460).
+
+   Экран логина и join переехали на зонную ДС (site.css §AUTH, разметка под
+   .pane-form/.screen). Эти классы больше не пишутся разметкой, но их правила
+   ЖИВЫ в дереве: снести весь лист сразу нельзя в этом PR — гард 2p (семантика)
+   краснеет на каждом снятом НЕ-color объявлении (≈480 штук), а per-declaration
+   маркеры на сплошном сносе — ровно тот анти-паттерн, от которого 2p и
+   предостерегает («файл РОС»). Поэтому функциональный перенос и снос стилей
+   разведены: этот файл НЕ импортируется (в рантайм не идёт, коллизии .auth с
+   site.css НЕТ), а мёртвые имена помечены здесь до фазы teardown.
+
+   Гард 2n (orphans) сканирует ВСЕ .css глобально, поэтому co-селекторы старого
+   логина, живущие в общем src/design/app.css (типографский канон .t-*,
+   утилиты), помечены ТУТ же — общий app.css не трогаем ради чистого диффа; в
+   Ф6 они уедут вместе с этими именами.
+
+   orphan-exempt: appframe — мёртв, Ф6
+   orphan-exempt: appframe__bar — мёртв, Ф6
+   orphan-exempt: appframe__body — мёртв, Ф6
+   orphan-exempt: appframe__dot — мёртв, Ф6
+   orphan-exempt: appframe__dot--g — мёртв, Ф6
+   orphan-exempt: appframe__dot--r — мёртв, Ф6
+   orphan-exempt: appframe__dot--y — мёртв, Ф6
+   orphan-exempt: appframe__url — мёртв, Ф6
+   orphan-exempt: appnudge — мёртв, Ф6
+   orphan-exempt: auth-error — мёртв, Ф6
+   orphan-exempt: auth-error__icon — мёртв, Ф6
+   orphan-exempt: auth-input--trail — мёртв, Ф6
+   orphan-exempt: auth__brand-col — мёртв, Ф6
+   orphan-exempt: auth__brand-link — мёртв, Ф6
+   orphan-exempt: auth__foot — мёртв, Ф6
+   orphan-exempt: auth__foot-links — мёртв, Ф6
+   orphan-exempt: auth__form — мёртв, Ф6
+   orphan-exempt: auth__form-col — мёртв, Ф6
+   orphan-exempt: auth__form-wrap — мёртв, Ф6
+   orphan-exempt: auth__h1 — мёртв, Ф6
+   orphan-exempt: auth__inputs — мёртв, Ф6
+   orphan-exempt: auth__resend-wait — мёртв, Ф6
+   orphan-exempt: auth__switch — мёртв, Ф6
+   orphan-exempt: brand-col__eyebrow — мёртв, Ф6
+   orphan-exempt: brand-col__head — мёртв, Ф6
+   orphan-exempt: brand-col__inner — мёртв, Ф6
+   orphan-exempt: brand-col__logo — мёртв, Ф6
+   orphan-exempt: brand-col__sub — мёртв, Ф6
+   orphan-exempt: brand-col__tag — мёртв, Ф6
+   orphan-exempt: brand-col__trust — мёртв, Ф6
+   orphan-exempt: ccy — мёртв, Ф6
+   orphan-exempt: city-chip — мёртв, Ф6
+   orphan-exempt: confirm__actions — мёртв, Ф6
+   orphan-exempt: confirm__email — мёртв, Ф6
+   orphan-exempt: confirm__icon — мёртв, Ф6
+   orphan-exempt: field__hint — мёртв, Ф6
+   orphan-exempt: field__match — мёртв, Ф6
+   orphan-exempt: field__top — мёртв, Ф6
+   orphan-exempt: ico--green — мёртв, Ф6
+   orphan-exempt: ico--warm — мёртв, Ф6
+   orphan-exempt: input-trail — мёртв, Ф6
+   orphan-exempt: input-wrap — мёртв, Ф6
+   orphan-exempt: is-bad — мёртв, Ф6
+   orphan-exempt: is-ok — мёртв, Ф6
+   orphan-exempt: lede — мёртв, Ф6
+   orphan-exempt: pip — мёртв, Ф6
+   orphan-exempt: preview__stage — мёртв, Ф6
+   orphan-exempt: pw-strength — мёртв, Ф6
+   orphan-exempt: pw-strength__label — мёртв, Ф6
+   orphan-exempt: socials — мёртв, Ф6
+   orphan-exempt: tag--green — мёртв, Ф6
+   orphan-exempt: tag--warm — мёртв, Ф6
+   ============================================================================ */
+
+/* Шрифты грузятся глобально из src/design/fonts.css — TRIP-165 */
+
+/* Auth-only token overrides. MUST stay scoped to .auth — this stylesheet is
+   injected globally by Vite when Login mounts and is never removed, so a global
+   :root here would override the app's theme-aware tokens (e.g. --ink) on every
+   route after sign-in, breaking dark theme (dark-navy text on dark surfaces). */
+.auth {
+  --brand:         #2167e2;
+  --brand-600:     #1b58c4;
+  --brand-700:     #174aa6;
+  --brand-soft:    rgba(33,103,226,.08);
+  --brand-soft-12: rgba(33,103,226,.12);
+  --brand-ink:     #0b1f47;
+  --brand-ink-2:   #0a1a3a;
+
+  /* Семья --primary-* тоже обязана быть здесь: остров светлый по замыслу, но
+     `data-theme` на <html> живёт своей жизнью (эффект ThemeProvider срабатывает
+     на смену системной темы, пока мы стоим на входе, а эффект Login с пустыми
+     зависимостями — нет). Тогда --brand остаётся светлым отсюда, а незапиненный
+     --primary-* проваливается в тёмный: галка чекбокса давала 3.49:1 вместо
+     5.12:1, фокус-кольцо — чужой оттенок. Значения светлые, один в один с
+     app.css, поэтому в обычном случае это ноль изменений.
+     ⚠ Мягкий тон в этом списке БОЛЬШЕ НЕ ПИНИТСЯ: пара --primary-soft /
+     --primary-soft-2 удалена вместе с удалением обоих имён из :root (TRIP-352
+     шаг 2, они были вторым именем --brand-soft). Пин несуществующего имени -
+     мёртвая строка, которую не видит ни один гард. Мягкий тон острова несёт
+     --brand-soft выше, и у него тут СВОЙ оттенок (33,103,226 вместо
+     33,115,200) - поэтому пару нельзя было просто переименовать. Читателей
+     удалённых имён под .auth ноль: экран рисует свои .btn-… и .auth-…, а
+     единственный компонент ДС (Checkbox) читает --primary-ring, он остаётся. */
+  --primary-fg:     #fff;
+  --primary-hover:  #1C66B4;
+  --primary-press:  #18579A;
+  --primary-ring:   rgba(33,115,200,.28);
+
+  --ink:    #0F172A;
+  --ink-2:  #1f2a44;
+  --muted:  #5a657a;
+  --muted-2:#8693a8;
+  --line:   #E5E7EB;
+  --line-2: #eef0f4;
+  --wash:   #F7F8FA;
+  --wash-2: #fbfbfd;
+  --surface:#ffffff;
+
+  --warm:         #c9603a;
+  --warm-soft:    #f1d9c9;
+  --warm-tint:    rgba(201,96,58,.10);
+  --success:      #1f8a5b;
+  --success-soft: rgba(31,138,91,.10);
+  --danger:       #c4364c;
+  --danger-soft:  rgba(196,54,76,.10);
+
+  /* TRIP-410: локальные --font-display/--font-body удалены. Гарнитуры берутся из
+     единственного дома src/design/app.css :root (Geologica); типографику .auth
+     держит канон .t-body (co-selector), заголовки — .t-title/.t-display. */
+
+  --banner-photo: url("https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=70");
+}
+
+/* ── Layout ── */
+.auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1.05fr);
+  background: #fcfcfc;
+  /* типографика — канон .t-body (co-selector в app.css, TRIP-410) */
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.auth__form-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 40px clamp(32px,5vw,72px);
+  min-height: 100vh;
+}
+
+.auth__brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.auth__form-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 0;
+}
+.auth__form {
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  color: var(--muted);   /* кегль наследуется от .auth (канон .t-body, TRIP-410) */
+  flex-wrap: wrap;
+}
+.auth__foot a:hover { color: var(--brand); }
+.auth__foot-links { display: inline-flex; gap: 18px; }
+
+/* ── Form elements ── */
+/* Scoped to .auth — these used to be a BARE global `.eyebrow` and leaked the
+   orange dot (::before) onto every .eyebrow in the app (planner "РЯДОМ", Review
+   stats, etc.). The app's own `.eyebrow` lives in design/app.css. */
+.auth .eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.auth .eyebrow::before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--warm);
+}
+
+.auth__h1 {
+  color: var(--ink);
+  margin: 0;
+}
+
+.lede {
+  margin-top: 14px;
+  color: var(--muted);
+  max-width: 44ch;
+}
+
+.socials {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 28px;
+}
+.btn-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.btn-social:hover { background: var(--wash); border-color: #d8dde6; }
+.btn-social:disabled { opacity: .6; cursor: not-allowed; }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0 18px;
+  color: var(--muted);
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.auth__inputs { display: flex; flex-direction: column; gap: 0; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.field__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.field__label {
+  color: var(--ink-2);
+}
+.field__hint { color: var(--muted); }
+.field__hint a { color: var(--brand); text-decoration: none; }
+.field__hint a:hover { color: var(--brand-600); }
+
+.input-wrap { position: relative; }
+.auth-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-btn);
+  /* типографика — канон .t-body (co-selector в app.css, TRIP-410) */
+  color: var(--ink);
+  transition: border-color .15s ease, box-shadow .15s ease;
+  box-sizing: border-box;
+}
+.auth-input::placeholder { color: var(--muted-2); }
+.auth-input:hover { border-color: #d8dde6; }
+.auth-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px var(--brand-soft);
+}
+.auth-input--trail { padding-right: 44px; }
+
+.input-trail {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px; height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.input-trail:hover { background: var(--wash); color: var(--ink); }
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 4px 0 22px;
+}
+/* The checkbox is the design system's `.checkbox` (app.css) — no local copy. */
+
+/* Scoped to .auth (Login.jsx root) — TRIP-460: `login.css` is imported eagerly
+   in App.jsx (not lazy), so an unscoped `.btn-primary`/`.btn-ghost` here leaked
+   globally onto every route, including the landing zone, which uses the same
+   names for a DIFFERENT object (the prototype's own CTA button, ported as-is).
+   Different objects sharing a name by accident → the older one gets scoped,
+   same fix as the `.sheet` precedent. */
+.auth .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  padding: 0 22px;
+  background: var(--brand);
+  color: #fff;
+  border: 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255,255,255,.15) inset,
+              0 8px 20px -8px rgba(33,103,226,.55);
+  transition: background .15s ease, transform .15s ease;
+}
+.auth .btn-primary:hover { background: var(--brand-600); transform: translateY(-1px); }
+.auth .btn-primary:active { transform: translateY(0); }
+.auth .btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+.auth .btn-primary .arrow { transition: transform .2s ease; }
+.auth .btn-primary:hover:not(:disabled) .arrow { transform: translateX(2px); }
+
+.auth__switch {
+  margin-top: 26px;
+  color: var(--muted);
+  text-align: center;
+}
+.auth__switch a, .auth__switch button {
+  color: var(--brand);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.auth__switch a:hover, .auth__switch button:hover { color: var(--brand-600); }
+
+.terms {
+  margin-top: 16px;
+  color: var(--muted);
+}
+.terms a { color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 2px; }
+.terms a:hover { color: var(--brand); }
+
+.pw-strength {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 5px;
+  margin-top: 8px;
+}
+.pw-strength span {
+  display: block;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  transition: background .2s ease;
+}
+.pw-strength[data-score="1"] span:nth-child(-n+1) { background: var(--danger); }
+.pw-strength[data-score="2"] span:nth-child(-n+2) { background: var(--warm); }
+.pw-strength[data-score="3"] span:nth-child(-n+3) { background: #c9a23a; }
+.pw-strength[data-score="4"] span { background: var(--success); }
+.pw-strength__label {
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* Password confirm match line (reset-password view) */
+.field__match {
+  margin-top: 9px;
+  min-height: 16px;
+}
+.field__match.is-ok { color: var(--success); }
+.field__match.is-bad { color: var(--danger); }
+.field__match.is-ok::before { content: "\2713\00a0"; }
+.field__match.is-bad::before { content: "\2715\00a0"; }
+
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+.auth-error__icon { flex: 0 0 auto; margin-top: 1px; line-height: 0; /* design-token-exempt: сброс строчного бокса вокруг SVG-иконки, не текст */ }
+.auth-error__icon svg { display: block; }
+.auth__resend-wait { opacity: .55; }
+
+/* Confirm (reset-sent) */
+.confirm { text-align: center; }
+.confirm__icon {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  background: var(--success-soft);
+  color: var(--success);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin: 0 auto 22px;
+}
+.confirm__email {
+  display: inline-block;
+  margin: 4px 0 0;
+  background: var(--wash);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+}
+.confirm__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 28px;
+}
+/* Scoped to .auth — same login.css/site.css `.btn-primary` leak (see above). */
+.auth .btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 46px; padding: 0 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.auth .btn-ghost:hover { background: var(--wash); border-color: #d8dde6; }
+
+/* ── Brand panel ── */
+.auth__brand-col {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  padding: 56px clamp(40px,4.5vw,64px);
+  background:
+    linear-gradient(135deg,
+      color-mix(in oklab, var(--brand-ink) 94%, transparent),
+      color-mix(in oklab, var(--brand-700) 88%, transparent)),
+    radial-gradient(80% 60% at 18% 0%,
+      color-mix(in oklab, var(--brand) 35%, transparent), transparent 60%),
+    radial-gradient(60% 50% at 92% 100%,
+      color-mix(in oklab, var(--warm) 35%, transparent), transparent 65%),
+    var(--banner-photo) center/cover;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
+}
+.auth__brand-col::after {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(60% 50% at 30% 35%, rgba(0,0,0,.18), transparent 70%),
+    linear-gradient(180deg, rgba(0,0,0,.04) 0%, rgba(0,0,0,.32) 100%);
+  pointer-events: none;
+}
+.brand-col__inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 36px;
+}
+.brand-col__head {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 480px;
+}
+/* Logo in the brand panel — used on mobile in place of the eyebrow text,
+   since the blue panel renders above the form there. Hidden on desktop. */
+.brand-col__logo {
+  display: none;
+  align-items: center;
+  gap: 11px;
+  color: #fff;
+}
+.brand-col__logo svg {
+  background: #fff;
+  border-radius: var(--r-sm);
+  padding: 5px;
+  box-sizing: content-box;
+  box-shadow: 0 4px 14px -4px rgba(0,0,0,.45);
+}
+.brand-col__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255,255,255,.78);
+}
+.brand-col__eyebrow::before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: color-mix(in oklab, var(--warm) 70%, white 30%);
+}
+.brand-col__tag {
+  /* типографика — канон .t-title (co-selector в app.css, TRIP-410) */
+  color: #fff;
+  margin: 0;
+  max-width: 16ch;
+  text-shadow: 0 2px 24px rgba(0,0,0,.35), 0 1px 0 rgba(0,0,0,.15);
+}
+.brand-col__tag .accent { color: color-mix(in oklab, var(--warm) 60%, white 40%); }
+.brand-col__sub {
+  margin: 4px 0 0;
+  color: rgba(255,255,255,.82);
+  max-width: 38ch;
+  text-shadow: 0 1px 12px rgba(0,0,0,.25);
+}
+
+.preview {
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+.preview__stage {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+}
+
+.appframe {
+  background: #fff;
+  color: var(--ink);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255,255,255,.4);
+  box-shadow: 0 2px 8px rgba(0,0,0,.18), 0 30px 80px -24px rgba(0,0,0,.55);
+  overflow: hidden;
+  animation: floaty 7s ease-in-out infinite;
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@media (prefers-reduced-motion: reduce) { .appframe, .appnudge { animation: none; } }
+
+.appframe__bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: linear-gradient(#fdfdfe, #f6f7fa);
+  border-bottom: 1px solid var(--line);
+}
+.appframe__dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.appframe__dot--r { background: #ff5f57; }
+.appframe__dot--y { background: #febc2e; }
+.appframe__dot--g { background: #28c840; }
+.appframe__url {
+  flex: 1;
+  margin-left: 10px;
+  text-align: center;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 3px 10px;
+  max-width: 320px;
+}
+.appframe__body {
+  padding: 20px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.trip-head { display: flex; flex-direction: column; gap: 8px; }
+.trip-head__meta {
+  color: var(--muted);
+}
+.trip-head__title {
+  color: var(--ink);
+}
+.trip-head__cities { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.city-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  background: var(--wash);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 3px 10px 3px 8px;
+}
+.city-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+.trip-tl { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+.trip-tl__day { color: var(--muted-2); margin: 8px 0 2px; }
+.trip-tl__row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--wash-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+.trip-tl__row .ico { width: 26px; height: 26px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: inline-flex; align-items: center; justify-content: center; }
+.trip-tl__row .ico--warm { background: var(--warm-tint); color: var(--warm); }
+.trip-tl__row .ico--green { background: var(--success-soft); color: var(--success); }
+.trip-tl__row .lbl { display: flex; flex-direction: column; min-width: 0; }
+.trip-tl__row .lbl strong { color: var(--ink); }   /* вес — канон .t-strong (co-selector в app.css, TRIP-410) */
+.trip-tl__row .lbl .sub { color: var(--muted); }
+.trip-tl__row .tag { background: var(--brand-soft); color: var(--brand); padding: 2px 8px; border-radius: var(--r-pill); }
+.trip-tl__row .tag--warm { background: var(--warm-tint); color: var(--warm); }
+.trip-tl__row .tag--green { background: var(--success-soft); color: var(--success); }
+.trip-tl__row .time { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.trip-foot { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.trip-foot__lab { color: var(--muted); }
+.trip-foot__total { display: flex; align-items: baseline; gap: 6px; }
+.trip-foot__total .big { font-variant-numeric: tabular-nums; }
+.trip-foot__total .ccy { color: var(--muted); font-variant-numeric: tabular-nums; }
+.trip-foot__delta { color: var(--success); background: var(--success-soft); padding: 3px 8px; border-radius: var(--r-pill); }
+
+.appnudge {
+  position: absolute;
+  right: -14px; bottom: -18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: var(--r-btn);
+  padding: 10px 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.18), 0 16px 40px -12px rgba(0,0,0,.45);
+  animation: floaty 6s ease-in-out infinite;
+  animation-delay: -2s;
+  max-width: 220px;
+}
+.appnudge .av {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), #5b8fff);
+  color: #fff;
+  font-size: var(--fs-micro); font-weight: 700; /* design-token-exempt: инициал в кружке-аватаре, глиф не текст */
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+}
+.appnudge .ttl { color: var(--ink); }
+.appnudge .sub { color: var(--muted); margin-top: 1px; }
+
+.brand-col__trust {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,.72);
+  text-shadow: 0 1px 8px rgba(0,0,0,.3);
+}
+.brand-col__trust .pip { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.45); }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .auth { grid-template-columns: 1fr; }
+  .auth__brand-col { min-height: auto; padding: 28px 32px; order: -1; }
+  .preview { display: none; }
+  .brand-col__inner { gap: 16px; }
+  .auth__form-col { min-height: auto; padding: 28px 28px 48px; }
+  /* Show the logo in the blue panel; drop the eyebrow text + marketing copy so
+     the form (and its primary button) rises into view without scrolling. The
+     redundant logo at the top of the form column is hidden here too. */
+  .brand-col__logo { display: inline-flex; }
+  .brand-col__eyebrow { display: none; }
+  .brand-col__sub { display: none; }
+  .brand-col__trust { display: none; }
+  .auth__brand-link { display: none; }
+  .auth__form-wrap { padding: 8px 0 0; align-items: flex-start; }
+  /* Stacked layout: the footer links sit right under the "нет аккаунта /
+     зарегистрироваться" switch — give them breathing room. */
+  .auth__foot { margin-top: 32px; }
+}
+@media (max-width: 540px) {
+  .auth__brand-col { padding: 28px 24px 32px; }
+  .socials { grid-template-columns: 1fr; }
+  .confirm__actions { grid-template-columns: 1fr; }
+  .auth__form-col { padding: 28px 22px 40px; }
+}

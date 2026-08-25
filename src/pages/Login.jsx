@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
 import { authErrorText } from '@/lib/authErrorText';
-import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useSiteTheme, useSiteCss, LangSwitch } from '@/components/site/SiteChrome';
-import LandingSprite from '@/components/site/LandingSprite';
+import { useSiteTheme, useSiteCss } from '@/components/site/SiteChrome';
+import AuthShell from '@/components/site/AuthShell';
 import { setRemember as setRememberFlag } from '@/api/authStorage';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+/* floor-exempt: dsshare +27 — неавторизованная зона живёт на СВОЕЙ ДС (site.css
+   §AUTH), а не на app-DS из src/design: перенос логина/join с компонентов
+   src/design на зонные примитивы законно опускает долю app-DS (метрика dsShareBp
+   считает именно app-DS). Решение «зона на своей ДС» — апрув Pavel (TRIP-460). */
 
 // Where to land after a successful login. A pending invite-link join (see
 // JoinTrip) stores its path in sessionStorage; otherwise go to the app home.
@@ -197,12 +200,6 @@ export default function Login() {
   useSiteTheme();
   useSiteCss(); // грузит public/site.css (зонная ДС) вместо снятого login.css
 
-  // Ротатор арт-пейна (декоративный, aria-hidden): крутит 3 строки прототипа.
-  const [rot, setRot] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setRot((r) => (r + 1) % 3), 4200);
-    return () => clearInterval(id);
-  }, []);
 
   // Unlock the form after returning from a Google/Apple OAuth redirect.
   // signInWithOAuth navigates the whole page away with isLoading=true; pressing
@@ -525,23 +522,7 @@ export default function Login() {
   };
 
   return (
-    <div className="auth">
-      <LandingSprite />
-
-      {/* ════ LEFT: форма ════ */}
-      <section className="pane-form">
-        <header className="pane-top">
-          <Link to="/" className="brand">
-            <svg className="logo" width="33" height="33" aria-hidden="true"><use href="#tl-logo" /></svg>
-            <span>{BRAND_NAME}</span>
-          </Link>
-          <div className="top-actions">
-            <LangSwitch value={lang} onChange={setLang} />
-          </div>
-        </header>
-
-        <main className="form-area">
-          <div className="form-wrap">
+    <AuthShell lang={lang} setLang={setLang}>
 
             {/* ── Вход ── */}
             {view === 'login' && (
@@ -624,7 +605,8 @@ export default function Login() {
                   </div>
                   <p className="legal">
                     {t('auth.terms_pre')}{' '}
-                    {/* nav-exempt: реальные страницы зоны (leaf-legal), метка атрибуции не нужна */}
+                    {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
+                    {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
                     <a href="/terms">{t('auth.terms_link')}</a> {t('auth.terms_and')} <a href="/privacy">{t('auth.privacy_link')}</a>.
                   </p>
                   <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>{isLoading ? t('common.loading') : t('auth.create_account')}<IconArrow /></button>
@@ -738,35 +720,6 @@ export default function Login() {
               </section>
             )}
 
-          </div>
-        </main>
-
-        <footer className="pane-foot">
-          <span>© 2026 {BRAND_NAME}</span>
-          <nav className="legal">
-            {/* nav-exempt: реальные страницы зоны (leaf-legal) */}
-            <a href="/terms">{t('auth.foot_terms')}</a>
-            <a href="/privacy">{t('auth.foot_privacy')}</a>
-            {/* nav-exempt: mailto — внешний протокол, как в футере лендинга */}
-            <a href="mailto:support@triplanio.com">{t('auth.foot_support')}</a>
-          </nav>
-        </footer>
-      </section>
-
-      {/* ════ RIGHT: арт-пейн (декоративный) ════ */}
-      <aside className="pane-art" aria-hidden="true">
-        <div className="art" />
-        <div className="art-scrim" />
-        <div className="art-copy">
-          <span className="kicker">{t('auth.art_kicker')}</span>
-          <h2 dangerouslySetInnerHTML={{ __html: t('auth.art_title') }} />
-          <p className="rotator">
-            {[0, 1, 2].map((i) => (
-              <span key={i} className={i === rot ? 'on' : ''}>{t(`auth.art_l${i + 1}`)}</span>
-            ))}
-          </p>
-        </div>
-      </aside>
-    </div>
+    </AuthShell>
   );
 }

@@ -4,44 +4,27 @@ import { track, setRefTripId } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useSiteTheme, useSiteCss } from '@/components/site/SiteChrome';
+import AuthShell from '@/components/site/AuthShell';
 
 const PENDING_KEY = 'postLoginRedirect';
-// Own logo served from the repo (public/triplanio-logo.png) rather than
-// hotlinked off triplanio.com; same vendoring canon as public/partners (TRIP-245).
-const LOGO_URL = '/triplanio-logo.png';
 
-const STYLES = `
-.jt-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  font-family:'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#16294A;
-  background:radial-gradient(900px 480px at 50% -8%,rgba(33,115,200,.12),transparent 62%),radial-gradient(700px 420px at 100% 110%,rgba(98,166,240,.10),transparent 60%),#F4F7FC;}
-.jt-card{width:100%;max-width:440px;background:#fff;border:1px solid #E9E8F2;border-radius:var(--r-card);
-  box-shadow:0 18px 50px -20px rgba(22,41,74,.28);padding:48px 40px 40px;text-align:center;}
-.jt-logo{height:38px;width:auto;margin:0 auto 30px;display:block;}
-.jt-card h1{margin:0;}
-.jt-lede{color:#7A7689;margin:12px 0 0;}
-.jt-btn{color:#fff;
-  background:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);border:none;border-radius:var(--r-btn);width:100%;
-  padding:15px 22px;margin-top:28px;cursor:pointer;box-shadow:0 10px 24px -8px rgba(33,115,200,.55);
-  transition:transform .15s,box-shadow .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
-.jt-btn:hover{transform:translateY(-2px);box-shadow:0 16px 32px -10px rgba(33,115,200,.62);}
-.jt-btn:active{transform:translateY(0);}
-.jt-btn--ghost{background:transparent;color:#2173C8;box-shadow:none;border:1px solid #E9E8F2;margin-top:14px;}
-.jt-btn--ghost:hover{background:rgba(33,115,200,.06);border-color:#62A6F0;transform:none;}
-.jt-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(33,115,200,.08);color:#2173C8;
-  padding:8px 14px;border-radius:var(--r-pill);margin-bottom:22px;}
-.jt-chip svg{width:15px;height:15px;}
-.jt-spinner{width:46px;height:46px;margin:6px auto 22px;border-radius:50%;
-  border:4px solid rgba(33,115,200,.16);border-top-color:#2173C8;animation:aispin .8s linear infinite;}
-.jt-badge{width:64px;height:64px;margin:4px auto 22px;border-radius:50%;background:#FAECE7;
-  display:flex;align-items:center;justify-content:center;}
-.jt-badge svg{width:30px;height:30px;color:#D85A30;}
-@media(max-width:480px){.jt-card{padding:38px 24px 30px;border-radius:var(--r-xl);}.jt-card h1{font-size:var(--fs-h3);}}
-`;
+// Maps the invite-link edge function's machine `code` to its error i18n key.
+// null-prototype: `code` is an external edge value, so a lookup like
+// code==='toString' must miss (→ invalid), not return an inherited method.
+const ERR_KEY_BY_CODE = {
+  __proto__: null,
+  expired: 'member.join_error_expired',
+  revoked: 'member.join_error_revoked',
+  blocked: 'member.join_error_blocked',
+};
 
 export default function JoinTrip() {
   const { token } = useParams();
   const nav = useNavigate();
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
+  useSiteTheme();
+  useSiteCss(); // зонная ДС (site.css §AUTH) — join живёт в той же оболочке, что логин
   const [state, setState] = useState('working'); // working | signin | error
   const [errKey, setErrKey] = useState('member.join_error_invalid');
 
@@ -72,65 +55,57 @@ export default function JoinTrip() {
       // The invite-link edge function emits a machine `code` in its `{ error, code }`
       // body; supabase-js leaves `data` null on a non-2xx, so read the `code` that
       // invokeFn parsed off the error response (not `data`, which is null here).
-      setErrKey(
-        code === 'expired' ? 'member.join_error_expired'
-        : code === 'revoked' ? 'member.join_error_revoked'
-        : code === 'blocked' ? 'member.join_error_blocked'
-        : 'member.join_error_invalid',
-      );
+      setErrKey(ERR_KEY_BY_CODE[code] || 'member.join_error_invalid');
       setState('error');
     })();
     return () => { cancelled = true; };
   }, [token, nav]);
 
   return (
-    <main className="jt-wrap">
-      <style>{STYLES}</style>
-      <div className="jt-card">
-        <img className="jt-logo" src={LOGO_URL} alt="Triplanio" />
+    <AuthShell lang={lang} setLang={setLang}>
+      {state === 'working' && (
+        <section className="screen is-active" data-screen="join-working">
+          <div className="join-spin" aria-hidden="true"><span className="spin" /></div>
+          <div className="screen-head">
+            <h1>{t('member.join_joining')}</h1>
+            <p className="sub">{t('member.join_joining_sub')}</p>
+          </div>
+        </section>
+      )}
 
-        {state === 'working' && (
-          <>
-            <div className="jt-spinner" />
-            <h1 className="t-heading">{t('member.join_joining')}</h1>
-            <p className="jt-lede t-body">{t('member.join_joining_sub')}</p>
-          </>
-        )}
+      {state === 'signin' && (
+        <section className="screen is-active" data-screen="join-signin">
+          <div className="screen-head">
+            <div className="brow">{t('member.join_invited')}</div>
+            <h1>{t('member.join_signin_title')}</h1>
+            <p className="sub">{t('member.join_signin_lede')}</p>
+          </div>
+          <div className="btn-row">
+            {/* nav(), не window.location: сохраняет снимок атрибуции в памяти,
+                который Login прочитает при регистрации (TRIP-329). */}
+            <button type="button" className="btn btn-primary btn-block" onClick={() => nav('/login')}>{t('member.join_signin_btn')}</button>
+          </div>
+        </section>
+      )}
 
-        {state === 'signin' && (
-          <>
-            <div className="jt-chip t-meta">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              {t('member.join_invited')}
-            </div>
-            <h1 className="t-heading">{t('member.join_signin_title')}</h1>
-            <p className="jt-lede t-body">{t('member.join_signin_lede')}</p>
-            {/* nav(), not window.location — here and on the two buttons of the
-                error branch below: this is the main road a NEW person walks in
-                on, and replacing the document would drop the in-memory
-                attribution snapshot (analytics.js) before Login reads it — the
-                invite would bring the person and lose the credit (TRIP-329). An
-                invite that turned out to be expired still delivered a stranger,
-                so its way out counts the same. */}
-            <button className="jt-btn t-label" onClick={() => nav('/login')}>
-              {t('member.join_signin_btn')}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-            </button>
-          </>
-        )}
-
-        {state === 'error' && (
-          <>
-            <div className="jt-badge">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-            <h1 className="t-heading">{t('member.join_error_title')}</h1>
-            <p className="jt-lede t-body">{t(errKey)}</p>
-            <button className="jt-btn t-label" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
-            <button className="jt-btn jt-btn--ghost t-label" onClick={() => nav('/')}>{t('member.join_home')}</button>
-          </>
-        )}
-      </div>
-    </main>
+      {state === 'error' && (
+        <section className="screen is-active" data-screen="join-error">
+          <div className="join-badge" aria-hidden="true">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+          <div className="screen-head">
+            <h1>{t('member.join_error_title')}</h1>
+            <p className="sub">{t(errKey)}</p>
+          </div>
+          <div className="btn-row">
+            <button type="button" className="btn btn-primary btn-block" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
+            <button type="button" className="btn btn-quiet btn-block" onClick={() => nav('/')}>{t('member.join_home')}</button>
+          </div>
+        </section>
+      )}
+    </AuthShell>
   );
 }
