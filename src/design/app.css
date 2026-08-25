@@ -9404,6 +9404,34 @@ a.doc-row__n:hover{ color: var(--brand); }
   width: calc(100% - 32px); max-width: 420px;
   display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border-radius: var(--r-md);
   box-shadow: var(--sh-3);
+  /* Зона-независимый chrome (TRIP-469). Баннер — один глобальный компонент, но
+     его примитивы ДС (.consent, Btn, .t-*) читают токены, которые site.css
+     ЗАТЕНЯЕТ на html.site (лендинг+auth): шрифт, ink/muted/brand, --r-md, --fs-h3.
+     Из-за этого баннер менялся от зоны к зоне. Пиним ровно эту дельту прямо на
+     .consent (правило, матчащее сам элемент, бьёт унаследованное значение site
+     БЕЗ ссылки на .site — иначе фича «site» протекала бы в app-каталог), сохраняя
+     реюз примитивов: кнопки — тот же Btn. Значения = светлые app-DS токены (:root);
+     тёмная тема приложения — в правиле-близнеце ниже (сайт-зона всегда светлая,
+     туда не попадает). Все объявления — визуально намеренные, не рендер-регресс.
+     visual-diff-exempt: .consent --font-body — нейтральный шрифт баннера, TRIP-469
+     visual-diff-exempt: .consent --font-display — нейтральный шрифт баннера, TRIP-469
+     visual-diff-exempt: .consent --font-ui — нейтральный шрифт баннера, TRIP-469
+     visual-diff-exempt: .consent --ink — app-DS вид во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --muted — app-DS вид во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --brand — app-DS вид во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --r-md — app-DS радиус во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --fs-h3 — app-DS кегль заголовка во всех зонах, TRIP-469 */
+  --font-body: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-ui: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --ink: #272433; --muted: #7A7689; --brand: #2173C8;
+  --r-md: 16px; --fs-h3: 16px;
+}
+/* Тёмная тема приложения: тёмные app-DS токены, чтобы текст читался на тёмной
+   поверхности баннера (site-зона всегда светлая — сюда не попадает). Ключ 2p —
+   тот же `.consent --ink|--muted|--brand`, покрыт маркерами базового правила выше. */
+:root[data-theme="dark"] .consent {
+  --ink: #EDECF4; --muted: #8C88A0; --brand: #6FB2FF;
 }
 .consent__text p { margin: 0; color: var(--muted); }
 /* Class beats the element selector above it, so the reset does not swallow this. */
