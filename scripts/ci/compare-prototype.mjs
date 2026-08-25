@@ -22,10 +22,39 @@
  *          audience 15.9% → 9.8% после одной этой подстановки.
  *   3. Поднять два статических сервера (прототип и dist) и передать их URL.
  *
- *   node scripts/ci/compare-prototype.mjs \
- *        --proto http://localhost:8911/src-landing-local.html \
- *        --impl  http://localhost:8910/ \
- *        --width 1440 --height 900
+ * ГОТОВЫЙ РЕЦЕПТ, воспроизведён целиком (TRIP-460). Команда — `npm run check:proto`;
+ * в CI её нет и не будет: эталон живёт вложением в Linear, а не в репозитории,
+ * поэтому это команда исполнителя, а её результат — обязательный артефакт в теле
+ * PR. `playwright-core` с этого же PR лежит в devDependencies: до него харнесс
+ * не запускался на чистом `npm ci` вовсе, что и было половиной причины, почему
+ * приёмку не гоняли.
+ *
+ *   # 1. прототип из вложения TRIP-445 (id 524d40e9-cd15-43c1-8cf1-c64a32d6d98a)
+ *   #    mcp__Linear__get_attachment → вырезать <script id="src-landing">,
+ *   #    заменить @@SCRIPT_END@@ на </script  →  /tmp/proto/index.html
+ *   # 2. локализовать ОБА внешних ресурса (см. п.2 выше):
+ *   #    hero:    'https://www.triplanio.com/hero/' → '/hero/'  + cp -r public/hero /tmp/proto/
+ *   #    шрифты:  вырезать <link> на fonts.googleapis/gstatic + preconnect,
+ *   #             вставить @font-face 400 800 на /fonts/{onest,golos}/*.woff2
+ *   #             + cp -r public/fonts/{onest,golos} /tmp/proto/fonts/
+ *   # 3. сборка ОБЯЗАТЕЛЬНО с заглушками, иначе пустой <body>:
+ *   VITE_SUPABASE_URL="https://example.supabase.co" \
+ *   VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.x" \
+ *   npx vite build
+ *   # 4. два сервера (file:// в Playwright заблокирован)
+ *   (cd dist && setsid python3 -m http.server 8099 &) ; (cd /tmp/proto && setsid python3 -m http.server 8098 &)
+ *   # 5. обе ширины — 390 не опциональна, на ней расхождения ВЫШЕ
+ *   CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
+ *   npm run check:proto -- --proto http://127.0.0.1:8098/ --impl http://127.0.0.1:8099/ --width 1440 --height 900
+ *   npm run check:proto -- --proto http://127.0.0.1:8098/ --impl http://127.0.0.1:8099/ --width 390  --height 844
+ *   # 6. по каждой секции выше порога — структурный разбор:
+ *   npm run check:proto -- ... --elements <секция>
+ *
+ * ★ ГДЕ ПРОЦЕНТ СЛЕП СОВСЕМ. На полноэкранной градиентной секции (`final`) он
+ * НАСЫЩЕН: любая правка цвета красит все пиксели и даёт 90–96% одинаково —
+ * «чуть глубже» и «серая грязь» для него неразличимы. Однажды по вердикту
+ * «98% = грязь» откатили правку контраста и вернули WCAG-дефект. Такие секции
+ * решаются глазами и замером контраста, а не этим числом.
  *
  * КАК ЧИТАТЬ ПРОЦЕНТ. Это доля различающихся пикселей, и на плотном тексте она
  * ЗАВЫШАЕТ: сдвиг строки на 1px перекрашивает все глифы строки, давая 15-25%
