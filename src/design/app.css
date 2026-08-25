@@ -2061,6 +2061,16 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 .cbadge__col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cbadge__name { color: var(--ink); }
 .cbadge__dates { color: var(--muted); white-space: nowrap; }
+/* CTA «открыть город» (двухшаговый клик в редакторе). ОБЛИК — канон-примитив
+   `.icon-btn` (rule #6, кнопка несёт его классы), поэтому свои визуальные
+   объявления не пишем. Лист-класс `.cbadge__go` добавляет ровно две вещи, которых
+   у примитива нет в этом месте: вернуть события поверх passiv-попапа
+   (pointer-events:none выше) и центрировать в бейдже. */
+/* floor-exempt: classes +1 — CTA бейджа (.cbadge__go), апрув Pavel */
+/* floor-exempt: triage +1 — .cbadge__go в triage-семье cbadge, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go pointer-events — CTA поверх passiv-попапа, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go align-self — центрируем CTA в бейдже, апрув Pavel */
+.cbadge__go { pointer-events: auto; align-self: center; }
 /* The badge rides a mapboxgl.Popup so it auto-flips to stay on-screen near map
    edges. Strip the popup's default chrome (white bubble + tip) — the glass
    .cbadge IS the surface; passive so it never eats a map click. */

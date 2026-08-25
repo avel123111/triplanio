@@ -177,16 +177,24 @@ export function createClusterBubbleEl(count, { onClick, onHover, title } = {}) {
 const escapeHtml = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// City label badge — Map lens ONLY (TRIP-33). A translucent "glass" pill that
-// pairs the country flag with the city name + date range, shown next to the
-// ACTIVE city's pin. Gated behind MapView's `cityBadge` prop, so no other map
-// surface (Overview/Edit/public/planner) renders it. Plain DOM like every marker
-// here: the flag is an <img> from /flags (same source CountryFlag uses) and the
-// glass skin lives in `.cbadge` (src/design/app.css) on the canon surface tokens.
-// The badge is a passive label (pointer-events:none) — selection happens on the
-// pin / route list, not the badge.
-// data: { countryCode, name, dates } — dates preformatted ("1 июл – 5 июл").
-export function createCityBadgeEl({ countryCode, name, dates } = {}) {
+// Chevron-right glyph for the badge CTA (same path lucide `ChevronRight` draws,
+// inlined because the badge is plain DOM, not a React icon).
+const CHEVRON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+
+// City label badge (Map «Маршрут»/редактор + planner). A translucent "glass"
+// pill that pairs the country flag with the city name + date range, shown next
+// to the ACTIVE city's pin. Plain DOM like every marker here: the flag is an
+// <img> from /flags and the glass skin lives in `.cbadge` (src/design/app.css)
+// on the canon surface tokens.
+//
+// The label itself is passive (the popup is pointer-events:none so it never eats
+// a map click). ONE exception: when the caller passes `onAction`, the badge grows
+// a chevron CTA (`.cbadge__go`) that re-enables pointer events on ITSELF only and
+// opens the city. The редактор uses it for the two-step click (fix badge → CTA
+// opens + zooms); the planner never passes it, so its badge stays a pure label.
+// data: { countryCode, name, dates, actionLabel } — dates preformatted; actionLabel
+//   is the CTA's accessible name. opts: { onAction } — click handler for the CTA.
+export function createCityBadgeEl({ countryCode, name, dates, actionLabel } = {}, { onAction } = {}) {
   const el = document.createElement('div');
   el.className = 'cbadge';
   const cc = typeof countryCode === 'string' && countryCode.trim().length === 2 ? countryCode.trim().toLowerCase() : '';
@@ -195,8 +203,21 @@ export function createCityBadgeEl({ countryCode, name, dates } = {}) {
     : '';
   const nm = name ? `<span class="cbadge__name t-label trunc">${escapeHtml(name)}</span>` : '';
   const dt = dates ? `<span class="cbadge__dates t-meta">${escapeHtml(dates)}</span>` : '';
+  // CTA появляется только с `onAction`. Клик глушим: попап живёт в слое канваса
+  // карты, и без stopPropagation он бы долетел до 'click' карты — а там сброс
+  // выбора, то есть кнопка гасила бы ровно то, что открывает.
+  // Переиспользуем канон-примитив `.icon-btn` (rule #6), а не свой класс: тот же
+  // облик, что у всех иконочных кнопок ДС (маленькая круглая outline). Единственная
+  // добавка в CSS — вернуть кнопке события поверх passiv-попапа (см. app.css).
+  const cta = onAction
+    ? `<button type="button" class="icon-btn icon-btn--outline icon-btn--sm icon-btn--round cbadge__go" aria-label="${escapeHtml(actionLabel || '')}">${CHEVRON_SVG}</button>`
+    : '';
   // Name over dates in a column; the flag sits beside it, top-aligned with the name.
-  el.innerHTML = `${flag}<span class="cbadge__col">${nm}${dt}</span>`;
+  el.innerHTML = `${flag}<span class="cbadge__col">${nm}${dt}</span>${cta}`;
+  if (onAction) {
+    const btn = el.querySelector('.cbadge__go');
+    if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); onAction(e); });
+  }
   return el;
 }
 

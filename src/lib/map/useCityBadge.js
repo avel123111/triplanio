@@ -10,8 +10,10 @@ import { createCityBadgeEl } from './markers';
  * края открывает внутрь). Эффект был построчной копией в `MapView` и `FlowMap` —
  * теперь один шов на обоих.
  *
- * `cityBadge` — `{ lng, lat, countryCode, name, dates } | null`. `null` (и режим
- * hotel-pick у редактора через `enabled=false`) снимает плашку.
+ * `cityBadge` — `{ lng, lat, countryCode, name, dates, actionLabel?, onAction? } |
+ * null`. `null` (и режим hotel-pick у редактора через `enabled=false`) снимает
+ * плашку. `onAction` (+ `actionLabel`) добавляет бейджу CTA-шеврон «открыть город»
+ * (двухшаговый клик в редакторе); без него плашка — пассивная метка.
  *
  * @param {{ current: any }} mapRef
  * @param {boolean} ready
@@ -20,11 +22,20 @@ import { createCityBadgeEl } from './markers';
  */
 export function useCityBadge(mapRef, ready, cityBadge, { enabled = true } = {}) {
   const popupRef = useRef(/** @type {any} */ (null));
+  // Свежесть колбэка CTA держим в ref: новое замыкание родителя не должно
+  // пересобирать попап. Пересборка идёт только при смене НАЛИЧИЯ действия
+  // (`hasAction`) — тогда кнопка появляется/исчезает.
+  const actionRef = useRef(/** @type {any} */ (cityBadge?.onAction));
+  actionRef.current = cityBadge?.onAction;
+  const hasAction = !!cityBadge?.onAction;
   useEffect(() => {
     const map = mapRef.current;
     if (popupRef.current) { popupRef.current.remove(); popupRef.current = null; }
     if (!map || !ready || !enabled || !cityBadge || cityBadge.lng == null || cityBadge.lat == null) return undefined;
-    const el = createCityBadgeEl({ countryCode: cityBadge.countryCode, name: cityBadge.name, dates: cityBadge.dates });
+    const el = createCityBadgeEl(
+      { countryCode: cityBadge.countryCode, name: cityBadge.name, dates: cityBadge.dates, actionLabel: cityBadge.actionLabel },
+      { onAction: hasAction ? (e) => { const cb = actionRef.current; if (cb) cb(e); } : null },
+    );
     popupRef.current = new mapboxgl.Popup({
       closeButton: false, closeOnClick: false, focusAfterOpen: false,
       className: 'cbadge-popup', offset: 16, maxWidth: 'none',
@@ -34,7 +45,7 @@ export function useCityBadge(mapRef, ready, cityBadge, { enabled = true } = {}) 
       .addTo(map);
     return () => { if (popupRef.current) { popupRef.current.remove(); popupRef.current = null; } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, enabled, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode]);
+  }, [ready, enabled, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode, hasAction, cityBadge?.actionLabel]);
 }
 
 export default useCityBadge;
