@@ -1676,20 +1676,29 @@ function CityAdder({ onAdd, hasStart, hasEnd }) {
   const [open, setOpen] = useState(false);
   const [city, setCity] = useState(null);
   const [kind, setKind] = useState('transit');
-  const rootRef = useRef(null);
+  const rootRef = useRef(null); // десктоп-композер целиком
+  const typeRef = useRef(null); // шаг 2 (плитки типа) — появляется после выбора города
   const close = () => { setOpen(false); setCity(null); setKind('transit'); };
   const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
   const submit = () => { if (city) { onAdd(city, kind); close(); } };
   const meta = POINT_TYPES.find((p) => p.id === kind);
 
-  // Десктоп: раскрытый инлайн-композер докручиваем в вид тела виджета (свой скролл
-  // у панели, клавиатуры нет). На телефоне НЕ трогаем скролл — там композер в
-  // vaul-шите, и всё держит платформа.
+  // Докрутка тем же приёмом scrollIntoView, что и по всему аппу (ValidationUI,
+  // CoverPicker, …) — в ЛЮБОМ скролл-контейнере (тело виджета на десктопе / тело
+  // <Sheet> на телефоне), без платформенных веток и вычислений вьюпорта:
+  //   • выбран город → появились плитки типа: докручиваем К НИМ на ОБЕИХ
+  //     платформах (без этого их не видно — ровно об этом просьба);
+  //   • только открыли, города ещё нет: на десктопе — к самому композеру; на
+  //     телефоне открытие ведёт <Sheet>/платформа, скролл не трогаем.
+  // Небольшая задержка — дать разметке (появление плиток, закрытие клавиатуры)
+  // осесть перед замером.
   useEffect(() => {
-    if (!open || isPhone) return;
-    const id = setTimeout(() => rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
+    if (!open) return;
+    const target = city ? typeRef.current : (isPhone ? null : rootRef.current);
+    if (!target) return;
+    const id = setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
     return () => clearTimeout(id);
-  }, [open, isPhone]);
+  }, [open, city, isPhone]);
 
   // Общие шаги композера (город → тип → подтверждение) — без своей шапки: на
   // десктопе шапку рисует карточка ниже, на телефоне её даёт сам <Sheet>.
@@ -1711,7 +1720,7 @@ function CityAdder({ onAdd, hasStart, hasEnd }) {
       {/* Шаг 2 — тип (появляется после выбора города). aria-pressed несёт выбор
           в AT; тон активной плитки — из .te-add-type[aria-pressed="true"]. */}
       {city && (
-        <Col gap="g2">
+        <Col gap="g2" ref={typeRef}>
           <span className="eyebrow">{t('tse.pt_type_label')}</span>
           <div className="te-add-grid" role="group" aria-label={t('tse.pt_type_label')}>
             {POINT_TYPES.map((pt) => {
