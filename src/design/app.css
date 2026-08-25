@@ -8529,20 +8529,33 @@ a.doc-row__n:hover{ color: var(--brand); }
 .tmk__sep { width: 1.5px; background: currentColor; opacity: .4; transform: skewX(-18deg); }
 /* selected: filled ring + halo + soft pulse (occasional, so motion is fine) */
 .tmk__halo, .tmk__pulse { position: absolute; inset: -9px; border-radius: var(--r-pill); pointer-events: none; }
-.tmk__halo { border: 2px solid var(--tmk); opacity: 0; transform: scale(.6); transition: opacity .2s ease, transform .25s cubic-bezier(.34,1.25,.5,1); }
+/* Ховер/селект — ОТНОСИТЕЛЬНЫЙ прирост от ТЕКУЩЕГО зум-размера (`--mk-scale`), а не
+   абсолютный scale(1.1): иначе на мелком зуме пин выпрыгивал бы в полный размер.
+   Halo/pulse тоже множатся на `--mk-scale`, чтобы кольцо/пульс не отрывались от
+   ужатого ядра. Базовые множители 1.1/1.12/.6/1/.7/1.5 — прежние, но теперь ×scale.
+   (Гард 2p дробит подлежащее составного селектора — ключи ниже дословно с его вывода.) */
+/* visual-diff-exempt: .tmk transform — ховер halo ×текущий зум-размер (--mk-scale), Pavel */
+/* visual-diff-exempt: .tmk__halo transform — ховер halo ×текущий зум-размер (--mk-scale), Pavel */
+/* visual-diff-exempt: .tmk__core {@media (hover: hover) and (pointer: fine)} transform — ховер ядра ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: .tmk__halo {@media (hover: hover) and (pointer: fine)} transform — ховер halo ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: .tmk:hover {@media (hover: hover) and (pointer: fine)} transform — ховер halo ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: .is-clickable:hover {@media (hover: hover) and (pointer: fine)} transform — ховер halo ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: 0% {@keyframes tmkPulse} transform — пульс селекта ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: 70% {@keyframes tmkPulse} transform — пульс селекта ×текущий зум-размер, Pavel */
+.tmk__halo { border: 2px solid var(--tmk); opacity: 0; transform: scale(calc(var(--mk-scale, 1) * .6)); transition: opacity .2s ease, transform .25s cubic-bezier(.34,1.25,.5,1); }
 .tmk__pulse { background: var(--tmk); opacity: 0; }
-.tmk.is-sel .tmk__core { background: var(--tmk); color: #fff; transform: scale(1.12); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
-.tmk.is-sel .tmk__halo { opacity: .5; transform: scale(1); }
+.tmk.is-sel .tmk__core { background: var(--tmk); color: #fff; transform: scale(calc(var(--mk-scale, 1) * 1.12)); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
+.tmk.is-sel .tmk__halo { opacity: .5; transform: scale(var(--mk-scale, 1)); }
 .tmk.is-sel .tmk__pulse { animation: tmkPulse 1.9s cubic-bezier(.22,1,.36,1) infinite; }
-@keyframes tmkPulse { 0% { opacity: .26; transform: scale(.7); } 70% { opacity: 0; transform: scale(1.5); } 100% { opacity: 0; } }
+@keyframes tmkPulse { 0% { opacity: .26; transform: scale(calc(var(--mk-scale, 1) * .7)); } 70% { opacity: 0; transform: scale(calc(var(--mk-scale, 1) * 1.5)); } 100% { opacity: 0; } }
 /* hover state: the same filled look as selected but no pulse. .is-hover is set by
    JS when the matching city is hovered in a list; the :hover rule covers hovering
    the pin on the map itself (desktop pointers only — avoids touch false-fires). */
-.tmk.is-hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(1.1); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
-.tmk.is-hover .tmk__halo { opacity: .5; transform: scale(1); }
+.tmk.is-hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(calc(var(--mk-scale, 1) * 1.1)); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
+.tmk.is-hover .tmk__halo { opacity: .5; transform: scale(var(--mk-scale, 1)); }
 @media (hover: hover) and (pointer: fine) {
-  .tmk.is-clickable:hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(1.1); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
-  .tmk.is-clickable:hover .tmk__halo { opacity: .5; transform: scale(1); }
+  .tmk.is-clickable:hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(calc(var(--mk-scale, 1) * 1.1)); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
+  .tmk.is-clickable:hover .tmk__halo { opacity: .5; transform: scale(var(--mk-scale, 1)); }
 }
 /* Слепленный пилюль: выделение/ховер ПОСЕГМЕНТНО — красится КОНКРЕТНАЯ ячейка
    (свой цвет роли `--tmk`), глиф/номер белеет, как у одиночного пина (чинит
