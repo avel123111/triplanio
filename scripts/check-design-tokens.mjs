@@ -96,13 +96,13 @@ const COLOR_WHITELIST = [
   // COLOR_WHITELIST by single-quote pairs, so a stray one mis-seeds the
   // fixture and the whole spacing suite goes red (TRIP-460 B3).
   'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
-  'src/pages/PublicTrip.css',                          // public read-only page styles
   'public/site.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
 ];
 
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
 // lowering this number in the same commit; nothing may ever raise it.
-const WHITELIST_LIMIT = 14;
+// PublicTrip.css retired (TRIP-461): the public reader moved into public/site.css.
+const WHITELIST_LIMIT = 13;
 
 // The ceiling on the PR base, so raising it cannot be self-approved by editing
 // this file. null = base not resolvable (no such ref, or the base predates this
@@ -168,12 +168,10 @@ const TYPO_WHITELIST = [
 //   • fonts.css — @font-face declarations DEFINE each font's weight axis
 //     (font-weight: 400/500/600/700 per file); that's a font definition, not
 //     text styling.
-//   • PublicTrip.css — the standalone public reader's base root `.ptrip`
-//     (like `body`) sets the base reading weight/line-height; the rest of the
-//     page is on the closed set.
+// (PublicTrip.css retired in TRIP-461 — the public reader now lives in site.css.)
 const WEIGHT_LH_ALLOW = [
   'src/design/app.css', 'src/index.css', 'src/pages/login.css', 'public/site.css',
-  'src/design/fonts.css', 'src/pages/PublicTrip.css',
+  'src/design/fonts.css',
 ];
 
 // Files allowed to set inline JSX fontSize from a raw size token (var(--fs-*))

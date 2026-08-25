@@ -1,0 +1,110 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
+import { useT } from '@/lib/i18n/I18nContext';
+import { track, withVisitCampaign } from '@/lib/analytics';
+
+/* =========================================================================
+   SiteTrip — three prototype sections of the public shared-trip page, born
+   here (TRIP-461) under ONE real consumer (PublicTrip). No "future" props:
+   each takes exactly the data the prototype's markup binds. The second
+   consumer is the demo (TRIP-462), where the real commonality is measured —
+   if it turns out small, these stay concrete rather than growing flag props.
+
+   Markup + class names are the prototype v5.7 verbatim (`pt-*`); the sprite
+   symbols (`#i-*`, `#tl-logo`) already live in the DOM via <SiteHeader>'s
+   <LandingSprite>. No `@/design/*` imports (check-ds-boundary).
+   ========================================================================= */
+
+const APP_URL = '/login';
+const Ic = ({ id }) => (
+  <svg aria-hidden="true"><use href={`#${id}`} /></svg>
+);
+
+/**
+ * Cover masthead — dark hero photo + gradient, eyebrow, title, date line.
+ * `data-hdr="dark"` makes the themed SiteHeader tint itself over the cover.
+ */
+export function SiteHero({ cover, kicker, title, dates }) {
+  return (
+    <section className="pt-hero" data-hdr="dark">
+      <img className="pt-hero-img" alt="" src={cover} />
+      <div className="wrap">
+        <span className="brow">{kicker}</span>
+        <h1>{title}</h1>
+        {dates && <div className="pt-dates">{dates}</div>}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Summary card floating over the cover: five stat tiles, then the travellers
+ * row. `stats` = [{ icon, n, unit?, k }]; `people` = [{ ini, idx, name, title }].
+ */
+export function SiteSummary({ stats, peopleTitle, peopleCount, people }) {
+  return (
+    <div className="wrap pt-summary">
+      <div className="pt-card">
+        <div className="pt-stats">
+          {stats.map((s, i) => (
+            <div className="pt-stat" key={i}>
+              <span className="pt-stat-ic"><Ic id={s.icon} /></span>
+              <span>
+                <span className="pt-n tnum">{s.n}{s.unit && <small>{s.unit}</small>}</span>
+                <span className="pt-k">{s.k}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {people.length > 0 && (
+        <div className="pt-people">
+          <div className="pt-people-hd">
+            <h2>{peopleTitle}</h2>
+            <span className="pt-c">{peopleCount}</span>
+          </div>
+          <ul className="pt-plist">
+            {people.map((p, i) => (
+              <li className="pt-person" title={p.title} key={i}>
+                <span className={`pt-av pt-av--${p.idx}`}>{p.ini}</span>
+                <span>{p.name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Final call-to-action — the SAME accent sheet as the landing (`fin.*` keys,
+ * `data-hdr="accent"` is the one producer of the 9 on-accent header rules).
+ * Parameterless: the prototype reuses the landing's CTA verbatim on this page.
+ */
+export function SiteCta() {
+  const t = useT();
+  const nav = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  return (
+    <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
+      <span className="horizon" aria-hidden="true" />
+      <div className="wrap inner">
+        <div className="rv">
+          <span className="brow" style={{ justifyContent: 'center' }}>{t('landing.fin.eyebrow')}</span>{/* inline-style-exempt: prototype's own one-off centering */}
+          <h2 style={{ marginTop: '14px' }} dangerouslySetInnerHTML={{ __html: t('landing.fin.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
+          <p>{t('landing.fin.sub')}</p>
+          <div className="ctas">
+            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
+              <span>{t('landing.fin.cta1')}</span>
+              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
