@@ -222,8 +222,10 @@ export function createCityBadgeEl({ countryCode, name, dates, actionLabel } = {}
       // (родитель шлёт `t()`-строку), но литерал `aria-label="…"` спотыкает i18n-гард.
       if (actionLabel) btn.setAttribute('aria-label', actionLabel);
       btn.addEventListener('click', (e) => { e.stopPropagation(); onAction(e); });
-      // Появление/уход анимирует `useCityBadge` — ВЕСЬ бейдж целиком (кнопка едет
-      // вместе с ним), иначе кнопка плыла бы, а текст бейджа прыгал.
+      // Кнопка рождается СВЁРНУТОЙ (CSS `.cbadge__go`: max-width 0). Её выезд и
+      // сворачивание — CSS-переход ширины, который включает `useCityBadge`, ставя
+      // `[data-on]`. Попап при фиксации города НЕ пересоздаётся (шов живёт по
+      // городу, а не по наличию CTA) — потому и нет мигания.
     }
   }
   return el;

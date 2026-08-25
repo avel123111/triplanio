@@ -2066,11 +2066,28 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
    объявления не пишем. Лист-класс `.cbadge__go` добавляет ровно две вещи, которых
    у примитива нет в этом месте: вернуть события поверх passiv-попапа
    (pointer-events:none выше) и центрировать в бейдже. */
+/* ★ Кнопка СВЁРНУТА по умолчанию (max-width 0, прозрачна, отрицательный margin
+   гасит gap бейджа) и раскрывается по `[data-on]` CSS-переходом ширины —
+   `useCityBadge` ставит атрибут, когда город зафиксирован. Так попап расширяется/
+   сужается плавно, а не пересоздаётся. `[data-on]` — состояние, не новый класс. */
 /* floor-exempt: classes +1 — CTA бейджа (.cbadge__go), апрув Pavel */
 /* floor-exempt: triage +1 — .cbadge__go в triage-семье cbadge, апрув Pavel */
 /* visual-diff-exempt: .cbadge__go pointer-events — CTA поверх passiv-попапа, апрув Pavel */
 /* visual-diff-exempt: .cbadge__go align-self — центрируем CTA в бейдже, апрув Pavel */
-.cbadge__go { pointer-events: auto; align-self: center; }
+/* visual-diff-exempt: .cbadge__go max-width — свёрнутое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go opacity — свёрнутое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go margin-left — гасим gap бейджа у свёрнутой CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go overflow — обрезаем свёрнутую CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go transition — плавные раскрытие/сворачивание CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] max-width — раскрытое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] opacity — раскрытое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] margin-left — раскрытое состояние CTA, апрув Pavel */
+.cbadge__go {
+  pointer-events: auto; align-self: center;
+  max-width: 0; opacity: 0; margin-left: calc(var(--sp-4) * -1); overflow: hidden;
+  transition: max-width .2s ease, opacity .2s ease, margin-left .2s ease;
+}
+.cbadge__go[data-on] { max-width: 44px; opacity: 1; margin-left: 0; }
 /* The badge rides a mapboxgl.Popup so it auto-flips to stay on-screen near map
    edges. Strip the popup's default chrome (white bubble + tip) — the glass
    .cbadge IS the surface; passive so it never eats a map click. */

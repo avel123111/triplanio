@@ -1040,7 +1040,13 @@ export default function EditLens({ tripId, shell, content }) {
     countryCode: badgeNode.country_code,
     name: badgeNode.city_name,
     dates: formatDateRange(badgeNode.start_date, badgeNode.end_date, (iso) => fmtD(iso, lang)),
-    ...(showBadgeCta ? { actionLabel: t('common.open'), onAction: () => openCity(mapPickId) } : {}),
+    // Кнопка «открыть» есть у ЛЮБОГО бейджа редактора (по умолчанию свёрнута) —
+    // раскрывает её `ctaOn`. Поэтому фиксация города НЕ пересоздаёт попап (нет
+    // мигания), а меняет только состояние кнопки. `onAction` целится в город
+    // бейджа (при раскрытой кнопке это и есть mapPickId).
+    actionLabel: t('common.open'),
+    onAction: () => openCity(badgeId),
+    ctaOn: showBadgeCta,
   } : null;
 
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
