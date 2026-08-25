@@ -22,6 +22,15 @@ test('свёрнутая панель не закрывает ничего', () 
   assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true }), { slotBottom: 0, slotUnder: 0, camera: NONE });
 });
 
+test('★ открытый слой закрывает колонку — и при свёрнутом маршруте (булев флаг)', () => {
+  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true, overlayOpen: true }),
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 } });
+  assert.deepEqual(mapShellInsets({ panelPx: 550, overlayOpen: true }),
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 } });
+  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true, overlayOpen: false }),
+    { slotBottom: 0, slotUnder: 0, camera: NONE });
+});
+
 test('★ режимы не смешиваются: чужая величина не читается', () => {
   // Шит в портале успевает подержать прошлую высоту на переходе в десктоп —
   // прочитать её значит отрезать у десктопной карты низ по призраку.

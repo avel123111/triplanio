@@ -8,7 +8,6 @@
 export const VIRAL_MARKS: Record<string, { utm_source: string; utm_medium: string }> = {
   public_link: { utm_source: 'trip_share', utm_medium: 'viral' },
   invite_link: { utm_source: 'trip_invite', utm_medium: 'viral' },
-  share_card: { utm_source: 'share_card', utm_medium: 'viral' },
 };
 
 /**

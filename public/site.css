@@ -103,6 +103,11 @@ html.site {
   --fs-hero-sub-mobile: clamp(.82rem,3.35vw,1rem);
   --fs-section-h2: clamp(1.85rem,1.2rem + 2.7vw,2.9rem);
   --fs-final-h2: clamp(2.1rem,1.4rem + 3.4vw,3.4rem);
+  /* Публичная поездка (TRIP-461): две текучих ступени прототипа — заголовок над
+     обложкой и большая цифра статистики. Значения из прототипа v5.7, не меняются
+     (по образцу clamp-заголовков лендинга — каждый свой display-токен). */
+  --fs-pt-hero-h1: clamp(1.85rem,1.15rem + 3.3vw,3.7rem);
+  --fs-pt-stat: clamp(1.3rem,1.05rem + .9vw,1.75rem);
 }
 
 
@@ -2228,3 +2233,747 @@ section{position:relative}
 @media(max-height:660px){
   .authv .screen[data-screen="signup"] .av-sub, .authv .screen-head{margin-bottom:6px}
 }
+/* prefix-exempt: pt — публичная поездка /public/trip/:id, прототип v5.7 «как есть» (TRIP-461, апрув Pavel) */
+/* =========================================================================
+   Публичная поездка — перенос прототипа v5.7 «как есть» (TRIP-461).
+   CSS и имена классов взяты из прототипа дословно; сверху только React-обвязка,
+   t() и реальные данные getPublicTrip. Отличия от прототипа, СОГЛАСОВАННЫЕ:
+   • карта — общий канонический <MapView> (не второй инстанс Mapbox, гард
+     check-ds-boundary), поэтому её ВНУТРЕННИЕ правила прототипа (.pt-mk*,
+     .pt-legend, .pt-mapoff, .pt-hint, #pt-map) НЕ переносятся — маркеры/линии/
+     попапы рисует сам MapView; остаётся только рамка .pt-mapbox как контейнер.
+   • .pt-dock (переключатель объёма данных) — инструмент прототипа, не продукт.
+   • каждый font-size приведён к шкале зоны var(--fs-*) (гард 2k); сдвиг ≤0.5px,
+     таблица в теле PR. Радиусы/цвета/тени — литералы прототипа (не енфорсятся).
+   ========================================================================= */
+
+/* обложка */
+.pt-hero{position:relative;isolation:isolate;min-height:clamp(380px,44vw,560px);
+  display:flex;align-items:flex-end;padding-bottom:clamp(40px,4.6vw,64px);background:#0B2136}
+.pt-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 56%;z-index:-2}
+.pt-hero::after{content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(7,25,44,.62) 0%,rgba(7,25,44,.16) 32%,rgba(7,25,44,.34) 58%,rgba(7,25,44,.88) 100%)}
+.pt-hero .wrap{color:#fff}
+.pt-hero .brow{color:#fff;margin-bottom:14px}
+.pt-hero .brow::before{background:var(--sunset)}
+.pt-hero h1{font-size:var(--fs-pt-hero-h1);font-weight:800;max-width:18ch;
+  letter-spacing:-.025em;line-height:1.14;text-shadow:0 2px 24px rgba(4,16,30,.4)}
+.pt-dates{margin-top:16px;font-size:var(--fs-lead-lg);font-weight:600;color:#fff}
+
+/* сводка поверх обложки */
+.pt-summary{position:relative;z-index:3;margin-top:clamp(-56px,-4vw,-40px)}
+.pt-card{background:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-lg);
+  border:1px solid rgba(19,50,78,.10);padding:clamp(16px,1.8vw,22px)}
+.pt-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(8px,1vw,14px)}
+.pt-stat{display:flex;align-items:center;gap:12px;padding:10px 12px}
+.pt-stat-ic{width:42px;height:42px;flex:none;border-radius:13px;display:grid;place-items:center;
+  background:var(--brand);color:#fff;box-shadow:0 6px 14px -6px rgba(35,128,214,.6)}
+.pt-stat-ic svg{width:20px;height:20px}
+.pt-n{display:block;font-family:var(--font-display);font-weight:800;
+  font-size:var(--fs-pt-stat);line-height:1.1;letter-spacing:-.02em}
+.pt-n small{font-size:var(--fs-caption);font-weight:700;margin-left:4px;color:var(--muted)}
+.pt-k{display:block;font-size:var(--fs-small);color:var(--muted);line-height:1.3}
+@media (max-width:1020px){.pt-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:620px){
+  .pt-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .pt-stat{padding:8px 6px;gap:10px}
+  .pt-stat-ic{width:36px;height:36px;border-radius:11px}
+  .pt-stat:last-child{grid-column:1/-1}
+}
+
+/* участники: лица с подписями, один ряд с прокруткой на любой ширине */
+.pt-people{margin-top:clamp(20px,2.4vw,30px)}
+.pt-people-hd{display:flex;align-items:baseline;gap:9px;margin-bottom:12px}
+.pt-people-hd h2{font-size:var(--fs-body-lg);font-weight:700;letter-spacing:-.01em}
+.pt-people-hd .pt-c{font-size:var(--fs-body);color:var(--muted)}
+.pt-plist{display:flex;gap:14px;list-style:none;margin:0 -4px;padding:2px 4px 6px;
+  overflow-x:auto;scrollbar-width:none}
+.pt-plist::-webkit-scrollbar{display:none}
+.pt-person{display:flex;flex-direction:column;align-items:center;gap:7px;flex:none;width:72px;text-align:center}
+.pt-av{position:relative;width:46px;height:46px;flex:none;border-radius:50%;overflow:hidden;
+  display:grid;place-items:center;
+  font-family:var(--font-display);font-weight:700;font-size:var(--fs-lead);
+  box-shadow:0 4px 12px -5px rgba(11,44,84,.35)}
+.pt-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.pt-person span:last-child{max-width:100%;font-size:var(--fs-small);line-height:1.25;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:620px){
+  .pt-plist{gap:13px;margin:0 -16px;padding:2px 16px 6px}
+  .pt-person{width:68px}
+}
+
+/* маршрут + карта */
+.pt-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(18px,2.2vw,28px);
+  padding:clamp(18px,2.2vw,28px) 0 clamp(52px,6vw,84px)}
+@media (min-width:981px){
+  .pt-grid{grid-template-columns:minmax(0,1fr) minmax(370px,43%);align-items:start;gap:clamp(26px,3vw,44px)}
+  .pt-mapcol{position:sticky;top:calc(70px + 18px)}
+}
+@media (max-width:980px){.pt-mapcol{order:-1}}
+.pt-colh{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+.pt-colh h2{font-size:var(--fs-lead-lg);font-weight:700;letter-spacing:-.01em}
+.pt-colh .pt-c{font-size:var(--fs-body);color:var(--muted)}
+
+/* контейнер под общий MapView (маркеры/линии/попапы — сам MapView) */
+.pt-mapbox{position:relative;border-radius:var(--r-lg);overflow:hidden;border:2px solid #fff;
+  box-shadow:var(--shadow-md);background:var(--band);
+  height:clamp(320px,calc(100vh - 220px),640px)}
+@media (max-width:980px){.pt-mapbox{height:min(66vw,400px)}}
+.pt-mapbox > *{position:absolute;inset:0}
+
+/* лента маршрута */
+.pt-route{position:relative;padding-left:38px}
+/* Рейл начинается на центре первого пина и КОНЧАЕТСЯ на центре последнего города
+   (не тянется под финиш): координаты меряет JS и кладёт в --pt-rail-top/-h
+   (высоты карточек разные — фикс. bottom перелетал за пин). Фоллбэк до замера. */
+.pt-route::before{content:"";position:absolute;left:15px;top:var(--pt-rail-top,31px);
+  height:var(--pt-rail-h,calc(100% - 45px));width:2px;border-radius:2px;
+  background:linear-gradient(180deg,var(--sky),rgba(111,180,244,.22))}
+.pt-stop{position:relative;margin-bottom:9px;padding:14px 18px;border-radius:var(--r-md);
+  background:#fff;border:1px solid rgba(19,50,78,.10);box-shadow:var(--shadow-sm);
+  scroll-margin-top:88px;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.pt-stop:hover{border-color:rgba(35,128,214,.35);box-shadow:var(--shadow-md)}
+.pt-stop.is-on{border-color:var(--brand);box-shadow:0 0 0 3px rgba(35,128,214,.18),var(--shadow-md)}
+.pt-pin{position:absolute;left:-38px;top:15px;width:32px;height:32px;border-radius:50%;
+  display:grid;place-items:center;color:#fff;font-family:var(--font-display);font-weight:700;font-size:var(--fs-small);
+  background:var(--brand);box-shadow:0 0 0 4px var(--mist),0 3px 9px -3px rgba(35,128,214,.55)}
+.pt-stop--anchor .pt-pin{background:var(--ink)}
+.pt-pin svg{width:16px;height:16px}
+.pt-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pt-city{font-family:var(--font-display);font-size:var(--fs-h4);font-weight:700;letter-spacing:-.018em}
+.pt-tag{margin-left:auto;padding:3px 10px;border-radius:99px;font-size:var(--fs-tiny);font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase}
+.pt-tag--start{color:var(--brand-deep);background:var(--ice)}
+.pt-tag--end{color:var(--sunset-text);background:#FDECDC}
+.pt-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px 10px;margin-top:6px;
+  font-size:var(--fs-body);color:var(--muted)}
+.pt-meta .pt-country{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+  color:var(--ink);font-weight:500}
+.pt-meta .pt-when{white-space:nowrap}
+.pt-dot{width:3px;height:3px;border-radius:50%;background:rgba(19,50,78,.24);flex:none}
+.pt-nights{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:2px 10px;
+  border-radius:99px;background:var(--ice);color:var(--ink);font-size:var(--fs-small);font-weight:600;white-space:nowrap}
+.pt-nights svg{width:13px;height:13px;color:var(--brand)}
+@media (max-width:620px){.pt-nights{margin-left:0}}
+
+.pt-stop--wp{padding:8px 16px;background:#FDECDC;border:1px dashed rgba(160,99,46,.32);
+  box-shadow:none;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+/* центр точки пересадки садится на ось рейла (16px): border-box 15px → left -29.5px
+   (было -36px и уезжало влево от рейла — фидбэк Pavel) */
+.pt-stop--wp .pt-pin{left:-29.5px;top:50%;transform:translateY(-50%);width:15px;height:15px;
+  background:#fff;border:3px solid var(--sunset);box-shadow:0 0 0 4px var(--mist)}
+.pt-stop--wp.is-on .pt-pin{background:var(--sunset)}
+.pt-stop--wp .pt-city{font-size:var(--fs-lead)}
+.pt-wptag{margin-left:auto;font-size:var(--fs-caption);font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--sunset-text)}
+
+.pt-leg{position:relative;display:flex;align-items:center;gap:9px;margin:0 0 9px;padding:3px 0 11px;
+  font-size:var(--fs-body);color:var(--muted)}
+.pt-legic{position:absolute;left:-38px;top:0;width:32px;height:32px;border-radius:11px;
+  display:grid;place-items:center;background:#fff;color:var(--brand-deep);
+  border:1px solid rgba(19,50,78,.10);box-shadow:0 0 0 4px var(--mist)}
+.pt-legic svg{width:16px;height:16px}
+.pt-leg b{color:var(--ink);font-weight:600}
+
+/* подложка страницы (прототип вешает класс на body в openTrip/closeTrip) */
+body.pt-open{background:var(--mist)}
+/* Шапка — ПОЛНАЯ шапка лендинга (лого + язык + CTA + бургер на мобиле), но
+   якоря лендинга (#together/#stats/#assistant) вести на публичной поездке
+   некуда → прячем их (десктоп-нав и ссылки в бургер-меню). Бургер и CTA
+   остаются — как в прототипе (body.pt-open). */
+body.pt-open .main-nav,
+body.pt-open .mobile-menu a[href^="#"]{display:none}
+
+/* состояния загрузки / not-found — не из прототипа, служебные (мин. набор) */
+.pt-center{min-height:70vh;display:grid;place-items:center;text-align:center;padding:24px}
+.pt-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line,rgba(19,50,78,.14));
+  border-top-color:var(--brand);animation:pt-spin .8s linear infinite}
+@keyframes pt-spin{to{transform:rotate(360deg)}}
+
+/* Аватары участников — 6 контрастных пар фон/текст (все ≥4.5:1; белые инициалы
+   на оранжевом давали 2.05 на проде — TRIP-451 §13). Класс по хэшу имени, а не
+   инлайн-hex в JSX: цвет живёт в site.css (COLOR_WHITELIST), не в разметке. */
+.pt-av--0{background:#DFF0FD;color:#1B67B4}
+.pt-av--1{background:#FDECDC;color:#A0632E}
+.pt-av--2{background:#DCF5E8;color:#1C7A4F}
+.pt-av--3{background:#E7E4FB;color:#4B3FA8}
+.pt-av--4{background:#FBE3EC;color:#A32B60}
+.pt-av--5{background:#E3F1F6;color:#1F6478}
+
+
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Реестр визуального диффа (гард 2p) — переписывание /public/trip с нуля.
+   Старый PublicTrip.css + осиротевшие co-селекторы app.css сняты; страница
+   пересобрана 1в1 по прототипу v5.7 (.pt-* в site.css). Один блок на снос,
+   одна причина. TRIP-461, апрув Pavel. */
+/* visual-diff-exempt: .av overflow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .av position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .brow::before background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .brow margin-bottom — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day margin-left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .day white-space — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .dt opacity — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .dur font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .dur opacity — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ic background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ic border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ic display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ic flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ic height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ic margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ic place-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ic width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .is-active border-color — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .is-active box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .k font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .n line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .n overflow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .n text-overflow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .n white-space — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act:first-child border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act margin-left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-acts margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-acts padding-left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act white-space — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-act width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-band border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-band margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-band padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-center background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-center border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-center height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-center margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-center min-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-center padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-center width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill svg flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill svg height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill svg width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill opacity — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg__pill padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cleg padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__h align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__h display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__h gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel .ic svg height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel .ic svg width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel place-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__hotel width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht h2 font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht h2 font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht h2 font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht h2 font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht h2 letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht h2 line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht h2 transition — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__ht min-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num--icon svg height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num--icon svg width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num place-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num transition — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__num width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub b font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub img border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub img box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub img height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub img object-fit — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub img width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub flex-wrap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop__sub margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop--wp:first-child border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop--wp align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop--wp border-color — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop--wp border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop--wp display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop--wp gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop--wp padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop:first-child border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop:first-child padding-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cstop padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta h2 font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta h2 font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta h2 font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta h2 font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta h2 letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta h2 line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta h2 position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta p font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta p font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta p font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta p letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta p line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta p margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta p max-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta p position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__act display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__act flex-wrap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__act gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__act justify-content — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__act position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow pointer-events — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta__glow width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta overflow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-cta text-align — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-eyebrow font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-eyebrow font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-eyebrow font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-eyebrow letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-eyebrow line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-eyebrow margin-bottom — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-eyebrow text-transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-h-lead font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-h-lead font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-h-lead font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-h-lead font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-h-lead letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-h-lead line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-itin --gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-itin --num — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-itin {@media (max-width:600px)} --gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-itin {@media (max-width:600px)} --num — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-itin border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-itin margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-itin min-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-itin padding-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-left {@media (max-width:880px)} order — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-left min-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapbox {@media (max-width:880px)} height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapbox {@media (max-width:980px)} height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapbox background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapbox border — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapbox border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapbox box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapbox height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill place-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__pill width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx b font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx b font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx b font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx b letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx b line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx b white-space — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx span font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx span font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx span font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx span font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx span letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx span line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx span white-space — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap__tx min-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap border — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap bottom — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcap z-index — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (max-width:880px)} height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (max-width:880px)} margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (max-width:880px)} min-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (max-width:880px)} order — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (max-width:880px)} position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (max-width:880px)} top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (max-width:980px)} order — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (min-width:981px)} position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol {@media (min-width:981px)} top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol min-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mapcol top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast h1 font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast h1 font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast h1 font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast h1 font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast h1 letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast h1 line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast h1 margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av img height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av img inset — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av img object-fit — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av img position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av img width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av overflow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av place-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__av width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__by align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__by display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__by gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__by margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick::before background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick::before border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick::before content — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick::before height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick::before width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__kick text-transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l1 b font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l1 font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l1 font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l1 font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l1 letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l1 line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l2 font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l2 font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l2 font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l2 letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__l2 line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__tx display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mast__tx flex-direction — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta {@media (max-width:600px)} gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta {@media (max-width:600px)} grid-template-columns — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta {@media (max-width:600px)} margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta color — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta flex-wrap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta grid-template-columns — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-meta white-space — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm .n small font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm .n small font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm .n small font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm .n small letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm .n small line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm .n small margin-left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm .n small opacity — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm::before background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm::before border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm::before bottom — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm::before content — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm::before left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm::before position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm::before top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm::before width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm flex-direction — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm overflow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm padding-left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm text-overflow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-mm white-space — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-people align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-people display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-people flex-wrap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-people gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-people margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person .av img height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person .av img inset — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person .av img object-fit — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person .av img position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person .av img width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person {@media (max-width:620px)} width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person border — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person flex-direction — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person overflow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person place-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person text-align — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-person width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip b font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip b font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip b font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip b letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip b line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip b white-space — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip img border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip img box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip img flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip img height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip img object-fit — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip img width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip border — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rchip padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader {@media (max-width:880px)} column-gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader {@media (max-width:880px)} grid-template-columns — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader {@media (max-width:880px)} padding-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader column-gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader grid-template-columns — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader padding-bottom — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reader padding-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reveal {@media (prefers-reduced-motion: reduce)} opacity — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reveal {@media (prefers-reduced-motion: reduce)} transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reveal opacity — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reveal transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-reveal transition — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-ribbon align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-ribbon display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-ribbon flex-wrap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-ribbon gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-ribbon margin-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role margin-left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role text-transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-role vertical-align — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rsep svg display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rsep svg height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rsep svg width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rsep display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-rsep flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx b display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx b font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx b font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx b font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx b letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx b line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx span font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx span font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx span font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx span font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx span letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta .tx span line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta {@media (max-width:600px)} display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta border-top — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta bottom — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta min-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta position — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta right — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-scta z-index — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-spin animation — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-spin border — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-spin border-right-color — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-spin border-top-color — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-spin height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-spin width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-top {@media (max-width:600px)} padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-top align-items — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-top display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-top flex-wrap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-top gap — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-top padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wide {@media (max-width:600px)} padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wide margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wide max-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wide padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__city font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__city font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__city font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__city letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__city line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__city transition — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot border — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot border-color — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot margin-left — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot transition — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__dot width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__flag border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__flag box-shadow — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__flag flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__flag height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__flag object-fit — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__flag width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag border-radius — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag padding — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .pt-wp__tag text-transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip * {@media (prefers-reduced-motion: reduce)} animation — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip * {@media (prefers-reduced-motion: reduce)} transition-duration — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip h1 font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip h1 margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip h2 font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip h2 margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip h3 font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip h3 margin — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --bg — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --brand — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --brand-grad — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --brand-soft — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --font-display — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --font-ui — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --ink — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --ink-2 — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --line — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --line-hover — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --line-strong — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --muted — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --muted-2 — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --primary-hover — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --primary-ring — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --surface — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --surface-2 — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip --surface-3 — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip {@media (max-width:600px)} padding-bottom — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip background — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip font-family — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip font-size — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip font-weight — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip letter-spacing — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip line-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .ptrip min-height — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .sep opacity — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .site --fs-pt-hero-h1 — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .site --fs-pt-stat — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .tnum font-variant-numeric — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .tx flex — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .tx min-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .wrap color — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: to {@keyframes pt-spin} transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .main-nav display — на публичной поездке (body.pt-open) якоря лендинга скрыты, как в прототипе; шапка полная, бургер остаётся (TRIP-461, фидбэк Pavel) */

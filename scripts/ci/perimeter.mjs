@@ -68,6 +68,11 @@
  *  доля «собрано из ДС» от этого РАСТЁТ, 2o храповит её только вверх - дефект
  *  предиката выглядит как прогресс и не краснеет нигде. Ровно то же и у 2q: он
  *  просто перестаёт судить разметку, оставаясь зелёным. */
-export const OUT_OF_SCOPE = /(^|\/)(?:(?:login\.css|Login\.jsx)(?=$)|PublicTrip|JoinTrip|SiteChrome|Landing|Privacy|Terms)/;
+// SiteTrip — примитивы публичной поездки (SiteHero/SiteSummary/SiteCta),
+// вынесенные из PublicTrip.jsx (TRIP-461). Это ТА ЖЕ зонная разметка на сайтовой
+// ДС (`pt-*`, `.btn.btn-light` из public/site.css), что и остальная зона — вне
+// скоупа эпика, как SiteChrome и Landing. Без этой записи вынос компонента молча
+// втянул бы публичку обратно в периметр (2z ловил `<a .btn.btn-light>`).
+export const OUT_OF_SCOPE = /(^|\/)(?:(?:login\.css|Login\.jsx)(?=$)|PublicTrip|JoinTrip|SiteChrome|SiteTrip|Landing|Privacy|Terms)/;
 
 export const inScope = (f) => !OUT_OF_SCOPE.test(f);

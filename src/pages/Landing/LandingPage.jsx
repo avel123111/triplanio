@@ -7,6 +7,7 @@ import { WORLD_MAP_SVG } from './WorldMapSvg';
 import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
 } from '@/components/site/SiteChrome';
+import { useReveal } from '@/components/site/useReveal';
 
 /* =========================================================
    Landing page — the v5.7 prototype's markup, PORTED 1:1 (TRIP-460, "CSS and
@@ -111,29 +112,6 @@ function useHeroFrame(ready) {
   }, [ready]);
 }
 
-/**
- * Scroll-reveal (§11), ported verbatim from the prototype's own IIFE. Fades
- * blocks up as they enter the viewport by toggling `in` on `.rv`/`.rv-l`/
- * `.rv-r` — the CSS is the prototype's own (`.rv.in{opacity:1}` etc, "CSS as
- * is" §1), so the class name matches its selectors exactly, not a repo
- * convention. One IntersectionObserver, bidirectional (re-arms leaving
- * upward). Runs once the site CSS is in (the nodes exist).
- */
-function useReveal(ready) {
-  useEffect(() => {
-    if (!ready) return undefined;
-    const targets = [...document.querySelectorAll('.rv,.rv-l,.rv-r')];
-    if (!targets.length) return undefined;
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((en) => {
-        if (en.isIntersecting) en.target.classList.add('in');
-        else if (en.boundingClientRect.top > 0) en.target.classList.remove('in');
-      });
-    }, { threshold: 0.16, rootMargin: '0px 0px -5% 0px' });
-    targets.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [ready]);
-}
 
 /**
  * Pain sticky-scroll scrub (§10 — REVERSED from the earlier draft: the pin

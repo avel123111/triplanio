@@ -67,6 +67,20 @@ function meetsPasswordPolicy(pw) {
   return (pw || '').length >= 8 && /[A-Za-zА-Яа-яЁё]/.test(pw) && /\d/.test(pw);
 }
 
+// Prototype v5.7 field-validation (data-rule). Pure: returns the auth.* i18n key
+// for the inline error, or null when the value is acceptable. Empty always fails
+// as `field_required` first (mirrors the prototype's `check`), then per-rule.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function fieldError(rule, value, other) {
+  const v = (value || '').trim();
+  if (!v) return 'field_required';
+  if (rule === 'email' && !EMAIL_RE.test(v)) return 'field_email';
+  if (rule === 'password' && !meetsPasswordPolicy(v)) return 'field_pw_short';
+  if (rule === 'name' && v.length < 2) return 'field_name';
+  if (rule === 'match' && value !== other) return 'field_match';
+  return null;
+}
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function IconEye({ off }) {
   return off ? (
@@ -215,6 +229,27 @@ export default function Login() {
   const [sentEmail, setSentEmail] = useState('');
   const [resendLeft, setResendLeft] = useState(0);       // seconds left on the resend cooldown
   const [resendFlow, setResendFlow] = useState('reset'); // which send to repeat: 'reset' | 'signup'
+  // Inline field errors, keyed by input id → auth.* i18n key. Replaces the native
+  // browser validation bubbles with the prototype's per-field .invalid + err-slot.
+  const [errs, setErrs] = useState({});
+  const clearFieldErr = (id) => setErrs((p) => (p[id] ? { ...p, [id]: undefined } : p));
+  // Validate a form's fields (each {id, rule, value, other?}); reveal inline
+  // errors, focus the first bad one, and return true only when all pass.
+  const runValidation = (fields) => {
+    const next = {};
+    let firstBad = null;
+    for (const f of fields) {
+      const key = fieldError(f.rule, f.value, f.other);
+      if (key) { next[f.id] = key; if (!firstBad) firstBad = f.id; }
+    }
+    setErrs(next);
+    if (firstBad) { const el = document.getElementById(firstBad); if (el) el.focus(); return false; }
+    return true;
+  };
+  // Inline error row for a field (prototype .err-slot). Empty until the field is invalid.
+  const errSlot = (id) => (
+    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span>{errs[id] ? t(`auth.${errs[id]}`) : ''}</span></p></div></div>
+  );
   const pwScore = scorePassword(password);
   // Once per visit to the signup form. Retyping a password the client rejects
   // must not multiply the first step of the funnel, and skipping those attempts
@@ -270,7 +305,7 @@ export default function Login() {
   }, []);
 
   // Reset error + pw visibility on view change
-  useEffect(() => { setError(null); setShowPw(false); setShowPw2(false); signupStartedRef.current = false; }, [view]);
+  useEffect(() => { setError(null); setErrs({}); setShowPw(false); setShowPw2(false); signupStartedRef.current = false; }, [view]);
 
   // Resend cooldown — matches Supabase's ~60s minimum interval between auth
   // emails to the same address. Hydrated from storage (persisted by email) so it
@@ -442,7 +477,9 @@ export default function Login() {
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault(); setIsLoading(true); setError(null);
+    e.preventDefault(); setError(null);
+    if (!runValidation([{ id: 'l-email', rule: 'email', value: email }, { id: 'l-pw', rule: 'required', value: password }])) return;
+    setIsLoading(true);
     // ДО входа решаем, куда ляжет сессия: localStorage (запомнить) или
     // sessionStorage (только вкладка). Адаптер читает флаг при записи сессии.
     setRememberFlag(remember);
@@ -457,9 +494,14 @@ export default function Login() {
     // Through the same helper as the provider buttons, and before the client
     // rules run: someone the password policy turns away DID try to register.
     if (!signupStartedRef.current) { signupStartedRef.current = true; trackAuthIntent('email'); }
-    if (!meetsPasswordPolicy(password)) {
-      trackSignupFailed('weak_password');
-      setError(t('auth.pw_policy')); return;
+    if (!runValidation([
+      { id: 's-name', rule: 'name', value: name },
+      { id: 's-email', rule: 'email', value: email },
+      { id: 's-pw', rule: 'password', value: password },
+    ])) {
+      // Preserve the weak-password funnel signal even though the message is inline now.
+      if (password && !meetsPasswordPolicy(password)) trackSignupFailed('weak_password');
+      return;
     }
     setIsLoading(true);
 
@@ -515,8 +557,10 @@ export default function Login() {
   // Google-only account this ADDS an email/password login alongside Google.
   const handleNewPassword = async (e) => {
     e.preventDefault(); setError(null);
-    if (!meetsPasswordPolicy(password)) { setError(t('auth.pw_policy')); return; }
-    if (password !== password2) { setError(t('auth.pw_nomatch')); return; }
+    if (!runValidation([
+      { id: 'rp-pw', rule: 'password', value: password },
+      { id: 'rp-pw2', rule: 'match', value: password2, other: password },
+    ])) return;
     setIsLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
@@ -538,7 +582,9 @@ export default function Login() {
   };
 
   const handleReset = async (e) => {
-    e.preventDefault(); setIsLoading(true); setError(null);
+    e.preventDefault(); setError(null);
+    if (!runValidation([{ id: 'r-email', rule: 'email', value: email }])) return;
+    setIsLoading(true);
     // Routed through requestPasswordReset so the server can reveal an unknown
     // email and enforce the 5/hour-per-email limit. The email itself is still
     // sent by Supabase Auth (same template) from inside that function.
@@ -607,9 +653,6 @@ export default function Login() {
             {(
               <section className="screen" data-screen="signin">
                 <div className="screen-head">
-                  {/* av-brow = прототипный .eyebrow (в §AUTH переименован из-за коллизии
-                      с лендинговым .eyebrow); скрыт на всех экранах, кроме join-signin. */}
-                  <div className="av-brow">{t('auth.login_eyebrow')}</div>
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.login_title') }} />
                   <p className="av-sub">{t('auth.login_lede')}</p>
                 </div>
@@ -619,16 +662,16 @@ export default function Login() {
                   <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>{t('auth.oauth_apple_signin')}</span></button>
                 </div>
                 <div className="or"><span>{t('auth.or_email')}</span></div>
-                <form onSubmit={handleLogin}>
-                  <div className="av-field">
+                <form onSubmit={handleLogin} noValidate>
+                  <div className={`av-field${errs['l-email'] ? ' invalid' : ''}`}>
                     <div className="field-top"><label htmlFor="l-email">{t('auth.email_label')}</label></div>
                     <div className="control">
                       <LeadMail />
-                      <input className="av-input" id="l-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
+                      <input className="av-input" id="l-email" type="email" autoComplete="email" placeholder="you@example.com" required aria-invalid={errs['l-email'] ? true : undefined} value={email} onChange={e => { setEmail(e.target.value); clearFieldErr('l-email'); }} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
                     </div>
-                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
+                    {errSlot('l-email')}
                   </div>
-                  <div className="av-field">
+                  <div className={`av-field${errs['l-pw'] ? ' invalid' : ''}`}>
                     <div className="field-top">
                       <label htmlFor="l-pw">{t('auth.password')}</label>
                       {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
@@ -636,10 +679,10 @@ export default function Login() {
                     </div>
                     <div className="control">
                       <LeadLock />
-                      <input className="av-input has-toggle" id="l-pw" type={showPw ? 'text' : 'password'} autoComplete="current-password" placeholder={t('auth.pw_placeholder')} required value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <input className="av-input has-toggle" id="l-pw" type={showPw ? 'text' : 'password'} autoComplete="current-password" placeholder={t('auth.pw_placeholder')} required aria-invalid={errs['l-pw'] ? true : undefined} value={password} onChange={e => { setPassword(e.target.value); clearFieldErr('l-pw'); }} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
-                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
+                    {errSlot('l-pw')}
                   </div>
                   <label className="av-check">
                     <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} disabled={isLoading} />
@@ -660,7 +703,6 @@ export default function Login() {
             {(
               <section className="screen" data-screen="signup">
                 <div className="screen-head">
-                  <div className="av-brow">{t('auth.signup_eyebrow')}</div>
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.signup_title') }} />
                   <p className="av-sub">{t('auth.signup_lede')}</p>
                 </div>
@@ -670,30 +712,31 @@ export default function Login() {
                   <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>{t('auth.oauth_apple_signup')}</span></button>
                 </div>
                 <div className="or"><span>{t('auth.or_email')}</span></div>
-                <form onSubmit={handleSignup}>
-                  <div className="av-field">
+                <form onSubmit={handleSignup} noValidate>
+                  <div className={`av-field${errs['s-name'] ? ' invalid' : ''}`}>
                     <div className="field-top"><label htmlFor="s-name">{t('auth.name_label')}</label></div>
                     <div className="control">
                       <LeadUser />
-                      <input className="av-input" id="s-name" type="text" autoComplete="name" placeholder={t('auth.name_placeholder')} required value={name} onChange={e => setName(e.target.value)} disabled={isLoading} />
+                      <input className="av-input" id="s-name" type="text" autoComplete="name" placeholder={t('auth.name_placeholder')} required aria-invalid={errs['s-name'] ? true : undefined} value={name} onChange={e => { setName(e.target.value); clearFieldErr('s-name'); }} disabled={isLoading} />
                     </div>
-                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
+                    {errSlot('s-name')}
                   </div>
-                  <div className="av-field">
+                  <div className={`av-field${errs['s-email'] ? ' invalid' : ''}`}>
                     <div className="field-top"><label htmlFor="s-email">{t('auth.email_label')}</label></div>
                     <div className="control">
                       <LeadMail />
-                      <input className="av-input" id="s-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
+                      <input className="av-input" id="s-email" type="email" autoComplete="email" placeholder="you@example.com" required aria-invalid={errs['s-email'] ? true : undefined} value={email} onChange={e => { setEmail(e.target.value); clearFieldErr('s-email'); }} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
                     </div>
-                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
+                    {errSlot('s-email')}
                   </div>
-                  <div className="av-field" data-strength={password ? pwScore : undefined}>
+                  <div className={`av-field${errs['s-pw'] ? ' invalid' : ''}`} data-strength={password ? pwScore : undefined}>
                     <div className="field-top"><label htmlFor="s-pw">{t('auth.password')}</label></div>
                     <div className="control">
                       <LeadLock />
-                      <input className="av-input has-toggle" id="s-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.newpw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <input className="av-input has-toggle" id="s-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.newpw_placeholder')} required minLength={8} aria-invalid={errs['s-pw'] ? true : undefined} value={password} onChange={e => { setPassword(e.target.value); clearFieldErr('s-pw'); }} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
+                    {errSlot('s-pw')}
                     <div className="strength"><i /><i /><i /><i /></div>
                     <p className="strength-row"><span>{t('auth.pw_strength')}</span><b>{STRENGTH_LABELS[pwScore]}</b></p>
                   </div>
@@ -721,14 +764,14 @@ export default function Login() {
                   <p className="av-sub">{t('auth.reset_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
-                <form onSubmit={handleReset}>
-                  <div className="av-field">
+                <form onSubmit={handleReset} noValidate>
+                  <div className={`av-field${errs['r-email'] ? ' invalid' : ''}`}>
                     <div className="field-top"><label htmlFor="r-email">{t('auth.email_label')}</label></div>
                     <div className="control">
                       <LeadMail />
-                      <input className="av-input" id="r-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
+                      <input className="av-input" id="r-email" type="email" autoComplete="email" placeholder="you@example.com" required aria-invalid={errs['r-email'] ? true : undefined} value={email} onChange={e => { setEmail(e.target.value); clearFieldErr('r-email'); }} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
                     </div>
-                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
+                    {errSlot('r-email')}
                   </div>
                   <button type="submit" className={`av-btn av-btn-primary av-btn-block${isLoading ? ' loading' : ''}`} disabled={isLoading || resendLeft > 0}>
                     <span className="av-btn-label"><span>{t('auth.reset_submit')}</span></span>
@@ -782,12 +825,12 @@ export default function Login() {
                   <p className="av-sub">{t('auth.newpw_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
-                <form onSubmit={handleNewPassword}>
-                  <div className="av-field" data-strength={password ? pwScore : undefined}>
+                <form onSubmit={handleNewPassword} noValidate>
+                  <div className={`av-field${errs['rp-pw'] ? ' invalid' : ''}`} data-strength={password ? pwScore : undefined}>
                     <div className="field-top"><label htmlFor="rp-pw">{t('auth.new_password')}</label></div>
                     <div className="control">
                       <LeadLock />
-                      <input className="av-input has-toggle" id="rp-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.newpw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <input className="av-input has-toggle" id="rp-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.newpw_placeholder')} required minLength={8} aria-invalid={errs['rp-pw'] ? true : undefined} value={password} onChange={e => { setPassword(e.target.value); clearFieldErr('rp-pw'); }} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
                     <div className="strength"><i /><i /><i /><i /></div>
@@ -798,11 +841,11 @@ export default function Login() {
                       <p className={`rule ${/\d/.test(password) ? 'ok' : ''}`}><i><IconCheck /></i><span>{t('auth.rule_num')}</span></p>
                     </div>
                   </div>
-                  <div className="av-field">
+                  <div className={`av-field${errs['rp-pw2'] ? ' invalid' : ''}`}>
                     <div className="field-top"><label htmlFor="rp-pw2">{t('auth.repeat_password')}</label></div>
                     <div className="control">
                       <LeadLock />
-                      <input className="av-input has-toggle" id="rp-pw2" type={showPw2 ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.repeat_placeholder')} required value={password2} onChange={e => setPassword2(e.target.value)} disabled={isLoading} />
+                      <input className="av-input has-toggle" id="rp-pw2" type={showPw2 ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.repeat_placeholder')} required aria-invalid={errs['rp-pw2'] ? true : undefined} value={password2} onChange={e => { setPassword2(e.target.value); clearFieldErr('rp-pw2'); }} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw2 ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw2(v => !v)}><IconEye off={showPw2} /></button>
                     </div>
                     <div className="rules" aria-live="polite">
