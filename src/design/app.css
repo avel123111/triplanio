@@ -5973,6 +5973,57 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .te-addmini position — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
    visual-diff-exempt: .te-addmini width — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2) */
 
+    /* ── Инлайновое добавление города (линза «Маршрут») ─────────────────────
+       Композер живёт в КОНЦЕ списка маршрута вместо панели, что подменяла весь
+       виджет. Флоу «город → тип → подтверждение»; облик собран из существующего
+       семейства `.te-` и токенов ДС — нового namespace нет (гард 2m чист).
+       Раскладку строк/колонок держат примитивы Row/Col, здесь — только
+       поверхности, сетка плиток и состояния.
+
+       Пол 2o: 8 новых классов семьи `.te-add*` (`te-add-open` · `te-addwrap` ·
+       `te-add` · `te-add-city` · `te-add-cityname` · `te-add-grid` ·
+       `te-add-type` · `te-add-ft`); семья `te` на разборе → те же +8 в triage;
+       4 из них несут раскладку (`te-add` · `te-add-grid` · `te-add-type` ·
+       `te-add-ft`). Взамен снята панель `CityAddPanel` с её инлайнами
+       (инлайнов −4) и dsshare вырос — композер собран из примитивов ДС. Апрув
+       Pavel: редизайн флоу добавления города согласован постановкой задачи.
+       floor-exempt: classes +8 — семья te-add* для инлайн-композера добавления города, апрув Pavel
+       floor-exempt: triage +8 — те же 8 классов, семья te на разборе, апрув Pavel
+       floor-exempt: layout +4 — .te-add/.te-add-grid/.te-add-type/.te-add-ft несут раскладку композера, апрув Pavel */
+    .te-add-open { margin-top: var(--sp-6); }
+    /* Обёртка ДЕСКТОП-композера — носитель анимации появления и якорь автоскролла
+       (scrollIntoView). Отступ сверху здесь, чтобы совпадать с кнопкой в свёрнутом
+       виде. На телефоне композер живёт в vaul-шите, эта обёртка не рендерится. */
+    .te-addwrap { margin-top: var(--sp-6); animation: teAddIn .18s var(--ease-out); }
+    @keyframes teAddIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    /* Карточка-композер: <Card recessed> даёт грунт/рамку/радиус, здесь —
+       вертикальный стек и внутренний зазор между шагами (ступени --sp-*). */
+    .te-add { padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-6); }
+    /* Выбранный город — чип-строка (флаг · имя · «Изменить»). Row несёт
+       flex/gap/выравнивание; классу остаётся поверхность и отступ. */
+    .te-add-city { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-btn); padding: var(--sp-4) var(--sp-5); }
+    .te-add-cityname { flex: 1; min-width: 0; }
+    /* Плитки типа точки — все 4 в один ряд (`minmax(0,1fr)` даёт им ужиматься
+       ниже контента, поэтому даже в узком шите ряд не переполняется). Компактные:
+       икона над короткой подписью, узкий горизонтальный отступ. */
+    .te-add-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
+    .te-add-type { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink-2); cursor: pointer; text-align: center; transition: background .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out); }
+    .te-add-type:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+    .te-add-type[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
+    .te-add-type:disabled { opacity: .5; cursor: not-allowed; color: var(--muted-2); }
+    .te-add-type:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+    /* Футер: разделитель сверху; кнопки в ряд, на телефоне — стопкой во всю
+       ширину (align-items: stretch тянет сами кнопки-флекс-элементы, не лезем
+       в примитив .btn), подтверждение сверху (column-reverse). */
+    .te-add-ft { border-top: 1px solid var(--line); padding-top: var(--sp-6); }
+    @media (max-width: 640px) {
+      .te-add-ft { flex-direction: column-reverse; align-items: stretch; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .te-add-type { transition: none; }
+      .te-addwrap { animation: none; }
+    }
+
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {
       .te-seam { animation: none; }

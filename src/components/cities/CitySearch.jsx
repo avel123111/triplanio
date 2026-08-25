@@ -13,7 +13,7 @@ import cityOptionRow from '@/components/common/cityOptionRow';
  * identical to the address picker and the ManualPlanner city rows.
  * onSelect(result) is unchanged, so every consumer behaves identically.
  */
-export default function CitySearch({ onSelect }) {
+export default function CitySearch({ onSelect, autoFocus = true }) {
   const t = useT();
   const [q, setQ] = useState('');
 
@@ -26,7 +26,7 @@ export default function CitySearch({ onSelect }) {
       onPick={(c) => { onSelect(c); setQ(''); }}
       renderRow={cityOptionRow}
       placeholder={t('visit.search_city')}
-      autoFocus
+      autoFocus={autoFocus}
       attribution={false}
     />
   );

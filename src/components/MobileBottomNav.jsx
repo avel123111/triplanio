@@ -173,7 +173,14 @@ export default function MobileBottomNav() {
     if (hidden || !el) { root.style.removeProperty('--nav-dock-h'); return undefined; }
     const publish = () => {
       const h = Math.round(el.getBoundingClientRect().height);
-      root.style.setProperty('--nav-dock-h', `${h > 0 ? h : 0}px`);
+      // h===0 = нав СЕЙЧАС спрятан клавиатурой (`[data-keyboard] .mbnav{display:none}`),
+      // а НЕ «дока нет». Публиковать 0 нельзя: от `--nav-dock-h` зависят отступ
+      // контента (`.trip-screen-body`) и высота тела peek-шита, и после закрытия
+      // клавиатуры 0 не восстанавливался чисто (гонка resize-слушателей) — низ
+      // контента оставался под навом НАВСЕГДА после первого фокуса. Держим
+      // последнее валидное значение; настоящее «дока нет» — это ветка `hidden`
+      // выше (там property снимается).
+      if (h > 0) root.style.setProperty('--nav-dock-h', `${h}px`);
     };
     publish();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null;
