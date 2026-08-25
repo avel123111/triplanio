@@ -84,16 +84,15 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
       return undefined;
     }
     // ★ Панель правит камерой (focus) или ТОЛЬКО ЧТО правила (её закрытие уводит
-    // focus на полный маршрут): отступ — МГНОВЕННО и СИНХРОННО, чтобы не перебить
-    // летящий focus. Ни `center`, ни `zoom` тут нет — их ведёт focus; мы лишь
-    // ставим правильный отступ ДО его старта. Отложенный easeTo ниже (плавная
-    // свёртка без панели) в этом случае не заводим вовсе.
+    // focus на полный маршрут): отступ УЖЕ сохранён (`setMapInsets` выше), а саму
+    // камеру мы НЕ трогаем ВООБЩЕ. Её ведёт focus-эффект (`calmFlyTo`/`calmFit`
+    // ниже по дереву, эффект объявлен ПОЗЖЕ нашего), и он передаёт наш отступ в
+    // ту же команду (`padding: getMapInsets(map)`) — центр, зум И отступ едут
+    // ОДНОЙ плавной анимацией. Любой свой `easeTo` тут — вторая команда на ту же
+    // камеру: она и рвала зум (мгновенная — рывок на открытии, обрыв на закрытии).
     const focusDriven = focusing || wasFocusing.current;
     wasFocusing.current = focusing;
-    if (focusDriven) {
-      try { map.easeTo({ padding: getMapInsets(map), duration: 0 }); } catch { /* ignore */ }
-      return undefined;
-    }
+    if (focusDriven) return undefined;
     // ★ ДОВОДИМ ПОСЛЕ ТОГО, КАК ХОЛСТ ПРИНЯЛ НОВЫЙ РАЗМЕР. Слот меняет высоту
     // через CSS-переменную, mapbox узнаёт об этом от ResizeObserver — то есть
     // ПОЗЖЕ нашего рендера. Посчитать раньше значит посчитать по старому
