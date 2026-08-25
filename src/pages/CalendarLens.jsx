@@ -5,15 +5,20 @@
  * Хедер: заголовок месяц/год + подзаголовок поездки; справа — сегмент
  * месяц/неделя, группа навигации (‹ Сегодня ›) и иконка «к поездке».
  *
- * Месяц: доска 7×N. У каждого дня поездки — СПЛОШНАЯ цветная полоса ГОРОДА в
- * верхней части ячейки; соседние дни одного города визуально сливаются в
- * непрерывную полосу. Транзитный день (2+ города) делит полосу поровну. Имя
- * города — в первый день визита. События: чипы (десктоп) / точки (мобайл).
+ * ★ ПОЛОСА ГОРОДА — ОДНА НА ВИЗИТ, И В ОБОИХ ВИДАХ ОДИНАКОВАЯ. Она цельная от
+ * заезда до выезда и несёт имя внутри себя; день пересадки делится между
+ * городами, поэтому границы ДРОБНЫЕ (модель — `lib/calendar-bands.js`, под
+ * тестом). Прежняя редакция собирала полосы из «дней с одним городом» и писала
+ * имя только над ними: город с ОДНОЙ ночью между двумя другими таких дней не
+ * имеет вовсе — его имя не печаталось нигде.
+ *
+ * Месяц: доска 7×N, полосы — одним слоем поверх недельного ряда.
+ * События: чипы (десктоп) / точки (мобайл).
  *
  * Неделя: колонки + ось времени на дневное окно 06–23 (растягивается под
  * ранние/поздние события). Десктоп — внутренний скролл, не выше экрана; мобайл
- * — скроллит страница, колонки свайпаются по горизонтали. В шапке каждого дня
- * — полоса города с НАЗВАНИЕМ. Цвет города — по имени (синхронно со сводкой).
+ * — скроллит страница, колонки свайпаются по горизонтали. Полосы городов —
+ * отдельным рядом под шапкой дней. Цвет города — по имени (синхронно со сводкой).
  *
  * Сводка: счётчики (дни/города/события) + список городов с датами.
  *
@@ -27,6 +32,7 @@ import { Skeleton, IconBtn, Seg, Btn, Card, ListRow, Chip, CityBar, EventChip, c
 import { Row, Col, Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { isTransitVisit } from '@/lib/trip-cities';
+import { cityBands, bandStyle } from '@/lib/calendar-bands';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
 import './CalendarLens.css';
@@ -34,35 +40,6 @@ import './CalendarLens.css';
 const monthNames   = (lang) => ['', ...Info.months('long',  { locale: localeTag(lang) })];
 const monthShort   = (lang) => ['', ...Info.months('short', { locale: localeTag(lang) })];
 const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) });
-
-/** Разбор ряда дней на СЕГМЕНТЫ города: подряд идущие дни с одним и тем же
- *  городом сливаются в один спан; день-пересадка (2+ города) — свой сегмент
- *  шириной в день, который делится между городами; пустой день сегмента не даёт.
- *  ОДИН источник на оба вида — вопрос «где кончается город» у них общий. */
-const citySegments = (row) => {
-  const segs = [];
-  let i = 0;
-  while (i < row.length) {
-    const cs = row[i].cities;
-    if (cs.length === 0) { i++; continue; }
-    if (cs.length === 1) {
-      let j = i;
-      while (j + 1 < row.length && row[j + 1].cities.length === 1 && row[j + 1].cities[0].name === cs[0].name) j++;
-      segs.push({ start: i, span: j - i + 1, cities: cs });
-      i = j + 1;
-    } else {
-      segs.push({ start: i, span: 1, cities: cs });
-      i++;
-    }
-  }
-  return segs;
-};
-
-/** Сегменты, у которых город ОДИН — только они несут имя. Месяц печатает имена
- *  отдельным слоем поверх полос, поэтому ему нужна именно эта выборка. */
-const cityRuns = (row) => citySegments(row)
-  .filter(s => s.cities.length === 1)
-  .map(s => ({ ...s, city: s.cities[0] }));
 
 /** День попадает в окно визита (границы включительно). ОДИН предикат на оба
  *  вида: месяц и неделя спрашивали одно и то же двумя копиями строки. */
@@ -93,7 +70,7 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
       </div>
       <div className="ncal-grid">
         {weeks.map((week, wi) => {
-          const runs = cityRuns(week);
+          const bands = cityBands(week);
           return (
             <div key={wi} className="ncal-wk-row">
               {week.map((c, di) => {
@@ -109,15 +86,9 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
                 const shown = isOpen ? c.events : c.events.slice(0, 2);
                 return (
                   <div key={di} className={`${cls.join(' ')}${isOpen ? ' is-open' : ''}`}>
-                    {/* полоса(ы) города дня — канон <CityBar> (только цвет); клик
-                        открывает панель. Имя ведёт слой-прогон `.ncal-names` ниже. */}
-                    {c.cities.length > 0 && (
-                      <div className="ncal-daytop">
-                        {c.cities.map((x, xi) => (
-                          <CityBar key={xi} tone={x.colorIdx} onClick={() => onOpenCity?.(x.v)} ariaLabel={x.name} />
-                        ))}
-                      </div>
-                    )}
+                    {/* Полос города в ЯЧЕЙКЕ больше нет: они рисуются одним слоем
+                        поверх всего ряда (`.ncal-daytop` ниже), чтобы полоса была
+                        цельной на весь визит и несла его имя. */}
 
                     <Row gap="g3" className="ncal-dc-top">
                       {c.day != null && <Row as="span" inline justify="j-center" className="ncal-dn t-label">{c.day}</Row>}
@@ -145,16 +116,17 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
                 );
               })}
 
-              {/* Названия городов — сплошным поверх полос, по центру прогона.
-                  Слой поверх, но НЕ перехватывает клики (pointer-events:none),
-                  чтобы клик уходил в цветную полосу-кнопку под ним. */}
-              {runs.length > 0 && (
-                <div className="ncal-names" aria-hidden="true">
-                  {runs.map((r, ri) => (
-                    <Row as="span" justify="j-center" key={ri} className="ncal-runname t-tiny"
-                      style={{ gridColumn: `${r.start + 1} / span ${r.span}`, color: cityTone(r.city.colorIdx).ink }}>
-                      {r.city.name}
-                    </Row>
+              {/* Полосы городов — ОДИН слой на весь ряд: полоса цельная на весь
+                  визит и несёт его имя. Границы дробные (день пересадки делится
+                  между городами), поэтому позиция приходит процентами, а не
+                  грид-спаном: спан умеет только целые дни, а у города с одной
+                  ночью тело полосы — ровно от середины до середины. */}
+              {bands.length > 0 && (
+                <div className="ncal-daytop">
+                  {bands.map((b, bi) => (
+                    <CityBar key={bi} variant="strip" tone={b.city.colorIdx} label={b.city.name}
+                      className="t-tiny" style={bandStyle(b)}
+                      onClick={() => onOpenCity?.(b.city.v)} ariaLabel={b.city.name} />
                   ))}
                 </div>
               )}
@@ -204,23 +176,15 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
       {days.some(d => d.cities.length > 0) && (
         <div className="ncal-wk-cities">
           <div className="ncal-wk-gut" />
-          {citySegments(days).map((s, si) => {
-            const col = { gridColumn: `${s.start + 2} / span ${s.span}` };
-            // Один город — плашка с именем; пересадка — тот же облик, но
-            // поделённый между городами дня, поэтому имя опускаем.
-            return s.cities.length === 1 ? (
-              <CityBar key={si} variant="strip" tone={s.cities[0].colorIdx} label={s.cities[0].name}
-                className="t-tiny" style={col}
-                onClick={() => onOpenCity?.(s.cities[0].v)} ariaLabel={s.cities[0].name} />
-            ) : (
-              <div key={si} className="ncal-wk-cseg" style={col}>
-                {s.cities.map((c, ci) => (
-                  <CityBar key={ci} variant="strip" tone={c.colorIdx}
-                    onClick={() => onOpenCity?.(c.v)} ariaLabel={c.name} />
-                ))}
-              </div>
-            );
-          })}
+          {/* Тот же слой полос, что в месяце: полоса цельная на весь визит,
+              имя внутри неё, день пересадки делится между городами. */}
+          <div className="ncal-daytop">
+            {cityBands(days).map((b, bi) => (
+              <CityBar key={bi} variant="strip" tone={b.city.colorIdx} label={b.city.name}
+                className="t-tiny" style={bandStyle(b)}
+                onClick={() => onOpenCity?.(b.city.v)} ariaLabel={b.city.name} />
+            ))}
+          </div>
         </div>
       )}
 

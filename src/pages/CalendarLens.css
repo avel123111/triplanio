@@ -16,11 +16,11 @@
    записать. Занижать числа переписыванием места, а не работой, гард запрещает
    прямо — поэтому цена названа, а не спрятана.
 
-   floor-exempt: classes +16 — тайм-грид недели + полоса «весь день» + виджет городов, апрув Pavel 2026-08-25
+   floor-exempt: classes +13 — тайм-грид недели + полоса «весь день» + виджет городов, апрув Pavel 2026-08-25
    floor-exempt: namespaces +2 — два новых примитива ДС (citybar, evchip), апрув Pavel 2026-08-25
-   floor-exempt: inline +6 — координаты блоков/высота холста/тон города = данные, классом не выразить, апрув Pavel 2026-08-25
-   floor-exempt: triage +7 — семья `ncal` под разбором: экран эмитит её сам, canon ей не положен, апрув Pavel 2026-08-25
-   floor-exempt: layout +13 — сетки с кастомными треками и контейнеры без зазора: примитива под них в ДС нет, апрув Pavel 2026-08-25 */
+   floor-exempt: inline +5 — координаты блоков/высота холста/тон города = данные, классом не выразить, апрув Pavel 2026-08-25
+   floor-exempt: triage +4 — семья `ncal` под разбором: экран эмитит её сам, canon ей не положен, апрув Pavel 2026-08-25
+   floor-exempt: layout +10 — сетки с кастомными треками и контейнеры без зазора: примитива под них в ДС нет, апрув Pavel 2026-08-25 */
 
 
 
@@ -720,6 +720,23 @@
    visual-diff-exempt: .ncal-wk-cseg min-width — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
    visual-diff-exempt: .trip-screen-body {@media (max-width: 640px)} padding — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные */
 
+/* Семантический дифф 2p — объявление правок редизайна.
+   visual-diff-exempt: .citybar bottom — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .citybar position — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .citybar top — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-daytop bottom — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities::before background-image — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities::before bottom — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities::before content — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities::before left — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities::before pointer-events — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities::before position — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities::before right — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities::before top — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities height — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities left — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные
+   visual-diff-exempt: .ncal-wk-cities position — редизайн линзы «Календарь»: экран заменён версией PR 983 целиком (решение Pavel 2026-08-25), значения — её собственные */
+
 /* =================================================================
    CalendarLens — редизайн (ncal-* namespace).
    Хедер · доска месяца с полосой города сверху ячейки · неделя колонками
@@ -798,14 +815,13 @@
 .ncal-dc.is-out { background: var(--surface-3); opacity: .5; pointer-events: none; }
 /* Активный день: подсвечено ТОЛЬКО число (.ncal-dn), без рамки ячейки. */
 
-/* Слой сплошных имён городов — поверх полос, по центру прогона; клики уходят
-   в полосу-кнопку под ним. Колонки совпадают с ячейками (repeat(7)). */
-.ncal-names { position: absolute; top: 0; left: 0; right: 0; height: 19px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); pointer-events: none; z-index: 2; }
-.ncal-runname { min-width: 0; padding: 0 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* Ряд полос города дня — контейнер; сами полосы = канон <CityBar> (.citybar).
-   Транзит (2+ города) делит ряд поровну (flex у .citybar). */
-.ncal-daytop { position: absolute; top: 0; left: 0; right: 0; height: 19px; display: flex; gap: 1px; z-index: 1; }
+/* Слой полос городов — ОДИН на ряд, и в месяце, и в неделе. Полоса цельная на
+   весь визит и несёт его имя, поэтому позиция приходит процентами (`left`/
+   `width` из `bandStyle`), а не колонками грида: день пересадки делится между
+   городами, и граница полосы приходится на его середину — целыми колонками это
+   не выразить. Отдельного слоя имён больше нет: имя живёт внутри полосы. */
+.ncal-daytop { position: absolute; top: 0; left: 0; right: 0; height: 22px; z-index: 2; }
+.ncal-daytop > .citybar { position: absolute; top: 0; bottom: 0; }
 
 .ncal-dc-top { min-height: 22px; margin-top: var(--sp-6); }
 .ncal-dn {
@@ -848,9 +864,20 @@
    тот же приём, что в месяце: полосы-цвет по дням, ИМЕНА отдельным слоем поверх
    прогонов. Раньше полоса с именем жила внутри каждой колонки — на телефоне это
    семь обрезанных «Мад…» подряд. */
-.ncal-wk-cities { display: grid; grid-template-columns: var(--ncal-gut) repeat(7, minmax(0, 1fr)); flex: none; min-height: 26px; border-bottom: 1px solid var(--line); background: var(--surface); }
-/* Сегмент дня-пересадки: та же плашка, но поделённая между городами дня. */
-.ncal-wk-cseg { display: flex; min-width: 0; }
+.ncal-wk-cities { position: relative; display: grid; grid-template-columns: var(--ncal-gut) repeat(7, minmax(0, 1fr)); flex: none; min-height: 26px; border-bottom: 1px solid var(--line); background: var(--surface); }
+/* Разделители колонок в ряду городов. Полосы спанят по нескольку дней и границ
+   дня не рисуют, поэтому вертикальные линии обрывались именно здесь — сетка
+   выглядела разорванной между шапкой и часами. Линии рисует сам ряд, под
+   полосами: шаг = ширина колонки (ряд за вычетом жёлоба, делённый на 7). */
+.ncal-wk-cities::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: var(--ncal-gut); right: 0;
+  background-image: repeating-linear-gradient(to right,
+    transparent 0 calc(100% / 7 - 1px), var(--line) calc(100% / 7 - 1px) calc(100% / 7));
+  pointer-events: none;   /* design-token-exempt: 1px — толщина хайрлайна, не отступ */
+}
+/* Слой полос в неделе начинается ПОСЛЕ жёлоба: проценты внутри него считаются
+   от семи колонок, как и в месяце, где жёлоба нет. */
+.ncal-wk-cities > .ncal-daytop { left: var(--ncal-gut); height: auto; }
 
 .ncal-wk-allday { border-bottom: 1px solid var(--line); background: var(--surface-3); min-height: 34px; }
 .ncal-wk-allday .ncal-wk-gut { color: var(--muted-2); background: var(--surface-3); }
@@ -907,8 +934,7 @@
   .ncal-grid { flex: none; }
   .ncal-wk-row { flex: none; }
   .ncal-dc { min-height: 66px; overflow: visible; padding: var(--sp-8) 5px 7px; gap: var(--sp-1); }
-  .ncal-daytop { height: 16px; }
-  .ncal-names { height: 16px; }
+  .ncal-daytop { height: 18px; }
   .ncal-dc-top { min-height: 18px; margin-top: 0; }
   .ncal-dn { min-width: 21px; height: 21px; padding: 0 5px; font-size: var(--fs-meta); /* design-token-exempt: TRIP-410 */ }
   .ncal-evl { display: none; }
