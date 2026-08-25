@@ -94,6 +94,11 @@ html.site {
   /* Текучие (clamp) заголовки — адаптивность прототипа, не шум; значение не
      меняется, только именовано токеном (включая мобильные @media-ступени). */
   --fs-hero-h1: clamp(2.55rem,1.45rem + 3.9vw,3.9rem);
+  /* мобильная ступень заголовка hero: без неё @media max-width:600px ссылался
+     на НЕОБЪЯВЛЕННЫЙ токен → правило невалидно → заголовок наследовал случайные
+     ~15px и не тянулся по ширине. Значение из прототипа v5.7 (TRIP-460). */
+  /* visual-diff-exempt: .site --fs-hero-h1-mobile — новый токен мобильной ступени hero (правило html.site); был undefined → заголовок не тянулся (TRIP-460) */
+  --fs-hero-h1-mobile: clamp(1.55rem,7.7vw,2.15rem);
   --fs-hero-sub: clamp(1rem,.94rem + .35vw,1.11rem);
   --fs-hero-sub-mobile: clamp(.82rem,3.35vw,1rem);
   --fs-section-h2: clamp(1.85rem,1.2rem + 2.7vw,2.9rem);
@@ -254,6 +259,14 @@ body{
      макете против 4 в реализации). Вес, заданный точечно правилом, этим
      объявлением не затрагивается. */
   font-weight:400;
+  /* ТА ЖЕ история с цифрами: app.css держит `body{font-variant-numeric:
+     tabular-nums}` (TRIP-165, «цифры выровнены во всём приложении»), и это
+     наследовалось на ВЕСЬ лендинг — крупные числа (23 · 61 · 118k · €2 842)
+     распирало, узкая «1» получала пустоты по бокам. Прототип моноширину не
+     объявляет — то есть пропорциональные. Точечный tabular (.tg-time,
+     .aw-ready-n) этим сбросом не затрагивается. */
+  /* visual-diff-exempt: body font-variant-numeric — сброс tabular-nums, утёкшего из app.css:422; зона рисует пропорциональные цифры как прототип (TRIP-460) */
+  font-variant-numeric:normal;
 }
 
 img,svg,canvas{display:block;max-width:100%}
@@ -288,7 +301,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    заголовку цвет его секции (белый в .final, --ink по умолчанию — то же самое). */
 html.site h1, html.site h2, html.site h3, html.site h4{color:inherit;text-wrap:wrap}
 
-h1,h2,h3{font-family:var(--font-display);line-height:1.12;letter-spacing:-.025em}
+/* visual-diff-exempt: h1 font-weight — заголовки зоны 800 (Onest), потеряно при порте прототипа v5.7 (TRIP-460) */
+/* visual-diff-exempt: h1 line-height — прототип v5.7: 1.14 (TRIP-460) */
+/* visual-diff-exempt: h2 line-height — прототип v5.7: 1.14 (TRIP-460) */
+/* visual-diff-exempt: h3 line-height — прототип v5.7: 1.14 (TRIP-460) */
+h1,h2,h3{font-family:var(--font-display);line-height:1.14;letter-spacing:-.025em;font-weight:800}
 
 h2{font-size: var(--fs-section-h2);font-weight:800}
 
@@ -556,7 +573,13 @@ section{position:relative}
   padding-bottom:var(--sheet-r);
   /* ровно один экран: белая «простыня» следующей секции начинается на самом сгибе */
   min-height:calc(100vh + var(--sheet-r));
-  min-height:calc(100dvh + var(--sheet-r)); /* dvh перекрывает vh там, где поддержан */
+  /* svh (small viewport height), а НЕ dvh: dvh меняется при показе/скрытии
+     адресной строки на мобиле → hero пересчитывал высоту прямо во время скролла
+     и дёргал всю страницу вниз. svh — стабильная (наименьшая) высота, не
+     реагирует на строку браузера, поэтому прокрутка ровная. vh выше — фолбэк
+     для старых браузеров без svh (TRIP-460). */
+  /* visual-diff-exempt: .hero min-height — dvh → svh (базовое правило), устранение дёрганья скролла от адресной строки мобилы (TRIP-460) */
+  min-height:calc(100svh + var(--sheet-r));
   /* stretch, а не center: положение текста задаёт верхний отступ сетки */
   display:flex;align-items:stretch;
 }
@@ -682,7 +705,8 @@ section{position:relative}
 
 @media (max-width:980px){
   .hero{
-    min-height:calc(100vh + var(--sheet-r));min-height:calc(100dvh + var(--sheet-r));
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} min-height — dvh → svh (мобильный @media), устранение дёрганья скролла (TRIP-460) */
+    min-height:calc(100vh + var(--sheet-r));min-height:calc(100svh + var(--sheet-r));
     align-items:stretch;
   }
   /* сверху только заголовок; телефон с кадра — посередине;
@@ -1451,8 +1475,11 @@ section{position:relative}
 
 .aud-avatars{display:flex;margin-bottom:16px}
 
-/* color инлайном на каждом инстансе — см. .aw-head .avs span выше (ревью TRIP-460) */
-.aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-weight:700;font-size: var(--fs-body);box-shadow:var(--shadow-sm)}
+/* Буква — белая на сплошном цветном фоне аватара (фон задаётся инлайном на
+   инстансе). Без color здесь буква наследовала тёмный --ink из app.css и была
+   почти не видна; прототип — белый. То же, что уже сделано у .feed-head .avs .av. */
+/* visual-diff-exempt: .aud-avatars color — .av белый (наследовался --ink/--muted); ключ на подлежащем-предке .aud-avatars (TRIP-344); прототип белый (TRIP-460) */
+.aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-weight:700;font-size: var(--fs-body);color:#fff;box-shadow:var(--shadow-sm)}
 
 .aud-avatars .av + .av{margin-left:-12px}
 
@@ -1500,7 +1527,8 @@ section{position:relative}
 /* color инлайном на каждом текстовом инстансе — см. .aw-head .avs span выше
    (ревью TRIP-460); .ai-msg ниже — единственный без текста (SVG-иконка
    currentColor), белый на нём остаётся явным правилом отдельно */
-.feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;flex:none}
+/* .av color восстановлен белым — общий ключ с маркером выше на оба контекста (.aud-avatars/.feed-item), TRIP-460 */
+.feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff;flex:none}
 
 .feed-item b{color:var(--ink)}
 
@@ -1701,7 +1729,12 @@ section{position:relative}
 .stat-box{background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-md);padding:18px 14px;text-align:center;box-shadow:var(--shadow-sm)}
 
 /* site-base-exempt: num — имя только внутри .stat-box, scoped-правило перебивает app (TRIP-460 п.3) */
-.stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand)}
+/* font-variant-numeric:normal — app.css:460 `.num{tabular-nums}` (0,1,0) бил сброс
+   на body; здесь 0,2,0 и грузится позже → цифры 23·61·118k пропорциональные,
+   без распора узкой «1», как в прототипе. */
+/* visual-diff-exempt: .stat-box font-variant-numeric — снят tabular-nums (.stat-box .num), ключ на предке .stat-box (TRIP-344); прототип пропорциональный (TRIP-460) */
+/* visual-diff-exempt: .num font-variant-numeric — tabular-nums → normal: .stat-box .num переопределяет утёкший app.css .num{tabular-nums}; прототип пропорциональный (TRIP-460) */
+.stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand);font-variant-numeric:normal}
 
 .stat-box small{color:var(--muted);font-size: var(--fs-caption)}
 
@@ -1830,4 +1863,368 @@ section{position:relative}
 
 @media (max-width:560px){.footer-min{flex-direction:column;gap:20px}}
 
-
+/* ===========================================================
+   AUTH ZONE (/login, /join) — прототип v5.7, оболочка AuthShell.
+   Свой namespace: корень .authv + переименованные коллайдеры .av-*
+   (кнопки/бренд/поля/чекбокс — ДРУГИЕ объекты, чем одноимённые на
+   лендинге и в app-CSS, поэтому имя разведено, не переопределяем).
+   ОБЩЕЕ реюзается: LangSwitch (классы lang и code, шапка несёт on-light),
+   grad, av (аватар-префикс). Легаси-хук app-CSS НЕ трогаем — умрёт со
+   старым листом логина в Ф6. Уникальные классы зоны — голые, 2p их пропускает
+   как новые (см. check-css-semantics: новый класс = новый элемент).
+   =========================================================== */
+/* prefix-exempt: authv — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: alert — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: alt — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: apple — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: art — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: aux — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: box — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: caps — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: chips — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: control — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: field — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: form — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: has — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: invalid — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: join — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: kicker — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: lead — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: legal — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: loading — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: mailto — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: or — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: pane — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: pw — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: rotator — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: rule — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: rules — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: screen — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: secure — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: show — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: social — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: status — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: strength — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: tick — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: timer — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: top — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: txt — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: valid — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* Анимации зоны auth — не были перенесены при порте, из-за чего спиннеры не
+   крутились, алерт не выезжал, галочка успеха не рисовалась, арт не дрейфовал.
+   Значения дословно из прототипа v5.7 (TRIP-464).
+   visual-diff-exempt: to {@keyframes spin} transform — восстановлен спиннер зоны (TRIP-464)
+   visual-diff-exempt: from {@keyframes alertIn} opacity — восстановлен выезд алерта (TRIP-464)
+   visual-diff-exempt: from {@keyframes alertIn} transform — восстановлен выезд алерта (TRIP-464)
+   visual-diff-exempt: to {@keyframes alertIn} opacity — восстановлен выезд алерта (TRIP-464)
+   visual-diff-exempt: to {@keyframes alertIn} transform — восстановлен выезд алерта (TRIP-464)
+   visual-diff-exempt: to {@keyframes draw} stroke-dashoffset — восстановлена галочка успеха (TRIP-464)
+   visual-diff-exempt: to {@keyframes artDrift} transform — восстановлен дрейф арта (TRIP-464) */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes alertIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes artDrift{to{transform:scale(1.07) translate3d(-1.2%,-.8%,0)}}
+.authv{
+  font-family:var(--font-body);   /* зона рисует Onest/Golos; бьёт app-CSS .authv (TRIP-410 Geologica), т.к. site-CSS грузится позже */
+  line-height:1.55;   /* база текста зоны auth = body прототипа v5.7 (не app-CSS 1.6); заголовки перебивают своим 1.14 */
+  /* Токены зоны auth: общие роли наследуются с html.site (бренд, ink, muted,
+     радиусы, тени, шрифты, ease, ice). Прототипные синонимы АЛИАСЯТСЯ на зонные —
+     ported-правила дословны, сверка в одной точке. На .authv (не :root/html.site):
+     не течёт на другие страницы, не повторяет утечку старый лист логина. TRIP-464. */
+  --form-bg:var(--white); --pop-bg:var(--white); --field-bg-f:var(--white);
+  --art-base:var(--white); --social-bg:var(--white);
+  --muted:#5B7085; --faint:#59728D; --placeholder:#5E768D;
+  --accent:var(--sunset); --accent-text:var(--sunset-text); --soft:#F4F9FD;
+  --pop-bd:var(--hair); --art-kicker:var(--brand-text); --art-grain-op:.3;
+  --label:#274762; --field-bg:#F8FBFE; --field-bd:#DBE8F2; --field-bd-h:#BDD3E6;
+  --ring:rgba(35,128,214,.18); --ring-danger:rgba(224,70,75,.16); --focus:#1668BC;
+  --hair:#E2ECF5; --hair-strong:#C4D7E8; --brand-text:#1668BC; --brand-deep-text:#0F5290;
+  --ok:#17A366; --ok-text:#0E7A4A; --ok-bd:rgba(23,163,102,.45);
+  --warn:#E08600; --warn-text:#8F5500;
+  --danger:#E0464B; --danger-text:#B0272C; --danger-bg:#FEF2F2; --danger-bd:#F5CFD0; --danger-field:#FFF8F8;
+  --social-bg-h:#F8FBFE; --social-bd:#DDE9F3; --social-bd-h:#C1D6E9; --apple-mark:#000;
+  --bar-bg:#E6EEF6; --icon-bg:#EAF4FE; --icon-bd:#CEE5FA;
+  --logo-shadow:0 4px 14px rgba(35,128,214,.34);
+  --btn-shadow:0 10px 26px -10px rgba(30,114,196,.5); --btn-shadow-h:0 16px 32px -12px rgba(30,114,196,.55);
+  --form-wash:radial-gradient(720px 440px at 90% -12%,rgba(255,195,160,.24),transparent 62%),radial-gradient(600px 420px at -14% 94%,rgba(35,128,214,.09),transparent 62%);
+  --grain-op:.32; --art-ink:#12314C; --art-sub:#3B586F;
+  --art-scrim:linear-gradient(180deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.34) 52%,rgba(255,255,255,.82) 78%,rgba(255,255,255,.97) 100%);
+  /* fluid-заголовки экранов auth */
+  --fs-auth-h1:clamp(1.2rem,.98rem + 1.2vw,1.5rem);
+  --fs-auth-h2:clamp(1.3rem,1.02rem + 1.5vw,1.62rem);
+  --fs-auth-h3:clamp(1.55rem,1.24rem + 1vw,1.92rem);
+  --fs-auth-h4:clamp(1.7rem,1.05rem + 1.7vw,2.45rem);
+  height:100svh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.06fr)
+}
+.authv .pane-form{position:relative;isolation:isolate;display:flex;flex-direction:column;min-width:0;height:100svh;
+  background:var(--form-bg);
+  padding:clamp(16px,2vw,24px) clamp(20px,4vw,60px) clamp(14px,1.8vw,20px);}
+.authv .pane-form::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;background:var(--form-wash)}
+.authv .pane-form::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:var(--grain-op);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");}
+.authv .pane-top{display:flex;align-items:center;gap:14px;flex:none;min-height:70px;position:relative;z-index:40}
+.authv .av-brand{display:inline-flex;align-items:center;gap:10px;padding:6px;margin:-6px;border-radius:12px;
+  font-family:var(--font-display);font-weight:800;font-size:var(--fs-h4);letter-spacing:-.02em;color:var(--ink)}
+.authv .av-brand .av-logo{width:33px;height:33px;border-radius:9px;box-shadow:var(--logo-shadow)}
+@media(max-width:900px){
+  .authv .av-brand{font-size:var(--fs-lead);gap:8px}
+}
+.authv .top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+/* Переключатель языка — ОБЩИЙ компонент LangSwitch (SiteChrome, .lang/.lang-btn/
+   .lang-menu), тот же, что на лендинге. Не переобъявляем: шапка auth несёт
+   on-light (см. AuthShell), LangSwitch темится в ink как на светлых шапках
+   лендинга. Реюз, а не дубль (rule #6). */
+.authv .form-area{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;align-items:center;align-items:safe center;justify-content:center;padding:clamp(12px,2vh,28px) 0}
+.authv .screen .av-brow{display:none}
+.authv .screen[data-screen="join-signin"] .av-brow{display:inline-flex}
+.authv .form-wrap{position:relative;width:min(424px,100%);transition:height .34s var(--ease-out)}
+.authv .screen{position:absolute;top:0;left:0;width:100%;height:0;overflow:hidden;pointer-events:none;
+  opacity:0;visibility:hidden;transform:translateY(10px);
+  transition:opacity .24s ease,transform .32s var(--ease-out),visibility .32s;}
+.authv .screen.av-is-leaving{height:auto;overflow:visible}
+.authv .screen.av-is-active{position:relative;height:auto;overflow:visible;pointer-events:auto;opacity:1;visibility:visible;transform:none}
+.authv .screen-head{margin-bottom:14px}
+.authv .av-brow{display:inline-flex;align-items:center;gap:9px;margin-bottom:13px;
+  font-size:var(--fs-caption);font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--brand-text);}
+.authv .av-brow::before{content:"";width:22px;height:2px;border-radius:2px;background:var(--accent)}
+.authv .screen h1{font-size:var(--fs-auth-h3);margin-bottom:8px}
+.authv .screen h1 .grad{background:linear-gradient(98deg,#2A86DE 0%,#2173C8 56%,#1B5FA8 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.authv .av-sub{color:var(--muted);font-size:var(--fs-lead);max-width:42ch}
+.authv .av-sub b{color:var(--ink);font-weight:600}
+.authv .alert{display:none;gap:11px;align-items:flex-start;margin-bottom:14px;padding:11px 14px;border-radius:var(--r-md);
+  background:var(--danger-bg);border:1px solid var(--danger-bd);color:var(--danger-text);font-size:var(--fs-body);}
+.authv .alert.show{display:flex;animation:alertIn .3s var(--ease-out)}
+.authv .alert svg{width:19px;height:19px;flex:none;margin-top:1px;color:var(--danger)}
+.authv .alert b{display:block;font-weight:600;margin-bottom:2px}
+.authv .alert a{font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.authv .social{display:grid;gap:8px;margin-bottom:12px}
+.authv .av-btn-social{position:relative;display:flex;align-items:center;justify-content:center;gap:11px;width:100%;min-height:44px;
+  padding:10px 18px;border-radius:var(--r-md);font-size:var(--fs-body-lg);font-weight:600;
+  background:var(--social-bg);border:1px solid var(--social-bd);color:var(--ink);
+  transition:background .18s ease,border-color .18s ease,transform .16s var(--ease-out),box-shadow .2s ease;}
+.authv .av-btn-social:hover{background:var(--social-bg-h);border-color:var(--social-bd-h);box-shadow:var(--shadow-sm)}
+.authv .av-btn-social:active{transform:scale(.985)}
+.authv .av-btn-social svg{width:20px;height:20px;flex:none}
+.authv .av-btn-social .apple-mark{color:var(--apple-mark)}
+.authv .or{display:flex;align-items:center;gap:14px;margin:0 0 12px;color:var(--faint);font-size:var(--fs-small);font-weight:500}
+.authv .or::before, .authv .or::after{content:"";flex:1;height:1px;background:var(--hair)}
+.authv .av-field{margin-bottom:10px}
+.authv .field-top{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.authv .av-field label{font-size:var(--fs-small);font-weight:600;color:var(--label)}
+.authv .field-top .aux{margin-left:auto;font-size:var(--fs-body);font-weight:600;color:var(--brand-text);padding:6px 4px;margin:-6px -4px;border-radius:8px;text-underline-offset:3px;transition:color .16s ease}
+.authv .field-top .aux:hover{color:var(--brand-deep-text);text-decoration:underline}
+.authv .control{position:relative;display:flex;align-items:center}
+.authv .control>.lead{position:absolute;left:15px;width:19px;height:19px;color:var(--faint);pointer-events:none;transition:color .18s ease}
+.authv .control:focus-within>.lead{color:var(--brand-text)}
+.authv .av-input{width:100%;min-height:46px;padding:11px 16px 11px 45px;border-radius:var(--r-md);
+  background:var(--field-bg);border:1px solid var(--field-bd);color:var(--ink);font-size:var(--fs-lead);
+  transition:border-color .18s ease,background .18s ease,box-shadow .18s ease;}
+.authv .av-input::placeholder{color:var(--placeholder)}
+.authv .av-input:hover{border-color:var(--field-bd-h)}
+.authv .av-input:focus{outline:none;border-color:var(--brand);background:var(--field-bg-f);box-shadow:0 0 0 4px var(--ring)}
+.authv .av-input.has-toggle{padding-right:52px}
+.authv .pw-toggle{position:absolute;right:6px;width:44px;height:44px;display:grid;place-items:center;border-radius:11px;
+  color:var(--faint);transition:color .16s ease,background .16s ease;}
+.authv .pw-toggle:hover{color:var(--ink);background:var(--soft)}
+.authv .pw-toggle svg{width:19px;height:19px}
+.authv .av-field.valid .av-input{border-color:var(--ok-bd)}
+.authv .av-field.invalid .av-input{border-color:var(--danger);background:var(--danger-field)}
+.authv .av-field.invalid .av-input:focus{box-shadow:0 0 0 4px var(--ring-danger)}
+.authv .av-field.invalid .control>.lead{color:var(--danger)}
+.authv .err-slot{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s var(--ease-out)}
+.authv .av-field.invalid .err-slot{grid-template-rows:1fr}
+.authv .err-slot>div{overflow:hidden;min-height:0}
+.authv .av-err{display:flex;align-items:flex-start;gap:6px;padding-top:7px;font-size:var(--fs-small);color:var(--danger-text)}
+.authv .av-err svg{width:15px;height:15px;flex:none;margin-top:2px;color:var(--danger)}
+.authv .caps{display:none;align-items:center;gap:6px;padding-top:7px;font-size:var(--fs-small);color:var(--warn-text)}
+.authv .caps.show{display:flex}
+.authv .caps svg{width:14px;height:14px;color:var(--warn)}
+.authv .strength{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding-top:6px}
+.authv .strength i{height:4px;border-radius:99px;background:var(--bar-bg);transition:background .3s ease}
+.authv .strength-row{display:flex;align-items:center;gap:8px;padding-top:5px;font-size:var(--fs-small);color:var(--faint)}
+.authv .strength-row b{font-weight:600;margin-left:auto;transition:color .3s ease}
+.authv [data-strength="1"] .strength i:nth-child(-n+1){background:var(--danger)}
+.authv [data-strength="2"] .strength i:nth-child(-n+2){background:var(--warn)}
+.authv [data-strength="3"] .strength i:nth-child(-n+3){background:var(--accent)}
+.authv [data-strength="4"] .strength i{background:var(--ok)}
+.authv [data-strength="1"] .strength-row b{color:var(--danger-text)}
+.authv [data-strength="2"] .strength-row b{color:var(--warn-text)}
+.authv [data-strength="3"] .strength-row b{color:var(--accent-text)}
+.authv [data-strength="4"] .strength-row b{color:var(--ok-text)}
+.authv .rules{display:grid;gap:6px;padding-top:10px}
+.authv .rule{display:flex;align-items:center;gap:9px;font-size:var(--fs-small);color:var(--faint);transition:color .22s ease}
+.authv .rule i{width:18px;height:18px;flex:none;border-radius:50%;border:1.5px solid var(--hair-strong);
+  display:grid;place-items:center;transition:background .22s ease,border-color .22s ease,transform .28s var(--ease-out);}
+.authv .rule i svg{width:11px;height:11px;color:#fff;opacity:0;transition:opacity .18s ease}
+.authv .rule.ok{color:var(--ok-text)}
+.authv .rule.ok i{background:var(--ok);border-color:var(--ok);transform:scale(1.06)}
+.authv .rule.ok i svg{opacity:1}
+.authv .av-check{display:flex;align-items:flex-start;gap:11px;margin:0 0 12px;cursor:pointer;padding:4px;margin-left:-4px;border-radius:10px}
+.authv .av-check input{position:absolute;opacity:0;width:0;height:0}
+.authv .av-check .box{width:21px;height:21px;flex:none;margin-top:1px;border-radius:7px;border:1.5px solid var(--hair-strong);
+  background:var(--field-bg);display:grid;place-items:center;
+  transition:background .18s ease,border-color .18s ease,transform .2s var(--ease-out);}
+.authv .av-check .box svg{width:13px;height:13px;color:#fff;opacity:0;transform:scale(.6);transition:opacity .16s ease,transform .2s var(--ease-out)}
+.authv .av-check input:checked + .box{background:var(--brand-btn);border-color:var(--brand-btn)}
+.authv .av-check input:checked + .box svg{opacity:1;transform:none}
+.authv .av-check input:focus-visible + .box{outline:2px solid var(--focus);outline-offset:2px}
+.authv .av-check .txt{font-size:var(--fs-body);color:var(--muted)}
+.authv .av-check:active .box{transform:scale(.94)}
+.authv .av-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-height:48px;padding:12px 26px;border-radius:var(--r-md);font-size:var(--fs-lead);font-weight:600;
+  transition:background .18s ease,box-shadow .22s ease,transform .16s var(--ease-out),opacity .18s ease;}
+.authv .av-btn-block{display:flex;width:100%}
+.authv .av-btn:active{transform:scale(.978)}
+.authv .av-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.authv .av-btn-primary{background:var(--brand-btn);color:#fff;box-shadow:var(--btn-shadow)}
+.authv .av-btn-primary:hover:not(:disabled){background:var(--brand-deep);box-shadow:var(--btn-shadow-h)}
+.authv .av-btn-quiet{background:var(--social-bg);border:1px solid var(--social-bd);color:var(--ink)}
+.authv .av-btn-quiet:hover:not(:disabled){background:var(--social-bg-h);border-color:var(--social-bd-h)}
+.authv .av-btn .av-btn-label{display:inline-flex;align-items:center;gap:9px;transition:filter .22s ease,opacity .22s ease,transform .24s var(--ease-out)}
+.authv .av-btn .av-btn-label svg{width:18px;height:18px}
+.authv .av-btn .av-spin{position:absolute;width:21px;height:21px;border-radius:50%;
+  border:2.2px solid rgba(255,255,255,.32);border-top-color:#fff;
+  opacity:0;filter:blur(3px);transition:opacity .2s ease,filter .22s ease;}
+.authv .av-btn-quiet .av-spin{border-color:var(--hair-strong);border-top-color:var(--ink)}
+.authv .av-btn.loading{cursor:progress}
+.authv .av-btn.loading .av-btn-label{filter:blur(4px);opacity:0;transform:scale(.97)}
+.authv .av-btn.loading .av-spin{opacity:1;filter:none;animation:spin .7s linear infinite}
+.authv .av-btn-row{display:flex;flex-direction:column;gap:9px;margin-top:2px}
+.authv .alt{margin-top:12px;text-align:center;font-size:var(--fs-body-lg);color:var(--muted)}
+.authv .alt a{font-weight:600;color:var(--brand-text);padding:11px 5px;margin-block:-11px;display:inline-block;border-radius:8px}
+.authv .alt a:hover{color:var(--brand-deep-text);text-decoration:underline;text-underline-offset:3px}
+.authv .legal{margin-top:10px;font-size:var(--fs-caption);line-height:1.45;color:var(--faint);text-align:center}
+.authv .legal a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:8px 2px;margin-block:-8px;display:inline-block}
+.authv .legal a:hover{color:var(--ink)}
+.authv .status-icon{width:60px;height:60px;border-radius:var(--r-lg);display:grid;place-items:center;margin-bottom:18px;
+  background:var(--icon-bg);border:1px solid var(--icon-bd);color:var(--brand-text);}
+.authv .status-icon svg{width:29px;height:29px}
+.authv .tick{width:68px;height:68px;margin-bottom:20px}
+.authv .tick circle{fill:none;stroke:var(--ok);stroke-width:2.4;stroke-dasharray:207;stroke-dashoffset:207;animation:draw .62s var(--ease-out) forwards}
+.authv .tick path{fill:none;stroke:var(--ok);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:44;stroke-dashoffset:44;animation:draw .38s var(--ease-out) .34s forwards}
+.authv .mailto{display:flex;align-items:center;gap:11px;margin:14px 0 16px;padding:12px 16px;border-radius:var(--r-md);
+  background:var(--soft);border:1px solid var(--hair);font-size:var(--fs-body-lg);}
+.authv .mailto svg{width:18px;height:18px;color:var(--faint);flex:none}
+.authv .mailto b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.authv .timer{margin-top:13px;text-align:center;font-size:var(--fs-body);color:var(--faint)}
+.authv .timer b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.authv .join-spin{width:56px;height:56px;margin:2px auto 20px;border-radius:50%;
+  border:4px solid var(--hair);border-top-color:var(--brand);animation:spin .8s linear infinite}
+.authv .join-badge{width:64px;height:64px;margin:2px auto 20px;border-radius:50%;display:grid;place-items:center;
+  background:var(--danger-bg);border:1px solid var(--danger-bd)}
+.authv .join-badge svg{width:30px;height:30px;color:var(--danger-text)}
+.authv .pane-foot{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;padding-top:14px;font-size:var(--fs-small);color:var(--faint)}
+.authv .pane-foot a{padding:9px 2px;margin-block:-9px;display:inline-block;transition:color .16s ease}
+.authv .pane-foot a:hover{color:var(--ink)}
+.authv .pane-foot .secure{display:inline-flex;align-items:center;gap:7px;margin-left:auto}
+.authv .pane-foot .secure svg{width:15px;height:15px;color:var(--ok)}
+@media(max-width:560px){
+  .authv .pane-foot .secure{margin-left:0}
+}
+.authv .pane-art{position:sticky;top:0;height:100svh;align-self:start;overflow:hidden;background:var(--art-base);isolation:isolate}
+.authv .art{position:absolute;inset:0;
+  background-image:url('/auth/pane.webp');
+  background-size:cover;background-position:54% 44%;
+  transform:scale(1.02);
+  animation:artDrift 26s ease-in-out infinite alternate;
+  
+  -webkit-mask-image:none;
+  mask-image:none;}
+.authv .pane-art::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(760px 460px at -6% -12%,rgba(255,195,160,.2),transparent 62%),
+    radial-gradient(420px 380px at -12% 108%,rgba(35,128,214,.07),transparent 66%);}
+.authv .form-area{scrollbar-width:none;-ms-overflow-style:none}
+.authv .form-area::-webkit-scrollbar{width:0;height:0;display:none}
+.authv .art-scrim{position:absolute;inset:0;z-index:4;pointer-events:none;background:var(--art-scrim)}
+.authv .art-grain{position:absolute;inset:0;pointer-events:none;z-index:6;opacity:var(--art-grain-op);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");}
+.authv .art-copy{position:absolute;left:clamp(54px,6.4vw,104px);right:clamp(30px,4.6vw,64px);bottom:clamp(30px,4.6vh,58px);
+  z-index:5;color:var(--art-ink);max-width:32ch;}
+.authv .art-copy .kicker{display:inline-flex;align-items:center;gap:9px;margin-bottom:14px;
+  font-size:var(--fs-caption);font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:var(--art-kicker);}
+.authv .art-copy .kicker::before{content:"";width:26px;height:2px;border-radius:2px;background:var(--accent)}
+.authv .art-copy h2{font-size:var(--fs-auth-h4);letter-spacing:-.03em}
+.authv .art-copy h2 .grad{background:linear-gradient(98deg,#2A86DE 0%,#2173C8 56%,#1B5FA8 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.authv .rotator{position:relative;margin-top:14px;height:3.2em}
+.authv .rotator span{position:absolute;inset:0;font-size:var(--fs-lead);line-height:1.55;color:var(--art-sub);
+  opacity:0;transform:translateY(9px);filter:blur(3px);
+  transition:opacity .55s ease,transform .6s var(--ease-out),filter .55s ease;}
+.authv .rotator span.av-on{opacity:1;transform:none;filter:none}
+@media(max-width:1020px){
+  .authv{grid-template-columns:1fr}
+  .authv .pane-art{display:none}
+}
+.authv .chips button.av-on{background:#2173C8;border-color:#4E9BE8;color:#fff}
+@media (prefers-reduced-motion:reduce){
+  .authv .rotator span{opacity:0}
+  .authv .rotator span.av-on{opacity:1}
+}
+@media(max-width:600px){
+  .authv .pane-form{padding:8px 18px 10px}
+  .authv .pane-top{min-height:54px}
+  .authv .av-brand{font-size:var(--fs-lead)}
+  .authv .av-brand .av-logo{width:29px;height:29px}
+  .authv .form-area{padding:4px 0}
+  .authv .screen h1{font-size:var(--fs-auth-h2);margin-bottom:5px}
+  .authv .screen-head{margin-bottom:9px}
+  .authv .av-sub{font-size:var(--fs-body);line-height:1.45}
+  .authv .social{gap:7px;margin-bottom:9px}
+  .authv .av-btn-social{min-height:42px;padding:9px 16px;font-size:var(--fs-body-lg)}
+  .authv .av-btn-social svg{width:18px;height:18px}
+  .authv .or{margin-bottom:9px;font-size:var(--fs-small)}
+  .authv .av-field{margin-bottom:8px}
+  .authv .field-top{margin-bottom:4px}
+  .authv .av-field label{font-size:var(--fs-small)}
+  .authv .field-top .aux{font-size:var(--fs-body)}
+  .authv .av-input{min-height:42px;padding:9px 14px 9px 42px}
+  .authv .av-input.has-toggle{padding-right:48px}
+  .authv .control>.lead{left:13px;width:18px;height:18px}
+  .authv .pw-toggle{width:40px;height:40px}
+  .authv .av-check{margin-bottom:10px;gap:9px;padding:2px}
+  .authv .av-check .box{width:19px;height:19px}
+  .authv .av-check .txt{font-size:var(--fs-body)}
+  .authv .av-btn{min-height:44px;padding:10px 22px;font-size:var(--fs-body-lg)}
+  .authv .av-btn-row{gap:8px}
+  .authv .alt{margin-top:9px;font-size:var(--fs-body)}
+  .authv .alt a{padding:8px 5px;margin-block:-8px}
+  .authv .legal{margin-top:8px;font-size:var(--fs-caption);line-height:1.4}
+  .authv .rules{gap:5px;padding-top:8px}
+  .authv .rule{font-size:var(--fs-small)}
+  .authv .rule i{width:16px;height:16px}
+  .authv .mailto{margin:10px 0 12px;padding:10px 14px;font-size:var(--fs-body)}
+  .authv .status-icon{width:50px;height:50px;margin-bottom:14px}
+  .authv .join-spin, .authv .join-badge{width:52px;height:52px;margin-bottom:14px}
+  .authv .tick{width:56px;height:56px;margin-bottom:14px}
+  .authv .timer{margin-top:10px;font-size:var(--fs-small)}
+  .authv .pane-foot{gap:4px 16px;padding-top:10px;font-size:var(--fs-caption)}
+  .authv .pane-foot a{padding:7px 2px;margin-block:-7px}
+}
+@media(max-height:720px){
+  .authv .pane-form{padding-top:6px;padding-bottom:8px}
+  .authv .pane-top{min-height:48px}
+  .authv .form-area{padding:2px 0}
+  .authv .screen h1{font-size:var(--fs-auth-h1);margin-bottom:4px}
+  .authv .screen-head{margin-bottom:7px}
+  .authv .av-sub{font-size:var(--fs-body);line-height:1.4}
+  .authv .social{gap:6px;margin-bottom:8px}
+  .authv .av-btn-social{min-height:40px;padding:8px 14px}
+  .authv .or{margin-bottom:8px}
+  .authv .av-field{margin-bottom:6px}
+  .authv .field-top{margin-bottom:3px}
+  .authv .av-input{min-height:40px;padding-top:8px;padding-bottom:8px}
+  .authv .pw-toggle{width:38px;height:38px}
+  .authv .av-check{margin-bottom:8px}
+  .authv .av-btn{min-height:42px;padding-top:9px;padding-bottom:9px}
+  .authv .alt{margin-top:6px}
+  .authv .legal{margin-top:5px;line-height:1.35}
+  .authv .strength{padding-top:5px}
+  .authv .strength-row{padding-top:3px;font-size:var(--fs-caption)}
+  .authv .av-btn-row{gap:7px}
+  .authv .rules{padding-top:6px;gap:4px 10px;grid-template-columns:1fr 1fr}
+  .authv .legal{font-size:var(--fs-caption)}
+  .authv .pane-foot{padding-top:8px;font-size:var(--fs-caption)}
+}
+@media(max-height:660px){
+  .authv .screen[data-screen="signup"] .av-sub, .authv .screen-head{margin-bottom:6px}
+}
