@@ -213,6 +213,7 @@ import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
+import { tripDuration } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
 import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } from '../design/index';
 import { Row, Trunc, Grow } from '../design/Layout';
@@ -242,7 +243,6 @@ import { transferKind } from '@/lib/transport';
 // =====================================================================
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
-const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
 // Calendar-day helpers. nights/gap are counted by DATE (not by the raw timestamp),
 // so a checkout stored at 23:59 isn't rounded up to an extra night. This is what
 // makes recompute idempotent on load: re-deriving dates from (nights, gap)
@@ -846,9 +846,11 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
   const cityCount = uniqueCityCount(draft.nodes);
   const dateRange = formatTripRange(draft.nodes, '-');
-  const startDate = seq[0]?.start_date;
   const endDate = seq[seq.length - 1]?.end_date;
-  const totalNights = nightsBetween(startDate, endDate);
+  // Trip length via the ONE shared helper (tripDuration().days = nights+1 =
+  // calendar days), the same source the trip header / Overview / public trip use.
+  // Was an inline nights count rendered with the day-word — off by one from them.
+  const tripDays = tripDuration(null, draft.nodes).days;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
@@ -1119,7 +1121,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
          секцию трипа. Визард свой ключ сохраняет. */
       title={t('trip.sidebar_route')}
       subtitle={[
-        totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
+        tripDays > 0 ? `${tripDays} ${dayWord(tripDays, t)}` : null,
         cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
         dateRange && dateRange !== '-' ? dateRange : null,
       ].filter(Boolean).join(' · ') || undefined}
