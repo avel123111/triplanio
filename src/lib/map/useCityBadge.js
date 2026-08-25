@@ -3,6 +3,9 @@ import { useEffect, useRef } from 'react';
 import { mapboxgl } from '@/lib/mapbox';
 import { createCityBadgeEl } from './markers';
 
+// Снять попап, не падая, если его уже нет (двойной уход/размонтирование).
+const safeRemove = (x) => { try { x.remove(); } catch { /* ignore */ } };
+
 /**
  * Стеклянная плашка «флаг + город + даты» у активного города (линза «Маршрут»/
  * редактор и планировщик). Несётся `mapboxgl.Popup` без фиксированного `anchor`,
@@ -55,22 +58,22 @@ export function useCityBadge(mapRef, ready, cityBadge, { enabled = true } = {}) 
       if (go && go.animate) {
         const pend = leavingRef.current;
         pend.add(popup);
-        const done = () => { pend.delete(popup); try { popup.remove(); } catch { /* ignore */ } };
+        const done = () => { pend.delete(popup); safeRemove(popup); };
         go.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.6)' }], { duration: 130, easing: 'ease-in' })
           .finished.then(done, done);
       } else {
-        try { popup.remove(); } catch { /* ignore */ }
+        safeRemove(popup);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, enabled, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode, hasAction, cityBadge?.actionLabel]);
 
-  // Размонтирование: снять текущий попап и все доигрывающие уход — мгновенно
-  // (общий инстанс карты не должен унести фейдящийся бейдж на следующий экран).
+  // Размонтирование: слить доигрывающие уход попапы — мгновенно (общий инстанс
+  // карты не должен унести фейдящийся бейдж на следующий экран). Текущий попап
+  // сюда не попадает: cleanup основного эффекта объявлен раньше и всегда обнуляет
+  // `popupRef` (сняв попап или отправив его в `leavingRef`) до этого прогона.
   useEffect(() => () => {
-    const p = popupRef.current; popupRef.current = null;
-    if (p) { try { p.remove(); } catch { /* ignore */ } }
-    leavingRef.current.forEach((x) => { try { x.remove(); } catch { /* ignore */ } });
+    leavingRef.current.forEach(safeRemove);
     leavingRef.current.clear();
   }, []);
 }
