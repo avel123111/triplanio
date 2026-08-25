@@ -44,6 +44,7 @@ import EditLens from './EditLens';
 import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
+import { tripDuration } from '@/lib/trip-stats';
 import { resolveMyRole } from '@/lib/members';
 import { clearsStep } from '@/lib/tripStep';
 import { useProfileMap } from '@/lib/useProfileMap';
@@ -1176,23 +1177,18 @@ export default function TripView() {
   // modal mount, so they work from any lens.
   const dateRange = formatTripRange(visits, '-');
   const cityCount = uniqueCityCount(visits);
-  // Trip length in nights, rendered with the day-word — same meta as the editor
-  // header (dates · days · cities).
-  const tripNights = (() => {
-    const starts = visits.map((v) => v.start_date).filter(Boolean).sort();
-    const ends = visits.map((v) => v.end_date).filter(Boolean).sort();
-    const s = starts[0] || null;
-    const e = ends[ends.length - 1] || null;
-    if (!s || !e) return null;
-    const n = Math.round(DateTime.fromISO(e).diff(DateTime.fromISO(s), 'days').days);
-    return n >= 0 ? n : null;
-  })();
+  // Trip length — ONE source for every surface: tripDuration().days (= nights+1,
+  // calendar days inclusive), the same helper the Overview stat row and the
+  // public trip use. Previously this header computed nights inline and rendered
+  // them with the day-word ("12 days" for a 12-night trip), so it disagreed with
+  // Overview/public ("13 days") for the identical trip.
+  const tripDays = tripDuration(trip, visits).days;
   const dayWord = (n) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
   const heroSub = (
     <>
       {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
-      {tripNights != null && (
-        <><span>·</span><span>{tripNights} {dayWord(tripNights)}</span></>
+      {tripDays > 0 && (
+        <><span>·</span><span>{tripDays} {dayWord(tripDays)}</span></>
       )}
       {cityCount > 0 && (
         <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}</span></>

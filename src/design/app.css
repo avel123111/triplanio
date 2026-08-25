@@ -716,7 +716,6 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .t-display,
 .pro-hero__title,      /* TRIP-229: инспектор канонов — заголовок Pro-страницы Heading→Display (hero макета) */
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
-.pt-mast h1,           /* TRIP-410: hero публичного трипа → Display (был локальный --fs-display/-.035em) */
 .head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-display — Geologica clamp(28–40)/800/1.05, tabular (карьер .head h1) */
 .t-title,
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
@@ -730,8 +729,7 @@ h1,
 .tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
 .rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
-.brand-col__tag,   /* TRIP-410: бренд-строка логина → Title (был локальный --fs-h1/600/-0.032em) */
-.pt-cta h2 { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* .budget__total .big снят: мокап лендинга удалён (TRIP-460) */   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular */
+.brand-col__tag { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular (.pt-cta h2 снят: /public/trip переписан, TRIP-461) */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
@@ -744,7 +742,6 @@ h2,
 .acct-hero__name,
 .sec-head h2,
 .tcp__ph,
-.pt-mm .n,
 .tl3-dh .wd,       /* TRIP-175 инсп.: off-canon→Heading (день недели хронологии) */
 .dlg__head h2,     /* TRIP-175 инсп.: Subheading→Heading (заголовки модалок .dlg__head) */
 .addon-card__title,/* TRIP-175 инсп.: Label→Heading (тайтл карточки аддона) */
@@ -756,8 +753,6 @@ h2,
 .chat-head h3,     /* TRIP-175 инсп.: Label→Heading (заголовок «Групповой чат») */
 .choice-card__ttl, /* TRIP-222: инспектор канонов — названия способов создания Label→Heading */
 .flow-lp-b .section-sub, /* TRIP-222: инспектор канонов — саб-заголовки шагов планирования Subheading→Heading */
-.pt-cstop__ht h2,  /* TRIP-410: заголовок остановки публичного трипа → Heading (был локальный --fs-h2/-.03em) */
-.pt-h-lead,        /* TRIP-410: лид-заголовок публичного трипа → Heading (был локальный --fs-h2/-.025em; вес держит .t-strong) */
 .empty-state__t,   /* TRIP-302: заголовок пустого состояния — ИНТРИНСИК Heading. До этого он был Heading только внутри .card (через `.card h3`), а в портале модалки (.dlg, не .card) проваливался в body-кегль (15px = как подпись). Канон на самом классе чинит это во всех контекстах.
    visual-diff-exempt: .empty-state__t font-family — заголовок пустого состояния получил канон .t-heading (был Heading только через .card h3) (TRIP-302)
    visual-diff-exempt: .empty-state__t font-size — заголовок пустого состояния получил канон .t-heading (TRIP-302)
@@ -776,7 +771,6 @@ h3,
 .sheet-h h3,
 .head__av,
 .vp-h h3,
-.pt-cstop__num,
 .auth__brand-link,
 .brand-col__logo,
 .trip-head__title,
@@ -804,9 +798,6 @@ h4,
 .nonext b,
 .dl-card__title,
 .dl-empty b,
-.pt-mast__av,
-.pt-mast__l1,
-.pt-cta p,
 .banner p,
 .row__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта; сюда же сведены .acct-chan__t и .acct-tgrow__t) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
@@ -846,17 +837,7 @@ h4,
 .dl-addcard b,
 .eed-fctitle,
 .docfield__title,
-.pt-mast__l2,
-.pt-rchip b,
-.pt-mm .n small,
-.pt-mapcap__tx b,
-.pt-cstop__sub,
-.pt-cstop__hotel,
-.pt-wp__city,
-.pt-act .nm,
-.pt-cleg__pill,
 .pt-person .nm,
-.pt-scta .tx b,
 .btn-social,
 .lede,
 .btn-primary,
@@ -912,9 +893,8 @@ h4,
 .input, .select, .textarea,
 .sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
 .stay-dates__lbl,  /* они же в просмотре события */
-.auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
-/* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
-.ptrip, .pt-cstop__num { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
+/* TRIP-410: база логина → Body (были локальные --font-body/--fs-base). .ptrip/.pt-cstop__num сняты: /public/trip переписан на сайтовую ДС (TRIP-461) */
+.auth, .auth-input { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
 /* .t-support — обычный вес (400) на кегле label (13): вторичная строка ПРИ титле,
    где иерархию несут вес+цвет, а не размер. Закрывает дыру шкалы «мелкий+обычный»
    (см. апрув Pavel): раньше пояснение при 13/600-титле было вынуждено быть либо
@@ -1059,12 +1039,7 @@ h4,
 .eed-fchint,
 .tcp__err,
 .docfield__count,
-.pt-mm .k,
-.pt-mapcap__pill,
-.pt-mapcap__tx span,
-.pt-act .day,
 .pt-person .av,
-.pt-scta .tx span,
 .auth .field__label,
 .divider,
 .terms,
@@ -1114,10 +1089,6 @@ h4,
 .rec .k,
 .visit .when .mo,
 .eed-fromto,
-.pt-mast__kick,
-.pt-role,
-.pt-wp__tag,
-.pt-eyebrow,
 .brand-col__eyebrow,
 .trip-head__meta,
 .trip-tl__day,
@@ -1203,12 +1174,6 @@ h4,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
 .s22mk__count, .s22mk__price,   /* TRIP-287: цена/счётчик маркера карты — strong (bold) */
-.ptrip h1, .ptrip h2, .ptrip h3,
-.pt-mast__l1 b,
-.pt-cstop__sub b,
-.pt-cleg__pill .dur,
-.pt-cleg__pill .dt,
-.pt-h-lead,
 .field__match.is-ok::before,
 .field__match.is-bad::before,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
@@ -1219,9 +1184,7 @@ h4,
 .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
-.s22mk,
-.pt-mm .n,
-.pt-cstop__ht h2 { line-height: 1; }     /* флеш-центровка крупных цифр/глифов */
+.s22mk { line-height: 1; }     /* флеш-центровка крупных цифр/глифов (.pt-mm .n/.pt-cstop__ht h2 сняты: /public/trip переписан, TRIP-461) */
 /* TRIP-410: прежний орто-модификатор sans-оверлея УДАЛЁН. После де-моно мета-яруса
    (t-meta/t-micro/t-mono теперь Geologica; число-tabular, код/email/kbd → JetBrains
    отдельным правилом) слой-отмена font-family не нужен — члены наследуют канон = Geologica. */

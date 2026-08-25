@@ -88,11 +88,6 @@
     "auth-input": { "object": "perimeter", "reason": "экран авторизации — вне периметра эпика (audit-design исключает)" },
     "confirm__email": { "object": "perimeter", "reason": "экран подтверждения email — вне периметра" },
     "brand-col__logo": { "object": "perimeter", "reason": "лендинг/бренд — вне периметра" },
-    "pt-mapbox": { "object": "perimeter", "reason": "PublicTrip — вне периметра" },
-    "pt-mapcap": { "object": "perimeter", "reason": "PublicTrip — вне периметра" },
-    "pt-person": { "object": "perimeter", "reason": "PublicTrip — вне периметра" },
-    "pt-rchip": { "object": "perimeter", "reason": "PublicTrip — вне периметра" },
-    "pt-wp__dot": { "object": "perimeter", "reason": "PublicTrip — вне периметра" },
 
     "trip-tl__row": { "object": "6", "reason": "строка-список таймлайна трипа (*-row) — объект 6 (лист/строка), НЕ карточка; свой скин строки" },
     "chat-mention__row": { "object": "6", "reason": "строка-список упоминаний чата (*-row) — объект 6 (лист/строка), НЕ карточка" },
