@@ -69,6 +69,11 @@ export const KIT_OBJECTS = [
   { id: 'notif', family: 'notif', group: 'components', prefix: 'notif', css: true, interactive: true },
   { id: 'stepper', family: 'stepper', group: 'components', prefix: 'stepper', maps: ['STEPPER_VARIANTS'] },
   { id: 'swatch', family: 'swatch', group: 'components', prefix: 'swatch', maps: ['SWATCH_VARIANTS'] },
+  // TRIP-321 линза «Календарь»: полоса города и эвент-токен. `citybar` — дефолт
+  // `bar` без класса, единственное обличье с классом — `strip` (карта). `evchip`
+  // — три обличья осью variant (inline/allday/block).
+  { id: 'city-bar', family: 'citybar', group: 'components', prefix: 'citybar', maps: ['CITYBAR_VARIANTS'], interactive: true },
+  { id: 'event-chip', family: 'evchip', group: 'components', prefix: 'evchip', maps: ['EVENTCHIP_VARIANTS'], interactive: true },
   { id: 'badge', family: 'badge', group: 'components', css: true },
   // Карточка - МНОГООСНЫЙ объект (радиус × тон × interactive/add/recessed/…),
   // источник оси - карта суффиксов `.card--*`, экспортированная примитивом

@@ -337,7 +337,7 @@ function buildDraft(shell, transfers = [], lang) {
 // дефолтной — то есть по прямому адресу `?lens=edit` наблюдатель просто не
 // попадёт. Своего ролевого гарда здесь нет намеренно, второй такой проверки
 // быть не должно.
-export default function EditLens({ tripId, shell, content }) {
+export default function EditLens({ tripId, shell, content, openCityId, onCityOpened, embedded = false, onClose }) {
   const t = useT();
   const { lang } = useI18n();
   const { fmtMoney } = useI18nFormat();
@@ -368,6 +368,28 @@ export default function EditLens({ tripId, shell, content }) {
   //   { type:'createTransfer', fromVisit, toVisit } - create a transfer (EventEditDialog panel variant)
   const [leftPanel, setLeftPanel] = useState(null);
   const closeLeftPanel = () => setLeftPanel(null);
+  // Внешний запрос «открой этот город» (клик по городу в календаре → «Маршрут»).
+  // Одноразово: ставим ту же панель города, что и `openCity`, и гасим запрос у
+  // родителя, чтобы повторные ре-рендеры её не переоткрывали. Панель отрисуется,
+  // когда доедет `draft` (до него экран — скелетон), состояние переживёт ожидание.
+  useEffect(() => {
+    if (!openCityId) return;
+    setLeftPanel({ type: 'city', id: openCityId });
+    onCityOpened?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCityId]);
+  // Встроенный режим (`embedded`): EditLens смонтирован в ящике поверх другого
+  // экрана (календарь) и рисует ТОЛЬКО панель. Когда панель ЗАКРЫВАЮТ
+  // (onBack → leftPanel=null), гасим ящик хоста. Ключевое: гасим ТОЛЬКО если
+  // панель уже была открыта (ref), иначе первый кадр (leftPanel ещё null до
+  // эффекта-открывашки) закрыл бы ящик в тот же тик — «клик ничего не делает».
+  const embeddedOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!embedded) return;
+    if (leftPanel) embeddedOpenedRef.current = true;
+    else if (embeddedOpenedRef.current) onClose?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, leftPanel]);
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
   const isSheet = useIsPhone();
@@ -1191,6 +1213,11 @@ export default function EditLens({ tripId, shell, content }) {
       )}
     </div>
   );
+
+  // Встроенный режим: рендерим ТОЛЬКО панель (город/бронь/переезд) как есть — её
+  // `.lp` заполняет ящик хоста (EventDrawerHost), который сам даёт хром, фокус и
+  // Esc. Без карты и рельса маршрута; вся машинерия панели — та же.
+  if (embedded) return leftPanelEl || null;
 
   return (
     <MapShell

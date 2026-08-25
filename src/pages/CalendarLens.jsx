@@ -1,407 +1,147 @@
 // @ts-check
 /**
- * CalendarLens — календарь путешествия (ncal-*). Два вида, оба СЕТКИ.
+ * CalendarLens — редизайн (ncal-* namespace).
  *
- * ★ ПОЧЕМУ НЕДЕЛЯ — СЕТКА ЧАСОВ, А НЕ СПИСОК. Список «день → события» в
- * продукте уже есть: это лента таймлайна. Второй такой же экран не добавляет
- * ничего, кроме имени в меню. Календарь отвечает на другой вопрос — «сколько
- * времени занято и что с чем стыкуется», — и ответ на него даёт только ось
- * времени: колонка на день, час по вертикали, блок высотой в длительность.
- * Модель данных к этому готова: `buildEventStream` кладёт `endTime` именно
- * «to size blocks by real duration instead of a fixed guess».
+ * Хедер: заголовок месяц/год + подзаголовок поездки; справа — сегмент
+ * месяц/неделя, группа навигации (‹ Сегодня ›) и иконка «к поездке».
  *
- * ★ ГОРОД — МНОГОДНЕВНОЕ СОБЫТИЕ. Визит рисуется ОДНОЙ полосой поверх ряда
- * (месяц) или над сеткой часов (неделя), `grid-column` span, имя на полосе.
- * Прежняя редакция красила каждую ячейку непрозрачной плашкой, имя печатала
- * ЛИШЬ в первый день визита, на телефоне текст гасила (`font-size: 0`) — и
- * держала под сеткой ЛЕГЕНДУ, чтобы расшифровать оставшиеся цветные слэбы.
- * Легенда удалена как объект: имя едет с полосой в каждую неделю.
+ * Месяц: доска 7×N. У каждого дня поездки — СПЛОШНАЯ цветная полоса ГОРОДА в
+ * верхней части ячейки; соседние дни одного города визуально сливаются в
+ * непрерывную полосу. Транзитный день (2+ города) делит полосу поровну. Имя
+ * города — в первый день визита. События: чипы (десктоп) / точки (мобайл).
  *
- * ★ ЦВЕТ ГОРОДА — `--cat-*`, ЦВЕТ СОБЫТИЯ — `--ev-*`. Раньше города красились
- * теми же токенами, что и типы событий, и розовая плашка «Мадрид» стояла над
- * розовым чипом «активность»: два разных языка одним словарём.
+ * Неделя: колонки + ось времени на дневное окно 06–23 (растягивается под
+ * ранние/поздние события). Десктоп — внутренний скролл, не выше экрана; мобайл
+ * — скроллит страница, колонки свайпаются по горизонтали. В шапке каждого дня
+ * — полоса города с НАЗВАНИЕМ. Цвет города — по имени (синхронно со сводкой).
  *
- * ★ ЯРУСОВ ЦВЕТА РОВНО ДВА. Полоса города — насыщенная (она одна на ряд),
- * событие — точка плюс текст. Заливки у события нет: тридцать пастельных
- * прямоугольников на экране читаются как шум, а не как список.
+ * Сводка: счётчики (дни/города/события) + список городов с датами.
  *
- * Props:
- *   stream      - массив событий потока (buildEventStream)
- *   visits      - массив city_visits (отсортирован по start_date)
- *   isLoading   - boolean
- *   onOpenEvent - (streamEvent) => void
+ * Цвета/радиусы/тени/кегли — только токены app.css.
+ *
+ * Props: stream, visits, isLoading, onOpenEvent.
  */
-import React, { useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, IconBtn, Seg, Chip, Btn, Card, EmptyState, eventFamily } from '../design/index';
-import { Row, Col, Grow, Trunc } from '../design/Layout';
-import { parseNaive } from '@/lib/naive-time';
+import { Skeleton, IconBtn, Seg, Btn, Card, ListRow, Chip, CityBar, EventChip, cityTone, eventFamily } from '../design/index';
+import { Row, Col, Grow } from '../design/Layout';
+import { parseNaive, naiveDayKey } from '@/lib/naive-time';
+import { isTransitVisit } from '@/lib/trip-cities';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
 import './CalendarLens.css';
 
-// Дни недели пн→вс — тот же порядок, что у сетки (luxon: 1 = понедельник).
+const monthNames   = (lang) => ['', ...Info.months('long',  { locale: localeTag(lang) })];
+const monthShort   = (lang) => ['', ...Info.months('short', { locale: localeTag(lang) })];
 const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) });
 
-// ── Цвет города ──────────────────────────────────────────────────────────────
-// Палитра категорий из `:root` (ею живут категории бюджета). Восьмой тон —
-// служебный серый «прочее», городом он не бывает: берём первые семь.
-const CITY_TONES = 7;
-const cityTone = (idx) => `var(--cat-${(idx % CITY_TONES) + 1})`;
-
-// Классификатор семейства — общий с таймлайном (design/index.jsx). Своей копии
-// словаря типов тут нет: она разъезжалась с потоком (ключ `car` вместо
-// car-pickup/car-return → аренда рендерилась без цвета).
-const evCls = (type) => `ev-${eventFamily(type)}`;
-
-/** Ключ дня `yyyy-LL-dd` — формат, в котором `buildEventStream` кладёт `e.date`. */
-const key = (dt) => dt.toFormat('yyyy-LL-dd');
-
-/** «HH:mm» → минуты от полуночи; null, если времени нет. */
-const minutes = (hhmm) => {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || '');
-  return m ? +m[1] * 60 + +m[2] : null;
-};
-
-const byTime = (a, b) => (a.time || '99:99').localeCompare(b.time || '99:99');
-
-// ─── Полосы города ───────────────────────────────────────────────────────────
-// Отрезки визитов, пересечённые с окном из семи дней, в колонках сетки.
-
-/**
- * Дорожки — страховка, а не основной ход. После подрезки (`cityAt.rail`)
- * полосы соседних визитов не пересекаются и дорожка одна; дорожки нужны на
- * КРИВЫХ данных, где визиты налезают друг на друга не пограничным днём.
- */
-function packLanes(segs) {
-  /** @type {number[]} */
-  const lastCol = [];
-  return segs.map((s) => {
-    let lane = 0;
-    while (lane < lastCol.length && lastCol[lane] >= s.col) lane++;
-    lastCol[lane] = s.col + s.span - 1;
-    return { ...s, lane };
-  });
-}
-
-/** Отрезки визитов, пересечённые с окном из семи дней, в колонках сетки. */
-function railSegs(cities, days) {
-  const ws = days[0], we = days[6];
-  const segs = [];
-  for (const c of cities) {
-    if (c.e < ws || c.s > we) continue;
-    const from = c.s < ws ? 0 : Math.round(c.s.diff(ws, 'days').days);
-    const to   = c.e > we ? 6 : Math.round(c.e.diff(ws, 'days').days);
-    segs.push({ ...c, col: from + 1, span: to - from + 1, openStart: c.s < ws, openEnd: c.e > we });
-  }
-  return packLanes(segs.sort((a, b) => a.col - b.col || a.idx - b.idx));
-}
-
-function CityRail({ segs }) {
-  if (!segs.length) return null;
-  const lanes = Math.max(...segs.map((s) => s.lane)) + 1;
-  return (
-    // aria-hidden: имя города уже едет в подпись ячейки/колонки дня, а полоса —
-    // вторая, ГРАФИЧЕСКАЯ подача того же факта.
-    <div className="ncal-rail" style={{ '--lanes': lanes }} aria-hidden="true">
-      {segs.map((s) => (
-        <span
-          key={s.idx}
-          className={`ncal-rail__seg t-meta${s.openStart ? ' is-cont' : ''}${s.openEnd ? ' is-goes' : ''}`}
-          style={{ '--c': cityTone(s.tone), gridColumn: `${s.col} / span ${s.span}`, gridRow: s.lane + 1 }}
-        >
-          {s.name}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// ─── Месяц ───────────────────────────────────────────────────────────────────
-
-function MonthView({ weeks, month, eventsByKey, cityAt, todayKey, onOpenEvent, onOpenDay, lang }) {
-  const { t } = useI18n();
-  const WD = weekdayNames(lang);
-  const loc = localeTag(lang);
+// ─── MonthView ────────────────────────────────────────────────────────────────
+function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
+  // Раскрытые дни (по ключу день+месяц). «+N ещё» разворачивает ячейку и
+  // показывает ВСЕ события дня; повторный клик сворачивает. Не мёртвая кнопка.
   const [open, setOpen] = useState(() => new Set());
+  const toggle = useCallback((key) => setOpen(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  }), []);
 
-  const toggle = useCallback((k) => {
-    setOpen((prev) => {
-      const next = new Set(prev);
-      next.has(k) ? next.delete(k) : next.add(k);
-      return next;
-    });
-  }, []);
+  // Доска рисуется НЕДЕЛЬНЫМИ рядами: так название города можно вести СПЛОШНЫМ
+  // поверх всего прогона одинакового города (по центру), а не втискивать в первую
+  // узкую ячейку (где на мобиле оно превращалось в «В..»). Полосы-цвета остаются
+  // по ячейкам (непрерывность + деление дня-пересадки), имена — отдельным слоем.
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
-  return (
-    // Ролей `grid`/`row`/`gridcell` тут нет намеренно: прежняя разметка носила
-    // их БЕЗ `role="grid"` над ними, то есть объявление было заведомо ложным, а
-    // честное `role="grid"` — обещание навигации стрелками, которой здесь нет.
-    // Скринридер получает всё из подписи кнопки дня и подписей событий.
-    <Card pad="none" radius="card" className="ncal-sheet">
-      <div className="ncal-wdrow" aria-hidden="true">
-        {WD.map((w) => <span key={w} className="ncal-wd t-micro">{w}</span>)}
-      </div>
-
-      {weeks.map((week, wi) => (
-        <div key={wi} className="ncal-wk">
-          <CityRail segs={railSegs(cityAt.rail, week)} />
-
-          <div className="ncal-days">
-            {week.map((d) => {
-              const k      = key(d);
-              const out    = d.month !== month;
-              const ev     = eventsByKey[k] || [];
-              const cities = cityAt.on(d);
-              const isOpen = open.has(k);
-              const shown  = isOpen ? ev : ev.slice(0, 3);
-
-              return (
-                <div
-                  key={k}
-                  className={`ncal-dc${out ? ' is-out' : ''}${cities.length ? '' : ' is-off'}${k === todayKey ? ' is-today' : ''}`}
-                >
-                  {/* Номер дня — настоящая кнопка: открывает день в сетке недели.
-                      На телефоне её ::after растягивается на всю ячейку (точки
-                      клик не перехватывают), поэтому цель нажатия — весь день. */}
-                  <button
-                    type="button"
-                    className="ncal-dn t-label t-flush"
-                    onClick={() => onOpenDay(d)}
-                    aria-label={[d.setLocale(loc).toFormat('cccc, d MMMM yyyy'), ...cities.map((c) => c.name)].join(', ')}
-                  >
-                    {d.day}
-                  </button>
-
-                  {ev.length > 0 && (
-                    <div className="ncal-evl">
-                      {shown.map((e, ei) => (
-                        <button
-                          key={ei}
-                          type="button"
-                          className={`ncal-ev ${evCls(e.type)}`}
-                          onClick={() => onOpenEvent?.(e)}
-                          aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}
-                        >
-                          <span className="ncal-ev__dot" />
-                          {e.time && <span className="ncal-ev__tm t-meta">{e.time}</span>}
-                          <Trunc as="span" className="ncal-ev__n t-meta">{e.title}</Trunc>
-                        </button>
-                      ))}
-                      {ev.length > 3 && (
-                        <Chip sm square className="ncal-more" onClick={() => toggle(k)}>
-                          {isOpen ? '−' : `+${ev.length - 3} ${t('calendar.more_count')}`}
-                        </Chip>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </Card>
-  );
-}
-
-// ─── Неделя: сетка часов ─────────────────────────────────────────────────────
-
-/** Точечное событие (заезд, дедлайн, выдача авто) без своей длительности. */
-const POINT_MIN = 50;
-/** Окно суток, которое сетка показывает всегда, даже если событий в нём нет. */
-const DAY_FROM = 8, DAY_TO = 22;
-
-/**
- * Раскладка пересекающихся блоков в колонке. События сортируются по началу,
- * копится КЛАСТЕР (пока следующий начинается раньше, чем кончился самый поздний
- * из накопленных), внутри кластера каждый садится в первую свободную дорожку.
- * Без этого два события на 10:00 рисуются одно поверх другого, и второго просто
- * нет на экране.
- *
- * ★ ДОРОЖКИ ДЕЛЯТ КОЛОНКУ ПОРОВНУ, А НЕ НАЕЗЖАЮТ ДРУГ НА ДРУГА. Смещение со
- * взаимным перекрытием (приём Notion Calendar) даёт верхнему блоку полную
- * ширину, но КЛАДЁТ ЕГО ПОВЕРХ ЧУЖОГО ТЕКСТА: у трёх пересекающихся событий на
- * экране остаётся одно читаемое название и два огрызка под ним. Равные доли
- * при трёх событиях тоже режут названия, но каждое остаётся в своей коробке и
- * ни одно не пропадает — а три одновременных события в поездке это край, не
- * норма. Так же поступает Google Calendar.
- */
-function layoutDay(items) {
-  const out = [];
-  let cluster = [], lanes = [], clusterEnd = -1;
-
-  const flush = () => {
-    const n = lanes.length;
-    cluster.forEach((it) => out.push({ ...it, left: (it.lane / n) * 100, width: 100 / n }));
-    cluster = []; lanes = []; clusterEnd = -1;
+  // Прогоны одного города внутри недели: подряд идущие дни с ОДНИМ и тем же
+  // городом сливаются в один спан. Дни-пересадки (2+ города) и пустые дни рвут
+  // прогон и имя над ними не рисуется (там видно деление цветом самих полос).
+  const cityRuns = (week) => {
+    const runs = [];
+    let i = 0;
+    while (i < week.length) {
+      const cs = week[i].cities;
+      if (cs.length === 1) {
+        let j = i;
+        while (j + 1 < week.length && week[j + 1].cities.length === 1 && week[j + 1].cities[0].name === cs[0].name) j++;
+        runs.push({ start: i, span: j - i + 1, city: cs[0] });
+        i = j + 1;
+      } else i++;
+    }
+    return runs;
   };
 
-  for (const it of items) {
-    if (it.from >= clusterEnd) flush();
-    let lane = 0;
-    while (lane < lanes.length && lanes[lane] > it.from) lane++;
-    lanes[lane] = it.to;
-    cluster.push({ ...it, lane });
-    clusterEnd = Math.max(clusterEnd, it.to);
-  }
-  flush();
-  return out;
-}
-
-function WeekGrid({ days, eventsByKey, cityAt, todayKey, onOpenEvent, lang }) {
-  const { t } = useI18n();
-  const WD = weekdayNames(lang);
-
-  // Окно часов: базовое 8–22, расширенное ровно настолько, чтобы вместить самое
-  // раннее и самое позднее событие недели. Фиксированные 0–24 дали бы две трети
-  // пустой сетки, а «только по событиям» — прыгающую шкалу.
-  const { from, to, cols } = useMemo(() => {
-    let lo = DAY_FROM * 60, hi = DAY_TO * 60;
-    const perDay = days.map((d) => {
-      const items = [];
-      for (const e of eventsByKey[key(d)] || []) {
-        const s = minutes(e.time);
-        if (s === null) continue;                       // без времени — в верхнюю полосу
-        const en = minutes(e.endTime);
-        const end = en !== null && en > s ? en : s + POINT_MIN;
-        lo = Math.min(lo, s);
-        hi = Math.max(hi, end);
-        items.push({ e, from: s, to: end });
-      }
-      return items.sort((a, b) => a.from - b.from || a.to - b.to);
-    });
-    return {
-      from: Math.max(0, Math.floor(lo / 60)),
-      to: Math.min(24, Math.ceil(hi / 60)),
-      cols: perDay.map(layoutDay),
-    };
-  }, [days, eventsByKey]);
-
-  const span  = (to - from) * 60;
-  const hours = Array.from({ length: to - from }, (_, i) => from + i);
-  /** Момент суток → доля окна сверху. */
-  const at = (min) => `${((min - from * 60) / span) * 100}%`;
-  /** Длительность → доля окна по высоте (минус волосок, чтобы блоки не слипались). */
-  const tall = (dur) => `calc(${(dur / span) * 100}% - 2px)`;
-
-  // События без времени (переезд без start_datetime) — в полосу над сеткой: на
-  // оси времени им места нет, а терять их нельзя.
-  const untimed = days.map((d) => (eventsByKey[key(d)] || []).filter((e) => minutes(e.time) === null));
-  const hasUntimed = untimed.some((a) => a.length);
-
-  // Линия «сейчас». Считается на рендере, без таймера: минутная точность
-  // календарю не нужна, а интервал ради неё пришлось бы убирать за собой.
-  const now = DateTime.now();
-  const nowMin = now.hour * 60 + now.minute;
-  // Обе границы через `>=` НАМЕРЕННО: пара `>` … `<` в одной строке .jsx
-  // читается сканером гарда 2d как JSX-текст, и он требует завернуть кусок
-  // выражения в t(). Смысл тот же, ложного срабатывания нет.
-  const showNow = nowMin >= from * 60 && to * 60 >= nowMin;
-
-  // Когда семь дней не влезают в кадр (телефон), холст открывается НЕ на
-  // понедельнике, а на первом дне, где что-то есть: иначе неделя поездки,
-  // начавшейся в четверг, встречает пустой сеткой и требует листать вслепую.
-  const pane = useRef(/** @type {any} */ (null));
-  const weekKey = key(days[0]);
-  const focus = useMemo(() => {
-    const t = days.findIndex((d) => key(d) === todayKey);
-    if (t >= 0) return t;
-    const e = days.findIndex((d) => (eventsByKey[key(d)] || []).length);
-    return e >= 0 ? e : 0;
-  }, [days, eventsByKey, todayKey]);
-
-  useLayoutEffect(() => {
-    const el = pane.current;
-    if (!el || el.scrollWidth <= el.clientWidth) return;
-    const col = el.querySelectorAll('.ncal-tg__col')[focus];
-    const gut = el.querySelector('.ncal-tg__hours');
-    if (col && gut) el.scrollLeft = col.offsetLeft - gut.offsetWidth;
-  }, [focus, weekKey]);
-
   return (
-    <Card pad="none" radius="card" className="ncal-sheet ncal-tg">
-      {/* ОДИН прокручиваемый холст на все три ряда — шапку дней, полосу «весь
-          день» и сетку часов. Три отдельных скролла не синхронизировать: колонки
-          разъезжаются с заголовками на первом же сдвиге. Жёлоб часов приколот
-          слева (`sticky`), шапка — сверху, поэтому на телефоне колонка может
-          быть шириной в читаемое название, а не в 46px, и неделя листается вбок,
-          оставаясь СЕТКОЙ. */}
-      <div className="ncal-tg__pane" ref={pane}>
-        <div className="ncal-tg__corner" />
-        {days.map((d, i) => {
-          const k = key(d);
+    <Card radius="md" pad="none" className="ncal-month">
+      <div className="ncal-wdrow">
+        {weekdays.map(w => <div key={w} className="ncal-wd t-micro">{w}</div>)}
+      </div>
+      <div className="ncal-grid">
+        {weeks.map((week, wi) => {
+          const runs = cityRuns(week);
           return (
-            <div key={`h${k}`} className={`ncal-tg__d${cityAt.on(d).length ? '' : ' is-out'}${k === todayKey ? ' is-today' : ''}`}>
-              <span className="ncal-tg__wd t-micro">{WD[i]}</span>
-              <span className="ncal-tg__num t-heading t-flush">{d.day}</span>
-            </div>
-          );
-        })}
+            <div key={wi} className="ncal-wk-row">
+              {week.map((c, di) => {
+                const ci = wi * 7 + di;
+                const cls = ['ncal-dc'];
+                if (c.day == null) cls.push('is-out');
+                else {
+                  if (c.isToday) cls.push('is-today');
+                  if (c.events.length) cls.push('has-ev');
+                  if (c.cities.length) cls.push('is-trip');
+                }
+                const isOpen = open.has(ci);
+                const shown = isOpen ? c.events : c.events.slice(0, 2);
+                return (
+                  <div key={di} className={`${cls.join(' ')}${isOpen ? ' is-open' : ''}`}>
+                    {/* полоса(ы) города дня — канон <CityBar> (только цвет); клик
+                        открывает панель. Имя ведёт слой-прогон `.ncal-names` ниже. */}
+                    {c.cities.length > 0 && (
+                      <div className="ncal-daytop">
+                        {c.cities.map((x, xi) => (
+                          <CityBar key={xi} tone={x.colorIdx} onClick={() => onOpenCity?.(x.v)} ariaLabel={x.name} />
+                        ))}
+                      </div>
+                    )}
 
-        <div className="ncal-tg__bandgut" />
-        <div className="ncal-tg__band">
-          <CityRail segs={railSegs(cityAt.rail, days)} />
-          {hasUntimed && (
-            <div className="ncal-tg__allday">
-              {untimed.map((list, i) => (
-                <div key={i} className="ncal-tg__adcell">
-                  {list.map((e, ei) => (
-                    <button
-                      key={ei}
-                      type="button"
-                      className={`ncal-tb ncal-tb--flat ${evCls(e.type)}`}
-                      onClick={() => onOpenEvent?.(e)}
-                      aria-label={e.title}
-                    >
-                      <span className="ncal-tb__n t-meta">{e.title}</span>
-                    </button>
+                    <Row gap="g3" className="ncal-dc-top">
+                      {c.day != null && <Row as="span" inline justify="j-center" className="ncal-dn t-label">{c.day}</Row>}
+                    </Row>
+
+                    {c.events.length > 0 && (
+                      <>
+                        <div className="ncal-evl">
+                          {shown.map((e, ei) => (
+                            <EventChip key={ei} variant="inline" type={e.type} time={e.time} title={e.title}
+                              onClick={() => onOpenEvent?.(e)} ariaLabel={`${e.time ? e.time + ' ' : ''}${e.title}`} className="t-tiny" />
+                          ))}
+                          {c.events.length > 2 && (
+                            <Chip variant="soft" sm square className="t-tiny" onClick={() => toggle(ci)}>
+                              {isOpen ? t('calendar.collapse') : `+${c.events.length - 2} ${t('calendar.more_count')}`}
+                            </Chip>
+                          )}
+                        </div>
+                        <div className="ncal-dots" aria-hidden="true">
+                          {c.events.slice(0, 5).map((e, ei) => <span key={ei} className={`ncal-dot ev-${eventFamily(e.type)}`} />)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Названия городов — сплошным поверх полос, по центру прогона.
+                  Слой поверх, но НЕ перехватывает клики (pointer-events:none),
+                  чтобы клик уходил в цветную полосу-кнопку под ним. */}
+              {runs.length > 0 && (
+                <div className="ncal-names" aria-hidden="true">
+                  {runs.map((r, ri) => (
+                    <Row as="span" justify="j-center" key={ri} className="ncal-runname t-tiny"
+                      style={{ gridColumn: `${r.start + 1} / span ${r.span}`, color: cityTone(r.city.colorIdx).ink }}>
+                      {r.city.name}
+                    </Row>
                   ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="ncal-tg__hours" style={{ '--rows': hours.length }}>
-          {hours.map((h) => (
-            <span key={h} className="ncal-tg__h t-micro">{String(h).padStart(2, '0')}</span>
-          ))}
-        </div>
-
-        {days.map((d, di) => {
-          const k = key(d);
-          const isToday = k === todayKey;
-          return (
-            <div
-              key={`c${k}`}
-              className={`ncal-tg__col${cityAt.on(d).length ? '' : ' is-out'}${isToday ? ' is-today' : ''}`}
-              style={{ '--rows': hours.length }}
-            >
-              {isToday && showNow && <span className="ncal-tg__now" aria-hidden="true" style={{ top: at(nowMin) }} />}
-
-              {cols[di].map((it, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className={`ncal-tb ${evCls(it.e.type)}${it.to - it.from <= POINT_MIN ? ' is-tiny' : ''}`}
-                  onClick={() => onOpenEvent?.(it.e)}
-                  aria-label={`${it.e.time} ${it.e.title}`}
-                  style={{
-                    top: at(it.from),
-                    height: tall(it.to - it.from),
-                    left: `${it.left}%`,
-                    width: `calc(${it.width}% - 3px)`,
-                    zIndex: Math.min(3, it.lane + 1),
-                  }}
-                >
-                  <span className="ncal-tb__tm t-micro">{it.e.time}</span>
-                  <span className="ncal-tb__n t-meta">{it.e.title}</span>
-                </button>
-              ))}
-
-              {!cols[di].length && !untimed[di].length && cityAt.on(d).length > 0 && (
-                <span className="ncal-tg__free t-meta">{t('calendar.free_day')}</span>
               )}
             </div>
           );
@@ -411,188 +151,322 @@ function WeekGrid({ days, eventsByKey, cityAt, todayKey, onOpenEvent, lang }) {
   );
 }
 
-// ─── CalendarLens ────────────────────────────────────────────────────────────
+// ─── WeekGrid — columns + full-day time axis ──────────────────────────────────
+const HOUR_H = 44;
 
-// Скелетон — PURE: панель управления + большое поле сетки. TRIP-337.
-function CalendarSkeleton() {
+function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHour, weekKey, onOpenEvent, onOpenCity, t }) {
+  const scrollRef = useRef(/** @type {HTMLDivElement | null} */(null));
+
+  // Фокус на 08:00 ТОЛЬКО при смене недели (стабильный weekKey), не на каждом
+  // ре-рендере: открытие панели события ре-рендерит родителя и раньше сбрасывало
+  // скролл сетки. Зависимость — weekKey, а не свежая ссылка `days`.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = Math.max(0, (scrollToHour - startHour - 0.5) * HOUR_H);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekKey]);
+
   return (
-    <Col gap="g6" className="ov-anim" aria-busy="true">
-      <Row gap="g4">
-        <Skeleton w={210} h={34} r={'var(--r-sm)'} />
-        <Grow />
-        <Skeleton w={230} h={34} r={'var(--r-btn)'} />
-      </Row>
-      <Skeleton w="100%" h={520} r={'var(--r-card)'} />
-    </Col>
+    <Card radius="md" pad="none" className="ncal-week">
+      <div className="ncal-wk-head">
+        <Row justify="j-center" className="ncal-wk-gut" />
+        {days.map((d, di) => (
+          <div key={di} className={`ncal-wk-hcell${d.isToday ? ' is-today' : ''}`}>
+            <div className="ncal-wk-hd">
+              <span className="ncal-wk-wd t-micro">{d.wd}</span>
+              <Row as="span" inline justify="j-center" className="ncal-wk-dn t-heading">{d.date}</Row>
+            </div>
+            <div className="ncal-wk-city">
+              {d.cities.map((c, ci) => (
+                <CityBar key={ci} variant="strip" tone={c.colorIdx} label={c.name} className="t-tiny"
+                  onClick={() => onOpenCity?.(c.v)} ariaLabel={c.name} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {hasAllDay && (
+        <div className="ncal-wk-allday">
+          <Row justify="j-center" className="ncal-wk-gut t-tiny">{t('calendar.all_day')}</Row>
+          {days.map((d, di) => (
+            <div key={di} className={`ncal-wk-adcell${d.isToday ? ' is-today' : ''}`}>
+              {d.allDay.map((e, ei) => (
+                <EventChip key={ei} variant="allday" type={e.type} title={e.title}
+                  onClick={() => onOpenEvent?.(e)} ariaLabel={e.title} className="t-tiny" />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="ncal-wk-scroll" ref={scrollRef}>
+        <div className="ncal-wk-body" style={{ height: gridH }}>
+          <div className="ncal-wk-times">
+            {hours.map(h => (
+              <div key={h} className="ncal-wk-time" style={{ top: (h - startHour) * HOUR_H }}>
+                <span className="t-tiny">{String(h).padStart(2, '0')}:00</span>
+              </div>
+            ))}
+          </div>
+          <div className="ncal-wk-cols">
+            <div className="ncal-wk-lines" aria-hidden="true">
+              {lines.map(h => <div key={h} className="ncal-wk-line" style={{ top: (h - startHour) * HOUR_H }} />)}
+            </div>
+            {days.map((d, di) => (
+              <div key={di} className={`ncal-wk-col${d.isToday ? ' is-today' : ''}`}>
+                {d.timed.map((it, ii) => (
+                  <EventChip key={ii} variant="block" type={it.ev.type} time={it.ev.time} title={it.ev.title}
+                    className="t-tiny"
+                    style={{
+                      top: it.top, height: Math.max(it.height, 30),
+                      left: `calc(${(it.lane / it.lanes) * 100}% + 2px)`,
+                      width: `calc(${(1 / it.lanes) * 100}% - 4px)`,
+                    }}
+                    onClick={() => onOpenEvent?.(it.ev)} ariaLabel={`${it.ev.time} ${it.ev.title}`} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
 
-export default function CalendarLens({ stream, visits, isLoading, onOpenEvent }) {
+// ─── Cities aside ─────────────────────────────────────────────────────────────
+// Правый виджет городов поездки — список «цвет · город · даты», синхронный с
+// полосами календаря (цвет по имени). Строка кликабельна — открывает панель
+// города. Только города (по ресурсу), без счётчиков-статистики (она в шапке).
+function CitiesAside({ cities, onOpenCity, t }) {
+  if (!cities.length) return null;
+  return (
+    <Card as="aside" radius="md" pad="none" className="col col--g2 ncal-aside">
+      <div className="ncal-aside-h t-label">{t('calendar.legend_group_cities')}</div>
+      <div className="ncal-aside-list">
+        {cities.map((c, i) => (
+          <ListRow key={i} variant="compact" className="ncal-ci" onClick={() => onOpenCity?.(c.v)}
+            lead={<span className="ncal-ci-dot" style={{ background: cityTone(c.colorIdx).bar }} />}
+            trail={<span className="ncal-ci-range t-tiny">{c.range}</span>}
+            aria-label={`${c.name}${c.range ? ', ' + c.range : ''}`}>
+            {/* имя города — канон .t-meta (не bold .t-strong заголовка ListRow: канон-инспектор TRIP-175); .trunc — канон-обрезка */}
+            <span className="t-meta trunc">{c.name}</span>
+          </ListRow>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+export function CalendarSkeleton() {
+  return (
+    <div className="col col--g6 ov-anim" aria-busy="true">
+      <div className="row row--g4">
+        <Skeleton w={220} h={34} r={'var(--r-sm)'} /><Grow /><Skeleton w={230} h={36} r={'var(--r-pill)'} />
+      </div>
+      <div className="row row--g6">
+        <Grow><Skeleton w="100%" h={560} r={'var(--r-md)'} /></Grow>
+        <Skeleton w={260} h={560} r={'var(--r-md)'} />
+      </div>
+    </div>
+  );
+}
+
+export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, onOpenCity }) {
   const { t, lang } = useI18n();
-  const loc = localeTag(lang);
+  const MONTH_NAMES = useMemo(() => monthNames(lang),   [lang]);
+  const MONTH_SHORT = useMemo(() => monthShort(lang),   [lang]);
+  const WD_NAMES    = useMemo(() => weekdayNames(lang), [lang]);
 
   const [view,        setView]        = useState('month');
   const [monthOffset, setMonthOffset] = useState(0);
   const [weekOffset,  setWeekOffset]  = useState(0);
 
-  const today    = DateTime.now();
-  const todayKey = key(today);
+  const firstDatedVisit = visits.find(v => v.start_date);
+  const baseDateStr = firstDatedVisit ? naiveDayKey(firstDatedVisit.start_date) : null;
+  const baseDate    = baseDateStr ? parseNaive(baseDateStr + 'T00:00:00') : null;
+  const currentMonth = baseDate ? baseDate.plus({ months: monthOffset }) : null;
+  const today        = DateTime.now();
 
-  const firstDated = visits.find((v) => v.start_date);
-  const baseDate   = firstDated ? parseNaive(firstDated.start_date)?.startOf('day') : null;
+  // Города календаря = РЕАЛЬНЫЕ пункты со ночёвкой. Убираем:
+  //   • якоря (start/end) и waypoints — через канон isTransitVisit (kind==='transit');
+  //   • пересадки/pass-through БЕЗ ночёвки (start_date === end_date) — даже если
+  //     помечены transit: это проезд насквозь, а не остановка (напр. Москва 21–21
+  //     перед Ярославлем). «Нет ночёвки» = не показываем в календаре.
+  const tripVisits = useMemo(() => visits
+    .map((v, idx) => ({ ...v, idx, s: parseNaive(v.start_date), e: parseNaive(v.end_date) }))
+    .filter(v => isTransitVisit(v) && v.s && v.e && !v.s.hasSame(v.e, 'day')), [visits]);
 
-  // ── Города ────────────────────────────────────────────────────────────────
-  // Тон закреплён за ИМЕНЕМ, а не за индексом визита: вернувшись в тот же город
-  // второй раз, ты видишь тот же цвет. Якоря start/end — не города.
-  const cityAt = useMemo(() => {
-    const tones = new Map();
-    const all = [];
-    visits.forEach((v, idx) => {
-      if (v.kind === 'start' || v.kind === 'end') return;
-      const s = parseNaive(v.start_date)?.startOf('day');
-      const e = parseNaive(v.end_date)?.startOf('day');
-      if (!s || !e) return;
-      const name = v.city_name || '—';
-      if (!tones.has(name)) tones.set(name, tones.size);
-      all.push({ idx, name, s, e, tone: tones.get(name) });
-    });
-    const chron = all.sort((a, b) => a.s - b.s || a.idx - b.idx);
-    // ПОГРАНИЧНЫЙ ДЕНЬ. Соседние визиты делят день переезда: 7-го ты и выезжаешь
-    // из Барселоны, и заезжаешь в Валенсию, поэтому на вопрос «где я» отвечают
-    // ОБА (`on`). Полоса отвечает на другой — «где ночь», — и ответ у него ОДИН:
-    // город прибытия. Отсюда подрезка, и ряд остаётся однодорожечным.
-    const rail = chron.map((c, i) => {
-      const next = chron[i + 1];
-      let e = c.e;
-      if (next && next.s <= e) e = next.s.minus({ days: 1 });
-      return { ...c, e: e < c.s ? c.s : e };
-    });
-    return { rail, on: (d) => chron.filter((c) => d >= c.s && d <= c.e) };
-  }, [visits]);
+  // Цвет города — по ИМЕНИ, а не по индексу визита: один город (напр. возврат
+  // в Рим) должен быть одного цвета в календаре И в сводке. Иначе цвета
+  // рассинхронятся (сводка дедуплицирует по имени, календарь красил по idx).
+  const cityColorMap = useMemo(() => {
+    const m = new Map(); let n = 0;
+    tripVisits.forEach(v => { const name = v.city_name || '—'; if (!m.has(name)) m.set(name, n++); });
+    return m;
+  }, [tripVisits]);
+  const cityColor = (name) => cityColorMap.get(name ?? '—') ?? 0;
 
-  // ── События по дню ────────────────────────────────────────────────────────
-  const eventsByKey = useMemo(() => {
-    /** @type {Record<string, any[]>} */
-    const map = {};
+  // ── Month grid ───────────────────────────────────────────────────────────────
+  const monthData = useMemo(() => {
+    if (!currentMonth) return null;
+    const y = currentMonth.year, m = currentMonth.month;
+    const first = currentMonth.startOf('month');
+    const dim = currentMonth.daysInMonth;
+    const offset = first.weekday - 1;
+    const totalCells = Math.ceil((offset + dim) / 7) * 7;
+
+    const evByDay = {};
     for (const e of stream) {
       if (!e.date) continue;
-      (map[e.date] ||= []).push(e);
+      const dt = parseNaive(e.date + 'T00:00:00');
+      if (!dt || dt.year !== y || dt.month !== m) continue;
+      (evByDay[dt.day] ||= []).push(e);
     }
-    for (const k of Object.keys(map)) map[k].sort(byTime);
-    return map;
-  }, [stream]);
+    Object.values(evByDay).forEach(arr => arr.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')));
 
-  // ── Периоды ───────────────────────────────────────────────────────────────
-  const currentMonth = baseDate ? baseDate.plus({ months: monthOffset }).startOf('month') : null;
+    const todayDay = today.year === y && today.month === m ? today.day : null;
 
-  const monthWeeks = useMemo(() => {
-    if (!currentMonth) return [];
-    const gridStart = currentMonth.minus({ days: currentMonth.weekday - 1 }); // luxon: 1 = пн
-    const cells     = Math.ceil((currentMonth.weekday - 1 + currentMonth.daysInMonth) / 7) * 7;
-    return Array.from({ length: cells / 7 }, (_, w) =>
-      Array.from({ length: 7 }, (_, i) => gridStart.plus({ days: w * 7 + i })));
-  }, [currentMonth]);
+    const cells = [];
+    for (let i = 0; i < totalCells; i++) {
+      const day = i - offset + 1;
+      if (day < 1 || day > dim) { cells.push({ day: null, cities: [], events: [] }); continue; }
+      const dayDt = currentMonth.set({ day }).startOf('day');
+      const cities = tripVisits
+        .filter(v => dayDt >= v.s.startOf('day') && dayDt <= v.e.startOf('day'))
+        .sort((a, b) => a.s - b.s || a.idx - b.idx)
+        .map(v => ({ colorIdx: cityColor(v.city_name), name: v.city_name || '—', v }));
+      cells.push({ day, isToday: day === todayDay, events: evByDay[day] || [], cities });
+    }
+    return { y, m, cells };
+  }, [currentMonth, stream, tripVisits, cityColorMap, today]);
 
-  const weekStart = baseDate ? baseDate.startOf('week').plus({ weeks: weekOffset }) : null;
-  const weekDays  = useMemo(
-    () => (weekStart ? Array.from({ length: 7 }, (_, i) => weekStart.plus({ days: i })) : []),
-    [weekStart],
-  );
+  // ── Week time-grid (full day) ─────────────────────────────────────────────────
+  const weekData = useMemo(() => {
+    if (!baseDate) return null;
+    const weekStart = baseDate.startOf('week').plus({ weeks: weekOffset });
+    const todayStr  = naiveDayKey(today.toISO());
 
-  // ── Навигация ─────────────────────────────────────────────────────────────
-  const isMonth = view === 'month';
-  const step    = (n) => (isMonth ? setMonthOffset((o) => o + n) : setWeekOffset((o) => o + n));
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = weekStart.plus({ days: i });
+      const dd = d.startOf('day');
+      const cities = tripVisits
+        .filter(v => dd >= v.s.startOf('day') && dd <= v.e.startOf('day'))
+        .sort((a, b) => a.s - b.s || a.idx - b.idx)
+        .map(v => ({ colorIdx: cityColor(v.city_name), name: v.city_name || '—', v }));
+      days.push({ wd: WD_NAMES[i], date: d.day, dateStr: naiveDayKey(d.toISO()), isToday: naiveDayKey(d.toISO()) === todayStr, cities, allDay: [], timed: [] });
+    }
+
+    for (const e of stream) {
+      if (!e.date) continue;
+      const di = days.findIndex(d => d.dateStr === e.date);
+      if (di < 0) continue;
+      const mt = /^(\d{1,2}):(\d{2})/.exec(e.time || '');
+      if (mt) { const h = +mt[1]; days[di].timed.push({ ev: e, startMin: h * 60 + +mt[2] }); }
+      else days[di].allDay.push(e);
+    }
+
+    // Полные сутки 00–24 — событие в 2 ночи видно так же, как в 2 дня. При
+    // открытии фокус встаёт на 08:00 (scrollToHour), ночь — прокруткой вверх.
+    const startHour = 0, endHour = 24;
+    const hours = []; for (let h = startHour; h < endHour; h++) hours.push(h);
+    const lines = []; for (let h = startHour; h <= endHour; h++) lines.push(h);
+    const gridH = (endHour - startHour) * HOUR_H;
+
+    days.forEach(day => {
+      day.timed.sort((a, b) => a.startMin - b.startMin);
+      const laneEnds = [];
+      day.timed.forEach(it => {
+        const top = (it.startMin / 60 - startHour) * HOUR_H;
+        const endMin = it.startMin + 60;
+        let lane = laneEnds.findIndex(end => end <= it.startMin);
+        if (lane < 0) { lane = laneEnds.length; laneEnds.push(endMin); } else laneEnds[lane] = endMin;
+        it.top = top; it.height = HOUR_H; it.lane = lane;
+      });
+      const lanes = Math.max(1, day.timed.reduce((mx, it) => Math.max(mx, it.lane + 1), 1));
+      day.timed.forEach(it => { it.lanes = lanes; });
+    });
+
+    return { days, hours, lines, gridH, startHour, hasAllDay: days.some(d => d.allDay.length > 0), weekStart, weekKey: naiveDayKey(weekStart.toISO()), scrollToHour: 8 };
+  }, [baseDate, weekOffset, stream, tripVisits, cityColorMap, WD_NAMES, today]);
+
+  // ── Города поездки (для правого виджета) — по имени, дедуп, в порядке визита.
+  //    Каждый несёт представительный визит `v` (первое вхождение) для панели. ──
+  const tripMeta = useMemo(() => {
+    if (!tripVisits.length) return null;
+    const fmt = (a, b) => a.month === b.month
+      ? `${a.day}–${b.day} ${MONTH_SHORT[a.month]}`
+      : `${a.day} ${MONTH_SHORT[a.month]} – ${b.day} ${MONTH_SHORT[b.month]}`;
+    const seen = new Set();
+    const cities = [];
+    tripVisits.forEach(v => {
+      const name = v.city_name || '—';
+      if (seen.has(name)) return;
+      seen.add(name);
+      cities.push({ name, colorIdx: cityColor(name), range: fmt(v.s, v.e), v });
+    });
+    return { cities };
+  }, [tripVisits, cityColorMap, MONTH_SHORT]);
+
+  // ── Navigation ────────────────────────────────────────────────────────────────
+  const goBack  = () => view === 'month' ? setMonthOffset(o => o - 1) : setWeekOffset(o => o - 1);
+  const goFwd   = () => view === 'month' ? setMonthOffset(o => o + 1) : setWeekOffset(o => o + 1);
   const goHome  = () => { setMonthOffset(0); setWeekOffset(0); };
-  const goToday = useCallback(() => {
-    if (!baseDate) return;
-    if (isMonth) setMonthOffset(today.startOf('month').diff(baseDate.startOf('month'), 'months').months);
-    else setWeekOffset(Math.round(today.startOf('week').diff(baseDate.startOf('week'), 'weeks').weeks));
-  }, [baseDate, isMonth, today]);
-
-  // Месяц → неделя, содержащая этот день. На телефоне это единственный путь от
-  // обзора к подробностям: чип события шириной 50px нечитаем.
-  const openDay = useCallback((d) => {
-    if (!baseDate) return;
-    setWeekOffset(Math.round(d.startOf('week').diff(baseDate.startOf('week'), 'weeks').weeks));
-    setView('week');
-  }, [baseDate]);
+  const goToday = () => {
+    const now = today.startOf('day');
+    if (view === 'month') setMonthOffset((now.year - baseDate.year) * 12 + (now.month - baseDate.month));
+    else setWeekOffset(Math.round(now.startOf('week').diff(baseDate.startOf('week'), 'weeks').weeks));
+  };
 
   if (isLoading) return <CalendarSkeleton />;
-  if (!baseDate) return <EmptyState icon="calendar" title={t('calendar.no_dates')} />;
+  if (!baseDate)  return <div className="ncal-empty t-body">{t('calendar.no_dates')}</div>;
 
-  // Заголовок: месяц — «Сентябрь 2026»; неделя — «1 – 7 сентября 2026»
-  // (через границу месяцев печатаются оба: «31 авг. – 6 сентября»).
-  const wsL = weekStart.setLocale(loc);
-  const weL = weekStart.plus({ days: 6 }).setLocale(loc);
-  const periodTitle = isMonth
-    ? currentMonth.setLocale(loc).toFormat('LLLL')
-    : `${wsL.toFormat(wsL.month === weL.month ? 'd' : 'd MMM')} – ${weL.toFormat('d MMMM')}`;
-
-  // Возвраты гаснут, когда никуда не ведут. Сравнение периодов — своими полями,
-  // а не `hasSame`: у luxon нет `.d.ts`, и TS выводит третий аргумент
-  // ОБЯЗАТЕЛЬНЫМ (та же ловушка, что была у `endOf` в прежней редакции файла).
-  const atToday = isMonth
-    ? currentMonth.year === today.year && currentMonth.month === today.month
-    : key(weekStart) === key(today.startOf('week'));
-  const atStart = isMonth ? monthOffset === 0 : weekOffset === 0;
+  const headMonth = view === 'month' ? currentMonth.month : weekData.weekStart.month;
+  const headYear  = view === 'month' ? currentMonth.year  : weekData.weekStart.year;
 
   return (
     <Col gap="g7" className="ncal ov-anim--cal">
-      <Row gap="g4" wrap justify="j-between" className="ncal-bar">
-        <Row gap="g2" className="ncal-per">
-          <IconBtn icon="chevL" tone="soft" size="sm" round ariaLabel={t('calendar.prev')} onClick={() => step(-1)} />
-          <h2 className="ncal-per__t t-title">
-            {periodTitle}
-            <span className="ncal-per__y t-subheading">{isMonth ? currentMonth.year : weL.year}</span>
-          </h2>
-          <IconBtn icon="chev" tone="soft" size="sm" round ariaLabel={t('calendar.next')} onClick={() => step(1)} />
+      {/* ── Header — календарный паттерн: стрелки по бокам месяца, «Сегодня»
+          рядом; справа — переключатель вида и «К поездке». ── */}
+      <Row as="header" wrap>
+        {/* Навигатор месяца: ‹ Август 2026 › */}
+        <Row gap="g2" className="ncal-hd-nav">
+          <IconBtn icon="chevL" tone="quiet" size="md" round ariaLabel={t('calendar.prev')} onClick={goBack} className="ncal-navbtn" />
+          <Row as="h2" align="a-baseline" gap="g4" className="ncal-title-row">
+            <span className="ncal-month-lbl t-title">{MONTH_NAMES[headMonth]}</span>
+            <span className="ncal-year-lbl t-title">{headYear}</span>
+          </Row>
+          <IconBtn icon="chev" tone="quiet" size="md" round ariaLabel={t('calendar.next')} onClick={goFwd} className="ncal-navbtn" />
         </Row>
 
-        <Row gap="g3" className="ncal-acts">
-          <Btn variant="quiet" size="sm" onClick={goToday} disabled={atToday} className="ncal-jump">
-            {t('calendar.today')}
-          </Btn>
-          {/* Возврат к трипу — иконкой: подпись «К старту путешествия» длиннее
-              всей остальной панели, а сам ход вторичный. Строка — в подсказке. */}
-          <IconBtn
-            icon="pin" tone="soft" size="sm" round
-            onClick={goHome} disabled={atStart}
-            title={t('calendar.to_trip_start')} ariaLabel={t('calendar.to_trip_start')}
-          />
-          <Seg
-            ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
-            value={view}
-            onChange={setView}
-            className="ncal-seg"
-            options={[
-              { value: 'month', label: t('calendar.month') },
-              { value: 'week', label: t('calendar.week') },
-            ]}
-          />
-        </Row>
+        {/* «Сегодня» — канон <Btn variant="secondary"> (не самодельная пилюля) */}
+        <Btn variant="secondary" size="md" onClick={goToday} className="ncal-today">{t('calendar.today')}</Btn>
+
+        {/* Переключатель вида — на всю ширину row2 на мобиле */}
+        <Seg
+          className="ncal-seg"
+          ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
+          value={view}
+          onChange={setView}
+          options={[{ value: 'month', label: t('calendar.month') }, { value: 'week', label: t('calendar.week') }]}
+        />
+
+        <Btn variant="soft" icon="pin" onClick={goHome} className="ncal-trip" ariaLabel={t('calendar.to_trip_start')}>
+          <span className="ncal-trip-lbl">{t('calendar.to_trip_start')}</span>
+        </Btn>
       </Row>
 
-      {isMonth ? (
-        <MonthView
-          weeks={monthWeeks}
-          month={currentMonth.month}
-          eventsByKey={eventsByKey}
-          cityAt={cityAt}
-          todayKey={todayKey}
-          onOpenEvent={onOpenEvent}
-          onOpenDay={openDay}
-          lang={lang}
-        />
-      ) : (
-        <WeekGrid
-          days={weekDays}
-          eventsByKey={eventsByKey}
-          cityAt={cityAt}
-          todayKey={todayKey}
-          onOpenEvent={onOpenEvent}
-          lang={lang}
-        />
-      )}
+      {/* ── Тело: календарь + правый виджет городов (на мобиле — под ним) ── */}
+      <div className="ncal-body">
+        <Col className="ncal-main">
+          {view === 'month'
+            ? <MonthView cells={monthData.cells} weekdays={WD_NAMES} onOpenEvent={onOpenEvent} onOpenCity={onOpenCity} t={t} />
+            : <WeekGrid days={weekData.days} hours={weekData.hours} lines={weekData.lines} gridH={weekData.gridH} startHour={weekData.startHour} hasAllDay={weekData.hasAllDay} scrollToHour={weekData.scrollToHour} weekKey={weekData.weekKey} onOpenEvent={onOpenEvent} onOpenCity={onOpenCity} t={t} />}
+        </Col>
+        <CitiesAside cities={tripMeta?.cities || []} onOpenCity={onOpenCity} t={t} />
+      </div>
     </Col>
   );
 }
