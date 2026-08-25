@@ -18,11 +18,6 @@ import { tripStats, tripDateSpan } from '@/lib/trip-stats';
 import { formatDuration } from '@/lib/time';
 import { formatDateRange } from '@/lib/trip-dates';
 
-// floor-exempt: dsshare +43 — эта страница переехала с app-ДС (Avatar/Card) на
-// сайтовую ДС прототипа (public/site.css, pt-*): доля app-ДС падает намеренно —
-// это направление неавторизованной зоны, а не регресс. Апрув Pavel (1в1
-// прототип, TRIP-461). Маркер живёт в src/ (гард 2o читает только src/).
-
 // Prototype v5.7 carried the cover inline; the fallback is a repo asset
 // (TRIP-451 §11). No design-system import — the literal path is the reuse.
 const COVER_FALLBACK = '/covers/fallback.webp';
