@@ -490,7 +490,7 @@ export const CARD_VARIANTS = [
 ];
 
 /**
- * @param {{ as?: 'div'|'button'|'a', radius?: CardRadius, interactive?: boolean,
+ * @param {{ as?: 'div'|'button'|'a'|'aside', radius?: CardRadius, interactive?: boolean,
  *   pad?: 'default'|'none', tone?: CardTone, variant?: 'add', recessed?: boolean,
  *   locked?: boolean, parsed?: boolean, danger?: boolean, featured?: boolean, raised?: boolean, href?: string, onClick?: any,
  *   disabled?: boolean, id?: string, ariaLabel?: string, ariaExpanded?: boolean,

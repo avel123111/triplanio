@@ -491,8 +491,8 @@ const RECIPES = {
       label: 'variant (карта EVENTCHIP_VARIANTS): inline · allday · block',
       items: EVENTCHIP_VARIANTS.map((v) => it(`variant="${v}"`,
         v === 'block'
-          ? <span style={{ position: 'relative', display: 'block', width: 130, height: 44 }}><EventChip variant="block" type="activity" time="10:00" title="Музеи" style={{ inset: 0 }} /></span> // inline-style-exempt: block позиционируется координатами тайм-грида
-          : <span style={{ display: 'flex', width: 130 }}><EventChip variant={v} type="activity" time="10:00" title="Музеи" /></span>)), // inline-style-exempt: ширина образца токена события
+          ? <span style={{ position: 'relative', display: 'block', width: 130, height: 44 }}><EventChip variant="block" type="activity" time="10:00" title="Музеи" style={{ inset: 0 }} /></span> // inline-style-exempt: block позиционируется координатами тайм-грида · i18n-ignore: демо-данные витрины /kit
+          : <span style={{ display: 'flex', width: 130 }}><EventChip variant={v} type="activity" time="10:00" title="Музеи" /></span>)), // inline-style-exempt: ширина образца токена события · i18n-ignore: демо-данные витрины /kit
     },
   ],
 

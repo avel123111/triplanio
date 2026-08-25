@@ -80,10 +80,9 @@
     "mapwrap": { "object": "map", "reason": "обёртка карты — объект «карта»" },
     "flow-map__stat": { "object": "map", "reason": "плашка счётчика городов/ночей поверх карты создания (FlowMap) — объект «карта»" },
     "s22mk__core": { "object": "map", "reason": "ядро маркера Stay22 — объект «карта/маркер» (движение оставлено, см. E)" },
-    "ncal-dn": { "object": "calendar", "reason": "номер дня — кнопка «открыть день в повестке», объект «календарь»" },
-    "ncal-rail__seg": { "object": "calendar", "reason": "полоса города над недельным рядом (многодневный визит) — объект «календарь»" },
-    "ncal-tb": { "object": "calendar", "reason": "блок события в сетке часов недели — объект «календарь»" },
-    "ncal-ev": { "object": "calendar", "reason": "чип события в ячейке месяца и строке повестки — объект «календарь»" },
+    "evchip--inline": { "object": "calendar", "reason": "чип события в ячейке месяца — облик канона <EventChip>, объект «календарь»" },
+    "evchip--allday": { "object": "calendar", "reason": "плашка события без времени в полосе «весь день» — облик канона <EventChip>" },
+    "evchip--block": { "object": "calendar", "reason": "блок события в сетке часов недели (высота = длительность) — облик канона <EventChip>" },
     "ts-cal__day": { "object": "calendar", "reason": "день в календаре планировщика — объект «календарь»" },
 
     "auth-input": { "object": "perimeter", "reason": "экран авторизации — вне периметра эпика (audit-design исключает)" },

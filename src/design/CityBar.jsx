@@ -37,6 +37,17 @@ export const cityToneVars = (idx = 0) => {
 };
 
 /** @typedef {'bar'|'strip'} CityBarVariant */
+/**
+ * ★ ВСЕ ПРОПЫ, КРОМЕ ОСИ, НЕОБЯЗАТЕЛЬНЫ — и это не косметика типа. Форма
+ * `@param {object}` с перечислением ключей делает объект РОВНО из перечисленных
+ * и ТРЕБУЕТ каждый: `bar` без имени (сетка месяца — имя ведёт слой-прогон) и
+ * декоративный сегмент без `onClick` — оба законные вызовы, но давали TS2741 в
+ * экране под `// @ts-check`. Та же ловушка «запечатанного набора», что разобрана
+ * в шапке `Layout.jsx`: тип, закрывающий НАШУ ось, не должен заодно требовать
+ * то, у чего есть осмысленный дефолт.
+ * @param {{ tone?: number, variant?: CityBarVariant, label?: any, onClick?: any,
+ *           ariaLabel?: string, className?: string, style?: any }} p
+ */
 export const CityBar = ({ tone = 0, variant = 'bar', label, onClick, ariaLabel, className = '', style }) => {
   const El = /** @type {any} */ (onClick ? 'button' : 'div');
   return (

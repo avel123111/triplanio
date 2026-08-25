@@ -17,6 +17,15 @@ import { eventFamily } from './eventFamily';
 // ★ БАЗА `<button>` при `onClick` (открыть панель события), иначе `<div>`.
 
 /** @typedef {'inline'|'allday'|'block'} EventChipVariant */
+/**
+ * ★ ОБЯЗАТЕЛЕН ТОЛЬКО `title` — остальное имеет осмысленный дефолт: у `allday`
+ * времени НЕТ по построению (событие без часа), координаты `style` приходят
+ * только у `block` из тайм-грида, а декоративный чип живёт без `onClick`. Форма
+ * `@param {object}` требовала бы каждый ключ и роняла экран под `// @ts-check`
+ * на законных вызовах — разбор этой ловушки в шапке `Layout.jsx`.
+ * @param {{ type?: string, variant?: EventChipVariant, time?: any, title: any,
+ *           onClick?: any, ariaLabel?: string, className?: string, style?: any }} p
+ */
 export const EventChip = ({ type, variant = 'inline', time, title, onClick, ariaLabel, className = '', style }) => {
   const El = /** @type {any} */ (onClick ? 'button' : 'div');
   const fam = `ev-${eventFamily(type)}`;

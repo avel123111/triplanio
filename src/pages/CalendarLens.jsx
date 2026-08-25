@@ -35,6 +35,10 @@ const monthNames   = (lang) => ['', ...Info.months('long',  { locale: localeTag(
 const monthShort   = (lang) => ['', ...Info.months('short', { locale: localeTag(lang) })];
 const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) });
 
+/** День попадает в окно визита (границы включительно). ОДИН предикат на оба
+ *  вида: месяц и неделя спрашивали одно и то же двумя копиями строки. */
+const visitCoversDay = (v, dt) => dt >= v.s.startOf('day') && dt <= v.e.startOf('day');
+
 // ─── MonthView ────────────────────────────────────────────────────────────────
 function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
   // Раскрытые дни (по ключу день+месяц). «+N ещё» разворачивает ячейку и
@@ -334,7 +338,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
       if (day < 1 || day > dim) { cells.push({ day: null, cities: [], events: [] }); continue; }
       const dayDt = currentMonth.set({ day }).startOf('day');
       const cities = tripVisits
-        .filter(v => dayDt >= v.s.startOf('day') && dayDt <= v.e.startOf('day'))
+        .filter(v => visitCoversDay(v, dayDt))
         .sort((a, b) => a.s - b.s || a.idx - b.idx)
         .map(v => ({ colorIdx: cityColor(v.city_name), name: v.city_name || '—', v }));
       cells.push({ day, isToday: day === todayDay, events: evByDay[day] || [], cities });
@@ -353,7 +357,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
       const d = weekStart.plus({ days: i });
       const dd = d.startOf('day');
       const cities = tripVisits
-        .filter(v => dd >= v.s.startOf('day') && dd <= v.e.startOf('day'))
+        .filter(v => visitCoversDay(v, dd))
         .sort((a, b) => a.s - b.s || a.idx - b.idx)
         .map(v => ({ colorIdx: cityColor(v.city_name), name: v.city_name || '—', v }));
       days.push({ wd: WD_NAMES[i], date: d.day, dateStr: naiveDayKey(d.toISO()), isToday: naiveDayKey(d.toISO()) === todayStr, cities, allDay: [], timed: [] });
@@ -442,7 +446,9 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
         </Row>
 
         {/* «Сегодня» — канон <Btn variant="secondary"> (не самодельная пилюля) */}
-        <Btn variant="secondary" size="md" onClick={goToday} className="ncal-today">{t('calendar.today')}</Btn>
+        {/* размера `md` у Btn нет — класса `.btn--md` не существует, и проп эмитил
+            мёртвое имя; высоту держит сам `.btn` (--ctl-h), как у соседей шапки. */}
+        <Btn variant="secondary" onClick={goToday} className="ncal-today">{t('calendar.today')}</Btn>
 
         {/* Переключатель вида — на всю ширину row2 на мобиле */}
         <Seg
