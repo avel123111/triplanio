@@ -34,14 +34,22 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  * Кадрировать в ней МАРШРУТ нельзя: это и был бы тот самый автофокус.
  *
  * @param {{ current: any }} mapRef ссылка на инстанс (общий синглтон)
+ * `focusing` — камерой СЕЙЧАС правит focus (открыта панель, идёт/предстоит её
+ * flyTo). Тогда отступ применяем СИНХРОННО и мгновенно, а не отложенным на 2
+ * кадра `easeTo`: иначе тот easeTo прилетает ПОСЛЕ старта focus-flyTo и обрывает
+ * его — зум «начинается и через долю секунды заканчивается». Синхронное
+ * применение идёт в этом же эффекте (он объявлен ВЫШЕ focus-эффекта), поэтому
+ * focus стартует уже с новым отступом (`calmFlyTo` читает его) и не прерывается.
+ *
  * @param {{
  *   ready: boolean,
  *   insets: any,
  *   slotPx?: number,
+ *   focusing?: boolean,
  *   onReframe?: (map: any) => boolean | void,
  * }} p
  */
-export function useMapInsets(mapRef, { ready, insets, slotPx = 0, onReframe = null }) {
+export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = false, onReframe = null }) {
   // ★ КЛЮЧ — ВСЁ СВОБОДНОЕ ОКНО, А НЕ ТОЛЬКО ОТСТУПЫ КАМЕРЫ. Свободное окно
   // меняют ДВЕ вещи, по одной на ось: ширину — отступ камеры (панель), высоту —
   // размер СЛОТА (шит). Слот нужен здесь ради `onReframe`: на телефоне отступы
@@ -59,6 +67,14 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, onReframe = nu
   // обязано брать АКТУАЛЬНУЮ цель, но само по смене цели не запускаться.
   const reframeRef = useRef(onReframe);
   reframeRef.current = onReframe;
+  // Держим камеру за focus-эффектом не только ПОКА панель открыта, но и на кадре
+  // её ЗАКРЫТИЯ: focus тогда уходит на полный маршрут (тоже зум), и наш свой
+  // easeTo оборвал бы его. Смена отступа на закрытии совпадает с
+  // `focusing: true → false`, поэтому «был ли focus в прошлый раз» это закрывает.
+  // ★ Тот же фронт «focus гаснет» отдельно ловит `hadFocusRef` в MapView (там он
+  // ЗАПУСКАЕТ обратный `calmFit`); две реакции на одно событие в двух эффектах,
+  // связывать их — только жёстче сцепить. Здесь — «отступ не трогаем сам».
+  const wasFocusing = useRef(false);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -70,6 +86,16 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, onReframe = nu
       try { map.easeTo({ padding: getMapInsets(map), duration: 0 }); } catch { /* ignore */ }
       return undefined;
     }
+    // ★ Панель правит камерой (focus) или ТОЛЬКО ЧТО правила (её закрытие уводит
+    // focus на полный маршрут): отступ УЖЕ сохранён (`setMapInsets` выше), а саму
+    // камеру мы НЕ трогаем ВООБЩЕ. Её ведёт focus-эффект (`calmFlyTo`/`calmFit`
+    // ниже по дереву, эффект объявлен ПОЗЖЕ нашего), и он передаёт наш отступ в
+    // ту же команду (`padding: getMapInsets(map)`) — центр, зум И отступ едут
+    // ОДНОЙ плавной анимацией. Любой свой `easeTo` тут — вторая команда на ту же
+    // камеру: она и рвала зум (мгновенная — рывок на открытии, обрыв на закрытии).
+    const focusDriven = focusing || wasFocusing.current;
+    wasFocusing.current = focusing;
+    if (focusDriven) return undefined;
     // ★ ДОВОДИМ ПОСЛЕ ТОГО, КАК ХОЛСТ ПРИНЯЛ НОВЫЙ РАЗМЕР. Слот меняет высоту
     // через CSS-переменную, mapbox узнаёт об этом от ResizeObserver — то есть
     // ПОЗЖЕ нашего рендера. Посчитать раньше значит посчитать по старому
@@ -92,7 +118,7 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, onReframe = nu
     }));
     return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, key]);
+  }, [ready, key, focusing]);
 
   // Уборка — ОТДЕЛЬНЫМ эффектом с пустыми зависимостями (правило 3 выше).
   // Инстанс карты общий и живёт дольше экрана: не снять отступ значит отрезать

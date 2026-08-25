@@ -123,6 +123,33 @@ test('удаление правила — красный (минус тоже и
   assert.match(out, /\.card border-radius/);
 });
 
+/* ── добавление на НОВЫЙ класс vs добавление к СУЩЕСТВУЮЩЕМУ (TRIP-460 Ф6) ── */
+
+test('★ ПОЛНОСТЬЮ новый класс — ЗЕЛЁНЫЙ (новому элементу нечему регрессировать)', (t) => {
+  // Без этой ветки public/site.css заморожен на добавление: новая страница зоны
+  // = сотни ложных «+». Класс, которого на базе не было ни в одном свойстве, —
+  // новый элемент, а не правка старого.
+  const f = fixture(t, {
+    base: { 'public/site.css': '.hero { padding: 8px; }\n' },
+    head: { 'public/site.css': '.hero { padding: 8px; }\n.pane-form { padding: 20px; gap: 11px; color: red; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /добавлений на новые классы-ключи пропущено/);
+});
+
+test('★ ДОБАВЛЕНИЕ свойства к СУЩЕСТВУЮЩЕМУ классу — КРАСНЫЙ (элемент сменил облик)', (t) => {
+  // Гарантия, что новый пропуск не проделал дыру: `.checkbox` был на базе, ему
+  // дорисовали background — это регресс существующего элемента, блок цел.
+  const f = fixture(t, {
+    base: { 'public/site.css': '.checkbox { gap: 9px; }\n' },
+    head: { 'public/site.css': '.checkbox { gap: 9px; background: red; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.checkbox background/);
+});
+
 /* ─────────────────── ключ: состояние и media отдельно ─────────────────── */
 
 test('★ :hover не вытесняет базовое значение — состояние это часть ключа', (t) => {
@@ -1383,4 +1410,86 @@ test('★ CSS-файл СНЕСЁН в рабочем дереве (ещё не 
   assert.doesNotMatch(out, /ENOENT/, out);
   assert.equal(code, 1, out);
   assert.match(out, /\.gone display/, out);
+});
+
+/* ──────────────── периметр: две папки, и `public` в их числе ────────────────
+ * Периметр — отдельная проверка от «работает ли гард»: спрашивать надо не
+ * «краснеет ли», а «всю ли зону он видит». До TRIP-460 стояло `-- src`, и
+ * `public/site.css` — единственный CSS сайтовой зоны, 92 КБ — не сторожил
+ * никто: 2ac ловит имена, 2ad ссылки, 2k сырые кегли, а подмена ЗНАЧЕНИЯ
+ * ступени шкалы (15px → 14.72px) не ловилась ничем и уехала в dev молча.
+ * Поэтому обе папки пинятся тестом, а не только поведение.                */
+
+test('★ периметр включает public/site.css — подмена значения там КРАСНАЯ', (t) => {
+  const f = fixture(t, {
+    base: { 'public/site.css': 'html.site { --fs-body: 14px; }\n' },
+    head: { 'public/site.css': 'html.site { --fs-body: 13.6px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /--fs-body: 14px → 13\.6px/, out);
+});
+
+test('★ периметр НЕ потерял src — правка там по-прежнему красная', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.card { gap: 8px; }\n', 'public/site.css': 'html.site { --x: 1px; }\n' },
+    head: { 'src/a.css': '.card { gap: 12px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.card gap: 8px → 12px/, out);
+});
+
+test('★ каскад: public/site.css подключается ПОСЛЕ бандла и выигрывает у app.css', (t) => {
+  // Зона грузит site.css рантайм-тегом <link> из useSiteCss, то есть после
+  // всего бандла. Значит «итоговое объявление» для общего имени берётся из
+  // site.css. Если ранг файла поставить ниже, гард будет считать победителем
+  // проигравшее правило — и правка в site.css станет для него невидимой,
+  // хотя файл уже в периметре.
+  const f = fixture(t, {
+    base: {
+      'src/design/app.css': '.btn { border-radius: 12px; }\n',
+      'public/site.css': '.btn { border-radius: 99px; }\n',
+    },
+    head: {
+      'src/design/app.css': '.btn { border-radius: 12px; }\n',
+      'public/site.css': '.btn { border-radius: 40px; }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.btn border-radius: 99px → 40px/, out);
+});
+
+test('★ каскад: site.css выигрывает и у src/index.css — самого позднего в бандле', (t) => {
+  // Соседний тест с app.css пинит только «site.css позже базы», и мутация
+  // ранга в 1 проходила его зелёной, хотя site.css при этом проигрывал бы
+  // index.css (999). Один тест на каскад давал ложную уверенность — поэтому
+  // пинится ОБА конца: позже базы И позже самого позднего файла бандла.
+  const f = fixture(t, {
+    base: {
+      'src/index.css': '.wrap { max-width: 1180px; }\n',
+      'public/site.css': '.wrap { max-width: 1200px; }\n',
+    },
+    head: {
+      'src/index.css': '.wrap { max-width: 1180px; }\n',
+      'public/site.css': '.wrap { max-width: 1120px; }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.wrap max-width: 1200px → 1120px/, out);
+});
+
+test('★ ложное срабатывание: маркер в public/ принимается так же, как в src/', (t) => {
+  const f = fixture(t, {
+    base: { 'public/site.css': 'html.site { --fs-body: 14px; }\n' },
+    head: {
+      'public/site.css':
+        '/* visual-diff-exempt: .site --fs-body — ступень шкалы */\nhtml.site { --fs-body: 13px; }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /объявлено намеренным/, out);
 });

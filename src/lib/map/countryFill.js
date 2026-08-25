@@ -20,6 +20,7 @@
 // feature id so we can paint visited countries with setFeatureState({ visited })
 // keyed by ISO code — no need to enumerate features or know their numeric ids.
 import { routeColor, futureFillColor } from './mapTokens';
+import { isMapAlive } from './alive';
 
 const SRC_ID = 'tp-countries';
 const FILL_ID = 'tp-country-fill';
@@ -69,7 +70,7 @@ const FILL_OPACITY_EXPR = [
 // slot:'middle' places the fill above the basemap land but below labels/roads on
 // the Mapbox Standard style, so country names and the route line stay readable.
 export function ensureCountryFill(map, { visible = true } = {}) {
-  if (!map) return;
+  if (!isMapAlive(map)) return;
   // Guarded: a Mapbox style/slot quirk must degrade to "no fill", never crash the
   // screen that mounts the map (this can't be browser-verified until deployed).
   try {
@@ -115,7 +116,7 @@ export function ensureCountryFill(map, { visible = true } = {}) {
 // any previous visited state first, so the same call re-colours the map when the
 // year filter changes — entirely client-side, no tile refetch.
 export function setCountryKinds(map, kindByCode = {}) {
-  if (!map || !map.getSource(SRC_ID)) return;
+  if (!isMapAlive(map) || !map.getSource(SRC_ID)) return;
   try { map.removeFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER }); } catch { /* nothing set yet */ }
   // removeFeatureState wiped hover/selected too — drop the trackers so the next
   // setCountryHover/Selected re-applies cleanly (the consumer re-asserts selected).
@@ -135,7 +136,7 @@ export function setCountryKinds(map, kindByCode = {}) {
 // FILL_OPACITY_EXPR). Each tracks the single highlighted country id on the instance
 // so the previous one is cleared without wiping the per-country `kind`.
 export function setCountryHover(map, code) {
-  if (!map || !map.getSource(SRC_ID)) return;
+  if (!isMapAlive(map) || !map.getSource(SRC_ID)) return;
   const id = code ? String(code).trim().toUpperCase() : null;
   if (map.__cfHover === id) return;
   try { if (map.__cfHover) map.setFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER, id: map.__cfHover }, { hover: false }); } catch { /* ignore */ }
@@ -143,7 +144,7 @@ export function setCountryHover(map, code) {
   map.__cfHover = id;
 }
 export function setCountrySelected(map, code) {
-  if (!map || !map.getSource(SRC_ID)) return;
+  if (!isMapAlive(map) || !map.getSource(SRC_ID)) return;
   const id = code ? String(code).trim().toUpperCase() : null;
   if (map.__cfSelected === id) return;
   try { if (map.__cfSelected) map.setFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER, id: map.__cfSelected }, { selected: false }); } catch { /* ignore */ }
@@ -158,8 +159,8 @@ export function setCountryFillVisible(map, visible) {
   // This runs from the stats-screen UNMOUNT cleanup, which can fire after the
   // shared singleton map was torn down (map.style gone) — a bare map.getLayer()
   // then throws "Cannot read properties of undefined (reading 'getOwnLayer')".
-  // Guard the layer read itself, not just `!map` (TRIP-195).
-  if (!map || !map.style) return;
+  // Guard the layer read itself, not just `!map` (TRIP-195 → `isMapAlive`).
+  if (!isMapAlive(map)) return;
   try { if (!map.getLayer(FILL_ID)) return; } catch { return; }
   try { map.setLayoutProperty(FILL_ID, 'visibility', visible ? 'visible' : 'none'); } catch { /* ignore */ }
 }
@@ -167,6 +168,6 @@ export function setCountryFillVisible(map, visible) {
 // Re-read the (theme-dependent) fill colour and re-apply it — called on a
 // day/night switch so the fill follows the theme without rebuilding the source.
 export function repaintCountryFill(map) {
-  if (!map || !map.getLayer(FILL_ID)) return;
+  if (!isMapAlive(map) || !map.getLayer(FILL_ID)) return;
   try { map.setPaintProperty(FILL_ID, 'fill-color', fillColorExpr()); } catch { /* ignore */ }
 }

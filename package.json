@@ -36,7 +36,9 @@
     "check:spec-columns": "node scripts/ci/check-spec-columns.mjs",
     "check:one-helper": "node scripts/ci/check-one-helper.mjs",
     "check:roles": "node scripts/ci/check-role-gate.mjs",
-    "check:confirm": "node scripts/ci/check-confirm-copy.mjs"
+    "check:confirm": "node scripts/ci/check-confirm-copy.mjs",
+    "check:site-dup": "node scripts/ci/check-site-primitive-dup.mjs",
+    "check:proto": "node scripts/ci/compare-prototype.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -78,6 +80,7 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^15.14.0",
+    "playwright-core": "^1.62.1",
     "postcss": "^8.5.3",
     "typescript": "^5.8.2",
     "vite": "^6.1.0"

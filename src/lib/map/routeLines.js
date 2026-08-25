@@ -9,6 +9,7 @@ import { lineFeature, setLineLayer } from '@/lib/mapbox';
 import { fetchRoadRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { DASHED_OPACITY, SOLID_WIDTH, DASHED_WIDTH } from './mapStyle';
 import { routeColor, routeRingColor } from './mapTokens';
+import { isMapAlive } from './alive';
 
 // Per-leg road-route geometry cache, keyed by endpoints + transport. A road
 // route for a fixed coordinate pair and mode is deterministic, so it's safe to
@@ -105,11 +106,9 @@ function drawRouteLines(map, legs, opts) {
       // целиком — тогда `map.style` уже нет, а `map.getSource()` внутри делает
       // `this.style.getOwnSource(…)`, то есть САМА проверка и падает
       // (TRIPLANIO-A: «Cannot read properties of undefined (reading
-      // 'getOwnSource')», необработанный reject). Форма взята один в один с
-      // `setCountryFillVisible` в countryFill.js, где тот же дефект уже был
-      // диагностирован в TRIP-195 — там он звучал как `getOwnLayer`.
-      // Единый предикат «карта жива» на все 9 таких мест — отдельной задачей.
-      if (cancelled || !map || !map.style) return;
+      // 'getOwnSource')», необработанный reject). Единый предикат `isMapAlive`
+      // (`lib/map/alive.js`) — тот же, что чинил TRIP-195 (`getOwnLayer`).
+      if (cancelled || !isMapAlive(map)) return;
       try { if (!map.getSource(solidId)) return; } catch { return; }
       if (coords) {
         solid[task.idx] = lineFeature(coords);
@@ -322,6 +321,7 @@ export function drawRouteHighlight(map, leg) {
 // instance, so it survives the React unmount that triggered the previous draw
 // (letting an in-flight Mapbox upgrade finish into the persistent layer).
 export function drawRouteLinesCached(map, sig, legs, opts) {
+  if (!isMapAlive(map)) return; // синглтон снесли — сырой getSource ниже упал бы
   const st = map.__routeLines || (map.__routeLines = { sig: null, cancel: null });
   if (st.sig === sig && map.getSource(opts.solidId)) return; // unchanged → leave it
   if (st.cancel) { try { st.cancel(); } catch { /* ignore */ } st.cancel = null; }

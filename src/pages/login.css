@@ -1,3 +1,75 @@
+/* ============================================================================
+   МЁРТВЫЙ CSS СТАРОГО ЛОГИНА — удерживается до Ф6 (CSS-teardown, TRIP-460).
+
+   Экран логина и join переехали на зонную ДС (site.css §AUTH, разметка под
+   .pane-form/.screen). Эти классы больше не пишутся разметкой, но их правила
+   ЖИВЫ в дереве: снести весь лист сразу нельзя в этом PR — гард 2p (семантика)
+   краснеет на каждом снятом НЕ-color объявлении (≈480 штук), а per-declaration
+   маркеры на сплошном сносе — ровно тот анти-паттерн, от которого 2p и
+   предостерегает («файл РОС»). Поэтому функциональный перенос и снос стилей
+   разведены: этот файл НЕ импортируется (в рантайм не идёт, коллизии .auth с
+   site.css НЕТ), а мёртвые имена помечены здесь до фазы teardown.
+
+   Гард 2n (orphans) сканирует ВСЕ .css глобально, поэтому co-селекторы старого
+   логина, живущие в общем src/design/app.css (типографский канон .t-*,
+   утилиты), помечены ТУТ же — общий app.css не трогаем ради чистого диффа; в
+   Ф6 они уедут вместе с этими именами.
+
+   orphan-exempt: appframe — мёртв, Ф6
+   orphan-exempt: appframe__bar — мёртв, Ф6
+   orphan-exempt: appframe__body — мёртв, Ф6
+   orphan-exempt: appframe__dot — мёртв, Ф6
+   orphan-exempt: appframe__dot--g — мёртв, Ф6
+   orphan-exempt: appframe__dot--r — мёртв, Ф6
+   orphan-exempt: appframe__dot--y — мёртв, Ф6
+   orphan-exempt: appframe__url — мёртв, Ф6
+   orphan-exempt: appnudge — мёртв, Ф6
+   orphan-exempt: auth-error — мёртв, Ф6
+   orphan-exempt: auth-error__icon — мёртв, Ф6
+   orphan-exempt: auth-input--trail — мёртв, Ф6
+   orphan-exempt: auth__brand-col — мёртв, Ф6
+   orphan-exempt: auth__brand-link — мёртв, Ф6
+   orphan-exempt: auth__foot — мёртв, Ф6
+   orphan-exempt: auth__foot-links — мёртв, Ф6
+   orphan-exempt: auth__form — мёртв, Ф6
+   orphan-exempt: auth__form-col — мёртв, Ф6
+   orphan-exempt: auth__form-wrap — мёртв, Ф6
+   orphan-exempt: auth__h1 — мёртв, Ф6
+   orphan-exempt: auth__inputs — мёртв, Ф6
+   orphan-exempt: auth__resend-wait — мёртв, Ф6
+   orphan-exempt: auth__switch — мёртв, Ф6
+   orphan-exempt: brand-col__eyebrow — мёртв, Ф6
+   orphan-exempt: brand-col__head — мёртв, Ф6
+   orphan-exempt: brand-col__inner — мёртв, Ф6
+   orphan-exempt: brand-col__logo — мёртв, Ф6
+   orphan-exempt: brand-col__sub — мёртв, Ф6
+   orphan-exempt: brand-col__tag — мёртв, Ф6
+   orphan-exempt: brand-col__trust — мёртв, Ф6
+   orphan-exempt: btn-social — мёртв, Ф6 (co-селектор старого логина в app.css; разметка ушла на .av-btn-social)
+   orphan-exempt: ccy — мёртв, Ф6
+   orphan-exempt: city-chip — мёртв, Ф6
+   orphan-exempt: confirm__actions — мёртв, Ф6
+   orphan-exempt: confirm__email — мёртв, Ф6
+   orphan-exempt: confirm__icon — мёртв, Ф6
+   orphan-exempt: field__hint — мёртв, Ф6
+   orphan-exempt: field__match — мёртв, Ф6
+   orphan-exempt: field__top — мёртв, Ф6
+   orphan-exempt: ico--green — мёртв, Ф6
+   orphan-exempt: ico--warm — мёртв, Ф6
+   orphan-exempt: input-trail — мёртв, Ф6
+   orphan-exempt: input-wrap — мёртв, Ф6
+   orphan-exempt: is-bad — мёртв, Ф6
+   orphan-exempt: is-ok — мёртв, Ф6
+   orphan-exempt: lede — мёртв, Ф6
+   orphan-exempt: pip — мёртв, Ф6
+   orphan-exempt: preview__stage — мёртв, Ф6
+   orphan-exempt: pw-strength — мёртв, Ф6
+   orphan-exempt: pw-strength__label — мёртв, Ф6
+   orphan-exempt: socials — мёртв, Ф6
+   orphan-exempt: tag--green — мёртв, Ф6
+   orphan-exempt: tag--warm — мёртв, Ф6
+   ============================================================================ */
+
 /* Шрифты грузятся глобально из src/design/fonts.css — TRIP-165 */
 
 /* Auth-only token overrides. MUST stay scoped to .auth — this stylesheet is
@@ -241,7 +313,13 @@
 }
 /* The checkbox is the design system's `.checkbox` (app.css) — no local copy. */
 
-.btn-primary {
+/* Scoped to .auth (Login.jsx root) — TRIP-460: `login.css` is imported eagerly
+   in App.jsx (not lazy), so an unscoped `.btn-primary`/`.btn-ghost` here leaked
+   globally onto every route, including the landing zone, which uses the same
+   names for a DIFFERENT object (the prototype's own CTA button, ported as-is).
+   Different objects sharing a name by accident → the older one gets scoped,
+   same fix as the `.sheet` precedent. */
+.auth .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -258,11 +336,11 @@
               0 8px 20px -8px rgba(33,103,226,.55);
   transition: background .15s ease, transform .15s ease;
 }
-.btn-primary:hover { background: var(--brand-600); transform: translateY(-1px); }
-.btn-primary:active { transform: translateY(0); }
-.btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; }
-.btn-primary .arrow { transition: transform .2s ease; }
-.btn-primary:hover:not(:disabled) .arrow { transform: translateX(2px); }
+.auth .btn-primary:hover { background: var(--brand-600); transform: translateY(-1px); }
+.auth .btn-primary:active { transform: translateY(0); }
+.auth .btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+.auth .btn-primary .arrow { transition: transform .2s ease; }
+.auth .btn-primary:hover:not(:disabled) .arrow { transform: translateX(2px); }
 
 .auth__switch {
   margin-top: 26px;
@@ -356,7 +434,8 @@
   gap: 10px;
   margin-top: 28px;
 }
-.btn-ghost {
+/* Scoped to .auth — same login.css/site.css `.btn-primary` leak (see above). */
+.auth .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 46px; padding: 0 16px;
   border: 1px solid var(--line);
@@ -367,7 +446,7 @@
   cursor: pointer;
   transition: background .15s ease, border-color .15s ease;
 }
-.btn-ghost:hover { background: var(--wash); border-color: #d8dde6; }
+.auth .btn-ghost:hover { background: var(--wash); border-color: #d8dde6; }
 
 /* ── Brand panel ── */
 .auth__brand-col {

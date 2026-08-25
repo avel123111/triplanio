@@ -75,25 +75,34 @@ const SCAN_EXTRA = ['public/site.css'];
 const COLOR_WHITELIST = [
   'src/lib/externalBrands.js',                         // external brand registry
   'src/lib/avatarRamp.js',                             // avatar colour source
-  'src/pages/login.css',                               // isolated; pending Lumo
   'src/index.css', 'src/design/app.css',               // token DEFINITIONS
   'src/lib/map/captureMap.js',                         // canvas map-capture (share image) needs concrete hex
   'src/components/AppErrorBoundary.jsx',               // crash screen — must not depend on tokens/CSS
   // — Added with the Lumo colour finale (TRIP-53): raw-by-nature sources —
   'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
   'src/lib/map/mapTokens.js',                          // Mapbox paint fallbacks (need concrete hex)
-  'src/components/site/SiteChrome.jsx',                // brand logo + country-flag SVGs
   'src/pages/Login.jsx',                               // Google + Triplanio logo SVGs
+  // login.css — МЁРТВЫЙ лист старого логина (не импортируется), удерживается до
+  // Ф6 CSS-teardown (TRIP-460): экран переехал на зонную ДС site.css §AUTH. Его
+  // сырые цвета остаются как были на dev — трогать умирающий файл смысла нет.
+  'src/pages/login.css',                               // dead (pending Ф6 teardown); raw colours untouched
   // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
+  // (TRIP-460) LandingPage.jsx re-added: retiring it after the Hero-only draft
+  // (which briefly had 0 raw colour) was premature — the full 11-section 1:1
+  // port carries demo/brand-mock colours from the prototype verbatim
+  // (avatars, Telegram/WhatsApp icon tints, budget bar segments, map pins),
+  // matching its original origin/dev reason (demo visuals + brand icons).
+  // NB: keep this block free of apostrophes — the guard test parses
+  // COLOR_WHITELIST by single-quote pairs, so a stray one mis-seeds the
+  // fixture and the whole spacing suite goes red (TRIP-460 B3).
   'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
-  'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
-  'src/pages/PublicTrip.css',                          // public read-only page styles
   'public/site.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
 ];
 
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
 // lowering this number in the same commit; nothing may ever raise it.
-const WHITELIST_LIMIT = 16;
+// PublicTrip.css retired (TRIP-461): the public reader moved into public/site.css.
+const WHITELIST_LIMIT = 13;
 
 // The ceiling on the PR base, so raising it cannot be self-approved by editing
 // this file. null = base not resolvable (no such ref, or the base predates this
@@ -159,12 +168,10 @@ const TYPO_WHITELIST = [
 //   • fonts.css — @font-face declarations DEFINE each font's weight axis
 //     (font-weight: 400/500/600/700 per file); that's a font definition, not
 //     text styling.
-//   • PublicTrip.css — the standalone public reader's base root `.ptrip`
-//     (like `body`) sets the base reading weight/line-height; the rest of the
-//     page is on the closed set.
+// (PublicTrip.css retired in TRIP-461 — the public reader now lives in site.css.)
 const WEIGHT_LH_ALLOW = [
   'src/design/app.css', 'src/index.css', 'src/pages/login.css', 'public/site.css',
-  'src/design/fonts.css', 'src/pages/PublicTrip.css',
+  'src/design/fonts.css',
 ];
 
 // Files allowed to set inline JSX fontSize from a raw size token (var(--fs-*))

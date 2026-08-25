@@ -52,8 +52,8 @@ export default function ConsentBanner() {
   return (
     <div className="consent" role="region" aria-label={t('consent.title')}>
       <div className="consent__text">
-        <p className="t-subheading consent__title">{t('consent.title')}</p>
-        <p className="t-body">
+        <p className="t-label consent__title">{t('consent.title')}</p>
+        <p className="t-meta">
           {t('consent.body')}{' '}
           <a href="/privacy" target="_blank" rel="noreferrer">{t('consent.privacy')}</a>
         </p>

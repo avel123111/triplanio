@@ -44,6 +44,7 @@ import EditLens from './EditLens';
 import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
+import { tripDuration } from '@/lib/trip-stats';
 import { resolveMyRole } from '@/lib/members';
 import { clearsStep } from '@/lib/tripStep';
 import { useProfileMap } from '@/lib/useProfileMap';
@@ -852,6 +853,13 @@ export default function TripView() {
   // replacing the old ForkPartnerModal → EventEditDialog modal chain.
   const [bookingCreate, setBookingCreate] = useState({ open: false, kind: null, visit: null, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
+  // Клик по городу в календаре открывает ЕДИНУЮ панель города НА МЕСТЕ — тот же
+  // редактируемый CityPanel из «Маршрута», со всеми кнопками/состояниями. Это не
+  // копия: в ящик монтируется EditLens в режиме `embedded` (только панель, без
+  // карты/рельса) — вся машинерия (черновик/recompute/ночи/удаление/брони) та же.
+  const [cityDrawerId, setCityDrawerId] = useState(null);
+  const openCityDrawer = (visit) => { if (visit?.id) setCityDrawerId(visit.id); };
+  const closeCityDrawer = () => setCityDrawerId(null);
   const openUpgrade = () => goPro(nav, { tripId });
   // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
 
@@ -947,8 +955,9 @@ export default function TripView() {
   // is resolved — createStay22 reads trip.details, so it must not run in the TDZ.
   const serviceViewOpen = eventView.open && eventView.kind === 'service';
   const eventDrawerOpen = eventView.open && !!eventView.kind && eventView.kind !== 'service';
-  // The global drawer hosts EITHER a booking-create panel OR an event view/edit.
-  const drawerOpen = eventDrawerOpen || bookingCreate.open;
+  // The global drawer hosts a booking-create panel, an event view/edit, OR the
+  // city panel (embedded EditLens) opened from the calendar.
+  const drawerOpen = eventDrawerOpen || bookingCreate.open || !!cityDrawerId;
   const closeBookingCreate = () => setBookingCreate((s) => ({ ...s, open: false }));
   // Hotel "find" list bundle for the add-booking drawer (only when creating a
   // hotel — transfer/activity "find" tabs are partner chips, no Stay22 pool).
@@ -1168,23 +1177,18 @@ export default function TripView() {
   // modal mount, so they work from any lens.
   const dateRange = formatTripRange(visits, '-');
   const cityCount = uniqueCityCount(visits);
-  // Trip length in nights, rendered with the day-word — same meta as the editor
-  // header (dates · days · cities).
-  const tripNights = (() => {
-    const starts = visits.map((v) => v.start_date).filter(Boolean).sort();
-    const ends = visits.map((v) => v.end_date).filter(Boolean).sort();
-    const s = starts[0] || null;
-    const e = ends[ends.length - 1] || null;
-    if (!s || !e) return null;
-    const n = Math.round(DateTime.fromISO(e).diff(DateTime.fromISO(s), 'days').days);
-    return n >= 0 ? n : null;
-  })();
+  // Trip length — ONE source for every surface: tripDuration().days (= nights+1,
+  // calendar days inclusive), the same helper the Overview stat row and the
+  // public trip use. Previously this header computed nights inline and rendered
+  // them with the day-word ("12 days" for a 12-night trip), so it disagreed with
+  // Overview/public ("13 days") for the identical trip.
+  const tripDays = tripDuration(trip, visits).days;
   const dayWord = (n) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
   const heroSub = (
     <>
       {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
-      {tripNights != null && (
-        <><span>·</span><span>{tripNights} {dayWord(tripNights)}</span></>
+      {tripDays > 0 && (
+        <><span>·</span><span>{tripDays} {dayWord(tripDays)}</span></>
       )}
       {cityCount > 0 && (
         <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}</span></>
@@ -1209,10 +1213,23 @@ export default function TripView() {
   const eventDrawer = (
     <EventDrawerHost
       open={drawerOpen}
-      onClose={bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
+      onClose={cityDrawerId ? closeCityDrawer : bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
       scrim
     >
-      {bookingCreate.open ? (
+      {cityDrawerId ? (
+        // Панель города из календаря — тот же редактируемый CityPanel, что и в
+        // «Маршруте», НА МЕСТЕ: монтируем EditLens в режиме `embedded` (только
+        // панель, без карты/рельса), все кнопки/состояния (ночи, удаление,
+        // добавление броней, переезды) — живые и те же самые.
+        <EditLens
+          embedded
+          tripId={tripId}
+          shell={shellData}
+          content={contentData}
+          openCityId={cityDrawerId}
+          onClose={closeCityDrawer}
+        />
+      ) : bookingCreate.open ? (
         <AddBookingPanel
           kind={bookingCreate.kind}
           tripId={tripId}
@@ -1490,6 +1507,7 @@ export default function TripView() {
               visits={visits}
               isLoading={shellLoading || loadingContent}
               onOpenEvent={openEventView}
+              onOpenCity={openCityDrawer}
             />
           )}
           {shownLens === 'docs' && (

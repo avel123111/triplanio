@@ -35,8 +35,9 @@ import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover, CoverPicker,
+  CityBar, EventChip,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
-  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
+  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, CITYBAR_VARIANTS, EVENTCHIP_VARIANTS, toast,
 } from '@/design/index';
 import { Icon } from '@/design/icons';
 import Accordion from '@/components/common/Accordion';
@@ -134,6 +135,7 @@ const TX = {
   sevBody: 'Текст сообщения на одну-две строки.', sevTitle: 'Заголовок плашки',
   emptyTitle: 'Пока пусто', emptyBody: 'Здесь появятся элементы.',
   emptyBoxTitle: 'Пусто', emptyBoxBody: 'В рамке (boxed).',
+  devTitle: 'Итоги года', devBody: 'Раздел находится в разработке. Загляните чуть позже.',
   openDialog: 'Открыть диалог', openSheet: 'Открыть шит', readonly: 'Режим только для чтения.',
   toastTitle: 'Готово', toastBody: 'Изменения сохранены.',
   toastLab: 'Появятся в правом нижнем углу (на мобиле — сверху); наведи или тапни стопку, чтобы развернуть.',
@@ -474,6 +476,27 @@ const RECIPES = {
       ],
     },
   ],
+  // floor-exempt: inline +5 — образцы витрины /kit для CityBar/EventChip: размер полосы и позиционирование block-варианта задаёт ячейка/тайм-грид, в галерее их даёт обёртка; апрув Pavel
+  'city-bar': () => [
+    {
+      label: 'variant (карта CITYBAR_VARIANTS): bar (дефолт) · strip',
+      items: [
+        it('bar (дефолт, только цвет)', <span style={{ display: 'flex', width: 120, height: 19 }}><CityBar tone={0} ariaLabel="Рим" /></span>), // inline-style-exempt: размер образца полосы (в календаре высоту даёт ячейка)
+        ...CITYBAR_VARIANTS.map((v) => it(`variant="${v}"`, <span style={{ display: 'flex', width: 120, height: 22 }}><CityBar variant={v} tone={1} label="Витербо" /></span>)), // inline-style-exempt: размер образца полосы
+      ],
+    },
+  ],
+  'event-chip': () => [
+    {
+      label: 'variant (карта EVENTCHIP_VARIANTS): inline · allday · block',
+      items: EVENTCHIP_VARIANTS.map((v) => it(`variant="${v}"`,
+        v === 'block'
+          ? <span style={{ position: 'relative', display: 'block', width: 130, height: 44 }}><EventChip variant="block" type="activity" time="10:00" title="Музеи" style={{ inset: 0 }} /></span> // inline-style-exempt: block позиционируется координатами тайм-грида · i18n-ignore: демо-данные витрины /kit
+          // у `allday` времени НЕТ по построению (событие без часа) — образец
+          // витрины обязан показывать примитив таким, каким его зовёт экран
+          : <span style={{ display: 'flex', width: 130 }}><EventChip variant={v} type="activity" time={v === 'allday' ? undefined : '10:00'} title="Музеи" /></span>)), // inline-style-exempt: ширина образца токена события · i18n-ignore: демо-данные витрины /kit
+    },
+  ],
 
   badge: (ctx) => [
     { label: 'variant (CSS-производный список семьи)', items: ctx.declared.map((c) => it(`variant="${tailOf(c)}"`, <Badge variant={tailOf(c)}>{tailOf(c)}</Badge>)) },
@@ -647,6 +670,9 @@ const RECIPES = {
   'empty-state': (ctx) => [{
     items: [
       it('base', <div className="grow"><EmptyState title={TX.emptyTitle} body={TX.emptyBody} action={<Btn variant="primary">{TX.save}</Btn>} /></div>, true),
+      // Канон «раздел в разработке» (TRIP-302): тот же EmptyState с иконкой-молотком
+      // и тоном warning — вид, который показывается модалкой на неготовом разделе.
+      it('в разработке', <div className="grow"><EmptyState icon="hammer" kind="warning" title={TX.devTitle} body={TX.devBody} /></div>, true),
       ...ctx.declared.filter((c) => c.startsWith('empty-state')).map((c) => it(c, <div className="grow"><EmptyState boxed title={TX.emptyBoxTitle} body={TX.emptyBoxBody} /></div>, true)),
     ],
   }],

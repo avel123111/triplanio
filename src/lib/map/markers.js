@@ -22,35 +22,49 @@
 // marks both endpoints (ring colour tells start from finish); `arrowSwap` marks
 // a waypoint (transit / layover). Stroke is `currentColor` so the glyph follows
 // the ring colour (and turns white when the pin is selected).
+// Роль → глиф. Старт и финиш РАЗНЫЕ (запрос Pavel) и оба «читаемые с ходу» —
+// прежние тонкая стойка + крошечный флажок высоко на ней смотрелись слабо, теперь
+// флаг занимает бóльшую часть глифа, а голой стойки снизу почти нет:
+//   старт  — ЗАЛИТЫЙ вымпел-ласточкин-хвост (залитая часть несёт свой `fill`,
+//            перебивая общий `fill:none` у svgGlyph);
+//   финиш  — КЛЕТЧАТЫЙ (гоночный) флаг: жирная стойка + тонкая рамка-сетка 2×2 +
+//            две залитые клетки по диагонали (шахматка).
+// Пересадка (waypoint) — иконка обмена (та же, что была).
 const ICON_PATHS = {
-  start: '<path d="M5 3v18"/><path d="M5 4h12l-2 4 2 4H5"/>',
-  end: '<path d="M5 3v18"/><path d="M5 4h12l-2 4 2 4H5"/>',
+  start: '<path d="M6 4v16"/><path fill="currentColor" stroke="none" d="M6 4h11l-2.6 3.8 2.6 3.8H6z"/>',
+  end: '<path d="M6.5 4v15"/><path stroke-width="1.2" d="M6.5 4h12v7.5h-12z M12.5 4v7.5 M6.5 7.75h12"/><path fill="currentColor" stroke="none" d="M6.5 4h6v3.75h-6z M12.5 7.75h6v3.75h-6z"/>',
   waypoint: '<path d="M7 7h13l-4-4M17 17H4l4 4"/>',
 };
 
-// Pick the glyph for a (possibly grouped) pin. Anchors outrank waypoints, which
-// outrank plain transit numbers, so a shared location renders its most
-// significant role. Returns null when the pin should show its number(s) instead.
-export function iconForKinds(kinds = []) {
-  if (kinds.includes('start')) return 'start';
-  if (kinds.includes('end')) return 'end';
-  if (kinds.length > 0 && kinds.every((k) => k === 'waypoint')) return 'waypoint';
-  return null;
-}
+// Роль → класс-модификатор `.tmk` (несёт цвет `--tmk` и, у пересадки, меньший
+// размер). Ключи совпадают с `ICON_PATHS` — те же роли, что несут глиф (старт/
+// финиш/пересадка); город (transit/undefined) роль-класса не несёт, база `.tmk`
+// = brand. Наличие глифа проверяем прямо по `ICON_PATHS[kind]`, отдельной карты
+// «роль→имя глифа» нет (имя глифа = сама роль).
+//   старт   → зелёный (`--success`)
+//   финиш   → оранжевый (`--warm`)
+//   пересадка→ бирюза (`--ev-transfer`, цвет эвента «транспорт»), меньший размер
+const ROLE_CLASS = { start: 'tmk--start', end: 'tmk--finish', waypoint: 'tmk--wp' };
 
 // Group points that share a location (a city visited twice) into one pin that
-// carries every label + kind at that spot.
-// points: [{ lng, lat, label, kind?, data? }] → [{ lng, lat, labels:[], kinds:[], data:[] }]
+// carries every label + kind + id at that spot.
+// points: [{ lng, lat, label, kind?, id?, data? }] → [{ lng, lat, labels:[], kinds:[], ids:[], data:[] }]
+// `ids` is the stable id of each point at this spot (falsy when the caller has
+// none — e.g. the stats map, which never reads it). It is the ONE source the
+// shared marker builder tags onto `data-mids` so the selection/hover toggle can
+// address a pin without a rebuild — replacing the old per-screen `data-vids`
+// (MapView, from visit.id) / `data-mid` (FlowMap, from the raw id) split.
 // `precision` = coordinate rounding for the "same place" test (5 dp ≈ ~1 m).
 export function groupByLocation(points, precision = 5) {
   const groups = new Map();
   points.forEach((p) => {
     if (p == null || p.lat == null || p.lng == null) return;
     const key = `${(+p.lat).toFixed(precision)},${(+p.lng).toFixed(precision)}`;
-    if (!groups.has(key)) groups.set(key, { lng: +p.lng, lat: +p.lat, labels: [], kinds: [], data: [] });
+    if (!groups.has(key)) groups.set(key, { lng: +p.lng, lat: +p.lat, labels: [], kinds: [], ids: [], data: [] });
     const g = groups.get(key);
     g.labels.push(p.label);
     g.kinds.push(p.kind);
+    g.ids.push(p.id);
     if (p.data !== undefined) g.data.push(p.data);
   });
   return [...groups.values()];
@@ -59,55 +73,86 @@ export function groupByLocation(points, precision = 5) {
 const svgGlyph = (icon) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[icon]}</svg>`;
 
+// Одна ячейка слепленного пилюля: глиф своей роли (флаг/пересадка) ИЛИ номер
+// города, покрашенные в цвет роли через её класс-модификатор (город — без класса,
+// базовый brand). `data-mid` = id ЭТОГО визита — по нему сегмент подсвечивается
+// (тогл `.is-sel/.is-hover`) и адресуется клик. Номер экранируем (city label —
+// данные), id тоже (может быть произвольной строкой).
+function cellHtml(cell) {
+  const rc = ROLE_CLASS[cell?.kind] || '';
+  const inner = ICON_PATHS[cell?.kind] ? svgGlyph(cell.kind) : escapeHtml(cell?.label);
+  const mid = cell?.id != null ? ` data-mid="${escapeHtml(String(cell.id))}"` : '';
+  return `<span class="${['tmk__h', rc].filter(Boolean).join(' ')}"${mid}>${inner}</span>`;
+}
+
 // Build the DOM element for one mapboxgl.Marker (the Ring style).
-// labels: array shown on the pin (1 → ring with number; 2+ → split pill of
-//   first|last). Ignored when `icon` is set.
-// opts: { onClick, icon }
-//   icon ('start'|'end'|'waypoint') renders a glyph instead of a number;
-//   onClick omitted ⇒ non-interactive pin.
-// The selected/hover states are toggled by the consumer on the returned element
-// (.is-sel / .is-hover) so hovering a list doesn't rebuild the markers.
-// Visual transforms (scale/halo) sit on the inner .tmk__core so Mapbox's own
-// inline transform on the root .tmk (positioning) is never clobbered.
-export function createMarkerEl(labels, { onClick, icon, onHover } = {}) {
+// cells: [{ kind, label, id, data }] — ПО ОДНОЙ на визит в этой точке, в порядке
+//   визитов. `id` адресует визит (тег/тогл/клик), `data` уедет в колбэк.
+//   1 визит  → одиночное кольцо: старт/финиш/пересадка рисуют свой глиф в своём
+//              цвете, город — номер (label) в brand; весь пин = один визит.
+//   2+ визита → слепленный пилюль (тот же облик) из ПЕРВЫХ 3 ячеек; каждая ячейка
+//              несёт свой глиф/номер в цвете роли И КЛИКАЕТСЯ/ПОДСВЕЧИВАЕТСЯ САМА
+//              ПО СЕБЕ (посегментно) — так спот с любыми ролями (старт/финиш,
+//              город/пересадка…) читается целиком, а из повторных посещений можно
+//              выбрать КОНКРЕТНОЕ (раньше клик по пилюлю открывал только первый).
+// opts: { onSelect, onHover } — onSelect(cellData) / onHover(entering, cellData)
+//   адресуют КОНКРЕТНЫЙ визит; onSelect omitted ⇒ non-interactive pin.
+// Выделение/ховер тоглятся снаружи (.is-sel/.is-hover): у одиночного — на корне
+// `.tmk` (по `data-mids`), у слепленного — на ячейке `.tmk__h` (по `data-mid`).
+// Visual transforms сидят на .tmk__core / .tmk__h, а не на корне .tmk (позицию
+// корня двигает mapbox своим inline transform).
+export function createMarkerEl(cells, { onSelect, onHover } = {}) {
   const el = document.createElement('div');
+  const list = (Array.isArray(cells) ? cells : [cells]).filter(Boolean);
+  const merged = list.length > 1;
+  const shown = merged ? list.slice(0, 3) : list;
 
   const classes = ['tmk'];
   let core; // inner HTML of .tmk__core
 
-  if (icon && ICON_PATHS[icon]) {
-    if (icon === 'end') classes.push('tmk--finish');
-    if (icon === 'waypoint') classes.push('tmk--wp');
-    core = svgGlyph(icon);
-  } else {
-    const list = Array.isArray(labels) ? labels : [labels];
-    if (list.length <= 1) {
-      core = String(list[0] ?? '');
+  if (!merged) {
+    const c = list[0] || {};
+    if (ICON_PATHS[c.kind]) {
+      classes.push(ROLE_CLASS[c.kind]); // роль с глифом всегда несёт роль-класс
+      core = svgGlyph(c.kind);
     } else {
-      classes.push('tmk--wide');
-      if (list.length >= 3) classes.push('tmk--w3');
-      const first = list[0];
-      const last = list[list.length - 1];
-      core = `<span class="tmk__h">${first}</span><span class="tmk__sep"></span><span class="tmk__h">${last}</span>`;
+      core = escapeHtml(c.label);
     }
+  } else {
+    // Слепленный пилюль: первые 3 визита, каждый своей ячейкой со скошенным швом.
+    classes.push('tmk--wide');
+    if (shown.length >= 3) classes.push('tmk--w3');
+    core = shown.map(cellHtml).join('<span class="tmk__sep"></span>');
   }
 
-  if (onClick) classes.push('is-clickable');
+  const interactive = !!onSelect;
+  // `is-clickable` (курсор + whole-pin hover-заливка) — только у ОДИНОЧНОГО пина.
+  // У слепленного пилюля кликают/наводят сами ячейки, а заливка идёт посегментно
+  // (`.tmk__h`), поэтому whole-pill hover ему не нужен — иначе накрыл бы соседей.
+  if (interactive && !merged) classes.push('is-clickable');
 
   el.className = classes.join(' ');
   el.innerHTML = `<span class="tmk__halo"></span><span class="tmk__pulse"></span><span class="tmk__core">${core}</span>`;
 
-  // Swallow the pin's own click so it never bubbles up to the map canvas 'click'
-  // (Mapbox mounts HTML markers inside the canvas container, so a bubbling click
-  // would ALSO fire map 'click' — on the Map lens that re-cleared the selection the
-  // pin had just set, making pin clicks look dead). A marker click is never a map
-  // click.
-  if (onClick) el.addEventListener('click', (e) => { e.stopPropagation(); onClick(e); });
-  // onHover(entering:boolean) — lets a parent mirror pin hover into a list/badge
-  // (Map lens tooltip). The pin's own :hover look stays pure CSS.
-  if (onHover) {
-    el.addEventListener('mouseenter', () => onHover(true));
-    el.addEventListener('mouseleave', () => onHover(false));
+  if (interactive) {
+    // Клик/ховер по КОНКРЕТНОМУ визиту. stopPropagation: mapbox монтирует HTML-
+    // маркеры в контейнере канваса, поэтому всплывший клик ТАКЖЕ поджёг бы map
+    // 'click' (там сброс выбора) — клик по маркеру никогда не клик по карте.
+    const bind = (target, d) => {
+      target.addEventListener('click', (e) => { e.stopPropagation(); onSelect(d); });
+      if (onHover) {
+        target.addEventListener('mouseenter', () => onHover(true, d));
+        target.addEventListener('mouseleave', () => onHover(false, d));
+      }
+    };
+    if (!merged) {
+      bind(el, list[0]?.data); // весь пин = один визит
+    } else {
+      // Пилюль целиком гасит клик (сепаратор/паддинг не должны сбрасывать выбор);
+      // выбор/ховер делают САМИ ячейки, каждая — свой визит (по позиции = shown[i]).
+      el.addEventListener('click', (e) => e.stopPropagation());
+      el.querySelectorAll('.tmk__h').forEach((cellEl, i) => bind(cellEl, shown[i]?.data));
+    }
   }
   return el;
 }
@@ -171,16 +216,24 @@ export function createClusterBubbleEl(count, { onClick, onHover, title } = {}) {
 const escapeHtml = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// City label badge — Map lens ONLY (TRIP-33). A translucent "glass" pill that
-// pairs the country flag with the city name + date range, shown next to the
-// ACTIVE city's pin. Gated behind MapView's `cityBadge` prop, so no other map
-// surface (Overview/Edit/public/planner) renders it. Plain DOM like every marker
-// here: the flag is an <img> from /flags (same source CountryFlag uses) and the
-// glass skin lives in `.cbadge` (src/design/app.css) on the canon surface tokens.
-// The badge is a passive label (pointer-events:none) — selection happens on the
-// pin / route list, not the badge.
-// data: { countryCode, name, dates } — dates preformatted ("1 июл – 5 июл").
-export function createCityBadgeEl({ countryCode, name, dates } = {}) {
+// Chevron-right glyph for the badge CTA (same path lucide `ChevronRight` draws,
+// inlined because the badge is plain DOM, not a React icon).
+const CHEVRON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+
+// City label badge (Map «Маршрут»/редактор + planner). A translucent "glass"
+// pill that pairs the country flag with the city name + date range, shown next
+// to the ACTIVE city's pin. Plain DOM like every marker here: the flag is an
+// <img> from /flags and the glass skin lives in `.cbadge` (src/design/app.css)
+// on the canon surface tokens.
+//
+// The label itself is passive (the popup is pointer-events:none so it never eats
+// a map click). ONE exception: when the caller passes `onAction`, the badge grows
+// a chevron CTA (`.cbadge__go`) that re-enables pointer events on ITSELF only and
+// opens the city. The редактор uses it for the two-step click (fix badge → CTA
+// opens + zooms); the planner never passes it, so its badge stays a pure label.
+// data: { countryCode, name, dates, actionLabel } — dates preformatted; actionLabel
+//   is the CTA's accessible name. opts: { onAction } — click handler for the CTA.
+export function createCityBadgeEl({ countryCode, name, dates, actionLabel } = {}, { onAction } = {}) {
   const el = document.createElement('div');
   el.className = 'cbadge';
   const cc = typeof countryCode === 'string' && countryCode.trim().length === 2 ? countryCode.trim().toLowerCase() : '';
@@ -189,8 +242,31 @@ export function createCityBadgeEl({ countryCode, name, dates } = {}) {
     : '';
   const nm = name ? `<span class="cbadge__name t-label trunc">${escapeHtml(name)}</span>` : '';
   const dt = dates ? `<span class="cbadge__dates t-meta">${escapeHtml(dates)}</span>` : '';
+  // CTA появляется только с `onAction`. Клик глушим: попап живёт в слое канваса
+  // карты, и без stopPropagation он бы долетел до 'click' карты — а там сброс
+  // выбора, то есть кнопка гасила бы ровно то, что открывает.
+  // Переиспользуем канон-примитив `.icon-btn` (rule #6), а не свой класс: тот же
+  // облик, что у всех иконочных кнопок ДС (маленькая КВАДРАТНАЯ outline — дефолт
+  // `.icon-btn` уже rounded-square `--r-sm`, без `--round`). Единственная добавка
+  // в CSS — вернуть кнопке события поверх passiv-попапа (см. app.css).
+  const cta = onAction
+    ? `<button type="button" class="icon-btn icon-btn--outline icon-btn--sm cbadge__go">${CHEVRON_SVG}</button>`
+    : '';
   // Name over dates in a column; the flag sits beside it, top-aligned with the name.
-  el.innerHTML = `${flag}<span class="cbadge__col">${nm}${dt}</span>`;
+  el.innerHTML = `${flag}<span class="cbadge__col">${nm}${dt}</span>${cta}`;
+  if (onAction) {
+    const btn = el.querySelector('.cbadge__go');
+    if (btn) {
+      // aria-label ставим СВОЙСТВОМ, а не в разметке: значение и так локализовано
+      // (родитель шлёт `t()`-строку), но литерал `aria-label="…"` спотыкает i18n-гард.
+      if (actionLabel) btn.setAttribute('aria-label', actionLabel);
+      btn.addEventListener('click', (e) => { e.stopPropagation(); onAction(e); });
+      // Кнопка рождается СВЁРНУТОЙ (CSS `.cbadge__go`: max-width 0). Её выезд и
+      // сворачивание — CSS-переход ширины, который включает `useCityBadge`, ставя
+      // `[data-on]`. Попап при фиксации города НЕ пересоздаётся (шов живёт по
+      // городу, а не по наличию CTA) — потому и нет мигания.
+    }
+  }
   return el;
 }
 

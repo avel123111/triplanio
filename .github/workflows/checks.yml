@@ -198,6 +198,9 @@ jobs:
       - name: 2ad — site nav (internal links go through the router, not <a href>)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-site-nav.mjs
+      - name: 2ae — site primitive dup (класс объявлен одиночкой и в site.css, и в app.css — вторая база)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-site-primitive-dup.mjs
       - name: 2n — orphaned CSS (rule left behind after the class moved)
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }

@@ -211,6 +211,19 @@
   --rail-w:       70px;
   --header-h:     60px;
 
+  /* Ширина плавающего виджета-панели — ОДИН источник на ВСЕХ потребителей.
+     Читают её: колонка редактора/линзы/планировщика (`.mapshell__panel`, +
+     замером JS), и глобальный ящик события (`.evd-drawer`) на ленте/бюджете/
+     календаре. Живёт в :root, потому что общий предок этих поддеревьев —
+     только корень: планировщик (`/new-trip`) и трип (`/trip/:id`) — соседние
+     ветки роутера, у них нет общей обёртки-класса. `clamp`, а не `min`: у
+     виджета есть НИЖНЯЯ граница по содержимому (в редакторе шесть колонок,
+     на окне 1087px `46vw` давало 500px и заголовок «Направление» не помещался;
+     540 — минимум без усечения, 620 — потолок, дальше место лучше карте).
+     floor-exempt: tokens +1 — ширина виджета поднята из .mapshell в :root, чтобы её видел и evd-drawer вне .mapshell (эксперимент «панель = виджет»), апрув Pavel
+     visual-diff-exempt: :root --mapshell-panel-w — токен переехал с .mapshell в :root (то же значение, снятие с .mapshell объявлено там же) */
+  --mapshell-panel-w: clamp(540px, 46vw, 620px);
+
   /* Рейл трипа — ИНВЕРСНАЯ поверхность: тёмный борт в ОБЕИХ темах. Своя пара
      фон/чернила нужна именно поэтому: глобальные --ink/--wash/--line подобраны
      под светлый фон и на тёмном борте не читаются (тот же класс дефекта, что
@@ -503,8 +516,6 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* строки-списки и ряды (`.nrow` → <NotifRow>, `.bookrow` → <ListRow> — surface несёт компонент) */
 .mbrow, .doc-row, .te-table .te-row,
 .te-row.te-row--plan,
-/* держали эту пару своей копией, а не именем в роли */
-.ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
 /* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
    несёт она, а не кнопки (кнопки внутри quiet). Отдельных icon-кнопок-оверлеев с
@@ -705,7 +716,6 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .t-display,
 .pro-hero__title,      /* TRIP-229: инспектор канонов — заголовок Pro-страницы Heading→Display (hero макета) */
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
-.pt-mast h1,           /* TRIP-410: hero публичного трипа → Display (был локальный --fs-display/-.035em) */
 .head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-display — Geologica clamp(28–40)/800/1.05, tabular (карьер .head h1) */
 .t-title,
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
@@ -719,10 +729,7 @@ h1,
 .tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
 .rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
-.ncal-month-lbl,   /* TRIP-175 инсп.: Display→Title (месяц календаря) */
-.brand-col__tag,   /* TRIP-410: бренд-строка логина → Title (был локальный --fs-h1/600/-0.032em) */
-.pt-cta h2,        /* TRIP-410: заголовок CTA публичного трипа → Title (был локальный --fs-h1/-.03em; color:#fff остаётся локально) */
-.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular */
+.brand-col__tag { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular (.pt-cta h2 снят: /public/trip переписан, TRIP-461) */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
@@ -735,8 +742,6 @@ h2,
 .acct-hero__name,
 .sec-head h2,
 .tcp__ph,
-.ncal-wdc-num,
-.pt-mm .n,
 .tl3-dh .wd,       /* TRIP-175 инсп.: off-canon→Heading (день недели хронологии) */
 .dlg__head h2,     /* TRIP-175 инсп.: Subheading→Heading (заголовки модалок .dlg__head) */
 .addon-card__title,/* TRIP-175 инсп.: Label→Heading (тайтл карточки аддона) */
@@ -748,8 +753,13 @@ h2,
 .chat-head h3,     /* TRIP-175 инсп.: Label→Heading (заголовок «Групповой чат») */
 .choice-card__ttl, /* TRIP-222: инспектор канонов — названия способов создания Label→Heading */
 .flow-lp-b .section-sub, /* TRIP-222: инспектор канонов — саб-заголовки шагов планирования Subheading→Heading */
-.pt-cstop__ht h2,  /* TRIP-410: заголовок остановки публичного трипа → Heading (был локальный --fs-h2/-.03em) */
-.pt-h-lead,        /* TRIP-410: лид-заголовок публичного трипа → Heading (был локальный --fs-h2/-.025em; вес держит .t-strong) */
+.empty-state__t,   /* TRIP-302: заголовок пустого состояния — ИНТРИНСИК Heading. До этого он был Heading только внутри .card (через `.card h3`), а в портале модалки (.dlg, не .card) проваливался в body-кегль (15px = как подпись). Канон на самом классе чинит это во всех контекстах.
+   visual-diff-exempt: .empty-state__t font-family — заголовок пустого состояния получил канон .t-heading (был Heading только через .card h3) (TRIP-302)
+   visual-diff-exempt: .empty-state__t font-size — заголовок пустого состояния получил канон .t-heading (TRIP-302)
+   visual-diff-exempt: .empty-state__t font-weight — заголовок пустого состояния получил канон .t-heading (TRIP-302)
+   visual-diff-exempt: .empty-state__t line-height — заголовок пустого состояния получил канон .t-heading (TRIP-302)
+   visual-diff-exempt: .empty-state__t letter-spacing — заголовок пустого состояния получил канон .t-heading (TRIP-302)
+   visual-diff-exempt: .empty-state__t font-variant-numeric — заголовок пустого состояния получил канон .t-heading (TRIP-302) */
 .acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-heading — Geologica 18/700/1.25, tabular (карьер .acct-sectitle) */
 .t-subheading,
 .dock-panel__id b,    /* TRIP-337 инсп.: заголовок виджета чата Label→Subheading */
@@ -761,14 +771,10 @@ h3,
 .sheet-h h3,
 .head__av,
 .vp-h h3,
-.pt-cstop__num,
 .auth__brand-link,
 .brand-col__logo,
 .trip-head__title,
 .trip-foot__total .big,
-.app-main__title,
-.step__num,
-.faq__q,
 .step h3,
 .drawer li a,
 .wdg-h h4,         /* TRIP-175 инсп.: Label→Subheading (заголовки виджетов обзора) */
@@ -779,10 +785,8 @@ h3,
 .vrow .nm,         /* TRIP-175 инсп.: UI→Subheading (страна/город в списке) */
 .visit .dt,        /* TRIP-175 инсп.: UI→Subheading (город визита) */
 .invite-banner__title, /* TRIP-175 инсп.: off-canon→Subheading (заголовок инвайт-баннера) */
-.ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
 .dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
-.dl-visopt__lbl b,   /* TRIP-275 инсп.: Meta→Subheading (заголовок опции видимости «Общий»/«Личный») */
-.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.3; letter-spacing: 0; }   /* TRIP-410: .t-subheading — Geologica 16/600/1.3 */
+.dl-visopt__lbl b { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.3; letter-spacing: 0; }   /* TRIP-410: .t-subheading — Geologica 16/600/1.3 */
 .t-label,
 h4,
 .te-step,
@@ -794,9 +798,6 @@ h4,
 .nonext b,
 .dl-card__title,
 .dl-empty b,
-.pt-mast__av,
-.pt-mast__l1,
-.pt-cta p,
 .banner p,
 .row__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта; сюда же сведены .acct-chan__t и .acct-tgrow__t) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
@@ -836,17 +837,7 @@ h4,
 .dl-addcard b,
 .eed-fctitle,
 .docfield__title,
-.pt-mast__l2,
-.pt-rchip b,
-.pt-mm .n small,
-.pt-mapcap__tx b,
-.pt-cstop__sub,
-.pt-cstop__hotel,
-.pt-wp__city,
-.pt-act .nm,
-.pt-cleg__pill,
 .pt-person .nm,
-.pt-scta .tx b,
 .btn-social,
 .lede,
 .btn-primary,
@@ -854,7 +845,6 @@ h4,
 .auth__switch button,
 .btn-ghost,
 .brand-col__sub,
-.faq__a-inner,
 .input-unit,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→Label (легенда бюджета; .t-strong сохранён) */
@@ -892,9 +882,10 @@ h4,
 .bubble,
 .card p,
 .step p,
-.deep__highlights li,
 .trust__item,
-.langdd__item,
+/* .langdd__item снят (TRIP-460): язык-переключатель зоны переехал на
+   прототипные .lang-btn/.lang-menu, у которых typography полностью своя
+   (site.css задаёт font-size явно) — канон-запись больше не читалась. */
 /* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
    `.t-label` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
    как надпись НА кнопке (канон .t-label, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
@@ -902,9 +893,8 @@ h4,
 .input, .select, .textarea,
 .sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
 .stay-dates__lbl,  /* они же в просмотре события */
-.auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
-.ptrip, .pt-cstop__num, /* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
-.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
+/* TRIP-410: база логина → Body (были локальные --font-body/--fs-base). .ptrip/.pt-cstop__num сняты: /public/trip переписан на сайтовую ДС (TRIP-461) */
+.auth, .auth-input { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
 /* .t-support — обычный вес (400) на кегле label (13): вторичная строка ПРИ титле,
    где иерархию несут вес+цвет, а не размер. Закрывает дыру шкалы «мелкий+обычный»
    (см. апрув Pavel): раньше пояснение при 13/600-титле было вынуждено быть либо
@@ -1049,13 +1039,7 @@ h4,
 .eed-fchint,
 .tcp__err,
 .docfield__count,
-.ncal-wdc-empty,   /* инсп.: Meta («Свободный день» календаря) */
-.pt-mm .k,
-.pt-mapcap__pill,
-.pt-mapcap__tx span,
-.pt-act .day,
 .pt-person .av,
-.pt-scta .tx span,
 .auth .field__label,
 .divider,
 .terms,
@@ -1073,41 +1057,14 @@ h4,
 .appnudge .ttl,
 .appnudge .sub,
 .brand-col__trust,
-.app-main__subtitle,
-.app-tab,
-.tag-eyebrow,
-.pin__lbl,
-.budget__rows,
-.budget__row .ccy,
-.budget__total .delta,
-.app-sidebar,
-.tl-card,
-.tl-card .meta,
-.tl-card .tag,
-.collage__card,
-.tabstrip .t,
-.tabsbody,
-.mailrow .from,
-.mailrow .subj,
-.phone__head .name,
-.phone__head .sub,
 .phone .bubble,
-.phone__time,
-.langdd__btn,
-.langdd__item .code,
+/* .langdd__btn/.langdd__item .code сняты (TRIP-460): та же причина, .lang-btn/
+   .lang-menu .code typography полностью своя в site.css. */
 .s22-count,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .fork-or span,
 .addon-card__desc, /* инсп.: Meta (описание аддона) */
-/* TRIP-410 моно-аудит: календарь уходит с JetBrains на Geologica — управляющие
-   пилюли, плашки городов, чипы событий (были в .t-mono, поверх sans-оверлея). Кегли
-   уточняет CalendarLens.css @media; .ncal-leg/.ncal-legend-lbl якорят каноны. */
-.ncal-nav-txt, .ncal-nav-trip,
-.ncal-cstrip, .ncal-cstrip-seg,
-.ncal-ev .tm, .ncal-ev .t,
-.ncal-aev .atm, .ncal-aev .atl,
 /* TRIP-410 V2: времена/даты уехали сюда из .t-mono — это ЧИСЛА, не коды: Geologica tabular, не JetBrains */
-.te-dts, .tl3-ev .time, .tl3-ev--tr .time--tr span,
-.ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-meta — Geologica 12.5/500/1.4, tabular (де-моно) */
+.te-dts, .tl3-ev .time, .tl3-ev--tr .time--tr span { font-family: var(--font-ui);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-meta — Geologica 12.5/500/1.4, tabular (де-моно) */
 /* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
    `.lp .field__label` держали её на мелком капслоке в JetBrains, а тот же
    `.field__label` вне диалога оставался на `.t-label` - одна и та же подпись
@@ -1132,24 +1089,16 @@ h4,
 .rec .k,
 .visit .when .mo,
 .eed-fromto,
-.ncal-wd,          /* инсп.: Micro (дни недели над сеткой месяца) */
-.ncal-wdc-wd,      /* TRIP-280: близнец .ncal-wd — день недели в карточке вида «Неделя» */
-.pt-mast__kick,
-.pt-role,
-.pt-wp__tag,
-.pt-eyebrow,
 .brand-col__eyebrow,
 .trip-head__meta,
 .trip-tl__day,
 .trip-foot__lab,
 .footer__col h4,
-.chat .planresult .badge,
-.app-sidebar__group,
 .mbnav__lbl,
 .fork-partner__mid span,
 .mbrow .badge--warning, /* TRIP-410 моно-аудит: бейдж роли «Владелец» → Geologica CAPS (был .t-mono; эйбрау/бейджи = t-micro) */
-.mbrow .badge--brand,   /* TRIP-410 моно-аудит: бейдж роли «Админ» → Geologica CAPS */
-.ncal-legend-lbl { font-family: var(--font-ui);    font-size: var(--fs-nano);   font-weight: 700; line-height: 1.3;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-410 V2: .t-micro — Geologica 11/700 CAPS/1.3 (де-моно; эйбрау/бейджи) */
+/* TRIP-410 моно-аудит: бейдж роли «Админ» → Geologica CAPS */
+.mbrow .badge--brand { font-family: var(--font-ui);    font-size: var(--fs-nano);   font-weight: 700; line-height: 1.3;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-410 V2: .t-micro — Geologica 11/700 CAPS/1.3 (де-моно; эйбрау/бейджи) */
 /* .t-tiny / .t-tiny-caps — мелкий ярус НИЖЕ .t-meta (10px). Тот же субтитл, что
    .t-meta, но мельче: плотные подписи/каунтеры. Капс-близнец = .t-micro-стиль (ink,
    плотный --track-caps), НЕ синий-широкий .tp-caption. Потребители навешиваются
@@ -1225,12 +1174,6 @@ h4,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
 .s22mk__count, .s22mk__price,   /* TRIP-287: цена/счётчик маркера карты — strong (bold) */
-.ptrip h1, .ptrip h2, .ptrip h3,
-.pt-mast__l1 b,
-.pt-cstop__sub b,
-.pt-cleg__pill .dur,
-.pt-cleg__pill .dt,
-.pt-h-lead,
 .field__match.is-ok::before,
 .field__match.is-bad::before,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
@@ -1241,12 +1184,7 @@ h4,
 .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
-.s22mk,
-.ncal-title-row,
-.ncal-dn,
-.ncal-wdc-num,
-.pt-mm .n,
-.pt-cstop__ht h2 { line-height: 1; }     /* флеш-центровка крупных цифр/глифов */
+.s22mk { line-height: 1; }     /* флеш-центровка крупных цифр/глифов (.pt-mm .n/.pt-cstop__ht h2 сняты: /public/trip переписан, TRIP-461) */
 /* TRIP-410: прежний орто-модификатор sans-оверлея УДАЛЁН. После де-моно мета-яруса
    (t-meta/t-micro/t-mono теперь Geologica; число-tabular, код/email/kbd → JetBrains
    отдельным правилом) слой-отмена font-family не нужен — члены наследуют канон = Geologica. */
@@ -1770,13 +1708,13 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 .app-side__item > .badge--unread { position: absolute; top: var(--sp-1); right: var(--sp-5); }
 
 
-.app-main {
-  padding: 22px 24px 80px;
-  min-height: calc(100vh - 56px - 45px);
-  overflow-x: clip;
-  min-width: 0;
-  max-width: 100%;
-}
+/* Map lens (TRIP-33): full-bleed map with a floating glass route panel. The
+   panel (.map-route) is positioned absolutely over the map; its own block and
+   the ≤640px bottom-sheet variant live in the PRIMITIVES section below. */
+/* `.app-main` (+ его @media-варианты) — класс МОКАПА старого лендинга (dev), а не
+   оболочки приложения: на dev литерал `className="app-main"` жил только в старом
+   LandingPage.jsx. TRIP-460 переписал лендинг на прототип и снёс мокап — правило
+   осиротело, удалено вместе с разметкой (гард 2n; ср. `.app-main__*` ниже). */
 
 /* =================================================================
    PRIMITIVES — buttons, fields, badges, cards
@@ -2099,6 +2037,37 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 .cbadge__col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cbadge__name { color: var(--ink); }
 .cbadge__dates { color: var(--muted); white-space: nowrap; }
+/* CTA «открыть город» (двухшаговый клик в редакторе). ОБЛИК — канон-примитив
+   `.icon-btn` (rule #6, кнопка несёт его классы), поэтому свои визуальные
+   объявления не пишем. Лист-класс `.cbadge__go` добавляет ровно две вещи, которых
+   у примитива нет в этом месте: вернуть события поверх passiv-попапа
+   (pointer-events:none выше) и центрировать в бейдже. */
+/* ★ Кнопка СВЁРНУТА по умолчанию (max-width 0, прозрачна, отрицательный margin
+   гасит gap бейджа) и раскрывается по `[data-on]` CSS-переходом ширины —
+   `useCityBadge` ставит атрибут, когда город зафиксирован. Так попап расширяется/
+   сужается плавно, а не пересоздаётся. `[data-on]` — состояние, не новый класс. */
+/* floor-exempt: classes +1 — CTA бейджа (.cbadge__go), апрув Pavel */
+/* floor-exempt: triage +1 — .cbadge__go в triage-семье cbadge, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go pointer-events — CTA поверх passiv-попапа, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go align-self — центрируем CTA в бейдже, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go max-width — свёрнутое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go opacity — свёрнутое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go margin-left — гасим gap бейджа у свёрнутой CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go overflow — обрезаем свёрнутую CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go transition — плавные раскрытие/сворачивание CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] max-width — раскрытое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] opacity — раскрытое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] margin-left — раскрытое состояние CTA, апрув Pavel */
+/* Селектор с тегом (`button.cbadge__go`, 0-1-1) НАМЕРЕННО: у `.cbadge__go`
+   (0-1-0) та же специфичность, что у `.icon-btn`, а он объявлен НИЖЕ в файле и
+   перебивал бы `transition` — ширина бы прыгала, а не ехала. Тег поднимает вес,
+   ключи гардов остаются на классе `.cbadge__go`. */
+button.cbadge__go {
+  pointer-events: auto; align-self: center;
+  max-width: 0; opacity: 0; margin-left: calc(var(--sp-4) * -1); overflow: hidden;
+  transition: max-width .2s ease, opacity .2s ease, margin-left .2s ease;
+}
+button.cbadge__go[data-on] { max-width: 44px; opacity: 1; margin-left: 0; }
 /* The badge rides a mapboxgl.Popup so it auto-flips to stay on-screen near map
    edges. Strip the popup's default chrome (white bubble + tip) — the glass
    .cbadge IS the surface; passive so it never eats a map click. */
@@ -3210,6 +3179,58 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .swatch svg { width: 16px; height: 16px; }
 @media (prefers-reduced-motion: reduce) { .swatch { transition: none; } }
 
+/* ----- CityBar ----- (TRIP-321 линза «Календарь») цветная полоса города.
+   Тон приходит инлайном каналом `--cc/--cc-soft/--cc-ink` (палитра в CityBar.jsx).
+   `bar` (умолчание) — полоса-цвет с солид-кантом сверху (сетка месяца); `strip`
+   — та же полоса с именем по центру (шапка недели), разделитель между сегментами.
+   prefix-exempt: citybar — новый примитив ДС «полоса города», апрув Pavel 2026 */
+.citybar { flex: 1; min-width: 0; border: none; cursor: pointer; background: var(--cc-soft); box-shadow: inset 0 2px 0 var(--cc); transition: filter .14s, background .14s; }   /* design-token-exempt: 2px — солид-кант полосы (деталь примитива, не --sp) */
+.citybar:hover { filter: brightness(1.05); }
+.citybar:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.citybar__lbl { color: var(--cc-ink); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* `strip` — плашка города в НЕДЕЛЕ: цельная на весь прогон, имя внутри. Канта
+   сверху у неё нет (он остался обличью `bar` в сетке месяца, где полоса лежит
+   вплотную к краю ячейки): здесь плашка отделена воздухом сверху и снизу, и
+   кант на скруглённом теле читался бы как ошибка отрисовки, а не как акцент. */
+.citybar--strip { padding: 3px var(--sp-3); margin: 3px 0; border-radius: var(--r-xs); box-shadow: none; }
+.citybar--strip + .citybar--strip { margin-left: 2px; }   /* design-token-exempt: 2px — зазор между половинками дня-пересадки */
+.citybar--strip + .citybar--strip { border-left: 1px solid var(--surface); }   /* design-token-exempt: 1px — хайрлайн-разделитель сегментов */
+
+/* ----- EventChip ----- (TRIP-321 линза «Календарь») компактный эвент-токен.
+   Цвет — семейство события `ev-<fam>` (`eventFamily`). Три облика осью `variant`:
+   `inline` — строка чипа с левым кантом (сетка месяца); `allday` — плоская
+   плашка (all-day шапки недели); `block` — позиционируемая карточка (тайм-грид,
+   координаты style-ом). prefix-exempt: evchip — новый примитив ДС «эвент-токен», апрув Pavel 2026 */
+.evchip__tm { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.evchip__t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evchip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* inline — чип события в сетке месяца */
+.evchip--inline { position: relative; padding: 2px 7px 2px 9px; border-radius: var(--r-xs); overflow: hidden; border: none; cursor: pointer; text-align: left; width: 100%; background: var(--surface); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); transition: filter .14s; }   /* design-token-exempt: 2px/7px/9px/1px — компактный чип события (детали примитива) */
+.evchip--inline::before { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3px; border-radius: 0 2px 2px 0; background: currentColor; }   /* design-token-exempt: 3px/2px — левый цветной кант (деталь примитива) */
+.evchip--inline:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-hover); }
+.evchip--inline .evchip__t { flex: 1; color: var(--ink-2); }
+.evchip--inline.ev-hotel { color: var(--ev-hotel-ink); }
+.evchip--inline.ev-activity { color: var(--ev-activity-ink); }
+.evchip--inline.ev-transfer { color: var(--ev-transfer-ink); }
+.evchip--inline.ev-deadline { color: var(--ev-deadline-ink); }
+.evchip--inline.ev-car { color: var(--ev-car-ink); }
+/* allday — плоская плашка события на весь день */
+.evchip--allday { padding: 3px 8px; border-radius: var(--r-xs); border: none; cursor: pointer; text-align: left; background: var(--surface-2); color: var(--ink-2); overflow: hidden; }
+/* block — позиционируемая timed-карточка в тайм-гриде недели */
+.evchip--block { position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden; padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; text-align: left; background: var(--surface); color: var(--ink-2); box-shadow: var(--sh-1); transition: filter .14s, transform .1s var(--ease-spring); }   /* design-token-exempt: 1px/6px — радиус 6 карточки события (апрув Pavel), 1px gap */
+.evchip--block:hover { filter: brightness(1.04); }
+.evchip--block:active { transform: scale(.98); }
+.evchip--block .evchip__tm { color: var(--muted); }
+.evchip--block .evchip__t { color: inherit; }
+/* allday + block делят заливку семейства (soft-фон + ink-текст) */
+.evchip--allday.ev-hotel, .evchip--block.ev-hotel { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
+.evchip--allday.ev-activity, .evchip--block.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.evchip--allday.ev-transfer, .evchip--block.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
+.evchip--allday.ev-deadline, .evchip--block.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
+.evchip--allday.ev-car, .evchip--block.ev-car { background: var(--ev-car-soft); color: var(--ev-car-ink); }
+.evchip--block.ev-hotel .evchip__tm, .evchip--block.ev-activity .evchip__tm, .evchip--block.ev-transfer .evchip__tm,
+.evchip--block.ev-deadline .evchip__tm, .evchip--block.ev-car .evchip__tm { color: inherit; opacity: .72; }
+
 /* ═══════════════ Примитивы раскладки (TRIP-321 Ф11) ═══════════════
    Замер (scripts/ci/audit-design.mjs) на dev@eb5e155: одна и та же форма
    объявляется заново в 4+ разных семействах 40 раз, это 285 правил. Верхушка -
@@ -3756,7 +3777,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
   /* NB: меню трипа этой ширины не касается — рейл живёт до 641 и гасится своей
      оболочкой (`.trip-shell .app-side` @ ≤640), не здесь. */
-  .app-main { padding: 16px 14px 100px; }
   .app-header [data-mobile-toggle] { display: grid !important; }
 }
 
@@ -3779,7 +3799,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 @media (max-width: 640px) {
   .app-header__account { display: none; }
-  .trip-screen-body { padding-bottom: 96px !important; }
+  /* Полосу нижнего нава называет САМ нав (`--nav-dock-h`, safe-area уже внутри) —
+     ровно тот же источник, что у `.app-shell > main` ниже. До этого здесь стояло
+     `96px` числом: safe-area в него не входила, поэтому на телефонах с домашней
+     полоской низ экрана трипа уезжал под док.
+     visual-diff-exempt: .trip-screen-body {@media (max-width: 640px)} padding-bottom — фикс 96px → полоса нава + воздух, safe-area учтена (просьба Pavel 2026-08-25) */
+  .trip-screen-body { padding-bottom: calc(var(--nav-dock-h) + 16px) !important; }
   .trip-screen-body--flush { padding-bottom: 0 !important; }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
      become a fixed-height shell — the global header pins (never scrolls), the
@@ -3826,8 +3851,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      рывком. Правило ОДНО и общее — не «только когда пришли из создания»: один и
      тот же элемент с двумя поведениями в зависимости от того, откуда пришли, это
      узаконенная точка расхождения, которую потом надо помнить при каждой правке.
-     Вход без выхода — грамматика всего приложения: у КАЖДОГО кейфрейма здесь
-     (ovIn, evdDrawerIn, tePaneIn, popIn, vpanelIn) анимирован только приход.
+     Вход без выхода — грамматика БОЛЬШИНСТВА кейфреймов здесь (ovIn, tePaneIn,
+     popIn, vpanelIn — анимирован только приход). ИСКЛЮЧЕНИЕ: у ящиков события/
+     города приход И уход зеркальны (`tsDrawerIn`/`tsDrawerOut`, скрим
+     `fadeIn`/`fadeOut`) — их выход держит `usePresence`/`closingLayers` (см.
+     `DRAWER_EXIT_MS`). Сам этот док — из грамматики «только вход».
      Кейфрейм реюзим существующий (`dockUp` — вход плавающей панели чат-дока).
      Пересечение 640px анимацию не запускает: выше него док гасится этим же
      медиазапросом, а не размонтируется, — то есть маунта нет.
@@ -4412,17 +4440,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell height — примитив не имеет права зависеть от display родителя (в блочном контейнере flex:1 = ноль высоты) */
 .mapshell {
   position: relative; flex: 1; height: 100%; min-height: 0; overflow: hidden;
-  /* ШИРИНА ПАНЕЛИ ОБЪЯВЛЕНА ЗДЕСЬ ОДИН РАЗ. Её читают и колонка, и кнопка на
-     шве, и (замером) JS — второй записи этого числа в проекте быть не должно:
-     первая же правка раскладки развела бы копии.
-     ★ `clamp`, а не `min`: у виджета есть НИЖНЯЯ граница по содержимому. В
-     редакторе шесть колонок (город · ночи · жильё · активности), и доля вьюпорта
-     их не гарантирует — на окне 1087px `46vw` давало 500px, а там колонка имени
-     сжимается до 80px и заголовок «Направление» уже не помещается. Замерено:
-     540 — минимум, при котором ничего не усекается. Верх 620: дальше расти
-     виджету незачем, место лучше отдать карте.
-     visual-diff-exempt: .mapshell --mapshell-panel-w — ширина колонки панели, один источник вместо двух литералов */
-  --mapshell-panel-w: clamp(540px, 46vw, 620px);
+  /* ШИРИНА ПАНЕЛИ (--mapshell-panel-w) переехала в :root (см. блок геометрии
+     хрома): её теперь читает и глобальный ящик события (`.evd-drawer`) на
+     экранах БЕЗ карты, а он `.mapshell` не потомок. Источник по-прежнему ОДИН,
+     просто выше по дереву. `.mapshell` значение НАСЛЕДУЕТ.
+     visual-diff-exempt: .mapshell --mapshell-panel-w — токен поднят в :root (единый источник для .evd-drawer вне .mapshell), значение наследуется */
 }
 /* Слот карты = СВОБОДНОЕ ОКНО: панель и шит не лежат поверх карты, они её
    граница. Величины приходят от `<MapShell>` двумя переменными (ширина
@@ -4465,7 +4487,23 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 /* Коробка слоя поверх панели — та же, что у карточки панели (тот же воздух,
    тот же правый край, уходящий под карту). */
-.mapshell__overlay { position: absolute; top: var(--sp-7); bottom: var(--sp-7); left: var(--sp-7); right: 0; display: flex; z-index: 3; }
+/* Слой независим от колонки панели: теперь он сосед `.mapshell__panel`, а не её
+   потомок, поэтому коробку задаёт САМ (та же, что была внутри колонки). Ширина
+   = ширина колонки минус её левый воздух (`--mapshell-panel-w - --sp-7`), правый
+   край так же встаёт на `--mapshell-panel-w` — коробка попиксельно прежняя, но
+   сворачивание маршрута её больше не прячет.
+   visual-diff-exempt: .mapshell__overlay right — правый край выражен шириной (слой съехал из колонки в шелл, коробка та же)
+   visual-diff-exempt: .mapshell__overlay width — ширина колонки минус её левый воздух (правый край на том же --mapshell-panel-w) */
+.mapshell__overlay { position: absolute; top: var(--sp-7); bottom: var(--sp-7); left: var(--sp-7); width: calc(var(--mapshell-panel-w) - var(--sp-7)); display: flex; z-index: 3; }
+/* Стопка панелей: слои ЗАПОЛНЯЮТ коробку слоя абсолютом и лежат друг на друге
+   (порядок в DOM = порядок по глубине, поздний — сверху). Для одного слоя это
+   тот же прямоугольник, что и flex:1 раньше (коробка позиционирована), поэтому
+   геометрия одиночной панели не меняется. Правило скоупнуто на потомков оверлея
+   и НЕ трогает `.evd-drawer.ts-pdrawer` в TripView (тот вне `.mapshell__overlay`).
+   visual-diff-exempt: .mapshell__overlay inset — потомок слоя заполняет коробку абсолютом (для одного слоя прямоугольник тот же, что при flex:1)
+   visual-diff-exempt: .ts-pdrawer position — только ВНУТРИ .mapshell__overlay (стопка слоёв); .evd-drawer.ts-pdrawer в TripView вне оверлея и не затрагивается
+   visual-diff-exempt: .ts-pdrawer inset — то же, слой стопки заполняет коробку */
+.mapshell__overlay > .ts-pdrawer { position: absolute; inset: 0; }
 /* Весь скин (грунт + рамка + радиус + клип + подъём) несёт примитив
    <Card pad="none" radius="btn" raised> — классу остаётся раскладка. */
 .mapshell__card { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
@@ -4733,7 +4771,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .eed-dtbtn.is-empty { color: var(--muted); }
 @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
 @media (max-width: 720px) {
-  .app-main { padding: 12px 12px 100px; }
   .dlg-backdrop { padding: 12px; }
   .dlg__head { padding: 14px 16px; }
   .dlg__body { padding: 14px 16px; }
@@ -6205,23 +6242,57 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Used OUTSIDE the structure editor (timeline / calendar / budget / overview).
    Anchored to .trip-content (relative + overflow:hidden, already below the header
    and right of the menu) so it never covers the header or the menu. Sibling of
-   the scrolling <main>, so it does NOT scroll with the content. Mirrors the
-   editor's `.ts-pdrawer`, but 50%-wide with an optional scrim (variable shading).
-   The ≤640 sheet reuses `.lp-sheet` / `.sheet-backdrop`. */
+   the scrolling <main>, so it does NOT scroll with the content.
+
+   ЭКСПЕРИМЕНТ: панель открывается ТЕМ ЖЕ виджетом, что и редактор маршрута — не
+   полноростным ящиком, а плавающей карточкой. `.evd-drawer` теперь только
+   ПОЗИЦИОНИРУЮЩАЯ КОРОБКА, повторяющая геометрию `.mapshell__overlay` (инсет
+   `--sp-7` слева/сверху/снизу, ширина = `--mapshell-panel-w`, один источник с
+   редактором); весь облик — грунт/радиус/тень/анимацию — несёт `.ts-pdrawer`
+   внутри (тот же класс, что в редакторе, без второй копии скина). Скрим
+   сохранён — контент за виджетом притухает. ≤640 sheet reuses `.lp-sheet`.
+   visual-diff-exempt: .evd-drawer top — коробка виджета: верхний инсет --sp-7 (было 0, полноростный ящик)
+   visual-diff-exempt: .evd-drawer bottom — коробка виджета: нижний инсет --sp-7 (было 0)
+   visual-diff-exempt: .evd-drawer left — коробка виджета: левый инсет --sp-7 (было 0)
+   visual-diff-exempt: .evd-drawer width — ширина виджета --mapshell-panel-w (было 50%)
+   visual-diff-exempt: .evd-drawer min-width — снято: ширину держит токен виджета
+   visual-diff-exempt: .evd-drawer flex-direction — снято: скин переехал на .ts-pdrawer
+   visual-diff-exempt: .evd-drawer background — снято: грунт несёт .ts-pdrawer
+   visual-diff-exempt: .evd-drawer border-right — снято: рамку заменил радиус карточки виджета
+   visual-diff-exempt: .evd-drawer box-shadow — снято: подъём несёт .ts-pdrawer (sh-1)
+   visual-diff-exempt: .evd-drawer outline — снято вместе со скином
+   visual-diff-exempt: .evd-drawer animation — снято: анимацию несёт .ts-pdrawer (tsDrawerIn)
+   visual-diff-exempt: .evd-drawer {@media (prefers-reduced-motion: reduce)} animation — снято: коробка не анимируется, reduced-motion теперь только у .ts-pdrawer/.evd-scrim
+   visual-diff-exempt: .evd-drawer flex — снято: ресет .lp несёт .ts-pdrawer > .lp
+   visual-diff-exempt: .evd-drawer min-height — то же
+   visual-diff-exempt: .evd-drawer border — то же
+   visual-diff-exempt: .evd-drawer border-radius — то же
+   visual-diff-exempt: from {@keyframes evdDrawerIn} opacity — кейфрейм удалён: слайд-ин несёт tsDrawerIn виджета
+   visual-diff-exempt: from {@keyframes evdDrawerIn} transform — то же
+   visual-diff-exempt: to {@keyframes evdDrawerIn} opacity — то же
+   visual-diff-exempt: to {@keyframes evdDrawerIn} transform — то же */
 .evd-scrim { position: absolute; inset: 0; z-index: var(--z-drawer); background: var(--scrim); animation: fadeIn .2s var(--ease-out) both; }
+/* Скрим гаснет вместе с ящиком (usePresence держит хост до конца выхода): меняем
+   только имя анимации, темп наследуется.
+   visual-diff-exempt: .evd-scrim[data-closing] animation-name — выходное затухание скрима (синхронно с ящиком)
+   visual-diff-exempt: from {@keyframes fadeOut} opacity — новый кейфрейм затухания
+   visual-diff-exempt: to {@keyframes fadeOut} opacity — то же */
+.evd-scrim[data-closing] { animation-name: fadeOut; }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 .evd-drawer {
-  position: absolute; top: 0; left: 0; bottom: 0; z-index: calc(var(--z-drawer) + 1);
-  width: 50%; min-width: 320px;
-  display: flex; flex-direction: column;
-  background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2);
-  outline: none; animation: evdDrawerIn .24s var(--ease-out) both;
+  position: absolute; top: var(--sp-7); left: var(--sp-7); bottom: var(--sp-7);
+  width: var(--mapshell-panel-w); z-index: calc(var(--z-drawer) + 1);
+  display: flex;
 }
-.evd-drawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
-@keyframes evdDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .evd-drawer, .evd-scrim { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .evd-scrim { animation: none; } }
 
 /* ---- Scrollable screen body ---- */
-.trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
+/* Низ был 60px — вдвое больше остальных сторон. Столько воздуха под контентом
+   не нужно ни одному экрану трипа, а линзе, которая тянется в высоту экрана
+   (календарь), он мешал: 100% высоты + 60px снизу = лишний скролл на ровном
+   месте. Отступ равномерный, высоту держит сам флекс.
+   visual-diff-exempt: .trip-screen-body padding — низ 60px → 28px, как остальные стороны (просьба Pavel 2026-08-25) */
+.trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px; }
 .trip-screen-body--flush { padding: 0; overflow: hidden; }
 
 /* Граница ОДНА: выше 640 — рейл, ниже — телефонный шит (TripSidebarSheet) из
@@ -6237,7 +6308,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
      края ей нужен свой, а не тот, что задан под соседство с рейлом. */
   .app-header--trip { padding-left: var(--sp-7); }
-  .trip-screen-body { padding: 16px 16px 48px; }
+  /* Низ здесь НЕ называем: его держит полоса нава выше по файлу
+     (`--nav-dock-h` + воздух, с `!important`). Прежние 48px были мёртвым
+     числом — их перебивало то правило, и читать их как действующие нельзя. */
+  .trip-screen-body { padding: 16px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
   .trip-screen-body--flush { padding: 0; }
@@ -6581,6 +6655,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ts-pdrawer { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border-radius: var(--r-btn); overflow: hidden; box-shadow: var(--sh-1); animation: tsDrawerIn .24s var(--ease-out) both; }
 .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
 @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+/* Выход = вход задом наперёд. `usePresence`/`closingLayers` держат ящик
+   смонтированным на время выхода и вешают `data-closing`; здесь меняется только
+   ИМЯ анимации, поэтому длительность/кривая/`both` наследуются от базового
+   правила — один источник темпа на вход и выход.
+   ⚠️ `.24s` выше ≡ `DRAWER_EXIT_MS` (src/hooks/usePresence.js): JS-таймер снятия
+   узла обязан совпадать с этой длительностью — правишь одно, правь и второе.
+   visual-diff-exempt: .ts-pdrawer[data-closing] animation-name — выходная анимация ящика (закрытие больше не резкое)
+   visual-diff-exempt: from {@keyframes tsDrawerOut} opacity — новый кейфрейм выхода (вход задом наперёд)
+   visual-diff-exempt: from {@keyframes tsDrawerOut} transform — то же
+   visual-diff-exempt: to {@keyframes tsDrawerOut} opacity — то же
+   visual-diff-exempt: to {@keyframes tsDrawerOut} transform — то же */
+.ts-pdrawer[data-closing] { animation-name: tsDrawerOut; }
+@keyframes tsDrawerOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-24px); } }
 /* FAB предупреждений редактора маршрута схлопнут на примитив `<IconBtn size="fab">`
    (TRIP-344 PR 3): облик нажатия у него свой (filter brightness), приватный
    `.ts-fab` с scale-press снят. */
@@ -8430,7 +8517,15 @@ a.doc-row__n:hover{ color: var(--brand); }
    ═══════════════════════════════════════════════════════════════════════════ */
 .tmk { --tmk: var(--brand); position: relative; display: inline-grid; place-items: center; }
 .tmk.is-clickable { cursor: pointer; }
+/* Роли (цвет кольца/глифа через `--tmk`): старт зелёный, финиш оранжевый,
+   пересадка бирюзовая (цвет эвента «транспорт»). Город — база `.tmk` = brand. */
 .tmk--finish { --tmk: var(--warm); }
+/* floor-exempt: classes +1 — роль старта (.tmk--start), апрув Pavel */
+/* floor-exempt: triage +1 — .tmk--start в triage-семье tmk, апрув Pavel */
+/* visual-diff-exempt: .tmk--start --tmk — роль старта зелёная (--success), Pavel */
+.tmk--start { --tmk: var(--success); }
+/* visual-diff-exempt: .tmk--wp --tmk — пересадка бирюзовая (--ev-transfer, цвет эвента транспорт), Pavel */
+.tmk--wp { --tmk: var(--ev-transfer); }
 .tmk__core {
  position: relative; z-index: 1;
  width: 29px; height: 29px; border-radius: var(--r-pill);
@@ -8439,32 +8534,99 @@ a.doc-row__n:hover{ color: var(--brand); }
  border: 3px solid var(--tmk);
  font-variant-numeric: tabular-nums;
  box-shadow: 0 3px 10px rgba(20,24,40,.22), 0 1px 2px rgba(20,24,40,.16);
+ /* Размер по зуму: `--mk-scale` пишет `useCityMarkers` на контейнер карты (MIN на
+    мелком зуме, MAX=1 на детальном). Ховер/селект ниже перебивают этот resting
+    полным scale(1.1) — активный пин всегда крупный. transform уже в transition. */
+ /* visual-diff-exempt: .tmk__core transform — resting-масштаб пина по зуму (--mk-scale), Pavel */
+ transform: scale(var(--mk-scale, 1));
  transition: transform .2s cubic-bezier(.34,1.25,.5,1), background .18s ease, color .18s ease, box-shadow .2s ease;
 }
 .tmk__core svg { width: 14px; height: 14px; display: block; }
+/* Глиф в ячейке слепленного пилюля — тот же размер, что в одиночном кольце. */
+/* visual-diff-exempt: .tmk__h svg width — глиф ячейки слепленного пилюля, Pavel */
+/* visual-diff-exempt: .tmk__h svg height — глиф ячейки слепленного пилюля, Pavel */
+/* visual-diff-exempt: .tmk__h svg display — глиф ячейки слепленного пилюля, Pavel */
+.tmk__h svg { width: 14px; height: 14px; display: block; }
 .tmk--wp .tmk__core { width: 21px; height: 21px; }
 .tmk--wp .tmk__core svg { width: 12px; height: 12px; }
 /* multi-visit pill: a city visited 2–3× (first|last labels, skewed divider) */
 .tmk--wide .tmk__core { width: auto; min-width: 47px; padding: 0; display: flex; align-items: stretch; overflow: hidden; }
 .tmk--wide.tmk--w3 .tmk__core { min-width: 64px; }
-.tmk__h { flex: 1; display: grid; place-items: center; padding: 0 6px; }
+/* Каждая ячейка резолвит СВОЙ `--tmk` (роль-класс на ячейке) — поэтому цвет здесь
+   явный, а не наследованный: у слепленного пилюля старт зелёный, финиш оранжевый,
+   пересадка бирюзовая, город brand — в одной пилюле. */
+/* visual-diff-exempt: .tmk__h color — цвет ячейки по роли (--tmk), Pavel */
+.tmk__h { flex: 1; display: grid; place-items: center; padding: 0 6px; color: var(--tmk); }
 .tmk__sep { width: 1.5px; background: currentColor; opacity: .4; transform: skewX(-18deg); }
 /* selected: filled ring + halo + soft pulse (occasional, so motion is fine) */
 .tmk__halo, .tmk__pulse { position: absolute; inset: -9px; border-radius: var(--r-pill); pointer-events: none; }
-.tmk__halo { border: 2px solid var(--tmk); opacity: 0; transform: scale(.6); transition: opacity .2s ease, transform .25s cubic-bezier(.34,1.25,.5,1); }
+/* Ховер/селект — ОТНОСИТЕЛЬНЫЙ прирост от ТЕКУЩЕГО зум-размера (`--mk-scale`), а не
+   абсолютный scale(1.1): иначе на мелком зуме пин выпрыгивал бы в полный размер.
+   Halo/pulse тоже множатся на `--mk-scale`, чтобы кольцо/пульс не отрывались от
+   ужатого ядра. Базовые множители 1.1/1.12/.6/1/.7/1.5 — прежние, но теперь ×scale.
+   (Гард 2p дробит подлежащее составного селектора — ключи ниже дословно с его вывода.) */
+/* visual-diff-exempt: .tmk transform — ховер halo ×текущий зум-размер (--mk-scale), Pavel */
+/* visual-diff-exempt: .tmk__halo transform — ховер halo ×текущий зум-размер (--mk-scale), Pavel */
+/* visual-diff-exempt: .tmk__core {@media (hover: hover) and (pointer: fine)} transform — ховер ядра ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: .tmk__halo {@media (hover: hover) and (pointer: fine)} transform — ховер halo ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: .tmk:hover {@media (hover: hover) and (pointer: fine)} transform — ховер halo ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: .is-clickable:hover {@media (hover: hover) and (pointer: fine)} transform — ховер halo ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: 0% {@keyframes tmkPulse} transform — пульс селекта ×текущий зум-размер, Pavel */
+/* visual-diff-exempt: 70% {@keyframes tmkPulse} transform — пульс селекта ×текущий зум-размер, Pavel */
+.tmk__halo { border: 2px solid var(--tmk); opacity: 0; transform: scale(calc(var(--mk-scale, 1) * .6)); transition: opacity .2s ease, transform .25s cubic-bezier(.34,1.25,.5,1); }
 .tmk__pulse { background: var(--tmk); opacity: 0; }
-.tmk.is-sel .tmk__core { background: var(--tmk); color: #fff; transform: scale(1.12); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
-.tmk.is-sel .tmk__halo { opacity: .5; transform: scale(1); }
+.tmk.is-sel .tmk__core { background: var(--tmk); color: #fff; transform: scale(calc(var(--mk-scale, 1) * 1.12)); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
+.tmk.is-sel .tmk__halo { opacity: .5; transform: scale(var(--mk-scale, 1)); }
 .tmk.is-sel .tmk__pulse { animation: tmkPulse 1.9s cubic-bezier(.22,1,.36,1) infinite; }
-@keyframes tmkPulse { 0% { opacity: .26; transform: scale(.7); } 70% { opacity: 0; transform: scale(1.5); } 100% { opacity: 0; } }
+@keyframes tmkPulse { 0% { opacity: .26; transform: scale(calc(var(--mk-scale, 1) * .7)); } 70% { opacity: 0; transform: scale(calc(var(--mk-scale, 1) * 1.5)); } 100% { opacity: 0; } }
 /* hover state: the same filled look as selected but no pulse. .is-hover is set by
    JS when the matching city is hovered in a list; the :hover rule covers hovering
    the pin on the map itself (desktop pointers only — avoids touch false-fires). */
-.tmk.is-hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(1.1); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
-.tmk.is-hover .tmk__halo { opacity: .5; transform: scale(1); }
+.tmk.is-hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(calc(var(--mk-scale, 1) * 1.1)); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
+.tmk.is-hover .tmk__halo { opacity: .5; transform: scale(var(--mk-scale, 1)); }
 @media (hover: hover) and (pointer: fine) {
-  .tmk.is-clickable:hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(1.1); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
-  .tmk.is-clickable:hover .tmk__halo { opacity: .5; transform: scale(1); }
+  .tmk.is-clickable:hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(calc(var(--mk-scale, 1) * 1.1)); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
+  .tmk.is-clickable:hover .tmk__halo { opacity: .5; transform: scale(var(--mk-scale, 1)); }
+}
+/* Слепленный пилюль: выделение/ховер ПОСЕГМЕНТНО — красится КОНКРЕТНАЯ ячейка
+   (свой цвет роли `--tmk`), глиф/номер белеет, как у одиночного пина (чинит
+   регресс: `--tmk` на `.tmk__h` перебивал побеление). Весь пилюль не заливается:
+   у слепленного `is-clickable` не на корне (см. markers.js), поэтому whole-pill
+   hover-правило `.tmk.is-clickable:hover .tmk__core` его не касается. `.tmk__h`
+   есть только в слепленном пилюле, так что односубъектных правил достаточно. */
+/* Заливка сегмента ДИАГОНАЛЬНАЯ — параллелограмм под тем же углом, что скошенный
+   шов `.tmk__sep` (skewX(-18deg)); прямоугольная заливка не совпадала с диагональю
+   разделителя. Слой `::before` позади текста (z-index:-1), внешние скосы режет
+   overflow:hidden у `.tmk__core`. `isolation` даёт свой контекст, чтобы -1 не ушёл
+   за белый фон пилюля. */
+/* visual-diff-exempt: .tmk__h cursor — сегмент слепленного пилюля кликабелен, Pavel */
+/* visual-diff-exempt: .tmk__h position — база под ::before-заливку сегмента, Pavel */
+/* visual-diff-exempt: .tmk__h isolation — свой стек-контекст под ::before-заливку, Pavel */
+.tmk__h { cursor: pointer; position: relative; isolation: isolate; }
+/* visual-diff-exempt: .is-sel::before content — диагональная заливка выбранного сегмента, Pavel */
+/* visual-diff-exempt: .is-sel::before position — диагональная заливка выбранного сегмента, Pavel */
+/* visual-diff-exempt: .is-sel::before inset — диагональная заливка выбранного сегмента, Pavel */
+/* visual-diff-exempt: .is-sel::before z-index — заливка позади текста, Pavel */
+/* visual-diff-exempt: .is-sel::before background — цвет заливки сегмента, Pavel */
+/* visual-diff-exempt: .is-sel::before transform — скос заливки под угол шва, Pavel */
+/* visual-diff-exempt: .is-hover::before content — диагональная заливка сегмента под ховером, Pavel */
+/* visual-diff-exempt: .is-hover::before position — диагональная заливка сегмента под ховером, Pavel */
+/* visual-diff-exempt: .is-hover::before inset — диагональная заливка сегмента под ховером, Pavel */
+/* visual-diff-exempt: .is-hover::before z-index — заливка позади текста, Pavel */
+/* visual-diff-exempt: .is-hover::before background — цвет заливки сегмента, Pavel */
+/* visual-diff-exempt: .is-hover::before transform — скос заливки под угол шва, Pavel */
+.tmk__h.is-sel, .tmk__h.is-hover { color: #fff; }
+.tmk__h.is-sel::before, .tmk__h.is-hover::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--tmk); transform: skewX(-18deg); }
+@media (hover: hover) and (pointer: fine) {
+  /* visual-diff-exempt: .tmk__h:hover {@media (hover: hover) and (pointer: fine)} color — ховер сегмента, Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} content — ховер сегмента (заливка), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} background — ховер сегмента (заливка), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} transform — ховер сегмента (скос), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} position — ховер сегмента (заливка), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} inset — ховер сегмента (заливка), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} z-index — ховер сегмента (заливка), Pavel */
+  .tmk__h:hover { color: #fff; }
+  .tmk__h:hover::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--tmk); transform: skewX(-18deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .tmk__core, .tmk__halo { transition: none; }
@@ -8699,8 +8861,15 @@ a.doc-row__n:hover{ color: var(--brand); }
    mono face already reads as spaced in caps, and widening it both truncated the
    longest labels and pushed the one-row minimum from 765px to 845px. */
 .statbar .k { color: var(--muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* капс — из канона .t-tiny-caps (co-selector) */
-.statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
-.statbar .cta button { width: 100%; }
+/* TRIP-302: ячейка CTA держит теперь ДВЕ кнопки («Итоги года» + «Вся статистика»),
+   поэтому появился gap; ширину каждой больше не пиним (width:100% на двух детях в
+   ряду схлопывало их) — на десктопе кнопки идут по своему контенту, на телефоне
+   растягиваются align-items:stretch в колонке (медиа ≤640 ниже). Апрув Pavel.
+   visual-diff-exempt: .cta gap — вторая кнопка в ячейке CTA (TRIP-302)
+   visual-diff-exempt: .statbar gap — тот же gap, приписан .statbar по правилу .statbar .cta (TRIP-302)
+   visual-diff-exempt: .statbar .cta button width — снят width:100%: два ребёнка в ряду вместо одного (TRIP-302)
+*/
+.statbar .cta { display: flex; align-items: center; gap: var(--sp-4); padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
 /* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */
 .ov-col .statbar { margin-top: 0; }
 /* 2-col wrap — one shape for both bars (mockup v01): the vertical hairline stays
@@ -8714,7 +8883,14 @@ a.doc-row__n:hover{ color: var(--brand); }
   .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
   .statbar .s.c-duration { order: 0; }
   .statbar .s.c-distance { flex: 1 0 100%; }
-  .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line); padding: 12px; }
+  /* TRIP-302: на телефоне две кнопки CTA встают друг под другом (Итоги года
+     сверху — порядок в DOM), полосой во всю ширину ячейки.
+     visual-diff-exempt: .cta {@media (max-width: 640px)} flex-direction — кнопки CTA в колонку на телефоне (TRIP-302)
+     visual-diff-exempt: .cta {@media (max-width: 640px)} align-items — кнопки CTA растянуты на всю ширину (TRIP-302)
+     visual-diff-exempt: .statbar {@media (max-width: 640px)} flex-direction — то же, приписано .statbar по правилу .statbar .cta (TRIP-302)
+     visual-diff-exempt: .statbar {@media (max-width: 640px)} align-items — то же, приписано .statbar по правилу .statbar .cta (TRIP-302)
+  */
+  .statbar .cta { flex: 1 0 100%; flex-direction: column; align-items: stretch; border-left: 0; border-top: 1px solid var(--line); padding: 12px; }
 }
 /* The overview bar sizes on its own (column) width, not the viewport — at 880 the
    sidebar goes off-canvas AND .ovwrap collapses to one column, so the available
@@ -8960,6 +9136,15 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-state--boxed > .tile { margin-bottom: 12px; }
 .empty-state--boxed .empty-state__t { margin-bottom: 4px; }
 .empty-state--boxed .empty-state__act { margin-top: 12px; }
+/* TRIP-302: когда пустое состояние — это КОНТЕНТ модалки подтверждения (десктоп
+   `.dlg`, телефон `.sheet`), полноэкранный паддинг 48px даёт большой разрыв
+   «текст → кнопка OK» (заметнее всего в шите). Здесь оно не полноэкранное, а
+   тело диалога — сжимаем ритм под диалог; тон/структуру/типографику не трогаем.
+   visual-diff-exempt: .empty-state padding — паддинг пустого состояния как контента модалки (TRIP-302)
+   visual-diff-exempt: .dlg padding — тот же паддинг, приписан .dlg по правилу .dlg .empty-state (TRIP-302)
+   visual-diff-exempt: .sheet padding — тот же паддинг, приписан .sheet по правилу .sheet .empty-state (TRIP-302) */
+.dlg .empty-state,
+.sheet .empty-state { padding: var(--sp-8) var(--sp-8) var(--sp-4); }
 
 /* TRIP-343 PR-2: тон-brand пустого нотиса на `<Card tone="brand" radius="md">`.
    ⚠ ОБЛИК СВЕДЁН К КАНОНУ (решение Pavel, апрув по скрину «было светлее → стало
@@ -9250,6 +9435,64 @@ a.doc-row__n:hover{ color: var(--brand); }
   width: calc(100% - 32px); max-width: 420px;
   display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border-radius: var(--r-md);
   box-shadow: var(--sh-3);
+  /* Зона-независимый chrome (TRIP-469). Баннер — один глобальный компонент, но
+     его примитивы ДС (.consent, Btn, .t-*) читают токены, которые site.css
+     ЗАТЕНЯЕТ на html.site (лендинг+auth): шрифт, ink/muted/brand, --r-md, --fs-micro.
+     Из-за этого баннер менялся от зоны к зоне. Пиним ровно эту дельту прямо на
+     .consent (правило, матчащее сам элемент, бьёт унаследованное значение site
+     БЕЗ ссылки на .site — иначе фича «site» протекала бы в app-каталог), сохраняя
+     реюз примитивов: кнопки — тот же Btn. Значения = светлые app-DS токены (:root);
+     тёмная тема приложения — в правиле-близнеце ниже (сайт-зона всегда светлая,
+     туда не попадает). Все объявления — визуально намеренные, не рендер-регресс.
+     visual-diff-exempt: .consent --font-body — нейтральный шрифт баннера, TRIP-469
+     visual-diff-exempt: .consent --font-display — нейтральный шрифт баннера, TRIP-469
+     visual-diff-exempt: .consent --font-ui — нейтральный шрифт баннера, TRIP-469
+     visual-diff-exempt: .consent --ink — app-DS вид во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --muted — app-DS вид во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --brand — app-DS вид во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --hl — заливка primary-кнопки = app-brand, TRIP-469
+     visual-diff-exempt: .consent --r-md — app-DS радиус во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --fs-micro — app-DS кегль текста баннера (.t-meta) во всех зонах, TRIP-469 */
+  --font-body: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-ui: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --ink: #272433; --muted: #7A7689; --brand: #2173C8; --hl: #2173C8;
+  --r-md: 16px; --fs-micro: 12.5px;
+}
+/* Тёмная тема приложения: тёмные app-DS токены, чтобы текст читался на тёмной
+   поверхности баннера (site-зона всегда светлая — сюда не попадает). Ключ 2p —
+   тот же `.consent --ink|--muted|--brand`, покрыт маркерами базового правила выше. */
+:root[data-theme="dark"] .consent {
+  --ink: #EDECF4; --muted: #8C88A0; --brand: #6FB2FF; --hl: #6FB2FF;
+}
+/* Кнопки баннера. КОРЕНЬ РАСХОЖДЕНИЯ: и app.css, и site.css объявляют базовый
+   `.btn`; на лендинге/auth site.css грузится ПОЗЖЕ и его `.btn` (пилюля 99px,
+   padding 13/24, min-height 46, border:0) перебивает app-геометрию у кнопок
+   баннера (компонент Btn рисует `.btn`). Модификаторы `.btn--primary/secondary`
+   сайт НЕ определяет, поэтому расходится только базовая геометрия. Возвращаем
+   app-кнопку с более высокой специфичностью `.consent .btn` (0,2,0 > 0,1,0),
+   реюз самого Btn сохранён. Значения = app `.btn` + тип канона `.t-label`.
+   Компаунд-ключ 2p метит и `.btn`, и `.consent` (TRIP-344), отсюда обе половины.
+   floor-exempt: reach +1 — chrome-баннер защищается от коллизии site.btn, апрув Pavel (эта сессия, TRIP-469)
+   visual-diff-exempt: .btn border — app-рамка кнопки (site.btn даёт border:0), TRIP-469
+   visual-diff-exempt: .btn border-radius — app-радиус кнопки (site.btn 99px), TRIP-469
+   visual-diff-exempt: .btn min-height — app-высота кнопки (site.btn 46px), TRIP-469
+   visual-diff-exempt: .btn padding — app-паддинг кнопки (site.btn 13/24), TRIP-469
+   visual-diff-exempt: .btn gap — app-гэп кнопки (site.btn 9px), TRIP-469
+   visual-diff-exempt: .btn font-size — app-кегль кнопки (site.btn --fs-body-lg), TRIP-469
+   visual-diff-exempt: .btn font-weight — app-вес кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent border — компаунд .consent .btn, app-рамка кнопки, TRIP-469
+   visual-diff-exempt: .consent border-radius — компаунд .consent .btn, app-радиус кнопки, TRIP-469
+   visual-diff-exempt: .consent min-height — app-высота кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent padding — app-паддинг кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent gap — app-гэп кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent font-size — app-кегль кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent font-weight — app-вес кнопки в баннере, TRIP-469 */
+.consent .btn {
+  min-height: var(--ctl-h);
+  padding: 0 15px; /* design-token-exempt: 15px — app .btn паддинг (нет ступени --sp=15), коллизия site.btn, TRIP-469 */
+  border-radius: var(--r-btn); border: 1px solid var(--bd); gap: var(--sp-4);
+  font-size: var(--fs-meta); font-weight: 600;
 }
 .consent__text p { margin: 0; color: var(--muted); }
 /* Class beats the element selector above it, so the reset does not swallow this. */
@@ -10000,3 +10243,207 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .te-thead border-inline — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead display — жильё и активности вернулись в свои колонки, шапка колонок восстановлена
    visual-diff-exempt: .te-thead grid-column — жильё и активности вернулись в свои колонки, шапка колонок восстановлена */
+
+/* ── TRIP-460: сносы co-селекторов мёртвых классов мокапа лендинга из
+   канонов .t-*. Классов нет в разметке (греп 0), визуального эффекта нет;
+   маркеры 2p per-PR удостоверяют намеренность и живут ровно этот PR. ── */
+/* visual-diff-exempt: .app-main__subtitle font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__subtitle line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main__title line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-tab line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__total line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .deep__highlights li line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__a-inner line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .faq__q line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .meta font-size — агрегация по общему хвосту при сносе co-селектора мокапа; живой .tl3-card .meta со своим правилом не затронут (TRIP-460) */
+/* visual-diff-exempt: .meta font-weight — агрегация по общему хвосту при сносе co-селектора мокапа; живой .tl3-card .meta со своим правилом не затронут (TRIP-460) */
+/* visual-diff-exempt: .pin__lbl font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .pin__lbl line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .step__num line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow font-family — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow font-size — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow font-variant-numeric — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow font-weight — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow letter-spacing — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tag-eyebrow line-height — мёртвый класс мокапа лендинга удалён из канона .t-* (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main {@media (max-width: 720px)} padding — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main {@media (max-width: 880px)} padding — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main max-width — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main min-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main min-width — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main overflow-x — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-main padding — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar__group text-transform — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .app-sidebar line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__row line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .budget__rows line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .chat text-transform — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .collage__card line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .delta line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .from line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .mailrow line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .name line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__head line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .phone__time line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .planresult text-transform — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .subj line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabsbody line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tabstrip line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card font-family — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card font-size — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card font-variant-numeric — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card font-weight — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card letter-spacing — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+/* visual-diff-exempt: .tl-card line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
+
+/* ── TRIP-460 (продолжение): снос .langdd* (язык-переключатель зоны переехал
+   на прототипные .lang-btn/.lang-menu) + скоуп login.css .btn-primary/.btn-ghost
+   под .auth (ревью — глобальная утечка). ── */
+/* visual-diff-exempt: .auth background — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth color — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .code font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .code line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__btn line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .langdd__item line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
+/* visual-diff-exempt: .auth border — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth border-color — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth box-shadow — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth cursor — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth justify-content — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth opacity — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth padding — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth text-decoration — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth transform — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+/* visual-diff-exempt: .auth transition — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */

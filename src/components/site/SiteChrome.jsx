@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { openConsentBanner } from '@/lib/consent';
 import { withVisitCampaign } from '@/lib/analytics';
-import { Icon as BaseIcon } from '@/design/icons';
+import LandingSprite from './LandingSprite';
 
 /* =========================================================
    SiteChrome — shared marketing header/footer + site-CSS loader.
@@ -15,51 +15,28 @@ import { Icon as BaseIcon } from '@/design/icons';
      • `themed`  — whether the header re-tints itself against the section
                    beneath it (landing only).
    `navBase` makes the in-page section anchors absolute when the chrome is
-   mounted off the landing route (e.g. /public/trip), where #features/#how/
-   #faq don't exist locally.
+   mounted off the landing route (e.g. /public/trip), where the prototype's
+   #together/#stats/#assistant anchors don't exist locally.
+
+   Brand mark and icons (chevron etc.) come from the prototype's OWN sprite
+   (LandingSprite, `#tl-logo`/`#i-chev`) — TRIP-460 "CSS/markup as-is": the
+   chrome is itself prototype markup, not a paraphrase with the app's Icon
+   component and a hand-copied logo path.
 ========================================================= */
 
 const APP_URL = '/login';
 
-const TRIPLANIO_PATH = "M33.9515 -0.266535C40.7142 -0.445139 48.1271 -0.302259 54.9281 -0.303644L94.514 -0.309503L214.845 -0.305597L278.868 -0.306574L298.193 -0.318292C310.201 -0.32163 319.364 -0.684415 329.217 7.74225C343.125 19.635 341.19 34.942 341.176 51.3067L341.157 86.3829L341.184 195.125L341.181 272.228L341.212 295.303C341.226 308.706 342.006 318.931 332.398 329.72C326.281 336.547 317.675 340.628 308.52 341.05C298.456 341.533 284.325 341.086 274.023 341.083L205.381 341.092L162.115 341.117C141.323 341.131 123.861 343.106 107.208 327.72C102.838 323.62 99.3189 318.699 96.8548 313.236C94.3907 307.774 93.0296 301.878 92.849 295.889C92.529 287.072 93.8616 280.992 96.6224 272.786C101.665 257.797 109.31 248.589 119.725 237.345C125.95 245.136 131.667 253.986 137.971 261.606C140.39 264.528 150.129 252.175 148.683 246.961C146.168 237.892 141.381 229.908 138.15 221.158C142.842 216.992 148.474 212.5 153.326 208.398C163.06 200.169 172.732 191.869 182.345 183.5C189.212 190.011 196.381 197.442 203.098 204.167L248.907 249.981C253.187 244.922 256.537 238.164 256.598 231.434C256.623 228.623 256.007 225.923 254.626 223.456C251.646 218.12 237.029 204.664 231.868 199.467C223.676 191.542 215.284 182.914 207.203 174.842L155.649 123.287L134.288 101.945C132.743 100.406 131.158 98.7783 129.626 97.3106C123.616 91.552 120.034 86.1564 110.778 87.3673C103.826 88.2767 99.8349 91.3194 94.4329 95.3995C110.556 111.824 126.807 128.124 143.183 144.297C148.913 150.046 155.228 156.051 160.75 161.915C157.391 166.37 151.717 172.659 147.998 177.059C139.745 186.812 131.56 196.623 123.442 206.489C118.102 204.22 112.747 201.983 107.379 199.78C101.261 197.23 96.1995 193.797 89.9368 198.428C79.7224 205.983 80.7549 205.52 89.9857 212.164C94.9362 215.725 102.289 220.689 106.734 224.759C102.849 229.003 98.6343 233.317 95.2406 237.848C77.4842 261.564 66.952 294.342 80.972 322.417C84.8667 330.214 88.4217 334.775 94.4671 341.075C74.9177 341.309 55.209 340.956 35.6429 341.125C25.3518 341.214 16.7477 338.183 9.43489 330.636C5.11961 326.154 2.09948 320.587 0.695637 314.525C-0.740455 308.276 -0.261685 293.256 -0.261394 286.203C-0.338339 274.2 -0.331163 262.2 -0.240887 250.2C4.18863 255.291 9.4218 259.623 15.2513 263.023C32.4055 272.939 50.165 274.236 69.1761 269.211C69.6238 268.23 70.0656 266.844 70.4095 265.786C72.6759 258.811 75.6942 252.497 79.2786 246.108C67.5692 251.37 57.4925 254.32 44.432 253.45C20.0121 252.083 0.660326 229.606 -0.104168 205.7C-0.510832 192.989 -0.272964 179.798 -0.270183 166.97L-0.275066 95.5186L-0.277019 53.2891C-0.286758 47.0065 -0.647595 34.579 0.182942 28.8214C1.1558 22.1467 4.06527 15.9035 8.55013 10.8653C15.5012 3.17884 23.8502 0.199571 33.9515 -0.266535ZM137.352 52.7081C134.062 49.9494 128.015 49.4695 123.791 49.9737C116.528 51.2496 110.458 54.6421 104.987 59.5674L279.767 234.294L284.439 238.919C289.858 231.455 294.445 222.683 293.148 213.136C292.014 204.797 284.255 198.958 278.489 193.235L260.278 175.103L196.142 110.966L155.937 70.7413C150.064 64.881 143.662 58.0002 137.352 52.7081ZM256.192 105.029C259.319 96.1169 261.478 84.3761 247.586 85.7911C231.37 88.8299 220.289 99.6272 209.231 111.022L227.431 129.133L233.775 135.479C242.589 125.851 251.686 117.855 256.192 105.029Z";
-
-export function TriplanioMark({ size = 28 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 341 341" aria-hidden="true">
-      <path d={TRIPLANIO_PATH} fill="#2167e2" />
-    </svg>
-  );
-}
-
-const Icon = (props) => <BaseIcon size={20} {...props} />;
-
-/* ── Flag ── */
-function Flag({ kind, width = 18, height = 12 }) {
-  const common = { width, height, style: { display:'block', borderRadius:2, overflow:'hidden', border:'1px solid rgba(0,0,0,.08)', flex:'0 0 auto' }, 'aria-hidden':true };
-  if (kind === 'en') return (
-    <svg {...common} viewBox="0 0 60 30">
-      <defs><clipPath id="f-en-c"><rect width="60" height="30"/></clipPath><clipPath id="f-en-t"><path d="M30,15 h30 v15 z v-30 h-30 z h-30 v-15 z v30 h30 z"/></clipPath></defs>
-      <g clipPath="url(#f-en-c)">
-        <rect width="60" height="30" fill="#012169"/>
-        <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
-        <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#f-en-t)" stroke="#C8102E" strokeWidth="4"/>
-        <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
-        <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
-      </g>
-    </svg>
-  );
-  if (kind === 'ru') return <svg {...common} viewBox="0 0 9 6"><rect width="9" height="6" fill="#fff"/><rect width="9" height="4" y="2" fill="#0033A0"/><rect width="9" height="2" y="4" fill="#DA291C"/></svg>;
-  if (kind === 'es') return <svg {...common} viewBox="0 0 12 8"><rect width="12" height="8" fill="#AA151B"/><rect width="12" height="4" y="2" fill="#F1BF00"/></svg>;
-  return null;
-}
-
+/* Language switcher — prototype's own DOM (.lang/.lang-btn/.lang-menu), NO
+   flag (the prototype's markup never carries one — TRIP-460 §5). The repo
+   ships a third language (es) beyond the prototype's en/ru demo; added in the
+   same list/button shape, not a new pattern. */
 const LANGS = [
-  { code:'en', label:'English', flag:'en', display:'EN' },
-  { code:'ru', label:'Русский', flag:'ru', display:'RU' },
-  { code:'es', label:'Español', flag:'es', display:'ES' },
+  { code: 'en', label: 'English', display: 'EN' },
+  { code: 'ru', label: 'Русский', display: 'RU' },
+  { code: 'es', label: 'Español', display: 'ES' },
 ];
 
-function LangDropdown({ value, onChange, direction = 'down' }) {
+export function LangSwitch({ value, onChange }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -73,20 +50,18 @@ function LangDropdown({ value, onChange, direction = 'down' }) {
   }, [open]);
   const current = LANGS.find((l) => l.code === value) || LANGS[0];
   return (
-    <div className={`langdd ${open ? 'is-open' : ''} ${direction === 'up' ? 'langdd--up' : ''}`} ref={ref}>
-      <button type="button" className="langdd__btn" aria-haspopup="listbox" aria-expanded={open}
-        aria-label={t('landing.lang.label')} onClick={() => setOpen(v => !v)}>
-        <Flag kind={current.flag} width={18} height={12} />
+    <div className={`lang ${open ? 'open' : ''}`} ref={ref}>
+      <button type="button" className="lang-btn" aria-haspopup="listbox" aria-expanded={open}
+        aria-label={t('landing.lang.label')} onClick={() => setOpen((v) => !v)}>
         <span>{current.display}</span>
-        <Icon name="chevron" size={12} className="chev" style={{ transform:'rotate(90deg)' }} />
+        <svg width="14" height="14" aria-hidden="true"><use href="#i-chev" /></svg>
       </button>
-      <div className="langdd__menu" role="listbox" aria-label={t('landing.lang.label')}>
-        {LANGS.map(l => (
+      <div className="lang-menu" role="listbox" aria-label={t('landing.lang.label')}>
+        {LANGS.map((l) => (
           <button key={l.code} type="button" role="option" aria-checked={l.code === value}
-            className="langdd__item" onClick={() => { onChange(l.code); setOpen(false); }}>
-            <Flag kind={l.flag} width={22} height={16} />
-            <span className="label">{l.label}</span>
-            <span className="code">{l.display}</span>
+            className={l.code === value ? 'active' : ''} data-lang={l.code}
+            onClick={() => { onChange(l.code); setOpen(false); }}>
+            <span className="code">{l.display}</span>{l.label}
           </button>
         ))}
       </div>
@@ -95,12 +70,17 @@ function LangDropdown({ value, onChange, direction = 'down' }) {
 }
 
 const NAV = [
-  { tkey:'landing.nav.features', hash:'#features' },
-  { tkey:'landing.nav.how', hash:'#how' },
-  { tkey:'landing.nav.faq', hash:'#faq' },
+  { tkey: 'landing.nav.together', hash: '#together' },
+  { tkey: 'landing.nav.stats', hash: '#stats' },
+  { tkey: 'landing.nav.assistant', hash: '#assistant' },
 ];
 
 const PROBE = 35; // px from the top where the header samples the section under it
+// The only three header tints that have `on-*` rules in site.css. recalc reads
+// `data-hdr` straight off the DOM, so a typo (`data-hdr="acent"`) would mint an
+// `on-acent` class with no rule and silently leave the header untinted — clamp
+// to the known set instead (TRIP-460 §4).
+const HDR_THEMES = new Set(['light', 'dark', 'accent']);
 
 /**
  * Shared marketing header — ONE element, its composition set by `variant`:
@@ -130,14 +110,14 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   // click — gtag's url_passthrough reads them off the address (TRIP-407 PR5).
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   const [scrolled, setScrolled] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState('light'); // on-light is the safe default
   const navHref = (hash) => `${navBase}${hash}`;
 
   const showNav = variant === 'full';
   const showCta = variant === 'full' || variant === 'cta';
-  // Only the full header collapses its section nav into a drawer; the others
-  // have nothing to hide behind a burger, so they keep everything inline.
+  // Only the full header collapses its section nav into the mobile menu; the
+  // others have nothing to hide behind a burger, so they keep everything inline.
   const showBurger = variant === 'full';
 
   // Scroll state + header theme. `themed` pages sample the section under the
@@ -152,7 +132,11 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
       // Reverse DOM order so a sheet stacked over the previous section wins.
       for (let i = sections.length - 1; i >= 0; i--) {
         const r = sections[i].getBoundingClientRect();
-        if (r.top <= PROBE && r.bottom >= PROBE) { next = sections[i].dataset.hdr; break; }
+        if (r.top <= PROBE && r.bottom >= PROBE) {
+          const hdr = sections[i].dataset.hdr;
+          next = HDR_THEMES.has(hdr) ? hdr : 'light';
+          break;
+        }
       }
       setTheme(next);
     };
@@ -169,51 +153,59 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
     };
   }, [themed, location.pathname]);
 
+  // Prototype forces mobile-open on <body> (its CSS keys off `body.mobile-open`
+  // to slide the menu in and lock scroll) — ported verbatim rather than a
+  // React-local class on the header, since site.css's rule targets body.
   useEffect(() => {
-    document.body.style.overflow = drawerOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [drawerOpen]);
+    document.body.classList.toggle('mobile-open', mobileOpen);
+    return () => { document.body.classList.remove('mobile-open'); };
+  }, [mobileOpen]);
+
+  const goCta = () => { setMobileOpen(false); nav(ctaTarget); };
 
   return (
     <>
-      <header className={`header header--${variant} ${scrolled ? 'is-scrolled' : ''} on-${theme}`}>
-        <div className="container header__inner">
+      <LandingSprite />
+      <header className={`site-header ${scrolled ? 'scrolled' : ''} on-${theme}`} id="siteHeader">
+        <div className="wrap">
           <a href={brandHref} className="brand" aria-label={t('nav.aria_home')}>
-            <span className="brand__mark"><TriplanioMark /></span>
-            <span>Triplanio</span>
+            <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo"/></svg>
+            Triplanio
           </a>
           {showNav && (
-            <nav className="nav" aria-label={t('nav.aria_primary')}>
-              {NAV.map(n => <a key={n.hash} href={navHref(n.hash)}>{t(n.tkey)}</a>)}
+            <nav className="main-nav" aria-label={t('nav.aria_primary')}>
+              {NAV.map((n) => <a key={n.hash} href={navHref(n.hash)}>{t(n.tkey)}</a>)}
             </nav>
           )}
-          <div className="header__right">
-            <span className="header__lang"><LangDropdown value={lang} onChange={setLang} /></span>
+          <div className="header-actions">
+            <LangSwitch value={lang} onChange={setLang} />
             {showCta && (
-              <button className="btn btn--primary header__cta" onClick={() => nav(ctaTarget)}>{t('landing.header.cta')}</button>
+              <button type="button" className="btn btn-primary btn-sm header-cta" onClick={goCta}>
+                {t('landing.nav.cta')}
+              </button>
             )}
             {showBurger && (
-              <button className="hamburger" aria-label={t('nav.aria_menu')} aria-expanded={drawerOpen}
-                onClick={() => setDrawerOpen(v => !v)}>
-                <Icon name={drawerOpen ? 'close' : 'menu'} />
+              <button type="button" className="burger" aria-label={t('nav.aria_menu')}
+                aria-expanded={mobileOpen} aria-controls="mobileMenu"
+                onClick={() => setMobileOpen((v) => !v)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                  <path className="l1" d="M4 6h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path className="l2" d="M4 12h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path className="l3" d="M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
               </button>
             )}
           </div>
         </div>
       </header>
       {showBurger && (
-        <div className={`drawer ${drawerOpen ? 'is-open' : ''}`} aria-hidden={!drawerOpen}>
-          <ul>
-            <li>
-              <button className="btn btn--primary btn--lg" onClick={() => { setDrawerOpen(false); nav(ctaTarget); }}>
-                {t('landing.header.cta')}
-              </button>
-            </li>
-            {NAV.map(n => (
-              <li key={n.hash}><a href={navHref(n.hash)} onClick={() => setDrawerOpen(false)}>{t(n.tkey)}</a></li>
-            ))}
-          </ul>
-        </div>
+        <nav className="mobile-menu" id="mobileMenu" aria-label={t('nav.aria_primary')}>
+          <button type="button" onClick={goCta}>{t('landing.hero.cta1')}</button>
+          <button type="button" onClick={goCta}>{t('landing.hero.cta2')}</button>
+          {NAV.map((n) => (
+            <a key={n.hash} href={navHref(n.hash)} onClick={() => setMobileOpen(false)}>{t(n.tkey)}</a>
+          ))}
+        </nav>
       )}
     </>
   );
@@ -225,39 +217,38 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
  * and the copyright. Same `navBase` semantics as SiteHeader for the product
  * anchors.
  */
-export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) {
+export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
   const t = useT();
-  const navHref = (hash) => `${navBase}${hash}`;
   return (
-    <footer className="footer">
-      <div className="container">
-        <div className="footer__top">
-          <div className="footer__brand">
-            <a href={brandHref} className="brand" aria-label={t('nav.aria_home')}>
-              <span className="brand__mark"><TriplanioMark size={26}/></span>
-              <span>Triplanio</span>
+    <footer className="site-footer" data-hdr="light">
+      <div className="wrap">
+        <div className="footer-min">
+          <div className="footer-brandcol">
+            <a href={brandHref} className="brand">
+              <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo"/></svg>
+              Triplanio
             </a>
-            <p className="tagline">{t('landing.footer.tagline')}</p>
+            <p className="footer-tag">{t('landing.ft.tag')}</p>
           </div>
-          <nav className="footer__nav" aria-label={t('nav.aria_footer')}>
-            <a href={navHref('#features')}>{t('landing.footer.features')}</a>
-            <a href={navHref('#how')}>{t('landing.footer.how')}</a>
-            <a href={navHref('#faq')}>{t('landing.footer.faq')}</a>
-            {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-            <a href="/privacy">{t('landing.footer.privacy')}</a>
+          <nav className="footer-links" aria-label={t('nav.aria_footer')}>
             {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-            <a href="/terms">{t('landing.footer.terms')}</a>
+            <a href="/terms">{t('landing.ft.terms')}</a>
+            {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
+            <a href="/privacy">{t('landing.ft.privacy')}</a>
             {/* Where an anonymous visitor changes their mind — the app itself has no
                 footer, so this is the only route for someone who never signed up.
                 Reopens the panel; nothing changes until a button in it is pressed. */}
-            <button type="button" onClick={openConsentBanner}>{t('consent.settings')}</button>
+            <button type="button" onClick={openConsentBanner}>{t('landing.ft.cookies')}</button>
+            {/* nav-exempt: mailto — внешний протокол, не внутренняя навигация */}
+            <a href="mailto:support@triplanio.com">{t('landing.ft.contact')}</a>
           </nav>
-          <div className="footer__lang">
-            <LangDropdown value={lang} onChange={setLang} direction="up"/>
-          </div>
         </div>
-        <div className="footer__bottom">
-          <span>{t('landing.footer.copy')}</span>
+        {/* В макете подвал несёт ТОЛЬКО копирайт. Переключатель языка стоял здесь
+            вторым экземпляром, и его выпадающее меню — абсолютное, но раскрытое
+            вниз у самого низа страницы — растягивало документ на 116px пустоты
+            под футером. Язык переключается в шапке, на всех ширинах. */}
+        <div className="footer-bottom">
+          <span>{t('landing.ft.copy')}</span>
         </div>
       </div>
     </footer>
@@ -271,31 +262,110 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
  * place. Also toggles the `site` class on <html>: that class — not a bare
  * `:root` — is where site.css pins its tokens, so mounting the chrome is the
  * one gate that turns the sitewide tokens on and off (TRIP-446).
+ *
+ * Ref-counted (TRIP-460 §7.1): the <link> and `html.site` come in on the FIRST
+ * consumer and go out only with the LAST. Two consumers alive at once on one
+ * page (page + nested block) no longer strip each other's CSS on unmount.
+ *
+ * Teardown is also deferred to a microtask so a CLIENT navigation between two
+ * zone pages (footer → /terms, CTA → demo) stops flashing. React runs the old
+ * tree's passive-destroy BEFORE the new tree's passive-create, so a bare
+ * counter would still go 1→0 (teardown fires, <link> removed) and only then
+ * 0→1. Deferring the check by a microtask lets the incoming consumer bump the
+ * count back to 1 first, so the shared <link> stays put and `cssReady` never
+ * flips to false mid-hop. The <link> is removed only when the count is still 0
+ * after the microtask — i.e. the last consumer really left.
  */
+let siteCssRefs = 0;
 export function useSiteCss() {
-  const [cssReady, setCssReady] = useState(false);
+  const [cssReady, setCssReady] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    const el = document.getElementById('site-css');
+    return !!(el && el.sheet);
+  });
   useEffect(() => {
-    const existing = document.getElementById('site-css');
-    if (existing) {
-      setCssReady(true);
+    siteCssRefs += 1;
+    const onLoad = () => setCssReady(true);
+    let link = document.getElementById('site-css');
+    if (link) {
+      if (link.sheet) setCssReady(true);
+      else link.addEventListener('load', onLoad);
     } else {
-      const link = document.createElement('link');
+      link = document.createElement('link');
       link.id = 'site-css';
       link.rel = 'stylesheet';
       link.href = '/site.css';
-      link.addEventListener('load', () => setCssReady(true));
-      if (link.sheet) setCssReady(true);
+      link.addEventListener('load', onLoad);
       document.head.appendChild(link);
+      if (link.sheet) setCssReady(true);
     }
 
     document.documentElement.classList.add('site');
 
     return () => {
-      const el = document.getElementById('site-css');
-      if (el) el.parentNode.removeChild(el);
-      document.documentElement.classList.remove('site', 'reveal--ready');
-      setCssReady(false);
+      link.removeEventListener('load', onLoad);
+      siteCssRefs = Math.max(0, siteCssRefs - 1);
+      queueMicrotask(() => {
+        if (siteCssRefs > 0) return; // an incoming consumer already re-claimed it
+        const el = document.getElementById('site-css');
+        if (el) el.parentNode.removeChild(el);
+        document.documentElement.classList.remove('site', 'reveal--ready');
+      });
     };
   }, []);
   return cssReady;
+}
+
+/**
+ * Force the always-light zone theme and restore whatever the app had on unmount
+ * (TRIP-460 §7.2). The unauthenticated zone is light-only; a dark theme stored
+ * by the authed app sets [data-theme=dark] on <html> and leaks dark text onto
+ * the light zone. This was copy-pasted three times and only Login restored it —
+ * PublicTrip and the landing left `data-theme=light` behind, so a dark-mode
+ * user stayed light after leaving until a reload. One hook, next to the CSS
+ * lifecycle it already shares.
+ */
+export function useSiteTheme() {
+  useEffect(() => {
+    const r = document.documentElement;
+    const prev = r.getAttribute('data-theme');
+    r.setAttribute('data-theme', 'light');
+    return () => {
+      if (prev) r.setAttribute('data-theme', prev);
+      else r.removeAttribute('data-theme');
+    };
+  }, []);
+}
+
+/**
+ * Per-route <title>/<meta name="description"> (TRIP-460 §7.3). The app has no
+ * such mechanism — every route shows the single <title> from index.html — so
+ * this is net-new, kept to ~a dozen lines rather than pulling in a helmet lib.
+ * Sets on mount, restores the previous values on unmount so leaving a zone page
+ * hands the document meta back untouched.
+ */
+export function useDocumentMeta(title, description) {
+  useEffect(() => {
+    const prevTitle = document.title;
+    let meta = document.querySelector('meta[name="description"]');
+    const hadMeta = !!meta;
+    const prevDesc = meta ? meta.getAttribute('content') : null;
+
+    if (title != null) document.title = title;
+    if (description != null) {
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'description');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', description);
+    }
+
+    return () => {
+      document.title = prevTitle;
+      if (description == null) return;
+      if (hadMeta) meta.setAttribute('content', prevDesc ?? '');
+      else if (meta && meta.parentNode) meta.parentNode.removeChild(meta);
+    };
+  }, [title, description]);
 }

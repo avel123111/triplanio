@@ -60,6 +60,7 @@ import { cssPx } from '@/lib/cssPx';
  *   panelFooter?: any,
  *   panelLabel: string,
  *   panelOverlay?: any,
+ *   overlayActive?: boolean,
  *   detents?: number[],
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
@@ -91,6 +92,12 @@ export function MapShell({
   // в том числе), а ящик обязан закрывать ровно панель и не трогать карту —
   // по ней в этот момент продолжают кликать.
   panelOverlay = null,
+  // ЛОГИЧЕСКОЕ «слой открыт» для КАМЕРЫ — отдельно от `panelOverlay` (рендера).
+  // Рендер живёт дольше: уходящий слой доигрывает анимацию ещё ~240 мс, и если бы
+  // камера читала `!!panelOverlay`, отступ менялся бы на 240 мс ПОЗЖЕ закрытия —
+  // уже после окна focus-driven — и обрывал бы летящий `calmFit`. Экран отдаёт
+  // сюда факт открытости (сразу), а не присутствие узла.
+  overlayActive = false,
   detents = [0.15, 0.68, 1],
   detent = 0,
   onDetentChange,
@@ -158,8 +165,8 @@ export function MapShell({
   useLayoutEffect(() => { setCornerPx(Math.round(cssPx('var(--r-xl, 0px)'))); }, []);
 
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, collapsed, cornerPx }),
-    [isPhone, sheetPx, panelPx, collapsed, cornerPx],
+    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayOpen: overlayActive, collapsed, cornerPx }),
+    [isPhone, sheetPx, panelPx, overlayActive, collapsed, cornerPx],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
@@ -226,7 +233,6 @@ export function MapShell({
               <div className="mapshell__body scrollbar-thin">{panel}</div>
               {panelFooter}
             </Card>
-            {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
           </aside>
           {/* Шов панели и карты — место, где живёт «свернуть/раскрыть»: он
               принадлежит ГРАНИЦЕ между ними, а не содержимому панели, поэтому
@@ -258,6 +264,12 @@ export function MapShell({
               </Tooltip>
             </div>
           )}
+          {/* Слой города/события — НЕЗАВИСИМ от колонки панели (TRIP-195 доводка):
+              он сосед `.mapshell__panel`, а не её потомок, поэтому сворачивание
+              маршрута (`transform`/`inert` на колонке) его НЕ прячет и НЕ выносит
+              из таба. Открыт маршрут — слой ложится поверх него; свёрнут — тот же
+              слой открывается сам по себе. Коробка та же (левый столбец шелла). */}
+          {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
         </>
       ))}
 

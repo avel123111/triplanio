@@ -8,7 +8,7 @@ import {
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus, AtSign,
   Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair, SlidersHorizontal,
-  Footprints, Headset, LogOut, Mail, Image,
+  Footprints, Headset, LogOut, Mail, Image, Hammer,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,6 +133,11 @@ const LUCIDE = {
   // только `image-up` (СЕМАНТИКА ЗАГРУЗКИ) и `cam` (съёмка) — самой «картинки» не
   // было. Тот же lucide, симметрия с `image-up`.
   image: Image,
+  // Канон «раздел в разработке» (TRIP-302, апрув Pavel): плитка EmptyState несёт
+  // молоток как знак «строится/в работе». Отдельный глиф от `calendar` (который
+  // стоит на самой кнопке «Итоги года») — иконка модалки говорит про статус, а не
+  // про раздел.
+  hammer: Hammer,
 };
 
 // ── Легаси-набор (fallback для имён вне LUCIDE/BRAND) ─────────────────────────
