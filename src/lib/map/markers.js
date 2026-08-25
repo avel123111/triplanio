@@ -134,25 +134,20 @@ export function createMarkerEl(cells, { onSelect, onHover } = {}) {
     // Клик/ховер по КОНКРЕТНОМУ визиту. stopPropagation: mapbox монтирует HTML-
     // маркеры в контейнере канваса, поэтому всплывший клик ТАКЖЕ поджёг бы map
     // 'click' (там сброс выбора) — клик по маркеру никогда не клик по карте.
-    if (!merged) {
-      const d = list[0]?.data;
-      el.addEventListener('click', (e) => { e.stopPropagation(); onSelect(d); });
+    const bind = (target, d) => {
+      target.addEventListener('click', (e) => { e.stopPropagation(); onSelect(d); });
       if (onHover) {
-        el.addEventListener('mouseenter', () => onHover(true, d));
-        el.addEventListener('mouseleave', () => onHover(false, d));
+        target.addEventListener('mouseenter', () => onHover(true, d));
+        target.addEventListener('mouseleave', () => onHover(false, d));
       }
+    };
+    if (!merged) {
+      bind(el, list[0]?.data); // весь пин = один визит
     } else {
       // Пилюль целиком гасит клик (сепаратор/паддинг не должны сбрасывать выбор);
-      // выбор/ховер делают САМИ ячейки, каждая — свой визит.
+      // выбор/ховер делают САМИ ячейки, каждая — свой визит (по позиции = shown[i]).
       el.addEventListener('click', (e) => e.stopPropagation());
-      el.querySelectorAll('.tmk__h').forEach((cellEl, i) => {
-        const d = shown[i]?.data;
-        cellEl.addEventListener('click', (e) => { e.stopPropagation(); onSelect(d); });
-        if (onHover) {
-          cellEl.addEventListener('mouseenter', () => onHover(true, d));
-          cellEl.addEventListener('mouseleave', () => onHover(false, d));
-        }
-      });
+      el.querySelectorAll('.tmk__h').forEach((cellEl, i) => bind(cellEl, shown[i]?.data));
     }
   }
   return el;

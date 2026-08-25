@@ -240,7 +240,7 @@ export default function FlowMap({
     points: pts,
     markersRef,
     rebuildKey: ptsKey,
-    onClick: onCityClick ? (d) => onCityClick(d) : null,
+    onClick: onCityClick || null,
     onHover: onCityHover ? (entering, d) => onCityHover(entering ? d : null) : null,
     selectedId,
     hoveredId,
