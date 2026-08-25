@@ -1,7 +1,7 @@
 // @ts-check
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByLocation, iconForKinds } from './markers.js';
+import { groupByLocation } from './markers.js';
 import { isMapAlive } from './alive.js';
 
 // groupByLocation теперь несёт `ids` — единый источник для `data-mids`, которым
@@ -38,16 +38,6 @@ test('groupByLocation: точки без координат отбрасываю
   ]);
   assert.equal(groups.length, 1);
   assert.deepEqual(groups[0].ids, [undefined]);
-});
-
-// iconForKinds: приоритет anchor > waypoint > число (общий выбор глифа на пине).
-test('iconForKinds: приоритет ролей', () => {
-  assert.equal(iconForKinds(['start', 'transit']), 'start');
-  assert.equal(iconForKinds(['end']), 'end');
-  assert.equal(iconForKinds(['waypoint', 'waypoint']), 'waypoint');
-  assert.equal(iconForKinds(['waypoint', 'transit']), null); // не ВСЕ waypoint → число
-  assert.equal(iconForKinds(['transit']), null);
-  assert.equal(iconForKinds([]), null);
 });
 
 // isMapAlive: предикат «по карте безопасно читать слои» — жив ли style.

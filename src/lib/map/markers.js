@@ -22,21 +22,24 @@
 // marks both endpoints (ring colour tells start from finish); `arrowSwap` marks
 // a waypoint (transit / layover). Stroke is `currentColor` so the glyph follows
 // the ring colour (and turns white when the pin is selected).
+// Роль → глиф. Старт и финиш РАЗНЫЕ (запрос Pavel): старт — обычный флаг-вымпел,
+// финиш — КЛЕТЧАТЫЙ (гоночный) флаг (стойка + рамка + две залитые клетки 2×2,
+// залитая часть несёт свой `fill`, перебивая общий `fill:none` у svgGlyph).
+// Пересадка (waypoint) — иконка обмена (та же, что была).
 const ICON_PATHS = {
   start: '<path d="M5 3v18"/><path d="M5 4h12l-2 4 2 4H5"/>',
-  end: '<path d="M5 3v18"/><path d="M5 4h12l-2 4 2 4H5"/>',
+  end: '<path d="M5 2v20"/><path stroke-width="1.1" d="M5 3h13v9H5z M11 3v9 M5 7h13"/><path fill="currentColor" stroke="none" d="M5 3h6v4H5z M11 7h7v5h-7z"/>',
   waypoint: '<path d="M7 7h13l-4-4M17 17H4l4 4"/>',
 };
 
-// Pick the glyph for a (possibly grouped) pin. Anchors outrank waypoints, which
-// outrank plain transit numbers, so a shared location renders its most
-// significant role. Returns null when the pin should show its number(s) instead.
-export function iconForKinds(kinds = []) {
-  if (kinds.includes('start')) return 'start';
-  if (kinds.includes('end')) return 'end';
-  if (kinds.length > 0 && kinds.every((k) => k === 'waypoint')) return 'waypoint';
-  return null;
-}
+// Роль визита → глиф (старт/финиш/пересадка) или null (город = номер).
+const GLYPH_FOR_KIND = { start: 'start', end: 'end', waypoint: 'waypoint' };
+// Роль → класс-модификатор `.tmk` (несёт цвет `--tmk` и, у пересадки, меньший
+// размер). Город (transit/undefined) роль-класса не несёт — база `.tmk` = brand.
+//   старт   → зелёный (`--success`)
+//   финиш   → оранжевый (`--warm`)
+//   пересадка→ бирюза (`--ev-transfer`, цвет эвента «транспорт»), меньший размер
+const ROLE_CLASS = { start: 'tmk--start', end: 'tmk--finish', waypoint: 'tmk--wp' };
 
 // Group points that share a location (a city visited twice) into one pin that
 // carries every label + kind + id at that spot.
@@ -65,37 +68,52 @@ export function groupByLocation(points, precision = 5) {
 const svgGlyph = (icon) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[icon]}</svg>`;
 
+// Одна ячейка слепленного пилюля: глиф своей роли (флаг/пересадка) ИЛИ номер
+// города, покрашенные в цвет роли через её класс-модификатор (город — без класса,
+// базовый brand). Номер экранируем (city label — данные).
+function cellHtml(cell) {
+  const glyph = GLYPH_FOR_KIND[cell?.kind];
+  const rc = ROLE_CLASS[cell?.kind] || '';
+  const inner = glyph ? svgGlyph(glyph) : escapeHtml(String(cell?.label ?? ''));
+  return `<span class="${['tmk__h', rc].filter(Boolean).join(' ')}">${inner}</span>`;
+}
+
 // Build the DOM element for one mapboxgl.Marker (the Ring style).
-// labels: array shown on the pin (1 → ring with number; 2+ → split pill of
-//   first|last). Ignored when `icon` is set.
-// opts: { onClick, icon }
-//   icon ('start'|'end'|'waypoint') renders a glyph instead of a number;
-//   onClick omitted ⇒ non-interactive pin.
+// cells: [{ kind, label }] — ПО ОДНОЙ на визит в этой точке, в порядке визитов.
+//   1 визит  → одиночное кольцо: старт/финиш/пересадка рисуют свой глиф в своём
+//              цвете, город — номер (label) в brand.
+//   2+ визита → слепленный пилюль (тот же облик, что и раньше) из ПЕРВЫХ 3 ячеек;
+//              каждая ячейка несёт свой глиф/номер в цвете своей роли. Так один
+//              спот с любыми ролями (старт/финиш, город/пересадка, старт/город…)
+//              читается целиком, а не теряет часть под один глиф.
+// opts: { onClick, onHover } — onClick omitted ⇒ non-interactive pin.
 // The selected/hover states are toggled by the consumer on the returned element
 // (.is-sel / .is-hover) so hovering a list doesn't rebuild the markers.
 // Visual transforms (scale/halo) sit on the inner .tmk__core so Mapbox's own
 // inline transform on the root .tmk (positioning) is never clobbered.
-export function createMarkerEl(labels, { onClick, icon, onHover } = {}) {
+export function createMarkerEl(cells, { onClick, onHover } = {}) {
   const el = document.createElement('div');
+  const list = (Array.isArray(cells) ? cells : [cells]).filter(Boolean);
 
   const classes = ['tmk'];
   let core; // inner HTML of .tmk__core
 
-  if (icon && ICON_PATHS[icon]) {
-    if (icon === 'end') classes.push('tmk--finish');
-    if (icon === 'waypoint') classes.push('tmk--wp');
-    core = svgGlyph(icon);
-  } else {
-    const list = Array.isArray(labels) ? labels : [labels];
-    if (list.length <= 1) {
-      core = String(list[0] ?? '');
+  if (list.length <= 1) {
+    const c = list[0] || {};
+    const glyph = GLYPH_FOR_KIND[c.kind];
+    if (glyph) {
+      const rc = ROLE_CLASS[c.kind];
+      if (rc) classes.push(rc);
+      core = svgGlyph(glyph);
     } else {
-      classes.push('tmk--wide');
-      if (list.length >= 3) classes.push('tmk--w3');
-      const first = list[0];
-      const last = list[list.length - 1];
-      core = `<span class="tmk__h">${first}</span><span class="tmk__sep"></span><span class="tmk__h">${last}</span>`;
+      core = escapeHtml(String(c.label ?? ''));
     }
+  } else {
+    // Слепленный пилюль: первые 3 визита, каждый своей ячейкой со скошенным швом.
+    classes.push('tmk--wide');
+    const shown = list.slice(0, 3);
+    if (shown.length >= 3) classes.push('tmk--w3');
+    core = shown.map(cellHtml).join('<span class="tmk__sep"></span>');
   }
 
   if (onClick) classes.push('is-clickable');

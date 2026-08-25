@@ -1,7 +1,7 @@
 // @ts-check
 import { useEffect, useRef } from 'react';
 import { mapboxgl } from '@/lib/mapbox';
-import { groupByLocation, createMarkerEl, iconForKinds } from './markers';
+import { groupByLocation, createMarkerEl } from './markers';
 
 /**
  * Городские пины трипа — ЕДИНАЯ сборка для линзы «Маршрут»/редактора (`MapView`)
@@ -68,8 +68,10 @@ export function useCityMarkers(mapRef, ready, {
     markersRef.current = [];
     if (!enabled) return undefined;
     groupByLocation(pointsRef.current).forEach((g) => {
-      const el = createMarkerEl(g.labels.filter((l) => l != null), {
-        icon: iconForKinds(g.kinds),
+      // По ОДНОЙ ячейке на визит в этой точке (в порядке визитов) — builder сам
+      // решает: 1 визит → кольцо роли, 2+ → слепленный пилюль из первых 3.
+      const cells = g.kinds.map((kind, i) => ({ kind, label: g.labels[i] }));
+      const el = createMarkerEl(cells, {
         onClick: clickRef.current ? () => { const cb = clickRef.current; if (cb) cb(g); } : undefined,
         onHover: hoverRef.current ? (entering) => { const cb = hoverRef.current; if (cb) cb(entering, g); } : undefined,
       });

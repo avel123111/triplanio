@@ -8421,7 +8421,15 @@ a.doc-row__n:hover{ color: var(--brand); }
    ═══════════════════════════════════════════════════════════════════════════ */
 .tmk { --tmk: var(--brand); position: relative; display: inline-grid; place-items: center; }
 .tmk.is-clickable { cursor: pointer; }
+/* Роли (цвет кольца/глифа через `--tmk`): старт зелёный, финиш оранжевый,
+   пересадка бирюзовая (цвет эвента «транспорт»). Город — база `.tmk` = brand. */
 .tmk--finish { --tmk: var(--warm); }
+/* floor-exempt: classes +1 — роль старта (.tmk--start), апрув Pavel */
+/* floor-exempt: triage +1 — .tmk--start в triage-семье tmk, апрув Pavel */
+/* visual-diff-exempt: .tmk--start --tmk — роль старта зелёная (--success), Pavel */
+.tmk--start { --tmk: var(--success); }
+/* visual-diff-exempt: .tmk--wp --tmk — пересадка бирюзовая (--ev-transfer, цвет эвента транспорт), Pavel */
+.tmk--wp { --tmk: var(--ev-transfer); }
 .tmk__core {
  position: relative; z-index: 1;
  width: 29px; height: 29px; border-radius: var(--r-pill);
@@ -8433,12 +8441,21 @@ a.doc-row__n:hover{ color: var(--brand); }
  transition: transform .2s cubic-bezier(.34,1.25,.5,1), background .18s ease, color .18s ease, box-shadow .2s ease;
 }
 .tmk__core svg { width: 14px; height: 14px; display: block; }
+/* Глиф в ячейке слепленного пилюля — тот же размер, что в одиночном кольце. */
+/* visual-diff-exempt: .tmk__h svg width — глиф ячейки слепленного пилюля, Pavel */
+/* visual-diff-exempt: .tmk__h svg height — глиф ячейки слепленного пилюля, Pavel */
+/* visual-diff-exempt: .tmk__h svg display — глиф ячейки слепленного пилюля, Pavel */
+.tmk__h svg { width: 14px; height: 14px; display: block; }
 .tmk--wp .tmk__core { width: 21px; height: 21px; }
 .tmk--wp .tmk__core svg { width: 12px; height: 12px; }
 /* multi-visit pill: a city visited 2–3× (first|last labels, skewed divider) */
 .tmk--wide .tmk__core { width: auto; min-width: 47px; padding: 0; display: flex; align-items: stretch; overflow: hidden; }
 .tmk--wide.tmk--w3 .tmk__core { min-width: 64px; }
-.tmk__h { flex: 1; display: grid; place-items: center; padding: 0 6px; }
+/* Каждая ячейка резолвит СВОЙ `--tmk` (роль-класс на ячейке) — поэтому цвет здесь
+   явный, а не наследованный: у слепленного пилюля старт зелёный, финиш оранжевый,
+   пересадка бирюзовая, город brand — в одной пилюле. */
+/* visual-diff-exempt: .tmk__h color — цвет ячейки по роли (--tmk), Pavel */
+.tmk__h { flex: 1; display: grid; place-items: center; padding: 0 6px; color: var(--tmk); }
 .tmk__sep { width: 1.5px; background: currentColor; opacity: .4; transform: skewX(-18deg); }
 /* selected: filled ring + halo + soft pulse (occasional, so motion is fine) */
 .tmk__halo, .tmk__pulse { position: absolute; inset: -9px; border-radius: var(--r-pill); pointer-events: none; }
