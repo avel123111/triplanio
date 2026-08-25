@@ -6269,12 +6269,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    +1 и остаётся над затемнением. `fixed` не режется `overflow:hidden` предков:
    ни у одного из них (.trip-content/.trip-body/.trip-shell) нет transform, так
    что контейнер затемнения — вьюпорт, а не .trip-content.
-   Тон затемнения ТЕМНЕЕ дефолтного скрима (подмешан к чёрному тем же
-   `color-mix(#000)`, что у hover-кнопок), плюс лёгкое размытие подложки
-   `backdrop-filter: blur(2px)` — ровно как у модалок (`.dlg-backdrop`) и шитов
-   (`.sheet-backdrop`); размывается то, что ПОД затемнением (шапка+меню, а на
-   прочих экранах и контент), карта же поднята НАД ним и остаётся резкой.
-   Затемнение только на десктопе: на телефоне слой уходит в шит со своим фоном.
+   Скрим КАНОНИЧЕСКИЙ — один в один с модалками (`.dlg-backdrop`) и шитами
+   (`.sheet-backdrop`): тот же `background: var(--scrim)` и то же размытие
+   подложки `backdrop-filter: blur(2px)`. Размывается то, что ПОД затемнением
+   (шапка+меню, а на прочих экранах и контент), карта же поднята НАД ним и
+   остаётся резкой. Затемнение только на десктопе: на телефоне слой уходит в шит
+   со своим фоном.
 
    ЭКСПЕРИМЕНТ: панель открывается ТЕМ ЖЕ виджетом, что и редактор маршрута — не
    полноростным ящиком, а плавающей карточкой. `.evd-drawer` теперь только
@@ -6285,8 +6285,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    reuses `.lp-sheet`.
    visual-diff-exempt: .evd-scrim position — затемнение стало fixed во весь вьюпорт (эксперимент «скрим всего»)
    visual-diff-exempt: .evd-scrim z-index — этаж затемнения поднят на --z-app-scrim (80), выше шапки и меню
-   visual-diff-exempt: .evd-scrim background — затемнение темнее (просьба Pavel): var(--scrim) подмешан к чёрному тем же color-mix(#000), что и hover-кнопок
-   visual-diff-exempt: .evd-scrim backdrop-filter — лёгкое размытие подложки «как на модалках» (то же blur(2px), что у .dlg-backdrop/.sheet-backdrop)
+   visual-diff-exempt: .evd-scrim backdrop-filter — размытие подложки «как на модалках» (тот же blur(2px), что у .dlg-backdrop/.sheet-backdrop)
    visual-diff-exempt: .evd-drawer top — коробка виджета: верхний инсет --sp-7 (было 0, полноростный ящик)
    visual-diff-exempt: .evd-drawer bottom — коробка виджета: нижний инсет --sp-7 (было 0)
    visual-diff-exempt: .evd-drawer left — коробка виджета: левый инсет --sp-7 (было 0)
@@ -6307,7 +6306,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: from {@keyframes evdDrawerIn} transform — то же
    visual-diff-exempt: to {@keyframes evdDrawerIn} opacity — то же
    visual-diff-exempt: to {@keyframes evdDrawerIn} transform — то же */
-.evd-scrim { position: fixed; inset: 0; z-index: var(--z-app-scrim); background: color-mix(in srgb, var(--scrim), #000 30%); backdrop-filter: blur(2px); animation: fadeIn .2s var(--ease-out) both; }
+.evd-scrim { position: fixed; inset: 0; z-index: var(--z-app-scrim); background: var(--scrim); backdrop-filter: blur(2px); animation: fadeIn .2s var(--ease-out) both; }
 /* Скрим гаснет вместе с ящиком (usePresence держит хост до конца выхода): меняем
    только имя анимации, темп наследуется.
    visual-diff-exempt: .evd-scrim[data-closing] animation-name — выходное затухание скрима (синхронно с ящиком)
