@@ -2061,6 +2061,37 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
 .cbadge__col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cbadge__name { color: var(--ink); }
 .cbadge__dates { color: var(--muted); white-space: nowrap; }
+/* CTA «открыть город» (двухшаговый клик в редакторе). ОБЛИК — канон-примитив
+   `.icon-btn` (rule #6, кнопка несёт его классы), поэтому свои визуальные
+   объявления не пишем. Лист-класс `.cbadge__go` добавляет ровно две вещи, которых
+   у примитива нет в этом месте: вернуть события поверх passiv-попапа
+   (pointer-events:none выше) и центрировать в бейдже. */
+/* ★ Кнопка СВЁРНУТА по умолчанию (max-width 0, прозрачна, отрицательный margin
+   гасит gap бейджа) и раскрывается по `[data-on]` CSS-переходом ширины —
+   `useCityBadge` ставит атрибут, когда город зафиксирован. Так попап расширяется/
+   сужается плавно, а не пересоздаётся. `[data-on]` — состояние, не новый класс. */
+/* floor-exempt: classes +1 — CTA бейджа (.cbadge__go), апрув Pavel */
+/* floor-exempt: triage +1 — .cbadge__go в triage-семье cbadge, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go pointer-events — CTA поверх passiv-попапа, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go align-self — центрируем CTA в бейдже, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go max-width — свёрнутое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go opacity — свёрнутое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go margin-left — гасим gap бейджа у свёрнутой CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go overflow — обрезаем свёрнутую CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go transition — плавные раскрытие/сворачивание CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] max-width — раскрытое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] opacity — раскрытое состояние CTA, апрув Pavel */
+/* visual-diff-exempt: .cbadge__go[data-on] margin-left — раскрытое состояние CTA, апрув Pavel */
+/* Селектор с тегом (`button.cbadge__go`, 0-1-1) НАМЕРЕННО: у `.cbadge__go`
+   (0-1-0) та же специфичность, что у `.icon-btn`, а он объявлен НИЖЕ в файле и
+   перебивал бы `transition` — ширина бы прыгала, а не ехала. Тег поднимает вес,
+   ключи гардов остаются на классе `.cbadge__go`. */
+button.cbadge__go {
+  pointer-events: auto; align-self: center;
+  max-width: 0; opacity: 0; margin-left: calc(var(--sp-4) * -1); overflow: hidden;
+  transition: max-width .2s ease, opacity .2s ease, margin-left .2s ease;
+}
+button.cbadge__go[data-on] { max-width: 44px; opacity: 1; margin-left: 0; }
 /* The badge rides a mapboxgl.Popup so it auto-flips to stay on-screen near map
    edges. Strip the popup's default chrome (white bubble + tip) — the glass
    .cbadge IS the surface; passive so it never eats a map click. */
@@ -3172,6 +3203,58 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .swatch svg { width: 16px; height: 16px; }
 @media (prefers-reduced-motion: reduce) { .swatch { transition: none; } }
 
+/* ----- CityBar ----- (TRIP-321 линза «Календарь») цветная полоса города.
+   Тон приходит инлайном каналом `--cc/--cc-soft/--cc-ink` (палитра в CityBar.jsx).
+   `bar` (умолчание) — полоса-цвет с солид-кантом сверху (сетка месяца); `strip`
+   — та же полоса с именем по центру (шапка недели), разделитель между сегментами.
+   prefix-exempt: citybar — новый примитив ДС «полоса города», апрув Pavel 2026 */
+.citybar { flex: 1; min-width: 0; border: none; cursor: pointer; background: var(--cc-soft); box-shadow: inset 0 2px 0 var(--cc); transition: filter .14s, background .14s; }   /* design-token-exempt: 2px — солид-кант полосы (деталь примитива, не --sp) */
+.citybar:hover { filter: brightness(1.05); }
+.citybar:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.citybar__lbl { color: var(--cc-ink); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* `strip` — плашка города в НЕДЕЛЕ: цельная на весь прогон, имя внутри. Канта
+   сверху у неё нет (он остался обличью `bar` в сетке месяца, где полоса лежит
+   вплотную к краю ячейки): здесь плашка отделена воздухом сверху и снизу, и
+   кант на скруглённом теле читался бы как ошибка отрисовки, а не как акцент. */
+.citybar--strip { padding: 3px var(--sp-3); margin: 3px 0; border-radius: var(--r-xs); box-shadow: none; }
+.citybar--strip + .citybar--strip { margin-left: 2px; }   /* design-token-exempt: 2px — зазор между половинками дня-пересадки */
+.citybar--strip + .citybar--strip { border-left: 1px solid var(--surface); }   /* design-token-exempt: 1px — хайрлайн-разделитель сегментов */
+
+/* ----- EventChip ----- (TRIP-321 линза «Календарь») компактный эвент-токен.
+   Цвет — семейство события `ev-<fam>` (`eventFamily`). Три облика осью `variant`:
+   `inline` — строка чипа с левым кантом (сетка месяца); `allday` — плоская
+   плашка (all-day шапки недели); `block` — позиционируемая карточка (тайм-грид,
+   координаты style-ом). prefix-exempt: evchip — новый примитив ДС «эвент-токен», апрув Pavel 2026 */
+.evchip__tm { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.evchip__t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evchip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* inline — чип события в сетке месяца */
+.evchip--inline { position: relative; padding: 2px 7px 2px 9px; border-radius: var(--r-xs); overflow: hidden; border: none; cursor: pointer; text-align: left; width: 100%; background: var(--surface); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); transition: filter .14s; }   /* design-token-exempt: 2px/7px/9px/1px — компактный чип события (детали примитива) */
+.evchip--inline::before { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3px; border-radius: 0 2px 2px 0; background: currentColor; }   /* design-token-exempt: 3px/2px — левый цветной кант (деталь примитива) */
+.evchip--inline:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-hover); }
+.evchip--inline .evchip__t { flex: 1; color: var(--ink-2); }
+.evchip--inline.ev-hotel { color: var(--ev-hotel-ink); }
+.evchip--inline.ev-activity { color: var(--ev-activity-ink); }
+.evchip--inline.ev-transfer { color: var(--ev-transfer-ink); }
+.evchip--inline.ev-deadline { color: var(--ev-deadline-ink); }
+.evchip--inline.ev-car { color: var(--ev-car-ink); }
+/* allday — плоская плашка события на весь день */
+.evchip--allday { padding: 3px 8px; border-radius: var(--r-xs); border: none; cursor: pointer; text-align: left; background: var(--surface-2); color: var(--ink-2); overflow: hidden; }
+/* block — позиционируемая timed-карточка в тайм-гриде недели */
+.evchip--block { position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden; padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; text-align: left; background: var(--surface); color: var(--ink-2); box-shadow: var(--sh-1); transition: filter .14s, transform .1s var(--ease-spring); }   /* design-token-exempt: 1px/6px — радиус 6 карточки события (апрув Pavel), 1px gap */
+.evchip--block:hover { filter: brightness(1.04); }
+.evchip--block:active { transform: scale(.98); }
+.evchip--block .evchip__tm { color: var(--muted); }
+.evchip--block .evchip__t { color: inherit; }
+/* allday + block делят заливку семейства (soft-фон + ink-текст) */
+.evchip--allday.ev-hotel, .evchip--block.ev-hotel { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
+.evchip--allday.ev-activity, .evchip--block.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.evchip--allday.ev-transfer, .evchip--block.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
+.evchip--allday.ev-deadline, .evchip--block.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
+.evchip--allday.ev-car, .evchip--block.ev-car { background: var(--ev-car-soft); color: var(--ev-car-ink); }
+.evchip--block.ev-hotel .evchip__tm, .evchip--block.ev-activity .evchip__tm, .evchip--block.ev-transfer .evchip__tm,
+.evchip--block.ev-deadline .evchip__tm, .evchip--block.ev-car .evchip__tm { color: inherit; opacity: .72; }
+
 /* ═══════════════ Примитивы раскладки (TRIP-321 Ф11) ═══════════════
    Замер (scripts/ci/audit-design.mjs) на dev@eb5e155: одна и та же форма
    объявляется заново в 4+ разных семействах 40 раз, это 285 правил. Верхушка -
@@ -3740,7 +3823,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 @media (max-width: 640px) {
   .app-header__account { display: none; }
-  .trip-screen-body { padding-bottom: 96px !important; }
+  /* Полосу нижнего нава называет САМ нав (`--nav-dock-h`, safe-area уже внутри) —
+     ровно тот же источник, что у `.app-shell > main` ниже. До этого здесь стояло
+     `96px` числом: safe-area в него не входила, поэтому на телефонах с домашней
+     полоской низ экрана трипа уезжал под док.
+     visual-diff-exempt: .trip-screen-body {@media (max-width: 640px)} padding-bottom — фикс 96px → полоса нава + воздух, safe-area учтена (просьба Pavel 2026-08-25) */
+  .trip-screen-body { padding-bottom: calc(var(--nav-dock-h) + 16px) !important; }
   .trip-screen-body--flush { padding-bottom: 0 !important; }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
      become a fixed-height shell — the global header pins (never scrolls), the
@@ -6181,7 +6269,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 @media (prefers-reduced-motion: reduce) { .evd-drawer, .evd-scrim { animation: none; } }
 
 /* ---- Scrollable screen body ---- */
-.trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
+/* Низ был 60px — вдвое больше остальных сторон. Столько воздуха под контентом
+   не нужно ни одному экрану трипа, а линзе, которая тянется в высоту экрана
+   (календарь), он мешал: 100% высоты + 60px снизу = лишний скролл на ровном
+   месте. Отступ равномерный, высоту держит сам флекс.
+   visual-diff-exempt: .trip-screen-body padding — низ 60px → 28px, как остальные стороны (просьба Pavel 2026-08-25) */
+.trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px; }
 .trip-screen-body--flush { padding: 0; overflow: hidden; }
 
 /* Граница ОДНА: выше 640 — рейл, ниже — телефонный шит (TripSidebarSheet) из
@@ -6197,7 +6290,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
      края ей нужен свой, а не тот, что задан под соседство с рейлом. */
   .app-header--trip { padding-left: var(--sp-7); }
-  .trip-screen-body { padding: 16px 16px 48px; }
+  /* Низ здесь НЕ называем: его держит полоса нава выше по файлу
+     (`--nav-dock-h` + воздух, с `!important`). Прежние 48px были мёртвым
+     числом — их перебивало то правило, и читать их как действующие нельзя. */
+  .trip-screen-body { padding: 16px; }
   /* Map lens stays full-bleed on mobile — the base rule above would otherwise
      re-apply 16px side padding to the flush body (equal specificity, later source). */
   .trip-screen-body--flush { padding: 0; }
@@ -8390,7 +8486,15 @@ a.doc-row__n:hover{ color: var(--brand); }
    ═══════════════════════════════════════════════════════════════════════════ */
 .tmk { --tmk: var(--brand); position: relative; display: inline-grid; place-items: center; }
 .tmk.is-clickable { cursor: pointer; }
+/* Роли (цвет кольца/глифа через `--tmk`): старт зелёный, финиш оранжевый,
+   пересадка бирюзовая (цвет эвента «транспорт»). Город — база `.tmk` = brand. */
 .tmk--finish { --tmk: var(--warm); }
+/* floor-exempt: classes +1 — роль старта (.tmk--start), апрув Pavel */
+/* floor-exempt: triage +1 — .tmk--start в triage-семье tmk, апрув Pavel */
+/* visual-diff-exempt: .tmk--start --tmk — роль старта зелёная (--success), Pavel */
+.tmk--start { --tmk: var(--success); }
+/* visual-diff-exempt: .tmk--wp --tmk — пересадка бирюзовая (--ev-transfer, цвет эвента транспорт), Pavel */
+.tmk--wp { --tmk: var(--ev-transfer); }
 .tmk__core {
  position: relative; z-index: 1;
  width: 29px; height: 29px; border-radius: var(--r-pill);
@@ -8402,12 +8506,21 @@ a.doc-row__n:hover{ color: var(--brand); }
  transition: transform .2s cubic-bezier(.34,1.25,.5,1), background .18s ease, color .18s ease, box-shadow .2s ease;
 }
 .tmk__core svg { width: 14px; height: 14px; display: block; }
+/* Глиф в ячейке слепленного пилюля — тот же размер, что в одиночном кольце. */
+/* visual-diff-exempt: .tmk__h svg width — глиф ячейки слепленного пилюля, Pavel */
+/* visual-diff-exempt: .tmk__h svg height — глиф ячейки слепленного пилюля, Pavel */
+/* visual-diff-exempt: .tmk__h svg display — глиф ячейки слепленного пилюля, Pavel */
+.tmk__h svg { width: 14px; height: 14px; display: block; }
 .tmk--wp .tmk__core { width: 21px; height: 21px; }
 .tmk--wp .tmk__core svg { width: 12px; height: 12px; }
 /* multi-visit pill: a city visited 2–3× (first|last labels, skewed divider) */
 .tmk--wide .tmk__core { width: auto; min-width: 47px; padding: 0; display: flex; align-items: stretch; overflow: hidden; }
 .tmk--wide.tmk--w3 .tmk__core { min-width: 64px; }
-.tmk__h { flex: 1; display: grid; place-items: center; padding: 0 6px; }
+/* Каждая ячейка резолвит СВОЙ `--tmk` (роль-класс на ячейке) — поэтому цвет здесь
+   явный, а не наследованный: у слепленного пилюля старт зелёный, финиш оранжевый,
+   пересадка бирюзовая, город brand — в одной пилюле. */
+/* visual-diff-exempt: .tmk__h color — цвет ячейки по роли (--tmk), Pavel */
+.tmk__h { flex: 1; display: grid; place-items: center; padding: 0 6px; color: var(--tmk); }
 .tmk__sep { width: 1.5px; background: currentColor; opacity: .4; transform: skewX(-18deg); }
 /* selected: filled ring + halo + soft pulse (occasional, so motion is fine) */
 .tmk__halo, .tmk__pulse { position: absolute; inset: -9px; border-radius: var(--r-pill); pointer-events: none; }
@@ -8425,6 +8538,46 @@ a.doc-row__n:hover{ color: var(--brand); }
 @media (hover: hover) and (pointer: fine) {
   .tmk.is-clickable:hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(1.1); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
   .tmk.is-clickable:hover .tmk__halo { opacity: .5; transform: scale(1); }
+}
+/* Слепленный пилюль: выделение/ховер ПОСЕГМЕНТНО — красится КОНКРЕТНАЯ ячейка
+   (свой цвет роли `--tmk`), глиф/номер белеет, как у одиночного пина (чинит
+   регресс: `--tmk` на `.tmk__h` перебивал побеление). Весь пилюль не заливается:
+   у слепленного `is-clickable` не на корне (см. markers.js), поэтому whole-pill
+   hover-правило `.tmk.is-clickable:hover .tmk__core` его не касается. `.tmk__h`
+   есть только в слепленном пилюле, так что односубъектных правил достаточно. */
+/* Заливка сегмента ДИАГОНАЛЬНАЯ — параллелограмм под тем же углом, что скошенный
+   шов `.tmk__sep` (skewX(-18deg)); прямоугольная заливка не совпадала с диагональю
+   разделителя. Слой `::before` позади текста (z-index:-1), внешние скосы режет
+   overflow:hidden у `.tmk__core`. `isolation` даёт свой контекст, чтобы -1 не ушёл
+   за белый фон пилюля. */
+/* visual-diff-exempt: .tmk__h cursor — сегмент слепленного пилюля кликабелен, Pavel */
+/* visual-diff-exempt: .tmk__h position — база под ::before-заливку сегмента, Pavel */
+/* visual-diff-exempt: .tmk__h isolation — свой стек-контекст под ::before-заливку, Pavel */
+.tmk__h { cursor: pointer; position: relative; isolation: isolate; }
+/* visual-diff-exempt: .is-sel::before content — диагональная заливка выбранного сегмента, Pavel */
+/* visual-diff-exempt: .is-sel::before position — диагональная заливка выбранного сегмента, Pavel */
+/* visual-diff-exempt: .is-sel::before inset — диагональная заливка выбранного сегмента, Pavel */
+/* visual-diff-exempt: .is-sel::before z-index — заливка позади текста, Pavel */
+/* visual-diff-exempt: .is-sel::before background — цвет заливки сегмента, Pavel */
+/* visual-diff-exempt: .is-sel::before transform — скос заливки под угол шва, Pavel */
+/* visual-diff-exempt: .is-hover::before content — диагональная заливка сегмента под ховером, Pavel */
+/* visual-diff-exempt: .is-hover::before position — диагональная заливка сегмента под ховером, Pavel */
+/* visual-diff-exempt: .is-hover::before inset — диагональная заливка сегмента под ховером, Pavel */
+/* visual-diff-exempt: .is-hover::before z-index — заливка позади текста, Pavel */
+/* visual-diff-exempt: .is-hover::before background — цвет заливки сегмента, Pavel */
+/* visual-diff-exempt: .is-hover::before transform — скос заливки под угол шва, Pavel */
+.tmk__h.is-sel, .tmk__h.is-hover { color: #fff; }
+.tmk__h.is-sel::before, .tmk__h.is-hover::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--tmk); transform: skewX(-18deg); }
+@media (hover: hover) and (pointer: fine) {
+  /* visual-diff-exempt: .tmk__h:hover {@media (hover: hover) and (pointer: fine)} color — ховер сегмента, Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} content — ховер сегмента (заливка), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} background — ховер сегмента (заливка), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} transform — ховер сегмента (скос), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} position — ховер сегмента (заливка), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} inset — ховер сегмента (заливка), Pavel */
+  /* visual-diff-exempt: .tmk__h:hover::before {@media (hover: hover) and (pointer: fine)} z-index — ховер сегмента (заливка), Pavel */
+  .tmk__h:hover { color: #fff; }
+  .tmk__h:hover::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--tmk); transform: skewX(-18deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .tmk__core, .tmk__halo { transition: none; }

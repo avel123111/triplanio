@@ -1471,6 +1471,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             />
             <FlowMap
               camera={camera} slotPx={slotPx}
+              colorScheme={isDark ? 'DARK' : 'LIGHT'}
               home={home}
               cities={cities}
               // Always pass the finish city (it feeds the camera framing). DRAW the
