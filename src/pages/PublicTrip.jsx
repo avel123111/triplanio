@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { invokeFn } from '@/lib/invokeFn';
@@ -9,13 +9,15 @@ import {
 } from '@/components/site/SiteChrome';
 import { SiteHero, SiteSummary, SiteCta } from '@/components/site/SiteTrip';
 import MapView from '@/components/views/MapView';
+import { Icon } from '@/design/icons';
+import { transferKind } from '@/lib/transport';
 import { sortVisits } from '@/lib/validation';
 import { localizeVisits } from '@/lib/trip-cities';
 import { tripStats, tripDateSpan } from '@/lib/trip-stats';
 import { formatDuration } from '@/lib/time';
 import { formatDateRange } from '@/lib/trip-dates';
 
-// floor-exempt: dsshare +41 — эта страница переехала с app-ДС (Avatar/Card) на
+// floor-exempt: dsshare +43 — эта страница переехала с app-ДС (Avatar/Card) на
 // сайтовую ДС прототипа (public/site.css, pt-*): доля app-ДС падает намеренно —
 // это направление неавторизованной зоны, а не регресс. Апрув Pavel (1в1
 // прототип, TRIP-461). Маркер живёт в src/ (гард 2o читает только src/).
@@ -32,14 +34,6 @@ const COVER_FALLBACK = '/covers/fallback.webp';
 // and a visitor here arrived on a marked share link, exactly the new person the
 // mark exists for, so the marks ride the address across (TRIP-329).
 const SITE = withVisitCampaign(`${window.location.origin}/`);
-
-// Transfer glyphs — the prototype's own sprite ids (rendered by SiteHeader's
-// LandingSprite), keyed by transport_type. taxi/own_transport/other fold to the
-// car glyph, exactly as the prototype's TRANSPORT map does.
-const LEG_ICON = {
-  plane: 'i-plane', train: 'i-train', bus: 'i-bus', car: 'i-car',
-  taxi: 'i-car', ferry: 'i-ferry', walk: 'i-walk', own_transport: 'i-car', other: 'i-car',
-};
 
 // Avatar colour = one of six contrast-safe pairs (defined as .pt-av--0..5 in
 // site.css; white initials on the orange gradient gave 2.05 on prod, TRIP-451
@@ -113,17 +107,17 @@ export default function PublicTrip() {
   // first name, plus a last initial ONLY when the first name repeats.
   const people = useMemo(() => {
     const raw = [];
-    if (owner?.display_name) raw.push(owner.display_name);
+    if (owner?.display_name) raw.push({ full: owner.display_name, photo: owner.avatar_url || '' });
     members.forEach((m) => {
       if (owner?.display_name && m.display_name === owner.display_name) return;
-      if (m.display_name) raw.push(m.display_name);
+      if (m.display_name) raw.push({ full: m.display_name, photo: m.avatar_url || '' });
     });
-    const firsts = raw.map((p) => p.trim().split(/\s+/)[0]);
-    return raw.map((full, i) => {
-      const parts = full.trim().split(/\s+/);
+    const firsts = raw.map((p) => p.full.trim().split(/\s+/)[0]);
+    return raw.map((p, i) => {
+      const parts = p.full.trim().split(/\s+/);
       const dup = firsts.filter((f) => f === firsts[i]).length > 1;
       const name = dup && parts[1] ? `${firsts[i]} ${parts[1][0]}.` : firsts[i];
-      return { ...avatarPair(full), name, title: full };
+      return { ...avatarPair(p.full), photo: p.photo, name, title: p.full };
     });
   }, [owner, members]);
 
@@ -159,8 +153,10 @@ export default function PublicTrip() {
     const type = tr.transport_type || 'other';
     const fromV = ordered.find((v) => v.id === a.id);
     const toV = ordered.find((v) => v.id === b.id);
+    // Transport glyph from the real app icon set (shared with the planner/map),
+    // not a prototype-only sprite — via the design <Icon> allowed off @/design/icons.
     return {
-      icon: LEG_ICON[type] || LEG_ICON.other,
+      icon: transferKind(type).icon,
       label: t(`public.mode_${type}`) || type,
       dur: formatDuration(tr.start_datetime, tr.end_datetime, fromV?.timezone, toV?.timezone),
     };
@@ -198,6 +194,47 @@ export default function PublicTrip() {
     document.body.classList.add('pt-open');
     return () => document.body.classList.remove('pt-open');
   }, []);
+
+  // Reveal .rv blocks (the shared final CTA) — the SAME one-shot fade the landing
+  // uses; without it .rv stays at opacity:0 and the CTA renders blank.
+  useEffect(() => {
+    if (!cssReady) return undefined;
+    const targets = [...document.querySelectorAll('.rv,.rv-l,.rv-r')];
+    if (!targets.length) return undefined;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting) en.target.classList.add('in');
+        else if (en.boundingClientRect.top > 0) en.target.classList.remove('in');
+      });
+    }, { threshold: 0.16, rootMargin: '0px 0px -5% 0px' });
+    targets.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [cssReady, trip]);
+
+  // The route rail must start at the first pin and END at the last — a fixed
+  // top/bottom inset overshoots past the finish pin (variable stop heights). We
+  // measure the first/last pin centres and drive the rail via CSS vars.
+  const routeRef = useRef(null);
+  useEffect(() => {
+    const route = routeRef.current;
+    if (!route) return undefined;
+    const measure = () => {
+      const pins = route.querySelectorAll('.pt-pin');
+      if (!pins.length) return;
+      const r = route.getBoundingClientRect();
+      const first = pins[0].getBoundingClientRect();
+      const last = pins[pins.length - 1].getBoundingClientRect();
+      const top = first.top + first.height / 2 - r.top;
+      const bottom = last.top + last.height / 2 - r.top;
+      route.style.setProperty('--pt-rail-top', `${Math.round(top)}px`);
+      route.style.setProperty('--pt-rail-h', `${Math.max(0, Math.round(bottom - top))}px`);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(route);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, [stops]);
 
   if (!cssReady) return null;
   if (!token) return <Shell lang={lang} setLang={setLang}><NotFound message={t('public.invalid_link')} t={t} /></Shell>;
@@ -254,7 +291,7 @@ export default function PublicTrip() {
                 <h2>{t('public.route')}</h2>
                 <span className="pt-c">{stops.filter((s) => s.isTransit).length} {plural(stops.filter((s) => s.isTransit).length, 'public.stops')}</span>
               </div>
-              <div className="pt-route">
+              <div className="pt-route" ref={routeRef}>
                 {stops.map((s, i) => {
                   const leg = i > 0 ? legFor(stops[i - 1], s) : null;
                   const on = selectedId === s.id;
@@ -262,7 +299,7 @@ export default function PublicTrip() {
                     <React.Fragment key={s.id}>
                       {leg && (
                         <div className="pt-leg">
-                          <span className="pt-legic"><Ic id={leg.icon} /></span>
+                          <span className="pt-legic"><Icon name={leg.icon} size={16} /></span>
                           <b>{leg.label}</b>
                           {leg.dur && <><span className="pt-dot" /><span className="tnum">{leg.dur}</span></>}
                         </div>
@@ -281,7 +318,6 @@ export default function PublicTrip() {
                           <span className="pt-pin">{s.isTransit ? s.n : <FlagGlyph />}</span>
                           <div className="pt-top">
                             <h3 className="pt-city">{s.city}</h3>
-                            {!s.isTransit && <span className={`pt-tag pt-tag--${s.kind}`}>{t(`public.role_${s.kind}`)}</span>}
                           </div>
                           <div className="pt-meta">
                             <span className="pt-country"><FlagImg cc={s.cc} />{s.country}</span>
@@ -289,6 +325,8 @@ export default function PublicTrip() {
                             {s.nights > 0 && (
                               <span className="pt-nights"><Ic id="i-moon" /><span className="tnum">{s.nights}</span> {plural(s.nights, 'public.nights')}</span>
                             )}
+                            {/* Роль-бейдж (Старт/Финиш) — внизу карточки, в одном ряду с бейджем ночей (фидбэк Pavel) */}
+                            {!s.isTransit && <span className={`pt-tag pt-tag--${s.kind}`}>{t(`public.role_${s.kind}`)}</span>}
                           </div>
                         </article>
                       )}

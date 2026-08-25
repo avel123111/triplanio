@@ -68,7 +68,11 @@ export function SiteSummary({ stats, peopleTitle, peopleCount, people }) {
           <ul className="pt-plist">
             {people.map((p, i) => (
               <li className="pt-person" title={p.title} key={i}>
-                <span className={`pt-av pt-av--${p.idx}`}>{p.ini}</span>
+                <span className={`pt-av pt-av--${p.idx}`}>
+                  {/* Реальное фото участника, если есть (getPublicTrip отдаёт avatar_url);
+                      иначе инициалы на контрастной паре. Без user_id сид не нужен. */}
+                  {p.photo ? <img src={p.photo} alt="" loading="lazy" onError={(e) => { e.currentTarget.remove(); }} /> : p.ini}
+                </span>
                 <span>{p.name}</span>
               </li>
             ))}
