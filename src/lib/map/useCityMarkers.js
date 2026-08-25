@@ -3,6 +3,23 @@ import { useEffect, useRef } from 'react';
 import { mapboxgl } from '@/lib/mapbox';
 import { groupByLocation, createMarkerEl } from './markers';
 
+// Зум-зависимый размер пинов. Фикс-размер плохо читался на мелком зуме (вся карта
+// мира с полноразмерными кольцами = каша), поэтому в покое пин масштабируется по
+// зуму: одна CSS-переменная `--mk-scale` на контейнере карты, `.tmk__core` читает
+// её через `transform: scale(var(--mk-scale,1))`. Пропорции ролей сохраняются
+// сами (пересадка/слепленный — тот же `.tmk__core`); ховер/селект перебивают
+// resting-transform полным `scale(1.1)` (активный пин всегда крупный, читаемый).
+// Диапазон: MIN на мелком зуме (≤ Z_LO), MAX = сегодняшний размер на детальном
+// (≥ Z_HI), линейно между. Живёт в ОБЩЕМ хуке — правило одно на все карты.
+const MK_MIN = 0.6;
+const MK_MAX = 1;
+const MK_Z_LO = 4;
+const MK_Z_HI = 8;
+const zoomScale = (z) => {
+  const t = Math.max(0, Math.min(1, (z - MK_Z_LO) / (MK_Z_HI - MK_Z_LO)));
+  return (MK_MIN + t * (MK_MAX - MK_MIN)).toFixed(3);
+};
+
 /**
  * Городские пины трипа — ЕДИНАЯ сборка для линзы «Маршрут»/редактора (`MapView`)
  * и планировщика (`FlowMap`). До этого оба гоняли построчно совпадающие эффекты:
@@ -85,6 +102,19 @@ export function useCityMarkers(mapRef, ready, {
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, enabled, rebuildKey]);
+
+  // Размер пинов по зуму — одна `--mk-scale` на контейнере карты, слушателем
+  // `zoom` (кадры зума). Все `.tmk` под контейнером наследуют переменную, так что
+  // это единственная точка на все карты. Ставим сразу и на каждом кадре зума.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+    const container = map.getContainer();
+    const apply = () => { container.style.setProperty('--mk-scale', zoomScale(map.getZoom())); };
+    apply();
+    map.on('zoom', apply);
+    return () => { map.off('zoom', apply); };
+  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Выделение + ховер — тоглом на готовых элементах (без пересборки). Гоняется и
   // после rebuild (в deps `rebuildKey`), чтобы состояние пережило перерисовку.
