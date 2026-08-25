@@ -653,9 +653,6 @@ export default function Login() {
             {(
               <section className="screen" data-screen="signin">
                 <div className="screen-head">
-                  {/* av-brow = прототипный .eyebrow (в §AUTH переименован из-за коллизии
-                      с лендинговым .eyebrow); скрыт на всех экранах, кроме join-signin. */}
-                  <div className="av-brow">{t('auth.login_eyebrow')}</div>
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.login_title') }} />
                   <p className="av-sub">{t('auth.login_lede')}</p>
                 </div>
@@ -706,7 +703,6 @@ export default function Login() {
             {(
               <section className="screen" data-screen="signup">
                 <div className="screen-head">
-                  <div className="av-brow">{t('auth.signup_eyebrow')}</div>
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.signup_title') }} />
                   <p className="av-sub">{t('auth.signup_lede')}</p>
                 </div>
