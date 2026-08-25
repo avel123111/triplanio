@@ -18,11 +18,9 @@ if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
 // One Mapbox Standard style for every map surface. Light/dark is the
 // `lightPreset` config (day/night), switched in place - the map is NOT
 // re-created on theme change. `theme: 'default'`.
+// One Standard style for EVERY map surface, including the share card (TRIP-443):
+// the card map reads the same basemap as the trip Map lens / overview.
 export const MAP_STYLE = 'mapbox://styles/avel1231/cmqogtezo001s01qzal5699es';
-// Dedicated Standard-based style for the share card map only (TRIP-193). Same
-// `lightPreset` day/night config as MAP_STYLE, so the card's light/dark toggle
-// keeps working; the in-app map surfaces stay on MAP_STYLE.
-export const SHARE_MAP_STYLE = 'mapbox://styles/avel1231/cmr9qqc7u001801r1923v90fn';
 export const lightPresetFor = (scheme) => (scheme === 'DARK' ? 'night' : 'day');
 
 // Initial style config - passed to `new mapboxgl.Map({ config })` to avoid a flash.

@@ -8,14 +8,13 @@
  * исходников в public/ — руками файл не править, гонять `node scripts/gen-share-card-assets.mjs`.
  *
  * Состав FONT_B64 (порядок фиксирован, читается fontFaces.ts):
- *   0 Caveat cyrillic (ttf)   — «My trip!», «Scan to explore» (переносим as-is)
- *   1 Caveat latin (ttf)
- *   2 Geologica cyrillic (woff2, вариативный 400..800)
- *   3 Geologica cyrillic-ext (woff2)
- *   4 Geologica latin (woff2)
- *   5 Geologica latin-ext (woff2)
- * Montserrat/Rubik и фоновый jpeg (BG_DEFAULT_B64) выпилены: новый дизайн —
- * прозрачный стикер на Geologica, фон приходит подложкой с фронта.
+ *   0 Geologica cyrillic (woff2, вариативный 400..800)
+ *   1 Geologica cyrillic-ext (woff2)
+ *   2 Geologica latin (woff2)
+ *   3 Geologica latin-ext (woff2)
+ * Caveat (рукописное «My trip!»/«Scan to explore»), Montserrat/Rubik и фоновый
+ * jpeg выпилены: дизайн v34 — единственный шрифт Geologica, фон приходит
+ * подложкой с фронта.
  */
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -29,14 +28,6 @@ const FONT_DIR = resolve(root, 'public/fonts/geologica');
 const FLAGS_DIR = resolve(root, 'public/flags');
 const LOGO = resolve(root, 'public/triplanio-logo.svg');
 
-// Существующие байты Caveat (ttf) из текущего assets_b64 — переносим без изменений.
-const cur = readFileSync(OUT, 'utf8');
-const m = cur.match(/FONT_B64[^[]*\[([\s\S]*?)\];/);
-if (!m) throw new Error('не нашёл FONT_B64 в текущем assets_b64.ts');
-const oldFonts = m[1].match(/"[^"]*"/g).map((x) => x.slice(1, -1));
-const caveatCyr = oldFonts[0];
-const caveatLat = oldFonts[1];
-
 const b64 = (p) => readFileSync(p).toString('base64');
 const geoCyr = b64(resolve(FONT_DIR, 'geologica-cyrillic.woff2'));
 const geoCyrExt = b64(resolve(FONT_DIR, 'geologica-cyrillic-ext.woff2'));
@@ -44,7 +35,7 @@ const geoLat = b64(resolve(FONT_DIR, 'geologica-latin.woff2'));
 const geoLatExt = b64(resolve(FONT_DIR, 'geologica-latin-ext.woff2'));
 const logoB64 = b64(LOGO);
 
-const fonts = [caveatCyr, caveatLat, geoCyr, geoCyrExt, geoLat, geoLatExt];
+const fonts = [geoCyr, geoCyrExt, geoLat, geoLatExt];
 
 const out = `// AUTO-GENERATED (TRIP-443) — base64-встроенные ассеты share-карточки.
 // Встроены (не с диска, не с CDN), потому что Supabase edge НЕ отдаёт бандлённые
@@ -52,9 +43,8 @@ const out = `// AUTO-GENERATED (TRIP-443) — base64-встроенные асс
 // Воспроизводимо: scripts/gen-share-card-assets.mjs. РУКАМИ НЕ ПРАВИТЬ.
 //
 // FONT_B64 (порядок читает fontFaces.ts):
-//   0 Caveat cyrillic (ttf)      3 Geologica cyrillic-ext (woff2)
-//   1 Caveat latin (ttf)         4 Geologica latin (woff2)
-//   2 Geologica cyrillic (woff2) 5 Geologica latin-ext (woff2)
+//   0 Geologica cyrillic (woff2)     2 Geologica latin (woff2)
+//   1 Geologica cyrillic-ext (woff2) 3 Geologica latin-ext (woff2)
 // Geologica — вариативный woff2 (одна ось веса 400..800 на сабсет).
 export const FONT_B64: string[] = [
 ${fonts.map((f) => `  "${f}",`).join('\n')}

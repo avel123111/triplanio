@@ -1,6 +1,6 @@
 // Pins the marks that viral links carry (TRIP-329).
 //
-// These four strings are the vocabulary every report is written against, so a
+// These strings are the vocabulary every report is written against, so a
 // silent rename is the failure mode worth a test: nothing breaks, the numbers
 // just split in two and nobody notices for a month. The round-trip cases go
 // further and feed the built link back through campaign.js — the two halves of
@@ -26,14 +26,6 @@ test('a link without a query gets the marks behind a question mark', () => {
     withViralMarks('https://www.triplanio.com/join/tok', 'invite_link', TRIP),
     `https://www.triplanio.com/join/tok`
       + `?utm_source=trip_invite&utm_medium=viral&utm_campaign=trip_${TRIP}`,
-  );
-});
-
-test('the share card puts its format in utm_content, the trip id in the campaign', () => {
-  assert.equal(
-    withViralMarks('https://www.triplanio.com/', 'share_card', TRIP, 'story'),
-    `https://www.triplanio.com/`
-      + `?utm_source=share_card&utm_medium=viral&utm_campaign=trip_${TRIP}&utm_content=story`,
   );
 });
 
@@ -79,7 +71,7 @@ test('trip_<uuid> fits the 300-char cap of the signup_utm_* columns', () => {
   assert.ok(`trip_${TRIP}`.length < 300);
 });
 
-// The edge functions build two of the four links and cannot import from src/,
+// The edge functions build these links and cannot import from src/,
 // so the table lives twice. Drift between the copies is invisible everywhere
 // else: both halves keep working, they just report under different names.
 test('the Deno mirror declares exactly the same table', () => {
