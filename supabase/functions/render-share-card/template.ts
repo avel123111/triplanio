@@ -90,7 +90,7 @@ type Layout = {
   // Ряд «Countries» + флаги ВНУТРИ кремовой рамки под окном карты.
   cap: { labSize: number; flag: number; ring: number; gap: number; labGap: number; moreSize: number; blockH: number };
   stats: { y: number; numSize: number; labSize: number; cellPad: number };
-  brand: { cy: number; logo: number; size: number; gap: number };
+  brand: { cy: number; logo: number; logoR: number; size: number; gap: number };
 };
 
 const LAYOUTS: Record<Format, Layout> = {
@@ -101,7 +101,7 @@ const LAYOUTS: Record<Format, Layout> = {
     pola: { top: 563, width: 860, padT: 34, padX: 34, padB: 34, winH: 640 },
     cap: { labSize: 36, flag: 44, ring: 2, gap: 8, labGap: 44, moreSize: 22, blockH: 84 },
     stats: { y: 1495, numSize: 74, labSize: 32, cellPad: 36 },
-    brand: { cy: 1806, logo: 76, size: 48, gap: 16 },
+    brand: { cy: 1806, logo: 76, logoR: 18, size: 48, gap: 16 },
   },
   post: {
     w: 1080, h: 1350, padX: 60,
@@ -110,7 +110,7 @@ const LAYOUTS: Record<Format, Layout> = {
     pola: { top: 371, width: 912, padT: 30, padX: 30, padB: 30, winH: 520 },
     cap: { labSize: 32, flag: 40, ring: 2, gap: 8, labGap: 40, moreSize: 20, blockH: 76 },
     stats: { y: 1107, numSize: 66, labSize: 30, cellPad: 36 },
-    brand: { cy: 1276, logo: 66, size: 42, gap: 14 },
+    brand: { cy: 1276, logo: 66, logoR: 16, size: 42, gap: 14 },
   },
 };
 
@@ -290,12 +290,14 @@ export function buildCardSvg(
       ? `<image href="${mapDataUri}" x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" `
         + `preserveAspectRatio="xMidYMid slice" clip-path="url(#winclip)"/>`
       : `<rect x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" fill="#dbe6ef" clip-path="url(#winclip)"/>`);
-  // Внутренняя тень карты по краю (карта «утоплена» под рамкой) — плоские
-  // stroke-полосы внутри окна (без blur): широкая слабая + узкая плотнее.
-  // Рисуется и в overlay (поверх дыры с живой картой) — чтобы превью == финал.
+  // Внутренняя тень карты по краю (карта «утоплена» под рамкой) — как в макете
+  // РАЗМЫТАЯ (inset box-shadow): stroke по краю окна + feGaussianBlur, обрезано
+  // окном (winclip), поэтому размытие уходит ТОЛЬКО внутрь. Blur снова можно —
+  // растеризация идёт в браузере (не серверный resvg с CPU-лимитом). Рисуется и
+  // в overlay (поверх дыры с живой картой), чтобы превью == финал.
   const innerShadow = `<g clip-path="url(#winclip)">`
-    + `<path d="${winPath}" transform="${polaXf}" fill="none" stroke="${C.innerShadow}" stroke-width="30" opacity="0.20"/>`
-    + `<path d="${winPath}" transform="${polaXf}" fill="none" stroke="${C.innerShadow}" stroke-width="10" opacity="0.30"/></g>`;
+    + `<g filter="url(#winInnerA)"><path d="${winPath}" transform="${polaXf}" fill="none" stroke="${C.innerShadow}" stroke-width="10" opacity="0.42"/></g>`
+    + `<g filter="url(#winInnerB)"><path d="${winPath}" transform="${polaXf}" fill="none" stroke="${C.innerShadow}" stroke-width="6" opacity="0.32"/></g></g>`;
 
   // --- ряд «Countries» + флаги ВНУТРИ кремовой рамки (под окном, повёрнут с рамкой) ---
   const countries = buildInFrameCountries(L, g, data, polaXf);
@@ -312,6 +314,9 @@ export function buildCardSvg(
  <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c7e6"/><stop offset="0.32" stop-color="#cfe0ec"/><stop offset="0.62" stop-color="#7fa7b3"/><stop offset="1" stop-color="#274b63"/></linearGradient>
  <clipPath id="winclip"><path d="${winPath}" transform="${polaXf}"/></clipPath>
  <mask id="winhole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${winPath}" transform="${polaXf}" fill="black"/></mask>
+ <filter id="winInnerA" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"/></filter>
+ <filter id="winInnerB" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+ <clipPath id="logoClip"><rect x="${L.padX}" y="${L.brand.cy - L.brand.logo / 2}" width="${L.brand.logo}" height="${L.brand.logo}" rx="${L.brand.logoR}" ry="${L.brand.logoR}"/></clipPath>
 </defs>
 ${bg}
 ${creamShadow}
@@ -416,6 +421,8 @@ function buildBrand(L: Layout, d: CardData): string {
   const b = L.brand;
   const x = L.padX;
   const logoY = b.cy - b.logo / 2;
-  return `<image href="${LOGO_URI}" x="${x}" y="${logoY}" width="${b.logo}" height="${b.logo}"/>`
+  // Лого со скруглёнными углами (как в макете): обрезаем <image> rounded-rect'ом
+  // (clipPath logoClip объявлен в <defs> по геометрии этого формата).
+  return `<image href="${LOGO_URI}" x="${x}" y="${logoY}" width="${b.logo}" height="${b.logo}" clip-path="url(#logoClip)"/>`
     + wtext(x + b.logo + b.gap, b.cy + b.size * 0.34, b.size, d.brand, { weight: 800 });
 }
