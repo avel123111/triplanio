@@ -32,10 +32,11 @@ const ICON_PATHS = {
   waypoint: '<path d="M7 7h13l-4-4M17 17H4l4 4"/>',
 };
 
-// Роль визита → глиф (старт/финиш/пересадка) или null (город = номер).
-const GLYPH_FOR_KIND = { start: 'start', end: 'end', waypoint: 'waypoint' };
 // Роль → класс-модификатор `.tmk` (несёт цвет `--tmk` и, у пересадки, меньший
-// размер). Город (transit/undefined) роль-класса не несёт — база `.tmk` = brand.
+// размер). Ключи совпадают с `ICON_PATHS` — те же роли, что несут глиф (старт/
+// финиш/пересадка); город (transit/undefined) роль-класса не несёт, база `.tmk`
+// = brand. Наличие глифа проверяем прямо по `ICON_PATHS[kind]`, отдельной карты
+// «роль→имя глифа» нет (имя глифа = сама роль).
 //   старт   → зелёный (`--success`)
 //   финиш   → оранжевый (`--warm`)
 //   пересадка→ бирюза (`--ev-transfer`, цвет эвента «транспорт»), меньший размер
@@ -72,9 +73,8 @@ const svgGlyph = (icon) =>
 // города, покрашенные в цвет роли через её класс-модификатор (город — без класса,
 // базовый brand). Номер экранируем (city label — данные).
 function cellHtml(cell) {
-  const glyph = GLYPH_FOR_KIND[cell?.kind];
   const rc = ROLE_CLASS[cell?.kind] || '';
-  const inner = glyph ? svgGlyph(glyph) : escapeHtml(String(cell?.label ?? ''));
+  const inner = ICON_PATHS[cell?.kind] ? svgGlyph(cell.kind) : escapeHtml(cell?.label);
   return `<span class="${['tmk__h', rc].filter(Boolean).join(' ')}">${inner}</span>`;
 }
 
@@ -100,13 +100,11 @@ export function createMarkerEl(cells, { onClick, onHover } = {}) {
 
   if (list.length <= 1) {
     const c = list[0] || {};
-    const glyph = GLYPH_FOR_KIND[c.kind];
-    if (glyph) {
-      const rc = ROLE_CLASS[c.kind];
-      if (rc) classes.push(rc);
-      core = svgGlyph(glyph);
+    if (ICON_PATHS[c.kind]) {
+      classes.push(ROLE_CLASS[c.kind]); // роль с глифом всегда несёт роль-класс
+      core = svgGlyph(c.kind);
     } else {
-      core = escapeHtml(String(c.label ?? ''));
+      core = escapeHtml(c.label);
     }
   } else {
     // Слепленный пилюль: первые 3 визита, каждый своей ячейкой со скошенным швом.

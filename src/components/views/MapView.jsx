@@ -344,8 +344,8 @@ export default function MapView({
 
   // Точки для общего шва `useCityMarkers` (сборка пинов). Нумеруем ТОЛЬКО транзит-
   // города (1,2,3…); start/end/waypoint номера не несут — рисуются флагами / глифом
-  // пересадки (см. iconForKinds). Неизвестный kind считаем транзитом (легаси-строки
-  // всё равно получают номер). `data` = сам визит (уедет в onCityClick/onCityHover).
+  // пересадки (глиф выбирает `markers.js` по `ICON_PATHS[kind]`). Неизвестный kind
+  // считаем транзитом (легаси-строки всё равно получают номер). `data` = сам визит.
   const points = useMemo(() => {
     let transitNo = 0;
     return ordered.map((v) => {
