@@ -207,16 +207,28 @@ export function createCityBadgeEl({ countryCode, name, dates, actionLabel } = {}
   // карты, и без stopPropagation он бы долетел до 'click' карты — а там сброс
   // выбора, то есть кнопка гасила бы ровно то, что открывает.
   // Переиспользуем канон-примитив `.icon-btn` (rule #6), а не свой класс: тот же
-  // облик, что у всех иконочных кнопок ДС (маленькая круглая outline). Единственная
-  // добавка в CSS — вернуть кнопке события поверх passiv-попапа (см. app.css).
+  // облик, что у всех иконочных кнопок ДС (маленькая КВАДРАТНАЯ outline — дефолт
+  // `.icon-btn` уже rounded-square `--r-sm`, без `--round`). Единственная добавка
+  // в CSS — вернуть кнопке события поверх passiv-попапа (см. app.css).
   const cta = onAction
-    ? `<button type="button" class="icon-btn icon-btn--outline icon-btn--sm icon-btn--round cbadge__go" aria-label="${escapeHtml(actionLabel || '')}">${CHEVRON_SVG}</button>`
+    ? `<button type="button" class="icon-btn icon-btn--outline icon-btn--sm cbadge__go">${CHEVRON_SVG}</button>`
     : '';
   // Name over dates in a column; the flag sits beside it, top-aligned with the name.
   el.innerHTML = `${flag}<span class="cbadge__col">${nm}${dt}</span>${cta}`;
   if (onAction) {
     const btn = el.querySelector('.cbadge__go');
-    if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); onAction(e); });
+    if (btn) {
+      // aria-label ставим СВОЙСТВОМ, а не в разметке: значение и так локализовано
+      // (родитель шлёт `t()`-строку), но литерал `aria-label="…"` спотыкает i18n-гард.
+      if (actionLabel) btn.setAttribute('aria-label', actionLabel);
+      btn.addEventListener('click', (e) => { e.stopPropagation(); onAction(e); });
+      // Лёгкое ПОЯВЛЕНИЕ CTA внутри попапа — тем же приёмом Web Animations, что и
+      // pop маркеров (без CSS/классов). УХОД анимирует `useCityBadge` перед снятием.
+      if (btn.animate) btn.animate(
+        [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }],
+        { duration: 150, easing: 'cubic-bezier(.22,1,.36,1)' },
+      );
+    }
   }
   return el;
 }
