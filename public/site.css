@@ -301,7 +301,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    заголовку цвет его секции (белый в .final, --ink по умолчанию — то же самое). */
 html.site h1, html.site h2, html.site h3, html.site h4{color:inherit;text-wrap:wrap}
 
-h1,h2,h3{font-family:var(--font-display);line-height:1.12;letter-spacing:-.025em}
+/* visual-diff-exempt: h1 font-weight — заголовки зоны 800 (Onest), потеряно при порте прототипа v5.7 (TRIP-460) */
+/* visual-diff-exempt: h1 line-height — прототип v5.7: 1.14 (TRIP-460) */
+/* visual-diff-exempt: h2 line-height — прототип v5.7: 1.14 (TRIP-460) */
+/* visual-diff-exempt: h3 line-height — прототип v5.7: 1.14 (TRIP-460) */
+h1,h2,h3{font-family:var(--font-display);line-height:1.14;letter-spacing:-.025em;font-weight:800}
 
 h2{font-size: var(--fs-section-h2);font-weight:800}
 
