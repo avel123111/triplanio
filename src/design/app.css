@@ -4529,6 +4529,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__overlay right — правый край выражен шириной (слой съехал из колонки в шелл, коробка та же)
    visual-diff-exempt: .mapshell__overlay width — ширина колонки минус её левый воздух (правый край на том же --mapshell-panel-w) */
 .mapshell__overlay { position: absolute; top: var(--sp-7); bottom: var(--sp-7); left: var(--sp-7); width: calc(var(--mapshell-panel-w) - var(--sp-7)); display: flex; z-index: 3; }
+/* Стопка панелей: слои ЗАПОЛНЯЮТ коробку слоя абсолютом и лежат друг на друге
+   (порядок в DOM = порядок по глубине, поздний — сверху). Для одного слоя это
+   тот же прямоугольник, что и flex:1 раньше (коробка позиционирована), поэтому
+   геометрия одиночной панели не меняется. Правило скоупнуто на потомков оверлея
+   и НЕ трогает `.evd-drawer.ts-pdrawer` в TripView (тот вне `.mapshell__overlay`).
+   visual-diff-exempt: .mapshell__overlay inset — потомок слоя заполняет коробку абсолютом (для одного слоя прямоугольник тот же, что при flex:1)
+   visual-diff-exempt: .ts-pdrawer position — только ВНУТРИ .mapshell__overlay (стопка слоёв); .evd-drawer.ts-pdrawer в TripView вне оверлея и не затрагивается
+   visual-diff-exempt: .ts-pdrawer inset — то же, слой стопки заполняет коробку */
+.mapshell__overlay > .ts-pdrawer { position: absolute; inset: 0; }
 /* Весь скин (грунт + рамка + радиус + клип + подъём) несёт примитив
    <Card pad="none" radius="btn" raised> — классу остаётся раскладка. */
 .mapshell__card { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
