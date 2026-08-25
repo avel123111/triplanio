@@ -23,14 +23,16 @@ export default function AuthShell({ lang, setLang, children }) {
   }, []);
 
   return (
-    <div className="auth">
+    <div className="authv">
       <LandingSprite />
 
       {/* ════ LEFT: форма ════ */}
       <section className="pane-form">
-        <header className="pane-top">
-          <Link to="/" className="brand">
-            <svg className="logo" width="33" height="33" aria-hidden="true"><use href="#tl-logo" /></svg>
+        {/* on-light: светлая шапка — темит общий LangSwitch (.lang-btn) в ink,
+            как на светлых секциях лендинга. Реюз, не дубль (rule #6). */}
+        <header className="pane-top on-light">
+          <Link to="/" className="av-brand">
+            <svg className="av-logo" width="33" height="33" aria-hidden="true"><use href="#tl-logo" /></svg>
             <span>{BRAND_NAME}</span>
           </Link>
           <div className="top-actions">
@@ -64,7 +66,7 @@ export default function AuthShell({ lang, setLang, children }) {
           <h2 dangerouslySetInnerHTML={{ __html: t('auth.art_title') }} />
           <p className="rotator">
             {[0, 1, 2].map((i) => (
-              <span key={i} className={i === rot ? 'on' : ''}>{t(`auth.art_l${i + 1}`)}</span>
+              <span key={i} className={i === rot ? 'av-on' : ''}>{t(`auth.art_l${i + 1}`)}</span>
             ))}
           </p>
         </div>

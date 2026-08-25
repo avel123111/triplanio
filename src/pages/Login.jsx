@@ -526,42 +526,42 @@ export default function Login() {
 
             {/* ── Вход ── */}
             {view === 'login' && (
-              <section className="screen is-active" data-screen="signin">
+              <section className="screen av-is-active" data-screen="signin">
                 <div className="screen-head">
-                  <div className="brow">{t('auth.login_eyebrow')}</div>
+                  <div className="av-brow">{t('auth.login_eyebrow')}</div>
                   <h1>{t('auth.login_title')}</h1>
                   <p className="lead">{t('auth.login_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="social">
-                  <button type="button" className="btn-social" onClick={handleGoogle} disabled={isLoading}><IconGoogle /><span>Google</span></button>
-                  <button type="button" className="btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>Apple</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}><IconGoogle /><span>Google</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>Apple</span></button>
                 </div>
                 <div className="or"><span>{t('auth.or_email')}</span></div>
                 <form onSubmit={handleLogin}>
-                  <div className="field">
+                  <div className="av-field">
                     <div className="field-top"><label htmlFor="l-email">{t('auth.email_label')}</label></div>
                     <div className="control">
-                      <input className="input" id="l-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
+                      <input className="av-input" id="l-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
-                  <div className="field">
+                  <div className="av-field">
                     <div className="field-top">
                       <label htmlFor="l-pw">{t('auth.password')}</label>
                       {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
                       <a href="#" className="aux" onClick={e => { e.preventDefault(); goto('reset'); }}>{t('auth.forgot')}</a>
                     </div>
                     <div className="control">
-                      <input className="input has-toggle" id="l-pw" type={showPw ? 'text' : 'password'} autoComplete="current-password" placeholder={t('auth.pw_placeholder')} required value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <input className="av-input has-toggle" id="l-pw" type={showPw ? 'text' : 'password'} autoComplete="current-password" placeholder={t('auth.pw_placeholder')} required value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
                   </div>
-                  <label className="check">
+                  <label className="av-check">
                     <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} disabled={isLoading} />
                     <span className="box" aria-hidden="true" />
                     <span className="txt">{t('auth.remember')}</span>
                   </label>
-                  <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>{isLoading ? t('common.loading') : t('auth.sign_in')}<IconArrow /></button>
+                  <button type="submit" className="av-btn av-btn-primary av-btn-block" disabled={isLoading}>{isLoading ? t('common.loading') : t('auth.sign_in')}<IconArrow /></button>
                 </form>
                 <p className="alt">{t('auth.no_account')}{' '}<button type="button" onClick={() => goto('signup')}>{t('auth.sign_up')}</button></p>
               </section>
@@ -569,35 +569,35 @@ export default function Login() {
 
             {/* ── Регистрация ── */}
             {view === 'signup' && (
-              <section className="screen is-active" data-screen="signup">
+              <section className="screen av-is-active" data-screen="signup">
                 <div className="screen-head">
-                  <div className="brow">{t('auth.create_account')}</div>
+                  <div className="av-brow">{t('auth.create_account')}</div>
                   <h1>{t('auth.signup_title')}</h1>
                   <p className="lead">{t('auth.signup_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="social">
-                  <button type="button" className="btn-social" onClick={handleGoogle} disabled={isLoading}><IconGoogle /><span>Google</span></button>
-                  <button type="button" className="btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>Apple</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}><IconGoogle /><span>Google</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>Apple</span></button>
                 </div>
                 <div className="or"><span>{t('auth.or_email')}</span></div>
                 <form onSubmit={handleSignup}>
-                  <div className="field">
+                  <div className="av-field">
                     <div className="field-top"><label htmlFor="s-name">{t('auth.name_label')}</label></div>
                     <div className="control">
-                      <input className="input" id="s-name" type="text" autoComplete="name" placeholder={t('auth.name_placeholder')} required value={name} onChange={e => setName(e.target.value)} disabled={isLoading} />
+                      <input className="av-input" id="s-name" type="text" autoComplete="name" placeholder={t('auth.name_placeholder')} required value={name} onChange={e => setName(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
-                  <div className="field">
+                  <div className="av-field">
                     <div className="field-top"><label htmlFor="s-email">{t('auth.email_label')}</label></div>
                     <div className="control">
-                      <input className="input" id="s-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
+                      <input className="av-input" id="s-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
-                  <div className="field">
+                  <div className="av-field">
                     <div className="field-top"><label htmlFor="s-pw">{t('auth.password')}</label></div>
                     <div className="control">
-                      <input className="input has-toggle" id="s-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.pw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <input className="av-input has-toggle" id="s-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.pw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
                     <div className="strength" data-score={password ? pwScore : undefined}><span /><span /><span /><span /></div>
@@ -609,7 +609,7 @@ export default function Login() {
                     {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
                     <a href="/terms">{t('auth.terms_link')}</a> {t('auth.terms_and')} <a href="/privacy">{t('auth.privacy_link')}</a>.
                   </p>
-                  <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>{isLoading ? t('common.loading') : t('auth.create_account')}<IconArrow /></button>
+                  <button type="submit" className="av-btn av-btn-primary av-btn-block" disabled={isLoading}>{isLoading ? t('common.loading') : t('auth.create_account')}<IconArrow /></button>
                 </form>
                 <p className="alt">{t('auth.have_account')}{' '}<button type="button" onClick={() => goto('login')}>{t('auth.sign_in')}</button></p>
               </section>
@@ -617,21 +617,21 @@ export default function Login() {
 
             {/* ── Восстановление (запрос) ── */}
             {view === 'reset' && (
-              <section className="screen is-active" data-screen="forgot">
+              <section className="screen av-is-active" data-screen="forgot">
                 <div className="screen-head">
-                  <div className="brow">{t('auth.reset_eyebrow')}</div>
+                  <div className="av-brow">{t('auth.reset_eyebrow')}</div>
                   <h1>{t('auth.reset_title')}</h1>
                   <p className="lead">{t('auth.reset_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <form onSubmit={handleReset}>
-                  <div className="field">
+                  <div className="av-field">
                     <div className="field-top"><label htmlFor="r-email">{t('auth.email_label')}</label></div>
                     <div className="control">
-                      <input className="input" id="r-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
+                      <input className="av-input" id="r-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
-                  <button type="submit" className="btn btn-primary btn-block" disabled={isLoading || resendLeft > 0}>
+                  <button type="submit" className="av-btn av-btn-primary av-btn-block" disabled={isLoading || resendLeft > 0}>
                     {isLoading ? t('common.loading') : resendLeft > 0 ? t('auth.resend_in').replace('{s}', String(resendLeft)) : t('auth.reset_submit')}<IconArrow />
                   </button>
                 </form>
@@ -641,7 +641,7 @@ export default function Login() {
 
             {/* ── Письмо отправлено ── */}
             {view === 'reset-sent' && (
-              <section className="screen is-active" data-screen="sent">
+              <section className="screen av-is-active" data-screen="sent">
                 <div className="status-icon"><IconMail /></div>
                 <div className="screen-head">
                   <h1>{t('auth.sent_title')}</h1>
@@ -655,8 +655,8 @@ export default function Login() {
                 {error && <AuthError>{error}</AuthError>}
                 <div className="mailto">
                   {/* nav-exempt: внешний сервис почты */}
-                  <a className="btn btn-quiet btn-block" href="https://mail.google.com" target="_blank" rel="noopener noreferrer">{t('auth.open_gmail')} <IconExternalLink /></a>
-                  <button type="button" className="btn btn-quiet btn-block" onClick={() => goto('login')}>{t('auth.to_login')}</button>
+                  <a className="av-btn av-btn-quiet av-btn-block" href="https://mail.google.com" target="_blank" rel="noopener noreferrer">{t('auth.open_gmail')} <IconExternalLink /></a>
+                  <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => goto('login')}>{t('auth.to_login')}</button>
                 </div>
                 <p className="alt">
                   {t('auth.no_email')}{' '}
@@ -669,27 +669,27 @@ export default function Login() {
 
             {/* ── Новый пароль ── */}
             {view === 'reset-password' && (
-              <section className="screen is-active" data-screen="reset">
+              <section className="screen av-is-active" data-screen="reset">
                 <div className="screen-head">
-                  <div className="brow">{t('auth.new_password')}</div>
+                  <div className="av-brow">{t('auth.new_password')}</div>
                   <h1>{t('auth.newpw_title')}</h1>
                   <p className="lead">{t('auth.newpw_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <form onSubmit={handleNewPassword}>
-                  <div className="field">
+                  <div className="av-field">
                     <div className="field-top"><label htmlFor="rp-pw">{t('auth.new_password')}</label></div>
                     <div className="control">
-                      <input className="input has-toggle" id="rp-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.pw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <input className="av-input has-toggle" id="rp-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.pw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
                     <div className="strength" data-score={password ? pwScore : undefined}><span /><span /><span /><span /></div>
                     <div className="strength-row">{STRENGTH_LABELS[pwScore]}</div>
                   </div>
-                  <div className="field">
+                  <div className="av-field">
                     <div className="field-top"><label htmlFor="rp-pw2">{t('auth.repeat_password')}</label></div>
                     <div className="control">
-                      <input className="input has-toggle" id="rp-pw2" type={showPw2 ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.repeat_placeholder')} required value={password2} onChange={e => setPassword2(e.target.value)} disabled={isLoading} />
+                      <input className="av-input has-toggle" id="rp-pw2" type={showPw2 ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.repeat_placeholder')} required value={password2} onChange={e => setPassword2(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw2 ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw2(v => !v)}><IconEye off={showPw2} /></button>
                     </div>
                     {password2 && (
@@ -700,7 +700,7 @@ export default function Login() {
                       </div>
                     )}
                   </div>
-                  <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>{isLoading ? t('auth.saving') : t('auth.save_password')}<IconArrow /></button>
+                  <button type="submit" className="av-btn av-btn-primary av-btn-block" disabled={isLoading}>{isLoading ? t('auth.saving') : t('auth.save_password')}<IconArrow /></button>
                 </form>
                 <p className="alt">{t('auth.remember_old')}{' '}<button type="button" onClick={finishToLogin}>{t('auth.sign_in')}</button></p>
               </section>
@@ -708,7 +708,7 @@ export default function Login() {
 
             {/* ── Пароль обновлён ── */}
             {view === 'reset-done' && (
-              <section className="screen is-active" data-screen="done">
+              <section className="screen av-is-active" data-screen="done">
                 <div className="status-icon">
                   <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                 </div>
@@ -716,7 +716,7 @@ export default function Login() {
                   <h1>{t('auth.done_title')}</h1>
                   <p className="lead">{t('auth.done_lede')}</p>
                 </div>
-                <button type="button" className="btn btn-primary btn-block" onClick={finishToLogin}>{t('auth.sign_in')}<IconArrow /></button>
+                <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={finishToLogin}>{t('auth.sign_in')}<IconArrow /></button>
               </section>
             )}
 

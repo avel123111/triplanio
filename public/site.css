@@ -97,6 +97,7 @@ html.site {
   /* мобильная ступень заголовка hero: без неё @media max-width:600px ссылался
      на НЕОБЪЯВЛЕННЫЙ токен → правило невалидно → заголовок наследовал случайные
      ~15px и не тянулся по ширине. Значение из прототипа v5.7 (TRIP-460). */
+  /* visual-diff-exempt: .site --fs-hero-h1-mobile — новый токен мобильной ступени hero (правило html.site); был undefined → заголовок не тянулся (TRIP-460) */
   --fs-hero-h1-mobile: clamp(1.55rem,7.7vw,2.15rem);
   --fs-hero-sub: clamp(1rem,.94rem + .35vw,1.11rem);
   --fs-hero-sub-mobile: clamp(.82rem,3.35vw,1rem);
@@ -573,7 +574,7 @@ section{position:relative}
      и дёргал всю страницу вниз. svh — стабильная (наименьшая) высота, не
      реагирует на строку браузера, поэтому прокрутка ровная. vh выше — фолбэк
      для старых браузеров без svh (TRIP-460). */
-  /* visual-diff-exempt: .hero min-height — dvh → svh, устранение дёрганья скролла от адресной строки мобилы (TRIP-460) */
+  /* visual-diff-exempt: .hero min-height — dvh → svh (базовое правило), устранение дёрганья скролла от адресной строки мобилы (TRIP-460) */
   min-height:calc(100svh + var(--sheet-r));
   /* stretch, а не center: положение текста задаёт верхний отступ сетки */
   display:flex;align-items:stretch;
@@ -700,7 +701,7 @@ section{position:relative}
 
 @media (max-width:980px){
   .hero{
-    /* visual-diff-exempt: .hero min-height — dvh → svh (мобильный @media), устранение дёрганья скролла (TRIP-460) */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} min-height — dvh → svh (мобильный @media), устранение дёрганья скролла (TRIP-460) */
     min-height:calc(100vh + var(--sheet-r));min-height:calc(100svh + var(--sheet-r));
     align-items:stretch;
   }
@@ -1473,7 +1474,7 @@ section{position:relative}
 /* Буква — белая на сплошном цветном фоне аватара (фон задаётся инлайном на
    инстансе). Без color здесь буква наследовала тёмный --ink из app.css и была
    почти не видна; прототип — белый. То же, что уже сделано у .feed-head .avs .av. */
-/* visual-diff-exempt: .av color — восстановлен белый (потерян при переносе, наследовался --ink/--muted); прототип белый (TRIP-460) */
+/* visual-diff-exempt: .aud-avatars color — .av белый (наследовался --ink/--muted); ключ на подлежащем-предке .aud-avatars (TRIP-344); прототип белый (TRIP-460) */
 .aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-weight:700;font-size: var(--fs-body);color:#fff;box-shadow:var(--shadow-sm)}
 
 .aud-avatars .av + .av{margin-left:-12px}
@@ -1727,7 +1728,8 @@ section{position:relative}
 /* font-variant-numeric:normal — app.css:460 `.num{tabular-nums}` (0,1,0) бил сброс
    на body; здесь 0,2,0 и грузится позже → цифры 23·61·118k пропорциональные,
    без распора узкой «1», как в прототипе. */
-/* visual-diff-exempt: .num font-variant-numeric — снят tabular-nums, прототип пропорциональный (TRIP-460) */
+/* visual-diff-exempt: .stat-box font-variant-numeric — снят tabular-nums (.stat-box .num), ключ на предке .stat-box (TRIP-344); прототип пропорциональный (TRIP-460) */
+/* visual-diff-exempt: .num font-variant-numeric — tabular-nums → normal: .stat-box .num переопределяет утёкший app.css .num{tabular-nums}; прототип пропорциональный (TRIP-460) */
 .stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand);font-variant-numeric:normal}
 
 .stat-box small{color:var(--muted);font-size: var(--fs-caption)}
@@ -1858,76 +1860,58 @@ section{position:relative}
 @media (max-width:560px){.footer-min{flex-direction:column;gap:20px}}
 
 /* ===========================================================
-   AUTH ZONE (/login, /join) — перенос прототипа v5.7 как есть.
-   Всё под .auth: скоуп бьёт коллизии app.css (.field/.input/.check)
-   специфичностью, не течёт на другие страницы, токены на .auth.
-   Спиннер .spin — зонный (app-DS примитив закрыт ds-boundary).
-   TRIP-464/463. Старый login.css удаляется тем же PR.
+   AUTH ZONE (/login, /join) — прототип v5.7, оболочка AuthShell.
+   Свой namespace: корень .authv + переименованные коллайдеры .av-*
+   (кнопки/бренд/поля/чекбокс — ДРУГИЕ объекты, чем одноимённые на
+   лендинге и в app-CSS, поэтому имя разведено, не переопределяем).
+   ОБЩЕЕ реюзается: LangSwitch (классы lang и code, шапка несёт on-light),
+   grad, av (аватар-префикс). Легаси-хук app-CSS НЕ трогаем — умрёт со
+   старым листом логина в Ф6. Уникальные классы зоны — голые, 2p их пропускает
+   как новые (см. check-css-semantics: новый класс = новый элемент).
    =========================================================== */
-/* site-dup-exempt: auth — .auth = корень страницы логина; app.css .auth = легаси-хук TRIP-410, заменяется зонным портом; новый корень явно берёт font-family (грузится позже, выигрывает) */
-/* prefix-exempt: auth — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: active — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: alert — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: alt — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: apple — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: art — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: aux — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: box — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: brand — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: brow — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: btn — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: caps — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: check — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: chips — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: code — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: control — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: err — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: field — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: form — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: grad — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: has — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: input — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: invalid — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: is — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: join — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: kicker — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: lang — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: lead — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: legal — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: loading — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: logo — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: mailto — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: ok — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: on — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: open — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: or — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: org — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: pane — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: pw — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: rotator — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: rule — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: rules — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: screen — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: secure — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: show — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: social — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: spin — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: status — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: strength — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: sub — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: tick — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: timer — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: top — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: txt — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: valid — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: w3 — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: webp — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-.auth{
-  font-family:var(--font-body);   /* зона рисует Onest/Golos; бьёт app.css .auth (TRIP-410 Geologica), т.к. site.css грузится позже */
+/* prefix-exempt: authv — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: alert — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: alt — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: apple — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: art — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: aux — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: box — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: caps — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: chips — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: control — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: field — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: form — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: has — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: invalid — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: join — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: kicker — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: lead — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: legal — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: loading — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: mailto — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: or — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: pane — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: pw — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: rotator — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: rule — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: rules — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: screen — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: secure — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: show — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: social — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: status — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: strength — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: tick — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: timer — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: top — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: txt — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* prefix-exempt: valid — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+.authv{
+  font-family:var(--font-body);   /* зона рисует Onest/Golos; бьёт app-CSS .authv (TRIP-410 Geologica), т.к. site-CSS грузится позже */
   /* Токены зоны auth: общие роли наследуются с html.site (бренд, ink, muted,
      радиусы, тени, шрифты, ease, ice). Прототипные синонимы АЛИАСЯТСЯ на зонные —
-     ported-правила дословны, сверка в одной точке. На .auth (не :root/html.site):
-     не течёт на другие страницы, не повторяет утечку login.css. TRIP-464. */
+     ported-правила дословны, сверка в одной точке. На .authv (не :root/html.site):
+     не течёт на другие страницы, не повторяет утечку старый лист логина. TRIP-464. */
   --form-bg:var(--white); --pop-bg:var(--white); --field-bg-f:var(--white);
   --art-base:var(--white); --social-bg:var(--white);
   --faint:var(--muted); --placeholder:var(--muted);
@@ -1953,186 +1937,173 @@ section{position:relative}
   --fs-auth-h4:clamp(1.7rem,1.05rem + 1.7vw,2.45rem);
   height:100svh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.06fr)
 }
-.auth .pane-form{position:relative;isolation:isolate;display:flex;flex-direction:column;min-width:0;height:100svh;
+.authv .pane-form{position:relative;isolation:isolate;display:flex;flex-direction:column;min-width:0;height:100svh;
   background:var(--form-bg);
   padding:clamp(16px,2vw,24px) clamp(20px,4vw,60px) clamp(14px,1.8vw,20px);}
-.auth .pane-form::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;background:var(--form-wash)}
-.auth .pane-form::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:var(--grain-op);
+.authv .pane-form::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;background:var(--form-wash)}
+.authv .pane-form::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:var(--grain-op);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");}
-.auth .pane-top{display:flex;align-items:center;gap:14px;flex:none;min-height:70px}
-.auth .brand{display:inline-flex;align-items:center;gap:10px;padding:6px;margin:-6px;border-radius:12px;
+.authv .pane-top{display:flex;align-items:center;gap:14px;flex:none;min-height:70px}
+.authv .av-brand{display:inline-flex;align-items:center;gap:10px;padding:6px;margin:-6px;border-radius:12px;
   font-family:var(--font-display);font-weight:800;font-size:var(--fs-h4);letter-spacing:-.02em;color:var(--ink)}
-.auth .brand .logo{width:33px;height:33px;border-radius:9px;box-shadow:var(--logo-shadow)}
+.authv .av-brand .av-logo{width:33px;height:33px;border-radius:9px;box-shadow:var(--logo-shadow)}
 @media(max-width:900px){
-  .auth .brand{font-size:var(--fs-lead);gap:8px}
+  .authv .av-brand{font-size:var(--fs-lead);gap:8px}
 }
-.auth .top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
-.auth .lang{position:relative}
-.auth .lang-btn{display:flex;align-items:center;gap:7px;min-height:38px;padding:8px 12px;border-radius:99px;
-  font-size:var(--fs-body);font-weight:500;color:var(--ink);border:1px solid var(--hair);
-  transition:background .18s ease,border-color .18s ease,color .18s ease;}
-.auth .lang-btn:hover{background:var(--soft)}
-.auth .lang-btn svg{width:14px;height:14px;transition:transform .25s var(--ease-out)}
-.auth .lang.open .lang-btn svg{transform:rotate(180deg)}
-.auth .lang-menu{position:absolute;top:calc(100% + 10px);right:0;min-width:168px;padding:6px;z-index:40;
-  background:var(--pop-bg);border:1px solid var(--pop-bd);border-radius:var(--r-md);box-shadow:var(--shadow-lg);
-  opacity:0;visibility:hidden;transform:translateY(-8px) scale(.97);transform-origin:top right;
-  transition:opacity .22s var(--ease-out),transform .22s var(--ease-out),visibility .22s;}
-.auth .lang.open .lang-menu{opacity:1;visibility:visible;transform:none}
-.auth .lang-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:9px 12px;border-radius:10px;
-  font-size:var(--fs-body-lg);font-weight:500;color:var(--ink);text-align:left;transition:background .15s ease;}
-.auth .lang-menu button:hover{background:var(--soft)}
-.auth .lang-menu button.active{background:var(--ice);color:var(--brand-text);font-weight:600}
-.auth .lang-menu .code{font-size:var(--fs-caption);font-weight:700;letter-spacing:.06em;color:var(--brand-text);background:var(--ice);border-radius:6px;padding:2px 6px;min-width:32px;text-align:center}
-.auth .form-area{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;align-items:center;align-items:safe center;justify-content:center;padding:clamp(12px,2vh,28px) 0}
-.auth .screen .brow{display:none}
-.auth .screen[data-screen="join-signin"] .brow{display:inline-flex}
-.auth .form-wrap{position:relative;width:min(424px,100%);transition:height .34s var(--ease-out)}
-.auth .screen{position:absolute;top:0;left:0;width:100%;height:0;overflow:hidden;pointer-events:none;
+.authv .top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+/* Переключатель языка — ОБЩИЙ компонент LangSwitch (SiteChrome, .lang/.lang-btn/
+   .lang-menu), тот же, что на лендинге. Не переобъявляем: шапка auth несёт
+   on-light (см. AuthShell), LangSwitch темится в ink как на светлых шапках
+   лендинга. Реюз, а не дубль (rule #6). */
+.authv .form-area{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;align-items:center;align-items:safe center;justify-content:center;padding:clamp(12px,2vh,28px) 0}
+.authv .screen .av-brow{display:none}
+.authv .screen[data-screen="join-signin"] .av-brow{display:inline-flex}
+.authv .form-wrap{position:relative;width:min(424px,100%);transition:height .34s var(--ease-out)}
+.authv .screen{position:absolute;top:0;left:0;width:100%;height:0;overflow:hidden;pointer-events:none;
   opacity:0;visibility:hidden;transform:translateY(10px);
   transition:opacity .24s ease,transform .32s var(--ease-out),visibility .32s;}
-.auth .screen.is-leaving{height:auto;overflow:visible}
-.auth .screen.is-active{position:relative;height:auto;overflow:visible;pointer-events:auto;opacity:1;visibility:visible;transform:none}
-.auth .screen-head{margin-bottom:14px}
-.auth .brow{display:inline-flex;align-items:center;gap:9px;margin-bottom:13px;
+.authv .screen.av-is-leaving{height:auto;overflow:visible}
+.authv .screen.av-is-active{position:relative;height:auto;overflow:visible;pointer-events:auto;opacity:1;visibility:visible;transform:none}
+.authv .screen-head{margin-bottom:14px}
+.authv .av-brow{display:inline-flex;align-items:center;gap:9px;margin-bottom:13px;
   font-size:var(--fs-caption);font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--brand-text);}
-.auth .brow::before{content:"";width:22px;height:2px;border-radius:2px;background:var(--accent)}
-.auth .screen h1{font-size:var(--fs-auth-h3);margin-bottom:8px}
-.auth .screen h1 .grad{background:linear-gradient(98deg,#2A86DE 0%,#2173C8 56%,#1B5FA8 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.auth .sub{color:var(--muted);font-size:var(--fs-lead);max-width:42ch}
-.auth .sub b{color:var(--ink);font-weight:600}
-.auth .alert{display:none;gap:11px;align-items:flex-start;margin-bottom:14px;padding:11px 14px;border-radius:var(--r-md);
+.authv .av-brow::before{content:"";width:22px;height:2px;border-radius:2px;background:var(--accent)}
+.authv .screen h1{font-size:var(--fs-auth-h3);margin-bottom:8px}
+.authv .screen h1 .grad{background:linear-gradient(98deg,#2A86DE 0%,#2173C8 56%,#1B5FA8 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.authv .av-sub{color:var(--muted);font-size:var(--fs-lead);max-width:42ch}
+.authv .av-sub b{color:var(--ink);font-weight:600}
+.authv .alert{display:none;gap:11px;align-items:flex-start;margin-bottom:14px;padding:11px 14px;border-radius:var(--r-md);
   background:var(--danger-bg);border:1px solid var(--danger-bd);color:var(--danger-text);font-size:var(--fs-body);}
-.auth .alert.show{display:flex;animation:alertIn .3s var(--ease-out)}
-.auth .alert svg{width:19px;height:19px;flex:none;margin-top:1px;color:var(--danger)}
-.auth .alert b{display:block;font-weight:600;margin-bottom:2px}
-.auth .alert a{font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.auth .social{display:grid;gap:8px;margin-bottom:12px}
-.auth .btn-social{position:relative;display:flex;align-items:center;justify-content:center;gap:11px;width:100%;min-height:44px;
+.authv .alert.show{display:flex;animation:alertIn .3s var(--ease-out)}
+.authv .alert svg{width:19px;height:19px;flex:none;margin-top:1px;color:var(--danger)}
+.authv .alert b{display:block;font-weight:600;margin-bottom:2px}
+.authv .alert a{font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.authv .social{display:grid;gap:8px;margin-bottom:12px}
+.authv .av-btn-social{position:relative;display:flex;align-items:center;justify-content:center;gap:11px;width:100%;min-height:44px;
   padding:10px 18px;border-radius:var(--r-md);font-size:var(--fs-body-lg);font-weight:600;
   background:var(--social-bg);border:1px solid var(--social-bd);color:var(--ink);
   transition:background .18s ease,border-color .18s ease,transform .16s var(--ease-out),box-shadow .2s ease;}
-.auth .btn-social:hover{background:var(--social-bg-h);border-color:var(--social-bd-h);box-shadow:var(--shadow-sm)}
-.auth .btn-social:active{transform:scale(.985)}
-.auth .btn-social svg{width:20px;height:20px;flex:none}
-.auth .btn-social .apple-mark{color:var(--apple-mark)}
-.auth .or{display:flex;align-items:center;gap:14px;margin:0 0 12px;color:var(--faint);font-size:var(--fs-small);font-weight:500}
-.auth .or::before, .auth .or::after{content:"";flex:1;height:1px;background:var(--hair)}
-.auth .field{margin-bottom:10px}
-.auth .field-top{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
-.auth .field label{font-size:var(--fs-body);font-weight:600;color:var(--label)}
-.auth .field-top .aux{margin-left:auto;font-size:var(--fs-body-lg);font-weight:600;color:var(--brand-text);padding:6px 4px;margin:-6px -4px;border-radius:8px;text-underline-offset:3px;transition:color .16s ease}
-.auth .field-top .aux:hover{color:var(--brand-deep-text);text-decoration:underline}
-.auth .control{position:relative;display:flex;align-items:center}
-.auth .control>.lead{position:absolute;left:15px;width:19px;height:19px;color:var(--faint);pointer-events:none;transition:color .18s ease}
-.auth .control:focus-within>.lead{color:var(--brand-text)}
-.auth .input{width:100%;min-height:46px;padding:11px 16px 11px 45px;border-radius:var(--r-md);
+.authv .av-btn-social:hover{background:var(--social-bg-h);border-color:var(--social-bd-h);box-shadow:var(--shadow-sm)}
+.authv .av-btn-social:active{transform:scale(.985)}
+.authv .av-btn-social svg{width:20px;height:20px;flex:none}
+.authv .av-btn-social .apple-mark{color:var(--apple-mark)}
+.authv .or{display:flex;align-items:center;gap:14px;margin:0 0 12px;color:var(--faint);font-size:var(--fs-small);font-weight:500}
+.authv .or::before, .authv .or::after{content:"";flex:1;height:1px;background:var(--hair)}
+.authv .av-field{margin-bottom:10px}
+.authv .field-top{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.authv .av-field label{font-size:var(--fs-body);font-weight:600;color:var(--label)}
+.authv .field-top .aux{margin-left:auto;font-size:var(--fs-body-lg);font-weight:600;color:var(--brand-text);padding:6px 4px;margin:-6px -4px;border-radius:8px;text-underline-offset:3px;transition:color .16s ease}
+.authv .field-top .aux:hover{color:var(--brand-deep-text);text-decoration:underline}
+.authv .control{position:relative;display:flex;align-items:center}
+.authv .control>.lead{position:absolute;left:15px;width:19px;height:19px;color:var(--faint);pointer-events:none;transition:color .18s ease}
+.authv .control:focus-within>.lead{color:var(--brand-text)}
+.authv .av-input{width:100%;min-height:46px;padding:11px 16px 11px 45px;border-radius:var(--r-md);
   background:var(--field-bg);border:1px solid var(--field-bd);color:var(--ink);font-size:var(--fs-lead);
   transition:border-color .18s ease,background .18s ease,box-shadow .18s ease;}
-.auth .input::placeholder{color:var(--placeholder)}
-.auth .input:hover{border-color:var(--field-bd-h)}
-.auth .input:focus{outline:none;border-color:var(--brand);background:var(--field-bg-f);box-shadow:0 0 0 4px var(--ring)}
-.auth .input.has-toggle{padding-right:52px}
-.auth .pw-toggle{position:absolute;right:6px;width:44px;height:44px;display:grid;place-items:center;border-radius:11px;
+.authv .av-input::placeholder{color:var(--placeholder)}
+.authv .av-input:hover{border-color:var(--field-bd-h)}
+.authv .av-input:focus{outline:none;border-color:var(--brand);background:var(--field-bg-f);box-shadow:0 0 0 4px var(--ring)}
+.authv .av-input.has-toggle{padding-right:52px}
+.authv .pw-toggle{position:absolute;right:6px;width:44px;height:44px;display:grid;place-items:center;border-radius:11px;
   color:var(--faint);transition:color .16s ease,background .16s ease;}
-.auth .pw-toggle:hover{color:var(--ink);background:var(--soft)}
-.auth .pw-toggle svg{width:19px;height:19px}
-.auth .field.valid .input{border-color:var(--ok-bd)}
-.auth .field.invalid .input{border-color:var(--danger);background:var(--danger-field)}
-.auth .field.invalid .input:focus{box-shadow:0 0 0 4px var(--ring-danger)}
-.auth .field.invalid .control>.lead{color:var(--danger)}
-.auth .err-slot{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s var(--ease-out)}
-.auth .field.invalid .err-slot{grid-template-rows:1fr}
-.auth .err-slot>div{overflow:hidden;min-height:0}
-.auth .err{display:flex;align-items:flex-start;gap:6px;padding-top:7px;font-size:var(--fs-small);color:var(--danger-text)}
-.auth .err svg{width:15px;height:15px;flex:none;margin-top:2px;color:var(--danger)}
-.auth .caps{display:none;align-items:center;gap:6px;padding-top:7px;font-size:var(--fs-small);color:var(--warn-text)}
-.auth .caps.show{display:flex}
-.auth .caps svg{width:14px;height:14px;color:var(--warn)}
-.auth .strength{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding-top:6px}
-.auth .strength i{height:4px;border-radius:99px;background:var(--bar-bg);transition:background .3s ease}
-.auth .strength-row{display:flex;align-items:center;gap:8px;padding-top:5px;font-size:var(--fs-small);color:var(--faint)}
-.auth .strength-row b{font-weight:600;margin-left:auto;transition:color .3s ease}
-.auth [data-strength="1"] .strength i:nth-child(-n+1){background:var(--danger)}
-.auth [data-strength="2"] .strength i:nth-child(-n+2){background:var(--warn)}
-.auth [data-strength="3"] .strength i:nth-child(-n+3){background:var(--accent)}
-.auth [data-strength="4"] .strength i{background:var(--ok)}
-.auth [data-strength="1"] .strength-row b{color:var(--danger-text)}
-.auth [data-strength="2"] .strength-row b{color:var(--warn-text)}
-.auth [data-strength="3"] .strength-row b{color:var(--accent-text)}
-.auth [data-strength="4"] .strength-row b{color:var(--ok-text)}
-.auth .rules{display:grid;gap:6px;padding-top:10px}
-.auth .rule{display:flex;align-items:center;gap:9px;font-size:var(--fs-small);color:var(--faint);transition:color .22s ease}
-.auth .rule i{width:18px;height:18px;flex:none;border-radius:50%;border:1.5px solid var(--hair-strong);
+.authv .pw-toggle:hover{color:var(--ink);background:var(--soft)}
+.authv .pw-toggle svg{width:19px;height:19px}
+.authv .av-field.valid .av-input{border-color:var(--ok-bd)}
+.authv .av-field.invalid .av-input{border-color:var(--danger);background:var(--danger-field)}
+.authv .av-field.invalid .av-input:focus{box-shadow:0 0 0 4px var(--ring-danger)}
+.authv .av-field.invalid .control>.lead{color:var(--danger)}
+.authv .err-slot{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s var(--ease-out)}
+.authv .av-field.invalid .err-slot{grid-template-rows:1fr}
+.authv .err-slot>div{overflow:hidden;min-height:0}
+.authv .av-err{display:flex;align-items:flex-start;gap:6px;padding-top:7px;font-size:var(--fs-small);color:var(--danger-text)}
+.authv .av-err svg{width:15px;height:15px;flex:none;margin-top:2px;color:var(--danger)}
+.authv .caps{display:none;align-items:center;gap:6px;padding-top:7px;font-size:var(--fs-small);color:var(--warn-text)}
+.authv .caps.show{display:flex}
+.authv .caps svg{width:14px;height:14px;color:var(--warn)}
+.authv .strength{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding-top:6px}
+.authv .strength i{height:4px;border-radius:99px;background:var(--bar-bg);transition:background .3s ease}
+.authv .strength-row{display:flex;align-items:center;gap:8px;padding-top:5px;font-size:var(--fs-small);color:var(--faint)}
+.authv .strength-row b{font-weight:600;margin-left:auto;transition:color .3s ease}
+.authv [data-strength="1"] .strength i:nth-child(-n+1){background:var(--danger)}
+.authv [data-strength="2"] .strength i:nth-child(-n+2){background:var(--warn)}
+.authv [data-strength="3"] .strength i:nth-child(-n+3){background:var(--accent)}
+.authv [data-strength="4"] .strength i{background:var(--ok)}
+.authv [data-strength="1"] .strength-row b{color:var(--danger-text)}
+.authv [data-strength="2"] .strength-row b{color:var(--warn-text)}
+.authv [data-strength="3"] .strength-row b{color:var(--accent-text)}
+.authv [data-strength="4"] .strength-row b{color:var(--ok-text)}
+.authv .rules{display:grid;gap:6px;padding-top:10px}
+.authv .rule{display:flex;align-items:center;gap:9px;font-size:var(--fs-small);color:var(--faint);transition:color .22s ease}
+.authv .rule i{width:18px;height:18px;flex:none;border-radius:50%;border:1.5px solid var(--hair-strong);
   display:grid;place-items:center;transition:background .22s ease,border-color .22s ease,transform .28s var(--ease-out);}
-.auth .rule i svg{width:11px;height:11px;color:#fff;opacity:0;transition:opacity .18s ease}
-.auth .rule.ok{color:var(--ok-text)}
-.auth .rule.ok i{background:var(--ok);border-color:var(--ok);transform:scale(1.06)}
-.auth .rule.ok i svg{opacity:1}
-.auth .check{display:flex;align-items:flex-start;gap:11px;margin:0 0 12px;cursor:pointer;padding:4px;margin-left:-4px;border-radius:10px}
-.auth .check input{position:absolute;opacity:0;width:0;height:0}
-.auth .check .box{width:21px;height:21px;flex:none;margin-top:1px;border-radius:7px;border:1.5px solid var(--hair-strong);
+.authv .rule i svg{width:11px;height:11px;color:#fff;opacity:0;transition:opacity .18s ease}
+.authv .rule.ok{color:var(--ok-text)}
+.authv .rule.ok i{background:var(--ok);border-color:var(--ok);transform:scale(1.06)}
+.authv .rule.ok i svg{opacity:1}
+.authv .av-check{display:flex;align-items:flex-start;gap:11px;margin:0 0 12px;cursor:pointer;padding:4px;margin-left:-4px;border-radius:10px}
+.authv .av-check input{position:absolute;opacity:0;width:0;height:0}
+.authv .av-check .box{width:21px;height:21px;flex:none;margin-top:1px;border-radius:7px;border:1.5px solid var(--hair-strong);
   background:var(--field-bg);display:grid;place-items:center;
   transition:background .18s ease,border-color .18s ease,transform .2s var(--ease-out);}
-.auth .check .box svg{width:13px;height:13px;color:#fff;opacity:0;transform:scale(.6);transition:opacity .16s ease,transform .2s var(--ease-out)}
-.auth .check input:checked + .box{background:var(--brand-btn);border-color:var(--brand-btn)}
-.auth .check input:checked + .box svg{opacity:1;transform:none}
-.auth .check input:focus-visible + .box{outline:2px solid var(--focus);outline-offset:2px}
-.auth .check .txt{font-size:var(--fs-body);color:var(--muted)}
-.auth .check:active .box{transform:scale(.94)}
-.auth .btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;
+.authv .av-check .box svg{width:13px;height:13px;color:#fff;opacity:0;transform:scale(.6);transition:opacity .16s ease,transform .2s var(--ease-out)}
+.authv .av-check input:checked + .box{background:var(--brand-btn);border-color:var(--brand-btn)}
+.authv .av-check input:checked + .box svg{opacity:1;transform:none}
+.authv .av-check input:focus-visible + .box{outline:2px solid var(--focus);outline-offset:2px}
+.authv .av-check .txt{font-size:var(--fs-body);color:var(--muted)}
+.authv .av-check:active .box{transform:scale(.94)}
+.authv .av-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;
   min-height:48px;padding:12px 26px;border-radius:var(--r-md);font-size:var(--fs-lead);font-weight:600;
   transition:background .18s ease,box-shadow .22s ease,transform .16s var(--ease-out),opacity .18s ease;}
-.auth .btn-block{display:flex;width:100%}
-.auth .btn:active{transform:scale(.978)}
-.auth .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
-.auth .btn-primary{background:var(--brand-btn);color:#fff;box-shadow:var(--btn-shadow)}
-.auth .btn-primary:hover:not(:disabled){background:var(--brand-deep);box-shadow:var(--btn-shadow-h)}
-.auth .btn-quiet{background:var(--social-bg);border:1px solid var(--social-bd);color:var(--ink)}
-.auth .btn-quiet:hover:not(:disabled){background:var(--social-bg-h);border-color:var(--social-bd-h)}
-.auth .btn .btn-label{display:inline-flex;align-items:center;gap:9px;transition:filter .22s ease,opacity .22s ease,transform .24s var(--ease-out)}
-.auth .btn .btn-label svg{width:18px;height:18px}
-.auth .btn .spin{position:absolute;width:21px;height:21px;border-radius:50%;
+.authv .av-btn-block{display:flex;width:100%}
+.authv .av-btn:active{transform:scale(.978)}
+.authv .av-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.authv .av-btn-primary{background:var(--brand-btn);color:#fff;box-shadow:var(--btn-shadow)}
+.authv .av-btn-primary:hover:not(:disabled){background:var(--brand-deep);box-shadow:var(--btn-shadow-h)}
+.authv .av-btn-quiet{background:var(--social-bg);border:1px solid var(--social-bd);color:var(--ink)}
+.authv .av-btn-quiet:hover:not(:disabled){background:var(--social-bg-h);border-color:var(--social-bd-h)}
+.authv .av-btn .av-btn-label{display:inline-flex;align-items:center;gap:9px;transition:filter .22s ease,opacity .22s ease,transform .24s var(--ease-out)}
+.authv .av-btn .av-btn-label svg{width:18px;height:18px}
+.authv .av-btn .av-spin{position:absolute;width:21px;height:21px;border-radius:50%;
   border:2.2px solid rgba(255,255,255,.32);border-top-color:#fff;
   opacity:0;filter:blur(3px);transition:opacity .2s ease,filter .22s ease;}
-.auth .btn-quiet .spin{border-color:var(--hair-strong);border-top-color:var(--ink)}
-.auth .btn.loading{cursor:progress}
-.auth .btn.loading .btn-label{filter:blur(4px);opacity:0;transform:scale(.97)}
-.auth .btn.loading .spin{opacity:1;filter:none;animation:spin .7s linear infinite}
-.auth .btn-row{display:flex;flex-direction:column;gap:9px;margin-top:2px}
-.auth .alt{margin-top:12px;text-align:center;font-size:var(--fs-body-lg);color:var(--muted)}
-.auth .alt a{font-weight:600;color:var(--brand-text);padding:11px 5px;margin-block:-11px;display:inline-block;border-radius:8px}
-.auth .alt a:hover{color:var(--brand-deep-text);text-decoration:underline;text-underline-offset:3px}
-.auth .legal{margin-top:10px;font-size:var(--fs-small);line-height:1.45;color:var(--faint);text-align:center}
-.auth .legal a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:8px 2px;margin-block:-8px;display:inline-block}
-.auth .legal a:hover{color:var(--ink)}
-.auth .status-icon{width:60px;height:60px;border-radius:var(--r-lg);display:grid;place-items:center;margin-bottom:18px;
+.authv .av-btn-quiet .av-spin{border-color:var(--hair-strong);border-top-color:var(--ink)}
+.authv .av-btn.loading{cursor:progress}
+.authv .av-btn.loading .av-btn-label{filter:blur(4px);opacity:0;transform:scale(.97)}
+.authv .av-btn.loading .av-spin{opacity:1;filter:none;animation:spin .7s linear infinite}
+.authv .av-btn-row{display:flex;flex-direction:column;gap:9px;margin-top:2px}
+.authv .alt{margin-top:12px;text-align:center;font-size:var(--fs-body-lg);color:var(--muted)}
+.authv .alt a{font-weight:600;color:var(--brand-text);padding:11px 5px;margin-block:-11px;display:inline-block;border-radius:8px}
+.authv .alt a:hover{color:var(--brand-deep-text);text-decoration:underline;text-underline-offset:3px}
+.authv .legal{margin-top:10px;font-size:var(--fs-small);line-height:1.45;color:var(--faint);text-align:center}
+.authv .legal a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:8px 2px;margin-block:-8px;display:inline-block}
+.authv .legal a:hover{color:var(--ink)}
+.authv .status-icon{width:60px;height:60px;border-radius:var(--r-lg);display:grid;place-items:center;margin-bottom:18px;
   background:var(--icon-bg);border:1px solid var(--icon-bd);color:var(--brand-text);}
-.auth .status-icon svg{width:29px;height:29px}
-.auth .tick{width:68px;height:68px;margin-bottom:20px}
-.auth .tick circle{fill:none;stroke:var(--ok);stroke-width:2.4;stroke-dasharray:207;stroke-dashoffset:207;animation:draw .62s var(--ease-out) forwards}
-.auth .tick path{fill:none;stroke:var(--ok);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:44;stroke-dashoffset:44;animation:draw .38s var(--ease-out) .34s forwards}
-.auth .mailto{display:flex;align-items:center;gap:11px;margin:14px 0 16px;padding:12px 16px;border-radius:var(--r-md);
+.authv .status-icon svg{width:29px;height:29px}
+.authv .tick{width:68px;height:68px;margin-bottom:20px}
+.authv .tick circle{fill:none;stroke:var(--ok);stroke-width:2.4;stroke-dasharray:207;stroke-dashoffset:207;animation:draw .62s var(--ease-out) forwards}
+.authv .tick path{fill:none;stroke:var(--ok);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:44;stroke-dashoffset:44;animation:draw .38s var(--ease-out) .34s forwards}
+.authv .mailto{display:flex;align-items:center;gap:11px;margin:14px 0 16px;padding:12px 16px;border-radius:var(--r-md);
   background:var(--soft);border:1px solid var(--hair);font-size:var(--fs-body-lg);}
-.auth .mailto svg{width:18px;height:18px;color:var(--faint);flex:none}
-.auth .mailto b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.auth .timer{margin-top:13px;text-align:center;font-size:var(--fs-body);color:var(--faint)}
-.auth .timer b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
-.auth .join-spin{width:56px;height:56px;margin:2px auto 20px;border-radius:50%;
+.authv .mailto svg{width:18px;height:18px;color:var(--faint);flex:none}
+.authv .mailto b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.authv .timer{margin-top:13px;text-align:center;font-size:var(--fs-body);color:var(--faint)}
+.authv .timer b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.authv .join-spin{width:56px;height:56px;margin:2px auto 20px;border-radius:50%;
   border:4px solid var(--hair);border-top-color:var(--brand);animation:spin .8s linear infinite}
-.auth .join-badge{width:64px;height:64px;margin:2px auto 20px;border-radius:50%;display:grid;place-items:center;
+.authv .join-badge{width:64px;height:64px;margin:2px auto 20px;border-radius:50%;display:grid;place-items:center;
   background:var(--danger-bg);border:1px solid var(--danger-bd)}
-.auth .join-badge svg{width:30px;height:30px;color:var(--danger-text)}
-.auth .pane-foot{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;padding-top:14px;font-size:var(--fs-small);color:var(--faint)}
-.auth .pane-foot a{padding:9px 2px;margin-block:-9px;display:inline-block;transition:color .16s ease}
-.auth .pane-foot a:hover{color:var(--ink)}
-.auth .pane-foot .secure{display:inline-flex;align-items:center;gap:7px;margin-left:auto}
-.auth .pane-foot .secure svg{width:15px;height:15px;color:var(--ok)}
+.authv .join-badge svg{width:30px;height:30px;color:var(--danger-text)}
+.authv .pane-foot{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;padding-top:14px;font-size:var(--fs-small);color:var(--faint)}
+.authv .pane-foot a{padding:9px 2px;margin-block:-9px;display:inline-block;transition:color .16s ease}
+.authv .pane-foot a:hover{color:var(--ink)}
+.authv .pane-foot .secure{display:inline-flex;align-items:center;gap:7px;margin-left:auto}
+.authv .pane-foot .secure svg{width:15px;height:15px;color:var(--ok)}
 @media(max-width:560px){
-  .auth .pane-foot .secure{margin-left:0}
+  .authv .pane-foot .secure{margin-left:0}
 }
-.auth .pane-art{position:sticky;top:0;height:100svh;align-self:start;overflow:hidden;background:var(--art-base);isolation:isolate}
-.auth .art{position:absolute;inset:0;
+.authv .pane-art{position:sticky;top:0;height:100svh;align-self:start;overflow:hidden;background:var(--art-base);isolation:isolate}
+.authv .art{position:absolute;inset:0;
   background-image:url('/auth/pane.webp');
   background-size:cover;background-position:54% 44%;
   transform:scale(1.02);
@@ -2140,102 +2111,101 @@ section{position:relative}
   
   -webkit-mask-image:none;
   mask-image:none;}
-.auth .pane-art::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+.authv .pane-art::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background:
     radial-gradient(760px 460px at -6% -12%,rgba(255,195,160,.2),transparent 62%),
     radial-gradient(420px 380px at -12% 108%,rgba(35,128,214,.07),transparent 66%);}
-.auth .form-area{scrollbar-width:none;-ms-overflow-style:none}
-.auth .form-area::-webkit-scrollbar{width:0;height:0;display:none}
-.auth .art-scrim{position:absolute;inset:0;z-index:4;pointer-events:none;background:var(--art-scrim)}
-.auth .art-grain{position:absolute;inset:0;pointer-events:none;z-index:6;opacity:var(--art-grain-op);
+.authv .form-area{scrollbar-width:none;-ms-overflow-style:none}
+.authv .form-area::-webkit-scrollbar{width:0;height:0;display:none}
+.authv .art-scrim{position:absolute;inset:0;z-index:4;pointer-events:none;background:var(--art-scrim)}
+.authv .art-grain{position:absolute;inset:0;pointer-events:none;z-index:6;opacity:var(--art-grain-op);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");}
-.auth .art-copy{position:absolute;left:clamp(54px,6.4vw,104px);right:clamp(30px,4.6vw,64px);bottom:clamp(30px,4.6vh,58px);
+.authv .art-copy{position:absolute;left:clamp(54px,6.4vw,104px);right:clamp(30px,4.6vw,64px);bottom:clamp(30px,4.6vh,58px);
   z-index:5;color:var(--art-ink);max-width:32ch;}
-.auth .art-copy .kicker{display:inline-flex;align-items:center;gap:9px;margin-bottom:14px;
+.authv .art-copy .kicker{display:inline-flex;align-items:center;gap:9px;margin-bottom:14px;
   font-size:var(--fs-caption);font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:var(--art-kicker);}
-.auth .art-copy .kicker::before{content:"";width:26px;height:2px;border-radius:2px;background:var(--accent)}
-.auth .art-copy h2{font-size:var(--fs-auth-h4);letter-spacing:-.03em}
-.auth .art-copy h2 .grad{background:linear-gradient(98deg,#2A86DE 0%,#2173C8 56%,#1B5FA8 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.auth .rotator{position:relative;margin-top:14px;height:3.2em}
-.auth .rotator span{position:absolute;inset:0;font-size:var(--fs-lead);line-height:1.55;color:var(--art-sub);
+.authv .art-copy .kicker::before{content:"";width:26px;height:2px;border-radius:2px;background:var(--accent)}
+.authv .art-copy h2{font-size:var(--fs-auth-h4);letter-spacing:-.03em}
+.authv .art-copy h2 .grad{background:linear-gradient(98deg,#2A86DE 0%,#2173C8 56%,#1B5FA8 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.authv .rotator{position:relative;margin-top:14px;height:3.2em}
+.authv .rotator span{position:absolute;inset:0;font-size:var(--fs-lead);line-height:1.55;color:var(--art-sub);
   opacity:0;transform:translateY(9px);filter:blur(3px);
   transition:opacity .55s ease,transform .6s var(--ease-out),filter .55s ease;}
-.auth .rotator span.on{opacity:1;transform:none;filter:none}
+.authv .rotator span.av-on{opacity:1;transform:none;filter:none}
 @media(max-width:1020px){
-  .auth{grid-template-columns:1fr}
-  .auth .pane-art{display:none}
+  .authv{grid-template-columns:1fr}
+  .authv .pane-art{display:none}
 }
-.auth .chips button.on{background:#2173C8;border-color:#4E9BE8;color:#fff}
+.authv .chips button.av-on{background:#2173C8;border-color:#4E9BE8;color:#fff}
 @media (prefers-reduced-motion:reduce){
-  .auth .rotator span{opacity:0}
-  .auth .rotator span.on{opacity:1}
+  .authv .rotator span{opacity:0}
+  .authv .rotator span.av-on{opacity:1}
 }
 @media(max-width:600px){
-  .auth .pane-form{padding:8px 18px 10px}
-  .auth .pane-top{min-height:54px}
-  .auth .brand{font-size:var(--fs-lead)}
-  .auth .brand .logo{width:29px;height:29px}
-  .auth .lang-btn{min-height:34px;padding:6px 10px;font-size:var(--fs-small)}
-  .auth .form-area{padding:4px 0}
-  .auth .screen h1{font-size:var(--fs-auth-h2);margin-bottom:5px}
-  .auth .screen-head{margin-bottom:9px}
-  .auth .sub{font-size:var(--fs-body);line-height:1.45}
-  .auth .social{gap:7px;margin-bottom:9px}
-  .auth .btn-social{min-height:42px;padding:9px 16px;font-size:var(--fs-body-lg)}
-  .auth .btn-social svg{width:18px;height:18px}
-  .auth .or{margin-bottom:9px;font-size:var(--fs-small)}
-  .auth .field{margin-bottom:8px}
-  .auth .field-top{margin-bottom:4px}
-  .auth .field label{font-size:var(--fs-small)}
-  .auth .field-top .aux{font-size:var(--fs-body)}
-  .auth .input{min-height:42px;padding:9px 14px 9px 42px}
-  .auth .input.has-toggle{padding-right:48px}
-  .auth .control>.lead{left:13px;width:18px;height:18px}
-  .auth .pw-toggle{width:40px;height:40px}
-  .auth .check{margin-bottom:10px;gap:9px;padding:2px}
-  .auth .check .box{width:19px;height:19px}
-  .auth .check .txt{font-size:var(--fs-body)}
-  .auth .btn{min-height:44px;padding:10px 22px;font-size:var(--fs-body-lg)}
-  .auth .btn-row{gap:8px}
-  .auth .alt{margin-top:9px;font-size:var(--fs-body)}
-  .auth .alt a{padding:8px 5px;margin-block:-8px}
-  .auth .legal{margin-top:8px;font-size:var(--fs-caption);line-height:1.4}
-  .auth .rules{gap:5px;padding-top:8px}
-  .auth .rule{font-size:var(--fs-small)}
-  .auth .rule i{width:16px;height:16px}
-  .auth .mailto{margin:10px 0 12px;padding:10px 14px;font-size:var(--fs-body)}
-  .auth .status-icon{width:50px;height:50px;margin-bottom:14px}
-  .auth .join-spin, .auth .join-badge{width:52px;height:52px;margin-bottom:14px}
-  .auth .tick{width:56px;height:56px;margin-bottom:14px}
-  .auth .timer{margin-top:10px;font-size:var(--fs-small)}
-  .auth .pane-foot{gap:4px 16px;padding-top:10px;font-size:var(--fs-caption)}
-  .auth .pane-foot a{padding:7px 2px;margin-block:-7px}
+  .authv .pane-form{padding:8px 18px 10px}
+  .authv .pane-top{min-height:54px}
+  .authv .av-brand{font-size:var(--fs-lead)}
+  .authv .av-brand .av-logo{width:29px;height:29px}
+  .authv .form-area{padding:4px 0}
+  .authv .screen h1{font-size:var(--fs-auth-h2);margin-bottom:5px}
+  .authv .screen-head{margin-bottom:9px}
+  .authv .av-sub{font-size:var(--fs-body);line-height:1.45}
+  .authv .social{gap:7px;margin-bottom:9px}
+  .authv .av-btn-social{min-height:42px;padding:9px 16px;font-size:var(--fs-body-lg)}
+  .authv .av-btn-social svg{width:18px;height:18px}
+  .authv .or{margin-bottom:9px;font-size:var(--fs-small)}
+  .authv .av-field{margin-bottom:8px}
+  .authv .field-top{margin-bottom:4px}
+  .authv .av-field label{font-size:var(--fs-small)}
+  .authv .field-top .aux{font-size:var(--fs-body)}
+  .authv .av-input{min-height:42px;padding:9px 14px 9px 42px}
+  .authv .av-input.has-toggle{padding-right:48px}
+  .authv .control>.lead{left:13px;width:18px;height:18px}
+  .authv .pw-toggle{width:40px;height:40px}
+  .authv .av-check{margin-bottom:10px;gap:9px;padding:2px}
+  .authv .av-check .box{width:19px;height:19px}
+  .authv .av-check .txt{font-size:var(--fs-body)}
+  .authv .av-btn{min-height:44px;padding:10px 22px;font-size:var(--fs-body-lg)}
+  .authv .av-btn-row{gap:8px}
+  .authv .alt{margin-top:9px;font-size:var(--fs-body)}
+  .authv .alt a{padding:8px 5px;margin-block:-8px}
+  .authv .legal{margin-top:8px;font-size:var(--fs-caption);line-height:1.4}
+  .authv .rules{gap:5px;padding-top:8px}
+  .authv .rule{font-size:var(--fs-small)}
+  .authv .rule i{width:16px;height:16px}
+  .authv .mailto{margin:10px 0 12px;padding:10px 14px;font-size:var(--fs-body)}
+  .authv .status-icon{width:50px;height:50px;margin-bottom:14px}
+  .authv .join-spin, .authv .join-badge{width:52px;height:52px;margin-bottom:14px}
+  .authv .tick{width:56px;height:56px;margin-bottom:14px}
+  .authv .timer{margin-top:10px;font-size:var(--fs-small)}
+  .authv .pane-foot{gap:4px 16px;padding-top:10px;font-size:var(--fs-caption)}
+  .authv .pane-foot a{padding:7px 2px;margin-block:-7px}
 }
 @media(max-height:720px){
-  .auth .pane-form{padding-top:6px;padding-bottom:8px}
-  .auth .pane-top{min-height:48px}
-  .auth .form-area{padding:2px 0}
-  .auth .screen h1{font-size:var(--fs-auth-h1);margin-bottom:4px}
-  .auth .screen-head{margin-bottom:7px}
-  .auth .sub{font-size:var(--fs-body);line-height:1.4}
-  .auth .social{gap:6px;margin-bottom:8px}
-  .auth .btn-social{min-height:40px;padding:8px 14px}
-  .auth .or{margin-bottom:8px}
-  .auth .field{margin-bottom:6px}
-  .auth .field-top{margin-bottom:3px}
-  .auth .input{min-height:40px;padding-top:8px;padding-bottom:8px}
-  .auth .pw-toggle{width:38px;height:38px}
-  .auth .check{margin-bottom:8px}
-  .auth .btn{min-height:42px;padding-top:9px;padding-bottom:9px}
-  .auth .alt{margin-top:6px}
-  .auth .legal{margin-top:5px;line-height:1.35}
-  .auth .strength{padding-top:5px}
-  .auth .strength-row{padding-top:3px;font-size:var(--fs-caption)}
-  .auth .btn-row{gap:7px}
-  .auth .rules{padding-top:6px;gap:4px 10px;grid-template-columns:1fr 1fr}
-  .auth .legal{font-size:var(--fs-caption)}
-  .auth .pane-foot{padding-top:8px;font-size:var(--fs-caption)}
+  .authv .pane-form{padding-top:6px;padding-bottom:8px}
+  .authv .pane-top{min-height:48px}
+  .authv .form-area{padding:2px 0}
+  .authv .screen h1{font-size:var(--fs-auth-h1);margin-bottom:4px}
+  .authv .screen-head{margin-bottom:7px}
+  .authv .av-sub{font-size:var(--fs-body);line-height:1.4}
+  .authv .social{gap:6px;margin-bottom:8px}
+  .authv .av-btn-social{min-height:40px;padding:8px 14px}
+  .authv .or{margin-bottom:8px}
+  .authv .av-field{margin-bottom:6px}
+  .authv .field-top{margin-bottom:3px}
+  .authv .av-input{min-height:40px;padding-top:8px;padding-bottom:8px}
+  .authv .pw-toggle{width:38px;height:38px}
+  .authv .av-check{margin-bottom:8px}
+  .authv .av-btn{min-height:42px;padding-top:9px;padding-bottom:9px}
+  .authv .alt{margin-top:6px}
+  .authv .legal{margin-top:5px;line-height:1.35}
+  .authv .strength{padding-top:5px}
+  .authv .strength-row{padding-top:3px;font-size:var(--fs-caption)}
+  .authv .av-btn-row{gap:7px}
+  .authv .rules{padding-top:6px;gap:4px 10px;grid-template-columns:1fr 1fr}
+  .authv .legal{font-size:var(--fs-caption)}
+  .authv .pane-foot{padding-top:8px;font-size:var(--fs-caption)}
 }
 @media(max-height:660px){
-  .auth .screen[data-screen="signup"] .sub, .auth .screen-head{margin-bottom:6px}
+  .authv .screen[data-screen="signup"] .av-sub, .authv .screen-head{margin-bottom:6px}
 }

@@ -64,32 +64,32 @@ export default function JoinTrip() {
   return (
     <AuthShell lang={lang} setLang={setLang}>
       {state === 'working' && (
-        <section className="screen is-active" data-screen="join-working">
-          <div className="join-spin" aria-hidden="true"><span className="spin" /></div>
+        <section className="screen av-is-active" data-screen="join-working">
+          <div className="join-spin" aria-hidden="true"><span className="av-spin" /></div>
           <div className="screen-head">
             <h1>{t('member.join_joining')}</h1>
-            <p className="sub">{t('member.join_joining_sub')}</p>
+            <p className="av-sub">{t('member.join_joining_sub')}</p>
           </div>
         </section>
       )}
 
       {state === 'signin' && (
-        <section className="screen is-active" data-screen="join-signin">
+        <section className="screen av-is-active" data-screen="join-signin">
           <div className="screen-head">
-            <div className="brow">{t('member.join_invited')}</div>
+            <div className="av-brow">{t('member.join_invited')}</div>
             <h1>{t('member.join_signin_title')}</h1>
-            <p className="sub">{t('member.join_signin_lede')}</p>
+            <p className="av-sub">{t('member.join_signin_lede')}</p>
           </div>
-          <div className="btn-row">
+          <div className="av-btn-row">
             {/* nav(), не window.location: сохраняет снимок атрибуции в памяти,
                 который Login прочитает при регистрации (TRIP-329). */}
-            <button type="button" className="btn btn-primary btn-block" onClick={() => nav('/login')}>{t('member.join_signin_btn')}</button>
+            <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={() => nav('/login')}>{t('member.join_signin_btn')}</button>
           </div>
         </section>
       )}
 
       {state === 'error' && (
-        <section className="screen is-active" data-screen="join-error">
+        <section className="screen av-is-active" data-screen="join-error">
           <div className="join-badge" aria-hidden="true">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -98,11 +98,11 @@ export default function JoinTrip() {
           </div>
           <div className="screen-head">
             <h1>{t('member.join_error_title')}</h1>
-            <p className="sub">{t(errKey)}</p>
+            <p className="av-sub">{t(errKey)}</p>
           </div>
-          <div className="btn-row">
-            <button type="button" className="btn btn-primary btn-block" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
-            <button type="button" className="btn btn-quiet btn-block" onClick={() => nav('/')}>{t('member.join_home')}</button>
+          <div className="av-btn-row">
+            <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
+            <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => nav('/')}>{t('member.join_home')}</button>
           </div>
         </section>
       )}
