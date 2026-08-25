@@ -207,7 +207,6 @@ import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { useExitingLayer } from '@/hooks/usePresence';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
@@ -445,19 +444,25 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
     const el = leftPaneRef.current.querySelector('button, [tabindex]') || leftPaneRef.current;
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
-  // Кроссфейд стопки: при смене ВЕРХНЕЙ панели предыдущая уходит замороженным
-  // слоем (`useExitingLayer`), пока новая въезжает — push/replace/pop без рывка.
-  // Ключ считается из самой вершины (доступно ДО ранних возвратов); её узел
-  // отдаётся рефом (строится позже). `cityadd` — не оверлей (живёт в теле), у
-  // него ключ null. Хук обязан стоять здесь, выше `if (!draft) return null`.
-  // ★ ТА ЖЕ формула, что у `panelKey` ниже, — повторена здесь, потому что
-  //   `panelKey` объявлен ПОСЛЕ раннего возврата, а хук обязан быть до него.
-  //   Расхождение (null для `cityadd`/шита) намеренное: это оверлейный ключ.
-  const overlayKey = !isSheet && leftPanel && leftPanel.type !== 'cityadd'
-    ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}`
-    : null;
-  const overlayElRef = useRef(null);
-  const exitingLayer = useExitingLayer(overlayKey, overlayElRef, 240);
+  // Кроссфейд стопки БЕЗ ремонта узла. Уходящий слой рендерится под СВОИМ ключом
+  // (тем же, что был у верхней панели), поэтому React сохраняет ЕГО DOM-узел, а не
+  // размонтирует и монтирует заново — иначе тяжёлая панель (EventSourcePanel даже
+  // перезапрашивает данные) пересобиралась бы посреди анимации и дёргала кадры.
+  // `closingLayers` — снятые слои, доигрывающие уход; их состав считается ПОЗЖЕ,
+  // у самой раскладки (там есть `leftPanelEl`), а таймер снятия живёт тут.
+  const [closingLayers, setClosingLayers] = useState(/** @type {{key:string, el:any}[]} */ ([]));
+  const lastTopRef = useRef(/** @type {{key:string|null, el:any}} */ ({ key: null, el: null }));
+  const closeTimers = useRef(/** @type {Map<string, any>} */ (new Map()));
+  useEffect(() => {
+    closingLayers.forEach((l) => {
+      if (closeTimers.current.has(l.key)) return;
+      closeTimers.current.set(l.key, setTimeout(() => {
+        closeTimers.current.delete(l.key);
+        setClosingLayers((cur) => cur.filter((x) => x.key !== l.key));
+      }, 240));
+    });
+  }, [closingLayers]);
+  useEffect(() => () => { closeTimers.current.forEach((h) => clearTimeout(h)); closeTimers.current.clear(); }, []);
   const confirm = useConfirm(); // city delete → shared confirm (sheet on mobile)
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
@@ -1091,9 +1096,21 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
   const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
-  // Отдаём текущий узел вершины хуку кроссфейда через реф (см. useExitingLayer):
-  // на смене панели он замёрзнет как уходящий слой.
-  overlayElRef.current = useDrawer ? leftPanelEl : null;
+  // Обнаружение смены верхней панели — СИНХРОННО в рендере (не в эффекте): иначе
+  // между «старый ключ убрали» и «вернули уходящим» был бы кадр без узла = ремонт.
+  // При смене замораживаем ПРЕДЫДУЩИЙ узел (`lastTopRef.el`) в `closingLayers` под
+  // его же ключом; set-state-в-рендере санкционирован (тот же компонент, условие
+  // гасит петлю после добавления). `cityadd`/шит — не оверлей, ключ null.
+  const overlayKey = useDrawer ? panelKey : null;
+  if (overlayKey !== lastTopRef.current.key) {
+    const from = lastTopRef.current;
+    if (from.key != null && from.el != null && !closingLayers.some((l) => l.key === from.key)) {
+      setClosingLayers((cur) => [...cur, { key: from.key, el: from.el }]);
+    }
+    lastTopRef.current = { key: overlayKey, el: useDrawer ? leftPanelEl : null };
+  } else {
+    lastTopRef.current.el = useDrawer ? leftPanelEl : null;
+  }
 
   // ПЛАШКА ГОРОДА НА КАРТЕ — та же, что в линзе карты: следует за наведением, а
   // без него за выбранным городом. Ховер работает В ОБЕ СТОРОНЫ: ряд списка
@@ -1330,18 +1347,19 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       expandLabel={t('tse.route_show')}
       detent={detent}
       onDetentChange={setDetent}
-      panelOverlay={(useDrawer || exitingLayer) ? (
-        /* Стопка панелей: ДВА слоя максимум, отрисованы ОДНИМ узлом через map —
-           уходящий (`exitingLayer`, замороженный снимок предыдущей вершины,
-           `data-closing` → обратная анимация) и текущий (въезжающий, ключ =
-           panelKey; смена ключа переигрывает вход). Порядок в массиве = порядок
-           в DOM: текущий ПОСЛЕ уходящего → лежит поверх, новая наезжает на
-           старую, старая уезжает под ней — кроссфейд, а не рывок. Оба абсолютом
-           заполняют коробку слоя (`.mapshell__overlay > .ts-pdrawer`). Карта под
-           слоем кликабельна (скрима нет), рельс маршрута смонтирован. */
+      panelOverlay={(useDrawer || closingLayers.length) ? (
+        /* Стопка панелей. Уходящие слои (`closingLayers`) рендерятся под СВОИМИ
+           ключами — теми же, что были у верхней панели, — поэтому React СОХРАНЯЕТ
+           их DOM-узлы (не ремонтит) и уход играет на уже смонтированном узле:
+           плавно, без пересборки тяжёлой панели. Текущая вершина — последней в
+           массиве (в DOM ниже) → лежит ПОВЕРХ уходящих: новая наезжает, старая
+           уезжает под ней. Все слои абсолютом заполняют коробку
+           (`.mapshell__overlay > .ts-pdrawer`). Ключ уходящего = ключ текущей
+           исключаются друг из друга (фильтр), чтобы не столкнуться при
+           переоткрытии панели во время её ухода. */
         [
-          exitingLayer && { k: `x:${exitingLayer.key}`, el: exitingLayer.el, closing: true },
-          useDrawer && { k: panelKey, el: leftPanelEl, closing: false, top: true },
+          ...closingLayers.filter((l) => l.key !== overlayKey).map((l) => ({ k: l.key, el: l.el, closing: true })),
+          useDrawer && { k: panelKey, el: leftPanelEl, top: true },
         ].filter(Boolean).map((L) => (
           <div
             key={L.k}
@@ -1352,10 +1370,8 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
             data-closing={L.closing || undefined}
             aria-hidden={L.closing || undefined}
           >
-            {/* Уходящий слой — свежий монтаж замороженного узла на ~240 мс. Гасим
-                у него ОДИН побочный эффект, дотягивающийся до карты: превью-нога
-                переезда (`onPreviewTransfer`) иначе мигнула бы на карте на время
-                ухода. Прочие эффекты безвредны (aria-hidden, слой уезжает). */}
+            {/* У уходящего слоя гасим побочный эффект, дотягивающийся до карты:
+                превью-нога переезда мигнула бы на время ухода. */}
             {L.closing ? React.cloneElement(L.el, { onPreviewTransfer: NOOP }) : L.el}
           </div>
         ))
