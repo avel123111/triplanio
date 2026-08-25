@@ -8,6 +8,7 @@ import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
 } from '@/components/site/SiteChrome';
 import { SiteHero, SiteSummary, SiteCta } from '@/components/site/SiteTrip';
+import { useReveal } from '@/components/site/useReveal';
 import MapView from '@/components/views/MapView';
 import { Icon } from '@/design/icons';
 import { transferKind } from '@/lib/transport';
@@ -34,17 +35,6 @@ const COVER_FALLBACK = '/covers/fallback.webp';
 // and a visitor here arrived on a marked share link, exactly the new person the
 // mark exists for, so the marks ride the address across (TRIP-329).
 const SITE = withVisitCampaign(`${window.location.origin}/`);
-
-// Avatar colour = one of six contrast-safe pairs (defined as .pt-av--0..5 in
-// site.css; white initials on the orange gradient gave 2.05 on prod, TRIP-451
-// §13). Prototype's avatarOf hash, but the colour rides a class, not inline hex.
-const AV_COUNT = 6;
-function avatarPair(name) {
-  let h = 0;
-  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  const ini = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-  return { idx: h % AV_COUNT, ini };
-}
 
 const Ic = ({ id }) => <svg aria-hidden="true"><use href={`#${id}`} /></svg>;
 
@@ -103,8 +93,11 @@ export default function PublicTrip() {
   const fmt = (d) => (d ? fmtDate(d, 'utc', 'd MMM') : '');
 
   // Participants = owner first, then active members (deduping the owner, matched
-  // by name — the payload gives the owner no id). Names become prototype avatars:
-  // first name, plus a last initial ONLY when the first name repeats.
+  // by name — the payload gives the owner no id). `title` = the full display name
+  // (avatar seed + tooltip); `name` = short label under the face — first name,
+  // plus a last initial ONLY when the first name repeats. getPublicTrip already
+  // dropped departed/removed/deleted accounts (same identity seam as the app,
+  // `_shared/profiles.ts`), so this list is exactly the current travellers.
   const people = useMemo(() => {
     const raw = [];
     if (owner?.display_name) raw.push({ full: owner.display_name, photo: owner.avatar_url || '' });
@@ -117,7 +110,7 @@ export default function PublicTrip() {
       const parts = p.full.trim().split(/\s+/);
       const dup = firsts.filter((f) => f === firsts[i]).length > 1;
       const name = dup && parts[1] ? `${firsts[i]} ${parts[1][0]}.` : firsts[i];
-      return { ...avatarPair(p.full), photo: p.photo, name, title: p.full };
+      return { photo: p.photo, name, title: p.full };
     });
   }, [owner, members]);
 
@@ -195,21 +188,10 @@ export default function PublicTrip() {
     return () => document.body.classList.remove('pt-open');
   }, []);
 
-  // Reveal .rv blocks (the shared final CTA) — the SAME one-shot fade the landing
-  // uses; without it .rv stays at opacity:0 and the CTA renders blank.
-  useEffect(() => {
-    if (!cssReady) return undefined;
-    const targets = [...document.querySelectorAll('.rv,.rv-l,.rv-r')];
-    if (!targets.length) return undefined;
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((en) => {
-        if (en.isIntersecting) en.target.classList.add('in');
-        else if (en.boundingClientRect.top > 0) en.target.classList.remove('in');
-      });
-    }, { threshold: 0.16, rootMargin: '0px 0px -5% 0px' });
-    targets.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [cssReady, trip]);
+  // Reveal .rv blocks (the shared final CTA) — the SAME hook the landing uses,
+  // one copy (src/components/site/useReveal). Without it .rv stays opacity:0 and
+  // the CTA renders blank. Re-arms once the trip loads and the CTA is in the DOM.
+  useReveal(cssReady && !!trip);
 
   // The route rail must start at the first pin and END at the last — a fixed
   // top/bottom inset overshoots past the finish pin (variable stop heights). We
@@ -267,7 +249,7 @@ export default function PublicTrip() {
 
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="cta" themed navBase={SITE} brandHref={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" themed navBase={SITE} brandHref={SITE} />
 
       <main className="pt">
         <SiteHero
@@ -368,7 +350,7 @@ export default function PublicTrip() {
 function Shell({ lang, setLang, children }) {
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="cta" navBase={SITE} brandHref={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" navBase={SITE} brandHref={SITE} />
       <main className="pt">{children}</main>
       <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
     </>

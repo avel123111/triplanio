@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { track, withVisitCampaign } from '@/lib/analytics';
+import { hashStr } from '@/lib/hash';
 
 /* =========================================================================
    SiteTrip — three prototype sections of the public shared-trip page, born
@@ -20,6 +21,19 @@ const APP_URL = '/login';
 const Ic = ({ id }) => (
   <svg aria-hidden="true"><use href={`#${id}`} /></svg>
 );
+
+// Avatar fallback (no photo): initials + a deterministic colour by name.
+// Colour uses the SAME hash primitive as the app's <Avatar> (src/lib/hash), so
+// the seam is shared — only the PALETTE differs (.pt-av--0..5 in site.css are
+// AA-safe pale-bg/dark-ink pairs; the app's avatarRamp is white-on-gradient,
+// which failed contrast at 2.05 on prod — TRIP-451 §13). We cannot reuse
+// <Avatar> itself: check-ds-boundary bans @/design in the zone, and the public
+// payload strips user_id (no stable seed), so name is the only seed available.
+const AV_COUNT = 6;
+function avatarFace(name) {
+  const ini = String(name).trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  return { idx: hashStr(name) % AV_COUNT, ini };
+}
 
 /**
  * Cover masthead — dark hero photo + gradient, eyebrow, title, date line.
@@ -40,7 +54,8 @@ export function SiteHero({ cover, kicker, title, dates }) {
 
 /**
  * Summary card floating over the cover: five stat tiles, then the travellers
- * row. `stats` = [{ icon, n, unit?, k }]; `people` = [{ ini, idx, name, title }].
+ * row. `stats` = [{ icon, n, unit?, k }]; `people` = [{ photo, name, title }]
+ * (title = full name → avatar seed + tooltip; face colour/initials via avatarFace).
  */
 export function SiteSummary({ stats, peopleTitle, peopleCount, people }) {
   return (
@@ -66,16 +81,20 @@ export function SiteSummary({ stats, peopleTitle, peopleCount, people }) {
             <span className="pt-c">{peopleCount}</span>
           </div>
           <ul className="pt-plist">
-            {people.map((p, i) => (
+            {people.map((p, i) => {
+              const face = avatarFace(p.title);
+              return (
               <li className="pt-person" title={p.title} key={i}>
-                <span className={`pt-av pt-av--${p.idx}`}>
+                <span className={`pt-av pt-av--${face.idx}`}>
                   {/* Реальное фото участника, если есть (getPublicTrip отдаёт avatar_url);
-                      иначе инициалы на контрастной паре. Без user_id сид не нужен. */}
-                  {p.photo ? <img src={p.photo} alt="" loading="lazy" onError={(e) => { e.currentTarget.remove(); }} /> : p.ini}
+                      иначе инициалы на контрастной паре (цвет по хэшу имени — тот же
+                      примитив hashStr, что у app-<Avatar>). Без user_id сид = имя. */}
+                  {p.photo ? <img src={p.photo} alt="" loading="lazy" onError={(e) => { e.currentTarget.remove(); }} /> : face.ini}
                 </span>
                 <span>{p.name}</span>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       )}

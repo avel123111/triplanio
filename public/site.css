@@ -2377,6 +2377,12 @@ section{position:relative}
 
 /* подложка страницы (прототип вешает класс на body в openTrip/closeTrip) */
 body.pt-open{background:var(--mist)}
+/* Шапка — ПОЛНАЯ шапка лендинга (лого + язык + CTA + бургер на мобиле), но
+   якоря лендинга (#together/#stats/#assistant) вести на публичной поездке
+   некуда → прячем их (десктоп-нав и ссылки в бургер-меню). Бургер и CTA
+   остаются — как в прототипе (body.pt-open). */
+body.pt-open .main-nav,
+body.pt-open .mobile-menu a[href^="#"]{display:none}
 
 /* состояния загрузки / not-found — не из прототипа, служебные (мин. набор) */
 .pt-center{min-height:70vh;display:grid;place-items:center;text-align:center;padding:24px}
@@ -2970,3 +2976,4 @@ body.pt-open{background:var(--mist)}
 /* visual-diff-exempt: .tx min-width — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
 /* visual-diff-exempt: .wrap color — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
 /* visual-diff-exempt: to {@keyframes pt-spin} transform — снято при переписывании /public/trip с нуля по прототипу v5.7 (старый PublicTrip.css + осиротевшие co-селекторы app.css убраны, страница под pt- в site.css; TRIP-461, апрув Pavel) */
+/* visual-diff-exempt: .main-nav display — на публичной поездке (body.pt-open) якоря лендинга скрыты, как в прототипе; шапка полная, бургер остаётся (TRIP-461, фидбэк Pavel) */
