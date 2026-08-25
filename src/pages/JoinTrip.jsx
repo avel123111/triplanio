@@ -61,10 +61,14 @@ export default function JoinTrip() {
     return () => { cancelled = true; };
   }, [token, nav]);
 
+  // Все три экрана всегда смонтированы (как в прототипе): активным управляет
+  // AuthShell по activeScreen, кроссфейдя и анимируя высоту .form-wrap.
+  const activeScreen = { working: 'join-working', signin: 'join-signin', error: 'join-error' }[state];
+
   return (
-    <AuthShell lang={lang} setLang={setLang}>
-      {state === 'working' && (
-        <section className="screen av-is-active" data-screen="join-working">
+    <AuthShell lang={lang} setLang={setLang} activeScreen={activeScreen}>
+      {(
+        <section className="screen" data-screen="join-working">
           <div className="join-spin" aria-hidden="true" />
           <div className="screen-head">
             <h1 dangerouslySetInnerHTML={{ __html: t('member.join_joining') }} />
@@ -73,8 +77,8 @@ export default function JoinTrip() {
         </section>
       )}
 
-      {state === 'signin' && (
-        <section className="screen av-is-active" data-screen="join-signin">
+      {(
+        <section className="screen" data-screen="join-signin">
           <div className="screen-head">
             <div className="av-brow">{t('member.join_invited')}</div>
             <h1 dangerouslySetInnerHTML={{ __html: t('member.join_signin_title') }} />
@@ -96,8 +100,8 @@ export default function JoinTrip() {
         </section>
       )}
 
-      {state === 'error' && (
-        <section className="screen av-is-active" data-screen="join-error">
+      {(
+        <section className="screen" data-screen="join-error">
           <div className="join-badge" aria-hidden="true">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />

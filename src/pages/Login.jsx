@@ -395,8 +395,20 @@ export default function Login() {
           callback: (response) => handleOneTapCredential(response, rawNonce),
           nonce: hashedNonce,
           itp_support: true,
+          // FedCM is now REQUIRED for One Tap to render in Chrome after the
+          // third-party-cookie phase-out — without this flag the prompt is
+          // silently suppressed (the "почти никогда не появляется" symptom).
+          use_fedcm_for_prompt: true,
         });
-        window.google?.accounts.id.prompt();
+        // The notification callback surfaces WHY a prompt didn't display
+        // (dismissed/skipped/cooldown) instead of failing silently — useful
+        // for diagnosing One Tap in the field.
+        window.google?.accounts.id.prompt((n) => {
+          if (n?.isNotDisplayed?.() || n?.isSkippedMoment?.()) {
+            const reason = n.getNotDisplayedReason?.() || n.getSkippedReason?.();
+            if (reason) track('one_tap_suppressed', { reason });
+          }
+        });
       };
       document.head.appendChild(script);
     };
@@ -569,12 +581,25 @@ export default function Login() {
     startCooldown(sentEmail); setResendLeft(60);
   };
 
+  // Все шесть экранов всегда смонтированы (как в прототипе): активным управляет
+  // AuthShell по activeScreen, кроссфейдя и анимируя высоту. Скрытые .screen
+  // инертны (visibility:hidden + pointer-events:none), а хендлеры/стейт кейнуты
+  // на view, так что невидимые формы бездействуют.
+  const activeScreen = {
+    login: 'signin',
+    signup: 'signup',
+    reset: 'forgot',
+    'reset-sent': 'sent',
+    'reset-password': 'reset',
+    'reset-done': 'done',
+  }[view];
+
   return (
-    <AuthShell lang={lang} setLang={setLang}>
+    <AuthShell lang={lang} setLang={setLang} activeScreen={activeScreen}>
 
             {/* ── Вход ── */}
-            {view === 'login' && (
-              <section className="screen av-is-active" data-screen="signin">
+            {(
+              <section className="screen" data-screen="signin">
                 <div className="screen-head">
                   {/* av-brow = прототипный .eyebrow (в §AUTH переименован из-за коллизии
                       с лендинговым .eyebrow); скрыт на всех экранах, кроме join-signin. */}
@@ -626,8 +651,8 @@ export default function Login() {
             )}
 
             {/* ── Регистрация ── */}
-            {view === 'signup' && (
-              <section className="screen av-is-active" data-screen="signup">
+            {(
+              <section className="screen" data-screen="signup">
                 <div className="screen-head">
                   <div className="av-brow">{t('auth.signup_eyebrow')}</div>
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.signup_title') }} />
@@ -683,8 +708,8 @@ export default function Login() {
             )}
 
             {/* ── Восстановление (запрос) ── */}
-            {view === 'reset' && (
-              <section className="screen av-is-active" data-screen="forgot">
+            {(
+              <section className="screen" data-screen="forgot">
                 <div className="screen-head">
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.reset_title') }} />
                   <p className="av-sub">{t('auth.reset_lede')}</p>
@@ -710,8 +735,8 @@ export default function Login() {
             )}
 
             {/* ── Письмо отправлено ── */}
-            {view === 'reset-sent' && (
-              <section className="screen av-is-active" data-screen="sent">
+            {(
+              <section className="screen" data-screen="sent">
                 <div className="status-icon"><IconMail /></div>
                 <div className="screen-head">
                   <h1>{t('auth.sent_title')}</h1>
@@ -743,8 +768,8 @@ export default function Login() {
             )}
 
             {/* ── Новый пароль ── */}
-            {view === 'reset-password' && (
-              <section className="screen av-is-active" data-screen="reset">
+            {(
+              <section className="screen" data-screen="reset">
                 <div className="status-icon"><IconLockStatus /></div>
                 <div className="screen-head">
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.newpw_title') }} />
@@ -789,8 +814,8 @@ export default function Login() {
             )}
 
             {/* ── Пароль обновлён ── */}
-            {view === 'reset-done' && (
-              <section className="screen av-is-active" data-screen="done">
+            {(
+              <section className="screen" data-screen="done">
                 <svg className="tick" viewBox="0 0 80 80" aria-hidden="true">
                   <circle cx="40" cy="40" r="33" /><path d="M26 41.5 35.5 51 55 30" />
                 </svg>
