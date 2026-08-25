@@ -9419,19 +9419,49 @@ a.doc-row__n:hover{ color: var(--brand); }
      visual-diff-exempt: .consent --ink — app-DS вид во всех зонах, TRIP-469
      visual-diff-exempt: .consent --muted — app-DS вид во всех зонах, TRIP-469
      visual-diff-exempt: .consent --brand — app-DS вид во всех зонах, TRIP-469
+     visual-diff-exempt: .consent --hl — заливка primary-кнопки = app-brand, TRIP-469
      visual-diff-exempt: .consent --r-md — app-DS радиус во всех зонах, TRIP-469
      visual-diff-exempt: .consent --fs-h3 — app-DS кегль заголовка во всех зонах, TRIP-469 */
   --font-body: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-ui: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --ink: #272433; --muted: #7A7689; --brand: #2173C8;
+  --ink: #272433; --muted: #7A7689; --brand: #2173C8; --hl: #2173C8;
   --r-md: 16px; --fs-h3: 16px;
 }
 /* Тёмная тема приложения: тёмные app-DS токены, чтобы текст читался на тёмной
    поверхности баннера (site-зона всегда светлая — сюда не попадает). Ключ 2p —
    тот же `.consent --ink|--muted|--brand`, покрыт маркерами базового правила выше. */
 :root[data-theme="dark"] .consent {
-  --ink: #EDECF4; --muted: #8C88A0; --brand: #6FB2FF;
+  --ink: #EDECF4; --muted: #8C88A0; --brand: #6FB2FF; --hl: #6FB2FF;
+}
+/* Кнопки баннера. КОРЕНЬ РАСХОЖДЕНИЯ: и app.css, и site.css объявляют базовый
+   `.btn`; на лендинге/auth site.css грузится ПОЗЖЕ и его `.btn` (пилюля 99px,
+   padding 13/24, min-height 46, border:0) перебивает app-геометрию у кнопок
+   баннера (компонент Btn рисует `.btn`). Модификаторы `.btn--primary/secondary`
+   сайт НЕ определяет, поэтому расходится только базовая геометрия. Возвращаем
+   app-кнопку с более высокой специфичностью `.consent .btn` (0,2,0 > 0,1,0),
+   реюз самого Btn сохранён. Значения = app `.btn` + тип канона `.t-label`.
+   Компаунд-ключ 2p метит и `.btn`, и `.consent` (TRIP-344), отсюда обе половины.
+   floor-exempt: reach +1 — chrome-баннер защищается от коллизии site.btn, апрув Pavel (эта сессия, TRIP-469)
+   visual-diff-exempt: .btn border — app-рамка кнопки (site.btn даёт border:0), TRIP-469
+   visual-diff-exempt: .btn border-radius — app-радиус кнопки (site.btn 99px), TRIP-469
+   visual-diff-exempt: .btn min-height — app-высота кнопки (site.btn 46px), TRIP-469
+   visual-diff-exempt: .btn padding — app-паддинг кнопки (site.btn 13/24), TRIP-469
+   visual-diff-exempt: .btn gap — app-гэп кнопки (site.btn 9px), TRIP-469
+   visual-diff-exempt: .btn font-size — app-кегль кнопки (site.btn --fs-body-lg), TRIP-469
+   visual-diff-exempt: .btn font-weight — app-вес кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent border — компаунд .consent .btn, app-рамка кнопки, TRIP-469
+   visual-diff-exempt: .consent border-radius — компаунд .consent .btn, app-радиус кнопки, TRIP-469
+   visual-diff-exempt: .consent min-height — app-высота кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent padding — app-паддинг кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent gap — app-гэп кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent font-size — app-кегль кнопки в баннере, TRIP-469
+   visual-diff-exempt: .consent font-weight — app-вес кнопки в баннере, TRIP-469 */
+.consent .btn {
+  min-height: var(--ctl-h);
+  padding: 0 15px; /* design-token-exempt: 15px — app .btn паддинг (нет ступени --sp=15), коллизия site.btn, TRIP-469 */
+  border-radius: var(--r-btn); border: 1px solid var(--bd); gap: var(--sp-4);
+  font-size: var(--fs-meta); font-weight: 600;
 }
 .consent__text p { margin: 0; color: var(--muted); }
 /* Class beats the element selector above it, so the reset does not swallow this. */
