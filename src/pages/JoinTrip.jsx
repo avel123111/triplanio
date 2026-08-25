@@ -65,9 +65,9 @@ export default function JoinTrip() {
     <AuthShell lang={lang} setLang={setLang}>
       {state === 'working' && (
         <section className="screen av-is-active" data-screen="join-working">
-          <div className="join-spin" aria-hidden="true"><span className="av-spin" /></div>
+          <div className="join-spin" aria-hidden="true" />
           <div className="screen-head">
-            <h1>{t('member.join_joining')}</h1>
+            <h1 dangerouslySetInnerHTML={{ __html: t('member.join_joining') }} />
             <p className="av-sub">{t('member.join_joining_sub')}</p>
           </div>
         </section>
@@ -77,13 +77,21 @@ export default function JoinTrip() {
         <section className="screen av-is-active" data-screen="join-signin">
           <div className="screen-head">
             <div className="av-brow">{t('member.join_invited')}</div>
-            <h1>{t('member.join_signin_title')}</h1>
+            <h1 dangerouslySetInnerHTML={{ __html: t('member.join_signin_title') }} />
             <p className="av-sub">{t('member.join_signin_lede')}</p>
           </div>
           <div className="av-btn-row">
             {/* nav(), не window.location: сохраняет снимок атрибуции в памяти,
-                который Login прочитает при регистрации (TRIP-329). */}
-            <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={() => nav('/login')}>{t('member.join_signin_btn')}</button>
+                который Login прочитает при регистрации (TRIP-329). Обе кнопки ведут
+                на /login (единая дверь входа/регистрации), как и раньше. */}
+            <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={() => nav('/login')}>
+              <span className="av-btn-label"><span>{t('member.join_signin_btn')}</span><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow-r" /></svg></span>
+              <span className="av-spin" aria-hidden="true" />
+            </button>
+            <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => nav('/login')}>
+              <span className="av-btn-label"><span>{t('member.join_signin_alt')}</span></span>
+              <span className="av-spin" aria-hidden="true" />
+            </button>
           </div>
         </section>
       )}
@@ -101,8 +109,14 @@ export default function JoinTrip() {
             <p className="av-sub">{t(errKey)}</p>
           </div>
           <div className="av-btn-row">
-            <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
-            <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => nav('/')}>{t('member.join_home')}</button>
+            <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={() => nav('/trips', { replace: true })}>
+              <span className="av-btn-label"><span>{t('member.join_to_app')}</span></span>
+              <span className="av-spin" aria-hidden="true" />
+            </button>
+            <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => nav('/')}>
+              <span className="av-btn-label"><span>{t('member.join_home')}</span></span>
+              <span className="av-spin" aria-hidden="true" />
+            </button>
           </div>
         </section>
       )}

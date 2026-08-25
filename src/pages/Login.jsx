@@ -12,7 +12,7 @@ import { setRemember as setRememberFlag } from '@/api/authStorage';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-/* floor-exempt: dsshare +27 — неавторизованная зона живёт на СВОЕЙ ДС (site.css
+/* floor-exempt: dsshare +30 — неавторизованная зона живёт на СВОЕЙ ДС (site.css
    §AUTH), а не на app-DS из src/design: перенос логина/join с компонентов
    src/design на зонные примитивы законно опускает долю app-DS (метрика dsShareBp
    считает именно app-DS). Решение «зона на своей ДС» — апрув Pavel (TRIP-460). */
@@ -116,10 +116,58 @@ function IconGoogle() {
 }
 function IconApple() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <svg className="apple-mark" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
       <path d="M17.05 12.04c-.03-2.6 2.12-3.85 2.22-3.91-1.21-1.77-3.09-2.01-3.76-2.04-1.6-.16-3.13.94-3.94.94-.83 0-2.07-.92-3.41-.9-1.75.03-3.37 1.02-4.27 2.59-1.83 3.17-.47 7.86 1.32 10.43.87 1.26 1.91 2.67 3.27 2.62 1.31-.05 1.8-.85 3.39-.85 1.58 0 2.03.85 3.42.82 1.41-.02 2.31-1.28 3.18-2.55 1-1.46 1.42-2.88 1.45-2.95-.03-.01-2.78-1.07-2.81-4.2zm-2.6-7.7c.72-.88 1.21-2.1 1.07-3.31-1.04.05-2.3.69-3.05 1.56-.66.78-1.25 2.02-1.09 3.21 1.16.09 2.34-.59 3.07-1.46z"/>
     </svg>
   );
+}
+
+// Circular refresh icon for the "resend" button (prototype #i-refresh).
+function IconRefresh() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 11.5A8 8 0 0 0 6.3 6.3L4 8.5m0 4A8 8 0 0 0 17.7 17.7L20 15.5" />
+      <path d="M4 4v4.5h4.5M20 20v-4.5h-4.5" />
+    </svg>
+  );
+}
+
+// Field lead icons (prototype #i-mail/#i-lock/#i-user). Rendered as a direct
+// `.lead` child of `.control` so the §AUTH rule `.control>.lead` positions them.
+// The site sprite (LandingSprite) carries only #i-lock, so all three are inlined
+// verbatim from the prototype for a self-contained, exact match.
+function LeadMail() {
+  return (
+    <svg className="lead" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.9" />
+      <path fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" d="m4 7.6 8 5.8 8-5.8" />
+    </svg>
+  );
+}
+function LeadLock() {
+  return (
+    <svg className="lead" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="5" y="10.4" width="14" height="9.8" rx="2.6" fill="none" stroke="currentColor" strokeWidth="1.9" />
+      <path fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" d="M8.2 10.4V8a3.8 3.8 0 0 1 7.6 0v2.4" />
+    </svg>
+  );
+}
+function LeadUser() {
+  return (
+    <svg className="lead" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8.2" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.9" />
+      <path fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" d="M4.6 20c.7-3.6 3.8-5.8 7.4-5.8s6.7 2.2 7.4 5.8" />
+    </svg>
+  );
+}
+// Checkmark for the remember-me box and the password rules — reuses the site
+// sprite symbol (#i-check) that AuthShell mounts via LandingSprite.
+function IconCheck() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check" /></svg>;
+}
+// Lock glyph for the reset screen's status tile (#i-lock is in the site sprite).
+function IconLockStatus() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lock" /></svg>;
 }
 
 function IconShieldAlert() {
@@ -139,7 +187,7 @@ function AuthError({ children }) {
   return (
     <div className="alert show" role="alert">
       <IconShieldAlert />
-      <span>{children}</span>
+      <div><span>{children}</span></div>
     </div>
   );
 }
@@ -528,22 +576,26 @@ export default function Login() {
             {view === 'login' && (
               <section className="screen av-is-active" data-screen="signin">
                 <div className="screen-head">
+                  {/* av-brow = прототипный .eyebrow (в §AUTH переименован из-за коллизии
+                      с лендинговым .eyebrow); скрыт на всех экранах, кроме join-signin. */}
                   <div className="av-brow">{t('auth.login_eyebrow')}</div>
-                  <h1>{t('auth.login_title')}</h1>
-                  <p className="lead">{t('auth.login_lede')}</p>
+                  <h1 dangerouslySetInnerHTML={{ __html: t('auth.login_title') }} />
+                  <p className="av-sub">{t('auth.login_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="social">
-                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}>{/* i18n-ignore: бренд */}<IconGoogle /><span>Google</span></button>
-                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}>{/* i18n-ignore: бренд */}<IconApple /><span>Apple</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}><IconGoogle /><span>{t('auth.oauth_google_signin')}</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>{t('auth.oauth_apple_signin')}</span></button>
                 </div>
                 <div className="or"><span>{t('auth.or_email')}</span></div>
                 <form onSubmit={handleLogin}>
                   <div className="av-field">
                     <div className="field-top"><label htmlFor="l-email">{t('auth.email_label')}</label></div>
                     <div className="control">
-                      <input className="av-input" id="l-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
+                      <LeadMail />
+                      <input className="av-input" id="l-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
                     </div>
+                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
                   </div>
                   <div className="av-field">
                     <div className="field-top">
@@ -552,18 +604,24 @@ export default function Login() {
                       <a href="#" className="aux" onClick={e => { e.preventDefault(); goto('reset'); }}>{t('auth.forgot')}</a>
                     </div>
                     <div className="control">
+                      <LeadLock />
                       <input className="av-input has-toggle" id="l-pw" type={showPw ? 'text' : 'password'} autoComplete="current-password" placeholder={t('auth.pw_placeholder')} required value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
+                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
                   </div>
                   <label className="av-check">
                     <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} disabled={isLoading} />
-                    <span className="box" aria-hidden="true" />
+                    <span className="box" aria-hidden="true"><IconCheck /></span>
                     <span className="txt">{t('auth.remember')}</span>
                   </label>
-                  <button type="submit" className="av-btn av-btn-primary av-btn-block" disabled={isLoading}>{isLoading ? t('common.loading') : t('auth.sign_in')}<IconArrow /></button>
+                  <button type="submit" className={`av-btn av-btn-primary av-btn-block${isLoading ? ' loading' : ''}`} disabled={isLoading}>
+                    <span className="av-btn-label"><span>{t('auth.sign_in')}</span></span>
+                    <span className="av-spin" aria-hidden="true" />
+                  </button>
                 </form>
-                <p className="alt">{t('auth.no_account')}{' '}<button type="button" onClick={() => goto('signup')}>{t('auth.sign_up')}</button></p>
+                {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
+                <p className="alt">{t('auth.no_account')}{' '}<a href="#" onClick={e => { e.preventDefault(); goto('signup'); }}>{t('auth.sign_up')}</a></p>
               </section>
             )}
 
@@ -571,47 +629,56 @@ export default function Login() {
             {view === 'signup' && (
               <section className="screen av-is-active" data-screen="signup">
                 <div className="screen-head">
-                  <div className="av-brow">{t('auth.create_account')}</div>
-                  <h1>{t('auth.signup_title')}</h1>
-                  <p className="lead">{t('auth.signup_lede')}</p>
+                  <div className="av-brow">{t('auth.signup_eyebrow')}</div>
+                  <h1 dangerouslySetInnerHTML={{ __html: t('auth.signup_title') }} />
+                  <p className="av-sub">{t('auth.signup_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="social">
-                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}>{/* i18n-ignore: бренд */}<IconGoogle /><span>Google</span></button>
-                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}>{/* i18n-ignore: бренд */}<IconApple /><span>Apple</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}><IconGoogle /><span>{t('auth.oauth_google_signup')}</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>{t('auth.oauth_apple_signup')}</span></button>
                 </div>
                 <div className="or"><span>{t('auth.or_email')}</span></div>
                 <form onSubmit={handleSignup}>
                   <div className="av-field">
                     <div className="field-top"><label htmlFor="s-name">{t('auth.name_label')}</label></div>
                     <div className="control">
+                      <LeadUser />
                       <input className="av-input" id="s-name" type="text" autoComplete="name" placeholder={t('auth.name_placeholder')} required value={name} onChange={e => setName(e.target.value)} disabled={isLoading} />
                     </div>
+                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
                   </div>
                   <div className="av-field">
                     <div className="field-top"><label htmlFor="s-email">{t('auth.email_label')}</label></div>
                     <div className="control">
-                      <input className="av-input" id="s-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
+                      <LeadMail />
+                      <input className="av-input" id="s-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
                     </div>
+                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
                   </div>
                   <div className="av-field" data-strength={password ? pwScore : undefined}>
                     <div className="field-top"><label htmlFor="s-pw">{t('auth.password')}</label></div>
                     <div className="control">
-                      <input className="av-input has-toggle" id="s-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.pw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <LeadLock />
+                      <input className="av-input has-toggle" id="s-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.newpw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
                     <div className="strength"><i /><i /><i /><i /></div>
-                    <div className="strength-row">{STRENGTH_LABELS[pwScore]}</div>
+                    <p className="strength-row"><span>{t('auth.pw_strength')}</span><b>{STRENGTH_LABELS[pwScore]}</b></p>
                   </div>
-                  <p className="legal">
-                    {t('auth.terms_pre')}{' '}
-                    {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-                    {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-                    <a href="/terms">{t('auth.terms_link')}</a> {t('auth.terms_and')} <a href="/privacy">{t('auth.privacy_link')}</a>.
-                  </p>
-                  <button type="submit" className="av-btn av-btn-primary av-btn-block" disabled={isLoading}>{isLoading ? t('common.loading') : t('auth.create_account')}<IconArrow /></button>
+                  <button type="submit" className={`av-btn av-btn-primary av-btn-block${isLoading ? ' loading' : ''}`} disabled={isLoading}>
+                    <span className="av-btn-label"><span>{t('auth.create_account')}</span></span>
+                    <span className="av-spin" aria-hidden="true" />
+                  </button>
                 </form>
-                <p className="alt">{t('auth.have_account')}{' '}<button type="button" onClick={() => goto('login')}>{t('auth.sign_in')}</button></p>
+                <p className="legal">
+                  {t('auth.terms_pre')}{' '}
+                  {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
+                  {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
+                  <a href="/terms">{t('auth.terms_link')}</a> {t('auth.terms_and')} <a href="/privacy">{t('auth.privacy_link')}</a>.
+                </p>
+                {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
+                <p className="alt">{t('auth.have_account')}{' '}<a href="#" onClick={e => { e.preventDefault(); goto('login'); }}>{t('auth.sign_in')}</a></p>
               </section>
             )}
 
@@ -619,23 +686,26 @@ export default function Login() {
             {view === 'reset' && (
               <section className="screen av-is-active" data-screen="forgot">
                 <div className="screen-head">
-                  <div className="av-brow">{t('auth.reset_eyebrow')}</div>
-                  <h1>{t('auth.reset_title')}</h1>
-                  <p className="lead">{t('auth.reset_lede')}</p>
+                  <h1 dangerouslySetInnerHTML={{ __html: t('auth.reset_title') }} />
+                  <p className="av-sub">{t('auth.reset_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <form onSubmit={handleReset}>
                   <div className="av-field">
                     <div className="field-top"><label htmlFor="r-email">{t('auth.email_label')}</label></div>
                     <div className="control">
-                      <input className="av-input" id="r-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
+                      <LeadMail />
+                      <input className="av-input" id="r-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />{/* i18n-ignore: пример адреса, как в прототипе */}
                     </div>
+                    <div className="err-slot"><div><p className="av-err"><IconShieldAlert /><span /></p></div></div>
                   </div>
-                  <button type="submit" className="av-btn av-btn-primary av-btn-block" disabled={isLoading || resendLeft > 0}>
-                    {isLoading ? t('common.loading') : resendLeft > 0 ? t('auth.resend_in').replace('{s}', String(resendLeft)) : t('auth.reset_submit')}<IconArrow />
+                  <button type="submit" className={`av-btn av-btn-primary av-btn-block${isLoading ? ' loading' : ''}`} disabled={isLoading || resendLeft > 0}>
+                    <span className="av-btn-label"><span>{t('auth.reset_submit')}</span></span>
+                    <span className="av-spin" aria-hidden="true" />
                   </button>
                 </form>
-                <p className="alt">{t('auth.remember_pw')}{' '}<button type="button" onClick={() => goto('login')}>{t('auth.sign_in')}</button></p>
+                {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
+                <p className="alt"><a href="#" onClick={e => { e.preventDefault(); goto('login'); }}>{t('auth.back_to_signin')}</a></p>
               </section>
             )}
 
@@ -645,78 +715,95 @@ export default function Login() {
                 <div className="status-icon"><IconMail /></div>
                 <div className="screen-head">
                   <h1>{t('auth.sent_title')}</h1>
-                  <p className="lead">
-                    {t('auth.sent_to').split('{email}')[0]}
-                    <b>{sentEmail}</b>
-                    {t('auth.sent_to').split('{email}')[1]}
-                    <br />{t('auth.sent_spam')}
-                  </p>
+                  <p className="av-sub">{t('auth.sent_to')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="mailto">
-                  {/* nav-exempt: внешний сервис почты */}
-                  <a className="av-btn av-btn-quiet av-btn-block" href="https://mail.google.com" target="_blank" rel="noopener noreferrer">{t('auth.open_gmail')} <IconExternalLink /></a>
-                  <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => goto('login')}>{t('auth.to_login')}</button>
+                  <IconMail />
+                  <b>{sentEmail}</b>
                 </div>
-                <p className="alt">
-                  {t('auth.no_email')}{' '}
+                <div className="av-btn-row">
+                  {/* nav-exempt: внешний сервис почты */}
+                  <a className="av-btn av-btn-primary av-btn-block" href="https://mail.google.com" target="_blank" rel="noopener noreferrer">
+                    <span className="av-btn-label"><span>{t('auth.open_gmail')}</span><IconExternalLink /></span>
+                  </a>
+                  <button type="button" className={`av-btn av-btn-quiet av-btn-block${isLoading ? ' loading' : ''}`} onClick={handleResend} disabled={isLoading || resendLeft > 0}>
+                    <span className="av-btn-label"><IconRefresh /><span>{t('auth.resend')}</span></span>
+                    <span className="av-spin" aria-hidden="true" />
+                  </button>
+                </div>
+                <p className="timer">
                   {resendLeft > 0
-                    ? <span className="aux">{t('auth.resend_in').replace('{s}', String(resendLeft))}</span>
-                    : <button type="button" onClick={handleResend} disabled={isLoading}>{t('auth.resend')}</button>}
+                    ? <>{t('auth.no_email')}{' '}<b>{t('auth.resend_in').replace('{s}', String(resendLeft))}</b></>
+                    : t('auth.sent_spam')}
                 </p>
+                {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
+                <p className="alt"><a href="#" onClick={e => { e.preventDefault(); goto('login'); }}>{t('auth.back_to_signin')}</a></p>
               </section>
             )}
 
             {/* ── Новый пароль ── */}
             {view === 'reset-password' && (
               <section className="screen av-is-active" data-screen="reset">
+                <div className="status-icon"><IconLockStatus /></div>
                 <div className="screen-head">
-                  <div className="av-brow">{t('auth.new_password')}</div>
-                  <h1>{t('auth.newpw_title')}</h1>
-                  <p className="lead">{t('auth.newpw_lede')}</p>
+                  <h1 dangerouslySetInnerHTML={{ __html: t('auth.newpw_title') }} />
+                  <p className="av-sub">{t('auth.newpw_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <form onSubmit={handleNewPassword}>
                   <div className="av-field" data-strength={password ? pwScore : undefined}>
                     <div className="field-top"><label htmlFor="rp-pw">{t('auth.new_password')}</label></div>
                     <div className="control">
-                      <input className="av-input has-toggle" id="rp-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.pw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <LeadLock />
+                      <input className="av-input has-toggle" id="rp-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.newpw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
                     <div className="strength"><i /><i /><i /><i /></div>
-                    <div className="strength-row">{STRENGTH_LABELS[pwScore]}</div>
+                    <p className="strength-row"><span>{t('auth.pw_strength')}</span><b>{STRENGTH_LABELS[pwScore]}</b></p>
+                    <div className="rules">
+                      <p className={`rule ${password.length >= 8 ? 'ok' : ''}`}><i><IconCheck /></i><span>{t('auth.rule_len')}</span></p>
+                      <p className={`rule ${/[A-Za-zА-Яа-яЁё]/.test(password) ? 'ok' : ''}`}><i><IconCheck /></i><span>{t('auth.rule_letter')}</span></p>
+                      <p className={`rule ${/\d/.test(password) ? 'ok' : ''}`}><i><IconCheck /></i><span>{t('auth.rule_num')}</span></p>
+                    </div>
                   </div>
                   <div className="av-field">
                     <div className="field-top"><label htmlFor="rp-pw2">{t('auth.repeat_password')}</label></div>
                     <div className="control">
+                      <LeadLock />
                       <input className="av-input has-toggle" id="rp-pw2" type={showPw2 ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.repeat_placeholder')} required value={password2} onChange={e => setPassword2(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw2 ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw2(v => !v)}><IconEye off={showPw2} /></button>
                     </div>
-                    {password2 && (
-                      <div className="rules" aria-live="polite">
-                        <p className={`rule ${password === password2 ? 'valid' : 'invalid'}`}>
-                          {password === password2 ? t('auth.pw_match') : t('auth.pw_nomatch')}
-                        </p>
-                      </div>
-                    )}
+                    <div className="rules" aria-live="polite">
+                      <p className={`rule ${password.length > 0 && password === password2 ? 'ok' : ''}`}><i><IconCheck /></i><span>{t('auth.rule_match')}</span></p>
+                    </div>
                   </div>
-                  <button type="submit" className="av-btn av-btn-primary av-btn-block" disabled={isLoading}>{isLoading ? t('auth.saving') : t('auth.save_password')}<IconArrow /></button>
+                  <button type="submit" className={`av-btn av-btn-primary av-btn-block${isLoading ? ' loading' : ''}`} disabled={isLoading}>
+                    <span className="av-btn-label"><span>{t('auth.save_password')}</span></span>
+                    <span className="av-spin" aria-hidden="true" />
+                  </button>
                 </form>
-                <p className="alt">{t('auth.remember_old')}{' '}<button type="button" onClick={finishToLogin}>{t('auth.sign_in')}</button></p>
+                {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
+                <p className="alt"><a href="#" onClick={e => { e.preventDefault(); finishToLogin(); }}>{t('auth.back_to_signin')}</a></p>
               </section>
             )}
 
             {/* ── Пароль обновлён ── */}
             {view === 'reset-done' && (
               <section className="screen av-is-active" data-screen="done">
-                <div className="status-icon">
-                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                </div>
+                <svg className="tick" viewBox="0 0 80 80" aria-hidden="true">
+                  <circle cx="40" cy="40" r="33" /><path d="M26 41.5 35.5 51 55 30" />
+                </svg>
                 <div className="screen-head">
                   <h1>{t('auth.done_title')}</h1>
-                  <p className="lead">{t('auth.done_lede')}</p>
+                  <p className="av-sub">{t('auth.done_lede')}</p>
                 </div>
-                <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={finishToLogin}>{t('auth.sign_in')}<IconArrow /></button>
+                <div className="av-btn-row">
+                  <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={finishToLogin}>
+                    <span className="av-btn-label"><span>{t('auth.sign_in')}</span><IconArrow /></span>
+                    <span className="av-spin" aria-hidden="true" />
+                  </button>
+                </div>
               </section>
             )}
 

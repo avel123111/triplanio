@@ -45,15 +45,17 @@ export default function AuthShell({ lang, setLang, children }) {
         </main>
 
         <footer className="pane-foot">
-          <span>© 2026 {BRAND_NAME}</span>
-          <nav className="legal">
-            {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-            <a href="/terms">{t('auth.foot_terms')}</a>
-            {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-            <a href="/privacy">{t('auth.foot_privacy')}</a>
-            {/* mailto — внешний протокол (не internal href), как в футере лендинга */}
-            <a href="mailto:support@triplanio.com">{t('auth.foot_support')}</a>
-          </nav>
+          <span>© 2026 {BRAND_NAME}</span>{/* i18n-ignore: год + бренд, как в прототипе */}
+          {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
+          <a href="/terms">{t('auth.foot_terms')}</a>
+          {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
+          <a href="/privacy">{t('auth.foot_privacy')}</a>
+          {/* mailto — внешний протокол (не internal href), как в футере лендинга */}
+          <a href="mailto:support@triplanio.com">{t('auth.foot_support')}</a>
+          <span className="secure">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield" /></svg>
+            <span>{t('auth.foot_secure')}</span>
+          </span>
         </footer>
       </section>
 
@@ -70,6 +72,7 @@ export default function AuthShell({ lang, setLang, children }) {
             ))}
           </p>
         </div>
+        <div className="art-grain" />
       </aside>
     </div>
   );
