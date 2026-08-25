@@ -22,13 +22,17 @@
 // marks both endpoints (ring colour tells start from finish); `arrowSwap` marks
 // a waypoint (transit / layover). Stroke is `currentColor` so the glyph follows
 // the ring colour (and turns white when the pin is selected).
-// Роль → глиф. Старт и финиш РАЗНЫЕ (запрос Pavel): старт — обычный флаг-вымпел,
-// финиш — КЛЕТЧАТЫЙ (гоночный) флаг (стойка + рамка + две залитые клетки 2×2,
-// залитая часть несёт свой `fill`, перебивая общий `fill:none` у svgGlyph).
+// Роль → глиф. Старт и финиш РАЗНЫЕ (запрос Pavel) и оба «читаемые с ходу» —
+// прежние тонкая стойка + крошечный флажок высоко на ней смотрелись слабо, теперь
+// флаг занимает бóльшую часть глифа, а голой стойки снизу почти нет:
+//   старт  — ЗАЛИТЫЙ вымпел-ласточкин-хвост (залитая часть несёт свой `fill`,
+//            перебивая общий `fill:none` у svgGlyph);
+//   финиш  — КЛЕТЧАТЫЙ (гоночный) флаг: жирная стойка + тонкая рамка-сетка 2×2 +
+//            две залитые клетки по диагонали (шахматка).
 // Пересадка (waypoint) — иконка обмена (та же, что была).
 const ICON_PATHS = {
-  start: '<path d="M5 3v18"/><path d="M5 4h12l-2 4 2 4H5"/>',
-  end: '<path d="M5 2v20"/><path stroke-width="1.1" d="M5 3h13v9H5z M11 3v9 M5 7h13"/><path fill="currentColor" stroke="none" d="M5 3h6v4H5z M11 7h7v5h-7z"/>',
+  start: '<path d="M6 4v16"/><path fill="currentColor" stroke="none" d="M6 4h11l-2.6 3.8 2.6 3.8H6z"/>',
+  end: '<path d="M6.5 4v15"/><path stroke-width="1.2" d="M6.5 4h12v7.5h-12z M12.5 4v7.5 M6.5 7.75h12"/><path fill="currentColor" stroke="none" d="M6.5 4h6v3.75h-6z M12.5 7.75h6v3.75h-6z"/>',
   waypoint: '<path d="M7 7h13l-4-4M17 17H4l4 4"/>',
 };
 

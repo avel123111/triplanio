@@ -8503,6 +8503,11 @@ a.doc-row__n:hover{ color: var(--brand); }
  border: 3px solid var(--tmk);
  font-variant-numeric: tabular-nums;
  box-shadow: 0 3px 10px rgba(20,24,40,.22), 0 1px 2px rgba(20,24,40,.16);
+ /* Размер по зуму: `--mk-scale` пишет `useCityMarkers` на контейнер карты (MIN на
+    мелком зуме, MAX=1 на детальном). Ховер/селект ниже перебивают этот resting
+    полным scale(1.1) — активный пин всегда крупный. transform уже в transition. */
+ /* visual-diff-exempt: .tmk__core transform — resting-масштаб пина по зуму (--mk-scale), Pavel */
+ transform: scale(var(--mk-scale, 1));
  transition: transform .2s cubic-bezier(.34,1.25,.5,1), background .18s ease, color .18s ease, box-shadow .2s ease;
 }
 .tmk__core svg { width: 14px; height: 14px; display: block; }
