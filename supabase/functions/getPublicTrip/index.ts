@@ -62,7 +62,11 @@ Deno.serve(withHandler('getPublicTrip', async (req, corsHeaders) => {
       admin.from('trip_members')
         .select('user_id, user_full_name, role, status')
         .eq('trip_id', tripId)
-        .eq('status', 'active'),
+        // The travellers list = who is actually going: accepted members AND
+        // offline placeholders the owner added by name (trip-member/add-offline,
+        // no account). NOT pending/declined invites, NOT left/removed — those
+        // are not on the trip. Matches the app's "who's going" set.
+        .in('status', ['active', 'offline']),
     ]);
 
     const carRentals = stripServiceDocs(

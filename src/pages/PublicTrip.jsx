@@ -92,12 +92,13 @@ export default function PublicTrip() {
 
   const fmt = (d) => (d ? fmtDate(d, 'utc', 'd MMM') : '');
 
-  // Participants = owner first, then active members (deduping the owner, matched
-  // by name — the payload gives the owner no id). `title` = the full display name
-  // (avatar seed + tooltip); `name` = short label under the face — first name,
-  // plus a last initial ONLY when the first name repeats. getPublicTrip already
-  // dropped departed/removed/deleted accounts (same identity seam as the app,
-  // `_shared/profiles.ts`), so this list is exactly the current travellers.
+  // Participants = owner first, then the travelling members (accepted + offline
+  // placeholders), deduping the owner (matched by name — the payload gives the
+  // owner no id). `title` = the full display name (avatar seed + tooltip);
+  // `name` = short label under the face — first name, plus a last initial ONLY
+  // when the first name repeats. getPublicTrip resolves identities through the
+  // canonical `_shared/profiles.ts` seam and already dropped deleted/anonymized
+  // accounts and non-travellers, so this list is exactly the current travellers.
   const people = useMemo(() => {
     const raw = [];
     if (owner?.display_name) raw.push({ full: owner.display_name, photo: owner.avatar_url || '' });
@@ -249,7 +250,7 @@ export default function PublicTrip() {
 
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="full" themed navBase={SITE} brandHref={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref={SITE} />
 
       <main className="pt">
         <SiteHero
@@ -350,7 +351,7 @@ export default function PublicTrip() {
 function Shell({ lang, setLang, children }) {
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="full" navBase={SITE} brandHref={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" brandHref={SITE} />
       <main className="pt">{children}</main>
       <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
     </>
