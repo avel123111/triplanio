@@ -158,8 +158,8 @@ export function MapShell({
   useLayoutEffect(() => { setCornerPx(Math.round(cssPx('var(--r-xl, 0px)'))); }, []);
 
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, collapsed, cornerPx }),
-    [isPhone, sheetPx, panelPx, collapsed, cornerPx],
+    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayOpen: !!panelOverlay, collapsed, cornerPx }),
+    [isPhone, sheetPx, panelPx, panelOverlay, collapsed, cornerPx],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
