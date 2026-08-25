@@ -226,7 +226,6 @@ export function MapShell({
               <div className="mapshell__body scrollbar-thin">{panel}</div>
               {panelFooter}
             </Card>
-            {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
           </aside>
           {/* Шов панели и карты — место, где живёт «свернуть/раскрыть»: он
               принадлежит ГРАНИЦЕ между ними, а не содержимому панели, поэтому
@@ -258,6 +257,12 @@ export function MapShell({
               </Tooltip>
             </div>
           )}
+          {/* Слой города/события — НЕЗАВИСИМ от колонки панели (TRIP-195 доводка):
+              он сосед `.mapshell__panel`, а не её потомок, поэтому сворачивание
+              маршрута (`transform`/`inert` на колонке) его НЕ прячет и НЕ выносит
+              из таба. Открыт маршрут — слой ложится поверх него; свёрнут — тот же
+              слой открывается сам по себе. Коробка та же (левый столбец шелла). */}
+          {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
         </>
       ))}
 

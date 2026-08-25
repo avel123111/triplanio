@@ -1,0 +1,35 @@
+import { useEffect, useRef, useState } from 'react';
+
+/**
+ * Держит узел смонтированным на время его ВЫХОДНОЙ анимации.
+ *
+ * `open` — намерение (открыт/закрыт). Возврат `present` остаётся `true` ещё
+ * `ms` после того, как `open` стал `false`: за это время CSS-правило
+ * `[data-closing]` проигрывает выход, после чего `present` гаснет и вызывающий
+ * размонтирует узел. `closing` = «сейчас идёт выход» — вешается атрибутом
+ * `data-closing`, который и переключает анимацию на обратную.
+ *
+ * Тот же приём, что у тостов репозитория (`data-state=enter/leave`), только без
+ * стороннего рантайма: одна пара состояния + таймер. `ms` ОБЯЗАН совпадать с
+ * длительностью выходного правила в CSS, иначе узел либо срежется на середине
+ * анимации, либо провисит лишнее после её конца.
+ *
+ * @param {boolean} open
+ * @param {number} [ms]
+ * @returns {{ present: boolean, closing: boolean }}
+ */
+export function usePresence(open, ms = 240) {
+  const [present, setPresent] = useState(open);
+  const timer = useRef(/** @type {any} */ (null));
+
+  useEffect(() => {
+    clearTimeout(timer.current);
+    if (open) { setPresent(true); return undefined; }
+    if (present) timer.current = setTimeout(() => setPresent(false), ms);
+    return () => clearTimeout(timer.current);
+  }, [open, present, ms]);
+
+  return { present, closing: present && !open };
+}
+
+export default usePresence;

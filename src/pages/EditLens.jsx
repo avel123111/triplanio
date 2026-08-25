@@ -207,6 +207,7 @@ import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { useIsPhone } from '@/hooks/use-mobile';
+import { usePresence } from '@/hooks/usePresence';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
@@ -412,14 +413,25 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // помнит. Стартовый детент — средний: карта видна, список читается.
   const [collapsed, setCollapsed] = useState(false);
   const [detent, setDetent] = useState(1);
+  // ВЫХОДНАЯ анимация ящика города/события. Намерение «ящик открыт» считается из
+  // самого `leftPanel` (не из `useDrawer` ниже — тот зависит от `draft`, а хук
+  // обязан стоять ДО ранних возвратов). Содержимое+ключ на время выхода
+  // замораживаем в рефах (ниже, у самой раскладки): при закрытии `leftPanel`
+  // гаснет, и без заморозки ящик уезжал бы пустым.
+  const wantDrawer = !isSheet && !!leftPanel && leftPanel.type !== 'cityadd';
+  const { present: ovPresent, closing: ovClosing } = usePresence(wantDrawer, 240);
+  const ovKeyRef = useRef(null);
+  const ovElRef = useRef(null);
   // A11y: when an in-place left panel opens, move focus into it (its back button
   // if present) so keyboard/SR users land in the new context; Esc closes it.
   const leftPaneRef = useRef(null);
+  // `ovPresent` В ЗАВИСИМОСТЯХ: оверлей монтируется на кадр ПОЗЖЕ открытия
+  // (present догоняет эффектом), иначе фокус целится в ещё не смонтированный ref.
   useEffect(() => {
-    if (!leftPanel || !leftPaneRef.current) return;
+    if (!leftPanel || !ovPresent || !leftPaneRef.current) return;
     const el = leftPaneRef.current.querySelector('button, [tabindex]') || leftPaneRef.current;
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
-  }, [leftPanel]);
+  }, [leftPanel, ovPresent]);
   const confirm = useConfirm(); // city delete → shared confirm (sheet on mobile)
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
@@ -1043,6 +1055,9 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
   const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
+  // Замораживаем содержимое+ключ ящика, пока он открыт: на выходе (`ovClosing`)
+  // рендерим последнее показанное, чтобы анимация ухода не осталась без панели.
+  if (useDrawer) { ovKeyRef.current = panelKey; ovElRef.current = leftPanelEl; }
 
   // ПЛАШКА ГОРОДА НА КАРТЕ — та же, что в линзе карты: следует за наведением, а
   // без него за выбранным городом. Ховер работает В ОБЕ СТОРОНЫ: ряд списка
@@ -1279,11 +1294,16 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       expandLabel={t('tse.route_show')}
       detent={detent}
       onDetentChange={setDetent}
-      panelOverlay={useDrawer ? (
+      panelOverlay={ovPresent && (useDrawer || ovElRef.current) ? (
         /* Ящик города/события во всю высоту ВИДЖЕТА: карта под ним остаётся
-           кликабельной (скрима нет), рельс маршрута — смонтированным. */
-        <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
-          {leftPanelEl}
+           кликабельной (скрима нет), рельс маршрута — смонтированным. На время
+           выхода (`ovClosing`) ключ и содержимое заморожены (`ovKeyRef`/`ovElRef`),
+           `data-closing` играет обратную анимацию. Гейт `useDrawer || ovElRef` не
+           даёт нарисовать пустой ящик, если `leftPanelEl` не разрешился (город без
+           узла) и заморозки ещё нет. */
+        <div key={ovKeyRef.current} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc}
+             className="ts-pdrawer" data-closing={ovClosing || undefined}>
+          {useDrawer ? leftPanelEl : ovElRef.current}
         </div>
       ) : null}
     >
