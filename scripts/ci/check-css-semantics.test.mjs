@@ -123,6 +123,33 @@ test('удаление правила — красный (минус тоже и
   assert.match(out, /\.card border-radius/);
 });
 
+/* ── добавление на НОВЫЙ класс vs добавление к СУЩЕСТВУЮЩЕМУ (TRIP-460 Ф6) ── */
+
+test('★ ПОЛНОСТЬЮ новый класс — ЗЕЛЁНЫЙ (новому элементу нечему регрессировать)', (t) => {
+  // Без этой ветки public/site.css заморожен на добавление: новая страница зоны
+  // = сотни ложных «+». Класс, которого на базе не было ни в одном свойстве, —
+  // новый элемент, а не правка старого.
+  const f = fixture(t, {
+    base: { 'public/site.css': '.hero { padding: 8px; }\n' },
+    head: { 'public/site.css': '.hero { padding: 8px; }\n.pane-form { padding: 20px; gap: 11px; color: red; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /добавлений на новые классы-ключи пропущено/);
+});
+
+test('★ ДОБАВЛЕНИЕ свойства к СУЩЕСТВУЮЩЕМУ классу — КРАСНЫЙ (элемент сменил облик)', (t) => {
+  // Гарантия, что новый пропуск не проделал дыру: `.checkbox` был на базе, ему
+  // дорисовали background — это регресс существующего элемента, блок цел.
+  const f = fixture(t, {
+    base: { 'public/site.css': '.checkbox { gap: 9px; }\n' },
+    head: { 'public/site.css': '.checkbox { gap: 9px; background: red; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.checkbox background/);
+});
+
 /* ─────────────────── ключ: состояние и media отдельно ─────────────────── */
 
 test('★ :hover не вытесняет базовое значение — состояние это часть ключа', (t) => {

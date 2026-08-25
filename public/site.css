@@ -1473,7 +1473,7 @@ section{position:relative}
 /* Буква — белая на сплошном цветном фоне аватара (фон задаётся инлайном на
    инстансе). Без color здесь буква наследовала тёмный --ink из app.css и была
    почти не видна; прототип — белый. То же, что уже сделано у .feed-head .avs .av. */
-/* visual-diff-exempt: .aud-avatars .av color — восстановлен белый (потерян при переносе, наследовался --ink); прототип белый (TRIP-460) */
+/* visual-diff-exempt: .av color — восстановлен белый (потерян при переносе, наследовался --ink/--muted); прототип белый (TRIP-460) */
 .aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-weight:700;font-size: var(--fs-body);color:#fff;box-shadow:var(--shadow-sm)}
 
 .aud-avatars .av + .av{margin-left:-12px}
@@ -1522,7 +1522,7 @@ section{position:relative}
 /* color инлайном на каждом текстовом инстансе — см. .aw-head .avs span выше
    (ревью TRIP-460); .ai-msg ниже — единственный без текста (SVG-иконка
    currentColor), белый на нём остаётся явным правилом отдельно */
-/* visual-diff-exempt: .feed-item .av color — восстановлен белый (потерян при переносе, наследовался серый --muted); прототип белый (TRIP-460) */
+/* .av color восстановлен белым — общий ключ с маркером выше на оба контекста (.aud-avatars/.feed-item), TRIP-460 */
 .feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff;flex:none}
 
 .feed-item b{color:var(--ink)}
@@ -1727,7 +1727,7 @@ section{position:relative}
 /* font-variant-numeric:normal — app.css:460 `.num{tabular-nums}` (0,1,0) бил сброс
    на body; здесь 0,2,0 и грузится позже → цифры 23·61·118k пропорциональные,
    без распора узкой «1», как в прототипе. */
-/* visual-diff-exempt: .stat-box .num font-variant-numeric — снят tabular-nums из app.css:460, прототип пропорциональный (TRIP-460) */
+/* visual-diff-exempt: .num font-variant-numeric — снят tabular-nums, прототип пропорциональный (TRIP-460) */
 .stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand);font-variant-numeric:normal}
 
 .stat-box small{color:var(--muted);font-size: var(--fs-caption)}
