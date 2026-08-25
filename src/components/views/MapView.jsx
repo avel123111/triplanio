@@ -550,7 +550,7 @@ export default function MapView({
   // оверлей отелей ниже. `onAfterBuild`: пока идёт reveal (public reader), пины
   // за активным городом стартуют скрытыми, чтобы всплывать по мере прихода линии
   // (reveal-контроллер держит это в синхроне на скролле; тут — чтобы не мигнули
-  // все сразу сразу после пересборки).
+  // все сразу после пересборки).
   useCityMarkers(mapRef, ready, {
     points,
     markersRef,
@@ -558,8 +558,8 @@ export default function MapView({
     enabled: !hideRoute,
     selectedId: selectedVisitId,
     hoveredId: hoveredVisitId,
-    onClick: (g) => { const cb = onCityClick; if (cb) cb(g.data); },
-    onHover: (entering, g) => { const cb = onCityHover; if (cb) cb(entering ? g.data : null); },
+    onClick: (g) => onCityClick?.(g.data),
+    onHover: (entering, g) => onCityHover?.(entering ? g.data : null),
     onAfterBuild: (markers) => {
       const rs = revealStateRef.current;
       if (rs.revealing) applyMarkerVisibility(markers, orderIndexById, rs.markerMax, true);
