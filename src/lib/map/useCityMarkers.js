@@ -68,14 +68,16 @@ export function useCityMarkers(mapRef, ready, {
     markersRef.current = [];
     if (!enabled) return undefined;
     groupByLocation(pointsRef.current).forEach((g) => {
-      // По ОДНОЙ ячейке на визит в этой точке (в порядке визитов) — builder сам
-      // решает: 1 визит → кольцо роли, 2+ → слепленный пилюль из первых 3.
-      const cells = g.kinds.map((kind, i) => ({ kind, label: g.labels[i] }));
+      // По ОДНОЙ ячейке на визит в этой точке (в порядке визитов), каждая несёт id
+      // и data своего визита — builder сам решает: 1 визит → кольцо роли, 2+ →
+      // слепленный пилюль из первых 3, где каждый сегмент кликается сам по себе.
+      const cells = g.kinds.map((kind, i) => ({ kind, label: g.labels[i], id: g.ids[i], data: g.data[i] }));
       const el = createMarkerEl(cells, {
-        onClick: clickRef.current ? () => { const cb = clickRef.current; if (cb) cb(g); } : undefined,
-        onHover: hoverRef.current ? (entering) => { const cb = hoverRef.current; if (cb) cb(entering, g); } : undefined,
+        onSelect: clickRef.current ? (d) => { const cb = clickRef.current; if (cb) cb(d); } : undefined,
+        onHover: hoverRef.current ? (entering, d) => { const cb = hoverRef.current; if (cb) cb(entering, d); } : undefined,
       });
-      // ОДНО имя атрибута на обе карты (`data-mids`) — тогл выделения читает его.
+      // Корень несёт ВСЕ id точки (`data-mids`) — для reveal-видимости и тогла
+      // одиночного пина; у слепленного тогл идёт по ячейкам (`data-mid`).
       el.dataset.mids = g.ids.filter(Boolean).join(',');
       markersRef.current.push(new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map));
     });
@@ -92,10 +94,22 @@ export function useCityMarkers(mapRef, ready, {
     const hov = hoveredId != null ? String(hoveredId) : null;
     markersRef.current.forEach((m) => {
       const el = m.getElement();
-      const ids = (el.dataset.mids || '').split(',').filter(Boolean);
-      const isSel = sel != null && ids.includes(sel);
-      el.classList.toggle('is-sel', isSel);
-      el.classList.toggle('is-hover', !isSel && hov != null && ids.includes(hov));
+      const cells = el.querySelectorAll('.tmk__h[data-mid]');
+      if (cells.length) {
+        // Слепленный: подсвечиваем КОНКРЕТНУЮ ячейку по её визиту, а не весь пилюль.
+        cells.forEach((cell) => {
+          const id = cell.dataset.mid;
+          const isSel = sel != null && id === sel;
+          cell.classList.toggle('is-sel', isSel);
+          cell.classList.toggle('is-hover', !isSel && hov != null && id === hov);
+        });
+      } else {
+        // Одиночный: корень несёт `data-mids` (обычно один id).
+        const ids = (el.dataset.mids || '').split(',').filter(Boolean);
+        const isSel = sel != null && ids.includes(sel);
+        el.classList.toggle('is-sel', isSel);
+        el.classList.toggle('is-hover', !isSel && hov != null && ids.includes(hov));
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, selectedId, hoveredId, rebuildKey]);

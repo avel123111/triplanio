@@ -71,34 +71,42 @@ const svgGlyph = (icon) =>
 
 // Одна ячейка слепленного пилюля: глиф своей роли (флаг/пересадка) ИЛИ номер
 // города, покрашенные в цвет роли через её класс-модификатор (город — без класса,
-// базовый brand). Номер экранируем (city label — данные).
+// базовый brand). `data-mid` = id ЭТОГО визита — по нему сегмент подсвечивается
+// (тогл `.is-sel/.is-hover`) и адресуется клик. Номер экранируем (city label —
+// данные), id тоже (может быть произвольной строкой).
 function cellHtml(cell) {
   const rc = ROLE_CLASS[cell?.kind] || '';
   const inner = ICON_PATHS[cell?.kind] ? svgGlyph(cell.kind) : escapeHtml(cell?.label);
-  return `<span class="${['tmk__h', rc].filter(Boolean).join(' ')}">${inner}</span>`;
+  const mid = cell?.id != null ? ` data-mid="${escapeHtml(String(cell.id))}"` : '';
+  return `<span class="${['tmk__h', rc].filter(Boolean).join(' ')}"${mid}>${inner}</span>`;
 }
 
 // Build the DOM element for one mapboxgl.Marker (the Ring style).
-// cells: [{ kind, label }] — ПО ОДНОЙ на визит в этой точке, в порядке визитов.
+// cells: [{ kind, label, id, data }] — ПО ОДНОЙ на визит в этой точке, в порядке
+//   визитов. `id` адресует визит (тег/тогл/клик), `data` уедет в колбэк.
 //   1 визит  → одиночное кольцо: старт/финиш/пересадка рисуют свой глиф в своём
-//              цвете, город — номер (label) в brand.
-//   2+ визита → слепленный пилюль (тот же облик, что и раньше) из ПЕРВЫХ 3 ячеек;
-//              каждая ячейка несёт свой глиф/номер в цвете своей роли. Так один
-//              спот с любыми ролями (старт/финиш, город/пересадка, старт/город…)
-//              читается целиком, а не теряет часть под один глиф.
-// opts: { onClick, onHover } — onClick omitted ⇒ non-interactive pin.
-// The selected/hover states are toggled by the consumer on the returned element
-// (.is-sel / .is-hover) so hovering a list doesn't rebuild the markers.
-// Visual transforms (scale/halo) sit on the inner .tmk__core so Mapbox's own
-// inline transform on the root .tmk (positioning) is never clobbered.
-export function createMarkerEl(cells, { onClick, onHover } = {}) {
+//              цвете, город — номер (label) в brand; весь пин = один визит.
+//   2+ визита → слепленный пилюль (тот же облик) из ПЕРВЫХ 3 ячеек; каждая ячейка
+//              несёт свой глиф/номер в цвете роли И КЛИКАЕТСЯ/ПОДСВЕЧИВАЕТСЯ САМА
+//              ПО СЕБЕ (посегментно) — так спот с любыми ролями (старт/финиш,
+//              город/пересадка…) читается целиком, а из повторных посещений можно
+//              выбрать КОНКРЕТНОЕ (раньше клик по пилюлю открывал только первый).
+// opts: { onSelect, onHover } — onSelect(cellData) / onHover(entering, cellData)
+//   адресуют КОНКРЕТНЫЙ визит; onSelect omitted ⇒ non-interactive pin.
+// Выделение/ховер тоглятся снаружи (.is-sel/.is-hover): у одиночного — на корне
+// `.tmk` (по `data-mids`), у слепленного — на ячейке `.tmk__h` (по `data-mid`).
+// Visual transforms сидят на .tmk__core / .tmk__h, а не на корне .tmk (позицию
+// корня двигает mapbox своим inline transform).
+export function createMarkerEl(cells, { onSelect, onHover } = {}) {
   const el = document.createElement('div');
   const list = (Array.isArray(cells) ? cells : [cells]).filter(Boolean);
+  const merged = list.length > 1;
+  const shown = merged ? list.slice(0, 3) : list;
 
   const classes = ['tmk'];
   let core; // inner HTML of .tmk__core
 
-  if (list.length <= 1) {
+  if (!merged) {
     const c = list[0] || {};
     if (ICON_PATHS[c.kind]) {
       classes.push(ROLE_CLASS[c.kind]); // роль с глифом всегда несёт роль-класс
@@ -109,27 +117,43 @@ export function createMarkerEl(cells, { onClick, onHover } = {}) {
   } else {
     // Слепленный пилюль: первые 3 визита, каждый своей ячейкой со скошенным швом.
     classes.push('tmk--wide');
-    const shown = list.slice(0, 3);
     if (shown.length >= 3) classes.push('tmk--w3');
     core = shown.map(cellHtml).join('<span class="tmk__sep"></span>');
   }
 
-  if (onClick) classes.push('is-clickable');
+  const interactive = !!onSelect;
+  // `is-clickable` (курсор + whole-pin hover-заливка) — только у ОДИНОЧНОГО пина.
+  // У слепленного пилюля кликают/наводят сами ячейки, а заливка идёт посегментно
+  // (`.tmk__h`), поэтому whole-pill hover ему не нужен — иначе накрыл бы соседей.
+  if (interactive && !merged) classes.push('is-clickable');
 
   el.className = classes.join(' ');
   el.innerHTML = `<span class="tmk__halo"></span><span class="tmk__pulse"></span><span class="tmk__core">${core}</span>`;
 
-  // Swallow the pin's own click so it never bubbles up to the map canvas 'click'
-  // (Mapbox mounts HTML markers inside the canvas container, so a bubbling click
-  // would ALSO fire map 'click' — on the Map lens that re-cleared the selection the
-  // pin had just set, making pin clicks look dead). A marker click is never a map
-  // click.
-  if (onClick) el.addEventListener('click', (e) => { e.stopPropagation(); onClick(e); });
-  // onHover(entering:boolean) — lets a parent mirror pin hover into a list/badge
-  // (Map lens tooltip). The pin's own :hover look stays pure CSS.
-  if (onHover) {
-    el.addEventListener('mouseenter', () => onHover(true));
-    el.addEventListener('mouseleave', () => onHover(false));
+  if (interactive) {
+    // Клик/ховер по КОНКРЕТНОМУ визиту. stopPropagation: mapbox монтирует HTML-
+    // маркеры в контейнере канваса, поэтому всплывший клик ТАКЖЕ поджёг бы map
+    // 'click' (там сброс выбора) — клик по маркеру никогда не клик по карте.
+    if (!merged) {
+      const d = list[0]?.data;
+      el.addEventListener('click', (e) => { e.stopPropagation(); onSelect(d); });
+      if (onHover) {
+        el.addEventListener('mouseenter', () => onHover(true, d));
+        el.addEventListener('mouseleave', () => onHover(false, d));
+      }
+    } else {
+      // Пилюль целиком гасит клик (сепаратор/паддинг не должны сбрасывать выбор);
+      // выбор/ховер делают САМИ ячейки, каждая — свой визит.
+      el.addEventListener('click', (e) => e.stopPropagation());
+      el.querySelectorAll('.tmk__h').forEach((cellEl, i) => {
+        const d = shown[i]?.data;
+        cellEl.addEventListener('click', (e) => { e.stopPropagation(); onSelect(d); });
+        if (onHover) {
+          cellEl.addEventListener('mouseenter', () => onHover(true, d));
+          cellEl.addEventListener('mouseleave', () => onHover(false, d));
+        }
+      });
+    }
   }
   return el;
 }

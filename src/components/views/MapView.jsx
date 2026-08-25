@@ -558,8 +558,11 @@ export default function MapView({
     enabled: !hideRoute,
     selectedId: selectedVisitId,
     hoveredId: hoveredVisitId,
-    onClick: (g) => onCityClick?.(g.data),
-    onHover: (entering, g) => onCityHover?.(entering ? g.data : null),
+    // `d` — data КОНКРЕТНОГО визита (сегмента), не всей группы. Заворачиваем в
+    // 1-элементный массив: родитель (EditLens/RouteMapCard) ждёт `pts` и берёт
+    // `pts.find(!anchor)||pts[0]` — на [d] это и есть выбранный сегмент.
+    onClick: (d) => onCityClick?.([d]),
+    onHover: (entering, d) => onCityHover?.(entering ? [d] : null),
     onAfterBuild: (markers) => {
       const rs = revealStateRef.current;
       if (rs.revealing) applyMarkerVisibility(markers, orderIndexById, rs.markerMax, true);

@@ -8474,6 +8474,22 @@ a.doc-row__n:hover{ color: var(--brand); }
   .tmk.is-clickable:hover .tmk__core { background: var(--tmk); color: #fff; transform: scale(1.1); box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2); }
   .tmk.is-clickable:hover .tmk__halo { opacity: .5; transform: scale(1); }
 }
+/* Слепленный пилюль: выделение/ховер ПОСЕГМЕНТНО — красится КОНКРЕТНАЯ ячейка
+   (свой цвет роли `--tmk`), глиф/номер белеет, как у одиночного пина (чинит
+   регресс: `--tmk` на `.tmk__h` перебивал побеление). Весь пилюль не заливается:
+   у слепленного `is-clickable` не на корне (см. markers.js), поэтому whole-pill
+   hover-правило `.tmk.is-clickable:hover .tmk__core` его не касается. `.tmk__h`
+   есть только в слепленном пилюле, так что односубъектных правил достаточно. */
+/* visual-diff-exempt: .tmk__h cursor — сегмент слепленного пилюля кликабелен, Pavel */
+/* visual-diff-exempt: .tmk__h background — заливка сегмента при выделении/ховере, Pavel */
+/* (color сегмента уже покрыт маркером `.tmk__h color` у правила цвета выше) */
+.tmk__h { cursor: pointer; }
+.tmk__h.is-sel, .tmk__h.is-hover { background: var(--tmk); color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  /* visual-diff-exempt: .tmk__h:hover {@media (hover: hover) and (pointer: fine)} background — ховер сегмента, Pavel */
+  /* visual-diff-exempt: .tmk__h:hover {@media (hover: hover) and (pointer: fine)} color — ховер сегмента, Pavel */
+  .tmk__h:hover { background: var(--tmk); color: #fff; }
+}
 @media (prefers-reduced-motion: reduce) {
   .tmk__core, .tmk__halo { transition: none; }
   .tmk.is-sel .tmk__pulse { animation: none; }
