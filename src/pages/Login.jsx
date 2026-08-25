@@ -534,8 +534,8 @@ export default function Login() {
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="social">
-                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}><IconGoogle /><span>Google</span></button>
-                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>Apple</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}>{/* i18n-ignore: бренд */}<IconGoogle /><span>Google</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}>{/* i18n-ignore: бренд */}<IconApple /><span>Apple</span></button>
                 </div>
                 <div className="or"><span>{t('auth.or_email')}</span></div>
                 <form onSubmit={handleLogin}>
@@ -577,8 +577,8 @@ export default function Login() {
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="social">
-                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}><IconGoogle /><span>Google</span></button>
-                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}><IconApple /><span>Apple</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleGoogle} disabled={isLoading}>{/* i18n-ignore: бренд */}<IconGoogle /><span>Google</span></button>
+                  <button type="button" className="av-btn-social" onClick={handleApple} disabled={isLoading}>{/* i18n-ignore: бренд */}<IconApple /><span>Apple</span></button>
                 </div>
                 <div className="or"><span>{t('auth.or_email')}</span></div>
                 <form onSubmit={handleSignup}>
