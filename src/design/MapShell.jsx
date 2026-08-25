@@ -91,6 +91,9 @@ export function MapShell({
   // Живёт здесь, а не в `children`: `children` лежат поверх ВСЕГО шелла (карты
   // в том числе), а ящик обязан закрывать ровно панель и не трогать карту —
   // по ней в этот момент продолжают кликать.
+  // ★ Присутствие `panelOverlay` ЖЕ поднимает шелл над затемнением «скрима всего»
+  //   (`data-overlay` → `.mapshell[data-overlay]`) и рисует само затемнение
+  //   соседом шелла: шапка и меню притухают, карта и слой остаются живыми.
   panelOverlay = null,
   // ЛОГИЧЕСКОЕ «слой открыт» для КАМЕРЫ — отдельно от `panelOverlay` (рендера).
   // Рендер живёт дольше: уходящий слой доигрывает анимацию ещё ~240 мс, и если бы
@@ -194,87 +197,100 @@ export function MapShell({
   }), [box]);
 
   return (
-    <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={rootStyle}>
-      <div className="mapshell__map">{typeof map === 'function' ? map(box.camera, box.slotBottom) : map}</div>
+    <>
+      {/* Затемнение «скрима всего» — СОСЕД шелла, а не его потомок. При открытом
+          слое шелл поднимается над затемнением (`.mapshell[data-overlay]` в
+          app.css), унося с собой карту и слой-виджет; лежи затемнение внутри — оно
+          уехало бы вверх вместе с ними и шапку бы не накрыло. Рисуется, пока в
+          дереве есть слой (`panelOverlay`), поэтому доигрывает выход вместе с ним;
+          `data-closing` включает обратное затухание, как только слой логически
+          закрыт (`!overlayActive`), — тем же приёмом, что и `usePresence` у
+          глобального хоста. Класс ОДИН на оба места (`.evd-scrim`), без второй
+          копии затемнения (reuse, rule #6). Только десктоп: на телефоне слой уходит
+          в шит со своим фоном, а `panelOverlay` там пуст. */}
+      {panelOverlay ? <div className="evd-scrim" data-closing={overlayActive ? undefined : ''} aria-hidden /> : null}
+      <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={rootStyle} data-overlay={panelOverlay ? '' : undefined}>
+        <div className="mapshell__map">{typeof map === 'function' ? map(box.camera, box.slotBottom) : map}</div>
 
-      {panel && (isPhone ? (
-        <PeekSheet
-          detents={detents}
-          detent={detent}
-          onDetentChange={onDetentChange}
-          onHeightChange={applySheetPx}
-          header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
-          footer={panelFooter}
-          label={panelLabel}
-        >
-          {panel}
-        </PeekSheet>
-      ) : (
-        <>
-          <aside
-            className="mapshell__panel"
-            ref={panelRef}
-            data-collapsed={collapsed || undefined}
-            /* `inert` — единственное, что и прячет от скринридера, и ВЫНИМАЕТ ИЗ
-               ТАБА. Одного `aria-hidden` мало: свёрнутая панель осталась бы
-               проходимой с клавиатуры, а фокус внутри `aria-hidden`-предка
-               браузер скрыть отказывается и пишет об этом в консоль.
-               Каст — из-за React 18: атрибут он в DOM отдаёт (нераспознанные
-               пропы проходят насквозь), а в его типах `inert` появился только в
-               19-м. */
-            {...(collapsed ? /** @type {any} */ ({ inert: '' }) : null)}
+        {panel && (isPhone ? (
+          <PeekSheet
+            detents={detents}
+            detent={detent}
+            onDetentChange={onDetentChange}
+            onHeightChange={applySheetPx}
+            header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
+            footer={panelFooter}
+            label={panelLabel}
           >
-            {/* Поверхность панели — дело ШЕЛЛА, а не экрана: у шва карты и
-                панели один облик на всех экранах, и на телефоне ровно ту же
-                роль играет поверхность шита (фон + скругление + тень). Экран
-                отдаёт содержимое, а не рисует себе карточку заново. */}
-            <Card pad="none" radius="btn" raised className="mapshell__card">
-              {panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
-              <div className="mapshell__body scrollbar-thin">{panel}</div>
-              {panelFooter}
-            </Card>
-          </aside>
-          {/* Шов панели и карты — место, где живёт «свернуть/раскрыть»: он
-              принадлежит ГРАНИЦЕ между ними, а не содержимому панели, поэтому
-              кнопку рисует шелл, а не экран. Свёрнутая панель уезжает влево, и
-              та же кнопка остаётся у края карты. */}
-          {onCollapsedChange && (
-            /* ★ ПОЗИЦИЮ ДЕРЖИТ ОБЁРТКА, А НЕ КНОПКА, И ЭТО НЕ УКРАШЕНИЕ.
-               Подсказка оборачивает триггер своим узлом `span.tt`, а тот объявлен
-               `position: relative` НИЖЕ по таблице стилей — то есть перебил бы
-               `absolute` у кнопки, и она уехала бы из шва в начало потока. Плюс
-               сворачивание панели ловится СОСЕДНИМ селектором
-               (`.mapshell__panel[data-collapsed] ~ .mapshell__toggle`), а сосед
-               здесь — именно этот узел. Сторона `bottom`: кнопка стоит по центру
-               шва, и пузырь снизу не накрывает карту, которую она открывает.
-               Текст даёт ЭКРАН — у планировщика сворачивается шаг, у редактора
-               маршрут, и примитив не вправе называть чужой предмет.
-               ⚠️ Угловые скобки в этом комментарии писать НЕЛЬЗЯ: гард 2d читает
-               НАПИСАНИЕ, и пара тегов с текстом между ними читается им как сырая
-               JSX-строка — ровно на этом красный чек и приехал. */
-            <div className="mapshell__toggle">
-              <Tooltip content={collapsed ? expandLabel : collapseLabel} side="bottom">
-                <IconBtn
-                  icon={collapsed ? 'chev' : 'chevL'}
-                  tone="outline"
-                  ariaLabel={collapsed ? expandLabel : collapseLabel}
-                  ariaExpanded={!collapsed}
-                  onClick={() => onCollapsedChange(!collapsed)}
-                />
-              </Tooltip>
-            </div>
-          )}
-          {/* Слой города/события — НЕЗАВИСИМ от колонки панели (TRIP-195 доводка):
-              он сосед `.mapshell__panel`, а не её потомок, поэтому сворачивание
-              маршрута (`transform`/`inert` на колонке) его НЕ прячет и НЕ выносит
-              из таба. Открыт маршрут — слой ложится поверх него; свёрнут — тот же
-              слой открывается сам по себе. Коробка та же (левый столбец шелла). */}
-          {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
-        </>
-      ))}
+            {panel}
+          </PeekSheet>
+        ) : (
+          <>
+            <aside
+              className="mapshell__panel"
+              ref={panelRef}
+              data-collapsed={collapsed || undefined}
+              /* `inert` — единственное, что и прячет от скринридера, и ВЫНИМАЕТ ИЗ
+                 ТАБА. Одного `aria-hidden` мало: свёрнутая панель осталась бы
+                 проходимой с клавиатуры, а фокус внутри `aria-hidden`-предка
+                 браузер скрыть отказывается и пишет об этом в консоль.
+                 Каст — из-за React 18: атрибут он в DOM отдаёт (нераспознанные
+                 пропы проходят насквозь), а в его типах `inert` появился только в
+                 19-м. */
+              {...(collapsed ? /** @type {any} */ ({ inert: '' }) : null)}
+            >
+              {/* Поверхность панели — дело ШЕЛЛА, а не экрана: у шва карты и
+                  панели один облик на всех экранах, и на телефоне ровно ту же
+                  роль играет поверхность шита (фон + скругление + тень). Экран
+                  отдаёт содержимое, а не рисует себе карточку заново. */}
+              <Card pad="none" radius="btn" raised className="mapshell__card">
+                {panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
+                <div className="mapshell__body scrollbar-thin">{panel}</div>
+                {panelFooter}
+              </Card>
+            </aside>
+            {/* Шов панели и карты — место, где живёт «свернуть/раскрыть»: он
+                принадлежит ГРАНИЦЕ между ними, а не содержимому панели, поэтому
+                кнопку рисует шелл, а не экран. Свёрнутая панель уезжает влево, и
+                та же кнопка остаётся у края карты. */}
+            {onCollapsedChange && (
+              /* ★ ПОЗИЦИЮ ДЕРЖИТ ОБЁРТКА, А НЕ КНОПКА, И ЭТО НЕ УКРАШЕНИЕ.
+                 Подсказка оборачивает триггер своим узлом `span.tt`, а тот объявлен
+                 `position: relative` НИЖЕ по таблице стилей — то есть перебил бы
+                 `absolute` у кнопки, и она уехала бы из шва в начало потока. Плюс
+                 сворачивание панели ловится СОСЕДНИМ селектором
+                 (`.mapshell__panel[data-collapsed] ~ .mapshell__toggle`), а сосед
+                 здесь — именно этот узел. Сторона `bottom`: кнопка стоит по центру
+                 шва, и пузырь снизу не накрывает карту, которую она открывает.
+                 Текст даёт ЭКРАН — у планировщика сворачивается шаг, у редактора
+                 маршрут, и примитив не вправе называть чужой предмет.
+                 ⚠️ Угловые скобки в этом комментарии писать НЕЛЬЗЯ: гард 2d читает
+                 НАПИСАНИЕ, и пара тегов с текстом между ними читается им как сырая
+                 JSX-строка — ровно на этом красный чек и приехал. */
+              <div className="mapshell__toggle">
+                <Tooltip content={collapsed ? expandLabel : collapseLabel} side="bottom">
+                  <IconBtn
+                    icon={collapsed ? 'chev' : 'chevL'}
+                    tone="outline"
+                    ariaLabel={collapsed ? expandLabel : collapseLabel}
+                    ariaExpanded={!collapsed}
+                    onClick={() => onCollapsedChange(!collapsed)}
+                  />
+                </Tooltip>
+              </div>
+            )}
+            {/* Слой города/события — НЕЗАВИСИМ от колонки панели (TRIP-195 доводка):
+                он сосед `.mapshell__panel`, а не её потомок, поэтому сворачивание
+                маршрута (`transform`/`inert` на колонке) его НЕ прячет и НЕ выносит
+                из таба. Открыт маршрут — слой ложится поверх него; свёрнут — тот же
+                слой открывается сам по себе. Коробка та же (левый столбец шелла). */}
+            {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
+          </>
+        ))}
 
-      {children}
-    </div>
+        {children}
+      </div>
+    </>
   );
 }
 

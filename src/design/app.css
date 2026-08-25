@@ -257,11 +257,19 @@
      Новый всплывающий элемент берёт готовый этаж. Затемнение = база,
      его содержимое = calc(+N). Гард 2k валит сырой z-index ≥10. === */
   --z-drag:      30;   /* строка, поднятая перетаскиванием */
-  --z-drawer:    40;   /* ящик события внутри панели (+1 — сам ящик) */
   --z-side-nav:  45;   /* затемнение бокового меню трипа (+5 — само меню) */
   --z-header:    50;   /* шапка приложения */
   --z-menu:      60;   /* выпадающее меню */
   --z-dock:      70;   /* кнопка чат-дока (+5 — его панель) */
+  /* Затемнение поверх ШАПКИ И МЕНЮ, когда открыт плавающий виджет города/события
+     (глобальный ящик на ленте/бюджете; на линзе маршрута — всё, КРОМЕ карты).
+     Сам виджет и поднятая над затемнением карта берут этаж +1. Пришёл на смену
+     `--z-drawer` (этаж 40, крыл только контент ПОД шапкой): подъём на 80 переносит
+     затемнение поверх шапки и меню — в этом и состоит эксперимент. Число токенов в
+     `:root` не изменилось (один снят, один добавлен), поэтому floor-exempt не нужен.
+     visual-diff-exempt: :root --z-drawer — этаж 40 снят: затемнение виджета переехало на --z-app-scrim (80)
+     visual-diff-exempt: :root --z-app-scrim — новый этаж затемнения поверх шапки/меню (эксперимент), апрув Pavel */
+  --z-app-scrim: 80;   /* затемнение виджета города/события (+1 — сам виджет и карта) */
   --z-peek:      90;   /* подглядывающая шторка карты */
   /* Подложка ПОД канвасом карты: пока тайлы не пришли, видно её, а не белый лист.
      Значения не новые — переехали из инлайна ScreenMap, где их не видел ни один гард.
@@ -4446,6 +4454,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      просто выше по дереву. `.mapshell` значение НАСЛЕДУЕТ.
      visual-diff-exempt: .mapshell --mapshell-panel-w — токен поднят в :root (единый источник для .evd-drawer вне .mapshell), значение наследуется */
 }
+/* ЛИНЗА МАРШРУТА, ЭКСПЕРИМЕНТ «СКРИМ ВСЕГО»: когда открыт слой города/события
+   (`data-overlay` на шелле ставит MapShell по факту присутствия `panelOverlay`),
+   `.mapshell` поднимается над затемнением (`--z-app-scrim` + 1) — вместе с ним над
+   затемнением встают И карта (остаётся живой), И сам слой-виджет внутри
+   `.mapshell__overlay`. Шапка (50) и меню (60) остаются ПОД затемнением (80),
+   поэтому притухают. `.trip-content`/`<main>` не образуют контекст наложения (не
+   позиционированы со своим z-index), поэтому этаж 81 честно сравнивается с
+   затемнением в корневом контексте. Затемнение рисует сам MapShell отдельным
+   узлом-соседом (не потомком `.mapshell`), иначе подъём шелла увёл бы его вверх
+   вместе с картой и шапку он бы не накрыл.
+   visual-diff-exempt: .mapshell[data-overlay] z-index — подъём карты и слоя над затемнением на линзе маршрута (эксперимент «скрим всего»), апрув Pavel */
+.mapshell[data-overlay] { z-index: calc(var(--z-app-scrim) + 1); }
 /* Слот карты = СВОБОДНОЕ ОКНО: панель и шит не лежат поверх карты, они её
    граница. Величины приходят от `<MapShell>` двумя переменными (ширина
    панели · высота шита); по умолчанию слот занимает шелл целиком. */
@@ -6240,17 +6260,25 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
    Used OUTSIDE the structure editor (timeline / calendar / budget / overview).
-   Anchored to .trip-content (relative + overflow:hidden, already below the header
-   and right of the menu) so it never covers the header or the menu. Sibling of
-   the scrolling <main>, so it does NOT scroll with the content.
+   Сам ВИДЖЕТ (`.evd-drawer`) по-прежнему привязан абсолютом к .trip-content
+   (relative + overflow:hidden, ниже шапки и правее меню) и шапку с меню НЕ
+   накрывает; он сосед скроллящегося <main>, поэтому с контентом не скроллится.
+   А вот ЗАТЕМНЕНИЕ (`.evd-scrim`) теперь `position: fixed` во весь вьюпорт и
+   этажом `--z-app-scrim` (80) — выше шапки (50) и меню (60): открытый виджет
+   притухает ВСЁ приложение (эксперимент «скрим всего»), а сам виджет берёт этаж
+   +1 и остаётся над затемнением. `fixed` не режется `overflow:hidden` предков:
+   ни у одного из них (.trip-content/.trip-body/.trip-shell) нет transform, так
+   что контейнер затемнения — вьюпорт, а не .trip-content.
 
    ЭКСПЕРИМЕНТ: панель открывается ТЕМ ЖЕ виджетом, что и редактор маршрута — не
    полноростным ящиком, а плавающей карточкой. `.evd-drawer` теперь только
    ПОЗИЦИОНИРУЮЩАЯ КОРОБКА, повторяющая геометрию `.mapshell__overlay` (инсет
    `--sp-7` слева/сверху/снизу, ширина = `--mapshell-panel-w`, один источник с
    редактором); весь облик — грунт/радиус/тень/анимацию — несёт `.ts-pdrawer`
-   внутри (тот же класс, что в редакторе, без второй копии скина). Скрим
-   сохранён — контент за виджетом притухает. ≤640 sheet reuses `.lp-sheet`.
+   внутри (тот же класс, что в редакторе, без второй копии скина). ≤640 sheet
+   reuses `.lp-sheet`.
+   visual-diff-exempt: .evd-scrim position — затемнение стало fixed во весь вьюпорт (эксперимент «скрим всего»)
+   visual-diff-exempt: .evd-scrim z-index — этаж затемнения поднят на --z-app-scrim (80), выше шапки и меню
    visual-diff-exempt: .evd-drawer top — коробка виджета: верхний инсет --sp-7 (было 0, полноростный ящик)
    visual-diff-exempt: .evd-drawer bottom — коробка виджета: нижний инсет --sp-7 (было 0)
    visual-diff-exempt: .evd-drawer left — коробка виджета: левый инсет --sp-7 (было 0)
@@ -6271,7 +6299,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: from {@keyframes evdDrawerIn} transform — то же
    visual-diff-exempt: to {@keyframes evdDrawerIn} opacity — то же
    visual-diff-exempt: to {@keyframes evdDrawerIn} transform — то же */
-.evd-scrim { position: absolute; inset: 0; z-index: var(--z-drawer); background: var(--scrim); animation: fadeIn .2s var(--ease-out) both; }
+.evd-scrim { position: fixed; inset: 0; z-index: var(--z-app-scrim); background: var(--scrim); animation: fadeIn .2s var(--ease-out) both; }
 /* Скрим гаснет вместе с ящиком (usePresence держит хост до конца выхода): меняем
    только имя анимации, темп наследуется.
    visual-diff-exempt: .evd-scrim[data-closing] animation-name — выходное затухание скрима (синхронно с ящиком)
@@ -6279,9 +6307,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: to {@keyframes fadeOut} opacity — то же */
 .evd-scrim[data-closing] { animation-name: fadeOut; }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+/* Виджет держит этаж +1 над затемнением (`--z-app-scrim`), поэтому остаётся НАД
+   ним, когда затемнение поднялось поверх шапки и меню.
+   visual-diff-exempt: .evd-drawer z-index — этаж виджета переехал с --z-drawer на --z-app-scrim (+1), чтобы остаться над поднятым затемнением */
 .evd-drawer {
   position: absolute; top: var(--sp-7); left: var(--sp-7); bottom: var(--sp-7);
-  width: var(--mapshell-panel-w); z-index: calc(var(--z-drawer) + 1);
+  width: var(--mapshell-panel-w); z-index: calc(var(--z-app-scrim) + 1);
   display: flex;
 }
 @media (prefers-reduced-motion: reduce) { .evd-scrim { animation: none; } }
