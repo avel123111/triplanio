@@ -594,13 +594,13 @@ export default function Login() {
                       <input className="av-input" id="s-email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
-                  <div className="av-field">
+                  <div className="av-field" data-strength={password ? pwScore : undefined}>
                     <div className="field-top"><label htmlFor="s-pw">{t('auth.password')}</label></div>
                     <div className="control">
                       <input className="av-input has-toggle" id="s-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.pw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
-                    <div className="strength" data-score={password ? pwScore : undefined}><span /><span /><span /><span /></div>
+                    <div className="strength"><i /><i /><i /><i /></div>
                     <div className="strength-row">{STRENGTH_LABELS[pwScore]}</div>
                   </div>
                   <p className="legal">
@@ -677,13 +677,13 @@ export default function Login() {
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <form onSubmit={handleNewPassword}>
-                  <div className="av-field">
+                  <div className="av-field" data-strength={password ? pwScore : undefined}>
                     <div className="field-top"><label htmlFor="rp-pw">{t('auth.new_password')}</label></div>
                     <div className="control">
                       <input className="av-input has-toggle" id="rp-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.pw_placeholder')} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="pw-toggle" aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')} onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                     </div>
-                    <div className="strength" data-score={password ? pwScore : undefined}><span /><span /><span /><span /></div>
+                    <div className="strength"><i /><i /><i /><i /></div>
                     <div className="strength-row">{STRENGTH_LABELS[pwScore]}</div>
                   </div>
                   <div className="av-field">
