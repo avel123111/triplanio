@@ -22,6 +22,20 @@ test('свёрнутая панель не закрывает ничего', () 
   assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true }), { slotBottom: 0, slotUnder: 0, camera: NONE });
 });
 
+test('★ ОТКРЫТЫЙ СЛОЙ уводит кадр карты — и при свёрнутом маршруте тоже', () => {
+  // Слой города/события — независимый виджет той же колонки: его наличие не
+  // зависит от свёрнутости маршрута, поэтому свёрнутый маршрут + открытый слой
+  // всё равно закрывают левую ширину (иначе фокус карты оказывался под слоем).
+  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true, overlayPx: 604 }),
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 604 } });
+  // Максимум из двух: панель открыта (550) и слой (604) — берём бо́льший край.
+  assert.deepEqual(mapShellInsets({ panelPx: 550, overlayPx: 604 }),
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 604 } });
+  // Только слой (маршрут не мерян) — кадр всё равно уводится.
+  assert.deepEqual(mapShellInsets({ overlayPx: 604 }),
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 604 } });
+});
+
 test('★ режимы не смешиваются: чужая величина не читается', () => {
   // Шит в портале успевает подержать прошлую высоту на переходе в десктоп —
   // прочитать её значит отрезать у десктопной карты низ по призраку.
