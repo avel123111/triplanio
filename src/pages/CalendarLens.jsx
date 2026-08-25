@@ -37,7 +37,7 @@ const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) 
 
 /** День попадает в окно визита (границы включительно). ОДИН предикат на оба
  *  вида: месяц и неделя спрашивали одно и то же двумя копиями строки. */
-const visitCoversDay = (v, dt) => dt >= v.s.startOf('day') && dt <= v.e.startOf('day');
+const visitCoversDay = (v, dt) => dt >= v.s.startOf('day') && dt <= v.e.startOf('day'); // i18n-ignore: не UI-строка — сравнение дат; `>=` в стрелке гард 2d читает как закрытие тега и принимает хвост выражения за текст JSX
 
 // ─── MonthView ────────────────────────────────────────────────────────────────
 function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
