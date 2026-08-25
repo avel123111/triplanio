@@ -229,7 +229,17 @@ function usePainScrub(ready) {
         sec.classList.remove('filled');
       }
     };
-    const onResize = () => { mode(); fit(); upd(); };
+    // На мобиле показ/скрытие адресной строки шлёт resize, в котором меняется
+    // ТОЛЬКО высота (innerHeight). Пересчитывать по нему пин нельзя: band и
+    // --pin-h считаются от window.innerHeight, и такой пересчёт дёргал бы первые
+    // блоки на каждом скролле. Пересчёт только при смене ШИРИНЫ (поворот/ресайз).
+    let lastW = window.innerWidth;
+    const onResize = () => {
+      mode();
+      if (window.innerWidth === lastW) return;
+      lastW = window.innerWidth;
+      fit(); upd();
+    };
     mode(); fit(); upd();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize, { passive: true });

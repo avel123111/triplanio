@@ -66,6 +66,10 @@ html.site {
   /* Текучие (clamp) заголовки — адаптивность прототипа, не шум; значение не
      меняется, только именовано токеном (включая мобильные @media-ступени). */
   --fs-hero-h1: clamp(2.55rem,1.45rem + 3.9vw,3.9rem);
+  /* мобильная ступень заголовка hero: без неё @media max-width:600px ссылался
+     на НЕОБЪЯВЛЕННЫЙ токен → правило невалидно → заголовок наследовал случайные
+     ~15px и не тянулся по ширине. Значение из прототипа v5.7 (TRIP-460). */
+  --fs-hero-h1-mobile: clamp(1.55rem,7.7vw,2.15rem);
   --fs-hero-sub: clamp(1rem,.94rem + .35vw,1.11rem);
   --fs-hero-sub-mobile: clamp(.82rem,3.35vw,1rem);
   --fs-section-h2: clamp(1.85rem,1.2rem + 2.7vw,2.9rem);
@@ -226,6 +230,14 @@ body{
      макете против 4 в реализации). Вес, заданный точечно правилом, этим
      объявлением не затрагивается. */
   font-weight:400;
+  /* ТА ЖЕ история с цифрами: app.css держит `body{font-variant-numeric:
+     tabular-nums}` (TRIP-165, «цифры выровнены во всём приложении»), и это
+     наследовалось на ВЕСЬ лендинг — крупные числа (23 · 61 · 118k · €2 842)
+     распирало, узкая «1» получала пустоты по бокам. Прототип моноширину не
+     объявляет — то есть пропорциональные. Точечный tabular (.tg-time,
+     .aw-ready-n) этим сбросом не затрагивается. */
+  /* visual-diff-exempt: body font-variant-numeric — сброс tabular-nums, утёкшего из app.css:422; зона рисует пропорциональные цифры как прототип (TRIP-460) */
+  font-variant-numeric:normal;
 }
 
 img,svg,canvas{display:block;max-width:100%}
@@ -528,7 +540,13 @@ section{position:relative}
   padding-bottom:var(--sheet-r);
   /* ровно один экран: белая «простыня» следующей секции начинается на самом сгибе */
   min-height:calc(100vh + var(--sheet-r));
-  min-height:calc(100dvh + var(--sheet-r)); /* dvh перекрывает vh там, где поддержан */
+  /* svh (small viewport height), а НЕ dvh: dvh меняется при показе/скрытии
+     адресной строки на мобиле → hero пересчитывал высоту прямо во время скролла
+     и дёргал всю страницу вниз. svh — стабильная (наименьшая) высота, не
+     реагирует на строку браузера, поэтому прокрутка ровная. vh выше — фолбэк
+     для старых браузеров без svh (TRIP-460). */
+  /* visual-diff-exempt: .hero min-height — dvh → svh, устранение дёрганья скролла от адресной строки мобилы (TRIP-460) */
+  min-height:calc(100svh + var(--sheet-r));
   /* stretch, а не center: положение текста задаёт верхний отступ сетки */
   display:flex;align-items:stretch;
 }
@@ -654,7 +672,8 @@ section{position:relative}
 
 @media (max-width:980px){
   .hero{
-    min-height:calc(100vh + var(--sheet-r));min-height:calc(100dvh + var(--sheet-r));
+    /* visual-diff-exempt: .hero min-height — dvh → svh (мобильный @media), устранение дёрганья скролла (TRIP-460) */
+    min-height:calc(100vh + var(--sheet-r));min-height:calc(100svh + var(--sheet-r));
     align-items:stretch;
   }
   /* сверху только заголовок; телефон с кадра — посередине;
@@ -1423,8 +1442,11 @@ section{position:relative}
 
 .aud-avatars{display:flex;margin-bottom:16px}
 
-/* color инлайном на каждом инстансе — см. .aw-head .avs span выше (ревью TRIP-460) */
-.aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-weight:700;font-size: var(--fs-body);box-shadow:var(--shadow-sm)}
+/* Буква — белая на сплошном цветном фоне аватара (фон задаётся инлайном на
+   инстансе). Без color здесь буква наследовала тёмный --ink из app.css и была
+   почти не видна; прототип — белый. То же, что уже сделано у .feed-head .avs .av. */
+/* visual-diff-exempt: .aud-avatars .av color — восстановлен белый (потерян при переносе, наследовался --ink); прототип белый (TRIP-460) */
+.aud-avatars .av{width:42px;height:42px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-weight:700;font-size: var(--fs-body);color:#fff;box-shadow:var(--shadow-sm)}
 
 .aud-avatars .av + .av{margin-left:-12px}
 
@@ -1472,7 +1494,8 @@ section{position:relative}
 /* color инлайном на каждом текстовом инстансе — см. .aw-head .avs span выше
    (ревью TRIP-460); .ai-msg ниже — единственный без текста (SVG-иконка
    currentColor), белый на нём остаётся явным правилом отдельно */
-.feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;flex:none}
+/* visual-diff-exempt: .feed-item .av color — восстановлен белый (потерян при переносе, наследовался серый --muted); прототип белый (TRIP-460) */
+.feed-item .av{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size: var(--fs-micro);font-weight:700;color:#fff;flex:none}
 
 .feed-item b{color:var(--ink)}
 
@@ -1673,7 +1696,11 @@ section{position:relative}
 .stat-box{background:#fff;border:1px solid rgba(19,50,78,.08);border-radius:var(--r-md);padding:18px 14px;text-align:center;box-shadow:var(--shadow-sm)}
 
 /* site-base-exempt: num — имя только внутри .stat-box, scoped-правило перебивает app (TRIP-460 п.3) */
-.stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand)}
+/* font-variant-numeric:normal — app.css:460 `.num{tabular-nums}` (0,1,0) бил сброс
+   на body; здесь 0,2,0 и грузится позже → цифры 23·61·118k пропорциональные,
+   без распора узкой «1», как в прототипе. */
+/* visual-diff-exempt: .stat-box .num font-variant-numeric — снят tabular-nums из app.css:460, прототип пропорциональный (TRIP-460) */
+.stat-box .num{font-family:var(--font-display);font-weight:800;font-size: var(--fs-h2);color:var(--brand);font-variant-numeric:normal}
 
 .stat-box small{color:var(--muted);font-size: var(--fs-caption)}
 
