@@ -1367,8 +1367,8 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
            исключаются друг из друга (фильтр), чтобы не столкнуться при
            переоткрытии панели во время её ухода. */
         [
-          ...closingLayers.filter((l) => l.key !== overlayKey).map((l) => ({ k: l.key, el: l.el, closing: true })),
-          useDrawer && { k: panelKey, el: leftPanelEl, top: true },
+          ...closingLayers.filter((l) => l.key !== overlayKey).map((l) => ({ k: l.key, el: l.el, closing: true, top: false })),
+          useDrawer && { k: panelKey, el: leftPanelEl, closing: false, top: true },
         ].filter(Boolean).map((L) => (
           <div
             key={L.k}

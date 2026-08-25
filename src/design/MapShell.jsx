@@ -60,6 +60,7 @@ import { cssPx } from '@/lib/cssPx';
  *   panelFooter?: any,
  *   panelLabel: string,
  *   panelOverlay?: any,
+ *   overlayActive?: boolean,
  *   detents?: number[],
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
