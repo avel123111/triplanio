@@ -91,6 +91,12 @@ export function MapShell({
   // в том числе), а ящик обязан закрывать ровно панель и не трогать карту —
   // по ней в этот момент продолжают кликать.
   panelOverlay = null,
+  // ЛОГИЧЕСКОЕ «слой открыт» для КАМЕРЫ — отдельно от `panelOverlay` (рендера).
+  // Рендер живёт дольше: уходящий слой доигрывает анимацию ещё ~240 мс, и если бы
+  // камера читала `!!panelOverlay`, отступ менялся бы на 240 мс ПОЗЖЕ закрытия —
+  // уже после окна focus-driven — и обрывал бы летящий `calmFit`. Экран отдаёт
+  // сюда факт открытости (сразу), а не присутствие узла.
+  overlayActive = false,
   detents = [0.15, 0.68, 1],
   detent = 0,
   onDetentChange,
@@ -158,8 +164,8 @@ export function MapShell({
   useLayoutEffect(() => { setCornerPx(Math.round(cssPx('var(--r-xl, 0px)'))); }, []);
 
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayOpen: !!panelOverlay, collapsed, cornerPx }),
-    [isPhone, sheetPx, panelPx, panelOverlay, collapsed, cornerPx],
+    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayOpen: overlayActive, collapsed, cornerPx }),
+    [isPhone, sheetPx, panelPx, overlayActive, collapsed, cornerPx],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно

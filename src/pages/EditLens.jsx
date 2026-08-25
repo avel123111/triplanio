@@ -1347,6 +1347,10 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       expandLabel={t('tse.route_show')}
       detent={detent}
       onDetentChange={setDetent}
+      /* Камере — ЛОГИЧЕСКИЙ факт открытости (сразу), а не присутствие рендера:
+         `panelOverlay` живёт лишние ~240 мс на анимации ухода, и отступ бы менялся
+         с этой задержкой, обрывая летящий focus (см. MapShell `overlayActive`). */
+      overlayActive={useDrawer}
       panelOverlay={(useDrawer || closingLayers.length) ? (
         /* Стопка панелей. Уходящие слои (`closingLayers`) рендерятся под СВОИМИ
            ключами — теми же, что были у верхней панели, — поэтому React СОХРАНЯЕТ
