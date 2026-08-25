@@ -207,6 +207,7 @@ import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { useIsPhone } from '@/hooks/use-mobile';
+import { DRAWER_EXIT_MS } from '@/hooks/usePresence';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
@@ -459,7 +460,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       closeTimers.current.set(l.key, setTimeout(() => {
         closeTimers.current.delete(l.key);
         setClosingLayers((cur) => cur.filter((x) => x.key !== l.key));
-      }, 240));
+      }, DRAWER_EXIT_MS));
     });
   }, [closingLayers]);
   useEffect(() => () => { closeTimers.current.forEach((h) => clearTimeout(h)); closeTimers.current.clear(); }, []);
@@ -915,8 +916,6 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
     ? (toDT(endDate)?.plus({ days: finishSpan })?.toISODate() || endDate)
     : endDate;
   // panel navigation
-  // Открытие города = панель + зум (mapFocus течёт от leftPanel). Гасим выбор на
-  // карте: панель его вытесняет (зовётся и из CTA бейджа, и из списка маршрута).
   // Дескрипторы панелей — форма одна, а МЕСТО (новый верх/поверх) решает вызывающий:
   // из списка/карты — `openBase` (верхний уровень), изнутри города — `pushPanel`
   // (drill-in, ляжет поверх города).
@@ -1097,10 +1096,16 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
   // Обнаружение смены верхней панели — СИНХРОННО в рендере (не в эффекте): иначе
-  // между «старый ключ убрали» и «вернули уходящим» был бы кадр без узла = ремонт.
-  // При смене замораживаем ПРЕДЫДУЩИЙ узел (`lastTopRef.el`) в `closingLayers` под
-  // его же ключом; set-state-в-рендере санкционирован (тот же компонент, условие
-  // гасит петлю после добавления). `cityadd`/шит — не оверлей, ключ null.
+  // между «старый ключ убрали» и «вернули уходящим» был бы кадр без узла = ремонт,
+  // а он-то и сбрасывал бы анимацию/перезапрашивал тяжёлую панель. Поэтому здесь
+  // именно рендер-фаза, а не useLayoutEffect.
+  //   • `lastTopRef` — КЭШ последнего показанного узла (пишется в рендере, как
+  //     `reframeRef.current = onReframe` в useMapInsets): нужен, чтобы на смене
+  //     ключа заморозить ПРЕДЫДУЩИЙ узел, недоступный после смены.
+  //   • `setClosingLayers` в рендере — санкционированный «подстрой состояние под
+  //     изменившийся ключ»: тот же компонент, условие `key !== ...` гасит петлю,
+  //     `.some()` делает добавление идемпотентным (сходится и под StrictMode).
+  // `cityadd`/шит — не оверлей, ключ null.
   const overlayKey = useDrawer ? panelKey : null;
   if (overlayKey !== lastTopRef.current.key) {
     const from = lastTopRef.current;

@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
+ * Длительность ВЫХОДНОЙ анимации ящиков/слоёв (мс) — ОДИН источник для JS.
+ * Обязана совпадать с CSS-правилами `tsDrawerOut`/`fadeOut` (`.24s` в
+ * `app.css`): таймер, снимающий узел, не должен срезать анимацию или провисать
+ * после неё. Держат её ДВА JS-потребителя — `usePresence` (EventDrawerHost) и
+ * таймер снятия слоя стопки в EditLens (`closingLayers`); чтобы они не разошлись,
+ * число здесь одно. (CSS — родной дом самой анимации; при правке менять оба.)
+ */
+export const DRAWER_EXIT_MS = 240;
+
+/**
  * Держит узел смонтированным на время его ВЫХОДНОЙ анимации.
  *
  * `open` — намерение (открыт/закрыт). Возврат `present` остаётся `true` ещё
@@ -18,7 +28,7 @@ import { useEffect, useRef, useState } from 'react';
  * @param {number} [ms]
  * @returns {{ present: boolean, closing: boolean }}
  */
-export function usePresence(open, ms = 240) {
+export function usePresence(open, ms = DRAWER_EXIT_MS) {
   const [present, setPresent] = useState(open);
   const timer = useRef(/** @type {any} */ (null));
 

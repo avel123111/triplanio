@@ -3888,8 +3888,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      рывком. Правило ОДНО и общее — не «только когда пришли из создания»: один и
      тот же элемент с двумя поведениями в зависимости от того, откуда пришли, это
      узаконенная точка расхождения, которую потом надо помнить при каждой правке.
-     Вход без выхода — грамматика всего приложения: у КАЖДОГО кейфрейма здесь
-     (ovIn, evdDrawerIn, tePaneIn, popIn, vpanelIn) анимирован только приход.
+     Вход без выхода — грамматика БОЛЬШИНСТВА кейфреймов здесь (ovIn, tePaneIn,
+     popIn, vpanelIn — анимирован только приход). ИСКЛЮЧЕНИЕ: у ящиков события/
+     города приход И уход зеркальны (`tsDrawerIn`/`tsDrawerOut`, скрим
+     `fadeIn`/`fadeOut`) — их выход держит `usePresence`/`closingLayers` (см.
+     `DRAWER_EXIT_MS`). Сам этот док — из грамматики «только вход».
      Кейфрейм реюзим существующий (`dockUp` — вход плавающей панели чат-дока).
      Пересечение 640px анимацию не запускает: выше него док гасится этим же
      медиазапросом, а не размонтируется, — то есть маунта нет.
@@ -6689,10 +6692,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ts-pdrawer { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border-radius: var(--r-btn); overflow: hidden; box-shadow: var(--sh-1); animation: tsDrawerIn .24s var(--ease-out) both; }
 .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
 @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-/* Выход = вход задом наперёд. `usePresence` держит ящик смонтированным на время
-   выхода и вешает `data-closing`; здесь меняется только ИМЯ анимации, поэтому
-   длительность/кривая/`both` наследуются от базового правила — один источник
-   темпа на вход и выход.
+/* Выход = вход задом наперёд. `usePresence`/`closingLayers` держат ящик
+   смонтированным на время выхода и вешают `data-closing`; здесь меняется только
+   ИМЯ анимации, поэтому длительность/кривая/`both` наследуются от базового
+   правила — один источник темпа на вход и выход.
+   ⚠️ `.24s` выше ≡ `DRAWER_EXIT_MS` (src/hooks/usePresence.js): JS-таймер снятия
+   узла обязан совпадать с этой длительностью — правишь одно, правь и второе.
    visual-diff-exempt: .ts-pdrawer[data-closing] animation-name — выходная анимация ящика (закрытие больше не резкое)
    visual-diff-exempt: from {@keyframes tsDrawerOut} opacity — новый кейфрейм выхода (вход задом наперёд)
    visual-diff-exempt: from {@keyframes tsDrawerOut} transform — то же
