@@ -222,12 +222,8 @@ export function createCityBadgeEl({ countryCode, name, dates, actionLabel } = {}
       // (родитель шлёт `t()`-строку), но литерал `aria-label="…"` спотыкает i18n-гард.
       if (actionLabel) btn.setAttribute('aria-label', actionLabel);
       btn.addEventListener('click', (e) => { e.stopPropagation(); onAction(e); });
-      // Лёгкое ПОЯВЛЕНИЕ CTA внутри попапа — тем же приёмом Web Animations, что и
-      // pop маркеров (без CSS/классов). УХОД анимирует `useCityBadge` перед снятием.
-      if (btn.animate) btn.animate(
-        [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }],
-        { duration: 150, easing: 'cubic-bezier(.22,1,.36,1)' },
-      );
+      // Появление/уход анимирует `useCityBadge` — ВЕСЬ бейдж целиком (кнопка едет
+      // вместе с ним), иначе кнопка плыла бы, а текст бейджа прыгал.
     }
   }
   return el;

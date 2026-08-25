@@ -50,17 +50,29 @@ export function useCityBadge(mapRef, ready, cityBadge, { enabled = true } = {}) 
       .setDOMContent(el)
       .addTo(map);
     popupRef.current = popup;
-    // Уход: есть CTA → доигрываем её лёгкое исчезновение, потом снимаем попап;
-    // иначе (пассивная метка / планировщик) снимаем сразу — там поведение прежнее.
+    // ★ Анимируем ВЕСЬ бейдж (`el` = `.cbadge`), а не только кнопку: иначе кнопка
+    // плывёт, а текст бейджа прыгает — тот самый рывок. Быстрый лёгкий рост при
+    // появлении и сужение при уходе (opacity + scale). ТОЛЬКО у бейджа с CTA (клик
+    // по маркеру в редакторе); пассивные метки — ховер и планировщик — появляются
+    // и снимаются мгновенно, как раньше. Transform на ВНУТРЕННЕМ `el` не спорит с
+    // позиционным transform mapbox (тот на внешней обёртке попапа).
+    const animated = hasAction && !!el.animate;
+    if (animated) {
+      el.animate(
+        [{ opacity: 0, transform: 'scale(.8)' }, { opacity: 1, transform: 'scale(1)' }],
+        { duration: 150, easing: 'cubic-bezier(.22,1,.36,1)' },
+      );
+    }
     return () => {
       popupRef.current = null;
-      const go = popup.getElement?.()?.querySelector?.('.cbadge__go');
-      if (go && go.animate) {
+      if (animated) {
         const pend = leavingRef.current;
         pend.add(popup);
         const done = () => { pend.delete(popup); safeRemove(popup); };
-        go.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.6)' }], { duration: 130, easing: 'ease-in' })
-          .finished.then(done, done);
+        el.animate(
+          [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.8)' }],
+          { duration: 120, easing: 'cubic-bezier(.4,0,1,1)' },
+        ).finished.then(done, done);
       } else {
         safeRemove(popup);
       }
