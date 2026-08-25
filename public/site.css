@@ -1808,45 +1808,64 @@ section{position:relative}
    Спиннер .spin — зонный (app-DS примитив закрыт ds-boundary).
    TRIP-464/463. Старый login.css удаляется тем же PR.
    =========================================================== */
-/* site-dup-exempt: auth — .auth = корень страницы логина; app.css .auth = легаси-хук TRIP-410 (типографика старого логина), заменяется зонным портом; новый корень явно берёт font-family (грузится позже, выигрывает) */
+/* site-dup-exempt: auth — .auth = корень страницы логина; app.css .auth = легаси-хук TRIP-410, заменяется зонным портом; новый корень явно берёт font-family (грузится позже, выигрывает) */
 /* prefix-exempt: auth — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: pane — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: top — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: form — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: screen — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: sub — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: active — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
 /* prefix-exempt: alert — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: alt — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: apple — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: art — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: aux — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: box — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: brand — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: brow — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: btn — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: caps — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: check — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: chips — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: code — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: control — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: err — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: field — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: form — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: grad — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: has — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: input — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: invalid — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: is — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: join — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: kicker — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: lang — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: lead — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: legal — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: loading — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: logo — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: mailto — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: ok — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: on — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: open — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: or — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: org — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: pane — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: pw — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: rotator — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: rule — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: rules — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: screen — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: secure — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
 /* prefix-exempt: show — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
 /* prefix-exempt: social — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: apple — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: or — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: field — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: aux — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: control — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: lead — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: input — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: has — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: pw — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: valid — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: invalid — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: caps — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: strength — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: rules — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: rule — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: check — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: box — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: txt — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
 /* prefix-exempt: spin — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: loading — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: legal — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
 /* prefix-exempt: status — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: mailto — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: secure — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: art — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: kicker — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: rotator — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: dock — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
-/* prefix-exempt: pip — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: strength — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: sub — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: tick — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: timer — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: top — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: txt — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: valid — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: w3 — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
+/* prefix-exempt: webp — auth-зона прототипа v5.7 «как есть», апрув Pavel (TRIP-464) */
 .auth{
   font-family:var(--font-body);   /* зона рисует Onest/Golos; бьёт app.css .auth (TRIP-410 Geologica), т.к. site.css грузится позже */
   /* Токены зоны auth: общие роли наследуются с html.site (бренд, ink, muted,
@@ -1856,8 +1875,8 @@ section{position:relative}
   --form-bg:var(--white); --pop-bg:var(--white); --field-bg-f:var(--white);
   --art-base:var(--white); --social-bg:var(--white);
   --faint:var(--muted); --placeholder:var(--muted);
-  --accent:var(--sunset); --soft:var(--mist);
-  --pop-bd:var(--hair); --art-kicker:var(--brand-text);
+  --accent:var(--sunset); --accent-text:var(--sunset-text); --soft:var(--mist);
+  --pop-bd:var(--hair); --art-kicker:var(--brand-text); --art-grain-op:.3;
   --label:#274762; --field-bg:#F8FBFE; --field-bd:#DBE8F2; --field-bd-h:#BDD3E6;
   --ring:rgba(35,128,214,.18); --ring-danger:rgba(224,70,75,.16); --focus:#1668BC;
   --hair:#E2ECF5; --hair-strong:#C4D7E8; --brand-text:#1668BC; --brand-deep-text:#0F5290;
@@ -1871,7 +1890,7 @@ section{position:relative}
   --form-wash:radial-gradient(720px 440px at 90% -12%,rgba(255,195,160,.24),transparent 62%),radial-gradient(600px 420px at -14% 94%,rgba(35,128,214,.09),transparent 62%);
   --grain-op:.32; --art-ink:#12314C; --art-sub:#3B586F;
   --art-scrim:linear-gradient(180deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.34) 52%,rgba(255,255,255,.82) 78%,rgba(255,255,255,.97) 100%);
-  /* fluid-заголовки экранов auth (аналог --fs-hero-* лендинга) */
+  /* fluid-заголовки экранов auth */
   --fs-auth-h1:clamp(1.2rem,.98rem + 1.2vw,1.5rem);
   --fs-auth-h2:clamp(1.3rem,1.02rem + 1.5vw,1.62rem);
   --fs-auth-h3:clamp(1.55rem,1.24rem + 1vw,1.92rem);
@@ -1976,10 +1995,16 @@ section{position:relative}
 .auth .caps svg{width:14px;height:14px;color:var(--warn)}
 .auth .strength{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding-top:6px}
 .auth .strength i{height:4px;border-radius:99px;background:var(--bar-bg);transition:background .3s ease}
+.auth .strength-row{display:flex;align-items:center;gap:8px;padding-top:5px;font-size:var(--fs-small);color:var(--faint)}
+.auth .strength-row b{font-weight:600;margin-left:auto;transition:color .3s ease}
 .auth [data-strength="1"] .strength i:nth-child(-n+1){background:var(--danger)}
 .auth [data-strength="2"] .strength i:nth-child(-n+2){background:var(--warn)}
 .auth [data-strength="3"] .strength i:nth-child(-n+3){background:var(--accent)}
 .auth [data-strength="4"] .strength i{background:var(--ok)}
+.auth [data-strength="1"] .strength-row b{color:var(--danger-text)}
+.auth [data-strength="2"] .strength-row b{color:var(--warn-text)}
+.auth [data-strength="3"] .strength-row b{color:var(--accent-text)}
+.auth [data-strength="4"] .strength-row b{color:var(--ok-text)}
 .auth .rules{display:grid;gap:6px;padding-top:10px}
 .auth .rule{display:flex;align-items:center;gap:9px;font-size:var(--fs-small);color:var(--faint);transition:color .22s ease}
 .auth .rule i{width:18px;height:18px;flex:none;border-radius:50%;border:1.5px solid var(--hair-strong);
@@ -2018,16 +2043,30 @@ section{position:relative}
 .auth .btn.loading{cursor:progress}
 .auth .btn.loading .btn-label{filter:blur(4px);opacity:0;transform:scale(.97)}
 .auth .btn.loading .spin{opacity:1;filter:none;animation:spin .7s linear infinite}
+.auth .btn-row{display:flex;flex-direction:column;gap:9px;margin-top:2px}
+.auth .alt{margin-top:12px;text-align:center;font-size:var(--fs-body-lg);color:var(--muted)}
+.auth .alt a{font-weight:600;color:var(--brand-text);padding:11px 5px;margin-block:-11px;display:inline-block;border-radius:8px}
+.auth .alt a:hover{color:var(--brand-deep-text);text-decoration:underline;text-underline-offset:3px}
 .auth .legal{margin-top:10px;font-size:var(--fs-small);line-height:1.45;color:var(--faint);text-align:center}
 .auth .legal a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:8px 2px;margin-block:-8px;display:inline-block}
 .auth .legal a:hover{color:var(--ink)}
 .auth .status-icon{width:60px;height:60px;border-radius:var(--r-lg);display:grid;place-items:center;margin-bottom:18px;
   background:var(--icon-bg);border:1px solid var(--icon-bd);color:var(--brand-text);}
 .auth .status-icon svg{width:29px;height:29px}
+.auth .tick{width:68px;height:68px;margin-bottom:20px}
+.auth .tick circle{fill:none;stroke:var(--ok);stroke-width:2.4;stroke-dasharray:207;stroke-dashoffset:207;animation:draw .62s var(--ease-out) forwards}
+.auth .tick path{fill:none;stroke:var(--ok);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:44;stroke-dashoffset:44;animation:draw .38s var(--ease-out) .34s forwards}
 .auth .mailto{display:flex;align-items:center;gap:11px;margin:14px 0 16px;padding:12px 16px;border-radius:var(--r-md);
   background:var(--soft);border:1px solid var(--hair);font-size:var(--fs-body-lg);}
 .auth .mailto svg{width:18px;height:18px;color:var(--faint);flex:none}
 .auth .mailto b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.auth .timer{margin-top:13px;text-align:center;font-size:var(--fs-body);color:var(--faint)}
+.auth .timer b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.auth .join-spin{width:56px;height:56px;margin:2px auto 20px;border-radius:50%;
+  border:4px solid var(--hair);border-top-color:var(--brand);animation:spin .8s linear infinite}
+.auth .join-badge{width:64px;height:64px;margin:2px auto 20px;border-radius:50%;display:grid;place-items:center;
+  background:var(--danger-bg);border:1px solid var(--danger-bd)}
+.auth .join-badge svg{width:30px;height:30px;color:var(--danger-text)}
 .auth .pane-foot{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;padding-top:14px;font-size:var(--fs-small);color:var(--faint)}
 .auth .pane-foot a{padding:9px 2px;margin-block:-9px;display:inline-block;transition:color .16s ease}
 .auth .pane-foot a:hover{color:var(--ink)}
@@ -2052,6 +2091,8 @@ section{position:relative}
 .auth .form-area{scrollbar-width:none;-ms-overflow-style:none}
 .auth .form-area::-webkit-scrollbar{width:0;height:0;display:none}
 .auth .art-scrim{position:absolute;inset:0;z-index:4;pointer-events:none;background:var(--art-scrim)}
+.auth .art-grain{position:absolute;inset:0;pointer-events:none;z-index:6;opacity:var(--art-grain-op);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");}
 .auth .art-copy{position:absolute;left:clamp(54px,6.4vw,104px);right:clamp(30px,4.6vw,64px);bottom:clamp(30px,4.6vh,58px);
   z-index:5;color:var(--art-ink);max-width:32ch;}
 .auth .art-copy .kicker{display:inline-flex;align-items:center;gap:9px;margin-bottom:14px;
@@ -2068,7 +2109,7 @@ section{position:relative}
   .auth{grid-template-columns:1fr}
   .auth .pane-art{display:none}
 }
-.auth .dock-head .pip{width:7px;height:7px;border-radius:50%;background:#4ADE80;box-shadow:0 0 0 3px rgba(74,222,128,.2)}
+.auth .chips button.on{background:#2173C8;border-color:#4E9BE8;color:#fff}
 @media (prefers-reduced-motion:reduce){
   .auth .rotator span{opacity:0}
   .auth .rotator span.on{opacity:1}
@@ -2099,12 +2140,18 @@ section{position:relative}
   .auth .check .box{width:19px;height:19px}
   .auth .check .txt{font-size:var(--fs-body)}
   .auth .btn{min-height:44px;padding:10px 22px;font-size:var(--fs-body-lg)}
+  .auth .btn-row{gap:8px}
+  .auth .alt{margin-top:9px;font-size:var(--fs-body)}
+  .auth .alt a{padding:8px 5px;margin-block:-8px}
   .auth .legal{margin-top:8px;font-size:var(--fs-caption);line-height:1.4}
   .auth .rules{gap:5px;padding-top:8px}
   .auth .rule{font-size:var(--fs-small)}
   .auth .rule i{width:16px;height:16px}
   .auth .mailto{margin:10px 0 12px;padding:10px 14px;font-size:var(--fs-body)}
   .auth .status-icon{width:50px;height:50px;margin-bottom:14px}
+  .auth .join-spin, .auth .join-badge{width:52px;height:52px;margin-bottom:14px}
+  .auth .tick{width:56px;height:56px;margin-bottom:14px}
+  .auth .timer{margin-top:10px;font-size:var(--fs-small)}
   .auth .pane-foot{gap:4px 16px;padding-top:10px;font-size:var(--fs-caption)}
   .auth .pane-foot a{padding:7px 2px;margin-block:-7px}
 }
@@ -2124,8 +2171,11 @@ section{position:relative}
   .auth .pw-toggle{width:38px;height:38px}
   .auth .check{margin-bottom:8px}
   .auth .btn{min-height:42px;padding-top:9px;padding-bottom:9px}
+  .auth .alt{margin-top:6px}
   .auth .legal{margin-top:5px;line-height:1.35}
   .auth .strength{padding-top:5px}
+  .auth .strength-row{padding-top:3px;font-size:var(--fs-caption)}
+  .auth .btn-row{gap:7px}
   .auth .rules{padding-top:6px;gap:4px 10px;grid-template-columns:1fr 1fr}
   .auth .legal{font-size:var(--fs-caption)}
   .auth .pane-foot{padding-top:8px;font-size:var(--fs-caption)}

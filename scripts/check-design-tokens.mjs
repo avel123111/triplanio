@@ -75,7 +75,6 @@ const SCAN_EXTRA = ['public/site.css'];
 const COLOR_WHITELIST = [
   'src/lib/externalBrands.js',                         // external brand registry
   'src/lib/avatarRamp.js',                             // avatar colour source
-  'src/pages/login.css',                               // isolated; pending Lumo
   'src/index.css', 'src/design/app.css',               // token DEFINITIONS
   'src/lib/map/captureMap.js',                         // canvas map-capture (share image) needs concrete hex
   'src/components/AppErrorBoundary.jsx',               // crash screen — must not depend on tokens/CSS
@@ -100,7 +99,7 @@ const COLOR_WHITELIST = [
 
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
 // lowering this number in the same commit; nothing may ever raise it.
-const WHITELIST_LIMIT = 15;
+const WHITELIST_LIMIT = 14;
 
 // The ceiling on the PR base, so raising it cannot be self-approved by editing
 // this file. null = base not resolvable (no such ref, or the base predates this

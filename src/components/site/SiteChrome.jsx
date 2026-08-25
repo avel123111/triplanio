@@ -36,7 +36,7 @@ const LANGS = [
   { code: 'es', label: 'Español', display: 'ES' },
 ];
 
-function LangSwitch({ value, onChange }) {
+export function LangSwitch({ value, onChange }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
