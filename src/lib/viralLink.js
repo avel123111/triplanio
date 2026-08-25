@@ -37,8 +37,6 @@ export const VIRAL_MARKS = {
   public_link: { utm_source: 'trip_share', utm_medium: 'viral' },
   // Invite link the member copies out of the dialog, /join/:token
   invite_link: { utm_source: 'trip_invite', utm_medium: 'viral' },
-  // QR on the social share card → the landing page.
-  share_card: { utm_source: 'share_card', utm_medium: 'viral' },
 };
 
 /**
@@ -59,7 +57,7 @@ export const VIRAL_MARKS = {
  * @param {string} url        absolute url, may already carry a query
  * @param {keyof typeof VIRAL_MARKS} kind
  * @param {string} tripId
- * @param {string} [content]  optional utm_content (the card passes its format)
+ * @param {string} [content]  optional utm_content
  * @returns {string}
  */
 export function withViralMarks(url, kind, tripId, content) {
