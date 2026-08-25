@@ -440,7 +440,13 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
           <IconBtn icon="chevL" tone="quiet" size="md" round ariaLabel={t('calendar.prev')} onClick={goBack} className="ncal-navbtn" />
           <Row as="h2" align="a-baseline" gap="g4" className="ncal-title-row">
             <span className="ncal-month-lbl t-title">{MONTH_NAMES[headMonth]}</span>
-            <span className="ncal-year-lbl t-title">{headYear}</span>
+            {/* Год — ярус НИЖЕ месяца. В ветке 983 тут стоял `t-title`, но на
+                экран он не попадал: `app.css` держал `.ncal-year-lbl` в
+                ко-селекторе Subheading, и тот перебивал класс разметки — год
+                рисовался мельче, чем написано. PR 972 эту перебивку снял, так
+                что теперь класс исполняется буквально; ставим ЯВНО тот ярус,
+                который и был на экране, вместо возврата молчаливой перебивки. */}
+            <span className="ncal-year-lbl t-subheading">{headYear}</span>
           </Row>
           <IconBtn icon="chev" tone="quiet" size="md" round ariaLabel={t('calendar.next')} onClick={goFwd} className="ncal-navbtn" />
         </Row>
