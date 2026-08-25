@@ -5,8 +5,8 @@
  * Композиция (сверху вниз): заголовок Geologica (белый) + маршрут «город → город»
  * (белый) · полароид (кремовая рамка -1.6°, окно карты с внутренней тенью,
  * «My trip!» + сердечко) · ряд статистики (белые цифры + белые подписи,
- * золотые разделители) · ряд флагов «Visited Countries» + «+N» · футер
- * «Plan your own adventure» + лого + вордмарк · «Scan to explore» + дуга + QR.
+ * золотые разделители) · ряд «Countries» + флаги по левому краю + «+N» ·
+ * логотип «Triplanio» в левом нижнем углу.
  *
  * Контракт с клиентом (src/lib/map/captureMap.js, ShareCardDialog):
  *  - Карта — axis-aligned `<image>` в bbox окна, обрезанная повёрнутым окном
@@ -21,11 +21,10 @@
  *
  * Палитра/шрифты/скругления фиксированы (часть дизайна). Весь текст открытой зоны
  * (заголовок/маршрут/цифры/подписи) — белый с мягкой тенью (читается на любой
- * подложке); тёмный текст только в кремовой рамке и на светлой плашке футера.
+ * подложке); тёмный текст только в кремовой рамке полароида.
  * Правило проекта: дефис "-", не длинное тире.
  */
 
-import { qrSvg } from './qr.ts';
 import { LOGO_SVG_B64 } from './assets_b64.ts';
 import { FLAGS_B64 } from './flags_b64.ts';
 
@@ -50,13 +49,9 @@ type CardData = {
   daysLabel: string;
   citiesLabel: string;
   countriesLabel: string;
-  visitedLabel: string; // "Visited Countries" (может быть в 2 строки по \n)
-  planLine1: string; // "Plan your"
-  planLine2: string; // "own adventure"
-  scanLine1: string; // "Scan to"
-  scanLine2: string; // "explore"
+  visitedLabel: string; // подпись секции флагов ("Countries")
   myTrip: string; // "My trip!"
-  brand: string; // "TRIPLANIO"
+  brand: string; // "Triplanio" (вордмарк рядом с логотипом)
 };
 
 // Токены, которые подменяет клиент. Только MAP_TOKEN нужен снаружи (index.ts →
@@ -73,9 +68,7 @@ const C = {
   cream: '#F3ECDD',
   script: '#3E6FB6',
   white: '#FFFFFF',
-  footBg: 'rgba(255,255,255,0.72)',
   flagBg: 'rgba(14,30,50,0.62)',
-  divider: 'rgba(70,80,95,0.35)',
   shadow: 'rgba(10,18,30,0.45)',
   innerShadow: 'rgba(18,28,42,0.42)',
 };
@@ -100,12 +93,8 @@ type Layout = {
   pola: { top: number; width: number; padT: number; padX: number; padB: number; winH: number };
   capSize: number;
   stats: { y: number; numSize: number; labSize: number; cellPad: number };
-  flags: { y: number; h: number; labSize: number; circle: number; ring: number; gap: number; moreSize: number };
-  footer: {
-    y: number; h: number; padX: number; padT: number;
-    ctaSize: number; ctaLead: number; brandSize: number; brandGap: number; logo: number;
-    scanSize: number; qr: number;
-  };
+  flags: { y: number; h: number; labSize: number; labGap: number; circle: number; ring: number; gap: number; moreSize: number };
+  brand: { cy: number; logo: number; size: number; gap: number };
 };
 
 const LAYOUTS: Record<Format, Layout> = {
@@ -116,12 +105,8 @@ const LAYOUTS: Record<Format, Layout> = {
     pola: { top: 548, width: 860, padT: 34, padX: 34, padB: 34, winH: 640 },
     capSize: 52,
     stats: { y: 1452, numSize: 74, labSize: 32, cellPad: 36 },
-    flags: { y: 1564, h: 98, labSize: 26, circle: 58, ring: 3, gap: 12, moreSize: 24 },
-    footer: {
-      y: 1687, h: 206, padX: 36, padT: 24,
-      ctaSize: 46, ctaLead: 48, brandSize: 32, brandGap: 12, logo: 50,
-      scanSize: 40, qr: 146,
-    },
+    flags: { y: 1566, h: 98, labSize: 30, labGap: 28, circle: 58, ring: 3, gap: 14, moreSize: 24 },
+    brand: { cy: 1806, logo: 76, size: 48, gap: 16 },
   },
   post: {
     w: 1080, h: 1350, padX: 60,
@@ -130,12 +115,8 @@ const LAYOUTS: Record<Format, Layout> = {
     pola: { top: 356, width: 912, padT: 30, padX: 30, padB: 30, winH: 432 },
     capSize: 50,
     stats: { y: 1008, numSize: 66, labSize: 30, cellPad: 36 },
-    flags: { y: 1084, h: 74, labSize: 24, circle: 48, ring: 3, gap: 10, moreSize: 22 },
-    footer: {
-      y: 1180, h: 159, padX: 28, padT: 14,
-      ctaSize: 38, ctaLead: 40, brandSize: 28, brandGap: 8, logo: 44,
-      scanSize: 40, qr: 120,
-    },
+    flags: { y: 1090, h: 78, labSize: 26, labGap: 24, circle: 50, ring: 3, gap: 12, moreSize: 22 },
+    brand: { cy: 1276, logo: 66, size: 42, gap: 14 },
   },
 };
 
@@ -259,7 +240,6 @@ export function buildCardSvg(
   format: Format,
   data: CardData,
   mapDataUri: string | null,
-  qrUrl: string,
   overlay = false,
   fontCss = '',
 ): string {
@@ -336,11 +316,11 @@ export function buildCardSvg(
   // --- ряд статистики (4 ячейки, золотые разделители, белые цифры+подписи) ---
   const stats = buildStats(L, data);
 
-  // --- ряд флагов «Visited Countries» + «+N» ---
+  // --- ряд «Countries» + флаги по левому краю + «+N» ---
   const flags = buildFlags(L, data);
 
-  // --- футер ---
-  const footer = buildFooter(L, data, qrUrl);
+  // --- логотип «Triplanio» в левом нижнем углу ---
+  const brand = buildBrand(L, data);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
@@ -359,7 +339,7 @@ ${titleSvg}
 ${routeSvg}
 ${stats}
 ${flags}
-${footer}
+${brand}
 </svg>`;
 }
 
@@ -397,7 +377,8 @@ function buildStats(L: Layout, d: CardData): string {
   return parts.join('');
 }
 
-// Ряд флагов: плашка + «Visited Countries» + круглые флаги (сколько влезло) + «+N».
+// Ряд «Countries»: плашка + подпись + круглые флаги ПО ЛЕВОМУ КРАЮ (сколько
+// влезло) + «+N» сразу за последним флагом. Флаги не растягиваются по ширине.
 function buildFlags(L: Layout, d: CardData): string {
   const f = L.flags;
   const left = L.padX - 6;
@@ -407,15 +388,12 @@ function buildFlags(L: Layout, d: CardData): string {
   const parts: string[] = [
     `<rect x="${left}" y="${f.y}" width="${boxW}" height="${f.h}" rx="${f.h / 2}" fill="${C.flagBg}"/>`,
   ];
-  // Подпись слева (до 2 строк по \n).
+  // Подпись слева (одна строка).
   const labX = left + 30;
-  const labLines = d.visitedLabel.split('\n');
-  const labLead = f.labSize + 4;
-  const labY0 = cy - ((labLines.length - 1) * labLead) / 2 + f.labSize * 0.34;
-  labLines.forEach((l, i) => parts.push(text(labX, labY0 + i * labLead, f.labSize, l, { weight: 400, fill: C.white })));
-  const labW = Math.max(...labLines.map((l) => advance(l, f.labSize, 0.56)));
-  // Зона под флаги: от конца подписи до правого края (место под «+N» резервируем).
-  const listLeft = labX + labW + 24;
+  parts.push(text(labX, cy + f.labSize * 0.34, f.labSize, d.visitedLabel, { weight: 400, fill: C.white }));
+  const labW = advance(d.visitedLabel, f.labSize, 0.56);
+  // Флаги — от конца подписи + отступ, ПО ЛЕВОМУ КРАЮ с фиксированным шагом.
+  const listLeft = labX + labW + f.labGap;
   const chipD = f.circle;
   const rightPad = 24;
   const total = d.flags.length;
@@ -424,21 +402,17 @@ function buildFlags(L: Layout, d: CardData): string {
   let shown = Math.max(0, Math.min(total, Math.floor((avail + f.gap) / step)));
   const needChip = shown < total;
   if (needChip) {
-    const availWithChip = avail - (chipD + f.gap);
+    const availWithChip = avail - (chipD + f.gap); // резервируем место под «+N»
     shown = Math.max(0, Math.min(total, Math.floor((availWithChip + f.gap) / step)));
   }
-  // Флаги распределены по ширине зоны (space-between), «+N» — у правого края.
-  const chipReserve = needChip ? chipD + f.gap : 0;
-  const zoneW = avail - chipReserve;
-  const spread = shown > 1 ? Math.max(step, (zoneW - f.circle) / (shown - 1)) : step;
   let fx = listLeft + f.circle / 2;
   for (let i = 0; i < shown; i++) {
     parts.push(flagCircle(fx, cy, f.circle, f.ring, d.flags[i]));
-    fx += spread;
+    fx += step;
   }
   if (needChip) {
     const more = total - shown;
-    const chipX = right - rightPad - chipD / 2;
+    const chipX = fx; // сразу за последним флагом (лево-выравнивание)
     parts.push(`<circle cx="${chipX}" cy="${cy}" r="${chipD / 2}" fill="${C.gold}"/>`);
     parts.push(text(chipX, cy + f.moreSize * 0.34, f.moreSize, `+${more}`, { weight: 700, anchor: 'middle', fill: C.navyDeep }));
   }
@@ -459,49 +433,12 @@ function flagCircle(cx: number, cy: number, d: number, ring: number, cc: string)
     + `preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`;
 }
 
-// Футер: бело-полупрозрачная плашка, серый разделитель по центру; слева CTA+лого,
-// справа «Scan to explore» (по центру половины) + дуга-стрелка к QR + QR у края.
-function buildFooter(L: Layout, d: CardData, qrUrl: string): string {
-  const f = L.footer;
-  const left = L.padX - 10;
-  const right = L.w - (L.padX - 10);
-  const boxW = right - left;
-  const midX = L.w / 2;
-  const parts: string[] = [
-    `<rect x="${left}" y="${f.y}" width="${boxW}" height="${f.h}" rx="34" fill="${C.footBg}"/>`,
-    `<rect x="${midX - 1}" y="${f.y + 24}" width="2" height="${f.h - 48}" fill="${C.divider}"/>`,
-  ];
-  // Левая колонка: «Plan your / own adventure» + ряд бренда [лого] TRIPLANIO.
-  const cx0 = left + f.padX;
-  const l1 = f.y + f.padT + f.ctaSize * 0.82; // baseline первой строки
-  const l2 = l1 + f.ctaLead;
-  parts.push(text(cx0, l1, f.ctaSize, d.planLine1, { weight: 800 }));
-  parts.push(text(cx0, l2, f.ctaSize, d.planLine2, { weight: 800 }));
-  const brandCy = l2 + f.brandGap + f.logo / 2; // центр ряда бренда
-  parts.push(`<image href="${LOGO_URI}" x="${cx0}" y="${brandCy - f.logo / 2}" width="${f.logo}" height="${f.logo}"/>`);
-  parts.push(text(cx0 + f.logo + 14, brandCy + f.brandSize * 0.34, f.brandSize, d.brand, { weight: 700, ls: 3 }));
-
-  // Правая колонка: QR у правого края; «Scan to / explore» по центру зоны между
-  // разделителем и QR; дуга-стрелка из-под текста к левому центру QR.
-  const q = f.qr;
-  const qrX = right - f.padX - q;
-  const qrY = f.y + (f.h - q) / 2;
-  const zoneL = midX;
-  const zoneR = qrX;
-  const scanCx = (zoneL + zoneR) / 2;
-  const scanY0 = f.y + f.h / 2 - f.scanSize * 0.28;
-  parts.push(text(scanCx, scanY0, f.scanSize, d.scanLine1, { font: SCRIPT_FONT, weight: 700, anchor: 'middle' }));
-  parts.push(text(scanCx, scanY0 + f.scanSize * 0.92, f.scanSize, d.scanLine2, { font: SCRIPT_FONT, weight: 700, anchor: 'middle' }));
-  // Дуга из-под текста вправо-вверх к левому центру QR (стрелка навы).
-  const aY = scanY0 + f.scanSize * 1.5;
-  const aX0 = scanCx - 30;
-  const aX1 = qrX - 8;
-  const aYmid = aY + 18;
-  const aYend = qrY + q / 2;
-  parts.push(`<g stroke="${C.navy}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">`
-    + `<path d="M${aX0},${aY} C${aX0 + 40},${aYmid} ${aX1 - 40},${aYend + 10} ${aX1},${aYend}"/>`
-    + `<path d="M${aX1 - 16},${aYend - 8} L${aX1},${aYend} L${aX1 - 6},${aYend + 14}"/></g>`);
-  // QR: qrSvg сам рисует белую скруглённую подложку + тихую зону 8% вокруг модулей.
-  parts.push(qrSvg(qrUrl, qrX, qrY, q));
-  return parts.join('');
+// Логотип «Triplanio» в левом нижнем углу: логомарк + вордмарк (белый, с тенью —
+// открытая зона; вордмарк Geologica 800, первая заглавная).
+function buildBrand(L: Layout, d: CardData): string {
+  const b = L.brand;
+  const x = L.padX;
+  const logoY = b.cy - b.logo / 2;
+  return `<image href="${LOGO_URI}" x="${x}" y="${logoY}" width="${b.logo}" height="${b.logo}"/>`
+    + wtext(x + b.logo + b.gap, b.cy + b.size * 0.34, b.size, d.brand, { weight: 800 });
 }

@@ -13,36 +13,27 @@ type CardStrings = {
   days: string;
   cities: string;
   countries: string;
-  visited: string; // «Visited Countries», перенос строки — "\n"
-  planLine1: string;
-  planLine2: string;
-  scanLine1: string;
-  scanLine2: string;
+  visited: string; // подпись секции флагов (одна строка)
   myTrip: string; // рукописное на полароиде
 };
 
-export const BRAND = 'TRIPLANIO';
+// Вордмарк рядом с логотипом в левом нижнем углу (первая заглавная).
+export const BRAND = 'Triplanio';
 
 const STRINGS: Record<Lang, CardStrings> = {
   ru: {
     km: 'км', days: 'дни', cities: 'города', countries: 'страны',
-    visited: 'Посещено\nстран',
-    planLine1: 'Спланируй', planLine2: 'своё путешествие',
-    scanLine1: 'Сканируй', scanLine2: 'код',
+    visited: 'Страны',
     myTrip: 'Моё путешествие!',
   },
   en: {
     km: 'km', days: 'Days', cities: 'Cities', countries: 'Countries',
-    visited: 'Visited\nCountries',
-    planLine1: 'Plan your', planLine2: 'own adventure',
-    scanLine1: 'Scan to', scanLine2: 'explore',
+    visited: 'Countries',
     myTrip: 'My trip!',
   },
   es: {
     km: 'km', days: 'Dias', cities: 'Ciudades', countries: 'Paises',
-    visited: 'Paises\nvisitados',
-    planLine1: 'Planifica tu', planLine2: 'propia aventura',
-    scanLine1: 'Escanea', scanLine2: 'para ver',
+    visited: 'Paises',
     myTrip: 'Mi viaje!',
   },
 };
