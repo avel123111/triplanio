@@ -354,6 +354,16 @@ export default function MapView({
     });
   }, [ordered]);
 
+  // Сигнатура ПИНОВ для пересборки маркеров — отдельная от `visitsSignature` (та —
+  // только id+позиция, гейтит КАМЕРУ и ЛИНИИ). Смена 0↔1 ночи меняет роль узла
+  // (waypoint↔город) и нумерацию транзитов, но НЕ координаты: маркер обязан
+  // перерисоваться (сменить глиф/номер), а камера — не дёрнуться. Поэтому rebuildKey
+  // пинов несёт роль(kind) и номер(label) вдобавок к id/позиции, а фит — нет.
+  const pinsSignature = useMemo(
+    () => points.map((p) => `${p.id}:${p.kind || ''}:${p.label || ''}@${p.lat},${p.lng}`).join('|'),
+    [points],
+  );
+
   const focusSig = useMemo(
     () => (Array.isArray(focus) && focus.length ? focus.map((p) => p.join(',')).join('|') : ''),
     [focus],
@@ -554,7 +564,7 @@ export default function MapView({
   useCityMarkers(mapRef, ready, {
     points,
     markersRef,
-    rebuildKey: visitsSignature,
+    rebuildKey: pinsSignature,
     enabled: !hideRoute,
     selectedId: selectedVisitId,
     hoveredId: hoveredVisitId,
