@@ -176,6 +176,14 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
       {days.some(d => d.cities.length > 0) && (
         <div className="ncal-wk-cities">
           <div className="ncal-wk-gut" />
+          {/* Разделители колонок — ТЕ ЖЕ ячейки, что в шапке дней (`.ncal-wk-hcell`),
+              а не своя линия: полосы спанят по нескольку дней и границ не рисуют,
+              и вертикали обрывались на этом ряду. Ячейка гридовая, поэтому её
+              граница совпадает с шапкой ПО ПОСТРОЕНИЮ — арифметика линии мимо
+              колонки на 1px уже была. Подсветка «сегодня» едет тем же классом. */}
+          {days.map((d, di) => (
+            <div key={di} className={`ncal-wk-hcell${d.isToday ? ' is-today' : ''}`} />
+          ))}
           {/* Тот же слой полос, что в месяце: полоса цельная на весь визит,
               имя внутри неё, день пересадки делится между городами. */}
           <div className="ncal-daytop">
