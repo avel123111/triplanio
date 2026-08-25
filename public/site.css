@@ -1910,6 +1910,20 @@ section{position:relative}
 /* prefix-exempt: top — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
 /* prefix-exempt: txt — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
 /* prefix-exempt: valid — auth-зона: свой namespace, апрув Pavel (TRIP-464) */
+/* Анимации зоны auth — не были перенесены при порте, из-за чего спиннеры не
+   крутились, алерт не выезжал, галочка успеха не рисовалась, арт не дрейфовал.
+   Значения дословно из прототипа v5.7 (TRIP-464).
+   visual-diff-exempt: to {@keyframes spin} transform — восстановлен спиннер зоны (TRIP-464)
+   visual-diff-exempt: from {@keyframes alertIn} opacity — восстановлен выезд алерта (TRIP-464)
+   visual-diff-exempt: from {@keyframes alertIn} transform — восстановлен выезд алерта (TRIP-464)
+   visual-diff-exempt: to {@keyframes alertIn} opacity — восстановлен выезд алерта (TRIP-464)
+   visual-diff-exempt: to {@keyframes alertIn} transform — восстановлен выезд алерта (TRIP-464)
+   visual-diff-exempt: to {@keyframes draw} stroke-dashoffset — восстановлена галочка успеха (TRIP-464)
+   visual-diff-exempt: to {@keyframes artDrift} transform — восстановлен дрейф арта (TRIP-464) */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes alertIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes artDrift{to{transform:scale(1.07) translate3d(-1.2%,-.8%,0)}}
 .authv{
   font-family:var(--font-body);   /* зона рисует Onest/Golos; бьёт app-CSS .authv (TRIP-410 Geologica), т.к. site-CSS грузится позже */
   /* Токены зоны auth: общие роли наследуются с html.site (бренд, ink, muted,

@@ -24,7 +24,7 @@ export default function JoinTrip() {
   const nav = useNavigate();
   const { t, lang, setLang } = useI18n();
   useSiteTheme();
-  useSiteCss(); // зонная ДС (site.css §AUTH) — join живёт в той же оболочке, что логин
+  const cssReady = useSiteCss(); // зонная ДС; не рисуем до готовности (FOUC-иконки)
   const [state, setState] = useState('working'); // working | signin | error
   const [errKey, setErrKey] = useState('member.join_error_invalid');
 
@@ -64,6 +64,8 @@ export default function JoinTrip() {
   // Все три экрана всегда смонтированы (как в прототипе): активным управляет
   // AuthShell по activeScreen, кроссфейдя и анимируя высоту .form-wrap.
   const activeScreen = { working: 'join-working', signin: 'join-signin', error: 'join-error' }[state];
+
+  if (!cssReady) return null; // FOUC-гейт, как в Login
 
   return (
     <AuthShell lang={lang} setLang={setLang} activeScreen={activeScreen}>

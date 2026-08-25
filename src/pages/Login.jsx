@@ -246,7 +246,10 @@ export default function Login() {
   // on white, dark plates). The shared zone hook forces light and restores the
   // user's theme on exit (TRIP-460 §7.2).
   useSiteTheme();
-  useSiteCss(); // грузит public/site.css (зонная ДС) вместо снятого login.css
+  // cssReady — site.css грузится рантайм-<link>ом; до его загрузки разметка без
+  // стилей, а SVG-иконки без width/height вспыхивают во весь экран (FOUC). Как
+  // на лендинге, не рисуем зону, пока лист не готов.
+  const cssReady = useSiteCss();
 
 
   // Unlock the form after returning from a Google/Apple OAuth redirect.
@@ -593,6 +596,9 @@ export default function Login() {
     'reset-password': 'reset',
     'reset-done': 'done',
   }[view];
+
+  // Не рисуем до готовности site.css — иначе FOUC (иконки во весь экран).
+  if (!cssReady) return null;
 
   return (
     <AuthShell lang={lang} setLang={setLang} activeScreen={activeScreen}>
