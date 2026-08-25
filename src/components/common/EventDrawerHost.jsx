@@ -11,15 +11,17 @@ import { useIsPhone } from '@/hooks/use-mobile';
  * Placement:
  *  - ≤640px: the shared Radix bottom-sheet (`.lp-sheet` / `.sheet-backdrop`),
  *    identical to the editor's mobile panel.
- *  - >640px: a left-anchored drawer that fills the nearest POSITIONED ancestor.
+ *  - >640px: the SAME floating widget the route editor uses — a `.ts-pdrawer`
+ *    card inside a positioning box (`.evd-drawer`) that mirrors the editor's
+ *    `.mapshell__overlay` geometry (inset `--sp-7`, width `--mapshell-panel-w`).
  *    Mount it inside a `position: relative` container that already sits below the
- *    header and right of the menu (e.g. `.trip-content`) so the drawer never
+ *    header and right of the menu (e.g. `.trip-content`) so the widget never
  *    covers the header or the menu — only the content area.
  *
- * `scrim` is the variable screen shading (TRIP-195): the editor opens these same
- * panels WITHOUT a scrim (the map stays interactive), whereas timeline/calendar
- * pass `scrim` so the rest of the content dims. Clicking the scrim does NOT close
- * the drawer (product decision) — close via the panel's own Back/Done or Esc.
+ * `scrim` is the variable screen shading (TRIP-195): timeline/calendar/budget
+ * pass `scrim` so the rest of the content dims behind the widget. Clicking the
+ * scrim does NOT close the widget (product decision) — close via the panel's own
+ * Back/Done or Esc.
  */
 export default function EventDrawerHost({ open, onClose, scrim = false, title = '', children }) {
   const drawerRef = useRef(null);
@@ -46,7 +48,12 @@ export default function EventDrawerHost({ open, onClose, scrim = false, title = 
   return (
     <>
       {scrim && <div className="evd-scrim" aria-hidden />}
-      <div ref={drawerRef} tabIndex={-1} onKeyDown={onKey} className="evd-drawer">
+      {/* Один узел несёт и геометрию коробки (`.evd-drawer` — инсет + ширина
+          виджета), и облик самого виджета (`.ts-pdrawer` — грунт/радиус/тень/
+          анимация, ТОТ ЖЕ класс, что в редакторе маршрута, без второй копии
+          скина; reuse, rule #6). `.lp` остаётся прямым потомком, поэтому ресет
+          `.ts-pdrawer > .lp` действует. */}
+      <div ref={drawerRef} tabIndex={-1} onKeyDown={onKey} className="evd-drawer ts-pdrawer">
         {children}
       </div>
     </>

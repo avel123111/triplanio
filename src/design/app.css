@@ -211,6 +211,19 @@
   --rail-w:       70px;
   --header-h:     60px;
 
+  /* Ширина плавающего виджета-панели — ОДИН источник на ВСЕХ потребителей.
+     Читают её: колонка редактора/линзы/планировщика (`.mapshell__panel`, +
+     замером JS), и глобальный ящик события (`.evd-drawer`) на ленте/бюджете/
+     календаре. Живёт в :root, потому что общий предок этих поддеревьев —
+     только корень: планировщик (`/new-trip`) и трип (`/trip/:id`) — соседние
+     ветки роутера, у них нет общей обёртки-класса. `clamp`, а не `min`: у
+     виджета есть НИЖНЯЯ граница по содержимому (в редакторе шесть колонок,
+     на окне 1087px `46vw` давало 500px и заголовок «Направление» не помещался;
+     540 — минимум без усечения, 620 — потолок, дальше место лучше карте).
+     floor-exempt: tokens +1 — ширина виджета поднята из .mapshell в :root, чтобы её видел и evd-drawer вне .mapshell (эксперимент «панель = виджет»), апрув Pavel
+     visual-diff-exempt: :root --mapshell-panel-w — токен переехал с .mapshell в :root (то же значение, снятие с .mapshell объявлено там же) */
+  --mapshell-panel-w: clamp(540px, 46vw, 620px);
+
   /* Рейл трипа — ИНВЕРСНАЯ поверхность: тёмный борт в ОБЕИХ темах. Своя пара
      фон/чернила нужна именно поэтому: глобальные --ink/--wash/--line подобраны
      под светлый фон и на тёмном борте не читаются (тот же класс дефекта, что
@@ -4461,17 +4474,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell height — примитив не имеет права зависеть от display родителя (в блочном контейнере flex:1 = ноль высоты) */
 .mapshell {
   position: relative; flex: 1; height: 100%; min-height: 0; overflow: hidden;
-  /* ШИРИНА ПАНЕЛИ ОБЪЯВЛЕНА ЗДЕСЬ ОДИН РАЗ. Её читают и колонка, и кнопка на
-     шве, и (замером) JS — второй записи этого числа в проекте быть не должно:
-     первая же правка раскладки развела бы копии.
-     ★ `clamp`, а не `min`: у виджета есть НИЖНЯЯ граница по содержимому. В
-     редакторе шесть колонок (город · ночи · жильё · активности), и доля вьюпорта
-     их не гарантирует — на окне 1087px `46vw` давало 500px, а там колонка имени
-     сжимается до 80px и заголовок «Направление» уже не помещается. Замерено:
-     540 — минимум, при котором ничего не усекается. Верх 620: дальше расти
-     виджету незачем, место лучше отдать карте.
-     visual-diff-exempt: .mapshell --mapshell-panel-w — ширина колонки панели, один источник вместо двух литералов */
-  --mapshell-panel-w: clamp(540px, 46vw, 620px);
+  /* ШИРИНА ПАНЕЛИ (--mapshell-panel-w) переехала в :root (см. блок геометрии
+     хрома): её теперь читает и глобальный ящик события (`.evd-drawer`) на
+     экранах БЕЗ карты, а он `.mapshell` не потомок. Источник по-прежнему ОДИН,
+     просто выше по дереву. `.mapshell` значение НАСЛЕДУЕТ.
+     visual-diff-exempt: .mapshell --mapshell-panel-w — токен поднят в :root (единый источник для .evd-drawer вне .mapshell), значение наследуется */
 }
 /* Слот карты = СВОБОДНОЕ ОКНО: панель и шит не лежат поверх карты, они её
    граница. Величины приходят от `<MapShell>` двумя переменными (ширина
@@ -6253,20 +6260,42 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Used OUTSIDE the structure editor (timeline / calendar / budget / overview).
    Anchored to .trip-content (relative + overflow:hidden, already below the header
    and right of the menu) so it never covers the header or the menu. Sibling of
-   the scrolling <main>, so it does NOT scroll with the content. Mirrors the
-   editor's `.ts-pdrawer`, but 50%-wide with an optional scrim (variable shading).
-   The ≤640 sheet reuses `.lp-sheet` / `.sheet-backdrop`. */
+   the scrolling <main>, so it does NOT scroll with the content.
+
+   ЭКСПЕРИМЕНТ: панель открывается ТЕМ ЖЕ виджетом, что и редактор маршрута — не
+   полноростным ящиком, а плавающей карточкой. `.evd-drawer` теперь только
+   ПОЗИЦИОНИРУЮЩАЯ КОРОБКА, повторяющая геометрию `.mapshell__overlay` (инсет
+   `--sp-7` слева/сверху/снизу, ширина = `--mapshell-panel-w`, один источник с
+   редактором); весь облик — грунт/радиус/тень/анимацию — несёт `.ts-pdrawer`
+   внутри (тот же класс, что в редакторе, без второй копии скина). Скрим
+   сохранён — контент за виджетом притухает. ≤640 sheet reuses `.lp-sheet`.
+   visual-diff-exempt: .evd-drawer top — коробка виджета: верхний инсет --sp-7 (было 0, полноростный ящик)
+   visual-diff-exempt: .evd-drawer bottom — коробка виджета: нижний инсет --sp-7 (было 0)
+   visual-diff-exempt: .evd-drawer left — коробка виджета: левый инсет --sp-7 (было 0)
+   visual-diff-exempt: .evd-drawer width — ширина виджета --mapshell-panel-w (было 50%)
+   visual-diff-exempt: .evd-drawer min-width — снято: ширину держит токен виджета
+   visual-diff-exempt: .evd-drawer flex-direction — снято: скин переехал на .ts-pdrawer
+   visual-diff-exempt: .evd-drawer background — снято: грунт несёт .ts-pdrawer
+   visual-diff-exempt: .evd-drawer border-right — снято: рамку заменил радиус карточки виджета
+   visual-diff-exempt: .evd-drawer box-shadow — снято: подъём несёт .ts-pdrawer (sh-1)
+   visual-diff-exempt: .evd-drawer outline — снято вместе со скином
+   visual-diff-exempt: .evd-drawer animation — снято: анимацию несёт .ts-pdrawer (tsDrawerIn)
+   visual-diff-exempt: .evd-drawer {@media (prefers-reduced-motion: reduce)} animation — снято: коробка не анимируется, reduced-motion теперь только у .ts-pdrawer/.evd-scrim
+   visual-diff-exempt: .evd-drawer flex — снято: ресет .lp несёт .ts-pdrawer > .lp
+   visual-diff-exempt: .evd-drawer min-height — то же
+   visual-diff-exempt: .evd-drawer border — то же
+   visual-diff-exempt: .evd-drawer border-radius — то же
+   visual-diff-exempt: from {@keyframes evdDrawerIn} opacity — кейфрейм удалён: слайд-ин несёт tsDrawerIn виджета
+   visual-diff-exempt: from {@keyframes evdDrawerIn} transform — то же
+   visual-diff-exempt: to {@keyframes evdDrawerIn} opacity — то же
+   visual-diff-exempt: to {@keyframes evdDrawerIn} transform — то же */
 .evd-scrim { position: absolute; inset: 0; z-index: var(--z-drawer); background: var(--scrim); animation: fadeIn .2s var(--ease-out) both; }
 .evd-drawer {
-  position: absolute; top: 0; left: 0; bottom: 0; z-index: calc(var(--z-drawer) + 1);
-  width: 50%; min-width: 320px;
-  display: flex; flex-direction: column;
-  background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2);
-  outline: none; animation: evdDrawerIn .24s var(--ease-out) both;
+  position: absolute; top: var(--sp-7); left: var(--sp-7); bottom: var(--sp-7);
+  width: var(--mapshell-panel-w); z-index: calc(var(--z-drawer) + 1);
+  display: flex;
 }
-.evd-drawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
-@keyframes evdDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .evd-drawer, .evd-scrim { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .evd-scrim { animation: none; } }
 
 /* ---- Scrollable screen body ---- */
 /* Низ был 60px — вдвое больше остальных сторон. Столько воздуха под контентом
