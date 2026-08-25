@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { mapboxgl } from '@/lib/mapbox';
 import { calmFit } from '@/lib/map/camera';
 import { markFramed } from '@/lib/map/framed';
 import { getMapInsets } from '@/lib/map/insets';
@@ -9,10 +8,11 @@ import { useMapInsets } from '@/lib/map/useMapInsets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
+import { useCityMarkers } from '@/lib/map/useCityMarkers';
+import { useCityBadge } from '@/lib/map/useCityBadge';
+import { useMapClick } from '@/lib/map/useMapClick';
 import MapControls from '@/lib/map/MapControls';
 import { useT } from '@/lib/i18n/I18nContext';
-import { useTheme } from '@/lib/ThemeContext';
 
 // Build ordered legs (home → cities → finish) - self-contained so the map has
 // no dependency on the planner's save logic. The finish leg is drawn only when
@@ -92,23 +92,25 @@ export default function FlowMap({
   // CITY still feeds the camera framing, so stepping between steps toggles what's
   // drawn WITHOUT re-framing.
   drawFinish = false,
+  // Тема приложения приезжает ПРОПОМ (как у `MapView`) — один способ «следовать
+  // теме» на обе карты. Родитель считает `isDark` и отдаёт 'LIGHT'|'DARK'; свой
+  // `useTheme()` здесь больше не читаем.
+  colorScheme = 'LIGHT',
   // Map-lens-style interactivity (all optional — omit for a passive preview):
   hoveredId = null, selectedId = null, cityBadge = null,
   onCityHover, onCityClick, onMapClick,
 }) {
   const t = useT();
-  const { isDark } = useTheme();
   const containerRef = useRef(null);
   const markersRef = useRef([]);
-  const cityBadgePopupRef = useRef(null);
 
   // On-map controls (same set as MapView): projection / theme / start-finish.
   // Планировщик (оба флоу) открывается на глобусе (запрос Pavel, TRIP-337).
   const [projection, setProjection] = useState('globe');
-  // Seed from the app theme and follow it live (mirrors MapView): the on-map
+  // Seed from the app theme prop and follow it live (mirrors MapView): the on-map
   // toggle can still override until the next app-theme change.
-  const [scheme, setScheme] = useState(isDark ? 'DARK' : 'LIGHT');
-  useEffect(() => { setScheme(isDark ? 'DARK' : 'LIGHT'); }, [isDark]);
+  const [scheme, setScheme] = useState(colorScheme);
+  useEffect(() => { setScheme(colorScheme); }, [colorScheme]);
   const [showSE, setShowSE] = useState(true);
 
   // Track viewport width so the fit re-frames when the layout crosses the
@@ -142,14 +144,8 @@ export default function FlowMap({
   // the already-revealed map, exactly like every other map screen. (TRIP-337)
   const [framed, setFramed] = useState(false);
 
-  // Latest interactivity callbacks kept in refs so passing fresh closures doesn't
-  // rebuild the markers (mirrors MapView).
-  const onCityHoverRef = useRef(onCityHover);
-  const onCityClickRef = useRef(onCityClick);
-  const onMapClickRef = useRef(onMapClick);
-  useEffect(() => { onCityHoverRef.current = onCityHover; }, [onCityHover]);
-  useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
-  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
+  // Свежесть колбэков (клик/ховер/клик по пустой карте) держат сами хуки
+  // `useCityMarkers` / `useMapClick` — отдельных рефов здесь больше нет.
 
   // Unified with the trip MapView: home → start flag, finish → finish flag, transit
   // cities numbered 1..N, a 0-night stop → waypoint glyph (NOT a number, same as the
@@ -158,17 +154,19 @@ export default function FlowMap({
   // The finish pin is drawn whenever a finish node exists (кроме «останусь»); a
   // round-trip finish that coincides with the start is deduped by the по-координате
   // pin grouping — no start↔finish name compare. Drawing it requires `drawFinish`.
+  // id === data здесь: колбэк планировщика хочет ровно этот ключ ('home' | id |
+  // 'finish'), а `useCityMarkers` тегает им `data-mids` для тогла выделения.
   const hasFinish = !isStay && finishCity?.latitude != null && showSE;
   const pts = [];
-  if (home?.latitude && showSE) pts.push({ lat: home.latitude, lng: home.longitude, label: null, kind: 'start', data: 'home' });
+  if (home?.latitude && showSE) pts.push({ id: 'home', lat: home.latitude, lng: home.longitude, label: null, kind: 'start', data: 'home' });
   let transitNo = 0;
   cities.forEach((c) => {
     if (c.latitude == null) return;
     const isWaypoint = (+c.nights || 0) === 0 && !!c.city_name;
-    pts.push({ lat: c.latitude, lng: c.longitude, label: isWaypoint ? null : String(++transitNo), kind: isWaypoint ? 'waypoint' : 'transit', data: String(c.id) });
+    pts.push({ id: String(c.id), lat: c.latitude, lng: c.longitude, label: isWaypoint ? null : String(++transitNo), kind: isWaypoint ? 'waypoint' : 'transit', data: String(c.id) });
   });
   if (hasFinish && drawFinish) {
-    pts.push({ lat: finishCity.latitude, lng: finishCity.longitude, label: null, kind: 'end', data: 'finish' });
+    pts.push({ id: 'finish', lat: finishCity.latitude, lng: finishCity.longitude, label: null, kind: 'end', data: 'finish' });
   }
 
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
@@ -235,27 +233,29 @@ export default function FlowMap({
     },
   });
 
-  // Markers + fit.
+  // Пины — общий шов `useCityMarkers` (сборка + тогл выделения). Планировщик
+  // вынимает из группы ПЕРВЫЙ id ('home' | city.id | 'finish'). rebuildKey =
+  // ptsKey (перестройка на смену набора точек, вкл. финиш-пин на шаге 3).
+  useCityMarkers(mapRef, ready, {
+    points: pts,
+    markersRef,
+    rebuildKey: ptsKey,
+    onClick: onCityClick || null,
+    onHover: onCityHover ? (entering, d) => onCityHover(entering ? d : null) : null,
+    selectedId,
+    hoveredId,
+  });
+
+  // City tooltip + клик по пустой карте — те же швы, что у `MapView`.
+  useCityBadge(mapRef, ready, cityBadge);
+  useMapClick(mapRef, ready, onMapClick);
+
+  // Fit (камера) — маркеры теперь строит хук выше, здесь только кадрирование.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind, data: p.data }));
-    groupByLocation(points).forEach((g) => {
-      const el = createMarkerEl(g.labels.filter((l) => l != null), {
-        icon: iconForKinds(g.kinds),
-        onClick: onCityClick ? () => { const cb = onCityClickRef.current; if (cb) cb(g.data[0]); } : undefined,
-        onHover: onCityHover ? (entering) => { const cb = onCityHoverRef.current; if (cb) cb(entering ? g.data[0] : null); } : undefined,
-      });
-      // Tag the element with the ids at this spot so the hover/select effect can
-      // toggle .is-sel / .is-hover without rebuilding the markers.
-      el.dataset.mid = g.data.filter(Boolean).join(',');
-      const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
-      markersRef.current.push(marker);
-    });
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
-    // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
+    // re-runs when canFit flips. Markers draw on `ready` via the hook. (TRIP-202)
     if (canFit) {
       // ВОЗДУХ кадра, и только он: закрытую площадь карта знает сама
       // (`lib/map/insets.js`), поэтому складывать её здесь не нужно и нельзя.
@@ -293,58 +293,11 @@ export default function FlowMap({
       setFramed(true);
     }
     return undefined;
-    // ptsKey → rebuild markers (incl. the step-toggled return pin); fitKey → re-frame
-    // (route geometry + viewport size, so it also covers resize). fitKey can change
-    // without ptsKey (a distinct return set while off the return step), so both are deps.
-    // winW/winH are read directly inside (fitPaddingFor / startGlobeView) — listed so
-    // exhaustive-deps stays honest, though fitKey already carries them.
-  }, [ready, canFit, ptsKey, fitKey, winW, winH]);
-
-  // Selection + hover highlight — toggled on the existing marker elements (no
-  // rebuild, so hovering the city list is cheap). Re-runs after a rebuild too
-  // (ptsKey) so the state survives a redraw. Mirrors MapView.
-  useEffect(() => {
-    if (!ready) return;
-    const sel = selectedId != null ? String(selectedId) : null;
-    const hov = hoveredId != null ? String(hoveredId) : null;
-    markersRef.current.forEach((m) => {
-      const el = m.getElement();
-      const ids = (el.dataset.mid || '').split(',').filter(Boolean);
-      const isSel = sel != null && ids.includes(sel);
-      el.classList.toggle('is-sel', isSel);
-      el.classList.toggle('is-hover', !isSel && hov != null && ids.includes(hov));
-    });
-  }, [ready, selectedId, hoveredId, ptsKey]);
-
-  // City tooltip — one glass label (flag + name + dates) at the active city,
-  // carried by a mapboxgl.Popup so it auto-anchors on-screen. Same primitive +
-  // skin as the Map lens (createCityBadgeEl / .cbadge / .cbadge-popup); the parent
-  // feeds `cityBadge` from the hovered-or-selected city.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; }
-    if (!map || !ready || !cityBadge || cityBadge.lng == null || cityBadge.lat == null) return undefined;
-    const el = createCityBadgeEl({ countryCode: cityBadge.countryCode, name: cityBadge.name, dates: cityBadge.dates });
-    cityBadgePopupRef.current = new mapboxgl.Popup({
-      closeButton: false, closeOnClick: false, focusAfterOpen: false,
-      className: 'cbadge-popup', offset: 16, maxWidth: 'none',
-    })
-      .setLngLat([cityBadge.lng, cityBadge.lat])
-      .setDOMContent(el)
-      .addTo(map);
-    return () => { if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; } };
-  }, [ready, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode]);
-
-  // Click on empty map → let the parent clear the selection. Mapbox fires 'click'
-  // only for a real canvas click (a drag emits move events; HTML markers swallow
-  // their own click in a separate DOM layer), so this never fires for pins or pans.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return undefined;
-    const handler = (e) => { const cb = onMapClickRef.current; if (cb) cb(e); };
-    map.on('click', handler);
-    return () => { try { map.off('click', handler); } catch { /* ignore */ } };
-  }, [ready]);
+    // fitKey → re-frame (route geometry + viewport size, so it also covers resize).
+    // Пересборку пинов делает `useCityMarkers` по ptsKey — здесь его нет.
+    // winW/winH читаются внутри (fitPaddingFor / startGlobeView) — перечислены для
+    // честности exhaustive-deps, хотя fitKey их и так несёт.
+  }, [ready, canFit, fitKey, winW, winH]);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).

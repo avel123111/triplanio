@@ -401,6 +401,10 @@ export default function EditLens({ tripId, shell, content }) {
   const confirm = useConfirm(); // city delete → shared confirm (sheet on mobile)
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
+  // Двухшаговый клик по маркеру (как в планировщике): первый клик ФИКСИРУЕТ город
+  // на карте (бейдж + CTA-шеврон), панель и зум — только по CTA. Отдельный стейт,
+  // а не leftPanel: выбор на карте живёт ДО открытия панели. openCity его гасит.
+  const [mapPickId, setMapPickId] = useState(null);
   // Drag / FLIP / keyboard reorder live in the shared useRouteDnD hook (also used by
   // the trip-creation flow). It's instantiated below — once `ordered`, `isAnchor`
   // and the commit callback are in scope — and its returns are destructured there.
@@ -846,7 +850,9 @@ export default function EditLens({ tripId, shell, content }) {
     ? (toDT(endDate)?.plus({ days: finishSpan })?.toISODate() || endDate)
     : endDate;
   // panel navigation
-  const openCity = (id) => { if (justDraggedRef.current) { justDraggedRef.current = false; return; } setLeftPanel({ type: 'city', id }); };
+  // Открытие города = панель + зум (mapFocus течёт от leftPanel). Гасим выбор на
+  // карте: панель его вытесняет (зовётся и из CTA бейджа, и из списка маршрута).
+  const openCity = (id) => { if (justDraggedRef.current) { justDraggedRef.current = false; return; } setMapPickId(null); setLeftPanel({ type: 'city', id }); };
   const openEvent = (kind, id) => setLeftPanel({ type: 'event', kind, id, warning: (issues.find((i) => i[`${kind}Id`] === id)?.message) || null });
   // hotel/transfer/activity have partner offers → show the PickPanel ("Развилка")
   // first; others go straight to the form.
@@ -1021,13 +1027,26 @@ export default function EditLens({ tripId, shell, content }) {
   // подсвечивает маркер (`hoveredVisitId`), маркер подсвечивает ряд
   // (`onCityHover` → тот же `hoveredNodeId`). Раньше связь была односторонней:
   // с карты в список ничего не приходило.
-  const badgeNode = draft.nodes.find((n) => n.id === (hoveredNodeId || selectedNodeId)) || null;
+  // Приоритет бейджа: наведение → зафиксированный клик по карте → открытая панель.
+  const badgeId = hoveredNodeId || mapPickId || selectedNodeId;
+  const badgeNode = draft.nodes.find((n) => n.id === badgeId) || null;
+  // CTA показываем ТОЛЬКО когда бейдж — это зафиксированный на карте выбор (ещё не
+  // открытый). Наведение на другой город уводит бейдж на него → CTA гаснет; на сам
+  // выбранный — badgeId === mapPickId, CTA держится (без мигания при ховере пина).
+  const showBadgeCta = !!mapPickId && badgeId === mapPickId;
   const cityBadge = badgeNode?.latitude != null ? {
     lng: badgeNode.longitude,
     lat: badgeNode.latitude,
     countryCode: badgeNode.country_code,
     name: badgeNode.city_name,
     dates: formatDateRange(badgeNode.start_date, badgeNode.end_date, (iso) => fmtD(iso, lang)),
+    // Кнопка «открыть» есть у ЛЮБОГО бейджа редактора (по умолчанию свёрнута) —
+    // раскрывает её `ctaOn`. Поэтому фиксация города НЕ пересоздаёт попап (нет
+    // мигания), а меняет только состояние кнопки. `onAction` целится в город
+    // бейджа (при раскрытой кнопке это и есть mapPickId).
+    actionLabel: t('common.open'),
+    onAction: () => openCity(badgeId),
+    ctaOn: showBadgeCta,
   } : null;
 
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
@@ -1200,8 +1219,15 @@ export default function EditLens({ tripId, shell, content }) {
                  «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
               cooperativeGestures={false}
               focus={mapFocus}
-              onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
-              selectedVisitId={selectedNodeId}
+              /* Двухшаговый клик (как в планировщике): маркер ФИКСИРУЕТ город
+                 (бейдж + CTA), а зум/панель — уже по CTA (см. cityBadge.onAction).
+                 Повторный клик по тому же снимает выбор. */
+              onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) setMapPickId((cur) => (cur === v.id ? null : v.id)); }}
+              /* Клик по ПУСТОЙ карте снимает выбор на карте и открытую панель — как
+                 в планировщике. Пины гасят свой клик сами. В hotel-pick не трогаем:
+                 там картой владеет оверлей отелей (его бейджи всплывают до 'click'). */
+              onMapClick={() => { if (isHotelPick) return; setMapPickId(null); if (leftPanel) closePanelAndSync(); }}
+              selectedVisitId={mapPickId || selectedNodeId}
               hoveredVisitId={hoveredNodeId}
               cityBadge={cityBadge}
               onCityHover={(pts) => setHoveredNodeId(pts ? ((pts || []).find((x) => !isAnchor(x)) || pts[0])?.id ?? null : null)}

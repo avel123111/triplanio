@@ -2,10 +2,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { mapboxgl, fitToPoints, fitPadding } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
+import { createHotelBadgeEl, createClusterBubbleEl } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import { useMapInsets } from '@/lib/map/useMapInsets';
+import { useCityMarkers } from '@/lib/map/useCityMarkers';
+import { useCityBadge } from '@/lib/map/useCityBadge';
+import { useMapClick } from '@/lib/map/useMapClick';
 import { hasFramed, markFramed } from '@/lib/map/framed';
 import MapControls from '@/lib/map/MapControls';
 import { sortVisits } from '@/lib/validation';
@@ -51,7 +54,9 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
     const el = m.getElement();
     let hide = false;
     if (revealing) {
-      const ids = (el.dataset.vids || '').split(',').filter(Boolean);
+      // `data-mids` — то же имя, которым `useCityMarkers` тегает пины (раньше был
+      // `data-vids`); читатели id-атрибута теперь одни на обе карты.
+      const ids = (el.dataset.mids || '').split(',').filter(Boolean);
       const minIdx = ids.reduce((acc, id) => {
         const i = orderIndexById.get(id);
         return i == null ? acc : Math.min(acc, i);
@@ -111,7 +116,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
  *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
  *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
- *           cooperativeGestures?: boolean,
+ *           onMapClick?: any, cooperativeGestures?: boolean,
  *           children?: any }} p
  */
 export default function MapView({
@@ -194,6 +199,10 @@ export default function MapView({
   // Optional: notified when a city pin is hovered (badge tooltip on «Маршрут»).
   // Gets the visits at that pin on enter, null on leave. Off elsewhere.
   onCityHover,
+  // Optional: клик по ПУСТОЙ карте (не по пину). Родитель снимает выделение —
+  // единое поведение с планировщиком (решение по унификации карт). Пины гасят
+  // свой клик сами, так что сюда долетает только чистый клик по канвасу.
+  onMapClick,
   // When false, lift the map's cooperative-gestures guard ("use two fingers /
   // ctrl+scroll") for as long as this surface owns the singleton; restored on
   // unmount so other screens keep it. Defaults to the singleton's setting (on).
@@ -203,7 +212,6 @@ export default function MapView({
   const containerRef = useRef(null);
   const markersRef = useRef([]);
   const hotelMarkersRef = useRef([]);
-  const cityBadgePopupRef = useRef(null);
   const prevHideRouteRef = useRef(false);
   const fittedSigRef = useRef('');
   // Clustering state (TRIP-141), all imperative so move/zoom never re-renders:
@@ -257,11 +265,8 @@ export default function MapView({
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);
 
-  // Keep the latest onCityClick without forcing the draw effect to re-run.
-  const onCityClickRef = useRef(onCityClick);
-  useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
-  const onCityHoverRef = useRef(onCityHover);
-  useEffect(() => { onCityHoverRef.current = onCityHover; }, [onCityHover]);
+  // Свежесть городских колбэков (клик/ховер по пину, клик по пустой карте) держат
+  // сами швы `useCityMarkers` / `useMapClick` — отдельных рефов здесь нет.
 
   // Same for the hotel-badge callbacks (stable across renders → badges aren't
   // rebuilt just because the parent passes a fresh closure).
@@ -336,6 +341,18 @@ export default function MapView({
     () => ordered.map((v) => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|'),
     [ordered],
   );
+
+  // Точки для общего шва `useCityMarkers` (сборка пинов). Нумеруем ТОЛЬКО транзит-
+  // города (1,2,3…); start/end/waypoint номера не несут — рисуются флагами / глифом
+  // пересадки (глиф выбирает `markers.js` по `ICON_PATHS[kind]`). Неизвестный kind
+  // считаем транзитом (легаси-строки всё равно получают номер). `data` = сам визит.
+  const points = useMemo(() => {
+    let transitNo = 0;
+    return ordered.map((v) => {
+      const isTransit = v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint';
+      return { id: v.id, lng: v.longitude, lat: v.latitude, label: isTransit ? String(++transitNo) : null, kind: v.kind, data: v };
+    });
+  }, [ordered]);
 
   const focusSig = useMemo(
     () => (Array.isArray(focus) && focus.length ? focus.map((p) => p.join(',')).join('|') : ''),
@@ -528,25 +545,34 @@ export default function MapView({
   // Remove any hotel badges on unmount (useMapSurface only owns markersRef).
   useEffect(() => () => { hotelMarkersRef.current.forEach((m) => m.remove()); hotelMarkersRef.current = []; }, []);
 
-  // --- City badge (Map lens only) — one glass label at the active city, carried
-  // by a mapboxgl.Popup so it AUTO-ANCHORS: with no fixed `anchor`, Mapbox flips
-  // it to whichever side keeps it on-screen (a city near the edge opens inward),
-  // solving off-screen badges. Re-runs only when the active city (or its label)
-  // changes; suppressed while the hotel-pick overlay owns the map. ---
-  useEffect(() => {
-    const map = mapRef.current;
-    if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; }
-    if (!map || !ready || hideRoute || !cityBadge || cityBadge.lng == null || cityBadge.lat == null) return undefined;
-    const el = createCityBadgeEl({ countryCode: cityBadge.countryCode, name: cityBadge.name, dates: cityBadge.dates });
-    cityBadgePopupRef.current = new mapboxgl.Popup({
-      closeButton: false, closeOnClick: false, focusAfterOpen: false,
-      className: 'cbadge-popup', offset: 16, maxWidth: 'none',
-    })
-      .setLngLat([cityBadge.lng, cityBadge.lat])
-      .setDOMContent(el)
-      .addTo(map);
-    return () => { if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; } };
-  }, [ready, hideRoute, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode]);
+  // Пины трипа — общий шов `useCityMarkers` (сборка + тогл .is-sel/.is-hover). В
+  // режиме hotel-pick (`hideRoute`) городских пинов нет — их место занимает
+  // оверлей отелей ниже. `onAfterBuild`: пока идёт reveal (public reader), пины
+  // за активным городом стартуют скрытыми, чтобы всплывать по мере прихода линии
+  // (reveal-контроллер держит это в синхроне на скролле; тут — чтобы не мигнули
+  // все сразу после пересборки).
+  useCityMarkers(mapRef, ready, {
+    points,
+    markersRef,
+    rebuildKey: visitsSignature,
+    enabled: !hideRoute,
+    selectedId: selectedVisitId,
+    hoveredId: hoveredVisitId,
+    // `d` — data КОНКРЕТНОГО визита (сегмента), не всей группы. Заворачиваем в
+    // 1-элементный массив: родитель (EditLens/RouteMapCard) ждёт `pts` и берёт
+    // `pts.find(!anchor)||pts[0]` — на [d] это и есть выбранный сегмент.
+    onClick: (d) => onCityClick?.([d]),
+    onHover: (entering, d) => onCityHover?.(entering ? [d] : null),
+    onAfterBuild: (markers) => {
+      const rs = revealStateRef.current;
+      if (rs.revealing) applyMarkerVisibility(markers, orderIndexById, rs.markerMax, true);
+    },
+  });
+
+  // City badge (glass label у активного города) + клик по пустой карте — общие
+  // швы с планировщиком. Бейдж погашен, пока картой владеет оверлей отелей.
+  useCityBadge(mapRef, ready, cityBadge, { enabled: !hideRoute });
+  useMapClick(mapRef, ready, onMapClick);
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
@@ -573,65 +599,16 @@ export default function MapView({
     }
   }, [ready, canFit, focusSig, revealActiveId]);
 
-  // --- Draw markers + route lines whenever the data changes ---
+  // --- Кадрирование маршрута под изменившиеся данные. Маркеры строит
+  // `useCityMarkers` выше; здесь только камера. Reveal (public) и hotel-pick
+  // держат камеру сами. ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-
-    // Hotel-pick overlay: the trip route is suppressed entirely — drop every city
-    // marker + route line (the hotel badges + their own camera fit take over in the
-    // effect below). Leaving the route up would clutter the badge overlay.
-    // NB: fittedSigRef is left untouched so that, on the way BACK, the rebuilt route
-    // is NOT instant-fitted here — the focus effect's eased fit owns the camera and
-    // the return animates like every other panel close.
-    if (hideRoute) {
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      clearRouteLines(map);
-      return undefined;
-    }
-
-    // Markers - clear previous, then group visits that share a location.
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-    // Number ONLY transit cities (1,2,3…). start / end / waypoint carry no
-    // number; they render as flags / a transit glyph (see iconForKinds). Unknown
-    // kinds default to transit so legacy rows still get a number.
-    let transitNo = 0;
-    const points = ordered.map((v) => {
-      const isTransit = v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint';
-      return {
-        lng: v.longitude,
-        lat: v.latitude,
-        label: isTransit ? String(++transitNo) : null,
-        kind: v.kind,
-        data: v,
-      };
-    });
-    groupByLocation(points).forEach((g) => {
-      const el = createMarkerEl(g.labels.filter((l) => l != null), {
-        icon: iconForKinds(g.kinds),
-        onClick: () => { const cb = onCityClickRef.current; if (cb) cb(g.data); },
-        onHover: (entering) => { const cb = onCityHoverRef.current; if (cb) cb(entering ? g.data : null); },
-      });
-      // Tag the element with the visit ids at this spot so the selection/hover
-      // effect can toggle .is-sel / .is-hover without rebuilding the markers.
-      el.dataset.vids = g.data.map((v) => v && v.id).filter(Boolean).join(',');
-      // While revealing, markers past the active city must start hidden so they
-      // appear only as the line reaches them (the reveal controller keeps this in
-      // sync on scroll; this just avoids a flash of all pins right after a rebuild).
-      const rs = revealStateRef.current;
-      if (rs.revealing) {
-        const ids = (el.dataset.vids || '').split(',').filter(Boolean);
-        const minIdx = ids.reduce((acc, id) => {
-          const i = orderIndexById.get(id);
-          return i == null ? acc : Math.min(acc, i);
-        }, Infinity);
-        if (minIdx > rs.markerMax) el.style.display = 'none';
-      }
-      const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
-      markersRef.current.push(marker);
-    });
+    // Hotel-pick оверлей владеет камерой — маршрут не фитим (городские пины уже
+    // сняты хуком, линии чистит reveal/line-эффект). fittedSigRef НЕ трогаем: на
+    // обратном ходе фокус-эффект доводит камеру плавно, без встык-фита здесь.
+    if (hideRoute) return undefined;
 
     // Fit once per distinct set of visits - animate the camera so the map
     // glides out/in to the route as it changes (e.g. while editing structure).
@@ -662,7 +639,10 @@ export default function MapView({
     }
 
     return undefined;
-  }, [ready, canFit, ordered, transfers, visitsSignature, hideRoute]);
+    // `transfers` больше не в deps: фит зависит от набора визитов, не переездов
+    // (линии рисует отдельный эффект). focusSig/revealActiveId читаются внутри как
+    // и раньше — их смена приходит вместе с ре-рендером visitsSignature/фокуса.
+  }, [ready, canFit, ordered, visitsSignature, hideRoute]);
 
   // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
   // Owns the hotel markers while the overlay is open: builds a moveend listener
@@ -820,21 +800,8 @@ export default function MapView({
     }
   }, [ready, hideRoute, selectedHotelId, hoveredHotelId, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
 
-  // Selection + hover highlight — toggled on the existing marker elements (no
-  // rebuild, so hovering a list is cheap). Re-runs after a marker rebuild too
-  // (visitsSignature) so the state survives a redraw.
-  useEffect(() => {
-    if (!ready) return;
-    const sel = selectedVisitId != null ? String(selectedVisitId) : null;
-    const hov = hoveredVisitId != null ? String(hoveredVisitId) : null;
-    markersRef.current.forEach((m) => {
-      const el = m.getElement();
-      const ids = (el.dataset.vids || '').split(',').filter(Boolean);
-      const isSel = sel != null && ids.includes(sel);
-      el.classList.toggle('is-sel', isSel);
-      el.classList.toggle('is-hover', !isSel && hov != null && ids.includes(hov));
-    });
-  }, [ready, selectedVisitId, hoveredVisitId, visitsSignature]);
+  // Выделение + ховер городских пинов держит `useCityMarkers` (см. вызов выше):
+  // тогл .is-sel/.is-hover на готовых элементах, без пересборки.
 
   // Selected route segment (a transfer open in the editor) drawn over the base
   // route. The leg's geometry + transport kind are resolved HERE from the live
