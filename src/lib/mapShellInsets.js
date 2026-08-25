@@ -11,17 +11,17 @@
  * ⚠️ Развязывать холст и свободное окно нельзя — так ломали глобус дважды:
  * высоты расходятся втрое, шар считается от одной и показывается в другой.
  *
- * @param {{ phone?: boolean, sheetPx?: number, panelPx?: number, overlayPx?: number, collapsed?: boolean, cornerPx?: number }} [p]
+ * @param {{ phone?: boolean, sheetPx?: number, panelPx?: number, overlayOpen?: boolean, collapsed?: boolean, cornerPx?: number }} [p]
  *   `cornerPx` — радиус скруглений шита (`--r-xl`): на столько слот заходит под
  *   него, иначе в вырезах углов виден фон страницы. Значение ЧИТАЕТСЯ ИЗ CSS
  *   вызывателем — второй записи этого числа в JS быть не должно.
  *
- *   `overlayPx` — правый край ОТКРЫТОГО слоя города/события (`.mapshell__overlay`),
- *   когда он есть. Слой — независимый виджет: он закрывает ту же левую колонку,
- *   что и панель маршрута, НО его наличие не зависит от свёрнутости маршрута.
- *   Поэтому закрытая ширина слева = МАКСИМУМ из панели (обнуляется свёрткой) и
- *   слоя (не обнуляется): свёрнутый маршрут + открытый город всё равно уводят
- *   кадр карты из-под слоя. Одна и та же ось (ширина) — один и тот же сдвиг.
+ *   `overlayOpen` — открыт ли слой города/события (`.mapshell__overlay`). Слой
+ *   занимает ТУ ЖЕ левую колонку той же ширины (`panelPx`), что и панель, но его
+ *   наличие НЕ зависит от свёрнутости маршрута. Это ФЛАГ, а не замер: свёртка
+ *   двигает карту мгновенно булевым `collapsed`, и слой обязан так же — иначе
+ *   между ними появляется задержка (замер асинхронен). Итог: колонка закрыта,
+ *   если панель раскрыта ИЛИ слой открыт; ширина у обоих одна — `panelPx`.
  *
  * `slotUnder` — НА СКОЛЬКО НИЗ СЛОТА ЗАШЁЛ ПОД ШИТ (тот самый радиус). Это не
  * дубль `slotBottom`, а его вторая половина, и без неё всё, что экран кладёт
@@ -31,7 +31,7 @@
  *
  * @returns {{ slotBottom: number, slotUnder: number, camera: { top: number, right: number, bottom: number, left: number } }}
  */
-export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, overlayPx = 0, collapsed = false, cornerPx = 0 } = {}) {
+export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, overlayOpen = false, collapsed = false, cornerPx = 0 } = {}) {
   // Из DOM приходят 0, NaN и отрицательные (первый кадр, размонтирование) —
   // такое обязано выродиться в «карта во всю площадь», а не в отрицательный слот.
   const px = (v) => (Number.isFinite(v) && v > 0 ? Math.round(/** @type {number} */ (v)) : 0);
@@ -46,10 +46,12 @@ export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, overla
     // повтор объявил бы заход больше самого шита.
     return { slotBottom, slotUnder: px(sheetPx) - slotBottom, camera: none };
   }
-  // Закрытая ширина слева = бо́льший из двух виджетов той же колонки: панель
-  // маршрута (её вклад обнуляет свёртка) и открытый слой города/события (его —
-  // нет). Так карта уводит кадр из-под слоя и при свёрнутом маршруте.
-  return { slotBottom: 0, slotUnder: 0, camera: { ...none, left: Math.max(collapsed ? 0 : px(panelPx), px(overlayPx)) } };
+  // Колонка слева ЗАКРЫТА, если раскрыта панель ИЛИ открыт слой — у обоих одна
+  // ширина (`panelPx`). Оба сигнала БУЛЕВЫ (свёрнутость · наличие слоя), поэтому
+  // сдвиг карты мгновенный, без асинхронного замера: слой двигает её ровно так
+  // же и так же быстро, как панель.
+  const leftClosed = overlayOpen || !collapsed;
+  return { slotBottom: 0, slotUnder: 0, camera: { ...none, left: leftClosed ? px(panelPx) : 0 } };
 }
 
 /**

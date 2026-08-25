@@ -104,10 +104,8 @@ export function MapShell({
   const isPhone = useIsPhone();
   const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
-  const overlayRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
   const [panelPx, setPanelPx] = useState(0);
-  const [overlayPx, setOverlayPx] = useState(0);
 
   // ★ ПРИМЕНЕНИЕ ВЫСОТЫ ШИТА ОТЛОЖЕНО ПО ПРАВИЛУ (`slotChangeDelay`): карта
   // растёт сразу, сжимается после приезда шита. Правило чистое и закрыто
@@ -130,30 +128,24 @@ export function MapShell({
 
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
-  // число разъехалось бы с ней на первой же правке раскладки.
-  // Меряем ПРАВЫЙ КРАЙ обоих виджетов левой колонки — панели маршрута и (если
-  // открыт) слоя города/события. Оба задают ширину в CSS (`--mapshell-panel-w`),
-  // и продублированное в JS число разъехалось бы с ней на первой же правке.
-  const measure = useCallback(() => {
-    const root = rootRef.current;
-    if (!root) { setPanelPx(0); setOverlayPx(0); return; }
-    const b = root.getBoundingClientRect();
-    const rightOf = (el) => (el ? Math.max(0, Math.round(el.getBoundingClientRect().right - b.left)) : 0);
-    setPanelPx(rightOf(panelRef.current));
-    setOverlayPx(rightOf(overlayRef.current));
+  // число разъехалось бы с ней на первой же правке раскладки. Слой города/события
+  // занимает ТУ ЖЕ колонку той же ширины, поэтому отдельно его НЕ меряем — сдвиг
+  // карты под ним включается булевым `panelOverlay` (мгновенно, как у свёртки).
+  const measurePanel = useCallback(() => {
+    const root = rootRef.current, el = panelRef.current;
+    if (!root || !el) { setPanelPx(0); return; }
+    const r = el.getBoundingClientRect(), b = root.getBoundingClientRect();
+    setPanelPx(Math.max(0, Math.round(r.right - b.left)));
   }, []);
 
   useLayoutEffect(() => {
-    if (isPhone) { setPanelPx(0); setOverlayPx(0); return undefined; }
-    measure();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (isPhone) { setPanelPx(0); return undefined; }
+    measurePanel();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measurePanel) : null;
     if (ro && panelRef.current) ro.observe(panelRef.current);
-    if (ro && overlayRef.current) ro.observe(overlayRef.current);
-    window.addEventListener('resize', measure);
-    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measure); };
-    // `!!panelOverlay` в зависимостях: слой монтируется/снимается вместе с ним,
-    // и наблюдатель обязан пере-подписаться на появившийся/исчезнувший узел.
-  }, [isPhone, measure, !!panelOverlay]);
+    window.addEventListener('resize', measurePanel);
+    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measurePanel); };
+  }, [isPhone, measurePanel]);
 
   // Закрытая площадь — чистая функция (закрыта тестами): у правила «карта
   // кадрируется по свободному окну» нет скриншота, а его поломка не роняет ни
@@ -168,8 +160,8 @@ export function MapShell({
   useLayoutEffect(() => { setCornerPx(Math.round(cssPx('var(--r-xl, 0px)'))); }, []);
 
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayPx, collapsed, cornerPx }),
-    [isPhone, sheetPx, panelPx, overlayPx, collapsed, cornerPx],
+    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayOpen: !!panelOverlay, collapsed, cornerPx }),
+    [isPhone, sheetPx, panelPx, panelOverlay, collapsed, cornerPx],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
@@ -272,7 +264,7 @@ export function MapShell({
               маршрута (`transform`/`inert` на колонке) его НЕ прячет и НЕ выносит
               из таба. Открыт маршрут — слой ложится поверх него; свёрнут — тот же
               слой открывается сам по себе. Коробка та же (левый столбец шелла). */}
-          {panelOverlay ? <div className="mapshell__overlay" ref={overlayRef}>{panelOverlay}</div> : null}
+          {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
         </>
       ))}
 

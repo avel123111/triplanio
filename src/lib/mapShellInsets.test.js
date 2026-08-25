@@ -23,17 +23,18 @@ test('свёрнутая панель не закрывает ничего', () 
 });
 
 test('★ ОТКРЫТЫЙ СЛОЙ уводит кадр карты — и при свёрнутом маршруте тоже', () => {
-  // Слой города/события — независимый виджет той же колонки: его наличие не
-  // зависит от свёрнутости маршрута, поэтому свёрнутый маршрут + открытый слой
-  // всё равно закрывают левую ширину (иначе фокус карты оказывался под слоем).
-  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true, overlayPx: 604 }),
-    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 604 } });
-  // Максимум из двух: панель открыта (550) и слой (604) — берём бо́льший край.
-  assert.deepEqual(mapShellInsets({ panelPx: 550, overlayPx: 604 }),
-    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 604 } });
-  // Только слой (маршрут не мерян) — кадр всё равно уводится.
-  assert.deepEqual(mapShellInsets({ overlayPx: 604 }),
-    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 604 } });
+  // Слой города/события занимает ту же колонку той же ширины (panelPx). Его
+  // наличие — БУЛЕВ флаг (мгновенно, как свёртка), не отдельный замер. Свёрнутый
+  // маршрут + открытый слой всё равно закрывают левую ширину panelPx (иначе фокус
+  // карты оказывался под слоем).
+  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true, overlayOpen: true }),
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 } });
+  // Панель раскрыта — ширина закрыта независимо от слоя.
+  assert.deepEqual(mapShellInsets({ panelPx: 550, overlayOpen: true }),
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 } });
+  // Слой закрыт и маршрут свёрнут — колонка открыта, карта во всю ширину.
+  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true, overlayOpen: false }),
+    { slotBottom: 0, slotUnder: 0, camera: NONE });
 });
 
 test('★ режимы не смешиваются: чужая величина не читается', () => {
