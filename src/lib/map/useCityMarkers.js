@@ -14,7 +14,7 @@ import { groupByLocation, createMarkerEl } from './markers';
 const MK_MIN = 0.6;
 const MK_MAX = 1;
 const MK_Z_LO = 4;
-const MK_Z_HI = 11;
+const MK_Z_HI = 8;
 const zoomScale = (z) => {
   const t = Math.max(0, Math.min(1, (z - MK_Z_LO) / (MK_Z_HI - MK_Z_LO)));
   return (MK_MIN + t * (MK_MAX - MK_MIN)).toFixed(3);
