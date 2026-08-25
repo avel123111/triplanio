@@ -128,9 +128,7 @@ export function MapShell({
 
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
-  // число разъехалось бы с ней на первой же правке раскладки. Слой города/события
-  // занимает ТУ ЖЕ колонку той же ширины, поэтому отдельно его НЕ меряем — сдвиг
-  // карты под ним включается булевым `panelOverlay` (мгновенно, как у свёртки).
+  // число разъехалось бы с ней на первой же правке раскладки.
   const measurePanel = useCallback(() => {
     const root = rootRef.current, el = panelRef.current;
     if (!root || !el) { setPanelPx(0); return; }
@@ -160,8 +158,8 @@ export function MapShell({
   useLayoutEffect(() => { setCornerPx(Math.round(cssPx('var(--r-xl, 0px)'))); }, []);
 
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayOpen: !!panelOverlay, collapsed, cornerPx }),
-    [isPhone, sheetPx, panelPx, panelOverlay, collapsed, cornerPx],
+    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, collapsed, cornerPx }),
+    [isPhone, sheetPx, panelPx, collapsed, cornerPx],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
