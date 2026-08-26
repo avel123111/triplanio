@@ -4,5 +4,9 @@
   "delete_pro_trip.title": "You are deleting a Pro trip",
   "delete_trip.body": "Are you sure you want to delete this trip? All trip data will be deleted. This cannot be undone.",
   "delete_trip.title": "Delete the trip",
+  "hide_warning.action": "Hide",
+  "hide_warning.hotel_body": "Are you sure you want to hide the missing-hotel warning for {city}?",
+  "hide_warning.title": "Hide warning",
+  "hide_warning.transfer_body": "Are you sure you want to hide the missing-transfer warning for {from} → {to}?",
   "leave_trip.body": "You will lose access, and your personal documents in this trip will be permanently deleted. You can return only with a new invite."
 }

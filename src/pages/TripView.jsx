@@ -25,6 +25,7 @@ import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { loadDismissed, serializeDismissed, storageKey as dismissedStorageKey, transferWarnKey, hotelWarnKey } from '@/lib/warningDismissals';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
@@ -496,6 +497,17 @@ function useDismissedWarnings(tripId, visits) {
 function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   const { t, lang } = useI18n();
   const { dismissed, dismiss } = useDismissedWarnings(trip?.id, visits);
+  const confirm = useConfirm();
+  // Крестик варнинга — через канон-confirm (просьба Pavel 2026-08-26): скрытие
+  // персистентно для устройства, поэтому случайный тап дороже одного лишнего
+  // вопроса. Копия — в стиле confirm.* («Вы уверены, что хотите…»).
+  const confirmDismiss = async (key, body) => {
+    if (await confirm({
+      title: t('confirm.hide_warning.title'),
+      description: body,
+      confirmLabel: t('confirm.hide_warning.action'),
+    })) dismiss(key);
+  };
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
   // inside the rendered range (otherwise the #tlday element doesn't exist and
@@ -620,7 +632,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
           key={`mt-${city.id}`} kind="transfer"
           title={t('trip.no_transfer')} sub={`${prev.city_name} → ${city.city_name}`}
           onAdd={() => onAddTransfer?.(prev, city)}
-          onDismiss={() => dismiss(tKey)}
+          onDismiss={() => confirmDismiss(tKey, t('confirm.hide_warning.transfer_body', { from: prev.city_name, to: city.city_name }))}
         />
       );
     }
@@ -635,7 +647,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
           title={t('trip.no_hotel')}
           sub={`${city.city_name} · ${formatTripRange([city], '–')} · ${nights} ${nightsWord(nights)}`}
           onAdd={() => onAddHotel?.(city)}
-          onDismiss={() => dismiss(hKey)}
+          onDismiss={() => confirmDismiss(hKey, t('confirm.hide_warning.hotel_body', { city: city.city_name }))}
         />
       );
     }
@@ -814,7 +826,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
           key="mt-end" kind="transfer"
           title={t('trip.no_transfer')} sub={`${prevCity.city_name} → ${endVisit.city_name}`}
           onAdd={() => onAddTransfer?.(prevCity, endVisit)}
-          onDismiss={() => dismiss(endKey)}
+          onDismiss={() => confirmDismiss(endKey, t('confirm.hide_warning.transfer_body', { from: prevCity.city_name, to: endVisit.city_name }))}
         />
       );
     }
