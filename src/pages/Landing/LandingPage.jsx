@@ -567,6 +567,9 @@ function FinalCta() {
   const nav = useNavigate();
   const { isAuthenticated } = useAuth();
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  // Internal demo link carries the visit campaign mark (like ctaTarget) so it
+  // goes through the router, not a raw <a href> that drops the mark (check-site-nav).
+  const demoTarget = withVisitCampaign('/d/spain-may-27');
   return (
     <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
       <span className="horizon" aria-hidden="true" />
@@ -581,7 +584,7 @@ function FinalCta() {
               <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
             </a>
             {/* Второй CTA — «Посмотреть демо» → страница демо-трипа (TRIP-462). */}
-            <a className="btn btn-glass" href="/d/spain-may-27" onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final_demo' }); nav('/d/spain-may-27'); }}>
+            <a className="btn btn-glass" href={demoTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final_demo' }); nav(demoTarget); }}>
               {t('landing.fin.cta2')}
             </a>
           </div>

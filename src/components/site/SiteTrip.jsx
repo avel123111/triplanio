@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { hashStr } from '@/lib/hash';
+import { Icon } from '@/design/icons';
 
 /* =========================================================================
    SiteTrip — three prototype sections of the public shared-trip page, born
@@ -18,9 +19,10 @@ import { hashStr } from '@/lib/hash';
    ========================================================================= */
 
 const APP_URL = '/login';
-const Ic = ({ id }) => (
-  <svg aria-hidden="true"><use href={`#${id}`} /></svg>
-);
+// Stat-strip icons from the app design system (@/design/icons — allowed off
+// check-ds-boundary), so the shared summary matches the product, not a sprite.
+const STAT_ICON = { 'i-globe2': 'globe', 'i-pin2': 'pin', 'i-swap': 'arrowSwap', 'i-cal2': 'calendar', 'i-route': 'route' };
+const Ic = ({ id }) => <Icon name={STAT_ICON[id] || 'info'} size={20} />;
 
 // Avatar fallback (no photo): initials + a deterministic colour by name.
 // Colour uses the SAME hash primitive as the app's <Avatar> (src/lib/hash), so

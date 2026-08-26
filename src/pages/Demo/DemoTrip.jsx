@@ -9,6 +9,7 @@ import {
 import { SiteSummary } from '@/components/site/SiteTrip';
 import { useReveal } from '@/components/site/useReveal';
 import MapView from '@/components/views/MapView';
+import { Icon } from '@/design/icons';
 import {
   DEMO_VISITS, DEMO_TRANSFERS, DEMO_PEOPLE, DEMO_STATS, DEMO_TIMELINE, DEMO_BUDGET,
   DEMO_CAL, DEMO_CAL_LEGEND, DEMO_DOCS, DEMO_SVC, DEMO_STAT_TILES, DEMO_STAT_LINES,
@@ -29,11 +30,19 @@ const APP_URL = '/login';
 // оставшиеся инлайны — ТОЛЬКО динамические цвета/CSS-вары фиктивного трипа из данных
 // (аватары, тинты событий, донат-градиент, цвета календаря/легенды/категорий), которые
 // классами не выразить; статические инлайны сведены в site.css. Апрув Pavel 26.08.2026.
-// Default size 18 so a sizeless icon can never balloon to the SVG default (300px);
-// precise per-container sizes in site.css override this attribute via CSS.
-const Ic = ({ id, size = 18 }) => (
-  <svg width={size} height={size} aria-hidden="true"><use href={`#${id}`} /></svg>
-);
+// Icons come from the app design system (@/design/icons — the ONE allowed off
+// check-ds-boundary), NOT the prototype sprite, so the demo matches the product.
+// This maps the prototype's sprite ids (kept in the data) to app icon names.
+const APP_ICON = {
+  'i-globe2': 'globe', 'i-pin2': 'pin', 'i-swap': 'arrowSwap', 'i-cal2': 'calendar', 'i-route': 'route',
+  'i-clock': 'clock', 'i-ticket': 'ticket', 'i-food': 'food', 'i-bed': 'bed', 'i-train': 'train',
+  'i-pin': 'pin', 'i-plane': 'plane', 'i-car': 'car', 'i-warning': 'warning', 'i-flag': 'flag',
+  'i-wallet': 'wallet', 'i-crown': 'crown', 'i-ticks': 'checkcheck', 'i-info': 'info', 'i-doc': 'file',
+  'i-spark': 'spark', 'i-plus': 'plus', 'i-users': 'users', 'i-card-sim': 'card-sim', 'i-shield': 'shield',
+  'i-mail': 'mail', 'i-chat': 'chat', 'i-send': 'send', 'i-lock': 'lock', 'i-tg': 'telegram', 'i-bell': 'bell',
+};
+// size prop honoured; per-container CSS in site.css still overrides via `svg{width}`.
+const Ic = ({ id, size = 18 }) => <Icon name={APP_ICON[id] || 'info'} size={size} />;
 
 // Tinted event icon — the {soft-bg, ink} pair comes from data, so the CSS vars
 // are inline (one place, marked) instead of repeated at every call site.
@@ -80,7 +89,7 @@ export default function DemoTrip() {
 
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref="#top" navItems={DEMO_NAV} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref={SITE} navItems={DEMO_NAV} />
 
       <main className="demo">
         {/* ── Hero ─────────────────────────────────────────────── */}
@@ -391,7 +400,7 @@ export default function DemoTrip() {
                         {m.doc && (
                           <span className="dm-tg-doc"><span className="dm-dic"><Ic id="i-doc" /></span><span><b>{m.doc.name}</b><span>{t(m.doc.metaKey)}</span></span></span>
                         )}
-                        <small>{m.time}{m.ticks && <Ic id="i-ticks" />}</small>
+                        <small>{m.time} {m.ticks && <svg className="ticks" aria-hidden="true"><use href="#i-ticks" /></svg>}</small>
                       </div>
                     )))}
                   </div>
