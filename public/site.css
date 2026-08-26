@@ -889,11 +889,6 @@ section{position:relative}
 
 .aw-map,.bb-map{background:#CFE4F7}
 
-/* .aw-coast — NOT prototype CSS (TRIP-460 §5): the prototype used a Mapbox
-   Static Images API raster with an embedded token; replaced with a decorative
-   hand-drawn coastline under the kept route/pin SVG. Own class, own rule. */
-.aw-coast{fill:#DFF0FD}
-
 .aw-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:auto;padding-top:12px}
 
 .aw-stat{background:var(--mist);border-radius: var(--r-sm);padding:10px 6px;text-align:center}
