@@ -1,12 +1,10 @@
 import React, { useEffect } from 'react';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
 import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
 } from '@/components/site/SiteChrome';
-import { SiteSummary } from '@/components/site/SiteTrip';
+import { SiteSummary, SiteCta } from '@/components/site/SiteTrip';
 import { useReveal } from '@/components/site/useReveal';
 import MapView from '@/components/views/MapView';
 import { Icon } from '@/design/icons';
@@ -152,7 +150,7 @@ export default function DemoTrip() {
         </section>
 
         {/* ── Timeline ─────────────────────────────────────────── */}
-        <section className="tl-sec dm-sheet section-pad" id="timeline">
+        <section className="tl-sec sheet-pane section-pad" id="timeline">
           <div className="wrap">
             <div className="section-head centered rv">
               <span className="eyebrow">{t('landing.demo.tl.eyebrow')}</span>
@@ -245,7 +243,7 @@ export default function DemoTrip() {
         </section>
 
         {/* ── Bento: calendar / docs / services / stats ────────── */}
-        <section className="more-sec dm-sheet section-pad" id="more">
+        <section className="more-sec sheet-pane section-pad" id="more">
           <div className="wrap">
             <div className="section-head centered rv">
               <span className="eyebrow">{t('landing.demo.more.eyebrow')}</span>
@@ -389,12 +387,12 @@ export default function DemoTrip() {
             Phone + chat REUSE the landing's exact global classes (.tg-grid /
             .phone.device / .tg-status / .tg-head / .tg-chat / .tg-msg / .tg-doc
             / .tg-points / .cic) — same chrome, not a hand-tuned copy. Only the
-            message data differs. The demo palette band stays via `dm-sheet`.
+            message data differs. The demo palette band stays via the shared `sheet-pane`.
             floor-exempt: dsshare +2 — реюз шапки телефона лендинга (статус-бар
             сигнал/wifi/батарея + иконки шапки) добавляет сырую разметку в
             витрину демо (out-of-scope, как LandingPage/PublicTrip), доля из ДС
             падает на 0.02%. Апрув Pavel: «взять телеграм как на лендинге». */}
-        <section className="tg-sec dm-sheet section-pad" id="assistant">
+        <section className="tg-sec sheet-pane section-pad" id="assistant">
           <div className="wrap tg-grid">
             <div className="tg-demo rv-l">
               <div className="phone device">
@@ -454,31 +452,11 @@ export default function DemoTrip() {
 }
 
 /**
- * Demo final CTA — the accent sheet, ONE button (variant of the landing CTA,
- * which carries two). `data-hdr="accent"` is the producer of the header's
- * on-accent rules.
+ * Финальный CTA демо — ТА ЖЕ секция, что на лендинге и публичке: `<SiteCta>`.
+ * Здесь был форк со своими классами `.dm-final` / `.sheet-pane` (побайтовые копии
+ * `.final` / `.sheet-pane`), из-за которого правка CTA обходила демо стороной.
+ * Уникален только текст — он и передаётся префиксом ключей.
  */
 function DemoCta() {
-  const t = useT();
-  const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
-  return (
-    <section className="dm-final dm-sheet section-pad" data-hdr="accent" id="cta">
-      <span className="horizon" aria-hidden="true" />
-      <div className="wrap inner">
-        <div className="rv">
-          <span className="eyebrow eyebrow--acc">{t('landing.demo.fin.eyebrow')}</span>
-          <h2 dangerouslySetInnerHTML={{ __html: t('landing.demo.fin.h2') }} />
-          <p>{t('landing.demo.fin.sub')}</p>
-          <div className="ctas">
-            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); nav(ctaTarget); }}>
-              <span>{t('landing.demo.fin.cta1')}</span>
-              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  return <SiteCta ns="landing.demo.fin" surface="demo" />;
 }

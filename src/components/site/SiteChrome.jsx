@@ -83,6 +83,36 @@ const PROBE = 35; // px from the top where the header samples the section under 
 const HDR_THEMES = new Set(['light', 'dark', 'accent']);
 
 /**
+ * Клик по логотипу — РОУТЕРОМ, а не перезагрузкой документа.
+ *
+ * `brandHref` со всех страниц кроме лендинга приходит АБСОЛЮТНЫМ
+ * (`withVisitCampaign(window.location.origin + '/')`), и голый `<a href>` на
+ * такой адрес браузер отрабатывает полной перезагрузкой: возврат на лендинг с
+ * демо, юр-страниц и публички визуально «моргал» и грузился заново.
+ *
+ * Гард 2ad это не ловил и не мог: он ищет внутренние ссылки вида `href="/x"`, а
+ * здесь адрес начинается с `https://` и выглядит внешним — хотя origin НАШ.
+ *
+ * Ссылку оставляем ссылкой (Cmd-клик, «открыть в новой вкладке», превью
+ * адреса — всё работает), но обычный клик уводим в роутер. Метка кампании при
+ * этом сохраняется: она в самом адресе, а не в состоянии документа.
+ */
+function useBrandNav(brandHref) {
+  const nav = useNavigate();
+  return (e) => {
+    // Якорь на этой же странице (`#top` на лендинге) — родное поведение браузера.
+    if (!brandHref || brandHref.startsWith('#')) return;
+    // Модификаторы и не-левая кнопка — намерение открыть отдельно, не мешаем.
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    let url;
+    try { url = new URL(brandHref, window.location.href); } catch { return; }
+    if (url.origin !== window.location.origin) return; // действительно внешняя — пусть уходит
+    e.preventDefault();
+    nav(url.pathname + url.search + url.hash);
+  };
+}
+
+/**
  * Shared marketing header — ONE element, its composition set by `variant`:
  *   'full'    logo + section nav + language + right CTA + mobile drawer
  *             (landing, and from Ф6 the legal pages).
@@ -107,6 +137,8 @@ const HDR_THEMES = new Set(['light', 'dark', 'accent']);
  *                  is { tkey, hash }; hashes stay relative (no navBase) so the
  *                  same-page anchor rules match (handoff §11.28).
  */
+
+
 export function SiteHeader({ lang, setLang, variant = 'full', themed = false, navBase = '', brandHref = '#top', navItems = NAV }) {
   const t = useT();
   const nav = useNavigate();
@@ -168,13 +200,14 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   }, [mobileOpen]);
 
   const goCta = () => { setMobileOpen(false); nav(ctaTarget); };
+  const onBrand = useBrandNav(brandHref);
 
   return (
     <>
       <LandingSprite />
       <header className={`site-header ${scrolled ? 'scrolled' : ''} on-${theme}`} id="siteHeader">
         <div className="wrap">
-          <a href={brandHref} className="brand" aria-label={t('nav.aria_home')}>
+          <a href={brandHref} className="brand" aria-label={t('nav.aria_home')} onClick={onBrand}>
             <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo"/></svg>
             Triplanio
           </a>
@@ -232,12 +265,13 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
  */
 export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
   const t = useT();
+  const onBrand = useBrandNav(brandHref);
   return (
     <footer className="site-footer" data-hdr="light">
       <div className="wrap">
         <div className="footer-min">
           <div className="footer-brandcol">
-            <a href={brandHref} className="brand">
+            <a href={brandHref} className="brand" onClick={onBrand}>
               <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo"/></svg>
               Triplanio
             </a>

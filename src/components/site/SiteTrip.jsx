@@ -105,11 +105,25 @@ export function SiteSummary({ stats, peopleTitle, peopleCount, people }) {
 }
 
 /**
- * Final call-to-action — the SAME accent sheet as the landing (`fin.*` keys,
- * `data-hdr="accent"` is the one producer of the 9 on-accent header rules).
- * Parameterless: the prototype reuses the landing's CTA verbatim on this page.
+ * ★ ОДИН финальный CTA на ВСЕ страницы зоны — лендинг, демо, публичная поездка.
+ *
+ * Было три реализации одной секции: `SiteCta` здесь, посимвольная копия
+ * `FinalCta` в LandingPage и форк `DemoCta` со своими классами `.dm-final` /
+ * `.dm-sheet` (побайтовые копии `.final` / `.sheet-pane` в CSS). Следствие
+ * ровно то, чего быть не должно: правка цвета CTA меняла лендинг и публичку,
+ * а демо оставалось прежним — «унифицировано» на словах, три объекта на деле.
+ *
+ * Различия между страницами — это ДАННЫЕ, а не разметка, поэтому они пропсами:
+ *   ns        — префикс i18n-ключей: у демо своя копия текста (`landing.demo.fin`);
+ *   surface   — какая страница, для события `cta_clicked`;
+ *   secondary — вторая кнопка. Есть только у лендинга («посмотреть демо»);
+ *               на демо и публичке её в макете нет.
+ * Пропсов ровно три, и у каждого есть живой потребитель — «на будущее» ничего.
+ *
+ * `data-hdr="accent"` — единственный производитель девяти правил `on-accent`
+ * у шапки, поэтому он часть ЭТОЙ секции и никуда не выносится.
  */
-export function SiteCta() {
+export function SiteCta({ ns = 'landing.fin', surface, secondary = null }) {
   const t = useT();
   const nav = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -119,14 +133,15 @@ export function SiteCta() {
       <span className="horizon" aria-hidden="true" />
       <div className="wrap inner">
         <div className="rv">
-          <span className="brow" style={{ justifyContent: 'center' }}>{t('landing.fin.eyebrow')}</span>{/* inline-style-exempt: prototype's own one-off centering */}
-          <h2 style={{ marginTop: '14px' }} dangerouslySetInnerHTML={{ __html: t('landing.fin.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
-          <p>{t('landing.fin.sub')}</p>
+          <span className="brow" style={{ justifyContent: 'center' }}>{t(`${ns}.eyebrow`)}</span>{/* inline-style-exempt: prototype's own one-off centering */}
+          <h2 style={{ marginTop: '14px' }} dangerouslySetInnerHTML={{ __html: t(`${ns}.h2`) }} />{/* inline-style-exempt: prototype's own one-off spacing */}
+          <p>{t(`${ns}.sub`)}</p>
           <div className="ctas">
-            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
-              <span>{t('landing.fin.cta1')}</span>
+            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final', surface }); nav(ctaTarget); }}>
+              <span>{t(`${ns}.cta1`)}</span>
               <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
             </a>
+            {secondary}
           </div>
         </div>
       </div>

@@ -10,6 +10,63 @@
    (.pt*, → TRIP-461); семь имён, конфликтующих с app.css правилом-одиночкой
    (btn/btn-primary/btn-ghost/sheet/eyebrow/bud-total/cflag), разрешены по
    таблице тикета; кегли и радиусы сняты на свою шкалу (таблица сдвигов в PR). */
+/* ═══ ЛЕДЖЕР 2p ЭТОГО PR ═══════════════════════════════════════════════════
+   1. CTA сведён к ОДНОМУ объекту: `.dm-final`/`.dm-sheet` были побайтовыми
+      копиями `.final`/`.sheet-pane`, из-за них правка CTA не доходила до демо.
+      Копии удалены, демо рендерит тот же `<SiteCta>`.
+   2. Краска текста CTA: закат макета остаётся 1:1, AA держится ТЁМНОЙ буквой
+      (`--sunset-ink`), а не углублением фона.
+   3. `.demo .bcard` / `.demo .bento` — побайтовые копии глобальных правил.
+   Ключи `.demo <свойство>` — пересчёт ключа предка после удаления копий: гард
+   приписывает объявление каждому классу селектора.
+   ══════════════════════════════════════════════════════════════════════════ */
+/* visual-diff-exempt: .brow::before opacity — eyebrow и его тире берут тёмную краску секции (TRIP-445) */
+/* visual-diff-exempt: .btn-glass — стеклянная кнопка на светлом закате: тёмная краска и плотнее фон (TRIP-445) */
+/* visual-diff-exempt: .btn-glass background — стеклянная кнопка на светлом закате: тёмная краска и плотнее фон (TRIP-445) */
+/* visual-diff-exempt: .btn-glass border — стеклянная кнопка на светлом закате: тёмная краска и плотнее фон (TRIP-445) */
+/* visual-diff-exempt: .btn-glass:hover background — парное к плотности фона выше (TRIP-445) */
+/* visual-diff-exempt: .final :focus-visible outline-color — обводка по тёмной краске секции (TRIP-445) */
+/* visual-diff-exempt: .btn-glass color — стеклянная кнопка на светлом закате: тёмная краска и плотнее фон (TRIP-445) */
+/* visual-diff-exempt: .demo .bcard > p font-size — снята побайтовая копия глобального правила (TRIP-445) */
+/* visual-diff-exempt: .demo .bcard h3 margin — снята побайтовая копия глобального правила (TRIP-445) */
+/* visual-diff-exempt: .demo .dm-final h2 font-size — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo .dm-final h2 font-weight — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo .dm-final h2 margin-bottom — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo .dm-final p font-size — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo .dm-final p margin-bottom — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo gap — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo left — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo max-width — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo transform — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .demo z-index — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
+/* visual-diff-exempt: .dm-final background — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final border-radius — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final bottom — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final display — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final flex-wrap — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final gap — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final height — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final justify-content — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final left — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final margin-inline — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final max-width — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final overflow — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final pointer-events — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final position — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final text-align — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final transform — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final width — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-final z-index — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-sheet border-radius — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-sheet margin-top — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-sheet position — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .dm-sheet z-index — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-exempt: .final — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
+/* visual-diff-exempt: .final p color — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
+/* visual-diff-exempt: .final p opacity — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
+/* visual-diff-exempt: .final opacity — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
+/* visual-diff-exempt: .site --sunset-ink — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
+
 html.site {
   /* Слой ДС зоны — блок :root прототипа v5.7 ПЕРЕНЕСЁН ЦЕЛИКОМ, не пересказан
      (TRIP-460, подход "CSS как есть"). Зона владеет этим слоем токенов
@@ -20,6 +77,11 @@ html.site {
   --mist:#F0F7FD; --band:#E2F0FB; --sand:#FDF3E5;
   --night-line:rgba(122,180,235,.15); --night-text:#BDD5EC;
   --sunset:#FF9E4A; --sunset-text:#A0632E; --sunset-tint:#FDECDC;
+  /* Краска текста НА ЗАКАТЕ финального CTA — третий член той же пары, что
+     `--sunset`/`--sunset-text`: тот же тон, доведённый до контраста ≥4.5 со
+     ВСЕМИ тремя стопами градиента (5.48 / 7.11 / 9.05). Отдельный токен, а не
+     литерал: краску несут пять правил секции, и разъехаться им нельзя. */
+  --sunset-ink:#3A1200;
   --mint:#2EC27E; --mint-text:#1C7A4F; --mint-tint:#DCF5E8;
   /* violet/coral — новые пары фон/текст (ревью TRIP-460, «не потерять»/контраст):
      #fff не проходит AA ни на одном сыром акценте прототипа (--brand 4.09,
@@ -287,8 +349,6 @@ body{
      сглаживание вовсе, то есть остаётся браузерное по умолчанию.
      Ни один гард этого не ловил: свойство наследуемое, приезжает от `body` из
      ДРУГОГО файла — 2p сравнивает объявления по классам, 2ae смотрит имена. */
-  /* visual-diff-exempt: body -webkit-font-smoothing — сброс antialiased, утёкшего из app.css/index.css; зона рисует штрих как прототип (TRIP-445) */
-  /* visual-diff-exempt: body -moz-osx-font-smoothing — тот же сброс для Firefox/macOS (TRIP-445) */
   -webkit-font-smoothing:auto;
   -moz-osx-font-smoothing:auto;
 }
@@ -309,8 +369,6 @@ body{
    `prefers-reduced-motion` глобально сжимает длительность до .001s (строка 413),
    поэтому финальное `opacity:1` применяется мгновенно и страница не остаётся
    невидимой. */
-/* visual-diff-exempt: main opacity — стартовое состояние появления страницы зоны (TRIP-445) */
-/* visual-diff-exempt: main animation — кроссфейд появления, кадры stepIn (TRIP-445) */
 html.site main{opacity:0;animation:stepIn .3s var(--ease-out) forwards}
 
 img,svg,canvas{display:block;max-width:100%}
@@ -329,7 +387,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 :focus:not(:focus-visible){outline:none}
 
-.final :focus-visible{outline-color:#fff}
+.final :focus-visible{outline-color:var(--sunset-ink)}
 
 
 /* Восьмая коллизия «вторая база» (ревью TRIP-460, найдена при проверке контраста
@@ -352,9 +410,6 @@ html.site h1, html.site h2, html.site h3, html.site h4{color:inherit;text-wrap:w
    макета: hero h1 69.9 против 71.1, секционный h2 52.0 против 52.9, и вся
    страница на 46px выше макета. Числа маленькие, но они множатся на каждый
    заголовок и переворачивают разбивку строк (TRIP-445). */
-/* visual-diff-exempt: h1 line-height — 1.14 → 1.12 по прототипу v5.7 (TRIP-445) */
-/* visual-diff-exempt: h2 line-height — 1.14 → 1.12 по прототипу v5.7 (TRIP-445) */
-/* visual-diff-exempt: h3 line-height — 1.14 → 1.12 по прототипу v5.7 (TRIP-445) */
 h1,h2,h3{font-family:var(--font-display);line-height:1.12;letter-spacing:-.025em;font-weight:800}
 
 h2{font-size: var(--fs-section-h2);font-weight:800}
@@ -386,6 +441,12 @@ section{position:relative}
 .dark .brow{color:#fff}
 
 .dark .brow::before{background:rgba(255,255,255,.7)}
+
+/* Финальный CTA несёт `.dark` (тёмная секция по классификации макета), но его
+   закат — СВЕТЛЫЙ, и белый eyebrow на нём не читается. Ставим ПОСЛЕ правил
+   `.dark .brow`: специфичность равная, решает порядок. */
+.final .brow{color:var(--sunset-ink)}
+.final .brow::before{background:var(--sunset-ink);opacity:.7}
 
 .section-head{max-width:660px;margin-bottom:clamp(34px,4vw,52px)}
 
@@ -520,15 +581,9 @@ section{position:relative}
      закрытии ждёт конца затухания, при открытии включается сразу — анимация не
      ломается, вид не меняется НИ В ОДНОМ состоянии. */
   visibility:hidden;
-  /* visual-diff-exempt: .lang-menu transition — в переход добавлена visibility, чтобы закрытие ждало конца затухания (TRIP-445) */
   transition:opacity .22s var(--ease-out),transform .22s var(--ease-out),visibility .22s;
 }
 
-/* visual-diff-exempt: .lang-menu visibility — открытое меню возвращает видимость, парное к visibility:hidden закрытого (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu visibility — то же для бургер-меню (TRIP-445) */
-/* visual-diff-exempt: .lang visibility — ключ предка составного селектора .lang.open .lang-menu (TRIP-445) */
-/* visual-diff-exempt: .open visibility — ключ предка того же селектора (TRIP-445) */
-/* visual-diff-exempt: .mobile-open visibility — ключ предка селектора .mobile-open .mobile-menu (TRIP-445) */
 .lang.open .lang-menu,.mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto;visibility:visible}
 
 .lang-menu button{display:flex;align-items:center;min-height:44px;gap:10px;width:100%;padding:9px 12px;border-radius: var(--r-sm);font-size: var(--fs-body-lg);color:var(--ink);transition:background .15s;text-align:left}
@@ -559,8 +614,6 @@ section{position:relative}
      страницы: 24.6 у макета против 21 у нас, −15%.
      Ловушка ИМЕННО в со-селекторе: гард 2ae сверяет базы по именам, а здесь
      имя зоны попало в чужой канон — ни один гард такого не видит. */
-  /* visual-diff-exempt: .btn line-height — снят захват каноном .t-label; макет наследует 1.6 (TRIP-445) */
-  /* visual-diff-exempt: .btn letter-spacing — там же: макет трекинг кнопке не задаёт (TRIP-445) */
   line-height:1.6; letter-spacing:normal}
 
 .btn:active{transform:scale(.97)}
@@ -622,7 +675,6 @@ section{position:relative}
      Здесь цена ошибки выше — пункты растянуты во всю ширину (1392×55 на 1440),
      то есть клавиатурный фокус уезжал на невидимую мишень во весь экран. */
   visibility:hidden;
-  /* visual-diff-exempt: .mobile-menu transition — в переход добавлена visibility, чтобы закрытие ждало конца затухания (TRIP-445) */
   transition:opacity .3s var(--ease-out),transform .3s var(--ease-out),visibility .3s;
   border-bottom:1px solid rgba(19,50,78,.1);box-shadow:0 24px 48px -24px rgba(11,44,84,.18);
 }
@@ -634,14 +686,6 @@ section{position:relative}
    нет. Правила пережили порт как мусор и обещали оформление, которого не
    существовало (два пункта рисовались голым системным текстом именно потому,
    что рассчитывали на них). */
-/* visual-diff-exempt: .mobile-menu margin — снято мёртвое правило .mobile-menu .btn, носителя нет (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu width — там же (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu color — снято мёртвое .mobile-menu .btn-primary (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu border-bottom — там же (TRIP-445) */
-/* visual-diff-exempt: .btn margin — снято мёртвое правило .mobile-menu .btn (TRIP-445) */
-/* visual-diff-exempt: .btn width — там же (TRIP-445) */
-/* visual-diff-exempt: .btn-primary color — снято мёртвое .mobile-menu .btn-primary (TRIP-445) */
-/* visual-diff-exempt: .btn-primary border-bottom — там же (TRIP-445) */
 
 .mobile-menu a:last-child{border-bottom:0}
 
@@ -855,12 +899,8 @@ section{position:relative}
    line-height 1.3 + letter-spacing var(--track-caps). В макете бейдж мокапа
    ни того, ни другого не имеет: интерлиньяж 1.6 от body, трекинг normal
    (замер: 16.9 → 14.3 и взявшийся ниоткуда трекинг 0.66px). */
-/* visual-diff-exempt: .badge line-height — снят захват каноном .t-micro (TRIP-445) */
-/* visual-diff-exempt: .badge letter-spacing — там же: макет даёт normal, канон давал --track-caps (TRIP-445) */
 /* Гард 2p приписывает объявление КАЖДОМУ классу составного селектора, поэтому
    у `.msg-row .badge` тот же факт объявляется дважды — на носителе и на предке. */
-/* visual-diff-exempt: .msg-row line-height — тот же снятый захват, ключ предка составного селектора (TRIP-445) */
-/* visual-diff-exempt: .msg-row letter-spacing — тот же снятый захват, ключ предка составного селектора (TRIP-445) */
 .msg-row .badge{flex:none;color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size: var(--fs-tiny);font-weight:700;padding:0 5px;line-height:1.6;letter-spacing:normal}
 
 .p1{left:12%;top:2%;width:min(300px,34%);z-index:4;--rot:-5deg;--cx:220px;--cy:250px}
@@ -913,11 +953,6 @@ section{position:relative}
    размера не имеет вовсе — наследует от родителя `.ssheet` (.72rem). Это был
    самый крупный разрыв на странице: 11.52 у макета против 10 у нас, то есть
    не цена шкалы, а перехваченное наследование. */
-/* visual-diff-exempt: .err font-size — снят захват кегля каноном .t-meta; макет наследует от .ssheet (TRIP-445) */
-/* visual-diff-exempt: .err line-height — там же: макет наследует 1.6 от body (TRIP-445) */
-/* visual-diff-exempt: .err letter-spacing — там же: макет трекинг не задаёт (TRIP-445) */
-/* visual-diff-exempt: .ssheet line-height — тот же снятый захват, ключ предка составного селектора (TRIP-445) */
-/* visual-diff-exempt: .ssheet letter-spacing — тот же снятый захват, ключ предка составного селектора (TRIP-445) */
 .ssheet .err{color:#B04A3A;font-weight:600;font-size:inherit;line-height:1.6;letter-spacing:normal}
 
 .ssheet .idx{color:#9AA3B5;font-size: var(--fs-micro)}
@@ -1911,35 +1946,24 @@ section{position:relative}
        D — оставить фон макета, а абзацу дать тёмную краску вместо белой (пары
            фон/текст с публичной поездки, как предписывает ТЗ). Заголовок при
            этом всё равно требует B. */
-  /* ★ РЕШЕНО (TRIP-445): взят вариант C — стопы углублены под ВЕСЬ текст.
-     B («под заголовок») отвергнут: он платит полную цену по картинке за
-     половину решения — абзац и eyebrow остаются ниже нормы.
-     Подбор арифметический, а не на глаз: тон и насыщенность каждого стопа
-     сохранены (HLS), снижена только светлота — ровно до L ≤ 0.183, где белый
-     даёт 4.5:1. Замер по фактическим пикселям (radial выше учтён, его
-     непрозрачность снижена .5 → .3, иначе он поднимал яркость обратно):
-        заголовок 54px/800  порог 3.0 → было 2.18, стало 4.3+
-        абзац     17px/400  порог 4.5 → было 2.29, стало 4.5+
-        eyebrow и ghost-кнопка — по той же шкале
-     ЦЕНА НАЗВАНА ВСЛУХ: закат стал глубже и краснее макета. Это осознанное
-     отклонение, а не порт — «AA белым по закату это арифметика, а не приём»:
-     4.5:1 требует фона с яркостью ≤0.183, а стопы макета дают 0.52/0.40/0.31.
-     Откат — три значения в строке ниже.
-     Попиксельный диф на этой секции НАСЫЩЕН (полноэкранный градиент: любая
-     правка цвета даёт 90–96% одинаково) и вердикта не даёт — решение принято
-     глазами и замером контраста, как предписывает докблок харнесса. */
-  /* visual-diff-exempt: .final background — стопы углублены под порог AA, вариант C (TRIP-445) */
+  /* ★ ЗАКАТ МАКЕТА 1:1 — стопы прототипа, ни один не тронут.
+     AA держится ЦВЕТОМ БУКВЫ, а не глубиной фона: белым по этому закату 4.5:1
+     недостижимо арифметически (порог требует яркости фона ≤0.183, стопы дают
+     0.52/0.40/0.31 — любой проходящий фон это уже другой закат). Тёмная краска
+     на тех же стопах даёт 5.5–9.1, то есть с запасом и БЕЗ правки картинки.
+     Это ровно приём «пара фон/текст», который ТЗ эпика предписывает и который
+     уже применён на публичной поездке. */
   background:
-    radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.3),transparent 64%),
-    linear-gradient(165deg,#BA5D00 0%,#D34600 48%,#E62430 100%);
-  color:#fff;text-align:center;overflow:hidden;
+    radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
+    linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);
+  color:var(--sunset-ink);text-align:center;overflow:hidden;
 }
 
 .final .inner{position:relative;z-index:2;max-width:700px;margin-inline:auto}
 
 .final h2{font-size: var(--fs-final-h2);font-weight:800;margin-bottom:16px}
 
-.final p{color:rgba(255,255,255,.92);font-size: var(--fs-lead-lg);margin-bottom:30px}
+.final p{color:var(--sunset-ink);opacity:.86;font-size: var(--fs-lead-lg);margin-bottom:30px}
 
 .final .ctas{display:flex;flex-wrap:wrap;gap:13px;justify-content:center}
 
@@ -3192,12 +3216,12 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 */
 /* Кнопка-стекло — общий вариант акцентного CTA (2-кнопочный CTA лендинга
    «Посмотреть демо»). Глобальная: живёт вне `.demo`. */
-.btn-glass{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.32);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.btn-glass:hover{background:rgba(255,255,255,.26);transform:translateY(-2px)}
-/* Секция-«лист» демо: у прототипа .sheet = скруглённая секция, наезжающая на
-   предыдущую; глобальный .sheet приложения = fixed bottom-sheet (коллизия), поэтому
-   имя dm-sheet. */
-.demo .dm-sheet{border-radius:var(--sheet-r) var(--sheet-r) 0 0;margin-top:calc(var(--sheet-r) * -1);position:relative;z-index:3}
+.btn-glass{background:rgba(255,255,255,.42);color:var(--sunset-ink);border:1px solid rgba(58,18,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.btn-glass:hover{background:rgba(255,255,255,.6);transform:translateY(-2px)}
+/* Секция-«лист» демо берёт общий `.sheet-pane` зоны. Раньше здесь стоял
+   `.dm-sheet` — побайтовая копия того же правила: имя развели из-за коллизии
+   прототипного `.sheet` с bottom-sheet приложения, но развели ФОРКОМ вместо
+   реюза уже готового `.sheet-pane`. Копия убрана. */
 
 .demo{--brand:#2380D6; --brand-btn:#1E72C4; --brand-deep:#1B67B4;
   --sky:#6FB4F4; --ice:#DFF0FD; --ink:#13324E; --muted:#516576;
@@ -3233,12 +3257,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .dm-bic.vio{background:var(--violet);box-shadow:0 8px 18px -6px rgba(122,92,240,.5)}
 .demo .dm-bic.rose{background:var(--rose);box-shadow:0 8px 18px -6px rgba(224,86,143,.5)}
 .demo .dm-bic.sm{width:34px;height:34px;border-radius:10px}
-.demo .bcard{background:var(--white);border-radius:var(--r-lg);padding:24px;border:1px solid rgba(11,44,84,.07);
-  box-shadow:var(--shadow-sm);overflow:hidden;position:relative;
-  transition:transform .35s var(--ease-out),box-shadow .35s}
-.demo .bcard:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg)}
-.demo .bcard h3{margin:13px 0 7px}
-.demo .bcard>p{color:var(--muted);font-size:var(--fs-body)}
 .demo .dm-av{border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none;font-family:var(--font-display)}
 .demo .dm-avs{display:flex}
 .demo .dm-avs .dm-av{width:38px;height:38px;font-size:var(--fs-small);border:3px solid #fff;box-shadow:var(--shadow-sm)}
@@ -3362,7 +3380,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   background:linear-gradient(120deg,var(--ice),#F2F9FF);font-size:var(--fs-body);color:var(--muted)}
 .demo .perone b{margin-left:auto;font-family:var(--font-display);font-size:var(--fs-h3);font-weight:800;color:var(--ink)}
 .demo .more-sec{background:var(--white)}
-.demo .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;align-items:stretch}
 .demo .b-cal{grid-column:span 7;display:flex;flex-direction:column}
 .demo .dm-b-docs{grid-column:span 5}
 .demo .b-svc{grid-column:span 5}
@@ -3471,17 +3488,8 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    .phone.device / .tg-status / .tg-head / .tg-chat / .tg-msg / .tg-doc /
    .tg-points / .cic) — no demo-scoped copies, so it can't drift from the
    landing. The old `dm-tg-*` / `tg-when` block lived here and is removed. */
-.demo .dm-final{background:radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
-  linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);color:#fff;text-align:center;overflow:hidden}
-.demo .dm-final .inner{position:relative;z-index:2;max-width:700px;margin-inline:auto}
-.demo .dm-final h2{font-size:var(--fs-final-h2);font-weight:800;margin-bottom:16px}
-.demo .dm-final p{color:rgba(255,255,255,.94);font-size:var(--fs-lead-lg);margin-bottom:30px}
-.demo .dm-final .ctas{display:flex;flex-wrap:wrap;gap:13px;justify-content:center}
-.demo .dm-final .btn-light{color:#C95029}
 .demo .eyebrow--acc{color:#fff;justify-content:center}
 .demo .eyebrow--acc::before{background:rgba(255,255,255,.75)}
-.demo .dm-final .horizon{position:absolute;left:50%;bottom:-46vw;transform:translateX(-50%);width:130vw;height:64vw;border-radius:50%;
-  background:radial-gradient(closest-side,rgba(255,244,214,.5),rgba(255,244,214,.12) 62%,transparent 70%);pointer-events:none}
 .demo .dm-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .demo .tg-h2{margin:14px 0 14px}
 .demo .tg-lede{color:var(--muted);font-size:var(--fs-lead)}
