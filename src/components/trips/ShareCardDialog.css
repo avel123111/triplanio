@@ -126,8 +126,16 @@
     "stage .";
   gap: var(--sp-6) var(--sp-8);
   align-items: start;
-  --sc-max: min(56vh, 500px);
+  /* Превью крупнее (просьба Ильи): было min(56vh, 500px).
+     visual-diff-exempt: .sc-body --sc-max — увеличено превью на десктопе (Илья) */
+  --sc-max: min(66vh, 600px);
 }
+/* Кнопки «Скачать»/«Поделиться» в мобильном футере — одного размера: грид в две
+   равные колонки растягивает обе кнопки поровну, БЕЗ правила на самом .btn.
+   visual-diff-exempt: .sc-foot display — новый класс конструктора: равные кнопки футера (Илья)
+   visual-diff-exempt: .sc-foot grid-template-columns — новый класс конструктора (Илья)
+   visual-diff-exempt: .sc-foot gap — новый класс конструктора (Илья) */
+.sc-foot { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
 .sc-stage {
   grid-area: stage;
   position: relative;
@@ -154,27 +162,24 @@
 @media (max-width: 640px) {
   .sc-body {
     grid-template-columns: minmax(0, 1fr);
-    /* Первый ряд тянется (flex:1 от .lp-b): весь запас высоты достаётся
-       ПРЕВЬЮ, а карусель и управление прижимаются к футеру — между ними и
-       кнопками не остаётся дыры. */
-    flex: 1;
-    min-height: 0;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    /* Естественная высота с прокруткой тела шита (.lp-b): превью крупное сверху
+       и НЕ обрезается, под ним — выбор фонов, затем управление; до кнопок
+       «Скачать/Поделиться» пользователь долистывает (норм по Илье). Прежний
+       вариант впихивал всё в экран (flex:1 + minmax(0,1fr)) и обрезал превью
+       сверху.
+       visual-diff-exempt: .sc-body {@media (max-width: 640px)} flex — снят cram-раскладки, тело шита скроллится (Илья)
+       visual-diff-exempt: .sc-body {@media (max-width: 640px)} min-height — снят cram-раскладки (Илья)
+       visual-diff-exempt: .sc-body {@media (max-width: 640px)} grid-template-rows — естественные ряды вместо minmax(0,1fr) (Илья)
+       visual-diff-exempt: .sc-body {@media (max-width: 640px)} --sc-max — превью не обрезается, высота по вьюпорту/ширине (Илья)
+       visual-diff-exempt: .sc-stage {@media (max-width: 640px)} align-self — центрирование в тянущемся ряду больше не нужно (ряды естественные, Илья) */
+    grid-template-rows: auto auto auto;
     grid-template-areas:
       "stage"
       "strip"
       "side";
     gap: var(--sp-6);
-    /* Превью почти во весь экран: потолок = вьюпорт минус хром шита. 285 —
-       ручная сумма: .lp-h ~59 + паддинги .lp-b 28 + два зазора 24 + карусель
-       ~60 + ряд управления ~44 + .lp-f ~67 (+ люфт safe-area). Правишь хром
-       панелей (.lp-h/.lp-f/паддинги) — пересчитай; канал в духе
-       --sheet-reserve у peek-sheet — тикетом. */
-    --sc-max: calc(100dvh - 285px);
+    --sc-max: min(64dvh, calc(92vw / var(--sc-arw, 0.5625)));
   }
-  /* Внутри тянущегося ряда превью центрируется по вертикали (пост 4:5 ниже
-     сторис — остаток делится поровну, а не копится снизу). */
-  .sc-stage { align-self: center; }
   .sc-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-5); }
   /* Строки ошибок в мобильном РЯДУ управления переносятся на свою строку —
      иначе текст встаёт узкой колонкой рядом с кнопкой. В десктоп-колонке

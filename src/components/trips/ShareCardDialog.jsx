@@ -141,6 +141,22 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     });
   }, [bg, slides]);
 
+  // Колесо мыши листает ленту фонов ГОРИЗОНТАЛЬНО (десктоп с мышью): вертикальный
+  // delta иначе не двигает горизонтальный оверфлоу, и фоны листались только
+  // стрелками (просьба Ильи). Нативный listener с passive:false — чтобы
+  // preventDefault не дал странице проскроллиться под диалогом.
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (!e.deltaY || el.scrollWidth <= el.clientWidth) return;
+      el.scrollLeft += e.deltaY;
+      e.preventDefault();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [ready]);
+
   function handleFile(e) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -350,7 +366,9 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             ]}
           />
         </span>
-        <Btn variant="secondary" icon="map" disabled={!ready} onClick={() => setEditorOpen(true)}>
+        {/* Без иконки (просьба Ильи): на мобиле стоит справа от переключателя
+            Сторис/Пост в той же строке .sc-side (её раскладку держит CSS). */}
+        <Btn variant="secondary" disabled={!ready} onClick={() => setEditorOpen(true)}>
           {t('share.edit_map')}
         </Btn>
         {!isPhone && <div className="muted t-body">{t('share.menu_card_hint')}</div>}
@@ -433,7 +451,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
               <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
             </div>
             <div className="lp-b">{body}</div>
-            {!overlayCode && <div className="lp-f">{foot}</div>}
+            {!overlayCode && <div className="lp-f sc-foot">{foot}</div>}
           </div>
         </LpSheet>
         {editor}
