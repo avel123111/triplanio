@@ -181,12 +181,14 @@ export const DEMO_CAL_LEGEND = [
   { c: C.madrid, key: 'landing.demo.city.madrid' }, { c: C.porto, key: 'landing.demo.city.porto' },
   { c: C.lisbon, key: 'landing.demo.city.lisbon' },
 ];
+// Format drives the badge colour (component's FT_COLOR map): pdf red · doc blue
+// · xls green · jpg purple. Formats are varied on purpose so the scheme reads.
 export const DEMO_DOCS = [
-  { c: 'var(--dc-valencia)', ft: 'PDF', tKey: 'landing.demo.doc.d1.t', sKey: 'landing.demo.doc.d1.s' },
-  { c: 'var(--dc-milan)', ft: 'PDF', tKey: 'landing.demo.doc.d2.t', sKey: 'landing.demo.doc.d2.s' },
-  { c: 'var(--dc-madrid)', ft: 'PDF', tKey: 'landing.demo.doc.d3.t', sKey: 'landing.demo.doc.d3.s' },
-  { c: 'var(--dc-barcelona)', ft: 'LNK', tKey: 'landing.demo.doc.d4.t', sKey: 'landing.demo.doc.d4.s' },
-  { c: 'var(--dc-doc-neutral)', ft: 'JPG', tKey: 'landing.demo.doc.d5.t', sKey: 'landing.demo.doc.d5.s' },
+  { ft: 'PDF', tKey: 'landing.demo.doc.d1.t', sKey: 'landing.demo.doc.d1.s' },
+  { ft: 'DOC', tKey: 'landing.demo.doc.d2.t', sKey: 'landing.demo.doc.d2.s' },
+  { ft: 'PDF', tKey: 'landing.demo.doc.d3.t', sKey: 'landing.demo.doc.d3.s' },
+  { ft: 'XLS', tKey: 'landing.demo.doc.d4.t', sKey: 'landing.demo.doc.d4.s' },
+  { ft: 'JPG', tKey: 'landing.demo.doc.d5.t', sKey: 'landing.demo.doc.d5.s' },
 ];
 export const DEMO_SVC = [
   { icon: 'i-card-sim', tKey: 'landing.demo.svc.s1.t', sKey: 'landing.demo.svc.s1.s', done: true },
@@ -231,18 +233,12 @@ export const DEMO_TG_MSGS = [
   { user: true, bKey: 'landing.demo.tg.u1', time: '15:04', ticks: true },
   { bot: true, bKey: 'landing.demo.tg.b3', time: '15:04', doc: { name: 'gotic1900-voucher.pdf', metaKey: 'landing.demo.tg.doc_meta' } },
 ];
+// Points reuse the landing's uniform `.cic` badge — icon ids resolve against the
+// shared sprite (`#i-bell` / `#i-chat` / `#i-doc`), no per-point tint variants.
 export const DEMO_TG_POINTS = [
-  { icon: 'i-bell', warm: true, tKey: 'landing.demo.tg.p1.t', pKey: 'landing.demo.tg.p1.p' },
+  { icon: 'i-bell', tKey: 'landing.demo.tg.p1.t', pKey: 'landing.demo.tg.p1.p' },
   { icon: 'i-chat', tKey: 'landing.demo.tg.p2.t', pKey: 'landing.demo.tg.p2.p' },
-  { icon: 'i-doc', mint: true, tKey: 'landing.demo.tg.p3.t', pKey: 'landing.demo.tg.p3.p' },
-];
-export const DEMO_TG_WHEN = [
-  { icon: 'i-bed', tKey: 'landing.demo.tg.w1', emKey: 'landing.demo.tg.w1v' },
-  { icon: 'i-bed', tKey: 'landing.demo.tg.w2', emKey: 'landing.demo.tg.w2v' },
-  { icon: 'i-clock', tKey: 'landing.demo.tg.w3', emKey: 'landing.demo.tg.w3v' },
-  { icon: 'i-swap', tKey: 'landing.demo.tg.w4', emKey: 'landing.demo.tg.w4v' },
-  { icon: 'i-ticket', tKey: 'landing.demo.tg.w5', emKey: 'landing.demo.tg.w5v' },
-  { icon: 'i-spark', tKey: 'landing.demo.tg.w6', emKey: 'landing.demo.tg.w6v' },
+  { icon: 'i-doc', tKey: 'landing.demo.tg.p3.t', pKey: 'landing.demo.tg.p3.p' },
 ];
 
 // Header section anchors (own state of the unified <SiteHeader>).

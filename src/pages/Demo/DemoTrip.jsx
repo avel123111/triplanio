@@ -13,7 +13,7 @@ import { Icon } from '@/design/icons';
 import {
   DEMO_VISITS, DEMO_TRANSFERS, DEMO_PEOPLE, DEMO_STATS, DEMO_TIMELINE, DEMO_BUDGET,
   DEMO_CAL, DEMO_CAL_LEGEND, DEMO_DOCS, DEMO_SVC, DEMO_STAT_TILES, DEMO_STAT_LINES,
-  DEMO_MEMBERS, DEMO_ROLE_NOTES, DEMO_CHAT, DEMO_TG_MSGS, DEMO_TG_POINTS, DEMO_TG_WHEN,
+  DEMO_MEMBERS, DEMO_ROLE_NOTES, DEMO_CHAT, DEMO_TG_MSGS, DEMO_TG_POINTS,
   DEMO_NAV,
 } from './demoTrip';
 
@@ -43,6 +43,14 @@ const APP_ICON = {
 };
 // size prop honoured; per-container CSS in site.css still overrides via `svg{width}`.
 const Ic = ({ id, size = 18 }) => <Icon name={APP_ICON[id] || 'info'} size={size} />;
+
+// Document badge colour keyed by FORMAT, not per-file: one scheme so the same
+// format always reads the same colour — pdf red · doc blue · xls green · jpg
+// purple. Tokens live in the demo palette (site.css, `--dc-doc-*`).
+const FT_COLOR = {
+  PDF: 'var(--dc-doc-pdf)', DOC: 'var(--dc-doc-doc)',
+  XLS: 'var(--dc-doc-xls)', JPG: 'var(--dc-doc-jpg)',
+};
 
 // Tinted event icon — the {soft-bg, ink} pair comes from data, so the CSS vars
 // are inline (one place, marked) instead of repeated at every call site.
@@ -201,7 +209,7 @@ export default function DemoTrip() {
             </div>
             <div className="bud-grid">
               <div className="bcard rv">
-                <div className="dm-card-h"><span className="dm-bic dm-warm"><Ic id="i-wallet" /></span><h3>{t('landing.demo.bud.card1')}</h3><span className="dm-pill pro"><Ic id="i-crown" />PRO</span></div>
+                <div className="dm-card-h"><span className="dm-bic dm-warm"><Ic id="i-wallet" /></span><h3>{t('landing.demo.bud.card1')}</h3></div>
                 <div className="donutbox">
                   <div className="dm-donut" style={{ '--g': DEMO_BUDGET.donutGradient }}>{/* inline-style-exempt: цвет/вар из данных демо */}</div>
                   <span className="donut-c"><b className="num">{DEMO_BUDGET.total}</b><span>{t('landing.demo.bud.total')}</span></span>
@@ -279,12 +287,11 @@ export default function DemoTrip() {
                 <div className="doc-list">
                   {DEMO_DOCS.map((d, i) => (
                     <div className="dm-doc-row" key={i}>
-                      <span className="ft" style={{ '--c': d.c }}>{d.ft}{/* inline-style-exempt: цвет/вар из данных демо */}</span>
+                      <span className="ft" style={{ '--c': FT_COLOR[d.ft] }}>{d.ft}{/* inline-style-exempt: цвет бейджа по формату (карта FT_COLOR) */}</span>
                       <span className="tx"><b>{t(d.tKey)}</b><span>{t(d.sKey)}</span></span>
                     </div>
                   ))}
                 </div>
-                <div className="doc-note"><Ic id="i-info" />{t('landing.demo.more.docs.note')}</div>
               </article>
               {/* Services */}
               <article className="bcard b-svc rv">
@@ -378,27 +385,42 @@ export default function DemoTrip() {
           </div>
         </section>
 
-        {/* ── Telegram assistant ───────────────────────────────── */}
+        {/* ── Telegram assistant ───────────────────────────────────
+            Phone + chat REUSE the landing's exact global classes (.tg-grid /
+            .phone.device / .tg-status / .tg-head / .tg-chat / .tg-msg / .tg-doc
+            / .tg-points / .cic) — same chrome, not a hand-tuned copy. Only the
+            message data differs. The demo palette band stays via `dm-sheet`.
+            floor-exempt: dsshare +2 — реюз шапки телефона лендинга (статус-бар
+            сигнал/wifi/батарея + иконки шапки) добавляет сырую разметку в
+            витрину демо (out-of-scope, как LandingPage/PublicTrip), доля из ДС
+            падает на 0.02%. Апрув Pavel: «взять телеграм как на лендинге». */}
         <section className="tg-sec dm-sheet section-pad" id="assistant">
-          <div className="wrap dm-tg-grid">
-            <div className="dm-tg-demo rv">
-              <div className="dm-device">
-                <div className="dm-device-screen">
-                  <div className="dm-tg-status" aria-hidden="true">
-                    <span>9:41</span><span className="tg-island" /><span><Ic id="i-lock" /></span>
+          <div className="wrap tg-grid">
+            <div className="tg-demo rv-l">
+              <div className="phone device">
+                <div className="phone-screen device-screen">
+                  <div className="tg-status" aria-hidden="true">
+                    <span className="tg-time">9:41</span>
+                    <span className="tg-island" />
+                    <span className="tg-sys">
+                      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1" /><rect x="4.5" y="5" width="3" height="6" rx="1" /><rect x="9" y="2.5" width="3" height="8.5" rx="1" /><rect x="13.5" y="0" width="3" height="11" rx="1" /></svg>
+                      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.6c2.6 0 5 1 6.8 2.6l-1.5 1.7C11.9 5.6 10 4.8 8 4.8s-3.9.8-5.3 2.1L1.2 5.2C3 3.6 5.4 2.6 8 2.6Z" /><path d="M8 6.4c1.5 0 2.9.6 4 1.5L8 11.7 4 7.9C5.1 7 6.5 6.4 8 6.4Z" /></svg>
+                      <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="3" stroke="currentColor" strokeWidth="1" opacity=".45" /><rect x="2.6" y="2.6" width="15" height="6.8" rx="1.6" fill="currentColor" /><rect x="22.4" y="4" width="1.7" height="4" rx=".8" fill="currentColor" opacity=".45" /></svg>
+                    </span>
                   </div>
-                  <div className="dm-tg-head">
-                    <span className="dm-tav"><Ic id="i-tg" /></span>
+                  <div className="tg-head">
+                    <span className="tav"><svg width="18" height="18" style={{ color: '#fff' }}><use href="#i-tg" /></svg>{/* inline-style-exempt: белый значок на брендовом фоне (как на лендинге) */}</span>
                     <div><b>Triplanio</b><small>{t('landing.demo.tg.bot_status')}</small></div>
+                    <span className="tg-hicons" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M6.6 10.8c1.4 2.7 3.9 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2Z" /></svg><svg viewBox="0 0 24 24" width="17" height="17"><circle cx="12" cy="5" r="1.7" fill="currentColor" /><circle cx="12" cy="12" r="1.7" fill="currentColor" /><circle cx="12" cy="19" r="1.7" fill="currentColor" /></svg></span>
                   </div>
-                  <div className="dm-tg-chat">
+                  <div className="tg-chat">
                     {DEMO_TG_MSGS.map((m, i) => (m.date ? (
-                      <div className="dm-tg-date" key={i}>{t(m.date)}</div>
+                      <div className="tg-date" key={i}>{t(m.date)}</div>
                     ) : (
-                      <div className={`dm-tg-msg ${m.bot ? 'dm-bot' : 'dm-user'}`} key={i}>
+                      <div className={`tg-msg ${m.bot ? 'bot' : 'user'}`} key={i}>
                         <span dangerouslySetInnerHTML={{ __html: t(m.bKey) }} />
                         {m.doc && (
-                          <span className="dm-tg-doc"><span className="dm-dic"><Ic id="i-doc" /></span><span><b>{m.doc.name}</b><span>{t(m.doc.metaKey)}</span></span></span>
+                          <span className="tg-doc"><span className="dic"><Ic id="i-doc" size={16} /></span><span className="dmeta"><b>{m.doc.name}</b><span>{t(m.doc.metaKey)}</span></span></span>
                         )}
                         <small>{m.time} {m.ticks && <svg className="ticks" aria-hidden="true"><use href="#i-ticks" /></svg>}</small>
                       </div>
@@ -407,27 +429,23 @@ export default function DemoTrip() {
                 </div>
               </div>
             </div>
-            <div className="rv">
+            <div className="rv-r">
               <span className="eyebrow">{t('landing.demo.tg.eyebrow')}</span>
               <h2 className="tg-h2">{t('landing.demo.tg.h2a')} <span className="accent">{t('landing.demo.tg.h2b')}</span></h2>
               <p className="tg-lede">{t('landing.demo.tg.p')}</p>
-              <ul className="dm-tg-points">
+              <ul className="tg-points">
                 {DEMO_TG_POINTS.map((p, i) => (
                   <li key={i}>
-                    <span className={`dm-cic${p.warm ? ' warm' : ''}${p.mint ? ' mint' : ''}`}><Ic id={p.icon} /></span>
+                    <span className="cic"><Ic id={p.icon} size={19} /></span>
                     <div><b>{t(p.tKey)}</b><p>{t(p.pKey)}</p></div>
                   </li>
                 ))}
               </ul>
-              <div className="tg-when">
-                {DEMO_TG_WHEN.map((w, i) => <span key={i}><Ic id={w.icon} />{t(w.tKey)}<em>{t(w.emKey)}</em></span>)}
-              </div>
             </div>
           </div>
         </section>
 
         <DemoCta />
-        <p className="demo-disc">{t('landing.demo.footer.disclaimer')}</p>
       </main>
 
       <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />

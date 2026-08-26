@@ -3010,7 +3010,11 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   --dc-warn-s:#FFE7CC;
   --dc-shop-s:#EAF3FC;
   --dc-shop-k:#1B67B4;
-  --dc-doc-neutral:#9AA1AD;
+  /* Document badge by format (pdf red · doc blue · xls green · jpg purple). */
+  --dc-doc-pdf:#E5484D;
+  --dc-doc-doc:#2380D6;
+  --dc-doc-xls:#1F9D57;
+  --dc-doc-jpg:#7A5CF0;
 }
 
 /* Демо-namespace'ы прототипа v5.7 переносятся verbatim (TRIP-462, Ф6.3),
@@ -3166,6 +3170,12 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   transition:transform .3s var(--ease-out),box-shadow .3s}
 .demo .tlev:hover{transform:translateX(4px);box-shadow:var(--shadow-md)}
 .demo .tlev .t{font-size:var(--fs-small);font-weight:700;color:var(--muted);width:44px;flex:none;font-variant-numeric:tabular-nums}
+/* app.css `.num{font-variant-numeric:tabular-nums}` (0,1,0) утекает в зону и
+   монтирует моноширинные цифры (странные зазоры на числах статистики/км). Зона
+   рисует пропорциональные цифры как прототип — сбрасываем на .num целиком; где
+   нужна табличная колонка (времена таймлайна .tlev .t), она выигрывает по
+   специфичности. */
+.demo .num{font-variant-numeric:normal}
 .demo .tlev .ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex:none;
   background:var(--s,var(--ice));color:var(--k,var(--brand-deep))}
 .demo .tlev .b{flex:1;min-width:0}
@@ -3278,7 +3288,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .dm-doc-row .tx{min-width:0;flex:1}
 .demo .dm-doc-row .tx b{display:block;font-weight:600;line-height:1.3}
 .demo .dm-doc-row .tx span{font-size:var(--fs-caption);color:var(--muted)}
-.demo .doc-note{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:var(--fs-small);color:var(--muted)}
 .demo .svc-list{display:grid;gap:10px;margin-top:16px}
 .demo .svc{display:flex;align-items:center;gap:12px;border:1px solid rgba(11,44,84,.08);border-radius:13px;padding:12px 14px;font-size:var(--fs-body)}
 .demo .svc .tx{flex:1;min-width:0}
@@ -3330,7 +3339,8 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .msg.ai .dm-av{background:linear-gradient(140deg,var(--brand),var(--violet))}
 .demo .msg.ai .bub{background:linear-gradient(180deg,#F5F1FE,#EFF6FE);border-color:rgba(122,92,240,.24)}
 .demo .mention{color:var(--brand-deep);font-weight:600}
-.demo .typing{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-small);color:var(--violet);padding-left:45px}
+.demo .typing{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-small);font-weight:700;color:var(--violet);padding-left:45px}
+.demo .typing span{margin-right:5px}
 .demo .typing i{width:5px;height:5px;border-radius:50%;background:var(--violet);animation:think 1.2s infinite}
 .demo .typing i:nth-child(2){animation-delay:.2s}
 .demo .typing i:nth-child(3){animation-delay:.4s}
@@ -3340,45 +3350,10 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .chat-c .snd{width:42px;height:42px;border-radius:50%;background:var(--brand-btn);color:#fff;display:grid;place-items:center;flex:none;
   box-shadow:0 8px 18px -8px rgba(33,115,200,.7)}
 .demo .tg-sec{background:var(--white)}
-.demo .dm-tg-grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:clamp(28px,5vw,64px);align-items:center}
-@media (max-width:900px){
-  .demo .dm-tg-grid{grid-template-columns:1fr}
-  .demo .dm-tg-demo{order:2;margin-inline:auto}
-}
-.demo .dm-device{position:relative;width:min(322px,100%);margin-inline:auto;padding:11px;border-radius:56px;background:var(--dev-bezel);
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.22),inset 0 0 0 1px rgba(0,0,0,.6),var(--dev-shadow)}
-.demo .dm-device::before{content:"";position:absolute;left:-2px;top:23%;width:3px;height:12%;border-radius:3px 0 0 3px;background:#15181d}
-.demo .dm-device::after{content:"";position:absolute;right:-2px;top:30%;width:3px;height:13%;border-radius:0 3px 3px 0;background:#15181d}
-.demo .dm-device-screen{position:relative;border:3px solid #06080b;border-radius:46px;overflow:hidden;background:#EDF2F5}
-.demo .dm-tg-status{position:relative;display:flex;align-items:center;justify-content:space-between;padding:9px 20px 4px;
-  background:#fff;color:#13324E;font-weight:600;font-size:var(--fs-tiny);line-height:1;z-index:4}
-.demo .tg-island{position:absolute;left:50%;top:7px;transform:translateX(-50%);width:82px;height:23px;border-radius:99px;background:#05070a}
-.demo .dm-tg-head{display:flex;align-items:center;gap:10px;padding:13px 16px;background:#fff;border-bottom:1px solid rgba(19,50,78,.08)}
-.demo .dm-tg-head .dm-tav{width:34px;height:34px;border-radius:50%;background:#4AA3E8;display:grid;place-items:center;flex:none;color:#fff}
-.demo .dm-tg-head b{color:#13324E;font-size:var(--fs-body);display:block;line-height:1.2}
-.demo .dm-tg-head small{color:#318455;font-size:var(--fs-tiny)}
-.demo .dm-tg-chat{padding:14px 12px 16px;display:flex;flex-direction:column;gap:8px;
-  background:radial-gradient(420px 300px at 80% 10%,rgba(120,170,220,.16),transparent 60%),#DBE6F0}
-.demo .dm-tg-date{align-self:center;background:rgba(255,255,255,.78);color:#5B7085;font-size:var(--fs-tiny);font-weight:600;padding:3px 11px;border-radius:99px}
-.demo .dm-tg-msg{max-width:90%;padding:9px 13px;border-radius:16px;font-size:var(--fs-caption);line-height:1.45;color:#13324E}
-.demo .dm-tg-msg.dm-bot{background:#fff;border-bottom-left-radius:5px;align-self:flex-start;box-shadow:0 1px 2px rgba(11,44,84,.08)}
-.demo .dm-tg-msg.dm-user{background:#EFFDDE;border-bottom-right-radius:5px;align-self:flex-end}
-.demo .dm-tg-msg small{display:block;font-size:var(--fs-micro);color:rgba(19,50,78,.42);margin-top:4px;text-align:right}
-.demo .dm-tg-doc{display:flex;gap:10px;margin-top:8px;background:#F3F8FC;border:1px solid rgba(19,50,78,.1);border-radius:10px;padding:9px 11px;align-items:center}
-.demo .dm-tg-doc .dm-dic{width:32px;height:32px;border-radius:50%;background:#5EB5F7;display:grid;place-items:center;color:#fff;flex:none}
-.demo .dm-tg-doc b{display:block;font-size:var(--fs-caption);line-height:1.3}
-.demo .dm-tg-doc span{font-size:var(--fs-micro);color:#5B7085}
-.demo .dm-tg-points{list-style:none;display:grid;gap:17px;margin-top:22px}
-.demo .dm-tg-points li{display:flex;gap:14px;align-items:flex-start}
-.demo .dm-tg-points .dm-cic{width:44px;height:44px;border-radius:14px;background:var(--ice);color:var(--brand-deep);display:grid;place-items:center;flex:none}
-.demo .dm-tg-points .dm-cic.dm-warm{background:#FFF0DF;color:var(--sunset-text)}
-.demo .dm-tg-points .dm-cic.dm-mint{background:#E4F7EE;color:var(--mint-text)}
-.demo .dm-tg-points b{display:block;margin-bottom:3px;font-family:var(--font-display);font-size:var(--fs-lead)}
-.demo .dm-tg-points p{font-size:var(--fs-body);color:var(--muted)}
-.demo .tg-when{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
-.demo .tg-when span{display:inline-flex;align-items:center;gap:7px;font-size:var(--fs-small);font-weight:600;background:var(--mist);
-  border:1px solid rgba(11,44,84,.07);border-radius:99px;padding:7px 13px}
-.demo .tg-when span em{font-style:normal;color:var(--muted);font-weight:500}
+/* Telegram section reuses the landing's global TG chrome verbatim (.tg-grid /
+   .phone.device / .tg-status / .tg-head / .tg-chat / .tg-msg / .tg-doc /
+   .tg-points / .cic) — no demo-scoped copies, so it can't drift from the
+   landing. The old `dm-tg-*` / `tg-when` block lived here and is removed. */
 .demo .dm-final{background:radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
   linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);color:#fff;text-align:center;overflow:hidden}
 .demo .dm-final .inner{position:relative;z-index:2;max-width:700px;margin-inline:auto}
@@ -3393,7 +3368,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .dm-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .demo .tg-h2{margin:14px 0 14px}
 .demo .tg-lede{color:var(--muted);font-size:var(--fs-lead)}
-.demo .demo-disc{max-width:640px;margin:0 auto;padding:26px 24px 40px;text-align:center;color:var(--muted);font-size:var(--fs-small);line-height:1.6}
 
 /* Демо — хелперы взамен статических инлайнов (TRIP-462): фикс-размеры аватаров
    чата и margin-auto, чтобы сырыми в разметке остались ТОЛЬКО динамические
@@ -3409,16 +3383,10 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .dm-bic.sm svg{width:16px;height:16px}
 .demo .dm-av svg{width:18px;height:18px}
 .demo .ic svg{width:18px;height:18px}
-.demo .dm-cic svg{width:19px;height:19px}
 .demo .dm-city svg{width:13px;height:13px}
-.demo .dm-dic svg{width:15px;height:15px}
 .demo .dm-pill svg{width:11px;height:11px}
 .demo .dm-m svg{width:14px;height:14px}
 .demo .perone svg{width:17px;height:17px}
 .demo .snd svg{width:17px;height:17px}
-.demo .dm-tav svg{width:18px;height:18px}
-.demo .doc-note svg{width:15px;height:15px}
 .demo .maplegend svg{width:16px;height:16px}
-.demo .tg-when span svg{width:18px;height:18px}
-.demo .dm-tg-status svg{width:13px;height:13px}
 .demo .svc > svg{width:16px;height:16px}
