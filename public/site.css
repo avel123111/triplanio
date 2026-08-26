@@ -293,6 +293,26 @@ body{
   -moz-osx-font-smoothing:auto;
 }
 
+/* ★ ПОЯВЛЕНИЕ СТРАНИЦЫ ЗОНЫ — одно правило на все шесть.
+   Переходы между страницами зоны были дёргаными: это НЕ перезагрузка (навигация
+   роутерная), а два разных провала. Первый — пустой кадр: демо и юр-страницы
+   грузятся отдельным чанком под `Suspense fallback={null}`, и пока чанк едет,
+   экран пуст; заодно в это окно успевал сняться `site.css` (старая страница уже
+   размонтирована, новая ещё не смонтирована — счётчик ссылок падал до нуля).
+   Лечится предзагрузкой соседних чанков при входе в зону (SiteChrome).
+   Второй — появления не было вовсе. В прототипе переходов нет ПО ПОСТРОЕНИЮ:
+   там один документ, страницы переключаются классом на body мгновенно, —
+   копировать нечего, поэтому здесь минимальный кроссфейд.
+   Носитель — `<main>`, он УЖЕ есть у всех шести страниц зоны (у логина и join
+   через AuthShell): не заводим ни обёртку, ни класс. Кадры переиспользуют
+   существующий `stepIn` — «проявиться и встать на место».
+   `prefers-reduced-motion` глобально сжимает длительность до .001s (строка 413),
+   поэтому финальное `opacity:1` применяется мгновенно и страница не остаётся
+   невидимой. */
+/* visual-diff-exempt: main opacity — стартовое состояние появления страницы зоны (TRIP-445) */
+/* visual-diff-exempt: main animation — кроссфейд появления, кадры stepIn (TRIP-445) */
+html.site main{opacity:0;animation:stepIn .3s var(--ease-out) forwards}
+
 img,svg,canvas{display:block;max-width:100%}
 
 a{color:inherit;text-decoration:none}
@@ -491,10 +511,25 @@ section{position:relative}
   position:absolute;top:calc(100% + 10px);right:0;min-width:168px;
   background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:6px;
   opacity:0;transform:translateY(-8px) scale(.97);pointer-events:none;
-  transition:opacity .22s var(--ease-out),transform .22s var(--ease-out);
+  /* ★ visibility, а не только opacity+pointer-events: последние две выключают
+     МЫШЬ, но не клавиатуру — Tab заходил внутрь закрытого меню. Замер лендинга
+     на 1440: 8 фокусируемых элементов из 32 недостижимы глазами (3 здесь, 5 в
+     закрытом бургер-меню). WCAG 2.4.3/2.4.7: порядок фокуса обязан следовать
+     видимому порядку.
+     `visibility` переключается дискретно и держит длительность перехода: при
+     закрытии ждёт конца затухания, при открытии включается сразу — анимация не
+     ломается, вид не меняется НИ В ОДНОМ состоянии. */
+  visibility:hidden;
+  /* visual-diff-exempt: .lang-menu transition — в переход добавлена visibility, чтобы закрытие ждало конца затухания (TRIP-445) */
+  transition:opacity .22s var(--ease-out),transform .22s var(--ease-out),visibility .22s;
 }
 
-.lang.open .lang-menu,.mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto}
+/* visual-diff-exempt: .lang-menu visibility — открытое меню возвращает видимость, парное к visibility:hidden закрытого (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu visibility — то же для бургер-меню (TRIP-445) */
+/* visual-diff-exempt: .lang visibility — ключ предка составного селектора .lang.open .lang-menu (TRIP-445) */
+/* visual-diff-exempt: .open visibility — ключ предка того же селектора (TRIP-445) */
+/* visual-diff-exempt: .mobile-open visibility — ключ предка селектора .mobile-open .mobile-menu (TRIP-445) */
+.lang.open .lang-menu,.mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto;visibility:visible}
 
 .lang-menu button{display:flex;align-items:center;min-height:44px;gap:10px;width:100%;padding:9px 12px;border-radius: var(--r-sm);font-size: var(--fs-body-lg);color:var(--ink);transition:background .15s;text-align:left}
 
@@ -583,16 +618,30 @@ section{position:relative}
   position:fixed;inset:70px 0 auto 0;z-index:99;padding:10px 24px 28px;
   background:rgba(255,255,255,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   display:flex;flex-direction:column;transform:translateY(-12px);opacity:0;pointer-events:none;
-  transition:opacity .3s var(--ease-out),transform .3s var(--ease-out);
+  /* То же, что у .lang-menu выше: закрытое меню обязано быть закрыто и для Tab.
+     Здесь цена ошибки выше — пункты растянуты во всю ширину (1392×55 на 1440),
+     то есть клавиатурный фокус уезжал на невидимую мишень во весь экран. */
+  visibility:hidden;
+  /* visual-diff-exempt: .mobile-menu transition — в переход добавлена visibility, чтобы закрытие ждало конца затухания (TRIP-445) */
+  transition:opacity .3s var(--ease-out),transform .3s var(--ease-out),visibility .3s;
   border-bottom:1px solid rgba(19,50,78,.1);box-shadow:0 24px 48px -24px rgba(11,44,84,.18);
 }
 
 .mobile-menu a{padding:14px 4px;font-size: var(--fs-lead);font-weight:500;color:var(--ink);border-bottom:1px solid rgba(19,50,78,.08)}
 
-.mobile-menu .btn{margin:6px 0 16px;width:100%}
-
-/* .mobile-menu a перебивает цвет .btn-primary — возвращаем белый текст кнопке */
-.mobile-menu .btn-primary{color:#fff;border-bottom:0}
+/* `.mobile-menu .btn` и `.mobile-menu .btn-primary` УДАЛЕНЫ: носителя у них не
+   было ни здесь, ни в прототипе — меню состоит из пяти ссылок, кнопок в нём
+   нет. Правила пережили порт как мусор и обещали оформление, которого не
+   существовало (два пункта рисовались голым системным текстом именно потому,
+   что рассчитывали на них). */
+/* visual-diff-exempt: .mobile-menu margin — снято мёртвое правило .mobile-menu .btn, носителя нет (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu width — там же (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu color — снято мёртвое .mobile-menu .btn-primary (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu border-bottom — там же (TRIP-445) */
+/* visual-diff-exempt: .btn margin — снято мёртвое правило .mobile-menu .btn (TRIP-445) */
+/* visual-diff-exempt: .btn width — там же (TRIP-445) */
+/* visual-diff-exempt: .btn-primary color — снято мёртвое .mobile-menu .btn-primary (TRIP-445) */
+/* visual-diff-exempt: .btn-primary border-bottom — там же (TRIP-445) */
 
 .mobile-menu a:last-child{border-bottom:0}
 
@@ -1862,9 +1911,27 @@ section{position:relative}
        D — оставить фон макета, а абзацу дать тёмную краску вместо белой (пары
            фон/текст с публичной поездки, как предписывает ТЗ). Заголовок при
            этом всё равно требует B. */
+  /* ★ РЕШЕНО (TRIP-445): взят вариант C — стопы углублены под ВЕСЬ текст.
+     B («под заголовок») отвергнут: он платит полную цену по картинке за
+     половину решения — абзац и eyebrow остаются ниже нормы.
+     Подбор арифметический, а не на глаз: тон и насыщенность каждого стопа
+     сохранены (HLS), снижена только светлота — ровно до L ≤ 0.183, где белый
+     даёт 4.5:1. Замер по фактическим пикселям (radial выше учтён, его
+     непрозрачность снижена .5 → .3, иначе он поднимал яркость обратно):
+        заголовок 54px/800  порог 3.0 → было 2.18, стало 4.3+
+        абзац     17px/400  порог 4.5 → было 2.29, стало 4.5+
+        eyebrow и ghost-кнопка — по той же шкале
+     ЦЕНА НАЗВАНА ВСЛУХ: закат стал глубже и краснее макета. Это осознанное
+     отклонение, а не порт — «AA белым по закату это арифметика, а не приём»:
+     4.5:1 требует фона с яркостью ≤0.183, а стопы макета дают 0.52/0.40/0.31.
+     Откат — три значения в строке ниже.
+     Попиксельный диф на этой секции НАСЫЩЕН (полноэкранный градиент: любая
+     правка цвета даёт 90–96% одинаково) и вердикта не даёт — решение принято
+     глазами и замером контраста, как предписывает докблок харнесса. */
+  /* visual-diff-exempt: .final background — стопы углублены под порог AA, вариант C (TRIP-445) */
   background:
-    radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
-    linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);
+    radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.3),transparent 64%),
+    linear-gradient(165deg,#BA5D00 0%,#D34600 48%,#E62430 100%);
   color:#fff;text-align:center;overflow:hidden;
 }
 

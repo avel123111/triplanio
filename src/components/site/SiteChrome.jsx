@@ -204,10 +204,17 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
           </div>
         </div>
       </header>
+      {/* Все пять пунктов бургер-меню — ССЫЛКИ, как в прототипе: он красит их
+          одним правилом `.mobile-menu a` (отступы, вес 500, разделительная
+          линия). Первые два были `<button>` БЕЗ класса и не попадали ни под
+          него, ни под `.btn` — рисовались голым системным текстом по центру.
+          Идут через роутер (preventDefault + nav), а не голым href: полная
+          перезагрузка убила бы снимок кампании этого визита — гард 2ad
+          сторожит ровно это. */}
       {showBurger && (
         <nav className="mobile-menu" id="mobileMenu" aria-label={t('nav.aria_primary')}>
-          <button type="button" onClick={goCta}>{t('landing.hero.cta1')}</button>
-          <button type="button" onClick={goCta}>{t('landing.hero.cta2')}</button>
+          <a href={ctaTarget} onClick={(e) => { e.preventDefault(); goCta(); }}>{t('landing.hero.cta1')}</a>
+          <a href={ctaTarget} onClick={(e) => { e.preventDefault(); goCta(); }}>{t('landing.hero.cta2')}</a>
           {navItems.map((n) => (
             <a key={n.hash} href={navHref(n.hash)} onClick={() => setMobileOpen(false)}>{t(n.tkey)}</a>
           ))}
@@ -284,6 +291,40 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
  * after the microtask — i.e. the last consumer really left.
  */
 let siteCssRefs = 0;
+
+/**
+ * Предзагрузка соседних страниц зоны.
+ *
+ * Демо и юр-страницы приезжают отдельными чанками (`lazy` в App.jsx) под
+ * `Suspense fallback={null}`. Пока чанк едет, экран ПУСТ — это и читалось как
+ * «дёрганый переход с перезагрузкой», хотя навигация роутерная.
+ *
+ * Хуже того, в это же окно проваливался счётчик ссылок `site.css`: старая
+ * страница уже размонтирована (1→0), новая ещё висит в Suspense и счётчик не
+ * подняла, поэтому микротаск teardown'а видел ноль и снимал `<link>` вместе с
+ * классом `site` — к пустому кадру добавлялась вспышка нестилизованной
+ * разметки. Микротаск спасает только когда монтирование идёт В ТОМ ЖЕ
+ * коммите; загрузка чанка это окно растягивает.
+ *
+ * Лечим ПРИЧИНУ, а не симптом: как только посетитель оказался в зоне, тихо
+ * тянем чанки её соседей. К моменту перехода модуль уже в памяти, Suspense не
+ * показывает fallback, счётчик не падает. `requestIdleCallback` — чтобы не
+ * соперничать с первой отрисовкой; повторный `import()` дедуплицируется
+ * сборщиком, так что вызов идемпотентен.
+ */
+let zonePrefetched = false;
+function prefetchZoneNeighbours() {
+  if (zonePrefetched || typeof window === 'undefined') return;
+  zonePrefetched = true;
+  const run = () => {
+    // Ошибку глотаем намеренно: предзагрузка — ускорение, а не функция.
+    import('@/pages/Demo/DemoTrip').catch(() => {});
+    import('@/pages/Legal').catch(() => {});
+  };
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(run, { timeout: 2000 });
+  else setTimeout(run, 800);
+}
+
 export function useSiteCss() {
   const [cssReady, setCssReady] = useState(() => {
     if (typeof document === 'undefined') return false;
@@ -308,6 +349,8 @@ export function useSiteCss() {
     }
 
     document.documentElement.classList.add('site');
+    // Мы в зоне — заранее тянем чанки её соседних страниц (см. докблок выше).
+    prefetchZoneNeighbours();
 
     return () => {
       link.removeEventListener('load', onLoad);
