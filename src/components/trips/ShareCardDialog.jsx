@@ -141,21 +141,9 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     });
   }, [bg, slides]);
 
-  // Колесо мыши листает ленту фонов ГОРИЗОНТАЛЬНО (десктоп с мышью): вертикальный
-  // delta иначе не двигает горизонтальный оверфлоу, и фоны листались только
-  // стрелками (просьба Ильи). Нативный listener с passive:false — чтобы
-  // preventDefault не дал странице проскроллиться под диалогом.
-  useEffect(() => {
-    const el = stripRef.current;
-    if (!el) return undefined;
-    const onWheel = (e) => {
-      if (!e.deltaY || el.scrollWidth <= el.clientWidth) return;
-      el.scrollLeft += e.deltaY;
-      e.preventDefault();
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [ready]);
+  // Колесо мыши листает ленту фонов ГОРИЗОНТАЛЬНО на десктопе — это поведение
+  // теперь несёт сам примитив <Carousel> (общий с лентой миниатюр обложек), а не
+  // кустарный listener здесь (реюз, TRIP-443).
 
   function handleFile(e) {
     const file = e.target.files?.[0];

@@ -106,7 +106,9 @@ const LAYOUTS: Record<Format, Layout> = {
   post: {
     w: 1080, h: 1350, padX: 60,
     titleLeft: 84, titleTop: 150, titleSize: 96,
-    routeGap: 73, routeSize: 50,
+    // TRIP-443: зазор заголовок→города увеличен (73→92), чтобы на посте строка
+    // городов «дышала» так же, как на стори (была прижата к заголовку).
+    routeGap: 92, routeSize: 50,
     pola: { top: 371, width: 912, padT: 30, padX: 30, padB: 30, winH: 520 },
     cap: { labSize: 32, flag: 40, ring: 2, gap: 8, labGap: 40, moreSize: 20, blockH: 76 },
     stats: { y: 1107, numSize: 66, labSize: 30, cellPad: 36 },

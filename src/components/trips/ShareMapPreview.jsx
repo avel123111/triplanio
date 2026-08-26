@@ -166,17 +166,13 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', SC_WEIGHTS.dot * s);
       if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', SC_WEIGHTS.solid * s);
       if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', SC_WEIGHTS.dashed * s);
-      // Флаг-маркеры — иконки: icon-size это МНОЖИТЕЛЬ (1 = 46px логических),
-      // в уменьшенном превью показываем в масштабе s.
-      if (map.getLayer('sc-flags')) map.setLayoutProperty('sc-flags', 'icon-size', s);
     };
     const drawIfNeeded = () => {
       if (!pts.length) return;
       // На уже нарисованном маршруте только доводим веса под текущий размер; фит
       // зовётся лишь по реальным поводам (первый рендер ниже, resize, смена камеры).
       if (map.getSource('sc-solid')) { applyWeights(); return; }
-      const { s } = currentScale();
-      try { drawTripRoute(map, ordered, legs, { iconScale: s }); } catch (err) { console.error('share preview draw failed', err); }
+      try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
       applyWeights();
       prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
       fit();
