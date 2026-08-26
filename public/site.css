@@ -3073,6 +3073,10 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    «Посмотреть демо»). Глобальная: живёт вне `.demo`. */
 .btn-glass{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.32);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .btn-glass:hover{background:rgba(255,255,255,.26);transform:translateY(-2px)}
+/* Секция-«лист» демо: у прототипа .sheet = скруглённая секция, наезжающая на
+   предыдущую; глобальный .sheet приложения = fixed bottom-sheet (коллизия), поэтому
+   имя dm-sheet. */
+.demo .dm-sheet{border-radius:var(--sheet-r) var(--sheet-r) 0 0;margin-top:calc(var(--sheet-r) * -1);position:relative;z-index:3}
 
 .demo{--brand:#2380D6; --brand-btn:#1E72C4; --brand-deep:#1B67B4;
   --sky:#6FB4F4; --ice:#DFF0FD; --ink:#13324E; --muted:#516576;

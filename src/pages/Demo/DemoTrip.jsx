@@ -131,7 +131,7 @@ export default function DemoTrip() {
         </section>
 
         {/* ── Timeline ─────────────────────────────────────────── */}
-        <section className="tl-sec sheet section-pad" id="timeline">
+        <section className="tl-sec dm-sheet section-pad" id="timeline">
           <div className="wrap">
             <div className="section-head centered rv">
               <span className="eyebrow">{t('landing.demo.tl.eyebrow')}</span>
@@ -224,7 +224,7 @@ export default function DemoTrip() {
         </section>
 
         {/* ── Bento: calendar / docs / services / stats ────────── */}
-        <section className="more-sec sheet section-pad" id="more">
+        <section className="more-sec dm-sheet section-pad" id="more">
           <div className="wrap">
             <div className="section-head centered rv">
               <span className="eyebrow">{t('landing.demo.more.eyebrow')}</span>
@@ -366,7 +366,7 @@ export default function DemoTrip() {
         </section>
 
         {/* ── Telegram assistant ───────────────────────────────── */}
-        <section className="tg-sec sheet section-pad" id="assistant">
+        <section className="tg-sec dm-sheet section-pad" id="assistant">
           <div className="wrap dm-tg-grid">
             <div className="dm-tg-demo rv">
               <div className="dm-device">
@@ -433,7 +433,7 @@ function DemoCta() {
   const { isAuthenticated } = useAuth();
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   return (
-    <section className="dm-final sheet section-pad" data-hdr="accent" id="cta">
+    <section className="dm-final dm-sheet section-pad" data-hdr="accent" id="cta">
       <span className="horizon" aria-hidden="true" />
       <div className="wrap inner">
         <div className="rv">
