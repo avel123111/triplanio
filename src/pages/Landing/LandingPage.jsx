@@ -344,13 +344,13 @@ function Pain() {
                     <div data-step="" style={{ '--s': 0 }}>{/* inline-style-exempt: scrub step index */}
                       <div className="aw-row"><span className="aw-label">{t('landing.aw.mapLbl')}</span><span className="aw-more">{t('landing.aw.open')}</span></div>
                       <div className="aw-map" aria-hidden="true">
-                        {/* §5: Mapbox static image removed — hand-drawn SVG coastline (no token, no api.mapbox.com). */}
+                        {/* §5: реальная карта маршрута (OpenFreeMap/liberty, самрендер, © OpenStreetMap впечатан в webp); маршрут+пины — SVG-слой поверх, координаты сняты из той же проекции (scripts/gen-landing-maps.mjs). */}
                         <svg viewBox="0 0 608 190" preserveAspectRatio="xMidYMid slice">
-                          <path className="aw-coast" d="M608 0 L608 190 L0 190 L0 150 C40 140 70 120 110 118 C150 116 175 132 210 128 C250 123 270 96 310 96 C350 96 372 120 410 110 C450 100 470 66 512 60 C548 55 572 30 590 16 C596 10 602 4 608 0 Z" />
-                          <path d="M390.3 58.0 C377.8 70.3 344.3 125.7 315.5 132.0 C286.7 138.3 234.0 101.8 217.7 95.7" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" className="aw-route" />
-                          <g className="aw-pin" style={{ '--p': 0 }}><circle cx="390" cy="58" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="390" y="62" fontSize="12">1</text></g>{/* inline-style-exempt: --p pin stagger delay (TRIP-460) */}
-                          <g className="aw-pin" style={{ '--p': 1 }}><circle cx="316" cy="132" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="316" y="136" fontSize="12">2</text></g>{/* inline-style-exempt: --p pin stagger delay */}
-                          <g className="aw-pin" style={{ '--p': 2 }}><circle cx="218" cy="96" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="218" y="100" fontSize="12">3</text></g>{/* inline-style-exempt: --p pin stagger delay */}
+                          <image href="/site/map-pain.webp" x="0" y="0" width="608" height="190" preserveAspectRatio="xMidYMid slice" />
+                          <path d="M448 33 L323 157 L160 96" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" className="aw-route" />
+                          <g className="aw-pin" style={{ '--p': 0 }}><circle cx="448" cy="33" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="448" y="37" fontSize="12">1</text></g>{/* inline-style-exempt: --p pin stagger delay (TRIP-460) */}
+                          <g className="aw-pin" style={{ '--p': 1 }}><circle cx="323" cy="157" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="323" y="161" fontSize="12">2</text></g>{/* inline-style-exempt: --p pin stagger delay */}
+                          <g className="aw-pin" style={{ '--p': 2 }}><circle cx="160" cy="96" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="160" y="100" fontSize="12">3</text></g>{/* inline-style-exempt: --p pin stagger delay */}
                         </svg>
                       </div>
                     </div>
@@ -417,14 +417,14 @@ function Bento() {
             <h3>{t('landing.bento.mapT')}</h3>
             <p>{t('landing.bento.mapD')}</p>
             <div className="mapviz" aria-hidden="true">
-              {/* §5: Mapbox static image removed — hand-drawn SVG coastline (no token, no api.mapbox.com). */}
+              {/* §5: реальная карта (OpenFreeMap/liberty, самрендер, © OpenStreetMap впечатан); маршрут+пины — SVG поверх, координаты из той же проекции. */}
               <svg viewBox="0 0 640 230" preserveAspectRatio="xMidYMid slice">
-                <path className="aw-coast" d="M640 0 L640 230 L0 230 L0 180 C60 168 100 140 150 136 C210 130 250 158 310 150 C370 142 400 96 470 84 C520 76 560 40 600 20 C614 12 628 4 640 0 Z" />
-                <path d="M160.5 140.2 C175.3 148.2 223.9 198.3 249.5 188.0 C275.1 177.7 275.5 102.5 313.8 78.2 C352.2 53.9 451.9 48.0 479.5 42.0" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" />
-                <g><circle cx="160" cy="140" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="160" y="144" fontSize="12">1</text></g>
-                <g><circle cx="250" cy="188" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="250" y="192" fontSize="12">2</text></g>
-                <g><circle cx="314" cy="78" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="314" y="82" fontSize="12">3</text></g>
-                <g><circle cx="480" cy="42" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="480" y="46" fontSize="12">4</text></g>
+                <image href="/site/map-bento.webp" x="0" y="0" width="640" height="230" preserveAspectRatio="xMidYMid slice" />
+                <path d="M478 35 L447 74 L323 195 L163 136" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" />
+                <g><circle cx="478" cy="35" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="478" y="39" fontSize="12">1</text></g>
+                <g><circle cx="447" cy="74" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="447" y="78" fontSize="12">2</text></g>
+                <g><circle cx="323" cy="195" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="323" y="199" fontSize="12">3</text></g>
+                <g><circle cx="163" cy="136" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="163" y="140" fontSize="12">4</text></g>
               </svg>
             </div>
           </article>
@@ -671,13 +671,13 @@ function Share() {
                 <span className="viewer">{t('landing.sh.viewer')}</span>
               </div>
               <div className="bb-map" aria-hidden="true">
-                {/* §5: Mapbox static image removed — hand-drawn SVG coastline (no token, no api.mapbox.com). */}
+                {/* §5: реальная карта (OpenFreeMap/liberty, самрендер, © OpenStreetMap впечатан); маршрут+пины — SVG поверх, координаты из той же проекции. */}
                 <svg viewBox="0 0 598 130" preserveAspectRatio="xMidYMid slice">
-                  <path className="aw-coast" d="M598 0 L598 130 L0 130 L0 100 C40 92 70 76 110 74 C150 72 175 86 210 82 C250 78 270 58 310 58 C350 58 372 76 410 68 C450 60 470 34 512 26 C548 20 572 8 590 2 C594 1 596 0 598 0 Z" />
-                  <path d="M357.3 40.0 C348.9 48.3 326.2 85.8 306.8 90.0 C287.3 94.2 251.7 69.6 240.7 65.5" fill="none" stroke="#2173C8" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
-                  <g><circle cx="357" cy="40" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="357" y="44" fontSize="10">1</text></g>
-                  <g><circle cx="307" cy="90" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="307" y="94" fontSize="10">2</text></g>
-                  <g><circle cx="241" cy="65" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="241" y="69" fontSize="10">3</text></g>
+                  <image href="/site/map-share.webp" x="0" y="0" width="598" height="130" preserveAspectRatio="xMidYMid slice" />
+                  <path d="M434 44 L294 28 L164 103" fill="none" stroke="#2173C8" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
+                  <g><circle cx="434" cy="44" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="434" y="48" fontSize="10">1</text></g>
+                  <g><circle cx="294" cy="28" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="294" y="32" fontSize="10">2</text></g>
+                  <g><circle cx="164" cy="103" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="164" y="107" fontSize="10">3</text></g>
                 </svg>
               </div>
               <div className="bb-strip">
