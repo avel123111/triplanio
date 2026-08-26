@@ -21,6 +21,7 @@ import PublicTrip from '@/pages/PublicTrip';
 import JoinTrip from '@/pages/JoinTrip';
 import Login from '@/pages/Login';
 import LandingPage from '@/pages/Landing/LandingPage';
+import { SiteZone } from '@/components/site/SiteChrome';
 import ManualPlanner from '@/pages/ManualPlanner';
 import Inbox from '@/pages/Inbox';
 import Pro from '@/pages/Pro';
@@ -114,35 +115,6 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Demo trip — public marketing page, no auth. Own branch before the auth gate
-  // so logged-out visitors get the demo, not the catch-all landing (TRIP-462).
-  if (path.startsWith('/d/')) {
-    return (
-      <Suspense fallback={null}>
-        <Routes>
-          <Route path="/d/:slug" element={<DemoTrip />} />
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
-      </Suspense>
-    );
-  }
-
-  // Legal pages — public, no auth. Own branch before the auth gate, like the
-  // demo, so both logged-out and logged-in visitors reach /terms and /privacy
-  // (TRIP-465). The vercel.json rewrites to the old static HTML are removed in
-  // the same change — while they stand, this route never renders.
-  if (path === '/terms' || path === '/privacy') {
-    return (
-      <Suspense fallback={null}>
-        <Routes>
-          <Route path="/terms" element={<Legal doc="terms" />} />
-          <Route path="/privacy" element={<Legal doc="privacy" />} />
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
-      </Suspense>
-    );
-  }
-
   // Public read-only trip page - no auth needed
   if (path.startsWith('/public/trip/')) {
     return (
@@ -164,26 +136,45 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Login + password-recovery pages - always accessible (no auth gating).
-  // /reset-password is reached from the recovery email; its token creates a
-  // session, so it must bypass the authenticated routing below and render the
-  // same Login shell (which opens on the new-password form).
-  if (path === '/login' || path === '/reset-password') {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/reset-password" element={<Login />} />
-      </Routes>
-    );
-  }
+  // ★ ОДНА ДВЕРЬ В НЕАВТОРИЗОВАННУЮ ЗОНУ (TRIP-445).
+  //
+  // Лендинг, демо, /terms, /privacy и вход раньше жили пятью отдельными
+  // ветками, каждая со своим <Suspense> и своим владельцем site.css. Из-за
+  // этого ЛЮБОЙ переход внутри зоны размонтировал владельца слоя: стили зоны
+  // снимались с документа, страницы (`if (!cssReady) return null`) на кадр
+  // отдавали пустоту — это и читалось как «перезагрузка страницы». Плюс
+  // прокрутка не сбрасывалась: /terms открывался с середины.
+  //
+  // Теперь ветка одна и оболочка <SiteZone> над маршрутами: внутри зоны она не
+  // размонтируется, поэтому слой стилей стоит на месте, а меняется только
+  // содержимое. Ветки страниц остались ДО аут-гейта (демо, юр-страницы и вход
+  // доступны и разлогиненному, и залогиненному), условие на «/» — прежнее:
+  // лендинг показываем только после того, как авторизация РАЗРЕШЕНА, иначе
+  // вернувшийся из OAuth видит вспышку лендинга.
+  //
+  // `Suspense` тоже один: демо и юр-страницы приезжают отдельными чанками.
+  const inZone = path.startsWith('/d/')
+    || path === '/terms' || path === '/privacy'
+    || path === '/login' || path === '/reset-password'
+    || (path === '/' && !isAuthenticated && !isLoadingAuth);
 
-  // Landing page at "/" for unauthenticated visitors - only show AFTER auth is resolved
-  // (not during loading) so returning OAuth users don't see a flash of the landing.
-  if (!isAuthenticated && !isLoadingAuth && path === '/') {
+  if (inZone) {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-      </Routes>
+      <SiteZone>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            {/* /reset-password приходит из письма восстановления: его токен
+                создаёт сессию, поэтому экран тот же, что и вход. */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<Login />} />
+            <Route path="/d/:slug" element={<DemoTrip />} />
+            <Route path="/terms" element={<Legal doc="terms" />} />
+            <Route path="/privacy" element={<Legal doc="privacy" />} />
+            <Route path="*" element={<PageNotFound />} />
+          </Routes>
+        </Suspense>
+      </SiteZone>
     );
   }
 
@@ -195,13 +186,22 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Not authenticated and on a non-root path - send to landing
+  // Not authenticated and on a non-root path - send to landing. Оболочка и
+  // <Suspense> ТЕ ЖЕ, что в ветке зоны выше, и это несущее: React сверяет по
+  // типу элемента, поэтому переход «чужой адрес → /terms» не пересоздаёт ни
+  // <SiteZone>, ни <Suspense> — слой стилей зоны не роняется. Разойдись эти
+  // две обёртки по составу, и первый же lazy-маршрут, добавленный сюда,
+  // вернул бы пустой кадр, который вся эта ветка и убирает.
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="*" element={<LandingPage />} />
-      </Routes>
+      <SiteZone>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="*" element={<LandingPage />} />
+          </Routes>
+        </Suspense>
+      </SiteZone>
     );
   }
 

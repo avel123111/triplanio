@@ -8,6 +8,7 @@ import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
 } from '@/components/site/SiteChrome';
 import { useReveal } from '@/components/site/useReveal';
+import { SiteCta } from '@/components/site/SiteTrip';
 
 /* =========================================================
    Landing page — the v5.7 prototype's markup, PORTED 1:1 (TRIP-460, "CSS and
@@ -328,7 +329,7 @@ function Pain() {
             </div>
             <div className="appwin device">
               <div className="aw-screen device-screen">
-                <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>triplanio.com/d/spain-may-27</span></div>
+                <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>{SHARE_URL}</span>{/* i18n-ignore: demo URL */}</div>
                 <div className="aw-phonebar" aria-hidden="true"><i /></div>
                 <div className="aw-head">
                   <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
@@ -531,10 +532,14 @@ function useCounters(ready, lang) {
 /* ── Collab ("One workspace. Everyone in sync.") ── */
 /* ── Assistant ("Your trip, in your pocket") — Telegram demo ── */
 /* ── Share ("One link. The whole trip.") ── */
+// Путь демо-страницы — ОДНО объявление на весь файл: он же ведёт кнопку
+// финального CTA, он же показан в адресной строке мокапа браузера, он же
+// копируется в буфер. Было три хардкода одной строки — при переименовании
+// слага разъехались бы молча.
+const DEMO_PATH = '/d/spain-may-27';
 // Демо-ссылка шеринга. Домен — продуктовый triplanio.com (не triplanio.app:
-// на чужой домен нельзя пускать ни клик, ни clipboard — ревью TRIP-460 V4);
-// путь /d/<slug> — маршрут демо-трипа (эпик TRIP-445, приезжает в TRIP-461).
-const SHARE_URL = 'triplanio.com/d/spain-may-27';
+// на чужой домен нельзя пускать ни клик, ни clipboard — ревью TRIP-460 V4).
+const SHARE_URL = `triplanio.com${DEMO_PATH}`;
 
 /**
  * FAQ — native <details>/<summary>, "close others" on open (ported from the
@@ -557,39 +562,25 @@ function useFaqCloseOthers(ready) {
 }
 
 /* ── FAQ ── */
-/* ── Final CTA ── data-hdr="accent" is the producer for the 9 on-accent
-   header rules (§4) — SiteHeader's on-<theme> class only ever renders
-   'accent' when a [data-hdr] section actually carries that value; this
-   section is the only one in the prototype that does. */
+/* ── Final CTA ── ОДНА секция на лендинг, демо и публичку: `<SiteCta>`.
+   Здесь была её посимвольная копия, и из-за этого правка CTA меняла одну
+   страницу, но не остальные. Уникален у лендинга только ВТОРОЙ CTA («смотреть
+   демо») — он и передаётся пропсом, всё прочее общее. */
 function FinalCta() {
   const t = useT();
   const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
-  // Internal demo link carries the visit campaign mark (like ctaTarget) so it
-  // goes through the router, not a raw <a href> that drops the mark (check-site-nav).
-  const demoTarget = withVisitCampaign('/d/spain-may-27');
+  // Внутренняя ссылка на демо несёт метку кампании визита и идёт через роутер,
+  // а не голым <a href>, который её теряет (гард 2ad).
+  const demoTarget = withVisitCampaign(DEMO_PATH);
   return (
-    <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
-      <span className="horizon" aria-hidden="true" />
-      <div className="wrap inner">
-        <div className="rv">
-          <span className="brow" style={{ justifyContent: 'center' }}>{t('landing.fin.eyebrow')}</span>{/* inline-style-exempt: prototype's own one-off centering */}
-          <h2 style={{ marginTop: '14px' }} dangerouslySetInnerHTML={{ __html: t('landing.fin.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
-          <p>{t('landing.fin.sub')}</p>
-          <div className="ctas">
-            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
-              <span>{t('landing.fin.cta1')}</span>
-              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
-            </a>
-            {/* Второй CTA — «Посмотреть демо» → страница демо-трипа (TRIP-462). */}
-            <a className="btn btn-glass" href={demoTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final_demo' }); nav(demoTarget); }}>
-              {t('landing.fin.cta2')}
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
+    <SiteCta
+      surface="landing"
+      secondary={(
+        <a className="btn btn-glass" href={demoTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final_demo', surface: 'landing' }); nav(demoTarget); }}>
+          {t('landing.fin.cta2')}
+        </a>
+      )}
+    />
   );
 }
 
