@@ -422,34 +422,50 @@ function StreamAnchor({ label, sub, color, icon }) {
   );
 }
 
-// ─── MissingTransferWarning ───────────────────────────────────────────────────
+// ─── BookingWarning ───────────────────────────────────────────────────────────
+// «Призрак события» (вариант B1, апрув Pavel 2026-08-26): варнинг недостающей
+// брони = пунктирный силуэт карточки в тинте её типа (transfer/hotel) с
+// янтарной точкой «!» на плитке. Тон рамки/фона подставляет вызыватель ручкой
+// --w-c инлайном на корне — тем же приёмом, что StreamEventRow у .tl3-card;
+// плитка берёт тон осью `tone` самого <Tile>. Крестик скрывает варнинг до
+// перемонтирования линзы.
+const WARN_TINT = {
+  transfer: { '--w-c': 'var(--ev-transfer)' },
+  hotel:    { '--w-c': 'var(--ev-hotel)' },
+};
 
-function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
+function BookingWarning({ kind, title, sub, onAdd }) {
   const { t } = useI18n();
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 14px', background: 'var(--warning-soft)',
-      border: '1px dashed var(--warning)', borderRadius: 'var(--r-sm)',
-      marginBottom: 8,
-    }}>
-      <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-      <div className="t-label grow">
-        {t('trip.no_transfer', { from, to })}
+    <div className="tl3-ev">
+      <div className="time">—</div>
+      <div className="tl3-warn" style={WARN_TINT[kind]}>
+        {/* position:relative — якорь янтарной точки; на классе примитива это
+            свойство объявлять нельзя (закон 3 / метрика reach). */}
+        <Tile as="span" size="xl" tone={kind} style={{ position: 'relative' }}>
+          <Icon name={kind === 'hotel' ? 'bed' : 'route'} />
+          <span className="tl3-warn__dot">!</span>
+        </Tile>
+        <div className="grow">
+          <b>{title}</b>
+          <div className="sb t-meta">{sub}</div>
+        </div>
+        <div className="tl3-warn__act">
+          {/* Кнопка ОТКРЫВАЕТ форк (partner offerings, initialTab='find') — viewer
+              её видит и жмёт; блок стоит на СОЗДАНИИ внутри (Save движка), не тут. */}
+          <Btn icon="plus" onClick={onAdd}>{t('common.add')}</Btn>
+          <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
+        </div>
       </div>
-      {/* Кнопка ОТКРЫВАЕТ форк (partner offerings, initialTab='find') — viewer
-          её видит и жмёт; блок стоит на СОЗДАНИИ внутри (Save движка), не тут. */}
-      <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
-      <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
     </div>
   );
 }
 
-// ─── CityHero (with proper hotel warning) ────────────────────────────────────
+// ─── TimelineLens ─────────────────────────────────────────────────────────────
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
+function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   const { t, lang } = useI18n();
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
@@ -543,21 +559,49 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // arrival block, so nothing is excluded from the day stream.
   const inboundEventIds = new Set();
 
-  // Renders one city's arrival block: [transfer card | missing-transfer warning]
-  // then the CityHero. `prev` = the previously-rendered city (or start anchor).
+  // «Нет отеля»: город с ночёвкой (≥1 ночь), который не покрывает ни одна
+  // бронь. Привязка прежде всего по city_visit_id; отель без привязки судится
+  // перекрытием дат (той же эвристикой, что исторически жила в ленте).
+  const hotelCoversCity = (h, c) =>
+    h.city_visit_id === c.id ||
+    (!h.city_visit_id && h.check_in_datetime && h.check_out_datetime &&
+      naiveDayKey(h.check_in_datetime) < naiveDayKey(c.end_date) &&
+      naiveDayKey(h.check_out_datetime) > naiveDayKey(c.start_date));
+  const cityNights = (c) => {
+    const s = parseNaive(c.start_date), e = parseNaive(c.end_date);
+    return s && e ? Math.max(0, Math.round(e.diff(s, 'days').days)) : 0;
+  };
+  const cityNeedsHotel = (c) =>
+    c.kind !== 'waypoint' && cityNights(c) >= 1 && !(hotels || []).some(h => hotelCoversCity(h, c));
+  // Та же тернарная плюрализация ночей, что у FlowMap/ManualPlanner (канон-узор).
+  const nightsWord = (n) => (n === 1 ? t('view.nights_one') : n < 5 ? t('view.nights_few') : t('view.nights_many'));
+
+  // Renders one city's arrival block: the missing-transfer warning, then the
+  // missing-hotel warning. `prev` = the previously-rendered city (or start
+  // anchor). The transfer plaque itself renders in its own departure day (in
+  // the day stream), not above the destination city.
   const renderArrival = (city, prev) => {
     const out = [];
-    // Only the missing-transfer warning lives in the arrival block now; the
-    // transfer plaque itself renders in its own departure day (in the day
-    // stream), not above the destination city.
+    if (!showBookingWarnings) return out;
     if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)) {
-      if (showBookingWarnings) out.push(
-        <div key={`mt-${city.id}`} style={{ marginBottom: 8 }}>
-          <MissingTransferWarning
-            from={prev.city_name} to={city.city_name}
-            fromVisit={prev} toVisit={city} onAdd={onAddTransfer}
-          />
-        </div>
+      out.push(
+        <BookingWarning
+          key={`mt-${city.id}`} kind="transfer"
+          title={t('trip.no_transfer')} sub={`${prev.city_name} → ${city.city_name}`}
+          onAdd={() => onAddTransfer?.(prev, city)}
+        />
+      );
+    }
+    // Отель — ОДИН варнинг на город, в его первый день, ниже переезда
+    // (порядок «сначала переезд, потом отель» — решение Pavel 2026-08-26).
+    if (cityNeedsHotel(city)) {
+      out.push(
+        <BookingWarning
+          key={`mh-${city.id}`} kind="hotel"
+          title={t('trip.no_hotel')}
+          sub={`${city.city_name} · ${formatTripRange([city], '–')} · ${cityNights(city)} ${nightsWord(cityNights(city))}`}
+          onAdd={() => onAddHotel?.(city)}
+        />
       );
     }
     return out;
@@ -701,18 +745,18 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
               {beforeEvents.length > 0 && eventList(beforeEvents, true)}
               {blockNodes}
               {afterEvents.length > 0 && eventList(afterEvents, false)}
-              {/* Empty-day placeholder. (The city hero used to fill arrival days;
-                  with it removed, any day with no transfer block and no events
-                  shows the placeholder.) */}
+              {/* Empty-day placeholder (B1): тихая строка без рамки — намеренно
+                  НЕ похожа на пунктирные варнинги броней выше. Действие ведёт в
+                  создание активности с предзаполненным днём. */}
               {!hasAny && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 14px',
-                  background: 'transparent', border: '1px dashed var(--line)',
-                  borderRadius: 'var(--r-sm)', color: 'var(--muted)',
-                }}>
-                  <Icon name="info" size={14} />
-                  <div className="t-meta grow">{t('view.empty_day')}</div>
+                <div className="tl3-empty t-meta">
+                  <Icon name="sun" size={15} />
+                  <span>{dayCity
+                    ? t('view.empty_day', { city: dayCity.city_name })
+                    : t('view.empty_day_nocity')}</span>
+                  <button type="button" className="tl3-empty__add t-label" onClick={() => onAddActivityForDay?.(day)}>
+                    {t('activity.add')}
+                  </button>
                 </div>
               )}
             </>
@@ -731,12 +775,11 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     // here we only surface the missing-transfer warning when there is none.
     if (!hasTransferBetween(prevCity, endVisit) && showBookingWarnings) {
       rows.push(
-        <div key="mt-end" style={{ marginBottom: 8 }}>
-          <MissingTransferWarning
-            from={prevCity.city_name} to={endVisit.city_name}
-            fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer}
-          />
-        </div>
+        <BookingWarning
+          key="mt-end" kind="transfer"
+          title={t('trip.no_transfer')} sub={`${prevCity.city_name} → ${endVisit.city_name}`}
+          onAdd={() => onAddTransfer?.(prevCity, endVisit)}
+        />
       );
     }
   }
@@ -1448,6 +1491,7 @@ export default function TripView() {
                   stream={stream}
                   visits={visits}
                   transfers={transfers}
+                  hotels={hotels}
                   trip={trip}
                   isLoading={shellLoading || loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>

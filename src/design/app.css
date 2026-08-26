@@ -6594,6 +6594,32 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .tl3-card--tr .rv-mode .tile { --tile: 28px; --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
 .tl3-card--tr .rv-mode small { color: var(--muted); }
 
+/* ── Варнинги броней (B1 «призрак события», апрув Pavel 2026-08-26): пунктирный
+   силуэт недостающей карточки в тинте её типа (переезд/отель) с янтарной точкой
+   «!» на плитке. Плитка = <Tile size="xl" tone>, тон рамки/фона подставляет
+   вызыватель (BookingWarning) ручкой --w-c инлайном на корне — тем же приёмом,
+   что StreamEventRow у .tl3-card; в ряду ленты варнинг стоит за той же колонкой
+   времени (.tl3-ev .time, значение «—»). Плейсхолдер пустого дня (.tl3-empty)
+   НАМЕРЕННО другой породы — тихая строка без рамки, чтобы не читаться варнингом.
+   floor-exempt: classes +5 — B1-варнинги «нет переезда/отеля» + плейсхолдер пустого дня, апрув Pavel 2026-08-26
+   floor-exempt: triage +5 — те же 5 классов, семья tl3 на разборе, апрув Pavel 2026-08-26
+   floor-exempt: layout +3 — .tl3-warn/.tl3-warn__act/.tl3-empty несут флекс нового объекта ленты, апрув Pavel 2026-08-26
+   floor-exempt: dsshare +5 — новый экранный блок из сырой разметки (Tile/Icon/Btn/IconBtn — из ДС), апрув Pavel 2026-08-26 */
+.tl3-warn { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); padding: var(--sp-6) var(--sp-7); border: 1.5px dashed color-mix(in srgb, var(--w-c) 50%, transparent); background: color-mix(in srgb, var(--w-c) 4%, transparent); border-radius: var(--r-xl); }
+.tl3-warn__dot { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; border-radius: var(--r-pill); background: var(--warning); color: #fff; font-size: var(--fs-nano); font-weight: 800; line-height: 15px; text-align: center; box-shadow: 0 0 0 2px var(--bg); }
+.tl3-warn b { color: var(--ink); display: block; overflow-wrap: anywhere; }
+.tl3-warn .sb { color: var(--muted); margin-top: var(--sp-1); overflow-wrap: anywhere; }
+.tl3-warn__act { display: flex; align-items: center; gap: var(--sp-3); margin-left: auto; }
+/* На телефоне действия уезжают под текст отдельной строкой (flex-wrap корня). */
+@media (max-width: 640px) { .tl3-warn__act { margin-left: 0; width: 100%; justify-content: flex-end; } }
+
+/* Пустой день (B1): типографика — каноны .t-meta/.t-label из разметки. */
+.tl3-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-4); padding: var(--sp-7) 0; color: var(--muted); }
+.tl3-empty > svg { color: var(--muted-2); }
+.tl3-empty__add { border: 0; background: transparent; color: var(--brand); cursor: pointer; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); }
+.tl3-empty__add:hover { background: var(--brand-soft); }
+.tl3-empty__add:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+
 /* City scroll-rail — right column of the timeline (namespaced .cr-*) */
 .cityrail { position: sticky; top: 8px; }
 .cityrail .cr-h { color: var(--muted); margin-bottom: 14px; }

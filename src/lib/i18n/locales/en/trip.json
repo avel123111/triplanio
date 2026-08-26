@@ -1,5 +1,4 @@
 {
-  "add_transfer": "Add transfer",
   "addon_coming_soon": "Coming soon",
   "back": "Back",
   "budget_addon_off_desc": "The full budget breakdown is an optional Pro feature of the trip. Enable it in the trip settings to open the budget section.",
@@ -51,7 +50,8 @@
   "no_dates": "No dates yet",
   "no_dates_desc": "Set the trip dates to see the timeline",
   "no_dates_title": "Trip dates are not set",
-  "no_transfer": "No transfer · {from} → {to}",
+  "no_hotel": "No hotel",
+  "no_transfer": "No transfer",
   "open_budget": "Open budget",
   "open_members": "Open participants",
   "open_settings": "Open settings",
