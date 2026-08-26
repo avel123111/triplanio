@@ -6,18 +6,20 @@
 // the composed map to a PNG for the browser-rasterised card.
 //
 // TRIP-443: the card map runs on the SAME Mapbox style as every other app
-// surface (MAP_STYLE — the trip Map lens / overview). City markers are round
-// COUNTRY-FLAG chips (Ilia's request: flags instead of plain dots), no city
-// names. The map now also includes the start/finish cities (showSE) so the whole
-// journey shows — the stats TEXT under the title stays transit-only (edge side).
+// surface (MAP_STYLE — the trip Map lens / overview). City markers are BOLD BLUE
+// DOTS (Ilia's request: back to plain markers, no country flags), no city names.
+// The dot colour reuses the route token `--map-route` (mapTokens.routeColor) so
+// the markers match the route line and follow day/night. The map includes the
+// start/finish cities (showSE) so the whole journey shows — the stats TEXT under
+// the title stays transit-only (edge side).
 //
 // NOTE: HTML markers (mapboxgl.Marker) are DOM overlays and are NOT part of the
 // WebGL canvas, so a canvas snapshot would omit them. City markers are therefore
-// drawn as GL layers here (flag icons as a symbol layer, a fallback dot as a
-// circle layer) so they are captured.
+// drawn as GL circle layers here (a white halo + a blue dot) so they are captured.
 import mapboxgl from 'mapbox-gl';
 import { MAPBOX_TOKEN, MAP_STYLE, baseConfig } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
+import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
 
 /** Ordered geo points + route legs for the trip, mirroring MapView's rule. */
@@ -38,94 +40,25 @@ export function buildRoute(visits, transfers, showSE) {
   return { ordered, legs };
 }
 
-// Share-card-only map weights (TRIP-193). Bolder than the app maps so the route
-// reads at story/post scale. Kept in ONE place because the live preview scales
-// these same base values (ShareMapPreview.applyWeights) to keep preview == final.
-// `flag` = diameter of the round flag marker (logical px on the full-res card);
-// `dot`/`halo` are the fallback marker for a city with no country code.
-export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11, flag: 46 };
-const SC_DOT_COLOR = '#E11D48'; // rose-600 — fallback marker (flagless city)
-const SC_FLAG_DPR = 2; // raster scale so the flag chip stays crisp
-const SC_FLAG_RING = 3; // white ring width around the flag (logical px)
+// Share-card-only map weights (TRIP-193 → TRIP-443). Bolder than the app maps so
+// the route + markers read at story/post scale. Kept in ONE place because the live
+// preview scales these same base values (ShareMapPreview.applyWeights) to keep
+// preview == final. `dot` = the blue city marker radius; `halo` = the white casing
+// under it (logical px on the full-res card).
+export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 13, halo: 17 };
 
-// Normalised ISO2 country code of a visit (lowercased), '' when absent.
-const cityCc = (v) => (v.country_code || '').trim().toLowerCase();
-
-// Decoded /flags/<cc>.svg <img> for drawImage (same flag source as the card frame).
-function loadFlagImg(cc) {
-  return new Promise((resolve, reject) => {
-    const im = new globalThis.Image();
-    im.onload = () => resolve(im);
-    im.onerror = reject;
-    im.src = `/flags/${cc}.svg`;
-  });
-}
-
-// Composite one round flag chip (flag cover-fit inside a circle + white ring) to
-// an ImageData at `d` logical px. A single image ⇒ the map only has to place one
-// icon per city, pixel-exact and captured by the snapshot.
-function composeFlagChip(flagImg, d) {
-  const c = document.createElement('canvas');
-  c.width = Math.round(d * SC_FLAG_DPR);
-  c.height = Math.round(d * SC_FLAG_DPR);
-  const ctx = c.getContext('2d');
-  ctx.scale(SC_FLAG_DPR, SC_FLAG_DPR);
-  const r = d / 2;
-  // White ring backing (the flag is clipped to a slightly smaller circle).
-  ctx.beginPath();
-  ctx.arc(r, r, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(r, r, r - SC_FLAG_RING, 0, Math.PI * 2);
-  ctx.clip();
-  const iw = flagImg.width || 4;
-  const ih = flagImg.height || 3;
-  const scale = Math.max(d / iw, d / ih); // cover
-  const dw = iw * scale;
-  const dh = ih * scale;
-  ctx.drawImage(flagImg, r - dw / 2, r - dh / 2, dw, dh);
-  ctx.restore();
-  return ctx.getImageData(0, 0, c.width, c.height);
-}
-
-// Build one flag image per unique country code present (id `sc-flag-<cc>`). Awaits
-// each SVG; a per-flag failure just leaves that city on the fallback dot.
-async function buildFlagImages(map, ordered) {
-  const seen = new Set();
-  for (const v of ordered) {
-    const cc = cityCc(v);
-    if (cc.length !== 2 || seen.has(cc)) continue;
-    seen.add(cc);
-    let img;
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      img = await loadFlagImg(cc);
-    } catch { continue; } // name/flag missing → fallback dot handles this city
-    const id = `sc-flag-${cc}`;
-    const data = composeFlagChip(img, SC_WEIGHTS.flag);
-    if (map.hasImage(id)) map.updateImage(id, data);
-    else map.addImage(id, data, { pixelRatio: SC_FLAG_DPR });
-  }
-}
-
-/** City point source + white-halo/red-dot layer under EVERY point. A city with a
- *  flag gets its round flag chip drawn ON TOP (sc-flags) which covers the dot;
- *  a city with no flag (or a flag that failed to load) keeps the dot — so no
- *  marker ever goes invisible. */
+/** City point source + white-halo/blue-dot marker layer under EVERY point. The
+ *  dot colour reuses the route token (`--map-route`) so markers match the line
+ *  and follow day/night; the white halo keeps the dot legible on any basemap. */
 function drawPointLayer(map, ordered) {
   const src = 'sc-points';
   const data = {
     type: 'FeatureCollection',
-    features: ordered.map((v) => {
-      const cc = cityCc(v);
-      return {
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
-        properties: { flag: cc.length === 2 ? cc : '' },
-      };
-    }),
+    features: ordered.map((v) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
+      properties: {},
+    })),
   };
   if (map.getSource(src)) {
     map.getSource(src).setData(data);
@@ -142,52 +75,21 @@ function drawPointLayer(map, ordered) {
     id: 'sc-points-dot',
     type: 'circle',
     source: src,
-    paint: { 'circle-radius': SC_WEIGHTS.dot, 'circle-color': SC_DOT_COLOR },
-  });
-}
-
-// Round-flag symbol layer: one flag chip per city (icon-image resolved from the
-// feature's country code). allow-overlap so a dense route keeps every flag.
-function ensureFlagLayer(map, iconScale) {
-  if (map.getLayer('sc-flags')) {
-    map.setLayoutProperty('sc-flags', 'icon-size', iconScale);
-    return;
-  }
-  map.addLayer({
-    id: 'sc-flags',
-    type: 'symbol',
-    source: 'sc-points',
-    filter: ['!=', ['get', 'flag'], ''],
-    layout: {
-      'icon-image': ['concat', 'sc-flag-', ['get', 'flag']],
-      'icon-size': iconScale,
-      'icon-anchor': 'center',
-      'icon-allow-overlap': true,
-      'icon-ignore-placement': true,
-    },
+    paint: { 'circle-radius': SC_WEIGHTS.dot, 'circle-color': routeColor() },
   });
 }
 
 /**
- * Draw the route line + flag markers on a map (shared by capture + live preview).
- * Flag images build async (SVG decode); the returned promise (map.__scFlags) lets
- * the capture wait for them before snapshotting. `iconScale` = the flag layer's
- * icon-size (1 on the full card, `s` in the shrunk preview).
+ * Draw the route line + city markers on a map (shared by capture + live preview).
+ * Markers are plain GL circle layers (added synchronously), so — unlike the old
+ * flag-icon path — there is nothing async to await before snapshotting.
  */
-export function drawTripRoute(map, ordered, legs, opts = {}) {
-  const { iconScale = 1 } = opts;
+export function drawTripRoute(map, ordered, legs) {
   drawRouteLinesCached(map, 'sc-route', legs, {
     dashedId: 'sc-dashed', solidId: 'sc-solid',
     solidWidth: SC_WEIGHTS.solid, dashedWidth: SC_WEIGHTS.dashed,
   });
   drawPointLayer(map, ordered);
-  // Порядок в КОРНЕ убирает гонку иконок (TRIP-261): слой `sc-flags` ссылается на
-  // `sc-flag-<cc>`, поэтому добавлять его МОЖНО только ПОСЛЕ того, как
-  // buildFlagImages (async — декодит SVG) эти иконки положил.
-  map.__scFlags = (async () => {
-    await buildFlagImages(map, ordered);
-    ensureFlagLayer(map, iconScale);
-  })();
 }
 
 // ---- browser-side card rendering (TRIP-193 Ф2) ------------------------------
@@ -263,19 +165,16 @@ export function renderCardMapPng({
     };
     // On the Standard style 'load' can precede style readiness, so addLayer would
     // silently no-op and the snapshot would miss the route (same trap the live
-    // preview hit). Draw on 'idle' once the style is ready, and only snapshot
-    // AFTER the route + flag markers are added and repainted.
+    // preview hit). Draw on 'idle' once the style is ready; markers are plain
+    // circle layers added synchronously, so the next idle can snapshot directly.
     const tryDraw = () => {
       if (drew || !map.isStyleLoaded()) return;
       try {
-        drawTripRoute(map, ordered, legs, { iconScale: 1 });
+        drawTripRoute(map, ordered, legs);
         drew = true;
-        // Snapshot only AFTER the flag images build + place (or fail) so the
-        // markers are painted; a repaint on resolve gives the idle handler its cue.
-        (map.__scFlags || Promise.resolve()).then(() => { map.__scFlagsDone = true; try { map.triggerRepaint(); } catch { /* gone */ } });
       } catch { /* retry next idle */ }
     };
-    const onIdle = () => { if (!drew) tryDraw(); else if (map.__scFlagsDone) snapshot(); };
+    const onIdle = () => { if (!drew) tryDraw(); else snapshot(); };
     map.once('load', tryDraw);
     map.on('idle', onIdle);
     // Safety net: never hang the "build card" button if 'idle' never settles.
