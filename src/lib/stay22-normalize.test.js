@@ -1,7 +1,7 @@
 // Unit tests for Stay22 mapping + param building. Run: npm test (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeStay22, buildStay22Params, ensureNextDay, filterParams, applyClientFilters, BASE_HOTEL_FILTERS, STAY22_FILTER_SPEC } from './stay22-normalize.js';
+import { normalizeStay22, buildStay22Params, todayLocal, ensureNextDay, filterParams, applyClientFilters, BASE_HOTEL_FILTERS, STAY22_FILTER_SPEC } from './stay22-normalize.js';
 
 const SAMPLE = {
   meta: { pageSize: 10, count: 3, page: 1, hasMore: true, total: 32, currency: 'USD', checkin: '2026-10-05', checkout: '2026-10-10', nights: 5 },
@@ -77,7 +77,9 @@ test('normalizeStay22: empty/garbage input is safe', () => {
 
 test('buildStay22Params: builds from coords, never sends rooms, page defaults to 1', () => {
   const visit = { id: 'c1', latitude: 40.41, longitude: -3.7, start_date: '2026-10-05', end_date: '2026-10-10' };
-  const p = buildStay22Params({ visit, currency: 'EUR', lang: 'ru' });
+  // `today` пинуем явно: без него тест начал бы падать сам собой 2026-10-05,
+  // когда его же даты уедут в прошлое и сработает отсечка.
+  const p = buildStay22Params({ visit, currency: 'EUR', lang: 'ru', today: '2026-10-01' });
   assert.equal(p.lat, 40.41);
   assert.equal(p.lng, -3.7);
   assert.equal(p.checkin, '2026-10-05');
@@ -91,6 +93,39 @@ test('buildStay22Params: builds from coords, never sends rooms, page defaults to
 
 test('buildStay22Params: returns null without coordinates', () => {
   assert.equal(buildStay22Params({ visit: { start_date: '2026-10-05' }, currency: 'EUR' }), null);
+});
+
+// Даты в прошлом Stay22 отбивает 400-м, edge превращает его в 502, и панель
+// краснеет вместо того, чтобы показать пустое состояние. Три случая границы:
+test('buildStay22Params: закончившееся посещение не шлёт запрос вовсе', () => {
+  const visit = { id: 'c1', latitude: 40.41, longitude: -3.7, start_date: '2026-08-20', end_date: '2026-08-24' };
+  assert.equal(buildStay22Params({ visit, currency: 'EUR', today: '2026-08-26' }), null);
+});
+
+test('buildStay22Params: посещение, кончающееся СЕГОДНЯ, тоже не шлёт (ночь уже не забронировать)', () => {
+  const visit = { id: 'c1', latitude: 40.41, longitude: -3.7, start_date: '2026-08-24', end_date: '2026-08-26' };
+  assert.equal(buildStay22Params({ visit, currency: 'EUR', today: '2026-08-26' }), null);
+});
+
+test('buildStay22Params: идущее посещение поднимает checkin до сегодня, checkout не трогает', () => {
+  const visit = { id: 'c1', latitude: 40.41, longitude: -3.7, start_date: '2026-08-24', end_date: '2026-08-30' };
+  const p = buildStay22Params({ visit, currency: 'EUR', today: '2026-08-26' });
+  assert.equal(p.checkin, '2026-08-26');
+  assert.equal(p.checkout, '2026-08-30');
+});
+
+test('buildStay22Params: будущее посещение проходит нетронутым', () => {
+  const visit = { id: 'c1', latitude: 40.41, longitude: -3.7, start_date: '2026-09-02', end_date: '2026-09-06' };
+  const p = buildStay22Params({ visit, currency: 'EUR', today: '2026-08-26' });
+  assert.equal(p.checkin, '2026-09-02');
+  assert.equal(p.checkout, '2026-09-06');
+});
+
+test('todayLocal: локальный календарь, не UTC (иначе западнее Гринвича теряется ночь)', () => {
+  // 1 марта 00:30 по локальному времени — в UTC это ещё 28 февраля для UTC-, но
+  // гостю нужен ЕГО день.
+  assert.equal(todayLocal(new Date(2026, 2, 1, 0, 30)), '2026-03-01');
+  assert.equal(todayLocal(new Date(2026, 11, 31, 23, 59)), '2026-12-31');
 });
 
 test('ensureNextDay: forces checkout strictly after checkin', () => {
