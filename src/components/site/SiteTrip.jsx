@@ -133,8 +133,10 @@ export function SiteCta({ ns = 'landing.fin', surface, secondary = null }) {
       <span className="horizon" aria-hidden="true" />
       <div className="wrap inner">
         <div className="rv">
-          <span className="brow" style={{ justifyContent: 'center' }}>{t(`${ns}.eyebrow`)}</span>{/* inline-style-exempt: prototype's own one-off centering */}
-          <h2 style={{ marginTop: '14px' }} dangerouslySetInnerHTML={{ __html: t(`${ns}.h2`) }} />{/* inline-style-exempt: prototype's own one-off spacing */}
+          {/* Ни одного инлайна: центровка eyebrow и отступ заголовка живут
+              правилами `.final .brow` / `.final h2` в site.css. */}
+          <span className="brow">{t(`${ns}.eyebrow`)}</span>
+          <h2 dangerouslySetInnerHTML={{ __html: t(`${ns}.h2`) }} />
           <p>{t(`${ns}.sub`)}</p>
           <div className="ctas">
             <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final', surface }); nav(ctaTarget); }}>

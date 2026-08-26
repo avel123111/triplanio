@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -359,13 +359,60 @@ function prefetchZoneNeighbours() {
   else setTimeout(run, 800);
 }
 
+const ZoneCssCtx = createContext(null);
+
+/**
+ * ★ ОДНА ОБОЛОЧКА НА ВСЮ ЗОНУ — владелец `site.css`, класса `html.site` и
+ * прокрутки для лендинга, демо, юр-страниц и входа разом.
+ *
+ * Зачем компонент, а не хук на каждой странице (как было): владелец слоя жил
+ * НА СТРАНИЦЕ, поэтому переход лендинг → демо его размонтировал. Порядок React
+ * — сначала teardown старого дерева, потом mount нового, — и между ними
+ * `<link>` со стилями зоны снимался с документа. А каждая страница зоны стоит
+ * на `if (!cssReady) return null`, то есть на это окно из разметки исчезало
+ * ВСЁ. Отсюда и «рвано, с перезагрузкой»: это не роутер, это стили,
+ * уезжавшие и приезжавшие на каждом переходе.
+ *
+ * Микротаск и предзагрузка чанков (ниже) окно сужали, но не закрывали: пока
+ * страница-сосед висит в `Suspense`, поднять счётчик некому.
+ *
+ * Здесь владелец ВЫШЕ маршрута: внутри зоны `<SiteZone>` не размонтируется
+ * никогда, поэтому снимать и вешать нечего — меняется только содержимое.
+ * `cssReady` страницы берут из контекста, а не заводят свой (см. `useSiteCss`).
+ *
+ * Второе, что уходит вместе с этим: прокрутка. Роутер её не трогает, поэтому
+ * переход с середины лендинга на /terms открывал документ с середины.
+ */
+export function SiteZone({ children }) {
+  const cssReady = useSiteCssLink(true);
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    // Якорь в адресе — прокрутку ведёт он, не мы (`/d/x#budget`, меню лендинга).
+    if (hash) return;
+    window.scrollTo(0, 0);
+  }, [pathname, hash]);
+  return <ZoneCssCtx.Provider value={cssReady}>{children}</ZoneCssCtx.Provider>;
+}
+
+/**
+ * `cssReady` для страницы. Внутри `<SiteZone>` — из контекста (слой уже держит
+ * оболочка). Вне её — страница сама себе владелец: так живут /public/trip,
+ * /join и лендинг у залогиненного, они приходят не из зоны.
+ */
 export function useSiteCss() {
+  const hosted = useContext(ZoneCssCtx);
+  const own = useSiteCssLink(hosted === null);
+  return hosted === null ? own : hosted;
+}
+
+function useSiteCssLink(enabled) {
   const [cssReady, setCssReady] = useState(() => {
     if (typeof document === 'undefined') return false;
     const el = document.getElementById('site-css');
     return !!(el && el.sheet);
   });
   useEffect(() => {
+    if (!enabled) return undefined;
     siteCssRefs += 1;
     const onLoad = () => setCssReady(true);
     let link = document.getElementById('site-css');
@@ -396,7 +443,7 @@ export function useSiteCss() {
         document.documentElement.classList.remove('site', 'reveal--ready');
       });
     };
-  }, []);
+  }, [enabled]);
   return cssReady;
 }
 

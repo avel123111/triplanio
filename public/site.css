@@ -14,7 +14,6 @@
 /* visual-diff-exempt: .btn margin — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
 /* visual-diff-exempt: .eyebrow--acc::before background — снят вместе с форком демо-CTA: носитель заменён общим <SiteCta> с .brow (TRIP-445) */
 /* visual-diff-exempt: .eyebrow--acc justify-content — снят вместе с форком демо-CTA: носитель заменён общим <SiteCta> с .brow (TRIP-445) */
-/* visual-diff-exempt: .final background — тире перед eyebrow берёт тёмную краску секции (TRIP-445) */
 /* visual-diff-exempt: .lang-menu transition — закрытое меню скрывается и от клавиатуры (visibility), переход её ждёт (TRIP-445) */
 /* visual-diff-exempt: .lang-menu visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
 /* visual-diff-exempt: .lang visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
@@ -29,19 +28,13 @@
    1. CTA сведён к ОДНОМУ объекту: `.dm-final`/`.dm-sheet` были побайтовыми
       копиями `.final`/`.sheet-pane`, из-за них правка CTA не доходила до демо.
       Копии удалены, демо рендерит тот же `<SiteCta>`.
-   2. Краска текста CTA: закат макета остаётся 1:1, AA держится ТЁМНОЙ буквой
-      (`--sunset-ink`), а не углублением фона.
+   2. Краска CTA НЕ ТРОГАЛАСЬ: закат и белая буква прототипа 1:1, как были.
+      AA-дефект секции остаётся открытым вопросом TRIP-460 (леджер в `.final`).
    3. `.demo .bcard` / `.demo .bento` — побайтовые копии глобальных правил.
    Ключи `.demo <свойство>` — пересчёт ключа предка после удаления копий: гард
    приписывает объявление каждому классу селектора.
    ══════════════════════════════════════════════════════════════════════════ */
-/* visual-diff-exempt: .brow::before opacity — eyebrow и его тире берут тёмную краску секции (TRIP-445) */
-/* visual-diff-exempt: .btn-glass — стеклянная кнопка на светлом закате: тёмная краска и плотнее фон (TRIP-445) */
-/* visual-diff-exempt: .btn-glass background — стеклянная кнопка на светлом закате: тёмная краска и плотнее фон (TRIP-445) */
-/* visual-diff-exempt: .btn-glass border — стеклянная кнопка на светлом закате: тёмная краска и плотнее фон (TRIP-445) */
-/* visual-diff-exempt: .btn-glass:hover background — парное к плотности фона выше (TRIP-445) */
-/* visual-diff-exempt: .final :focus-visible outline-color — обводка по тёмной краске секции (TRIP-445) */
-/* visual-diff-exempt: .btn-glass color — стеклянная кнопка на светлом закате: тёмная краска и плотнее фон (TRIP-445) */
+/* visual-diff-exempt: .final h2 margin-top — инлайн `<SiteCta>` переехал в правило секции: одна секция на три страницы — одно правило (TRIP-445) */
 /* visual-diff-exempt: .demo .bcard > p font-size — снята побайтовая копия глобального правила (TRIP-445) */
 /* visual-diff-exempt: .demo .bcard h3 margin — снята побайтовая копия глобального правила (TRIP-445) */
 /* visual-diff-exempt: .demo .dm-final h2 font-size — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
@@ -76,11 +69,6 @@
 /* visual-diff-exempt: .dm-sheet margin-top — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
 /* visual-diff-exempt: .dm-sheet position — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
 /* visual-diff-exempt: .dm-sheet z-index — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .final — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
-/* visual-diff-exempt: .final p color — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
-/* visual-diff-exempt: .final p opacity — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
-/* visual-diff-exempt: .final opacity — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
-/* visual-diff-exempt: .site --sunset-ink — пара «закат макета / тёмная краска» вместо белого текста (TRIP-445) */
 
 html.site {
   /* Слой ДС зоны — блок :root прототипа v5.7 ПЕРЕНЕСЁН ЦЕЛИКОМ, не пересказан
@@ -92,11 +80,6 @@ html.site {
   --mist:#F0F7FD; --band:#E2F0FB; --sand:#FDF3E5;
   --night-line:rgba(122,180,235,.15); --night-text:#BDD5EC;
   --sunset:#FF9E4A; --sunset-text:#A0632E; --sunset-tint:#FDECDC;
-  /* Краска текста НА ЗАКАТЕ финального CTA — третий член той же пары, что
-     `--sunset`/`--sunset-text`: тот же тон, доведённый до контраста ≥4.5 со
-     ВСЕМИ тремя стопами градиента (5.48 / 7.11 / 9.05). Отдельный токен, а не
-     литерал: краску несут пять правил секции, и разъехаться им нельзя. */
-  --sunset-ink:#3A1200;
   --mint:#2EC27E; --mint-text:#1C7A4F; --mint-tint:#DCF5E8;
   /* violet/coral — новые пары фон/текст (ревью TRIP-460, «не потерять»/контраст):
      #fff не проходит AA ни на одном сыром акценте прототипа (--brand 4.09,
@@ -402,7 +385,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 :focus:not(:focus-visible){outline:none}
 
-.final :focus-visible{outline-color:var(--sunset-ink)}
+.final :focus-visible{outline-color:#fff}
 
 
 /* Восьмая коллизия «вторая база» (ревью TRIP-460, найдена при проверке контраста
@@ -457,11 +440,6 @@ section{position:relative}
 
 .dark .brow::before{background:rgba(255,255,255,.7)}
 
-/* Финальный CTA несёт `.dark` (тёмная секция по классификации макета), но его
-   закат — СВЕТЛЫЙ, и белый eyebrow на нём не читается. Ставим ПОСЛЕ правил
-   `.dark .brow`: специфичность равная, решает порядок. */
-.final .brow{color:var(--sunset-ink)}
-.final .brow::before{background:var(--sunset-ink);opacity:.7}
 
 .section-head{max-width:660px;margin-bottom:clamp(34px,4vw,52px)}
 
@@ -1961,24 +1939,23 @@ section{position:relative}
        D — оставить фон макета, а абзацу дать тёмную краску вместо белой (пары
            фон/текст с публичной поездки, как предписывает ТЗ). Заголовок при
            этом всё равно требует B. */
-  /* ★ ЗАКАТ МАКЕТА 1:1 — стопы прототипа, ни один не тронут.
-     AA держится ЦВЕТОМ БУКВЫ, а не глубиной фона: белым по этому закату 4.5:1
-     недостижимо арифметически (порог требует яркости фона ≤0.183, стопы дают
-     0.52/0.40/0.31 — любой проходящий фон это уже другой закат). Тёмная краска
-     на тех же стопах даёт 5.5–9.1, то есть с запасом и БЕЗ правки картинки.
-     Это ровно приём «пара фон/текст», который ТЗ эпика предписывает и который
-     уже применён на публичной поездке. */
   background:
     radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
     linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);
-  color:var(--sunset-ink);text-align:center;overflow:hidden;
+  color:#fff;text-align:center;overflow:hidden;
 }
 
 .final .inner{position:relative;z-index:2;max-width:700px;margin-inline:auto}
 
-.final h2{font-size: var(--fs-final-h2);font-weight:800;margin-bottom:16px}
+/* Отступ заголовка и центровка eyebrow ПЕРЕЕХАЛИ СЮДА из двух инлайнов
+   `<SiteCta>` (прототип держал их на элементе). Секция одна на три страницы —
+   значит и правило одно; инлайн на общем компоненте это пиксельная копия,
+   которую не видит ни один гард. */
+.final h2{font-size: var(--fs-final-h2);font-weight:800;margin-top:14px;margin-bottom:16px}
 
-.final p{color:var(--sunset-ink);opacity:.86;font-size: var(--fs-lead-lg);margin-bottom:30px}
+.final .brow{justify-content:center}
+
+.final p{color:rgba(255,255,255,.92);font-size: var(--fs-lead-lg);margin-bottom:30px}
 
 .final .ctas{display:flex;flex-wrap:wrap;gap:13px;justify-content:center}
 
@@ -3231,8 +3208,8 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 */
 /* Кнопка-стекло — общий вариант акцентного CTA (2-кнопочный CTA лендинга
    «Посмотреть демо»). Глобальная: живёт вне `.demo`. */
-.btn-glass{background:rgba(255,255,255,.42);color:var(--sunset-ink);border:1px solid rgba(58,18,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.btn-glass:hover{background:rgba(255,255,255,.6);transform:translateY(-2px)}
+.btn-glass{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.32);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.btn-glass:hover{background:rgba(255,255,255,.26);transform:translateY(-2px)}
 /* Секция-«лист» демо берёт общий `.sheet-pane` зоны. Раньше здесь стоял
    `.dm-sheet` — побайтовая копия того же правила: имя развели из-за коллизии
    прототипного `.sheet` с bottom-sheet приложения, но развели ФОРКОМ вместо
@@ -3505,7 +3482,8 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    landing. The old `dm-tg-*` / `tg-when` block lived here and is removed. */
 /* `.eyebrow--acc` УДАЛЁН вместе с форком демо-CTA: его единственным носителем
    была своя разметка `DemoCta`, а она заменена общим `<SiteCta>`, который несёт
-   `.brow` — тот же eyebrow, что на лендинге. Цвет ему даёт `.final .brow`.
+   `.brow` — тот же eyebrow, что на лендинге, и белым его красит `.dark .brow`
+   (секция несёт класс `dark`), ровно как на лендинге до унификации.
    Гард 2n поймал это осиротевшее правило и был прав. */
 .demo .dm-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .demo .tg-h2{margin:14px 0 14px}
