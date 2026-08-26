@@ -2,9 +2,7 @@
    Demo trip — static data (TRIP-462, Ф6.3).
 
    A fictional, fully-curated trip that showcases the product. No `getPublicTrip`,
-   no DB — the data lives here in the repo (decision Pavel). The page footer states
-   plainly that the itinerary, people, prices and documents are invented
-   (`landing.demo.footer.disclaimer`).
+   no DB — the data lives here in the repo (decision Pavel).
 
    The ROUTE MAP is driven from structured data fed to the canonical <MapView>
    (same primitive as PublicTrip). The dense showcase sections (timeline, budget,

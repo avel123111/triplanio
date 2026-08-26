@@ -103,6 +103,19 @@ test('external, anchor, mailto and dynamic hrefs are not flagged', (t) => {
   assert.equal(r.status, 0, r.stderr);
 });
 
+test('an SVG <image href="/x"> / <use href="/x"> is a resource ref, not <a> navigation', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/Landing/Extra.jsx':
+      "export const E = () => (\n" +
+      "  <svg viewBox=\"0 0 10 10\">\n" +
+      "    <image href=\"/site/map-pain.webp\" x=\"0\" y=\"0\" width=\"10\" height=\"10\" />\n" +
+      "    <use href=\"/site/icon.svg\" />\n" +
+      "  </svg>\n" +
+      ");\n",
+  }));
+  assert.equal(r.status, 0, r.stderr);
+});
+
 test('a DOM property assignment link.href = "/x" is not a JSX attribute', (t) => {
   const r = run(fixture(t, {
     'src/components/site/useCss.js':

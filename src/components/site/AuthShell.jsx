@@ -81,10 +81,8 @@ export default function AuthShell({ lang, setLang, activeScreen, children }) {
 
         <footer className="pane-foot">
           <span>© 2026 {BRAND_NAME}</span>{/* i18n-ignore: год + бренд, как в прототипе */}
-          {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-          <a href="/terms">{t('auth.foot_terms')}</a>
-          {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-          <a href="/privacy">{t('auth.foot_privacy')}</a>
+          <Link to="/terms">{t('auth.foot_terms')}</Link>
+          <Link to="/privacy">{t('auth.foot_privacy')}</Link>
           {/* mailto — внешний протокол (не internal href), как в футере лендинга */}
           <a href="mailto:support@triplanio.com">{t('auth.foot_support')}</a>
           <span className="secure">

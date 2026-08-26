@@ -3415,9 +3415,9 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 @media (max-width:600px){.doc-meta{gap:6px 16px}
   .doc-meta > span + span::before,.doc-meta .doc-print::before{content:none}}
 .doc-tabs{display:inline-flex;gap:3px;margin-top:24px;padding:4px;border-radius:999px;background:var(--mist);border:1px solid rgba(19,50,78,.07)}
-.doc-tabs button{padding:9px 18px;border-radius:999px;font-size:var(--fs-body);font-weight:600;color:var(--muted);cursor:pointer;transition:background .2s,color .2s,box-shadow .2s}
-.doc-tabs button:hover{color:var(--ink)}
-.doc-tabs button[aria-selected="true"]{background:var(--white);color:var(--ink);box-shadow:var(--shadow-sm)}
+.doc-tabs a{padding:9px 18px;border-radius:999px;font-size:var(--fs-body);font-weight:600;color:var(--muted);text-decoration:none;cursor:pointer;transition:background .2s,color .2s,box-shadow .2s}
+.doc-tabs a:hover{color:var(--ink)}
+.doc-tabs a[aria-current="page"]{background:var(--white);color:var(--ink);box-shadow:var(--shadow-sm)}
 .doc-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}
 @media (min-width:981px){
   .doc-grid{grid-template-columns:240px minmax(0,1fr);gap:clamp(34px,4.5vw,72px);align-items:start}

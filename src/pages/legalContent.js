@@ -19,8 +19,12 @@ import privacyHtml from './legal/privacy.en.html?raw';
 
 // TOC from the prose itself: every `<section id><h2>` is one entry. One source
 // of truth — the .html — so the sidebar can never drift from the document.
+// `[\s\S]*?` (not `\s*`): find each section's <h2> even if a note/badge sits
+// between the <section id> and its heading — a future edit to the prose can't
+// silently drop an entry from the TOC. matchAll advances past each <h2>, so the
+// lazy scan pairs every section with its OWN first heading.
 function tocOf(html) {
-  return [...html.matchAll(/<section id="([^"]+)">\s*<h2>([\s\S]*?)<\/h2>/g)]
+  return [...html.matchAll(/<section id="([^"]+)">[\s\S]*?<h2>([\s\S]*?)<\/h2>/g)]
     .map((m) => ({ id: m[1], title: m[2].replace(/<[^>]+>/g, '').trim() }));
 }
 

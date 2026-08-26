@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import {
@@ -39,8 +39,6 @@ export default function Legal({ doc = 'terms' }) {
   const active = LEGAL[doc] ? doc : 'terms';
   const d = LEGAL[active];
   useDocumentMeta(`${d.title} — Triplanio`, d.lede);
-
-  const nav = useNavigate();
 
   // Scroll-spy: mark the TOC entry of the section currently under the header
   // (prototype's sticky-TOC highlight). Re-arms when the CSS goes live (sections
@@ -83,19 +81,17 @@ export default function Legal({ doc = 'terms' }) {
                   <span>{LEGAL_UI.print}</span>
                 </button>
               </div>
-              <div className="doc-tabs" role="tablist" aria-label={LEGAL_UI.tablistLabel}>
+              {/* Real route navigation (/terms ⇄ /privacy), not an in-place tab
+                  panel — so a <nav> of router links with aria-current, not the
+                  WAI-ARIA tablist pattern (which would promise content swaps
+                  under one panel). */}
+              <nav className="doc-tabs" aria-label={LEGAL_UI.tablistLabel}>
                 {DOCS.map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    role="tab"
-                    aria-selected={active === k}
-                    onClick={() => { if (k !== active) nav(`/${k}`); }}
-                  >
+                  <Link key={k} to={`/${k}`} aria-current={active === k ? 'page' : undefined}>
                     {LEGAL[k].tab}
-                  </button>
+                  </Link>
                 ))}
-              </div>
+              </nav>
             </div>
 
             <div className="doc-grid">
