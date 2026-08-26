@@ -10,9 +10,12 @@
    not (and should not) touch it: it is markup, not UI code. The section ids
    double as the TOC anchors, so the TOC is derived from the prose — one source.
 
-   ⚠️ Legal specifics (entity Triplanio OÜ / Estonia, dates, emails, retention
-   periods, the analytics wording) come straight from the prototype and are
-   Pavel's to revise in a follow-up — do not treat them as reviewed here.
+   The prose is the reviewed v1.0 (TRIP-133 audit): operator = sole trader in
+   Spain (details on request), contacts info@/support@ only, Spanish law, 16+,
+   the consent wording matches the real TRIP-407 variant-B behaviour, retention
+   figures are verified facts (Supabase Pro backups 7d, Sentry 90d, Spanish
+   accounting 6y). Every factual claim is traced to code in the PR description —
+   keep the text in sync with behaviour when either changes.
    ============================================================================= */
 import termsHtml from './legal/terms.en.html?raw';
 import privacyHtml from './legal/privacy.en.html?raw';
@@ -29,9 +32,9 @@ function tocOf(html) {
 }
 
 export const LEGAL_META = {
-  updated: 'Last updated 14 August 2026',
-  version: 'Version 3.1',
-  effective: 'Effective 1 September 2026',
+  updated: 'Last updated 26 August 2026',
+  version: 'Version 1.0',
+  effective: 'Effective 26 August 2026',
 };
 
 // Chrome labels of the viewer. English like the rest of the legal surface (not
@@ -44,7 +47,7 @@ export const LEGAL_UI = {
   tablistLabel: 'Legal documents',
 };
 
-export const LEGAL_FOOT = 'This page is the current version of the document. Earlier versions are available on request at <a href="mailto:legal@triplanio.com">legal@triplanio.com</a>. In case of any discrepancy between translations, the English text prevails.';
+export const LEGAL_FOOT = 'This page always shows the current version of the document. Questions: <a href="mailto:info@triplanio.com">info@triplanio.com</a>.';
 
 export const LEGAL = {
   terms: {
