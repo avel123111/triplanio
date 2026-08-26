@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  ChevronDown,
   Search, RotateCcw, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
 } from 'lucide-react';
 import { Btn, Input, InputGroup, Stepper } from '@/design/index';
@@ -8,22 +7,21 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 import { pageWindow, nextSort, buildStatePartner, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
-import { STAY22_PROVIDERS } from '@/lib/stay22-normalize';
 import { priceRangeLabel } from '@/lib/forkFilter';
 
 // Live Stay22 stays for the hotel fork panel (Lumo redesign v3 + filters, TRIP-224).
 // Rendered under the partner block, hotel + panel only.
 //
-// PRESENTATIONAL: the Stay22 query + page + SERVER filters (guests + platform) +
-// CLIENT filters (text / price / sort) + hovered/selected all live in
-// useStay22Bundle (TripStructureEdit / the timeline drawer), so ONE filtered pool
-// feeds both this list and the map badges. This component only renders and reports
-// intent upward. The only local state is the filter popover's draft + open flag.
-// List chrome (skeleton / empty / error / pager) is shared with the activity fork
-// via forkList.jsx.
+// PRESENTATIONAL: the Stay22 query + page + SERVER filters (guests) + CLIENT
+// filters (text / price / sort) + hovered/selected all live in useStay22Bundle
+// (TripStructureEdit / the timeline drawer), so ONE filtered pool feeds both this
+// list and the map badges. This component only renders and reports intent upward.
+// The only local state is the filter popover's draft + open flag. List chrome
+// (skeleton / empty / error / pager) is shared with the activity fork via
+// forkList.jsx.
 //
 // TWO filter classes (TRIP-224):
-//  · SERVER (reload the pool, committed via "Поиск"): guests/rooms + platform (provider).
+//  · SERVER (reload the pool, committed via "Поиск"): guests/rooms.
 //  · CLIENT (instant, over the pool): text search (name+address), price (TOTAL stay
 //    price in the TRIP currency), sort. Price lives in the popover too but is applied
 //    client-side; text + sort apply immediately from the search row / count row.
@@ -50,7 +48,7 @@ export default function Stay22HotelList({
   // Filtered pool + paging (lifted to useStay22Bundle).
   data, isLoading, isFetching, isError, refetch,
   page, onPageChange,
-  // SERVER filters (guests + platform) — reload the pool.
+  // SERVER filters (guests) — reload the pool.
   applied, onApply, onResetAll,
   // CLIENT filters (text / price / sort) — instant over the pool.
   clientFilters, onSearch, onApplyPrice, onSort,
@@ -65,13 +63,12 @@ export default function Stay22HotelList({
   const logClick = usePartnerLogger(tripId);
   const cf = clientFilters || { text: '', min: '', max: '', sortBy: 'recommended' };
 
-  // Local-only: the filter popover draft (guests + platform + price) + its open
-  // flag. Re-seeded from the committed state each time the popover opens.
+  // Local-only: the filter popover draft (guests + price) + its open flag.
+  // Re-seeded from the committed state each time the popover opens.
   const seed = () => ({
     adults: applied?.adults ?? BASE_GUESTS.adults,
     children: applied?.children ?? BASE_GUESTS.children,
     rooms: applied?.rooms ?? BASE_GUESTS.rooms,
-    provider: applied?.provider || 'all',
     min: cf.min ?? '',
     max: cf.max ?? '',
   });
@@ -116,9 +113,9 @@ export default function Stay22HotelList({
   const gotoPage = (p) => { onSelect?.(null); onPageChange(p); };
   const setG = (k, v) => setPending((s) => ({ ...s, [k]: v }));
   const apply = () => {
-    const { adults, children, rooms, provider, min, max } = pending;
-    // Server snap: guests + platform (provider only when a real platform is picked).
-    onApply({ adults, children, rooms, ...(provider && provider !== 'all' ? { provider } : {}) });
+    const { adults, children, rooms, min, max } = pending;
+    // Server snap: guests.
+    onApply({ adults, children, rooms });
     // Client snap: price range over the pool (trip currency, total stay).
     onApplyPrice?.(min, max);
     setFilterOpen(false);
@@ -130,22 +127,19 @@ export default function Stay22HotelList({
     || (applied.children ?? BASE_GUESTS.children) !== BASE_GUESTS.children
     || (applied.rooms ?? BASE_GUESTS.rooms) !== BASE_GUESTS.rooms
   );
-  const appliedProvider = applied?.provider || null;
   const appliedPrice = cf.min !== '' || cf.max !== '';
-  const activeCount = (appliedGuests ? 1 : 0) + (appliedProvider ? 1 : 0) + (appliedPrice ? 1 : 0);
+  const activeCount = (appliedGuests ? 1 : 0) + (appliedPrice ? 1 : 0);
   const sortLabel = t(`fork.f_sort_${cf.sortBy}`);
   const cur = currency || '';
-  const providerLabel = (key) => STAY22_PROVIDERS.find((p) => p.key === key)?.label || key;
   const priceText = priceRangeLabel({ t, currency: cur, min: cf.min, max: cf.max });
 
-  // Pill removals: guests/platform re-commit the SERVER filters; price clears the
-  // CLIENT range. Each also clears the popover DRAFT — the chips row stays visible
-  // while the popover is open, so a stale draft would re-apply the filter on the
-  // next "Поиск" and the removal would look ineffective. Same helper shape as
+  // Pill removals: guests re-commits the SERVER filters; price clears the CLIENT
+  // range. Each also clears the popover DRAFT — the chips row stays visible while
+  // the popover is open, so a stale draft would re-apply the filter on the next
+  // "Поиск" and the removal would look ineffective. Same helper shape as
   // ViatorActivityList (found in review).
   const dropChip = (draftPatch, commit) => { setPending((d) => ({ ...d, ...draftPatch })); commit(); };
-  const removeGuests = () => dropChip(BASE_GUESTS, () => onApply({ ...(appliedProvider ? { provider: appliedProvider } : {}) }));
-  const removePlatform = () => dropChip({ provider: 'all' }, () => onApply({ adults: applied?.adults, children: applied?.children, rooms: applied?.rooms }));
+  const removeGuests = () => dropChip(BASE_GUESTS, () => onApply({}));
   const removePrice = () => dropChip({ min: '', max: '' }, () => onApplyPrice?.('', ''));
 
   // Card click = select (no navigation); opening the supplier site (Book button
@@ -167,8 +161,8 @@ export default function Stay22HotelList({
 
   return (
     <div className="s22">
-      {/* ===== Search + filters — shared ForkToolbar; only the price + platform +
-           guests fields (children) are hotel-specific ===== */}
+      {/* ===== Search + filters — shared ForkToolbar; only the price + guests
+           fields (children) are hotel-specific ===== */}
       <ForkToolbar
         searchValue={cf.text}
         onSearchChange={onSearch}
@@ -180,7 +174,6 @@ export default function Stay22HotelList({
         onApply={apply}
         pills={[
           appliedPrice && { key: 'price', label: priceText, onRemove: removePrice },
-          appliedProvider && { key: 'plat', label: providerLabel(appliedProvider), onRemove: removePlatform },
           appliedGuests && {
             key: 'guests',
             label: `${t('fork.f_guests', { n: (applied.adults || BASE_GUESTS.adults) + (applied.children || 0) })} · ${t('fork.f_rooms', { n: applied.rooms || BASE_GUESTS.rooms })}`,
@@ -200,17 +193,6 @@ export default function Stay22HotelList({
               <Input num type="text" inputMode="numeric" placeholder={t('fork.f_to')} aria-label={t('fork.f_to')} value={pending.max}
                 onChange={(e) => setG('max', e.target.value.replace(/[^\d]/g, ''))} />
             </InputGroup>
-          </div>
-        </div>
-
-        <div className="col col--g4">
-          <div className="field__label">{t('fork.f_platform')}</div>
-          <div className="s22f-selwrap">
-            <select className="s22f-sel" value={pending.provider} onChange={(e) => setG('provider', e.target.value)}>
-              <option value="all">{t('fork.f_all_platforms')}</option>
-              {STAY22_PROVIDERS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-            </select>
-            <ChevronDown size={16} className="s22f-selchev" />
           </div>
         </div>
 
