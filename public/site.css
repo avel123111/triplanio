@@ -10,6 +10,21 @@
    (.pt*, → TRIP-461); семь имён, конфликтующих с app.css правилом-одиночкой
    (btn/btn-primary/btn-ghost/sheet/eyebrow/bud-total/cflag), разрешены по
    таблице тикета; кегли и радиусы сняты на свою шкалу (таблица сдвигов в PR). */
+/* visual-diff-exempt: .btn-primary border-bottom — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
+/* visual-diff-exempt: .btn margin — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
+/* visual-diff-exempt: .eyebrow--acc::before background — снят вместе с форком демо-CTA: носитель заменён общим <SiteCta> с .brow (TRIP-445) */
+/* visual-diff-exempt: .eyebrow--acc justify-content — снят вместе с форком демо-CTA: носитель заменён общим <SiteCta> с .brow (TRIP-445) */
+/* visual-diff-exempt: .final background — тире перед eyebrow берёт тёмную краску секции (TRIP-445) */
+/* visual-diff-exempt: .lang-menu transition — закрытое меню скрывается и от клавиатуры (visibility), переход её ждёт (TRIP-445) */
+/* visual-diff-exempt: .lang-menu visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
+/* visual-diff-exempt: .lang visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu border-bottom — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu margin — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu transition — закрытое меню скрывается и от клавиатуры (visibility), переход её ждёт (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu visibility — закрытое меню скрывается и от клавиатуры (visibility), переход её ждёт (TRIP-445) */
+/* visual-diff-exempt: .mobile-menu width — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
+/* visual-diff-exempt: .mobile-open visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
+/* visual-diff-exempt: .open visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
 /* ═══ ЛЕДЖЕР 2p ЭТОГО PR ═══════════════════════════════════════════════════
    1. CTA сведён к ОДНОМУ объекту: `.dm-final`/`.dm-sheet` были побайтовыми
       копиями `.final`/`.sheet-pane`, из-за них правка CTA не доходила до демо.
@@ -3488,8 +3503,10 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    .phone.device / .tg-status / .tg-head / .tg-chat / .tg-msg / .tg-doc /
    .tg-points / .cic) — no demo-scoped copies, so it can't drift from the
    landing. The old `dm-tg-*` / `tg-when` block lived here and is removed. */
-.demo .eyebrow--acc{color:#fff;justify-content:center}
-.demo .eyebrow--acc::before{background:rgba(255,255,255,.75)}
+/* `.eyebrow--acc` УДАЛЁН вместе с форком демо-CTA: его единственным носителем
+   была своя разметка `DemoCta`, а она заменена общим `<SiteCta>`, который несёт
+   `.brow` — тот же eyebrow, что на лендинге. Цвет ему даёт `.final .brow`.
+   Гард 2n поймал это осиротевшее правило и был прав. */
 .demo .dm-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .demo .tg-h2{margin:14px 0 14px}
 .demo .tg-lede{color:var(--muted);font-size:var(--fs-lead)}
