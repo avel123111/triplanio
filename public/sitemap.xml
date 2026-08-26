@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- TRIP-448. Только СУЩЕСТВУЮЩИЕ адреса. Хост www.triplanio.com — апекс
      редиректит на www (Vercel 307). Логин/восстановление/приглашения в карте
-     не нужны. /d/europe-may вписан в Ф6.3 (TRIP-462) — страница создана.
+     не нужны. /d/europe-may-2027 вписан в Ф6.3 (TRIP-462) — страница создана.
      lastmod не ставим: статичная дата, которую никто не обновляет, врёт краулеру. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.triplanio.com/</loc>
   </url>
   <url>
-    <loc>https://www.triplanio.com/d/europe-may</loc>
+    <loc>https://www.triplanio.com/d/europe-may-2027</loc>
   </url>
   <url>
     <loc>https://www.triplanio.com/terms</loc>

@@ -17,7 +17,7 @@ import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
 test('каждая страница зоны — своя метка', () => {
   assert.equal(zoneSurface('/'), 'landing');
-  assert.equal(zoneSurface('/d/europe-may'), 'demo');
+  assert.equal(zoneSurface('/d/europe-may-2027'), 'demo');
   assert.equal(zoneSurface('/public/trip/abc-123'), 'public');
   assert.equal(zoneSurface('/terms'), 'legal');
   assert.equal(zoneSurface('/privacy'), 'legal');
