@@ -100,8 +100,14 @@ const HDR_THEMES = new Set(['light', 'dark', 'accent']);
  *                 an absolute origin so the section anchors resolve to the
  *                 landing, not the current path.
  * @param brandHref where the logo links (default '#top' for the landing).
+ * @param navItems  the section links for `variant="full"`. Defaults to the
+ *                  landing's own sections; a page with its own in-page sections
+ *                  (the demo) passes its list so ONE header serves every zone
+ *                  page — its state, not a second header (TRIP-462). Each item
+ *                  is { tkey, hash }; hashes stay relative (no navBase) so the
+ *                  same-page anchor rules match (handoff §11.28).
  */
-export function SiteHeader({ lang, setLang, variant = 'full', themed = false, navBase = '', brandHref = '#top' }) {
+export function SiteHeader({ lang, setLang, variant = 'full', themed = false, navBase = '', brandHref = '#top', navItems = NAV }) {
   const t = useT();
   const nav = useNavigate();
   const location = useLocation();
@@ -174,7 +180,7 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
           </a>
           {showNav && (
             <nav className="main-nav" aria-label={t('nav.aria_primary')}>
-              {NAV.map((n) => <a key={n.hash} href={navHref(n.hash)}>{t(n.tkey)}</a>)}
+              {navItems.map((n) => <a key={n.hash} href={navHref(n.hash)}>{t(n.tkey)}</a>)}
             </nav>
           )}
           <div className="header-actions">
@@ -202,7 +208,7 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
         <nav className="mobile-menu" id="mobileMenu" aria-label={t('nav.aria_primary')}>
           <button type="button" onClick={goCta}>{t('landing.hero.cta1')}</button>
           <button type="button" onClick={goCta}>{t('landing.hero.cta2')}</button>
-          {NAV.map((n) => (
+          {navItems.map((n) => (
             <a key={n.hash} href={navHref(n.hash)} onClick={() => setMobileOpen(false)}>{t(n.tkey)}</a>
           ))}
         </nav>

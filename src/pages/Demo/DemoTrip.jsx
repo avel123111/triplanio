@@ -1,0 +1,436 @@
+import React, { useEffect } from 'react';
+import { withVisitCampaign } from '@/lib/analytics';
+import { useI18n, useT } from '@/lib/i18n/I18nContext';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
+import {
+  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+} from '@/components/site/SiteChrome';
+import { SiteSummary } from '@/components/site/SiteTrip';
+import { useReveal } from '@/components/site/useReveal';
+import MapView from '@/components/views/MapView';
+import {
+  DEMO_VISITS, DEMO_TRANSFERS, DEMO_PEOPLE, DEMO_STATS, DEMO_TIMELINE, DEMO_BUDGET,
+  DEMO_CAL, DEMO_CAL_LEGEND, DEMO_DOCS, DEMO_SVC, DEMO_STAT_TILES, DEMO_STAT_LINES,
+  DEMO_MEMBERS, DEMO_ROLE_NOTES, DEMO_CHAT, DEMO_TG_MSGS, DEMO_TG_POINTS, DEMO_TG_WHEN,
+  DEMO_NAV,
+} from './demoTrip';
+
+// The demo cover. A repo asset (no external hotlink — zone rule); replace the
+// file to reshoot the hero. Full-bleed background behind the dark gradient.
+const COVER = '/covers/demo-spain.webp';
+
+// The marketing chrome's brand/CTA point at OUR origin (campaign mark is stored
+// per host — analytics.js), same as PublicTrip.
+const SITE = withVisitCampaign(`${window.location.origin}/`);
+const APP_URL = '/login';
+
+// floor-exempt: inline +16 — демо-трип (out-of-scope витрина, как LandingPage/PublicTrip):
+// оставшиеся инлайны — ТОЛЬКО динамические цвета/CSS-вары фиктивного трипа из данных
+// (аватары, тинты событий, донат-градиент, цвета календаря/легенды/категорий), которые
+// классами не выразить; статические инлайны сведены в site.css. Апрув Pavel 26.08.2026.
+const Ic = ({ id }) => <svg aria-hidden="true"><use href={`#${id}`} /></svg>;
+
+export default function DemoTrip() {
+  const { lang, setLang } = useI18n();
+  const t = useT();
+  const cssReady = useSiteCss();
+  useSiteTheme(); // public marketing follows the landing: light-only, restored on exit
+
+  useDocumentMeta(t('landing.demo.meta.title'), t('landing.demo.meta.desc'));
+
+  // Prototype toggles a page background class; ported like PublicTrip's pt-open.
+  useEffect(() => {
+    document.body.classList.add('demo-open');
+    return () => document.body.classList.remove('demo-open');
+  }, []);
+
+  // Reveal .rv blocks once the CSS is live — the SAME hook the landing/public
+  // trip use (one copy). Without it .rv stays opacity:0.
+  useReveal(cssReady);
+
+  if (!cssReady) return null;
+
+  const stats = DEMO_STATS.map((s) => ({
+    icon: s.icon, n: s.n, unit: s.unit ? t(s.unit) : undefined, k: t(s.k),
+  }));
+
+  return (
+    <>
+      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref="#top" navItems={DEMO_NAV} />
+
+      <main className="demo">
+        {/* ── Hero ─────────────────────────────────────────────── */}
+        <section className="hero" id="top" data-hdr="dark">
+          <div className="hero-bg" aria-hidden="true">
+            <img src={COVER} alt="" />
+          </div>
+          <div className="wrap">
+            <h1>{t('landing.demo.hero.title')}</h1>
+            <div className="hero-dates">{t('landing.demo.hero.dates')}</div>
+            <p className="hero-sub">{t('landing.demo.hero.sub')}</p>
+            <div className="hero-people">
+              <span className="avs">
+                {DEMO_PEOPLE.map((p) => (
+                  <span className="av" key={p.ini} style={{ background: p.color }} title={p.name}>{p.ini}</span>
+                ))}
+                <span className="more">+1</span>
+              </span>
+              <span className="txt" dangerouslySetInnerHTML={{ __html: t('landing.demo.hero.people') }} />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Summary stat strip (shared SiteSummary) ──────────── */}
+        <SiteSummary stats={stats} people={[]} />
+
+        {/* ── Route map ────────────────────────────────────────── */}
+        <section className="route-sec section-pad" id="route">
+          <div className="wrap">
+            <div className="section-head rv">
+              <span className="eyebrow">{t('landing.demo.route.eyebrow')}</span>
+              <h2>{t('landing.demo.route.h2a')} <span className="accent">{t('landing.demo.route.h2b')}</span></h2>
+              <p>{t('landing.demo.route.p')}</p>
+            </div>
+            <div className="mapcard rv">
+              <MapView
+                visits={DEMO_VISITS}
+                transfers={DEMO_TRANSFERS}
+                colorScheme="LIGHT"
+                initialProjection="mercator"
+                mapControls={false}
+                showStartEnd
+                active
+              />
+            </div>
+            <div className="maplegend rv">
+              <span><i className="ln" />{t('landing.demo.route.leg_added')}</span>
+              <span><i className="ln ln--d" />{t('landing.demo.route.leg_none')}</span>
+              <span><Ic id="i-flag" />{t('landing.demo.route.startend')}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Timeline ─────────────────────────────────────────── */}
+        <section className="tl-sec sheet section-pad" id="timeline">
+          <div className="wrap">
+            <div className="section-head centered rv">
+              <span className="eyebrow">{t('landing.demo.tl.eyebrow')}</span>
+              <h2>{t('landing.demo.tl.h2a')} <span className="accent">{t('landing.demo.tl.h2b')}</span></h2>
+              <p>{t('landing.demo.tl.p')}</p>
+            </div>
+            <div className="tl-wrap rv">
+              {DEMO_TIMELINE.map((day, di) => (
+                <div className="tl-day" key={di}>
+                  <div className="tl-dh">
+                    <span className="dot" style={{ borderColor: day.dot }} />
+                    <b>{t(day.dhKey)}</b>
+                    <span className="city"><Ic id="i-pin" />{t(day.cityKey)}</span>
+                  </div>
+                  <div className="tl-list">
+                    {day.events.map((ev, ei) => (ev.kind === 'trn' ? (
+                      <div className="tlev trn" key={ei}>
+                        <div className="trn-row">
+                          <span className="t num">{ev.from.time}</span>
+                          <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.from.icon} /></span>
+                          <span className="pt">{t(ev.from.ptKey)}<small>{t(ev.from.stationKey)}</small></span>
+                          <span className="pr num pr--push">{ev.from.price}</span>
+                        </div>
+                        <div className="trn-mid"><span className="m"><Ic id={ev.mid.icon} />{t(ev.mid.mKey)}<em> {t(ev.mid.emKey)}</em></span></div>
+                        <div className="trn-row">
+                          <span className="t num">{ev.to.time}</span>
+                          <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.to.icon} /></span>
+                          <span className="pt">{t(ev.to.ptKey)}<small>{t(ev.to.stationKey)}</small></span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`tlev${ev.mod ? ` ${ev.mod}` : ''}`} key={ei}>
+                        <span className="t num">{ev.time}</span>
+                        <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.icon} /></span>
+                        <span className="b"><b>{t(ev.tKey)}</b><span>{t(ev.sKey)}</span></span>
+                        {ev.pill && <span className={`pill ${ev.pill.cls}`}>{t(ev.pill.key)}</span>}
+                        {ev.price && <span className="pr num">{ev.price}</span>}
+                      </div>
+                    )))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Budget ───────────────────────────────────────────── */}
+        <section className="bud-sec section-pad" id="budget">
+          <div className="wrap">
+            <div className="section-head rv">
+              <span className="eyebrow">{t('landing.demo.bud.eyebrow')}</span>
+              <h2>{t('landing.demo.bud.h2a')} <span className="accent">{t('landing.demo.bud.h2b')}</span></h2>
+              <p>{t('landing.demo.bud.p')}</p>
+            </div>
+            <div className="bud-grid">
+              <div className="bcard rv">
+                <div className="card-h"><span className="bic warm"><Ic id="i-wallet" /></span><h3>{t('landing.demo.bud.card1')}</h3><span className="pill pro"><Ic id="i-crown" />PRO</span></div>
+                <div className="donutbox">
+                  <div className="donut" style={{ '--g': DEMO_BUDGET.donutGradient }} />
+                  <span className="donut-c"><b className="num">{DEMO_BUDGET.total}</b><span>{t('landing.demo.bud.total')}</span></span>
+                </div>
+                <div className="cats">
+                  {DEMO_BUDGET.cats.map((c, i) => (
+                    <div className="cat" key={i} style={{ '--c': c.c }}>
+                      <i className="d" />
+                      <span className="nm"><span className="t">{t(c.tKey)}</span><span className={`pill ${c.pill.cls}`}>{t(c.pill.key)}</span></span>
+                      <span className="v num">{c.v}</span>
+                      <span className="track"><i style={{ '--w': c.w }} /></span>
+                    </div>
+                  ))}
+                </div>
+                <div className="perone"><Ic id="i-users" />{t('landing.demo.bud.perone')}<b className="num">{DEMO_BUDGET.perone}</b></div>
+              </div>
+              <div className="bcard rv">
+                <div className="card-h"><span className="bic"><Ic id="i-ticks" /></span><h3>{t('landing.demo.bud.card2')}</h3><span className="pill hand">{t('landing.demo.bud.card2_n')}</span></div>
+                <div className="exp">
+                  {DEMO_BUDGET.expenses.map((e, i) => (
+                    <div className="e" key={i} style={{ '--s': e.tint.s, '--k': e.tint.k }}>
+                      <span className="ic"><Ic id={e.icon} /></span>
+                      <span className="nm"><b>{t(e.tKey)}</b><span>{t(e.sKey)}</span></span>
+                      <span className={`pill ${e.pill.cls}`}>{t(e.pill.key)}</span>
+                      <span className="v num">{e.v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="perone"><Ic id="i-info" />{t('landing.demo.bud.fx')}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Bento: calendar / docs / services / stats ────────── */}
+        <section className="more-sec sheet section-pad" id="more">
+          <div className="wrap">
+            <div className="section-head centered rv">
+              <span className="eyebrow">{t('landing.demo.more.eyebrow')}</span>
+              <h2>{t('landing.demo.more.h2a')} <span className="accent">{t('landing.demo.more.h2b')}</span></h2>
+              <p>{t('landing.demo.more.p')}</p>
+            </div>
+            <div className="bento" data-stagger>
+              {/* Calendar */}
+              <article className="bcard b-cal rv">
+                <span className="bic"><Ic id="i-cal2" /></span>
+                <h3>{t('landing.demo.more.cal.t')}</h3>
+                <p>{t('landing.demo.more.cal.p')}</p>
+                <div className="cal">
+                  <div className="cal-top"><b>{t('landing.demo.more.cal.month')}</b><span>{t('landing.demo.more.cal.range')}</span></div>
+                  <div className="cal-wd">{t('landing.demo.more.cal.wd').split(' ').map((d, i) => <span key={i}>{d}</span>)}</div>
+                  <div className="cal-g">
+                    {DEMO_CAL.map((d, i) => (d.n == null ? (
+                      <div className="cal-d" key={i} />
+                    ) : d.c == null ? (
+                      <div className="cal-d" key={i}><span className="n">{d.n}</span></div>
+                    ) : (
+                      <div className="cal-d trip" key={i} style={{ '--c': d.c }}>
+                        <span className="n">{d.n}</span>
+                        <span className="cal-dots">{Array.from({ length: d.dots || 0 }).map((_, k) => <i key={k} />)}</span>
+                        {d.bar2
+                          ? <span className="cal-bar"><i style={{ background: d.bar2[0] }} /><i style={{ background: d.bar2[1] }} /></span>
+                          : <span className="cal-bar" style={{ background: d.c }} />}
+                      </div>
+                    )))}
+                  </div>
+                  <div className="cal-legend">
+                    {DEMO_CAL_LEGEND.map((l, i) => <span key={i}><i style={{ background: l.c }} />{t(l.key)}</span>)}
+                  </div>
+                </div>
+              </article>
+              {/* Documents */}
+              <article className="bcard b-docs rv">
+                <span className="bic vio"><Ic id="i-doc" /></span>
+                <h3>{t('landing.demo.more.docs.t')}</h3>
+                <p>{t('landing.demo.more.docs.p')}</p>
+                <div className="doc-list">
+                  {DEMO_DOCS.map((d, i) => (
+                    <div className="doc-row" key={i}>
+                      <span className="ft" style={{ '--c': d.c }}>{d.ft}</span>
+                      <span className="tx"><b>{t(d.tKey)}</b><span>{t(d.sKey)}</span></span>
+                    </div>
+                  ))}
+                </div>
+                <div className="doc-note"><Ic id="i-info" />{t('landing.demo.more.docs.note')}</div>
+              </article>
+              {/* Services */}
+              <article className="bcard b-svc rv">
+                <span className="bic mint"><Ic id="i-spark" /></span>
+                <h3>{t('landing.demo.more.svc.t')}</h3>
+                <p>{t('landing.demo.more.svc.p')}</p>
+                <div className="svc-list">
+                  {DEMO_SVC.map((s, i) => (
+                    <div className={`svc${s.add ? ' add' : ''}`} key={i}>
+                      <span className={`bic sm${s.mint ? ' mint' : ''}`}><Ic id={s.icon} /></span>
+                      <span className="tx"><b>{t(s.tKey)}</b><span>{t(s.sKey)}</span></span>
+                      {s.done && <span className="pill done">{t('landing.demo.more.svc.done')}</span>}
+                      {s.add && <Ic id="i-plus" />}
+                    </div>
+                  ))}
+                </div>
+              </article>
+              {/* Stats */}
+              <article className="bcard b-stats rv">
+                <span className="bic rose"><Ic id="i-spark" /></span>
+                <h3>{t('landing.demo.more.stat.t')}</h3>
+                <p>{t('landing.demo.more.stat.p')}</p>
+                <div className="stats-grid">
+                  {DEMO_STAT_TILES.map((s, i) => <div className="stat-t" key={i}><b className="num">{s.n}</b><span>{t(s.key)}</span></div>)}
+                </div>
+                <div className="stat-lines">
+                  {DEMO_STAT_LINES.map((s, i) => (
+                    <div className="stat-line" key={i}>
+                      <span className={`bic sm${s.mint ? ' mint' : ''}${s.vio ? ' vio' : ''}`}><Ic id={s.icon} /></span>
+                      {t(s.tKey)}<em className={s.emNum ? 'num' : undefined}>{s.emKey ? t(s.emKey) : s.em}</em>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Team: members + chat ─────────────────────────────── */}
+        <section className="team-sec section-pad" id="team">
+          <div className="wrap">
+            <div className="section-head rv">
+              <span className="eyebrow">{t('landing.demo.team.eyebrow')}</span>
+              <h2>{t('landing.demo.team.h2a')} <span className="accent">{t('landing.demo.team.h2b')}</span></h2>
+              <p dangerouslySetInnerHTML={{ __html: t('landing.demo.team.p') }} />
+            </div>
+            <div className="team-grid">
+              <div className="bcard rv">
+                <div className="card-h"><span className="bic"><Ic id="i-users" /></span><h3>{t('landing.demo.team.card')}</h3></div>
+                {DEMO_MEMBERS.map((m, i) => (
+                  <div className={`mem${m.pending ? ' pending' : ''}`} key={i}>
+                    <span className="av" style={m.color ? { background: m.color } : undefined}>{m.icon ? <Ic id={m.icon} /> : m.ini}</span>
+                    <span className="nm"><b>{m.name}</b><span>{t(m.subKey)}</span></span>
+                    <span className={`pill ${m.pill.cls}`}>{t(m.pill.key)}</span>
+                  </div>
+                ))}
+                <div className="role-note">
+                  {DEMO_ROLE_NOTES.map((k, i) => <span key={i} dangerouslySetInnerHTML={{ __html: t(k) }} />)}
+                </div>
+              </div>
+              <div className="chat rv">
+                <div className="chat-h">
+                  <span className="bic"><Ic id="i-chat" /></span>
+                  <div><b>{t('landing.demo.chat.title')}</b><small>{t('landing.demo.chat.sub')}</small></div>
+                  <span className="avs avs--push">
+                    {DEMO_PEOPLE.slice(0, 3).map((p) => (
+                      <span className="av av--xs" key={p.ini} style={{ background: p.color }}>{p.ini}</span>
+                    ))}
+                  </span>
+                </div>
+                <div className="chat-b">
+                  {DEMO_CHAT.map((m, i) => (
+                    <div className={`msg${m.me ? ' me' : ''}${m.ai ? ' ai' : ''}`} key={i}>
+                      <span className="av av--sm" style={m.ai ? undefined : { background: m.color }}>
+                        {m.ai ? <Ic id={m.ini} /> : m.ini}
+                      </span>
+                      <div className="bub">
+                        <div className="who"><b>{m.who}</b>{m.pill && <span className="pill ai">{t(m.pill)}</span>}<time>{m.time}</time></div>
+                        {m.mention ? <><span className="mention">{m.mention}</span> {t(m.bKey)}</> : t(m.bKey)}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="typing"><span>{t('landing.demo.chat.typing')}</span><i /><i /><i /></div>
+                </div>
+                <div className="chat-c">
+                  <span className="fake">{t('landing.demo.chat.placeholder')}</span>
+                  <span className="snd"><Ic id="i-send" /></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Telegram assistant ───────────────────────────────── */}
+        <section className="tg-sec sheet section-pad" id="assistant">
+          <div className="wrap tg-grid">
+            <div className="tg-demo rv">
+              <div className="device">
+                <div className="device-screen">
+                  <div className="tg-status" aria-hidden="true">
+                    <span>9:41</span><span className="tg-island" /><span><Ic id="i-lock" /></span>
+                  </div>
+                  <div className="tg-head">
+                    <span className="tav"><Ic id="i-tg" /></span>
+                    <div><b>Triplanio</b><small>{t('landing.demo.tg.bot_status')}</small></div>
+                  </div>
+                  <div className="tg-chat">
+                    {DEMO_TG_MSGS.map((m, i) => (m.date ? (
+                      <div className="tg-date" key={i}>{t(m.date)}</div>
+                    ) : (
+                      <div className={`tg-msg ${m.bot ? 'bot' : 'user'}`} key={i}>
+                        <span dangerouslySetInnerHTML={{ __html: t(m.bKey) }} />
+                        {m.doc && (
+                          <span className="tg-doc"><span className="dic"><Ic id="i-doc" /></span><span><b>{m.doc.name}</b><span>{t(m.doc.metaKey)}</span></span></span>
+                        )}
+                        <small>{m.time}{m.ticks && <Ic id="i-ticks" />}</small>
+                      </div>
+                    )))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="rv">
+              <span className="eyebrow">{t('landing.demo.tg.eyebrow')}</span>
+              <h2 className="tg-h2">{t('landing.demo.tg.h2a')} <span className="accent">{t('landing.demo.tg.h2b')}</span></h2>
+              <p className="tg-lede">{t('landing.demo.tg.p')}</p>
+              <ul className="tg-points">
+                {DEMO_TG_POINTS.map((p, i) => (
+                  <li key={i}>
+                    <span className={`cic${p.warm ? ' warm' : ''}${p.mint ? ' mint' : ''}`}><Ic id={p.icon} /></span>
+                    <div><b>{t(p.tKey)}</b><p>{t(p.pKey)}</p></div>
+                  </li>
+                ))}
+              </ul>
+              <div className="tg-when">
+                {DEMO_TG_WHEN.map((w, i) => <span key={i}><Ic id={w.icon} />{t(w.tKey)}<em>{t(w.emKey)}</em></span>)}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <DemoCta />
+        <p className="demo-disc">{t('landing.demo.footer.disclaimer')}</p>
+      </main>
+
+      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+    </>
+  );
+}
+
+/**
+ * Demo final CTA — the accent sheet, ONE button (variant of the landing CTA,
+ * which carries two). `data-hdr="accent"` is the producer of the header's
+ * on-accent rules.
+ */
+function DemoCta() {
+  const t = useT();
+  const nav = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  return (
+    <section className="final sheet section-pad" data-hdr="accent" id="cta">
+      <span className="horizon" aria-hidden="true" />
+      <div className="wrap inner">
+        <div className="rv">
+          <span className="eyebrow">{t('landing.demo.fin.eyebrow')}</span>
+          <h2 dangerouslySetInnerHTML={{ __html: t('landing.demo.fin.h2') }} />
+          <p>{t('landing.demo.fin.sub')}</p>
+          <div className="ctas">
+            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); nav(ctaTarget); }}>
+              <span>{t('landing.demo.fin.cta1')}</span>
+              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

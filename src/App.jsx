@@ -40,6 +40,13 @@ import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
 // /join, то есть до аут-гейта, но внутри провайдеров.
 const Kit = lazy(() => import('@/pages/Kit'));
 
+// Demo trip (TRIP-462) — a public marketing showcase page. Lazy so its weight
+// (MapView + the showcase sections) never lands in the main bundle for the far
+// more common routes. Its own branch below sits BEFORE the auth gate, like
+// /public/trip and /join, so a logged-out visitor gets the demo (not the
+// catch-all landing) and a logged-in one doesn't 404.
+const DemoTrip = lazy(() => import('@/pages/Demo/DemoTrip'));
+
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
 // (/trip/:id → trip_opened, /pro → pricing_viewed, /public/trip → public_trip_viewed,
@@ -53,6 +60,7 @@ function screenOpenEvent(pathname) {
   if (pathname === '/stats') return { event: 'stats_opened' };
   if (pathname === '/settings') return { event: 'account_opened' };
   if (pathname === '/inbox') return { event: 'inbox_opened' };
+  if (pathname.startsWith('/d/')) return { event: 'demo_viewed' };
   return null;
 }
 
@@ -94,6 +102,19 @@ const AuthenticatedApp = () => {
         {/* Витрине тостов нужен живой <Toaster>: этот бранч возвращается ДО общего
             дерева, где он смонтирован, поэтому монтируем его и здесь. */}
         <Toaster />
+      </Suspense>
+    );
+  }
+
+  // Demo trip — public marketing page, no auth. Own branch before the auth gate
+  // so logged-out visitors get the demo, not the catch-all landing (TRIP-462).
+  if (path.startsWith('/d/')) {
+    return (
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/d/:slug" element={<DemoTrip />} />
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
       </Suspense>
     );
   }
