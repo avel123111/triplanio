@@ -5,7 +5,8 @@ import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attributio
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
-import { authErrorText } from '@/lib/authErrorText';
+import { authErrorText, oauthRedirectError, stripOauthError } from '@/lib/authErrorText';
+import { authFlowResult } from '@/lib/authFlowCode';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useSiteTheme, useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
@@ -305,8 +306,46 @@ export default function Login() {
     };
   }, []);
 
-  // Reset error + pw visibility on view change
-  useEffect(() => { setError(null); setErrs({}); setShowPw(false); setShowPw2(false); signupStartedRef.current = false; }, [view]);
+  // Отказ OAuth приезжает ПАРАМЕТРАМИ АДРЕСА, а не исключением: провайдер
+  // уводит документ и возвращает его с `error`/`error_description`, поэтому ни
+  // один `catch` вокруг `signInWithOAuth` этого не видит. До TRIP-445 их не
+  // читал ни один файл в `src/` — человек, нажавший «Отмена» у Google, молча
+  // оказывался снова на форме, будто кнопка не работает.
+  //
+  // Один эффект покрывает все три входа сразу (Google, Apple, One Tap): все
+  // возвращаются на этот же экран одним и тем же механизмом.
+  useEffect(() => {
+    const oauthErr = oauthRedirectError(window.location.search, window.location.hash);
+    if (!oauthErr) return;
+    setError(t(oauthErr.key));
+    // Отмена — это выбор человека, а не сбой: в Sentry идёт только настоящая
+    // ошибка провайдера, иначе мониторинг заполнится передумавшими.
+    if (oauthErr.key !== 'auth.err_oauth_cancelled') {
+      reportAuthError({ code: oauthErr.code, message: oauthErr.description }, 'oauth_redirect');
+    }
+    // Снимаем ИЗ АДРЕСА только сам отказ: без этого перезагрузка показывает ту
+    // же ошибку заново, а проза сервера остаётся в адресной строке и уезжает
+    // дальше — в реферер и в аналитику. Метка кампании живёт в этой же строке
+    // запроса и обязана пережить чистку (см. `stripOauthError`).
+    const { search, hash } = stripOauthError(window.location.search, window.location.hash);
+    try {
+      window.history.replaceState({}, '', window.location.pathname + search + hash);
+    } catch { /* адрес — косметика: не роняем экран, если replaceState недоступен */ }
+  }, [t]);
+
+  // Reset error + pw visibility on view change.
+  //
+  // ★ Пропускаем ПЕРВЫЙ проход: на монтировании вид ещё не менялся, а эффект
+  // всё равно отрабатывал и затирал ошибку, поставленную при загрузке экрана —
+  // ровно так молча пропадало сообщение об отказе OAuth (оно приходит из
+  // адреса, то есть тоже на монтировании). Лечим смыслом, а не порядком
+  // объявления эффектов: «сброс при СМЕНЕ вида» и должен срабатывать только на
+  // смене, иначе любая будущая ошибка «с порога» исчезнет так же незаметно.
+  const viewMountedRef = useRef(false);
+  useEffect(() => {
+    if (!viewMountedRef.current) { viewMountedRef.current = true; return; }
+    setError(null); setErrs({}); setShowPw(false); setShowPw2(false); signupStartedRef.current = false;
+  }, [view]);
 
   // Resend cooldown — matches Supabase's ~60s minimum interval between auth
   // emails to the same address. Hydrated from storage (persisted by email) so it
@@ -516,17 +555,19 @@ export default function Login() {
     // "opened the form" and "registered" is one number that cannot be acted on
     // — unclear whether people did not want to or simply could not (TRIP-316 B).
     if (preErr) { trackSignupFailed('precheck_failed'); setError(t('auth.err_generic')); setIsLoading(false); return; }
-    if (pre?.code === 'rate_limited') { trackSignupFailed('rate_limited'); setError(t('auth.err_rate_limited')); setIsLoading(false); return; }
-    if (pre?.code === 'retry_soon') { trackSignupFailed('retry_soon'); setError(t('auth.err_retry_soon')); setIsLoading(false); return; }
-    if (pre?.code === 'email_exists') { trackSignupFailed('email_exists'); setError(t('auth.err_email_exists')); setIsLoading(false); return; }
-    if (pre?.code === 'confirmation_resent') {
+    // Тот же разбор, что в handleReset/handleResend, но по словарю флоу
+    // `signup`: один и тот же `rate_limited` значит здесь другое (лимит на IP,
+    // а не на сброс пароля) и несёт свой текст — словари раздельные намеренно.
+    const pf = authFlowResult('signup', pre?.code);
+    if (pf.sent) {
       // Account exists but was never confirmed — the server re-sent the link.
-      track('signup_email_sent', { method: 'email', resent: true });
+      track('signup_email_sent', { method: 'email', resent: pf.resent });
       startCooldown(email);
       setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); return;
     }
+    if (!pf.proceed) { trackSignupFailed(pf.reason); setError(t(pf.errorKey)); setIsLoading(false); return; }
 
-    // code === 'ok' → no such account yet, proceed with the real signup.
+    // pf.proceed → no such account yet, proceed with the real signup.
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -592,42 +633,52 @@ export default function Login() {
     const { data, error: invErr } = await invokeFn('requestPasswordReset', {
       body: { email, redirectTo: window.location.origin + '/reset-password' },
     });
-    if (invErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
-    if (data?.code === 'account_not_found') { setError(t('auth.err_account_not_found')); setIsLoading(false); return; }
-    if (data?.code === 'rate_limited') { setError(t('auth.err_reset_rate_limited')); setIsLoading(false); return; }
-    if (data?.code === 'retry_soon') {
-      setError(t('auth.err_retry_soon'));
+    setIsLoading(false);
+    if (invErr) { setError(t('auth.err_generic')); return; }
+    // Один разбор кода на все три обработчика (`authFlowCode.js`). Раньше здесь
+    // стояла собственная лесенка `if (data?.code === …)`, и `send_failed`
+    // проваливался в её общий хвост: письмо не ушло, а человек читал «что-то
+    // пошло не так» и уходил ждать письмо, которого не будет.
+    const res = authFlowResult('reset', data?.code);
+    if (res.sent) { startCooldown(email); setSentEmail(email); setResendFlow('reset'); goto('reset-sent'); return; }
+    setError(t(res.errorKey || 'auth.err_generic'));
+    if (res.cooldown) {
       if (!cooldownLeft(email)) startCooldown(email);
-      setResendLeft(cooldownLeft(email)); setIsLoading(false); return;
+      setResendLeft(cooldownLeft(email));
     }
-    if (data?.code === 'reset_sent') { startCooldown(email); setSentEmail(email); setResendFlow('reset'); goto('reset-sent'); setIsLoading(false); return; }
-    // send_failed or any unexpected code → generic retry.
-    setError(t('auth.err_generic')); setIsLoading(false);
   };
 
   // Re-send from the "email sent" screen, gated by the 60s cooldown timer.
   const handleResend = async () => {
     if (resendLeft > 0 || isLoading) return;
     setError(null); setIsLoading(true);
-    const fn = resendFlow === 'signup' ? 'signupPrecheck' : 'requestPasswordReset';
-    const body = resendFlow === 'signup'
+    const flow = resendFlow === 'signup' ? 'signup' : 'reset';
+    const fn = flow === 'signup' ? 'signupPrecheck' : 'requestPasswordReset';
+    const body = flow === 'signup'
       ? { email: sentEmail, redirectTo: window.location.origin + postLoginPath() }
       : { email: sentEmail, redirectTo: window.location.origin + '/reset-password' };
     const { data, error: invErr } = await invokeFn(fn, { body });
     setIsLoading(false);
     if (invErr) { setError(t('auth.err_generic')); return; }
-    if (data?.code === 'rate_limited') { setError(t('auth.err_reset_rate_limited')); setResendLeft(60); return; }
-    if (data?.code === 'retry_soon') {
-      setError(t('auth.err_retry_soon'));
-      if (!cooldownLeft(sentEmail)) startCooldown(sentEmail);
-      setResendLeft(cooldownLeft(sentEmail) || 60); return;
+    const res = authFlowResult(flow, data?.code);
+    if (!res.sent) {
+      // ★ Раньше сюда проваливался ЛЮБОЙ неопознанный код — включая
+      // `send_failed` — прямо в ветку успеха ниже: кнопка блокировалась
+      // таймером на минуту, а сообщения не было вовсе. Теперь письмо считается
+      // ушедшим, только если код это прямо говорит.
+      // `errorKey` пуст у `ok` (аккаунт исчез между шагами — письма не будет,
+      // но и отказом сервер это не назвал): общий текст честнее тишины.
+      setError(t(res.errorKey || 'auth.err_generic'));
+      if (res.cooldown) {
+        if (!cooldownLeft(sentEmail)) startCooldown(sentEmail);
+        setResendLeft(cooldownLeft(sentEmail) || 60);
+      }
+      return;
     }
-    if (data?.code === 'account_not_found') { setError(t('auth.err_account_not_found')); return; }
     // The server re-sent the confirmation link — same fact as in handleSignup,
     // so the same event: otherwise the funnel step would mean different things
     // depending on which button the person pressed.
-    if (data?.code === 'confirmation_resent') track('signup_email_sent', { method: 'email', resent: true });
-    // success (reset_sent / confirmation_resent / ok) → restart the cooldown.
+    if (res.resent) track('signup_email_sent', { method: 'email', resent: true });
     startCooldown(sentEmail); setResendLeft(60);
   };
 
