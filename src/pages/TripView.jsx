@@ -20,7 +20,7 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import TripShareFlow from '@/components/trips/TripShareFlow';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, IconBtn, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, BookingWarning, TimelineEmptyDay, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
@@ -424,45 +424,12 @@ function StreamAnchor({ label, sub, color, icon }) {
   );
 }
 
-// ─── BookingWarning ───────────────────────────────────────────────────────────
-// «Призрак события» (вариант B1, апрув Pavel 2026-08-26): варнинг недостающей
-// брони = пунктирный силуэт карточки в тинте её типа (transfer/hotel) с
-// янтарной точкой «!» на плитке. Тон рамки/фона подставляет вызыватель ручкой
-// --w-c инлайном на корне — тем же приёмом, что StreamEventRow у .tl3-card;
-// плитка берёт тон осью `tone` самого <Tile>. Крестик компонент НЕ прячет сам:
-// скрытие персистентно (localStorage через useDismissedWarnings ниже), рендер
-// решает вызыватель по набору скрытых ключей.
-const WARN_TINT = {
-  transfer: { '--w-c': 'var(--ev-transfer)' },
-  hotel:    { '--w-c': 'var(--ev-hotel)' },
-};
-
-function BookingWarning({ kind, title, sub, onAdd, onDismiss }) {
-  const { t } = useI18n();
-  return (
-    <div className="tl3-ev">
-      <div className="time">—</div>
-      <div className="tl3-warn" style={WARN_TINT[kind]}>
-        {/* position:relative — якорь янтарной точки; на классе примитива это
-            свойство объявлять нельзя (закон 3 / метрика reach). */}
-        <Tile as="span" size="xl" tone={kind} style={{ position: 'relative' }}>
-          <Icon name={kind === 'hotel' ? 'bed' : 'route'} />
-          <span className="tl3-warn__dot">!</span>
-        </Tile>
-        <div className="grow">
-          <b>{title}</b>
-          <div className="sb t-meta">{sub}</div>
-        </div>
-        <div className="tl3-warn__act">
-          {/* Кнопка ОТКРЫВАЕТ форк (partner offerings, initialTab='find') — viewer
-              её видит и жмёт; блок стоит на СОЗДАНИИ внутри (Save движка), не тут. */}
-          <Btn icon="plus" onClick={onAdd}>{t('common.add')}</Btn>
-          <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={onDismiss} />
-        </div>
-      </div>
-    </div>
-  );
-}
+// BookingWarning и TimelineEmptyDay живут в ДС (design/index.jsx, рядом со
+// StreamEventRow — та же лента, та же колонка времени) и рисуются витриной
+// /kit; здесь остаётся только логика: что показать и что скрыто.
+// Кнопка «Добавить» варнинга ОТКРЫВАЕТ форк (partner offerings,
+// initialTab='find') — viewer её видит и жмёт; блок стоит на СОЗДАНИИ внутри
+// (Save движка), не тут.
 
 // Персональные скрытия варнингов этого устройства (решение Pavel 2026-08-26:
 // localStorage, не БД — память браузера, consent не при чём). Чистая логика —
@@ -791,19 +758,16 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
               {beforeEvents.length > 0 && eventList(beforeEvents, true)}
               {blockNodes}
               {afterEvents.length > 0 && eventList(afterEvents, false)}
-              {/* Empty-day placeholder (B1): тихая строка без рамки — намеренно
-                  НЕ похожа на пунктирные варнинги броней выше. Действие ведёт в
-                  создание активности с предзаполненным днём. */}
+              {/* Empty-day placeholder (B1): действие ведёт в создание
+                  активности с предзаполненным днём. */}
               {!hasAny && (
-                <div className="tl3-empty t-meta">
-                  <Icon name="sun" size={15} />
-                  <span>{dayCity
+                <TimelineEmptyDay
+                  label={dayCity
                     ? t('view.empty_day', { city: dayCity.city_name })
-                    : t('view.empty_day_nocity')}</span>
-                  <button type="button" className="tl3-empty__add t-label" onClick={() => onAddActivityForDay?.(day)}>
-                    {t('activity.add')}
-                  </button>
-                </div>
+                    : t('view.empty_day_nocity')}
+                  actionLabel={t('activity.add')}
+                  onAdd={() => onAddActivityForDay?.(day)}
+                />
               )}
             </>
           );
