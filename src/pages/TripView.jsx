@@ -465,22 +465,23 @@ function BookingWarning({ kind, title, sub, onAdd, onDismiss }) {
 
 // Персональные скрытия варнингов этого устройства (решение Pavel 2026-08-26:
 // localStorage, не БД — память браузера, consent не при чём). Чистая логика —
-// в lib/warningDismissals (там же тесты); хук только держит Set в состоянии и
-// ходит в storage под try/catch: приватный режим деградирует к «скрыто до
+// в lib/warningDismissals (там же тесты); тут — только Set в состоянии и поход
+// в storage под try/catch: приватный режим деградирует к «скрыто до
 // перезахода», как было. Прюнинг мёртвых визитов и кэп — на КАЖДОЙ записи.
+const readDismissed = (tripId) => {
+  try { return loadDismissed(localStorage.getItem(dismissedStorageKey(tripId))); }
+  catch { return new Set(); }
+};
+
 function useDismissedWarnings(tripId, visits) {
-  const read = () => {
-    try { return loadDismissed(window.localStorage.getItem(dismissedStorageKey(tripId))); }
-    catch { return new Set(); }
-  };
-  const [dismissed, setDismissed] = useState(read);
+  const [dismissed, setDismissed] = useState(() => readDismissed(tripId));
   // tripId на первом рендере ленты может быть ещё пуст (shell грузится) —
   // перечитываем, когда он появился/сменился.
-  useEffect(() => { setDismissed(read()); }, [tripId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setDismissed(readDismissed(tripId)); }, [tripId]);
   const dismiss = (key) => setDismissed((prev) => {
     const next = new Set(prev).add(key);
     try {
-      window.localStorage.setItem(
+      localStorage.setItem(
         dismissedStorageKey(tripId),
         JSON.stringify(serializeDismissed(next, visits.map((v) => v.id))),
       );
