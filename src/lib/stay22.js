@@ -17,8 +17,6 @@ import {
   normalizeStay22, buildStay22Params, STAY22_POOL_KEY,
   POOL_PAGES, POOL_MAX, applyClientFilters, BASE_HOTEL_FILTERS,
 } from '@/lib/stay22-normalize';
-import { cityNameEn } from '@/lib/geo';
-import { countryNameEn } from '@/lib/countryNamesEn';
 
 export { normalizeStay22, buildStay22Params };
 
@@ -29,36 +27,13 @@ const POOL_STALE_MS = 5 * 60 * 1000;
 const POOL_GC_MS = 30 * 60 * 1000;
 const POOL_PAGE_SIZE = 100;
 
-// Resolve the city's English name for the Stay22 address, preferring what the
-// payload already carries: the visit's own column (written by every creation path
-// — add_city / add_layover_transfer / ManualPlanner / copyTrip), then the cities
-// directory row getTripDetails attaches by geonameid — the same first two rungs
-// activityPlatforms uses (buildBookingPlatforms.jsx:70), which then settles for
-// the localized city_name where we can afford to ask the gazetteer instead.
-// Only a row that has neither reaches it, and the answer is cached per visit id
-// for the page session — rendering must not write to the database, so it is NOT
-// persisted back and a later page load asks again.
-const enCache = new Map();
-async function resolveCityNameEn(visit) {
-  if (!visit) return '';
-  if (visit.city_name_en) return visit.city_name_en;
-  if (visit.cities?.name_en) return visit.cities.name_en;
-  if (visit.id && enCache.has(visit.id)) return enCache.get(visit.id);
-  const en = await cityNameEn(visit.city_name, visit.country_code);
-  if (visit.id) enCache.set(visit.id, en);
-  return en;
-}
-
-// Fetch + normalize one Stay22 page. Resolves the English city name + country so
-// Stay22 doesn't resolve "Cairo" to Cairo, IL instead of Cairo, Egypt. Returns
-// the normalized { hotels, meta }. Shared by every page request.
+// Fetch + normalize one Stay22 page. Тело запроса целиком собирает
+// `buildStay22Params` — ищем ТОЛЬКО по координатам города, никакой строки адреса
+// здесь больше не собирается (почему — в шапке `stay22Accommodations/index.ts`).
+// Returns the normalized { hotels, meta }. Shared by every page request.
 async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters }) {
-  const params = buildStay22Params({ visit, currency, lang, page, pageSize, filters });
-  if (!params) return normalizeStay22(null);
-  const cityEn = await resolveCityNameEn(visit);
-  const cntryEn = visit?.country_code ? countryNameEn(visit.country_code) : null;
-  const address = cityEn ? [cityEn, cntryEn].filter(Boolean).join(', ') : null;
-  const body = address ? { ...params, address } : params;
+  const body = buildStay22Params({ visit, currency, lang, page, pageSize, filters });
+  if (!body) return normalizeStay22(null);
   const { data, error } = await invokeFn('stay22Accommodations', { body });
   if (error) throw error;
   // 200-with-{error}: invokeFn already reported it — mark the thrown error so the

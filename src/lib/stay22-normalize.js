@@ -132,14 +132,39 @@ export function applyClientFilters(hotels, filters) {
   return applyForkFilters(hotels, filters, STAY22_FILTER_SPEC);
 }
 
+// Сегодняшний день как 'YYYY-MM-DD' по ЛОКАЛЬНОМУ календарю гостя. Stay22 меряет
+// «сегодня» своим часовым поясом, а человек — своим; взять UTC значило бы отрезать
+// сегодняшнюю ночь всем, кто западнее Гринвича, за несколько часов до полуночи.
+export function todayLocal(now = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 // Build the edge-function payload from a city-visit node + trip context.
-// Returns null when coordinates are missing (hook stays disabled).
-export function buildStay22Params({ visit, currency, lang, page, pageSize, filters }) {
+// Returns null when the request cannot be made at all — no coordinates, or the
+// stay is entirely in the past.
+//
+// Даты в прошлом — не «пустая выдача», а ОШИБКА апстрима: Stay22 отвечает
+// `400 VALIDATION_ERROR: checkin Must be today or in the future`, edge переводит
+// любой не-2xx в 502, и панель краснеет вместо списка, попутно заводя событие в
+// Sentry (`_shared/http.ts` репортит всё >= 400, кроме 401). В проде больше
+// половины посещений уже в прошлом — это был самый частый способ увидеть панель
+// отелей сломанной. Поэтому:
+//   · поездка ЗАКОНЧИЛАСЬ → null, запрос не уходит, панель рисует то же пустое
+//     состояние, что и без координат (в нём есть кнопка «искать на Booking»);
+//   · поездка ИДЁТ СЕЙЧАС → checkin поднимается до сегодня: вчерашнюю ночь не
+//     забронировать, а оставшиеся — можно, и это единственный осмысленный
+//     диапазон для человека в середине поездки.
+// `today` параметром — чтобы функция осталась чистой и проверяемой тестом.
+export function buildStay22Params({ visit, currency, lang, page, pageSize, filters, today = todayLocal() }) {
   const lat = visit?.latitude;
   const lng = visit?.longitude;
   if (lat == null || lng == null) return null;
-  const checkin = dateOnly(visit?.start_date);
-  const checkout = ensureNextDay(checkin, dateOnly(visit?.end_date));
+  const startDate = dateOnly(visit?.start_date);
+  const endDate = ensureNextDay(startDate, dateOnly(visit?.end_date));
+  if (endDate && endDate <= today) return null;
+  const checkin = startDate && startDate < today ? today : startDate;
+  const checkout = ensureNextDay(checkin, endDate);
   return {
     lat,
     lng,
