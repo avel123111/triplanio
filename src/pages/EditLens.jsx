@@ -140,6 +140,10 @@
  * visual-diff-exempt: from {@keyframes tsDrawerIn} transform — кейфрейм перенесён из тега style внутри рендера в app.css
  * visual-diff-exempt: to {@keyframes tsDrawerIn} opacity — кейфрейм перенесён из тега style внутри рендера в app.css
  * visual-diff-exempt: to {@keyframes tsDrawerIn} transform — кейфрейм перенесён из тега style внутри рендера в app.css
+ * visual-diff-exempt: from {@keyframes teAddIn} opacity — новый кейфрейм анимации открытия десктоп-композера добавления города
+ * visual-diff-exempt: from {@keyframes teAddIn} transform — новый кейфрейм анимации открытия десктоп-композера добавления города
+ * visual-diff-exempt: to {@keyframes teAddIn} opacity — новый кейфрейм анимации открытия десктоп-композера добавления города
+ * visual-diff-exempt: to {@keyframes teAddIn} transform — новый кейфрейм анимации открытия десктоп-композера добавления города
  *
  * Шаги кейфреймов — тоже единицы 2p (имя анимации ЧАСТЬ ключа: from/to
  * повторяются у 19 анимаций, и без имени один маркер гасил бы чужую).
@@ -216,9 +220,10 @@ import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { tripDuration } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } from '../design/index';
-import { Row, Trunc, Grow } from '../design/Layout';
+import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, Tooltip, Sheet, useToast } from '../design/index';
+import { Row, Col, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
+import CountryFlag from '@/components/common/CountryFlag';
 import { tzFromCoords } from '@/lib/timezone';
 import { useTheme } from '@/lib/ThemeContext';
 import LpSheet from '@/components/ui/LpSheet';
@@ -859,8 +864,10 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
     }, insertIdx), { okKey: 'city_added' });
   };
-  const onPickCity = async (c, kind) => {
-    closeLeftPanel();
+  // Commit a city picked in the inline adder (below the route list). The adder
+  // owns its own open/pick/type state and collapses itself, so there's no panel
+  // to close here — just enrich with the timezone and hand off to addCity.
+  const addPickedCity = (c, kind) => {
     const tz = tzFromCoords(c.latitude, c.longitude);
     addCity({ ...c, timezone: tz }, kind);
   };
@@ -950,15 +957,11 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const nodeName = (id) => draft.nodes.find((n) => n.id === id)?.city_name || '?';
 
   // Left-column panel (in-place, replaces the old modals). null → city list.
+  // Adding a city no longer opens a panel — it happens inline in the route list
+  // (<CityAdder> below the rows). The only panels left here are object panels
+  // (event / pick / create / city), all of which open in the full-height drawer.
   let leftPanelEl = null;
-  if (leftPanel?.type === 'cityadd') {
-    leftPanelEl = (
-      <CityAddPanel
-        onPick={onPickCity} onBack={closeLeftPanel}
-        hasStart={ordered.some((n) => n.kind === 'start')} hasEnd={ordered.some((n) => n.kind === 'end')}
-      />
-    );
-  } else if (leftPanel?.type === 'event') {
+  if (leftPanel?.type === 'event') {
     leftPanelEl = (
       /* ★ ПРАВО ИЗ КОНТЕКСТА, А НЕ ЛИТЕРАЛ. Здесь стояло `canEdit` без значения,
          то есть жёсткое `true`: пока в секцию пускали только editor, это было
@@ -1085,16 +1088,16 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
-  // TRIP-161: каждая боковая панель КРОМЕ «добавить город» открывается ящиком во
-  // всю высоту виджета (рельс маршрута остаётся под ним, карта продолжает
-  // кликаться — скрима нет). «Добавить город» подменяет содержимое виджета: это
-  // продолжение того же списка, а не карточка объекта.
+  // TRIP-161: каждая боковая панель объекта открывается ящиком во всю высоту
+  // виджета (рельс маршрута остаётся под ним, карта продолжает кликаться —
+  // скрима нет). Добавление города больше не панель, а инлайн-композер в самом
+  // списке (<CityAdder>), поэтому исключать его тут уже не из чего.
   //
   // Брейкпоинта 1081 здесь больше нет. Он делил десктоп на «ящик» и «панель
   // вместо колонки» — то есть был третьей раскладкой у экрана, у которого их и
   // так две. Теперь их ровно две, и границу проводит шелл: десктоп — виджет,
   // телефон — шит.
-  const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
+  const isDrawerPanel = !!leftPanel;
   const useDrawer = !isSheet && isDrawerPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
   // Обнаружение смены верхней панели — СИНХРОННО в рендере (не в эффекте): иначе
@@ -1284,9 +1287,18 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
               {t('tse.move_to_end')}
             </div>
           )}
-          {/* Добавление города — запись. Наблюдателю кнопки нет, а значит нет и
-              единственного входа в панель `cityadd`. */}
-          {canEdit && <AddPointButton onOpen={() => openBase({ type: 'cityadd' })} />}
+          {/* Добавление города — запись, и оно живёт ЗДЕСЬ, прямо в конце списка
+              маршрута: сначала выбираешь город, потом тип, потом подтверждаешь
+              кнопкой. Наблюдателю композера нет вовсе (это единственный вход в
+              добавление). На телефоне композер открывается канон-шитом <Sheet>
+              (клавиатуру держит платформа), на десктопе — инлайн в виджете. */}
+          {canEdit && (
+            <CityAdder
+              onAdd={addPickedCity}
+              hasStart={ordered.some((n) => n.kind === 'start')}
+              hasEnd={ordered.some((n) => n.kind === 'end')}
+            />
+          )}
           {outOfPlanTransfers.length > 0 && (
             /* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash+рамка+радиус)
                снята с инлайна на <Card recessed>; остался раскладочный инлайн. */
@@ -1635,57 +1647,146 @@ function GridEndpoint({ node, date, onRemove }) {
   );
 }
 
-function AddPointButton({ onOpen }) {
-  const t = useT();
-  return <Btn variant="soft" block onClick={onOpen} style={{ marginTop: 12 }}>
-    <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
-  </Btn>;
-}
-
 const POINT_TYPES = [
   { id: 'transit', labelKey: 'event.city', icon: 'bed', subKey: 'tse.pt_transit_sub' },
   { id: 'waypoint', labelKey: 'tse.pt_waypoint', icon: 'arrowSwap', subKey: 'tse.pt_waypoint_sub' },
   { id: 'start', labelKey: 'ai_plan.start', icon: 'flag', subKey: 'tse.pt_start_sub' },
   { id: 'end', labelKey: 'ai_plan.end', icon: 'flag', subKey: 'tse.pt_end_sub' },
 ];
-// In-place "add a point" panel (replaces the old modal). Lives in the editor's
-// left column; picks a point type then searches a city.
-function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
+
+// Inline "add a city" composer — lives at the END of the route list. Collapsed
+// it's one soft button; opened it walks the deliberate order the old instant-add
+// flow lacked: 1) pick a CITY (a dropdown pick fills the slot, it does NOT add
+// yet), 2) pick its TYPE (revealed after a city is chosen), 3) confirm with a
+// dedicated button. It owns its whole flow; the parent only gets the final
+// (city, kind) via onAdd once the user confirms.
+//
+// ★ ГДЕ ЖИВЁТ ПОЛЕ ВВОДА — ПО ОБЩЕЙ ЛОГИКЕ АППА, А НЕ СВОЕЙ.
+//   Десктоп: инлайн в теле виджета (клавиатуры нет — проблем нет).
+//   Телефон: канон-нижний-шит <Sheet> — тот же примитив, что несёт поле поиска
+//   у <SearchSelect>. Клавиатуру держит платформа: мета-вьюпорт
+//   `interactive-widget=resizes-content` + `repositionInputs={false}` у шита, —
+//   поле само встаёт над клавиатурой. Инлайн-инпута в теле PeekSheet тут больше
+//   нет: он открывал клавиатуру ТАМ, где инпутов ни у кого нет, из-за чего его
+//   приходилось подпирать скроллом по visualViewport, а нижний нав, спрятанный
+//   клавиатурой, ронял `--nav-dock-h` в 0 (фикс — в MobileBottomNav).
+function CityAdder({ onAdd, hasStart, hasEnd }) {
   const t = useT();
-  const [type, setType] = useState('transit');
+  const isPhone = useIsPhone();
+  const [open, setOpen] = useState(false);
+  const [city, setCity] = useState(null);
+  const [kind, setKind] = useState('transit');
+  const rootRef = useRef(null); // десктоп-композер целиком
+  const footRef = useRef(null); // футер с кнопками — последний элемент композера
+  const close = () => { setOpen(false); setCity(null); setKind('transit'); };
   const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
-  const meta = POINT_TYPES.find((p) => p.id === type);
-  // Канал тинта --hl* тут не заполняется: у панели добавления точки своего тона
-  // нет, а дефолт канала в :root и есть бренд. Инлайн, писавший на корень ровно
-  // эти два дефолта, снят в 04 PR3 — он не менял ничего.
+  const submit = () => { if (city) { onAdd(city, kind); close(); } };
+  const meta = POINT_TYPES.find((p) => p.id === kind);
+
+  // Докрутка тем же приёмом scrollIntoView, что и по всему аппу (ValidationUI,
+  // CoverPicker, …) — в ЛЮБОМ скролл-контейнере (тело виджета на десктопе / тело
+  // <Sheet> на телефоне), без платформенных веток и вычислений вьюпорта:
+  //   • выбран город → появились плитки + кнопки: докручиваем К ФУТЕРУ (он
+  //     последний), так в кадр попадают и плитки, и кнопки «Добавить/Отмена» —
+  //     на ОБЕИХ платформах;
+  //   • только открыли, города ещё нет: на десктопе — к самому композеру; на
+  //     телефоне открытие ведёт <Sheet>/платформа, скролл не трогаем.
+  // Небольшая задержка — дать разметке (появление плиток, закрытие клавиатуры)
+  // осесть перед замером.
+  useEffect(() => {
+    if (!open) return;
+    const target = city ? footRef.current : (isPhone ? null : rootRef.current);
+    if (!target) return;
+    const id = setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
+    return () => clearTimeout(id);
+  }, [open, city, isPhone]);
+
+  // Общие шаги композера (город → тип → подтверждение) — без своей шапки: на
+  // десктопе шапку рисует карточка ниже, на телефоне её даёт сам <Sheet>.
+  const steps = (
+    <>
+      {/* Шаг 1 — город. Выбор из выпадашки заполняет слот (флаг+имя+«Изменить»),
+          не добавляя сразу; это открывает шаг типа ниже. autoFocus только на
+          десктопе — на телефоне клавиатуру поднимает vaul по тапу в поле. */}
+      {!city ? (
+        <CitySearch onSelect={setCity} autoFocus={!isPhone} />
+      ) : (
+        <Row gap="g3" className="te-add-city">
+          <CountryFlag code={city.country_code} />
+          <Trunc as="span" className="te-add-cityname">{city.city_name}</Trunc>
+          <Btn variant="quiet" size="sm" icon="edit" onClick={() => setCity(null)}>{t('tse.pt_change')}</Btn>
+        </Row>
+      )}
+
+      {/* Шаг 2 — тип (появляется после выбора города). aria-pressed несёт выбор
+          в AT; тон активной плитки — из .te-add-type[aria-pressed="true"]. */}
+      {city && (
+        <Col gap="g2">
+          <span className="eyebrow">{t('tse.pt_type_label')}</span>
+          <div className="te-add-grid" role="group" aria-label={t('tse.pt_type_label')}>
+            {POINT_TYPES.map((pt) => {
+              const dis = disabledFor(pt.id);
+              return (
+                <button key={pt.id} type="button" className="te-add-type"
+                  aria-pressed={kind === pt.id} disabled={dis || undefined}
+                  title={dis ? t('tse.already_set') : t(pt.subKey)}
+                  onClick={() => setKind(pt.id)}>
+                  <Icon name={pt.icon} size={17} />
+                  <span className="t-label">{t(pt.labelKey)}</span>
+                </button>
+              );
+            })}
+          </div>
+          <span className="t-meta muted">{meta ? t(meta.subKey) : ''}</span>
+        </Col>
+      )}
+
+      {/* Шаг 3 — осознанное подтверждение, которого не было у мгновенного add. */}
+      <Row gap="g3" justify="j-between" className="te-add-ft" ref={footRef}>
+        <Btn variant="secondary" onClick={close}>{t('common.cancel')}</Btn>
+        <Btn variant="primary" disabled={!city} onClick={submit}>
+          <Icon name="plus" size={15} /> {t('common.add')}
+        </Btn>
+      </Row>
+    </>
+  );
+
+  const trigger = (
+    <Btn variant="soft" block className="te-add-open" onClick={() => setOpen(true)}>
+      <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
+    </Btn>
+  );
+
+  // Телефон: кнопка в списке + композер в КАНОН-шите <Sheet> — ровно то, что
+  // делает <SearchSelect> (поле поиска в шите). Нижний шит + `interactive-widget=
+  // resizes-content` держат поле над клавиатурой платформой, без своего скролла.
+  if (isPhone) {
+    return (
+      <>
+        {trigger}
+        <Sheet open={open} onOpenChange={(o) => { if (!o) close(); }} title={t('tse.add_point')}>
+          <div className="te-add">
+            <span className="t-meta muted">{t('tse.add_point_hint')}</span>
+            {steps}
+          </div>
+        </Sheet>
+      </>
+    );
+  }
+  // Десктоп: инлайн в виджете со своей шапкой и лёгкой анимацией появления.
+  if (!open) return trigger;
   return (
-    <div className="lp lp--wide">
-      <div className="lp-h lp-h--ev">
-        <IconBtn icon="close" onClick={onBack} ariaLabel={t('common.close')} />
-        <Tile as="span" className="lp-ic" style={{ '--hl-soft': 'var(--brand)', '--hl-ink': '#fff' }}><Icon name="pin" size={17} /></Tile>
-        <div className="lp-ti">
-          <b>{t('tse.add_point')}</b>
-          <span>{t('tse.add_point_hint')}</span>
-        </div>
-      </div>
-      <div className="lp-b scrollbar-thin">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7 }}>
-          {POINT_TYPES.map((pt) => {
-            const dis = disabledFor(pt.id), active = type === pt.id;
-            /* TRIP-343 объект 2 (H): НЕ карточка — тайл-переключатель ТИПА точки
-               (объект 5, сегмент/пикер). Тон меняется по выбору (brand-soft/surface),
-               это контрол выбора, а не поверхность-карточка; остаётся инлайном с reason. */
-            return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 'var(--r-sm)', cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
-              <Icon name={pt.icon} size={17} /><span className="t-meta">{t(pt.labelKey)}</span>
-            </button>;
-          })}
-        </div>
-        <div className="muted t-meta">{meta ? t(meta.subKey) : ''}</div>
-        <CitySearch onSelect={(c) => onPick(c, type)} />
-      </div>
-      <div className="lp-f lp-f--single">
-        <Btn variant="secondary" onClick={onBack}>{t('common.cancel')}</Btn>
-      </div>
+    <div ref={rootRef} className="te-addwrap">
+      <Card recessed radius="md" pad="none" className="te-add">
+        <Row justify="j-between" align="a-start">
+          <Col gap="g1">
+            <b>{t('tse.add_point')}</b>
+            <span className="t-meta muted">{t('tse.add_point_hint')}</span>
+          </Col>
+          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
+        </Row>
+        {steps}
+      </Card>
     </div>
   );
 }

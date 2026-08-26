@@ -73,6 +73,6 @@
 // ДС (`pt-*`, `.btn.btn-light` из public/site.css), что и остальная зона — вне
 // скоупа эпика, как SiteChrome и Landing. Без этой записи вынос компонента молча
 // втянул бы публичку обратно в периметр (2z ловил `<a .btn.btn-light>`).
-export const OUT_OF_SCOPE = /(^|\/)(?:(?:login\.css|Login\.jsx)(?=$)|PublicTrip|JoinTrip|SiteChrome|SiteTrip|Landing|Privacy|Terms)/;
+export const OUT_OF_SCOPE = /(^|\/)(?:(?:login\.css|Login\.jsx)(?=$)|PublicTrip|JoinTrip|SiteChrome|SiteTrip|Landing|Demo|Privacy|Terms)/;
 
 export const inScope = (f) => !OUT_OF_SCOPE.test(f);

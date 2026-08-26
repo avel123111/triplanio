@@ -76,7 +76,8 @@ const COLOR_WHITELIST = [
   'src/lib/externalBrands.js',                         // external brand registry
   'src/lib/avatarRamp.js',                             // avatar colour source
   'src/index.css', 'src/design/app.css',               // token DEFINITIONS
-  'src/lib/map/captureMap.js',                         // canvas map-capture (share image) needs concrete hex
+  // captureMap.js retired (TRIP-443): share-card markers dropped the raw rose dot
+  // (#E11D48) for the route token via mapTokens.routeColor(); no raw colour left.
   'src/components/AppErrorBoundary.jsx',               // crash screen — must not depend on tokens/CSS
   // — Added with the Lumo colour finale (TRIP-53): raw-by-nature sources —
   'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
@@ -102,7 +103,8 @@ const COLOR_WHITELIST = [
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
 // lowering this number in the same commit; nothing may ever raise it.
 // PublicTrip.css retired (TRIP-461): the public reader moved into public/site.css.
-const WHITELIST_LIMIT = 13;
+// captureMap.js retired (TRIP-443): raw rose dot replaced by mapTokens.routeColor().
+const WHITELIST_LIMIT = 12;
 
 // The ceiling on the PR base, so raising it cannot be self-approved by editing
 // this file. null = base not resolvable (no such ref, or the base predates this

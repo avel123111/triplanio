@@ -1,0 +1,163 @@
+<section id="overview">
+<h2>Overview</h2>
+<aside class="doc-note">
+<p>We collect what the Service needs to plan your trips, and nothing we cannot explain. We do not sell personal data, and you can delete your account at any time.</p>
+</aside>
+<p>This Policy explains what we collect, why, who else is involved, how long we keep it and what you can do about it. It applies to the Triplanio website, web application and connected assistants (together, the “Service”).</p>
+</section>
+<section id="controller">
+<h2>Who is responsible</h2>
+<p>The data controller is a self-employed entrepreneur (sole trader) registered in Spain, trading as <strong>Triplanio</strong>. Business details are available on request. For any question about your data, write to <strong>info@triplanio.com</strong>.</p>
+</section>
+<section id="collect">
+<h2>What we collect</h2>
+<dl>
+<dt>Account data</dt>
+<dd>email address, name, avatar if you upload one, interface language and units. If you arrived from an ad or a shared link, we also record how you found us (campaign tags such as UTM parameters or an ad-click ID) as part of your account record</dd>
+<dt>Trip content</dt>
+<dd>cities, dates, bookings, transfers, activities, notes, budget entries, and files and documents you add. Bookings may include details you type in yourself, such as a hotel’s contact details or a booking reference</dd>
+<dt>Messages</dt>
+<dd>trip chat messages and your conversations with the AI assistant</dd>
+<dt>Support requests</dt>
+<dd>if you contact us through the in-app feedback form: your message, any screenshots you attach, and technical context (the page you were on, app version, browser and device type, timezone)</dd>
+<dt>Payment data</dt>
+<dd>your plan, purchase and subscription history, amounts and currency, and our payment provider’s identifiers. We never receive or store card numbers — payment details are entered directly with Stripe</dd>
+<dt>Technical data</dt>
+<dd>IP address, browser and device information, timestamps, error reports, and short-lived rate-limiting records that protect the Service from abuse</dd>
+</dl>
+</section>
+<section id="use">
+<h2>Why we use it and on what legal basis</h2>
+<dl>
+<dt>To provide the Service (contract)</dt>
+<dd>your account, trips, sharing with participants, payments, transactional email such as invitations and password resets, reminders, AI features you invoke</dd>
+<dt>To keep the Service safe and working (legitimate interest)</dt>
+<dd>abuse prevention, rate limiting, error monitoring, aggregate visit statistics</dd>
+<dt>To understand and improve the product, and to measure our marketing (consent, and legitimate interest for the anonymous part described below)</dt>
+<dd>product analytics, advertising measurement, recording how new accounts found us</dd>
+<dt>To meet legal obligations</dt>
+<dd>accounting and tax records for payments</dd>
+</dl>
+<p>We do not use your trip content for advertising, and we do not sell personal data to anyone.</p>
+</section>
+<section id="analytics">
+<h2>Analytics and advertising — what actually happens</h2>
+<p>We want this to be precise, because it is often written vaguely:</p>
+<p><strong>Before you answer the cookie banner</strong> (and if you choose “Necessary only”), our product analytics (PostHog) runs in a <strong>cookieless mode</strong>: nothing is stored on your device, and events are anonymous — they are not linked to your account. Error monitoring (Sentry) and privacy-friendly aggregate visit counting (Vercel Web Analytics) also run without storing anything on your device.</p>
+<p><strong>If you choose “Accept all”</strong>, analytics additionally stores identifiers on your device (see the next section) and links usage to your account, so we can understand how the product is used. With the same choice, we load <strong>Google Ads</strong> measurement, which stores advertising identifiers on your device to attribute sign-ups and purchases to ad clicks. To improve conversion matching we send Google a <strong>SHA-256 hash</strong> of your email address — never the raw address.</p>
+<p><strong>You can change your choice at any time</strong> via “Cookie settings” in the footer or in your account. Withdrawing consent stops analytics storage and advertising measurement; identifiers already stored are removed, and any remaining Google cookies can be deleted in your browser settings.</p>
+<p>Independent of the banner, when a new account is created we record the campaign tags of the visit that led to the sign-up (for example <code>utm_source</code> or an ad-click ID) as part of the account record — this is a one-time note about how you found us, not ongoing tracking.</p>
+</section>
+<section id="cookies">
+<h2>Cookies and data stored on your device</h2>
+<dl>
+<dt>Strictly necessary</dt>
+<dd>keeping you signed in (session token), your cookie choice itself (valid for 12 months, then we ask again), “remember me”, and short-lived security records such as a 60-second cooldown on sending sign-in emails. The Service does not work without these</dd>
+<dt>Preferences</dt>
+<dd>theme, language, units, list view settings, and unsaved drafts of a trip you are creating (kept only for the current tab)</dd>
+<dt>Analytics — only after you accept</dt>
+<dd>PostHog identifiers, stored for up to 12 months</dd>
+<dt>Advertising — only after you accept</dt>
+<dd>Google Ads cookies (for example <code>_gcl_*</code>), with lifetimes set by Google (typically up to 90 days)</dd>
+</dl>
+<p>Third-party components may use their own storage when they load: <strong>Mapbox</strong> (maps) stores technical identifiers, and <strong>Stripe</strong> sets its own cookies on its payment pages.</p>
+</section>
+<section id="sharing">
+<h2>Who we share data with</h2>
+<p>We share personal data only with providers that help us run the Service, each limited to its role:</p>
+<dl>
+<dt>Supabase</dt>
+<dd>our database, authentication and file storage. Hosted in the EU (Ireland)</dd>
+<dt>Vercel</dt>
+<dd>hosts and delivers the website (EU region) and provides cookieless aggregate visit statistics</dd>
+<dt>Railway</dt>
+<dd>hosts our automation server (EU, Netherlands), which delivers invitation emails and notifications and runs the AI features</dd>
+<dt>Stripe</dt>
+<dd>processes payments. Receives your email address and account ID; card details stay with Stripe</dd>
+<dt>PostHog (EU)</dt>
+<dd>product analytics, as described above</dd>
+<dt>Sentry (EU)</dt>
+<dd>error monitoring. Reports are scrubbed of personal details; session replays are captured only when an error occurs and mask all text and inputs</dd>
+<dt>Google</dt>
+<dd>three separate roles: sign-in with Google (if you use it), advertising measurement (only with your consent), and a small icon service that shows website icons next to booking links you add</dd>
+<dt>Mapbox</dt>
+<dd>maps and routes. When you open a map, your browser talks to Mapbox and sends the coordinates of the area and route being displayed</dd>
+<dt>LocationIQ</dt>
+<dd>address search. Receives the address text being searched (not your account identity). Based in the US</dd>
+<dt>AI model providers</dt>
+<dd>when you use AI features, the relevant content is processed by third-party AI models: booking recognition uses Mistral (OCR and text extraction), and the Telegram assistant uses Google Gemini. See the AI section below</dd>
+<dt>Telegram</dt>
+<dd>only if you connect the Telegram assistant: we store the chat ID and Telegram name of the connected chat and send trip reminders and replies to it</dd>
+<dt>Booking partners</dt>
+<dd>when we show partner offers (Stay22, Viator and others), availability requests include the destination and dates of your trip, but not your identity. Some partner images load directly from the partners’ servers. If you click a partner link, you leave the Service and that partner’s own terms and privacy policy apply; we record the click (which partner and for which trip) to account for affiliate commissions</dd>
+</dl>
+<p>Participants of a trip see the trip content you shared with them. We also disclose data where the law requires it.</p>
+</section>
+<section id="ai">
+<h2>AI features</h2>
+<p>AI features run only when you invoke them, and only the relevant content is processed:</p>
+<ul>
+<li><strong>Booking recognition</strong> — the file or text you submit is processed to extract the booking details.</li>
+<li><strong>AI trip planning</strong> — your planning request and the conversation with the planner.</li>
+<li><strong>Trip assistant (chat and Telegram)</strong> — your question and recent messages of that trip chat, so the assistant has context.</li>
+</ul>
+<p>This content is processed by the AI providers named above to generate the answer. We do not use your content to train AI models. Usage records (which feature, when, and how much computation it used) are kept for cost accounting — they do not include the text of your requests.</p>
+</section>
+<section id="transfers">
+<h2>International transfers</h2>
+<p>Your data is stored in the European Union: the database and files in Ireland, our automation server in the Netherlands. Some of our providers are US companies or process limited data in the United States (for example Stripe, Google, LocationIQ). Those transfers are covered by the European Commission’s adequacy decision for the EU–US Data Privacy Framework or by standard contractual clauses.</p>
+</section>
+<section id="retention">
+<h2>How long we keep data</h2>
+<dl>
+<dt>Account and trip data</dt>
+<dd>for as long as your account exists. Deleting a trip deletes its content and files</dd>
+<dt>After account deletion</dt>
+<dd>your personal details are erased or anonymised right away (see “Your rights”). Content you added to shared trips remains available to the other participants, without your name attached</dd>
+<dt>Payment and accounting records</dt>
+<dd>6 years, as Spanish commercial law requires</dd>
+<dt>Error reports</dt>
+<dd>90 days</dd>
+<dt>Database backups</dt>
+<dd>data you delete disappears from live systems immediately, but may persist in our backups for up to 7 days before they are overwritten</dd>
+<dt>Support requests</dt>
+<dd>kept while we work on them and to improve the Service; you can ask us to delete yours</dd>
+<dt>Invitation links</dt>
+<dd>expire after 7 days</dd>
+<dt>Rate-limiting records (including IP addresses)</dt>
+<dd>kept for about 24 hours</dd>
+</dl>
+</section>
+<section id="shared">
+<h2>Sharing within trips and public links</h2>
+<p>Trip participants see the content of that trip according to their role. Documents you mark as private are visible only to you.</p>
+<p>If you create a <strong>public link</strong> to a trip, anyone who has the link can view the trip — route, bookings, activities, notes and participant names (files and personal documents are not included). The link stays valid until the trip is deleted. Share it thoughtfully.</p>
+</section>
+<section id="rights">
+<h2>Your rights</h2>
+<ul>
+<li><strong>access</strong> a copy of your data;</li>
+<li><strong>correct</strong> anything inaccurate — most account details can be edited in the app;</li>
+<li><strong>delete</strong> your account and data — directly in the account settings. Deletion erases or anonymises your personal details (email, name, avatar), deletes your private documents, notifications and personal integrations, and signs you out everywhere. An active subscription must be cancelled first. Shared trip content and legally required payment records remain, without your identity attached;</li>
+<li><strong>restrict or object</strong> to processing based on legitimate interests;</li>
+<li><strong>receive your data</strong> in a machine-readable format;</li>
+<li><strong>withdraw consent</strong> at any time — for analytics and advertising via “Cookie settings” — without affecting what happened before.</li>
+</ul>
+<p>Write to <strong>info@triplanio.com</strong> and we will respond within 30 days. You can also complain to a data protection authority — in Spain, the Agencia Española de Protección de Datos (<a href="https://www.aepd.es">aepd.es</a>), or the authority of the country where you live.</p>
+</section>
+<section id="security">
+<h2>Security</h2>
+<p>Traffic is encrypted in transit and data is encrypted at rest. Passwords are stored as salted hashes and are never visible to us. Access to production systems is limited and authenticated. No system is perfectly secure; if a breach affects your rights, we will notify you and the supervisory authority within the time the law requires.</p>
+</section>
+<section id="children">
+<h2>Children</h2>
+<p>The Service is not intended for children under 16. If you believe a child has given us personal data, write to info@triplanio.com and we will delete it.</p>
+</section>
+<section id="pchanges">
+<h2>Changes to this Policy</h2>
+<p>We update this Policy when the Service or the law changes. The current version is always on this page, with the date of the last update at the top. We announce material changes at least 14 days before they take effect, by email or in the Service.</p>
+</section>
+<section id="pcontact">
+<h2>Contact</h2>
+<p>Data protection questions and requests: <strong>info@triplanio.com</strong>. General support: <strong>support@triplanio.com</strong>.</p>
+</section>

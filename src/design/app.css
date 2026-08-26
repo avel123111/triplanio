@@ -666,7 +666,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    тот же, что у `.input` (TRIP-333): иначе селект формы траты и карточки
    форк-панели вставали серыми рядом с белым полем. Тёмная половина - в общем
    правиле под базовым `.input`. */
-.lp-stepper, .s22f-sel, .s22f-gcard {
+.lp-stepper, .s22f-gcard {
   background: var(--surface);
   border: 1px solid var(--line-strong);
 }
@@ -1093,6 +1093,7 @@ h4,
 .trip-head__meta,
 .trip-tl__day,
 .trip-foot__lab,
+/* orphan-exempt: footer__col — мёртвый co-селектор старого футера; его литерал жил только в удалённых public/terms.html + privacy.html (Ф6.6, TRIP-465). Полная чистка старого блока .footer/.footer__col — отдельная задача. */
 .footer__col h4,
 .mbnav__lbl,
 .fork-partner__mid span,
@@ -2343,7 +2344,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .select,
 [data-theme="dark"] .textarea,
 [data-theme="dark"] .lp-stepper,
-[data-theme="dark"] .s22f-sel,
 [data-theme="dark"] .s22f-gcard,
 [data-theme="dark"] .input-group,
 [data-theme="dark"] .stay-dates,
@@ -5962,6 +5962,57 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .te-addmini position — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
    visual-diff-exempt: .te-addmini width — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2) */
 
+    /* ── Инлайновое добавление города (линза «Маршрут») ─────────────────────
+       Композер живёт в КОНЦЕ списка маршрута вместо панели, что подменяла весь
+       виджет. Флоу «город → тип → подтверждение»; облик собран из существующего
+       семейства `.te-` и токенов ДС — нового namespace нет (гард 2m чист).
+       Раскладку строк/колонок держат примитивы Row/Col, здесь — только
+       поверхности, сетка плиток и состояния.
+
+       Пол 2o: 8 новых классов семьи `.te-add*` (`te-add-open` · `te-addwrap` ·
+       `te-add` · `te-add-city` · `te-add-cityname` · `te-add-grid` ·
+       `te-add-type` · `te-add-ft`); семья `te` на разборе → те же +8 в triage;
+       4 из них несут раскладку (`te-add` · `te-add-grid` · `te-add-type` ·
+       `te-add-ft`). Взамен снята панель `CityAddPanel` с её инлайнами
+       (инлайнов −4) и dsshare вырос — композер собран из примитивов ДС. Апрув
+       Pavel: редизайн флоу добавления города согласован постановкой задачи.
+       floor-exempt: classes +8 — семья te-add* для инлайн-композера добавления города, апрув Pavel
+       floor-exempt: triage +8 — те же 8 классов, семья te на разборе, апрув Pavel
+       floor-exempt: layout +4 — .te-add/.te-add-grid/.te-add-type/.te-add-ft несут раскладку композера, апрув Pavel */
+    .te-add-open { margin-top: var(--sp-6); }
+    /* Обёртка ДЕСКТОП-композера — носитель анимации появления и якорь автоскролла
+       (scrollIntoView). Отступ сверху здесь, чтобы совпадать с кнопкой в свёрнутом
+       виде. На телефоне композер живёт в vaul-шите, эта обёртка не рендерится. */
+    .te-addwrap { margin-top: var(--sp-6); animation: teAddIn .18s var(--ease-out); }
+    @keyframes teAddIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    /* Карточка-композер: <Card recessed> даёт грунт/рамку/радиус, здесь —
+       вертикальный стек и внутренний зазор между шагами (ступени --sp-*). */
+    .te-add { padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-6); }
+    /* Выбранный город — чип-строка (флаг · имя · «Изменить»). Row несёт
+       flex/gap/выравнивание; классу остаётся поверхность и отступ. */
+    .te-add-city { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-btn); padding: var(--sp-4) var(--sp-5); }
+    .te-add-cityname { flex: 1; min-width: 0; }
+    /* Плитки типа точки — все 4 в один ряд (`minmax(0,1fr)` даёт им ужиматься
+       ниже контента, поэтому даже в узком шите ряд не переполняется). Компактные:
+       икона над короткой подписью, узкий горизонтальный отступ. */
+    .te-add-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
+    .te-add-type { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink-2); cursor: pointer; text-align: center; transition: background .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out); }
+    .te-add-type:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+    .te-add-type[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
+    .te-add-type:disabled { opacity: .5; cursor: not-allowed; color: var(--muted-2); }
+    .te-add-type:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+    /* Футер: разделитель сверху; кнопки в ряд, на телефоне — стопкой во всю
+       ширину (align-items: stretch тянет сами кнопки-флекс-элементы, не лезем
+       в примитив .btn), подтверждение сверху (column-reverse). */
+    .te-add-ft { border-top: 1px solid var(--line); padding-top: var(--sp-6); }
+    @media (max-width: 640px) {
+      .te-add-ft { flex-direction: column-reverse; align-items: stretch; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .te-add-type { transition: none; }
+      .te-addwrap { animation: none; }
+    }
+
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {
       .te-seam { animation: none; }
@@ -9313,10 +9364,27 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Только раскладка: скин и состояния держит `<InputGroup>` (TRIP-333). */
 .s22f-field { flex: 1; }
 .s22f-dash { color: var(--muted-2); flex: none; }
-.s22f-selwrap { position: relative; }
-.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; min-height: var(--ctl-h); border-radius: var(--r-btn); padding: 0 40px 0 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут; TRIP-333: фон, высота И СТУПЕНЬ СКРУГЛЕНИЯ - общие с .input. Пока --r-btn был 14, а --r-md 16, чужой токен был невиден; на 10 против 16 селект стал заметно круглее полей цены прямо над ним. */
-.s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
-.s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
+/* Селект «Площадка» (.s22f-sel*) удалён: Stay22 отключила provider, фильтр снят
+   с FE (TRIP-470). Ниже — снятие его приватных правил для гарда 2p:
+   visual-diff-exempt: .s22f-selwrap position — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel appearance — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel -webkit-appearance — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel width — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel min-height — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel border-radius — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel padding — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel background — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel border — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel cursor — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel outline — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel transition — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel:focus border-color — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel:focus box-shadow — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev position — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev right — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev top — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev transform — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev pointer-events — селект площадки удалён (TRIP-470) */
 
 .s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; border-radius: var(--r-btn); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

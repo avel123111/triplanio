@@ -54,6 +54,16 @@ export function startKeyboardOpenWatch() {
   const vv = window.visualViewport;
   // No VisualViewport → skip: chrome just stays put (the old, pre-feature look).
   if (!vv) return;
+  // A soft keyboard only exists on touch devices (coarse primary pointer). On a
+  // desktop the visual viewport ALSO shrinks — by a window resize, a browser
+  // zoom, or the download shelf — and that read as "keyboard up", intermittently
+  // unmounting the canon `.dlg__foot` (the share dialog lost its Download/Share
+  // footer, "Настроить карту" lost its Done). Gate the whole watcher to
+  // coarse-pointer devices: on desktop it never starts, so `data-keyboard` is
+  // never set and useKeyboardOpen() stays false — the footer no longer vanishes.
+  // (The `.mbnav`/`.lp-f` CSS consumers are already `@media (max-width:640px)`,
+  // so they're unaffected on desktop either way; this only fixes the JS hook.)
+  if (!window.matchMedia?.('(pointer: coarse)').matches) return;
   started = true;
 
   const root = document.documentElement;

@@ -6,16 +6,20 @@
 // the composed map to a PNG for the browser-rasterised card.
 //
 // TRIP-443: the card map runs on the SAME Mapbox style as every other app
-// surface (MAP_STYLE — the trip Map lens / overview) and shows ONLY the route
-// line + red city markers — city-name/flag labels were dropped (the card frame
-// carries the country flags under the map instead).
+// surface (MAP_STYLE — the trip Map lens / overview). City markers are BOLD BLUE
+// DOTS (Ilia's request: back to plain markers, no country flags), no city names.
+// The dot colour reuses the route token `--map-route` (mapTokens.routeColor) so
+// the markers match the route line and follow day/night. The map includes the
+// start/finish cities (showSE) so the whole journey shows — the stats TEXT under
+// the title stays transit-only (edge side).
 //
 // NOTE: HTML markers (mapboxgl.Marker) are DOM overlays and are NOT part of the
 // WebGL canvas, so a canvas snapshot would omit them. City markers are therefore
-// drawn as a GL `circle` layer here so they are captured.
+// drawn as GL circle layers here (a white halo + a blue dot) so they are captured.
 import mapboxgl from 'mapbox-gl';
 import { MAPBOX_TOKEN, MAP_STYLE, baseConfig } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
+import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
 
 /** Ordered geo points + route legs for the trip, mirroring MapView's rule. */
@@ -36,15 +40,16 @@ export function buildRoute(visits, transfers, showSE) {
   return { ordered, legs };
 }
 
-// Share-card-only map weights (TRIP-193). Bolder than the app maps so the route
-// reads at story/post scale. Kept in ONE place because the live preview scales
-// these same base values (ShareMapPreview.applyWeights) to keep preview == final.
-// `dot` is a red marker (Pavel's request); `halo` is its white ring.
-export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11 };
-const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
+// Share-card-only map weights (TRIP-193 → TRIP-443). Bolder than the app maps so
+// the route + markers read at story/post scale. Kept in ONE place because the live
+// preview scales these same base values (ShareMapPreview.applyWeights) to keep
+// preview == final. `dot` = the blue city marker radius; `halo` = the white casing
+// under it (logical px on the full-res card).
+export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 13, halo: 17 };
 
-/** Draw city markers as a captured GL layer (HTML markers wouldn't snapshot):
- *  a white halo circle under a red dot. */
+/** City point source + white-halo/blue-dot marker layer under EVERY point. The
+ *  dot colour reuses the route token (`--map-route`) so markers match the line
+ *  and follow day/night; the white halo keeps the dot legible on any basemap. */
 function drawPointLayer(map, ordered) {
   const src = 'sc-points';
   const data = {
@@ -57,26 +62,27 @@ function drawPointLayer(map, ordered) {
   };
   if (map.getSource(src)) {
     map.getSource(src).setData(data);
-  } else {
-    map.addSource(src, { type: 'geojson', data });
-    map.addLayer({
-      id: 'sc-points-halo',
-      type: 'circle',
-      source: src,
-      paint: { 'circle-radius': SC_WEIGHTS.halo, 'circle-color': '#ffffff' },
-    });
-    map.addLayer({
-      id: 'sc-points-dot',
-      type: 'circle',
-      source: src,
-      paint: { 'circle-radius': SC_WEIGHTS.dot, 'circle-color': SC_DOT_COLOR },
-    });
+    return;
   }
+  map.addSource(src, { type: 'geojson', data });
+  map.addLayer({
+    id: 'sc-points-halo',
+    type: 'circle',
+    source: src,
+    paint: { 'circle-radius': SC_WEIGHTS.halo, 'circle-color': '#ffffff' },
+  });
+  map.addLayer({
+    id: 'sc-points-dot',
+    type: 'circle',
+    source: src,
+    paint: { 'circle-radius': SC_WEIGHTS.dot, 'circle-color': routeColor() },
+  });
 }
 
 /**
  * Draw the route line + city markers on a map (shared by capture + live preview).
- * TRIP-443: markers + lines only — no city-name/flag labels.
+ * Markers are plain GL circle layers (added synchronously), so — unlike the old
+ * flag-icon path — there is nothing async to await before snapshotting.
  */
 export function drawTripRoute(map, ordered, legs) {
   drawRouteLinesCached(map, 'sc-route', legs, {
@@ -110,7 +116,7 @@ export const rescaleZoom = (zoom, fromW, toW) =>
  * Resolves null if the map can't be produced (caller surfaces an error).
  */
 export function renderCardMapPng({
-  visits, transfers, showSE = false,
+  visits, transfers, showSE = true,
   center, zoom, bearing = 0, pitch = 0, projection = 'mercator', scheme = 'DARK',
   previewCssWidth, width, height,
 }) {
@@ -159,14 +165,13 @@ export function renderCardMapPng({
     };
     // On the Standard style 'load' can precede style readiness, so addLayer would
     // silently no-op and the snapshot would miss the route (same trap the live
-    // preview hit). Draw on 'idle' once the style is ready, and only snapshot
-    // AFTER the route has been added and repainted.
+    // preview hit). Draw on 'idle' once the style is ready; markers are plain
+    // circle layers added synchronously, so the next idle can snapshot directly.
     const tryDraw = () => {
       if (drew || !map.isStyleLoaded()) return;
       try {
         drawTripRoute(map, ordered, legs);
         drew = true;
-        try { map.triggerRepaint(); } catch { /* gone */ }
       } catch { /* retry next idle */ }
     };
     const onIdle = () => { if (!drew) tryDraw(); else snapshot(); };

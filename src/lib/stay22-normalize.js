@@ -36,14 +36,13 @@ function readCoords(loc) {
 }
 
 // Map one Stay22 result to the flat shape the card + map badge render.
-// Supplier-agnostic: we no longer pin provider=booking, so a result may carry any
-// supplier (booking, expedia, vrbo, hotelscom). The v2 `suppliers` map has NO
-// defined ordering or "primary" entry, so when the user filtered by a platform we
-// surface THAT supplier's logo/price/link on the card + badge; otherwise we fall
-// back to the first key. Determinism (cheapest / top-rated) is a separate concern.
-function mapResult(r, currency, preferProvider) {
+// Supplier-agnostic: we don't pin a provider, so a result may carry any supplier
+// (booking, expedia, vrbo, hotelscom). The v2 `suppliers` map has NO defined
+// ordering or "primary" entry, so we surface the first key's logo/price/link on
+// the card + badge. Determinism (cheapest / top-rated) is a separate concern.
+function mapResult(r, currency) {
   const suppliers = r?.suppliers || {};
-  const supplierKey = (preferProvider && suppliers[preferProvider]) ? preferProvider : (Object.keys(suppliers)[0] || null);
+  const supplierKey = Object.keys(suppliers)[0] || null;
   const sup = supplierKey ? suppliers[supplierKey] : null;
   const rating = r?.rating || {};
   const priceTotal = sup?.price?.total;
@@ -73,11 +72,11 @@ function mapResult(r, currency, preferProvider) {
   };
 }
 
-export function normalizeStay22(data, preferProvider = null) {
+export function normalizeStay22(data) {
   const meta = data?.meta || {};
   const currency = meta.currency || null;
   return {
-    hotels: Array.isArray(data?.results) ? data.results.map((r) => mapResult(r, currency, preferProvider)).filter((h) => h.id) : [],
+    hotels: Array.isArray(data?.results) ? data.results.map((r) => mapResult(r, currency)).filter((h) => h.id) : [],
     meta: {
       page: meta.page || 1,
       pageSize: meta.pageSize || 10,
@@ -91,35 +90,25 @@ export function normalizeStay22(data, preferProvider = null) {
   };
 }
 
-// Supplier platforms for the server-side `provider` filter. `key` is the Stay22
-// API value; `label` is the brand shown in the panel (proper noun, not translated).
-// `key` is the exact Stay22 v2 `provider` value (and the key used in each result's
-// `suppliers` map) — Hotels.com is `hotelscom`, NOT `hotels`. `label` is the brand.
-export const STAY22_PROVIDERS = [
-  { key: 'booking', label: 'Booking.com' },
-  { key: 'expedia', label: 'Expedia' },
-  { key: 'hotelscom', label: 'Hotels.com' },
-  { key: 'vrbo', label: 'Vrbo' },
-];
-
 // Normalize the optional filters object into SERVER edge-function fields. Only
 // non-empty values are returned, so "no filters / reset" sends nothing extra and
-// the edge function keeps its defaults (adults=2, children=0, no rooms, no
-// provider). Price is NOT here — it is filtered on the CLIENT over the pooled
-// results (in the trip currency), so it never reloads the pool.
+// the edge function keeps its defaults (adults=2, children=0, no rooms). The
+// `provider` platform filter was retired on the FE (Stay22 disabled it) — every
+// request now goes with the default provider. Price is NOT here — it is filtered
+// on the CLIENT over the pooled results (in the trip currency), so it never
+// reloads the pool.
 export function filterParams(filters) {
   if (!filters) return {};
   const out = {};
   if (filters.adults > 0) out.adults = filters.adults;
   if (filters.children > 0) out.children = filters.children;
   if (filters.rooms > 0) out.rooms = filters.rooms;
-  if (filters.provider) out.provider = filters.provider;
   return out;
 }
 
 // Every client knob of the hotel list, in ONE object — both the initial state and
 // the reset target (useForkList). Hotels have no boolean flags of their own, so
-// this is the plain fork base; guests/platform are SERVER filters and live in the
+// this is the plain fork base; guests are SERVER filters and live in the
 // `applied` snapshot instead.
 export const BASE_HOTEL_FILTERS = { ...BASE_FORK_FILTERS };
 

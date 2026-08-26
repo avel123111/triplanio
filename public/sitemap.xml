@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- TRIP-448. Только СУЩЕСТВУЮЩИЕ адреса. Хост www.triplanio.com — апекс
      редиректит на www (Vercel 307). Логин/восстановление/приглашения в карте
-     не нужны. /d/spain-may-27 не вписан: страницы ещё нет, ссылка на 404 =
-     ошибка в Search Console (приедет в Ф6 вместе со страницей).
+     не нужны. /d/spain-may-27 вписан в Ф6.3 (TRIP-462) — страница создана.
      lastmod не ставим: статичная дата, которую никто не обновляет, врёт краулеру. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.triplanio.com/</loc>
+  </url>
+  <url>
+    <loc>https://www.triplanio.com/d/spain-may-27</loc>
   </url>
   <url>
     <loc>https://www.triplanio.com/terms</loc>

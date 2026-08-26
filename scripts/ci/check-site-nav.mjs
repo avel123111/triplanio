@@ -67,13 +67,20 @@ const SITE_ZONE = [
   'src/pages/PublicTrip.jsx',
   'src/pages/Login.jsx',
   'src/pages/JoinTrip.jsx',
+  'src/pages/Demo',
+  'src/pages/Legal.jsx',
 ];
 
-// A string-literal href to an internal absolute path: `href="/x"`. The `/(?!\/)`
-// excludes protocol-relative `//cdn…` (external); the `(?<!\.)` excludes the DOM
-// property assignment `link.href = '/site.css'` (useSiteCss), which is not a
-// JSX attribute. Anchors (`#…`) and externals never start with a single `/`.
-const INTERNAL_HREF = /(?<!\.)\bhref\s*=\s*(["'])(\/(?!\/)[^"']*)\1/g;
+// A string-literal internal absolute href on an ANCHOR tag: `<a … href="/x">`.
+// Only `<a>` navigates (full document reload) — that is the whole hazard this
+// guard exists for. Scoping to `<a\b…>` deliberately excludes every OTHER
+// element that carries an `href`: SVG `<image href="/site/map.webp">` and
+// `<use href="/x">` are RESOURCE refs, not navigation, and the DOM property
+// assignment `link.href = '/site.css'` (useSiteCss) is not a tag at all.
+// `[^>]*?` stays inside one tag (never crosses `>`), so the anchor's own href is
+// the one matched. The `/(?!\/)` excludes protocol-relative `//cdn…` (external);
+// in-page anchors (`#…`) and externals never start with a single `/`.
+const INTERNAL_HREF = /<a\b[^>]*?\bhref\s*=\s*(["'])(\/(?!\/)[^"']*)\1/g;
 
 // `nav-exempt: /path` markers, read from RAW text (they live in comments, which
 // the offender scan strips).

@@ -31,6 +31,8 @@ const ZONE = {
   'src/pages/PublicTrip.jsx': "const SITE = f();\nexport const P = () => <a href={SITE}>x</a>;\n",
   'src/pages/Login.jsx': "import { Link } from 'react-router-dom';\nexport const Lg = () => <Link to=\"/\">home</Link>;\n",
   'src/pages/JoinTrip.jsx': "export const J = () => { nav('/trips'); return null; };\n",
+  'src/pages/Demo/DemoTrip.jsx': "export const D = () => <a href=\"#top\">x</a>;\n",
+  'src/pages/Legal.jsx': "import { Link } from 'react-router-dom';\nexport const Lg2 = () => <Link to=\"/terms\">x</Link>;\n",
 };
 
 function put(dir, path, body) {
@@ -97,6 +99,19 @@ test('external, anchor, mailto and dynamic hrefs are not flagged', (t) => {
       "  <a href=\"//cdn.example.com/x\">proto-rel</a>\n" +
       "  <a href={target}>dyn</a>\n" +
       "</>);\n",
+  }));
+  assert.equal(r.status, 0, r.stderr);
+});
+
+test('an SVG <image href="/x"> / <use href="/x"> is a resource ref, not <a> navigation', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/Landing/Extra.jsx':
+      "export const E = () => (\n" +
+      "  <svg viewBox=\"0 0 10 10\">\n" +
+      "    <image href=\"/site/map-pain.webp\" x=\"0\" y=\"0\" width=\"10\" height=\"10\" />\n" +
+      "    <use href=\"/site/icon.svg\" />\n" +
+      "  </svg>\n" +
+      ");\n",
   }));
   assert.equal(r.status, 0, r.stderr);
 });
