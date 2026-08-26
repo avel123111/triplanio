@@ -24,6 +24,7 @@ import { Btn, Card, Dialog, EmptyState, IconBtn, MapShell, Skeleton, Tile, fmtDa
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
+import { loadDismissed, serializeDismissed, storageKey as dismissedStorageKey, transferWarnKey, hotelWarnKey } from '@/lib/warningDismissals';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
@@ -427,17 +428,16 @@ function StreamAnchor({ label, sub, color, icon }) {
 // брони = пунктирный силуэт карточки в тинте её типа (transfer/hotel) с
 // янтарной точкой «!» на плитке. Тон рамки/фона подставляет вызыватель ручкой
 // --w-c инлайном на корне — тем же приёмом, что StreamEventRow у .tl3-card;
-// плитка берёт тон осью `tone` самого <Tile>. Крестик скрывает варнинг до
-// перемонтирования линзы.
+// плитка берёт тон осью `tone` самого <Tile>. Крестик компонент НЕ прячет сам:
+// скрытие персистентно (localStorage через useDismissedWarnings ниже), рендер
+// решает вызыватель по набору скрытых ключей.
 const WARN_TINT = {
   transfer: { '--w-c': 'var(--ev-transfer)' },
   hotel:    { '--w-c': 'var(--ev-hotel)' },
 };
 
-function BookingWarning({ kind, title, sub, onAdd }) {
+function BookingWarning({ kind, title, sub, onAdd, onDismiss }) {
   const { t } = useI18n();
-  const [hidden, setHidden] = useState(false);
-  if (hidden) return null;
   return (
     <div className="tl3-ev">
       <div className="time">—</div>
@@ -456,17 +456,45 @@ function BookingWarning({ kind, title, sub, onAdd }) {
           {/* Кнопка ОТКРЫВАЕТ форк (partner offerings, initialTab='find') — viewer
               её видит и жмёт; блок стоит на СОЗДАНИИ внутри (Save движка), не тут. */}
           <Btn icon="plus" onClick={onAdd}>{t('common.add')}</Btn>
-          <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
+          <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={onDismiss} />
         </div>
       </div>
     </div>
   );
 }
 
+// Персональные скрытия варнингов этого устройства (решение Pavel 2026-08-26:
+// localStorage, не БД — память браузера, consent не при чём). Чистая логика —
+// в lib/warningDismissals (там же тесты); хук только держит Set в состоянии и
+// ходит в storage под try/catch: приватный режим деградирует к «скрыто до
+// перезахода», как было. Прюнинг мёртвых визитов и кэп — на КАЖДОЙ записи.
+function useDismissedWarnings(tripId, visits) {
+  const read = () => {
+    try { return loadDismissed(window.localStorage.getItem(dismissedStorageKey(tripId))); }
+    catch { return new Set(); }
+  };
+  const [dismissed, setDismissed] = useState(read);
+  // tripId на первом рендере ленты может быть ещё пуст (shell грузится) —
+  // перечитываем, когда он появился/сменился.
+  useEffect(() => { setDismissed(read()); }, [tripId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dismiss = (key) => setDismissed((prev) => {
+    const next = new Set(prev).add(key);
+    try {
+      window.localStorage.setItem(
+        dismissedStorageKey(tripId),
+        JSON.stringify(serializeDismissed(next, visits.map((v) => v.id))),
+      );
+    } catch { /* storage недоступен — скрытие живёт до перезахода */ }
+    return next;
+  });
+  return { dismissed, dismiss };
+}
+
 // ─── TimelineLens ─────────────────────────────────────────────────────────────
 
 function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   const { t, lang } = useI18n();
+  const { dismissed, dismiss } = useDismissedWarnings(trip?.id, visits);
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
   // inside the rendered range (otherwise the #tlday element doesn't exist and
@@ -583,18 +611,22 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   const renderArrival = (city, prev) => {
     const out = [];
     if (!showBookingWarnings) return out;
-    if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)) {
+    const tKey = prev ? transferWarnKey(prev.id, city.id) : null;
+    if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)
+        && !dismissed.has(tKey)) {
       out.push(
         <BookingWarning
           key={`mt-${city.id}`} kind="transfer"
           title={t('trip.no_transfer')} sub={`${prev.city_name} → ${city.city_name}`}
           onAdd={() => onAddTransfer?.(prev, city)}
+          onDismiss={() => dismiss(tKey)}
         />
       );
     }
     // Отель — ОДИН варнинг на город, в его первый день, ниже переезда
     // (порядок «сначала переезд, потом отель» — решение Pavel 2026-08-26).
-    if (cityNeedsHotel(city)) {
+    const hKey = hotelWarnKey(city.id);
+    if (cityNeedsHotel(city) && !dismissed.has(hKey)) {
       const nights = cityNights(city);
       out.push(
         <BookingWarning
@@ -602,6 +634,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
           title={t('trip.no_hotel')}
           sub={`${city.city_name} · ${formatTripRange([city], '–')} · ${nights} ${nightsWord(nights)}`}
           onAdd={() => onAddHotel?.(city)}
+          onDismiss={() => dismiss(hKey)}
         />
       );
     }
@@ -773,12 +806,14 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
       && cityIdentity(prevCity) !== cityIdentity(endVisit)) {
     // The transfer into the finish anchor renders in its own departure day now;
     // here we only surface the missing-transfer warning when there is none.
-    if (!hasTransferBetween(prevCity, endVisit) && showBookingWarnings) {
+    const endKey = transferWarnKey(prevCity.id, endVisit.id);
+    if (!hasTransferBetween(prevCity, endVisit) && showBookingWarnings && !dismissed.has(endKey)) {
       rows.push(
         <BookingWarning
           key="mt-end" kind="transfer"
           title={t('trip.no_transfer')} sub={`${prevCity.city_name} → ${endVisit.city_name}`}
           onAdd={() => onAddTransfer?.(prevCity, endVisit)}
+          onDismiss={() => dismiss(endKey)}
         />
       );
     }
