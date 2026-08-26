@@ -595,11 +595,12 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
     // Отель — ОДИН варнинг на город, в его первый день, ниже переезда
     // (порядок «сначала переезд, потом отель» — решение Pavel 2026-08-26).
     if (cityNeedsHotel(city)) {
+      const nights = cityNights(city);
       out.push(
         <BookingWarning
           key={`mh-${city.id}`} kind="hotel"
           title={t('trip.no_hotel')}
-          sub={`${city.city_name} · ${formatTripRange([city], '–')} · ${cityNights(city)} ${nightsWord(cityNights(city))}`}
+          sub={`${city.city_name} · ${formatTripRange([city], '–')} · ${nights} ${nightsWord(nights)}`}
           onAdd={() => onAddHotel?.(city)}
         />
       );
@@ -706,17 +707,16 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
           </div>
         </div>
 
-        {/* Intra-day order = chronological. Each arriving city's block
-            [transfer card | missing-transfer warning] + CityHero is anchored to
-            its inbound transfer's time (or the city's start when there is no
-            transfer). Day events earlier than the first arrival anchor render
-            ABOVE the block(s); the rest render below. This keeps e.g. a hotel
-            checkout (11:00) above a same-day onward flight (12:20) instead of
-            being forced under the new city's hero. Arrival blocks keep their
+        {/* Intra-day order = chronological. Each arriving city's block (the
+            missing-transfer / missing-hotel warnings) is anchored to the city's
+            start. Day events earlier than the first arrival anchor render ABOVE
+            the block(s); the rest render below. This keeps e.g. a hotel checkout
+            (11:00) above a same-day onward flight (12:20) instead of being
+            forced under the new city's warnings. Arrival blocks keep their
             itinerary order, which drives the prevCity transfer/warning pairing. */}
         {(() => {
           const blocks = arrivingToday.map(c => ({
-            // The arrival block (warning only) anchors at the city's start; the
+            // The arrival block (warnings only) anchors at the city's start; the
             // transfer plaque no longer lives here.
             anchorMs: parseNaive(c.start_date)?.toMillis() ?? Number.NEGATIVE_INFINITY,
             city: c,
