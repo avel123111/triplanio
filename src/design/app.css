@@ -778,8 +778,6 @@ h3,
 .step h3,
 .drawer li a,
 .wdg-h h4,         /* TRIP-175 инсп.: Label→Subheading (заголовки виджетов обзора) */
-.cr-item .cr-nm,   /* TRIP-175 инсп.: UI→Subheading (название города в рейле) */
-.tl3-card .body b, /* TRIP-175 инсп.: UI→Subheading (акцент в теле карточки события) */
 .tl3-card--tr .rv-end b, /* TRIP-175 инсп.: UI→Subheading (город назначения переезда) */
 .mbrow__name,      /* TRIP-175 инсп.: UI→Subheading (имя участника) */
 .vrow .nm,         /* TRIP-175 инсп.: UI→Subheading (страна/город в списке) */
@@ -859,6 +857,18 @@ h4,
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→Label (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→Label (лейблы «Доступ»/«Файлы» диалога документа) */
 .dl-dropzone b,       /* TRIP-275 инсп.: Meta→Label (CTA dropzone «Загрузить файлы…») */
+/* Инспектор канонов 2026-08-26 (правки Pavel): названия в ленте и рейле ужаты
+   Subheading→Label — плашки событий стали контрольного радиуса (r-btn), кегль 16
+   в них читался заголовком секции.
+   visual-diff-exempt: .cr-nm font-family — инсп. Subheading→Label (город в рейле), апрув Pavel 2026-08-26
+   visual-diff-exempt: .cr-nm font-size — инсп. Subheading→Label, апрув Pavel 2026-08-26
+   visual-diff-exempt: .cr-nm line-height — инсп. Subheading→Label, апрув Pavel 2026-08-26
+   visual-diff-exempt: .tl3-card .body b font-family — инсп. Subheading→Label (название события в плашке), апрув Pavel 2026-08-26
+   visual-diff-exempt: .tl3-card .body b font-size — инсп. Subheading→Label, апрув Pavel 2026-08-26
+   visual-diff-exempt: .tl3-card .body b line-height — инсп. Subheading→Label, апрув Pavel 2026-08-26 */
+.cr-item .cr-nm,      /* инсп. 2026-08-26: Subheading→Label (название города в рейле) */
+.tl3-card .body b,    /* инсп. 2026-08-26: Subheading→Label (название события в плашке) */
+.tl3-warn b,          /* инсп. 2026-08-26: off-canon→Label (титул варнинга «Нет переезда/отеля») */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-410 Ф3: .t-label — Geologica 13/600/1.4 · единственный утилити-канон (кегль подписи/кнопки/статуса); сюда влиты компонентные co-селекторы бывшей утилиты + чат-якоря .cm-h/.cm-h3 */
 .t-body,
 .fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
@@ -6593,6 +6603,34 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .rv-mode --hl-ink — то же на .rv-mode — рендер */
 .tl3-card--tr .rv-mode .tile { --tile: 28px; --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
 .tl3-card--tr .rv-mode small { color: var(--muted); }
+
+/* ── Варнинги броней (B1 «призрак события», апрув Pavel 2026-08-26): пунктирный
+   силуэт недостающей карточки в тинте её типа (переезд/отель) с янтарной точкой
+   «!» на плитке. Плитка = <Tile size="xl" tone>, тон рамки/фона подставляет
+   вызыватель (BookingWarning) ручкой --w-c инлайном на корне — тем же приёмом,
+   что StreamEventRow у .tl3-card; в ряду ленты варнинг стоит за той же колонкой
+   времени (.tl3-ev .time, значение «—»). Плейсхолдер пустого дня (.tl3-empty)
+   НАМЕРЕННО другой породы — тихая строка без рамки, чтобы не читаться варнингом.
+   floor-exempt: classes +5 — B1-варнинги «нет переезда/отеля» + плейсхолдер пустого дня, апрув Pavel 2026-08-26
+   floor-exempt: triage +5 — те же 5 классов, семья tl3 на разборе, апрув Pavel 2026-08-26
+   floor-exempt: layout +3 — .tl3-warn/.tl3-warn__act/.tl3-empty несут флекс нового объекта ленты, апрув Pavel 2026-08-26
+   floor-exempt: dsshare +5 — новый экранный блок из сырой разметки (Tile/Icon/Btn/IconBtn — из ДС), апрув Pavel 2026-08-26 */
+.tl3-warn { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); padding: var(--sp-6) var(--sp-7); border: 1.5px dashed color-mix(in srgb, var(--w-c) 50%, transparent); background: color-mix(in srgb, var(--w-c) 4%, transparent); border-radius: var(--r-btn); }
+/* Якорь угловой точки «!» — тот же узор, что `.icon-btn > .badge--unread`
+   (носитель держит position:relative, оверлей — абсолютом в углу).
+   floor-exempt: reach +1 — .tl3-warn .tile объявляет якорь оверлея, прецедент .tl3-card .tile той же семьи, апрув Pavel 2026-08-26 */
+.tl3-warn .tile { position: relative; }
+.tl3-warn__dot { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; border-radius: var(--r-pill); background: var(--warning); color: #fff; font-size: var(--fs-nano); font-weight: 800; line-height: 15px; text-align: center; box-shadow: 0 0 0 2px var(--bg); }
+.tl3-warn b { color: var(--ink); display: block; overflow-wrap: anywhere; }
+.tl3-warn .sb { color: var(--muted); margin-top: var(--sp-1); overflow-wrap: anywhere; }
+.tl3-warn__act { display: flex; align-items: center; gap: var(--sp-3); margin-left: auto; }
+/* На телефоне действия уезжают под текст отдельной строкой (flex-wrap корня). */
+@media (max-width: 640px) { .tl3-warn__act { margin-left: 0; width: 100%; justify-content: flex-end; } }
+
+/* Пустой день (B1): типографика — канон .t-meta из разметки, действие — канон
+   <Btn variant="link"> (своей кнопки у плейсхолдера нет). */
+.tl3-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-4); padding: var(--sp-7) 0; color: var(--muted); }
+.tl3-empty > svg { color: var(--muted-2); }
 
 /* City scroll-rail — right column of the timeline (namespaced .cr-*) */
 .cityrail { position: sticky; top: 8px; }

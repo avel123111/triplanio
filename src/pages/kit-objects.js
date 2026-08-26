@@ -107,6 +107,10 @@ export const KIT_OBJECTS = [
   // рецепт (css:false): у семьи только `__`-элементы, `--`-вариантов нет.
   { id: 'coverpicker', family: 'tcp', group: 'components', css: false, interactive: true },
   { id: 'readonly-banner', family: 'readonly', group: 'components', css: false },
+  // Варнинг недостающей брони ленты (<BookingWarning>, .tl3-warn) + плейсхолдер
+  // пустого дня (<TimelineEmptyDay>, .tl3-empty) — B1 «призрак события».
+  // Источник — рецепт (css:false): осей `--` у семьи нет, вид задаёт проп kind.
+  { id: 'booking-warning', family: 'tl3', group: 'components', css: false, interactive: true },
   // Плитка-иконка - двухосный объект (размер × тон) + булевы round/solid и тон
   // warm (только залитый). Источник оси - карты, экспортированные примитивом
   // <Tile> (TILE_SIZES/TILE_TONES), не CSS-скан: страница рисует по ним, тест

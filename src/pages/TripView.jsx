@@ -20,10 +20,12 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import TripShareFlow from '@/components/trips/TripShareFlow';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, IconBtn, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, BookingWarning, TimelineEmptyDay, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
+import { loadDismissed, serializeDismissed, storageKey as dismissedStorageKey, transferWarnKey, hotelWarnKey } from '@/lib/warningDismissals';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
@@ -422,35 +424,50 @@ function StreamAnchor({ label, sub, color, icon }) {
   );
 }
 
-// ─── MissingTransferWarning ───────────────────────────────────────────────────
+// Персональные скрытия варнингов этого устройства (решение Pavel 2026-08-26:
+// localStorage, не БД — память браузера, consent не при чём). Чистая логика —
+// в lib/warningDismissals (там же тесты); тут — только Set в состоянии и поход
+// в storage под try/catch: приватный режим деградирует к «скрыто до
+// перезахода», как было. Прюнинг мёртвых визитов и кэп — на КАЖДОЙ записи.
+const readDismissed = (tripId) => {
+  try { return loadDismissed(localStorage.getItem(dismissedStorageKey(tripId))); }
+  catch { return new Set(); }
+};
 
-function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
-  const { t } = useI18n();
-  const [hidden, setHidden] = useState(false);
-  if (hidden) return null;
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 14px', background: 'var(--warning-soft)',
-      border: '1px dashed var(--warning)', borderRadius: 'var(--r-sm)',
-      marginBottom: 8,
-    }}>
-      <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-      <div className="t-label grow">
-        {t('trip.no_transfer', { from, to })}
-      </div>
-      {/* Кнопка ОТКРЫВАЕТ форк (partner offerings, initialTab='find') — viewer
-          её видит и жмёт; блок стоит на СОЗДАНИИ внутри (Save движка), не тут. */}
-      <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
-      <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
-    </div>
-  );
+function useDismissedWarnings(tripId, visits) {
+  const [dismissed, setDismissed] = useState(() => readDismissed(tripId));
+  // tripId на первом рендере ленты может быть ещё пуст (shell грузится) —
+  // перечитываем, когда он появился/сменился.
+  useEffect(() => { setDismissed(readDismissed(tripId)); }, [tripId]);
+  const dismiss = (key) => setDismissed((prev) => {
+    const next = new Set(prev).add(key);
+    try {
+      localStorage.setItem(
+        dismissedStorageKey(tripId),
+        JSON.stringify(serializeDismissed(next, visits.map((v) => v.id))),
+      );
+    } catch { /* storage недоступен — скрытие живёт до перезахода */ }
+    return next;
+  });
+  return { dismissed, dismiss };
 }
 
-// ─── CityHero (with proper hotel warning) ────────────────────────────────────
+// ─── TimelineLens ─────────────────────────────────────────────────────────────
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
+function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   const { t, lang } = useI18n();
+  const { dismissed, dismiss } = useDismissedWarnings(trip?.id, visits);
+  const confirm = useConfirm();
+  // Крестик варнинга — через канон-confirm (просьба Pavel 2026-08-26): скрытие
+  // персистентно для устройства, поэтому случайный тап дороже одного лишнего
+  // вопроса. Копия — в стиле confirm.* («Вы уверены, что хотите…»).
+  const confirmDismiss = async (key, body) => {
+    if (await confirm({
+      title: t('confirm.hide_warning.title'),
+      description: body,
+      confirmLabel: t('confirm.hide_warning.action'),
+    })) dismiss(key);
+  };
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
   // inside the rendered range (otherwise the #tlday element doesn't exist and
@@ -543,21 +560,58 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // arrival block, so nothing is excluded from the day stream.
   const inboundEventIds = new Set();
 
-  // Renders one city's arrival block: [transfer card | missing-transfer warning]
-  // then the CityHero. `prev` = the previously-rendered city (or start anchor).
+  // «Нет отеля»: город с ночёвкой (≥1 ночь), который не покрывает ни одна
+  // бронь. Привязка прежде всего по city_visit_id; отель без привязки судится
+  // перекрытием дат (той же эвристикой, что исторически жила в ленте).
+  const hotelCoversCity = (h, c) =>
+    h.city_visit_id === c.id ||
+    (!h.city_visit_id && h.check_in_datetime && h.check_out_datetime &&
+      naiveDayKey(h.check_in_datetime) < naiveDayKey(c.end_date) &&
+      naiveDayKey(h.check_out_datetime) > naiveDayKey(c.start_date));
+  const cityNights = (c) => {
+    const s = parseNaive(c.start_date), e = parseNaive(c.end_date);
+    return s && e ? Math.max(0, Math.round(e.diff(s, 'days').days)) : 0;
+  };
+  const cityNeedsHotel = (c) =>
+    c.kind !== 'waypoint' && cityNights(c) >= 1 && !(hotels || []).some(h => hotelCoversCity(h, c));
+  // Та же тернарная плюрализация ночей, что у FlowMap/ManualPlanner (канон-узор).
+  const nightsWord = (n) => (n === 1 ? t('view.nights_one') : n < 5 ? t('view.nights_few') : t('view.nights_many'));
+
+  // Renders one city's arrival block: the missing-transfer warning, then the
+  // missing-hotel warning. `prev` = the previously-rendered city (or start
+  // anchor). The transfer plaque itself renders in its own departure day (in
+  // the day stream), not above the destination city.
+  // Кнопка «Добавить» варнинга ОТКРЫВАЕТ форк (partner offerings,
+  // initialTab='find') — viewer её видит и жмёт; блок стоит на СОЗДАНИИ внутри
+  // (Save движка), не тут.
   const renderArrival = (city, prev) => {
     const out = [];
-    // Only the missing-transfer warning lives in the arrival block now; the
-    // transfer plaque itself renders in its own departure day (in the day
-    // stream), not above the destination city.
-    if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)) {
-      if (showBookingWarnings) out.push(
-        <div key={`mt-${city.id}`} style={{ marginBottom: 8 }}>
-          <MissingTransferWarning
-            from={prev.city_name} to={city.city_name}
-            fromVisit={prev} toVisit={city} onAdd={onAddTransfer}
-          />
-        </div>
+    if (!showBookingWarnings) return out;
+    const tKey = prev ? transferWarnKey(prev.id, city.id) : null;
+    if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)
+        && !dismissed.has(tKey)) {
+      out.push(
+        <BookingWarning
+          key={`mt-${city.id}`} kind="transfer"
+          title={t('trip.no_transfer')} sub={`${prev.city_name} → ${city.city_name}`}
+          onAdd={() => onAddTransfer?.(prev, city)}
+          onDismiss={() => confirmDismiss(tKey, t('confirm.hide_warning.transfer_body', { from: prev.city_name, to: city.city_name }))}
+        />
+      );
+    }
+    // Отель — ОДИН варнинг на город, в его первый день, ниже переезда
+    // (порядок «сначала переезд, потом отель» — решение Pavel 2026-08-26).
+    const hKey = hotelWarnKey(city.id);
+    if (cityNeedsHotel(city) && !dismissed.has(hKey)) {
+      const nights = cityNights(city);
+      out.push(
+        <BookingWarning
+          key={`mh-${city.id}`} kind="hotel"
+          title={t('trip.no_hotel')}
+          sub={`${city.city_name} · ${formatTripRange([city], '–')} · ${nights} ${nightsWord(nights)}`}
+          onAdd={() => onAddHotel?.(city)}
+          onDismiss={() => confirmDismiss(hKey, t('confirm.hide_warning.hotel_body', { city: city.city_name }))}
+        />
       );
     }
     return out;
@@ -662,17 +716,16 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           </div>
         </div>
 
-        {/* Intra-day order = chronological. Each arriving city's block
-            [transfer card | missing-transfer warning] + CityHero is anchored to
-            its inbound transfer's time (or the city's start when there is no
-            transfer). Day events earlier than the first arrival anchor render
-            ABOVE the block(s); the rest render below. This keeps e.g. a hotel
-            checkout (11:00) above a same-day onward flight (12:20) instead of
-            being forced under the new city's hero. Arrival blocks keep their
+        {/* Intra-day order = chronological. Each arriving city's block (the
+            missing-transfer / missing-hotel warnings) is anchored to the city's
+            start. Day events earlier than the first arrival anchor render ABOVE
+            the block(s); the rest render below. This keeps e.g. a hotel checkout
+            (11:00) above a same-day onward flight (12:20) instead of being
+            forced under the new city's warnings. Arrival blocks keep their
             itinerary order, which drives the prevCity transfer/warning pairing. */}
         {(() => {
           const blocks = arrivingToday.map(c => ({
-            // The arrival block (warning only) anchors at the city's start; the
+            // The arrival block (warnings only) anchors at the city's start; the
             // transfer plaque no longer lives here.
             anchorMs: parseNaive(c.start_date)?.toMillis() ?? Number.NEGATIVE_INFINITY,
             city: c,
@@ -701,19 +754,16 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
               {beforeEvents.length > 0 && eventList(beforeEvents, true)}
               {blockNodes}
               {afterEvents.length > 0 && eventList(afterEvents, false)}
-              {/* Empty-day placeholder. (The city hero used to fill arrival days;
-                  with it removed, any day with no transfer block and no events
-                  shows the placeholder.) */}
+              {/* Empty-day placeholder (B1): действие ведёт в создание
+                  активности с предзаполненным днём. */}
               {!hasAny && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 14px',
-                  background: 'transparent', border: '1px dashed var(--line)',
-                  borderRadius: 'var(--r-sm)', color: 'var(--muted)',
-                }}>
-                  <Icon name="info" size={14} />
-                  <div className="t-meta grow">{t('view.empty_day')}</div>
-                </div>
+                <TimelineEmptyDay
+                  label={dayCity
+                    ? t('view.empty_day', { city: dayCity.city_name })
+                    : t('view.empty_day_nocity')}
+                  actionLabel={t('activity.add')}
+                  onAdd={() => onAddActivityForDay?.(day)}
+                />
               )}
             </>
           );
@@ -729,14 +779,15 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
       && cityIdentity(prevCity) !== cityIdentity(endVisit)) {
     // The transfer into the finish anchor renders in its own departure day now;
     // here we only surface the missing-transfer warning when there is none.
-    if (!hasTransferBetween(prevCity, endVisit) && showBookingWarnings) {
+    const endKey = transferWarnKey(prevCity.id, endVisit.id);
+    if (!hasTransferBetween(prevCity, endVisit) && showBookingWarnings && !dismissed.has(endKey)) {
       rows.push(
-        <div key="mt-end" style={{ marginBottom: 8 }}>
-          <MissingTransferWarning
-            from={prevCity.city_name} to={endVisit.city_name}
-            fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer}
-          />
-        </div>
+        <BookingWarning
+          key="mt-end" kind="transfer"
+          title={t('trip.no_transfer')} sub={`${prevCity.city_name} → ${endVisit.city_name}`}
+          onAdd={() => onAddTransfer?.(prevCity, endVisit)}
+          onDismiss={() => confirmDismiss(endKey, t('confirm.hide_warning.transfer_body', { from: prevCity.city_name, to: endVisit.city_name }))}
+        />
       );
     }
   }
@@ -1448,6 +1499,7 @@ export default function TripView() {
                   stream={stream}
                   visits={visits}
                   transfers={transfers}
+                  hotels={hotels}
                   trip={trip}
                   isLoading={shellLoading || loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
