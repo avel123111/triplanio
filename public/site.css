@@ -3141,7 +3141,9 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .hero-people .dm-txt b{font-weight:600}
 .demo .route-sec{background:var(--white);padding-top:clamp(46px,5vw,72px)}
 .demo .mapcard{position:relative;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-lg);
-  border:1px solid rgba(11,44,84,.07);background:linear-gradient(150deg,#E0EEFA,#EFF6FD)}
+  border:1px solid rgba(11,44,84,.07);background:linear-gradient(150deg,#E0EEFA,#EFF6FD);aspect-ratio:16/8;min-height:320px}
+.demo .mapcard > *{position:absolute;inset:0}
+@media (max-width:700px){.demo .mapcard{aspect-ratio:4/5;min-height:340px}}
 .demo .maplegend{display:flex;flex-wrap:wrap;gap:10px 24px;margin-top:16px;font-size:var(--fs-body);color:var(--muted)}
 .demo .maplegend span{display:inline-flex;align-items:center;gap:9px}
 .demo .maplegend i.ln{width:26px;height:3px;border-radius:2px;background:var(--brand);flex:none}
@@ -3400,3 +3402,23 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .chat-h .avs--push{margin-left:auto}
 .demo .chat-h .av--xs{width:32px;height:32px;font-size:var(--fs-tiny)}
 .demo .msg>.av--sm{width:34px;height:34px}
+
+/* Иконки демо: у прототипа каждый <svg> нёс инлайновый width/height; наш <Ic>
+   их не задаёт, поэтому размер иконок задаём CSS по контейнеру (TRIP-462). */
+.demo .dm-bic svg{width:20px;height:20px}
+.demo .dm-bic.sm svg{width:16px;height:16px}
+.demo .dm-av svg{width:18px;height:18px}
+.demo .ic svg{width:18px;height:18px}
+.demo .dm-cic svg{width:19px;height:19px}
+.demo .dm-city svg{width:13px;height:13px}
+.demo .dm-dic svg{width:15px;height:15px}
+.demo .dm-pill svg{width:11px;height:11px}
+.demo .dm-m svg{width:14px;height:14px}
+.demo .perone svg{width:17px;height:17px}
+.demo .snd svg{width:17px;height:17px}
+.demo .dm-tav svg{width:18px;height:18px}
+.demo .doc-note svg{width:15px;height:15px}
+.demo .maplegend svg{width:16px;height:16px}
+.demo .tg-when span svg{width:18px;height:18px}
+.demo .dm-tg-msg small svg{width:14px;height:14px}
+.demo .dm-tg-status svg{width:13px;height:13px}

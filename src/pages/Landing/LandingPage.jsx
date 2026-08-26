@@ -580,6 +580,10 @@ function FinalCta() {
               <span>{t('landing.fin.cta1')}</span>
               <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
             </a>
+            {/* Второй CTA — «Посмотреть демо» → страница демо-трипа (TRIP-462). */}
+            <a className="btn btn-glass" href="/d/spain-may-27" onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final_demo' }); nav('/d/spain-may-27'); }}>
+              {t('landing.fin.cta2')}
+            </a>
           </div>
         </div>
       </div>

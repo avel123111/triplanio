@@ -567,5 +567,6 @@
   "demo.fin.h2": "Build your own<br>trip",
   "demo.fin.sub": "Add cities and dates — the route, map, calendar and timeline build themselves. After that you just add bookings, and the prices flow into the budget on their own.",
   "demo.fin.cta1": "Start free",
-  "demo.footer.disclaimer": "The itinerary, people, prices and documents are fictional. Map — © Mapbox © OpenStreetMap."
+  "demo.footer.disclaimer": "The itinerary, people, prices and documents are fictional. Map — © Mapbox © OpenStreetMap.",
+  "fin.cta2": "See the demo"
 }
