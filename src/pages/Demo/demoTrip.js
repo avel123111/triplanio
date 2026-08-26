@@ -24,14 +24,14 @@
 // city_name / country_code for the LIGHT city badge, and start/end dates so
 // sortVisits keeps the order deterministic. `position` is the explicit tie-break.
 export const DEMO_VISITS = [
-  { id: 'd-berlin',    kind: 'start',   position: 0, city_name: 'Берлин',    country_code: 'DE', latitude: 52.5200, longitude: 13.4050, start_date: '2026-09-12', end_date: '2026-09-12' },
-  { id: 'd-rome',      kind: 'transit', position: 1, city_name: 'Рим',       country_code: 'IT', latitude: 41.9028, longitude: 12.4964, start_date: '2026-09-12', end_date: '2026-09-15' },
-  { id: 'd-milan',     kind: 'transit', position: 2, city_name: 'Милан',     country_code: 'IT', latitude: 45.4642, longitude:  9.1900, start_date: '2026-09-15', end_date: '2026-09-17' },
-  { id: 'd-barcelona', kind: 'transit', position: 3, city_name: 'Барселона', country_code: 'ES', latitude: 41.3851, longitude:  2.1734, start_date: '2026-09-17', end_date: '2026-09-20' },
-  { id: 'd-valencia',  kind: 'transit', position: 4, city_name: 'Валенсия',  country_code: 'ES', latitude: 39.4699, longitude: -0.3763, start_date: '2026-09-20', end_date: '2026-09-22' },
-  { id: 'd-madrid',    kind: 'transit', position: 5, city_name: 'Мадрид',    country_code: 'ES', latitude: 40.4168, longitude: -3.7038, start_date: '2026-09-22', end_date: '2026-09-25' },
-  { id: 'd-porto',     kind: 'transit', position: 6, city_name: 'Порту',     country_code: 'PT', latitude: 41.1579, longitude: -8.6291, start_date: '2026-09-25', end_date: '2026-09-27' },
-  { id: 'd-lisbon',    kind: 'transit', position: 7, city_name: 'Лиссабон',  country_code: 'PT', latitude: 38.7223, longitude: -9.1393, start_date: '2026-09-27', end_date: '2026-09-30' },
+  { id: 'd-berlin',    kind: 'start',   position: 0, city_name: 'Берлин',    country_code: 'DE', latitude: 52.5200, longitude: 13.4050, start_date: '2027-05-12', end_date: '2027-05-12' },
+  { id: 'd-rome',      kind: 'transit', position: 1, city_name: 'Рим',       country_code: 'IT', latitude: 41.9028, longitude: 12.4964, start_date: '2027-05-12', end_date: '2027-05-15' },
+  { id: 'd-milan',     kind: 'transit', position: 2, city_name: 'Милан',     country_code: 'IT', latitude: 45.4642, longitude:  9.1900, start_date: '2027-05-15', end_date: '2027-05-17' },
+  { id: 'd-barcelona', kind: 'transit', position: 3, city_name: 'Барселона', country_code: 'ES', latitude: 41.3851, longitude:  2.1734, start_date: '2027-05-17', end_date: '2027-05-20' },
+  { id: 'd-valencia',  kind: 'transit', position: 4, city_name: 'Валенсия',  country_code: 'ES', latitude: 39.4699, longitude: -0.3763, start_date: '2027-05-20', end_date: '2027-05-22' },
+  { id: 'd-madrid',    kind: 'transit', position: 5, city_name: 'Мадрид',    country_code: 'ES', latitude: 40.4168, longitude: -3.7038, start_date: '2027-05-22', end_date: '2027-05-25' },
+  { id: 'd-porto',     kind: 'transit', position: 6, city_name: 'Порту',     country_code: 'PT', latitude: 41.1579, longitude: -8.6291, start_date: '2027-05-25', end_date: '2027-05-27' },
+  { id: 'd-lisbon',    kind: 'transit', position: 7, city_name: 'Лиссабон',  country_code: 'PT', latitude: 38.7223, longitude: -9.1393, start_date: '2027-05-27', end_date: '2027-05-30' },
 ];
 
 // Legs between consecutive cities. The Valencia → Madrid leg is DELIBERATELY
@@ -156,12 +156,30 @@ export const DEMO_BUDGET = {
 };
 
 // ── Bento: calendar / docs / services / stats ─────────────────────────────
-// Calendar: 34 cells (Aug 31 → Oct 4). Trip days carry a city colour, day-of-move
-// days carry a two-colour bar, `dots` = event count that day. Leading/trailing
-// blanks are `{}`. Verbatim from the prototype.
+// Календарь МАЯ 2027 — 42 ячейки (27 апр → 6 июн), сетка с ПОНЕДЕЛЬНИКА.
+// Дни поездки несут цвет города, дни переезда — двухцветную полосу, `dots` —
+// число событий за день; дни вне поездки — просто число серым.
+//
+// Дни ДО поездки пронумерованы так же, как дни после: в мае 2027 их шестнадцать,
+// то есть два полных ряда, и пустыми они читались бы как дыра в календаре
+// (в сентябре 2026 их было двенадцать — ряд с хвостиком, и пустота не бросалась
+// в глаза). Настоящий календарь месяца показывает месяц целиком.
+//
+// ★ ЧИСЛО ВЕДУЩИХ ЯЧЕЕК — НЕ УКРАШЕНИЕ, А КАЛЕНДАРЬ. Сетка выложена руками, и
+// именно она ставит число на его день недели. Пока поездка стояла в сентябре
+// 2026 (1-е — вторник), перед 12-м числом было 12 пустых ячеек и 12-е попадало
+// на субботу — как в жизни. В мае 2027 1-е число суббота, 12-е приходится на
+// среду, поэтому ведущих ячеек 16 (27–30 апр + 1–11 мая). Замени только даты,
+// не тронув сетку, — и витрина продукта про планирование поездок покажет
+// майские числа по сентябрьским дням недели.
+//
+// Месяц раскрывается в ШЕСТЬ рядов, а не в пять: 31 мая — понедельник, он
+// начинает последний ряд, который дотягивается до 6 июня.
 const C = DEMO_CITY_COLORS;
 export const DEMO_CAL = [
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, // 31, 1..11 (before trip)
+  { n: 26 }, { n: 27 }, { n: 28 }, { n: 29 }, { n: 30 },          // хвост апреля
+  { n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }, { n: 5 }, { n: 6 },     // 1–11 мая,
+  { n: 7 }, { n: 8 }, { n: 9 }, { n: 10 }, { n: 11 },             // до поездки
   { n: 12, c: C.rome, dots: 2 }, { n: 13, c: C.rome, dots: 1 }, { n: 14, c: C.rome, dots: 3 },
   { n: 15, c: C.rome, bar2: [C.rome, C.milan], dots: 3 }, { n: 16, c: C.milan, dots: 2 },
   { n: 17, c: C.milan, bar2: [C.milan, C.barcelona], dots: 2 }, { n: 18, c: C.barcelona, dots: 1 },
@@ -171,7 +189,8 @@ export const DEMO_CAL = [
   { n: 25, c: C.madrid, bar2: [C.madrid, C.porto], dots: 3 }, { n: 26, c: C.porto, dots: 1 },
   { n: 27, c: C.porto, bar2: [C.porto, C.lisbon], dots: 3 }, { n: 28, c: C.lisbon, dots: 1 },
   { n: 29, c: C.lisbon, dots: 1 }, { n: 30, c: C.lisbon, dots: 1 },
-  { n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }, // after trip
+  { n: 31 },                                          // хвост мая
+  { n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }, { n: 5 }, { n: 6 }, // 1–6 июня
 ];
 export const DEMO_CAL_LEGEND = [
   { c: C.rome, key: 'landing.demo.city.rome' }, { c: C.milan, key: 'landing.demo.city.milan' },

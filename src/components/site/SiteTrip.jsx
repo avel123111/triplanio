@@ -1,9 +1,7 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
-import { track, withVisitCampaign } from '@/lib/analytics';
 import { hashStr } from '@/lib/hash';
+import { useZoneCta } from './zoneCta';
 import { Icon } from '@/design/icons';
 
 /* =========================================================================
@@ -18,7 +16,6 @@ import { Icon } from '@/design/icons';
    <LandingSprite>. No `@/design/*` imports (check-ds-boundary).
    ========================================================================= */
 
-const APP_URL = '/login';
 // Stat-strip icons from the app design system (@/design/icons — allowed off
 // check-ds-boundary), so the shared summary matches the product, not a sprite.
 const STAT_ICON = { 'i-globe2': 'globe', 'i-pin2': 'pin', 'i-swap': 'arrowSwap', 'i-cal2': 'calendar', 'i-route': 'route' };
@@ -115,19 +112,20 @@ export function SiteSummary({ stats, peopleTitle, peopleCount, people }) {
  *
  * Различия между страницами — это ДАННЫЕ, а не разметка, поэтому они пропсами:
  *   ns        — префикс i18n-ключей: у демо своя копия текста (`landing.demo.fin`);
- *   surface   — какая страница, для события `cta_clicked`;
  *   secondary — вторая кнопка. Есть только у лендинга («посмотреть демо»);
  *               на демо и публичке её в макете нет.
- * Пропсов ровно три, и у каждого есть живой потребитель — «на будущее» ничего.
+ * Пропсов ровно два, и у каждого есть живой потребитель — «на будущее» ничего.
+ *
+ * Пропса `surface` здесь БОЛЬШЕ НЕТ: страницу событие берёт из адреса
+ * (`zoneSurface`), поэтому её нельзя ни забыть, ни перепутать — на трёх
+ * страницах это три разных значения без единого параметра.
  *
  * `data-hdr="accent"` — единственный производитель девяти правил `on-accent`
  * у шапки, поэтому он часть ЭТОЙ секции и никуда не выносится.
  */
-export function SiteCta({ ns = 'landing.fin', surface, secondary = null }) {
+export function SiteCta({ ns = 'landing.fin', secondary = null }) {
   const t = useT();
-  const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  const cta = useZoneCta('final');
   return (
     <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
       <span className="horizon" aria-hidden="true" />
@@ -139,7 +137,7 @@ export function SiteCta({ ns = 'landing.fin', surface, secondary = null }) {
           <h2 dangerouslySetInnerHTML={{ __html: t(`${ns}.h2`) }} />
           <p>{t(`${ns}.sub`)}</p>
           <div className="ctas">
-            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final', surface }); nav(ctaTarget); }}>
+            <a className="btn btn-light" {...cta}>
               <span>{t(`${ns}.cta1`)}</span>
               <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
             </a>

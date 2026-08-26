@@ -10,68 +10,8 @@
    (.pt*, → TRIP-461); семь имён, конфликтующих с app.css правилом-одиночкой
    (btn/btn-primary/btn-ghost/sheet/eyebrow/bud-total/cflag), разрешены по
    таблице тикета; кегли и радиусы сняты на свою шкалу (таблица сдвигов в PR). */
-/* visual-diff-exempt: .btn-primary border-bottom — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
-/* visual-diff-exempt: .btn margin — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
-/* visual-diff-exempt: .eyebrow--acc::before background — снят вместе с форком демо-CTA: носитель заменён общим <SiteCta> с .brow (TRIP-445) */
-/* visual-diff-exempt: .eyebrow--acc justify-content — снят вместе с форком демо-CTA: носитель заменён общим <SiteCta> с .brow (TRIP-445) */
-/* visual-diff-exempt: .lang-menu transition — закрытое меню скрывается и от клавиатуры (visibility), переход её ждёт (TRIP-445) */
-/* visual-diff-exempt: .lang-menu visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
-/* visual-diff-exempt: .lang visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu border-bottom — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu margin — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu transition — закрытое меню скрывается и от клавиатуры (visibility), переход её ждёт (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu visibility — закрытое меню скрывается и от клавиатуры (visibility), переход её ждёт (TRIP-445) */
-/* visual-diff-exempt: .mobile-menu width — снято мёртвое правило .mobile-menu .btn/.btn-primary — носителя нет ни здесь, ни в прототипе (TRIP-445) */
-/* visual-diff-exempt: .mobile-open visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
-/* visual-diff-exempt: .open visibility — парное к visibility:hidden закрытого меню, ключ предка составного селектора (TRIP-445) */
-/* ═══ ЛЕДЖЕР 2p ЭТОГО PR ═══════════════════════════════════════════════════
-   1. CTA сведён к ОДНОМУ объекту: `.dm-final`/`.dm-sheet` были побайтовыми
-      копиями `.final`/`.sheet-pane`, из-за них правка CTA не доходила до демо.
-      Копии удалены, демо рендерит тот же `<SiteCta>`.
-   2. Краска CTA НЕ ТРОГАЛАСЬ: закат и белая буква прототипа 1:1, как были.
-      AA-дефект секции остаётся открытым вопросом TRIP-460 (леджер в `.final`).
-   3. `.demo .bcard` / `.demo .bento` / `.demo .tg-sec` / `.demo [data-stagger]>*`
-      — побайтовые копии глобальных правил. После этого PR копий в site.css
-      НОЛЬ (сверка: одноимённое правило под `.demo` с тем же телом).
-   Ключи `.demo <свойство>` — пересчёт ключа предка после удаления копий: гард
-   приписывает объявление каждому классу селектора.
-   ══════════════════════════════════════════════════════════════════════════ */
-/* visual-diff-exempt: .final h2 margin-top — инлайн `<SiteCta>` переехал в правило секции: одна секция на три страницы — одно правило (TRIP-445) */
-/* visual-diff-exempt: .demo [data-stagger] > * transition-delay — снята побайтовая копия глобального правила, значение даёт [data-stagger]>* (TRIP-445) */
-/* visual-diff-exempt: .demo .bcard > p font-size — снята побайтовая копия глобального правила (TRIP-445) */
-/* visual-diff-exempt: .demo .bcard h3 margin — снята побайтовая копия глобального правила (TRIP-445) */
-/* visual-diff-exempt: .demo .dm-final h2 font-size — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo .dm-final h2 font-weight — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo .dm-final h2 margin-bottom — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo .dm-final p font-size — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo .dm-final p margin-bottom — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo gap — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo left — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo max-width — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo transform — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .demo z-index — пересчёт ключа предка .demo после удаления копий, не отдельная правка (TRIP-445) */
-/* visual-diff-exempt: .dm-final background — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final border-radius — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final bottom — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final display — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final flex-wrap — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final gap — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final height — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final justify-content — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final left — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final margin-inline — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final max-width — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final overflow — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final pointer-events — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final position — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final text-align — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final transform — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final width — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-final z-index — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-sheet border-radius — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-sheet margin-top — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-sheet position — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
-/* visual-diff-exempt: .dm-sheet z-index — снят форк демо — секция переведена на общий <SiteCta> и .sheet-pane (TRIP-445) */
+/* visual-diff-move: .demo .hero-dates -> pt-dates */
+/* visual-diff-move: .demo .dm-hero-bg img -> map-img */
 
 html.site {
   /* Слой ДС зоны — блок :root прототипа v5.7 ПЕРЕНЕСЁН ЦЕЛИКОМ, не пересказан
@@ -3265,7 +3205,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   background:linear-gradient(180deg,rgba(7,25,44,.62) 0%,rgba(7,25,44,.16) 32%,rgba(7,25,44,.34) 58%,rgba(7,25,44,.88) 100%)}
 .demo .dm-hero h1{font-size:var(--fs-pt-hero-h1);font-weight:800;max-width:18ch;letter-spacing:-.025em;
   line-height:1.14;text-shadow:0 2px 24px rgba(4,16,30,.4);overflow-wrap:break-word}
-.demo .hero-dates{margin-top:16px;font-size:var(--fs-lead-lg);font-weight:600;color:#fff}
 .demo .dm-hero-sub{margin-top:12px;font-size:var(--fs-lead);color:rgba(255,255,255,.88);max-width:58ch;
   text-shadow:0 2px 16px rgba(4,16,30,.35)}
 .demo .hero-people{display:flex;align-items:center;gap:14px;margin-top:22px;flex-wrap:wrap}
@@ -3486,7 +3425,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    `.brow` — тот же eyebrow, что на лендинге, и белым его красит `.dark .brow`
    (секция несёт класс `dark`), ровно как на лендинге до унификации.
    Гард 2n поймал это осиротевшее правило и был прав. */
-.demo .dm-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .demo .tg-h2{margin:14px 0 14px}
 .demo .tg-lede{color:var(--muted);font-size:var(--fs-lead)}
 

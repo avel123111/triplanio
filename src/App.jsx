@@ -22,6 +22,7 @@ import JoinTrip from '@/pages/JoinTrip';
 import Login from '@/pages/Login';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
+import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import ManualPlanner from '@/pages/ManualPlanner';
 import Inbox from '@/pages/Inbox';
 import Pro from '@/pages/Pro';
@@ -168,7 +169,9 @@ const AuthenticatedApp = () => {
                 создаёт сессию, поэтому экран тот же, что и вход. */}
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<Login />} />
-            <Route path="/d/:slug" element={<DemoTrip />} />
+            {/* ТОЧНЫЙ адрес, а не `/d/:slug`: демо ровно одно, и чужой слаг
+                обязан отдать 404, а не то же демо под любым адресом. */}
+            <Route path={DEMO_PATH} element={<DemoTrip />} />
             <Route path="/terms" element={<Legal doc="terms" />} />
             <Route path="/privacy" element={<Legal doc="privacy" />} />
             <Route path="*" element={<PageNotFound />} />

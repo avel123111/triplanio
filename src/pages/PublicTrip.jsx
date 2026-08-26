@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { invokeFn } from '@/lib/invokeFn';
-import { track, setRefTripId, withVisitCampaign } from '@/lib/analytics';
+import { track, setRefTripId } from '@/lib/analytics';
+import { zoneHome } from '@/components/site/zoneCta';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
@@ -26,10 +27,11 @@ const COVER_FALLBACK = '/covers/fallback.webp';
 // the landing route: our OWN origin (the campaign mark is stored per host —
 // analytics.js — so a link leaving for another host strands it). Every host
 // serving this route serves the landing at `/` too (one SPA). Every link built
-// off SITE replaces the document, dropping the in-memory attribution snapshot —
-// and a visitor here arrived on a marked share link, exactly the new person the
-// mark exists for, so the marks ride the address across (TRIP-329).
-const SITE = withVisitCampaign(`${window.location.origin}/`);
+// off SITE carries the marks ON THE ADDRESS — a visitor here arrived on a marked
+// share link, exactly the new person the mark exists for (TRIP-329). The click
+// itself no longer replaces the document: `useBrandNav` (SiteChrome) routes it,
+// so the in-memory snapshot survives too.
+const SITE = zoneHome();
 
 const Ic = ({ id }) => <svg aria-hidden="true"><use href={`#${id}`} /></svg>;
 
