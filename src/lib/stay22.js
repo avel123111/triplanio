@@ -65,9 +65,7 @@ async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters 
   // QueryCache.onError seam doesn't capture it a second time (new Error drops the
   // stamp invokeFn puts on real error objects).
   if (data?.error) throw Object.assign(new Error(data.error), { __seamHandled: true });
-  // When a platform is selected, surface that supplier on the card (the v2
-  // suppliers map has no primary/order, so pick the requested one).
-  return normalizeStay22(data, filters?.provider || null);
+  return normalizeStay22(data);
 }
 
 /**
@@ -156,7 +154,7 @@ export function useStay22Bundle({ visit, currency = 'EUR', lang, enabled = true,
   // One state contract, shared with the activity fork (TRIP-293):
   //  · CLIENT filters (`filters`): text search, price range (trip currency), sort —
   //    applied to the set that feeds BOTH the list and the map pins.
-  //  · SERVER filters (`applied`): guests/rooms + platform — reload the pool.
+  //  · SERVER filters (`applied`): guests/rooms — reload the pool.
   // Reset / page-rewind / city-change semantics live in the hook, not here.
   const {
     filters: clientFilters, applied, page, hoveredId, selectedId,
@@ -195,7 +193,7 @@ export function useStay22Bundle({ visit, currency = 'EUR', lang, enabled = true,
     isFetching: query.isPlaceholderData || query.isLoading,
     isError: query.isError, refetch: query.refetch,
     page, onPageChange: setPage,
-    // SERVER filters (guests + platform): reload the pool → drop selection + reset page.
+    // SERVER filters (guests): reload the pool → drop selection + reset page.
     applied, onApply: applyServer,
     onResetAll: resetAll,
     // CLIENT filters (text / price / sort): instant over the pool.

@@ -666,7 +666,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    тот же, что у `.input` (TRIP-333): иначе селект формы траты и карточки
    форк-панели вставали серыми рядом с белым полем. Тёмная половина - в общем
    правиле под базовым `.input`. */
-.lp-stepper, .s22f-sel, .s22f-gcard {
+.lp-stepper, .s22f-gcard {
   background: var(--surface);
   border: 1px solid var(--line-strong);
 }
@@ -2344,7 +2344,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .select,
 [data-theme="dark"] .textarea,
 [data-theme="dark"] .lp-stepper,
-[data-theme="dark"] .s22f-sel,
 [data-theme="dark"] .s22f-gcard,
 [data-theme="dark"] .input-group,
 [data-theme="dark"] .stay-dates,
@@ -9365,10 +9364,27 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Только раскладка: скин и состояния держит `<InputGroup>` (TRIP-333). */
 .s22f-field { flex: 1; }
 .s22f-dash { color: var(--muted-2); flex: none; }
-.s22f-selwrap { position: relative; }
-.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; min-height: var(--ctl-h); border-radius: var(--r-btn); padding: 0 40px 0 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут; TRIP-333: фон, высота И СТУПЕНЬ СКРУГЛЕНИЯ - общие с .input. Пока --r-btn был 14, а --r-md 16, чужой токен был невиден; на 10 против 16 селект стал заметно круглее полей цены прямо над ним. */
-.s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
-.s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
+/* Селект «Площадка» (.s22f-sel*) удалён: Stay22 отключила provider, фильтр снят
+   с FE (TRIP-470). Ниже — снятие его приватных правил для гарда 2p:
+   visual-diff-exempt: .s22f-selwrap position — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel appearance — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel -webkit-appearance — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel width — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel min-height — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel border-radius — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel padding — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel background — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel border — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel cursor — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel outline — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel transition — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel:focus border-color — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-sel:focus box-shadow — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev position — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev right — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev top — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev transform — селект площадки удалён (TRIP-470)
+   visual-diff-exempt: .s22f-selchev pointer-events — селект площадки удалён (TRIP-470) */
 
 .s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; border-radius: var(--r-btn); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

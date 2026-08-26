@@ -50,14 +50,12 @@ test('normalizeStay22: maps price, currency, link, rating, stars, coords (suppli
   assert.equal(meta.hasMore, true);
 });
 
-test('normalizeStay22: preferProvider surfaces the requested supplier (not the first key)', () => {
-  const { hotels } = normalizeStay22(SAMPLE, 'booking'); // expedia is listed first, but we asked for booking
-  const a = hotels[0];
-  assert.equal(a.supplierKey, 'booking');
-  assert.equal(a.price, 340); // booking's price, not expedia's 328
-  assert.equal(a.link, 'https://www.stay22.com/allez/booking/15771687');
-  // Falls back to the first key when the preferred provider isn't on this listing.
-  assert.equal(normalizeStay22(SAMPLE, 'vrbo').hotels[0].supplierKey, 'expedia');
+test('normalizeStay22: always surfaces the first supplier key (provider filter retired)', () => {
+  // expedia is listed first → it is the primary supplier regardless of any arg.
+  const a = normalizeStay22(SAMPLE).hotels[0];
+  assert.equal(a.supplierKey, 'expedia');
+  assert.equal(a.price, 328);
+  assert.equal(a.link, 'https://www.stay22.com/allez/expedia/e1');
 });
 
 test('normalizeStay22: hides price/rating when absent, lat/lng null without coordinates', () => {
@@ -104,8 +102,9 @@ test('ensureNextDay: forces checkout strictly after checkin', () => {
 // Pool merging (dedup / progressive pages / cap+truncated) is the shared
 // mergeById — covered once in forkPool.test.js instead of once per list.
 
-test('filterParams: passes guests + provider, never price (client-side now)', () => {
-  assert.deepEqual(filterParams({ adults: 3, children: 1, rooms: 2, provider: 'booking' }), { adults: 3, children: 1, rooms: 2, provider: 'booking' });
+test('filterParams: passes guests only, never provider or price (client-side now)', () => {
+  // provider is dropped even if present — the platform filter was retired on the FE.
+  assert.deepEqual(filterParams({ adults: 3, children: 1, rooms: 2, provider: 'booking' }), { adults: 3, children: 1, rooms: 2 });
   assert.deepEqual(filterParams({ adults: 0, min: 50, max: 100 }), {}); // price is NOT a server param
   assert.deepEqual(filterParams(null), {});
 });
