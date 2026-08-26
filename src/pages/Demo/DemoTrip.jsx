@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { withVisitCampaign } from '@/lib/analytics';
+import { zoneHome } from '@/components/site/zoneCta';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
 import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
@@ -19,10 +19,9 @@ import {
 // file to reshoot the hero. Full-bleed background behind the dark gradient.
 const COVER = '/covers/demo-spain.webp';
 
-// The marketing chrome's brand/CTA point at OUR origin (campaign mark is stored
-// per host — analytics.js), same as PublicTrip.
-const SITE = withVisitCampaign(`${window.location.origin}/`);
-const APP_URL = '/login';
+// Адрес главной с меткой кампании визита — общий на всю зону (`zoneCta.js`);
+// три страницы держали три одинаковые константы.
+const SITE = zoneHome();
 
 // floor-exempt: inline +16 — демо-трип (out-of-scope витрина, как LandingPage/PublicTrip):
 // оставшиеся инлайны — ТОЛЬКО динамические цвета/CSS-вары фиктивного трипа из данных

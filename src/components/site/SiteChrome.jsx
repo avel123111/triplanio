@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { openConsentBanner } from '@/lib/consent';
-import { withVisitCampaign } from '@/lib/analytics';
+import { useZoneCta, isPlainLeftClick } from './zoneCta';
 import LandingSprite from './LandingSprite';
 
 /* =========================================================
@@ -24,7 +23,6 @@ import LandingSprite from './LandingSprite';
    component and a hand-copied logo path.
 ========================================================= */
 
-const APP_URL = '/login';
 
 /* Language switcher — prototype's own DOM (.lang/.lang-btn/.lang-menu), NO
    flag (the prototype's markup never carries one — TRIP-460 §5). The repo
@@ -103,7 +101,8 @@ function useBrandNav(brandHref) {
     // Якорь на этой же странице (`#top` на лендинге) — родное поведение браузера.
     if (!brandHref || brandHref.startsWith('#')) return;
     // Модификаторы и не-левая кнопка — намерение открыть отдельно, не мешаем.
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    // Предикат общий с CTA зоны (`zoneCta.js`): «наш клик» — одно понятие.
+    if (!isPlainLeftClick(e)) return;
     let url;
     try { url = new URL(brandHref, window.location.href); } catch { return; }
     if (url.origin !== window.location.origin) return; // действительно внешняя — пусть уходит
@@ -143,10 +142,12 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   const t = useT();
   const nav = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
-  // Carry this visit's campaign marks onto /login so a gclid/utm survives the
-  // click — gtag's url_passthrough reads them off the address (TRIP-407 PR5).
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  // Три CTA шапки: кнопка справа и два верхних пункта бургера. Адрес, метку
+  // страницы и обработку клика им даёт ОДИН хелпер — здесь остаётся только
+  // МЕСТО каждой кнопки (`zoneCta.js`).
+  const headerCta = useZoneCta('header');
+  const menuCta = useZoneCta('menu');
+  const menuSignin = useZoneCta('menu_signin');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState('light'); // on-light is the safe default
@@ -199,7 +200,6 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
     return () => { document.body.classList.remove('mobile-open'); };
   }, [mobileOpen]);
 
-  const goCta = () => { setMobileOpen(false); nav(ctaTarget); };
   const onBrand = useBrandNav(brandHref);
 
   return (
@@ -218,10 +218,13 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
           )}
           <div className="header-actions">
             <LangSwitch value={lang} onChange={setLang} />
+            {/* Ссылка, а не кнопка: это навигация, и как ссылка она умеет
+                «открыть в новой вкладке» — как остальные пять CTA зоны.
+                Оформление не меняется, элементных правил у `.btn` нет. */}
             {showCta && (
-              <button type="button" className="btn btn-primary btn-sm header-cta" onClick={goCta}>
+              <a className="btn btn-primary btn-sm header-cta" {...headerCta}>
                 {t('landing.nav.cta')}
-              </button>
+              </a>
             )}
             {showBurger && (
               <button type="button" className="burger" aria-label={t('nav.aria_menu')}
@@ -246,8 +249,8 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
           сторожит ровно это. */}
       {showBurger && (
         <nav className="mobile-menu" id="mobileMenu" aria-label={t('nav.aria_primary')}>
-          <a href={ctaTarget} onClick={(e) => { e.preventDefault(); goCta(); }}>{t('landing.hero.cta1')}</a>
-          <a href={ctaTarget} onClick={(e) => { e.preventDefault(); goCta(); }}>{t('landing.hero.cta2')}</a>
+          <a {...menuCta} onClick={(e) => { setMobileOpen(false); menuCta.onClick(e); }}>{t('landing.hero.cta1')}</a>
+          <a {...menuSignin} onClick={(e) => { setMobileOpen(false); menuSignin.onClick(e); }}>{t('landing.hero.cta2')}</a>
           {navItems.map((n) => (
             <a key={n.hash} href={navHref(n.hash)} onClick={() => setMobileOpen(false)}>{t(n.tkey)}</a>
           ))}

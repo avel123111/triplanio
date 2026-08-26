@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { withVisitCampaign } from '@/lib/analytics';
+import { zoneHome } from '@/components/site/zoneCta';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
@@ -26,9 +26,8 @@ import { LEGAL, LEGAL_META, LEGAL_FOOT, LEGAL_UI } from './legalContent';
    /terms + /privacy по прототипу (TRIP-465).
    ============================================================================= */
 
-// The chrome's brand/CTA point at OUR origin with the visit's campaign mark,
-// same as the landing/demo/public-trip.
-const SITE = withVisitCampaign(`${window.location.origin}/`);
+// Адрес главной с меткой кампании визита — общий на всю зону (`zoneCta.js`).
+const SITE = zoneHome();
 const DOCS = ['terms', 'privacy'];
 
 export default function Legal({ doc = 'terms' }) {

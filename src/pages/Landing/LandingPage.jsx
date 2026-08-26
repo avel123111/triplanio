@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { track, withVisitCampaign } from '@/lib/analytics';
-import { useAuth } from '@/lib/AuthContext';
+import { useZoneCta } from '@/components/site/zoneCta';
+import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { WORLD_MAP_SVG } from './WorldMapSvg';
 import {
@@ -17,7 +16,6 @@ import { SiteCta } from '@/components/site/SiteTrip';
    top. Section CSS is the prototype's own body in public/site.css.
 ========================================================= */
 
-const APP_URL = '/login';
 
 /**
  * Hero three-layer photo composite (TRIP-460 §10, ported from the prototype's
@@ -241,9 +239,10 @@ function usePainScrub(ready) {
 /* ── Hero ── */
 function Hero() {
   const t = useT();
-  const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  // Обе кнопки героя — через общий хелпер зоны. Вторая («Войти») до этого не
+  // слала события вовсе, хотя это вход в продукт с первого экрана.
+  const cta = useZoneCta('hero');
+  const signin = useZoneCta('hero_signin');
   return (
     <section className="hero" data-hdr="light" id="top">
       <div className="hero-bg" aria-hidden="true">
@@ -261,10 +260,10 @@ function Hero() {
           </h1>
           <p className="hero-sub hero-anim" dangerouslySetInnerHTML={{ __html: t('landing.hero.sub') }} />
           <div className="hero-ctas hero-anim">
-            <a className="btn btn-primary" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'hero' }); nav(ctaTarget); }}>
+            <a className="btn btn-primary" {...cta}>
               <span>{t('landing.hero.cta1')}</span>
             </a>
-            <a className="btn btn-ghost" href={ctaTarget} onClick={(e) => { e.preventDefault(); nav(ctaTarget); }}>
+            <a className="btn btn-ghost" {...signin}>
               {t('landing.hero.cta2')}
             </a>
           </div>
@@ -568,15 +567,14 @@ function useFaqCloseOthers(ready) {
    демо») — он и передаётся пропсом, всё прочее общее. */
 function FinalCta() {
   const t = useT();
-  const nav = useNavigate();
-  // Внутренняя ссылка на демо несёт метку кампании визита и идёт через роутер,
-  // а не голым <a href>, который её теряет (гард 2ad).
-  const demoTarget = withVisitCampaign(DEMO_PATH);
+  // Единственный CTA зоны, ведущий НЕ в продукт, — отсюда явный адрес. Метку
+  // кампании визита он несёт так же, как остальные, и идёт через роутер, а не
+  // голым <a href>, который её теряет (гард 2ad).
+  const demo = useZoneCta('final_demo', withVisitCampaign(DEMO_PATH));
   return (
     <SiteCta
-      surface="landing"
       secondary={(
-        <a className="btn btn-glass" href={demoTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final_demo', surface: 'landing' }); nav(demoTarget); }}>
+        <a className="btn btn-glass" {...demo}>
           {t('landing.fin.cta2')}
         </a>
       )}
