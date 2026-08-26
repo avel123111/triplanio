@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useZoneCta } from '@/components/site/zoneCta';
+import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { WORLD_MAP_SVG } from './WorldMapSvg';
@@ -531,11 +532,6 @@ function useCounters(ready, lang) {
 /* ── Collab ("One workspace. Everyone in sync.") ── */
 /* ── Assistant ("Your trip, in your pocket") — Telegram demo ── */
 /* ── Share ("One link. The whole trip.") ── */
-// Путь демо-страницы — ОДНО объявление на весь файл: он же ведёт кнопку
-// финального CTA, он же показан в адресной строке мокапа браузера, он же
-// копируется в буфер. Было три хардкода одной строки — при переименовании
-// слага разъехались бы молча.
-const DEMO_PATH = '/d/spain-may-27';
 // Демо-ссылка шеринга. Домен — продуктовый triplanio.com (не triplanio.app:
 // на чужой домен нельзя пускать ни клик, ни clipboard — ревью TRIP-460 V4).
 const SHARE_URL = `triplanio.com${DEMO_PATH}`;

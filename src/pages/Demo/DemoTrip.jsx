@@ -100,11 +100,15 @@ export default function DemoTrip() {
         {/* ── Hero ─────────────────────────────────────────────── */}
         <section className="dm-hero" id="top" data-hdr="dark">
           <div className="dm-hero-bg" aria-hidden="true">
-            <img src={COVER} alt="" />
+            {/* `.map-img` — общий класс «картинка во всю площадь блока»;
+                у демо было своё правило `.demo .dm-hero-bg img` слово в слово. */}
+            <img className="map-img" src={COVER} alt="" />
           </div>
           <div className="wrap">
             <h1>{t('landing.demo.hero.title')}</h1>
-            <div className="hero-dates">{t('landing.demo.hero.dates')}</div>
+            {/* `.pt-dates` — тот же ряд дат, что у публичной поездки; правило
+                `.demo .hero-dates` было его побайтовой копией под другим именем. */}
+            <div className="pt-dates">{t('landing.demo.hero.dates')}</div>
             <p className="dm-hero-sub">{t('landing.demo.hero.sub')}</p>
             <div className="hero-people">
               <span className="dm-avs">

@@ -13,6 +13,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { zoneSurface } from './zoneSurface.js';
+import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
 test('каждая страница зоны — своя метка', () => {
   assert.equal(zoneSurface('/'), 'landing');
@@ -37,18 +38,26 @@ test('мусор на входе не роняет и не притворяет�
   }
 });
 
-test('★ каждый маршрут внутри <SiteZone> в App.jsx имеет свою метку', () => {
+test('★ каждый маршрут внутри SiteZone в App.jsx имеет свою метку', () => {
   const app = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8');
 
-  // Все блоки <SiteZone>…</SiteZone> — их сегодня два (ветка зоны и ветка
-  // «разлогиненный на чужом адресе»), и оба обязаны быть покрыты.
+  // Все обёртки SiteZone — их сегодня две (ветка зоны и ветка
+  // «разлогиненный на чужом адресе»), и обе обязаны быть покрыты.
   const blocks = [...app.matchAll(/<SiteZone>([\s\S]*?)<\/SiteZone>/g)].map((m) => m[1]);
-  assert.ok(blocks.length > 0, 'в App.jsx нет ни одного <SiteZone> — зона переехала, тест смотрит в пустоту');
+  assert.ok(blocks.length > 0, 'в App.jsx нет ни одной обёртки SiteZone — зона переехала, тест смотрит в пустоту');
 
+  // Адрес маршрута бывает и константой (`path={DEMO_PATH}`) — такие резолвим по
+  // имени. Незнакомое имя это ОШИБКА, а не пропуск: молча не посчитанный
+  // маршрут — ровно та дыра, ради которой тест написан.
+  const CONSTS = { DEMO_PATH };
   const paths = new Set();
   for (const b of blocks) {
-    for (const m of b.matchAll(/<Route\s+path="([^"]+)"/g)) {
-      if (m[1] !== '*') paths.add(m[1]);
+    for (const m of b.matchAll(/<Route\s+path=(?:"([^"]+)"|\{(\w+)\})/g)) {
+      const [, literal, name] = m;
+      if (literal === '*') continue;
+      if (literal) { paths.add(literal); continue; }
+      assert.ok(name in CONSTS, `маршрут с path={${name}} — тест не знает этой константы, добавь её в CONSTS`);
+      paths.add(CONSTS[name]);
     }
   }
   assert.ok(paths.size >= 6, `маршрутов зоны найдено ${paths.size} — ожидалось не меньше шести`);
