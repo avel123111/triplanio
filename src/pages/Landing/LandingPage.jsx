@@ -328,7 +328,7 @@ function Pain() {
             </div>
             <div className="appwin device">
               <div className="aw-screen device-screen">
-                <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>app.triplanio.com/trip/spain-7-days</span></div>
+                <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>triplanio.com/d/spain-may-27</span></div>
                 <div className="aw-phonebar" aria-hidden="true"><i /></div>
                 <div className="aw-head">
                   <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
@@ -566,6 +566,9 @@ function FinalCta() {
   const nav = useNavigate();
   const { isAuthenticated } = useAuth();
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  // Internal demo link carries the visit campaign mark (like ctaTarget) so it
+  // goes through the router, not a raw <a href> that drops the mark (check-site-nav).
+  const demoTarget = withVisitCampaign('/d/spain-may-27');
   return (
     <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
       <span className="horizon" aria-hidden="true" />
@@ -578,6 +581,10 @@ function FinalCta() {
             <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
               <span>{t('landing.fin.cta1')}</span>
               <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
+            </a>
+            {/* Второй CTA — «Посмотреть демо» → страница демо-трипа (TRIP-462). */}
+            <a className="btn btn-glass" href={demoTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final_demo' }); nav(demoTarget); }}>
+              {t('landing.fin.cta2')}
             </a>
           </div>
         </div>

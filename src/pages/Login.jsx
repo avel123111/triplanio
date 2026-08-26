@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';
 import { supabase } from '@/api/supabaseClient';
@@ -747,9 +748,7 @@ export default function Login() {
                 </form>
                 <p className="legal">
                   {t('auth.terms_pre')}{' '}
-                  {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-                  {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-                  <a href="/terms">{t('auth.terms_link')}</a> {t('auth.terms_and')} <a href="/privacy">{t('auth.privacy_link')}</a>.
+                  <Link to="/terms">{t('auth.terms_link')}</Link> {t('auth.terms_and')} <Link to="/privacy">{t('auth.privacy_link')}</Link>.
                 </p>
                 {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
                 <p className="alt">{t('auth.have_account')}{' '}<a href="#" onClick={e => { e.preventDefault(); goto('login'); }}>{t('auth.sign_in')}</a></p>

@@ -58,6 +58,19 @@ export default function LandingSprite() {
           <path d="M206.222 121.124C231.732 146.52 256.606 172.071 282.401 196.654C296.793 210.37 296.231 222.785 285.311 237.797C225.767 178.254 166.141 118.63 106.337 58.8275C110.727 54.529 116.932 51.2758 124.167 50.2368C130.621 49.31 136.166 51.0851 140.943 55.8946C162.537 77.6363 184.282 99.2281 206.222 121.124Z" fill="#fff" />
           <path d="M238.721 88.6644C242.438 87.6459 245.775 86.3565 249.194 86.083C255.962 85.5416 259.176 88.965 258.541 95.7017C257.773 103.846 254.697 111.233 249.737 117.63C244.971 123.776 239.635 129.48 234.054 135.953C229.699 131.516 225.784 127.529 221.869 123.541C217.918 119.516 213.967 115.49 209.617 111.058C218.073 102.23 226.699 93.6271 238.721 88.6644Z" fill="#fff" />
         </symbol>
+        {/* Demo-trip section icons (TRIP-462) — extend the zone sprite so the
+            demo page reuses the shared header's sprite, no per-page plumbing. */}
+        <symbol id="i-buildings" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M3.5 20.5V9.2l6-3.4v14.7M9.5 20.5V4l7 3.6v12.9M16.5 20.5V11l4 2v7.5M2 20.5h20" /></symbol>
+        <symbol id="i-card-sim" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M5.5 3.8h8.1L18.5 8.7V20.2a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1V4.8a1 1 0 0 1 1-1Z" /><rect x="8" y="11.4" width="8" height="6.4" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" /></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" strokeWidth="2" /><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 7.2V12l3.4 2" /></symbol>
+        <symbol id="i-crown" viewBox="0 0 24 24"><path fill="currentColor" d="M3 8.2 6.6 11l3.6-5.4a2 2 0 0 1 3.6 0L17.4 11 21 8.2c.9-.7 2.1.1 1.8 1.2l-2 8a2 2 0 0 1-2 1.5H5.2a2 2 0 0 1-1.9-1.5l-2-8C1 8.3 2.1 7.5 3 8.2Z" /></symbol>
+        <symbol id="i-food" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M6.4 3.4v7.2a2.6 2.6 0 0 0 5.2 0V3.4M9 3.4v7M17.6 3.4c-1.4 1.1-2.1 3-2.1 5.2 0 1.7.7 2.6 2.1 2.8V3.4Zm0 7.8V20.6M9 13.2V20.6" /></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" /><path stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" d="M12 11v5.4" /><circle cx="12" cy="7.7" r="1.2" fill="currentColor" /></symbol>
+        <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.9" /><path fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" d="m4 7.6 8 5.8 8-5.8" /></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" d="M12 5.5v13M5.5 12h13" /></symbol>
+        <symbol id="i-send" viewBox="0 0 24 24"><path fill="currentColor" d="M3.6 11.1 20 3.4c.9-.4 1.8.5 1.4 1.4l-7.7 16.4c-.4.9-1.7.8-2-.2l-1.8-5.6-5.6-1.8c-1-.3-1.1-1.6-.2-2Z" /></symbol>
+        <symbol id="i-ticket" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M3 8.4V6.5a1.5 1.5 0 0 1 1.5-1.5h15A1.5 1.5 0 0 1 21 6.5v1.9a2.6 2.6 0 0 0 0 5.2v3.9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-3.9a2.6 2.6 0 0 0 0-5.2Z" /><path stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeDasharray="1.6 3.2" d="M14.4 5.6v12.8" /></symbol>
+        <symbol id="i-warning" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M12 3.6 1.9 20.4h20.2L12 3.6Z" /><path stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" d="M12 10v4" /><circle cx="12" cy="17.2" r="1.2" fill="currentColor" /></symbol>
       </defs>
     </svg>
   );
