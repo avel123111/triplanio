@@ -130,12 +130,6 @@
      visual-diff-exempt: .sc-body --sc-max — увеличено превью на десктопе (Илья) */
   --sc-max: min(66vh, 600px);
 }
-/* Кнопки «Скачать»/«Поделиться» в мобильном футере — одного размера: грид в две
-   равные колонки растягивает обе кнопки поровну, БЕЗ правила на самом .btn.
-   visual-diff-exempt: .sc-foot display — новый класс конструктора: равные кнопки футера (Илья)
-   visual-diff-exempt: .sc-foot grid-template-columns — новый класс конструктора (Илья)
-   visual-diff-exempt: .sc-foot gap — новый класс конструктора (Илья) */
-.sc-foot { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
 .sc-stage {
   grid-area: stage;
   position: relative;
