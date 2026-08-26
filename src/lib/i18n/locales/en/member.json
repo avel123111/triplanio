@@ -20,6 +20,7 @@
   "join_invited": "You have been invited to a trip",
   "join_joining": "Adding you to the trip<span class=\"grad\">…</span>",
   "join_joining_sub": "One moment — getting the plan ready.",
+  "join_signin_alt": "Create an account",
   "join_signin_btn": "Sign in and join",
   "join_signin_lede": "Sign in or create an account, and the shared plan opens right away.",
   "join_signin_title": "Join the trip on <span class=\"grad\">Triplanio</span>",
@@ -41,6 +42,5 @@
   "status_declined": "Declined",
   "status_pending": "Pending",
   "tab_email": "By e-mail",
-  "you_self": "You",
-  "join_signin_alt": "Create an account"
+  "you_self": "You"
 }

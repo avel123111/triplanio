@@ -3,7 +3,7 @@
   "add_departure": "Add departure",
   "add_point": "Add a point",
   "add_point_btn": "Add a route point",
-  "add_point_hint": "Pick a city, then a type",
+  "add_point_hint": "Choose a type and a city",
   "add_transfer": "Add transfer",
   "already_set": "Already set",
   "arrival_word": "Arrival",
@@ -45,11 +45,9 @@
   "nights_remove": "Remove a night",
   "node_visit": "Visit",
   "overnight_title": "Day-change transfer: +{count}d — the next city and all following shift by {count} day(s)",
-  "pt_change": "Change",
   "pt_end_sub": "End of the trip",
   "pt_start_sub": "Start of the trip",
   "pt_transit_sub": "Stop with overnight stays",
-  "pt_type_label": "Point type",
   "pt_waypoint": "Layover",
   "pt_waypoint_sub": "One day, no overnight",
   "remove": "remove",
@@ -58,6 +56,7 @@
   "route_show": "Show route",
   "section_road": "Travel",
   "start_already_set": "Start is already set, remove the current one first",
+  "tk_plane": "Flight",
   "transfers_out_of_plan": "Transfers out of plan",
   "warns_short": "{n} warn."
 }
