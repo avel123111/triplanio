@@ -29,7 +29,11 @@ const APP_URL = '/login';
 // оставшиеся инлайны — ТОЛЬКО динамические цвета/CSS-вары фиктивного трипа из данных
 // (аватары, тинты событий, донат-градиент, цвета календаря/легенды/категорий), которые
 // классами не выразить; статические инлайны сведены в site.css. Апрув Pavel 26.08.2026.
-const Ic = ({ id }) => <svg aria-hidden="true"><use href={`#${id}`} /></svg>;
+// Default size 18 so a sizeless icon can never balloon to the SVG default (300px);
+// precise per-container sizes in site.css override this attribute via CSS.
+const Ic = ({ id, size = 18 }) => (
+  <svg width={size} height={size} aria-hidden="true"><use href={`#${id}`} /></svg>
+);
 
 // Tinted event icon — the {soft-bg, ink} pair comes from data, so the CSS vars
 // are inline (one place, marked) instead of repeated at every call site.
