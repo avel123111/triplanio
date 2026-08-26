@@ -9,10 +9,19 @@
  * secret server-side (same pattern as placesAutocomplete + GOOGLE_MAPS_API_KEY).
  *
  * POST body:
- *   { lat, lng, radius?, checkin?, checkout?, currency?, lang?, page?,
+ *   { lat, lng | nelat, nelng, swlat, swlng,
+ *     radius?, checkin?, checkout?, currency?, lang?, page?,
  *     adults?, children?, rooms?, provider? }
  *
- * Search is by coordinates (lat/lng) — the ONLY geo method. Раньше тут была
+ * Гео принимается ДВУМЯ способами, и они дают разные выборки: ТОЧКА — «~140
+ * ближайших» (в плотном городе это несколько кварталов), ПРЯМОУГОЛЬНИК —
+ * выборку, размазанную по площади. Разбор обоих и цифры замеров — в `query.ts`,
+ * туда же вынесена сборка строки запроса, чтобы её пинал `deno test`.
+ * Прямоугольник сейчас ТОЛЬКО пробрасывается: клиент его ещё не шлёт, так что
+ * на сегодняшнем теле строка запроса не изменилась ни на знак (тест
+ * «без коробки строка запроса не изменилась ни на знак»).
+ *
+ * Третий способ, `address`, НЕ используется. Раньше тут была
  * ветка поиска по строке `address`, и она выигрывала у координат; замер по
  * живому API показал, что адресный геокодер Stay22 резолвит имя города в
  * геометрический центр МУНИЦИПАЛИТЕТА, который у крупных городов лежит вне
@@ -40,12 +49,9 @@
 
 import { withHandler } from '../_shared/http.ts';
 import { requireUser } from '../_shared/supabaseAdmin.ts';
+import { buildStay22Query, locationError } from './query.ts';
 
 const STAY22_BASE = 'https://api.stay22.com/v2/accommodations';
-const AID = 'triplanio';
-const CAMPAIGN = 'fork_api_search';
-const DEFAULT_PAGE_SIZE = 10;
-const MAX_PAGE_SIZE = 100;
 
 Deno.serve(withHandler('stay22Accommodations', async (req, corsHeaders) => {
     const user = await requireUser(req);
@@ -54,39 +60,13 @@ Deno.serve(withHandler('stay22Accommodations', async (req, corsHeaders) => {
     if (!apiKey) return Response.json({ error: 'STAY22_API_KEY not configured' }, { status: 500, headers: corsHeaders });
 
     const body = await req.json();
-    const { lat, lng, radius, checkin, checkout, currency, lang, page, pageSize, adults, children, rooms, provider } = body;
 
-    const hasCoords = lat !== undefined && lat !== null && lng !== undefined && lng !== null;
-    if (!hasCoords) {
-      return Response.json({ error: 'lat/lng is required' }, { status: 400, headers: corsHeaders });
+    const badLocation = locationError(body);
+    if (badLocation) {
+      return Response.json({ error: badLocation }, { status: 400, headers: corsHeaders });
     }
 
-    // Client-driven page size, clamped to a sane range (the map overlay asks for
-    // the whole page at once; the list paginates with the same value).
-    const safePageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(pageSize) || DEFAULT_PAGE_SIZE));
-
-    const params = new URLSearchParams({
-      pageSize: String(safePageSize),
-      page: String(page && page > 0 ? page : 1),
-      aid: AID,
-      campaign: CAMPAIGN,
-      cluster: 'false',
-      adults: String(adults ?? 2),
-      children: String(children ?? 0),
-    });
-    params.set('lat', String(lat));
-    params.set('lng', String(lng));
-    if (radius) params.set('radius', String(radius));
-    if (checkin) params.set('checkin', String(checkin));
-    if (checkout) params.set('checkout', String(checkout));
-    if (currency) params.set('currency', String(currency));
-    if (lang) params.set('lang', String(lang));
-    // Optional filters (only sent when the user applies them in the panel).
-    // rooms: omitted by default. provider: restrict to one supplier (booking/
-    // expedia/hotels/vrbo) when the user picks a platform. Price is filtered on
-    // the CLIENT over the pooled results (in the trip currency), not here.
-    if (rooms) params.set('rooms', String(rooms));
-    if (provider) params.set('provider', String(provider));
+    const params = buildStay22Query(body);
 
     const res = await fetch(`${STAY22_BASE}?${params}`, {
       headers: { 'X-API-KEY': apiKey, accept: 'application/json' },
