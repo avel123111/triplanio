@@ -67,6 +67,7 @@ const SITE_ZONE = [
   'src/pages/PublicTrip.jsx',
   'src/pages/Login.jsx',
   'src/pages/JoinTrip.jsx',
+  'src/pages/Demo',
 ];
 
 // A string-literal href to an internal absolute path: `href="/x"`. The `/(?!\/)`

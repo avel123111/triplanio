@@ -31,6 +31,25 @@ const APP_URL = '/login';
 // классами не выразить; статические инлайны сведены в site.css. Апрув Pavel 26.08.2026.
 const Ic = ({ id }) => <svg aria-hidden="true"><use href={`#${id}`} /></svg>;
 
+// Tinted event icon — the {soft-bg, ink} pair comes from data, so the CSS vars
+// are inline (one place, marked) instead of repeated at every call site.
+const Tic = ({ icon, tint }) => (
+  <span className="ic" style={{ '--s': tint.s, '--k': tint.k }}>{/* inline-style-exempt: тинт события из данных демо */}
+    <Ic id={icon} />
+  </span>
+);
+
+// Calendar day bar — one colour, or two on a day of travel. Colours from data.
+const CalBar = ({ day }) => (day.bar2
+  ? (
+    <span className="cal-bar">
+      <i style={{ background: day.bar2[0] }} />{/* inline-style-exempt: цвет города из данных демо */}
+      <i style={{ background: day.bar2[1] }} />{/* inline-style-exempt: цвет города из данных демо */}
+    </span>
+  )
+  : <span className="cal-bar" style={{ background: day.c }} />/* inline-style-exempt: цвет города из данных демо */
+);
+
 export default function DemoTrip() {
   const { lang, setLang } = useI18n();
   const t = useT();
@@ -72,7 +91,7 @@ export default function DemoTrip() {
             <div className="hero-people">
               <span className="dm-avs">
                 {DEMO_PEOPLE.map((p) => (
-                  <span className="dm-av" key={p.ini} style={{ background: p.color }} title={p.name}>{p.ini}</span>
+                  <span className="dm-av" key={p.ini} style={{ background: p.color }} title={p.name}>{p.ini}{/* inline-style-exempt: цвет/вар из данных демо */}</span>
                 ))}
                 <span className="more">+1</span>
               </span>
@@ -123,7 +142,7 @@ export default function DemoTrip() {
               {DEMO_TIMELINE.map((day, di) => (
                 <div className="tl-day" key={di}>
                   <div className="tl-dh">
-                    <span className="dm-dot" style={{ borderColor: day.dot }} />
+                    <span className="dm-dot" style={{ borderColor: day.dot }}>{/* inline-style-exempt: цвет/вар из данных демо */}</span>
                     <b>{t(day.dhKey)}</b>
                     <span className="dm-city"><Ic id="i-pin" />{t(day.cityKey)}</span>
                   </div>
@@ -132,21 +151,21 @@ export default function DemoTrip() {
                       <div className="tlev trn" key={ei}>
                         <div className="trn-row">
                           <span className="t num">{ev.from.time}</span>
-                          <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.from.icon} /></span>
+                          <Tic icon={ev.from.icon} tint={ev.tint} />
                           <span className="dm-pt">{t(ev.from.ptKey)}<small>{t(ev.from.stationKey)}</small></span>
                           <span className="pr num pr--push">{ev.from.price}</span>
                         </div>
                         <div className="trn-mid"><span className="dm-m"><Ic id={ev.mid.icon} />{t(ev.mid.mKey)}<em> {t(ev.mid.emKey)}</em></span></div>
                         <div className="trn-row">
                           <span className="t num">{ev.to.time}</span>
-                          <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.to.icon} /></span>
+                          <Tic icon={ev.to.icon} tint={ev.tint} />
                           <span className="dm-pt">{t(ev.to.ptKey)}<small>{t(ev.to.stationKey)}</small></span>
                         </div>
                       </div>
                     ) : (
                       <div className={`tlev${ev.mod ? ` ${ev.mod}` : ''}`} key={ei}>
                         <span className="t num">{ev.time}</span>
-                        <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.icon} /></span>
+                        <Tic icon={ev.icon} tint={ev.tint} />
                         <span className="b"><b>{t(ev.tKey)}</b><span>{t(ev.sKey)}</span></span>
                         {ev.pill && <span className={`dm-pill ${ev.pill.cls}`}>{t(ev.pill.key)}</span>}
                         {ev.price && <span className="pr num">{ev.price}</span>}
@@ -171,16 +190,16 @@ export default function DemoTrip() {
               <div className="bcard rv">
                 <div className="dm-card-h"><span className="dm-bic dm-warm"><Ic id="i-wallet" /></span><h3>{t('landing.demo.bud.card1')}</h3><span className="dm-pill pro"><Ic id="i-crown" />PRO</span></div>
                 <div className="donutbox">
-                  <div className="dm-donut" style={{ '--g': DEMO_BUDGET.donutGradient }} />
+                  <div className="dm-donut" style={{ '--g': DEMO_BUDGET.donutGradient }}>{/* inline-style-exempt: цвет/вар из данных демо */}</div>
                   <span className="donut-c"><b className="num">{DEMO_BUDGET.total}</b><span>{t('landing.demo.bud.total')}</span></span>
                 </div>
                 <div className="cats">
                   {DEMO_BUDGET.cats.map((c, i) => (
-                    <div className="cat" key={i} style={{ '--c': c.c }}>
+                    <div className="cat" key={i} style={{ '--c': c.c }}>{/* inline-style-exempt: цвет/вар из данных демо */}
                       <i className="dm-d" />
                       <span className="dm-nm"><span className="t">{t(c.tKey)}</span><span className={`dm-pill ${c.pill.cls}`}>{t(c.pill.key)}</span></span>
                       <span className="dm-v num">{c.v}</span>
-                      <span className="dm-track"><i style={{ '--w': c.w }} /></span>
+                      <span className="dm-track"><i style={{ '--w': c.w }} />{/* inline-style-exempt: цвет/вар из данных демо */}</span>
                     </div>
                   ))}
                 </div>
@@ -190,7 +209,7 @@ export default function DemoTrip() {
                 <div className="dm-card-h"><span className="dm-bic"><Ic id="i-ticks" /></span><h3>{t('landing.demo.bud.card2')}</h3><span className="dm-pill hand">{t('landing.demo.bud.card2_n')}</span></div>
                 <div className="exp">
                   {DEMO_BUDGET.expenses.map((e, i) => (
-                    <div className="e" key={i} style={{ '--s': e.tint.s, '--k': e.tint.k }}>
+                    <div className="e" key={i} style={{ '--s': e.tint.s, '--k': e.tint.k }}>{/* inline-style-exempt: цвет/вар из данных демо */}
                       <span className="ic"><Ic id={e.icon} /></span>
                       <span className="dm-nm"><b>{t(e.tKey)}</b><span>{t(e.sKey)}</span></span>
                       <span className={`dm-pill ${e.pill.cls}`}>{t(e.pill.key)}</span>
@@ -227,17 +246,15 @@ export default function DemoTrip() {
                     ) : d.c == null ? (
                       <div className="cal-d" key={i}><span className="dm-n">{d.n}</span></div>
                     ) : (
-                      <div className="cal-d trip" key={i} style={{ '--c': d.c }}>
+                      <div className="cal-d trip" key={i} style={{ '--c': d.c }}>{/* inline-style-exempt: цвет/вар из данных демо */}
                         <span className="dm-n">{d.n}</span>
                         <span className="cal-dots">{Array.from({ length: d.dots || 0 }).map((_, k) => <i key={k} />)}</span>
-                        {d.bar2
-                          ? <span className="cal-bar"><i style={{ background: d.bar2[0] }} /><i style={{ background: d.bar2[1] }} /></span>
-                          : <span className="cal-bar" style={{ background: d.c }} />}
+                        <CalBar day={d} />
                       </div>
                     )))}
                   </div>
                   <div className="cal-legend">
-                    {DEMO_CAL_LEGEND.map((l, i) => <span key={i}><i style={{ background: l.c }} />{t(l.key)}</span>)}
+                    {DEMO_CAL_LEGEND.map((l, i) => <span key={i}><i style={{ background: l.c }} />{/* inline-style-exempt: цвет/вар из данных демо */}{t(l.key)}</span>)}
                   </div>
                 </div>
               </article>
@@ -249,7 +266,7 @@ export default function DemoTrip() {
                 <div className="doc-list">
                   {DEMO_DOCS.map((d, i) => (
                     <div className="dm-doc-row" key={i}>
-                      <span className="ft" style={{ '--c': d.c }}>{d.ft}</span>
+                      <span className="ft" style={{ '--c': d.c }}>{d.ft}{/* inline-style-exempt: цвет/вар из данных демо */}</span>
                       <span className="tx"><b>{t(d.tKey)}</b><span>{t(d.sKey)}</span></span>
                     </div>
                   ))}
@@ -321,7 +338,7 @@ export default function DemoTrip() {
                   <div><b>{t('landing.demo.chat.title')}</b><small>{t('landing.demo.chat.sub')}</small></div>
                   <span className="dm-avs avs--push">
                     {DEMO_PEOPLE.slice(0, 3).map((p) => (
-                      <span className="dm-av av--xs" key={p.ini} style={{ background: p.color }}>{p.ini}</span>
+                      <span className="dm-av av--xs" key={p.ini} style={{ background: p.color }}>{p.ini}{/* inline-style-exempt: цвет/вар из данных демо */}</span>
                     ))}
                   </span>
                 </div>
