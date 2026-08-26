@@ -61,22 +61,22 @@ export default function DemoTrip() {
 
       <main className="demo">
         {/* ── Hero ─────────────────────────────────────────────── */}
-        <section className="hero" id="top" data-hdr="dark">
-          <div className="hero-bg" aria-hidden="true">
+        <section className="dm-hero" id="top" data-hdr="dark">
+          <div className="dm-hero-bg" aria-hidden="true">
             <img src={COVER} alt="" />
           </div>
           <div className="wrap">
             <h1>{t('landing.demo.hero.title')}</h1>
             <div className="hero-dates">{t('landing.demo.hero.dates')}</div>
-            <p className="hero-sub">{t('landing.demo.hero.sub')}</p>
+            <p className="dm-hero-sub">{t('landing.demo.hero.sub')}</p>
             <div className="hero-people">
-              <span className="avs">
+              <span className="dm-avs">
                 {DEMO_PEOPLE.map((p) => (
-                  <span className="av" key={p.ini} style={{ background: p.color }} title={p.name}>{p.ini}</span>
+                  <span className="dm-av" key={p.ini} style={{ background: p.color }} title={p.name}>{p.ini}</span>
                 ))}
                 <span className="more">+1</span>
               </span>
-              <span className="txt" dangerouslySetInnerHTML={{ __html: t('landing.demo.hero.people') }} />
+              <span className="dm-txt" dangerouslySetInnerHTML={{ __html: t('landing.demo.hero.people') }} />
             </div>
           </div>
         </section>
@@ -123,9 +123,9 @@ export default function DemoTrip() {
               {DEMO_TIMELINE.map((day, di) => (
                 <div className="tl-day" key={di}>
                   <div className="tl-dh">
-                    <span className="dot" style={{ borderColor: day.dot }} />
+                    <span className="dm-dot" style={{ borderColor: day.dot }} />
                     <b>{t(day.dhKey)}</b>
-                    <span className="city"><Ic id="i-pin" />{t(day.cityKey)}</span>
+                    <span className="dm-city"><Ic id="i-pin" />{t(day.cityKey)}</span>
                   </div>
                   <div className="tl-list">
                     {day.events.map((ev, ei) => (ev.kind === 'trn' ? (
@@ -133,14 +133,14 @@ export default function DemoTrip() {
                         <div className="trn-row">
                           <span className="t num">{ev.from.time}</span>
                           <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.from.icon} /></span>
-                          <span className="pt">{t(ev.from.ptKey)}<small>{t(ev.from.stationKey)}</small></span>
+                          <span className="dm-pt">{t(ev.from.ptKey)}<small>{t(ev.from.stationKey)}</small></span>
                           <span className="pr num pr--push">{ev.from.price}</span>
                         </div>
-                        <div className="trn-mid"><span className="m"><Ic id={ev.mid.icon} />{t(ev.mid.mKey)}<em> {t(ev.mid.emKey)}</em></span></div>
+                        <div className="trn-mid"><span className="dm-m"><Ic id={ev.mid.icon} />{t(ev.mid.mKey)}<em> {t(ev.mid.emKey)}</em></span></div>
                         <div className="trn-row">
                           <span className="t num">{ev.to.time}</span>
                           <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.to.icon} /></span>
-                          <span className="pt">{t(ev.to.ptKey)}<small>{t(ev.to.stationKey)}</small></span>
+                          <span className="dm-pt">{t(ev.to.ptKey)}<small>{t(ev.to.stationKey)}</small></span>
                         </div>
                       </div>
                     ) : (
@@ -148,7 +148,7 @@ export default function DemoTrip() {
                         <span className="t num">{ev.time}</span>
                         <span className="ic" style={{ '--s': ev.tint.s, '--k': ev.tint.k }}><Ic id={ev.icon} /></span>
                         <span className="b"><b>{t(ev.tKey)}</b><span>{t(ev.sKey)}</span></span>
-                        {ev.pill && <span className={`pill ${ev.pill.cls}`}>{t(ev.pill.key)}</span>}
+                        {ev.pill && <span className={`dm-pill ${ev.pill.cls}`}>{t(ev.pill.key)}</span>}
                         {ev.price && <span className="pr num">{ev.price}</span>}
                       </div>
                     )))}
@@ -169,32 +169,32 @@ export default function DemoTrip() {
             </div>
             <div className="bud-grid">
               <div className="bcard rv">
-                <div className="card-h"><span className="bic warm"><Ic id="i-wallet" /></span><h3>{t('landing.demo.bud.card1')}</h3><span className="pill pro"><Ic id="i-crown" />PRO</span></div>
+                <div className="dm-card-h"><span className="dm-bic dm-warm"><Ic id="i-wallet" /></span><h3>{t('landing.demo.bud.card1')}</h3><span className="dm-pill pro"><Ic id="i-crown" />PRO</span></div>
                 <div className="donutbox">
-                  <div className="donut" style={{ '--g': DEMO_BUDGET.donutGradient }} />
+                  <div className="dm-donut" style={{ '--g': DEMO_BUDGET.donutGradient }} />
                   <span className="donut-c"><b className="num">{DEMO_BUDGET.total}</b><span>{t('landing.demo.bud.total')}</span></span>
                 </div>
                 <div className="cats">
                   {DEMO_BUDGET.cats.map((c, i) => (
                     <div className="cat" key={i} style={{ '--c': c.c }}>
-                      <i className="d" />
-                      <span className="nm"><span className="t">{t(c.tKey)}</span><span className={`pill ${c.pill.cls}`}>{t(c.pill.key)}</span></span>
-                      <span className="v num">{c.v}</span>
-                      <span className="track"><i style={{ '--w': c.w }} /></span>
+                      <i className="dm-d" />
+                      <span className="dm-nm"><span className="t">{t(c.tKey)}</span><span className={`dm-pill ${c.pill.cls}`}>{t(c.pill.key)}</span></span>
+                      <span className="dm-v num">{c.v}</span>
+                      <span className="dm-track"><i style={{ '--w': c.w }} /></span>
                     </div>
                   ))}
                 </div>
                 <div className="perone"><Ic id="i-users" />{t('landing.demo.bud.perone')}<b className="num">{DEMO_BUDGET.perone}</b></div>
               </div>
               <div className="bcard rv">
-                <div className="card-h"><span className="bic"><Ic id="i-ticks" /></span><h3>{t('landing.demo.bud.card2')}</h3><span className="pill hand">{t('landing.demo.bud.card2_n')}</span></div>
+                <div className="dm-card-h"><span className="dm-bic"><Ic id="i-ticks" /></span><h3>{t('landing.demo.bud.card2')}</h3><span className="dm-pill hand">{t('landing.demo.bud.card2_n')}</span></div>
                 <div className="exp">
                   {DEMO_BUDGET.expenses.map((e, i) => (
                     <div className="e" key={i} style={{ '--s': e.tint.s, '--k': e.tint.k }}>
                       <span className="ic"><Ic id={e.icon} /></span>
-                      <span className="nm"><b>{t(e.tKey)}</b><span>{t(e.sKey)}</span></span>
-                      <span className={`pill ${e.pill.cls}`}>{t(e.pill.key)}</span>
-                      <span className="v num">{e.v}</span>
+                      <span className="dm-nm"><b>{t(e.tKey)}</b><span>{t(e.sKey)}</span></span>
+                      <span className={`dm-pill ${e.pill.cls}`}>{t(e.pill.key)}</span>
+                      <span className="dm-v num">{e.v}</span>
                     </div>
                   ))}
                 </div>
@@ -215,7 +215,7 @@ export default function DemoTrip() {
             <div className="bento" data-stagger>
               {/* Calendar */}
               <article className="bcard b-cal rv">
-                <span className="bic"><Ic id="i-cal2" /></span>
+                <span className="dm-bic"><Ic id="i-cal2" /></span>
                 <h3>{t('landing.demo.more.cal.t')}</h3>
                 <p>{t('landing.demo.more.cal.p')}</p>
                 <div className="cal">
@@ -225,10 +225,10 @@ export default function DemoTrip() {
                     {DEMO_CAL.map((d, i) => (d.n == null ? (
                       <div className="cal-d" key={i} />
                     ) : d.c == null ? (
-                      <div className="cal-d" key={i}><span className="n">{d.n}</span></div>
+                      <div className="cal-d" key={i}><span className="dm-n">{d.n}</span></div>
                     ) : (
                       <div className="cal-d trip" key={i} style={{ '--c': d.c }}>
-                        <span className="n">{d.n}</span>
+                        <span className="dm-n">{d.n}</span>
                         <span className="cal-dots">{Array.from({ length: d.dots || 0 }).map((_, k) => <i key={k} />)}</span>
                         {d.bar2
                           ? <span className="cal-bar"><i style={{ background: d.bar2[0] }} /><i style={{ background: d.bar2[1] }} /></span>
@@ -242,13 +242,13 @@ export default function DemoTrip() {
                 </div>
               </article>
               {/* Documents */}
-              <article className="bcard b-docs rv">
-                <span className="bic vio"><Ic id="i-doc" /></span>
+              <article className="bcard dm-b-docs rv">
+                <span className="dm-bic vio"><Ic id="i-doc" /></span>
                 <h3>{t('landing.demo.more.docs.t')}</h3>
                 <p>{t('landing.demo.more.docs.p')}</p>
                 <div className="doc-list">
                   {DEMO_DOCS.map((d, i) => (
-                    <div className="doc-row" key={i}>
+                    <div className="dm-doc-row" key={i}>
                       <span className="ft" style={{ '--c': d.c }}>{d.ft}</span>
                       <span className="tx"><b>{t(d.tKey)}</b><span>{t(d.sKey)}</span></span>
                     </div>
@@ -258,15 +258,15 @@ export default function DemoTrip() {
               </article>
               {/* Services */}
               <article className="bcard b-svc rv">
-                <span className="bic mint"><Ic id="i-spark" /></span>
+                <span className="dm-bic dm-mint"><Ic id="i-spark" /></span>
                 <h3>{t('landing.demo.more.svc.t')}</h3>
                 <p>{t('landing.demo.more.svc.p')}</p>
                 <div className="svc-list">
                   {DEMO_SVC.map((s, i) => (
                     <div className={`svc${s.add ? ' add' : ''}`} key={i}>
-                      <span className={`bic sm${s.mint ? ' mint' : ''}`}><Ic id={s.icon} /></span>
+                      <span className={`dm-bic sm${s.mint ? ' mint' : ''}`}><Ic id={s.icon} /></span>
                       <span className="tx"><b>{t(s.tKey)}</b><span>{t(s.sKey)}</span></span>
-                      {s.done && <span className="pill done">{t('landing.demo.more.svc.done')}</span>}
+                      {s.done && <span className="dm-pill done">{t('landing.demo.more.svc.done')}</span>}
                       {s.add && <Ic id="i-plus" />}
                     </div>
                   ))}
@@ -274,7 +274,7 @@ export default function DemoTrip() {
               </article>
               {/* Stats */}
               <article className="bcard b-stats rv">
-                <span className="bic rose"><Ic id="i-spark" /></span>
+                <span className="dm-bic rose"><Ic id="i-spark" /></span>
                 <h3>{t('landing.demo.more.stat.t')}</h3>
                 <p>{t('landing.demo.more.stat.p')}</p>
                 <div className="stats-grid">
@@ -283,7 +283,7 @@ export default function DemoTrip() {
                 <div className="stat-lines">
                   {DEMO_STAT_LINES.map((s, i) => (
                     <div className="stat-line" key={i}>
-                      <span className={`bic sm${s.mint ? ' mint' : ''}${s.vio ? ' vio' : ''}`}><Ic id={s.icon} /></span>
+                      <span className={`dm-bic sm${s.mint ? ' mint' : ''}${s.vio ? ' vio' : ''}`}><Ic id={s.icon} /></span>
                       {t(s.tKey)}<em className={s.emNum ? 'num' : undefined}>{s.emKey ? t(s.emKey) : s.em}</em>
                     </div>
                   ))}
@@ -303,12 +303,12 @@ export default function DemoTrip() {
             </div>
             <div className="team-grid">
               <div className="bcard rv">
-                <div className="card-h"><span className="bic"><Ic id="i-users" /></span><h3>{t('landing.demo.team.card')}</h3></div>
+                <div className="dm-card-h"><span className="dm-bic"><Ic id="i-users" /></span><h3>{t('landing.demo.team.card')}</h3></div>
                 {DEMO_MEMBERS.map((m, i) => (
                   <div className={`mem${m.pending ? ' pending' : ''}`} key={i}>
-                    <span className="av" style={m.color ? { background: m.color } : undefined}>{m.icon ? <Ic id={m.icon} /> : m.ini}</span>
-                    <span className="nm"><b>{m.name}</b><span>{t(m.subKey)}</span></span>
-                    <span className={`pill ${m.pill.cls}`}>{t(m.pill.key)}</span>
+                    <span className="dm-av" style={m.color ? { background: m.color } : undefined}>{m.icon ? <Ic id={m.icon} /> : m.ini}</span>
+                    <span className="dm-nm"><b>{m.name}</b><span>{t(m.subKey)}</span></span>
+                    <span className={`dm-pill ${m.pill.cls}`}>{t(m.pill.key)}</span>
                   </div>
                 ))}
                 <div className="role-note">
@@ -317,22 +317,22 @@ export default function DemoTrip() {
               </div>
               <div className="chat rv">
                 <div className="chat-h">
-                  <span className="bic"><Ic id="i-chat" /></span>
+                  <span className="dm-bic"><Ic id="i-chat" /></span>
                   <div><b>{t('landing.demo.chat.title')}</b><small>{t('landing.demo.chat.sub')}</small></div>
-                  <span className="avs avs--push">
+                  <span className="dm-avs avs--push">
                     {DEMO_PEOPLE.slice(0, 3).map((p) => (
-                      <span className="av av--xs" key={p.ini} style={{ background: p.color }}>{p.ini}</span>
+                      <span className="dm-av av--xs" key={p.ini} style={{ background: p.color }}>{p.ini}</span>
                     ))}
                   </span>
                 </div>
                 <div className="chat-b">
                   {DEMO_CHAT.map((m, i) => (
-                    <div className={`msg${m.me ? ' me' : ''}${m.ai ? ' ai' : ''}`} key={i}>
-                      <span className="av av--sm" style={m.ai ? undefined : { background: m.color }}>
+                    <div className={`msg${m.me ? ' dm-me' : ''}${m.ai ? ' ai' : ''}`} key={i}>
+                      <span className="dm-av av--sm" style={m.ai ? undefined : { background: m.color }}>
                         {m.ai ? <Ic id={m.ini} /> : m.ini}
                       </span>
                       <div className="bub">
-                        <div className="who"><b>{m.who}</b>{m.pill && <span className="pill ai">{t(m.pill)}</span>}<time>{m.time}</time></div>
+                        <div className="who"><b>{m.who}</b>{m.pill && <span className="dm-pill ai">{t(m.pill)}</span>}<time>{m.time}</time></div>
                         {m.mention ? <><span className="mention">{m.mention}</span> {t(m.bKey)}</> : t(m.bKey)}
                       </div>
                     </div>
@@ -350,25 +350,25 @@ export default function DemoTrip() {
 
         {/* ── Telegram assistant ───────────────────────────────── */}
         <section className="tg-sec sheet section-pad" id="assistant">
-          <div className="wrap tg-grid">
-            <div className="tg-demo rv">
-              <div className="device">
-                <div className="device-screen">
-                  <div className="tg-status" aria-hidden="true">
+          <div className="wrap dm-tg-grid">
+            <div className="dm-tg-demo rv">
+              <div className="dm-device">
+                <div className="dm-device-screen">
+                  <div className="dm-tg-status" aria-hidden="true">
                     <span>9:41</span><span className="tg-island" /><span><Ic id="i-lock" /></span>
                   </div>
-                  <div className="tg-head">
-                    <span className="tav"><Ic id="i-tg" /></span>
+                  <div className="dm-tg-head">
+                    <span className="dm-tav"><Ic id="i-tg" /></span>
                     <div><b>Triplanio</b><small>{t('landing.demo.tg.bot_status')}</small></div>
                   </div>
-                  <div className="tg-chat">
+                  <div className="dm-tg-chat">
                     {DEMO_TG_MSGS.map((m, i) => (m.date ? (
-                      <div className="tg-date" key={i}>{t(m.date)}</div>
+                      <div className="dm-tg-date" key={i}>{t(m.date)}</div>
                     ) : (
-                      <div className={`tg-msg ${m.bot ? 'bot' : 'user'}`} key={i}>
+                      <div className={`dm-tg-msg ${m.bot ? 'dm-bot' : 'dm-user'}`} key={i}>
                         <span dangerouslySetInnerHTML={{ __html: t(m.bKey) }} />
                         {m.doc && (
-                          <span className="tg-doc"><span className="dic"><Ic id="i-doc" /></span><span><b>{m.doc.name}</b><span>{t(m.doc.metaKey)}</span></span></span>
+                          <span className="dm-tg-doc"><span className="dm-dic"><Ic id="i-doc" /></span><span><b>{m.doc.name}</b><span>{t(m.doc.metaKey)}</span></span></span>
                         )}
                         <small>{m.time}{m.ticks && <Ic id="i-ticks" />}</small>
                       </div>
@@ -381,10 +381,10 @@ export default function DemoTrip() {
               <span className="eyebrow">{t('landing.demo.tg.eyebrow')}</span>
               <h2 className="tg-h2">{t('landing.demo.tg.h2a')} <span className="accent">{t('landing.demo.tg.h2b')}</span></h2>
               <p className="tg-lede">{t('landing.demo.tg.p')}</p>
-              <ul className="tg-points">
+              <ul className="dm-tg-points">
                 {DEMO_TG_POINTS.map((p, i) => (
                   <li key={i}>
-                    <span className={`cic${p.warm ? ' warm' : ''}${p.mint ? ' mint' : ''}`}><Ic id={p.icon} /></span>
+                    <span className={`dm-cic${p.warm ? ' warm' : ''}${p.mint ? ' mint' : ''}`}><Ic id={p.icon} /></span>
                     <div><b>{t(p.tKey)}</b><p>{t(p.pKey)}</p></div>
                   </li>
                 ))}
@@ -416,11 +416,11 @@ function DemoCta() {
   const { isAuthenticated } = useAuth();
   const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   return (
-    <section className="final sheet section-pad" data-hdr="accent" id="cta">
+    <section className="dm-final sheet section-pad" data-hdr="accent" id="cta">
       <span className="horizon" aria-hidden="true" />
       <div className="wrap inner">
         <div className="rv">
-          <span className="eyebrow">{t('landing.demo.fin.eyebrow')}</span>
+          <span className="eyebrow eyebrow--acc">{t('landing.demo.fin.eyebrow')}</span>
           <h2 dangerouslySetInnerHTML={{ __html: t('landing.demo.fin.h2') }} />
           <p>{t('landing.demo.fin.sub')}</p>
           <div className="ctas">
