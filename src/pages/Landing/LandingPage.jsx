@@ -344,13 +344,13 @@ function Pain() {
                     <div data-step="" style={{ '--s': 0 }}>{/* inline-style-exempt: scrub step index */}
                       <div className="aw-row"><span className="aw-label">{t('landing.aw.mapLbl')}</span><span className="aw-more">{t('landing.aw.open')}</span></div>
                       <div className="aw-map" aria-hidden="true">
-                        {/* §5: карта маршрута — иллюстрация (акварельная Иберия, кроп public/site/map-pain.webp); пины на реальных городах (Валенсия→Аликанте→Мурсия), координаты — георефренс картины по опорным точкам берега (аффин lng/lat→px). */}
+                        {/* §5: карта маршрута — иллюстрация (акварельная Иберия, кроп public/site/map-pain.webp); пины на реальных городах Барселона→Валенсия→Мадрид (координаты по точкам, размеченным на картине). */}
                         <svg viewBox="0 0 608 190" preserveAspectRatio="xMidYMid slice">
                           <image href="/site/map-pain.webp" x="0" y="0" width="608" height="190" preserveAspectRatio="xMidYMid slice" />
-                          <path d="M323 40 L346 116 L314 139" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" className="aw-route" />
-                          <g className="aw-pin" style={{ '--p': 0 }}><circle cx="323" cy="40" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="323" y="44" fontSize="12">1</text></g>{/* inline-style-exempt: --p pin stagger delay (TRIP-460) */}
-                          <g className="aw-pin" style={{ '--p': 1 }}><circle cx="346" cy="116" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="346" y="120" fontSize="12">2</text></g>{/* inline-style-exempt: --p pin stagger delay */}
-                          <g className="aw-pin" style={{ '--p': 2 }}><circle cx="314" cy="139" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="314" y="143" fontSize="12">3</text></g>{/* inline-style-exempt: --p pin stagger delay */}
+                          <path d="M430 33 L360 157 L178 102" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" className="aw-route" />
+                          <g className="aw-pin" style={{ '--p': 0 }}><circle cx="430" cy="33" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="430" y="37" fontSize="12">1</text><text x="415" y="37" fontSize="11" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="3" paintOrder="stroke" textAnchor="end">{t('landing.map.bcn')}</text></g>{/* inline-style-exempt: --p pin stagger delay (TRIP-460) */}
+                          <g className="aw-pin" style={{ '--p': 1 }}><circle cx="360" cy="157" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="360" y="161" fontSize="12">2</text><text x="375" y="161" fontSize="11" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="3" paintOrder="stroke" textAnchor="start">{t('landing.map.vlc')}</text></g>{/* inline-style-exempt: --p pin stagger delay */}
+                          <g className="aw-pin" style={{ '--p': 2 }}><circle cx="178" cy="102" r="11" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="178" y="106" fontSize="12">3</text><text x="193" y="106" fontSize="11" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="3" paintOrder="stroke" textAnchor="start">{t('landing.map.mad')}</text></g>{/* inline-style-exempt: --p pin stagger delay */}
                         </svg>
                       </div>
                     </div>
@@ -417,14 +417,13 @@ function Bento() {
             <h3>{t('landing.bento.mapT')}</h3>
             <p>{t('landing.bento.mapD')}</p>
             <div className="mapviz" aria-hidden="true">
-              {/* §5: карта — иллюстрация (акварельная Иберия, кроп public/site/map-bento.webp); пины на реальных городах (Сарагоса→Льейда→Барселона→Жирона), координаты через георефренс картины. */}
+              {/* §5: карта — иллюстрация (акварельная Иберия, кроп public/site/map-bento.webp); пины на реальных городах Барселона→Валенсия→Мадрид (координаты по точкам, размеченным на картине). */}
               <svg viewBox="0 0 640 230" preserveAspectRatio="xMidYMid slice">
                 <image href="/site/map-bento.webp" x="0" y="0" width="640" height="230" preserveAspectRatio="xMidYMid slice" />
-                <path d="M101 98 L227 103 L363 127 L396 75" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" />
-                <g><circle cx="101" cy="98" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="101" y="102" fontSize="12">1</text></g>
-                <g><circle cx="227" cy="103" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="227" y="107" fontSize="12">2</text></g>
-                <g><circle cx="363" cy="127" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="363" y="131" fontSize="12">3</text></g>
-                <g><circle cx="396" cy="75" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="396" y="79" fontSize="12">4</text></g>
+                <path d="M473 40 L388 190 L168 123" fill="none" stroke="#2173C8" strokeWidth="2.4" strokeDasharray="2 7" strokeLinecap="round" />
+                <g><circle cx="473" cy="40" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="473" y="44" fontSize="12">1</text><text x="457" y="44" fontSize="12" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="3" paintOrder="stroke" textAnchor="end">{t('landing.map.bcn')}</text></g>
+                <g><circle cx="388" cy="190" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="388" y="194" fontSize="12">2</text><text x="404" y="194" fontSize="12" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="3" paintOrder="stroke" textAnchor="start">{t('landing.map.vlc')}</text></g>
+                <g><circle cx="168" cy="123" r="12" fill="#fff" stroke="#2173C8" strokeWidth="2.2" /><text className="npin-t" x="168" y="127" fontSize="12">3</text><text x="184" y="127" fontSize="12" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="3" paintOrder="stroke" textAnchor="start">{t('landing.map.mad')}</text></g>
               </svg>
             </div>
           </article>
@@ -671,13 +670,13 @@ function Share() {
                 <span className="viewer">{t('landing.sh.viewer')}</span>
               </div>
               <div className="bb-map" aria-hidden="true">
-                {/* §5: карта — иллюстрация (акварельная Иберия, кроп public/site/map-share.webp); пины на реальных городах (Кастельон→Валенсия→Пальма), координаты через георефренс картины. */}
+                {/* §5: карта — иллюстрация (акварельная Иберия, кроп public/site/map-share.webp); пины на реальных городах Барселона→Валенсия→Мадрид (координаты по точкам, размеченным на картине). */}
                 <svg viewBox="0 0 598 130" preserveAspectRatio="xMidYMid slice">
                   <image href="/site/map-share.webp" x="0" y="0" width="598" height="130" preserveAspectRatio="xMidYMid slice" />
-                  <path d="M232 48 L224 86 L429 83" fill="none" stroke="#2173C8" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
-                  <g><circle cx="232" cy="48" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="232" y="52" fontSize="10">1</text></g>
-                  <g><circle cx="224" cy="86" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="224" y="90" fontSize="10">2</text></g>
-                  <g><circle cx="429" cy="83" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="429" y="87" fontSize="10">3</text></g>
+                  <path d="M404 14 L346 117 L194 71" fill="none" stroke="#2173C8" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
+                  <g><circle cx="404" cy="14" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="404" y="18" fontSize="10">1</text><text x="391" y="18" fontSize="9" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="2.6" paintOrder="stroke" textAnchor="end">{t('landing.map.bcn')}</text></g>
+                  <g><circle cx="346" cy="117" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="346" y="121" fontSize="10">2</text><text x="359" y="120" fontSize="9" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="2.6" paintOrder="stroke" textAnchor="start">{t('landing.map.vlc')}</text></g>
+                  <g><circle cx="194" cy="71" r="9" fill="#fff" stroke="#2173C8" strokeWidth="2" /><text className="npin-t" x="194" y="75" fontSize="10">3</text><text x="207" y="74" fontSize="9" fontWeight="700" fill="#13324E" stroke="#fff" strokeWidth="2.6" paintOrder="stroke" textAnchor="start">{t('landing.map.mad')}</text></g>
                 </svg>
               </div>
               <div className="bb-strip">
