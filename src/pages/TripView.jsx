@@ -424,13 +424,6 @@ function StreamAnchor({ label, sub, color, icon }) {
   );
 }
 
-// BookingWarning и TimelineEmptyDay живут в ДС (design/index.jsx, рядом со
-// StreamEventRow — та же лента, та же колонка времени) и рисуются витриной
-// /kit; здесь остаётся только логика: что показать и что скрыто.
-// Кнопка «Добавить» варнинга ОТКРЫВАЕТ форк (partner offerings,
-// initialTab='find') — viewer её видит и жмёт; блок стоит на СОЗДАНИИ внутри
-// (Save движка), не тут.
-
 // Персональные скрытия варнингов этого устройства (решение Pavel 2026-08-26:
 // localStorage, не БД — память браузера, consent не при чём). Чистая логика —
 // в lib/warningDismissals (там же тесты); тут — только Set в состоянии и поход
@@ -588,6 +581,9 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   // missing-hotel warning. `prev` = the previously-rendered city (or start
   // anchor). The transfer plaque itself renders in its own departure day (in
   // the day stream), not above the destination city.
+  // Кнопка «Добавить» варнинга ОТКРЫВАЕТ форк (partner offerings,
+  // initialTab='find') — viewer её видит и жмёт; блок стоит на СОЗДАНИИ внутри
+  // (Save движка), не тут.
   const renderArrival = (city, prev) => {
     const out = [];
     if (!showBookingWarnings) return out;
