@@ -328,7 +328,7 @@ function Pain() {
             </div>
             <div className="appwin device">
               <div className="aw-screen device-screen">
-                <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>app.triplanio.com/trip/spain-7-days</span></div>
+                <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>triplanio.com/d/spain-may-27</span></div>
                 <div className="aw-phonebar" aria-hidden="true"><i /></div>
                 <div className="aw-head">
                   <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>

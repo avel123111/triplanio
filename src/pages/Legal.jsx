@@ -5,7 +5,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import {
   SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
 } from '@/components/site/SiteChrome';
-import { LEGAL, LEGAL_META, LEGAL_FOOT } from './legalContent';
+import { LEGAL, LEGAL_META, LEGAL_FOOT, LEGAL_UI } from './legalContent';
 
 /* =============================================================================
    Legal — Terms of Service / Privacy Policy (TRIP-465, Ф6.6).
@@ -71,7 +71,7 @@ export default function Legal({ doc = 'terms' }) {
         <section className="doc" id="doc" data-hdr="light">
           <div className="wrap">
             <div className="doc-head">
-              <span className="eyebrow">Legal</span>
+              <span className="eyebrow">{LEGAL_UI.eyebrow}</span>
               <h1 className="doc-title">{d.title}</h1>
               <p className="doc-lede">{d.lede}</p>
               <div className="doc-meta">
@@ -80,10 +80,10 @@ export default function Legal({ doc = 'terms' }) {
                 <span>{LEGAL_META.effective}</span>
                 <button type="button" className="doc-print" onClick={() => window.print()}>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-print" /></svg>
-                  <span>Print</span>
+                  <span>{LEGAL_UI.print}</span>
                 </button>
               </div>
-              <div className="doc-tabs" role="tablist" aria-label="Legal documents">
+              <div className="doc-tabs" role="tablist" aria-label={LEGAL_UI.tablistLabel}>
                 {DOCS.map((k) => (
                   <button
                     key={k}
@@ -101,10 +101,10 @@ export default function Legal({ doc = 'terms' }) {
             <div className="doc-grid">
               <details className="doc-toc" open>
                 <summary>
-                  <span>Contents</span>
+                  <span>{LEGAL_UI.contents}</span>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chev" /></svg>
                 </summary>
-                <nav className="doc-toc-list" aria-label="Contents">
+                <nav className="doc-toc-list" aria-label={LEGAL_UI.contents}>
                   {d.toc.map((s, i) => (
                     <a key={s.id} href={`#${s.id}`} className={s.id === activeId ? 'doc-on' : undefined}>
                       <span className="doc-n">{i + 1}</span>{s.title}
