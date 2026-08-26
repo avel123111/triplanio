@@ -50,14 +50,6 @@
       "destination": "/join-og.html"
     },
     {
-      "source": "/privacy",
-      "destination": "/privacy.html"
-    },
-    {
-      "source": "/terms",
-      "destination": "/terms.html"
-    },
-    {
       "source": "/api/:path(.*)",
       "destination": "/api/proxy?path=:path"
     },

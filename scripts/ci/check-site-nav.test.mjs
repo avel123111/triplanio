@@ -31,6 +31,8 @@ const ZONE = {
   'src/pages/PublicTrip.jsx': "const SITE = f();\nexport const P = () => <a href={SITE}>x</a>;\n",
   'src/pages/Login.jsx': "import { Link } from 'react-router-dom';\nexport const Lg = () => <Link to=\"/\">home</Link>;\n",
   'src/pages/JoinTrip.jsx': "export const J = () => { nav('/trips'); return null; };\n",
+  'src/pages/Demo/DemoTrip.jsx': "export const D = () => <a href=\"#top\">x</a>;\n",
+  'src/pages/Legal.jsx': "import { Link } from 'react-router-dom';\nexport const Lg2 = () => <Link to=\"/terms\">x</Link>;\n",
 };
 
 function put(dir, path, body) {

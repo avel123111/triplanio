@@ -47,6 +47,13 @@ const Kit = lazy(() => import('@/pages/Kit'));
 // catch-all landing) and a logged-in one doesn't 404.
 const DemoTrip = lazy(() => import('@/pages/Demo/DemoTrip'));
 
+// Legal pages /terms + /privacy (TRIP-465) — one viewer, the route picks the
+// active tab. Lazy: the legal prose + doc chrome never weigh on the common
+// routes. Its branch sits BEFORE the auth gate (like /d and /public/trip) so a
+// logged-out visitor gets the document, not the catch-all landing, and a
+// logged-in one doesn't 404.
+const Legal = lazy(() => import('@/pages/Legal'));
+
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
 // (/trip/:id → trip_opened, /pro → pricing_viewed, /public/trip → public_trip_viewed,
@@ -61,6 +68,7 @@ function screenOpenEvent(pathname) {
   if (pathname === '/settings') return { event: 'account_opened' };
   if (pathname === '/inbox') return { event: 'inbox_opened' };
   if (pathname.startsWith('/d/')) return { event: 'demo_viewed' };
+  if (pathname === '/terms' || pathname === '/privacy') return { event: 'legal_viewed', props: { doc: pathname === '/terms' ? 'terms' : 'privacy' } };
   return null;
 }
 
@@ -113,6 +121,22 @@ const AuthenticatedApp = () => {
       <Suspense fallback={null}>
         <Routes>
           <Route path="/d/:slug" element={<DemoTrip />} />
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
+  // Legal pages — public, no auth. Own branch before the auth gate, like the
+  // demo, so both logged-out and logged-in visitors reach /terms and /privacy
+  // (TRIP-465). The vercel.json rewrites to the old static HTML are removed in
+  // the same change — while they stand, this route never renders.
+  if (path === '/terms' || path === '/privacy') {
+    return (
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/terms" element={<Legal doc="terms" />} />
+          <Route path="/privacy" element={<Legal doc="privacy" />} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </Suspense>

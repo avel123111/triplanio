@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { openConsentBanner } from '@/lib/consent';
@@ -237,10 +237,11 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
             <p className="footer-tag">{t('landing.ft.tag')}</p>
           </div>
           <nav className="footer-links" aria-label={t('nav.aria_footer')}>
-            {/* nav-exempt: /terms — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-            <a href="/terms">{t('landing.ft.terms')}</a>
-            {/* nav-exempt: /privacy — статический HTML до Ф6 (vercel.json rewrite), <Link> дал бы 404 */}
-            <a href="/privacy">{t('landing.ft.privacy')}</a>
+            {/* Ф6.6 (TRIP-465): /terms и /privacy — маршруты приложения, статический
+                HTML + rewrite'ы удалены. Роутерный переход держит документ (и снимок
+                кампании) живым — без перезагрузки. */}
+            <Link to="/terms">{t('landing.ft.terms')}</Link>
+            <Link to="/privacy">{t('landing.ft.privacy')}</Link>
             {/* Where an anonymous visitor changes their mind — the app itself has no
                 footer, so this is the only route for someone who never signed up.
                 Reopens the panel; nothing changes until a button in it is pressed. */}

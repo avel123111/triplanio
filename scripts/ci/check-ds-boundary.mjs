@@ -37,6 +37,7 @@ const ROOTS = [
   'src/pages/Landing',
   'src/pages/PublicTrip.jsx',
   'src/pages/Demo',
+  'src/pages/Legal.jsx',
 ];
 
 // The one design-system import the site zone may keep.

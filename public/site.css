@@ -108,6 +108,14 @@ html.site {
      (по образцу clamp-заголовков лендинга — каждый свой display-токен). */
   --fs-pt-hero-h1: clamp(1.85rem,1.15rem + 3.3vw,3.7rem);
   --fs-pt-stat: clamp(1.3rem,1.05rem + .9vw,1.75rem);
+  /* Юридические страницы (TRIP-465): две текучих ступени прототипа — заголовок
+     документа и заголовок раздела. Значения из прототипа v5.7, не меняются; ни
+     одна существующая ступень не ложится в ±1px по всей ширине (наклоны clamp
+     расходятся на средних экранах), поэтому свои токены. */
+  /* visual-diff-exempt: .site --fs-doc-title — новый токен заголовка юр-документа (правило html.site); прототип v5.7 (TRIP-465) */
+  --fs-doc-title: clamp(1.9rem,1.4rem + 2vw,2.9rem);
+  /* visual-diff-exempt: .site --fs-doc-h2 — новый токен заголовка раздела юр-документа (правило html.site); прототип v5.7 (TRIP-465) */
+  --fs-doc-h2: clamp(1.12rem,1.02rem + .4vw,1.32rem);
 }
 
 
@@ -3390,3 +3398,88 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .snd svg{width:17px;height:17px}
 .demo .maplegend svg{width:16px;height:16px}
 .demo .svc > svg{width:16px;height:16px}
+
+/* ============================================================
+   Юридические страницы /terms + /privacy (TRIP-465, Ф6.6). CSS и разметка
+   прототипа v5.7 (#doc) переносятся как есть. Namespace `doc-` уже в зоне
+   (`.doc-chips` лендинга, prefix-exempt выше) — новой семьи не заводим. Один
+   таб-вьюер, оба маршрута рендерит Legal.jsx. Каждый font-size — только
+   `var(--fs-*)` из шкалы зоны (две свои ступени объявлены в html.site выше).
+============================================================ */
+.doc{padding:calc(70px + clamp(26px,3.4vw,48px)) 0 clamp(56px,7vw,96px)}
+.doc-head{max-width:70ch;margin-bottom:clamp(26px,3.4vw,40px)}
+.doc-title{font-size:var(--fs-doc-title);letter-spacing:-.02em;margin-bottom:12px}
+.doc-lede{color:var(--muted);font-size:var(--fs-lead);max-width:60ch}
+.doc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:18px;font-size:var(--fs-small);color:var(--muted)}
+.doc-meta > span + span::before,.doc-meta .doc-print::before{content:"·";margin-right:10px;color:rgba(19,50,78,.3)}
+.doc-print{display:inline-flex;align-items:center;gap:7px;color:var(--brand-deep);font-size:var(--fs-small);font-weight:600;cursor:pointer}
+.doc-print svg{width:15px;height:15px}
+.doc-print:hover{text-decoration:underline;text-underline-offset:3px}
+/* при переносе строки точка-разделитель оказалась бы первым символом новой
+   строки — на узком экране разделяем только пробелом */
+@media (max-width:600px){.doc-meta{gap:6px 16px}
+  .doc-meta > span + span::before,.doc-meta .doc-print::before{content:none}}
+.doc-tabs{display:inline-flex;gap:3px;margin-top:24px;padding:4px;border-radius:999px;background:var(--mist);border:1px solid rgba(19,50,78,.07)}
+.doc-tabs button{padding:9px 18px;border-radius:999px;font-size:var(--fs-body);font-weight:600;color:var(--muted);cursor:pointer;transition:background .2s,color .2s,box-shadow .2s}
+.doc-tabs button:hover{color:var(--ink)}
+.doc-tabs button[aria-selected="true"]{background:var(--white);color:var(--ink);box-shadow:var(--shadow-sm)}
+.doc-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}
+@media (min-width:981px){
+  .doc-grid{grid-template-columns:240px minmax(0,1fr);gap:clamp(34px,4.5vw,72px);align-items:start}
+}
+/* оглавление */
+.doc-toc{border:1px solid rgba(19,50,78,.09);border-radius:var(--r-md);background:var(--white)}
+.doc-toc > summary{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:14px 16px;cursor:pointer;font-weight:600;font-size:var(--fs-body);list-style:none}
+.doc-toc > summary::-webkit-details-marker{display:none}
+.doc-toc > summary svg{width:15px;height:15px;color:var(--muted);transition:transform .22s var(--ease-out)}
+.doc-toc[open] > summary svg{transform:rotate(180deg)}
+.doc-toc-list{padding:2px 8px 10px}
+.doc-toc-list a{display:flex;gap:9px;padding:7px 10px;border-radius:9px;font-size:var(--fs-body);line-height:1.35;color:var(--muted);transition:background .18s,color .18s}
+.doc-toc-list a:hover{background:var(--mist);color:var(--ink)}
+/* активная запись оглавления — своё имя `doc-on` вместо родового `.on`
+   прототипа (то столкнулось бы с чужими `.on` в агрегации 2p, TRIP-451) */
+.doc-toc-list a.doc-on{background:var(--ice);color:var(--brand-deep);font-weight:600}
+/* номер раздела — своё имя `doc-n` вместо родового `.n` прототипа */
+.doc-toc-list .doc-n{flex:none;width:1.6em;font-variant-numeric:tabular-nums;color:rgba(19,50,78,.42)}
+.doc-toc-list a.doc-on .doc-n{color:var(--brand-deep)}
+@media (min-width:981px){
+  .doc-toc{position:sticky;top:92px;max-height:calc(100vh - 128px);overflow:auto;
+    border:0;border-left:1px solid rgba(19,50,78,.1);border-radius:0;background:none}
+  .doc-toc > summary{display:none}
+  .doc-toc-list{padding:0 0 0 4px}
+  .doc-toc-list a{border-radius:0 9px 9px 0}
+}
+/* тело документа */
+.doc-body{max-width:74ch;counter-reset:sec}
+.doc-body section{padding-top:8px;margin-bottom:34px;scroll-margin-top:96px}
+.doc-body h2{counter-increment:sec;font-size:var(--fs-doc-h2);margin-bottom:12px;letter-spacing:-.01em}
+.doc-body h2::before{content:counter(sec) ". ";color:var(--brand);font-variant-numeric:tabular-nums}
+.doc-body p{color:#2C4A66;line-height:1.68;margin-bottom:13px}
+.doc-body p:last-child,.doc-body ul:last-child,.doc-body dl:last-child{margin-bottom:0}
+.doc-body ul{margin:0 0 13px;padding-left:0;list-style:none}
+.doc-body ul li{position:relative;padding-left:20px;color:#2C4A66;line-height:1.62;margin-bottom:7px}
+.doc-body ul li::before{content:"";position:absolute;left:4px;top:.66em;width:5px;height:5px;border-radius:50%;background:var(--sky)}
+.doc-body dl{display:grid;gap:0;margin:0 0 13px;border-top:1px solid rgba(19,50,78,.08)}
+.doc-body dt{padding:11px 0 3px;font-weight:600;font-size:var(--fs-body-lg)}
+.doc-body dd{padding:0 0 11px;margin:0;color:var(--muted);font-size:var(--fs-body-lg);line-height:1.6;border-bottom:1px solid rgba(19,50,78,.08)}
+@media (min-width:620px){
+  .doc-body dl{grid-template-columns:minmax(120px,.42fr) minmax(0,1fr);column-gap:22px}
+  .doc-body dt{padding:12px 0}
+  .doc-body dd{padding:12px 0;border-bottom:1px solid rgba(19,50,78,.08)}
+  .doc-body dt{border-bottom:1px solid rgba(19,50,78,.08)}
+}
+.doc-note{margin:0 0 15px;padding:15px 17px;border-radius:var(--r-md);background:var(--mist);border:1px solid rgba(35,128,214,.14)}
+.doc-note p{margin:0;color:var(--ink)}
+.doc-foot{margin-top:26px;padding-top:18px;border-top:1px solid rgba(19,50,78,.1);font-size:var(--fs-small);color:var(--muted)}
+.doc-foot a{color:var(--brand-deep);text-decoration:underline;text-underline-offset:3px}
+/* печать юр-документа прячет хром зоны — только для печати (@media print) */
+/* visual-diff-exempt: .site-header {@media print} display — печать юр-документа прячет хром зоны (TRIP-465) */
+/* visual-diff-exempt: .site-footer {@media print} display — печать юр-документа прячет хром зоны (TRIP-465) */
+/* visual-diff-exempt: .mobile-menu {@media print} display — печать юр-документа прячет хром зоны (TRIP-465) */
+@media print{
+  .site-header,.mobile-menu,.site-footer,.doc-tabs,.doc-toc,.doc-print{display:none!important}
+  .doc{padding:0}
+  .doc-body{max-width:none}
+  .doc-body section{page-break-inside:avoid}
+}
