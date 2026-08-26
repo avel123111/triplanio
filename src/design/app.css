@@ -1093,6 +1093,7 @@ h4,
 .trip-head__meta,
 .trip-tl__day,
 .trip-foot__lab,
+/* orphan-exempt: footer__col — мёртвый co-селектор старого футера; его литерал жил только в удалённых public/terms.html + privacy.html (Ф6.6, TRIP-465). Полная чистка старого блока .footer/.footer__col — отдельная задача. */
 .footer__col h4,
 .mbnav__lbl,
 .fork-partner__mid span,
