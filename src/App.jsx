@@ -186,16 +186,21 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Not authenticated and on a non-root path - send to landing. Та же оболочка
-  // зоны, что и в ветке выше: React сверяет по типу элемента, поэтому переход
-  // «чужой адрес → /terms» не пересоздаёт <SiteZone> и не роняет её слой.
+  // Not authenticated and on a non-root path - send to landing. Оболочка и
+  // <Suspense> ТЕ ЖЕ, что в ветке зоны выше, и это несущее: React сверяет по
+  // типу элемента, поэтому переход «чужой адрес → /terms» не пересоздаёт ни
+  // <SiteZone>, ни <Suspense> — слой стилей зоны не роняется. Разойдись эти
+  // две обёртки по составу, и первый же lazy-маршрут, добавленный сюда,
+  // вернул бы пустой кадр, который вся эта ветка и убирает.
   if (!isAuthenticated) {
     return (
       <SiteZone>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="*" element={<LandingPage />} />
-        </Routes>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="*" element={<LandingPage />} />
+          </Routes>
+        </Suspense>
       </SiteZone>
     );
   }
