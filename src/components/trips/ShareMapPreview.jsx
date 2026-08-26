@@ -27,7 +27,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 // рамки; cardW при этом = ширина СЛОТА, чтобы веса линий/бейджей масштабились
 // от финального разрешения карты.
 const ShareMapPreview = forwardRef(function ShareMapPreview(
-  { visits = [], transfers = [], lang, showSE = false, overlaySvg, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
+  { visits = [], transfers = [], lang, showSE = true, overlaySvg, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
   ref,
 ) {
   const { t } = useI18n();
@@ -54,9 +54,10 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   // Свежая камера для замыканий create-once эффекта (как slotRef выше).
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
-  // «Подвести карту к текущей камере/фиту» — заполняется create-once эффектом,
-  // дёргается эффектом на смену пропа `camera` (apply из редактора).
-  const syncRef = useRef(/** @type {null | (() => void)} */ (null));
+  // applyCameraRef — ПРИНУДИТЕЛЬНО применить приехавшую камеру (Done в редакторе):
+  // это явное решение пользователя, оно ОБЯЗАНО примениться даже если превью-карту
+  // кто-то трогал. Авто-фит по точкам живёт отдельной функцией `fit` внутри эффекта.
+  const applyCameraRef = useRef(/** @type {null | (() => void)} */ (null));
 
   // The frame SVG carries its fonts as @font-face (embedded data URIs). They load
   // from the data URI ~instantly, but font-display:block hides the text until the
@@ -130,7 +131,23 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
         fitToPoints(map, pts, { padding: Math.max(40, Math.round(w * 0.14)), maxZoom: 9 });
       }
     };
-    syncRef.current = fit;
+
+    // Принудительно применить приехавшую камеру: НЕ гейтится userMoved (Done —
+    // явное решение), ширину берём с фолбэком на previewCssWidth (если контейнер
+    // ещё не измерен — на мобиле шит редактора только что закрылся). ResizeObserver
+    // затем до-уточнит зум под реальную ширину, но кадр меняется сразу.
+    const applyCamera = () => {
+      const cam = cameraRef.current;
+      if (!cam) { fit(); return; }
+      const w = holderRef.current?.clientWidth || cam.previewCssWidth;
+      map.jumpTo({
+        center: cam.center,
+        zoom: rescaleZoom(cam.zoom, cam.previewCssWidth, w),
+        bearing: cam.bearing || 0,
+        pitch: cam.pitch || 0,
+      });
+    };
+    applyCameraRef.current = applyCamera;
 
     // Draw the route only once the map is FULLY ready to accept sources+layers.
     // On the Mapbox Standard style, 'style.load' (and even isStyleLoaded()===true)
@@ -149,13 +166,17 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', SC_WEIGHTS.dot * s);
       if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', SC_WEIGHTS.solid * s);
       if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', SC_WEIGHTS.dashed * s);
+      // Флаг-маркеры — иконки: icon-size это МНОЖИТЕЛЬ (1 = 46px логических),
+      // в уменьшенном превью показываем в масштабе s.
+      if (map.getLayer('sc-flags')) map.setLayoutProperty('sc-flags', 'icon-size', s);
     };
     const drawIfNeeded = () => {
       if (!pts.length) return;
       // На уже нарисованном маршруте только доводим веса под текущий размер; фит
       // зовётся лишь по реальным поводам (первый рендер ниже, resize, смена камеры).
       if (map.getSource('sc-solid')) { applyWeights(); return; }
-      try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
+      const { s } = currentScale();
+      try { drawTripRoute(map, ordered, legs, { iconScale: s }); } catch (err) { console.error('share preview draw failed', err); }
       applyWeights();
       prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
       fit();
@@ -175,7 +196,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       map.off('styledata', drawIfNeeded);
       map.remove();
       mapRef.current = null;
-      syncRef.current = null;
+      applyCameraRef.current = null;
     };
     // Create once per mount; visits/transfers are stable for an open dialog.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,7 +241,11 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       try { mapRef.current?.setProjection(camera.projection); } catch { /* projection unsupported */ }
     }
     if (camera.scheme && camera.scheme !== scheme) applyScheme(camera.scheme);
-    syncRef.current?.();
+    // Применяем в СЛЕДУЮЩЕМ кадре: на мобиле Done закрывает шит редактора, и
+    // контейнер главного превью измеряется (clientWidth) только после рефлоу —
+    // синхронный jumpTo здесь взял бы нулевую ширину. rAF ждёт этот кадр.
+    let raf = requestAnimationFrame(() => { raf = 0; applyCameraRef.current?.(); });
+    return () => { if (raf) cancelAnimationFrame(raf); };
     // scheme/projection здесь — производные той же камеры, не отдельные триггеры.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera]);

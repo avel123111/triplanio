@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { track } from '@/lib/analytics';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { Btn, Carousel, Dialog, EmptyState, IconBtn, Seg, Severity, Skeleton, Swatch, Tile } from '@/design/index';
+import { Btn, Carousel, Dialog, EmptyState, IconBtn, Row, Seg, Severity, Skeleton, Swatch, Tile } from '@/design/index';
 import { Icon } from '@/design/icons';
 import LpSheet from '@/components/ui/LpSheet';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
@@ -140,6 +140,22 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
       inline: 'center', block: 'nearest', behavior: 'smooth',
     });
   }, [bg, slides]);
+
+  // Колесо мыши листает ленту фонов ГОРИЗОНТАЛЬНО (десктоп с мышью): вертикальный
+  // delta иначе не двигает горизонтальный оверфлоу, и фоны листались только
+  // стрелками (просьба Ильи). Нативный listener с passive:false — чтобы
+  // preventDefault не дал странице проскроллиться под диалогом.
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (!e.deltaY || el.scrollWidth <= el.clientWidth) return;
+      el.scrollLeft += e.deltaY;
+      e.preventDefault();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [ready]);
 
   function handleFile(e) {
     const file = e.target.files?.[0];
@@ -350,7 +366,9 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             ]}
           />
         </span>
-        <Btn variant="secondary" icon="map" disabled={!ready} onClick={() => setEditorOpen(true)}>
+        {/* Без иконки (просьба Ильи): на мобиле стоит справа от переключателя
+            Сторис/Пост в той же строке .sc-side (её раскладку держит CSS). */}
+        <Btn variant="secondary" disabled={!ready} onClick={() => setEditorOpen(true)}>
           {t('share.edit_map')}
         </Btn>
         {!isPhone && <div className="muted t-body">{t('share.menu_card_hint')}</div>}
@@ -360,12 +378,16 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     </div>
   );
 
-  const foot = (
+  // `equal` = кнопки одного размера (просьба Ильи для мобильного футера): на
+  // мобиле обёрнуты в `.row.grow`, поэтому уходят из-под правила `.lp-f > .btn`
+  // (там первая кнопка flex:1, вторая flex:2), а `.grow--fit` даёт им равный flex.
+  // Десктоп (`.dlg__foot`) — как было, кнопки естественной ширины.
+  const footBtns = (equal) => (
     <>
-      <Btn variant="secondary" icon="download" loading={building === 'download'} disabled={!ready || !!building} onClick={downloadCard}>
+      <Btn className={equal ? 'grow--fit' : ''} variant="secondary" icon="download" loading={building === 'download'} disabled={!ready || !!building} onClick={downloadCard}>
         {t('share.card_download')}
       </Btn>
-      <Btn variant="primary" icon="share" loading={building === 'share'} disabled={!ready || !!building} onClick={shareCard}>
+      <Btn className={equal ? 'grow--fit' : ''} variant="primary" icon="share" loading={building === 'share'} disabled={!ready || !!building} onClick={shareCard}>
         {t('share.card_share')}
       </Btn>
     </>
@@ -433,7 +455,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
               <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
             </div>
             <div className="lp-b">{body}</div>
-            {!overlayCode && <div className="lp-f">{foot}</div>}
+            {!overlayCode && <div className="lp-f"><Row className="grow">{footBtns(true)}</Row></div>}
           </div>
         </LpSheet>
         {editor}
@@ -442,7 +464,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   }
   return (
     <>
-      <Dialog title={t('share.card_title')} icon="image" size="wide" open={open} onOpenChange={onOpenChange} foot={overlayCode ? undefined : foot}>
+      <Dialog title={t('share.card_title')} icon="image" size="wide" open={open} onOpenChange={onOpenChange} foot={overlayCode ? undefined : footBtns(false)}>
         {body}
       </Dialog>
       {editor}
