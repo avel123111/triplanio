@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { zoneHome } from '@/components/site/zoneCta';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
 } from '@/components/site/SiteChrome';
 import { LEGAL, LEGAL_META, LEGAL_FOOT, LEGAL_UI } from './legalContent';
 
@@ -33,7 +33,6 @@ const DOCS = ['terms', 'privacy'];
 export default function Legal({ doc = 'terms' }) {
   const { lang, setLang } = useI18n();
   const cssReady = useSiteCss();
-  useSiteTheme(); // marketing zone follows the landing: light-only, restored on exit
 
   const active = LEGAL[doc] ? doc : 'terms';
   const d = LEGAL[active];

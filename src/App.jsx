@@ -116,11 +116,23 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Public read-only trip page - no auth needed
+  // Public read-only trip page - no auth needed.
+  // Страница — под <SiteZone>, как остальные шесть маршрутов зоны (TRIP-445):
+  // это ТА ЖЕ зона — та же шапка, тот же site.css, тот же переключатель языка.
+  // Пока эти две ветки стояли снаружи, оболочка была «одной на зону» только на
+  // словах: <html lang> ставил лендинг у себя в файле, поэтому публичка и
+  // приглашение оставались lang="en" на русской странице.
+  //
+  // ⚠️ Обёртка на МАРШРУТЕ, а не на всей ветке, и это замер, а не вкус: под
+  // site.css у голого `.btn` сайтовая база (пилюля 99px, border:0, padding
+  // 13/24), а PageNotFound собран из <Btn> app-ДС — 404 приезжал бы кнопкой из
+  // двух дизайн-систем (замерено: 13px 24px/99px/0 вместо 0 15px/10px/1px).
+  // 404 — не страница зоны: ни шапки, ни подвала, ни её ДС ему не нужно.
+  // <Suspense> и lazy тут не нужны — обе страницы в главном чанке.
   if (path.startsWith('/public/trip/')) {
     return (
       <Routes>
-        <Route path="/public/trip/:tripId" element={<PublicTrip />} />
+        <Route path="/public/trip/:tripId" element={<SiteZone><PublicTrip /></SiteZone>} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     );
@@ -131,7 +143,7 @@ const AuthenticatedApp = () => {
   if (path.startsWith('/join/')) {
     return (
       <Routes>
-        <Route path="/join/:token" element={<JoinTrip />} />
+        <Route path="/join/:token" element={<SiteZone><JoinTrip /></SiteZone>} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     );
