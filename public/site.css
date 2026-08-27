@@ -1405,11 +1405,47 @@ section{position:relative}
 
 .bcard>p{color:var(--muted);font-size: var(--fs-body);max-width:44ch}
 
-.bic{width:42px;height:42px;border-radius: var(--r-sm);display:grid;place-items:center;color:#fff;background:var(--brand);box-shadow:0 8px 18px -6px rgba(33,115,200,.5)}
+/* Плитка иконки: свечение — ЭТО заливка, только прозрачная. Раньше форма
+   `0 8px 18px -6px` была выписана трижды (и ещё пять раз в демо), каждый раз
+   с цветом, вбитым цифрами. Четыре из пяти цифровых цветов точно совпадали со
+   своей заливкой, пятый — синий — не совпадал ни с ней (`--brand`), ни с
+   `--brand-btn`: цвет был подобран на глаз. Теперь у плитки одна ручка `--bic`,
+   заливка и свечение берут её оба, разъехаться они больше не могут. */
+.bic{width:42px;height:42px;border-radius: var(--r-sm);display:grid;place-items:center;color:#fff;--bic:var(--brand);background:var(--bic);box-shadow:0 8px 18px -6px color-mix(in srgb, var(--bic) 50%, transparent)}
 
-.bic.warm{background:var(--sunset);box-shadow:0 8px 18px -6px rgba(255,158,74,.5)}
+.bic.warm{--bic:var(--sunset)}
 
-.bic.mint{background:var(--mint);box-shadow:0 8px 18px -6px rgba(46,194,126,.5)}
+.bic.mint{--bic:var(--mint)}
+
+/* Плитка иконки: форма тени была выписана восемь раз с цветом, вбитым
+   цифрами; теперь одна форма и одна ручка. Единственная СМЕНА цвета —
+   синее свечение: было `rgba(33,115,200,.5)`, стало полупрозрачный
+   `--brand`, то есть ровно заливка, как у остальных четырёх плиток. */
+/* visual-diff-exempt: .bic --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .bic background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .bic box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .demo --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-bic --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-bic background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-bic box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-mint --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-mint background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-mint box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-warm --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-warm background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-warm box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .mint --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .mint background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .mint box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .rose --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .rose background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .rose box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .vio --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .vio background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .vio box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .warm --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .warm background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .warm box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
 
 .b-map{grid-column:span 8;display:flex;flex-direction:column}
 
@@ -3227,24 +3263,50 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    прототипного `.sheet` с bottom-sheet приложения, но развели ФОРКОМ вместо
    реюза уже готового `.sheet-pane`. Копия убрана. */
 
-.demo{--brand:#2380D6; --brand-btn:#1E72C4; --brand-deep:#1B67B4;
-  --sky:#6FB4F4; --ice:#DFF0FD; --ink:#13324E; --muted:#516576;
-  --white:#FFFFFF; --mist:#F0F7FD; --band:#E2F0FB; --sand:#FDF3E5;
-  --sunset:#FF9E4A; --sunset-text:#A0632E;
-  --mint:#2EC27E;   --mint-text:#1C7A4F;
-  --violet:#7A5CF0; --violet-soft:#F0EBFE;
+/* Палитра демо — ТОЛЬКО то, чего нет у зоны. Здесь лежала копия 25 токенов
+   `html.site` байт-в-байт (`--brand`, `--ink`, `--shadow-*`, `--ease-out`…):
+   `useSiteCss()` вешает `html.site` на этом маршруте, поэтому копия ничего не
+   несла — она молча ФОРКАЛА палитру, и правка `--brand` в зоне обошла бы демо
+   стороной. Гарды такую копию не видят: 2p сверяет значения (они совпадали),
+   2o считает имена в `:root` (а это `.demo`). Снятие копии проверено полным
+   скриншотом страницы на 1440 и 390 — ноль различных пикселей.
+   Шрифтовые стеки тоже были копией, но УКОРОЧЕННОЙ (`"Onest",sans-serif`
+   против `'Onest', ui-sans-serif, system-ui, sans-serif`): при неподгрузившемся
+   Onest демо падало на родовой sans-serif, а остальная зона — на системный.
+   Сведено к зонному стеку; при загруженных шрифтах разницы нет.
+   Базовые тона `--violet`/`--rose`/`--coral` остаются здесь: у зоны объявлены
+   только их производные `*-text`/`*-tint`, самих баз на `html.site` нет. */
+.demo{--violet:#7A5CF0; --violet-soft:#F0EBFE;
   --rose:#E0568F;   --rose-soft:#FDEBF2;
-  --coral:#EE6A72;
-  --r-lg:22px; --r-md:15px;
-  --shadow-lg:0 24px 60px -18px rgba(11,44,84,.20);
-  --shadow-md:0 12px 32px -12px rgba(11,44,84,.14);
-  --shadow-sm:0 4px 14px -4px rgba(11,44,84,.10);
-  --font-display:"Onest",sans-serif;
-  --font-body:"Golos Text",sans-serif;
-  --ease-out:cubic-bezier(.22,1,.36,1);
-  --dur:.65s;
-  --sheet-r:clamp(26px,4vw,44px);--dev-bezel:linear-gradient(145deg,#454a52,#1b1e24 30%,#0e1013 60%,#2b2f36 85%,#0e1013);
-  --dev-shadow:0 55px 110px -34px rgba(7,30,56,.5),0 22px 42px -26px rgba(7,30,56,.42)}
+  --coral:#EE6A72}
+
+/* visual-diff-exempt: .demo --band — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --brand — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --brand-btn — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --brand-deep — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --dev-bezel — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --dev-shadow — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --dur — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --ease-out — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --ice — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --ink — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --mint — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --mint-text — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --mist — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --muted — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --r-lg — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --r-md — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sand — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --shadow-lg — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --shadow-md — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --shadow-sm — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sheet-r — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sky — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sunset — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sunset-text — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --white — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --font-display — стек сведён к зонному: копия была КОРОЧЕ (`"Onest",sans-serif`), теряла системные ступени фолбэка */
+/* visual-diff-exempt: .demo --font-body — то же */
 .demo .dm-pill{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-tiny);font-weight:700;padding:3px 9px;
   border-radius:99px;white-space:nowrap}
 .demo .dm-pill.done{background:#DCF5E9;color:#177A4D}
@@ -3253,12 +3315,14 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .dm-pill.hand{background:#EEF1F6;color:#4E5E70}
 .demo .dm-pill.ai{background:linear-gradient(120deg,var(--brand),var(--violet));color:#fff}
 .demo .dm-pill.pro{background:linear-gradient(120deg,#F7C86B,#E9A02F);color:#4A3000}
-.demo .dm-bic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff;background:var(--brand);
-  box-shadow:0 8px 18px -6px rgba(33,115,200,.5);flex:none}
-.demo .dm-bic.dm-warm{background:var(--sunset);box-shadow:0 8px 18px -6px rgba(255,158,74,.5)}
-.demo .dm-bic.dm-mint{background:var(--mint);box-shadow:0 8px 18px -6px rgba(46,194,126,.5)}
-.demo .dm-bic.vio{background:var(--violet);box-shadow:0 8px 18px -6px rgba(122,92,240,.5)}
-.demo .dm-bic.rose{background:var(--rose);box-shadow:0 8px 18px -6px rgba(224,86,143,.5)}
+/* Та же плитка, что `.bic` на лендинге, и та же ручка: заливка и свечение
+   берут `--bic`, поэтому разъехаться не могут (см. комментарий у `.bic`). */
+.demo .dm-bic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff;--bic:var(--brand);background:var(--bic);
+  box-shadow:0 8px 18px -6px color-mix(in srgb, var(--bic) 50%, transparent);flex:none}
+.demo .dm-bic.dm-warm{--bic:var(--sunset)}
+.demo .dm-bic.dm-mint{--bic:var(--mint)}
+.demo .dm-bic.vio{--bic:var(--violet)}
+.demo .dm-bic.rose{--bic:var(--rose)}
 .demo .dm-bic.sm{width:34px;height:34px;border-radius:10px}
 .demo .dm-av{border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none;font-family:var(--font-display)}
 .demo .dm-avs{display:flex}
