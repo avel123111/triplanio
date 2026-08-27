@@ -52,6 +52,28 @@ import { DEMO_PATH } from './src/pages/Demo/demoPath.js';
 // это для нас важнее, чем позиция в поиске Siri/Spotlight.
 const PREVIEW_UA_RE = /(facebookexternalhit|facebot|whatsapp|telegram|slack|discord|linkedin|pinterest|vkshare|vkontakte|embedly|iframely|skypeuripreview|twitter|redditbot|applebot|snapchat|viber|nuzzel|quora link preview|bitlybot|flipboard|tumblr|mastodon|bluesky)/i;
 
+// ★★ МАСКА ШИРОКАЯ ТАМ, ГДЕ ИНДЕКСИРОВАТЬ ЗАПРЕЩЕНО, И УЗКАЯ ТАМ, ГДЕ НУЖНО.
+//
+// У приглашения и публичной поездки в АДРЕСЕ лежит одноразовый токен доступа, и
+// защита от индексации у них ровно одна — `noindex` в этом самом HTML: в
+// `robots.txt` стоит `Allow: /` (и стоит намеренно — `Disallow` не дал бы
+// краулеру ЗАГРУЗИТЬ страницу, а значит и прочитать её `noindex`).
+//
+// Пока заглушку получал «любой бот», это работало. Разделение аудиторий выше
+// (поисковик обязан получить настоящее приложение) молча сняло защиту ИМЕННО С
+// ЭТИХ ДВУХ АДРЕСОВ: Googlebot стал получать SPA, в котором `noindex` не было
+// вовсе. Достаточно одной расшаренной ссылки, чтобы share-токен уехал в индекс.
+//
+// Поэтому правило одно и звучит так: на странице, которую индексировать НЕЛЬЗЯ,
+// заглушку с `noindex` получает ЛЮБОЙ бот — цена широкой маски здесь равна нулю,
+// терять в поиске нечего. На странице, которую индексировать НУЖНО (демо,
+// `/terms`, `/privacy` — они в `sitemap.xml`), маска остаётся поимённой.
+const BOT_UA_RE = /(bot|crawl|spider|slurp|preview|fetcher|facebookexternalhit|whatsapp|telegram|embedly|iframely)/i;
+
+// Адреса, у которых токен доступа в URL. Тот же список задаёт `noindex` в
+// `previewFor` — держать их порознь нельзя, поэтому предикат один.
+const isTokenPath = (pathname) => pathname.startsWith('/join/') || pathname.startsWith('/public/trip/');
+
 const ORIGIN = 'https://www.triplanio.com';
 
 /**
@@ -139,7 +161,10 @@ export default function middleware(request) {
   try {
     const { pathname } = new URL(request.url);
     const ua = request.headers.get('user-agent') || '';
-    if (!PREVIEW_UA_RE.test(ua)) return; // человек ИЛИ поисковик → SPA как обычно
+    // На токен-адресе заглушку получает любой бот (она несёт `noindex`), на
+    // остальных — только краулер превью: поисковику там нужно приложение.
+    const wants = isTokenPath(pathname) ? BOT_UA_RE.test(ua) : PREVIEW_UA_RE.test(ua);
+    if (!wants) return; // человек (и поисковик на индексируемом адресе) → SPA
     const html = previewFor(pathname);
     if (!html) return; // не наш адрес → SPA как обычно
     return new Response(html, {
