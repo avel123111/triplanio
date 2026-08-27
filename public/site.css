@@ -38,7 +38,7 @@ html.site {
   --font-display:'Onest', ui-sans-serif, system-ui, sans-serif;
   --font-body:'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
   /* --font-ui обязателен (ревью TRIP-460): app.css :root держит --font-ui:Geologica,
-     и канон .t-* типографирует co-селекторы зоны (.btn/.footer/.nav/.eyebrow/.lede)
+     и канон .t-* типографирует co-селекторы зоны (.btn/.nav/.eyebrow/.lede)
      этим токеном. Без переопределения половина зоны рендерится Geologica. */
   --font-ui: var(--font-body);
   --ease-out:cubic-bezier(.22,1,.36,1);
