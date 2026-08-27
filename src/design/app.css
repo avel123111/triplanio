@@ -9387,8 +9387,15 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-note .en-tx span { color: var(--ink-2); }
 @media (max-width: 640px) { .empty-note { flex-wrap: wrap; } .empty-note .btn { flex: 1 1 100%; width: 100%; } }
 
-/* ghost skeleton-with-zeros (empty state): desaturate the live frame */
-.stats-ghost .is-ghost { opacity: .5; filter: saturate(.45); pointer-events: none; }
+/* TRIP-264: приглушение стат-геро в 0-состоянии выпилено (Pavel) — правило
+   `.stats-ghost .is-ghost` (opacity/saturate/pointer-events) снято, вместе с ним
+   и разметочные литералы `stats-ghost`/`is-ghost`. Снятие объявлений заявлено 2p:
+   visual-diff-exempt: .stats-ghost opacity — приглушение 0-состояния статистики выпилено (TRIP-264, апрув Pavel)
+   visual-diff-exempt: .stats-ghost filter — приглушение 0-состояния статистики выпилено (TRIP-264, апрув Pavel)
+   visual-diff-exempt: .stats-ghost pointer-events — приглушение 0-состояния статистики выпилено (TRIP-264, апрув Pavel)
+   visual-diff-exempt: .is-ghost opacity — приглушение 0-состояния статистики выпилено (TRIP-264, апрув Pavel)
+   visual-diff-exempt: .is-ghost filter — приглушение 0-состояния статистики выпилено (TRIP-264, апрув Pavel)
+   visual-diff-exempt: .is-ghost pointer-events — приглушение 0-состояния статистики выпилено (TRIP-264, апрув Pavel) */
 
 /* — map controls + legend + fullscreen (over the .mapwrap surface) — */
 /* ★TRIP-344/337: `.map-ctl` — плашка-подложка (фон/рамка из surface-канона выше,

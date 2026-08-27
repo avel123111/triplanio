@@ -122,24 +122,25 @@ function NextTripCard({ trip, onClick, t }) {
   );
 }
 
-function NoNextCard({ variant, onPlan, t }) {
-  const isEmpty = variant === 'empty';
+// Ровно ДВА состояния виджета «Ближайшая поездка»: есть будущий трип →
+// <NextTripCard>, нет будущего (неважно, есть прошлые или нет) → эта карточка с
+// приглашением запланировать. Никакого «пустого» варианта без кнопки — оба
+// бестрипных случая ведут в один и тот же CTA.
+function NoNextCard({ onPlan, t }) {
   return (
     <Card radius="lg" className="nonext">
       <Tile as="span"><Icon name="calendar" /></Tile>
       <div>
         <b>{t('stats.next_trip')}</b>
-        <p>{isEmpty ? t('stats.next_empty_sub') : t('stats.no_planned_sub')}</p>
+        <p>{t('stats.no_planned_sub')}</p>
       </div>
-      {!isEmpty && (
-        <Btn variant="primary" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
-      )}
+      <Btn variant="primary" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
     </Card>
   );
 }
 
 // ─── Map hero + rail (shared by filled + empty screens) ────────────────────────
-function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onYearReview, onPlan, onOpenNext, t, ghost = false }) {
+function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onYearReview, onPlan, onOpenNext, t }) {
   const items = [
     { key: 'countries', value: home.countries, label: t('stats.sb_countries'), icon: <Icon name="globe" /> },
     { key: 'cities',    value: home.cities,    label: t('stats.sb_cities'),     tone: 'city',     icon: <Icon name="buildings" /> },
@@ -155,9 +156,8 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
           <StatBarCta label={t('stats.year_review')} onClick={onYearReview} variant="secondary" leadingIcon="calendar" />
           <StatBarCta label={t('stats.all_stats')} onClick={onAllStats} variant="soft" icon="arrowR" />
         </>}
-        className={ghost ? 'is-ghost' : ''}
       />
-      <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
+      <div className="dash-hero">
         <div className="mapwrap">
           {showMap
             ? <StatsMap points={points} colorScheme={scheme} pins={false} />
@@ -171,7 +171,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
           />
           {nextTrip
             ? <NextTripCard trip={nextTrip} onClick={onOpenNext} t={t} />
-            : <NoNextCard variant={home.trips > 0 ? 'no-planned' : 'empty'} onPlan={onPlan} t={t} />}
+            : <NoNextCard onPlan={onPlan} t={t} />}
         </div>
       </div>
     </>
@@ -644,7 +644,7 @@ export default function Trips() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className={`app-shell${!isLoadingData && allTrips.length === 0 ? ' stats-ghost' : ''}`}>
+    <div className="app-shell">
 
       {/* APP HEADER */}
       <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
@@ -694,7 +694,6 @@ export default function Trips() {
               onPlan={() => openChoice()}
               onOpenNext={() => nextTrip && nav(`/trip/${nextTrip.id}`)}
               t={t}
-              ghost={!isLoadingData && allTrips.length === 0}
             />
           </>
         )}
