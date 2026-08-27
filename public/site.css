@@ -1965,19 +1965,39 @@ section{position:relative}
 
 .footer-links{display:flex;flex-wrap:wrap;gap:10px 30px;align-items:center;padding-top:6px}
 
-/* зона нажатия 44px без изменения внешнего вида (WCAG 2.5.8): эти ссылки
-   визуально мелкие — 23..34px, — но палец должен попадать */
-.footer-links a,.copy,.aud-card .tagline,.share-url{position:relative}
+/* ЗОНА НАЖАТИЯ 44px — один список на всю зону (WCAG 2.5.8 требует 24×24).
+   Перечисленные элементы визуально мелкие (15..22px по высоте), оверлей
+   ничего не двигает и ничего не красит — он меняет только то, куда попадает
+   палец. Список зонный, не подвальный: `.copy` и `.share-url` живут на демо
+   и публичной странице, `.doc-print` — в шапке юр-документа.
+   ★ Подвальный ряд адресуется ПО РЯДУ (`> *`), а не перечислением тегов: в
+   макете это четыре <a>, в коде «Cookies» — <button> (перевызов баннера
+   согласия, не переход), и перечисление уже дважды забывало про него —
+   сперва кегль (кнопка оставалась на 15.68px против 13.6px у соседей),
+   потом зона нажатия (54×22 при пороге 24). Ряд — одна вещь, у неё одно
+   правило; новый элемент подвала получает и кегль, и зону по построению. */
+.footer-links > *,.copy,.aud-card .tagline,.share-url,.doc-print{position:relative}
 
-.footer-links a::after,.copy::after,.aud-card .tagline::after,.share-url::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
+.footer-links > *::after,.copy::after,.aud-card .tagline::after,.share-url::after,.doc-print::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
 
-/* Кнопка «Cookies» стоит в одном ряду со ссылками и обязана выглядеть так же.
-   В макете это <a>; здесь нужен <button> (перевызов баннера согласия — не
-   переход), а правило таргетило только a, и кнопка оставалась на кегле body:
-   15.68px против 13.6px у соседей. */
-.footer-links a, .footer-links button{font-size: var(--fs-body);color:inherit;transition:color .2s}
+.footer-links > *{font-size: var(--fs-body);color:inherit;transition:color .2s}
 
-.footer-links a:hover{color:var(--ink)}
+.footer-links > *:hover{color:var(--ink)}
+
+/* Ф10 (TRIP-455). Ряд подвала переехал с перечисления тегов на `> *`: значения
+   те же, ключ у 2p другой — объявляем каждое снятие. */
+/* visual-diff-exempt: .footer-links a position — ряд адресуется по ряду: то же правило на `.footer-links > *` */
+/* visual-diff-exempt: .footer-links a font-size — то же */
+/* visual-diff-exempt: .footer-links a transition — то же */
+/* visual-diff-exempt: .footer-links button font-size — то же */
+/* visual-diff-exempt: .footer-links button transition — то же */
+/* visual-diff-exempt: .footer-links a::after content — оверлей зоны нажатия там же, на `> *` */
+/* visual-diff-exempt: .footer-links a::after position — то же */
+/* visual-diff-exempt: .footer-links a::after left — то же */
+/* visual-diff-exempt: .footer-links a::after right — то же */
+/* visual-diff-exempt: .footer-links a::after top — то же */
+/* visual-diff-exempt: .footer-links a::after height — то же */
+/* visual-diff-exempt: .footer-links a::after transform — то же */
 
 @media (max-width:560px){.footer-min{flex-direction:column;gap:20px}}
 
@@ -3573,6 +3593,17 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .doc-print{display:inline-flex;align-items:center;gap:7px;color:var(--brand-deep);font-size:var(--fs-small);font-weight:600;cursor:pointer}
 .doc-print svg{width:15px;height:15px}
 .doc-print:hover{text-decoration:underline;text-underline-offset:3px}
+/* Зона нажатия у кнопки — 52×21, ниже порога 24×24. Оверлей объявлен ОДНИМ
+   зонным списком (`.footer-links > *,…,.doc-print` в блоке подвала), чтобы
+   идиома у зоны была одна; здесь — только след для читателя этого блока. */
+/* visual-diff-exempt: .doc-print position — хозяин оверлея зоны нажатия */
+/* visual-diff-exempt: .doc-print::after content — оверлей зоны нажатия, 52×21 → 52×44 */
+/* visual-diff-exempt: .doc-print::after position — то же */
+/* visual-diff-exempt: .doc-print::after left — то же */
+/* visual-diff-exempt: .doc-print::after right — то же */
+/* visual-diff-exempt: .doc-print::after top — то же */
+/* visual-diff-exempt: .doc-print::after height — то же */
+/* visual-diff-exempt: .doc-print::after transform — то же */
 /* при переносе строки точка-разделитель оказалась бы первым символом новой
    строки — на узком экране разделяем только пробелом */
 @media (max-width:600px){.doc-meta{gap:6px 16px}
