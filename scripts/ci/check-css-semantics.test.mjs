@@ -34,7 +34,22 @@ function put(dir, path, body) {
   writeFileSync(full, body);
 }
 
-function fixture(t, { base = {}, head = {}, commitHead = true }) {
+/* ★ ФИКСТУРА ОБЯЗАНА ПОДКЛЮЧАТЬ СВОЙ CSS. Гард не считает каскадом таблицу, на
+ * которую в дереве не осталось ни одной ссылки (мёртвый файл не приезжает в
+ * браузер и ничего не выигрывает — см. докблок `listCss`). Репозиторий из
+ * одного `.css` и никого больше — это не «репозиторий без импортов», это
+ * репозиторий, где ВЕСЬ CSS мёртв: без этой строки все тесты ниже мерили бы
+ * пустую карту и были бы зелёными по любой мутации.
+ *
+ * Файл-загрузчик пишется РЯДОМ и перечисляет то, что фикстура создала на этой
+ * стороне, — ровно так же, как это делает `main.jsx` в настоящем дереве. Тесты
+ * на сам предикат достижимости от него отказываются (`loadCss: false`). */
+function loaders(dir, files) {
+  const css = Object.keys(files).filter((p) => p.endsWith('.css'));
+  put(dir, 'src/__loaders.jsx', css.map((p) => `import '${p}';`).join('\n') + '\n');
+}
+
+function fixture(t, { base = {}, head = {}, commitHead = true, loadCss = true }) {
   const dir = mkdtempSync(join(tmpdir(), 'guard2p-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   git(dir, ['init', '-q', '-b', 'main']);
@@ -45,11 +60,13 @@ function fixture(t, { base = {}, head = {}, commitHead = true }) {
 
   for (const [p, body] of Object.entries(base)) put(dir, p, body);
   put(dir, '.keep', '');
+  if (loadCss) loaders(dir, base);
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-qm', 'base']);
   const baseRef = git(dir, ['rev-parse', 'HEAD']).trim();
 
   for (const [p, body] of Object.entries(head)) put(dir, p, body);
+  if (loadCss) loaders(dir, { ...base, ...head });
   if (commitHead) {
     git(dir, ['add', '-A']);
     git(dir, ['commit', '-qm', 'head', '--allow-empty']);
@@ -1410,6 +1427,82 @@ test('★ CSS-файл СНЕСЁН в рабочем дереве (ещё не 
   assert.doesNotMatch(out, /ENOENT/, out);
   assert.equal(code, 1, out);
   assert.match(out, /\.gone display/, out);
+});
+
+/* ─────────── достижимость: мёртвая таблица стилей не входит в каскад ─────────
+ * Гард моделировал каскад «все .css периметра», и это неверно ровно для одного
+ * случая — таблицы, на которую не осталось ссылок. В этом дереве такой файл был
+ * один (`src/pages/login.css`, 705 строк, мёртв с Ф6.5) и держал ПОБЕДИТЕЛЯ у
+ * 472 ключей: гард печатал не то значение, которое видит человек, и настоящая
+ * правка в `app.css` по этим ключам проходила ЗЕЛЁНОЙ. Тесты ниже пинят обе
+ * половины: что мёртвое не считается и что живое считается по-прежнему.        */
+
+test('★★ мёртвая таблица НЕ выигрывает ключ — правка живого файла КРАСНАЯ', (t) => {
+  // Ровно форма дефекта: dead.css выиграл бы `.field gap` (ранг выше при равной
+  // специфичности), и подмена значения в app.css была бы невидима.
+  const f = fixture(t, {
+    base: {
+      'src/main.jsx': "import 'src/design/app.css';\n",
+      'src/design/app.css': '.field { gap: 7px; }\n',
+      'src/pages/dead.css': '.field { gap: 6px; }\n',
+    },
+    head: { 'src/design/app.css': '.field { gap: 77px; }\n' },
+    loadCss: false,
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, 'правка живого значения обязана краснеть, а не прятаться за мёртвым файлом');
+  assert.match(out, /\.field gap: 7px → 77px/);
+});
+
+test('★★ снос мёртвой таблицы — ЗЕЛЁНЫЙ, без единого маркера-обхода', (t) => {
+  // Иначе выпил 705 мёртвых строк стоит 472 `visual-diff-exempt` — то есть
+  // уборка увеличивает ровно тот долг, ради которого затевалась.
+  const f = fixture(t, {
+    base: {
+      'src/main.jsx': "import 'src/design/app.css';\n",
+      'src/design/app.css': '.field { gap: 7px; }\n',
+      'src/pages/dead.css': '.field { gap: 6px; }\n',
+    },
+    head: {},
+    commitHead: false,
+    loadCss: false,
+  });
+  rmSync(join(f.dir, 'src/pages/dead.css'));
+  git(f.dir, ['add', '-A']);
+  git(f.dir, ['commit', '-qm', 'drop dead css']);
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /не изменились/);
+});
+
+test('★ ссылка из HTML — файл ЖИВОЙ (так подключён fonts.css)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'index.html': '<link rel="stylesheet" href="/src/design/fonts.css">\n',
+      'src/design/fonts.css': '.brand { letter-spacing: 1px; }\n',
+    },
+    head: { 'src/design/fonts.css': '.brand { letter-spacing: 9px; }\n' },
+    loadCss: false,
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, 'таблица, подключённая из HTML, обязана остаться под наблюдением');
+  assert.match(out, /\.brand letter-spacing: 1px → 9px/);
+});
+
+test('★ подключение рантайм-тегом по ИМЕНИ — файл живой (так подключён site.css)', (t) => {
+  // Предикат по имени файла, а не по разбору `import`: `useSiteCss()` вешает
+  // <link> сама, и разбор импортов похоронил бы всю сайтовую зону разом.
+  const f = fixture(t, {
+    base: {
+      'src/useSiteCss.js': "const HREF = '/site.css';\nexport default HREF;\n",
+      'public/site.css': '.hero { padding: 10px; }\n',
+    },
+    head: { 'public/site.css': '.hero { padding: 40px; }\n' },
+    loadCss: false,
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, 'site.css приезжает рантайм-тегом и обязан остаться под наблюдением');
+  assert.match(out, /\.hero padding: 10px → 40px/);
 });
 
 /* ──────────────── периметр: две папки, и `public` в их числе ────────────────
