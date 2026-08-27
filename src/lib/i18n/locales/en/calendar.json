@@ -1,6 +1,4 @@
 {
-  "all_day": "All day",
-  "collapse": "Collapse",
   "free_day": "Free day",
   "legend_group_cities": "Cities",
   "month": "Month",
@@ -10,5 +8,6 @@
   "prev": "Previous",
   "to_trip_start": "To trip start",
   "today": "Today",
-  "week": "Week"
+  "week": "Week",
+  "week_word": "week"
 }
