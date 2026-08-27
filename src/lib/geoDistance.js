@@ -6,9 +6,9 @@
 // оба: `trip-stats.js` ре-экспортирует её дальше, чтобы существующие импортёры
 // (`ManualPlanner.jsx`) не заметили переезда.
 //
-// ⚠ В репозитории ЕЩЁ ДВЕ копии того же haversine — `src/components/views/MapView.jsx`
-// и `src/lib/routing.js`. Они не тронуты (другая задача, другой риск), но дом для
-// схлопывания теперь есть.
+// Копия формулы, жившая в `MapView.jsx` (`legKm`), схлопнута сюда же. В
+// `routing.js` копии НЕТ: `geodesicLine` строит дугу и угловое расстояние там —
+// промежуточная величина внутри интерполяции, а не то же самое число.
 
 /** Great-circle distance between two [lat, lng] points, in km (haversine). */
 export function haversineKm(aLat, aLng, bLat, bLng) {

@@ -1,7 +1,7 @@
 // Unit tests for Stay22 mapping + param building. Run: npm test (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeStay22, buildStay22Params, boxAround, POOL_BOX_KM, todayLocal, ensureNextDay, filterParams, applyClientFilters, BASE_HOTEL_FILTERS, STAY22_FILTER_SPEC } from './stay22-normalize.js';
+import { normalizeStay22, buildStay22Params, boxAround, POOL_BOX_KM, GEO_MODES, todayLocal, ensureNextDay, filterParams, applyClientFilters, BASE_HOTEL_FILTERS, STAY22_FILTER_SPEC } from './stay22-normalize.js';
 
 const SAMPLE = {
   meta: { pageSize: 10, count: 3, page: 1, hasMore: true, total: 32, currency: 'USD', checkin: '2026-10-05', checkout: '2026-10-10', nights: 5 },
@@ -203,12 +203,28 @@ test('boxAround: у полюса долгота не улетает в беск�
 
 test('buildStay22Params: режим коробки шлёт четыре угла и НЕ шлёт точку', () => {
   const visit = { id: 'c1', latitude: 34.05223, longitude: -118.24368, start_date: '2026-09-02', end_date: '2026-09-06' };
-  const p = buildStay22Params({ visit, currency: 'EUR', box: true, today: '2026-08-26' });
+  const p = buildStay22Params({ visit, currency: 'EUR', geo: 'box', today: '2026-08-26' });
   assert.ok(!('lat' in p) && !('lng' in p)); // гео уходит ОДНО
   for (const k of ['swlat', 'swlng', 'nelat', 'nelng']) assert.equal(typeof p[k], 'number');
   // Даты и прочее не зависят от гео-режима.
   assert.equal(p.checkin, '2026-09-02');
   assert.equal(p.checkout, '2026-09-06');
+});
+
+test('GEO_MODES: список режимов — он же порядок склейки', () => {
+  assert.deepEqual(GEO_MODES, ['point', 'box']);
+});
+
+test('неизвестный режим не молчит боком: тело собирается точкой, а не пустым гео', () => {
+  const visit = { id: 'c1', latitude: 34.05223, longitude: -118.24368, start_date: '2026-09-02', end_date: '2026-09-06' };
+  const p = buildStay22Params({ visit, currency: 'EUR', geo: 'нечто', today: '2026-08-26' });
+  assert.equal(p.lat, 34.05223); // деградация в точку, а не запрос без координат
+});
+
+test('distanceKm: битый центр даёт null, а не NaN (NaN «равен» всему при сортировке)', () => {
+  const r = { id: 'x', suppliers: {}, location: { coordinates: [-118.24, 34.05] }, rating: {} };
+  assert.equal(normalizeStay22({ results: [r] }, { lat: NaN, lng: -118.24 }).hotels[0].distanceKm, null);
+  assert.equal(normalizeStay22({ results: [r] }, { lat: 34.05 }).hotels[0].distanceKm, null);
 });
 
 test('buildStay22Params: без флага коробки тело прежнее — точка, углов нет', () => {
@@ -221,8 +237,8 @@ test('buildStay22Params: без флага коробки тело прежне�
 
 test('отсечка прошлых дат действует в ОБОИХ режимах', () => {
   const past = { id: 'c1', latitude: 34.05, longitude: -118.24, start_date: '2026-08-20', end_date: '2026-08-24' };
-  assert.equal(buildStay22Params({ visit: past, box: false, today: '2026-08-26' }), null);
-  assert.equal(buildStay22Params({ visit: past, box: true, today: '2026-08-26' }), null);
+  assert.equal(buildStay22Params({ visit: past, geo: 'point', today: '2026-08-26' }), null);
+  assert.equal(buildStay22Params({ visit: past, geo: 'box', today: '2026-08-26' }), null);
 });
 
 // ── Расстояние и порядок склеенного пула ────────────────────────────────────

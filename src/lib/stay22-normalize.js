@@ -73,8 +73,22 @@ function mapResult(r, currency, center) {
     // Удаление от центра города. Нужно, потому что пул склеен из ДВУХ выдач с
     // разным порядком: без общей меры «recommended» стал бы порядком склейки,
     // то есть случайностью, которая выглядит как решение.
-    distanceKm: center && coords ? haversineKm(center.lat, center.lng, coords.lat, coords.lng) : null,
+    distanceKm: distanceFrom(center, coords),
   };
+}
+
+/**
+ * Удаление отеля от центра города, `null` когда посчитать нечем. Именно `null`, а
+ * не `NaN`: компаратор `byNumberAsc` уводит `null` в конец списка (`?? Infinity`),
+ * а `NaN` из этой проверки выскальзывает и делает сравнение бессмысленным —
+ * `NaN < x` и `NaN > x` оба ложны, так что элемент «равен» всему подряд и
+ * рассыпается по списку случайным образом.
+ */
+function distanceFrom(center, coords) {
+  if (!center || !coords) return null;
+  if (!Number.isFinite(center.lat) || !Number.isFinite(center.lng)) return null;
+  const km = haversineKm(center.lat, center.lng, coords.lat, coords.lng);
+  return Number.isFinite(km) ? km : null;
 }
 
 export function normalizeStay22(data, center = null) {
@@ -166,6 +180,11 @@ export function todayLocal(now = new Date()) {
 // просто добавляет мало (Монтерей +17) — там больше физически ничего нет.
 export const POOL_BOX_KM = 12;
 
+// Гео-режимы пула ОДНИМ списком — он же порядок склейки. Список, а не булев
+// флаг: третий источник (например, видимая область карты) добавится строкой
+// сюда, а не разветвлением каждого места, где сегодня стоит `box ? … : …`.
+export const GEO_MODES = ['point', 'box'];
+
 const KM_PER_DEG_LAT = 111.32;
 
 /**
@@ -201,7 +220,7 @@ export function boxAround(lat, lng, km = POOL_BOX_KM) {
 //     забронировать, а оставшиеся — можно, и это единственный осмысленный
 //     диапазон для человека в середине поездки.
 // `today` параметром — чтобы функция осталась чистой и проверяемой тестом.
-export function buildStay22Params({ visit, currency, lang, page, pageSize, filters, box = false, today = todayLocal() }) {
+export function buildStay22Params({ visit, currency, lang, page, pageSize, filters, geo = 'point', today = todayLocal() }) {
   const lat = visit?.latitude;
   const lng = visit?.longitude;
   if (lat == null || lng == null) return null;
@@ -214,7 +233,7 @@ export function buildStay22Params({ visit, currency, lang, page, pageSize, filte
   // нас выбирал бы edge, а не мы (там коробка выигрывает), и по телу запроса
   // нельзя было бы понять, что именно спрашивали.
   return {
-    ...(box ? boxAround(Number(lat), Number(lng)) : { lat, lng }),
+    ...(geo === 'box' ? boxAround(Number(lat), Number(lng)) : { lat, lng }),
     ...(checkin && { checkin }),
     ...(checkout && { checkout }),
     ...(currency && { currency }),
@@ -227,14 +246,14 @@ export function buildStay22Params({ visit, currency, lang, page, pageSize, filte
 
 // ── v2 pool (TRIP-141): all-pages load + single client pool ──────────────────
 // Сколько РАУНДОВ мы берём и жёсткий потолок пула. Раунд = ОДНА страница из
-// каждого гео-режима (точка + коробка), то есть два запроса; раунд 1 красит
-// экран, раунды 2..POOL_PAGES догружаются одним фоновым залпом.
+// каждого НЕИСЧЕРПАННОГО гео-режима; раунд 1 красит экран, раунды
+// 2..POOL_ROUNDS догружаются одним фоновым залпом.
 //
 // Раундов два, а не три: с двумя источниками бюджет запросов на раунд удвоился,
 // а пул всё равно упирается в POOL_MAX раньше — на Лос-Анджелесе точка даёт 234
 // и коробка 171, то есть потолок в 300 выбирается уже на втором раунде, и третий
-// был бы четырьмя запросами в мусор.
-export const POOL_PAGES = 2;
+// был бы запросами в мусор.
+export const POOL_ROUNDS = 2;
 export const POOL_MAX = 300;
 
 // Merging pooled pages is the SHARED fork-pool merge (mergeById in forkPool.js);
