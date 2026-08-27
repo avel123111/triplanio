@@ -68,7 +68,7 @@ export default function Legal({ doc = 'terms' }) {
         <section className="doc" id="doc" data-hdr="light">
           <div className="wrap">
             <div className="doc-head">
-              <span className="eyebrow">{LEGAL_UI.eyebrow}</span>
+              <span className="brow">{LEGAL_UI.eyebrow}</span>
               <h1 className="doc-title">{d.title}</h1>
               <p className="doc-lede">{d.lede}</p>
               <div className="doc-meta">

@@ -129,7 +129,7 @@ export default function DemoTrip() {
         <section className="route-sec section-pad" id="route">
           <div className="wrap">
             <div className="section-head rv">
-              <span className="eyebrow">{t('landing.demo.route.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.route.eyebrow')}</span>
               <h2>{t('landing.demo.route.h2a')} <span className="accent">{t('landing.demo.route.h2b')}</span></h2>
               <p>{t('landing.demo.route.p')}</p>
             </div>
@@ -156,7 +156,7 @@ export default function DemoTrip() {
         <section className="tl-sec sheet-pane section-pad" id="timeline">
           <div className="wrap">
             <div className="section-head centered rv">
-              <span className="eyebrow">{t('landing.demo.tl.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.tl.eyebrow')}</span>
               <h2>{t('landing.demo.tl.h2a')} <span className="accent">{t('landing.demo.tl.h2b')}</span></h2>
               <p>{t('landing.demo.tl.p')}</p>
             </div>
@@ -204,7 +204,7 @@ export default function DemoTrip() {
         <section className="bud-sec section-pad" id="budget">
           <div className="wrap">
             <div className="section-head rv">
-              <span className="eyebrow">{t('landing.demo.bud.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.bud.eyebrow')}</span>
               <h2>{t('landing.demo.bud.h2a')} <span className="accent">{t('landing.demo.bud.h2b')}</span></h2>
               <p>{t('landing.demo.bud.p')}</p>
             </div>
@@ -249,7 +249,7 @@ export default function DemoTrip() {
         <section className="more-sec sheet-pane section-pad" id="more">
           <div className="wrap">
             <div className="section-head centered rv">
-              <span className="eyebrow">{t('landing.demo.more.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.more.eyebrow')}</span>
               <h2>{t('landing.demo.more.h2a')} <span className="accent">{t('landing.demo.more.h2b')}</span></h2>
               <p>{t('landing.demo.more.p')}</p>
             </div>
@@ -335,7 +335,7 @@ export default function DemoTrip() {
         <section className="team-sec section-pad" id="team">
           <div className="wrap">
             <div className="section-head rv">
-              <span className="eyebrow">{t('landing.demo.team.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.team.eyebrow')}</span>
               <h2>{t('landing.demo.team.h2a')} <span className="accent">{t('landing.demo.team.h2b')}</span></h2>
               <p dangerouslySetInnerHTML={{ __html: t('landing.demo.team.p') }} />
             </div>
@@ -431,7 +431,7 @@ export default function DemoTrip() {
               </div>
             </div>
             <div className="rv-r">
-              <span className="eyebrow">{t('landing.demo.tg.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.tg.eyebrow')}</span>
               <h2 className="tg-h2">{t('landing.demo.tg.h2a')} <span className="accent">{t('landing.demo.tg.h2b')}</span></h2>
               <p className="tg-lede">{t('landing.demo.tg.p')}</p>
               <ul className="tg-points">
