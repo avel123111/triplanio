@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useZoneCta } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
+import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { WORLD_MAP_SVG } from './WorldMapSvg';
@@ -44,7 +45,7 @@ function useHeroFrame(ready) {
     const FRAME = { ar: 3400 / 1914, zoom: 1.08, cx: 0.5026, cy: 0.4833, box: [0.4297, 0.1907, 0.5756, 0.7759] };
     const A = FRAME, B = FRAME;
     const TX = 0.68, TY = 0.452; // where the phone centre lands inside the viewport
-    const mq = window.matchMedia('(max-width:980px)');
+    const mq = window.matchMedia(ZONE_BELOW_DESKTOP_MQ);
 
     const apply = (el, w, h, l, t) => {
       el.style.backgroundSize = `${w.toFixed(1)}px ${h.toFixed(1)}px`;

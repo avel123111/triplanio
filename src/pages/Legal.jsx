@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { zoneHome } from '@/components/site/zoneCta';
+import { useZoneDesktop } from '@/components/site/zoneBreakpoint';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import {
   SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
@@ -42,6 +43,22 @@ export default function Legal({ doc = 'terms' }) {
   // (prototype's sticky-TOC highlight). Re-arms when the CSS goes live (sections
   // mount) and when the active document changes.
   const [activeId, setActiveId] = useState(d.toc[0]?.id);
+
+  // ОГЛАВЛЕНИЕ: на десктопе — липкая колонка, ниже границы зоны — аккордеон,
+  // закрытый по умолчанию. Так в макете, и это не косметика: раскрытым на
+  // телефоне оно отдаёт читателю целый экран из полутора десятков ссылок
+  // ВМЕСТО первого абзаца документа.
+  //
+  // ★ На десктопе `open` обязан быть true ВСЕГДА: там `site.css` прячет саму
+  // кнопку (`.doc-toc > summary { display: none }` в десктопном @media),
+  // потому что колонка развёрнута по построению. Закрыть его там — значит
+  // спрятать оглавление без единого способа открыть.
+  //
+  // Само число границы здесь НЕ повторяется — оно живёт в `zoneBreakpoint.js`
+  // вместе с разбором, почему у зоны она своя, а не приложенческие 640.
+  const desktop = useZoneDesktop();
+  const [tocOpen, setTocOpen] = useState(desktop);
+  useEffect(() => { setTocOpen(desktop); }, [desktop]);
   useEffect(() => {
     setActiveId(d.toc[0]?.id);
     if (!cssReady) return undefined;
@@ -93,12 +110,25 @@ export default function Legal({ doc = 'terms' }) {
             </div>
 
             <div className="doc-grid">
-              <details className="doc-toc" open>
+              <details
+                className="doc-toc"
+                open={tocOpen}
+                onToggle={(e) => setTocOpen(e.currentTarget.open)}
+              >
                 <summary>
                   <span>{LEGAL_UI.contents}</span>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chev" /></svg>
                 </summary>
-                <nav className="doc-toc-list" aria-label={LEGAL_UI.contents}>
+                {/* Схлопнуть после перехода к разделу — иначе человек приземляется
+                    под той же стеной ссылок, из которой только что выбирал. По
+                    клику именно на ПУНКТ, как в макете: промах мимо ссылки не
+                    должен закрывать список. На десктопе схлопывать нечего —
+                    там кнопки нет. */}
+                <nav
+                  className="doc-toc-list"
+                  aria-label={LEGAL_UI.contents}
+                  onClick={(e) => { if (!desktop && e.target.closest('a')) setTocOpen(false); }}
+                >
                   {d.toc.map((s, i) => (
                     <a key={s.id} href={`#${s.id}`} className={s.id === activeId ? 'doc-on' : undefined}>
                       <span className="doc-n">{i + 1}</span>{s.title}
