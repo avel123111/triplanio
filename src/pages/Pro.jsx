@@ -1,6 +1,8 @@
 // @ts-check
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
@@ -68,6 +70,21 @@ export default function Pro() {
     && searchParams.get('hidePerTrip') !== '1'
     && tripState?.isOwner !== false
     && tripState?.isPro !== true;
+
+  // ★ ВИТРИНА НЕ ЖДЁТ ДВЕРЬ. Имя и обложку экран трипа уже держит в кэше
+  // (`['trip-shell', tripId]` — тот же ключ, что читает сам трип), а внутрь Pro
+  // ведут только его кнопки. Читаем этот кэш НАБЛЮДАТЕЛЕМ (`enabled: false` —
+  // никогда не фетчит, владелец запроса — экран трипа; тот же приём, что в
+  // `useEntitySource`), поэтому плашка рисуется с названием в ПЕРВОМ кадре, без
+  // единого лишнего запроса. Копии данных не заводим: как только приезжает
+  // ответ двери, он и становится источником — кэш лишь закрывает ожидание.
+  // Наблюдатель без `queryFn` типизируется как `unknown` — форму читаемого куска
+  // объявляем здесь (нужны ровно два поля строки трипа, оба в snake_case из БД).
+  /** @typedef {{ trip?: { title?: string|null, cover_image_url?: string|null } }} TripShellCache */
+  const shellQuery = useQuery({ queryKey: TRIP_SHELL_KEY(tripId), enabled: false });
+  const shell = /** @type {TripShellCache|undefined} */ (shellQuery.data);
+  const offerTrip = tripState?.trip
+    || (shell?.trip ? { title: shell.trip.title, coverImageUrl: shell.trip.cover_image_url } : null);
 
   // Revenue funnel top: every pricing view + a distinct paywall impression when a
   // feature gate sent the user here (?from=paywall). Fire once per mount.
@@ -222,6 +239,12 @@ export default function Pro() {
 
   const tripPrice = renderPrice('trip_pro_lifetime');
   const busy = !!loadingPlan;
+  // Плашка-скелетон стоит, пока НЕ ЗНАЕМ, о каком путешествии речь: фоллбек-обложка
+  // с пустым заголовком рядом со скелетонами тарифов — враньё картинкой. Ответ двери
+  // снимает ожидание В ЛЮБОМ случае (в том числе неуспехом), иначе сбой сети оставил
+  // бы вечный скелетон и убил единственный вход в покупку pro_trip; без имени плашка
+  // просто теряет строку заголовка, подзаголовок договаривает смысл сам.
+  const offerPending = (pricesLoading && !prices) || (!offerTrip && tripState === null);
 
   return (
     <div className="pro-page app-shell">
@@ -269,7 +292,7 @@ export default function Pro() {
 
         {/* ── Плашка «Pro для этого путешествия» ── Скелетон повторяет её
             геометрию, чтобы при подстановке настоящей ничего не прыгало. */}
-        {showTripOffer && (pricesLoading && !prices ? (
+        {showTripOffer && (offerPending ? (
           <Card radius="btn" className="pro-offer">
             <Row gap="g7" wrap>
               <Cover />
@@ -291,10 +314,10 @@ export default function Pro() {
         ) : (
           <Card radius="btn" featured className="pro-offer">
             <Row gap="g7" wrap>
-              <Cover image={tripState?.trip?.coverImageUrl} />
+              <Cover image={offerTrip?.coverImageUrl} />
               <Grow fit>
                 <Col gap="g1">
-                  <Trunc className="t-heading">{tripState?.trip?.title}</Trunc>
+                  {offerTrip?.title && <Trunc className="t-heading">{offerTrip.title}</Trunc>}
                   <div className="t-meta muted">{t('sub.plan_trip_subtitle')}</div>
                 </Col>
               </Grow>
