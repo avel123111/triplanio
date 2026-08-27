@@ -21,6 +21,13 @@ import middleware from '../../middleware.js';
 import { DEMO_PATH } from '../../src/pages/Demo/demoPath.js';
 
 const BOT = 'TelegramBot (like TwitterBot)';
+/** Поисковики — они выполняют JS и обязаны получить ПРИЛОЖЕНИЕ, а не заглушку. */
+const SEARCH = {
+  Googlebot: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+  Bingbot: 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+  YandexBot: 'Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)',
+  DuckDuckBot: 'DuckDuckBot/1.1; (+http://duckduckgo.com/duckduckbot.html)',
+};
 const HUMAN = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36';
 
 const ask = (path, ua) => middleware(new Request(`https://www.triplanio.com${path}`, { headers: { 'user-agent': ua } }));
@@ -69,6 +76,21 @@ test('★★★ адрес с одноразовым токеном закрыт
   }
   for (const p of [DEMO_PATH, '/terms', '/privacy']) {
     assert.match(await bodyOf(ask(p, BOT)), /robots" content="index,follow"/, `${p} обязан индексироваться`);
+  }
+});
+
+test('★★★ ПОИСКОВИК получает приложение, а не заглушку — иначе в индекс уедет пустая страница', () => {
+  // Найдено на живом проде 27.08: Googlebot получал 1231 байт заглушки вместо
+  // 7183 байт приложения на /terms и /d/…, причём с `index,follow`. То есть в
+  // индекс уезжала страница с одним заголовком в теле — ровно на тех двух
+  // адресах, которые мы сами объявили в sitemap.xml. Краулер превью JS не
+  // выполняет и заглушку требует; поисковик его выполняет и обязан получить
+  // настоящую страницу. Один список UA на обоих — выбор в пользу одного за
+  // счёт другого.
+  for (const [name, ua] of Object.entries(SEARCH)) {
+    for (const p of ['/', '/terms', '/privacy', '/d/europe-may-2027', '/join/tok', '/public/trip/abc']) {
+      assert.equal(ask(p, ua), undefined, `${name} на ${p} обязан получить приложение`);
+    }
   }
 });
 

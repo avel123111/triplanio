@@ -28,7 +28,29 @@
 // тому же адресу отдаётся 404 (маршрут точный, см. `demoPath.js`).
 import { DEMO_PATH } from './src/pages/Demo/demoPath.js';
 
-const BOT_RE = /(bot|crawl|spider|facebookexternalhit|facebot|whatsapp|telegram|slack|discord|linkedin|pinterest|vkshare|embedly|skypeuripreview|twitter|googlebot|bingbot|yandex|applebot|redditbot|preview)/i;
+// ★ ТОЛЬКО КРАУЛЕРЫ ПРЕВЬЮ. Поисковиков здесь НЕТ, и это несущее.
+//
+// Раньше список был общим («любой бот») и включал `googlebot`, `bingbot`,
+// `yandex` плюс маски `bot|crawl|spider`. Пока заглушку получал один `/join/`
+// под `noindex`, это ничего не стоило. С расширением на демо и юр-страницы —
+// а они, в отличие от приглашения, ОБЯЗАНЫ индексироваться и лежат в
+// `sitemap.xml` — Googlebot стал получать 1231 байт заглушки вместо 7183 байт
+// приложения. То есть в индекс уезжала страница, у которой в теле один
+// заголовок, ровно там, где мы сами просили её проиндексировать.
+//
+// Разница между двумя аудиториями простая: краулер превью JavaScript НЕ
+// выполняет, поэтому ему нужен готовый HTML; поисковик его ВЫПОЛНЯЕТ и обязан
+// получить настоящее приложение. Один список на обоих — это выбор в пользу
+// одного за счёт другого.
+//
+// Список поимённый, а не по маске `bot`: маска ловит и поисковики, и всё
+// незнакомое. Цена явного списка — краулер превью, которого в нём нет, получит
+// приложение и превью не покажет; это ровно то, что было до Ф11, то есть не
+// регресс. Цена маски — испорченный поисковый индекс, и он чинится месяцами.
+//
+// `applebot` оставлен здесь намеренно: им Apple строит превью в iMessage, и
+// это для нас важнее, чем позиция в поиске Siri/Spotlight.
+const PREVIEW_UA_RE = /(facebookexternalhit|facebot|whatsapp|telegram|slack|discord|linkedin|pinterest|vkshare|vkontakte|embedly|iframely|skypeuripreview|twitter|redditbot|applebot|snapchat|viber|nuzzel|quora link preview|bitlybot|flipboard|tumblr|mastodon|bluesky)/i;
 
 const ORIGIN = 'https://www.triplanio.com';
 
@@ -117,7 +139,7 @@ export default function middleware(request) {
   try {
     const { pathname } = new URL(request.url);
     const ua = request.headers.get('user-agent') || '';
-    if (!BOT_RE.test(ua)) return; // живой человек → SPA как обычно
+    if (!PREVIEW_UA_RE.test(ua)) return; // человек ИЛИ поисковик → SPA как обычно
     const html = previewFor(pathname);
     if (!html) return; // не наш адрес → SPA как обычно
     return new Response(html, {
