@@ -63,6 +63,31 @@
     <meta name="twitter:title" content="Triplanio — Your whole trip. One beautiful plan." />
     <meta name="twitter:description" content="Triplanio is a travel-planning app for complex multi-city trips. Build itineraries, plan together, track budgets in any currency, and get smart reminders." />
     <meta name="twitter:image" content="https://www.triplanio.com/og-cover.jpg" />
+
+    <!-- Site-wide structured data. Page-scoped types are injected per route from
+         React; see src/components/site/jsonLd.js. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.triplanio.com/#organization",
+            "name": "Triplanio",
+            "url": "https://www.triplanio.com/",
+            "logo": "https://www.triplanio.com/triplanio-logo.png",
+            "email": "info@triplanio.com"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.triplanio.com/#website",
+            "name": "Triplanio",
+            "url": "https://www.triplanio.com/",
+            "publisher": { "@id": "https://www.triplanio.com/#organization" }
+          }
+        ]
+      }
+    </script>
     <!-- site.css принадлежит SiteChrome (инжектится только на marketing/public роутах). -->
     <!-- Шрифты НЕ предзагружаются намеренно (TRIP-328). index.html — один файл на ВСЕ
          SPA-роуты (rewrites → /index.html), а гарнитуры разнятся по роутам: marketing/public
