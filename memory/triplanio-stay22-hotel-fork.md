@@ -1,22 +1,112 @@
 ---
 name: triplanio-stay22-hotel-fork
-description: "Stay22 живые отели в hotel fork-панели редактора (edge-прокси + FE-список), как работает сейчас"
+description: "Stay22 живые отели в hotel fork-панели редактора (edge-прокси + пул из двух гео-режимов), как работает сейчас"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 4fd830e9-bacd-4318-9c08-f5442f219631
 ---
 
-★РЕАЛИЗОВАНО 2026-06-12 (код написан, build+lint+6 тестов зелёные; ЖДЁТ деплой+секрет от Pavel). При открытии left-side fork/hotel панели (`leftPanel.type==='pick'`, kind hotel в `TripStructureEdit.jsx`) под партнёрскими плашками рендерится секция живых отелей Stay22.
+Живой поиск отелей в left-side fork/hotel панели редактора (`leftPanel.type==='pick'`, kind hotel
+в `TripStructureEdit.jsx`). Работает в проде, секрет `STAY22_API_KEY` выдан.
 
-Поток: `ForkPartnerModal` (только `type==='hotel' && variant==='panel'`) → `Stay22HotelList.jsx` → хук `useStay22Accommodations` (`src/lib/stay22.js`, React Query, enabled при открытии, keepPreviousData для пагинации, staleTime 5м) → edge `supabase.functions.invoke('stay22Accommodations')`. Чистый маппинг/params в `src/lib/stay22-normalize.js` (тестируемо, без react/supabase), тест `stay22-normalize.test.js`.
+## Поток
 
-Edge-функция `supabase/functions/stay22Accommodations/index.ts`: тонкий прокси к `https://api.stay22.com/v2/accommodations`, секрет `STAY22_API_KEY` через `Deno.env` (паттерн placesAutocomplete), auth через `getRequestUser`, **verify_jwt=true** (в config.toml НЕ вносим — дефолт true, не из canon-10). Пинит `provider=booking, aid=triplanio, campaign=fork_api_sidepanel, pageSize=10, cluster=false, adults=2, children=0`. Возвращает `{meta,_links,results}` пасс-тру, в БД ничего не пишет.
+`ForkPartnerModal` (только `type==='hotel' && variant==='panel'`) → `Stay22HotelList.jsx` → хук
+`useStay22Pool` (`src/lib/stay22.js`, React Query) → edge `stay22Accommodations`. Чистые
+маппинг/параметры — `src/lib/stay22-normalize.js` (без react/supabase, гейт `stay22-normalize.test.js`).
+Ничего не персистится: панель тянет при открытии, кэш живёт в React Query (stale 5 мин, gc 30 мин).
 
-Решения Pavel (ТЗ-сессия): поиск по **lat/lng** (visit.latitude/longitude), НЕ address; `rooms` не шлём; цена — `suppliers.booking.price.total` если есть, иначе скрыть (beta даёт цену только с checkin/checkout); `type` ('Accommodation') не показываем; верхняя общая плашка Booking — НЕ трогаем (текущий deeplink), `_links.self.href` вести НЕЛЬЗЯ (это JSON API-эндпоинт); кнопка карточки → `results[].url` (roam, с aid); список только в панели (не в модалке добавления); FE-only, без кеша в БД.
+## Гео: у Stay22 три режима, и это РАЗНЫЕ выборки, а не разный масштаб одной
 
-Карточка (дизайн-система Lumo, компактная под узкую панель): thumbnail + booking logoSquare (бейдж), name, hotelStars, rating.value/10 + count (скрыто при count/value=0), address, цена total+валюта (`fmtMoney`), даты+nights в шапке секции (1 раз, не на каждой карточке). Скелетоны при загрузке, пагинатор (windowed, meta.total/hasMore), EmptyState error/empty. i18n ключи `fork.stay22_*` в `locales/{en,es,ru}/view.js`. trip currency = `trip.details.main_currency`, lang из useI18nFormat.
+★ГЛАВНОЕ ЗНАНИЕ ЭТОГО ФАЙЛА.
 
-Клики: каждый клик карточки → `usePartnerLogger` → `partner_clicks` (existing колонки только: partner='booking', type='hotel', link=roam-url; user_id, trip_id). Схему НЕ расширяли (Pavel: пока пишем только что есть). [[triplanio-services-widget]] [[triplanio-trip-delete-fk]] partner_clicks: id,user_id,trip_id,partner,type,link,created_at; RLS on, 2 policy, FE insert fire-and-forget.
+- **`address` (имя города) — ВЫПИЛЕН.** Адресный геокодер Stay22 резолвит имя в геометрический центр
+  МУНИЦИПАЛИТЕТА, который у растянутых городов лежит ВНЕ города: Лос-Анджелес 26 км (Ван-Найс),
+  Токио 132 км, Стамбул 23, Берлин 22, Лондон 19, Бангкок 20, Рим 14 (коммуны Кастелли Романи),
+  Париж 8.7 (Монтрёй). Это и был корень жалобы «показывает окраины». Форма строки роли НЕ играет —
+  `"Los Angeles"`, `"Los Angeles, united-states"` и `"Los Angeles, United States"` дают побайтово
+  одинаковые 64 результата. Замерено на 14 городах по живому API.
+- **ТОЧКА `lat`/`lng`** — «примерно 140 ближайших, но не дальше радиуса» (дефолт 10 км, API отдаёт
+  его эхом в `_links.self`). В плотном городе счётчик выбирается за считанные километры: LA — 139
+  штук в 6.4 км, Рим — 119 в 0.5 км. `radius` эту кляксу умеет только СЖИМАТЬ там, где связывает
+  счётчик (LA `radius=60000` — те же 139 и те же 6.4 км), и РАСШИРЯЕТ там, где связывает радиус
+  (Эврика: 27→54→65 при 30k/60k).
+- **ПРЯМОУГОЛЬНИК `nelat`/`nelng`/`swlat`/`swlng`** — выборка, РАЗМАЗАННАЯ по площади. На LA ~100
+  отелей с медианой 23 км от центра и НИ ОДНОГО общего с точечной выдачей (99 из 99 новых).
 
-ОТКРЫТО: предложено добавить nullable `source`/`item_id` в partner_clicks для атрибуции (Pavel отложил). radius в прокси поддержан, но не шлётся (Stay22 дефолт).
+Имена углов не угаданы — их назвал сам валидатор API в тексте ошибки.
+
+## Что шлём сегодня
+
+Пул склеивается из ОБОИХ режимов: `GEO_MODES = ['point','box']`, коробка ±`POOL_BOX_KM` = 12 км
+(`boxAround`, поправка на широту через косинус, полюса не ломают). Одно тело запроса = одно гео,
+поэтому «и центр, и площадь» — это ДВА запроса, а не хитрый набор параметров; на стороне edge при
+обоих гео выигрывает коробка. Раунд = одна и та же страница из каждого режима параллельно, склейка
+`mergeById` по Stay22 `id` (тот же примитив, что сливает страницы). Раундов `POOL_ROUNDS` = 2,
+`pageSize` 100, потолок пула `POOL_MAX` = 300. Хвост догоняет ТОЛЬКО режимы, у которых остался
+`hasMore` (на LA это 3 запроса, не 4). Ошибка ведущего режима пробрасывается, ошибки остальных
+глотаются — иначе упавший API рисовал бы «в этом городе нет отелей».
+
+Сортировка «рекомендуем» = `distanceKm` по возрастанию от координат посещения; обе выдачи меряются
+ОДНОЙ точкой, иначе «ближе» у точечной и коробочной значило бы разное. `haversineKm` живёт в
+`src/lib/geoDistance.js` (лист без импортов — `stay22-normalize.js` обязан грузиться под голым
+`node --test`, а `trip-stats.js` ходит через алиас `@/`).
+
+Edge пинит `aid=triplanio`, `campaign=fork_api_search`, `cluster=false`, `adults=2`, `children=0`;
+`pageSize` клиентский (дефолт 10, клампится 1..100). **Провайдер НЕ пинится**: `provider` у Stay22
+сегодня принимает единственное значение `booking` (проверено валидатором), так что фильтр площадки
+из панели убран (TRIP-470) и проброс фактически no-op. `radius` клиентом не шлётся.
+
+`verify_jwt = true` (в `config.toml` НЕ вносим — дефолт, не из pinned-false набора), auth через
+`requireUser`. Ответ — пасс-тру `{meta,_links,results}`; апстрим-ошибка отдаётся 502 с
+`code: upstream_<status>`, чтобы Sentry различал 429 и 5xx.
+
+## Прошедшие даты
+
+Завершённое посещение (`end_date <= сегодня`) запроса НЕ порождает вовсе, у идущего `checkin`
+подтягивается к сегодня (`buildStay22Params`, локальный день через `todayLocal`). Раньше прошлые
+даты уходили в Stay22 как есть → 400 → 502 → красная панель и шум в Sentry (198 событий за 90 дней;
+121 из 218 прод-посещений имеют начало в прошлом).
+
+## Границы, которые НЕЛЬЗЯ обойти кэшем
+
+ToS Stay22 прямо запрещает хранить листинги у себя («You may not hard- or cold-store listings in
+your own database») — серверный кэш выдачи как идея закрыт этим, а не производительностью.
+Рейт-лимит на живом ключе замерен и НЕ мешает: 20 последовательных (7.6 с), 30 с зазором 0.2 с
+(11.8 с), 12 параллельных (0.6 с) — ноль 429. Цифра «5 req/min» из доки относится к демо-режиму без
+ключа.
+
+## Клики и карточка
+
+Каждый клик карточки → `usePartnerLogger` → `partner_clicks` (только существующие колонки:
+partner='booking', type='hotel', link=roam-url, user_id, trip_id; RLS on, FE insert
+fire-and-forget). Схему не расширяли; nullable `source`/`item_id` для атрибуции Pavel отложил.
+Карточка на ДС: thumbnail + бейдж площадки, name, hotelStars, rating.value/10 + count (скрыто при
+нуле), address, цена total+валюта (`fmtMoney`), даты+nights один раз в шапке секции. Кнопка ведёт в
+`results[].url` (roam, с aid); `_links.self.href` вести НЕЛЬЗЯ — это JSON API-эндпоинт. Валюта
+трипа = `trip.details.main_currency`, язык из `useI18nFormat`. i18n `fork.stay22_*` в
+`locales/{en,es,ru}/view.js`.
+
+## Открытое
+
+- **Координаты `city_visits` разъехались с газеттиром** — по одному и тому же `geonameid` 104 из 217
+  прод-посещений отличаются ≥1 км, 30 — ≥5 км, максимум 32.7 км. Отсюда «Vatican City» ищется в
+  Лидо-ди-Остия (26 км, пляжные апартаменты), Краби — в 22 км от берега (**1** отель против **376**
+  по координатам газеттира), Високо — на окраине Сараева. Чинить отдельной задачей: трогает дверь
+  чтения (`getTripDetails` цепляет только строку `cities`, `geo_gazetteer` не джойнит ни одна
+  edge-функция) — территория TRIP-374.
+- **Счётчик врёт**: «201 вариант» читается как «отелей в Лос-Анджелесе», а значит «201 ближайший в
+  пределах ~17 км»; «300+» = упёрлись в потолок пула. Нужен новый i18n-ключ, заводить СНАЧАЛА в
+  Tolgee.
+- **Камера карты** на первом кадре фитится по всему пулу и открывается на агломерации, а не на
+  центре. Запасной вариант — метить коробочные отели и фитить только по точечным.
+- **Единственный поставщик**: все 637 замеренных результатов пришли от `booking`, так что «первый
+  ключ `suppliers`» в `mapResult` — вырожденная логика.
+- `city_name_en` в `city_visits` Stay22 больше НЕ нужен (ветка `ensureCityNameEn`/`cityNameEn`
+  выпилена), но колонка жива и нужна `buildBookingPlatforms` (Booking/Airbnb/Ostrovok/Yandex/
+  Tripster) — не дропать. Более широкий запрос про унифицированный геокодинг — TRIP-103, см.
+  [[triplanio-geocode-cache]], [[triplanio-ai-city-resolve-directory-en]],
+  [[triplanio-viator-cities-integration]].
+
+[[triplanio-services-widget]] [[triplanio-trip-delete-fk]]
