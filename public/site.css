@@ -1405,11 +1405,47 @@ section{position:relative}
 
 .bcard>p{color:var(--muted);font-size: var(--fs-body);max-width:44ch}
 
-.bic{width:42px;height:42px;border-radius: var(--r-sm);display:grid;place-items:center;color:#fff;background:var(--brand);box-shadow:0 8px 18px -6px rgba(33,115,200,.5)}
+/* Плитка иконки: свечение — ЭТО заливка, только прозрачная. Раньше форма
+   `0 8px 18px -6px` была выписана трижды (и ещё пять раз в демо), каждый раз
+   с цветом, вбитым цифрами. Четыре из пяти цифровых цветов точно совпадали со
+   своей заливкой, пятый — синий — не совпадал ни с ней (`--brand`), ни с
+   `--brand-btn`: цвет был подобран на глаз. Теперь у плитки одна ручка `--bic`,
+   заливка и свечение берут её оба, разъехаться они больше не могут. */
+.bic{width:42px;height:42px;border-radius: var(--r-sm);display:grid;place-items:center;color:#fff;--bic:var(--brand);background:var(--bic);box-shadow:0 8px 18px -6px color-mix(in srgb, var(--bic) 50%, transparent)}
 
-.bic.warm{background:var(--sunset);box-shadow:0 8px 18px -6px rgba(255,158,74,.5)}
+.bic.warm{--bic:var(--sunset)}
 
-.bic.mint{background:var(--mint);box-shadow:0 8px 18px -6px rgba(46,194,126,.5)}
+.bic.mint{--bic:var(--mint)}
+
+/* Плитка иконки: форма тени была выписана восемь раз с цветом, вбитым
+   цифрами; теперь одна форма и одна ручка. Единственная СМЕНА цвета —
+   синее свечение: было `rgba(33,115,200,.5)`, стало полупрозрачный
+   `--brand`, то есть ровно заливка, как у остальных четырёх плиток. */
+/* visual-diff-exempt: .bic --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .bic background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .bic box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .demo --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-bic --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-bic background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-bic box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-mint --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-mint background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-mint box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-warm --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-warm background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .dm-warm box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .mint --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .mint background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .mint box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .rose --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .rose background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .rose box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .vio --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .vio background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .vio box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .warm --bic — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .warm background — заливка и свечение плитки сведены на одну ручку `--bic` */
+/* visual-diff-exempt: .warm box-shadow — заливка и свечение плитки сведены на одну ручку `--bic` */
 
 .b-map{grid-column:span 8;display:flex;flex-direction:column}
 
@@ -3259,12 +3295,14 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .dm-pill.hand{background:#EEF1F6;color:#4E5E70}
 .demo .dm-pill.ai{background:linear-gradient(120deg,var(--brand),var(--violet));color:#fff}
 .demo .dm-pill.pro{background:linear-gradient(120deg,#F7C86B,#E9A02F);color:#4A3000}
-.demo .dm-bic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff;background:var(--brand);
-  box-shadow:0 8px 18px -6px rgba(33,115,200,.5);flex:none}
-.demo .dm-bic.dm-warm{background:var(--sunset);box-shadow:0 8px 18px -6px rgba(255,158,74,.5)}
-.demo .dm-bic.dm-mint{background:var(--mint);box-shadow:0 8px 18px -6px rgba(46,194,126,.5)}
-.demo .dm-bic.vio{background:var(--violet);box-shadow:0 8px 18px -6px rgba(122,92,240,.5)}
-.demo .dm-bic.rose{background:var(--rose);box-shadow:0 8px 18px -6px rgba(224,86,143,.5)}
+/* Та же плитка, что `.bic` на лендинге, и та же ручка: заливка и свечение
+   берут `--bic`, поэтому разъехаться не могут (см. комментарий у `.bic`). */
+.demo .dm-bic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff;--bic:var(--brand);background:var(--bic);
+  box-shadow:0 8px 18px -6px color-mix(in srgb, var(--bic) 50%, transparent);flex:none}
+.demo .dm-bic.dm-warm{--bic:var(--sunset)}
+.demo .dm-bic.dm-mint{--bic:var(--mint)}
+.demo .dm-bic.vio{--bic:var(--violet)}
+.demo .dm-bic.rose{--bic:var(--rose)}
 .demo .dm-bic.sm{width:34px;height:34px;border-radius:10px}
 .demo .dm-av{border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none;font-family:var(--font-display)}
 .demo .dm-avs{display:flex}
