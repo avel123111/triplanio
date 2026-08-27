@@ -4,10 +4,11 @@ import { track, setRefTripId } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useSiteTheme, useSiteCss } from '@/components/site/SiteChrome';
+import { useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
+// Ключ ОДИН на пишущего (здесь) и читающего (Login) — был выписан в обоих.
+import { PENDING_KEY } from '@/lib/postLoginPath';
 
-const PENDING_KEY = 'postLoginRedirect';
 
 // Maps the invite-link edge function's machine `code` to its error i18n key.
 // null-prototype: `code` is an external edge value, so a lookup like
@@ -23,7 +24,6 @@ export default function JoinTrip() {
   const { token } = useParams();
   const nav = useNavigate();
   const { t, lang, setLang } = useI18n();
-  useSiteTheme();
   const cssReady = useSiteCss(); // зонная ДС; не рисуем до готовности (FOUC-иконки)
   const [state, setState] = useState('working'); // working | signin | error
   const [errKey, setErrKey] = useState('member.join_error_invalid');

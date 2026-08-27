@@ -34,16 +34,17 @@
  * Exit: 0 ok, 1 коллизия/утечка без маркера, 2 внутренняя ошибка.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { SITE_ZONE, assertZonePerimeter } from './zone-perimeter.mjs';
 import { join } from 'node:path';
 
 const APP = process.env.APP_CSS_PATH || 'src/design/app.css';
 const SITE = process.env.SITE_CSS_PATH || 'public/site.css';
 const MARKER = 'site-dup-exempt';
 const BASE_MARKER = 'site-base-exempt';
-// Разметка зоны, которая одевается в site.css (не app-DS). Держим синхронно с
-// SITE_ZONE в check-site-nav; сюда входят только страницы, ПЕРЕНЕСЁННЫЕ на site.css
-// (лендинг + общая обвязка) — публичка/логин/join придут своими PR Ф6.
-const ZONE_MARKUP = (process.env.ZONE_MARKUP_DIRS || 'src/pages/Landing,src/components/site').split(',');
+// Периметр зоны — ОДИН на все её гарды (`zone-perimeter.mjs`). Здесь он был
+// СВОИМ списком из двух путей с пометкой «публичка/логин/join придут своими PR
+// Ф6»: они пришли, а список за ними — нет. Прогон с полным периметром сразу дал
+// две настоящие утечки в PublicTrip.jsx, не видные три недели.
 
 const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
@@ -107,7 +108,8 @@ function main() {
   const unmarked = collisions.filter((n) => !exempt.has(n));
 
   // Вторая проверка: имя из разметки зоны, база-одиночка в app.css, но НЕ в site.css.
-  const zoneMarkup = markupClasses(ZONE_MARKUP);
+  assertZonePerimeter('check-site-primitive-dup');
+  const zoneMarkup = markupClasses(SITE_ZONE);
   const leaks = [...zoneMarkup]
     .filter((n) => appNames.has(n) && !siteNames.has(n) && !baseExempt.has(n))
     .sort();

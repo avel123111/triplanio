@@ -1,12 +1,10 @@
 import React, { useEffect } from 'react';
-import { withVisitCampaign } from '@/lib/analytics';
+import { zoneHome } from '@/components/site/zoneCta';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
 } from '@/components/site/SiteChrome';
-import { SiteSummary } from '@/components/site/SiteTrip';
+import { SiteSummary, SiteCta } from '@/components/site/SiteTrip';
 import { useReveal } from '@/components/site/useReveal';
 import MapView from '@/components/views/MapView';
 import { Icon } from '@/design/icons';
@@ -21,10 +19,9 @@ import {
 // file to reshoot the hero. Full-bleed background behind the dark gradient.
 const COVER = '/covers/demo-spain.webp';
 
-// The marketing chrome's brand/CTA point at OUR origin (campaign mark is stored
-// per host — analytics.js), same as PublicTrip.
-const SITE = withVisitCampaign(`${window.location.origin}/`);
-const APP_URL = '/login';
+// Адрес главной с меткой кампании визита — общий на всю зону (`zoneCta.js`);
+// три страницы держали три одинаковые константы.
+const SITE = zoneHome();
 
 // floor-exempt: inline +16 — демо-трип (out-of-scope витрина, как LandingPage/PublicTrip):
 // оставшиеся инлайны — ТОЛЬКО динамические цвета/CSS-вары фиктивного трипа из данных
@@ -75,7 +72,6 @@ export default function DemoTrip() {
   const { lang, setLang } = useI18n();
   const t = useT();
   const cssReady = useSiteCss();
-  useSiteTheme(); // public marketing follows the landing: light-only, restored on exit
 
   useDocumentMeta(t('landing.demo.meta.title'), t('landing.demo.meta.desc'));
 
@@ -103,11 +99,15 @@ export default function DemoTrip() {
         {/* ── Hero ─────────────────────────────────────────────── */}
         <section className="dm-hero" id="top" data-hdr="dark">
           <div className="dm-hero-bg" aria-hidden="true">
-            <img src={COVER} alt="" />
+            {/* `.map-img` — общий класс «картинка во всю площадь блока»;
+                у демо было своё правило `.demo .dm-hero-bg img` слово в слово. */}
+            <img className="map-img" src={COVER} alt="" />
           </div>
           <div className="wrap">
             <h1>{t('landing.demo.hero.title')}</h1>
-            <div className="hero-dates">{t('landing.demo.hero.dates')}</div>
+            {/* `.pt-dates` — тот же ряд дат, что у публичной поездки; правило
+                `.demo .hero-dates` было его побайтовой копией под другим именем. */}
+            <div className="pt-dates">{t('landing.demo.hero.dates')}</div>
             <p className="dm-hero-sub">{t('landing.demo.hero.sub')}</p>
             <div className="hero-people">
               <span className="dm-avs">
@@ -128,7 +128,7 @@ export default function DemoTrip() {
         <section className="route-sec section-pad" id="route">
           <div className="wrap">
             <div className="section-head rv">
-              <span className="eyebrow">{t('landing.demo.route.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.route.eyebrow')}</span>
               <h2>{t('landing.demo.route.h2a')} <span className="accent">{t('landing.demo.route.h2b')}</span></h2>
               <p>{t('landing.demo.route.p')}</p>
             </div>
@@ -152,10 +152,10 @@ export default function DemoTrip() {
         </section>
 
         {/* ── Timeline ─────────────────────────────────────────── */}
-        <section className="tl-sec dm-sheet section-pad" id="timeline">
+        <section className="tl-sec sheet-pane section-pad" id="timeline">
           <div className="wrap">
             <div className="section-head centered rv">
-              <span className="eyebrow">{t('landing.demo.tl.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.tl.eyebrow')}</span>
               <h2>{t('landing.demo.tl.h2a')} <span className="accent">{t('landing.demo.tl.h2b')}</span></h2>
               <p>{t('landing.demo.tl.p')}</p>
             </div>
@@ -203,7 +203,7 @@ export default function DemoTrip() {
         <section className="bud-sec section-pad" id="budget">
           <div className="wrap">
             <div className="section-head rv">
-              <span className="eyebrow">{t('landing.demo.bud.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.bud.eyebrow')}</span>
               <h2>{t('landing.demo.bud.h2a')} <span className="accent">{t('landing.demo.bud.h2b')}</span></h2>
               <p>{t('landing.demo.bud.p')}</p>
             </div>
@@ -245,10 +245,10 @@ export default function DemoTrip() {
         </section>
 
         {/* ── Bento: calendar / docs / services / stats ────────── */}
-        <section className="more-sec dm-sheet section-pad" id="more">
+        <section className="more-sec sheet-pane section-pad" id="more">
           <div className="wrap">
             <div className="section-head centered rv">
-              <span className="eyebrow">{t('landing.demo.more.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.more.eyebrow')}</span>
               <h2>{t('landing.demo.more.h2a')} <span className="accent">{t('landing.demo.more.h2b')}</span></h2>
               <p>{t('landing.demo.more.p')}</p>
             </div>
@@ -334,7 +334,7 @@ export default function DemoTrip() {
         <section className="team-sec section-pad" id="team">
           <div className="wrap">
             <div className="section-head rv">
-              <span className="eyebrow">{t('landing.demo.team.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.team.eyebrow')}</span>
               <h2>{t('landing.demo.team.h2a')} <span className="accent">{t('landing.demo.team.h2b')}</span></h2>
               <p dangerouslySetInnerHTML={{ __html: t('landing.demo.team.p') }} />
             </div>
@@ -389,12 +389,12 @@ export default function DemoTrip() {
             Phone + chat REUSE the landing's exact global classes (.tg-grid /
             .phone.device / .tg-status / .tg-head / .tg-chat / .tg-msg / .tg-doc
             / .tg-points / .cic) — same chrome, not a hand-tuned copy. Only the
-            message data differs. The demo palette band stays via `dm-sheet`.
+            message data differs. The demo palette band stays via the shared `sheet-pane`.
             floor-exempt: dsshare +2 — реюз шапки телефона лендинга (статус-бар
             сигнал/wifi/батарея + иконки шапки) добавляет сырую разметку в
             витрину демо (out-of-scope, как LandingPage/PublicTrip), доля из ДС
             падает на 0.02%. Апрув Pavel: «взять телеграм как на лендинге». */}
-        <section className="tg-sec dm-sheet section-pad" id="assistant">
+        <section className="tg-sec sheet-pane section-pad" id="assistant">
           <div className="wrap tg-grid">
             <div className="tg-demo rv-l">
               <div className="phone device">
@@ -430,7 +430,7 @@ export default function DemoTrip() {
               </div>
             </div>
             <div className="rv-r">
-              <span className="eyebrow">{t('landing.demo.tg.eyebrow')}</span>
+              <span className="brow">{t('landing.demo.tg.eyebrow')}</span>
               <h2 className="tg-h2">{t('landing.demo.tg.h2a')} <span className="accent">{t('landing.demo.tg.h2b')}</span></h2>
               <p className="tg-lede">{t('landing.demo.tg.p')}</p>
               <ul className="tg-points">
@@ -454,31 +454,11 @@ export default function DemoTrip() {
 }
 
 /**
- * Demo final CTA — the accent sheet, ONE button (variant of the landing CTA,
- * which carries two). `data-hdr="accent"` is the producer of the header's
- * on-accent rules.
+ * Финальный CTA демо — ТА ЖЕ секция, что на лендинге и публичке: `<SiteCta>`.
+ * Здесь был форк со своими классами `.dm-final` / `.sheet-pane` (побайтовые копии
+ * `.final` / `.sheet-pane`), из-за которого правка CTA обходила демо стороной.
+ * Уникален только текст — он и передаётся префиксом ключей.
  */
 function DemoCta() {
-  const t = useT();
-  const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
-  return (
-    <section className="dm-final dm-sheet section-pad" data-hdr="accent" id="cta">
-      <span className="horizon" aria-hidden="true" />
-      <div className="wrap inner">
-        <div className="rv">
-          <span className="eyebrow eyebrow--acc">{t('landing.demo.fin.eyebrow')}</span>
-          <h2 dangerouslySetInnerHTML={{ __html: t('landing.demo.fin.h2') }} />
-          <p>{t('landing.demo.fin.sub')}</p>
-          <div className="ctas">
-            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); nav(ctaTarget); }}>
-              <span>{t('landing.demo.fin.cta1')}</span>
-              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  return <SiteCta ns="landing.demo.fin" surface="demo" />;
 }

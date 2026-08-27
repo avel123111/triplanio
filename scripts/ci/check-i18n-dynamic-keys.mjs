@@ -68,6 +68,27 @@ export const PROTECTED_KEYS = [
   'notif.tpl_role_changed_admin_msg',
   'notif.tpl_role_changed_title',
   'notif.tpl_role_changed_viewer_msg',
+
+  // (3) Финальный CTA неавторизованной зоны (TRIP-445). Один компонент
+  // `SiteTrip.SiteCta` обслуживает лендинг, демо и публичную поездку, а текст
+  // берёт префиксом: `t(`${ns}.eyebrow`)`, где `ns` = 'landing.fin' или
+  // 'landing.demo.fin'. Литерала `landing.fin.eyebrow` в коде НЕТ НИ ОДНОГО —
+  // и это не недосмотр, а цена унификации: пропсом ездит ровно то, чем страницы
+  // отличаются (см. разбор в SiteTrip.jsx).
+  //
+  // Опасность конкретная и уже случалась рядом: любой проход по «мёртвым
+  // ключам» литеральным грепом насчитает эти восемь мёртвыми и снесёт — сначала
+  // из репозитория, потом из Tolgee, откуда их уже не вернуть. PR #1022 вычистил
+  // 158 ключей `landing.*` именно таким сканом и не тронул их только потому, что
+  // его список был семейством `dd.*`. Второй раз может не повезти.
+  'landing.fin.eyebrow',
+  'landing.fin.h2',
+  'landing.fin.sub',
+  'landing.fin.cta1',
+  'landing.demo.fin.eyebrow',
+  'landing.demo.fin.h2',
+  'landing.demo.fin.sub',
+  'landing.demo.fin.cta1',
 ];
 
 function isCommentLine(text) {

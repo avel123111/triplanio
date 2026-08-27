@@ -1,7 +1,6 @@
 // Shared Mapbox GL setup - single source of truth for token + styles so the
 // trip Map lens, the planner previews and the mini-map all render consistently.
 // Note: Mapbox uses [lng, lat] order (GeoJSON), the opposite of Leaflet/Google.
-import mapboxgl from 'mapbox-gl';
 // Путь ОТНОСИТЕЛЬНЫЙ, а не через `@/`: алиас знает только Vite, и с ним модуль
 // не импортируется в `node --test`. Та же конвенция, по которой чистым держат
 // `trip-cities.js` — узел, у которого есть тест, не имеет права зависеть от
@@ -13,7 +12,62 @@ import { MIN_FREE_WINDOW, addBox, getMapInsets, toBox } from './map/insets.js';
 // знает). Кадрирование ниже — самое дорогое правило этого файла, и оно обязано
 // судиться тестом, а не чтением.
 export const MAPBOX_TOKEN = import.meta.env?.VITE_MAPBOX_TOKEN;
-if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// БИБЛИОТЕКА КАРТЫ ПРИЕЗЖАЕТ ОТДЕЛЬНО И ПОЗЖЕ (TRIP-445)
+//
+// ★ ЗДЕСЬ НЕЛЬЗЯ ПИСАТЬ `import mapboxgl from 'mapbox-gl'`. Этот модуль — дверь
+// в карту, и его импортирует `MapProvider`, который стоит ВЫШЕ роутера, то есть
+// существует на любом адресе. Статический импорт делал `mapbox-gl` частью
+// СТАРТОВОГО графа: 1.7 МБ JS + 40 КБ CSS приезжали на лендинг, `/login`,
+// `/terms`, `/privacy`, `/d/…`, `/join` и `/public/trip` — семь страниц, где
+// карты нет вовсе.
+//
+// И это не «страница чуть тяжелее»: с заблокированным куском лендинг не рисовал
+// НИЧЕГО (0 символов текста, FCP null) — библиотека стояла поперёк старта. На
+// эмуляции 4G: запрос ушёл на 178 мс, приехал на 4918 мс, первый кадр — 6472 мс.
+//
+// Поэтому библиотека грузится ПО ТРЕБОВАНИЮ, а `mapboxgl` ниже — живая
+// привязка, которую заполняет `loadMapboxGl()`. Отсюда два правила:
+//   · читать `mapboxgl.X` можно только В МОМЕНТ ВЫЗОВА (внутри эффекта или
+//     колбэка, когда карта уже есть). Разобрать его на уровне модуля
+//     (`const { Marker } = mapboxgl`) — значит навсегда защёлкнуть `null`;
+//   · токен НЕ пишется в глобальный `mapboxgl.accessToken`. Каждый, кто создаёт
+//     `new mapboxgl.Map`, передаёт `accessToken` СВОЕЙ опцией — иначе карта
+//     работала бы «по наследству» от того, кто загрузился раньше, а порядок
+//     загрузки теперь не гарантирован. Правило пинится тестом.
+// ═══════════════════════════════════════════════════════════════════════════
+let mapboxgl = null;
+let loading = null;
+
+/** Загружена ли библиотека (для UI: «ещё едет» ≠ «карты нет»). */
+export const isMapboxGlLoaded = () => !!mapboxgl;
+
+/**
+ * Загрузить библиотеку карты. Идемпотентно: повторные вызовы получают тот же
+ * промис. При СБОЕ промис сбрасывается — иначе одна потерянная сеть навсегда
+ * оставила бы сессию без карты (куски догружаются, см. `installChunkReloadGuard`).
+ *
+ * CSS приезжает вместе с библиотекой: раньше он стоял статическим импортом в
+ * `main.jsx` и был `<link rel=stylesheet>` в `<head>` — то есть блокировал
+ * отрисовку тех же семи страниц без карты.
+ */
+export function loadMapboxGl() {
+  if (mapboxgl) return Promise.resolve(mapboxgl);
+  if (!loading) {
+    loading = Promise.all([
+      import('mapbox-gl'),
+      import('mapbox-gl/dist/mapbox-gl.css'),
+    ]).then(([mod]) => {
+      mapboxgl = mod.default || mod;
+      return mapboxgl;
+    }).catch((e) => {
+      loading = null;
+      throw e;
+    });
+  }
+  return loading;
+}
 
 // One Mapbox Standard style for every map surface. Light/dark is the
 // `lightPreset` config (day/night), switched in place - the map is NOT
@@ -103,8 +157,15 @@ export function cameraForPoints(map, points, opts = {}) {
   // (планировщик просит 8 при потолке 7 — и это не опечатка).
   if (points.length === 1) return { center: points[0], zoom: opts.singleZoom ?? 7 };
   try {
-    const b = new mapboxgl.LngLatBounds();
-    points.forEach((p) => b.extend(p));
+    // Коробка СВОИМ массивом, а не `new mapboxgl.LngLatBounds()`: `cameraForBounds`
+    // принимает `[[запад, юг], [восток, север]]`, а результат тот же (extend —
+    // это те же min/max, без переноса через антимеридиан). Цена этой строчки —
+    // весь расчёт кадра перестал зависеть от библиотеки и снова считается в
+    // `node --test`, как и обещает шапка файла. Библиотека грузится по
+    // требованию, поэтому «зависит от неё» здесь значило бы «не проверяется».
+    const lngs = points.map((p) => p[0]);
+    const lats = points.map((p) => p[1]);
+    const b = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
     const cam = map.cameraForBounds(b, { padding: fitPadding(map, opts.padding ?? 48), maxZoom });
     if (!cam || typeof cam.zoom !== 'number') return null;
     return { center: [cam.center.lng, cam.center.lat], zoom: Math.min(cam.zoom, maxZoom) };

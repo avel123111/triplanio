@@ -5,10 +5,13 @@
 // identity rule as the rest of the app via uniqueCityCount so the "cities"
 // number never drifts between the timeline header and the overview.
 import { uniqueCityCount, uniqueCountryCount } from '@/lib/trip-cities';
+import { haversineKm } from '@/lib/geoDistance';
 
 // uniqueCountryCount is re-exported from the single source of truth so existing
-// importers of '@/lib/trip-stats' keep working.
-export { uniqueCountryCount };
+// importers of '@/lib/trip-stats' keep working. То же самое и по той же причине
+// сделано с `haversineKm`: её дом теперь `@/lib/geoDistance` (лист без импортов,
+// его умеет грузить `node --test`), а импортёры отсюда ничего не заметили.
+export { uniqueCountryCount, haversineKm };
 
 /** Whole nights between the trip start and end dates (>= 0). */
 function nightsBetween(startISO, endISO) {
@@ -57,19 +60,6 @@ export function tripDuration(trip, visits = []) {
   return { days: nights > 0 ? nights + 1 : 0, nights };
 }
 
-/** Great-circle distance between two [lat, lng] points, in km (haversine). */
-export function haversineKm(aLat, aLng, bLat, bLng) {
-  const R = 6371; // mean Earth radius, km
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(bLat - aLat);
-  const dLng = toRad(bLng - aLng);
-  const lat1 = toRad(aLat);
-  const lat2 = toRad(bLat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
-}
 
 /**
  * Approximate total route distance in km: sum of great-circle hops between

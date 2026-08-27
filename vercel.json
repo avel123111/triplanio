@@ -2,9 +2,15 @@
   "regions": ["fra1"],
   "headers": [
     {
-      "source": "/:dir(hero|site|flags|covers|fonts)/:path*",
+      "source": "/:dir(auth|covers|flags|fonts|hero|partners|site)/:path*",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/:file(og-cover.jpg|og-join.jpg|icon-192.png|icon-512.png|triplanio-logo.png|triplanio-logo.svg)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
       ]
     },
     {
@@ -25,6 +31,13 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/d/spain-may-27",
+      "destination": "/d/europe-may-2027",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/ingest/static/:path(.*)",
@@ -37,17 +50,6 @@
     {
       "source": "/ingest/:path(.*)",
       "destination": "https://eu.i.posthog.com/:path"
-    },
-    {
-      "source": "/join/(.*)",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*([Bb]ot|facebookexternalhit|Facebot|WhatsApp|Telegram|Slack|Discord|LinkedIn|Pinterest|vkShare|Embedly|SkypeUriPreview|Twitter).*"
-        }
-      ],
-      "destination": "/join-og.html"
     },
     {
       "source": "/api/:path(.*)",

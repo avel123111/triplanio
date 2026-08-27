@@ -16,8 +16,7 @@
 // NOTE: HTML markers (mapboxgl.Marker) are DOM overlays and are NOT part of the
 // WebGL canvas, so a canvas snapshot would omit them. City markers are therefore
 // drawn as GL circle layers here (a white halo + a blue dot) so they are captured.
-import mapboxgl from 'mapbox-gl';
-import { MAPBOX_TOKEN, MAP_STYLE, baseConfig } from '@/lib/mapbox';
+import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, loadMapboxGl } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
@@ -115,13 +114,17 @@ export const rescaleZoom = (zoom, fromW, toW) =>
  * pixel size (`+log2(width/previewCssWidth)`) so the FRAMING matches the preview.
  * Resolves null if the map can't be produced (caller surfaces an error).
  */
-export function renderCardMapPng({
+export async function renderCardMapPng({
   visits, transfers, showSE = true,
   center, zoom, bearing = 0, pitch = 0, projection = 'mercator', scheme = 'DARK',
   previewCssWidth, width, height,
 }) {
+  if (!MAPBOX_TOKEN || !center || !width || !height) return null;
+  // Библиотека карты грузится ПО ТРЕБОВАНИЮ (TRIP-445), поэтому ждём её здесь, а
+  // не рассчитываем, что её уже загрузил экран с картой: карточку собирают и с
+  // линзы, где карты не было, — тогда не приехал бы и `mapbox-gl.css`.
+  try { await loadMapboxGl(); } catch { return null; }
   return new Promise((resolve) => {
-    if (!MAPBOX_TOKEN || !center || !width || !height) { resolve(null); return; }
     const { ordered, legs } = buildRoute(visits, transfers, showSE);
     if (!ordered.length) { resolve(null); return; }
 
@@ -134,6 +137,11 @@ export function renderCardMapPng({
       container: holder,
       style: MAP_STYLE,
       config: baseConfig(scheme),
+      // Токен СВОЕЙ опцией: раньше он прилетал сюда побочным эффектом импорта
+      // `@/lib/mapbox` (глобальный `mapboxgl.accessToken`). Библиотека грузится
+      // по требованию (TRIP-445), порядок загрузки больше не гарантирован —
+      // поэтому каждый, кто создаёт карту, называет токен сам.
+      ...(MAPBOX_TOKEN ? { accessToken: MAPBOX_TOKEN } : {}),
       center,
       zoom: zoomAdj,
       bearing,

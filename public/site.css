@@ -10,6 +10,7 @@
    (.pt*, → TRIP-461); семь имён, конфликтующих с app.css правилом-одиночкой
    (btn/btn-primary/btn-ghost/sheet/eyebrow/bud-total/cflag), разрешены по
    таблице тикета; кегли и радиусы сняты на свою шкалу (таблица сдвигов в PR). */
+
 html.site {
   /* Слой ДС зоны — блок :root прототипа v5.7 ПЕРЕНЕСЁН ЦЕЛИКОМ, не пересказан
      (TRIP-460, подход "CSS как есть"). Зона владеет этим слоем токенов
@@ -32,7 +33,7 @@ html.site {
   --font-display:'Onest', ui-sans-serif, system-ui, sans-serif;
   --font-body:'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
   /* --font-ui обязателен (ревью TRIP-460): app.css :root держит --font-ui:Geologica,
-     и канон .t-* типографирует co-селекторы зоны (.btn/.footer/.nav/.eyebrow/.lede)
+     и канон .t-* типографирует co-селекторы зоны (.btn/.nav/.eyebrow/.lede)
      этим токеном. Без переопределения половина зоны рендерится Geologica. */
   --font-ui: var(--font-body);
   --ease-out:cubic-bezier(.22,1,.36,1);
@@ -116,6 +117,45 @@ html.site {
   --fs-doc-title: clamp(1.9rem,1.4rem + 2vw,2.9rem);
   /* visual-diff-exempt: .site --fs-doc-h2 — новый токен заголовка раздела юр-документа (правило html.site); прототип v5.7 (TRIP-465) */
   --fs-doc-h2: clamp(1.12rem,1.02rem + .4vw,1.32rem);
+}
+
+/* ★ ЗАЩИТА ОТ ТЁМНОЙ ТЕМЫ ПРИЛОЖЕНИЯ — три имени, и ровно те три (TRIP-445).
+   `html.site` = (0,1,1), а тёмная тема приложения объявляет свои токены на
+   `:root[data-theme="dark"]` = (0,2,0) и ВЫИГРЫВАЕТ независимо от того, кто
+   подключён позже: порядок тут не решает ничего, решает специфичность.
+   Пересечение имён ровно три — `--brand`, `--ink`, `--muted`, — то есть ВЕСЬ
+   текст и весь акцент зоны. Фон при этом остаётся сайтовым (`--white` тёмная
+   тема не объявляет), поэтому симптом был именно «БЕЛЫЕ ЗАГОЛОВКИ НА БЕЛОМ»:
+   --ink уезжал в #EDECF4 на белой странице.
+
+   Воспроизведение, замеренное в браузере: ОС тёмная → /terms → Print → закрыть
+   диалог. Chrome на печати переоценивает prefers-color-scheme в light и
+   обратно — это ДВА события change у matchMedia, а `ThemeProvider` при
+   `tp-theme === 'system'` (дефолт у всех незалогиненных) на каждое переписывает
+   [data-theme], вторым возвращая dark. То же даёт ЛЮБОЕ переключение темы ОС,
+   включая автоматическое по закату.
+
+   Раньше это держал JS-пин `useSiteTheme`: он ставил light ОДИН раз на
+   монтировании и не переутверждал — гонка двух владельцев одного атрибута, где
+   зона проигрывала любому позднему событию. Пин удалён, изоляция стала
+   каскадной: (0,2,1) выигрывает у (0,2,0) при ЛЮБОМ значении атрибута.
+
+   ПОЧЕМУ ТРИ СТРОКИ, А НЕ ВТОРОЙ СЕЛЕКТОР У ВСЕГО БЛОКА ВЫШЕ. Поднять
+   специфичность всему блоку — значит объявить 62 токена ещё раз: для 2p это 62
+   новых объявления, то есть 62 маркера-обхода на правку, которая не меняет ни
+   одного значения. Шестьдесят два законных обхода растворяют гейт ровно так,
+   как описывает `report:exemptions`. Здесь названо ровно то, что защищаем.
+
+   Дубль трёх литералов НЕ может разъехаться с блоком выше: значения сверяет
+   `scripts/ci/check-zone-theme-isolation.test.mjs`, он же краснеет, если тема
+   приложения начнёт объявлять четвёртое общее имя и его забудут дописать сюда. */
+/* visual-diff-exempt: .site[data-theme] --brand — защита токена зоны от тёмной темы приложения, значение то же (TRIP-445) */
+/* visual-diff-exempt: .site[data-theme] --ink — защита токена зоны от тёмной темы приложения, значение то же (TRIP-445) */
+/* visual-diff-exempt: .site[data-theme] --muted — защита токена зоны от тёмной темы приложения, значение то же (TRIP-445) */
+html.site[data-theme] {
+  --brand:#2380D6;
+  --ink:#13324E;
+  --muted:#516576;
 }
 
 
@@ -280,7 +320,34 @@ body{
      .aw-ready-n) этим сбросом не затрагивается. */
   /* visual-diff-exempt: body font-variant-numeric — сброс tabular-nums, утёкшего из app.css:422; зона рисует пропорциональные цифры как прототип (TRIP-460) */
   font-variant-numeric:normal;
+  /* ТРЕТЬЯ утечка того же вида, и самая заметная глазом: app.css и index.css
+     ставят `-webkit-font-smoothing: antialiased` + `-moz-osx-font-smoothing:
+     grayscale` ГЛОБАЛЬНО. Серое сглаживание съедает субпиксельное наращивание
+     штриха, и весь текст зоны выходит тоньше макета — прототип не объявляет
+     сглаживание вовсе, то есть остаётся браузерное по умолчанию.
+     Ни один гард этого не ловил: свойство наследуемое, приезжает от `body` из
+     ДРУГОГО файла — 2p сравнивает объявления по классам, 2ae смотрит имена. */
+  -webkit-font-smoothing:auto;
+  -moz-osx-font-smoothing:auto;
 }
+
+/* ★ ПОЯВЛЕНИЕ СТРАНИЦЫ ЗОНЫ — одно правило на все шесть.
+   Переходы между страницами зоны были дёргаными: это НЕ перезагрузка (навигация
+   роутерная), а два разных провала. Первый — пустой кадр: демо и юр-страницы
+   грузятся отдельным чанком под `Suspense fallback={null}`, и пока чанк едет,
+   экран пуст; заодно в это окно успевал сняться `site.css` (старая страница уже
+   размонтирована, новая ещё не смонтирована — счётчик ссылок падал до нуля).
+   Лечится предзагрузкой соседних чанков при входе в зону (SiteChrome).
+   Второй — появления не было вовсе. В прототипе переходов нет ПО ПОСТРОЕНИЮ:
+   там один документ, страницы переключаются классом на body мгновенно, —
+   копировать нечего, поэтому здесь минимальный кроссфейд.
+   Носитель — `<main>`, он УЖЕ есть у всех шести страниц зоны (у логина и join
+   через AuthShell): не заводим ни обёртку, ни класс. Кадры переиспользуют
+   существующий `stepIn` — «проявиться и встать на место».
+   `prefers-reduced-motion` глобально сжимает длительность до .001s (строка 413),
+   поэтому финальное `opacity:1` применяется мгновенно и страница не остаётся
+   невидимой. */
+html.site main{opacity:0;animation:stepIn .3s var(--ease-out) forwards}
 
 img,svg,canvas{display:block;max-width:100%}
 
@@ -315,10 +382,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 html.site h1, html.site h2, html.site h3, html.site h4{color:inherit;text-wrap:wrap}
 
 /* visual-diff-exempt: h1 font-weight — заголовки зоны 800 (Onest), потеряно при порте прототипа v5.7 (TRIP-460) */
-/* visual-diff-exempt: h1 line-height — прототип v5.7: 1.14 (TRIP-460) */
-/* visual-diff-exempt: h2 line-height — прототип v5.7: 1.14 (TRIP-460) */
-/* visual-diff-exempt: h3 line-height — прототип v5.7: 1.14 (TRIP-460) */
-h1,h2,h3{font-family:var(--font-display);line-height:1.14;letter-spacing:-.025em;font-weight:800}
+/* Интерлиньяж заголовков — 1.12, как в прототипе (`h1,h2,h3{line-height:1.12}`).
+   Ранее здесь стояло 1.14, и маркеры ниже называли это «прототип v5.7: 1.14» —
+   факт был записан неверно при переносе. Замер собранной страницы против
+   макета: hero h1 69.9 против 71.1, секционный h2 52.0 против 52.9, и вся
+   страница на 46px выше макета. Числа маленькие, но они множатся на каждый
+   заголовок и переворачивают разбивку строк (TRIP-445). */
+h1,h2,h3{font-family:var(--font-display);line-height:1.12;letter-spacing:-.025em;font-weight:800}
 
 h2{font-size: var(--fs-section-h2);font-weight:800}
 
@@ -349,6 +419,7 @@ section{position:relative}
 .dark .brow{color:#fff}
 
 .dark .brow::before{background:rgba(255,255,255,.7)}
+
 
 .section-head{max-width:660px;margin-bottom:clamp(34px,4vw,52px)}
 
@@ -474,10 +545,19 @@ section{position:relative}
   position:absolute;top:calc(100% + 10px);right:0;min-width:168px;
   background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:6px;
   opacity:0;transform:translateY(-8px) scale(.97);pointer-events:none;
-  transition:opacity .22s var(--ease-out),transform .22s var(--ease-out);
+  /* ★ visibility, а не только opacity+pointer-events: последние две выключают
+     МЫШЬ, но не клавиатуру — Tab заходил внутрь закрытого меню. Замер лендинга
+     на 1440: 8 фокусируемых элементов из 32 недостижимы глазами (3 здесь, 5 в
+     закрытом бургер-меню). WCAG 2.4.3/2.4.7: порядок фокуса обязан следовать
+     видимому порядку.
+     `visibility` переключается дискретно и держит длительность перехода: при
+     закрытии ждёт конца затухания, при открытии включается сразу — анимация не
+     ломается, вид не меняется НИ В ОДНОМ состоянии. */
+  visibility:hidden;
+  transition:opacity .22s var(--ease-out),transform .22s var(--ease-out),visibility .22s;
 }
 
-.lang.open .lang-menu,.mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto}
+.lang.open .lang-menu,.mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto;visibility:visible}
 
 .lang-menu button{display:flex;align-items:center;min-height:44px;gap:10px;width:100%;padding:9px 12px;border-radius: var(--r-sm);font-size: var(--fs-body-lg);color:var(--ink);transition:background .15s;text-align:left}
 
@@ -499,7 +579,15 @@ section{position:relative}
   /* Рамки у базовой кнопки в макете НЕТ. app.css:1776 держит border:1px solid
      var(--bd) — без явного гашения она проступала у КАЖДОЙ кнопки лендинга.
      Вариант .btn-ghost рисует свою рамку сам и этим не затронут. */
-  border:0}
+  border:0;
+  /* ТО ЖЕ и с типографикой, только источник другой: канон `.t-label` в app.css
+     перечисляет `.btn` и `.btn-ghost` В СО-СЕЛЕКТОРЕ и навязывает им
+     line-height 1.4 + letter-spacing 0. Макет кнопке интерлиньяж не задаёт
+     вовсе — она наследует 1.6 от body, трекинг normal. Замер собранной
+     страницы: 24.6 у макета против 21 у нас, −15%.
+     Ловушка ИМЕННО в со-селекторе: гард 2ae сверяет базы по именам, а здесь
+     имя зоны попало в чужой канон — ни один гард такого не видит. */
+  line-height:1.6; letter-spacing:normal}
 
 .btn:active{transform:scale(.97)}
 
@@ -556,16 +644,21 @@ section{position:relative}
   position:fixed;inset:70px 0 auto 0;z-index:99;padding:10px 24px 28px;
   background:rgba(255,255,255,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   display:flex;flex-direction:column;transform:translateY(-12px);opacity:0;pointer-events:none;
-  transition:opacity .3s var(--ease-out),transform .3s var(--ease-out);
+  /* То же, что у .lang-menu выше: закрытое меню обязано быть закрыто и для Tab.
+     Здесь цена ошибки выше — пункты растянуты во всю ширину (1392×55 на 1440),
+     то есть клавиатурный фокус уезжал на невидимую мишень во весь экран. */
+  visibility:hidden;
+  transition:opacity .3s var(--ease-out),transform .3s var(--ease-out),visibility .3s;
   border-bottom:1px solid rgba(19,50,78,.1);box-shadow:0 24px 48px -24px rgba(11,44,84,.18);
 }
 
 .mobile-menu a{padding:14px 4px;font-size: var(--fs-lead);font-weight:500;color:var(--ink);border-bottom:1px solid rgba(19,50,78,.08)}
 
-.mobile-menu .btn{margin:6px 0 16px;width:100%}
-
-/* .mobile-menu a перебивает цвет .btn-primary — возвращаем белый текст кнопке */
-.mobile-menu .btn-primary{color:#fff;border-bottom:0}
+/* `.mobile-menu .btn` и `.mobile-menu .btn-primary` УДАЛЕНЫ: носителя у них не
+   было ни здесь, ни в прототипе — меню состоит из пяти ссылок, кнопок в нём
+   нет. Правила пережили порт как мусор и обещали оформление, которого не
+   существовало (два пункта рисовались голым системным текстом именно потому,
+   что рассчитывали на них). */
 
 .mobile-menu a:last-child{border-bottom:0}
 
@@ -775,7 +868,13 @@ section{position:relative}
 
 /* site-base-exempt: badge — база не нужна: имя в разметке только внутри .msg-row,
    scoped-правило ниже перебивает app-базу по специфичности (ревью TRIP-460 п.3) */
-.msg-row .badge{flex:none;color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size: var(--fs-tiny);font-weight:700;padding:0 5px}
+/* Канон `.t-micro` в app.css перечисляет `.badge` в со-селекторе и навязывает
+   line-height 1.3 + letter-spacing var(--track-caps). В макете бейдж мокапа
+   ни того, ни другого не имеет: интерлиньяж 1.6 от body, трекинг normal
+   (замер: 16.9 → 14.3 и взявшийся ниоткуда трекинг 0.66px). */
+/* Гард 2p приписывает объявление КАЖДОМУ классу составного селектора, поэтому
+   у `.msg-row .badge` тот же факт объявляется дважды — на носителе и на предке. */
+.msg-row .badge{flex:none;color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size: var(--fs-tiny);font-weight:700;padding:0 5px;line-height:1.6;letter-spacing:normal}
 
 .p1{left:12%;top:2%;width:min(300px,34%);z-index:4;--rot:-5deg;--cx:220px;--cy:250px}
 
@@ -822,7 +921,12 @@ section{position:relative}
 .ssheet .sh-row.hd>div{background:#EDF2ED;border-top:none;font-weight:700;color:#3E7A3E}
 
 /* site-base-exempt: err — имя только внутри .ssheet, scoped-правило перебивает app (TRIP-460 п.3) */
-.ssheet .err{color:#B04A3A;font-weight:600}
+/* Канон `.t-meta` в app.css перечисляет `.err` и отнимает у него И КЕГЕЛЬ
+   (`font-size: var(--fs-micro)`), и интерлиньяж (1.4). В макете `.err` своего
+   размера не имеет вовсе — наследует от родителя `.ssheet` (.72rem). Это был
+   самый крупный разрыв на странице: 11.52 у макета против 10 у нас, то есть
+   не цена шкалы, а перехваченное наследование. */
+.ssheet .err{color:#B04A3A;font-weight:600;font-size:inherit;line-height:1.6;letter-spacing:normal}
 
 .ssheet .idx{color:#9AA3B5;font-size: var(--fs-micro)}
 
@@ -1823,7 +1927,13 @@ section{position:relative}
 
 .final .inner{position:relative;z-index:2;max-width:700px;margin-inline:auto}
 
-.final h2{font-size: var(--fs-final-h2);font-weight:800;margin-bottom:16px}
+/* Отступ заголовка и центровка eyebrow ПЕРЕЕХАЛИ СЮДА из двух инлайнов
+   `<SiteCta>` (прототип держал их на элементе). Секция одна на три страницы —
+   значит и правило одно; инлайн на общем компоненте это пиксельная копия,
+   которую не видит ни один гард. */
+.final h2{font-size: var(--fs-final-h2);font-weight:800;margin-top:14px;margin-bottom:16px}
+
+.final .brow{justify-content:center}
 
 .final p{color:rgba(255,255,255,.92);font-size: var(--fs-lead-lg);margin-bottom:30px}
 
@@ -2389,6 +2499,19 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 
 /* состояния загрузки / not-found — не из прототипа, служебные (мин. набор) */
 .pt-center{min-height:70vh;display:grid;place-items:center;text-align:center;padding:24px}
+/* Подпись под заголовком в блоке «пусто/ошибка». Была написана app-именем
+   `.muted`, то есть цвет зоне приезжал правилом ПРИЛОЖЕНИЯ (`app.css .muted`) —
+   ровно та утечка, которую ловит 2ae, и она три недели была не видна, потому что
+   периметр гарда не включал PublicTrip. Зона объявляет свой цвет сама; имя из
+   разметки снято, новых имён не заведено — правило на единственном `<p>` этого
+   блока (иконка · заголовок · подпись).
+   visual-diff-exempt: .pt-center color — зона забирает у app.css цвет подписи блока «пусто/ошибка» (TRIP-445) */
+.pt-center p{color:var(--muted)}
+
+/* site-base-exempt: cflag — флаг страны это примитив ПРИЛОЖЕНИЯ (app.css, TRIP-177:
+   эмодзи-флаги заменены на public/flags/<iso2>.svg через единый .cflag). Своей базы
+   у зоны быть не должно: второй экземпляр примитива — это и есть то, что запрещает
+   правило #6. Имя в разметке зоны намеренное, геометрия приезжает из app.css. */
 .pt-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line,rgba(19,50,78,.14));
   border-top-color:var(--brand);animation:pt-spin .8s linear infinite}
 @keyframes pt-spin{to{transform:rotate(360deg)}}
@@ -3040,7 +3163,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    prefix-exempt: dot — демо-трип, прототип v5.7 verbatim
    prefix-exempt: e — демо-трип, прототип v5.7 verbatim
    prefix-exempt: exp — демо-трип, прототип v5.7 verbatim
-   prefix-exempt: eyebrow — демо-трип, прототип v5.7 verbatim
    prefix-exempt: fake — демо-трип, прототип v5.7 verbatim
    prefix-exempt: ft — демо-трип, прототип v5.7 verbatim
    prefix-exempt: hand — демо-трип, прототип v5.7 verbatim
@@ -3080,10 +3202,10 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    «Посмотреть демо»). Глобальная: живёт вне `.demo`. */
 .btn-glass{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.32);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .btn-glass:hover{background:rgba(255,255,255,.26);transform:translateY(-2px)}
-/* Секция-«лист» демо: у прототипа .sheet = скруглённая секция, наезжающая на
-   предыдущую; глобальный .sheet приложения = fixed bottom-sheet (коллизия), поэтому
-   имя dm-sheet. */
-.demo .dm-sheet{border-radius:var(--sheet-r) var(--sheet-r) 0 0;margin-top:calc(var(--sheet-r) * -1);position:relative;z-index:3}
+/* Секция-«лист» демо берёт общий `.sheet-pane` зоны. Раньше здесь стоял
+   `.dm-sheet` — побайтовая копия того же правила: имя развели из-за коллизии
+   прототипного `.sheet` с bottom-sheet приложения, но развели ФОРКОМ вместо
+   реюза уже готового `.sheet-pane`. Копия убрана. */
 
 .demo{--brand:#2380D6; --brand-btn:#1E72C4; --brand-deep:#1B67B4;
   --sky:#6FB4F4; --ice:#DFF0FD; --ink:#13324E; --muted:#516576;
@@ -3103,7 +3225,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   --dur:.65s;
   --sheet-r:clamp(26px,4vw,44px);--dev-bezel:linear-gradient(145deg,#454a52,#1b1e24 30%,#0e1013 60%,#2b2f36 85%,#0e1013);
   --dev-shadow:0 55px 110px -34px rgba(7,30,56,.5),0 22px 42px -26px rgba(7,30,56,.42)}
-.demo [data-stagger]>*{transition-delay:calc(var(--i,0)*70ms)}
 .demo .dm-pill{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-tiny);font-weight:700;padding:3px 9px;
   border-radius:99px;white-space:nowrap}
 .demo .dm-pill.done{background:#DCF5E9;color:#177A4D}
@@ -3119,12 +3240,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 .demo .dm-bic.vio{background:var(--violet);box-shadow:0 8px 18px -6px rgba(122,92,240,.5)}
 .demo .dm-bic.rose{background:var(--rose);box-shadow:0 8px 18px -6px rgba(224,86,143,.5)}
 .demo .dm-bic.sm{width:34px;height:34px;border-radius:10px}
-.demo .bcard{background:var(--white);border-radius:var(--r-lg);padding:24px;border:1px solid rgba(11,44,84,.07);
-  box-shadow:var(--shadow-sm);overflow:hidden;position:relative;
-  transition:transform .35s var(--ease-out),box-shadow .35s}
-.demo .bcard:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg)}
-.demo .bcard h3{margin:13px 0 7px}
-.demo .bcard>p{color:var(--muted);font-size:var(--fs-body)}
 .demo .dm-av{border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none;font-family:var(--font-display)}
 .demo .dm-avs{display:flex}
 .demo .dm-avs .dm-av{width:38px;height:38px;font-size:var(--fs-small);border:3px solid #fff;box-shadow:var(--shadow-sm)}
@@ -3135,11 +3250,35 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   padding:96px 0 clamp(40px,4.6vw,64px);background:#0B2136;color:#fff}
 .demo .dm-hero-bg{position:absolute;inset:0;z-index:-2}
 .demo .dm-hero-bg svg{position:absolute;inset:0;width:100%;height:100%}
+/* ★ ВТОРОЙ СЛОЙ — ВУАЛЬ СО СТОРОНЫ ТЕКСТА (TRIP-445).
+   Вертикальный градиент ниже настроен под обложку ПРОТОТИПА (тёмные синие горы):
+   в полосе, где стоит заголовок, он затемняет всего на 16–34%. Финальная обложка
+   другая — иллюстрация со светлым закатным небом ровно в этом месте, — и белый
+   заголовок на ней ЗАМЕРЕН в 2.83 при норме 3.0 для крупного текста (остальные
+   три блока героя проходят: даты 5.17, описание 7.95, участники 8.99).
+
+   Лечение — НЕ общее затемнение картинки: его уже отвергали, и правильно —
+   обложка превращается в грязь. Приём взят у героя лендинга (`.hero-scrim`):
+   вуаль кладётся ТОЛЬКО со стороны текста и гаснет до нуля раньше середины,
+   поэтому солнце и правая половина иллюстрации остаются нетронутыми. Текст
+   прижат влево (`h1` не шире 18ch), так что закрывать правую часть незачем.
+
+   Оба слоя — одно объявление `background` у существующего `::after`: это тот же
+   объект, а не второй скрим поверх первого.
+
+   Замер до/после, белый текст, три ширины (норма 3.0 для крупного, 4.5 для
+   остального):
+     h1         2.83 → 3.87 (1440) · 4.32 (390) · 3.66 (768)
+     описание   7.95 → 10.58 · 5.44 · 7.81
+     участники  8.99 →  9.50 · 8.24 · 7.69
+   Вертикальный слой не тронут ни одной точкой — он и держит низ секции. */
+/* visual-diff-exempt: .dm-hero::after background — вуаль со стороны текста: заголовок демо на финальной обложке давал контраст 2.83 при норме 3.0 (TRIP-445) */
 .demo .dm-hero::after{content:"";position:absolute;inset:0;z-index:-1;
-  background:linear-gradient(180deg,rgba(7,25,44,.62) 0%,rgba(7,25,44,.16) 32%,rgba(7,25,44,.34) 58%,rgba(7,25,44,.88) 100%)}
+  background:
+    linear-gradient(100deg,rgba(7,25,44,.58) 0%,rgba(7,25,44,.52) 30%,rgba(7,25,44,.26) 46%,rgba(7,25,44,0) 62%),
+    linear-gradient(180deg,rgba(7,25,44,.62) 0%,rgba(7,25,44,.16) 32%,rgba(7,25,44,.34) 58%,rgba(7,25,44,.88) 100%)}
 .demo .dm-hero h1{font-size:var(--fs-pt-hero-h1);font-weight:800;max-width:18ch;letter-spacing:-.025em;
   line-height:1.14;text-shadow:0 2px 24px rgba(4,16,30,.4);overflow-wrap:break-word}
-.demo .hero-dates{margin-top:16px;font-size:var(--fs-lead-lg);font-weight:600;color:#fff}
 .demo .dm-hero-sub{margin-top:12px;font-size:var(--fs-lead);color:rgba(255,255,255,.88);max-width:58ch;
   text-shadow:0 2px 16px rgba(4,16,30,.35)}
 .demo .hero-people{display:flex;align-items:center;gap:14px;margin-top:22px;flex-wrap:wrap}
@@ -3248,7 +3387,6 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   background:linear-gradient(120deg,var(--ice),#F2F9FF);font-size:var(--fs-body);color:var(--muted)}
 .demo .perone b{margin-left:auto;font-family:var(--font-display);font-size:var(--fs-h3);font-weight:800;color:var(--ink)}
 .demo .more-sec{background:var(--white)}
-.demo .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;align-items:stretch}
 .demo .b-cal{grid-column:span 7;display:flex;flex-direction:column}
 .demo .dm-b-docs{grid-column:span 5}
 .demo .b-svc{grid-column:span 5}
@@ -3352,23 +3490,48 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   font-size:var(--fs-body);color:#93A4B5}
 .demo .chat-c .snd{width:42px;height:42px;border-radius:50%;background:var(--brand-btn);color:#fff;display:grid;place-items:center;flex:none;
   box-shadow:0 8px 18px -8px rgba(33,115,200,.7)}
-.demo .tg-sec{background:var(--white)}
+/* Колонки Telegram-секции ДЕМО. Общий `.tg-grid` (одна строка на пять секций
+   зоны) делит поровну — так в макете ЛЕНДИНГА. Макет ДЕМО в этом месте другой:
+   колонка с телефоном закреплена на 320px, текст забирает остаток. Порт снял
+   это вместе с демо-копиями, и телефон разъезжался на 260px шире макета, унося
+   правую колонку на 230px вправо (замер --elements).
+   Правило меняет ровно два объявления, а не повторяет общее: это ВАРИАНТ
+   существующего объекта, не его копия.
+
+   ★ И ОНО ОБЯЗАНО ЖИТЬ ПОД ТЕМ ЖЕ БРЕЙКПОИНТОМ, ЧТО ОБЩЕЕ (TRIP-445).
+   Без @media у него специфичность (0,2,0) против (0,1,0) у мобильного
+   `@media (max-width:900px){.tg-grid{grid-template-columns:1fr}}` выше — то
+   есть вариант выигрывал ВЕЗДЕ и мобильный стек не наступал никогда. Замер на
+   собранной странице: 390px давал `320px 2px`, телефон-мокап сжимался в полосу
+   22px у правого края, 53 элемента секции уходили за границу вьюпорта и
+   обрезались без скролла; 768px держал две колонки там, где макет стекает.
+   Порог 900px взят у общего правила, а не назначен заново: две записи об одной
+   границе разъедутся на первой же правке.
+
+   Семь ключей 2p ниже — ОДНА эта правка, увиденная гардом с разных сторон:
+   вариант появился под @media (две пары ключей), а вне @media на его месте
+   теперь виден общий `.tg-grid` и соседний `.demo .team-grid`. Ни одного
+   значения не тронуто — только область действия. */
+/* visual-diff-exempt: .tg-grid grid-template-columns — колонки демо ушли под брейкпоинт 900px, вне его снова общее 1fr 1fr: это и есть фикс мобильного стека (TRIP-445) */
+/* visual-diff-exempt: .tg-grid gap — парное к колонкам выше: вне брейкпоинта снова общий зазор лендинга (TRIP-445) */
+/* visual-diff-exempt: .tg-grid {@media (min-width:901px)} grid-template-columns — те же колонки демо, теперь объявлены под своим брейкпоинтом (TRIP-445) */
+/* visual-diff-exempt: .tg-grid {@media (min-width:901px)} gap — парное к колонкам выше (TRIP-445) */
+/* visual-diff-exempt: .demo grid-template-columns — пересчёт ключа предка .demo: вне брейкпоинта на этом месте теперь .demo .team-grid, значение не менялось (TRIP-445) */
+/* visual-diff-exempt: .demo {@media (min-width:901px)} grid-template-columns — тот же пересчёт ключа предка под брейкпоинтом (TRIP-445) */
+/* visual-diff-exempt: .demo {@media (min-width:901px)} gap — парное к строке выше (TRIP-445) */
+@media (min-width:901px){
+  .demo .tg-grid{grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:clamp(28px,5vw,64px)}
+}
+
 /* Telegram section reuses the landing's global TG chrome verbatim (.tg-grid /
    .phone.device / .tg-status / .tg-head / .tg-chat / .tg-msg / .tg-doc /
    .tg-points / .cic) — no demo-scoped copies, so it can't drift from the
    landing. The old `dm-tg-*` / `tg-when` block lived here and is removed. */
-.demo .dm-final{background:radial-gradient(860px 480px at 50% 118%,rgba(255,235,190,.5),transparent 64%),
-  linear-gradient(165deg,#FFAE5C 0%,#FF8A50 48%,#EE6A72 100%);color:#fff;text-align:center;overflow:hidden}
-.demo .dm-final .inner{position:relative;z-index:2;max-width:700px;margin-inline:auto}
-.demo .dm-final h2{font-size:var(--fs-final-h2);font-weight:800;margin-bottom:16px}
-.demo .dm-final p{color:rgba(255,255,255,.94);font-size:var(--fs-lead-lg);margin-bottom:30px}
-.demo .dm-final .ctas{display:flex;flex-wrap:wrap;gap:13px;justify-content:center}
-.demo .dm-final .btn-light{color:#C95029}
-.demo .eyebrow--acc{color:#fff;justify-content:center}
-.demo .eyebrow--acc::before{background:rgba(255,255,255,.75)}
-.demo .dm-final .horizon{position:absolute;left:50%;bottom:-46vw;transform:translateX(-50%);width:130vw;height:64vw;border-radius:50%;
-  background:radial-gradient(closest-side,rgba(255,244,214,.5),rgba(255,244,214,.12) 62%,transparent 70%);pointer-events:none}
-.demo .dm-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* `.eyebrow--acc` УДАЛЁН вместе с форком демо-CTA: его единственным носителем
+   была своя разметка `DemoCta`, а она заменена общим `<SiteCta>`, который несёт
+   `.brow` — тот же eyebrow, что на лендинге, и белым его красит `.dark .brow`
+   (секция несёт класс `dark`), ровно как на лендинге до унификации.
+   Гард 2n поймал это осиротевшее правило и был прав. */
 .demo .tg-h2{margin:14px 0 14px}
 .demo .tg-lede{color:var(--muted);font-size:var(--fs-lead)}
 

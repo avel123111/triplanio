@@ -885,7 +885,7 @@ export function StreamEventRow({ e, onClick }) {
             Была сырым <button>, из-за чего скин (переехавший с `.tl3-card` на Card)
             её не касался — карточка облезала до прозрачного текста. `.tl3-card--tr`
             остаётся раскладкой коннектора (город→режим→город). */}
-        <Card as="button" radius="lg" interactive ariaBusy={e._pending || undefined} className="tl3-card tl3-card--tr" onClick={onClick}>
+        <Card as="button" radius="btn" interactive ariaBusy={e._pending || undefined} className="tl3-card tl3-card--tr" onClick={onClick}>
           <div className="rv-end">
             <b>{e.from || "—"}</b>
             {e.from_address && e.from_address !== e.from && <span>{e.from_address}</span>}
@@ -912,7 +912,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <Card as="button" radius="lg" interactive ariaBusy={e._pending || undefined} className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
+      <Card as="button" radius="btn" interactive ariaBusy={e._pending || undefined} className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>
@@ -925,6 +925,60 @@ export function StreamEventRow({ e, onClick }) {
           </span>
         )}
       </Card>
+    </div>
+  );
+}
+
+// ─── BookingWarning ──────────────────────────────────────────────────────────
+// Варнинг недостающей брони в ленте — «призрак события» (B1, апрув Pavel
+// 2026-08-26): пунктирный силуэт карточки в тинте типа (transfer/hotel) с
+// янтарной точкой «!» на плитке, за той же колонкой времени, что и события
+// (.tl3-ev .time, значение «—»). Живёт в ДС рядом со StreamEventRow — тот же
+// принцип «экранное имя внутри ДС» (семья .tl3), и его же рисует витрина /kit.
+// Тон рамки/фона едет ручкой --w-c на корне (как --hl* у .tl3-card); плитка
+// берёт тон осью `tone` самого <Tile>. Крестик компонент не прячет сам:
+// решение о скрытии (confirm + localStorage) принимает вызыватель.
+const WARN_TINT = {
+  transfer: { '--w-c': 'var(--ev-transfer)' },
+  hotel:    { '--w-c': 'var(--ev-hotel)' },
+};
+
+/** @param {{ kind: 'transfer'|'hotel', title: string, sub: string, onAdd?: any, onDismiss?: any }} p */
+export function BookingWarning({ kind, title, sub, onAdd, onDismiss }) {
+  const t = useT();
+  return (
+    <div className="tl3-ev">
+      <div className="time">—</div>
+      <div className="tl3-warn" style={WARN_TINT[kind]}>
+        <Tile as="span" size="xl" tone={kind}>
+          <Icon name={kind === 'hotel' ? 'bed' : 'route'} />
+          <span className="tl3-warn__dot">!</span>
+        </Tile>
+        <div className="grow">
+          <b>{title}</b>
+          <div className="sb t-meta">{sub}</div>
+        </div>
+        <div className="tl3-warn__act">
+          <Btn icon="plus" onClick={onAdd}>{t('common.add')}</Btn>
+          <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={onDismiss} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TimelineEmptyDay ────────────────────────────────────────────────────────
+// Плейсхолдер пустого дня ленты — НАМЕРЕННО другой породы, чем варнинги (без
+// рамки, тихая строка), чтобы не читаться проблемой. Действие — канон
+// <Btn variant="link">. Тексты приходят снаружи: у дня есть/нет города, и это
+// знание вызывателя, не примитива.
+/** @param {{ label: string, actionLabel: string, onAdd?: any }} p */
+export function TimelineEmptyDay({ label, actionLabel, onAdd }) {
+  return (
+    <div className="tl3-empty t-meta">
+      <Icon name="sun" size={15} />
+      <span>{label}</span>
+      <Btn variant="link" onClick={onAdd}>{actionLabel}</Btn>
     </div>
   );
 }

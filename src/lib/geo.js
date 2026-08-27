@@ -100,15 +100,3 @@ export async function geocodeAddress(address, lang) {
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
   return { latitude, longitude };
 }
-
-// Resolve the canonical English city name by forward-searching the (possibly
-// localized) city name; searchCities reads namedetails (name:en / int_name /
-// name), which is accurate — unlike reverse geocoding, which returned
-// sub-localities (Tao/Khok Tum, see TRIP-142). Used for Stay22 address search and
-// partner/referral links. Returns '' when unavailable.
-export async function cityNameEn(cityName, countryCode) {
-  if (!cityName) return '';
-  const rows = await searchCities(cityName, 'en');
-  const best = (countryCode && rows.find(r => r.country_code === String(countryCode).toUpperCase())) || rows[0];
-  return best?.city_name_en || '';
-}

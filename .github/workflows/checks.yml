@@ -120,6 +120,7 @@ jobs:
   #   2ab check-confirm-copy         — every confirm({…}) carries a title AND a description (a11y name + Radix description)
   #   2ac check-site-prefixes        — a new CSS class-name prefix in public/site.css (site DS namespace) needs approval (TRIP-446)
   #   2ad check-site-nav             — internal <a href> in the site zone reloads the doc and drops the campaign mark (TRIP-456)
+  #   2ab check-ds-boundary         — the site zone must not import the app's design system (TRIP-446)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -201,6 +202,9 @@ jobs:
       - name: 2ae — site primitive dup (класс объявлен одиночкой и в site.css, и в app.css — вторая база)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-site-primitive-dup.mjs
+      - name: 2ab — DS boundary (сайтовая зона не импортирует ДС приложения)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-ds-boundary.mjs
       - name: 2n — orphaned CSS (rule left behind after the class moved)
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }

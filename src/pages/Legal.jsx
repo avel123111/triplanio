@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { withVisitCampaign } from '@/lib/analytics';
+import { zoneHome } from '@/components/site/zoneCta';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
 } from '@/components/site/SiteChrome';
 import { LEGAL, LEGAL_META, LEGAL_FOOT, LEGAL_UI } from './legalContent';
 
@@ -26,15 +26,13 @@ import { LEGAL, LEGAL_META, LEGAL_FOOT, LEGAL_UI } from './legalContent';
    /terms + /privacy по прототипу (TRIP-465).
    ============================================================================= */
 
-// The chrome's brand/CTA point at OUR origin with the visit's campaign mark,
-// same as the landing/demo/public-trip.
-const SITE = withVisitCampaign(`${window.location.origin}/`);
+// Адрес главной с меткой кампании визита — общий на всю зону (`zoneCta.js`).
+const SITE = zoneHome();
 const DOCS = ['terms', 'privacy'];
 
 export default function Legal({ doc = 'terms' }) {
   const { lang, setLang } = useI18n();
   const cssReady = useSiteCss();
-  useSiteTheme(); // marketing zone follows the landing: light-only, restored on exit
 
   const active = LEGAL[doc] ? doc : 'terms';
   const d = LEGAL[active];
@@ -69,7 +67,7 @@ export default function Legal({ doc = 'terms' }) {
         <section className="doc" id="doc" data-hdr="light">
           <div className="wrap">
             <div className="doc-head">
-              <span className="eyebrow">{LEGAL_UI.eyebrow}</span>
+              <span className="brow">{LEGAL_UI.eyebrow}</span>
               <h1 className="doc-title">{d.title}</h1>
               <p className="doc-lede">{d.lede}</p>
               <div className="doc-meta">

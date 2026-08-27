@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { track, withVisitCampaign } from '@/lib/analytics';
-import { useAuth } from '@/lib/AuthContext';
+import { useZoneCta } from '@/components/site/zoneCta';
+import { DEMO_PATH } from '@/pages/Demo/demoPath';
+import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { WORLD_MAP_SVG } from './WorldMapSvg';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
 } from '@/components/site/SiteChrome';
 import { useReveal } from '@/components/site/useReveal';
+import { SiteCta } from '@/components/site/SiteTrip';
 
 /* =========================================================
    Landing page — the v5.7 prototype's markup, PORTED 1:1 (TRIP-460, "CSS and
@@ -16,7 +17,6 @@ import { useReveal } from '@/components/site/useReveal';
    top. Section CSS is the prototype's own body in public/site.css.
 ========================================================= */
 
-const APP_URL = '/login';
 
 /**
  * Hero three-layer photo composite (TRIP-460 §10, ported from the prototype's
@@ -240,9 +240,10 @@ function usePainScrub(ready) {
 /* ── Hero ── */
 function Hero() {
   const t = useT();
-  const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  // Обе кнопки героя — через общий хелпер зоны. Вторая («Войти») до этого не
+  // слала события вовсе, хотя это вход в продукт с первого экрана.
+  const cta = useZoneCta('hero');
+  const signin = useZoneCta('hero_signin');
   return (
     <section className="hero" data-hdr="light" id="top">
       <div className="hero-bg" aria-hidden="true">
@@ -260,10 +261,10 @@ function Hero() {
           </h1>
           <p className="hero-sub hero-anim" dangerouslySetInnerHTML={{ __html: t('landing.hero.sub') }} />
           <div className="hero-ctas hero-anim">
-            <a className="btn btn-primary" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'hero' }); nav(ctaTarget); }}>
+            <a className="btn btn-primary" {...cta}>
               <span>{t('landing.hero.cta1')}</span>
             </a>
-            <a className="btn btn-ghost" href={ctaTarget} onClick={(e) => { e.preventDefault(); nav(ctaTarget); }}>
+            <a className="btn btn-ghost" {...signin}>
               {t('landing.hero.cta2')}
             </a>
           </div>
@@ -328,7 +329,7 @@ function Pain() {
             </div>
             <div className="appwin device">
               <div className="aw-screen device-screen">
-                <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>triplanio.com/d/spain-may-27</span></div>
+                <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>{SHARE_URL}</span>{/* i18n-ignore: demo URL */}</div>
                 <div className="aw-phonebar" aria-hidden="true"><i /></div>
                 <div className="aw-head">
                   <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
@@ -532,9 +533,8 @@ function useCounters(ready, lang) {
 /* ── Assistant ("Your trip, in your pocket") — Telegram demo ── */
 /* ── Share ("One link. The whole trip.") ── */
 // Демо-ссылка шеринга. Домен — продуктовый triplanio.com (не triplanio.app:
-// на чужой домен нельзя пускать ни клик, ни clipboard — ревью TRIP-460 V4);
-// путь /d/<slug> — маршрут демо-трипа (эпик TRIP-445, приезжает в TRIP-461).
-const SHARE_URL = 'triplanio.com/d/spain-may-27';
+// на чужой домен нельзя пускать ни клик, ни clipboard — ревью TRIP-460 V4).
+const SHARE_URL = `triplanio.com${DEMO_PATH}`;
 
 /**
  * FAQ — native <details>/<summary>, "close others" on open (ported from the
@@ -557,39 +557,24 @@ function useFaqCloseOthers(ready) {
 }
 
 /* ── FAQ ── */
-/* ── Final CTA ── data-hdr="accent" is the producer for the 9 on-accent
-   header rules (§4) — SiteHeader's on-<theme> class only ever renders
-   'accent' when a [data-hdr] section actually carries that value; this
-   section is the only one in the prototype that does. */
+/* ── Final CTA ── ОДНА секция на лендинг, демо и публичку: `<SiteCta>`.
+   Здесь была её посимвольная копия, и из-за этого правка CTA меняла одну
+   страницу, но не остальные. Уникален у лендинга только ВТОРОЙ CTA («смотреть
+   демо») — он и передаётся пропсом, всё прочее общее. */
 function FinalCta() {
   const t = useT();
-  const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
-  // Internal demo link carries the visit campaign mark (like ctaTarget) so it
-  // goes through the router, not a raw <a href> that drops the mark (check-site-nav).
-  const demoTarget = withVisitCampaign('/d/spain-may-27');
+  // Единственный CTA зоны, ведущий НЕ в продукт, — отсюда явный адрес. Метку
+  // кампании визита он несёт так же, как остальные, и идёт через роутер, а не
+  // голым <a href>, который её теряет (гард 2ad).
+  const demo = useZoneCta('final_demo', withVisitCampaign(DEMO_PATH));
   return (
-    <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
-      <span className="horizon" aria-hidden="true" />
-      <div className="wrap inner">
-        <div className="rv">
-          <span className="brow" style={{ justifyContent: 'center' }}>{t('landing.fin.eyebrow')}</span>{/* inline-style-exempt: prototype's own one-off centering */}
-          <h2 style={{ marginTop: '14px' }} dangerouslySetInnerHTML={{ __html: t('landing.fin.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
-          <p>{t('landing.fin.sub')}</p>
-          <div className="ctas">
-            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
-              <span>{t('landing.fin.cta1')}</span>
-              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
-            </a>
-            {/* Второй CTA — «Посмотреть демо» → страница демо-трипа (TRIP-462). */}
-            <a className="btn btn-glass" href={demoTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final_demo' }); nav(demoTarget); }}>
-              {t('landing.fin.cta2')}
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
+    <SiteCta
+      secondary={(
+        <a className="btn btn-glass" {...demo}>
+          {t('landing.fin.cta2')}
+        </a>
+      )}
+    />
   );
 }
 
@@ -919,7 +904,6 @@ export default function LandingPage() {
   const { lang, setLang } = useI18n();
   const t = useT();
 
-  useSiteTheme();
   const cssReady = useSiteCss();
   useDocumentMeta(t('landing.meta.title'), t('landing.meta.description'));
   useHeroFrame(cssReady);
@@ -928,19 +912,9 @@ export default function LandingPage() {
   useCounters(cssReady, lang);
   useFaqCloseOthers(cssReady);
 
-  // <html lang> — снимок + восстановление на unmount, как у useSiteTheme
-  // (ревью TRIP-460 C1): раньше атрибут выставлялся без очистки и «протекал» —
-  // уходишь с лендинга, а lang остаётся landing'овым. Идиома дословно как в
-  // useSiteTheme: локальный prev в mount-once эффекте, без ref.
-  useEffect(() => {
-    const r = document.documentElement;
-    const prev = r.getAttribute('lang');
-    return () => {
-      if (prev != null) r.setAttribute('lang', prev);
-      else r.removeAttribute('lang');
-    };
-  }, []);
-  useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
+  // <html lang> здесь БОЛЬШЕ НЕТ: атрибут принадлежит зоне, а не одной её
+  // странице, и живёт в `SiteZone` (TRIP-445). Пока он стоял тут, переключатель
+  // языка в шапке демо/юр/логина/приглашения менял текст, а lang оставался "en".
 
   if (!cssReady) return null;
 

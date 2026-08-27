@@ -13,17 +13,12 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider } from '@/lib/i18n/I18nContext';
-import Trips from '@/pages/Trips';
-import Statistics from '@/pages/Statistics';
-import TripView from '@/pages/TripView';
-import ScreenAccount from '@/pages/ScreenAccount';
 import PublicTrip from '@/pages/PublicTrip';
 import JoinTrip from '@/pages/JoinTrip';
 import Login from '@/pages/Login';
 import LandingPage from '@/pages/Landing/LandingPage';
-import ManualPlanner from '@/pages/ManualPlanner';
-import Inbox from '@/pages/Inbox';
-import Pro from '@/pages/Pro';
+import { SiteZone } from '@/components/site/SiteChrome';
+import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import StripeReturnModals from '@/components/common/StripeReturnModals';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
@@ -31,6 +26,21 @@ import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 import { FeedbackProvider } from '@/components/support/FeedbackProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
+
+// ★ ЭКРАНЫ ПРИЛОЖЕНИЯ — LAZY (TRIP-445). Семь статических импортов держали весь
+// авторизованный продукт в ГЛАВНОМ чанке, поэтому лендинг, вход и юр-страницы
+// скачивали планировщик, редактор поездки и статистику вместе с их зависимостями
+// — притом что незалогиненный посетитель не откроет ни один из них. Техника не
+// новая: Kit / DemoTrip / Legal уже приезжают так же.
+// `MapProvider` при этом остаётся статическим и держит `mapbox-gl` синхронным —
+// сам по себе этот `lazy` полмегабайта карты не снимает, см. vite.config.js.
+const Trips = lazy(() => import('@/pages/Trips'));
+const Statistics = lazy(() => import('@/pages/Statistics'));
+const TripView = lazy(() => import('@/pages/TripView'));
+const ScreenAccount = lazy(() => import('@/pages/ScreenAccount'));
+const ManualPlanner = lazy(() => import('@/pages/ManualPlanner'));
+const Inbox = lazy(() => import('@/pages/Inbox'));
+const Pro = lazy(() => import('@/pages/Pro'));
 
 // Витрина дизайн-системы (TRIP-340). Вне прода и БЕЗ логина: геометрия - чистый
 // CSS, поэтому визуальный гейт снимает именно её, а не рукописный стенд.
@@ -84,6 +94,20 @@ function RedirectToEditSection() {
   return <Navigate to={`/trip/${tripId}?lens=route`} replace />;
 }
 
+// Ожидание на всю площадь — ОДИН элемент на оба своих места в этом файле
+// (гейт авторизации и Suspense маршрутов). Разметка `.app-loading` +
+// `.spin spin--ring` уже жила здесь копией, и `<Suspense>` ниже добавил бы
+// ТРЕТЬЮ: повторённая рядом с существующим классом разметка — признак того,
+// что у неё нет своего имени (правило #6 / TRIP-282), а не повод скопировать
+// ещё раз. Четвёртый экземпляр живёт в I18nContext и ждёт общего дома —
+// shared-компонент это «новое» и идёт через апрув, поэтому здесь схлопнуто
+// ровно то, что схлопывается без него.
+const AppLoading = () => (
+  <div className="app-loading">
+    <div className="spin spin--ring spin--xl spin--ink" />
+  </div>
+);
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
   const location = useLocation();
@@ -114,40 +138,23 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Demo trip — public marketing page, no auth. Own branch before the auth gate
-  // so logged-out visitors get the demo, not the catch-all landing (TRIP-462).
-  if (path.startsWith('/d/')) {
-    return (
-      <Suspense fallback={null}>
-        <Routes>
-          <Route path="/d/:slug" element={<DemoTrip />} />
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
-      </Suspense>
-    );
-  }
-
-  // Legal pages — public, no auth. Own branch before the auth gate, like the
-  // demo, so both logged-out and logged-in visitors reach /terms and /privacy
-  // (TRIP-465). The vercel.json rewrites to the old static HTML are removed in
-  // the same change — while they stand, this route never renders.
-  if (path === '/terms' || path === '/privacy') {
-    return (
-      <Suspense fallback={null}>
-        <Routes>
-          <Route path="/terms" element={<Legal doc="terms" />} />
-          <Route path="/privacy" element={<Legal doc="privacy" />} />
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
-      </Suspense>
-    );
-  }
-
-  // Public read-only trip page - no auth needed
+  // Public read-only trip page - no auth needed.
+  // Страница — под <SiteZone>, как остальные шесть маршрутов зоны (TRIP-445):
+  // это ТА ЖЕ зона — та же шапка, тот же site.css, тот же переключатель языка.
+  // Пока эти две ветки стояли снаружи, оболочка была «одной на зону» только на
+  // словах: <html lang> ставил лендинг у себя в файле, поэтому публичка и
+  // приглашение оставались lang="en" на русской странице.
+  //
+  // ⚠️ Обёртка на МАРШРУТЕ, а не на всей ветке, и это замер, а не вкус: под
+  // site.css у голого `.btn` сайтовая база (пилюля 99px, border:0, padding
+  // 13/24), а PageNotFound собран из <Btn> app-ДС — 404 приезжал бы кнопкой из
+  // двух дизайн-систем (замерено: 13px 24px/99px/0 вместо 0 15px/10px/1px).
+  // 404 — не страница зоны: ни шапки, ни подвала, ни её ДС ему не нужно.
+  // <Suspense> и lazy тут не нужны — обе страницы в главном чанке.
   if (path.startsWith('/public/trip/')) {
     return (
       <Routes>
-        <Route path="/public/trip/:tripId" element={<PublicTrip />} />
+        <Route path="/public/trip/:tripId" element={<SiteZone><PublicTrip /></SiteZone>} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     );
@@ -158,50 +165,76 @@ const AuthenticatedApp = () => {
   if (path.startsWith('/join/')) {
     return (
       <Routes>
-        <Route path="/join/:token" element={<JoinTrip />} />
+        <Route path="/join/:token" element={<SiteZone><JoinTrip /></SiteZone>} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     );
   }
 
-  // Login + password-recovery pages - always accessible (no auth gating).
-  // /reset-password is reached from the recovery email; its token creates a
-  // session, so it must bypass the authenticated routing below and render the
-  // same Login shell (which opens on the new-password form).
-  if (path === '/login' || path === '/reset-password') {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/reset-password" element={<Login />} />
-      </Routes>
-    );
-  }
+  // ★ ОДНА ДВЕРЬ В НЕАВТОРИЗОВАННУЮ ЗОНУ (TRIP-445).
+  //
+  // Лендинг, демо, /terms, /privacy и вход раньше жили пятью отдельными
+  // ветками, каждая со своим <Suspense> и своим владельцем site.css. Из-за
+  // этого ЛЮБОЙ переход внутри зоны размонтировал владельца слоя: стили зоны
+  // снимались с документа, страницы (`if (!cssReady) return null`) на кадр
+  // отдавали пустоту — это и читалось как «перезагрузка страницы». Плюс
+  // прокрутка не сбрасывалась: /terms открывался с середины.
+  //
+  // Теперь ветка одна и оболочка <SiteZone> над маршрутами: внутри зоны она не
+  // размонтируется, поэтому слой стилей стоит на месте, а меняется только
+  // содержимое. Ветки страниц остались ДО аут-гейта (демо, юр-страницы и вход
+  // доступны и разлогиненному, и залогиненному), условие на «/» — прежнее:
+  // лендинг показываем только после того, как авторизация РАЗРЕШЕНА, иначе
+  // вернувшийся из OAuth видит вспышку лендинга.
+  //
+  // `Suspense` тоже один: демо и юр-страницы приезжают отдельными чанками.
+  const inZone = path.startsWith('/d/')
+    || path === '/terms' || path === '/privacy'
+    || path === '/login' || path === '/reset-password'
+    || (path === '/' && !isAuthenticated && !isLoadingAuth);
 
-  // Landing page at "/" for unauthenticated visitors - only show AFTER auth is resolved
-  // (not during loading) so returning OAuth users don't see a flash of the landing.
-  if (!isAuthenticated && !isLoadingAuth && path === '/') {
+  if (inZone) {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-      </Routes>
+      <SiteZone>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            {/* /reset-password приходит из письма восстановления: его токен
+                создаёт сессию, поэтому экран тот же, что и вход. */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<Login />} />
+            {/* ТОЧНЫЙ адрес, а не `/d/:slug`: демо ровно одно, и чужой слаг
+                обязан отдать 404, а не то же демо под любым адресом. */}
+            <Route path={DEMO_PATH} element={<DemoTrip />} />
+            <Route path="/terms" element={<Legal doc="terms" />} />
+            <Route path="/privacy" element={<Legal doc="privacy" />} />
+            <Route path="*" element={<PageNotFound />} />
+          </Routes>
+        </Suspense>
+      </SiteZone>
     );
   }
 
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="app-loading">
-        <div className="spin spin--ring spin--xl spin--ink" />
-      </div>
-    );
+    return <AppLoading />;
   }
 
-  // Not authenticated and on a non-root path - send to landing
+  // Not authenticated and on a non-root path - send to landing. Оболочка и
+  // <Suspense> ТЕ ЖЕ, что в ветке зоны выше, и это несущее: React сверяет по
+  // типу элемента, поэтому переход «чужой адрес → /terms» не пересоздаёт ни
+  // <SiteZone>, ни <Suspense> — слой стилей зоны не роняется. Разойдись эти
+  // две обёртки по составу, и первый же lazy-маршрут, добавленный сюда,
+  // вернул бы пустой кадр, который вся эта ветка и убирает.
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="*" element={<LandingPage />} />
-      </Routes>
+      <SiteZone>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="*" element={<LandingPage />} />
+          </Routes>
+        </Suspense>
+      </SiteZone>
     );
   }
 
@@ -218,6 +251,11 @@ const AuthenticatedApp = () => {
           app; the global bottom-nav (sibling) stays alive. Keyed by pathname so
           navigating away resets a crashed route. */}
       <ErrorBoundary key={path} region={`route:${path}`}>
+      {/* Экраны приезжают отдельными чанками, поэтому нужен видимый ожидатель —
+          ТОТ ЖЕ, что у гейта авторизации выше: ожидание выглядит одинаково,
+          откуда бы ни пришло. `fallback={null}` тут не годится (в зоне он
+          уместен: страницы сами гейтят по cssReady), здесь дал бы белый кадр. */}
+      <Suspense fallback={<AppLoading />}>
       <Routes>
       {/* New design - standalone (own app-header, no Layout) */}
       {/* Logged-in users can still view the landing at "/" (no auto-redirect);
@@ -239,6 +277,7 @@ const AuthenticatedApp = () => {
 
       <Route path="*" element={<PageNotFound />} />
       </Routes>
+      </Suspense>
       </ErrorBoundary>
       {/* Custom mobile bottom nav (≤640px); hides itself on planner / create /
           landing / login routes. */}

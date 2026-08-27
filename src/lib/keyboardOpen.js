@@ -29,8 +29,32 @@ import { useSyncExternalStore } from 'react';
 // show/hide (~60–100px) from flipping it; a soft keyboard is ~260–320px.
 const OPEN_DELTA = 120;
 
+// Типы <input>, которые НЕ поднимают экранную клавиатуру (в отличие от
+// text/email/search/url/number/tel/password/…). Вынесено в модуль, чтобы не
+// пересоздавать массив на каждый resize вьюпорта.
+const NON_TEXT_INPUT_TYPES = new Set(['button', 'submit', 'reset', 'checkbox', 'radio', 'range', 'color', 'file', 'image']);
+
 let open = false;
 const subscribers = new Set();
+
+// Клавиатуру физически можно поднять ТОЛЬКО над текстовым вводом (input
+// текстовых типов / textarea / contenteditable). select, чекбоксы, кнопки,
+// color/file/range её не поднимают. Это добавочный гейт к геометрии: без него
+// первый (слишком высокий) замер vv.height на мобильном старте фиксировал
+// baseline завышенным, усадка URL-бара читалась как «клавиатура» и прятала
+// боттом-нав до перезагрузки. Фокус здесь НЕ замена геометрии (та racy сама по
+// себе — тап по наву возвращал фокус в поле), а ДОПОЛНИТЕЛЬНОЕ условие: при тапе
+// по кнопке геометрия не двигается, поэтому старый race не воскресает.
+function isTextInputFocused() {
+  if (typeof document === 'undefined') return false;
+  const el = document.activeElement;
+  if (!(el instanceof HTMLElement)) return false;
+  if (el instanceof HTMLTextAreaElement) return true;
+  if (el instanceof HTMLInputElement) {
+    return !NON_TEXT_INPUT_TYPES.has((el.type || 'text').toLowerCase());
+  }
+  return el.isContentEditable;
+}
 
 /** @param {() => void} cb */
 function subscribe(cb) {
@@ -72,7 +96,10 @@ export function startKeyboardOpenWatch() {
   const update = () => {
     const h = vv.height;
     if (h > baseline) baseline = h;          // grow baseline (URL bar hides, rotate)
-    const next = baseline - h > OPEN_DELTA;
+    // Геометрия — НЕОБХОДИМОЕ, но не достаточное условие; фокус в текстовом поле —
+    // второе. На старте не сфокусировано ничего → false, поэтому завышенный
+    // baseline больше не даёт ложного «клавиатура открыта» и не прячет нав.
+    const next = baseline - h > OPEN_DELTA && isTextInputFocused();
     if (next !== open) { open = next; notify(); }
     root.toggleAttribute('data-keyboard', next);
   };

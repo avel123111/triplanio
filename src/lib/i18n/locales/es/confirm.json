@@ -4,5 +4,9 @@
   "delete_pro_trip.title": "Estás eliminando un viaje Pro",
   "delete_trip.body": "¿Seguro que quieres eliminar este viaje? Se eliminarán todos los datos del viaje. Esta acción es irreversible.",
   "delete_trip.title": "Eliminar el viaje",
+  "hide_warning.action": "Ocultar",
+  "hide_warning.hotel_body": "¿Seguro que quieres ocultar el aviso de hotel faltante en {city}?",
+  "hide_warning.title": "Ocultar aviso",
+  "hide_warning.transfer_body": "¿Seguro que quieres ocultar el aviso de traslado faltante {from} → {to}?",
   "leave_trip.body": "Perderás el acceso y tus documentos personales en este viaje se eliminarán de forma permanente. Solo podrás volver con una nueva invitación."
 }

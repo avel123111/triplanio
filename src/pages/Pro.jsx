@@ -1,5 +1,8 @@
+// @ts-check
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
@@ -8,14 +11,24 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '@/design/icons';
-import { Btn, Card, Skeleton, Severity, Tile } from '@/design/index';
+import { Btn, Card, Col, Cover, Grow, Row, Skeleton, Severity, Trunc } from '@/design/index';
 import AppHeader from '@/components/AppHeader';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
 // modal - callers navigate here with `/pro?tripId=...&hidePerTrip=1`.
 // Layout (TRIP-229): three compare cards (Free / Monthly / Yearly), each with
-// its OWN action button — no radio-select, no sticky footer. The one-time
-// per-trip pass is a separate banner below the grid, shown only to the owner.
+// its OWN action button — no radio-select, no sticky footer.
+//
+// ★ ПОРЯДОК ЭКРАНА ЗАВИСИТ ОТ ТОГО, ОТКУДА ПРИШЛИ. Разовый Pro для одного
+// путешествия стоял ПОД тарифной сеткой (на телефоне — 1498px вниз от верха) и
+// назывался «для этого путешествия», нигде не показывая, для какого именно.
+// Теперь при заходе из трипа страница открывается ПЛАШКОЙ этого оффера с
+// обложкой и названием путешествия, а тарифы идут ниже под вопросом «Часто
+// путешествуете?». Вне трипа порядок прежний: герой → тарифы.
+//
+// Имя и обложку приносит `checkSubscriptionStatus` — та же дверь, что уже
+// отвечает «владелец ли ты» и «трип уже Pro»; отдельного запроса под витрину
+// нет (см. её комментарий про две колонки в select).
 export default function Pro() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
@@ -29,22 +42,49 @@ export default function Pro() {
   // ?from=paywall so we can tell an intentional pricing visit from a blocked one.
   const from = searchParams.get('from') || null;
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
-  // a tripId (e.g. a leaked link from a shared trip), hide the per-trip banner —
-  // they can still subscribe, but can't buy Pro for someone else's trip. Every
-  // in-app CTA carrying a tripId is already owner-gated, so the owner is the only
-  // realistic visitor: show the banner OPTIMISTICALLY while ownership is unknown
-  // (null) and only drop it once the check explicitly returns false. Purchase is
-  // blocked server-side regardless.
-  const [tripOwner, setTripOwner] = useState(null); // null = unknown
+  // a tripId (e.g. a leaked link from a shared trip), the offer plaque is hidden —
+  // they can still subscribe, but can't buy Pro for someone else's trip. Purchase
+  // is blocked server-side regardless.
+  //
+  // Ответ храним ЦЕЛИКОМ, а не одним булевым: у экрана три вопроса про один и
+  // тот же трип — «владелец ли я» (право покупать pro_trip), «как называется и
+  // как выглядит» (плашка) и «не Pro ли он уже» — и один запрос на все три.
+  /** @typedef {{ isPro?: boolean, isOwner?: boolean, reason?: string,
+   *              trip?: { title?: string|null, coverImageUrl?: string|null } }} TripProState */
+  const [tripState, setTripState] = useState(/** @type {TripProState|null} */ (null)); // null = ещё не знаем
   useEffect(() => {
-    if (!tripId) return;
+    if (!tripId) return undefined;
     let cancelled = false;
     invokeFn('checkSubscriptionStatus', { body: { tripId } })
-      .then((res) => { if (!cancelled) setTripOwner(!!res.data?.isOwner); })
-      .catch(() => { if (!cancelled) setTripOwner(false); });
+      .then((res) => { if (!cancelled) setTripState(res.data || {}); })
+      .catch(() => { if (!cancelled) setTripState({}); });
     return () => { cancelled = true; };
   }, [tripId]);
-  const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId || tripOwner === false;
+  // Плашку показываем ОПТИМИСТИЧНО, пока владение неизвестно (null), и снимаем
+  // только когда проверка явно вернула false: каждый внутренний CTA с tripId уже
+  // гейтится владельцем, так что владелец — единственный реальный посетитель, а
+  // покупка режется сервером в любом случае.
+  // `isPro` того же ответа закрывает живой дефект: у трипа, который УЖЕ Pro,
+  // кнопка покупки оставалась активной и приносила 409 TRIP_ALREADY_PRO в лицо.
+  const showTripOffer = !!tripId
+    && searchParams.get('hidePerTrip') !== '1'
+    && tripState?.isOwner !== false
+    && tripState?.isPro !== true;
+
+  // ★ ВИТРИНА НЕ ЖДЁТ ДВЕРЬ. Имя и обложку экран трипа уже держит в кэше
+  // (`['trip-shell', tripId]` — тот же ключ, что читает сам трип), а внутрь Pro
+  // ведут только его кнопки. Читаем этот кэш НАБЛЮДАТЕЛЕМ (`enabled: false` —
+  // никогда не фетчит, владелец запроса — экран трипа; тот же приём, что в
+  // `useEntitySource`), поэтому плашка рисуется с названием в ПЕРВОМ кадре, без
+  // единого лишнего запроса. Копии данных не заводим: как только приезжает
+  // ответ двери, он и становится источником — кэш лишь закрывает ожидание.
+  // Наблюдатель без `queryFn` типизируется как `unknown` — форму читаемого куска
+  // объявляем здесь (нужны ровно два поля строки трипа, оба в snake_case из БД).
+  /** @typedef {{ trip?: { title?: string|null, cover_image_url?: string|null } }} TripShellCache */
+  const shellQuery = useQuery({ queryKey: TRIP_SHELL_KEY(tripId), enabled: false });
+  const shell = /** @type {TripShellCache|undefined} */ (shellQuery.data);
+  const offerTrip = tripState?.trip
+    || (shell?.trip ? { title: shell.trip.title, coverImageUrl: shell.trip.cover_image_url } : null);
 
   // Revenue funnel top: every pricing view + a distinct paywall impression when a
   // feature gate sent the user here (?from=paywall). Fire once per mount.
@@ -165,21 +205,31 @@ export default function Pro() {
 
   const monthly = renderPrice('account_pro_monthly');
   const yearly = renderPrice('account_pro_yearly');
+  /**
+   * Тариф — ДАННЫЕ, а не разметка: карточка рисуется одним куском JSX по этому
+   * списку. `variant` берёт закрытый набор кнопки (`BtnVariant`), иначе из
+   * литерала выводится `string` и `<Btn variant={…}>` краснеет под `@ts-check`.
+   * @type {{ key: string, name: string, price: string, oldPrice?: string|null,
+   *          save?: number|null, caption: string, featured?: boolean,
+   *          features: { text: string, on: boolean }[],
+   *          cta: { label: string, variant: import('@/design/index').BtnVariant,
+   *                 star?: boolean, code?: string, onClick?: () => void } }[]}
+   */
   const cards = [
     {
-      key: 'free', name: t('sub.plan_free_title'), nameColor: 'var(--muted)',
+      key: 'free', name: t('sub.plan_free_title'),
       price: fmtMoney(0, currency, { minFraction: 0, maxFraction: 0 }),
       caption: t('sub.free_forever'), features: freeFeatures,
       cta: { label: t('sub.stay_free'), variant: 'secondary', onClick: () => nav(-1) },
     },
     {
-      key: 'monthly', name: t('sub.plan_monthly_short'), nameColor: 'var(--brand)',
+      key: 'monthly', name: t('sub.plan_monthly_short'),
       price: monthly,
       caption: t('sub.caption_monthly'), features: proFeatures,
       cta: { label: t('sub.subscribe_monthly'), variant: 'primary', code: 'account_pro_monthly' },
     },
     {
-      key: 'yearly', name: t('sub.plan_yearly_short'), nameColor: 'var(--pro)', featured: true,
+      key: 'yearly', name: t('sub.plan_yearly_short'), featured: true,
       price: yearly, oldPrice: yearStrike, save: savePct,
       caption: yearPerMonth ? t('sub.caption_yearly', { perMonth: yearPerMonth }) : '',
       features: proFeatures,
@@ -189,6 +239,12 @@ export default function Pro() {
 
   const tripPrice = renderPrice('trip_pro_lifetime');
   const busy = !!loadingPlan;
+  // Плашка-скелетон стоит, пока НЕ ЗНАЕМ, о каком путешествии речь: фоллбек-обложка
+  // с пустым заголовком рядом со скелетонами тарифов — враньё картинкой. Ответ двери
+  // снимает ожидание В ЛЮБОМ случае (в том числе неуспехом), иначе сбой сети оставил
+  // бы вечный скелетон и убил единственный вход в покупку pro_trip; без имени плашка
+  // просто теряет строку заголовка, подзаголовок договаривает смысл сам.
+  const offerPending = (pricesLoading && !prices) || (!offerTrip && tripState === null);
 
   return (
     <div className="pro-page app-shell">
@@ -205,49 +261,124 @@ export default function Pro() {
       />
 
       {/* ── Main content zone — natural height, centered (canonical standalone shell) ── */}
-      <main
-        className="pro-main"
-        style={{ flex: 1, width: '100%', maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px)', boxSizing: 'border-box' }}
-      >
+      <main className="pro-main">
 
-        {/* Hero */}
+        {/* Hero. Заголовок КОНТЕКСТНЫЙ: пришёл из трипа — «Открой Pro в этом
+            путешествии» над плашкой оффера; зашёл вне трипа — общий оффер Pro.
+            В трип-состоянии он на кегль ниже (`.t-title` вместо
+            `.pro-hero__title`) и без подзаголовка: под ним сразу стоит плашка,
+            которая договаривает остальное, а полный герой выносил бы её за
+            первый экран на 1366×768. */}
         <div className="pro-hero">
           <div className="pro-hero-eyebrow">
-            <img src="/triplanio-logo.svg" alt="" style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0 }} />
+            <img src="/triplanio-logo.svg" alt="" />
             Triplanio Pro
           </div>
-          <h1 className="pro-hero__title">{t('sub.hero_title')}</h1>
-          <p className="pro-hero__sub">{t('sub.hero_sub')}</p>
-          {tripId === null && (
-            <div className="pro-hero__note">
-              <Icon name="info" size={12} />
-              {t('sub.per_trip_note')}
-            </div>
+          {showTripOffer ? (
+            <h1 className="t-title">{t('sub.hero_title_trip')}</h1>
+          ) : (
+            <>
+              <h1 className="pro-hero__title">{t('sub.hero_title')}</h1>
+              <p className="pro-hero__sub">{t('sub.hero_sub')}</p>
+              {tripId === null && (
+                <div className="pro-hero__note">
+                  <Icon name="info" size={12} />
+                  {t('sub.per_trip_note')}
+                </div>
+              )}
+            </>
           )}
         </div>
+
+        {/* ── Плашка «Pro для этого путешествия» ── Скелетон повторяет её
+            геометрию, чтобы при подстановке настоящей ничего не прыгало. */}
+        {showTripOffer && (offerPending ? (
+          <Card radius="btn" className="pro-offer">
+            <Row gap="g7" wrap>
+              {/* Обложка тоже ЗАГЛУШКА, а не пустой <Cover>: у примитива нижним
+                  слоем всегда лежит фоллбек-картинка из бандла, поэтому пустой
+                  <Cover> посреди скелетонов показывал чужое фото как обложку
+                  этого путешествия. Размер и радиус — те же 62×46/--r-sm. */}
+              <Skeleton w={62} h={46} r={'var(--r-sm)'} />
+              <Grow fit>
+                <Col gap="g1">
+                  <Skeleton w="34%" h={9} />
+                  <Skeleton w="44%" h={18} />
+                  <Skeleton w="68%" h={11} />
+                </Col>
+              </Grow>
+              <Row gap="g7" justify="j-between" className="pro-offer__buy">
+                <Col gap="g1">
+                  <Skeleton w={62} h={22} />
+                  <Skeleton w={78} h={11} />
+                </Col>
+                <Skeleton w={140} h={40} r={'var(--r-btn)'} />
+              </Row>
+            </Row>
+          </Card>
+        ) : (
+          <Card radius="btn" featured className="pro-offer">
+            <Row gap="g7" wrap>
+              <Cover image={offerTrip?.coverImageUrl} />
+              <Grow fit>
+                <Col gap="g1">
+                  {/* Надзаголовок называет ТОВАР («Pro для этого путешествия»),
+                      строка под ним — само путешествие. Без него название трипа
+                      висит первой строкой и плашка читается как карточка трипа,
+                      а не как оффер. Типографика — канон `.t-micro`, свой класс
+                      несёт только Pro-чернила (см. комментарий у правила). */}
+                  <div className="pro-offer__kicker t-micro">{t('sub.trip_offer_kicker')}</div>
+                  {offerTrip?.title && <Trunc className="t-heading">{offerTrip.title}</Trunc>}
+                  <div className="t-meta muted">{t('sub.plan_trip_subtitle')}</div>
+                </Col>
+              </Grow>
+              <Row gap="g7" justify="j-between" className="pro-offer__buy">
+                <Col gap="g1">
+                  <span className="t-title">{tripPrice}</span>
+                  <span className="t-meta muted">{t('sub.trip_offer_terms')}</span>
+                </Col>
+                <Btn
+                  variant="pro"
+                  loading={loadingPlan === 'trip_pro_lifetime'}
+                  disabled={busy}
+                  onClick={() => handleUpgrade('trip_pro_lifetime')}
+                >
+                  <span aria-hidden="true">★</span>
+                  {t('sub.buy_for_trip')}
+                </Btn>
+              </Row>
+            </Row>
+          </Card>
+        ))}
+
+        {/* Подводка к тарифам — вопросом, и только когда выше стоит оффер трипа:
+            без него тарифы и так первые, и подводить к ним не от чего. */}
+        {showTripOffer && (
+          <Col gap="g1" className="pro-orsub">
+            <div className="t-heading">{t('sub.subs_q')}</div>
+            <p className="t-meta muted">{t('sub.subs_q_sub')}</p>
+          </Col>
+        )}
 
         {/* Plans grid */}
         <div className="pro-plans" aria-label={t('sub.choose_plan')}>
           {pricesLoading && !prices
             ? Array.from({ length: 3 }).map((_, i) => (
-                <Card
-                  radius="card"
-                  key={i}
-                  className="plan-card-skel"
-                  style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
-                >
-                  <Skeleton w="55%" h={20} />
-                  <div style={{ marginTop: 8 }}><Skeleton w="75%" h={11} /></div>
-                  <div style={{ marginTop: 20 }}><Skeleton w="48%" h={34} /></div>
-                  <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {[0, 1, 2, 3].map((j) => <Skeleton key={j} w={`${88 - j * 7}%`} h={11} />)}
-                  </div>
-                  <div style={{ marginTop: 22 }}><Skeleton w="100%" h={40} r={'var(--r-sm)'} /></div>
+                <Card radius="btn" key={i} className="plan-card-skel" data-i={i}>
+                  <Col gap="g7">
+                    <Skeleton w="55%" h={20} />
+                    <Skeleton w="75%" h={11} />
+                    <Skeleton w="48%" h={34} />
+                    <Col gap="g4">
+                      {[0, 1, 2, 3].map((j) => <Skeleton key={j} w={`${88 - j * 7}%`} h={11} />)}
+                    </Col>
+                    <Skeleton w="100%" h={40} r={'var(--r-btn)'} />
+                  </Col>
                 </Card>
               ))
             : cards.map((c) => (
                 <Card
-                  radius="card"
+                  radius="btn"
                   featured={c.featured}
                   key={c.key}
                   className="plan-card"
@@ -259,28 +390,28 @@ export default function Pro() {
                   <div className="plan-card__body">
                     {/* Plan name */}
                     <div className="plan-card__top">
-                      <div className="plan-card__name" style={{ color: c.nameColor }}>{c.name}</div>
+                      <div className="plan-card__name" data-plan={c.key}>{c.name}</div>
                     </div>
 
                     {/* Price */}
                     <div className="plan-price">
                       <span className="plan-price__amount">{c.price}</span>
                       {c.oldPrice && (
-                        <span className="plan-price__period" style={{ textDecoration: 'line-through' }}>{c.oldPrice}</span>
+                        <s className="plan-price__period">{c.oldPrice}</s>
                       )}
                     </div>
                     <div className="t-meta muted">{c.caption}</div>
 
                     <div className="plan-divider" />
 
-                    {/* Feature list — ON: filled accent circle + check; OFF: outlined muted circle + minus (design okBox/noBox) */}
+                    {/* Feature list — ON: filled accent circle + check; OFF: outlined
+                        muted circle + minus (design okBox/noBox). Выключенное состояние
+                        помечается АТРИБУТОМ `data-off`, а не инлайном: это состояние
+                        строки, и его облик — дело таблицы стилей, а не экрана. */}
                     <ul className="plan-features">
                       {c.features.map((f, j) => (
-                        <li key={j} className="plan-feature" style={f.on ? undefined : { color: 'var(--muted)' }}>
-                          <div
-                            className="plan-feature__check"
-                            style={f.on ? undefined : { background: 'none', border: '1px solid var(--line)', color: 'var(--muted)' }}
-                          >
+                        <li key={j} className="plan-feature" data-off={f.on ? undefined : ''}>
+                          <div className="plan-feature__check" data-off={f.on ? undefined : ''}>
                             <Icon name={f.on ? 'check' : 'minus'} size={12} />
                           </div>
                           <span>{f.text}</span>
@@ -298,7 +429,7 @@ export default function Pro() {
                       disabled={busy}
                       onClick={() => (c.cta.code ? handleUpgrade(c.cta.code) : c.cta.onClick())}
                     >
-                      {c.cta.star && <span aria-hidden="true" style={{ marginRight: 2 }}>★</span>}
+                      {c.cta.star && <span aria-hidden="true">★</span>}
                       {c.cta.label}
                     </Btn>
                   </div>
@@ -307,48 +438,9 @@ export default function Pro() {
           }
         </div>
 
-        {/* One-time per-trip pass — owner only. Sits directly under the plans grid.
-            The skeleton mirrors this same slot so the loading layout matches whether
-            the banner will show or not. */}
-        {!hidePerTrip && pricesLoading && !prices && (
-          <Card radius="card" className="pro-trip-bar">
-            <Skeleton w={44} h={44} r={'var(--r-sm)'} />
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <Skeleton w="42%" h={16} />
-              <div style={{ marginTop: 8 }}><Skeleton w="66%" h={11} /></div>
-            </div>
-            <div className="pro-trip-bar__actions">
-              <Skeleton w={70} h={22} />
-              <Skeleton w={92} h={38} r={'var(--r-sm)'} />
-            </div>
-          </Card>
-        )}
-        {!hidePerTrip && !pricesLoading && (
-          <Card radius="card" className="pro-trip-bar">
-            <Tile as="span" style={{ '--tile': '44px', '--tile-ic': '21px' }}>
-              <Icon name="ticket" size={21} />
-            </Tile>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <div className="t-heading" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
-              <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
-            </div>
-            <div className="pro-trip-bar__actions">
-              <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice}</span>
-              <Btn
-                variant="primary"
-                loading={loadingPlan === 'trip_pro_lifetime'}
-                disabled={busy}
-                onClick={() => handleUpgrade('trip_pro_lifetime')}
-              >
-                {t('sub.buy_for_trip')}
-              </Btn>
-            </div>
-          </Card>
-        )}
-
         {/* Trust line — small reassurance at the very bottom, below everything. */}
         {!pricesLoading && (
-          <div className="pro-hero__note" style={{ marginTop: 2 }}>
+          <div className="pro-hero__note">
             <Icon name="lock" size={12} />
             {t('sub.secure_checkout')}{t('sub.secure_checkout_meta')}
           </div>

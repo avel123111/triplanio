@@ -35,6 +35,7 @@ import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover, CoverPicker,
+  BookingWarning, TimelineEmptyDay,
   CityBar, EventChip,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, CITYBAR_VARIANTS, EVENTCHIP_VARIANTS, toast,
@@ -137,6 +138,9 @@ const TX = {
   emptyBoxTitle: 'Пусто', emptyBoxBody: 'В рамке (boxed).',
   devTitle: 'Итоги года', devBody: 'Раздел находится в разработке. Загляните чуть позже.',
   openDialog: 'Открыть диалог', openSheet: 'Открыть шит', readonly: 'Режим только для чтения.',
+  warnTransfer: 'Нет переезда', warnTransferSub: 'Мадрид → Барселона',
+  warnHotel: 'Нет отеля', warnHotelSub: 'Барселона · 13 мая – 16 мая · 3 ночи',
+  emptyDayLbl: 'Свободный день в Мадрид', addActivity: 'Добавить активность',
   toastTitle: 'Готово', toastBody: 'Изменения сохранены.',
   toastLab: 'Появятся в правом нижнем углу (на мобиле — сверху); наведи или тапни стопку, чтобы развернуть.',
   toastDeck: 'колода',
@@ -316,6 +320,15 @@ const it = (name, node, full) => ({ name, node, full });
 const glyph = 'Ag';
 
 const RECIPES = {
+  'booking-warning': () => [
+    {
+      label: 'kind (тинт типа + иконка)', items: [
+        it('kind="transfer"', <BookingWarning kind="transfer" title={TX.warnTransfer} sub={TX.warnTransferSub} onAdd={() => {}} onDismiss={() => {}} />, true),
+        it('kind="hotel"', <BookingWarning kind="hotel" title={TX.warnHotel} sub={TX.warnHotelSub} onAdd={() => {}} onDismiss={() => {}} />, true),
+      ],
+    },
+    { label: 'пустой день (.tl3-empty — намеренно не варнинг)', items: [it('<TimelineEmptyDay>', <TimelineEmptyDay label={TX.emptyDayLbl} actionLabel={TX.addActivity} onAdd={() => {}} />, true)] },
+  ],
   pagehead: () => [
     { items: [it('title + actions', <PageHead title="Бюджет" actions={<><Btn variant="secondary" icon="arrowSwap">{TX.rates}</Btn><Btn variant="primary" icon="plus">{TX.add}</Btn></>} />, true)] },
     { label: 'title + subtitle', items: [it('subtitle', <PageHead title="Бюджет" subtitle="12 трат · 3 категории" />, true)] },

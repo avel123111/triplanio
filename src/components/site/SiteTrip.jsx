@@ -1,9 +1,7 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
-import { track, withVisitCampaign } from '@/lib/analytics';
 import { hashStr } from '@/lib/hash';
+import { useZoneCta } from './zoneCta';
 import { Icon } from '@/design/icons';
 
 /* =========================================================================
@@ -18,7 +16,6 @@ import { Icon } from '@/design/icons';
    <LandingSprite>. No `@/design/*` imports (check-ds-boundary).
    ========================================================================= */
 
-const APP_URL = '/login';
 // Stat-strip icons from the app design system (@/design/icons — allowed off
 // check-ds-boundary), so the shared summary matches the product, not a sprite.
 const STAT_ICON = { 'i-globe2': 'globe', 'i-pin2': 'pin', 'i-swap': 'arrowSwap', 'i-cal2': 'calendar', 'i-route': 'route' };
@@ -105,28 +102,46 @@ export function SiteSummary({ stats, peopleTitle, peopleCount, people }) {
 }
 
 /**
- * Final call-to-action — the SAME accent sheet as the landing (`fin.*` keys,
- * `data-hdr="accent"` is the one producer of the 9 on-accent header rules).
- * Parameterless: the prototype reuses the landing's CTA verbatim on this page.
+ * ★ ОДИН финальный CTA на ВСЕ страницы зоны — лендинг, демо, публичная поездка.
+ *
+ * Было три реализации одной секции: `SiteCta` здесь, посимвольная копия
+ * `FinalCta` в LandingPage и форк `DemoCta` со своими классами `.dm-final` /
+ * `.dm-sheet` (побайтовые копии `.final` / `.sheet-pane` в CSS). Следствие
+ * ровно то, чего быть не должно: правка цвета CTA меняла лендинг и публичку,
+ * а демо оставалось прежним — «унифицировано» на словах, три объекта на деле.
+ *
+ * Различия между страницами — это ДАННЫЕ, а не разметка, поэтому они пропсами:
+ *   ns        — префикс i18n-ключей: у демо своя копия текста (`landing.demo.fin`);
+ *   secondary — вторая кнопка. Есть только у лендинга («посмотреть демо»);
+ *               на демо и публичке её в макете нет.
+ * Пропсов ровно два, и у каждого есть живой потребитель — «на будущее» ничего.
+ *
+ * Пропса `surface` здесь БОЛЬШЕ НЕТ: страницу событие берёт из адреса
+ * (`zoneSurface`), поэтому её нельзя ни забыть, ни перепутать — на трёх
+ * страницах это три разных значения без единого параметра.
+ *
+ * `data-hdr="accent"` — единственный производитель девяти правил `on-accent`
+ * у шапки, поэтому он часть ЭТОЙ секции и никуда не выносится.
  */
-export function SiteCta() {
+export function SiteCta({ ns = 'landing.fin', secondary = null }) {
   const t = useT();
-  const nav = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  const cta = useZoneCta('final');
   return (
     <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
       <span className="horizon" aria-hidden="true" />
       <div className="wrap inner">
         <div className="rv">
-          <span className="brow" style={{ justifyContent: 'center' }}>{t('landing.fin.eyebrow')}</span>{/* inline-style-exempt: prototype's own one-off centering */}
-          <h2 style={{ marginTop: '14px' }} dangerouslySetInnerHTML={{ __html: t('landing.fin.h2') }} />{/* inline-style-exempt: prototype's own one-off spacing */}
-          <p>{t('landing.fin.sub')}</p>
+          {/* Ни одного инлайна: центровка eyebrow и отступ заголовка живут
+              правилами `.final .brow` / `.final h2` в site.css. */}
+          <span className="brow">{t(`${ns}.eyebrow`)}</span>
+          <h2 dangerouslySetInnerHTML={{ __html: t(`${ns}.h2`) }} />
+          <p>{t(`${ns}.sub`)}</p>
           <div className="ctas">
-            <a className="btn btn-light" href={ctaTarget} onClick={(e) => { e.preventDefault(); track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
-              <span>{t('landing.fin.cta1')}</span>
+            <a className="btn btn-light" {...cta}>
+              <span>{t(`${ns}.cta1`)}</span>
               <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-r" /></svg>
             </a>
+            {secondary}
           </div>
         </div>
       </div>

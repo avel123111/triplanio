@@ -29,16 +29,12 @@
  * Run: `npm run check:ds-boundary`. Exit: 0 clean, 1 violation(s), 2 internal.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { SITE_ZONE, assertZonePerimeter } from './zone-perimeter.mjs';
 import { join } from 'node:path';
 
-// The unauthenticated zone. Directories are scanned recursively for JS/JSX.
-const ROOTS = [
-  'src/components/site',
-  'src/pages/Landing',
-  'src/pages/PublicTrip.jsx',
-  'src/pages/Demo',
-  'src/pages/Legal.jsx',
-];
+// Периметр зоны — ОДИН на все её гарды (`zone-perimeter.mjs`). Здесь он был
+// СВОИМ списком и отставал на две страницы: `Login.jsx` и `JoinTrip.jsx` не
+// проверялись на импорт app-ДС вовсе, хотя перевёрстаны на зонную ещё в Ф6.5/6.4.
 
 // The one design-system import the site zone may keep.
 const ALLOWED = new Set(['@/design/icons']);
@@ -67,8 +63,9 @@ function walk(path, out) {
 const IMPORT_RE = /import\s+(?:[^'"]*\bfrom\s*)?['"]([^'"]+)['"]/g;
 
 function main() {
+  assertZonePerimeter('check-ds-boundary');
   const files = [];
-  for (const root of ROOTS) walk(root, files);
+  for (const root of SITE_ZONE) walk(root, files);
 
   const violations = [];
   for (const file of files) {

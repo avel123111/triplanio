@@ -33,8 +33,14 @@ Deno.serve(withHandler('checkSubscriptionStatus', async (req, corsHeaders) => {
       return Response.json({ isPro, reason: isPro ? 'subscription' : null }, { headers: corsHeaders });
     }
 
+    // `title, cover_image_url` — витрина плашки «Pro для этого путешествия» на
+    // /pro. Отдельного endpoint под них НЕ заводим: эта функция уже читает
+    // строку трипа, уже вызывается экраном с этим же `tripId` и уже гейтит
+    // доступ ступенью `participant` ниже — то есть имя и обложка уезжают
+    // только участнику. Две колонки в существующем select = ноль лишних
+    // round-trip'ов (правило эпика TRIP-374: число endpoint-ов от задач экрана).
     const { data: trip, error: tripErr } = await admin
-      .from('trips').select('created_by, is_pro_trip')
+      .from('trips').select('created_by, is_pro_trip, title, cover_image_url')
       .eq('id', tripId).single();
     // Transient read failure must not read as "no pro_trip" (false Free). Genuine
     // missing/unusable trip id (not_found) → non-pro; any other error → 5xx "retry".
@@ -71,8 +77,12 @@ Deno.serve(withHandler('checkSubscriptionStatus', async (req, corsHeaders) => {
       const { data: fresh } = await admin.from('trips').select('is_pro_trip').eq('id', tripId).single();
       tripIsPro = fresh?.is_pro_trip === true;
     }
+    // Витрина едет одним объектом во всех ветках ниже — чтобы «плашку рисуем»
+    // и «Pro уже есть» не разъехались по разным формам ответа.
+    const tripCard = { title: trip.title ?? null, coverImageUrl: trip.cover_image_url ?? null };
+
     if (tripIsPro) {
-      return Response.json({ isPro: true, isOwner, reason: 'trip' }, { headers: corsHeaders });
+      return Response.json({ isPro: true, isOwner, trip: tripCard, reason: 'trip' }, { headers: corsHeaders });
     }
 
     if (trip.created_by) {
@@ -89,9 +99,9 @@ Deno.serve(withHandler('checkSubscriptionStatus', async (req, corsHeaders) => {
       const { data: ownerProRpc, error: ownerProErr } = await admin.rpc('is_user_pro', { p_uid: trip.created_by });
       if (ownerProErr) throw ownerProErr;
       if (ownerProRpc === true) {
-        return Response.json({ isPro: true, isOwner, reason: 'owner_subscription' }, { headers: corsHeaders });
+        return Response.json({ isPro: true, isOwner, trip: tripCard, reason: 'owner_subscription' }, { headers: corsHeaders });
       }
     }
 
-    return Response.json({ isPro: false, isOwner }, { headers: corsHeaders });
+    return Response.json({ isPro: false, isOwner, trip: tripCard }, { headers: corsHeaders });
 }));

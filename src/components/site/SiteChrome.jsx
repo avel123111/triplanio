@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
-import { useT } from '@/lib/i18n/I18nContext';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { openConsentBanner } from '@/lib/consent';
-import { withVisitCampaign } from '@/lib/analytics';
+import { isProdHost } from '@/lib/analyticsEnv';
+import { useZoneCta, isPlainLeftClick } from './zoneCta';
 import LandingSprite from './LandingSprite';
 
 /* =========================================================
@@ -24,7 +24,6 @@ import LandingSprite from './LandingSprite';
    component and a hand-copied logo path.
 ========================================================= */
 
-const APP_URL = '/login';
 
 /* Language switcher — prototype's own DOM (.lang/.lang-btn/.lang-menu), NO
    flag (the prototype's markup never carries one — TRIP-460 §5). The repo
@@ -83,6 +82,37 @@ const PROBE = 35; // px from the top where the header samples the section under 
 const HDR_THEMES = new Set(['light', 'dark', 'accent']);
 
 /**
+ * Клик по логотипу — РОУТЕРОМ, а не перезагрузкой документа.
+ *
+ * `brandHref` со всех страниц кроме лендинга приходит АБСОЛЮТНЫМ
+ * (`withVisitCampaign(window.location.origin + '/')`), и голый `<a href>` на
+ * такой адрес браузер отрабатывает полной перезагрузкой: возврат на лендинг с
+ * демо, юр-страниц и публички визуально «моргал» и грузился заново.
+ *
+ * Гард 2ad это не ловил и не мог: он ищет внутренние ссылки вида `href="/x"`, а
+ * здесь адрес начинается с `https://` и выглядит внешним — хотя origin НАШ.
+ *
+ * Ссылку оставляем ссылкой (Cmd-клик, «открыть в новой вкладке», превью
+ * адреса — всё работает), но обычный клик уводим в роутер. Метка кампании при
+ * этом сохраняется: она в самом адресе, а не в состоянии документа.
+ */
+function useBrandNav(brandHref) {
+  const nav = useNavigate();
+  return (e) => {
+    // Якорь на этой же странице (`#top` на лендинге) — родное поведение браузера.
+    if (!brandHref || brandHref.startsWith('#')) return;
+    // Модификаторы и не-левая кнопка — намерение открыть отдельно, не мешаем.
+    // Предикат общий с CTA зоны (`zoneCta.js`): «наш клик» — одно понятие.
+    if (!isPlainLeftClick(e)) return;
+    let url;
+    try { url = new URL(brandHref, window.location.href); } catch { return; }
+    if (url.origin !== window.location.origin) return; // действительно внешняя — пусть уходит
+    e.preventDefault();
+    nav(url.pathname + url.search + url.hash);
+  };
+}
+
+/**
  * Shared marketing header — ONE element, its composition set by `variant`:
  *   'full'    logo + section nav + language + right CTA + mobile drawer
  *             (landing, and from Ф6 the legal pages).
@@ -107,14 +137,18 @@ const HDR_THEMES = new Set(['light', 'dark', 'accent']);
  *                  is { tkey, hash }; hashes stay relative (no navBase) so the
  *                  same-page anchor rules match (handoff §11.28).
  */
+
+
 export function SiteHeader({ lang, setLang, variant = 'full', themed = false, navBase = '', brandHref = '#top', navItems = NAV }) {
   const t = useT();
   const nav = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
-  // Carry this visit's campaign marks onto /login so a gclid/utm survives the
-  // click — gtag's url_passthrough reads them off the address (TRIP-407 PR5).
-  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
+  // Три CTA шапки: кнопка справа и два верхних пункта бургера. Адрес, метку
+  // страницы и обработку клика им даёт ОДИН хелпер — здесь остаётся только
+  // МЕСТО каждой кнопки (`zoneCta.js`).
+  const headerCta = useZoneCta('header');
+  const menuCta = useZoneCta('menu');
+  const menuSignin = useZoneCta('menu_signin');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState('light'); // on-light is the safe default
@@ -167,14 +201,14 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
     return () => { document.body.classList.remove('mobile-open'); };
   }, [mobileOpen]);
 
-  const goCta = () => { setMobileOpen(false); nav(ctaTarget); };
+  const onBrand = useBrandNav(brandHref);
 
   return (
     <>
       <LandingSprite />
       <header className={`site-header ${scrolled ? 'scrolled' : ''} on-${theme}`} id="siteHeader">
         <div className="wrap">
-          <a href={brandHref} className="brand" aria-label={t('nav.aria_home')}>
+          <a href={brandHref} className="brand" aria-label={t('nav.aria_home')} onClick={onBrand}>
             <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo"/></svg>
             Triplanio
           </a>
@@ -185,10 +219,13 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
           )}
           <div className="header-actions">
             <LangSwitch value={lang} onChange={setLang} />
+            {/* Ссылка, а не кнопка: это навигация, и как ссылка она умеет
+                «открыть в новой вкладке» — как остальные пять CTA зоны.
+                Оформление не меняется, элементных правил у `.btn` нет. */}
             {showCta && (
-              <button type="button" className="btn btn-primary btn-sm header-cta" onClick={goCta}>
+              <a className="btn btn-primary btn-sm header-cta" {...headerCta}>
                 {t('landing.nav.cta')}
-              </button>
+              </a>
             )}
             {showBurger && (
               <button type="button" className="burger" aria-label={t('nav.aria_menu')}
@@ -204,10 +241,17 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
           </div>
         </div>
       </header>
+      {/* Все пять пунктов бургер-меню — ССЫЛКИ, как в прототипе: он красит их
+          одним правилом `.mobile-menu a` (отступы, вес 500, разделительная
+          линия). Первые два были `<button>` БЕЗ класса и не попадали ни под
+          него, ни под `.btn` — рисовались голым системным текстом по центру.
+          Идут через роутер (preventDefault + nav), а не голым href: полная
+          перезагрузка убила бы снимок кампании этого визита — гард 2ad
+          сторожит ровно это. */}
       {showBurger && (
         <nav className="mobile-menu" id="mobileMenu" aria-label={t('nav.aria_primary')}>
-          <button type="button" onClick={goCta}>{t('landing.hero.cta1')}</button>
-          <button type="button" onClick={goCta}>{t('landing.hero.cta2')}</button>
+          <a {...menuCta} onClick={(e) => { setMobileOpen(false); menuCta.onClick(e); }}>{t('landing.hero.cta1')}</a>
+          <a {...menuSignin} onClick={(e) => { setMobileOpen(false); menuSignin.onClick(e); }}>{t('landing.hero.cta2')}</a>
           {navItems.map((n) => (
             <a key={n.hash} href={navHref(n.hash)} onClick={() => setMobileOpen(false)}>{t(n.tkey)}</a>
           ))}
@@ -225,12 +269,13 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
  */
 export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
   const t = useT();
+  const onBrand = useBrandNav(brandHref);
   return (
     <footer className="site-footer" data-hdr="light">
       <div className="wrap">
         <div className="footer-min">
           <div className="footer-brandcol">
-            <a href={brandHref} className="brand">
+            <a href={brandHref} className="brand" onClick={onBrand}>
               <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo"/></svg>
               Triplanio
             </a>
@@ -284,13 +329,147 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
  * after the microtask — i.e. the last consumer really left.
  */
 let siteCssRefs = 0;
+
+/**
+ * Предзагрузка соседних страниц зоны.
+ *
+ * Демо и юр-страницы приезжают отдельными чанками (`lazy` в App.jsx) под
+ * `Suspense fallback={null}`. Пока чанк едет, экран ПУСТ — это и читалось как
+ * «дёрганый переход с перезагрузкой», хотя навигация роутерная.
+ *
+ * Хуже того, в это же окно проваливался счётчик ссылок `site.css`: старая
+ * страница уже размонтирована (1→0), новая ещё висит в Suspense и счётчик не
+ * подняла, поэтому микротаск teardown'а видел ноль и снимал `<link>` вместе с
+ * классом `site` — к пустому кадру добавлялась вспышка нестилизованной
+ * разметки. Микротаск спасает только когда монтирование идёт В ТОМ ЖЕ
+ * коммите; загрузка чанка это окно растягивает.
+ *
+ * Лечим ПРИЧИНУ, а не симптом: как только посетитель оказался в зоне, тихо
+ * тянем чанки её соседей. К моменту перехода модуль уже в памяти, Suspense не
+ * показывает fallback, счётчик не падает. `requestIdleCallback` — чтобы не
+ * соперничать с первой отрисовкой; повторный `import()` дедуплицируется
+ * сборщиком, так что вызов идемпотентен.
+ */
+let zonePrefetched = false;
+function prefetchZoneNeighbours() {
+  if (zonePrefetched || typeof window === 'undefined') return;
+  zonePrefetched = true;
+  const run = () => {
+    // Ошибку глотаем намеренно: предзагрузка — ускорение, а не функция.
+    import('@/pages/Demo/DemoTrip').catch(() => {});
+    import('@/pages/Legal').catch(() => {});
+  };
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(run, { timeout: 2000 });
+  else setTimeout(run, 800);
+}
+
+const ZoneCssCtx = createContext(null);
+
+/**
+ * ★ ОДНА ОБОЛОЧКА НА ВСЮ ЗОНУ — владелец `site.css`, класса `html.site` и
+ * прокрутки для лендинга, демо, юр-страниц и входа разом.
+ *
+ * Зачем компонент, а не хук на каждой странице (как было): владелец слоя жил
+ * НА СТРАНИЦЕ, поэтому переход лендинг → демо его размонтировал. Порядок React
+ * — сначала teardown старого дерева, потом mount нового, — и между ними
+ * `<link>` со стилями зоны снимался с документа. А каждая страница зоны стоит
+ * на `if (!cssReady) return null`, то есть на это окно из разметки исчезало
+ * ВСЁ. Отсюда и «рвано, с перезагрузкой»: это не роутер, это стили,
+ * уезжавшие и приезжавшие на каждом переходе.
+ *
+ * Микротаск и предзагрузка чанков (ниже) окно сужали, но не закрывали: пока
+ * страница-сосед висит в `Suspense`, поднять счётчик некому.
+ *
+ * Здесь владелец ВЫШЕ маршрута: внутри зоны `<SiteZone>` не размонтируется
+ * никогда, поэтому снимать и вешать нечего — меняется только содержимое.
+ * `cssReady` страницы берут из контекста, а не заводят свой (см. `useSiteCss`).
+ *
+ * Второе, что уходит вместе с этим: прокрутка. Роутер её не трогает, поэтому
+ * переход с середины лендинга на /terms открывал документ с середины.
+ */
+/** Канонический хост зоны. Тот же, что в `public/sitemap.xml` — карта сайта и
+ *  canonical обязаны называть одну страницу одним адресом, иначе они спорят. */
+const CANONICAL_ORIGIN = 'https://www.triplanio.com';
+
+export function SiteZone({ children }) {
+  const cssReady = useSiteCssLink(true);
+  const { pathname, hash } = useLocation();
+  const { lang } = useI18n();
+  useEffect(() => {
+    // Якорь в адресе — прокрутку ведёт он, не мы (`/d/x#budget`, меню лендинга).
+    if (hash) return;
+    window.scrollTo(0, 0);
+  }, [pathname, hash]);
+
+  // ★ <html lang> — третье, что принадлежит ЗОНЕ, а не странице (TRIP-445).
+  // Переключатель языка стоит в шапке КАЖДОЙ страницы зоны, а атрибут ставил
+  // только лендинг у себя в файле — замерено: на /d/…, /terms, /login и /join
+  // текст уезжал в русский, а lang оставался "en". Это ломает произношение
+  // скринридера, предложение перевода в браузере и переносы. Тот же класс, что
+  // <link> и прокрутка: механизм жил в странице, хотя владеет им оболочка.
+  // Снимок берём один раз, возвращаем на выходе из зоны — внутри зоны SiteZone
+  // не размонтируется, поэтому владелец ровно один и гонки «кто последний
+  // записал» здесь быть не может. Локальная `prev` в mount-once эффекте, без
+  // ref: ref пережил бы перерисовку, а нам нужно ровно значение на входе.
+  useEffect(() => {
+    const r = document.documentElement;
+    const prev = r.getAttribute('lang');
+    return () => {
+      if (prev != null) r.setAttribute('lang', prev);
+      else r.removeAttribute('lang');
+    };
+  }, []);
+  useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
+
+  // ★ CANONICAL — ВЫВОДИТСЯ ИЗ АДРЕСА, а не передаётся страницей (TRIP-445).
+  //
+  // `index.html` сознательно НЕ кладёт canonical: один абсолютный URL на весь
+  // сайт объявил бы каждую страницу дублем главной. Взамен там записано
+  // «понадобится — только по-маршрутно из React (Ф6)». Ф6 закончилась шестью
+  // страницами, canonical не появился ни на одной.
+  //
+  // ЗАЧЕМ ОН ЗДЕСЬ ВООБЩЕ. Не ради «просто хорошей практики»: зона — вход
+  // рекламной воронки, и метка кампании едет В АДРЕСЕ (`?camp_*`, TRIP-407 PR5).
+  // Без canonical каждая рекламная ссылка — отдельный URL для краулера, то есть
+  // лендинг размножается на столько страниц, сколько кампаний запущено, и вес
+  // между ними делится. Canonical на чистый `pathname` схлопывает их обратно.
+  //
+  // Строка запроса и якорь отброшены намеренно: они и есть то, что размножает
+  // адрес. Хост — константа, а не `location.origin`: на превью-домене canonical
+  // указывал бы на превью, то есть превью-деплой начал бы канонизировать сам
+  // себя. И ставим ТОЛЬКО на проде — на дев-стенде canonical на прод увёл бы
+  // краулера со стенда на живой сайт, что верно по адресу и неверно по смыслу.
+  useEffect(() => {
+    if (!isProdHost) return undefined;
+    const link = document.createElement('link');
+    link.rel = 'canonical';
+    link.href = CANONICAL_ORIGIN + pathname;
+    document.head.appendChild(link);
+    return () => { link.remove(); };
+  }, [pathname]);
+
+  return <ZoneCssCtx.Provider value={cssReady}>{children}</ZoneCssCtx.Provider>;
+}
+
+/**
+ * `cssReady` для страницы. Внутри `<SiteZone>` — из контекста (слой уже держит
+ * оболочка). Вне её — страница сама себе владелец: так живут /public/trip,
+ * /join и лендинг у залогиненного, они приходят не из зоны.
+ */
 export function useSiteCss() {
+  const hosted = useContext(ZoneCssCtx);
+  const own = useSiteCssLink(hosted === null);
+  return hosted === null ? own : hosted;
+}
+
+function useSiteCssLink(enabled) {
   const [cssReady, setCssReady] = useState(() => {
     if (typeof document === 'undefined') return false;
     const el = document.getElementById('site-css');
     return !!(el && el.sheet);
   });
   useEffect(() => {
+    if (!enabled) return undefined;
     siteCssRefs += 1;
     const onLoad = () => setCssReady(true);
     let link = document.getElementById('site-css');
@@ -308,6 +487,8 @@ export function useSiteCss() {
     }
 
     document.documentElement.classList.add('site');
+    // Мы в зоне — заранее тянем чанки её соседних страниц (см. докблок выше).
+    prefetchZoneNeighbours();
 
     return () => {
       link.removeEventListener('load', onLoad);
@@ -319,30 +500,18 @@ export function useSiteCss() {
         document.documentElement.classList.remove('site', 'reveal--ready');
       });
     };
-  }, []);
+  }, [enabled]);
   return cssReady;
 }
 
-/**
- * Force the always-light zone theme and restore whatever the app had on unmount
- * (TRIP-460 §7.2). The unauthenticated zone is light-only; a dark theme stored
- * by the authed app sets [data-theme=dark] on <html> and leaks dark text onto
- * the light zone. This was copy-pasted three times and only Login restored it —
- * PublicTrip and the landing left `data-theme=light` behind, so a dark-mode
- * user stayed light after leaving until a reload. One hook, next to the CSS
- * lifecycle it already shares.
- */
-export function useSiteTheme() {
-  useEffect(() => {
-    const r = document.documentElement;
-    const prev = r.getAttribute('data-theme');
-    r.setAttribute('data-theme', 'light');
-    return () => {
-      if (prev) r.setAttribute('data-theme', prev);
-      else r.removeAttribute('data-theme');
-    };
-  }, []);
-}
+/* `useSiteTheme` УДАЛЁН (TRIP-445). Он ставил [data-theme=light] один раз на
+   монтировании и не переутверждал, а `ThemeProvider` — живой на всех зонных
+   маршрутах — переписывал атрибут на каждое событие prefers-color-scheme. Два
+   владельца одного атрибута: зона проигрывала любому позднему событию, и
+   заголовки становились белыми на белом. Изоляция зоны от темы теперь чисто
+   каскадная — селектор `html.site[data-theme]` в public/site.css, разбор там
+   же. Платформа вместо гонки эффектов; удалять этот комментарий вместе с
+   последним вызовом hook'а не надо — он объясняет ОТСУТСТВИЕ кода. */
 
 /**
  * Per-route <title>/<meta name="description"> (TRIP-460 §7.3). The app has no

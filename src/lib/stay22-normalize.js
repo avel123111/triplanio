@@ -3,6 +3,7 @@
 
 // Relative imports (not the `@/` alias) so `node --test` can load this file directly.
 import { BASE_FORK_FILTERS, applyForkFilters, byNumberAsc, byNumberDesc, numberOrNull } from './forkFilter.js';
+import { haversineKm } from './geoDistance.js';
 
 // Ensure checkout is strictly after checkin; Stay22 needs a valid range to
 // return prices. start/end are date-only ('YYYY-MM-DD') city-visit dates.
@@ -40,7 +41,7 @@ function readCoords(loc) {
 // (booking, expedia, vrbo, hotelscom). The v2 `suppliers` map has NO defined
 // ordering or "primary" entry, so we surface the first key's logo/price/link on
 // the card + badge. Determinism (cheapest / top-rated) is a separate concern.
-function mapResult(r, currency) {
+function mapResult(r, currency, center) {
   const suppliers = r?.suppliers || {};
   const supplierKey = Object.keys(suppliers)[0] || null;
   const sup = supplierKey ? suppliers[supplierKey] : null;
@@ -69,14 +70,32 @@ function mapResult(r, currency) {
     // price shown only when present (beta returns it only with valid dates).
     price: typeof priceTotal === 'number' ? priceTotal : null,
     currency,
+    // Удаление от центра города. Нужно, потому что пул склеен из ДВУХ выдач с
+    // разным порядком: без общей меры «recommended» стал бы порядком склейки,
+    // то есть случайностью, которая выглядит как решение.
+    distanceKm: distanceFrom(center, coords),
   };
 }
 
-export function normalizeStay22(data) {
+/**
+ * Удаление отеля от центра города, `null` когда посчитать нечем. Именно `null`, а
+ * не `NaN`: компаратор `byNumberAsc` уводит `null` в конец списка (`?? Infinity`),
+ * а `NaN` из этой проверки выскальзывает и делает сравнение бессмысленным —
+ * `NaN < x` и `NaN > x` оба ложны, так что элемент «равен» всему подряд и
+ * рассыпается по списку случайным образом.
+ */
+function distanceFrom(center, coords) {
+  if (!center || !coords) return null;
+  if (!Number.isFinite(center.lat) || !Number.isFinite(center.lng)) return null;
+  const km = haversineKm(center.lat, center.lng, coords.lat, coords.lng);
+  return Number.isFinite(km) ? km : null;
+}
+
+export function normalizeStay22(data, center = null) {
   const meta = data?.meta || {};
   const currency = meta.currency || null;
   return {
-    hotels: Array.isArray(data?.results) ? data.results.map((r) => mapResult(r, currency)).filter((h) => h.id) : [],
+    hotels: Array.isArray(data?.results) ? data.results.map((r) => mapResult(r, currency, center)).filter((h) => h.id) : [],
     meta: {
       page: meta.page || 1,
       pageSize: meta.pageSize || 10,
@@ -120,6 +139,11 @@ export const STAY22_FILTER_SPEC = {
   text: (h) => `${h?.name || ''} ${h?.address || ''}`,
   price: (h) => numberOrNull(h?.price),
   sorts: {
+    // «Рекомендованные» = БЛИЖАЙШИЕ к центру города. Раньше ключа тут не было и
+    // порядок оставался тем, что прислал Stay22 — для одной выдачи это и было
+    // «по удалению» (замер: 84–100% пар неубывающие). Теперь выдачи две, и
+    // порядок склейки не значит ничего, поэтому мера названа явно.
+    recommended: byNumberAsc((h) => h?.distanceKm),
     price: byNumberAsc((h) => h?.price),
     rating: byNumberDesc((h) => h?.ratingValue),
   },
@@ -132,17 +156,84 @@ export function applyClientFilters(hotels, filters) {
   return applyForkFilters(hotels, filters, STAY22_FILTER_SPEC);
 }
 
+// Сегодняшний день как 'YYYY-MM-DD' по ЛОКАЛЬНОМУ календарю гостя. Stay22 меряет
+// «сегодня» своим часовым поясом, а человек — своим; взять UTC значило бы отрезать
+// сегодняшнюю ночь всем, кто западнее Гринвича, за несколько часов до полуночи.
+export function todayLocal(now = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+// ── Прямоугольник вокруг города (TRIP: покрытие больших городов) ─────────────
+//
+// Точечный поиск Stay22 отдаёт «~140 ближайших, но не дальше радиуса», и в
+// плотном городе счётчик выбирается за считанные километры: Лос-Анджелес — 139
+// отелей в 6.4 км, Рим — 119 в 0.5 км. Это несколько кварталов вместо города, и
+// `radius` кляксу только СЖИМАЕТ. Прямоугольник — второй гео-режим API — даёт
+// выборку, РАЗМАЗАННУЮ по площади: на LA 99 отелей с медианой 23 км от центра и
+// ни одного общего с точечной выдачей. Поэтому пул собирается из ДВУХ запросов.
+//
+// Полусторона одна на все города НАМЕРЕННО. Население плотность не предсказывает
+// (Церматт, 6.6 тыс. жителей, укладывается в 0.7 км; Хальштатт, 779 человек,
+// растягивается на 9.9 км), а любое правило «для крупных городов иначе» пришлось
+// бы настраивать под город — то есть это не правило. В маленьком городе коробка
+// просто добавляет мало (Монтерей +17) — там больше физически ничего нет.
+export const POOL_BOX_KM = 12;
+
+// Гео-режимы пула ОДНИМ списком — он же порядок склейки. Список, а не булев
+// флаг: третий источник (например, видимая область карты) добавится строкой
+// сюда, а не разветвлением каждого места, где сегодня стоит `box ? … : …`.
+export const GEO_MODES = ['point', 'box'];
+
+const KM_PER_DEG_LAT = 111.32;
+
+/**
+ * Углы прямоугольника ±`km` вокруг точки. Долготный шаг растёт к полюсам
+ * (`/cos(lat)`), поэтому у самых полюсов он вырождается — там коробку зажимаем в
+ * полмира по долготе, чтобы не улететь в бесконечность, и в ±90 по широте.
+ */
+export function boxAround(lat, lng, km = POOL_BOX_KM) {
+  const dLat = km / KM_PER_DEG_LAT;
+  const cos = Math.cos((lat * Math.PI) / 180);
+  const dLng = Math.abs(cos) < 1e-6 ? 180 : Math.min(180, km / (KM_PER_DEG_LAT * Math.abs(cos)));
+  return {
+    swlat: Math.max(-90, lat - dLat),
+    swlng: lng - dLng,
+    nelat: Math.min(90, lat + dLat),
+    nelng: lng + dLng,
+  };
+}
+
 // Build the edge-function payload from a city-visit node + trip context.
-// Returns null when coordinates are missing (hook stays disabled).
-export function buildStay22Params({ visit, currency, lang, page, pageSize, filters }) {
+// Returns null when the request cannot be made at all — no coordinates, or the
+// stay is entirely in the past.
+//
+// Даты в прошлом — не «пустая выдача», а ОШИБКА апстрима: Stay22 отвечает
+// `400 VALIDATION_ERROR: checkin Must be today or in the future`, edge переводит
+// любой не-2xx в 502, и панель краснеет вместо списка, попутно заводя событие в
+// Sentry (`_shared/http.ts` репортит всё >= 400, кроме 401). В проде больше
+// половины посещений уже в прошлом — это был самый частый способ увидеть панель
+// отелей сломанной. Поэтому:
+//   · поездка ЗАКОНЧИЛАСЬ → null, запрос не уходит, панель рисует то же пустое
+//     состояние, что и без координат (в нём есть кнопка «искать на Booking»);
+//   · поездка ИДЁТ СЕЙЧАС → checkin поднимается до сегодня: вчерашнюю ночь не
+//     забронировать, а оставшиеся — можно, и это единственный осмысленный
+//     диапазон для человека в середине поездки.
+// `today` параметром — чтобы функция осталась чистой и проверяемой тестом.
+export function buildStay22Params({ visit, currency, lang, page, pageSize, filters, geo = 'point', today = todayLocal() }) {
   const lat = visit?.latitude;
   const lng = visit?.longitude;
   if (lat == null || lng == null) return null;
-  const checkin = dateOnly(visit?.start_date);
-  const checkout = ensureNextDay(checkin, dateOnly(visit?.end_date));
+  const startDate = dateOnly(visit?.start_date);
+  const endDate = ensureNextDay(startDate, dateOnly(visit?.end_date));
+  if (endDate && endDate <= today) return null;
+  const checkin = startDate && startDate < today ? today : startDate;
+  const checkout = ensureNextDay(checkin, endDate);
+  // Гео уходит ОДНО: либо точка, либо коробка. Слать оба разом нельзя — тогда за
+  // нас выбирал бы edge, а не мы (там коробка выигрывает), и по телу запроса
+  // нельзя было бы понять, что именно спрашивали.
   return {
-    lat,
-    lng,
+    ...(geo === 'box' ? boxAround(Number(lat), Number(lng)) : { lat, lng }),
     ...(checkin && { checkin }),
     ...(checkout && { checkout }),
     ...(currency && { currency }),
@@ -154,11 +245,15 @@ export function buildStay22Params({ visit, currency, lang, page, pageSize, filte
 }
 
 // ── v2 pool (TRIP-141): all-pages load + single client pool ──────────────────
-// How many Stay22 pages we burst-load (pageSize=100 each) and the hard cap on the
-// pooled stays. Page 1 paints instantly; pages 2..POOL_PAGES load in one parallel
-// background burst and are appended. The cap covers cities with 150/250 stays;
-// past it we keep the first POOL_MAX (Stay22 orders by relevance) and drop the rest.
-export const POOL_PAGES = 3;
+// Сколько РАУНДОВ мы берём и жёсткий потолок пула. Раунд = ОДНА страница из
+// каждого НЕИСЧЕРПАННОГО гео-режима; раунд 1 красит экран, раунды
+// 2..POOL_ROUNDS догружаются одним фоновым залпом.
+//
+// Раундов два, а не три: с двумя источниками бюджет запросов на раунд удвоился,
+// а пул всё равно упирается в POOL_MAX раньше — на Лос-Анджелесе точка даёт 234
+// и коробка 171, то есть потолок в 300 выбирается уже на втором раунде, и третий
+// был бы запросами в мусор.
+export const POOL_ROUNDS = 2;
 export const POOL_MAX = 300;
 
 // Merging pooled pages is the SHARED fork-pool merge (mergeById in forkPool.js);
