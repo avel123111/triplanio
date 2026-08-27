@@ -63,6 +63,49 @@
     <meta name="twitter:title" content="Triplanio — Your whole trip. One beautiful plan." />
     <meta name="twitter:description" content="Triplanio is a travel-planning app for complex multi-city trips. Build itineraries, plan together, track budgets in any currency, and get smart reminders." />
     <meta name="twitter:image" content="https://www.triplanio.com/og-cover.jpg" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         СТРУКТУРИРОВАННЫЕ ДАННЫЕ (JSON-LD) — ТОЛЬКО ОБЩЕСАЙТОВЫЕ.
+
+         Чем это отличается от og-тегов выше: `og:` объясняет МЕССЕНДЖЕРУ, как
+         нарисовать карточку в чате; JSON-LD объясняет ПОИСКОВИКУ и движку
+         ответов, ЧТО это такое. Разные потребители, одно другое не заменяет.
+
+         ★ Здесь ровно два типа, и это не экономия. `index.html` отдаётся на
+         КАЖДЫЙ адрес — значит всё, что тут написано, страница приложения
+         `/trips` утверждает о себе тоже. Для «организации» и «сайта» это верно
+         по построению: они описывают САЙТ, а не страницу. Всё страничное
+         (`FAQPage` лендинга) ставится по-маршрутно из React — `useJsonLd` в
+         `components/site/jsonLd.js`. Ровно та же граница, по которой сюда
+         сознательно не положен `canonical`, см. комментарий выше.
+
+         ⚠️ `sameAs` (профили в соцсетях) не объявлен: ссылок на них нет ни в
+         подвале, ни где-либо ещё на сайте. Объявить профиль, которого не видно
+         на странице, — это расхождение разметки с видимым, за которое Google
+         штрафует. Появятся ссылки — поле добавляется сюда одной строкой.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.triplanio.com/#organization",
+            "name": "Triplanio",
+            "url": "https://www.triplanio.com/",
+            "logo": "https://www.triplanio.com/triplanio-logo.png",
+            "email": "info@triplanio.com"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.triplanio.com/#website",
+            "name": "Triplanio",
+            "url": "https://www.triplanio.com/",
+            "publisher": { "@id": "https://www.triplanio.com/#organization" }
+          }
+        ]
+      }
+    </script>
     <!-- site.css принадлежит SiteChrome (инжектится только на marketing/public роутах). -->
     <!-- Шрифты НЕ предзагружаются намеренно (TRIP-328). index.html — один файл на ВСЕ
          SPA-роуты (rewrites → /index.html), а гарнитуры разнятся по роутам: marketing/public

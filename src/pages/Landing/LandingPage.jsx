@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useZoneCta } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
+import { useJsonLd, faqPageLd } from '@/components/site/jsonLd';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { WORLD_MAP_SVG } from './WorldMapSvg';
@@ -581,6 +582,20 @@ function FinalCta() {
 
 function Faq() {
   const t = useT();
+
+  // ОДИН источник: из него рисуется аккордеон И из него же строится разметка
+  // FAQPage. Ключи — статические литералы, а не `q${n}`: динамический ключ
+  // невидим и сканеру мёртвых ключей, и гарду 2x.
+  const faq = [
+    { q: t('landing.faq.q1'), a: t('landing.faq.a1') },
+    { q: t('landing.faq.q2'), a: t('landing.faq.a2') },
+    { q: t('landing.faq.q3'), a: t('landing.faq.a3') },
+    { q: t('landing.faq.q4'), a: t('landing.faq.a4') },
+    { q: t('landing.faq.q5'), a: t('landing.faq.a5') },
+    { q: t('landing.faq.q6'), a: t('landing.faq.a6') },
+  ];
+  useJsonLd(faqPageLd(faq));
+
   return (
     <section className="faq-sec sheet-pane section-pad" data-hdr="light" id="faq">
       <div className="wrap">
@@ -589,30 +604,19 @@ function Faq() {
           <h2>{t('landing.faq.h2')}</h2>
         </div>
         <div className="faq-list" data-stagger="">
-          <details className="faq-item rv" style={{ '--i': 0 }}>{/* inline-style-exempt: stagger reveal index */}
-            <summary><span>{t('landing.faq.q1')}</span><span className="fx">+</span></summary>
-            <div className="faq-body">{t('landing.faq.a1')}</div>
-          </details>
-          <details className="faq-item rv" style={{ '--i': 1 }}>{/* inline-style-exempt: stagger reveal index */}
-            <summary><span>{t('landing.faq.q2')}</span><span className="fx">+</span></summary>
-            <div className="faq-body">{t('landing.faq.a2')}</div>
-          </details>
-          <details className="faq-item rv" style={{ '--i': 2 }}>{/* inline-style-exempt: stagger reveal index */}
-            <summary><span>{t('landing.faq.q3')}</span><span className="fx">+</span></summary>
-            <div className="faq-body">{t('landing.faq.a3')}</div>
-          </details>
-          <details className="faq-item rv" style={{ '--i': 3 }}>{/* inline-style-exempt: stagger reveal index */}
-            <summary><span>{t('landing.faq.q4')}</span><span className="fx">+</span></summary>
-            <div className="faq-body">{t('landing.faq.a4')}</div>
-          </details>
-          <details className="faq-item rv" style={{ '--i': 4 }}>{/* inline-style-exempt: stagger reveal index */}
-            <summary><span>{t('landing.faq.q5')}</span><span className="fx">+</span></summary>
-            <div className="faq-body">{t('landing.faq.a5')}</div>
-          </details>
-          <details className="faq-item rv" style={{ '--i': 5 }}>{/* inline-style-exempt: stagger reveal index */}
-            <summary><span>{t('landing.faq.q6')}</span><span className="fx">+</span></summary>
-            <div className="faq-body">{t('landing.faq.a6')}</div>
-          </details>
+          {/* ОДИН источник на аккордеон и на разметку FAQPage ниже. Раньше это
+              были шесть почти одинаковых блоков; пока их шесть, вопрос,
+              изменённый в одном месте, разъезжается со структурированными
+              данными молча — а расхождение видимого с разметкой Google штрафует.
+              Ключи остаются статическими литералами: динамический `q${n}` не
+              виден ни сканеру мёртвых ключей, ни гарду 2x. */}
+          {faq.map((it, i) => (
+            /* inline-style-exempt: stagger reveal index */
+            <details className="faq-item rv" key={it.q} style={{ '--i': i }}>
+              <summary><span>{it.q}</span><span className="fx">+</span></summary>
+              <div className="faq-body">{it.a}</div>
+            </details>
+          ))}
         </div>
       </div>
     </section>
