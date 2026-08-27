@@ -4,8 +4,8 @@
 // Used by the Overview stat row (TripStatRow). City counting reuses the same
 // identity rule as the rest of the app via uniqueCityCount so the "cities"
 // number never drifts between the timeline header and the overview.
-import { uniqueCityCount, uniqueCountryCount } from '@/lib/trip-cities';
-import { haversineKm } from '@/lib/geoDistance';
+import { uniqueCityCount, uniqueCountryCount } from './trip-cities.js';
+import { haversineKm } from './geoDistance.js';
 
 // uniqueCountryCount is re-exported from the single source of truth so existing
 // importers of '@/lib/trip-stats' keep working. То же самое и по той же причине

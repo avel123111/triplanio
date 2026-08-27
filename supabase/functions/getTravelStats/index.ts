@@ -11,9 +11,11 @@
 // p_actor не называет). EXECUTE у authenticated/anon снят той же миграцией —
 // прямого клиентского пути к RPC нет.
 //
-// Возвращает jsonb RPC КАК ЕСТЬ (points/trips/transfers/transfers_total/
-// trip_visits) — форма 1:1 с тем, что снимал прямой .rpc(), клиент не меняет
-// чтение полей. verify_jwt=true дефолтом (аутентификация через getRequestUser,
+// Возвращает jsonb RPC КАК ЕСТЬ (points/trips/transfers/transfers_total).
+// Ключ `trip_visits` снят миграцией 20260827223417: его читала главная ДО
+// TRIP-403, а после переезда карточки в `getTrips` читателей у него не осталось
+// ни одного — карта визитов по всем трипам ехала в каждом ответе впустую.
+// verify_jwt=true дефолтом (аутентификация через getRequestUser,
 // как getMe/getActiveTrips) — записи в config.toml не нужно.
 
 import { withHandler } from '../_shared/http.ts';

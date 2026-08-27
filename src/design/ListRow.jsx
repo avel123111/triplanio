@@ -18,15 +18,26 @@ import React from 'react';
 // тон ховера — канал `--a`). Дефолт — без скина (голая строка).
 //
 // ★ ЗАГОЛОВОК/ПОДПИСЬ — канон текста (.t-strong/.t-meta + .muted), не свои классы.
+//
+// ★ `trailSub` — ВТОРОСТЕПЕННАЯ половина трейла: она прячется на узком экране
+// (≤600px), тогда как `trail` остаётся всегда. Заведено вместе со сносом
+// `.tr*` — строка прошедшего трипа на главной несла дату, стопку аватаров и
+// бейджи, и прятала их своей приватной утилитой `.tr-hideS` с `!important`.
+// Прятать «всё лишнее на телефоне» приходится КАЖДОЙ насыщенной строке (те же
+// ряды бюджета), поэтому это ось строки, а не утилита одного экрана.
+//
+// ★ `muted` — приглушённая строка (архив, неактивное). Скин один: opacity на
+// строке целиком, чтобы приглушались и обложка, и бейджи, а не только текст.
 /** @typedef {'raised'|'select'|'divider'|'compact'|'add'} ListRowVariant */
 export const ListRow = React.forwardRef(
   /**
    * @param {{
-   *   lead?: any, title?: any, sub?: any, trail?: any, variant?: ListRowVariant,
+   *   lead?: any, title?: any, sub?: any, trail?: any, trailSub?: any,
+   *   variant?: ListRowVariant, muted?: boolean,
    *   onClick?: any, selected?: boolean, className?: string, children?: any,
    * } & Record<string, any>} p
    */
-  ({ lead, title, sub, trail, variant, onClick, selected, className = "", children, ...rest }, ref) => {
+  ({ lead, title, sub, trail, trailSub, variant, muted, onClick, selected, className = "", children, ...rest }, ref) => {
     const clickable = !!onClick;
     const El = /** @type {any} */ (clickable ? "button" : "div");
     return (
@@ -39,6 +50,7 @@ export const ListRow = React.forwardRef(
           variant && `lrow--${variant}`,
           clickable && "lrow--clickable",
           selected && "lrow--on",
+          muted && "lrow--muted",
           className,
         ].filter(Boolean).join(" ")}
         {...rest}
@@ -49,7 +61,12 @@ export const ListRow = React.forwardRef(
           {sub != null && <div className="t-meta muted">{sub}</div>}
           {children}
         </div>
-        {trail != null && <div className="lrow__trail">{trail}</div>}
+        {(trail != null || trailSub != null) && (
+          <div className="lrow__trail">
+            {trailSub != null && <span className="lrow__trail-s">{trailSub}</span>}
+            {trail}
+          </div>
+        )}
       </El>
     );
   },
