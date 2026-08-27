@@ -63,6 +63,7 @@
   "success_desc_trip": "El pago se realizó. Todas las funciones Pro están disponibles en este viaje.",
   "success_title": "Suscripción activada",
   "success_title_trip": "Este viaje ahora es Pro",
+  "trip_offer_kicker": "Pro para este viaje",
   "trip_offer_terms": "pago único",
   "trip_owner_fallback": "el propietario del viaje",
   "trip_pro_desc_post": ". Para desbloquear el reconocimiento con IA, el presupuesto, el chat y el calendario, pide al propietario que active Pro para el viaje.",
