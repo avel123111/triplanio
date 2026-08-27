@@ -1,7 +1,7 @@
 // Unit tests for Stay22 mapping + param building. Run: npm test (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeStay22, buildStay22Params, todayLocal, ensureNextDay, filterParams, applyClientFilters, BASE_HOTEL_FILTERS, STAY22_FILTER_SPEC } from './stay22-normalize.js';
+import { normalizeStay22, buildStay22Params, boxAround, POOL_BOX_KM, GEO_MODES, todayLocal, ensureNextDay, filterParams, applyClientFilters, BASE_HOTEL_FILTERS, STAY22_FILTER_SPEC } from './stay22-normalize.js';
 
 const SAMPLE = {
   meta: { pageSize: 10, count: 3, page: 1, hasMore: true, total: 32, currency: 'USD', checkin: '2026-10-05', checkout: '2026-10-10', nights: 5 },
@@ -178,4 +178,95 @@ test('BASE_HOTEL_FILTERS carries a cleared slot for every knob the spec reads', 
   const active = { text: 'madrid', min: 100, max: 400, sortBy: 'price' };
   assert.ok(applyClientFilters(HOTELS, active).length < HOTELS.length, 'fixture must be filterable');
   assert.deepEqual(applyClientFilters(HOTELS, { ...active, ...BASE_HOTEL_FILTERS }).map((h) => h.id), ['a', 'b', 'c']);
+});
+
+// ── Прямоугольник: второй гео-режим (покрытие больших городов) ───────────────
+
+test('boxAround: ±12 км вокруг точки, широта и долгота по-разному', () => {
+  const b = boxAround(34.05223, -118.24368);
+  // Широтный шаг постоянен: 12 / 111.32 ≈ 0.1078°.
+  assert.ok(Math.abs((b.nelat - b.swlat) / 2 - 12 / 111.32) < 1e-9);
+  // Долготный шире, потому что делится на cos(34°) ≈ 0.829.
+  assert.ok(b.nelng - b.swlng > b.nelat - b.swlat);
+  // Центр коробки — исходная точка.
+  assert.ok(Math.abs((b.nelat + b.swlat) / 2 - 34.05223) < 1e-9);
+  assert.ok(Math.abs((b.nelng + b.swlng) / 2 - (-118.24368)) < 1e-9);
+});
+
+test('boxAround: у полюса долгота не улетает в бесконечность', () => {
+  const b = boxAround(90, 0);
+  assert.ok(Number.isFinite(b.nelng) && Number.isFinite(b.swlng));
+  assert.equal(b.nelng, 180);
+  assert.equal(b.nelat, 90); // за полюс не вылезаем
+  assert.equal(POOL_BOX_KM, 12);
+});
+
+test('buildStay22Params: режим коробки шлёт четыре угла и НЕ шлёт точку', () => {
+  const visit = { id: 'c1', latitude: 34.05223, longitude: -118.24368, start_date: '2026-09-02', end_date: '2026-09-06' };
+  const p = buildStay22Params({ visit, currency: 'EUR', geo: 'box', today: '2026-08-26' });
+  assert.ok(!('lat' in p) && !('lng' in p)); // гео уходит ОДНО
+  for (const k of ['swlat', 'swlng', 'nelat', 'nelng']) assert.equal(typeof p[k], 'number');
+  // Даты и прочее не зависят от гео-режима.
+  assert.equal(p.checkin, '2026-09-02');
+  assert.equal(p.checkout, '2026-09-06');
+});
+
+test('GEO_MODES: список режимов — он же порядок склейки', () => {
+  assert.deepEqual(GEO_MODES, ['point', 'box']);
+});
+
+test('неизвестный режим не молчит боком: тело собирается точкой, а не пустым гео', () => {
+  const visit = { id: 'c1', latitude: 34.05223, longitude: -118.24368, start_date: '2026-09-02', end_date: '2026-09-06' };
+  const p = buildStay22Params({ visit, currency: 'EUR', geo: 'нечто', today: '2026-08-26' });
+  assert.equal(p.lat, 34.05223); // деградация в точку, а не запрос без координат
+});
+
+test('distanceKm: битый центр даёт null, а не NaN (NaN «равен» всему при сортировке)', () => {
+  const r = { id: 'x', suppliers: {}, location: { coordinates: [-118.24, 34.05] }, rating: {} };
+  assert.equal(normalizeStay22({ results: [r] }, { lat: NaN, lng: -118.24 }).hotels[0].distanceKm, null);
+  assert.equal(normalizeStay22({ results: [r] }, { lat: 34.05 }).hotels[0].distanceKm, null);
+});
+
+test('buildStay22Params: без флага коробки тело прежнее — точка, углов нет', () => {
+  const visit = { id: 'c1', latitude: 34.05223, longitude: -118.24368, start_date: '2026-09-02', end_date: '2026-09-06' };
+  const p = buildStay22Params({ visit, currency: 'EUR', today: '2026-08-26' });
+  assert.equal(p.lat, 34.05223);
+  assert.equal(p.lng, -118.24368);
+  for (const k of ['swlat', 'swlng', 'nelat', 'nelng']) assert.ok(!(k in p));
+});
+
+test('отсечка прошлых дат действует в ОБОИХ режимах', () => {
+  const past = { id: 'c1', latitude: 34.05, longitude: -118.24, start_date: '2026-08-20', end_date: '2026-08-24' };
+  assert.equal(buildStay22Params({ visit: past, geo: 'point', today: '2026-08-26' }), null);
+  assert.equal(buildStay22Params({ visit: past, geo: 'box', today: '2026-08-26' }), null);
+});
+
+// ── Расстояние и порядок склеенного пула ────────────────────────────────────
+
+const RESULT = (id, lat, lng) => ({
+  id, name: id, suppliers: { booking: { link: 'l', price: { total: 10 } } },
+  location: { coordinates: [lng, lat], address: 'a' }, rating: {},
+});
+
+test('normalizeStay22: distanceKm считается от переданного центра', () => {
+  const center = { lat: 34.05223, lng: -118.24368 };
+  const { hotels } = normalizeStay22({ results: [RESULT('near', 34.0530, -118.2440), RESULT('far', 34.15, -118.24)] }, center);
+  assert.ok(hotels[0].distanceKm < 0.2);
+  assert.ok(hotels[1].distanceKm > 10);
+});
+
+test('normalizeStay22: без центра distanceKm пуст, а не ноль (ноль значил бы «в центре»)', () => {
+  const { hotels } = normalizeStay22({ results: [RESULT('x', 34.05, -118.24)] });
+  assert.equal(hotels[0].distanceKm, null);
+});
+
+test('«рекомендованные» = ближайшие: склейка двух выдач упорядочена по удалению', () => {
+  // Порядок на входе — как после mergeById: сначала вся точечная выдача, потом
+  // коробочная. Без явной меры это и осталось бы «порядком склейки».
+  const pool = [
+    { id: 'a', distanceKm: 0.4 }, { id: 'b', distanceKm: 5.1 },
+    { id: 'c', distanceKm: 0.9 }, { id: 'd', distanceKm: 23.2 },
+  ];
+  const out = applyClientFilters(pool, { ...BASE_HOTEL_FILTERS, sortBy: 'recommended' });
+  assert.deepEqual(out.map((h) => h.id), ['a', 'c', 'b', 'd']);
 });

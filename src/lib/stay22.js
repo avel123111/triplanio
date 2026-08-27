@@ -15,7 +15,7 @@ import { useForkList } from '@/lib/useForkList';
 import { mergeById } from '@/lib/forkPool';
 import {
   normalizeStay22, buildStay22Params, STAY22_POOL_KEY,
-  POOL_PAGES, POOL_MAX, applyClientFilters, BASE_HOTEL_FILTERS,
+  POOL_ROUNDS, POOL_MAX, GEO_MODES, applyClientFilters, BASE_HOTEL_FILTERS,
 } from '@/lib/stay22-normalize';
 
 export { normalizeStay22, buildStay22Params };
@@ -31,8 +31,8 @@ const POOL_PAGE_SIZE = 100;
 // `buildStay22Params` — ищем ТОЛЬКО по координатам города, никакой строки адреса
 // здесь больше не собирается (почему — в шапке `stay22Accommodations/index.ts`).
 // Returns the normalized { hotels, meta }. Shared by every page request.
-async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters }) {
-  const body = buildStay22Params({ visit, currency, lang, page, pageSize, filters });
+async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters, geo = 'point' }) {
+  const body = buildStay22Params({ visit, currency, lang, page, pageSize, filters, geo });
   if (!body) return normalizeStay22(null);
   const { data, error } = await invokeFn('stay22Accommodations', { body });
   if (error) throw error;
@@ -40,16 +40,60 @@ async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters 
   // QueryCache.onError seam doesn't capture it a second time (new Error drops the
   // stamp invokeFn puts on real error objects).
   if (data?.error) throw Object.assign(new Error(data.error), { __seamHandled: true });
-  return normalizeStay22(data);
+  // Центр — координаты посещения: относительно него считается `distanceKm`, по
+  // которому склеенный пул потом сортируется. Обе выдачи меряются ОДНОЙ точкой,
+  // иначе «ближе» у точечной и у коробочной значило бы разное.
+  return normalizeStay22(data, { lat: Number(visit?.latitude), lng: Number(visit?.longitude) });
+}
+
+/**
+ * Один РАУНД пула — одна и та же страница из каждого ПЕРЕДАННОГО гео-режима,
+ * параллельно.
+ *
+ * Точка отдаёт плотный центр (в Лос-Анджелесе ~140 штук в 6.4 км), коробка —
+ * разброс по площади (~100 штук с медианой 23 км), и пересекаются они почти
+ * никак: на LA из 99 коробочных все 99 были новыми. Поэтому не «шире искать», а
+ * СПРОСИТЬ ПО КАЖДОМУ РЕЖИМУ и склеить — тем же `mergeById`, что уже сливает
+ * страницы. Режимы приходят списком, а не парой аргументов: третий источник
+ * (видимая область карты) станет ещё одной строкой в `GEO_MODES`.
+ *
+ * Ошибки режимов НЕ равнозначны, и глотать все нельзя — иначе упавший API
+ * показал бы «в этом городе отелей нет» вместо ошибки, то есть соврал бы молча.
+ * Поэтому ПЕРВЫЙ режим списка несущий: его отказ пробрасывается и панель
+ * краснеет ровно как до появления коробки; остальные — расширения, их отказ
+ * деградирует к выдаче несущего.
+ *
+ * `meta.more` — карта «режим → есть ли ещё страницы». По ней хвост спрашивает
+ * ТОЛЬКО незакрытые режимы: без неё раунд 2 всегда дёргал и коробку, а она в
+ * Лос-Анджелесе исчерпывается на первой же странице, то есть один запрос из
+ * четырёх уходил в заведомый ноль.
+ */
+async function fetchStay22Round(visit, opts, modes = GEO_MODES) {
+  const [lead, ...rest] = modes;
+  const results = await Promise.all([
+    fetchStay22Page(visit, { ...opts, geo: lead }),
+    ...rest.map((geo) => fetchStay22Page(visit, { ...opts, geo }).catch(() => normalizeStay22(null))),
+  ]);
+  // Потолок здесь не ставим: раунд физически не больше `modes × pageSize`, а
+  // единственный настоящий предел пула — `POOL_MAX` при финальной склейке.
+  const { items: hotels } = mergeById(results.map((r) => r.hotels), { getKey: (h) => h.id });
+  const more = Object.fromEntries(modes.map((m, i) => [m, !!results[i]?.meta?.hasMore]));
+  return {
+    hotels,
+    // Мета — от несущего режима (там даты, валюта, число ночей) плюс карта
+    // незакрытых режимов; `hasMore` остаётся производным «есть ли хоть один».
+    meta: { ...results[0].meta, hasMore: Object.values(more).some(Boolean), more },
+  };
 }
 
 /**
  * Whole-city pool hook for the hotel fork panel (TRIP-141).
  *
- * Loads ALL pages of a city's stays (capped at POOL_PAGES × POOL_PAGE_SIZE) into
+ * Loads a city's stays (POOL_ROUNDS раундов × режимы × POOL_PAGE_SIZE, финальный
+ * потолок POOL_MAX) into
  * one client pool — the single source of truth for both the list (client
  * pagination) and the map (client clustering). Progressive: page 1 paints
- * instantly; pages 2..POOL_PAGES load in ONE parallel background burst and are
+ * instantly; раунды 2..POOL_ROUNDS load in ONE parallel background burst and are
  * merged in (dedup by id). Cached for the session, keyed by visit + filters, so
  * changing the filters reloads everything but paging/panning reuses the cache.
  *
@@ -73,24 +117,31 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
     placeholderData: keepPreviousData,
     staleTime: POOL_STALE_MS,
     gcTime: POOL_GC_MS,
-    queryFn: () => fetchStay22Page(visit, { currency, lang, page: 1, pageSize: POOL_PAGE_SIZE, filters }),
+    queryFn: () => fetchStay22Round(visit, { currency, lang, page: 1, pageSize: POOL_PAGE_SIZE, filters }),
   });
 
-  // Only chase the tail once page 1 (for THIS city) reports more pages exist.
-  const hasMore = !page1.isPlaceholderData && !!page1.data?.meta?.hasMore;
+  // Хвост гонимся только за теми режимами, которые в раунде 1 (для ЭТОГО города)
+  // сказали «есть ещё». Исчерпанный режим больше не спрашиваем — это и была
+  // четверть запросов в ноль.
+  const tailModes = page1.isPlaceholderData
+    ? []
+    : GEO_MODES.filter((m) => page1.data?.meta?.more?.[m]);
 
-  // Tail — pages 2..POOL_PAGES in one parallel burst. We don't know the exact page
-  // count up front (meta.total is unreliable), so we optimistically request every
-  // remaining page at once; a page past the end just returns [] and merges away.
+  // Хвост — раунды 2..POOL_ROUNDS одним параллельным залпом. Точное число страниц
+  // заранее неизвестно (`meta.total` ненадёжен), поэтому просим все оставшиеся
+  // сразу; раунд за концом выдачи вернёт [] и растворится в склейке.
+  //
+  // Набор режимов — ЧАСТЬ ключа: он выведен из раунда 1, и без него кэш хвоста
+  // пережил бы смену набора, отдав выдачу, собранную по другим источникам.
   const tail = useQuery({
-    queryKey: [...poolKey, 'tail'],
-    enabled: !!enabled && canFetch && hasMore,
+    queryKey: [...poolKey, 'tail', tailModes.join(',')],
+    enabled: !!enabled && canFetch && tailModes.length > 0,
     staleTime: POOL_STALE_MS,
     gcTime: POOL_GC_MS,
     queryFn: async () => {
       const reqs = [];
-      for (let p = 2; p <= POOL_PAGES; p++) {
-        reqs.push(fetchStay22Page(visit, { currency, lang, page: p, pageSize: POOL_PAGE_SIZE, filters }));
+      for (let p = 2; p <= POOL_ROUNDS; p++) {
+        reqs.push(fetchStay22Round(visit, { currency, lang, page: p, pageSize: POOL_PAGE_SIZE, filters }, tailModes));
       }
       return Promise.all(reqs); // [{hotels,meta}, …]
     },
@@ -113,9 +164,9 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
     isFetching: page1.isFetching || tail.isFetching,
     isError: page1.isError, // tail failures degrade to page-1-only, never blank the panel
     isPlaceholderData: placeholder,
-    tailLoading: hasMore && tail.isFetching,
+    tailLoading: tailModes.length > 0 && tail.isFetching,
     truncated: data.meta.truncated,
-    refetch: () => { page1.refetch(); if (hasMore) tail.refetch(); },
+    refetch: () => { page1.refetch(); if (tailModes.length > 0) tail.refetch(); },
   };
 }
 

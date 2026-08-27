@@ -12,18 +12,13 @@ import { useMapClick } from '@/lib/map/useMapClick';
 import { hasFramed, markFramed } from '@/lib/map/framed';
 import MapControls from '@/lib/map/MapControls';
 import { sortVisits } from '@/lib/validation';
+import { haversineKm } from '@/lib/geoDistance';
 
 // Great-circle distance (km) between two visits — used to scale the reveal flyTo
-// duration so a Moscow→New York leg flies for longer than a short hop.
-function legKm(from, to) {
-  const R = 6371;
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(to.latitude - from.latitude);
-  const dLon = toRad(to.longitude - from.longitude);
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(from.latitude)) * Math.cos(toRad(to.latitude)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
-}
+// duration so a Moscow→New York leg flies for longer than a short hop. Формула
+// общая (`@/lib/geoDistance`); здесь только переход от пары визитов к четырём
+// числам, ради которого копия формулы держаться не должна.
+const legKm = (from, to) => haversineKm(from.latitude, from.longitude, to.latitude, to.longitude);
 
 // Per-leg reveal animation duration (ms) from leg length: short hops ~2s,
 // intercontinental legs up to ~8s. sqrt keeps very long legs from dragging on.
