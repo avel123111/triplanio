@@ -9709,12 +9709,35 @@ a.doc-row__n:hover{ color: var(--brand); }
   --font-ui: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --ink: #272433; --muted: #7A7689; --brand: #2173C8; --hl: #2173C8;
   --r-md: 16px; --fs-micro: 12.5px;
+  /* ★ ПОВЕРХНОСТЬ — ЧАСТЬ ТОЙ ЖЕ ЗАКРЕПЛЁННОЙ ДЕЛЬТЫ, и её здесь не хватало.
+     Заливку и рамку баннеру даёт общий со-селектор поверхностей выше
+     (`background: var(--surface); border: 1px solid var(--line)`), а его кнопкам
+     — `--surface`/`--line-strong`/`--wash` через `.btn`. Пока эти четыре имени
+     не были закреплены, тёмная тема ПРИЛОЖЕНИЯ красила баннер на страницах
+     зоны: фон `rgb(31,33,47)` при белом листе страницы (воспроизведено на `/` и
+     `/login`). Тема по умолчанию `system` (`ThemeContext`), поэтому человек с
+     тёмной ОС видел это на лендинге, куда ещё даже не логинился.
+     visual-diff-exempt: .consent --surface — закреплённая дельта баннера, светлый app-DS (TRIP-445)
+     visual-diff-exempt: .consent --line — то же
+     visual-diff-exempt: .consent --line-strong — то же
+     visual-diff-exempt: .consent --wash — то же
+     visual-diff-exempt: .consent --sh-3 — то же (тень баннера) */
+  --surface: #FFFFFF; --line: #E6EAEE; --line-strong: #D5DAE0; --wash: #EEF1F4;
+  --sh-3: 0 8px 20px -6px rgba(39,36,51,.14), 0 30px 70px -22px rgba(39,36,51,.30);
 }
 /* Тёмная тема приложения: тёмные app-DS токены, чтобы текст читался на тёмной
    поверхности баннера (site-зона всегда светлая — сюда не попадает). Ключ 2p —
    тот же `.consent --ink|--muted|--brand`, покрыт маркерами базового правила выше. */
+/* ★ Прежний комментарий здесь утверждал «сайт-зона всегда светлая — сюда не
+   попадает». Это НЕВЕРНО: `.site` стоит на `<html>`, то есть на том же элементе,
+   что и `[data-theme]`, — правило матчит и страницу зоны. Само оно остаётся как
+   есть (приложение не обязано знать про зону); защищается ЗОНА, своим правилом
+   `html.site[data-theme] .consent` в public/site.css. Дубль значений там —
+   осознанный и под тестом `check-zone-theme-isolation.test.mjs`. */
 :root[data-theme="dark"] .consent {
   --ink: #EDECF4; --muted: #8C88A0; --brand: #6FB2FF; --hl: #6FB2FF;
+  --surface: #1f212f; --line: #2B2D3E; --line-strong: #383A4D; --wash: #2A2937;
+  --sh-3: 0 8px 22px -6px rgba(0,0,0,.55), 0 32px 74px -24px rgba(0,0,0,.8);
 }
 /* Кнопки баннера. КОРЕНЬ РАСХОЖДЕНИЯ: и app.css, и site.css объявляют базовый
    `.btn`; на лендинге/auth site.css грузится ПОЗЖЕ и его `.btn` (пилюля 99px,
