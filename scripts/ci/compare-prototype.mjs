@@ -42,11 +42,18 @@
  *   VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.x" \
  *   npx vite build
  *   # 4. два сервера (file:// в Playwright заблокирован)
- *   (cd dist && setsid python3 -m http.server 8099 &) ; (cd /tmp/proto && setsid python3 -m http.server 8098 &)
+ *   #    ★ реализацию отдаёт ТОЛЬКО SPA-сервер: `python3 -m http.server` на
+ *   #    /d/... и /terms отвечает 404, и харнесс честно сравнил бы страницу
+ *   #    ошибки. Проверено: python 404, `vite preview` 200. Прототип — статика,
+ *   #    ему любой сервер годится.
+ *   (setsid npx vite preview --port 4173 --strictPort &) ; (cd /tmp/proto && setsid python3 -m http.server 8098 &)
  *   # 5. обе ширины — 390 не опциональна, на ней расхождения ВЫШЕ
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
- *   npm run check:proto -- --proto http://127.0.0.1:8098/ --impl http://127.0.0.1:8099/ --width 1440 --height 900
- *   npm run check:proto -- --proto http://127.0.0.1:8098/ --impl http://127.0.0.1:8099/ --width 390  --height 844
+ *   npm run check:proto -- --proto http://127.0.0.1:8098/ --impl http://127.0.0.1:4173/ --width 1440 --height 900
+ *   npm run check:proto -- --proto http://127.0.0.1:8098/ --impl http://127.0.0.1:4173/ --width 390  --height 844
+ *   # ...и так по каждой странице зоны: адреса указывают НА ОДНУ И ТУ ЖЕ
+ *   # страницу с обеих сторон (демо ↔ демо, юр ↔ юр). Секции харнесс находит
+ *   # сам; `--sections` нужен, только чтобы сузить.
  *   # 6. по каждой секции выше порога — структурный разбор:
  *   npm run check:proto -- ... --elements <секция>
  *
@@ -62,12 +69,19 @@
  * 19.0% — а структурный разбор показал сдвиги 1-9px, то есть совпадение.
  * Поэтому процент — ТРИАЖ, а не вердикт: он говорит «посмотри сюда», а что
  * именно разъехалось, отвечает режим --elements (позиции, размеры и кегли
- * элементов секции). Настоящий дефект виден там сдвигом в десятки пикселей:
+ * элементов секции).
+ *
+ * ★ НО И --elements НЕ ВЕРДИКТ. Узлы он парует ПО ПОРЯДКУ внутри ключа, и при
+ * разном числе одноимённых узлов пара съезжает — отчёт печатает выдуманные
+ * расхождения. Такие ключи теперь называются вслух, а их строки помечены «?». Настоящий дефект виден там сдвигом в десятки пикселей:
  * у `pain` высота 1507 против 985 и смещение блоков на 667px.
  *
  * ЧТО ХАРНЕСС УБИРАЕТ ИЗ ЗАМЕРА (иначе числа врут и гонят чинить исправное):
  *   · баннер согласия (.consent) и его плавающая кнопка (.ci-root/.ci-launch) —
  *     компоненты приложения, в прототипе их нет;
+ *   · панель управления прототипа (#dock) — переключатели экранов и состояний,
+ *     в реализации их нет по построению. На 390 она закрывала пол-экрана
+ *     авторизации: 73.9% дифа были ею;
  *   · фазы reveal/scrub — обе стороны форсятся в финальное состояние (класс `in`),
  *     иначе одна снята на середине анимации, вторая — в конце;
  *   · разъезд точки скролла — секция позиционируется по своей координате, а не
@@ -79,8 +93,15 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
+import { sectionKey, parseOnly, parseAliases, commonSections } from './proto-sections.mjs';
 
-const SECTIONS = ['hero','pain','bento-sec','recognize','archive','audience','collab','tg-sec','share','faq-sec','final'];
+// Список секций БОЛЬШЕ НЕ КОНСТАНТА. Он был константой лендинга, и на демо и
+// юр-страницах не находилась ни одна: каждая печатала «нет секции с одной из
+// сторон», счётчик оставался нулём, отчёт заканчивался «худшая секция: 0%» и
+// кодом выхода 0 — приёмка рапортовала идеальным совпадением страницу, которую
+// не открывала. Теперь секции берутся С САМИХ СТРАНИЦ и сравнивается их
+// пересечение (имена классов у порта и прототипа общие по построению),
+// а `--sections` только СУЖАЕТ этот список.
 const CHROME = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const OUT = process.env.OUT_DIR || '/tmp/proto-diff';
 
@@ -89,6 +110,10 @@ const arg = (name, def) => {
   return i > -1 ? process.argv[i + 1] : def;
 };
 const PROTO = arg('proto'), IMPL = arg('impl');
+const ONLY = parseOnly(arg('sections'));
+// Секция реализации, названная в макете иначе (`--alias dm-hero=hero`).
+// Без этого намеренное переименование выбрасывает секцию из приёмки МОЛЧА.
+const ALIAS = parseAliases(arg('alias'));
 const W = +arg('width', 1440), H = +arg('height', 900);
 const LANG = arg('lang', 'en');
 if (!PROTO || !IMPL) {
@@ -99,6 +124,12 @@ if (!PROTO || !IMPL) {
 /** Обе стороны — в одном состоянии: без баннера согласия, анимации доиграны. */
 const SETTLE = `
   .consent, .ci-root, [class*="ci-launch"] { display: none !important; }
+  /* Панель управления САМОГО прототипа («Прототип · v5.7 Daylight» с
+     переключателями экранов и состояний). На 390 она закрывала пол-экрана
+     авторизации, и диф показывал 73.9% — это была её собственная панель, а не
+     наша вёрстка. Симметрично баннеру согласия выше: с каждой стороны гасим то,
+     чего у другой нет по построению. */
+  #dock, .dock { display: none !important; }
   /* Только ВИДИМОСТЬ. Reveal на этом лендинге ДВУНАПРАВЛЕННЫЙ: наблюдатель
      снимает класс in, когда секция уходит вверх, — и блок, добавленный нами
      руками, снова гаснет к моменту съёмки (телефон «Ассистента» пропадал
@@ -108,6 +139,40 @@ const SETTLE = `
   .rv, .rv-l, .rv-r { opacity: 1 !important; }
 `;
 
+/**
+ * Локаль: макет и реализация переключаются своими же кнопками языка, иначе
+ * сравнивается английская вёрстка с русской. Русские строки длиннее — часть
+ * расхождений видна ТОЛЬКО на ru.
+ *
+ * ★ ОБЩИЙ для съёмки и для `--elements`. Раньше переключение жило ТОЛЬКО в
+ * съёмке, и структурный разбор молча сравнивал русский макет с английской
+ * реализацией: заголовок `route-sec` выходил «104 против 52, две строки против
+ * одной» — расхождение, которого нет (прямой замер обеих сторон на ru: один и
+ * тот же заголовок 660×104, кегль 46.4px). Режим, который зовут вердиктом,
+ * обязан стоять в тех же условиях, что и триаж.
+ */
+async function switchLang(page) {
+  if (!LANG || LANG === 'en') return;
+  await page.evaluate(async (lang) => {
+    const opener = document.querySelector('.lang-btn') || document.querySelector('.lang button');
+    if (opener) { opener.click(); await new Promise((r) => setTimeout(r, 350)); }
+    // строгий выбор: сначала data-lang, потом ТОЧНОЕ имя языка. Свободный
+    // regex по тексту цеплял последний подходящий пункт и уводил на другую
+    // локаль (ru → es), а раскрытое меню ещё и закрывало пол-секции.
+    const label = { ru: 'Русский', es: 'Español', en: 'English' }[lang];
+    const items = [...document.querySelectorAll('[data-lang], .lang-menu button, .lang-menu a, .mobile-menu button')];
+    const target = items.find((el) => el.dataset?.lang === lang)
+      || items.find((el) => (el.textContent || '').trim() === label)
+      || items.find((el) => (el.textContent || '').trim().startsWith(lang.toUpperCase()));
+    if (target) target.click();
+    await new Promise((r) => setTimeout(r, 400));
+    // закрыть выпадающее меню, чтобы оно не попало в кадр
+    document.body.click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  }, LANG);
+  await page.waitForTimeout(1200);
+}
+
 async function capture(browser, url, tag) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H } });
   const page = await ctx.newPage();
@@ -115,44 +180,33 @@ async function capture(browser, url, tag) {
   await page.waitForTimeout(2500);
   await page.addStyleTag({ content: SETTLE });
 
-  // Локаль: макет и реализация переключаются своими же кнопками языка, иначе
-  // сравнивается английская вёрстка с русской. Русские строки длиннее — часть
-  // расхождений видна ТОЛЬКО на ru.
-  if (LANG && LANG !== 'en') {
-    await page.evaluate(async (lang) => {
-      const opener = document.querySelector('.lang-btn') || document.querySelector('.lang button');
-      if (opener) { opener.click(); await new Promise((r) => setTimeout(r, 350)); }
-      // строгий выбор: сначала data-lang, потом ТОЧНОЕ имя языка. Свободный
-      // regex по тексту цеплял последний подходящий пункт и уводил на другую
-      // локаль (ru → es), а раскрытое меню ещё и закрывало пол-секции.
-      const label = { ru: 'Русский', es: 'Español', en: 'English' }[lang];
-      const items = [...document.querySelectorAll('[data-lang], .lang-menu button, .lang-menu a, .mobile-menu button')];
-      const target = items.find((el) => el.dataset?.lang === lang)
-        || items.find((el) => (el.textContent || '').trim() === label)
-        || items.find((el) => (el.textContent || '').trim().startsWith(lang.toUpperCase()));
-      if (target) target.click();
-      await new Promise((r) => setTimeout(r, 400));
-      // закрыть выпадающее меню, чтобы оно не попало в кадр
-      document.body.click();
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    }, LANG);
-    await page.waitForTimeout(1200);
+  await switchLang(page);
+
+  // Что на странице вообще есть — в порядке документа. Ключ секции считает
+  // общий модуль (`proto-sections.mjs`), поэтому в браузер уезжают только сырые
+  // атрибуты class.
+  const classes = await page.$$eval('section', (els) => els.map((el) => el.getAttribute('class') || ''));
+  const order = [];
+  for (const cls of classes) {
+    const key = sectionKey(cls);
+    if (key && !order.includes(key)) order.push(key);
   }
 
   const found = {};
-  // hero снимается ПЕРВЫМ, на нетронутой странице: он живёт на первом экране и
-  // реагирует на скролл (параллакс, hover-кадр, затухание). Снятый после прогона
-  // по всей высоте — даже с возвратом в 0 — он сравнивается в другой фазе: на этом
-  // лендинге 11% против 37% и 83% в зависимости от момента съёмки.
-  {
-    const heroEl = await page.$('section.hero');
-    if (heroEl) {
-      const box = await heroEl.boundingBox();
-      if (box) {
-        const file = path.join(OUT, `${tag}-hero.png`);
-        await page.screenshot({ path: file, clip: { x: 0, y: 0, width: W, height: Math.min(box.height, 2400) } });
-        found.hero = file;
-      }
+  // ПЕРВАЯ секция документа снимается до прокрутки: она живёт на первом экране и
+  // реагирует на скролл (параллакс, hover-кадр, затухание). Снятая после прогона
+  // по всей высоте — даже с возвратом в 0 — она сравнивается в другой фазе: на
+  // лендинге 11% против 37% и 83% в зависимости от момента съёмки. Раньше здесь
+  // стояло имя `hero` строкой, и на демо (первый экран — `dm-hero`) правило
+  // молча не срабатывало.
+  const first = order[0];
+  if (first) {
+    const el = await page.$(`section.${first}`);
+    const box = el && await el.boundingBox();
+    if (box) {
+      const file = path.join(OUT, `${tag}-${first}.png`);
+      await page.screenshot({ path: file, clip: { x: 0, y: 0, width: W, height: Math.min(box.height, 2400) } });
+      found[first] = file;
     }
   }
 
@@ -170,8 +224,8 @@ async function capture(browser, url, tag) {
   await page.evaluate(() => { document.querySelectorAll('.rv,.rv-l,.rv-r').forEach((el) => el.classList.add('in')); });
   await page.waitForTimeout(1400);
 
-  for (const name of SECTIONS) {
-    if (name === 'hero') continue; // снят выше, до прогона
+  for (const name of order) {
+    if (name === first) continue; // снята выше, до прогона
     const el = await page.$(`section.${name}`);
     if (!el) continue;
     // hero живёт на первом экране и реагирует на скролл (параллакс/затухание):
@@ -192,7 +246,7 @@ async function capture(browser, url, tag) {
     found[name] = file;
   }
   await ctx.close();
-  return found;
+  return { found, order };
 }
 
 fs.mkdirSync(OUT, { recursive: true });
@@ -205,6 +259,7 @@ async function elements(url, section) {
   await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
   await page.waitForTimeout(2500);
   await page.addStyleTag({ content: SETTLE });
+  await switchLang(page);
   await page.evaluate(async () => {
     for (let y = 0; y < document.body.scrollHeight; y += 350) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); }
     document.querySelectorAll('.rv,.rv-l,.rv-r').forEach((el) => el.classList.add('in'));
@@ -246,6 +301,27 @@ if (SECTION) {
   console.log('элемент'.padEnd(30) + 'top'.padStart(15) + 'left'.padStart(15) + 'высота'.padStart(15) + '   кегль');
   const byKey = new Map();
   for (const it of p.items) { if (!byKey.has(it.k)) byKey.set(it.k, []); byKey.get(it.k).push(it); }
+
+  // ★ УЗЛЫ ПАРУЮТСЯ ПО ПОРЯДКУ ВНУТРИ КЛЮЧА, и если у сторон РАЗНОЕ ЧИСЛО узлов
+  // с одним ключом, всё после лишнего съезжает на соседа — отчёт начинает
+  // печатать выдуманные расхождения. Ключи с расхождением по числу называем
+  // вслух и помечаем их строки `?`: пусть читатель знает, где паре верить
+  // нельзя. (Вторая причина ложных расхождений — разный ЯЗЫК сторон — снята
+  // отдельно: `switchLang` теперь общий у съёмки и у этого режима.)
+  const implCount = new Map();
+  for (const it of i.items) implCount.set(it.k, (implCount.get(it.k) || 0) + 1);
+  const shaky = new Set();
+  for (const [k, bucket] of byKey) {
+    const n = implCount.get(k) || 0;
+    if (n !== bucket.length) shaky.add(k);
+  }
+  for (const k of implCount.keys()) if (!byKey.has(k)) shaky.add(k);
+  if (shaky.size) {
+    console.log(`⚠ разное число узлов у ключей: ${[...shaky].slice(0, 8).join(', ')}`
+      + `${shaky.size > 8 ? ` и ещё ${shaky.size - 8}` : ''}`);
+    console.log('  их строки помечены «?» — пара могла съехать, сверяй такие узлы прямым замером\n');
+  }
+
   const seen = new Map();
   let shown = 0;
   for (const it of i.items) {
@@ -260,7 +336,8 @@ if (SECTION) {
     shown++;
     const fs = was.fs !== it.fs ? `  ${was.fs}→${it.fs}` : '';
     const cell = (a, bq, d) => `${a}/${bq} (${d >= 0 ? '+' : ''}${d})`.padStart(15);
-    console.log(it.k.slice(0, 29).padEnd(30) + cell(was.t, it.t, dt) + cell(was.l, it.l, dl) + cell(was.h, it.h, dh) + fs);
+    const mark = shaky.has(it.k) ? '? ' : '';
+    console.log((mark + it.k).slice(0, 29).padEnd(30) + cell(was.t, it.t, dt) + cell(was.l, it.l, dl) + cell(was.h, it.h, dh) + fs);
   }
   if (!shown) console.log('  расхождений больше 2px нет — секция совпадает');
   console.log('\nсдвиги в единицы пикселей — совпадение; десятки — разбирать.\n');
@@ -270,14 +347,38 @@ if (SECTION) {
 const proto = await capture(browser, PROTO, 'proto');
 const impl = await capture(browser, IMPL, 'impl');
 
+const implNamed = impl.order.map((k) => ALIAS.get(k) ?? k);
+const implFileKey = new Map(impl.order.map((k) => [ALIAS.get(k) ?? k, k]));
+const { sections, onlyProto, onlyImpl, missing } = commonSections(proto.order, implNamed, ONLY);
+
+// ★ НЕЧЕГО СРАВНИВАТЬ — ЭТО ОТКАЗ, А НЕ «0%». Именно этот путь и давал
+// ложно-зелёную приёмку: список секций лендинга на демо не совпадал ни с чем,
+// и отчёт печатал «худшая секция: 0%» с кодом 0.
+if (!sections.length) {
+  console.error('\nсравнивать нечего: у прототипа и реализации нет ни одной общей секции.');
+  console.error(`  прототип:    ${proto.order.join(', ') || '(секций не найдено)'}`);
+  console.error(`  реализация:  ${impl.order.join(', ') || '(секций не найдено)'}`);
+  if (ONLY) console.error(`  --sections:  ${ONLY.join(', ')}`);
+  console.error('Проверь, что оба адреса открывают ОДНУ страницу (лендинг ↔ лендинг, демо ↔ демо).');
+  await browser.close();
+  process.exit(2);
+}
+// Опечатка в --sections не должна выглядеть как «эта секция в порядке».
+if (missing.length) {
+  console.error(`\n--sections: таких секций нет ни у прототипа, ни у реализации: ${missing.join(', ')}`);
+  await browser.close();
+  process.exit(2);
+}
+
 const scratch = await (await browser.newContext()).newPage();
 await scratch.goto('about:blank');
 
 console.log(`\nскриншот-диф прототип ↔ реализация · ${W}×${H}\n`);
 console.log('секция'.padEnd(14) + 'расхожд.'.padStart(9) + '   вердикт');
 let worst = 0;
-for (const name of SECTIONS) {
-  if (!proto[name] || !impl[name]) { console.log(name.padEnd(14) + '     —     нет секции с одной из сторон'); continue; }
+for (const name of sections) {
+  const implFile = impl.found[implFileKey.get(name) ?? name];
+  if (!proto.found[name] || !implFile) { console.log(name.padEnd(14) + '     —     секция не снялась (нулевой размер?)'); continue; }
   const pct = await scratch.evaluate(async ([a, b]) => {
     const load = (b64) => new Promise((res) => { const img = new Image(); img.onload = () => res(img); img.src = 'data:image/png;base64,' + b64; });
     const [one, two] = await Promise.all([load(a), load(b)]);
@@ -289,11 +390,15 @@ for (const name of SECTIONS) {
       if (Math.abs(d1[i] - d2[i]) > 12 || Math.abs(d1[i + 1] - d2[i + 1]) > 12 || Math.abs(d1[i + 2] - d2[i + 2]) > 12) diff++;
     }
     return +(100 * diff / (w * h)).toFixed(1);
-  }, [fs.readFileSync(proto[name]).toString('base64'), fs.readFileSync(impl[name]).toString('base64')]);
+  }, [fs.readFileSync(proto.found[name]).toString('base64'), fs.readFileSync(implFile).toString('base64')]);
   worst = Math.max(worst, pct);
   const verdict = pct > 25 ? '🔴 разобрать' : pct > 10 ? '🟠 посмотреть' : pct > 4 ? '🟡 мелочи' : '🟢 совпадает';
   console.log(name.padEnd(14) + `${pct}%`.padStart(9) + '   ' + verdict);
 }
-console.log(`\nхудшая секция: ${worst}%  ·  картинки: ${OUT}/{proto,impl}-<секция>.png`);
+// Число сравнённых секций печатается РЯДОМ с худшим процентом: без него
+// «худшая секция: 0%» не отличает «всё совпало» от «мерить было нечего».
+console.log(`\nсравнено секций: ${sections.length}  ·  худшая: ${worst}%  ·  картинки: ${OUT}/{proto,impl}-<секция>.png`);
+if (onlyProto.length) console.log(`только у макета:      ${onlyProto.join(', ')}`);
+if (onlyImpl.length) console.log(`только у реализации:  ${onlyImpl.join(', ')}`);
 console.log('пары «макет | реализация» и эти числа идут в тело PR — это и есть приёмка Ф6.\n');
 await browser.close();
