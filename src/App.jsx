@@ -13,19 +13,12 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider } from '@/lib/i18n/I18nContext';
-import Trips from '@/pages/Trips';
-import Statistics from '@/pages/Statistics';
-import TripView from '@/pages/TripView';
-import ScreenAccount from '@/pages/ScreenAccount';
 import PublicTrip from '@/pages/PublicTrip';
 import JoinTrip from '@/pages/JoinTrip';
 import Login from '@/pages/Login';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import ManualPlanner from '@/pages/ManualPlanner';
-import Inbox from '@/pages/Inbox';
-import Pro from '@/pages/Pro';
 import StripeReturnModals from '@/components/common/StripeReturnModals';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
@@ -33,6 +26,21 @@ import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 import { FeedbackProvider } from '@/components/support/FeedbackProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
+
+// ★ ЭКРАНЫ ПРИЛОЖЕНИЯ — LAZY (TRIP-445). Семь статических импортов держали весь
+// авторизованный продукт в ГЛАВНОМ чанке, поэтому лендинг, вход и юр-страницы
+// скачивали планировщик, редактор поездки и статистику вместе с их зависимостями
+// — притом что незалогиненный посетитель не откроет ни один из них. Техника не
+// новая: Kit / DemoTrip / Legal уже приезжают так же.
+// `MapProvider` при этом остаётся статическим и держит `mapbox-gl` синхронным —
+// сам по себе этот `lazy` полмегабайта карты не снимает, см. vite.config.js.
+const Trips = lazy(() => import('@/pages/Trips'));
+const Statistics = lazy(() => import('@/pages/Statistics'));
+const TripView = lazy(() => import('@/pages/TripView'));
+const ScreenAccount = lazy(() => import('@/pages/ScreenAccount'));
+const ManualPlanner = lazy(() => import('@/pages/ManualPlanner'));
+const Inbox = lazy(() => import('@/pages/Inbox'));
+const Pro = lazy(() => import('@/pages/Pro'));
 
 // Витрина дизайн-системы (TRIP-340). Вне прода и БЕЗ логина: геометрия - чистый
 // CSS, поэтому визуальный гейт снимает именно её, а не рукописный стенд.
@@ -85,6 +93,20 @@ function RedirectToEditSection() {
   const { tripId } = useParams();
   return <Navigate to={`/trip/${tripId}?lens=route`} replace />;
 }
+
+// Ожидание на всю площадь — ОДИН элемент на оба своих места в этом файле
+// (гейт авторизации и Suspense маршрутов). Разметка `.app-loading` +
+// `.spin spin--ring` уже жила здесь копией, и `<Suspense>` ниже добавил бы
+// ТРЕТЬЮ: повторённая рядом с существующим классом разметка — признак того,
+// что у неё нет своего имени (правило #6 / TRIP-282), а не повод скопировать
+// ещё раз. Четвёртый экземпляр живёт в I18nContext и ждёт общего дома —
+// shared-компонент это «новое» и идёт через апрув, поэтому здесь схлопнуто
+// ровно то, что схлопывается без него.
+const AppLoading = () => (
+  <div className="app-loading">
+    <div className="spin spin--ring spin--xl spin--ink" />
+  </div>
+);
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
@@ -182,11 +204,7 @@ const AuthenticatedApp = () => {
   }
 
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="app-loading">
-        <div className="spin spin--ring spin--xl spin--ink" />
-      </div>
-    );
+    return <AppLoading />;
   }
 
   // Not authenticated and on a non-root path - send to landing. Оболочка и
@@ -221,6 +239,11 @@ const AuthenticatedApp = () => {
           app; the global bottom-nav (sibling) stays alive. Keyed by pathname so
           navigating away resets a crashed route. */}
       <ErrorBoundary key={path} region={`route:${path}`}>
+      {/* Экраны приезжают отдельными чанками, поэтому нужен видимый ожидатель —
+          ТОТ ЖЕ, что у гейта авторизации выше: ожидание выглядит одинаково,
+          откуда бы ни пришло. `fallback={null}` тут не годится (в зоне он
+          уместен: страницы сами гейтят по cssReady), здесь дал бы белый кадр. */}
+      <Suspense fallback={<AppLoading />}>
       <Routes>
       {/* New design - standalone (own app-header, no Layout) */}
       {/* Logged-in users can still view the landing at "/" (no auto-redirect);
@@ -242,6 +265,7 @@ const AuthenticatedApp = () => {
 
       <Route path="*" element={<PageNotFound />} />
       </Routes>
+      </Suspense>
       </ErrorBoundary>
       {/* Custom mobile bottom nav (≤640px); hides itself on planner / create /
           landing / login routes. */}
