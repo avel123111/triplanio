@@ -69,7 +69,11 @@
  * 19.0% — а структурный разбор показал сдвиги 1-9px, то есть совпадение.
  * Поэтому процент — ТРИАЖ, а не вердикт: он говорит «посмотри сюда», а что
  * именно разъехалось, отвечает режим --elements (позиции, размеры и кегли
- * элементов секции). Настоящий дефект виден там сдвигом в десятки пикселей:
+ * элементов секции).
+ *
+ * ★ НО И --elements НЕ ВЕРДИКТ. Узлы он парует ПО ПОРЯДКУ внутри ключа, и при
+ * разном числе одноимённых узлов пара съезжает — отчёт печатает выдуманные
+ * расхождения. Такие ключи теперь называются вслух, а их строки помечены «?». Настоящий дефект виден там сдвигом в десятки пикселей:
  * у `pain` высота 1507 против 985 и смещение блоков на 667px.
  *
  * ЧТО ХАРНЕСС УБИРАЕТ ИЗ ЗАМЕРА (иначе числа врут и гонят чинить исправное):
@@ -135,6 +139,40 @@ const SETTLE = `
   .rv, .rv-l, .rv-r { opacity: 1 !important; }
 `;
 
+/**
+ * Локаль: макет и реализация переключаются своими же кнопками языка, иначе
+ * сравнивается английская вёрстка с русской. Русские строки длиннее — часть
+ * расхождений видна ТОЛЬКО на ru.
+ *
+ * ★ ОБЩИЙ для съёмки и для `--elements`. Раньше переключение жило ТОЛЬКО в
+ * съёмке, и структурный разбор молча сравнивал русский макет с английской
+ * реализацией: заголовок `route-sec` выходил «104 против 52, две строки против
+ * одной» — расхождение, которого нет (прямой замер обеих сторон на ru: один и
+ * тот же заголовок 660×104, кегль 46.4px). Режим, который зовут вердиктом,
+ * обязан стоять в тех же условиях, что и триаж.
+ */
+async function switchLang(page) {
+  if (!LANG || LANG === 'en') return;
+  await page.evaluate(async (lang) => {
+    const opener = document.querySelector('.lang-btn') || document.querySelector('.lang button');
+    if (opener) { opener.click(); await new Promise((r) => setTimeout(r, 350)); }
+    // строгий выбор: сначала data-lang, потом ТОЧНОЕ имя языка. Свободный
+    // regex по тексту цеплял последний подходящий пункт и уводил на другую
+    // локаль (ru → es), а раскрытое меню ещё и закрывало пол-секции.
+    const label = { ru: 'Русский', es: 'Español', en: 'English' }[lang];
+    const items = [...document.querySelectorAll('[data-lang], .lang-menu button, .lang-menu a, .mobile-menu button')];
+    const target = items.find((el) => el.dataset?.lang === lang)
+      || items.find((el) => (el.textContent || '').trim() === label)
+      || items.find((el) => (el.textContent || '').trim().startsWith(lang.toUpperCase()));
+    if (target) target.click();
+    await new Promise((r) => setTimeout(r, 400));
+    // закрыть выпадающее меню, чтобы оно не попало в кадр
+    document.body.click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  }, LANG);
+  await page.waitForTimeout(1200);
+}
+
 async function capture(browser, url, tag) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H } });
   const page = await ctx.newPage();
@@ -142,29 +180,7 @@ async function capture(browser, url, tag) {
   await page.waitForTimeout(2500);
   await page.addStyleTag({ content: SETTLE });
 
-  // Локаль: макет и реализация переключаются своими же кнопками языка, иначе
-  // сравнивается английская вёрстка с русской. Русские строки длиннее — часть
-  // расхождений видна ТОЛЬКО на ru.
-  if (LANG && LANG !== 'en') {
-    await page.evaluate(async (lang) => {
-      const opener = document.querySelector('.lang-btn') || document.querySelector('.lang button');
-      if (opener) { opener.click(); await new Promise((r) => setTimeout(r, 350)); }
-      // строгий выбор: сначала data-lang, потом ТОЧНОЕ имя языка. Свободный
-      // regex по тексту цеплял последний подходящий пункт и уводил на другую
-      // локаль (ru → es), а раскрытое меню ещё и закрывало пол-секции.
-      const label = { ru: 'Русский', es: 'Español', en: 'English' }[lang];
-      const items = [...document.querySelectorAll('[data-lang], .lang-menu button, .lang-menu a, .mobile-menu button')];
-      const target = items.find((el) => el.dataset?.lang === lang)
-        || items.find((el) => (el.textContent || '').trim() === label)
-        || items.find((el) => (el.textContent || '').trim().startsWith(lang.toUpperCase()));
-      if (target) target.click();
-      await new Promise((r) => setTimeout(r, 400));
-      // закрыть выпадающее меню, чтобы оно не попало в кадр
-      document.body.click();
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    }, LANG);
-    await page.waitForTimeout(1200);
-  }
+  await switchLang(page);
 
   // Что на странице вообще есть — в порядке документа. Ключ секции считает
   // общий модуль (`proto-sections.mjs`), поэтому в браузер уезжают только сырые
@@ -243,6 +259,7 @@ async function elements(url, section) {
   await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
   await page.waitForTimeout(2500);
   await page.addStyleTag({ content: SETTLE });
+  await switchLang(page);
   await page.evaluate(async () => {
     for (let y = 0; y < document.body.scrollHeight; y += 350) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); }
     document.querySelectorAll('.rv,.rv-l,.rv-r').forEach((el) => el.classList.add('in'));
@@ -284,6 +301,27 @@ if (SECTION) {
   console.log('элемент'.padEnd(30) + 'top'.padStart(15) + 'left'.padStart(15) + 'высота'.padStart(15) + '   кегль');
   const byKey = new Map();
   for (const it of p.items) { if (!byKey.has(it.k)) byKey.set(it.k, []); byKey.get(it.k).push(it); }
+
+  // ★ УЗЛЫ ПАРУЮТСЯ ПО ПОРЯДКУ ВНУТРИ КЛЮЧА, и если у сторон РАЗНОЕ ЧИСЛО узлов
+  // с одним ключом, всё после лишнего съезжает на соседа — отчёт начинает
+  // печатать выдуманные расхождения. Ключи с расхождением по числу называем
+  // вслух и помечаем их строки `?`: пусть читатель знает, где паре верить
+  // нельзя. (Вторая причина ложных расхождений — разный ЯЗЫК сторон — снята
+  // отдельно: `switchLang` теперь общий у съёмки и у этого режима.)
+  const implCount = new Map();
+  for (const it of i.items) implCount.set(it.k, (implCount.get(it.k) || 0) + 1);
+  const shaky = new Set();
+  for (const [k, bucket] of byKey) {
+    const n = implCount.get(k) || 0;
+    if (n !== bucket.length) shaky.add(k);
+  }
+  for (const k of implCount.keys()) if (!byKey.has(k)) shaky.add(k);
+  if (shaky.size) {
+    console.log(`⚠ разное число узлов у ключей: ${[...shaky].slice(0, 8).join(', ')}`
+      + `${shaky.size > 8 ? ` и ещё ${shaky.size - 8}` : ''}`);
+    console.log('  их строки помечены «?» — пара могла съехать, сверяй такие узлы прямым замером\n');
+  }
+
   const seen = new Map();
   let shown = 0;
   for (const it of i.items) {
@@ -298,7 +336,8 @@ if (SECTION) {
     shown++;
     const fs = was.fs !== it.fs ? `  ${was.fs}→${it.fs}` : '';
     const cell = (a, bq, d) => `${a}/${bq} (${d >= 0 ? '+' : ''}${d})`.padStart(15);
-    console.log(it.k.slice(0, 29).padEnd(30) + cell(was.t, it.t, dt) + cell(was.l, it.l, dl) + cell(was.h, it.h, dh) + fs);
+    const mark = shaky.has(it.k) ? '? ' : '';
+    console.log((mark + it.k).slice(0, 29).padEnd(30) + cell(was.t, it.t, dt) + cell(was.l, it.l, dl) + cell(was.h, it.h, dh) + fs);
   }
   if (!shown) console.log('  расхождений больше 2px нет — секция совпадает');
   console.log('\nсдвиги в единицы пикселей — совпадение; десятки — разбирать.\n');
