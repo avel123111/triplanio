@@ -3207,24 +3207,50 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    прототипного `.sheet` с bottom-sheet приложения, но развели ФОРКОМ вместо
    реюза уже готового `.sheet-pane`. Копия убрана. */
 
-.demo{--brand:#2380D6; --brand-btn:#1E72C4; --brand-deep:#1B67B4;
-  --sky:#6FB4F4; --ice:#DFF0FD; --ink:#13324E; --muted:#516576;
-  --white:#FFFFFF; --mist:#F0F7FD; --band:#E2F0FB; --sand:#FDF3E5;
-  --sunset:#FF9E4A; --sunset-text:#A0632E;
-  --mint:#2EC27E;   --mint-text:#1C7A4F;
-  --violet:#7A5CF0; --violet-soft:#F0EBFE;
+/* Палитра демо — ТОЛЬКО то, чего нет у зоны. Здесь лежала копия 25 токенов
+   `html.site` байт-в-байт (`--brand`, `--ink`, `--shadow-*`, `--ease-out`…):
+   `useSiteCss()` вешает `html.site` на этом маршруте, поэтому копия ничего не
+   несла — она молча ФОРКАЛА палитру, и правка `--brand` в зоне обошла бы демо
+   стороной. Гарды такую копию не видят: 2p сверяет значения (они совпадали),
+   2o считает имена в `:root` (а это `.demo`). Снятие копии проверено полным
+   скриншотом страницы на 1440 и 390 — ноль различных пикселей.
+   Шрифтовые стеки тоже были копией, но УКОРОЧЕННОЙ (`"Onest",sans-serif`
+   против `'Onest', ui-sans-serif, system-ui, sans-serif`): при неподгрузившемся
+   Onest демо падало на родовой sans-serif, а остальная зона — на системный.
+   Сведено к зонному стеку; при загруженных шрифтах разницы нет.
+   Базовые тона `--violet`/`--rose`/`--coral` остаются здесь: у зоны объявлены
+   только их производные `*-text`/`*-tint`, самих баз на `html.site` нет. */
+.demo{--violet:#7A5CF0; --violet-soft:#F0EBFE;
   --rose:#E0568F;   --rose-soft:#FDEBF2;
-  --coral:#EE6A72;
-  --r-lg:22px; --r-md:15px;
-  --shadow-lg:0 24px 60px -18px rgba(11,44,84,.20);
-  --shadow-md:0 12px 32px -12px rgba(11,44,84,.14);
-  --shadow-sm:0 4px 14px -4px rgba(11,44,84,.10);
-  --font-display:"Onest",sans-serif;
-  --font-body:"Golos Text",sans-serif;
-  --ease-out:cubic-bezier(.22,1,.36,1);
-  --dur:.65s;
-  --sheet-r:clamp(26px,4vw,44px);--dev-bezel:linear-gradient(145deg,#454a52,#1b1e24 30%,#0e1013 60%,#2b2f36 85%,#0e1013);
-  --dev-shadow:0 55px 110px -34px rgba(7,30,56,.5),0 22px 42px -26px rgba(7,30,56,.42)}
+  --coral:#EE6A72}
+
+/* visual-diff-exempt: .demo --band — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --brand — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --brand-btn — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --brand-deep — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --dev-bezel — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --dev-shadow — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --dur — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --ease-out — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --ice — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --ink — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --mint — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --mint-text — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --mist — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --muted — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --r-lg — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --r-md — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sand — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --shadow-lg — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --shadow-md — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --shadow-sm — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sheet-r — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sky — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sunset — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --sunset-text — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --white — снята копия токена `html.site`, значение то же приходит наследованием */
+/* visual-diff-exempt: .demo --font-display — стек сведён к зонному: копия была КОРОЧЕ (`"Onest",sans-serif`), теряла системные ступени фолбэка */
+/* visual-diff-exempt: .demo --font-body — то же */
 .demo .dm-pill{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-tiny);font-weight:700;padding:3px 9px;
   border-radius:99px;white-space:nowrap}
 .demo .dm-pill.done{background:#DCF5E9;color:#177A4D}
