@@ -7,7 +7,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sectionKey, parseOnly, parseAliases, commonSections } from './proto-sections.mjs';
+import { sectionKey, parseOnly, parseAliases, commonSections, unpairedVerdict, SECTION_SELECTOR, sectionSel } from './proto-sections.mjs';
 
 test('опознаватель секции — первое СОДЕРЖАТЕЛЬНОЕ имя', () => {
   assert.equal(sectionKey('hero'), 'hero');
@@ -84,4 +84,56 @@ test('мусор в --alias не роняет и не выдумывает па�
   assert.equal(parseAliases('').size, 0);
   assert.equal(parseAliases('a=,=b,  ,c').size, 0);
   assert.equal(parseAliases('a=b,c=d').size, 2);
+});
+
+/* ── Непарные секции и селектор (TRIP-445, блок 1) ─────────────────────────── */
+
+test('★★★ непарное с ОБЕИХ сторон = блокирует: это переименование, а не «не перенесли»', () => {
+  // Живой случай: демо назвало первый экран dm-hero (hero занято лендингом),
+  // и худшая секция 88.5% исчезла из сравнения при коде выхода 0.
+  const v = unpairedVerdict(['hero'], ['dm-hero']);
+  assert.equal(v.blocking, true);
+  assert.deepEqual(v.proto, ['hero']);
+  assert.deepEqual(v.impl, ['dm-hero']);
+});
+
+test('непарное ТОЛЬКО у макета — не блокирует: секцию законно не переносили', () => {
+  // В документе лендинга живёт ещё и публичная поездка (pt-hero): на самом
+  // лендинге её нет и быть не должно.
+  assert.equal(unpairedVerdict(['pt-hero'], []).blocking, false);
+  assert.equal(unpairedVerdict(['pt-hero', 'doc'], []).blocking, false);
+});
+
+test('непарное ТОЛЬКО у реализации — не блокирует: продуктовое добавление', () => {
+  assert.equal(unpairedVerdict([], ['pricing']).blocking, false);
+});
+
+test('--allow-unpaired снимает блокировку ровно у названных имён', () => {
+  assert.equal(unpairedVerdict(['hero'], ['dm-hero'], ['hero', 'dm-hero']).blocking, false);
+  // половинчатое объявление НЕ снимает: пара всё ещё непарна
+  const half = unpairedVerdict(['hero'], ['dm-hero'], ['hero']);
+  assert.equal(half.blocking, false, 'одна сторона вычтена — блокировать нечего');
+  assert.deepEqual(half.impl, ['dm-hero'], 'но остаток обязан быть виден в отчёте');
+  // объявление ЧУЖОГО имени ничего не снимает
+  assert.equal(unpairedVerdict(['hero'], ['dm-hero'], ['final']).blocking, true);
+});
+
+test('ничего непарного — не блокирует', () => {
+  assert.equal(unpairedVerdict([], []).blocking, false);
+});
+
+test('селектор секций видит и <main class> — иначе юр-страницы не принять по построению', () => {
+  // Прототип Terms/Privacy — <main class="doc" id="doc">, реализация —
+  // <section class="doc">. Без <main> в селекторе пересечение пусто ВСЕГДА.
+  assert.match(SECTION_SELECTOR, /\bsection\b/);
+  assert.match(SECTION_SELECTOR, /\bmain\[class\]/);
+});
+
+test('★ перечисление и съёмка смотрят на ОДИН набор тегов', () => {
+  // Разойдись они — имя находилось бы в списке и не находилось при съёмке, и
+  // секция выпадала бы со строкой «не снялась» вместо сравнения.
+  const tags = SECTION_SELECTOR.split(',').map((s) => s.trim().replace(/\[.*$/, ''));
+  const shot = sectionSel('doc').split(',').map((s) => s.trim().replace(/\..*$/, ''));
+  assert.deepEqual(shot, tags, `${sectionSel('doc')} против ${SECTION_SELECTOR}`);
+  assert.equal(sectionSel('hero'), 'section.hero, main.hero');
 });
