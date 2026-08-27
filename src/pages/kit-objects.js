@@ -58,7 +58,7 @@ export const KIT_OBJECTS = [
   // своих `.stat--<tone>` классов у семьи больше нет — источник вариантов = CSS
   // (`.stat--clickable`), карту STAT_TONES не заявляем.
   { id: 'stat', family: 'stat', group: 'components', prefix: 'stat', css: true, interactive: true },
-  { id: 'list-row', family: 'lrow', group: 'components', prefix: 'lrow', maps: ['LISTROW_VARIANTS'], extras: ['clickable', 'on'], interactive: true },
+  { id: 'list-row', family: 'lrow', group: 'components', prefix: 'lrow', maps: ['LISTROW_VARIANTS'], extras: ['clickable', 'on', 'muted'], interactive: true },
   { id: 'donut', family: 'donut', group: 'components', css: false },
   { id: 'btn', family: 'btn', group: 'components', prefix: 'btn', maps: ['BTN_VARIANTS'], extras: ['sm', 'brand'], interactive: true },
   { id: 'icon-btn', family: 'icon', group: 'components', prefix: 'icon-btn', maps: ['ICON_BTN_TONES', 'ICON_BTN_SIZES'], extras: ['round'], interactive: true },
@@ -100,8 +100,9 @@ export const KIT_OBJECTS = [
   { id: 'accordion', family: 'acc', group: 'components', css: false, interactive: true },
   // Обложка трипа (<Cover>, семья .cover): фоллбек-картинка из бандла как подложка,
   // фото — <img> поверх (его onError гасит img → просвечивает фоллбек). Источник —
-  // рецепт (css:false): вариантов `.cover--*` у семьи нет.
-  { id: 'cover', family: 'cover', group: 'components', css: false },
+  // Ось `fill` — обложка во всю площадь родителя (постер трипа) вместо
+  // собственной миниатюры 62×46.
+  { id: 'cover', family: 'cover', group: 'components', css: true },
   // Пикер обложки (<CoverPicker>, семья .tcp): кадр со scroll-snap-лентой
   // слайдов, стрелки, кнопка загрузки и лента миниатюр под ним. Источник —
   // рецепт (css:false): у семьи только `__`-элементы, `--`-вариантов нет.

@@ -28,7 +28,51 @@
 // тому же адресу отдаётся 404 (маршрут точный, см. `demoPath.js`).
 import { DEMO_PATH } from './src/pages/Demo/demoPath.js';
 
-const BOT_RE = /(bot|crawl|spider|facebookexternalhit|facebot|whatsapp|telegram|slack|discord|linkedin|pinterest|vkshare|embedly|skypeuripreview|twitter|googlebot|bingbot|yandex|applebot|redditbot|preview)/i;
+// ★ ТОЛЬКО КРАУЛЕРЫ ПРЕВЬЮ. Поисковиков здесь НЕТ, и это несущее.
+//
+// Раньше список был общим («любой бот») и включал `googlebot`, `bingbot`,
+// `yandex` плюс маски `bot|crawl|spider`. Пока заглушку получал один `/join/`
+// под `noindex`, это ничего не стоило. С расширением на демо и юр-страницы —
+// а они, в отличие от приглашения, ОБЯЗАНЫ индексироваться и лежат в
+// `sitemap.xml` — Googlebot стал получать 1231 байт заглушки вместо 7183 байт
+// приложения. То есть в индекс уезжала страница, у которой в теле один
+// заголовок, ровно там, где мы сами просили её проиндексировать.
+//
+// Разница между двумя аудиториями простая: краулер превью JavaScript НЕ
+// выполняет, поэтому ему нужен готовый HTML; поисковик его ВЫПОЛНЯЕТ и обязан
+// получить настоящее приложение. Один список на обоих — это выбор в пользу
+// одного за счёт другого.
+//
+// Список поимённый, а не по маске `bot`: маска ловит и поисковики, и всё
+// незнакомое. Цена явного списка — краулер превью, которого в нём нет, получит
+// приложение и превью не покажет; это ровно то, что было до Ф11, то есть не
+// регресс. Цена маски — испорченный поисковый индекс, и он чинится месяцами.
+//
+// `applebot` оставлен здесь намеренно: им Apple строит превью в iMessage, и
+// это для нас важнее, чем позиция в поиске Siri/Spotlight.
+const PREVIEW_UA_RE = /(facebookexternalhit|facebot|whatsapp|telegram|slack|discord|linkedin|pinterest|vkshare|vkontakte|embedly|iframely|skypeuripreview|twitter|redditbot|applebot|snapchat|viber|nuzzel|quora link preview|bitlybot|flipboard|tumblr|mastodon|bluesky)/i;
+
+// ★★ МАСКА ШИРОКАЯ ТАМ, ГДЕ ИНДЕКСИРОВАТЬ ЗАПРЕЩЕНО, И УЗКАЯ ТАМ, ГДЕ НУЖНО.
+//
+// У приглашения и публичной поездки в АДРЕСЕ лежит одноразовый токен доступа, и
+// защита от индексации у них ровно одна — `noindex` в этом самом HTML: в
+// `robots.txt` стоит `Allow: /` (и стоит намеренно — `Disallow` не дал бы
+// краулеру ЗАГРУЗИТЬ страницу, а значит и прочитать её `noindex`).
+//
+// Пока заглушку получал «любой бот», это работало. Разделение аудиторий выше
+// (поисковик обязан получить настоящее приложение) молча сняло защиту ИМЕННО С
+// ЭТИХ ДВУХ АДРЕСОВ: Googlebot стал получать SPA, в котором `noindex` не было
+// вовсе. Достаточно одной расшаренной ссылки, чтобы share-токен уехал в индекс.
+//
+// Поэтому правило одно и звучит так: на странице, которую индексировать НЕЛЬЗЯ,
+// заглушку с `noindex` получает ЛЮБОЙ бот — цена широкой маски здесь равна нулю,
+// терять в поиске нечего. На странице, которую индексировать НУЖНО (демо,
+// `/terms`, `/privacy` — они в `sitemap.xml`), маска остаётся поимённой.
+const BOT_UA_RE = /(bot|crawl|spider|slurp|preview|fetcher|facebookexternalhit|whatsapp|telegram|embedly|iframely)/i;
+
+// Адреса, у которых токен доступа в URL. Тот же список задаёт `noindex` в
+// `previewFor` — держать их порознь нельзя, поэтому предикат один.
+const isTokenPath = (pathname) => pathname.startsWith('/join/') || pathname.startsWith('/public/trip/');
 
 const ORIGIN = 'https://www.triplanio.com';
 
@@ -117,7 +161,10 @@ export default function middleware(request) {
   try {
     const { pathname } = new URL(request.url);
     const ua = request.headers.get('user-agent') || '';
-    if (!BOT_RE.test(ua)) return; // живой человек → SPA как обычно
+    // На токен-адресе заглушку получает любой бот (она несёт `noindex`), на
+    // остальных — только краулер превью: поисковику там нужно приложение.
+    const wants = isTokenPath(pathname) ? BOT_UA_RE.test(ua) : PREVIEW_UA_RE.test(ua);
+    if (!wants) return; // человек (и поисковик на индексируемом адресе) → SPA
     const html = previewFor(pathname);
     if (!html) return; // не наш адрес → SPA как обычно
     return new Response(html, {
