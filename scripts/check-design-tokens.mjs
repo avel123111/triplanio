@@ -83,10 +83,6 @@ const COLOR_WHITELIST = [
   'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
   'src/lib/map/mapTokens.js',                          // Mapbox paint fallbacks (need concrete hex)
   'src/pages/Login.jsx',                               // Google + Triplanio logo SVGs
-  // login.css — МЁРТВЫЙ лист старого логина (не импортируется), удерживается до
-  // Ф6 CSS-teardown (TRIP-460): экран переехал на зонную ДС site.css §AUTH. Его
-  // сырые цвета остаются как были на dev — трогать умирающий файл смысла нет.
-  'src/pages/login.css',                               // dead (pending Ф6 teardown); raw colours untouched
   // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
   // (TRIP-460) LandingPage.jsx re-added: retiring it after the Hero-only draft
   // (which briefly had 0 raw colour) was premature — the full 11-section 1:1
@@ -151,7 +147,7 @@ const TYPO_WHITELIST = [
   // 0 clamp / 0 em, so typography is enforced there too — new raw sizes fail CI.
   // (Its --fs-* token defs are `--fs-nano: 10px;` etc. — no `font-size:` prefix,
   // so the fontSizePx/Clamp/Em regexes don't match them.)
-  'src/index.css', 'src/pages/login.css', // --fs-* token defs / Tailwind-preflight 1em/1rem resets only
+  'src/index.css', // --fs-* token defs / Tailwind-preflight 1em/1rem resets only
 ];
 
 // Files allowed to contain raw font-weight / line-height / letter-spacing (TRIP-165/410).
@@ -163,16 +159,16 @@ const TYPO_WHITELIST = [
 // audit 2026-07-02: tracking is a canon axis.)
 //   • app.css   — home of the 10 canons + .t-strong/.t-flush/.tp-caption + base `body`.
 //   • index.css — Tailwind preflight / reset base.
-//   • login.css — isolated auth base (pending Lumo; also a base/reset home).
 //   • site.css — STANDALONE marketing/legal stylesheet loaded WITHOUT app.css
 //     (SiteChrome + static terms/privacy pages), so its bare h1..h4 + `body`
 //     ARE the typographic canon home for that subtree — its own base.
 //   • fonts.css — @font-face declarations DEFINE each font's weight axis
 //     (font-weight: 400/500/600/700 per file); that's a font definition, not
 //     text styling.
-// (PublicTrip.css retired in TRIP-461 — the public reader now lives in site.css.)
+// (PublicTrip.css retired in TRIP-461, login.css in TRIP-445 PR8 — both readers
+// now live in site.css.)
 const WEIGHT_LH_ALLOW = [
-  'src/design/app.css', 'src/index.css', 'src/pages/login.css', 'public/site.css',
+  'src/design/app.css', 'src/index.css', 'public/site.css',
   'src/design/fonts.css',
 ];
 
@@ -400,7 +396,7 @@ const TOKEN_SIZES = new Set(['9.5', '11', '12.5', '13', '14.5', '16', '16.5', '2
 // Files that legitimately DEFINE typography (token/canon/base rules) — not component text.
 // AppErrorBoundary = crash screen, intentionally token/CSS-free (must render even if
 // the design system fails to load) → exempt.
-const TYPO_COMP_ALLOW = ['src/index.css', 'src/design/app.css', 'src/design/fonts.css', 'src/pages/login.css', 'src/components/AppErrorBoundary.jsx'];
+const TYPO_COMP_ALLOW = ['src/index.css', 'src/design/app.css', 'src/design/fonts.css', 'src/components/AppErrorBoundary.jsx'];
 const area = (f) => {
   const m = f.replace('src/', '').match(/^(design|pages\/[A-Za-z]+|components\/[a-z]+|lib\/[a-z]+|lib)/);
   return m ? m[1] : f.replace('src/', '');
