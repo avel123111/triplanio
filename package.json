@@ -29,6 +29,7 @@
     "check:avatar": "node scripts/ci/check-avatar-seed.mjs",
     "check:invoke": "node scripts/ci/check-invoke-discriminant.mjs",
     "check:css-comments": "node scripts/ci/check-css-comments.mjs",
+    "check:layers": "node scripts/ci/check-layer-zindex.mjs",
     "check:shadow-style": "node scripts/ci/check-shadow-style-skin.mjs",
     "check:surface-registry": "node scripts/ci/check-surface-registry.mjs",
     "check:error-map": "node scripts/ci/check-error-i18n-map.mjs",

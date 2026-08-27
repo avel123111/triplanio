@@ -3686,8 +3686,28 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .cover[data-cover=gradient_14] background — снят с выпилом градиентов обложки
    visual-diff-exempt: .cover[data-cover=gradient_15] background — снят с выпилом градиентов обложки
    visual-diff-exempt: .cover[data-cover=gradient_16] background — снят с выпилом градиентов обложки */
-.cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
-.cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* ★ КАДР ВЛАДЕЕТ СВОИМИ СЛОЯМИ (TRIP-466). `position: relative` НЕ создаёт стековый
+   контекст (z-index у него `auto`), поэтому до этой правки `.cover__img` —
+   позиционированный элемент без объявленного уровня — конкурировал за порядок
+   отрисовки НЕ с содержимым обложки, а с ЧУЖИМИ соседями по первому стековому
+   контексту выше по дереву. По спеке положительный z-index соседа выигрывает, и
+   десктоп так и рисует; но когда движок выносит картинку в СВОЙ композитный слой
+   (`<img>` с декодированным битмапом внутри горизонтального scroll-snap-скроллера,
+   внутри тела шита с `-webkit-overflow-scrolling`, внутри `.peek-sheet` с
+   `transform` — каждый из этих признаков достаточен), слой всплывает над всем, у
+   чего своего контекста нет: z-index в этот момент не проигрывает, он не участвует.
+   Ровно так на iOS у обложки планировщика пропадали скрим, стрелки, загрузка и
+   название — ПОСЛЕ подмены фоллбека реальным пресетом (фоллбек — это CSS-фон, то
+   есть НЕ элемент: композитить нечего, и до приезда картинки всё было видно).
+   `isolation: isolate` делает примитив стековым корнем: наружу он уходит одним
+   слоем, и ничто изнутри — промоутнутое движком в том числе — выше не всплывает.
+   Тот же контракт уже несёт семья карточки (`.tc__img { z-index: 0 }` и далее
+   скрим 2 / контент 3) — там этого дефекта нет и не было; при переносе обложки в
+   примитив перенесли скрим и контент, а слой картинки назвать забыли.
+   visual-diff-exempt: .cover isolation — примитив = свой стековый контекст (слой картинки не всплывает над оверлеями вызывателя)
+   visual-diff-exempt: .cover__img z-index — слой картинки назван явно (как .tc__img), слот <Cover> рисуется поверх */
+.cover { position: relative; overflow: hidden; isolation: isolate; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
+.cover__img { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; }
 
 /* ── Carousel: горизонтальная лента-примитив ДС (<Carousel>) ──────────────────
    Нативный scroll-snap + десктоп-стрелки (только под hover-указателем). Дети —
@@ -4608,8 +4628,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .tcp { min-width: 0; }
 /* Кадр обложки — сам примитив <CoverPicker>. Дефолт кадра = 4:3 со скруглением
    (настройки трипа); `.pl-cover` перебивает его на full-bleed полосу 200px:
-   высота задана явно, поэтому `aspect-ratio` на ней не действует. */
-.tcp__hero { position: relative; overflow: hidden; aspect-ratio: 4 / 3; border-radius: var(--r-md); }
+   высота задана явно, поэтому `aspect-ratio` на ней не действует.
+   ★ У кадра ТРИ слоя (лента слайдов · скрим · контролы с названием), и он обязан
+   быть их стековым КОРНЕМ, а не только точкой отсчёта координат: `position:
+   relative` даёт второе, но не первое (см. разбор у `.cover`). Без изоляции
+   уровни 2 и 4 объявлены в ЧУЖОМ контексте — том, что первым найдётся выше по
+   дереву (сегодня это `.peek-sheet` с `transform`), то есть контракт кадра
+   зависит от того, куда кадр вложили. Изоляция ставит его на место: три уровня
+   значат ровно то, что написано, при любом вызывателе.
+   visual-diff-exempt: .tcp__hero isolation — кадр = стековый корень своих трёх слоёв (лента/скрим/контролы) */
+.tcp__hero { position: relative; overflow: hidden; isolation: isolate; aspect-ratio: 4 / 3; border-radius: var(--r-md); }
 .pl-cover {
   height: 200px; border-radius: 0;
   margin: -14px -15px 0; /* design-token-exempt: full-bleed обложки — гасит падинг .lp-b (14/15px), не токенизируется */
