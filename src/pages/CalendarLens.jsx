@@ -28,7 +28,7 @@
  */
 import React, { useState, useMemo, useRef, useLayoutEffect, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, IconBtn, Seg, Btn, Card, ListRow, Chip, CityBar, EventChip, cityTone, eventFamily } from '../design/index';
+import { Skeleton, IconBtn, Seg, Btn, Card, ListRow, CityBar, EventChip, cityTone, eventFamily } from '../design/index';
 import { Row, Col, Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { isTransitVisit } from '@/lib/trip-cities';
@@ -96,15 +96,15 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
 
                     {c.events.length > 0 && (
                       <>
-                        <div className="ncal-evl">
+                        <div className="ncal-evl" data-open={isOpen || undefined}>
                           {shown.map((e, ei) => (
                             <EventChip key={ei} variant="inline" type={e.type} time={e.time} title={e.title}
                               onClick={() => onOpenEvent?.(e)} ariaLabel={`${e.time ? e.time + ' ' : ''}${e.title}`} className="t-tiny" />
                           ))}
                           {c.events.length > 2 && (
-                            <Chip variant="soft" sm square className="t-tiny" onClick={() => toggle(ci)}>
+                            <Btn variant="link" className="t-tiny" onClick={() => toggle(ci)}>
                               {isOpen ? t('calendar.collapse') : `+${c.events.length - 2} ${t('calendar.more_count')}`}
-                            </Chip>
+                            </Btn>
                           )}
                         </div>
                         <div className="ncal-dots" aria-hidden="true">
