@@ -195,7 +195,10 @@ test('TRIP-270: statisticsBundle exposes flights/ground and defaults to 0', () =
 });
 
 test('TRIP-264: pastOnly keeps started + undated, drops explicitly-future', () => {
-  const now = new Date('2026-08-27T12:00:00Z');
+  // `now` строим из ЛОКАЛЬНЫХ компонент (не из ...Z), чтобы его календарный день
+  // был 2026-08-27 в ЛЮБОМ поясе рануннера — иначе тест TZ-зависим (сама функция
+  // сравнивает локальный день с UTC-полночью date-only, см. isStartedByNow).
+  const now = new Date(2026, 7, 27, 12, 0, 0);
   const rows = [
     { id: 'past',    start_date: '2024-03-01' },   // прожито
     { id: 'today',   start_date: '2026-08-27' },   // начинается сегодня → считается
@@ -208,6 +211,12 @@ test('TRIP-264: pastOnly keeps started + undated, drops explicitly-future', () =
   assert.equal(isStartedByNow(rows[3], now), true);
   assert.equal(isStartedByNow(rows[4], now), false);
   assert.deepEqual(pastOnly(rows, now).map((r) => r.id), ['past', 'today', 'ongoing', 'undated']);
+  // Сравнение по КАЛЕНДАРНОМУ дню, не по моменту (Codex P2): старт «сегодня», но
+  // позже текущего часа, всё равно считается начавшимся — наивный t<=now.getTime()
+  // отверг бы его. Дата-часть берётся и из полного ISO.
+  const earlyNow = new Date(2026, 7, 27, 1, 0, 0);
+  assert.equal(isStartedByNow({ start_date: '2026-08-27T23:00:00Z' }, earlyNow), true);
+  assert.equal(isStartedByNow({ start_date: '2026-08-28' }, earlyNow), false);
   // Числовые счётчики на прошлом наборе: будущая страна не попадает.
   const fpts = [
     { kind: 'trip', trip_id: 'P', geonameid: 1, country_code: 'ES', start_date: '2024-03-01' },
@@ -217,7 +226,7 @@ test('TRIP-264: pastOnly keeps started + undated, drops explicitly-future', () =
 });
 
 test('TRIP-264: daysInTrips clips an ongoing trip to today, drops future days', () => {
-  const now = new Date('2026-08-27T12:00:00Z');
+  const now = new Date(2026, 7, 27, 12, 0, 0); // локальный день = 2026-08-27 в любом поясе
   // Идущий сейчас трип: старт 5 дней назад, конец в будущем — считаем только по сегодня.
   const ongoing = [
     { kind: 'trip', trip_id: 'O', geonameid: 1, country_code: 'FR', start_date: '2026-08-22', end_date: '2026-09-02' },

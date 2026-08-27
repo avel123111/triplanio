@@ -25,12 +25,25 @@ const ccUp = (c) => (c ? String(c).trim().toUpperCase() : '');
 // отсекаем ТОЛЬКО явно будущее: строка без даты остаётся (доказать можно лишь
 // будущее, не наоборот — недатированный визит ≠ план). Карта этот фильтр НЕ
 // применяет: она по-прежнему показывает и запланированные пины/заливки.
+// `start_date` во всём приложении — КАЛЕНДАРНАЯ дата (date-only, `::date` в RPC),
+// поэтому сравниваем ДНИ, а не моменты. `Date.parse('YYYY-MM-DD')` даёт UTC-
+// полночь; «сегодня» берём как UTC-полночь ЛОКАЛЬНОЙ даты `now` (`Date.UTC` от
+// локальных y/m/d) — обе стороны в одном пространстве, а в поясах западнее UTC
+// завтрашний план не «начинается» сразу после полуночи UTC (Codex P2).
+/** UTC-полночь календарного дня строки start_date (или NaN). */
+function dayStartUtc(raw) {
+  return Date.parse(String(raw).slice(0, 10));
+}
+/** UTC-полночь СЕГОДНЯШНЕГО (локального) календарного дня. */
+function todayUtc(now = new Date()) {
+  return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+}
 /** true, если строка (точка ИЛИ переезд) уже началась к `now` или недатирована. */
 export function isStartedByNow(row, now = new Date()) {
   const raw = row?.start_date;
   if (!raw) return true;
-  const t = new Date(raw).getTime();
-  return Number.isNaN(t) || t <= now.getTime();
+  const t = dayStartUtc(raw);
+  return Number.isNaN(t) || t <= todayUtc(now);
 }
 /** Оставить только не-будущие строки (см. isStartedByNow). */
 export function pastOnly(rows = [], now = new Date()) {
@@ -241,10 +254,10 @@ export function daysInTrips(points = [], now = new Date()) {
     cur.min = Math.min(cur.min, s); cur.max = Math.max(cur.max, e);
     span.set(p.trip_id, cur);
   }
-  // Потолок = конец СЕГОДНЯШНЕГО дня (локальная полночь начала завтрашнего
-  // минус 1 мс не нужна: сравнение идёт по началу дня, `today` = локальная
-  // полночь сегодня, включительно через +1 ниже).
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  // Потолок = СЕГОДНЯШНИЙ день. min/max выше — UTC-полночи (date-only), поэтому и
+  // потолок берём как UTC-полночь ЛОКАЛЬНОЙ даты now (`todayUtc`): всё в одном
+  // пространстве, разности — целые дни, TZ-сдвиг не рвёт счёт (Codex P2).
+  const today = todayUtc(now);
   let days = 0;
   for (const { min, max } of span.values()) {
     if (min === Infinity) continue;
