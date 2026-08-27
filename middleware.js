@@ -20,6 +20,14 @@
 // и решает по pathname внутри. Это самый устойчивый вариант: список путей ниже
 // нельзя рассинхронизировать с конфигом, потому что конфига нет.
 
+// Адрес демо берётся ИЗ ТОЙ ЖЕ константы, что и маршрут, лендинг и карта сайта
+// (`DEMO_PATH`) — модуль намеренно без зависимостей ровно ради таких импортов.
+// Раньше здесь стоял префикс `/d/`, и это была ошибка в обе стороны: слаг
+// оказывался вписан ЧЕТВЁРТЫМ местом, а бот получал 200 и индексируемое превью
+// на ЛЮБОЙ `/d/…`, включая опечатку и мёртвую ссылку, — при том что человеку по
+// тому же адресу отдаётся 404 (маршрут точный, см. `demoPath.js`).
+import { DEMO_PATH } from './src/pages/Demo/demoPath.js';
+
 const BOT_RE = /(bot|crawl|spider|facebookexternalhit|facebot|whatsapp|telegram|slack|discord|linkedin|pinterest|vkshare|embedly|skypeuripreview|twitter|googlebot|bingbot|yandex|applebot|redditbot|preview)/i;
 
 const ORIGIN = 'https://www.triplanio.com';
@@ -62,9 +70,11 @@ const page = ({ title, description, image = 'og-cover.jpg', noindex = false }) =
  * юридических страниц: краулер приходит без нашей локали и без JS, выбирать
  * язык не по чему. Один honest fallback лучше, чем угаданный не тот.
  *
- * Порядок проверок = от частного к общему; `/d/` намеренно префикс, а не точный
- * слаг: слаг демо уже переезжал (`spain-may-27` → `europe-may-2027`), и превью
- * не должно быть третьим местом, где его надо не забыть поправить.
+ * Порядок проверок = от частного к общему. Демо сверяется ТОЧНЫМ адресом: только
+ * он существует как страница, а превью обязано совпадать с тем, что получит
+ * человек. Переехавший слаг (`spain-may-27` → `europe-may-2027`) закрыт
+ * постоянным редиректом в `vercel.json` — краулер идёт по нему и получает
+ * превью уже на каноническом адресе; здесь его дублировать не нужно.
  */
 function previewFor(pathname) {
   if (pathname.startsWith('/join/')) {
@@ -82,7 +92,7 @@ function previewFor(pathname) {
       noindex: true, // share-токен в адресе
     });
   }
-  if (pathname.startsWith('/d/')) {
+  if (pathname === DEMO_PATH) {
     return page({
       title: 'Demo trip — Triplanio',
       description: 'A live example of a Triplanio trip: the route on a map, a day-by-day timeline, the budget, documents and the Telegram assistant.',

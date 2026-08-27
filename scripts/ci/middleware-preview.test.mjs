@@ -16,18 +16,21 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import middleware from '../../middleware.js';
+import { DEMO_PATH } from '../../src/pages/Demo/demoPath.js';
 
 const BOT = 'TelegramBot (like TwitterBot)';
 const HUMAN = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36';
 
 const ask = (path, ua) => middleware(new Request(`https://www.triplanio.com${path}`, { headers: { 'user-agent': ua } }));
 const bodyOf = async (res) => (res ? res.text() : null);
+const readMiddleware = () => readFileSync(new URL('../../middleware.js', import.meta.url), 'utf8');
 
 /* ── человек не должен получать превью НИКОГДА ───────────────────────────── */
 
 test('★ живой человек получает приложение на ЛЮБОМ адресе, а не HTML-заглушку', () => {
-  for (const p of ['/', '/join/abc', '/public/trip/xyz', '/d/europe-may-2027', '/terms', '/privacy']) {
+  for (const p of ['/', '/join/abc', '/public/trip/xyz', DEMO_PATH, '/terms', '/privacy']) {
     assert.equal(ask(p, HUMAN), undefined, p);
   }
 });
@@ -38,7 +41,7 @@ test('бот получает СВОЁ превью на каждой из пя�
   const cases = [
     ['/join/tok123', 'invited'],
     ['/public/trip/00000000-0000-0000-0000-000000000000', 'A trip on Triplanio'],
-    ['/d/europe-may-2027', 'Demo trip'],
+    [DEMO_PATH, 'Demo trip'],
     ['/terms', 'Terms of Service'],
     ['/privacy', 'Privacy Policy'],
   ];
@@ -64,7 +67,7 @@ test('★★★ адрес с одноразовым токеном закрыт
   for (const p of ['/join/tok123', '/public/trip/abc']) {
     assert.match(await bodyOf(ask(p, BOT)), /robots" content="noindex"/, `${p} обязан быть noindex`);
   }
-  for (const p of ['/d/europe-may-2027', '/terms', '/privacy']) {
+  for (const p of [DEMO_PATH, '/terms', '/privacy']) {
     assert.match(await bodyOf(ask(p, BOT)), /robots" content="index,follow"/, `${p} обязан индексироваться`);
   }
 });
@@ -75,11 +78,22 @@ test('чужой адрес боту не подменяется — превь�
   }
 });
 
-test('слаг демо матчится ПРЕФИКСОМ — он уже переезжал один раз', () => {
-  // spain-may-27 → europe-may-2027. Превью не должно быть третьим местом, где
-  // слаг надо не забыть поправить.
-  assert.ok(ask('/d/spain-may-27', BOT), 'старый слаг');
-  assert.ok(ask('/d/whatever-next', BOT), 'будущий слаг');
+test('★★ демо — ТОЧНЫЙ адрес: несуществующий слаг не получает превью', () => {
+  // Найдено ревью-ботом на PR #1030. Префикс `/d/` отдавал боту 200 и
+  // индексируемое превью на ЛЮБОЙ слаг, включая опечатку и мёртвую ссылку, —
+  // при том что человеку там 404 (маршрут точный, `demoPath.js`). Превью,
+  // расходящееся со страницей, — это ложная запись в поисковом индексе.
+  for (const p of ['/d/spain-may-27', '/d/whatever-next', '/d/not-real', '/d/']) {
+    assert.equal(ask(p, BOT), undefined, p);
+  }
+  assert.ok(ask(DEMO_PATH, BOT), 'канонический адрес превью получает');
+});
+
+test('адрес демо берётся из общей константы, а не переписан здесь', () => {
+  // Пятая копия слага — это ровно тот способ сломать ссылку молча, от которого
+  // `demoPath.js` и заведён.
+  assert.equal(DEMO_PATH, '/d/europe-may-2027');
+  assert.ok(!/\/d\/[a-z0-9-]+/.test(readMiddleware()), 'слаг демо вписан в middleware.js литералом');
 });
 
 test('пустой User-Agent — это не бот: отдаём приложение', () => {
