@@ -16,7 +16,7 @@ import { Icon } from '../design/icons';
 import { AvatarStack, Badge, Btn, Card, COVER_FALLBACK, EmptyState, Input, RoleBadge, Seg, Skeleton, Tile } from '../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import { uniqueTransitCities, uniqueCountryCodes, localizeVisits } from '@/lib/trip-cities';
-import { homeStats, worldExplored } from '@/lib/travel-stats';
+import { homeStats, worldExplored, pastOnly } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
 import { cacheTripCards } from '@/lib/trip-data';
 import { gateStubProps } from '@/lib/loadStateClassify';
@@ -487,9 +487,13 @@ export default function Trips() {
   });
   const statsLoaded    = travelStats !== undefined;
   const statsPoints    = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
-  const transfersTotal = travelStats?.transfers_total || 0;
-  const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
-  const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
+  // Полоса статистики и «Мир исследован» отражают ПРОЙДЕННОЕ: считаем только уже
+  // начавшиеся визиты/переезды (TRIP-264, `pastOnly`). Карта ниже по-прежнему
+  // рисует ВСЕ точки (`statsPoints`), включая запланированные.
+  const pastPoints     = useMemo(() => pastOnly(statsPoints), [statsPoints]);
+  const transfersTotal = useMemo(() => pastOnly(travelStats?.transfers || []).length, [travelStats]);
+  const home  = useMemo(() => homeStats(pastPoints, transfersTotal), [pastPoints, transfersTotal]);
+  const world = useMemo(() => worldExplored(pastPoints), [pastPoints]);
 
   // Participants (owner + active members, owner первым) приходят В карточке из
   // getTrips (get_my_trip_cards поглотил профили участников, TRIP-403). Резолвим

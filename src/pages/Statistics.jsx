@@ -15,6 +15,7 @@ import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
 import {
   statisticsBundle, availableYears, filterByYear, dominantTone, TONE, countVisitUnits,
+  pastOnly, tripsByYear,
 } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
 import MapControls from '@/lib/map/MapControls';
@@ -124,7 +125,14 @@ export default function Statistics() {
   const points = useMemo(() => filterByYear(allPoints, year), [allPoints, year]);
   // Transfer rows carry start_date too, so the SAME year filter applies to them.
   const transfers = useMemo(() => filterByYear(allTransfers, year), [allTransfers, year]);
-  const bundle = useMemo(() => statisticsBundle(points, trips, transfers), [points, trips, transfers]);
+  // Числовые виджеты (плитки, кольцо мира, континенты, страны/города, рекорды)
+  // считают ПРОЙДЕННОЕ — из года отсекаем ещё не начавшиеся визиты/переезды
+  // (TRIP-264). Карта, панель и легенда ниже остаются на ПОЛНОМ `points`/
+  // `transfers` — планы на карте видно. «Поездки по годам» тоже на полном (см.
+  // yearBars) — эту шкалу в этом заходе не трогаем.
+  const pastPoints = useMemo(() => pastOnly(points), [points]);
+  const pastTransfers = useMemo(() => pastOnly(transfers), [transfers]);
+  const bundle = useMemo(() => statisticsBundle(pastPoints, trips, pastTransfers), [pastPoints, trips, pastTransfers]);
 
   // ── map UI state ──────────────────────────────────────────────────────────────
   const [showMap, setShowMap] = useState(false);
@@ -178,10 +186,11 @@ export default function Statistics() {
     return cT;
   }, [points]);
 
-  // distinct cities per country (list sub-label)
+  // distinct cities per country (list sub-label) — по прошлым точкам, чтобы
+  // «городов: N» в списке стран совпадало с пройденными счётчиками (TRIP-264).
   const citiesPerCountry = useMemo(() => {
     const m = new Map();
-    for (const p of points) {
+    for (const p of pastPoints) {
       const cc = p?.country_code ? String(p.country_code).toUpperCase() : '';
       const ck = cityKey(p);
       if (!cc || !ck) continue;
@@ -189,7 +198,7 @@ export default function Statistics() {
       s.add(ck);
     }
     return m;
-  }, [points]);
+  }, [pastPoints]);
 
   // ── derived view models ─────────────────────────────────────────────────────
   const summaryItems = useMemo(() => [
@@ -251,14 +260,17 @@ export default function Statistics() {
   }, [bundle.records, regionName, locale, t]);
 
   const yearBars = useMemo(() => {
-    const by = bundle.byYear || {};
+    // «Поездки по годам» намеренно считаем на ПОЛНОМ (year-фильтр всё равно
+    // равен 'all' на этой шкале) наборе — эту шкалу в TRIP-264 не трогаем, будущие
+    // трипы остаются. Отдельный вызов, т.к. bundle теперь считает только прошлое.
+    const by = tripsByYear(points) || {};
     const ys = Object.keys(by).map(Number).sort((a, b) => a - b);
     if (ys.length === 0) return { bars: [], caption: t('stats.chart_empty') };
     const max = Math.max(1, ...ys.map((y) => by[y]));
     let best = ys[0]; ys.forEach((y) => { if (by[y] > by[best]) best = y; });
     const bars = ys.map((y) => ({ year: y, value: by[y], height: Math.max(10, (by[y] / max) * 128), on: y === best }));
     return { bars, caption: t('stats.chart_active', { year: best, count: by[best] }) };
-  }, [bundle.byYear, t]);
+  }, [points, t]);
 
   // map type legend (countries by dominant tone)
   const legendRows = useMemo(() => {
