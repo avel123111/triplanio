@@ -1,6 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import { MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
+import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, loadMapboxGl } from '@/lib/mapbox';
 import { buildRoute, drawTripRoute, SC_WEIGHTS, rescaleZoom } from '@/lib/map/captureMap';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Btn, Skeleton } from '@/design/index';
@@ -73,126 +72,148 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
 
   useEffect(() => {
     if (!MAPBOX_TOKEN || !holderRef.current || mapRef.current) return undefined;
-    const { ordered, legs } = buildRoute(visits, transfers, showSE);
-    const pts = ordered.map((v) => [v.longitude, v.latitude]);
-    const map = new mapboxgl.Map({
-      container: holderRef.current,
-      style: MAP_STYLE,
-      config: baseConfig(scheme),
-      ...(lang ? { language: lang } : {}),
-      projection,
-      center: ordered[0] ? [ordered[0].longitude, ordered[0].latitude] : [0, 20],
-      zoom: 2,
-      // Калька конструктора живёт без жестов ВООБЩЕ (жесты — в редакторе карты);
-      // с `interactive: false` mapbox не вешает обработчики, и свайпы уходят
-      // родителю (на мобиле — vaul-шиту).
-      interactive,
-      attributionControl: false,
-    });
-    mapRef.current = map;
+    // Библиотека карты приезжает ПО ТРЕБОВАНИЮ (TRIP-445): без неё нет ни
+    // `mapboxgl`, ни `mapbox-gl.css`, а калька карточки открывается и с линзы,
+    // где карты не было. Поэтому установка целиком уехала в `start()` и зовётся
+    // только после загрузки; её уборка хранится в `teardown` и срабатывает
+    // независимо от того, успела ли библиотека приехать до размонтирования.
+    let alive = true;
+    let teardown = null;
+    const start = () => {
+      const { ordered, legs } = buildRoute(visits, transfers, showSE);
+      const pts = ordered.map((v) => [v.longitude, v.latitude]);
+      const map = new mapboxgl.Map({
+        container: holderRef.current,
+        style: MAP_STYLE,
+        config: baseConfig(scheme),
+        // Токен СВОЕЙ опцией: раньше он прилетал сюда побочным эффектом импорта
+        // `@/lib/mapbox` (глобальный `mapboxgl.accessToken`). Библиотека грузится
+        // по требованию (TRIP-445), порядок загрузки больше не гарантирован —
+        // поэтому каждый, кто создаёт карту, называет токен сам.
+        ...(MAPBOX_TOKEN ? { accessToken: MAPBOX_TOKEN } : {}),
+        ...(lang ? { language: lang } : {}),
+        projection,
+        center: ordered[0] ? [ordered[0].longitude, ordered[0].latitude] : [0, 20],
+        zoom: 2,
+        // Калька конструктора живёт без жестов ВООБЩЕ (жесты — в редакторе карты);
+        // с `interactive: false` mapbox не вешает обработчики, и свайпы уходят
+        // родителю (на мобиле — vaul-шиту).
+        interactive,
+        attributionControl: false,
+      });
+      mapRef.current = map;
 
-    // Mapbox-логотип — DOM-оверлей (не часть WebGL-canvas): в финальный PNG,
-    // снимаемый с canvas, он НЕ попадает, а в превью-кальке висел поверх
-    // стилизованной карточки (Pavel: «аттрибуция посередине карты»). Снимаем его
-    // в превью, чтобы превью == финал. LogoControl добавляется синхронно в
-    // конструкторе Map; на всякий случай повторяем на 'load' (переинициализация
-    // стиля могла бы вернуть узел).
-    const stripMapboxChrome = () => {
-      holderRef.current?.querySelectorAll('.mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib').forEach((el) => el.remove());
-    };
-    stripMapboxChrome();
-    map.once('load', stripMapboxChrome);
+      // Mapbox-логотип — DOM-оверлей (не часть WebGL-canvas): в финальный PNG,
+      // снимаемый с canvas, он НЕ попадает, а в превью-кальке висел поверх
+      // стилизованной карточки (Pavel: «аттрибуция посередине карты»). Снимаем его
+      // в превью, чтобы превью == финал. LogoControl добавляется синхронно в
+      // конструкторе Map; на всякий случай повторяем на 'load' (переинициализация
+      // стиля могла бы вернуть узел).
+      const stripMapboxChrome = () => {
+        holderRef.current?.querySelectorAll('.mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib').forEach((el) => el.remove());
+      };
+      stripMapboxChrome();
+      map.once('load', stripMapboxChrome);
 
-    let userMoved = false;
-    // ★ Жест — только событие С originalEvent: mapbox шлёт zoomstart/movestart и
-    // на ПРОГРАММНОЕ движение (fitToPoints/jumpTo). Без проверки первый же
-    // авто-фит взводил userMoved, и синк камеры из редактора («Done») навсегда
-    // блокировался — превью карточки не обновлялось.
-    ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((type) => map.on(type, (e) => { if (e?.originalEvent) userMoved = true; }));
-    // Пока пользователь не взялся за карту сам: с приехавшей камерой — держим её
-    // (зум пересчитан под ширину ЭТОГО контейнера из previewCssWidth композиции),
-    // без камеры — авто-фит по точкам маршрута.
-    const fit = () => {
-      if (userMoved) return;
-      const cam = cameraRef.current;
-      if (cam) {
+      let userMoved = false;
+      // ★ Жест — только событие С originalEvent: mapbox шлёт zoomstart/movestart и
+      // на ПРОГРАММНОЕ движение (fitToPoints/jumpTo). Без проверки первый же
+      // авто-фит взводил userMoved, и синк камеры из редактора («Done») навсегда
+      // блокировался — превью карточки не обновлялось.
+      ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((type) => map.on(type, (e) => { if (e?.originalEvent) userMoved = true; }));
+      // Пока пользователь не взялся за карту сам: с приехавшей камерой — держим её
+      // (зум пересчитан под ширину ЭТОГО контейнера из previewCssWidth композиции),
+      // без камеры — авто-фит по точкам маршрута.
+      const fit = () => {
+        if (userMoved) return;
+        const cam = cameraRef.current;
+        if (cam) {
+          map.jumpTo({
+            center: cam.center,
+            zoom: rescaleZoom(cam.zoom, cam.previewCssWidth, holderRef.current?.clientWidth),
+            bearing: cam.bearing || 0,
+            pitch: cam.pitch || 0,
+          });
+        } else if (pts.length) {
+          // Отступ фита ОТНОСИТЕЛЬНЫЙ (≈14% ширины, пол 40px): в крупном редакторе
+          // абсолютные 40px прижимали бы города к краям, и стартовый кадр редактора
+          // расходился бы с кадром превью. Осознанный размен: на широком превью
+          // (post на десктопе) авто-фит стал чуть воздушнее прежних константных 40px.
+          const w = holderRef.current?.clientWidth || 0;
+          fitToPoints(map, pts, { padding: Math.max(40, Math.round(w * 0.14)), maxZoom: 9 });
+        }
+      };
+
+      // Принудительно применить приехавшую камеру: НЕ гейтится userMoved (Done —
+      // явное решение), ширину берём с фолбэком на previewCssWidth (если контейнер
+      // ещё не измерен — на мобиле шит редактора только что закрылся). ResizeObserver
+      // затем до-уточнит зум под реальную ширину, но кадр меняется сразу.
+      const applyCamera = () => {
+        const cam = cameraRef.current;
+        if (!cam) { fit(); return; }
+        const w = holderRef.current?.clientWidth || cam.previewCssWidth;
         map.jumpTo({
           center: cam.center,
-          zoom: rescaleZoom(cam.zoom, cam.previewCssWidth, holderRef.current?.clientWidth),
+          zoom: rescaleZoom(cam.zoom, cam.previewCssWidth, w),
           bearing: cam.bearing || 0,
           pitch: cam.pitch || 0,
         });
-      } else if (pts.length) {
-        // Отступ фита ОТНОСИТЕЛЬНЫЙ (≈14% ширины, пол 40px): в крупном редакторе
-        // абсолютные 40px прижимали бы города к краям, и стартовый кадр редактора
-        // расходился бы с кадром превью. Осознанный размен: на широком превью
-        // (post на десктопе) авто-фит стал чуть воздушнее прежних константных 40px.
-        const w = holderRef.current?.clientWidth || 0;
-        fitToPoints(map, pts, { padding: Math.max(40, Math.round(w * 0.14)), maxZoom: 9 });
-      }
-    };
+      };
+      applyCameraRef.current = applyCamera;
 
-    // Принудительно применить приехавшую камеру: НЕ гейтится userMoved (Done —
-    // явное решение), ширину берём с фолбэком на previewCssWidth (если контейнер
-    // ещё не измерен — на мобиле шит редактора только что закрылся). ResizeObserver
-    // затем до-уточнит зум под реальную ширину, но кадр меняется сразу.
-    const applyCamera = () => {
-      const cam = cameraRef.current;
-      if (!cam) { fit(); return; }
-      const w = holderRef.current?.clientWidth || cam.previewCssWidth;
-      map.jumpTo({
-        center: cam.center,
-        zoom: rescaleZoom(cam.zoom, cam.previewCssWidth, w),
-        bearing: cam.bearing || 0,
-        pitch: cam.pitch || 0,
-      });
-    };
-    applyCameraRef.current = applyCamera;
+      // Draw the route only once the map is FULLY ready to accept sources+layers.
+      // On the Mapbox Standard style, 'style.load' (and even isStyleLoaded()===true)
+      // can be reached BEFORE the style is ready - addLayer then silently does
+      // nothing and the preview route never appears. The main app map avoids this
+      // by waiting for 'load'/'idle'; mirror that here. Idempotent: once sc-solid
+      // exists we only refit, and 'idle'/'styledata' re-add it if a later style
+      // re-eval (theme/projection toggle) drops it.
+      // Scale the fixed-px markers/lines for the small preview so it matches the
+      // full-res card (TRIP-193). Re-applied on every settle so it self-corrects once
+      // the slot geometry arrives after the overlay loads (hole resizes → idle → here).
+      const applyWeights = () => {
+        const { cw, s } = currentScale();
+        if (!cw) return;
+        if (map.getLayer('sc-points-halo')) map.setPaintProperty('sc-points-halo', 'circle-radius', SC_WEIGHTS.halo * s);
+        if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', SC_WEIGHTS.dot * s);
+        if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', SC_WEIGHTS.solid * s);
+        if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', SC_WEIGHTS.dashed * s);
+      };
+      const drawIfNeeded = () => {
+        if (!pts.length) return;
+        // На уже нарисованном маршруте только доводим веса под текущий размер; фит
+        // зовётся лишь по реальным поводам (первый рендер ниже, resize, смена камеры).
+        if (map.getSource('sc-solid')) { applyWeights(); return; }
+        try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
+        applyWeights();
+        prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
+        fit();
+      };
+      map.once('load', drawIfNeeded);
+      map.on('idle', drawIfNeeded);
+      map.on('styledata', drawIfNeeded);
 
-    // Draw the route only once the map is FULLY ready to accept sources+layers.
-    // On the Mapbox Standard style, 'style.load' (and even isStyleLoaded()===true)
-    // can be reached BEFORE the style is ready - addLayer then silently does
-    // nothing and the preview route never appears. The main app map avoids this
-    // by waiting for 'load'/'idle'; mirror that here. Idempotent: once sc-solid
-    // exists we only refit, and 'idle'/'styledata' re-add it if a later style
-    // re-eval (theme/projection toggle) drops it.
-    // Scale the fixed-px markers/lines for the small preview so it matches the
-    // full-res card (TRIP-193). Re-applied on every settle so it self-corrects once
-    // the slot geometry arrives after the overlay loads (hole resizes → idle → here).
-    const applyWeights = () => {
-      const { cw, s } = currentScale();
-      if (!cw) return;
-      if (map.getLayer('sc-points-halo')) map.setPaintProperty('sc-points-halo', 'circle-radius', SC_WEIGHTS.halo * s);
-      if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', SC_WEIGHTS.dot * s);
-      if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', SC_WEIGHTS.solid * s);
-      if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', SC_WEIGHTS.dashed * s);
-    };
-    const drawIfNeeded = () => {
-      if (!pts.length) return;
-      // На уже нарисованном маршруте только доводим веса под текущий размер; фит
-      // зовётся лишь по реальным поводам (первый рендер ниже, resize, смена камеры).
-      if (map.getSource('sc-solid')) { applyWeights(); return; }
-      try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
-      applyWeights();
-      prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
-      fit();
-    };
-    map.once('load', drawIfNeeded);
-    map.on('idle', drawIfNeeded);
-    map.on('styledata', drawIfNeeded);
+      // The dialog animates open and the hole box resizes with the overlay load, so
+      // resize + refit once it settles (until the user takes over).
+      const ro = new ResizeObserver(() => { map.resize(); fit(); });
+      ro.observe(holderRef.current);
 
-    // The dialog animates open and the hole box resizes with the overlay load, so
-    // resize + refit once it settles (until the user takes over).
-    const ro = new ResizeObserver(() => { map.resize(); fit(); });
-    ro.observe(holderRef.current);
-
+      return () => {
+        ro.disconnect();
+        map.off('idle', drawIfNeeded);
+        map.off('styledata', drawIfNeeded);
+        map.remove();
+        mapRef.current = null;
+        applyCameraRef.current = null;
+      };
+    };
+    loadMapboxGl().then(() => {
+      if (!alive || !holderRef.current || mapRef.current) return;
+      teardown = start();
+    }).catch(() => { /* сеть: калька останется пустой, как и без токена */ });
     return () => {
-      ro.disconnect();
-      map.off('idle', drawIfNeeded);
-      map.off('styledata', drawIfNeeded);
-      map.remove();
-      mapRef.current = null;
-      applyCameraRef.current = null;
+      alive = false;
+      if (teardown) teardown();
     };
     // Create once per mount; visits/transfers are stable for an open dialog.
     // eslint-disable-next-line react-hooks/exhaustive-deps

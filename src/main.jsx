@@ -15,8 +15,10 @@
 //   1. `app.css`   — база дизайн-системы, ПЕРВОЙ;
 //   2. `App.jsx`   — экраны; их CSS импортируют сами экраны и он ложится сюда;
 //   3. `index.css` — reset (Tailwind Preflight) + шрифтовые токены, ПОСЛЕДНИМ.
-// «Последним» — из трёх СВОИХ таблиц стилей: вендорный `mapbox-gl.css` идёт
-// после и на каскад системы не влияет (он весь под `.mapboxgl-*`).
+// «Последним» — из трёх СВОИХ таблиц стилей. Вендорного `mapbox-gl.css` здесь
+// БОЛЬШЕ НЕТ: он приезжает вместе с самой библиотекой карты (`loadMapboxGl`),
+// то есть ещё позже и только на экранах с картой. На каскад системы это не
+// влияет ни до, ни после — он весь под `.mapboxgl-*`.
 //
 // ⚠️ Шаг 3 последним — это ЗАФИКСИРОВАННЫЙ ДЕФЕКТ, а не замысел: сброс обязан
 // стоять перед системой, а не после неё. Из-за текущего порядка `index.css`
@@ -43,7 +45,6 @@ import { isProdHost } from '@/lib/analyticsEnv'
 import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
 import App from '@/App.jsx'
 import '@/index.css'
-import 'mapbox-gl/dist/mapbox-gl.css'
 
 // PostHog product analytics (TRIP-213 Phase 0), variant B (TRIP-407) under consent
 // since TRIP-311. Boot the client into `persistence:'memory'` for EVERYONE, here,

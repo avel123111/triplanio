@@ -55,12 +55,27 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   useEffect(() => { coopRef.current = cooperativeGestures; }, [cooperativeGestures]);
 
   // Claim the singleton into this slot on mount; park it back on unmount.
+  //
+  // Зависимость `libReady` — не оптимизация, а ВТОРОЙ ЗАХОД. Библиотека карты
+  // грузится по требованию (TRIP-445), поэтому первый проход эффекта штатно
+  // уходит ни с чем; когда библиотека приезжает, провайдер переключает флаг,
+  // React прогоняет эффект заново — и вся установка ниже (acquire, готовность,
+  // ResizeObserver, подписки, уборка) повторяется целиком и в правильном
+  // порядке. Именно поэтому тело эффекта осталось синхронным: async-тело
+  // разъехалось бы с уборкой, которая успевает отработать раньше ответа.
   useEffect(() => {
     const slot = containerRef.current;
     if (!slot) return undefined;
     if (!sharedMap || !sharedMap.hasToken) { setError('No Mapbox token'); return undefined; }
     const map = sharedMap.acquire(slot, schemeRef.current, langRef.current);
-    if (!map) { setError('No map'); return undefined; }
+    if (!map) {
+      // ★ «Библиотека ещё едет» — это ЗАГРУЗКА, а не отказ. Поставить здесь
+      // ошибку значит показать «нет карты» за мгновение до того, как карта
+      // появится, — и не показать спиннер, ради которого `ready` и существует.
+      if (!sharedMap.libReady) return undefined;
+      setError('No map');
+      return undefined;
+    }
     mapRef.current = map;
 
     // Two readiness halves: styleOK (style loaded → overlay) and sizeOK (slot
@@ -166,7 +181,7 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
       setReady(false);
       setCanFit(false);
     };
-  }, []);
+  }, [sharedMap?.libReady]);
 
   // Live day/night switch (in place — no map re-render). Re-apply the basemap
   // preset AND re-read the route colour token so existing line layers follow the
