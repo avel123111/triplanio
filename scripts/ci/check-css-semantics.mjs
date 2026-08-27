@@ -190,6 +190,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import postcss from 'postcss';
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
@@ -452,9 +453,9 @@ const cmpWeight = (a, b) => {
 
 /* ------------------------------ два замера -------------------------------- */
 
-const listTracked = (ref, paths = []) => (ref
-  ? git(['ls-tree', '-r', '--name-only', ref, '--', ...paths])
-  : git(['ls-files', '--', ...paths])).split('\n').filter(Boolean);
+const listTracked = (ref, paths = []) => git(ref
+  ? ['ls-tree', '-r', '--name-only', ref, '--', ...paths]
+  : ['ls-files', '--', ...paths]).split('\n').filter(Boolean);
 
 /* Кто МОЖЕТ подключить таблицу стилей: модули приложения и HTML-точки входа.
  * `.css` сюда не входит намеренно — `@import` в этом дереве не используется, а
@@ -484,13 +485,16 @@ const LOADER_RE = /\.(?:jsx?|tsx?|html)$/;
  * деревом — этой ценой уже платили (§0 «периметры гардов не растут сами»). */
 const listCss = (ref) => {
   const css = listTracked(ref, PERIMETER).filter((p) => p.endsWith('.css'));
-  const read = (p) => (ref ? git(['show', `${ref}:${p}`]) : (existsSync(p) ? readFileSync(p, 'utf8') : ''));
+  const read = (p) => {
+    if (ref) return git(['show', `${ref}:${p}`]);
+    return existsSync(p) ? readFileSync(p, 'utf8') : '';
+  };
   /* Загрузчики ищутся ПО ВСЕМУ ДЕРЕВУ, а не по периметру: `index.html` лежит в
    * корне, и это единственная ссылка на `src/design/fonts.css`. Периметр
    * отвечает на вопрос «чьи ЗНАЧЕНИЯ мы стережём», а не «кто может подключить»;
    * поймано тестом «ссылка из HTML — файл ЖИВОЙ», а не чтением кода. */
   const loaders = listTracked(ref).filter((p) => LOADER_RE.test(p)).map(read).join('\n');
-  return css.filter((p) => loaders.includes(p.slice(p.lastIndexOf('/') + 1)));
+  return css.filter((p) => loaders.includes(basename(p)));
 };
 
 let baseFiles;
