@@ -723,12 +723,11 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .lp-ti b,          /* TRIP-188: инспектор канонов — заголовки шапок панелей события/добавления Subheading→Title */
 .flow-lp-b h1,     /* TRIP-222: инспектор канонов — заголовки шагов планирования Heading→Title (оба flow) */
 h1,
-.auth__h1,
 .bud-total,        /* TRIP-175 инсп.: Heading→Title (итог бюджета) */
 .tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
-.rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
-.brand-col__tag { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular (.pt-cta h2 снят: /public/trip переписан, TRIP-461) */
+.rec .v           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
+{ font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular (.pt-cta h2 снят: /public/trip переписан, TRIP-461) */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
@@ -770,10 +769,7 @@ h3,
 .sheet-h h3,
 .head__av,
 .vp-h h3,
-.auth__brand-link,
-.brand-col__logo,
 .trip-head__title,
-.trip-foot__total .big,
 .step h3,
 .drawer li a,
 .wdg-h h4,         /* TRIP-175 инсп.: Label→Subheading (заголовки виджетов обзора) */
@@ -835,13 +831,9 @@ h4,
 .eed-fctitle,
 .docfield__title,
 .pt-person .nm,
-.btn-social,
 .lede,
 .btn-primary,
-.auth__switch a,
-.auth__switch button,
 .btn-ghost,
-.brand-col__sub,
 .input-unit,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→Label (легенда бюджета; .t-strong сохранён) */
@@ -884,10 +876,9 @@ h4,
    подпись кнопки и не должна была стоять в теле текста. */
 .check,
 .checkbox,
-.auth__switch,
-.auth-error,
 .nav a,
-.footer,
+/* .footer снят (TRIP-445 PR8): старый футер жил только в удалённых
+   public/terms.html + privacy.html; сайтовая зона рисует .site-footer. */
 .bubble,
 .card p,
 .step p,
@@ -941,7 +932,6 @@ h4,
 .t-meta,
 .pl-ai-chips .fpill,     /* TRIP-337: чипы-подсказки AI-планнера на канон Meta (у .fpill свой `font: inherit`, поэтому нужен селектор специфичнее) */
 .dock-panel__id span,    /* TRIP-337 инсп.: подзаголовок виджета чата off-canon→Meta */
-.field__hint,
 .app-header__trip-meta,
 .app-header__pro,
 .err, .wrn,
@@ -1052,20 +1042,14 @@ h4,
 .auth .field__label,
 .divider,
 .terms,
-.pw-strength__label,
-.field__match,
-.appframe__url,
-.city-chip,
+/* Сняты как осиротевшие (TRIP-445 PR8): экраны, что их ставили, переписаны
+   на сайтовую ДС, литерала не осталось ни в одном файле разметки. Найдены
+   гардом 2n — снос мёртвого login.css вскрыл их в диффе. */
 .trip-tl__row,
 .trip-tl__row .lbl .sub,
 .trip-tl__row .tag,
 .trip-tl__row .time,
-.trip-foot__total .ccy,
 .trip-foot__delta,
-.appnudge,
-.appnudge .ttl,
-.appnudge .sub,
-.brand-col__trust,
 .phone .bubble,
 /* .langdd__btn/.langdd__item .code сняты (TRIP-460): та же причина, .lang-btn/
    .lang-menu .code typography полностью своя в site.css. */
@@ -1098,12 +1082,9 @@ h4,
 .rec .k,
 .visit .when .mo,
 .eed-fromto,
-.brand-col__eyebrow,
 .trip-head__meta,
 .trip-tl__day,
 .trip-foot__lab,
-/* orphan-exempt: footer__col — мёртвый co-селектор старого футера; его литерал жил только в удалённых public/terms.html + privacy.html (Ф6.6, TRIP-465). Полная чистка старого блока .footer/.footer__col — отдельная задача. */
-.footer__col h4,
 .fork-partner__mid span,
 .mbrow .badge--warning, /* TRIP-410 моно-аудит: бейдж роли «Владелец» → Geologica CAPS (был .t-mono; эйбрау/бейджи = t-micro) */
 /* TRIP-410 моно-аудит: бейдж роли «Админ» → Geologica CAPS */
@@ -1157,7 +1138,6 @@ h4,
 .t-mono,
 .mono,
 .cm-code,
-.confirm__email,
 .kv .v.mono,
 .chat-composer__hint kbd, code { font-family: var(--font-mono); font-size: var(--fs-meta); font-weight: 500; line-height: 1.4; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-mono — JetBrains 13/500/1.4, tabular, track -0.01 */
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
@@ -1184,8 +1164,6 @@ h4,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
 .s22mk__count, .s22mk__price,   /* TRIP-287: цена/счётчик маркера карты — strong (bold) */
-.field__match.is-ok::before,
-.field__match.is-bad::before,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
 .fork-partner__mid span,
 .fork-or span,
@@ -2261,7 +2239,6 @@ button.cbadge__go[data-on] { max-width: 44px; opacity: 1; margin-left: 0; }
    `<fieldset disabled>`, и форма читалась наполовину активной. Ключ -
    `fieldset:disabled`, а не `:has()` (цель сборки Firefox 78). */
 fieldset:disabled .field__label { color: var(--muted-2); }
-.field__hint { color: var(--muted); }   /* тип — канон .t-meta (co-selector, TRIP-165) */
 .field__sub { color: var(--muted); margin-top: 2px; }   /* тип — канон .t-meta (TRIP-165) */
 
 /* Accordion (collapsible field group) — TRIP-176. Reusable primitive: header
@@ -7906,13 +7883,16 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   position: relative; z-index: 1;
   display: flex; flex-direction: column; gap: var(--sp-5);
   flex: 1; width: 100%; max-width: 1100px; margin: 0 auto;
-  /* Вертикальное поле МЕНЬШЕ горизонтального (32 против 40 на широком экране):
+  /* Вертикальное поле МЕНЬШЕ горизонтального (24 против 40 на широком экране):
      ограничение этой страницы — высота, а не ширина, и 80px воздуха сверху-снизу
-     выносили последнюю строку за первый экран на 1366×768 (замер: +9px).
-     Горизонтальное поле не тронуто.
-     visual-diff-exempt: .pro-main padding — вертикаль 40 → 32 на широком экране, чтобы страница влезала на 1366×768 без скролла (апрув Pavel)
+     выносили последнюю строку за первый экран на 1366×768. Надзаголовок плашки
+     («Pro для этого путешествия») добавил её ряду третью строку и вернул тот же
+     перелив на +9px — платим за него ЗДЕСЬ, полем страницы, а не плотностью
+     самой плашки: воздух по краям на 1366×768 не читается, а сжатая плашка
+     читается сразу. Горизонтальное поле не тронуто.
+     visual-diff-exempt: .pro-main padding — вертикаль 32 → 24 на широком экране, чтобы страница с надзаголовком плашки влезала на 1366×768 без скролла (апрув Pavel)
      design-token-exempt: сырые величины ПЕРЕЕХАЛИ с инлайна на <main> — репозиторный счёт не вырос, раньше инлайн был невидим гарду */
-  padding: clamp(20px, 3vw, 32px) clamp(20px, 4vw, 40px); box-sizing: border-box; /* design-token-exempt: величины ПЕРЕЕХАЛИ с инлайна на <main> — репозиторный счёт не вырос, раньше инлайн был невидим гарду; вертикаль сведена 40 → 32 ради 1366×768 (апрув Pavel) */
+  padding: clamp(20px, 3vw, 24px) clamp(20px, 4vw, 40px); box-sizing: border-box; /* design-token-exempt: величины ПЕРЕЕХАЛИ с инлайна на <main> — репозиторный счёт не вырос, раньше инлайн был невидим гарду; вертикаль сведена 40 → 24 ради 1366×768 (апрув Pavel) */
 }
 
 /* ── Hero ── */
@@ -8119,6 +8099,19 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    12px по вертикали выносили тарифы за первый экран на 1366×768.
    visual-diff-exempt: .pro-offer padding — 18 (база .card) → 12/16, бюджет высоты первого экрана */
 .pro-offer { flex: none; padding: var(--sp-6) var(--sp-7); }
+/* Надзаголовок плашки: ТИПОГРАФИКА — канон ДС (`.t-micro` вторым классом в
+   разметке: 11/700/CAPS, тот же объект, что надзаголовки во всём приложении),
+   СВОЁ у него только ЧЕРНИЛА. Пробовал обойтись без класса — правилом
+   `.pro-offer .eyebrow`: так дешевле по полу, но это ФОРК КАНОНА, у `.eyebrow`
+   появляется второй цвет по месту в дереве, и 2p справедливо требует объявить
+   это маркером на ВЕСЬ `.eyebrow` — то есть заглушить будущие правки канона
+   ради одной строки. Отдельный класс в СУЩЕСТВУЮЩЕЙ семье `pro` дороже на
+   единицу пола и честнее: правка адресна.
+   `--pro-ink`, а не `--pro`: на 11px `--pro` даёт 3.56:1 (ниже AA), `--pro-ink` — 4.63:1.
+   floor-exempt: classes +1 — .pro-offer__kicker, надзаголовок плашки оффера из макета; апрув Pavel (правка от 27.08.2026)
+   floor-exempt: triage +1 — тот же класс, семья `pro` в каталоге под разбором; префикс существующий, нового namespace нет; апрув Pavel
+   visual-diff-exempt: .pro-offer__kicker color — Pro-чернила надзаголовка плашки */
+.pro-offer__kicker { color: var(--pro-ink); }
 /* `text-align: right` — про ПРАВЫЙ КРАЙ, а не про раскладку: цена и подпись
    «разовый платёж» разной длины, и при выключке влево их правые края рвутся
    лесенкой прямо перед кнопкой (зазор до кнопки у строк получался разный).
@@ -10666,10 +10659,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* visual-diff-exempt: .tl-card line-height — мёртвый класс/правило мокапа лендинга удалено (0 разметки; TRIP-460 §3) */
 
 /* ── TRIP-460 (продолжение): снос .langdd* (язык-переключатель зоны переехал
-   на прототипные .lang-btn/.lang-menu) + скоуп login.css .btn-primary/.btn-ghost
-   под .auth (ревью — глобальная утечка). ── */
-/* visual-diff-exempt: .auth background — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth color — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+   на прототипные .lang-btn/.lang-menu). ── */
 /* visual-diff-exempt: .code font-family — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
 /* visual-diff-exempt: .code font-size — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
 /* visual-diff-exempt: .code font-variant-numeric — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
@@ -10688,13 +10678,147 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* visual-diff-exempt: .langdd__item font-weight — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
 /* visual-diff-exempt: .langdd__item letter-spacing — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
 /* visual-diff-exempt: .langdd__item line-height — язык-переключатель зоны переехал на .lang-btn/.lang-menu (TRIP-460); .langdd* мёртв, 0 разметки */
-/* visual-diff-exempt: .auth border — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth border-color — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth box-shadow — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth cursor — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth justify-content — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth opacity — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth padding — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth text-decoration — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth transform — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
-/* visual-diff-exempt: .auth transition — login.css .btn-primary/.btn-ghost поскоуплены под .auth (ревью TRIP-460 — глобальная утечка кнопки на лендинг), кас-кадный вклад в .auth изменился намеренно */
+
+/* ЛЕДЖЕР 2p (живёт один PR). Снят мёртвый CSS: 20 имён, что перестали быть
+   литералом в разметке (найдено гардом 2n — снос login.css вскрыл их в диффе),
+   и потомки двух предков без носителей (.appnudge, .trip-foot__total). Ни одно
+   из имён не встречается в дереве НИ РАЗУ — правило перестало действовать не
+   здесь, а тогда, когда переписали экран. */
+/* visual-diff-exempt: .appframe__url font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appframe__url font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appframe__url font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appframe__url font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appframe__url letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appframe__url line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appnudge font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appnudge font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appnudge font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appnudge font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appnudge letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .appnudge line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth-error font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth-error font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth-error font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth-error letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth-error line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__brand-link font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__brand-link font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__brand-link font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__brand-link letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__brand-link line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__h1 font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__h1 font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__h1 font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__h1 font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__h1 letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__h1 line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch a font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch a font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch a font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch a letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch a line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch button font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch button font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch button font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch button letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch button line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .auth__switch line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .big font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .big font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .big font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .big letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .big line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__eyebrow font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__eyebrow font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__eyebrow font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__eyebrow letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__eyebrow line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__eyebrow text-transform — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__logo font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__logo font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__logo font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__logo letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__logo line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__sub font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__sub font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__sub font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__sub letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__sub line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__tag font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__tag font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__tag font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__tag font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__tag letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__tag line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__trust font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__trust font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__trust font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__trust font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__trust letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .brand-col__trust line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .btn-social font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .btn-social font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .btn-social font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .btn-social letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .btn-social line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .ccy font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .ccy font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .ccy font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .ccy font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .ccy letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .ccy line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .city-chip font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .city-chip font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .city-chip font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .city-chip font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .city-chip letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .city-chip line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .confirm__email font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .confirm__email font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .confirm__email font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .confirm__email font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .confirm__email letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .confirm__email line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__hint font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__hint font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__hint font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__hint font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__hint letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__hint line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__match font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__match font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__match font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__match font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__match letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__match line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer__col h4 font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer__col h4 font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer__col h4 font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer__col h4 letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer__col h4 line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .footer__col h4 text-transform — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .pw-strength__label font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .pw-strength__label font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .pw-strength__label font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .pw-strength__label font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .pw-strength__label letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .pw-strength__label line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .trip-foot__total font-family — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .trip-foot__total font-size — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .trip-foot__total font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .trip-foot__total font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .trip-foot__total letter-spacing — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .trip-foot__total line-height — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .ttl font-variant-numeric — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .field__match::before font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .is-bad::before font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */
+/* visual-diff-exempt: .is-ok::before font-weight — правило снято вместе с осиротевшим именем (TRIP-445 PR8) */

@@ -295,9 +295,14 @@ export default function Pro() {
         {showTripOffer && (offerPending ? (
           <Card radius="btn" className="pro-offer">
             <Row gap="g7" wrap>
-              <Cover />
+              {/* Обложка тоже ЗАГЛУШКА, а не пустой <Cover>: у примитива нижним
+                  слоем всегда лежит фоллбек-картинка из бандла, поэтому пустой
+                  <Cover> посреди скелетонов показывал чужое фото как обложку
+                  этого путешествия. Размер и радиус — те же 62×46/--r-sm. */}
+              <Skeleton w={62} h={46} r={'var(--r-sm)'} />
               <Grow fit>
                 <Col gap="g1">
+                  <Skeleton w="34%" h={9} />
                   <Skeleton w="44%" h={18} />
                   <Skeleton w="68%" h={11} />
                 </Col>
@@ -317,6 +322,12 @@ export default function Pro() {
               <Cover image={offerTrip?.coverImageUrl} />
               <Grow fit>
                 <Col gap="g1">
+                  {/* Надзаголовок называет ТОВАР («Pro для этого путешествия»),
+                      строка под ним — само путешествие. Без него название трипа
+                      висит первой строкой и плашка читается как карточка трипа,
+                      а не как оффер. Типографика — канон `.t-micro`, свой класс
+                      несёт только Pro-чернила (см. комментарий у правила). */}
+                  <div className="pro-offer__kicker t-micro">{t('sub.trip_offer_kicker')}</div>
                   {offerTrip?.title && <Trunc className="t-heading">{offerTrip.title}</Trunc>}
                   <div className="t-meta muted">{t('sub.plan_trip_subtitle')}</div>
                 </Col>
