@@ -5,7 +5,7 @@ import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { WORLD_MAP_SVG } from './WorldMapSvg';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
 } from '@/components/site/SiteChrome';
 import { useReveal } from '@/components/site/useReveal';
 import { SiteCta } from '@/components/site/SiteTrip';
@@ -904,7 +904,6 @@ export default function LandingPage() {
   const { lang, setLang } = useI18n();
   const t = useT();
 
-  useSiteTheme();
   const cssReady = useSiteCss();
   useDocumentMeta(t('landing.meta.title'), t('landing.meta.description'));
   useHeroFrame(cssReady);
@@ -913,19 +912,9 @@ export default function LandingPage() {
   useCounters(cssReady, lang);
   useFaqCloseOthers(cssReady);
 
-  // <html lang> — снимок + восстановление на unmount, как у useSiteTheme
-  // (ревью TRIP-460 C1): раньше атрибут выставлялся без очистки и «протекал» —
-  // уходишь с лендинга, а lang остаётся landing'овым. Идиома дословно как в
-  // useSiteTheme: локальный prev в mount-once эффекте, без ref.
-  useEffect(() => {
-    const r = document.documentElement;
-    const prev = r.getAttribute('lang');
-    return () => {
-      if (prev != null) r.setAttribute('lang', prev);
-      else r.removeAttribute('lang');
-    };
-  }, []);
-  useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
+  // <html lang> здесь БОЛЬШЕ НЕТ: атрибут принадлежит зоне, а не одной её
+  // странице, и живёт в `SiteZone` (TRIP-445). Пока он стоял тут, переключатель
+  // языка в шапке демо/юр/логина/приглашения менял текст, а lang оставался "en".
 
   if (!cssReady) return null;
 

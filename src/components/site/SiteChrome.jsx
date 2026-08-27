@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useT } from '@/lib/i18n/I18nContext';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { openConsentBanner } from '@/lib/consent';
 import { useZoneCta, isPlainLeftClick } from './zoneCta';
 import LandingSprite from './LandingSprite';
@@ -389,11 +389,33 @@ const ZoneCssCtx = createContext(null);
 export function SiteZone({ children }) {
   const cssReady = useSiteCssLink(true);
   const { pathname, hash } = useLocation();
+  const { lang } = useI18n();
   useEffect(() => {
     // Якорь в адресе — прокрутку ведёт он, не мы (`/d/x#budget`, меню лендинга).
     if (hash) return;
     window.scrollTo(0, 0);
   }, [pathname, hash]);
+
+  // ★ <html lang> — третье, что принадлежит ЗОНЕ, а не странице (TRIP-445).
+  // Переключатель языка стоит в шапке КАЖДОЙ страницы зоны, а атрибут ставил
+  // только лендинг у себя в файле — замерено: на /d/…, /terms, /login и /join
+  // текст уезжал в русский, а lang оставался "en". Это ломает произношение
+  // скринридера, предложение перевода в браузере и переносы. Тот же класс, что
+  // <link> и прокрутка: механизм жил в странице, хотя владеет им оболочка.
+  // Снимок берём один раз, возвращаем на выходе из зоны — внутри зоны SiteZone
+  // не размонтируется, поэтому владелец ровно один и гонки «кто последний
+  // записал» здесь быть не может. Локальная `prev` в mount-once эффекте, без
+  // ref: ref пережил бы перерисовку, а нам нужно ровно значение на входе.
+  useEffect(() => {
+    const r = document.documentElement;
+    const prev = r.getAttribute('lang');
+    return () => {
+      if (prev != null) r.setAttribute('lang', prev);
+      else r.removeAttribute('lang');
+    };
+  }, []);
+  useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
+
   return <ZoneCssCtx.Provider value={cssReady}>{children}</ZoneCssCtx.Provider>;
 }
 
@@ -450,26 +472,14 @@ function useSiteCssLink(enabled) {
   return cssReady;
 }
 
-/**
- * Force the always-light zone theme and restore whatever the app had on unmount
- * (TRIP-460 §7.2). The unauthenticated zone is light-only; a dark theme stored
- * by the authed app sets [data-theme=dark] on <html> and leaks dark text onto
- * the light zone. This was copy-pasted three times and only Login restored it —
- * PublicTrip and the landing left `data-theme=light` behind, so a dark-mode
- * user stayed light after leaving until a reload. One hook, next to the CSS
- * lifecycle it already shares.
- */
-export function useSiteTheme() {
-  useEffect(() => {
-    const r = document.documentElement;
-    const prev = r.getAttribute('data-theme');
-    r.setAttribute('data-theme', 'light');
-    return () => {
-      if (prev) r.setAttribute('data-theme', prev);
-      else r.removeAttribute('data-theme');
-    };
-  }, []);
-}
+/* `useSiteTheme` УДАЛЁН (TRIP-445). Он ставил [data-theme=light] один раз на
+   монтировании и не переутверждал, а `ThemeProvider` — живой на всех зонных
+   маршрутах — переписывал атрибут на каждое событие prefers-color-scheme. Два
+   владельца одного атрибута: зона проигрывала любому позднему событию, и
+   заголовки становились белыми на белом. Изоляция зоны от темы теперь чисто
+   каскадная — селектор `html.site[data-theme]` в public/site.css, разбор там
+   же. Платформа вместо гонки эффектов; удалять этот комментарий вместе с
+   последним вызовом hook'а не надо — он объясняет ОТСУТСТВИЕ кода. */
 
 /**
  * Per-route <title>/<meta name="description"> (TRIP-460 §7.3). The app has no

@@ -4,7 +4,7 @@ import { track, setRefTripId } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useSiteTheme, useSiteCss } from '@/components/site/SiteChrome';
+import { useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
 
 const PENDING_KEY = 'postLoginRedirect';
@@ -23,7 +23,6 @@ export default function JoinTrip() {
   const { token } = useParams();
   const nav = useNavigate();
   const { t, lang, setLang } = useI18n();
-  useSiteTheme();
   const cssReady = useSiteCss(); // зонная ДС; не рисуем до готовности (FOUC-иконки)
   const [state, setState] = useState('working'); // working | signin | error
   const [errKey, setErrKey] = useState('member.join_error_invalid');
