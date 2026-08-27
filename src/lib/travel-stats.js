@@ -30,7 +30,7 @@ export function isStartedByNow(row, now = new Date()) {
   const raw = row?.start_date;
   if (!raw) return true;
   const t = new Date(raw).getTime();
-  return Number.isNaN(t) ? true : t <= now.getTime();
+  return Number.isNaN(t) || t <= now.getTime();
 }
 /** Оставить только не-будущие строки (см. isStartedByNow). */
 export function pastOnly(rows = [], now = new Date()) {
