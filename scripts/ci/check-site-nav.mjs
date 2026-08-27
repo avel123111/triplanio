@@ -48,7 +48,8 @@
  *
  * Exit: 0 ok, 1 violation, 2 internal error / the zone moved.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { SITE_ZONE, assertZonePerimeter } from './zone-perimeter.mjs';
 import { join } from 'node:path';
 
 // The whole unauthenticated zone — every page that produces or carries a
@@ -57,19 +58,9 @@ import { join } from 'node:path';
 // the three provider redirects, postLoginRedirect), so they are watched NOW
 // even though their CSS port waits for Ф6; the legal pages (/terms, /privacy)
 // join when they stop being static HTML (Ф6). A mix of dirs and files; each
-// entry MUST exist — a vanished path means the zone was quietly narrowed and
-// the guard is watching an empty room, which must fail loudly, not pass
-// (TRIP-282). The test pins Login.jsx/JoinTrip.jsx in the perimeter so a future
-// edit that drops them from this list turns a suite RED.
-const SITE_ZONE = [
-  'src/components/site',
-  'src/pages/Landing',
-  'src/pages/PublicTrip.jsx',
-  'src/pages/Login.jsx',
-  'src/pages/JoinTrip.jsx',
-  'src/pages/Demo',
-  'src/pages/Legal.jsx',
-];
+// Периметр зоны — ОДИН на все её гарды (`zone-perimeter.mjs`). Был выписан тут
+// своим списком; 2ab и 2ae держали свои, и они разошлись. Тест пинит, что все
+// три читают один источник.
 
 // A string-literal internal absolute href on an ANCHOR tag: `<a … href="/x">`.
 // Only `<a>` navigates (full document reload) — that is the whole hazard this
@@ -108,14 +99,7 @@ const rel = (file) => file.split('\\').join('/');
 const lineOf = (src, idx) => src.slice(0, idx).split('\n').length;
 
 try {
-  const missing = SITE_ZONE.filter((p) => !existsSync(p));
-  if (missing.length) {
-    console.error('::error::check-site-nav cannot run — the site-zone paths it guards are not here:');
-    for (const p of missing) console.error(`  ? ${p}`);
-    console.error('\nRun it from the repo root. If the zone genuinely moved, update SITE_ZONE in');
-    console.error('this guard in the same commit — otherwise it guards nothing, quietly.');
-    process.exit(2);
-  }
+  assertZonePerimeter('check-site-nav');
 
   const files = SITE_ZONE.flatMap((p) => (statSync(p).isDirectory() ? walk(p) : [p])).map(rel);
 

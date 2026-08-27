@@ -360,7 +360,7 @@ function NotFound({ message, t }) {
       <div>
         <svg width="26" height="26" aria-hidden="true"><use href="#i-pinoff" /></svg>
         <h1>{t('public.oops')}</h1>
-        <p className="muted">{message}</p>
+        <p>{message}</p>
       </div>
     </div>
   );

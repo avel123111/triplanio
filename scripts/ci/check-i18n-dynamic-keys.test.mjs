@@ -24,8 +24,26 @@ const GUARD = fileURLToPath(new URL('./check-i18n-dynamic-keys.mjs', import.meta
 const LOCALES = ['en', 'ru', 'es'];
 
 // Every protected key as a bare `notif.json` entry — the baseline "all present".
-const baseNotif = () =>
-  Object.fromEntries(PROTECTED_KEYS.map((k) => [k.slice('notif.'.length), 'value']));
+// Защищённые ключи живут НЕ в одном namespace: к семейству `notif.*` (ключи из
+// БД) добавились `landing.fin.*` / `landing.demo.fin.*` — финальный CTA зоны,
+// который один компонент собирает префиксом (`t(`${ns}.eyebrow`)`), поэтому
+// литерала в коде нет ни одного. Фикстура строится ИЗ САМОГО СПИСКА, а не из
+// зашитого «notif.»: иначе добавление ключа в любой другой namespace роняет эти
+// тесты мусором вроде `ng.fin.h2` — ровно это и случилось.
+const baseLocale = () => {
+  const byNs = new Map();
+  for (const full of PROTECTED_KEYS) {
+    const dot = full.indexOf('.');
+    const ns = full.slice(0, dot);
+    if (!byNs.has(ns)) byNs.set(ns, {});
+    byNs.get(ns)[full.slice(dot + 1)] = 'value';
+  }
+  return byNs;
+};
+
+const baseNotif = () => Object.fromEntries(
+  PROTECTED_KEYS.filter((k) => k.startsWith('notif.')).map((k) => [k.slice('notif.'.length), 'value']),
+);
 
 function put(dir, path, body) {
   const full = join(dir, path);
@@ -45,8 +63,12 @@ function fixture(t, { notif, n8n = {}, fns = {}, noLocales = false } = {}) {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   if (!noLocales) {
     for (const loc of LOCALES) {
-      const n = notif?.[loc] ?? baseNotif();
-      put(dir, `src/lib/i18n/locales/${loc}/notif.json`, JSON.stringify(n));
+      for (const [ns, keys] of baseLocale()) {
+        // `notif` умеет переопределяться тестами (проверка «ключ пропал»),
+        // остальные namespace пишутся полными.
+        const body = ns === 'notif' ? (notif?.[loc] ?? baseNotif()) : keys;
+        put(dir, `src/lib/i18n/locales/${loc}/${ns}.json`, JSON.stringify(body));
+      }
       if (n8n[loc]) put(dir, `src/lib/i18n/locales/${loc}/n8n.json`, JSON.stringify(n8n[loc]));
     }
   }
