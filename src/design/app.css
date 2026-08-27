@@ -2793,17 +2793,40 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 /* .ph = ряд PRO-пилюли (bottom-margin перед заголовком в вертикальном варианте). */
 .pro-up .ph { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
-/* .pi = gold icon tile — оставлен ТОЛЬКО для ProUpsellModal head (перекрашен в
-   оранж-розовый через --pro-gradient). В плашках теперь PRO-пилюля <Badge>. */
-.pi {
-  width: 34px; height: 34px; border-radius: var(--r-sm);
-  background: var(--pro-gradient);
-  display: grid; place-items: center;
-  flex: none; box-shadow: 0 4px 12px -4px var(--pro);
-  color: #fff; /* ensure currentColor = white for SVG stroke */
-}
-.pi svg { width: 18px; height: 18px; }
-.pro-up .pt {
+/* `.pi` (золотая плитка шапки ProUpsellModal) УДАЛЁН: он был побайтовым дублем
+   канон-плитки `.tile--solid.tile--pro` — те же 34px, тот же `--r-sm`, тот же
+   `--pro-gradient`, та же раскладка — и расходился ровно двумя объявлениями:
+   свечением и кеглем значка (18 против ступени `--tile-ic` 17). Шапка модалки
+   перешла на `<Dialog iconTone="pro">`, вызыватель у класса был ровно один.
+
+   Свечение НЕ переехало на `.tile--solid.tile--pro` намеренно: второй вызыватель
+   этой плитки — тариф в аккаунте (`ScreenAccount.jsx:133`), и тень приехала бы
+   туда без спроса. Направление у Pro-семьи то же: у `.btn--pro` свечение уже
+   снято по просьбе Pavel (строка ~1863), у `.badge--pro` осталось.
+
+   ⚠️ ПОЧЕМУ ЗДЕСЬ ДЕСЯТЬ `-exempt`, А НЕ ОДИН `visual-diff-move`. Перенос
+   объявлен быть НЕ МОЖЕТ, и это свойство гарда, а не лень автора: цель —
+   КОМПОЗИЦИЯ `tile` + `tile--solid` + `tile--pro`, а победителя 2p выбирает
+   ПОКЛАССОВО, из карты «тяжелейшее правило на единицу». У единицы `tile`
+   тяжелейшее правило фона — не базовое `.tile`, а любое КОНТЕКСТНОЕ
+   (`.vp-h .tile`, `.lp-h--ev .lp-ic`, спец. 0,2,0), поэтому названный целью
+   `tile` уводит `background` на `var(--hl-soft)` и перенос краснеет «СО СМЕНОЙ
+   значения». Убрать `tile` из списка — краснеет раскладка (`display`/`flex`/
+   `place-items`/`width`/`height`/`border-radius`), она живёт как раз на базовой
+   `.tile`. Отказ переноса фатален и `-exempt`-ом не гасится (`rejected` проверяется
+   ДО `blocking`), так что законных ходов остаётся ровно один — точечные маркеры.
+   Проверено прогоном обоих вариантов, не чтением.
+
+   visual-diff-exempt: .pi width — 34px → `var(--tile, 34px)` канон-плитки: то же число, другая запись
+   visual-diff-exempt: .pi height — 34px → `var(--tile, 34px)` канон-плитки: то же число, другая запись
+   visual-diff-exempt: .pi border-radius — `var(--r-sm)` → `var(--tile-r, var(--r-sm))`: то же значение через ручку ступени
+   visual-diff-exempt: .pi display — `grid` приезжает с базовой `.tile`, значение то же
+   visual-diff-exempt: .pi place-items — `center` приезжает с базовой `.tile`, значение то же
+   visual-diff-exempt: .pi flex — `none` приезжает с базовой `.tile`, значение то же
+   visual-diff-exempt: .pi background — `var(--pro-gradient)` приезжает с `.tile--solid.tile--pro`, значение то же
+   visual-diff-exempt: .pi svg width — 18px → ступень `--tile-ic` 17px: кегль значка сведён к лестнице плитки
+   visual-diff-exempt: .pi svg height — 18px → ступень `--tile-ic` 17px: кегль значка сведён к лестнице плитки
+   visual-diff-exempt: .pi box-shadow — ЕДИНСТВЕННОЕ видимое изменение: свечение снято вместе с приватной плиткой (переносить его на канон значит перекрасить плитку тарифа в аккаунте) */.pro-up .pt {
  /* 15px, matches design */
  color: var(--ink);
 }

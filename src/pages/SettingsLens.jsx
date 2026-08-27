@@ -907,7 +907,7 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
           non-owner gets the "enabled by owner" button that opens the same info
           modal as the sidebar plate. Card title is rendered manually (via the
           shared .card-h) so the banner can sit above it. Reuses the EXACT
-          sidebar-plate elements — .pro-up / .pi / .pt / .pro-up p + the same
+          sidebar-plate elements — .pro-up / .pt / .pro-up p + the same
           <Btn> non-owner CTA — so it looks identical to the right-menu plate,
           just horizontal. */}
       <Card>
