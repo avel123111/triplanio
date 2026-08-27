@@ -1,7 +1,10 @@
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
+import { stripCss, stripHtml } from './scripts/build/strip-comments.mjs'
 
 // Source-map upload runs only on builds that have the auth token (i.e. Vercel CI).
 // Local `npm run build` has no token → plugin is skipped and no maps are emitted.
@@ -64,6 +67,23 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // Комментарии не уезжают в браузер. Vite чистит всё, что проходит через
+    // сборку, но `public/` копирует байт в байт — а там лежит `site.css`,
+    // единственная таблица стилей зоны: 373 КБ, из них 187 КБ комментариев.
+    // Чистим НА ВЫХОДЕ, а не в исходнике: 778 из 920 комментариев несут
+    // маркеры гардов, и CI читает их именно из исходника.
+    {
+      name: 'strip-shipped-comments',
+      apply: 'build',
+      closeBundle() {
+        const out = fileURLToPath(new URL('./dist', import.meta.url));
+        for (const [rel, strip] of [['index.html', stripHtml], ['site.css', stripCss]]) {
+          const file = join(out, rel);
+          if (!existsSync(file)) continue;
+          writeFileSync(file, strip(readFileSync(file, 'utf8')));
+        }
+      },
+    },
     // Must come last so it sees the final bundle. EU region is mandatory — the
     // org lives on de.sentry.io and the default (US) host would silently fail.
     SENTRY_AUTH_TOKEN && sentryVitePlugin({
