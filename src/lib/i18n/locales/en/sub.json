@@ -63,6 +63,7 @@
   "success_desc_trip": "Payment went through. All Pro features are unlocked for this trip.",
   "success_title": "Subscription activated",
   "success_title_trip": "This trip is now Pro",
+  "trip_offer_kicker": "Pro for this trip",
   "trip_offer_terms": "one-time payment",
   "trip_owner_fallback": "the trip owner",
   "trip_pro_desc_post": ". To unlock AI recognition, budget, chat and calendar, ask the owner to get Pro for the trip.",
