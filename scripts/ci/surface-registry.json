@@ -2,127 +2,387 @@
   "_note": "Г34 (TRIP-343, объект 2). Реестр полноты поверхностей: КАЖДЫЙ .css surface-класс (предикат аудита §5: радиус+фон+рамка/тень, кроме плиток) обязан быть здесь. object:\"card\" = скин несёт примитив <Card>. object:<имя>+reason = законная не-Card поверхность другого объекта. Настоящие карточки несут скин примитивом <Card> (список cardHomed) — остаток объекта 2 сведён к нулю. Гард 2z check-surface-registry.mjs: незанесённый класс или устаревшая запись роняют PR.",
   "_cardHomedNote": "card-homed = приватный класс-остаток, чей СКИН переехал на <Card> (сам класс несёт только раскладку). Такой класс ОБЯЗАН рендериться внутри <Card>: сырой host-тег (<button>/<div>/<a>) с этим className мимо <Card> = поверхность потеряна МОЛЧА (баг трансфера F). AST-скан гарда 2z ловит это — три .css/<style>/inline-скан-режима такого не видят по построению.",
   "cardHomed": [
-    "tl3-card", "records", "choice-card", "pcard", "fork-manual", "fork-partner", "ov-mapcard",
-    "tcp__preview", "mapshell__card",
-    "acc", "acct-chan", "acct-hero", "addon-card", "ai-blk", "cdu", "dz-lift-card", "eed-fcbox",
-    "eed-nightrow", "empty-note", "ev-sec", "fork-state", "hv-card", "hv-namecard", "hv-rows",
-    "invite", "limitcard", "nextcard", "nonext", "pl-lastcard", "pro-up", "statbar", "summary",
-    "te-end", "tr", "tv-card", "wdg",
-    "wmini", "chat-reply__card", "plan-card", "plan-card-skel", "pro-trip-bar",
-    "tm-manage", "tm-account", "tm-cell", "eroute", "s22f-panel", "hv-notes"
+    "tl3-card",
+    "records",
+    "choice-card",
+    "pcard",
+    "fork-manual",
+    "fork-partner",
+    "ov-mapcard",
+    "tcp__preview",
+    "mapshell__card",
+    "acc",
+    "acct-chan",
+    "acct-hero",
+    "addon-card",
+    "ai-blk",
+    "cdu",
+    "dz-lift-card",
+    "eed-fcbox",
+    "eed-nightrow",
+    "empty-note",
+    "ev-sec",
+    "fork-state",
+    "hv-card",
+    "hv-namecard",
+    "hv-rows",
+    "invite",
+    "limitcard",
+    "nextcard",
+    "nonext",
+    "pl-lastcard",
+    "pro-up",
+    "statbar",
+    "summary",
+    "te-end",
+    "tr",
+    "tv-card",
+    "wdg",
+    "wmini",
+    "chat-reply__card",
+    "plan-card",
+    "plan-card-skel",
+    "pro-trip-bar",
+    "tm-manage",
+    "tm-account",
+    "tm-cell",
+    "eroute",
+    "s22f-panel",
+    "hv-notes"
   ],
   "_tileHomedNote": "TRIP-391 объект 3 (плитка). tile-homed = приватный класс-остаток, чей СКИН квадрата-иконки уехал на примитив <Tile> (сам класс несёт только раскладку/канал --hl). Такой класс ОБЯЗАН рендериться внутри <Tile>: сырой host-тег (<div>/<span>) с этим className мимо <Tile> = плитка потеряна МОЛЧА (та же дыра, что облысила трансфер-карточку в объекте 2). AST-скан гарда 2z ловит это; три .css/<style>/inline-режима такого не видят по построению.",
   "_tileFamilyResidual": "TRIP-391 объект 3: семьи плитки, что НЕ уходят из переписи целиком, — остаток назван причиной. `acct-hero__av` (80px, role=button, bg-image) = АВАТАР, свой примитив <Avatar>, НЕ плитка-иконка (предикат ловит как ложный квадрат); в <Tile> не тащим, переезд на <Avatar> — отдельная работа. `te-step` (26px) = степпер-КОНТРОЛ (`<button className='te-step te-step--del'>`, удалить точку) — объект 1/контрол, дом <IconBtn>, не декор-плитка; остаётся классом семьи te. `fork-si` (66px) = рич-медальон hero-состояний форка: ГРАДИЕНТ (surface→hl) + рамка + box-shadow (глубина + inset-хайлайт) + радиальный glow + угловой spark-бейдж — осознанный приподнятый приём, а <Tile> плоский (soft-тинт, без рамки/тени); флэттеринг на <Tile 2xl> = визуальный даунгрейд (A/B-рендер, решение Pavel 2026-08-13: остаётся как есть). Остаётся классом семьи fork. Иконочные плитки этих семей собраны из системы (tileHomed ниже).",
   "tileHomed": [
-    "dl-empty__ic", "dl-addcard__ic", "acct-lang__flag",
-    "te-row__num", "te-row__node", "lp-stepper__ic", "invite__ic", "invite-banner__ic", "lp-ic"
+    "dl-empty__ic",
+    "dl-addcard__ic",
+    "acct-lang__flag",
+    "te-row__num",
+    "te-row__node",
+    "lp-stepper__ic",
+    "invite__ic",
+    "invite-banner__ic",
+    "lp-ic"
   ],
   "_btnHomedNote": "TRIP-337 объект 1 (кнопка, вариант A). btn-homed = НОСИТЕЛЬ кнопки-объекта В ДРУГОЙ ФОРМЕ, чем <button>: `.btn`/`.icon-btn` на <a>/<div> ЛИБО role=\"button\" на <div>/<span>. Команда-истина grep `<button>` их не видит — эта слепота переоткрывала объект. AST-скан 2z (btnHomedCarriers, периметр эпика, дом ДС src/design/** вычтен) перечисляет ВСЕ такие носители; КАЖДЫЙ обязан иметь запись: verdict=btn-legit+reason (не может быть <Btn>: внешняя ссылка обязана быть <a>, ARIA-грип не примитив) ЛИБО object:<имя> кросс-ссылкой на замок другого объекта (2=карта, avatar, 6=заголовок). Незанесённый носитель роняет PR — потолок ВНИЗ. Сам <button> (форма 1) вне реестра — классифицирован маркерами по call-site (#817). Ключ = сигнатура без номера строки: файл + тег + role + базовые классы (модификаторы `--*` отброшены).",
   "btnHomed": {
-    "src/components/bookings/PartnerResultCard.jsx: <a .btn.pcard__go>": { "verdict": "btn-legit", "reason": "внешний CTA-переход к партнёру (href) — ссылка обязана быть <a>, носит .btn-скин канонично" },
-    "src/components/bookings/forkList.jsx: <a .btn>": { "verdict": "btn-legit", "reason": "внешний партнёр-CTA (href). Г33: инлайн --bg/--fg/--bd (бренд-тинт) — четвёртый канал, принят ОСТАТКОМ, не «чисто»; уедет в <Btn as=\"a\" href>, если заведём" },
-    "src/pages/EditLens.jsx: <span role=button .te-grip>": { "verdict": "btn-legit", "reason": "drag-grip перестановки точки (клав. ArrowUp/Down) — ARIA-хэндл, не примитив <Btn>" },
-    "src/pages/ManualPlanner.jsx: <span role=button .te-grip>": { "verdict": "btn-legit", "reason": "drag-grip перестановки (клав.) — ARIA-хэндл, не примитив <Btn>" },
-    "src/pages/DocsLens.jsx: <div role=button>": { "verdict": "object:2", "reason": "кликабельная КАРТА-опция видимости (data-card-btn) — поверхность объекта 2, замок cardHomed" },
-    "src/components/bookings/PartnerResultCard.jsx: <div role=button>": { "verdict": "object:2", "reason": "кликабельная партнёр-КАРТА целиком (data-card-btn) — поверхность объекта 2 (класс pcard в cardHomed)" },
-    "src/pages/ScreenAccount.jsx: <div role=button .acct-hero__av>": { "verdict": "object:avatar", "reason": "аватар аккаунта с click-to-change (bg-image) — объект «аватар», не кнопка-примитив" },
-    "src/components/common/EventAiBlock.jsx: <div role=button .ai-blk-hd>": { "verdict": "object:6", "reason": "ЗАГОЛОВОК AI-блока (раскрывашка) — объект 6, как <button>-заголовки #817" },
-    "src/components/trips/ShareCardDialog.jsx: <label .icon-btn.tcp__ctl.tcp__upload>": { "verdict": "btn-legit", "reason": "нативный <label> вокруг .sr-only файлового инпута («загрузить фон» share-карточки): пикер открывает БРАУЗЕР активацией label — программный input.click() из-под vaul/Radix-модалки на iOS ненадёжен; <Btn>/<IconBtn> = <button>, форвардить активацию на инпут не умеет" }
+    "src/components/bookings/PartnerResultCard.jsx: <a .btn.pcard__go>": {
+      "verdict": "btn-legit",
+      "reason": "внешний CTA-переход к партнёру (href) — ссылка обязана быть <a>, носит .btn-скин канонично"
+    },
+    "src/components/bookings/forkList.jsx: <a .btn>": {
+      "verdict": "btn-legit",
+      "reason": "внешний партнёр-CTA (href). Г33: инлайн --bg/--fg/--bd (бренд-тинт) — четвёртый канал, принят ОСТАТКОМ, не «чисто»; уедет в <Btn as=\"a\" href>, если заведём"
+    },
+    "src/pages/EditLens.jsx: <span role=button .te-grip>": {
+      "verdict": "btn-legit",
+      "reason": "drag-grip перестановки точки (клав. ArrowUp/Down) — ARIA-хэндл, не примитив <Btn>"
+    },
+    "src/pages/ManualPlanner.jsx: <span role=button .te-grip>": {
+      "verdict": "btn-legit",
+      "reason": "drag-grip перестановки (клав.) — ARIA-хэндл, не примитив <Btn>"
+    },
+    "src/pages/DocsLens.jsx: <div role=button>": {
+      "verdict": "object:2",
+      "reason": "кликабельная КАРТА-опция видимости (data-card-btn) — поверхность объекта 2, замок cardHomed"
+    },
+    "src/components/bookings/PartnerResultCard.jsx: <div role=button>": {
+      "verdict": "object:2",
+      "reason": "кликабельная партнёр-КАРТА целиком (data-card-btn) — поверхность объекта 2 (класс pcard в cardHomed)"
+    },
+    "src/pages/ScreenAccount.jsx: <div role=button .acct-hero__av>": {
+      "verdict": "object:avatar",
+      "reason": "аватар аккаунта с click-to-change (bg-image) — объект «аватар», не кнопка-примитив"
+    },
+    "src/components/common/EventAiBlock.jsx: <div role=button .ai-blk-hd>": {
+      "verdict": "object:6",
+      "reason": "ЗАГОЛОВОК AI-блока (раскрывашка) — объект 6, как <button>-заголовки #817"
+    },
+    "src/components/trips/ShareCardDialog.jsx: <label .icon-btn.tcp__ctl.tcp__upload>": {
+      "verdict": "btn-legit",
+      "reason": "нативный <label> вокруг .sr-only файлового инпута («загрузить фон» share-карточки): пикер открывает БРАУЗЕР активацией label — программный input.click() из-под vaul/Radix-модалки на iOS ненадёжен; <Btn>/<IconBtn> = <button>, форвардить активацию на инпут не умеет"
+    }
   },
   "_coSelectorNote": "TRIP-337 объект 2 дозакрытие: члены ко-селектора app.css:425 (и родственных 509/515) — фон+рамку несёт ОБЩЕЕ правило, радиус отдельным, поэтому предикат radius+bg+border-в-одном-правиле их не видел (слепое пятно, «закрыто но живо»). Замок 2z coSelectorSurfaceClasses теперь их ловит; каждый обязан быть в classes или cardHomed. Настоящие карточки сведены на <Card> (cardHomed), не-карточки приписаны объектом с причиной — остаток объекта 2 = 0.",
   "classes": {
-    "ts-pdrawer": { "object": "panel", "reason": "ящик города/события редактора — оболочка-панель, повторяющая облик виджета маршрута (радиус+подъём) в коробке, которую даёт шелл; рендерится сырым <div>, содержимое несёт своя панель .lp" },
-    "card--locked": { "object": "card", "reason": "канон <Card> — модификатор locked (Pro-гейт ai)" },
-    "card--parsed": { "object": "card", "reason": "канон <Card> — модификатор parsed (ai success)" },
-    "card--tone-ai": { "object": "card", "reason": "канон <Card> — тон ai" },
-    "empty-state--boxed": { "object": "empty-state", "reason": "поверхность примитива EmptyState (boxed) — компонент ДС" },
-
-    "btn": { "object": "control", "reason": "кнопка — объект «контрол»" },
-    "btn-ghost": { "object": "control", "reason": "кнопка (ghost) — объект «контрол»" },
-    "btn-primary": { "object": "control", "reason": "кнопка (primary) — объект «контрол»" },
-    "btn-social": { "object": "control", "reason": "соц-кнопка — объект «контрол»" },
-    "icon-btn--fab": { "object": "control", "reason": "FAB icon-btn — объект «контрол»" },
-    "input": { "object": "control", "reason": "поле ввода — объект «контрол»" },
-    "input-group": { "object": "control", "reason": "группа поля — объект «контрол»" },
-    "textarea": { "object": "control", "reason": "многострочное поле — объект «контрол»" },
-    "select": { "object": "control", "reason": "селект — объект «контрол»" },
-    "switch": { "object": "control", "reason": "переключатель — объект «контрол»" },
-    "seg": { "object": "control", "reason": "сегмент-контрол — объект «контрол»" },
-    "stepper--block": { "object": "control", "reason": "степпер — объект «контрол»" },
-    "ai-input": { "object": "control", "reason": "поле ИИ-ввода — объект «контрол»" },
-    "ss-opt": { "object": "control", "reason": "опция селекта — объект «контрол»" },
-    "stay-dates": { "object": "control", "reason": "поле дат проживания — объект «контрол»" },
-    "ts-startctl__date": { "object": "control", "reason": "контрол даты старта — объект «контрол»" },
-
-    "sheet": { "object": "overlay", "reason": "боттом-лист — объект 6 (оболочка)" },
-    "sheet-row": { "object": "overlay", "reason": "строка листа — объект 6" },
-    "peek-sheet": { "object": "overlay", "reason": "peek-лист — объект 6" },
-    "menu": { "object": "overlay", "reason": "меню-поповер — объект 6" },
-    "mi": { "object": "overlay", "reason": "пункт меню — объект 6" },
-    "pop": { "object": "overlay", "reason": "поповер — объект 6" },
-    "mbnav__dock": { "object": "overlay", "reason": "мобильный нав-док — объект: навигация/оверлей" },
-    "appframe": { "object": "shell", "reason": "рамка приложения-оболочки — объект: шелл" },
-    "appframe__url": { "object": "shell", "reason": "адресная строка макета-оболочки — объект: шелл" },
-    "appnudge": { "object": "shell", "reason": "подсказка-оболочка — объект: шелл" },
-    "app-header__pro": { "object": "shell", "reason": "плашка Pro в шапке — объект: хром/шелл" },
-    "app-side__item": { "object": "shell", "reason": "пункт бокового меню — объект: навигация/шелл" },
-
-    "tc__glass": { "object": "badge", "reason": "стеклянный чип на фото постера (r-pill, полупрозрачный) — объект «чип», НЕ карточка (замерен: не поверхность-постер, а пилюля поверх обложки)" },
-    "city-chip": { "object": "badge", "reason": "чип города — объект «чип»" },
-    "partner-pill": { "object": "badge", "reason": "пилюля партнёра — объект «чип»" },
-    "triplink": { "object": "badge", "reason": "чип-ссылка трипа — объект «чип»" },
-    "pcard__score": { "object": "badge", "reason": "оценка на фото карточки — бейдж на плитке" },
-    "plan-popular-badge": { "object": "badge", "reason": "бейдж «популярное» тарифа — объект «бейдж»" },
-    "pro-hero-eyebrow": { "object": "badge", "reason": "надзаголовок Pro-героя — объект «бейдж»" },
-    "chat-composer__hint": { "object": "badge", "reason": "подсказка композера чата — объект «чип»" },
-    "cr-dot": { "object": "badge", "reason": "точка-маркер — объект «точка/бейдж»" },
-
-    "mapwrap": { "object": "map", "reason": "обёртка карты — объект «карта»" },
-    "flow-map__stat": { "object": "map", "reason": "плашка счётчика городов/ночей поверх карты создания (FlowMap) — объект «карта»" },
-    "s22mk__core": { "object": "map", "reason": "ядро маркера Stay22 — объект «карта/маркер» (движение оставлено, см. E)" },
-    "evchip--inline": { "object": "calendar", "reason": "чип события в ячейке месяца — облик канона <EventChip>, объект «календарь»" },
-    "evchip--allday": { "object": "calendar", "reason": "плашка события без времени в полосе «весь день» — облик канона <EventChip>" },
-    "evchip--block": { "object": "calendar", "reason": "блок события в сетке часов недели (высота = длительность) — облик канона <EventChip>" },
-    "ts-cal__day": { "object": "calendar", "reason": "день в календаре планировщика — объект «календарь»" },
-
-    "auth-input": { "object": "perimeter", "reason": "экран авторизации — вне периметра эпика (audit-design исключает)" },
-    "confirm__email": { "object": "perimeter", "reason": "экран подтверждения email — вне периметра" },
-    "brand-col__logo": { "object": "perimeter", "reason": "лендинг/бренд — вне периметра" },
-
-    "trip-tl__row": { "object": "6", "reason": "строка-список таймлайна трипа (*-row) — объект 6 (лист/строка), НЕ карточка; свой скин строки" },
-    "chat-mention__row": { "object": "6", "reason": "строка-список упоминаний чата (*-row) — объект 6 (лист/строка), НЕ карточка" },
-    "chat-thinking": { "object": "6", "reason": "пилюля «Triplanio печатает» (r-pill) — объект 6 (чат), НЕ карточка" },
-    "vrow": { "object": "6", "reason": "строка-список (*-row) — объект 6 (лист/строка), НЕ карточка" },
-
-    "card": { "object": "card", "reason": "канон <Card> — базовый surface-класс, скин ко-селектора 425 = скин примитива" },
-    "s22f-gcard": { "object": "6", "reason": "строка галереи отеля Stay22 (field-role: --line-strong, --r-btn, dark --bg, flex space-between) — объект 6 (лист/строка-контрол), НЕ контент-карточка; ко-селектор 509" },
-
-    "dlg": { "object": "overlay", "reason": "диалог — объект 6 (оболочка), рамку берёт из ко-селектора 425" },
-    "toast": { "object": "overlay", "reason": "тост — объект 6 (оболочка)" },
-    "dock-panel": { "object": "overlay", "reason": "док-панель — объект 6 (оболочка)" },
-    "bell-dd-pop": { "object": "overlay", "reason": "поповер колокольчика — объект 6 (оболочка)" },
-    "chat-mention": { "object": "overlay", "reason": "поповер упоминаний чата — объект 6 (оболочка)" },
-    "consent": { "object": "overlay", "reason": "плашка согласия cookie — объект 6 (оболочка)" },
-
-    "mbrow": { "object": "6", "reason": "строка участника (*-row) — объект 6 (лист/строка), НЕ карточка" },
-    "doc-row": { "object": "6", "reason": "строка документа (*-row) — объект 6 (лист/строка), НЕ карточка" },
-    "te-row": { "object": "6", "reason": "строка редактора маршрута (*-row) — объект 6 (лист/строка), НЕ карточка" },
-    "te-row--plan": { "object": "6", "reason": "строка плана редактора маршрута (*-row) — объект 6 (лист/строка), НЕ карточка" },
-
-    "te-add-city": { "object": "control", "reason": "чип-строка выбранного города в инлайн-композере добавления (флаг+имя+«Изменить») — поверхность-результат контрола выбора, НЕ карточка" },
-    "te-add-type": { "object": "control", "reason": "плитка-переключатель типа точки (сегмент-пикер, aria-pressed) в композере добавления — контрол выбора, НЕ карточка" },
-
-    "cbadge": { "object": "control", "reason": "счётчик-бейдж на контроле — объект «контрол»" },
-    "ts-startctl": { "object": "control", "reason": "контрол даты старта — объект «контрол»" },
-    "bk-link": { "object": "control", "reason": "чип-ссылка брони — объект «контрол» (bk-link, ко-селектор 425)" },
-    "map-ctl": { "object": "control", "reason": "контейнер-плашка контролов карты — объект «контрол» (кнопки внутри quiet)" },
-    "icon-btn": { "object": "control", "reason": "кнопка-иконка — объект «контрол» (родственный ко-селектор фон+рамка+радиус)" },
-    "lp-stepper": { "object": "control", "reason": "степпер (ко-селектор 509) — объект «контрол»" },
-    "hv-plat": { "object": "badge", "reason": "пилюля партнёра отеля (r-pill, ко-селектор 515) — объект «чип/бейдж», НЕ карточка" },
-    "tt__b": { "object": "tooltip", "reason": "пузырь тултипа (портал в body) — объект «тултип», светлая поверхность-хинт (surface+рамка+тень), не примитив <Card> (TRIP-274 Ф2.2)" },
-    "c": { "object": "map", "reason": "образец цвета легенды карты (.map-legend .c) — объект «карта»" },
-
-    "tl3-warn": { "object": "warning", "reason": "варнинг недостающей брони ленты (B1 «призрак события», <BookingWarning> в ДС): пунктирная рамка+тинт типа каналом --w-c — намеренно НЕ карточка (silhouette, не поверхность контента), на <Card> не переезжает" },
-    "tl3-warn__dot": { "object": "warning", "reason": "янтарная точка «!» на плитке варнинга — угловой оверлей носителя (узор .icon-btn > .badge--unread), элемент того же объекта warning" }
+    "ts-pdrawer": {
+      "object": "panel",
+      "reason": "ящик города/события редактора — оболочка-панель, повторяющая облик виджета маршрута (радиус+подъём) в коробке, которую даёт шелл; рендерится сырым <div>, содержимое несёт своя панель .lp"
+    },
+    "card--locked": {
+      "object": "card",
+      "reason": "канон <Card> — модификатор locked (Pro-гейт ai)"
+    },
+    "card--parsed": {
+      "object": "card",
+      "reason": "канон <Card> — модификатор parsed (ai success)"
+    },
+    "card--tone-ai": {
+      "object": "card",
+      "reason": "канон <Card> — тон ai"
+    },
+    "empty-state--boxed": {
+      "object": "empty-state",
+      "reason": "поверхность примитива EmptyState (boxed) — компонент ДС"
+    },
+    "btn": {
+      "object": "control",
+      "reason": "кнопка — объект «контрол»"
+    },
+    "icon-btn--fab": {
+      "object": "control",
+      "reason": "FAB icon-btn — объект «контрол»"
+    },
+    "input": {
+      "object": "control",
+      "reason": "поле ввода — объект «контрол»"
+    },
+    "input-group": {
+      "object": "control",
+      "reason": "группа поля — объект «контрол»"
+    },
+    "textarea": {
+      "object": "control",
+      "reason": "многострочное поле — объект «контрол»"
+    },
+    "select": {
+      "object": "control",
+      "reason": "селект — объект «контрол»"
+    },
+    "switch": {
+      "object": "control",
+      "reason": "переключатель — объект «контрол»"
+    },
+    "seg": {
+      "object": "control",
+      "reason": "сегмент-контрол — объект «контрол»"
+    },
+    "stepper--block": {
+      "object": "control",
+      "reason": "степпер — объект «контрол»"
+    },
+    "ai-input": {
+      "object": "control",
+      "reason": "поле ИИ-ввода — объект «контрол»"
+    },
+    "ss-opt": {
+      "object": "control",
+      "reason": "опция селекта — объект «контрол»"
+    },
+    "stay-dates": {
+      "object": "control",
+      "reason": "поле дат проживания — объект «контрол»"
+    },
+    "ts-startctl__date": {
+      "object": "control",
+      "reason": "контрол даты старта — объект «контрол»"
+    },
+    "sheet": {
+      "object": "overlay",
+      "reason": "боттом-лист — объект 6 (оболочка)"
+    },
+    "sheet-row": {
+      "object": "overlay",
+      "reason": "строка листа — объект 6"
+    },
+    "peek-sheet": {
+      "object": "overlay",
+      "reason": "peek-лист — объект 6"
+    },
+    "menu": {
+      "object": "overlay",
+      "reason": "меню-поповер — объект 6"
+    },
+    "mi": {
+      "object": "overlay",
+      "reason": "пункт меню — объект 6"
+    },
+    "pop": {
+      "object": "overlay",
+      "reason": "поповер — объект 6"
+    },
+    "mbnav__dock": {
+      "object": "overlay",
+      "reason": "мобильный нав-док — объект: навигация/оверлей"
+    },
+    "app-header__pro": {
+      "object": "shell",
+      "reason": "плашка Pro в шапке — объект: хром/шелл"
+    },
+    "app-side__item": {
+      "object": "shell",
+      "reason": "пункт бокового меню — объект: навигация/шелл"
+    },
+    "tc__glass": {
+      "object": "badge",
+      "reason": "стеклянный чип на фото постера (r-pill, полупрозрачный) — объект «чип», НЕ карточка (замерен: не поверхность-постер, а пилюля поверх обложки)"
+    },
+    "partner-pill": {
+      "object": "badge",
+      "reason": "пилюля партнёра — объект «чип»"
+    },
+    "triplink": {
+      "object": "badge",
+      "reason": "чип-ссылка трипа — объект «чип»"
+    },
+    "pcard__score": {
+      "object": "badge",
+      "reason": "оценка на фото карточки — бейдж на плитке"
+    },
+    "plan-popular-badge": {
+      "object": "badge",
+      "reason": "бейдж «популярное» тарифа — объект «бейдж»"
+    },
+    "pro-hero-eyebrow": {
+      "object": "badge",
+      "reason": "надзаголовок Pro-героя — объект «бейдж»"
+    },
+    "chat-composer__hint": {
+      "object": "badge",
+      "reason": "подсказка композера чата — объект «чип»"
+    },
+    "cr-dot": {
+      "object": "badge",
+      "reason": "точка-маркер — объект «точка/бейдж»"
+    },
+    "mapwrap": {
+      "object": "map",
+      "reason": "обёртка карты — объект «карта»"
+    },
+    "flow-map__stat": {
+      "object": "map",
+      "reason": "плашка счётчика городов/ночей поверх карты создания (FlowMap) — объект «карта»"
+    },
+    "s22mk__core": {
+      "object": "map",
+      "reason": "ядро маркера Stay22 — объект «карта/маркер» (движение оставлено, см. E)"
+    },
+    "evchip--inline": {
+      "object": "calendar",
+      "reason": "чип события в ячейке месяца — облик канона <EventChip>, объект «календарь»"
+    },
+    "evchip--allday": {
+      "object": "calendar",
+      "reason": "плашка события без времени в полосе «весь день» — облик канона <EventChip>"
+    },
+    "evchip--block": {
+      "object": "calendar",
+      "reason": "блок события в сетке часов недели (высота = длительность) — облик канона <EventChip>"
+    },
+    "ts-cal__day": {
+      "object": "calendar",
+      "reason": "день в календаре планировщика — объект «календарь»"
+    },
+    "chat-mention__row": {
+      "object": "6",
+      "reason": "строка-список упоминаний чата (*-row) — объект 6 (лист/строка), НЕ карточка"
+    },
+    "chat-thinking": {
+      "object": "6",
+      "reason": "пилюля «Triplanio печатает» (r-pill) — объект 6 (чат), НЕ карточка"
+    },
+    "vrow": {
+      "object": "6",
+      "reason": "строка-список (*-row) — объект 6 (лист/строка), НЕ карточка"
+    },
+    "card": {
+      "object": "card",
+      "reason": "канон <Card> — базовый surface-класс, скин ко-селектора 425 = скин примитива"
+    },
+    "s22f-gcard": {
+      "object": "6",
+      "reason": "строка галереи отеля Stay22 (field-role: --line-strong, --r-btn, dark --bg, flex space-between) — объект 6 (лист/строка-контрол), НЕ контент-карточка; ко-селектор 509"
+    },
+    "dlg": {
+      "object": "overlay",
+      "reason": "диалог — объект 6 (оболочка), рамку берёт из ко-селектора 425"
+    },
+    "toast": {
+      "object": "overlay",
+      "reason": "тост — объект 6 (оболочка)"
+    },
+    "dock-panel": {
+      "object": "overlay",
+      "reason": "док-панель — объект 6 (оболочка)"
+    },
+    "bell-dd-pop": {
+      "object": "overlay",
+      "reason": "поповер колокольчика — объект 6 (оболочка)"
+    },
+    "chat-mention": {
+      "object": "overlay",
+      "reason": "поповер упоминаний чата — объект 6 (оболочка)"
+    },
+    "consent": {
+      "object": "overlay",
+      "reason": "плашка согласия cookie — объект 6 (оболочка)"
+    },
+    "mbrow": {
+      "object": "6",
+      "reason": "строка участника (*-row) — объект 6 (лист/строка), НЕ карточка"
+    },
+    "doc-row": {
+      "object": "6",
+      "reason": "строка документа (*-row) — объект 6 (лист/строка), НЕ карточка"
+    },
+    "te-row": {
+      "object": "6",
+      "reason": "строка редактора маршрута (*-row) — объект 6 (лист/строка), НЕ карточка"
+    },
+    "te-row--plan": {
+      "object": "6",
+      "reason": "строка плана редактора маршрута (*-row) — объект 6 (лист/строка), НЕ карточка"
+    },
+    "te-add-city": {
+      "object": "control",
+      "reason": "чип-строка выбранного города в инлайн-композере добавления (флаг+имя+«Изменить») — поверхность-результат контрола выбора, НЕ карточка"
+    },
+    "te-add-type": {
+      "object": "control",
+      "reason": "плитка-переключатель типа точки (сегмент-пикер, aria-pressed) в композере добавления — контрол выбора, НЕ карточка"
+    },
+    "cbadge": {
+      "object": "control",
+      "reason": "счётчик-бейдж на контроле — объект «контрол»"
+    },
+    "ts-startctl": {
+      "object": "control",
+      "reason": "контрол даты старта — объект «контрол»"
+    },
+    "bk-link": {
+      "object": "control",
+      "reason": "чип-ссылка брони — объект «контрол» (bk-link, ко-селектор 425)"
+    },
+    "map-ctl": {
+      "object": "control",
+      "reason": "контейнер-плашка контролов карты — объект «контрол» (кнопки внутри quiet)"
+    },
+    "icon-btn": {
+      "object": "control",
+      "reason": "кнопка-иконка — объект «контрол» (родственный ко-селектор фон+рамка+радиус)"
+    },
+    "lp-stepper": {
+      "object": "control",
+      "reason": "степпер (ко-селектор 509) — объект «контрол»"
+    },
+    "hv-plat": {
+      "object": "badge",
+      "reason": "пилюля партнёра отеля (r-pill, ко-селектор 515) — объект «чип/бейдж», НЕ карточка"
+    },
+    "tt__b": {
+      "object": "tooltip",
+      "reason": "пузырь тултипа (портал в body) — объект «тултип», светлая поверхность-хинт (surface+рамка+тень), не примитив <Card> (TRIP-274 Ф2.2)"
+    },
+    "c": {
+      "object": "map",
+      "reason": "образец цвета легенды карты (.map-legend .c) — объект «карта»"
+    },
+    "tl3-warn": {
+      "object": "warning",
+      "reason": "варнинг недостающей брони ленты (B1 «призрак события», <BookingWarning> в ДС): пунктирная рамка+тинт типа каналом --w-c — намеренно НЕ карточка (silhouette, не поверхность контента), на <Card> не переезжает"
+    },
+    "tl3-warn__dot": {
+      "object": "warning",
+      "reason": "янтарная точка «!» на плитке варнинга — угловой оверлей носителя (узор .icon-btn > .badge--unread), элемент того же объекта warning"
+    }
   }
 }
