@@ -31,8 +31,8 @@ const POOL_PAGE_SIZE = 100;
 // `buildStay22Params` — ищем ТОЛЬКО по координатам города, никакой строки адреса
 // здесь больше не собирается (почему — в шапке `stay22Accommodations/index.ts`).
 // Returns the normalized { hotels, meta }. Shared by every page request.
-async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters }) {
-  const body = buildStay22Params({ visit, currency, lang, page, pageSize, filters });
+async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters, box = false }) {
+  const body = buildStay22Params({ visit, currency, lang, page, pageSize, filters, box });
   if (!body) return normalizeStay22(null);
   const { data, error } = await invokeFn('stay22Accommodations', { body });
   if (error) throw error;
@@ -40,7 +40,37 @@ async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters 
   // QueryCache.onError seam doesn't capture it a second time (new Error drops the
   // stamp invokeFn puts on real error objects).
   if (data?.error) throw Object.assign(new Error(data.error), { __seamHandled: true });
-  return normalizeStay22(data);
+  // Центр — координаты посещения: относительно него считается `distanceKm`, по
+  // которому склеенный пул потом сортируется. Обе выдачи меряются ОДНОЙ точкой,
+  // иначе «ближе» у точечной и у коробочной значило бы разное.
+  return normalizeStay22(data, { lat: Number(visit?.latitude), lng: Number(visit?.longitude) });
+}
+
+/**
+ * Один РАУНД пула — одна и та же страница из ОБОИХ гео-режимов, параллельно.
+ *
+ * Точка отдаёт плотный центр (в Лос-Анджелесе ~140 штук в 6.4 км), коробка —
+ * разброс по площади (~100 штук с медианой 23 км), и пересекаются они почти
+ * никак: на LA из 99 коробочных все 99 были новыми. Поэтому не «шире искать», а
+ * СПРОСИТЬ ДВАЖДЫ и склеить — тем же `mergeById`, что уже сливает страницы.
+ *
+ * Ошибки двух режимов НЕ равнозначны, и глотать обе нельзя — иначе упавший API
+ * показал бы «в этом городе отелей нет» вместо ошибки, то есть соврал бы молча.
+ * Поэтому: точка — несущая, её отказ пробрасывается и панель краснеет ровно как
+ * до этой правки; коробка — расширение, её отказ деградирует к прежней выдаче.
+ */
+async function fetchStay22Round(visit, opts) {
+  const [point, box] = await Promise.all([
+    fetchStay22Page(visit, { ...opts, box: false }),
+    fetchStay22Page(visit, { ...opts, box: true }).catch(() => normalizeStay22(null)),
+  ]);
+  const { items: hotels } = mergeById([point.hotels, box.hotels], { getKey: (h) => h.id, cap: POOL_MAX });
+  return {
+    hotels,
+    // Мета берётся у точечной выдачи (там даты, валюта, число ночей), а «есть ли
+    // ещё» — ИЛИ по обоим: раунд продолжается, пока хоть один режим не исчерпан.
+    meta: { ...point.meta, hasMore: !!point.meta?.hasMore || !!box.meta?.hasMore },
+  };
 }
 
 /**
@@ -73,15 +103,15 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
     placeholderData: keepPreviousData,
     staleTime: POOL_STALE_MS,
     gcTime: POOL_GC_MS,
-    queryFn: () => fetchStay22Page(visit, { currency, lang, page: 1, pageSize: POOL_PAGE_SIZE, filters }),
+    queryFn: () => fetchStay22Round(visit, { currency, lang, page: 1, pageSize: POOL_PAGE_SIZE, filters }),
   });
 
   // Only chase the tail once page 1 (for THIS city) reports more pages exist.
   const hasMore = !page1.isPlaceholderData && !!page1.data?.meta?.hasMore;
 
-  // Tail — pages 2..POOL_PAGES in one parallel burst. We don't know the exact page
-  // count up front (meta.total is unreliable), so we optimistically request every
-  // remaining page at once; a page past the end just returns [] and merges away.
+  // Хвост — раунды 2..POOL_PAGES одним параллельным залпом. Точное число страниц
+  // заранее неизвестно (`meta.total` ненадёжен), поэтому просим все оставшиеся
+  // сразу; раунд за концом выдачи вернёт [] и растворится в склейке.
   const tail = useQuery({
     queryKey: [...poolKey, 'tail'],
     enabled: !!enabled && canFetch && hasMore,
@@ -90,7 +120,7 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
     queryFn: async () => {
       const reqs = [];
       for (let p = 2; p <= POOL_PAGES; p++) {
-        reqs.push(fetchStay22Page(visit, { currency, lang, page: p, pageSize: POOL_PAGE_SIZE, filters }));
+        reqs.push(fetchStay22Round(visit, { currency, lang, page: p, pageSize: POOL_PAGE_SIZE, filters }));
       }
       return Promise.all(reqs); // [{hotels,meta}, …]
     },
