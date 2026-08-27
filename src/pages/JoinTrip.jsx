@@ -6,8 +6,9 @@ import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useSiteTheme, useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
+// Ключ ОДИН на пишущего (здесь) и читающего (Login) — был выписан в обоих.
+import { PENDING_KEY } from '@/lib/postLoginPath';
 
-const PENDING_KEY = 'postLoginRedirect';
 
 // Maps the invite-link edge function's machine `code` to its error i18n key.
 // null-prototype: `code` is an external edge value, so a lookup like

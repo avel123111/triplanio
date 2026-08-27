@@ -7,6 +7,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
 import { authErrorText, oauthRedirectError, stripOauthError } from '@/lib/authErrorText';
 import { authFlowResult } from '@/lib/authFlowCode';
+import { postLoginPath } from '@/lib/postLoginPath';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useSiteTheme, useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
@@ -19,15 +20,6 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
    src/design на зонные примитивы законно опускает долю app-DS (метрика dsShareBp
    считает именно app-DS). Решение «зона на своей ДС» — апрув Pavel (TRIP-460). */
 
-// Where to land after a successful login. A pending invite-link join (see
-// JoinTrip) stores its path in sessionStorage; otherwise go to the app home.
-function postLoginPath() {
-  try {
-    const dest = sessionStorage.getItem('postLoginRedirect');
-    if (dest && dest.startsWith('/')) return dest;
-  } catch { /* ignore */ }
-  return '/trips';
-}
 
 // ── Send cooldown (persisted by email) ────────────────────────────────────────
 // The ~60s minimum interval Supabase enforces between auth emails to the same

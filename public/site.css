@@ -2465,6 +2465,19 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
 
 /* состояния загрузки / not-found — не из прототипа, служебные (мин. набор) */
 .pt-center{min-height:70vh;display:grid;place-items:center;text-align:center;padding:24px}
+/* Подпись под заголовком в блоке «пусто/ошибка». Была написана app-именем
+   `.muted`, то есть цвет зоне приезжал правилом ПРИЛОЖЕНИЯ (`app.css .muted`) —
+   ровно та утечка, которую ловит 2ae, и она три недели была не видна, потому что
+   периметр гарда не включал PublicTrip. Зона объявляет свой цвет сама; имя из
+   разметки снято, новых имён не заведено — правило на единственном `<p>` этого
+   блока (иконка · заголовок · подпись).
+   visual-diff-exempt: .pt-center color — зона забирает у app.css цвет подписи блока «пусто/ошибка» (TRIP-445) */
+.pt-center p{color:var(--muted)}
+
+/* site-base-exempt: cflag — флаг страны это примитив ПРИЛОЖЕНИЯ (app.css, TRIP-177:
+   эмодзи-флаги заменены на public/flags/<iso2>.svg через единый .cflag). Своей базы
+   у зоны быть не должно: второй экземпляр примитива — это и есть то, что запрещает
+   правило #6. Имя в разметке зоны намеренное, геометрия приезжает из app.css. */
 .pt-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line,rgba(19,50,78,.14));
   border-top-color:var(--brand);animation:pt-spin .8s linear infinite}
 @keyframes pt-spin{to{transform:rotate(360deg)}}

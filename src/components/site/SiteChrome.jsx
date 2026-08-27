@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext, createContext } from 'r
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useT } from '@/lib/i18n/I18nContext';
 import { openConsentBanner } from '@/lib/consent';
+import { isProdHost } from '@/lib/analyticsEnv';
 import { useZoneCta, isPlainLeftClick } from './zoneCta';
 import LandingSprite from './LandingSprite';
 
@@ -386,6 +387,10 @@ const ZoneCssCtx = createContext(null);
  * Второе, что уходит вместе с этим: прокрутка. Роутер её не трогает, поэтому
  * переход с середины лендинга на /terms открывал документ с середины.
  */
+/** Канонический хост зоны. Тот же, что в `public/sitemap.xml` — карта сайта и
+ *  canonical обязаны называть одну страницу одним адресом, иначе они спорят. */
+const CANONICAL_ORIGIN = 'https://www.triplanio.com';
+
 export function SiteZone({ children }) {
   const cssReady = useSiteCssLink(true);
   const { pathname, hash } = useLocation();
@@ -394,6 +399,34 @@ export function SiteZone({ children }) {
     if (hash) return;
     window.scrollTo(0, 0);
   }, [pathname, hash]);
+
+  // ★ CANONICAL — ВЫВОДИТСЯ ИЗ АДРЕСА, а не передаётся страницей (TRIP-445).
+  //
+  // `index.html` сознательно НЕ кладёт canonical: один абсолютный URL на весь
+  // сайт объявил бы каждую страницу дублем главной. Взамен там записано
+  // «понадобится — только по-маршрутно из React (Ф6)». Ф6 закончилась шестью
+  // страницами, canonical не появился ни на одной.
+  //
+  // ЗАЧЕМ ОН ЗДЕСЬ ВООБЩЕ. Не ради «просто хорошей практики»: зона — вход
+  // рекламной воронки, и метка кампании едет В АДРЕСЕ (`?camp_*`, TRIP-407 PR5).
+  // Без canonical каждая рекламная ссылка — отдельный URL для краулера, то есть
+  // лендинг размножается на столько страниц, сколько кампаний запущено, и вес
+  // между ними делится. Canonical на чистый `pathname` схлопывает их обратно.
+  //
+  // Строка запроса и якорь отброшены намеренно: они и есть то, что размножает
+  // адрес. Хост — константа, а не `location.origin`: на превью-домене canonical
+  // указывал бы на превью, то есть превью-деплой начал бы канонизировать сам
+  // себя. И ставим ТОЛЬКО на проде — на дев-стенде canonical на прод увёл бы
+  // краулера со стенда на живой сайт, что верно по адресу и неверно по смыслу.
+  useEffect(() => {
+    if (!isProdHost) return undefined;
+    const link = document.createElement('link');
+    link.rel = 'canonical';
+    link.href = CANONICAL_ORIGIN + pathname;
+    document.head.appendChild(link);
+    return () => { link.remove(); };
+  }, [pathname]);
+
   return <ZoneCssCtx.Provider value={cssReady}>{children}</ZoneCssCtx.Provider>;
 }
 
