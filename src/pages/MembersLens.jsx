@@ -431,7 +431,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
               <div className="mbrow__id">
                 <div className="mbrow__name row row--g4">
                   {who.name}
-                  {m.user_id === user?.id && <Badge variant="quiet">{t('member.you_self')}</Badge>}
+                  {m.user_id === user?.id && <Badge variant="quiet" size="tiny">{t('member.you_self')}</Badge>}
                 </div>
                 {who.email && (
                   <div className="mbrow__email">{who.email}</div>

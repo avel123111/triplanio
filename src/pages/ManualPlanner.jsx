@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
@@ -422,6 +422,21 @@ function StepCities({ cities, setCities, home, setHome, startDate, setStartDate,
     }),
   });
 
+  // Добавили город → докручиваем к концу списка, чтобы пикер нового ряда не
+  // оставался за кадром. Тот же приём scrollIntoView, что у CityAdder в
+  // структурном редакторе (EditLens) — одна логика скролла на оба флоу. Скроллим
+  // ПОСЛЕДНИЙ элемент существующего контейнера (кнопку «Добавить ещё город»),
+  // которая стоит сразу под новым рядом — без отдельного якоря в разметке.
+  const listRef = useRef(/** @type {HTMLDivElement | null} */(null));
+  const prevCount = useRef(cities.length);
+  useEffect(() => {
+    const grew = cities.length > prevCount.current;
+    prevCount.current = cities.length;
+    if (!grew) return;
+    const id = setTimeout(() => listRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
+    return () => clearTimeout(id);
+  }, [cities.length]);
+
   return (
     <div>
       <h1>{t('planner.step_cities')}</h1>
@@ -451,7 +466,7 @@ function StepCities({ cities, setCities, home, setHome, startDate, setStartDate,
             action={<Btn variant="primary" icon="plus" onClick={() => addCity()}>{t('planner.add_city')}</Btn>}
           />
         ) : (
-        <div className="col">
+        <div className="col" ref={listRef}>
           {displayNodes.map((c) => {
             // dIdx = the row's index in the committed order (stable while the
             // preview reorders), used for numbering / isLast; the hook owns the

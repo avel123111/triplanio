@@ -28,8 +28,8 @@
  */
 import React, { useState, useMemo, useRef, useLayoutEffect, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, IconBtn, Seg, Btn, Card, ListRow, Chip, CityBar, EventChip, cityTone, eventFamily } from '../design/index';
-import { Row, Col, Grow } from '../design/Layout';
+import { Skeleton, IconBtn, Seg, Btn, Card, ListRow, CityBar, EventChip, cityTone, eventFamily } from '../design/index';
+import { Row, Col } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { isTransitVisit } from '@/lib/trip-cities';
 import { cityBands, bandStyle } from '@/lib/calendar-bands';
@@ -96,15 +96,15 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
 
                     {c.events.length > 0 && (
                       <>
-                        <div className="ncal-evl">
+                        <div className="ncal-evl" data-open={isOpen || undefined}>
                           {shown.map((e, ei) => (
                             <EventChip key={ei} variant="inline" type={e.type} time={e.time} title={e.title}
                               onClick={() => onOpenEvent?.(e)} ariaLabel={`${e.time ? e.time + ' ' : ''}${e.title}`} className="t-tiny" />
                           ))}
                           {c.events.length > 2 && (
-                            <Chip variant="soft" sm square className="t-tiny" onClick={() => toggle(ci)}>
+                            <Btn variant="link" className="t-tiny" onClick={() => toggle(ci)}>
                               {isOpen ? t('calendar.collapse') : `+${c.events.length - 2} ${t('calendar.more_count')}`}
-                            </Chip>
+                            </Btn>
                           )}
                         </div>
                         <div className="ncal-dots" aria-hidden="true">
@@ -288,17 +288,30 @@ function CitiesAside({ cities, onOpenCity, t }) {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
+// Скелетон рисуется на ТЕХ ЖЕ классах раскладки, что и живой экран
+// (`.ncal`/`.ncal-body`/`.ncal-main`), поэтому наследует его контейнер-квери:
+// на узком виджет городов встаёт ПОД календарь. Раньше тело было на дженерик-
+// `.row` с фикс-рейлом 260px — на мобиле он жался сбоку и не совпадал с layout.
 export function CalendarSkeleton() {
   return (
-    <div className="col col--g6 ov-anim" aria-busy="true">
-      <div className="row row--g4">
-        <Skeleton w={220} h={34} r={'var(--r-sm)'} /><Grow /><Skeleton w={230} h={36} r={'var(--r-pill)'} />
+    <Col gap="g7" className="ncal ov-anim" aria-busy="true">
+      {/* Шапка: навигатор месяца · «Сегодня» · переключатель вида · «К поездке» */}
+      <Row as="header" wrap>
+        <Row gap="g2" className="ncal-hd-nav">
+          <Skeleton w={34} h={34} r={'var(--r-pill)'} />
+          <Skeleton w={140} h={26} r={'var(--r-sm)'} />
+          <Skeleton w={34} h={34} r={'var(--r-pill)'} />
+        </Row>
+        <Skeleton w={84} h={40} r={'var(--r-btn)'} />
+        <Skeleton w={120} h={40} r={'var(--r-btn)'} />
+        <Skeleton w={150} h={40} r={'var(--r-btn)'} />
+      </Row>
+      {/* Тело: календарь + виджет городов — та же сетка, что стекается на мобиле */}
+      <div className="ncal-body">
+        <div className="ncal-main"><Skeleton w="100%" h={460} r={'var(--r-md)'} /></div>
+        <Skeleton w="100%" h={200} r={'var(--r-md)'} />
       </div>
-      <div className="row row--g6">
-        <Grow><Skeleton w="100%" h={560} r={'var(--r-md)'} /></Grow>
-        <Skeleton w={260} h={560} r={'var(--r-md)'} />
-      </div>
-    </div>
+    </Col>
   );
 }
 

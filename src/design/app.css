@@ -1085,7 +1085,6 @@ h4,
 .trip-head__meta,
 .trip-tl__day,
 .trip-foot__lab,
-.mbnav__lbl,
 .fork-partner__mid span,
 .mbrow .badge--warning, /* TRIP-410 моно-аудит: бейдж роли «Владелец» → Geologica CAPS (был .t-mono; эйбрау/бейджи = t-micro) */
 /* TRIP-410 моно-аудит: бейдж роли «Админ» → Geologica CAPS */
@@ -1127,6 +1126,7 @@ h4,
 .statbar .k,   /* TRIP-175 инсп.: стат-подпись statbar Meta→Tiny Caps (мелкий серый капс) */
 .sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
 .badge--tiny,  /* TRIP-337: третья ступень пилюли — статус/тариф-чипы плашки на кегль ниже (.t-micro→.t-tiny-caps), апрув Pavel */
+.mbnav__lbl,   /* лейблы боттом-нава → Tiny Caps (был .t-micro 11px). visual-diff-exempt: .mbnav__lbl font-size — подпись пункта нава Micro→Tiny Caps */
 .cdu span { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175 инсп.: подпись таймера Micro→Tiny Caps */
 /* Моно — ОДИН источник (JetBrains Mono, --font-mono): share-URL/email/kbd/code.
    TRIP-337: КОДЫ-ДАННЫЕ (бронь/рейс/полис) в event/service выведены из моно НА
@@ -1213,6 +1213,13 @@ h4,
    элемент — заголовок трипа — должен встать туда же, где вне трипа стоит
    вордмарк: на зазор от слота, а не в край. */
 .app-header--trip { padding-left: var(--sp-6); }
+/* Вне трипа поля слева НЕТ намеренно (ширина бренд-слота = отступ). Но когда
+   первым элементом идёт круглая «назад», слота перед ней нет — и кнопка
+   прижималась к самому краю экрана (п.1 visual-fixes). Такому хедеру даём левый
+   отступ, чтобы «назад» встала на ту же линию, где иначе визуально стоит лого
+   (16px = центровка 38px-лого в 70px-слоте). Трип не трогаем — там своё поле.
+   visual-diff-exempt: .app-header:not(.app-header--trip):has(.app-header__gbtn) padding-left — «назад» вне трипа не прижата к краю */
+.app-header:not(.app-header--trip):has(.app-header__gbtn) { padding-left: var(--sp-7); }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 
@@ -6308,7 +6315,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: from {@keyframes evdDrawerIn} transform — то же
    visual-diff-exempt: to {@keyframes evdDrawerIn} opacity — то же
    visual-diff-exempt: to {@keyframes evdDrawerIn} transform — то же */
-.evd-scrim { position: absolute; inset: 0; z-index: var(--z-drawer); background: var(--scrim); animation: fadeIn .2s var(--ease-out) both; }
+/* Скрим виджета эвента = скрим модалки: та же подложка (--scrim) И то же
+   размытие фона, что у .dlg-backdrop. До этого блюра не было, и затемнение под
+   виджетом читалось «дешевле» модалки — унифицировано (п.2 visual-fixes).
+   visual-diff-exempt: .evd-scrim backdrop-filter — блюр под виджетом эвента, как у .dlg-backdrop
+   visual-diff-exempt: .evd-scrim -webkit-backdrop-filter — то же (Safari) */
+.evd-scrim { position: absolute; inset: 0; z-index: var(--z-drawer); background: var(--scrim); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: fadeIn .2s var(--ease-out) both; }
 /* Скрим гаснет вместе с ящиком (usePresence держит хост до конца выхода): меняем
    только имя анимации, темп наследуется.
    visual-diff-exempt: .evd-scrim[data-closing] animation-name — выходное затухание скрима (синхронно с ящиком)
