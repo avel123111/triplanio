@@ -6,7 +6,7 @@ import { track, setRefTripId } from '@/lib/analytics';
 import { zoneHome } from '@/components/site/zoneCta';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
 } from '@/components/site/SiteChrome';
 import { SiteHero, SiteSummary, SiteCta } from '@/components/site/SiteTrip';
 import { useReveal } from '@/components/site/useReveal';
@@ -53,7 +53,6 @@ export default function PublicTrip() {
   const { t, fmtDate, plural, fmtDistance, fmtCountry } = useI18nFormat();
   const cssReady = useSiteCss();
   // The public reader follows the landing: light-only, restored on exit.
-  useSiteTheme();
 
   const { tripId } = useParams();
   const [searchParams] = useSearchParams();

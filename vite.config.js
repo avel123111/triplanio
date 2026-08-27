@@ -27,6 +27,40 @@ export default defineConfig({
     // 'hidden' = maps are emitted for upload but NOT referenced from the served
     // JS, so they never become publicly fetchable. Off entirely without a token.
     sourcemap: SENTRY_AUTH_TOKEN ? 'hidden' : false,
+    rollupOptions: {
+      output: {
+        /**
+         * ЧЕТЫРЕ ВЕНДОРА — СВОИМИ ЧАНКАМИ (TRIP-445).
+         *
+         * ЧТО ЭТО НЕ ДЕЛАЕТ, ЧТОБЫ НИКТО НЕ ЗАСЧИТАЛ ЛИШНЕГО: граф импортов не
+         * тронут, поэтому синхронные зависимости так и остаются синхронными —
+         * `mapbox` по-прежнему запрашивается на ПЕРВОЙ странице, включая
+         * лендинг. Разорвать это может только развязка `acquire` в MapProvider
+         * (карта создаётся синхронно и её ждут 12 потребителей) — отдельная
+         * работа, которую нельзя сдавать без стенда с живым токеном.
+         *
+         * ЧТО ЭТО ДЕЛАЕТ. Замер на этой сборке: главный чанк 3824 КБ / 1123 КБ
+         * gzip → 1712 КБ / 543 КБ, а вендоры уезжают в mapbox 486 КБ gzip ·
+         * supabase 53 · luxon 22 · icons 11. Пока всё лежало одним файлом, любая
+         * правка ЛЮБОЙ строки приложения меняла хэш этого файла — и повторный
+         * визит выкачивал полмегабайта mapbox заново, хотя библиотека не
+         * менялась месяцами. Вендоры версионируются своим темпом, поэтому и
+         * кэшируются своим.
+         *
+         * ПОЧЕМУ ИМЕННО ЭТИ ЧЕТЫРЕ, А НЕ «весь node_modules в vendor». Общий
+         * `vendor` — это тот же ком, только под другим именем: он инвалидируется
+         * от обновления любой мелкой зависимости. Названы ровно те, у кого вес
+         * измерен и заметен; всё остальное осознанно остаётся в главном чанке.
+         */
+        manualChunks(id) {
+          if (id.includes('node_modules/mapbox-gl')) return 'mapbox';
+          if (id.includes('node_modules/@supabase')) return 'supabase';
+          if (id.includes('node_modules/luxon')) return 'luxon';
+          if (id.includes('node_modules/lucide-react')) return 'icons';
+          return undefined;
+        },
+      },
+    },
   },
   plugins: [
     react(),

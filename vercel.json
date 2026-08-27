@@ -31,6 +31,13 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/d/spain-may-27",
+      "destination": "/d/europe-may-2027",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/ingest/static/:path(.*)",

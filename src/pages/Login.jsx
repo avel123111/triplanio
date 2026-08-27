@@ -9,7 +9,7 @@ import { authErrorText, oauthRedirectError, stripOauthError } from '@/lib/authEr
 import { authFlowResult } from '@/lib/authFlowCode';
 import { postLoginPath } from '@/lib/postLoginPath';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useSiteTheme, useSiteCss } from '@/components/site/SiteChrome';
+import { useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
 import { setRemember as setRememberFlag } from '@/api/authStorage';
 
@@ -274,7 +274,6 @@ export default function Login() {
   // which flips --ink/--surface and breaks the right-panel preview (white text
   // on white, dark plates). The shared zone hook forces light and restores the
   // user's theme on exit (TRIP-460 §7.2).
-  useSiteTheme();
   // cssReady — site.css грузится рантайм-<link>ом; до его загрузки разметка без
   // стилей, а SVG-иконки без width/height вспыхивают во весь экран (FOUC). Как
   // на лендинге, не рисуем зону, пока лист не готов.

@@ -57,6 +57,41 @@
  *   # 6. по каждой секции выше порога — структурный разбор:
  *   npm run check:proto -- ... --elements <секция>
  *
+ * ★ ЧЕТЫРЕ ПОВЕРХНОСТИ ЗОНЫ ЖИВУТ НЕ ПО СВОЕМУ АДРЕСУ — ИХ НАДО ОТКРЫТЬ.
+ * Документ лендинга держит ТРИ страницы зоны в одном файле и переключает их
+ * своими функциями; документ авторизации — девять экранов одним `data-screen`.
+ * Пока харнесс этого не умел, юр-страницы, публичка и приглашение не
+ * принимались НИ РАЗУ, а у входа сравнивался один экран из тринадцати
+ * состояний. Из «сравнивать нечего» тогда сделали вывод, что эталона юр-страниц
+ * не существует, — он существует, это `<main class="doc">` под `body.doc-open`.
+ *
+ *   # юридические (макет — то же тело лендинга, реализация — свой маршрут)
+ *   npm run check:proto -- --proto <лендинг> --proto-state doc:terms   --impl <impl>/terms
+ *   npm run check:proto -- --proto <лендинг> --proto-state doc:privacy --impl <impl>/privacy
+ *   # публичная поездка — ⚠️ ТОЛЬКО НА ЖИВОМ ТРИПЕ, см. ниже
+ *   npm run check:proto -- --proto <лендинг> --proto-state trip --impl <impl>/public/trip/<id>
+ *   # экраны авторизации и приглашения (флаг общий: `.screen[data-screen]` есть у обеих сторон)
+ *   npm run check:proto -- --proto <auth> --impl <impl>/login       --screen signup --alias pane-form=pane
+ *   npm run check:proto -- --proto <auth> --impl <impl>/join/<токен> --screen join-error --alias pane-form=pane
+ *   #   вход:        signin · signup · forgot · sent · reset · done
+ *   #   приглашение: join-working · join-signin · join-error  (они на /join, не на /login)
+ *   # `--alias pane-form=pane` обязателен: левая колонка формы названа в порту
+ *   # иначе, и без сопоставления сравнивался бы только внутренний `.screen`.
+ *
+ * ⚠️ ПУБЛИЧКУ БЕЗ ЖИВОГО ТРИПА ПРИНИМАТЬ НЕЛЬЗЯ. `/public/trip/<любой-uuid>` на
+ * стенде без базы честно рисует «This link is invalid» — и харнесс сравнит
+ * СТРАНИЦУ ОТКАЗА с макетом поездки, выдав правдоподобные 96.1% с кодом 0.
+ * Имена секций при этом совпадают, поэтому отличить отказ от поездки инструмент
+ * не может по построению: это ограничение метода, а не дефект. Для приёмки
+ * нужен реальный публичный трип на стенде.
+ *
+ * ★ ПЕРЕИМЕНОВАЛ СЕКЦИЮ — ПРИЁМКА КРАСНЕЕТ, А НЕ МОЛЧИТ. Непарное имя с ОБЕИХ
+ * сторон = код 2. Одно и то же под разными именами сопоставляется
+ * `--alias <реализация>=<макет>`, разные вещи объявляются
+ * `--allow-unpaired <имя>,<имя>`. Требуется РЕШЕНИЕ автора; молча улучшать
+ * вердикт исчезновением худшей секции больше нельзя (демо: `hero` → `dm-hero`
+ * убрало 88.5% из отчёта и дало 44.2% с кодом 0).
+ *
  * ★ ГДЕ ПРОЦЕНТ СЛЕП СОВСЕМ. На полноэкранной градиентной секции (`final`) он
  * НАСЫЩЕН: любая правка цвета красит все пиксели и даёт 90–96% одинаково —
  * «чуть глубже» и «серая грязь» для него неразличимы. Однажды по вердикту
@@ -93,7 +128,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
-import { sectionKey, parseOnly, parseAliases, commonSections } from './proto-sections.mjs';
+import { sectionKey, parseOnly, parseAliases, commonSections, unpairedVerdict, SECTION_SELECTOR, sectionSel } from './proto-sections.mjs';
 
 // Список секций БОЛЬШЕ НЕ КОНСТАНТА. Он был константой лендинга, и на демо и
 // юр-страницах не находилась ни одна: каждая печатала «нет секции с одной из
@@ -114,6 +149,15 @@ const ONLY = parseOnly(arg('sections'));
 // Секция реализации, названная в макете иначе (`--alias dm-hero=hero`).
 // Без этого намеренное переименование выбрасывает секцию из приёмки МОЛЧА.
 const ALIAS = parseAliases(arg('alias'));
+// Непарные секции, объявленные РАЗНЫМИ вещами (а не переименованием одной).
+const ALLOW_UNPAIRED = parseOnly(arg('allow-unpaired'));
+// Состояние ДОКУМЕНТА-прототипа: он держит три страницы зоны в одном файле и
+// переключает их своими же функциями (`window.openDoc` / `window.openTrip`).
+// Флаг только для стороны макета: у реализации эти страницы — отдельные адреса.
+const PROTO_STATE = arg('proto-state');
+// Экран авторизации: `.screen[data-screen=…]` есть у ОБЕИХ сторон, поэтому
+// флаг общий (см. setScreen).
+const SCREEN = arg('screen');
 const W = +arg('width', 1440), H = +arg('height', 900);
 const LANG = arg('lang', 'en');
 if (!PROTO || !IMPL) {
@@ -173,6 +217,102 @@ async function switchLang(page) {
   await page.waitForTimeout(1200);
 }
 
+/**
+ * Привести ДОКУМЕНТ-прототип к нужной странице зоны.
+ *
+ * Прототип лендинга держит три страницы в одном файле и переключает их
+ * классами на `body` (`doc-open`, `pt-open`), а наружу отдаёт свои же функции
+ * `window.openDoc(name)` и `window.openTrip()`. Зовём именно их, а не ставим
+ * класс руками: функция делает ещё и `render()`, `hidden=false`, resize карты и
+ * сброс прокрутки — подделка класса дала бы пустой контейнер и «приёмку»
+ * невидимого блока.
+ *
+ * ЭТО И БЫЛО ПРИЧИНОЙ, ПО КОТОРОЙ ЮР-СТРАНИЦЫ И ПУБЛИЧКА НЕ ПРИНИМАЛИСЬ НИ
+ * РАЗУ: у харнесса не было способа открыть их состояние, и вывод сделали
+ * неверный — что эталона не существует. Существует.
+ */
+async function applyProtoState(page, spec) {
+  if (!spec) return;
+  const [kind, which] = spec.split(':').map((s) => (s || '').trim());
+  const res = await page.evaluate(async ([k, w]) => {
+    if (k === 'doc') {
+      if (typeof window.openDoc !== 'function') return { ok: false, why: 'у документа нет window.openDoc' };
+      window.openDoc(w === 'privacy' ? 'privacy' : 'terms');
+    } else if (k === 'trip') {
+      if (typeof window.openTrip !== 'function') return { ok: false, why: 'у документа нет window.openTrip' };
+      window.openTrip();
+    } else {
+      return { ok: false, why: `неизвестное состояние «${k}» (знаю doc:terms · doc:privacy · trip)` };
+    }
+    await new Promise((r) => setTimeout(r, 600));
+    return { ok: true };
+  }, [kind, which]);
+  if (!res.ok) {
+    console.error(`\n--proto-state ${spec}: ${res.why}`);
+    console.error('  Состояние не применилось — сравнение шло бы с ДРУГОЙ страницей, а это');
+    console.error('  ровно та ложно-зелёная приёмка, ради которой харнесс и чинили.');
+    process.exit(2);
+  }
+  await page.waitForTimeout(900);
+}
+
+/**
+ * Поставить экран авторизации — на ЛЮБОЙ из сторон.
+ *
+ * У документа авторизации шесть экранов и три экрана приглашения, у реализации
+ * те же девять, и `data-screen` у них совпадает по значениям. Различается
+ * ТОЛЬКО имя класса активности: у макета `is-active`, у реализации
+ * `av-is-active` (свой namespace зоны). Поэтому имя не зашито — оно снимается
+ * с текущего активного экрана. Класс и есть механизм переключения у обеих
+ * сторон, так что это настоящее состояние, а не его имитация.
+ *
+ * Без этого приёмка входа сравнивала ОДИН экран из тринадцати состояний.
+ */
+async function setScreen(page, id, side) {
+  if (!id) return;
+  const res = await page.evaluate(async (want) => {
+    const all = [...document.querySelectorAll('.screen[data-screen]')];
+    if (!all.length) return { ok: false, why: 'на странице нет .screen[data-screen]', have: [] };
+    const to = all.find((s) => s.dataset.screen === want);
+    if (!to) return { ok: false, why: `нет экрана «${want}»`, have: all.map((s) => s.dataset.screen) };
+    // Имя класса активности берём с живого экрана — оно разное у сторон.
+    const cur = all.find((s) => [...s.classList].some((c) => c.endsWith('is-active')));
+    const activeCls = cur ? [...cur.classList].find((c) => c.endsWith('is-active')) : null;
+    if (!activeCls) return { ok: false, why: 'ни один экран не активен — не с чего снять имя класса', have: [] };
+    const leavingCls = activeCls.replace(/is-active$/, 'is-leaving');
+    for (const s of all) { s.classList.remove(activeCls); s.classList.remove(leavingCls); }
+    to.classList.add(activeCls);
+    await new Promise((r) => setTimeout(r, 500));
+    return { ok: true };
+  }, id);
+  if (!res.ok) {
+    console.error(`\n--screen ${id}: ${side} — ${res.why}`);
+    if (res.have?.length) console.error(`  есть: ${[...new Set(res.have)].join(', ')}`);
+    console.error('  Экран, которого нет, нельзя «принять»: сравнение шло бы с текущим.');
+    process.exit(2);
+  }
+  await page.waitForTimeout(700);
+}
+
+/**
+ * Первый ВИДИМЫЙ узел секции, а не первый в DOM.
+ *
+ * У авторизации все девять экранов — это `<section class="screen">` с одним и
+ * тем же опознавателем, и наружу торчит ровно активный; остальные скрыты
+ * `visibility:hidden`. Пока брался первый в DOM, съёмка любого экрана кроме
+ * дефолтного падала «element is not visible» — то есть режим `--screen` был бы
+ * мёртв ровно там, ради чего он и нужен. То же и с `body.doc-open`: скрытые
+ * секции лендинга никуда не деваются.
+ */
+async function visibleSection(page, name) {
+  for (const el of await page.$$(sectionSel(name))) {
+    const ok = await el.evaluate((n) => n.getClientRects().length > 0
+      && getComputedStyle(n).visibility !== 'hidden');
+    if (ok) return el;
+  }
+  return null;
+}
+
 async function capture(browser, url, tag) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H } });
   const page = await ctx.newPage();
@@ -180,12 +320,23 @@ async function capture(browser, url, tag) {
   await page.waitForTimeout(2500);
   await page.addStyleTag({ content: SETTLE });
 
+  // Состояние — ДО языка и до съёмки: openDoc/openTrip перерисовывают документ
+  // целиком, поэтому переключение языка раньше них было бы затёрто.
+  if (tag === 'proto') await applyProtoState(page, PROTO_STATE);
   await switchLang(page);
+  await setScreen(page, SCREEN, tag === 'proto' ? 'макет' : 'реализация');
 
   // Что на странице вообще есть — в порядке документа. Ключ секции считает
   // общий модуль (`proto-sections.mjs`), поэтому в браузер уезжают только сырые
   // атрибуты class.
-  const classes = await page.$$eval('section', (els) => els.map((el) => el.getAttribute('class') || ''));
+  // Только ОТРИСОВАННЫЕ: под `body.doc-open` секции лендинга скрыты
+  // `display:none`, но из DOM никуда не делись — попав в список, они раздували
+  // «только у макета» и уводили `first` на секцию без размеров.
+  const classes = await page.$$eval(
+    SECTION_SELECTOR,
+    (els) => els.filter((el) => el.getClientRects().length > 0
+      && getComputedStyle(el).visibility !== 'hidden').map((el) => el.getAttribute('class') || ''),
+  );
   const order = [];
   for (const cls of classes) {
     const key = sectionKey(cls);
@@ -201,7 +352,7 @@ async function capture(browser, url, tag) {
   // молча не срабатывало.
   const first = order[0];
   if (first) {
-    const el = await page.$(`section.${first}`);
+    const el = await visibleSection(page, first);
     const box = el && await el.boundingBox();
     if (box) {
       const file = path.join(OUT, `${tag}-${first}.png`);
@@ -226,7 +377,7 @@ async function capture(browser, url, tag) {
 
   for (const name of order) {
     if (name === first) continue; // снята выше, до прогона
-    const el = await page.$(`section.${name}`);
+    const el = await visibleSection(page, name);
     if (!el) continue;
     // hero живёт на первом экране и реагирует на скролл (параллакс/затухание):
     // снимать его надо с верха страницы, иначе сравниваются разные фазы — на этом
@@ -253,20 +404,23 @@ fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
 
 /** Структурный разбор одной секции: что и на сколько сдвинуто. */
-async function elements(url, section) {
+async function elements(url, section, isProto) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H } });
   const page = await ctx.newPage();
   await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
   await page.waitForTimeout(2500);
   await page.addStyleTag({ content: SETTLE });
+  if (isProto) await applyProtoState(page, PROTO_STATE);
   await switchLang(page);
+  await setScreen(page, SCREEN, isProto ? 'макет' : 'реализация');
   await page.evaluate(async () => {
     for (let y = 0; y < document.body.scrollHeight; y += 350) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); }
     document.querySelectorAll('.rv,.rv-l,.rv-r').forEach((el) => el.classList.add('in'));
   });
   await page.waitForTimeout(1200);
   const data = await page.evaluate((sel) => {
-    const root = document.querySelector('section.' + sel);
+    const root = [...document.querySelectorAll(sel)].find((n) => n.getClientRects().length > 0
+      && getComputedStyle(n).visibility !== 'hidden');
     if (!root) return null;
     const base = root.getBoundingClientRect();
     const items = [];
@@ -288,14 +442,14 @@ async function elements(url, section) {
     };
     walk(root, 0);
     return { h: Math.round(base.height), items };
-  }, section);
+  }, sectionSel(section));
   await ctx.close();
   return data;
 }
 
 const SECTION = arg('elements');
 if (SECTION) {
-  const [p, i] = [await elements(PROTO, SECTION), await elements(IMPL, SECTION)];
+  const [p, i] = [await elements(PROTO, SECTION, true), await elements(IMPL, SECTION, false)];
   if (!p || !i) { console.error(`секции .${SECTION} нет с одной из сторон`); await browser.close(); process.exit(2); }
   console.log(`\nsection.${SECTION} · ${W}px · высота: макет ${p.h} / реализация ${i.h} (${i.h - p.h >= 0 ? '+' : ''}${i.h - p.h})\n`);
   console.log('элемент'.padEnd(30) + 'top'.padStart(15) + 'left'.padStart(15) + 'высота'.padStart(15) + '   кегль');
@@ -401,4 +555,22 @@ console.log(`\nсравнено секций: ${sections.length}  ·  худша
 if (onlyProto.length) console.log(`только у макета:      ${onlyProto.join(', ')}`);
 if (onlyImpl.length) console.log(`только у реализации:  ${onlyImpl.join(', ')}`);
 console.log('пары «макет | реализация» и эти числа идут в тело PR — это и есть приёмка Ф6.\n');
+
+// ★ НЕПАРНОЕ С ОБЕИХ СТОРОН — ОТКАЗ, А НЕ СТРОКА В ОТЧЁТЕ.
+// Это почти всегда переименование, и оно выбрасывает секцию из приёмки МОЛЧА,
+// УЛУЧШАЯ вердикт. Замерено на демо: первый экран назвали `dm-hero` (законно,
+// `hero` занято лендингом) — худшая секция 88.5% просто исчезла из сравнения, и
+// отчёт стал 44.2% с кодом выхода 0. Минус сорок четыре пункта без единой
+// правки вёрстки. Молчать об этом — то же самое, чем харнесс болел раньше,
+// только с другого конца.
+const unpaired = unpairedVerdict(onlyProto, onlyImpl, ALLOW_UNPAIRED);
+if (unpaired.blocking) {
+  console.error('НЕПАРНЫЕ СЕКЦИИ С ОБЕИХ СТОРОН — приёмка не принята.');
+  console.error(`  у макета:       ${unpaired.proto.join(', ')}`);
+  console.error(`  у реализации:   ${unpaired.impl.join(', ')}`);
+  console.error('  Одно и то же под разными именами → сопоставь: --alias <реализация>=<макет>');
+  console.error('  Разные вещи → объяви вслух:        --allow-unpaired <имя>,<имя>');
+  await browser.close();
+  process.exit(2);
+}
 await browser.close();

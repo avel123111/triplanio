@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { zoneHome } from '@/components/site/zoneCta';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useSiteTheme, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
 } from '@/components/site/SiteChrome';
 import { SiteSummary, SiteCta } from '@/components/site/SiteTrip';
 import { useReveal } from '@/components/site/useReveal';
@@ -72,7 +72,6 @@ export default function DemoTrip() {
   const { lang, setLang } = useI18n();
   const t = useT();
   const cssReady = useSiteCss();
-  useSiteTheme(); // public marketing follows the landing: light-only, restored on exit
 
   useDocumentMeta(t('landing.demo.meta.title'), t('landing.demo.meta.desc'));
 
