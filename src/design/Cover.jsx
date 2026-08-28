@@ -15,15 +15,23 @@ export const COVER_FALLBACK = '/covers/fallback.webp';
 // Градиентов больше нет — дефолтная обложка = картинка, а не цвет.
 //
 // image — URL фото; пусто/битый → виден фоллбек.
+//
+// ★ `fill` — обложка НА ВСЮ ПЛОЩАДЬ родителя (`position:absolute; inset:0`)
+// вместо собственной миниатюры 62×46. Заведено вместе с постером трипа: до
+// этого «во всю карточку» рисовалось сырым `<img class="tc__img">` со своей
+// копией фоллбека (`src={url || COVER_FALLBACK}`) и БЕЗ `onError` — битый или
+// удалённый URL показывал сломанную картинку вместо плейсхолдера. Одна ось
+// вместо второй реализации того же слоя.
 export const Cover = React.forwardRef(
   /**
    * @param {{
    *   image?: string | null,
+   *   fill?: boolean,
    *   className?: string,
    *   children?: any,
    * } & Record<string, any>} p
    */
-  ({ image, className = "", children, ...rest }, ref) => {
+  ({ image, fill, className = "", children, ...rest }, ref) => {
     // Провал храним URL'ом, а не булевым флагом: при смене фото новый src !==
     // failedUrl → img показывается снова без useEffect на сброс.
     const [failedUrl, setFailedUrl] = useState(/** @type {string | null} */ (null));
@@ -31,7 +39,7 @@ export const Cover = React.forwardRef(
     return (
       <span
         ref={ref}
-        className={["cover", className].filter(Boolean).join(" ")}
+        className={["cover", fill && "cover--fill", className].filter(Boolean).join(" ")}
         {...rest}
       >
         {showImg ? (

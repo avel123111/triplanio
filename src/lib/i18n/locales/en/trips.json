@@ -6,18 +6,15 @@
   "brand_eyebrow": "Triplanio · Travel",
   "choice_subtitle": "How do you want to start?",
   "cities_more": "· {count} more",
-  "empty_archive_body": "Finished trips will collect here",
-  "empty_archive_title": "Nothing in the archive yet",
   "empty_heading": "Plan a trip that won't fall apart on the road",
   "empty_route_sub": "Cities, dates and transfers line up into one route — and land on your map.",
-  "empty_search_body": "Adjust your search or switch tabs",
+  "empty_search_body": "Try a different query — we search titles, descriptions, cities and countries",
   "empty_search_title": "Nothing matches your search",
   "free_limit_desc": "Pro: unlimited trips, AI planner and booking parsing",
   "free_limit_title": "On Free you get 1 active trip",
   "go_pro": "Go to Pro",
   "invite_create": "Create a trip",
   "invite_desc": "No active trips yet — your past ones are already on the map. Time to plan the next one.",
-  "invite_show_past": "Show past trips",
   "invite_title": "Ready for a new adventure?",
   "manual_desc_short": "Pick cities, dates and hotels by hand",
   "my_trips_eyebrow": "My trips",
@@ -31,6 +28,5 @@
   "start_manual": "Build manually",
   "start_with_ai": "Start with AI",
   "tab_active": "Active",
-  "tab_past": "Past",
-  "view": "View"
+  "tab_past": "Past"
 }

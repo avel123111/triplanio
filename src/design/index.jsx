@@ -662,7 +662,12 @@ export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 //      runs on the same `ui/dialog` Dialog/DialogContent. ----
 // iconTone swaps the header-icon tint to an existing tile tone (default = brand).
 // Whitelist the tones the header supports — an unknown value falls back to brand.
-const DLG_ICON_TONES = { activity: 'activity' };
+// ★ ЗНАЧЕНИЕ — ПРОПЫ ПЛИТКИ, А НЕ ХВОСТ КЛАССА. У `pro` мягкой формы в системе
+// нет вовсе (канон: единственная форма Pro — залитый `--pro-gradient`, как у
+// `.badge--pro`/`.btn--pro`), поэтому тон приходит В ПАРЕ с `solid`. Строкой
+// `'solid tile--pro'` это выражалось бы только склейкой двух классов в одном
+// поле — то есть белый список перестал бы быть списком ТОНОВ.
+const DLG_ICON_TONES = { activity: { tone: 'activity' }, pro: { tone: 'pro', solid: true } };
 /** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any, busy?: boolean }} p */
 export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange, busy }) => {
   const t = useT();
@@ -673,7 +678,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
   // forbids (guard 2o `reach`). The primitive hides itself.
   const kbOpen = useKeyboardOpen();
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
-  const toneClass = `tile--${DLG_ICON_TONES[iconTone] || 'brand'}`;
+  const tileProps = DLG_ICON_TONES[iconTone] || { tone: 'brand' };
   return (
     <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       {/* a11y contract lives HERE — the one wrapper every app dialog uses. The
@@ -685,12 +690,16 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
         <div className="dlg__head">
           {icon && (
             /* Геометрия - примитив .tile (34px, значок 17px = дефолт лестницы;
-               было 36px руками, а ступень --md и есть полоса 32-36). Тон - класс
-               союза тонов плитки: `.tile--activity` завёлся в TRIP-350, инлайн
-               ушёл. */
-            <div className={`tile ${toneClass}`}>
-              <Icon name={icon} size={17} />
-            </div>
+               было 36px руками, а ступень --md и есть полоса 32-36). Тон - союз
+               тонов плитки: `.tile--activity` завёлся в TRIP-350, инлайн ушёл.
+               ★ Плитку рисует САМ <Tile>, а не свой `div` с теми же классами:
+               обёртка диалога — канон, и собирать канон-объект руками ВНУТРИ
+               канона значит держать ещё одну копию плитки (та самая шестая, из-за
+               которой `pro` пришлось бы городить строкой). Набор классов на
+               выходе прежний (`tile tile--brand` / `tile tile--activity`), а
+               кегль значка и раньше диктовал `--tile-ic` через `.tile > svg`,
+               молча побеждая проп `size` — поэтому его снятие ничего не меняет. */
+            <Tile icon={icon} {...tileProps} />
           )}
           <div className="grow--fit">
             <DialogTitle asChild><h2>{title}</h2></DialogTitle>

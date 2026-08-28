@@ -564,6 +564,15 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .lrow { display: flex; align-items: center; gap: var(--sp-6); padding: var(--sp-6); border-radius: var(--r-btn); }
 .lrow__body { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; flex: 1; text-align: left; }
 .lrow__trail { flex: none; display: flex; align-items: center; gap: var(--sp-3); text-align: right; }
+/* Второстепенная половина трейла — прячется на узком экране, тогда как основной
+   трейл (действие/шеврон) остаётся. Свела приватную утилиту `.tr-hideS` строки
+   трипа (`display:none !important` на четырёх обёртках подряд): прятать «всё
+   лишнее на телефоне» приходится каждой насыщенной строке, это ось строки. */
+.lrow__trail-s { display: flex; align-items: center; gap: var(--sp-3); }
+@media (max-width: 600px) { .lrow__trail-s { display: none; } }
+/* Приглушённая строка (архив, неактивное): opacity на СТРОКЕ целиком, чтобы
+   гасли и обложка, и бейджи, а не только текст. Значение — из `.tr--past`. */
+.lrow--muted { opacity: .72; }
 .lrow--clickable { cursor: pointer; width: 100%; text-align: left; font: inherit; }
 .lrow--raised { background: var(--surface); border: 1px solid var(--line); transition: box-shadow .2s, border-color .2s; }
 .lrow--select { border: 1px solid transparent; background: transparent; transition: background .15s, border-color .15s; }
@@ -717,8 +726,17 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
 .head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-display — Geologica clamp(28–40)/800/1.05, tabular (карьер .head h1) */
 .t-title,
+.sec-head h2.t-title,   /* шапка раздела: `.sec-head h2` ниже по файлу тянет ЛЮБОЙ h2 на канон heading и перебивает класс на самом элементе (равная специфичность, правило позже) — составной селектор возвращает слово разметке.
+   Заголовок «N путешествий» на главной просили title, а получал heading именно из-за этого:
+   visual-diff-exempt: .sec-head font-family — h2 с классом .t-title теперь получает свой канон (title), а не heading шапки раздела
+   visual-diff-exempt: .sec-head font-size — то же (18 → clamp 20–24)
+   visual-diff-exempt: .sec-head font-weight — то же
+   visual-diff-exempt: .sec-head line-height — то же
+   visual-diff-exempt: .sec-head letter-spacing — то же
+   visual-diff-exempt: .sec-head font-variant-numeric — то же */
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
 .nextcard__tx b,   /* TRIP-188: инспектор канонов — название следующего трипа Label→Title */
+.tc__day b,        /* счётчик дня в виджете «идёт» — тот же канон числа, что у отсчёта .cdu */
 .cdu b,            /* TRIP-188: инспектор канонов — числа обратного отсчёта Subheading→Title */
 .lp-ti b,          /* TRIP-188: инспектор канонов — заголовки шапок панелей события/добавления Subheading→Title */
 .flow-lp-b h1,     /* TRIP-222: инспектор канонов — заголовки шагов планирования Heading→Title (оба flow) */
@@ -818,8 +836,6 @@ h4,
 .sheet-row,
 .ss-opt,
 .sheet .ss-opt,
-.tr__title,
-.tr--add b,
 .plan-feature,
 .kv .v,
 .f-sec,
@@ -983,9 +999,6 @@ h4,
 .tc__scope,
 .tc__glass,
 .tc-add small,
-.tr__sub,
-.tr__date,
-.tr--add small,
 .pro-hero__note,
 .plan-price__period,
 .ai-blk-ti > span,
@@ -1127,6 +1140,7 @@ h4,
 .sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
 .badge--tiny,  /* TRIP-337: третья ступень пилюли — статус/тариф-чипы плашки на кегль ниже (.t-micro→.t-tiny-caps), апрув Pavel */
 .mbnav__lbl,   /* лейблы боттом-нава → Tiny Caps (был .t-micro 11px). visual-diff-exempt: .mbnav__lbl font-size — подпись пункта нава Micro→Tiny Caps */
+.tc__day span,
 .cdu span { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175 инсп.: подпись таймера Micro→Tiny Caps */
 /* Моно — ОДИН источник (JetBrains Mono, --font-mono): share-URL/email/kbd/code.
    TRIP-337: КОДЫ-ДАННЫЕ (бронь/рейс/полис) в event/service выведены из моно НА
@@ -2793,17 +2807,40 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 /* .ph = ряд PRO-пилюли (bottom-margin перед заголовком в вертикальном варианте). */
 .pro-up .ph { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
-/* .pi = gold icon tile — оставлен ТОЛЬКО для ProUpsellModal head (перекрашен в
-   оранж-розовый через --pro-gradient). В плашках теперь PRO-пилюля <Badge>. */
-.pi {
-  width: 34px; height: 34px; border-radius: var(--r-sm);
-  background: var(--pro-gradient);
-  display: grid; place-items: center;
-  flex: none; box-shadow: 0 4px 12px -4px var(--pro);
-  color: #fff; /* ensure currentColor = white for SVG stroke */
-}
-.pi svg { width: 18px; height: 18px; }
-.pro-up .pt {
+/* `.pi` (золотая плитка шапки ProUpsellModal) УДАЛЁН: он был побайтовым дублем
+   канон-плитки `.tile--solid.tile--pro` — те же 34px, тот же `--r-sm`, тот же
+   `--pro-gradient`, та же раскладка — и расходился ровно двумя объявлениями:
+   свечением и кеглем значка (18 против ступени `--tile-ic` 17). Шапка модалки
+   перешла на `<Dialog iconTone="pro">`, вызыватель у класса был ровно один.
+
+   Свечение НЕ переехало на `.tile--solid.tile--pro` намеренно: второй вызыватель
+   этой плитки — тариф в аккаунте (`ScreenAccount.jsx:133`), и тень приехала бы
+   туда без спроса. Направление у Pro-семьи то же: у `.btn--pro` свечение уже
+   снято по просьбе Pavel (строка ~1863), у `.badge--pro` осталось.
+
+   ⚠️ ПОЧЕМУ ЗДЕСЬ ДЕСЯТЬ `-exempt`, А НЕ ОДИН `visual-diff-move`. Перенос
+   объявлен быть НЕ МОЖЕТ, и это свойство гарда, а не лень автора: цель —
+   КОМПОЗИЦИЯ `tile` + `tile--solid` + `tile--pro`, а победителя 2p выбирает
+   ПОКЛАССОВО, из карты «тяжелейшее правило на единицу». У единицы `tile`
+   тяжелейшее правило фона — не базовое `.tile`, а любое КОНТЕКСТНОЕ
+   (`.vp-h .tile`, `.lp-h--ev .lp-ic`, спец. 0,2,0), поэтому названный целью
+   `tile` уводит `background` на `var(--hl-soft)` и перенос краснеет «СО СМЕНОЙ
+   значения». Убрать `tile` из списка — краснеет раскладка (`display`/`flex`/
+   `place-items`/`width`/`height`/`border-radius`), она живёт как раз на базовой
+   `.tile`. Отказ переноса фатален и `-exempt`-ом не гасится (`rejected` проверяется
+   ДО `blocking`), так что законных ходов остаётся ровно один — точечные маркеры.
+   Проверено прогоном обоих вариантов, не чтением.
+
+   visual-diff-exempt: .pi width — 34px → `var(--tile, 34px)` канон-плитки: то же число, другая запись
+   visual-diff-exempt: .pi height — 34px → `var(--tile, 34px)` канон-плитки: то же число, другая запись
+   visual-diff-exempt: .pi border-radius — `var(--r-sm)` → `var(--tile-r, var(--r-sm))`: то же значение через ручку ступени
+   visual-diff-exempt: .pi display — `grid` приезжает с базовой `.tile`, значение то же
+   visual-diff-exempt: .pi place-items — `center` приезжает с базовой `.tile`, значение то же
+   visual-diff-exempt: .pi flex — `none` приезжает с базовой `.tile`, значение то же
+   visual-diff-exempt: .pi background — `var(--pro-gradient)` приезжает с `.tile--solid.tile--pro`, значение то же
+   visual-diff-exempt: .pi svg width — 18px → ступень `--tile-ic` 17px: кегль значка сведён к лестнице плитки
+   visual-diff-exempt: .pi svg height — 18px → ступень `--tile-ic` 17px: кегль значка сведён к лестнице плитки
+   visual-diff-exempt: .pi box-shadow — ЕДИНСТВЕННОЕ видимое изменение: свечение снято вместе с приватной плиткой (переносить его на канон значит перекрасить плитку тарифа в аккаунте) */.pro-up .pt {
  /* 15px, matches design */
  color: var(--ink);
 }
@@ -2870,6 +2907,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .pro-up--inline .btn { width: 100%; }
 }
 .badge--success { background: var(--success-soft); color: var(--success); }
+/* Залитый success — тон для пилюли, которая стоит НА МЕДИА (чип «Идёт» на
+   обложке трипа). Мягкие тоны семьи (12% краски на прозрачном) рассчитаны на
+   поверхность и на фотографии не читаются ни фоном, ни текстом. Форма и
+   ступень те же — меняется только тон, как у уже залитых `.badge--count`
+   (brand) и `.badge--unread` (danger).
+   Апрув Pavel. */
+.badge--success-solid { background: var(--success); color: var(--primary-fg); }
 /* orphan-exempt: badge--warning — эмитится <Badge variant="warning"> композицией
    badge--${variant} (RoleBadge, роль «Владелец»); литерала в разметке нет по построению (TRIP-409) */
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
@@ -3688,6 +3732,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .cover[data-cover=gradient_16] background — снят с выпилом градиентов обложки */
 .cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
 .cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* Обложка во всю площадь родителя (постер трипа, виджет «идёт») вместо
+   собственной миниатюры. Свела сырой `<img class="tc__img">` с его копией
+   фоллбека и БЕЗ onError — теперь битый URL гасит фото и показывает
+   плейсхолдер, как везде. */
+.cover--fill { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; }
+/* Зум обложки на ховере медиа-карточки — тот же, что был у `.tc__img`: зумятся
+   ЛИСТЬЯ (фото и декоративные орбы), не контейнер.
+   visual-diff-exempt: .cover__img transition — зум обложки уехал с мёртвого .tc__img на примитив ДС <Cover fill>, то же значение
+   visual-diff-exempt: .cover__img {@media (hover: hover)} transform — то же: носитель зума сменился, значение scale(1.05) прежнее */
+.cover--fill .cover__img { transition: transform .35s var(--ease-out); }
 
 /* ── Carousel: горизонтальная лента-примитив ДС (<Carousel>) ──────────────────
    Нативный scroll-snap + десктоп-стрелки (только под hover-указателем). Дети —
@@ -7604,22 +7658,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* cover background */
 .tc__bg { position: absolute; inset: 0; z-index: 0; }
-.tc__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transition: transform .35s var(--ease-out); }
-/* Ховер медиа-карточки, тень остаётся --sh-1→--sh-3 (запрос Pavel). ОДНА модель для
-   грида (.tc) и списка (.tr): зумятся листья-детали обложки — фото `.tc__img` и
-   декоративные орбы `.tc__blob` (у градиентных карточек видимый зум дают именно орбы;
-   плоский градиент при scale не читается). Ни обёрток, ни спец-правил на вид:
-   visual-diff-exempt: .tc__bg transition — переход снят, зум ушёл на листья (.tc__img/.tc__blob)
-   visual-diff-exempt: .tc__blob transition — плавный зум орба (грид+список)
+/* Ховер медиа-карточки, тень остаётся --sh-1→--sh-3 (запрос Pavel): зумятся
+   листья-детали обложки — фото и декоративные орбы `.tc__blob` (у карточек без
+   фото видимый зум дают именно орбы). Слой фото теперь примитив ДС `<Cover fill>`
+   (`.cover--fill .cover__img`), а не свой `.tc__img`, поэтому вызыватель списка
+   (`.tr`) из селектора ушёл вместе со всей семьёй `.tr*`.
+   visual-diff-exempt: .tc__blob transition — плавный зум орба
    visual-diff-exempt: .tc:hover:not(.tc--band) {@media (hover: hover)} transform — зум 1.05, юнит .tc
-   visual-diff-exempt: .tr:hover {@media (hover: hover)} transform — зум 1.05, юнит .tr
-   visual-diff-exempt: .tc__img {@media (hover: hover)} transform — зум 1.05 фото (грид+список)
-   visual-diff-exempt: .tc__blob {@media (hover: hover)} transform — зум 1.05 орба (грид+список) */
+   visual-diff-exempt: .tc__blob {@media (hover: hover)} transform — зум 1.05 орба */
 @media (hover: hover) {
-  .tc:not(.tc--band):hover .tc__img,
-  .tc:not(.tc--band):hover .tc__blob,
-  .tr:hover .tc__img,
-  .tr:hover .tc__blob { transform: scale(1.05); }
+  .tc:not(.tc--band):hover .cover__img,
+  .tc:not(.tc--band):hover .tc__blob { transform: scale(1.05); }
 }
 
 /* decorative semi-transparent blobs */
@@ -7673,6 +7722,38 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 }
 .tc__glass svg { width: 12px; height: 12px; }
 
+/* ── Постер в состоянии «идёт» (виджет главной) ─────────────────────────────
+   НЕ новый объект: это тот же постер трипа `.tc`, только в габаритах рейла.
+   Обложка, скрим, стеклянный чип, заголовок и строка городов у него общие с
+   карточкой грида — своё только то, чего у карточки нет: счётчик дня, полоса
+   дней и мета-подвал.
+   prefix-exempt: НЕ ТРЕБУЕТСЯ — семья .tc существует на базе
+   visual-diff-exempt: .tc__in min-height — состояние «идёт» у постера трипа: габарит рейла + чип «Идёт» слева / счётчик дня справа
+   visual-diff-exempt: .tc__tags align-items — состояние «идёт» у постера трипа: габарит рейла + чип «Идёт» слева / счётчик дня справа
+   visual-diff-exempt: .tc__tags justify-content — состояние «идёт» у постера трипа: габарит рейла + чип «Идёт» слева / счётчик дня справа */
+.tc--live { min-height: 216px; }
+.tc--live .tc__in { min-height: 216px; }
+/* Чип «Идёт» слева, счётчик дня справа (у карточки грида ряд прижат вправо). */
+.tc--live .tc__tags { justify-content: space-between; align-items: flex-start; }
+/* Верх скрима у «идёт» плотнее: там стоят чип и счётчик дня, а базовый скрим
+   постера тёмный только СНИЗУ (сверху .20) — на светлом небе белый счётчик
+   пропадал (проверено снимком). Приём тот же, что у `.tc--past`: вариант
+   переопределяет градиент, своего класса под это не заводим.
+   visual-diff-exempt: .tc__scrim background — плотнее верх скрима у состояния «идёт»: на его обложке сверху стоят чип и счётчик дня, которых у обычного постера нет; контраст проверен снимком */
+.tc--live .tc__scrim { background: linear-gradient(180deg, rgba(8,10,20,.46) 0%, rgba(8,10,20,.10) 34%, rgba(8,10,20,.18) 52%, rgba(8,10,20,.86) 100%); }
+/* Счётчик дня: крупное число + подпись под ним, прижат вправо, на обложке */
+.tc__day { text-align: right; color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.45); }
+.tc__day b { display: block; font-variant-numeric: tabular-nums; }
+.tc__day span { display: block; opacity: .9; }
+/* Полоса дней: по сегменту на КАЛЕНДАРНЫЙ ДЕНЬ трипа, ширина делится поровну —
+   длинный трип деградирует сам (сегменты тоньше), ветки «а если 30 дней» нет. */
+.tc__prog { display: flex; gap: 3px; margin-top: var(--sp-6); }   /* design-token-exempt: 3px — зазор между сегментами дня (деталь элемента, не --sp) */
+.tc__prog-d { flex: 1; height: 4px; border-radius: var(--r-pill); background: rgba(255,255,255,.28); }
+.tc__prog-d.is-past { background: #fff; }
+.tc__prog-d.is-now { background: var(--success); }
+/* Подвал-мета: даты слева, остаток справа (у карточки грида подвал — ряд чипов) */
+.tc__foot--meta { justify-content: space-between; color: rgba(255,255,255,.72); }
+
 /* "Add trip" phantom card */
 /* TRIP-343 PR-3: плитка «Добавить путешествие» на канон `<Card variant="add">`
    (transparent + пунктир --line-strong + --muted). `.tc-add` — раскладочный
@@ -7703,103 +7784,153 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tc-add b { color: inherit; }
 .tc-add small { text-align: center; max-width: 200px; }
 
-/* ── Строка-список (list view) ─────────────────────────────── */
-/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
-/* TRIP-343 объект 2: скин строки трипа на `<Card as="button" radius="lg" interactive>`;
-   `.tr` остаётся численным раскладочным остатком (padding 11/14 + flex → 08). Лифт
-   (translateY + --sh-2) и :active сняты — канон интерактива без движения (рамку-ховер
-   --line-hover несёт .card--interactive:hover). `.tr--add` (add-вариант) делит эту
-   базу и тоже на Card; его dashed-оверрайд/лифт — канонизируется в PR-3. Апрув /kit.
-   visual-diff-exempt: .tr background — скин переехал на .card
-   visual-diff-exempt: .tr border — скин переехал на .card
-   visual-diff-exempt: .tr border-radius — радиус переехал на .card--r-lg
-   visual-diff-exempt: .tr transition — interactive несёт свой (без transform)
-   visual-diff-exempt: .tr:hover {@media (hover: hover)} transform — лифт снят (канон без движения, апрув /kit)
-   visual-diff-exempt: .tr:hover {@media (hover: hover)} box-shadow — лифт снят (был --sh-2, покой плоский)
-   visual-diff-exempt: .tr:hover {@media (hover: hover)} border-color — рамка-ховер → .card--interactive:hover (тот же --line-hover)
-   visual-diff-exempt: .tr:active transform — нажатие без движения (канон) */
-.tr {
-  display: flex; align-items: center; gap: 14px;
-  padding: 11px 14px;
-  cursor: pointer; text-align: left; font-family: inherit;
-}
-.tr--past { opacity: .72; }
+/* ── Строка-список: СНЕСЕНА ────────────────────────────────────────────────
+   Семья `.tr*` (`.tr`, `.tr--past`, `.tr--add`, `.tr__thumb`, `.tr__shared`,
+   `.tr__main`, `.tr__title`, `.tr__sub`, `.tr__meta`, `.tr__date`, `.tr__chev`,
+   `.tr__addic`) и утилита `.tr-hideS` удалены целиком вместе с namespace `tr`.
+   Это была ЧЕТВЁРТАЯ рукописная копия строки списка; прошедшие трипы на главной
+   рисует канон `<ListRow variant="raised" muted lead={<Cover/>}>`, у которого
+   для этого заведены две оси — `muted` и `trailSub` (см. .lrow выше).
+   visual-diff-exempt: .tr--add border — плейсхолдер «добавить» в списке снесён вместе со списочным видом (вида два больше нет, добавление живёт плиткой .tc-add в гриде)
+   visual-diff-exempt: .tr--add background — то же
+   visual-diff-exempt: .tr--add color — то же
+   visual-diff-exempt: .tr__addic width — то же
+   visual-diff-exempt: .tr__addic height — то же
+   visual-diff-exempt: .tr__addic border-radius — то же
+   visual-diff-exempt: .tr__addic background — то же
+   visual-diff-exempt: .tr__addic color — то же
+   visual-diff-exempt: .tr__shared position — иконка «совместный» на миниатюре снесена: у строки прошедшего трипа совместность несёт стопка аватаров в трейле, дубля-значка на обложке больше нет
+   visual-diff-exempt: .tr__chev color — шеврон строки на канон <Icon name="chev"> в трейле ListRow
+   visual-diff-exempt: .trips-toolbar__search {@media (max-width: 640px)} flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar__search {@media (max-width: 640px)} max-width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar__search {@media (max-width: 640px)} min-width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar__spacer {@media (max-width: 640px)} display — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .seg--filter {@media (max-width: 640px)} flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .seg--filter {@media (max-width: 640px)} order — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .seg--view {@media (max-width: 640px)} flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .seg--view {@media (max-width: 640px)} order — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tc__blob right — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__addic display — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__addic flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__addic place-items — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__addic transition — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__chev flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__chev height — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__chev width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__date white-space — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__main flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__main min-width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__meta align-items — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__meta display — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__meta flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__meta flex-wrap — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__meta gap — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared svg height — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared svg width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared background — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared border-radius — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared bottom — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared box-shadow — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared display — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared height — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared place-items — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared right — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__shared z-index — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__sub svg flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__sub svg height — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__sub svg width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__sub align-items — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__sub display — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__sub gap — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__title margin-bottom — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__title overflow — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__title text-overflow — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr__title white-space — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr--add b display — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr--add:hover background — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tr-hideS {@media (max-width: 600px)} display — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar .seg--filter button {@media (max-width: 640px)} flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar .seg--filter button {@media (max-width: 640px)} justify-content — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar__search {@media (max-width: 640px)} order — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar__search flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar__search max-width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar__search min-width — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar__spacer flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} flex — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} gap — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar {@media (max-width: 640px)} order — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar align-items — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar display — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar flex-wrap — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar gap — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .trips-toolbar margin-bottom — снесено вместе с семьёй .tr* / .tc__img / .trips-toolbar: строка прошедшего трипа на канон <ListRow>, обложка на <Cover fill>, вкладки и переключатель вида удалены
+   visual-diff-exempt: .tc__blob height — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__blob top — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__blob width — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__img {@media (hover: hover)} transform — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__img height — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__img inset — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__img object-fit — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__img position — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__img transition — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__img width — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tc__img z-index — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__date font-family — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__date font-size — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__date font-variant-numeric — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__date font-weight — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__date letter-spacing — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__date line-height — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__sub font-family — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__sub font-size — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__sub font-variant-numeric — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__sub font-weight — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__sub letter-spacing — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__sub line-height — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__thumb border-radius — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__thumb flex — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__thumb height — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__thumb overflow — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__thumb position — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__thumb right — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__thumb top — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__thumb width — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__title font-family — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__title font-size — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__title font-weight — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__title letter-spacing — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr__title line-height — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add b font-family — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add b font-size — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add b font-weight — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add b letter-spacing — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add b line-height — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add small font-family — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add small font-size — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add small font-variant-numeric — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add small font-weight — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add small letter-spacing — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--add small line-height — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr--past opacity — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr:hover {@media (hover: hover)} transform — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr align-items — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr cursor — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr display — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr font-family — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr gap — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr padding — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill>
+   visual-diff-exempt: .tr text-align — снесено вместе с семьёй .tr* и слоем .tc__img: строка прошедшего трипа уехала на канон <ListRow>, обложка — на примитив <Cover fill> */
 
-/* thumbnail */
-.tr__thumb {
-  width: 62px; height: 46px; border-radius: var(--r-sm);
-  position: relative; overflow: hidden; flex: none;
-}
-.tr__thumb .tc__blob { width: 54px; height: 54px; top: -18px; right: -14px; }
-
-/* shared icon badge on thumbnail */
-.tr__shared {
-  position: absolute; bottom: 4px; right: 4px; z-index: 2;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: rgba(255,255,255,.92);
-  display: grid; place-items: center;
-  color: var(--brand); box-shadow: 0 2px 6px -1px rgba(0,0,0,.3);
-}
-.tr__shared svg { width: 11px; height: 11px; }
-
-.tr__main { flex: 1; min-width: 0; }
-.tr__title {
- color: var(--ink);
- margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.tr__sub {
- display: flex; align-items: center; gap: 6px;
- color: var(--muted);
-}
-.tr__sub svg { width: 12px; height: 12px; flex: none; color: var(--brand); }
-
-.tr__meta { display: flex; align-items: center; gap: 10px; flex: none; flex-wrap: wrap; }
-.tr__date { color: var(--ink-2); white-space: nowrap; }
-.tr__chev { color: var(--muted-2); flex: none; width: 14px; height: 14px; }
-
-/* hide secondary meta on small screens */
-@media (max-width: 600px) { .tr-hideS { display: none !important; } }
-
-/* List-view "add trip" placeholder — mirrors the grid .tc-add language but as a
-   row, reusing .tr / .tr__main. Placed after .tr so it wins on equal specificity. */
-/* Скин плейсхолдера сведён на канон `<Card variant="add">` (.card--add): пунктир
-   --line-strong / transparent / --muted и ховер brand несёт канон. Движение снято —
-   канон add без лифта (как в гриде .tc-add), это и просил Pavel:
-   visual-diff-exempt: .tr--add border — на канон .card--add (1px dashed --line-strong, тождественно)
-   visual-diff-exempt: .tr--add background — на канон .card--add (transparent, тождественно)
-   visual-diff-exempt: .tr--add color — на канон .card--add (--muted, тождественно)
-   visual-diff-exempt: .tr--add box-shadow — базовый .card без тени, none был избыточен
-   visual-diff-exempt: .tr--add:hover border-color — ховер на канон .card--add:hover (--brand)
-   visual-diff-exempt: .tr--add:hover color — ховер на канон .card--add:hover (--brand)
-   visual-diff-exempt: .tr--add:hover background — ховер на канон .card--add:hover (--brand-soft)
-   visual-diff-exempt: .tr--add:hover box-shadow — none был избыточен (без тени)
-   visual-diff-exempt: .tr--add:hover transform — лифт translateY снят (канон add без движения)
-   visual-diff-exempt: .tr--add:active transform — нажатие без движения (канон) */
-.tr__addic {
-  width: 46px; height: 46px; border-radius: var(--r-sm); flex: none;
-  background: var(--brand-soft); color: var(--brand);
-  display: grid; place-items: center;
-  transition: background .2s;
-}
-.tr--add:hover .tr__addic { background: var(--brand-soft-12); }
-.tr--add b { color: inherit; display: block; }
-.tr--add small { color: var(--muted); }
-
-/* ── Trips toolbar (filters row) — adaptive on mobile ───────────────────────
-   Desktop: [Active/Past seg] [search (flex)] [spacer] [grid/list seg].
-   ≤640px:  row1 = [Active/Past seg (grows)] [grid/list seg]; row2 = search full. */
-.trips-toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
-/* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
-.trips-toolbar__search { flex: 1; min-width: 180px; max-width: 340px; }
-.trips-toolbar__spacer { flex: 1; }
-@media (max-width: 640px) {
-  .trips-toolbar { gap: 10px; }
-  .trips-toolbar .seg--filter { order: 1; flex: 1; }
-  .trips-toolbar .seg--filter button { flex: 1; justify-content: center; }
-  .trips-toolbar .seg--view { order: 2; flex: none; }
-  .trips-toolbar__search { order: 3; flex: 1 1 100%; max-width: none; min-width: 0; }
-  .trips-toolbar__spacer { display: none; }
-}
+/* ── Trips toolbar: СНЕСЕНА ────────────────────────────────────────────────
+   `.trips-toolbar`, `.trips-toolbar__search`, `.trips-toolbar__spacer` и
+   экранные адаптивы сегментов `.seg--filter`/`.seg--view` удалены вместе с
+   namespace `trips-toolbar`: у главной больше нет ни вкладок «Активные/
+   Прошедшие» (обе группы на одной странице), ни переключателя грид/список
+   (у активных постер, у прошедших строка — по построению).
+   Поиск уехал в `.sec-actions` шапки раздела, где мобильный перенос на всю
+   ширину уже объявлен (`width:100%` ≤640px) — своей адаптивной раскладки ему
+   больше не нужно.
 
 /* ── Баннер лимита Free-тарифа ─────────────────────────────── */
 /* Free-limit plaque + Pro-upgrade plates — дизайн-система TRIP-187:
@@ -9024,7 +9155,40 @@ a.doc-row__n:hover{ color: var(--brand); }
    instead of overflowing). */
 .sec-head { display: flex; align-items: center; gap: 14px; margin: 30px 0 16px; flex-wrap: wrap; }
 .sec-head .grow { flex: 1; }
+/* Заголовок ГРУППЫ внутри раздела («Активные · 3» / «Прошедшие · 7»): подпись,
+   счётчик, хвост-линейка до правого края и опциональное действие за ней. Приём
+   тот же, что у разделителя дня в чате (`.chat-daydiv`), но там линейки с ДВУХ
+   сторон и подпись по центру — это другой объект, поэтому здесь модификатор
+   существующей шапки раздела, а не копия соседа.
+   ★ Линейка — СВОЙ элемент, а не `::after` контейнера: с псевдоэлементом
+   действие за линейкой пришлось бы двигать правилом `... > .btn { order }`,
+   то есть экранным классом дотянуться внутрь примитива-кнопки (пол 2o это и
+   ловит, и правильно). Явный `<i>` ставит порядок разметкой. */
+/* ★ Перенос НЕ запрещаем (базовый `.sec-head` его и так разрешает): линейка
+   `flex:1` держит подпись со счётчиком вместе, а на узком экране на свою
+   строку уезжает только действие за ней. `nowrap` вместо этого выпихивал
+   кнопку за правый край — проверено снимком 390px. */
+.sec-head--group { gap: var(--sp-5); margin: var(--sp-8) 0 var(--sp-6); color: var(--ink); }
+.sec-head__rule { flex: 1; height: 1px; background: var(--line); min-width: var(--sp-7); }
+.sec-head--group svg { width: 16px; height: 16px; flex: none; color: var(--muted-2); }
+.sec-head--group .num { color: var(--muted); }
+/* Год внутри группы прошедших — та же линейка, но тише и теснее: это подпись
+   подгруппы, а не заголовок раздела. */
+.sec-head--sub { margin: var(--sp-7) 0 var(--sp-5); color: var(--muted-2); }
 .sec-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+/* Слот действий, занятый ПОЛЕМ (поиск на главной): поле должно быть заметно
+   шире своей интринсик-ширины, но не половиной шапки. Ширину держит слот, а не
+   само поле — иначе правило дотянулось бы внутрь примитива `.field`.
+   Апрув Pavel. */
+.sec-actions--search { flex: 1; max-width: 460px; min-width: 220px; }
+/* ≤640px поле остаётся ВО ВСЮ ШИРИНУ, как было до этой правки: там ширину
+   уже держит `.sec-actions { width: 100% }`, а десктопный потолок 460px его
+   бы срезал. Ширина — правка ТОЛЬКО десктопа; в файле нет ни одного
+   `min-width`-медиазапроса, поэтому база = десктоп, а 640 гасит.
+   ★ Гасить надо И `flex`: `flex: 1` ставит `flex-basis: 0`, который во
+   флекс-контейнере ПЕРЕБИВАЕТ `width: 100%` канона — с одним лишь снятым
+   потолком поле на 390px осталось 160px вместо всей строки. */
+@media (max-width: 640px) { .sec-actions--search { flex: none; max-width: none; min-width: 0; } }
 /* Year filter: stay one clean row and scroll INSIDE the pill when there are many
    years — never wrap into an orphan row or push a page-level horizontal scroll. */
 .sec-actions .seg { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }

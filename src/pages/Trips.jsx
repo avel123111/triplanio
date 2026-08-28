@@ -5,7 +5,10 @@ import { invokeFn } from '@/lib/invokeFn';
 import { goPro } from '@/lib/goPro';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
-import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
+import {
+  isTripInPast, formatTripRange, computeTripRange,
+  todayKey, tripProgress, currentCityVisit, sortActiveTrips,
+} from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { displayName } from '@/lib/displayName';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -13,7 +16,10 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, Card, COVER_FALLBACK, EmptyState, Input, RoleBadge, Seg, Skeleton, Tile } from '../design/index';
+import {
+  AvatarStack, Badge, Btn, Card, Col, Cover, EmptyState, Grow, Input, ListRow,
+  RoleBadge, Row, Skeleton, Tile, Trunc,
+} from '../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import { uniqueTransitCities, uniqueCountryCodes, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -96,13 +102,20 @@ const TripAvatars = ({ members, maxShow = 3, white = false }) => {
   );
 };
 
-// ─── Next-trip rail card / empty states ────────────────────────────────────────
+// ─── Виджет рейла: ТРИ состояния ──────────────────────────────────────────────
+// Один слот, один трип, три взаимоисключающих состояния: идёт → <LiveTripCard>,
+// впереди → <NextTripCard>, ничего → <NoNextCard>. Своего отбора у виджета нет:
+// он получает ГОЛОВУ той же очереди активных, что рисует грид ниже
+// (`sortActiveTrips`: идущие по концу → будущие по старту → без дат). Прежде
+// отбор был свой (`startMs <= now`) и расходился со списком — в день старта трип
+// пропадал из виджета, оставаясь активным в ленте.
+
 function NextTripCard({ trip, onClick, t }) {
   const cd = trip.countdown;
   return (
     <Card as="button" radius="lg" interactive className="nextcard" onClick={onClick}>
       <span className="nextcard__cover">
-        <img className="tc__img" src={trip.cover_image_url || COVER_FALLBACK} alt="" />
+        <Cover fill image={trip.cover_image_url} />
       </span>
       <span className="nextcard__tx">
         <span className="t-label tp-caption">{t('stats.next_trip_title')}</span>
@@ -122,8 +135,72 @@ function NextTripCard({ trip, onClick, t }) {
   );
 }
 
-// Ровно ДВА состояния виджета «Ближайшая поездка»: есть будущий трип →
-// <NextTripCard>, нет будущего (неважно, есть прошлые или нет) → эта карточка с
+// Состояние «идёт»: НЕ новый объект, а тот же постер трипа `.tc` (см. TripCard
+// ниже) в габаритах рейла. Обложка, скрим, стеклянный чип, заголовок и строка
+// городов — общие с карточкой грида; своё только то, чего у карточки нет:
+// счётчик дня, полоса дней и мета-подвал.
+function LiveTripCard({ trip, onClick, t, lang }) {
+  const { day, total, left } = trip.progress;
+  return (
+    <Card as="button" pad="none" radius="lg" className="tc tc--live" onClick={onClick}>
+      <div className="tc__bg">
+        <Cover fill image={trip.cover_image_url} />
+        {!trip.cover_image_url && (
+          <>
+            <div className="tc__blob tc__b1" />
+            <div className="tc__blob tc__b2" />
+          </>
+        )}
+      </div>
+      <div className="tc__scrim" />
+      <div className="tc__in">
+        <div className="tc__tags">
+          <Badge variant="success-solid" size="tiny">{t('stats.live_now')}</Badge>
+          <span className="tc__day">
+            <b>{day}</b>
+            <span>{t('stats.live_day_of', { total })}</span>
+          </span>
+        </div>
+
+        <div className="tc__spacer" />
+
+        <div className="tc__title">{trip.title}</div>
+        {/* «Сейчас {город}» — визит, накрывающий сегодняшний день. Флаг — канон
+            CountryFlag, тот же источник флагов, что у карточки грида. */}
+        {/* В день переезда сегодняшний день не накрыт ни одним городом — тогда
+            строка показывает маршрут целиком, как карточка в гриде, а не
+            «сейчас » с пустым местом. */}
+        <div className="tc__scope">
+          {trip.nowCountry
+            ? <CountryFlag code={trip.nowCountry} />
+            : <Icon name="pin" />}
+          <span className="trunc">
+            {trip.nowCity ? t('stats.live_in_city', { city: trip.nowCity }) : trip.scope}
+          </span>
+        </div>
+
+        {/* Полоса дней: по сегменту на календарный день трипа. */}
+        <div className="tc__prog">
+          {Array.from({ length: total }, (_, i) => (
+            <i
+              key={i}
+              className={`tc__prog-d${i + 1 < day ? ' is-past' : i + 1 === day ? ' is-now' : ''}`}
+            />
+          ))}
+        </div>
+
+        <div className="tc__foot tc__foot--meta">
+          <span className="t-micro tab">{trip.days}</span>
+          <span className="t-micro">{left > 0
+            ? pluralize(t, left, 'stats.live_left', lang, { count: left })
+            : t('stats.live_last_day')}</span>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Нет ни идущего, ни будущего (неважно, есть прошлые или нет) → карточка с
 // приглашением запланировать. Никакого «пустого» варианта без кнопки — оба
 // бестрипных случая ведут в один и тот же CTA.
 function NoNextCard({ onPlan, t }) {
@@ -140,7 +217,7 @@ function NoNextCard({ onPlan, t }) {
 }
 
 // ─── Map hero + rail (shared by filled + empty screens) ────────────────────────
-function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onYearReview, onPlan, onOpenNext, t }) {
+function StatHero({ points, home, world, showMap, scheme, hero, onAllStats, onYearReview, onPlan, onOpenHero, t, lang }) {
   const items = [
     { key: 'countries', value: home.countries, label: t('stats.sb_countries'), icon: <Icon name="globe" /> },
     { key: 'cities',    value: home.cities,    label: t('stats.sb_cities'),     tone: 'city',     icon: <Icon name="buildings" /> },
@@ -169,9 +246,12 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
             title={t('stats.world_explored')}
             subCaption={t('stats.world_countries_visited')}
           />
-          {nextTrip
-            ? <NextTripCard trip={nextTrip} onClick={onOpenNext} t={t} />
-            : <NoNextCard onPlan={onPlan} t={t} />}
+          {/* Три состояния одного слота — см. шапку виджета выше. */}
+          {hero?.progress
+            ? <LiveTripCard trip={hero} onClick={onOpenHero} t={t} lang={lang} />
+            : hero
+              ? <NextTripCard trip={hero} onClick={onOpenHero} t={t} />
+              : <NoNextCard onPlan={onPlan} t={t} />}
         </div>
       </div>
     </>
@@ -184,11 +264,13 @@ const TripCard = ({ trip, onClick }) => {
 
   return (
     <Card as="button" pad="none" radius="lg" className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
-      {/* cover layer — фото ИЛИ фоллбек-обложка + декоративные блобы. Всё внутри
-          .tc__bg, который зумится на ховере (зум дают листья: фото .tc__img и орбы).
-          Обложки нет → фоллбек-картинка из бандла (COVER_FALLBACK), градиентов нет. */}
+      {/* Слой обложки — примитив ДС `<Cover fill>` + декоративные орбы. Раньше
+          здесь стоял сырой `<img class="tc__img">` со своей копией фоллбека и БЕЗ
+          onError: битый или удалённый URL рисовал СЛОМАННУЮ картинку вместо
+          плейсхолдера. У примитива фоллбек нижним слоем, фото поверх, onError
+          гасит фото — один объект закрывает и «обложки нет», и «src сломан». */}
       <div className="tc__bg">
-        <img className="tc__img" src={trip.cover_image_url || COVER_FALLBACK} alt="" />
+        <Cover fill image={trip.cover_image_url} />
         {!trip.cover_image_url && (
           <>
             <div className="tc__blob tc__b1" />
@@ -237,62 +319,37 @@ const TripCard = ({ trip, onClick }) => {
   );
 };
 
-// ─── Trip row (list view) ────────────────────────────────────────────────────
-const TripRow = ({ trip, onClick }) => {
-  const { t } = useI18n();
-
-  return (
-    <Card
-      as="button"
-      radius="lg"
-      interactive
-      onClick={onClick}
-      className={`tr${trip.status === 'past' ? ' tr--past' : ''}`}
-    >
-      {/* thumbnail — фото ИЛИ фоллбек-обложка через канон-класс .tc__img (ховер-зум
-          как в гриде); обложки нет → фоллбек-картинка из бандла, градиентов нет */}
-      <div className="tr__thumb">
-        <img className="tc__img" src={trip.cover_image_url || COVER_FALLBACK} alt="" />
-        <div className="tc__blob" />
-        {trip.isShared && (
-          <span className="tr__shared"><Icon name="users" /></span>
-        )}
-      </div>
-
-      {/* main */}
-      <div className="tr__main">
-        <div className="tr__title">{trip.title}</div>
-        <div className="tr__sub">
-          {trip.flags.length > 0
-            ? trip.flags.map(cc => <CountryFlag key={cc} code={cc} />)
-            : <Icon name="pin" />}
-          <span className="trunc">{trip.scope}</span>
-        </div>
-      </div>
-
-      {/* meta */}
-      <div className="tr__meta">
-        <span className="tr__date tab tr-hideS">{trip.days}</span>
-        {trip.isShared && (
-          <div className="tr-hideS">
-            <TripAvatars members={trip.members} maxShow={2} />
-          </div>
-        )}
-        {trip.isShared && (
-          <span className="tr-hideS">
-            <RoleBadge role={trip.role} />
-          </span>
-        )}
-        {trip.pro && (
-          <span className="tr-hideS">
-            <Badge variant="pro" icon="pro">PRO</Badge>
-          </span>
-        )}
-        <span className="tr__chev"><Icon name="chev" /></span>
-      </div>
-    </Card>
-  );
-};
+// ─── Строка прошедшего трипа ─────────────────────────────────────────────────
+// Канон `<ListRow>` вместо прежней семьи `.tr*` — та была ЧЕТВЁРТОЙ рукописной
+// копией строки списка в приложении. Приглушение и «спрятать второстепенное на
+// телефоне» тоже канонные оси (`muted`, `trailSub`), а не приватные `.tr--past`
+// и `.tr-hideS` с `!important`.
+const PastTripRow = ({ trip, onClick }) => (
+  <ListRow
+    variant="raised"
+    muted
+    onClick={onClick}
+    lead={<Cover image={trip.cover_image_url} />}
+    title={<Trunc>{trip.title}</Trunc>}
+    sub={
+      <Row gap="g4">
+        {trip.flags.length > 0
+          ? trip.flags.map(cc => <CountryFlag key={cc} code={cc} />)
+          : <Icon name="pin" size={12} />}
+        <Trunc>{trip.scope}</Trunc>
+      </Row>
+    }
+    trailSub={
+      <>
+        <span className="t-meta tab">{trip.days}</span>
+        {trip.isShared && <TripAvatars members={trip.members} maxShow={2} />}
+        {trip.isShared && <RoleBadge role={trip.role} />}
+        {trip.pro && <Badge variant="pro" icon="pro">PRO</Badge>}
+      </>
+    }
+    trail={<Icon name="chev" className="muted" />}
+  />
+);
 
 // ─── Empty collection · "Маршрут" — itinerary-rail hero + manual/AI choices ─────
 // Decorative orbs are inline-styled (no shared `.blob` class in this stylesheet);
@@ -329,7 +386,7 @@ function EmptyRoute({ onManual, onAi }) {
 // First-load skeleton — mirrors the new home layout: greeting hero, stat-bar,
 // the map+rail dash-hero, then the trips section header + a card/list skeleton.
 // Reuses the real .head / .dash-hero / .rail grids so columns line up.
-function HomeSkeleton({ viewMode }) {
+function HomeSkeleton() {
   return (
     <>
       {/* 1. Greeting: аватар-круг (.head__av 60×60 50%) + eyebrow + заголовок (h1).
@@ -355,48 +412,34 @@ function HomeSkeleton({ viewMode }) {
           <Skeleton w="100%" h={200} r={'var(--r-xl)'} />
         </div>
       </div>
-      {/* 5. Секц.шапка «MY TRIPS / N trips»: eyebrow + заголовок, БЕЗ кнопки справа
-          (в реальном её нет — раньше скелетон рисовал лишнюю кнопку) */}
-      <div style={{ margin: '30px 0 16px' }}>
-        <Skeleton w={120} h={13} r={5} style={{ marginBottom: 6 }} />
-        <Skeleton w={160} h={28} r={'var(--r-sm)'} />
+      {/* 5. Шапка раздела «МОИ ПУТЕШЕСТВИЯ / N путешествий» + поиск справа —
+          тот же `.sec-head`/`.sec-actions`, что и в реальном, чтобы колонки
+          совпали и содержимое не съехало при подмене скелетона. */}
+      <div className="sec-head">
+        <div className="grow">
+          <Skeleton w={120} h={13} r={5} style={{ marginBottom: 6 }} />
+          <Skeleton w={160} h={28} r={'var(--r-sm)'} />
+        </div>
+        <div className="sec-actions">
+          <Skeleton w={300} h={44} r={'var(--r-xl)'} />
+        </div>
       </div>
-      {/* 6. Ряд фильтров `.trips-toolbar`: сегменты + поиск + переключатель вида —
-          целый ряд, которого в скелетоне не было (карточки съезжали вверх) */}
-      <div className="trips-toolbar">
-        <Skeleton w={190} h={40} r={'var(--r-pill)'} />
-        <Skeleton w={300} h={44} r={'var(--r-xl)'} />
-        <Skeleton w={78} h={40} r={'var(--r-sm)'} />
+      {/* 6. Заголовок группы «Активные · N» с хвост-линейкой */}
+      <div className="sec-head sec-head--group">
+        <Skeleton w={150} h={14} r={5} />
+        <i className="sec-head__rule" />
       </div>
       {/* 7. Карточки */}
-      <TripSkeleton viewMode={viewMode} />
+      <TripSkeleton />
     </>
   );
 }
 
-function TripSkeleton({ viewMode }) {
-  if (viewMode === 'list') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Card key={i} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px' }}>
-            <Skeleton w={62} h={46} r={'var(--r-sm)'} />
-            <div className="grow">
-              <Skeleton w="55%" h={14} r={5} style={{ marginBottom: 6 }} />
-              <Skeleton w="32%" h={11} r={4} />
-            </div>
-            <Skeleton w={80} h={12} r={5} />
-          </Card>
-        ))}
-      </div>
-    );
-  }
+function TripSkeleton() {
   return (
     <div className="tc-grid">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} style={{ borderRadius: 'var(--r-card)', overflow: 'hidden', minHeight: 256 }}>
-          <Skeleton w="100%" h={256} r={0} />
-        </div>
+        <Skeleton key={i} w="100%" h={256} r={'var(--r-lg)'} />
       ))}
     </div>
   );
@@ -412,11 +455,10 @@ export default function Trips() {
 
   const { isDark, toggle: toggleTheme } = useTheme();
 
-  const [viewMode,    setViewMode]    = useState(() => {
-    try { return localStorage.getItem('trips:viewMode') === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
-  });
-  const [filterMode,  setFilterMode]  = useState('active');
-  const [search,      setSearch]      = useState('');
+  // Ни `viewMode`, ни `filterMode` больше нет: обе группы живут на одной странице
+  // (активные постерами, прошедшие строками), поэтому переключать нечего — а с
+  // ними ушли и `localStorage['trips:viewMode']`, и сегмент-контролы.
+  const [search, setSearch] = useState('');
   // Create-trip flow lives in the global CreateTripProvider so the same sheet is
   // reachable from every screen (and the bottom-nav "+"); no more ?new=1 routing.
   const { openChoice, startCreate } = useCreateTrip();
@@ -428,10 +470,6 @@ export default function Trips() {
     return () => cancelAnimationFrame(id);
   }, []);
   const openUpgrade = () => goPro(nav, { hidePerTrip: true });
-
-  React.useEffect(() => {
-    try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }
-  }, [viewMode]);
 
   const isPro = isProActive(user);
   // Single source for the free-limit banner — same getActiveTrips → active_owned_trips() as the create/copy gate.
@@ -544,6 +582,9 @@ export default function Trips() {
   }, [allTrips, visitsByTrip, lang]);
 
   // ── Partition ────────────────────────────────────────────────────────────────
+  // «Идёт поиск» — ОДИН предикат на весь экран: от него зависит и фильтрация, и
+  // то, рисуется ли секция вообще (см. рендер ниже).
+  const searching = search.trim().length > 0;
   const matches = (tr) => {
     const q = search.trim().toLowerCase();
     return !q || (haystackByTrip[tr.id] || '').includes(q);
@@ -553,56 +594,82 @@ export default function Trips() {
   // .start = earliest city start_date, .end = latest city end_date.
   const rangeOf = (tr) => computeTripRange(visitsByTrip[tr.id] || []);
 
-  // Active → earliest start first (asc). Undated trips (no start; treated as
-  // active) sink to the bottom, tie-broken by created_at desc (allTrips is
-  // already created_at-desc, so a stable 0 keeps that order).
-  const activeTrips = allTrips
-    .filter(tr => !isTripInPast(visitsByTrip[tr.id] || []) && matches(tr))
-    .sort((a, b) => {
-      const sa = rangeOf(a).start, sb = rangeOf(b).start;
-      if (!sa && !sb) return 0;
-      if (!sa) return 1;
-      if (!sb) return -1;
-      return new Date(sa).getTime() - new Date(sb).getTime();
-    });
+  // ОДНО «сегодня» на весь рендер: иначе трип на границе полуночи мог бы попасть
+  // в одну группу по списку и в другую по виджету.
+  const today = useMemo(() => todayKey(), []);
+  const visitsOf = (tr) => visitsByTrip[tr.id] || [];
 
-  // Past → most recently finished first (end desc). Past trips always have an
-  // end date (isTripInPast requires it), so no null guard is needed.
-  const pastTrips = allTrips
-    .filter(tr => isTripInPast(visitsByTrip[tr.id] || []) && matches(tr))
-    .sort((a, b) => new Date(rangeOf(b).end).getTime() - new Date(rangeOf(a).end).getTime());
-
-  const shown       = filterMode === 'active' ? activeTrips : pastTrips;
-
-  const shownNorm = shown.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro)
+  // ── Активные ────────────────────────────────────────────────────────────────
+  // Порядок задаёт `sortActiveTrips` (идущие по концу → будущие по старту → без
+  // дат): он же решает, какой трип попадёт в виджет — тот берёт ГОЛОВУ этого
+  // массива и своего отбора не имеет.
+  const activeTrips = sortActiveTrips(
+    allTrips.filter(tr => !isTripInPast(visitsOf(tr), today) && matches(tr)),
+    visitsOf,
+    today,
   );
 
-  // ── Next upcoming trip (nearest future start) for the rail card ──────────────
-  const nextTrip = useMemo(() => {
-    const now = Date.now();
-    let best = null;
-    for (const tr of allTrips) {
-      const visits = visitsByTrip[tr.id] || [];
-      const { start } = computeTripRange(visits);
-      if (!start) continue;
-      const startMs = new Date(start).getTime();
-      if (startMs <= now) continue;
-      if (!best || startMs < best.startMs) best = { tr, visits, startMs };
+  // ── Прошедшие ───────────────────────────────────────────────────────────────
+  // Позже закончившиеся первыми; конец у прошедшего есть всегда (иначе он не
+  // прошедший), поэтому проверки на null нет.
+  const pastTrips = allTrips
+    .filter(tr => isTripInPast(visitsOf(tr), today) && matches(tr))
+    .sort((a, b) => new Date(rangeOf(b).end).getTime() - new Date(rangeOf(a).end).getTime());
+
+  const norm = (tr) =>
+    normalizeTrip(t, tr, visitsOf(tr), tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro);
+  const activeNorm = activeTrips.map(norm);
+
+  // Прошедшие сгруппированы по ГОДУ окончания, годы по убыванию. Группировка
+  // идёт по уже отсортированному массиву, поэтому внутри года порядок тот же.
+  // Без useMemo намеренно: `pastTrips` пересобирается каждый рендер (он зависит
+  // от строки поиска), так что мемо не удержало бы ничего и только врало бы.
+  const pastByYear = [];
+  for (const tr of pastTrips) {
+    const year = String(new Date(rangeOf(tr).end).getFullYear());
+    const last = pastByYear[pastByYear.length - 1];
+    if (last && last.year === year) last.trips.push(norm(tr));
+    else pastByYear.push({ year, trips: [norm(tr)] });
+  }
+
+  // ── Трип виджета ────────────────────────────────────────────────────────────
+  // Голова активной очереди. Идёт → к карточке добавляется `progress` (день/
+  // всего/остаток) и город «сейчас»; впереди → обратный отсчёт. Оба факта
+  // считают чистые функции из `trip-dates.js`, у виджета своей арифметики нет.
+  const heroTrip = useMemo(() => {
+    const tr = sortActiveTrips(
+      allTrips.filter(x => !isTripInPast(visitsOf(x), today)),
+      visitsOf,
+      today,
+    )[0];
+    if (!tr) return null;
+    const visits = visitsOf(tr);
+    const progress = tripProgress(visits, today);
+    const base = { ...tr, scope: scopeLabel(t, visits), days: formatTripRange(visits, '-') };
+    if (progress) {
+      const now = currentCityVisit(visits, today);
+      return { ...base, progress, nowCity: now?.city_name || '', nowCountry: now?.country_code || '' };
     }
-    if (!best) return null;
-    const diff = best.startMs - now;
+    const { start } = computeTripRange(visits);
+    // Трип без дат активен, но обратный отсчёт для него не определён — виджет
+    // показывает CTA, а не карточку с пустым таймером.
+    if (!start) return null;
+    // Фаза уже сказала «впереди» (в ДНЯХ), поэтому карточку показываем всегда, а
+    // отсчёт в миллисекундах только зажимаем снизу: `start` — это UTC-полночь
+    // даты, и в западных таймзонах вечером кануна разница уже отрицательна, хотя
+    // по календарю пользователя старт ещё завтра. Минус на этом месте раньше
+    // ронял виджет в CTA при живом ближайшем трипе.
+    const diff = Math.max(0, new Date(start).getTime() - Date.now());
     return {
-      ...best.tr,
-      scope:     scopeLabel(t, best.visits),
+      ...base,
       countdown: {
         d: Math.floor(diff / 864e5),
         h: Math.floor((diff % 864e5) / 36e5),
         m: Math.floor((diff % 36e5) / 6e4),
       },
     };
-  }, [allTrips, visitsByTrip, t]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTrips, visitsByTrip, today, t]);
 
   // The screen shows the trip LIST and the stat HERO together, so first paint
   // waits for BOTH composites: getTrips (cards: list/visits/participants/roles/
@@ -654,7 +721,7 @@ export default function Trips() {
 
         {/* Loading skeleton */}
         {isLoadingData && allTrips.length === 0 && (
-          <HomeSkeleton viewMode={viewMode} />
+          <HomeSkeleton />
         )}
 
         {/* Greeting + stats hero — shown for both empty and filled (not while the
@@ -668,7 +735,7 @@ export default function Trips() {
               world={world}
               showMap={showMap}
               scheme={scheme}
-              nextTrip={nextTrip}
+              hero={heroTrip}
               onAllStats={() => nav('/stats')}
               onYearReview={() => {
                 // Клик по кнопке и есть измеряемое действие — событие шлём до
@@ -692,8 +759,9 @@ export default function Trips() {
                 });
               }}
               onPlan={() => openChoice()}
-              onOpenNext={() => nextTrip && nav(`/trip/${nextTrip.id}`)}
+              onOpenHero={() => heroTrip && nav(`/trip/${heroTrip.id}`)}
               t={t}
+              lang={lang}
             />
           </>
         )}
@@ -703,122 +771,129 @@ export default function Trips() {
           <EmptyRoute onManual={() => startCreate('manual')} onAi={() => startCreate('ai')} />
         )}
 
-        {/* Normal view */}
+        {/* Обе группы на ОДНОЙ странице: активные постерами, прошедшие
+            приглушёнными строками по годам. Вкладок и переключателя вида нет. */}
         {allTrips.length > 0 && (
           <>
-            {/* Section header row */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
+            {/* Шапка раздела: «МОИ ПУТЕШЕСТВИЯ / N путешествий» + поиск справа.
+                На ≤640px `.sec-actions` уже занимает всю ширину (канон), поэтому
+                поиск сам уезжает на свою строку — своей раскладки ему не нужно. */}
+            <div className="sec-head">
+              <Grow>
                 <div className="t-label tp-caption" style={{ marginBottom: 6 }}>{t('trips.my_trips_eyebrow')}</div>
                 <h2 className="t-title">{pluralize(t, allTrips.length, 'stats.sum_trips', lang, { count: allTrips.length })}</h2>
-              </div>
-            </div>
-
-            {/* Filters row — adaptive (.trips-toolbar): wraps the search to its own
-                full-width line on phones, segments share the first line. */}
-            <div className="trips-toolbar">
-              <Seg
-                className="seg--filter"
-                ariaLabel={t('trips.tab_active')}
-                value={filterMode}
-                onChange={setFilterMode}
-                options={[
-                  { value: 'active', label: <>{t('trips.tab_active')} · <span className="num">{activeTrips.length}</span></> },
-                  { value: 'past', label: <>{t('trips.tab_past')} · <span className="num">{pastTrips.length}</span></> },
-                ]}
-              />
-              <Input
-                className="trips-toolbar__search"
-                icon="search"
-                placeholder={t('trips.search_placeholder')}
-                aria-label={t('trips.search_placeholder')}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-              <div className="trips-toolbar__spacer" />
-              <Seg
-                className="seg--view"
-                title={t('trips.view')}
-                value={viewMode}
-                onChange={setViewMode}
-                options={[
-                  { value: 'grid', label: <Icon name="grid" size={13} /> },
-                  { value: 'list', label: <Icon name="list" size={13} /> },
-                ]}
-              />
-            </div>
-
-            {/* Free-limit banner — под фильтрами, над списком (TRIP-187): спокойный
-                бренд-акцент, PRO-пилюля (звезда) даёт акцент, CTA — бренд-кнопка.
-                Shown only when owned active trips reach/exceed the free cap (1). */}
-            {filterMode === 'active' && limitReached && (
-              <Card tone="brand" radius="md" className="limitcard">
-                <Badge variant="pro" icon="pro">PRO</Badge>
-                <div className="limitcard__body">
-                  <div className="limitcard__top">
-                    <b>{t('trips.free_limit_title')}</b>
-                  </div>
-                  <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
-                </div>
-                <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
-              </Card>
-            )}
-
-            {/* Trip list */}
-            {isLoadingData ? (
-              <TripSkeleton viewMode={viewMode} />
-            ) : shownNorm.length === 0 ? (
-              // Active tab with no upcoming/active trips (past ones exist) → invite,
-              // not a generic empty. A real search miss still shows empty_search.
-              (filterMode === 'active' && !search.trim()) ? (
-                <Card radius="lg" className="row invite">
-                  <Tile as="span" className="invite__ic"><Icon name="sparkles" size={28} /></Tile>
-                  <div className="invite__tx">
-                    <h3>{t('trips.invite_title')}</h3>
-                    <p>{t('trips.invite_desc')}</p>
-                  </div>
-                  <div className="row row--wrap invite__act">
-                    <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
-                    <Btn variant="secondary" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
-                  </div>
-                </Card>
-              ) : (
-                <EmptyState
-                  icon={filterMode === 'past' ? 'calendar' : 'search'}
-                  title={filterMode === 'past' ? t('trips.empty_archive_title') : t('trips.empty_search_title')}
-                  body={filterMode === 'past' ? t('trips.empty_archive_body') : t('trips.empty_search_body')}
+              </Grow>
+              <div className="sec-actions sec-actions--search">
+                {/* `.grow` — канон-утилита растяжения: на ≤640px `.sec-actions`
+                    занимает всю ширину, и поиск обязан её занять целиком, иначе
+                    поле остаётся своей интринсик-ширины (проверено снимком). */}
+                <Input
+                  className="grow"
+                  icon="search"
+                  placeholder={t('trips.search_placeholder')}
+                  aria-label={t('trips.search_placeholder')}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
                 />
-              )
-            ) : viewMode === 'grid' ? (
-              <div className="tc-grid">
-                {shownNorm.map(tr => (
-                  <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
-                ))}
-                {filterMode === 'active' && (
-                  <Card as="button" variant="add" radius="md" className="tc-add" onClick={() => openChoice()}>
-                    <div className="tc-add__ic">
-                      <Icon name="plus" size={24} />
-                    </div>
-                    <b>{t('trips.add_trip')}</b>
-                    <small>{t('trips.add_trip_sub')}</small>
-                  </Card>
-                )}
               </div>
+            </div>
+
+            {/* Поиск ничего не нашёл НИ В ОДНОЙ группе → один общий пустой
+                экран вместо пустого состояния внутри секции. Правило секции при
+                поиске одно на обе: есть попадания — секция рисуется, нет —
+                секции нет вовсе (раньше активные при нуле попаданий рисовали
+                свой empty-state, а прошедшие молча исчезали). */}
+            {searching && activeNorm.length === 0 && pastByYear.length === 0 ? (
+              <EmptyState icon="search" title={t('trips.empty_search_title')} body={t('trips.empty_search_body')} />
             ) : (
-              <div className="col">
-                {shownNorm.map(tr => (
-                  <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
-                ))}
-                {filterMode === 'active' && (
-                  <Card as="button" variant="add" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
-                    <span className="tr__addic"><Icon name="plus" size={20} /></span>
-                    <span className="tr__main">
-                      <b>{t('trips.add_trip')}</b>
-                      <small>{t('trips.add_trip_sub')}</small>
-                    </span>
-                  </Card>
+              <>
+                {/* ── Активные ──────────────────────────────────────────────
+                    При поиске секция живёт только с попаданиями; без поиска она
+                    есть всегда — там у неё своё приглашение (прошлые есть,
+                    активных нет), и это НЕ результат поиска. */}
+                {(!searching || activeNorm.length > 0) && (
+                  <>
+                    <div className="sec-head sec-head--group">
+                      <Icon name="suitcase" />
+                      <span className="t-micro">{t('trips.tab_active')}</span>
+                      <span className="t-micro num">{activeNorm.length}</span>
+                      <i className="sec-head__rule" />
+                    </div>
+
+                    {/* Плашка Free-лимита — над активными, как и была. */}
+                    {limitReached && (
+                      <Card tone="brand" radius="md" className="limitcard">
+                        <Badge variant="pro" icon="pro">PRO</Badge>
+                        <div className="limitcard__body">
+                          <div className="limitcard__top">
+                            <b>{t('trips.free_limit_title')}</b>
+                          </div>
+                          <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
+                        </div>
+                        <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
+                      </Card>
+                    )}
+
+                    {isLoadingData ? (
+                      <TripSkeleton />
+                    ) : activeNorm.length > 0 ? (
+                      <div className="tc-grid">
+                        {activeNorm.map(tr => (
+                          <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
+                        ))}
+                        <Card as="button" variant="add" radius="md" className="tc-add" onClick={() => openChoice()}>
+                          <div className="tc-add__ic">
+                            <Icon name="plus" size={24} />
+                          </div>
+                          <b>{t('trips.add_trip')}</b>
+                          <small>{t('trips.add_trip_sub')}</small>
+                        </Card>
+                      </div>
+                    ) : (
+                      // Активных нет, а прошлые есть → приглашение, а не пустой экран.
+                      // Кнопки «Показать прошедшие» больше нет: группа прямо под этой.
+                      <Card radius="lg" className="row invite">
+                        <Tile as="span" className="invite__ic"><Icon name="sparkles" size={28} /></Tile>
+                        <div className="invite__tx">
+                          <h3>{t('trips.invite_title')}</h3>
+                          <p>{t('trips.invite_desc')}</p>
+                        </div>
+                        <div className="row row--wrap invite__act">
+                          <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
+                        </div>
+                      </Card>
+                    )}
+                  </>
                 )}
-              </div>
+
+                {/* ── Прошедшие ────────────────────────────────────────────────
+                    Своего пустого состояния у группы НЕТ — ни при поиске, ни без
+                    него: прошедших нет (или поиск в них ничего не нашёл) — нет и
+                    самой группы. */}
+                {!isLoadingData && pastByYear.length > 0 && (
+                  <>
+                    <div className="sec-head sec-head--group">
+                      <Icon name="calendar" />
+                      <span className="t-micro">{t('trips.tab_past')}</span>
+                      <span className="t-micro num">{pastTrips.length}</span>
+                      <i className="sec-head__rule" />
+                    </div>
+                    {pastByYear.map(({ year, trips }) => (
+                      <Col key={year} gap="g1">
+                        <div className="sec-head sec-head--group sec-head--sub">
+                          <span className="t-micro">{year}</span>
+                          <i className="sec-head__rule" />
+                        </div>
+                        <Col gap="g3">
+                          {trips.map(tr => (
+                            <PastTripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
+                          ))}
+                        </Col>
+                      </Col>
+                    ))}
+                  </>
+                )}
+              </>
             )}
           </>
         )}
