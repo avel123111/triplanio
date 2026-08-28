@@ -47,7 +47,7 @@ import { cssPx } from '@/lib/cssPx';
  */
 
 /**
- * `map` — узел ИЛИ функция `(camera, slotPx) => node`. Свободное окно меняют
+ * `map` — узел ИЛИ функция `(view) => node`, где `view` = `{ camera, fit, slotPx }`. Свободное окно меняют
  * ДВЕ вещи, по одной на ось: ширину — отступ камеры, высоту — размер слота.
  * Карте нужны обе: по первой она подстраивает вид под новое окно (и кадрирует
  * следующий фит маршрута), по второй понимает, что окно уехало, — на телефоне
@@ -205,6 +205,16 @@ export function MapShell({
   // радиус скруглений, иначе в вырезах углов виден фон страницы. Отступ от
   // собственного низа поэтому меряется не от края шита, и элемент оказывается
   // лежащим на нём. Прибавь эту величину — и отступ снова считается от шита.
+  // ★ КАРТЕ ОТДАЁМ ОДИН ОБЪЕКТ, А НЕ ТРИ АРГУМЕНТА. Позиционные аргументы уже
+  // стоили дефекта: экран forwardил первые два и молча терял третий (коробку
+  // «во что вписывать») — маршрут вписывался во весь холст, и обе точки
+  // оказывались за кромкой шита. Ни один гард такого не видит: пропа нет,
+  // значение просто `null`. Один объект делает пропуск невозможным.
+  const view = useMemo(
+    () => ({ camera: box.camera, fit: box.fit, slotPx: box.slotBottom }),
+    [box],
+  );
+
   const rootStyle = useMemo(() => ({
     '--mapshell-bottom': `${box.slotBottom}px`,
     // ★ СКОЛЬКО ХОЛСТ УЕЗЖАЕТ ВВЕРХ. Половина закрытой шитом высоты: тогда центр
@@ -224,7 +234,7 @@ export function MapShell({
 
   return (
     <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={rootStyle}>
-      <div className="mapshell__map">{typeof map === 'function' ? map(box.camera, box.slotBottom, box.fit) : map}</div>
+      <div className="mapshell__map">{typeof map === 'function' ? map(view) : map}</div>
 
       {panel && (isPhone ? (
         <PeekSheet
