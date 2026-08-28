@@ -59,7 +59,10 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
         if (cancelled) return;
         if (data?.code) { setOverlayCode(data.code); return; }
         if (error || !data?.svg) { setOverlayCode('error'); return; }
-        setOverlay({ svg: data.svg, slot: data.slot, w: data.width, h: data.height, backgrounds: data.backgrounds || [] });
+        // `text` — раскладка текста открытой зоны: кадр её больше не несёт, её
+        // кладёт превью DOM-ом. Поле обязано доехать до состояния: объект здесь
+        // собирается ПОЛЯМИ, и забытое поле теряется молча.
+        setOverlay({ svg: data.svg, slot: data.slot, w: data.width, h: data.height, backgrounds: data.backgrounds || [], text: data.text });
       })
       .catch((e) => { if (!cancelled) { console.error('overlay fetch failed', e); setOverlayCode('error'); } });
     return () => { cancelled = true; };
@@ -267,6 +270,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             transfers={transfers}
             lang={lang}
             overlaySvg={framedSvg}
+            text={overlay.text}
             slot={overlay.slot}
             cardW={overlay.w}
             cardH={overlay.h}
