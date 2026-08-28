@@ -71,7 +71,7 @@ test('markerZoomSizeExpr: выражение mapbox повторяет ту же
   assert.equal(op, 'interpolate');
   assert.deepEqual(interp, ['linear']);
   assert.deepEqual(zoom, ['zoom']);
-  assert.equal(zLo, Z_LO);
+  assert.equal(zLo, Z_LO); // s = 1 ⇒ сдвига нет
   assert.equal(zHi, Z_HI);
   assert.equal(aLo, markerZoomScale(Z_LO));
   assert.equal(aHi, markerZoomScale(Z_HI));
@@ -85,6 +85,34 @@ test('markerZoomSizeExpr: усадка поверхности множит ОБ�
   const small = markerZoomSizeExpr(s);
   assert.equal(small[4], full[4] * s);
   assert.equal(small[6], full[6] * s);
+});
+
+test('markerZoomSizeExpr: на узкой поверхности стопы съезжают на log2(s)', () => {
+  // Дефект, который это сторожит, невидим: калька продолжает рисовать пины,
+  // просто мельче, чем будет в файле — «превью == финал» рвётся молча.
+  const { Z_LO, Z_HI } = MARKER_ZOOM_SCALE;
+  const s = 0.25; // калька вчетверо уже слота ⇒ та же сцена на 2 зума ниже
+  const e = markerZoomSizeExpr(s);
+  assert.equal(e[3], Z_LO - 2);
+  assert.equal(e[5], Z_HI - 2);
+});
+
+test('markerZoomSizeExpr: калька и слот дают ОДИН относительный размер на одной сцене', () => {
+  // Главное свойство, ради которого сдвиг и заведён: доля пина от ширины
+  // поверхности обязана совпасть на кальке и на слоте для ОДНОЙ И ТОЙ ЖЕ сцены.
+  const slotZoom = 5.69; // кадр «Классическая Италия» на слоте 810 px
+  const s = 194 / 810;
+  const previewZoom = slotZoom + Math.log2(s); // та же сцена на кальке 194 px
+  /** Значение interpolate-выражения на зуме z. */
+  const at = (e, z) => {
+    const [, , , z0, a0, z1, a1] = e;
+    const t = Math.max(0, Math.min(1, (z - z0) / (z1 - z0)));
+    return a0 + t * (a1 - a0);
+  };
+  const onSlot = at(markerZoomSizeExpr(), slotZoom);       // доля от 810
+  const onPreview = at(markerZoomSizeExpr(s), previewZoom); // доля от 194
+  assert.ok(Math.abs(onPreview / s - onSlot) < 1e-9,
+    `калька ${onPreview} при усадке ${s} не сводится к слоту ${onSlot}`);
 });
 
 test('cityPoints: номер несут ТОЛЬКО города, роли — нет; нумерация сквозная', () => {
