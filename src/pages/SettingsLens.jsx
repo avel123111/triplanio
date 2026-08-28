@@ -206,7 +206,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
           (тот же ход, что у диалогов Бюджета). Отступы были 16/16/16/14/14/14 -
           три разных мнения об одном ритме в одном окне. */}
       <Col gap="g7">
-      <div className="muted t-body">
+      <div className="muted">
         {t('settings.tg_connect_desc')}
       </div>
 
@@ -245,7 +245,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             </Row>
           </Col>
 
-          <div className="t-body">
+          <div>
             {t('settings.tg_press_below')}
           </div>
 
@@ -277,7 +277,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 
           {/* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash) снята с
               инлайна на <Card recessed>; колоночная раскладка сохранена классом .col. */}
-          <Card recessed radius="md" pad="none" className="col t-meta" style={{ padding: 14 }}>
+          <Card recessed radius="btn" pad="none" className="col t-meta" style={{ padding: 14 }}>
             <Row align="a-start">
               <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>

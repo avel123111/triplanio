@@ -1,24 +1,7 @@
 // @ts-check
 import { useEffect, useRef } from 'react';
 import { mapboxgl } from '@/lib/mapbox';
-import { groupByLocation, createMarkerEl } from './markers';
-
-// Зум-зависимый размер пинов. Фикс-размер плохо читался на мелком зуме (вся карта
-// мира с полноразмерными кольцами = каша), поэтому в покое пин масштабируется по
-// зуму: одна CSS-переменная `--mk-scale` на контейнере карты, `.tmk__core` читает
-// её через `transform: scale(var(--mk-scale,1))`. Пропорции ролей сохраняются
-// сами (пересадка/слепленный — тот же `.tmk__core`); ховер/селект перебивают
-// resting-transform полным `scale(1.1)` (активный пин всегда крупный, читаемый).
-// Диапазон: MIN на мелком зуме (≤ Z_LO), MAX = сегодняшний размер на детальном
-// (≥ Z_HI), линейно между. Живёт в ОБЩЕМ хуке — правило одно на все карты.
-const MK_MIN = 0.6;
-const MK_MAX = 1;
-const MK_Z_LO = 4;
-const MK_Z_HI = 8;
-const zoomScale = (z) => {
-  const t = Math.max(0, Math.min(1, (z - MK_Z_LO) / (MK_Z_HI - MK_Z_LO)));
-  return (MK_MIN + t * (MK_MAX - MK_MIN)).toFixed(3);
-};
+import { groupByLocation, createMarkerEl, markerZoomScale } from './markers';
 
 /**
  * Городские пины трипа — ЕДИНАЯ сборка для линзы «Маршрут»/редактора (`MapView`)
@@ -110,7 +93,7 @@ export function useCityMarkers(mapRef, ready, {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
     const container = map.getContainer();
-    const apply = () => { container.style.setProperty('--mk-scale', zoomScale(map.getZoom())); };
+    const apply = () => { container.style.setProperty('--mk-scale', markerZoomScale(map.getZoom()).toFixed(3)); };
     apply();
     map.on('zoom', apply);
     return () => { map.off('zoom', apply); };

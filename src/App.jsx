@@ -11,6 +11,7 @@ import AppErrorBoundary from '@/components/AppErrorBoundary';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { hideSplash } from '@/lib/splash';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider, useI18n } from '@/lib/i18n/I18nContext';
 import { AppLoading } from '@/design/index';
@@ -107,6 +108,14 @@ const AuthenticatedApp = () => {
     if (s) track(s.event, s.props);
   }, [location.pathname]);
 
+  // Экран запуска (TRIP-478): приложение отчитывается о готовности ОДИН раз,
+  // при первом кадре. Само снятие откладывается, пока на экране висит
+  // <AppLoading> — он держит splash сам (см. `src/lib/splash.js`), поэтому
+  // перечислять здесь ожидания (авторизация, словарь, Suspense) не нужно и
+  // нельзя: такой список — второй источник правды, который разъедется с
+  // ветками ниже.
+  useEffect(() => { hideSplash(); }, []);
+
   const path = location.pathname;
 
   // Витрина: только вне прода. На проде роута нет вовсе - путь провалится в
@@ -114,7 +123,7 @@ const AuthenticatedApp = () => {
   // Object-based IA (TRIP-344): `/kit` — индекс, `/kit/:object` — один объект.
   if (!isProdHost && (path === '/kit' || path.startsWith('/kit/'))) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppLoading silent />}>
         <Routes>
           <Route path="/kit" element={<Kit />} />
           <Route path="/kit/:object" element={<Kit />} />
@@ -197,7 +206,7 @@ const AuthenticatedApp = () => {
   if (inZone) {
     return (
       <SiteZone>
-        <Suspense fallback={null}>
+        <Suspense fallback={<AppLoading silent />}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
             {/* /reset-password приходит из письма восстановления: его токен
@@ -229,7 +238,7 @@ const AuthenticatedApp = () => {
   if (!isAuthenticated) {
     return (
       <SiteZone>
-        <Suspense fallback={null}>
+        <Suspense fallback={<AppLoading silent />}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="*" element={<LandingPage />} />
@@ -263,10 +272,13 @@ const AuthenticatedApp = () => {
           app; the global bottom-nav (sibling) stays alive. Keyed by pathname so
           navigating away resets a crashed route. */}
       <ErrorBoundary key={path} region={`route:${path}`}>
-      {/* Экраны приезжают отдельными чанками, поэтому нужен видимый ожидатель —
+      {/* Экраны приезжают отдельными чанками, поэтому нужен ВИДИМЫЙ ожидатель —
           ТОТ ЖЕ, что у гейта авторизации выше: ожидание выглядит одинаково,
-          откуда бы ни пришло. `fallback={null}` тут не годится (в зоне он
-          уместен: страницы сами гейтят по cssReady), здесь дал бы белый кадр. */}
+          откуда бы ни пришло. Молчаливый (`silent`, как в зоне) здесь дал бы
+          белый кадр: приложение уже на экране, и человеку надо сказать, что
+          оно занято. В зоне наоборот — там своя ДС и до приезда site.css
+          страница не рисует ничего, поэтому ожидание молчит; заставку оба
+          облика держат одинаково (TRIP-478). */}
       <Suspense fallback={<AppLoading />}>
       <Routes>
       {/* New design - standalone (own app-header, no Layout) */}

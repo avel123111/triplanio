@@ -20,6 +20,8 @@
   "cont_countries": "countries",
   "continents_title": "Continents",
   "delete_btn": "Delete",
+  "delete_place_desc": "This can't be undone. The place will disappear from the map and from your stats.",
+  "delete_place_q": "Delete {name}?",
   "edit_place": "Edit place",
   "empty_sub": "This is how your stats will look. You can add past places manually — without a trip.",
   "empty_title": "The map awaits its first pin",

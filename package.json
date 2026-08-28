@@ -29,6 +29,7 @@
     "check:avatar": "node scripts/ci/check-avatar-seed.mjs",
     "check:invoke": "node scripts/ci/check-invoke-discriminant.mjs",
     "check:css-comments": "node scripts/ci/check-css-comments.mjs",
+    "check:layers": "node scripts/ci/check-layer-zindex.mjs",
     "check:shadow-style": "node scripts/ci/check-shadow-style-skin.mjs",
     "check:surface-registry": "node scripts/ci/check-surface-registry.mjs",
     "check:error-map": "node scripts/ci/check-error-i18n-map.mjs",
@@ -38,7 +39,8 @@
     "check:roles": "node scripts/ci/check-role-gate.mjs",
     "check:confirm": "node scripts/ci/check-confirm-copy.mjs",
     "check:site-dup": "node scripts/ci/check-site-primitive-dup.mjs",
-    "check:proto": "node scripts/ci/compare-prototype.mjs"
+    "check:proto": "node scripts/ci/compare-prototype.mjs",
+    "check:destructive": "node scripts/ci/check-destructive-confirm.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",

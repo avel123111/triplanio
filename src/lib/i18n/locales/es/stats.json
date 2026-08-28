@@ -20,6 +20,8 @@
   "cont_countries": "países",
   "continents_title": "Continentes",
   "delete_btn": "Eliminar",
+  "delete_place_desc": "Esta acción no se puede deshacer. El lugar desaparecerá del mapa y de tus estadísticas.",
+  "delete_place_q": "¿Eliminar {name}?",
   "edit_place": "Editar lugar",
   "empty_sub": "Así se verá tu estadística. Puedes añadir lugares pasados manualmente — sin viaje.",
   "empty_title": "El mapa espera su primer pin",

@@ -1,17 +1,40 @@
 // @ts-check
 import React from 'react';
-import { Icon } from '@/design/icons';
-import { Badge, Btn, Card, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Badge, Btn, Card, Dialog } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
  * PaymentResultDialog — единый диалог исхода оплаты (Ф5, P5 design).
- * Radix Dialog: focus-trap, Esc, ARIA. Иконка 52px (per .modal--confirm spec).
+ *
+ * ★ ОБОЛОЧКА — КАНОН-<Dialog>, а не голый DialogContent. До этого экран собирал
+ * `.dlg__body`/`.dlg__foot` руками и рисовал СВОЮ раскладку: 52-пиксельная
+ * плитка по центру, центрированный заголовок, инлайновый паддинг `32px 24px 8px`.
+ * Выглядело это самостоятельно, но стоило трёх вещей сразу:
+ *   1. КРЕСТИКА НЕ БЫЛО ВОВСЕ — единственное окно приложения, которое нельзя
+ *      закрыть мышью (только кнопка/Esc/подложка);
+ *   2. инлайновый паддинг ГЛУШИЛ канон — любая правка ритма окна проходила мимо
+ *      этого экрана молча;
+ *   3. «исход операции» — не отдельный жанр: у окна одна анатомия, а success и
+ *      fail это ТОН, и он уже есть у плитки шапки (`.tile--success`/`--danger`).
+ * Центрированная раскладка снята сознательно: 52-px иконка по центру — второй
+ * облик окна, который ничем, кроме привычки, не оправдан.
+ *
+ * ★ ПОЧЕМУ ЗДЕСЬ ОБХОД ПОЛА, А НЕ РЕГРЕСС. `dsshare` — ДОЛЯ, а не счётчик.
+ * Замер origin/dev vs HEAD: 1446/3370 = 42.91% → 1443/3366 = 42.87%, то есть
+ * числитель −3 при знаменателе −4. Схлопнутый кусок был на 75% из ДС при
+ * средней по репозиторию 42.91% — удаление куска ЧИЩЕ СРЕДНЕГО опускает
+ * среднее. Метрика по построению не отличает «разметку удалили» от «разметку
+ * написали сырой»: тот же эффект уже фиксировали при переводе ProUpsellModal
+ * на обёртку (PR 1043). Инлайнов при этом стало на 8 меньше (484 → 476).
+ * ⚠ Номер PR здесь и ниже — БЕЗ решётки намеренно: «решётка + четыре цифры»
+ * читается гардом цвета (`check:design`) как четырёхзначный hex и роняет его.
+ * floor-exempt: dsshare +4 — доля просела на 0.04 п.п. из-за схлопывания сырой разметки в обёртку (числитель −3, знаменатель −4); апрув Pavel (задание «сделай системно»)
  *
  * Props:
  *   open          – boolean
  *   onOpenChange  – (open: boolean) => void
  *   status        – 'success' | 'fail'
+ *   variant       – 'sub' | 'trip' — копия/CTA успеха
  *   planLabel     – optional plan name (success only, e.g. "Pro Monthly")
  *   priceLabel    – optional price string (success only, e.g. "€9.99/мес")
  *   code          – optional Stripe decline code (fail only)
@@ -37,65 +60,49 @@ export default function PaymentResultDialog({
     : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dlg--sm" aria-describedby={undefined}>
+    <Dialog
+      size="sm"
+      icon={isSuccess ? 'check' : 'error'}
+      iconTone={isSuccess ? 'success' : 'danger'}
+      title={isSuccess ? t(isTrip ? 'sub.success_title_trip' : 'sub.success_title') : t('sub.fail_title')}
+      open={open}
+      onOpenChange={onOpenChange}
+      foot={isSuccess ? (
+        <Btn variant="primary" onClick={close}>
+          {t(isTrip ? 'sub.success_cta_trip' : 'sub.success_cta')}
+        </Btn>
+      ) : (
+        <>
+          <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
+          <Btn variant="primary" icon="refresh" onClick={() => { close(); onRetry?.(); }}>
+            {t('sub.fail_retry')}
+          </Btn>
+        </>
+      )}
+    >
+      {/* Кегль приходит от тела окна (канон Support), здесь только тон. */}
+      <div className="muted">
+        {isSuccess
+          ? t(isTrip ? 'sub.success_desc_trip' : 'sub.success_desc')
+          : code
+            ? <>{t('sub.fail_declined_pre')}<span className="mono t-mono" style={{ color: 'var(--ink-2)' }}>{code}</span>{t('sub.fail_declined_post')}</>
+            : t('sub.fail_cancelled')
+        }
+      </div>
 
-            {/* ── Body: centred icon + title + desc (P5 .modal--confirm style) ── */}
-            <div className="dlg__body" style={{ textAlign: 'center', padding: '32px 24px 8px' }}>
+      {/* Success: plan chip */}
+      {chip && (
+        <Badge variant="pro" icon="pro" style={{ marginTop: 10 }}>{chip}</Badge>
+      )}
 
-              {/* Status icon — 52px per P5 spec */}
-              <Tile as="div" style={{ '--tile': '52px', '--tile-r': 'var(--r-btn)', '--tile-ic': '26px', '--hl-soft': isSuccess ? 'var(--success-soft)' : 'var(--danger-soft)', '--hl-ink': isSuccess ? 'var(--success-ink)' : 'var(--danger-ink)', margin: '0 auto 16px' }}>
-                <Icon name={isSuccess ? 'check' : 'error'} size={26} />
-              </Tile>
-
-              <DialogTitle asChild>
-                <h2 className="t-subheading" style={{ marginBottom: 8 }}>
-                  {isSuccess ? t(isTrip ? 'sub.success_title_trip' : 'sub.success_title') : t('sub.fail_title')}
-                </h2>
-              </DialogTitle>
-
-              <div className="muted t-body" style={{ maxWidth: 340, margin: '0 auto 14px' }}>
-                {isSuccess
-                  ? t(isTrip ? 'sub.success_desc_trip' : 'sub.success_desc')
-                  : code
-                    ? <>{t('sub.fail_declined_pre')}<span className="mono t-mono" style={{ color: 'var(--ink-2)' }}>{code}</span>{t('sub.fail_declined_post')}</>
-                    : t('sub.fail_cancelled')
-                }
-              </div>
-
-              {/* Success: plan chip */}
-              {chip && (
-                <Badge variant="pro" icon="pro" style={{ marginBottom: 6 }}>{chip}</Badge>
-              )}
-
-              {/* Fail: help note */}
-              {!isSuccess && (
-                /* TRIP-343 объект 2 (канал 3): утоплённая заметка → <Card recessed>;
-                   бокс внутри оболочки диалога (объект 6). Примечание: канон recessed
-                   несёт рамку роли .card (1px --line) — у инлайна её не было. */
-                <Card recessed radius="md" pad="none" className="t-meta" style={{ padding: '9px 12px', color: 'var(--muted)', maxWidth: 340, margin: '0 auto' }}>
-                  {t('sub.fail_help')}
-                </Card>
-              )}
-            </div>
-
-            {/* ── Footer ── */}
-            <div className="dlg__foot" style={{ justifyContent: 'center' }}>
-              {isSuccess ? (
-                <Btn variant="primary" onClick={close} style={{ minWidth: 160 }}>
-                  {t(isTrip ? 'sub.success_cta_trip' : 'sub.success_cta')}
-                </Btn>
-              ) : (
-                <>
-                  <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
-                  <Btn variant="primary" icon="refresh" onClick={() => { close(); onRetry?.(); }}>
-                    {t('sub.fail_retry')}
-                  </Btn>
-                </>
-              )}
-            </div>
-
-      </DialogContent>
+      {/* Fail: help note. Утоплённая заметка — канон <Card recessed>; радиус
+          `btn`, потому что лестница ВНУТРИ окна короче лестницы карточки:
+          оболочка 14 > вложенное 10 (см. --r-dlg в app.css). */}
+      {!isSuccess && (
+        <Card recessed radius="btn" pad="none" className="t-meta" style={{ padding: '9px 12px', marginTop: 10, color: 'var(--muted)' }}>
+          {t('sub.fail_help')}
+        </Card>
+      )}
     </Dialog>
   );
 }

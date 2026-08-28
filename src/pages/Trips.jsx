@@ -22,7 +22,7 @@ import {
 } from '../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import { uniqueTransitCities, uniqueCountryCodes, localizeVisits } from '@/lib/trip-cities';
-import { homeStats, worldExplored } from '@/lib/travel-stats';
+import { homeStats, worldExplored, pastOnly } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
 import { cacheTripCards } from '@/lib/trip-data';
 import { gateStubProps } from '@/lib/loadStateClassify';
@@ -507,9 +507,9 @@ export default function Trips() {
   const hasTrips = allTrips.length > 0;
 
   // ── Travel-stats reader — верхние виджеты только: stat-bar, map fill/pins,
-  // "world explored". Главная берёт ОТСЮДА лишь points и transfers_total; карточные
-  // слайсы (trips/trip_visits) ушли в getTrips (TRIP-403). Year filtering /
-  // aggregates happen client-side (here it's unfiltered).
+  // "world explored". Главная берёт ОТСЮДА points и transfers (счётчики режем по
+  // pastOnly); карточные слайсы (trips/trip_visits) ушли в getTrips (TRIP-403).
+  // Year filtering / aggregates happen client-side (here it's unfiltered).
   const { data: travelStats } = useQuery({
     queryKey: ['travel-stats', user?.id],
     // Общий ридер яруса A (TRIP-402): тот же edge getTravelStats и кэш-ключ, что у
@@ -518,16 +518,20 @@ export default function Trips() {
       const { data, error, code, message } = await invokeFn('getTravelStats');
       // Бросаем исходный error (помечен __seamHandled) — без повторного отчёта.
       if (error || code) throw error || new Error(message || code);
-      return data || { points: [], transfers_total: 0 };
+      return data || { points: [], transfers: [] };
     },
     enabled: !!user?.id,
     staleTime: 30_000,
   });
   const statsLoaded    = travelStats !== undefined;
   const statsPoints    = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
-  const transfersTotal = travelStats?.transfers_total || 0;
-  const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
-  const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
+  // Полоса статистики и «Мир исследован» отражают ПРОЙДЕННОЕ: считаем только уже
+  // начавшиеся визиты/переезды (TRIP-264, `pastOnly`). Карта ниже по-прежнему
+  // рисует ВСЕ точки (`statsPoints`), включая запланированные.
+  const pastPoints     = useMemo(() => pastOnly(statsPoints), [statsPoints]);
+  const transfersTotal = useMemo(() => pastOnly(travelStats?.transfers || []).length, [travelStats]);
+  const home  = useMemo(() => homeStats(pastPoints, transfersTotal), [pastPoints, transfersTotal]);
+  const world = useMemo(() => worldExplored(pastPoints), [pastPoints]);
 
   // Participants (owner + active members, owner первым) приходят В карточке из
   // getTrips (get_my_trip_cards поглотил профили участников, TRIP-403). Резолвим

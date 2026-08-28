@@ -203,7 +203,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                   aria-selected={visibility === opt.value || undefined}
                   onClick={() => setVisibility(opt.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setVisibility(opt.value); } }}>
-                  <Card as="div" recessed interactive radius="md"
+                  <Card as="div" recessed interactive radius="btn"
                     className={`row dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}`}>
                     <Tile as="span" icon={opt.icon} />
                     <span className="dl-visopt__lbl">
@@ -262,7 +262,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
               {t('doc.files_label')}
               {documents.length > 0 && (
-                <span className="muted t-body" style={{ marginLeft: 4 }}>
+                <span className="muted" style={{ marginLeft: 4 }}>
                   · {documents.length}
                 </span>
               )}
@@ -310,7 +310,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                   onChange={e => uploadFiles(e.target.files)}
                 />
                 {uploading ? (
-                  <Row gap="g4" className="t-body">
+                  <Row gap="g4">
                     <span className="spin spin--ring" />
                     {t('common.loading')}
                   </Row>
@@ -392,7 +392,7 @@ function DocDetailDialog({ doc, open, onOpenChange, readOnly, onDelete }) {
           )}
 
           {!doc.notes && !doc.link_url && !doc.documents?.length && (
-            <div className="muted t-body">
+            <div className="muted">
               {t('doc.no_content')}
             </div>
           )}

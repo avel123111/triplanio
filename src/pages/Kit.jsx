@@ -44,6 +44,13 @@ import { Icon } from '@/design/icons';
 import Accordion from '@/components/common/Accordion';
 import Autocomplete from '@/components/common/Autocomplete';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
+// Экран запуска (TRIP-478) — ровно те файлы, что подставляются в документ на
+// сборке (плагин `inline-splash`). Витрина не пересобирает заставку по образу и
+// подобию, а показывает ЕЁ САМУ: второй копии не существует, разойтись нечему.
+// `?raw` — разметка приезжает текстом, потому что в документе она статический
+// HTML, а не JSX; переписать её компонентом значило бы завести вторую правду.
+import splashMarkup from '@/design/splash.html?raw';
+import '@/design/splash.css';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
 import './Kit.css';
 
@@ -65,7 +72,7 @@ const TX = {
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля', 'autocomplete': 'Поисковый пикер',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
-    'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
+    'splash': 'Экран запуска', 'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
     'coverpicker': 'Пикер обложки',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
@@ -107,6 +114,7 @@ const TX = {
     'spacing': 'Ступени токена --sp-N линейками (замер из живых стилей).',
     'typography': '9 текст-стилей .t-* живым текстом.',
     'tokens': 'Имена, объявленные в :root текущей темы (замер).',
+    'splash': 'Заставка запуска: знак каскадом, слово шторкой. Тот же файл, что подставляется в index.html на сборке.',
   },
   forceLabel: 'Состояние образца (наведение/нажатие/фокус — зеркало под data-force)',
   forceStates: {
@@ -1116,9 +1124,40 @@ function KitObjectView({ obj, ctx }) {
         {obj.special === 'spacing' && <SpacingSection ctx={ctx} />}
         {obj.special === 'typography' && <TypographySection />}
         {obj.special === 'tokens' && <TokensSection ctx={ctx} />}
+        {obj.special === 'splash' && <SplashSection />}
         {specimens.map((s, i) => <Specimen key={i} label={s.label} items={s.items} />)}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Образец экрана запуска (TRIP-478).
+ *
+ * Разметка вставляется КАК ЕСТЬ из `@/design/splash.html` — того самого файла,
+ * который сборка подставляет в документ. Собрать её тут заново на JSX значило
+ * бы завести вторую правду: витрина показывала бы похожее, а человек при
+ * запуске видел бы другое — ровно та поломка, ради которой витрина и заведена.
+ * Источник статический, из репозитория, пользовательских данных в нём нет.
+ *
+ * `key` перезапускает анимацию: CSS-анимации проигрываются на монтировании, и
+ * пересоздание узла — единственный способ увидеть их снова, не перезагружая
+ * страницу.
+ */
+function SplashSection() {
+  const [run, setRun] = useState(0);
+  return (
+    <div className="col col--g3">
+      <div className="row row--j-center">
+        <Btn variant="quiet" size="sm" onClick={() => setRun((n) => n + 1)}>{TX.splashReplay}</Btn>
+      </div>
+      <div
+        data-kit="splash"
+        key={run}
+        // eslint-disable-next-line react/no-danger -- статический файл ДС, не пользовательский ввод
+        dangerouslySetInnerHTML={{ __html: splashMarkup }}
+      />
+    </div>
   );
 }
 

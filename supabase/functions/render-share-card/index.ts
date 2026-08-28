@@ -119,7 +119,8 @@ Deno.serve(async (req) => {
     const distanceKm = routeDistanceKm(visits);
 
     // ---- card text/data ----
-    const s = cardStrings(lang);
+    // Подписи склоняются по своим числам: «95 дней», а не «95 дни».
+    const s = cardStrings(lang, { days, cities, countries });
     const from = cityLabel(transit[0], lang);
     const to = cityLabel(transit[transit.length - 1], lang);
     const data = {
@@ -141,12 +142,27 @@ Deno.serve(async (req) => {
     const { w: outW, h: outH } = cardSize(format);
     const slot = mapSlot(format); // map window rect within the card (for the client)
 
-    // ---- overlay mode: the frame SVG only (transparent map hole), drawn by the
-    // client over the live interactive preview map. Fonts are embedded (@font-face)
-    // so the browser draws the frame with the SAME glyphs as the final render -
-    // device-invariant, no dependence on page fonts. ----
+    // ---- overlay mode: рамка карточки (окно карты — прозрачная дыра), которую
+    // клиент кладёт поверх живой карты превью. Шрифты сюда НЕ вшиваются, и это
+    // несущее решение, а не экономия:
+    //
+    // overlay вставляется в документ приложения ИНЛАЙНОМ (ShareMapPreview,
+    // dangerouslySetInnerHTML) — то есть внутри страницы, где Geologica уже
+    // загружена и ею набран весь UI. Вшитые `@font-face` там не добавляют
+    // ничего, зато создают ВТОРОЙ источник лиц под ТЕМ ЖЕ именем семейства и
+    // регистрируются заново при КАЖДОЙ вставке (то есть на каждую смену фона).
+    // А объявлены они с `font-display: block`, что значит «пока лицо не готово —
+    // текст не рисовать ВООБЩЕ». Итог на телефоне: при каждой смене обложки
+    // названия городов моргали, а тень у чисел проступала с запозданием, пока
+    // распаковывались 100+ КБ base64 (карточка весила 116 КБ вместо 14).
+    //
+    // Совпадение превью с финалом от этого не страдает: приложение грузит ТЕ ЖЕ
+    // байты Geologica, что вшиты в `card_svg` (см. fontFaces.ts) — метрики те же.
+    // Финальному растру шрифты по-прежнему нужны и остаются: он рисуется через
+    // `new Image()` → canvas (src/lib/map/captureMap.js), а SVG, загруженный
+    // КАРТИНКОЙ, изолирован — шрифты страницы в него не попадают. ----
     if (mode === 'overlay') {
-      const svg = buildCardSvg(format, data, null, true, fontFaceStyle());
+      const svg = buildCardSvg(format, data, null, true, '');
       const backgrounds = await listCardBackgrounds(format).catch(async (e) => {
         await captureEdgeError(e, 'render-share-card');
         return [] as string[];
