@@ -1,5 +1,5 @@
 // @ts-check
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { NO_INSETS, canFrame, getMapInsets, setMapInsets } from './insets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 
@@ -101,41 +101,14 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
     // ПОЗЖЕ нашего рендера. Посчитать раньше значит посчитать по старому
     // размеру. Два кадра + явный `resize()` (идемпотентный) гарантируют, что
     // считаем по фактическому холсту.
-    // ★ РЕСАЙЗ ХОЛСТА СДВИГАЕТ МИР, И ЭТОТ СДВИГ НАДО ПОГАСИТЬ. mapbox держит
-    // центр вида в центре ХОЛСТА: убрал снизу Δ — содержимое мгновенно уехало
-    // вверх на Δ/2 (на смене детента это ~200 px). Именно это и читается как
-    // «карту дёргает», хотя ни один наш вызов камеру не трогал.
-    //
-    // Гасим без арифметики знаков: СНИМАЕМ географическую точку, которая СЕЙЧАС
-    // стоит там, где после ресайза окажется центр холста, и после ресайза
-    // ставим камеру на неё. Элемент к этому моменту уже новой высоты (React
-    // положил переменную), а канвас — ещё старой: mapbox узнаёт о размере от
-    // ResizeObserver, то есть позже. Поэтому `unproject` считает по СТАРОМУ
-    // виду — по тому, что физически на экране, — и это ровно то, что нужно.
-    const box0 = map.getContainer?.();
-    let hold = null;
-    try {
-      const q = map.unproject([(box0?.clientWidth || 0) / 2, (box0?.clientHeight || 0) / 2]);
-      hold = [q.lng, q.lat];
-    } catch { /* ignore */ }
     const id = requestAnimationFrame(() => requestAnimationFrame(() => {
       const m = mapRef.current;
       if (!m) return;
       try { m.resize(); } catch { /* ignore */ }
       const el = m.getContainer?.();
       if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(m))) return;
-      // Цель, размер которой считается от холста, обслуживает себя сама — и
-      // компенсация ей НЕ НУЖНА: она ставит АБСОЛЮТНЫЙ вид (центр и зум считаны
-      // заново). Замер это же и показывает: на зуме 1, где живёт пустой глобус,
-      // компенсация промахивается на +115 px, потому что проекция там нелинейна
-      // и «поставить точку в центр» остального кадра не сохраняет.
+      // Цель, размер которой считается от холста, обслуживает себя сама.
       if (reframeRef.current?.(m)) return;
-      // Мир на место — до подстройки: она обязана считаться от вида, который
-      // пользователь видит, а не от съехавшего. Замер сжатия холста 600 → 238:
-      // без компенсации точка из y=60 уезжает в −114 (зум 4) и −94 (зум 2), с
-      // ней — в 50 и 36. Остаток в пределах десятков пикселей — это кривизна
-      // проекции, убрать её нечем.
-      if (hold) { try { m.jumpTo({ center: hold }); } catch { /* ignore */ } }
       // Иначе доезжает ТОЛЬКО отступ — тем же временем и той же кривой, что и
       // поверхность, которая поехала (шит встаёт на детент за `SURFACE_SETTLE_MS`,
       // панель уезжает за него же). Ни `center`, ни `zoom` тут не передаются, и
@@ -157,41 +130,6 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
     try { map.easeTo({ padding: NO_INSETS, duration: 0 }); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-}
-
-/**
- * ЕСТЬ ЛИ КУДА КАДРИРОВАТЬ — реактивный ответ того же закона (`canFrame`).
- *
- * ★ ЗАЧЕМ ОТДЕЛЬНО ОТ `canFit`. `canFit` (`useMapSurface`) отвечает «холст
- * измерен», и фит, посчитанный в холст-полоску, уходит в предельный зум И ТАМ
- * ОСТАЁТСЯ: он помечает себя сделанным и не повторяется.
- *
- * ★★ ОТВЕТ ОБЯЗАН БЫТЬ ЗАВИСИМОСТЬЮ ЭФФЕКТА, А НЕ ПРОВЕРКОЙ ВНУТРИ НЕГО. Тогда
- * заблокированный фит не теряется, а откладывается: окно вернулось — эффект
- * перезапустился и вписал. Проверка внутри дала бы «фит пропущен навсегда».
- *
- * @param {{ current: any }} mapRef
- * @param {{ ready: boolean, insets?: any, slotPx?: number }} p `ready` — холст измерен (`canFit`).
- * @returns {boolean}
- */
-export function useCanFrame(mapRef, { ready, insets = null, slotPx = 0 }) {
-  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}|${slotPx}`;
-  const [ok, setOk] = useState(false);
-  const measure = useCallback(() => {
-    const map = mapRef.current;
-    const el = map?.getContainer?.();
-    setOk(!!(map && ready && canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(map))));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapRef, ready]);
-  useEffect(() => {
-    // Через кадр: холст меняет размер тем же рендером, а mapbox узнаёт о нём от
-    // ResizeObserver — то есть позже. Замер в тот же тик считал бы по старому.
-    const id = requestAnimationFrame(measure);
-    window.addEventListener('resize', measure);
-    return () => { cancelAnimationFrame(id); window.removeEventListener('resize', measure); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [measure, key]);
-  return ok;
 }
 
 export default useMapInsets;

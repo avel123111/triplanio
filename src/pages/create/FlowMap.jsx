@@ -4,7 +4,7 @@ import { markFramed } from '@/lib/map/framed';
 import { getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
-import { useCanFrame, useMapInsets } from '@/lib/map/useMapInsets';
+import { useMapInsets } from '@/lib/map/useMapInsets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
@@ -221,9 +221,6 @@ export default function FlowMap({
   // `reframeRef.current` в теле КАЖДОГО рендера, то есть зовёт самое свежее
   // замыкание. Прежней конструкции ref был нужен, пока из эффекта читали цель
   // маршрута; теперь он фиксировал бы ровно то, что и так актуально.
-  // Гейт фитов — «есть куда вписывать» (разбор — `useMapInsets`).
-  const canFrameNow = useCanFrame(mapRef, { ready: canFit, insets: camera, slotPx });
-
   useMapInsets(mapRef, {
     ready,
     insets: camera,
@@ -231,7 +228,7 @@ export default function FlowMap({
     onReframe: (map) => {
       // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
       // НЕ перекадрирование: зум и границы маршрута он не трогает.
-      if (!canFrameNow || fitPositions.length) return false;
+      if (!canFit || fitPositions.length) return false;
       const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
       try { map.easeTo({ ...view, padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
       return true; // отступ уехал вместе с видом — хуку добавлять нечего
@@ -259,9 +256,9 @@ export default function FlowMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    // Fit only when there IS a free window — deferred otherwise; the effect
-    // re-runs when it comes back. Markers draw on `ready` via the hook. (TRIP-202)
-    if (canFrameNow) {
+    // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
+    // re-runs when canFit flips. Markers draw on `ready` via the hook. (TRIP-202)
+    if (canFit) {
       // ВОЗДУХ кадра, и только он: закрытую площадь карта знает сама
       // (`lib/map/insets.js`), поэтому складывать её здесь не нужно и нельзя.
       const air = fitPaddingFor(winW);
@@ -302,7 +299,7 @@ export default function FlowMap({
     // Пересборку пинов делает `useCityMarkers` по ptsKey — здесь его нет.
     // winW/winH читаются внутри (fitPaddingFor / startGlobeView) — перечислены для
     // честности exhaustive-deps, хотя fitKey их и так несёт.
-  }, [ready, canFrameNow, fitKey, winW, winH]);
+  }, [ready, canFit, fitKey, winW, winH]);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).
