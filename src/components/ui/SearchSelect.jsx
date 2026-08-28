@@ -107,7 +107,10 @@ export default function SearchSelect({
           />
         </div>
       )}
-      <div className="ss-list" onWheel={(e) => e.stopPropagation()}>
+      {/* `scrollbar-thin` — канон ДС (app.css), а не свои правила скролла: лист
+          длинный (валюты, языки), и полоса браузера по умолчанию рисуется мимо
+          системы. Тот же класс несёт лист автокомплита — хром у них общий. */}
+      <div className="ss-list scrollbar-thin" onWheel={(e) => e.stopPropagation()}>
         {filtered.length === 0 ? (
           <div className="ss-empty">{emptyText}</div>
         ) : (

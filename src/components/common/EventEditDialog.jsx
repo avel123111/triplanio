@@ -147,7 +147,7 @@ import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
-import { endAfterStart, relinkChain } from '@/lib/dateRange';
+import { endAfterStart, relinkChain, seedChain } from '@/lib/dateRange';
 import { validateEntity, transferAiCityAdvisories, issuesToShow, isFieldRequired } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldState } from '@/components/common/ValidationUI';
 import { faviconUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
@@ -2081,7 +2081,11 @@ function LayoverToggle({ form, setForm }) {
   const enable = () => setForm((prev) => {
     const seg0 = { ...makeSegment(prev.currency), transport_type: prev.transport_type, from_address: prev.from_address, startLocal: prev.startLocal, carrier: prev.carrier, flight_number: prev.flight_number, booking_reference: prev.booking_reference, price: prev.price, currency: prev.currency };
     const seg1 = { ...makeSegment(prev.currency), to_address: prev.to_address, endLocal: prev.endLocal };
-    return { ...prev, hasLayovers: true, segments: [seg0, seg1] };
+    // Цепочка открывается ЗАПОЛНЕННОЙ, как и прямой переезд: окно у них одно и то
+    // же (стык городов), а равные доли — такой же честный дефолт, как «12:00 →
+    // 15:00» у прямого. Без засева единственными пустыми полями формы оказывались
+    // ровно те, которых у прямого переезда нет (TRIP-484 §4.2).
+    return { ...prev, hasLayovers: true, segments: withSeededDates([seg0, seg1], prev.startLocal, prev.endLocal) };
   });
   const disable = () => setForm((prev) => {
     const segs = prev.segments || []; const first = segs[0] || {}; const last = segs[segs.length - 1] || {};
@@ -2109,6 +2113,17 @@ function LayoverToggle({ form, setForm }) {
       )}
     </>
   );
+}
+
+// Адаптер между формой и чистым законом дат: у сегмента поля зовутся
+// `startLocal`/`endLocal`, у закона — `start`/`end` (lib/dateRange не знает про
+// форму, и знать не должен). Один адаптер на обоих вызывателей засева.
+function withSeededDates(segments, windowStart, windowEnd) {
+  const seeded = seedChain(
+    segments.map((s) => ({ start: s.startLocal || '', end: s.endLocal || '' })),
+    { start: windowStart || '', end: windowEnd || '' },
+  );
+  return segments.map((s, i) => ({ ...s, startLocal: seeded[i].start, endLocal: seeded[i].end }));
 }
 
 // Helpers for the layover segment cards.
@@ -2252,7 +2267,11 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
     const ss = prev.segments; const last = ss[ss.length - 1];
     const reLast = { ...last, to_address: '', endLocal: '', toCity: null };
     const newFinal = { ...makeSegment(prev.currency), to_address: last.to_address, endLocal: last.endLocal };
-    return { ...prev, segments: [...ss.slice(0, -1), reLast, newFinal] };
+    const grown = [...ss.slice(0, -1), reLast, newFinal];
+    // Новый сегмент забрал конец переезда, а у прежнего последнего прилёт
+    // освободился — засев раздаёт долю окна ровно этим двум пустым границам,
+    // введённые руками даты остаются на месте.
+    return { ...prev, segments: withSeededDates(grown, grown[0].startLocal, newFinal.endLocal) };
   });
   const removeSegment = (i) => setForm((prev) => (prev.segments.length <= 2 ? prev : { ...prev, segments: prev.segments.filter((_, idx) => idx !== i) }));
 

@@ -170,7 +170,7 @@ export default function Autocomplete({
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
-        <div id={`${uid}-list`} role="listbox" className="ss-list">
+        <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
           {results.map((r, i) => (
             <button
               key={getKey(r)}

@@ -283,10 +283,11 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
             язык), а не нативный `<select>`: стрелку тому рисует ОПЕРАЦИОННАЯ
             СИСТЕМА, и она не совпадала ни с шевроном ДС, ни сама с собой между
             двумя полями - ровно та же болезнь, из-за которой в проекте не
-            осталось нативного `<input type="date">` (TRIP-484 §3). Поиск - по виду
-            списка, а не по его длине: у категорий он ЗАКРЫТЫЙ (искать нечего),
-            у городов открытый - маршрут бывает и на пятнадцать точек. Состояние
-            валидации едет атрибутами на триггер - он и есть видимое поле. */}
+            осталось нативного `<input type="date">` (TRIP-484 §3). Оба списка -
+            трип-ские и короткие, поэтому оба БЕЗ строки поиска: два соседних поля,
+            ведущих себя по-разному, читаются как два разных примитива (замечание
+            Pavel). Состояние валидации едет атрибутами на триггер - он и есть
+            видимое поле. */}
         <Field label={t('budget.field_category')} required={v.isRequired('categoryId')}>
           <div data-vfield="categoryId">
             <SearchSelect
@@ -312,9 +313,8 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
             getKey={(c) => c.id}
             renderValue={(c) => c.label}
             renderOption={(c) => <span className="grow trunc">{c.label}</span>}
-            matches={(c, q) => c.label.toLowerCase().includes(q)}
-            searchPlaceholder={t('visit.city')}
-            emptyText={t('common.not_found')}
+            searchable={false}
+            placeholder={t('common.choose')}
             title={t('visit.city')}
           />
         </Field>

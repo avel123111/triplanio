@@ -5,7 +5,7 @@
 // чистая функция + этот файл. Каждый кейс — из ручного прохода Pavel по форме.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { endAfterStart, relinkChain } from './dateRange.js';
+import { endAfterStart, relinkChain, seedChain } from './dateRange.js';
 
 // ── Пара «начало → конец» ────────────────────────────────────────────────────
 
@@ -107,4 +107,52 @@ test('правка назад ничего не тянет назад — это
   const next = relinkChain(links, 1, { start: '2026-09-01T11:00' });
   assert.equal(next[0].end, '2026-09-01T13:00'); // предыдущее звено не тронуто
   assert.equal(next[1].start, '2026-09-01T11:00');
+});
+
+// ── Засев цепочки в окне переезда ────────────────────────────────────────────
+
+test('две пересадки: окно делится поровну, стоянка получает свою долю', () => {
+  // Дефолты прямого переезда: вылет 12:00, прилёт 15:00. Цепочка из двух звеньев
+  // делит их на три равные доли — перелёт, стоянка, перелёт.
+  const out = seedChain(
+    [{ start: '2026-09-01T12:00', end: '' }, { start: '', end: '2026-09-01T15:00' }],
+    { start: '2026-09-01T12:00', end: '2026-09-01T15:00' },
+  );
+  assert.deepEqual(out, [
+    { start: '2026-09-01T12:00', end: '2026-09-01T13:00' },
+    { start: '2026-09-01T14:00', end: '2026-09-01T15:00' },
+  ]);
+});
+
+test('пустая цепочка засевается целиком из концов окна', () => {
+  const out = seedChain([{ start: '', end: '' }, { start: '', end: '' }], { start: '2026-09-01T10:00', end: '2026-09-01T14:00' });
+  assert.equal(out[0].start, '2026-09-01T10:00');
+  assert.equal(out[1].end, '2026-09-01T14:00');
+  assert.equal(out[0].end, '2026-09-01T11:20');
+  assert.equal(out[1].start, '2026-09-01T12:40');
+});
+
+test('введённое пользователем не перезаписывается, доля считается между СОСЕДЯМИ', () => {
+  // Добавили третий сегмент в цепочку, где первые даты уже введены руками.
+  const out = seedChain([
+    { start: '2026-09-01T08:00', end: '2026-09-01T09:00' },  // введено
+    { start: '2026-09-01T10:00', end: '' },                  // конец освободился
+    { start: '', end: '2026-09-01T16:00' },                  // новый финальный
+  ], { start: '2026-09-01T08:00', end: '2026-09-01T16:00' });
+  assert.equal(out[0].end, '2026-09-01T09:00');   // не тронуто
+  assert.equal(out[1].start, '2026-09-01T10:00'); // не тронуто
+  assert.equal(out[1].end, '2026-09-01T12:00');   // делится ОКНО МЕЖДУ 10:00 и 16:00
+  assert.equal(out[2].start, '2026-09-01T14:00');
+});
+
+test('окна нет — цепочка остаётся пустой (дефолт не выдумывается)', () => {
+  const links = [{ start: '', end: '' }, { start: '', end: '' }];
+  assert.deepEqual(seedChain(links, {}), links);
+});
+
+test('засев не мутирует вход', () => {
+  const links = [{ start: '2026-09-01T12:00', end: '' }, { start: '', end: '2026-09-01T15:00' }];
+  const snapshot = JSON.parse(JSON.stringify(links));
+  seedChain(links, { start: '2026-09-01T12:00', end: '2026-09-01T15:00' });
+  assert.deepEqual(links, snapshot);
 });

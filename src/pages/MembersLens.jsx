@@ -20,7 +20,7 @@ import { tripContentBinding, formWrite, reconcileWriteRow } from '@/lib/trip-dat
 import { refusalError } from '@/lib/refusalError';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, SearchSelect, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, SearchSelect, Seg, Severity, Skeleton, ActionMenu, Tile, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { withOwnerRow } from '@/lib/members';
@@ -64,7 +64,6 @@ export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
   const [linkErr, setLinkErr] = useState('');
   const [email, setEmail] = useState('');
   const [offlineName, setOfflineName] = useState('');
-  const [message, setMessage] = useState('');
   const [err, setErr] = useState('');
   const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
   const st = (f) => fieldState(v.displayIssues, f);
@@ -182,9 +181,6 @@ export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
             <Input {...st('email')} type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus={!isPhone} />
           </div>
           <FieldError issues={v.displayIssues} field="email" />
-        </Field>
-        <Field label={t('member.message_label')} hint={t('member.message_hint')}>
-          <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
         </Field>
         <div className="muted t-meta" style={{ marginTop: 6 }}>
           {t('member.invite_email_note')}
