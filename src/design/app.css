@@ -62,7 +62,11 @@
   --surface-2: #EEF1F4;
   --surface-3: #F5F8FA;
   --wash:   var(--surface-2);            /* legacy: subtle tinted wash */
-  --wash-2: var(--surface-3);
+  /* `--wash-2` УДАЛЁН вместе с заливкой футера диалога: читатель у него был
+     ровно один (`.dlg__foot`), а «второе имя одного значения» здесь уже
+     вычищали (см. запись про --line-2/--surface-card выше). Нужен этот тон
+     где-то ещё — это `var(--surface-3)`, у него есть имя.
+     visual-diff-exempt: :root --wash-2 — токен снят вместе с единственным читателем (заливка футера диалога) */
   --secondary: var(--surface-2);
   --accent: var(--brand-soft); --accent-ink: var(--brand);
   --popover: var(--surface); --popover-ink: var(--ink);
@@ -194,6 +198,19 @@
      Алиасов у цвета нет: --line-2 / --surface-card / --surface-card-border были
      вторыми именами тех же двух значений и удалены — один цвет = одно имя. === */
   --r-xl: 20px;
+  /* ★ Ступень ОКНА — отдельная от ступени карточки. Оболочка, которая ЛЕЖИТ
+     ПОВЕРХ экрана (диалог и его мобильный шит), скруглена мягче карточки: у
+     карточки скругление конкурирует с соседями по сетке, у окна — только с
+     собственным содержимым, и 20 на нём читается «пузырём». Один токен на оба
+     облика одного окна (десктопная карточка и углы шита), чтобы «радиус окна»
+     нельзя было поменять в одном месте и забыть про второе.
+     ⚠ ЛЕСТНИЦА ВНУТРИ ОКНА ДРУГАЯ, чем внутри карточки: 14 > 10 (контрол), а не
+     20 > 16 > 10. Вложенный контейнер на 16 внутри окна на 14 круглее своей
+     оболочки — поэтому `<Card>` внутри диалога идёт `radius="btn"`.
+     ⚠ Числа токенов пол 2o не двигает: `--r-dlg` пришёл, `--wash-2` ушёл вместе
+     с заливкой футера — 173 → 173, обхода не требуется.
+     visual-diff-exempt: :root --r-dlg — новая ступень радиуса: окно (диалог и его шит) отделено от карточки */
+  --r-dlg: 14px;
   /* Хром — шапка приложения и меню трипа. В светлой это карточечный белый, в
      тёмной (ниже) сливается с фоном.
      ⚠ TRIP-321: --header-bg выглядит как алиас на --surface, но это РУЧКА ТЕМЫ —
@@ -759,7 +776,6 @@ h2,
 .sec-head h2,
 .tcp__ph,
 .tl3-dh .wd,       /* TRIP-175 инсп.: off-canon→Heading (день недели хронологии) */
-.dlg__head h2,     /* TRIP-175 инсп.: Subheading→Heading (заголовки модалок .dlg__head) */
 .addon-card__title,/* TRIP-175 инсп.: Label→Heading (тайтл карточки аддона) */
 .card h3,          /* TRIP-175 инсп.: Subheading→Heading (заголовок карточки) */
 .visit .when .yr,  /* TRIP-175 инсп.: Label→Heading (год визита) */
@@ -778,6 +794,18 @@ h2,
    visual-diff-exempt: .empty-state__t font-variant-numeric — заголовок пустого состояния получил канон .t-heading (TRIP-302) */
 .acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-heading — Geologica 18/700/1.25, tabular (карьер .acct-sectitle) */
 .t-subheading,
+/* ★ ЗАГОЛОВОК ОКНА — Subheading, а не Heading (задание Pavel). В TRIP-175 его
+   подняли из Subheading в Heading, и это была правка ТИПОГРАФИКИ в отрыве от
+   оболочки: 18/700 держит полосу под собой, а полосу мы сняли. Кегль возвращён
+   на 16/600 — тот же, что у заголовка мобильного шита (`.sheet-h h3` строкой
+   ниже), поэтому одно и то же окно на десктопе и на телефоне впервые называется
+   одинаково.
+   visual-diff-exempt: .dlg__head h2 font-size — заголовок окна Heading→Subheading (18 → 16), задание Pavel
+   visual-diff-exempt: .dlg__head h2 font-weight — заголовок окна Heading→Subheading (700 → 600)
+   visual-diff-exempt: .dlg__head h2 line-height — канон Subheading (1.3)
+   visual-diff-exempt: .dlg__head h2 letter-spacing — канон Subheading (0, без --track-h)
+   visual-diff-exempt: .dlg__head h2 font-variant-numeric — канон Subheading (без tabular; в заголовке окна цифр-колонок нет) */
+.dlg__head h2,
 .dock-panel__id b,    /* TRIP-337 инсп.: заголовок виджета чата Label→Subheading */
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
@@ -942,6 +970,24 @@ h4,
    visual-diff-exempt: .cm-p line-height — канон Support (1.45)
    visual-diff-exempt: .cm-p letter-spacing — канон Support (0) */
 .t-support,
+/* ★ ТЕЛО ОКНА — Support, а не Body (задание Pavel). Дом канона — САМО ТЕЛО, а не
+   каждая строка в нём: диалог это не страница, у него нет длинной прозы, зато
+   почти всегда есть титл над текстом — то есть ровно та роль, под которую
+   Support и заводили («вторичная строка ПРИ титле»). Ко-селектор здесь, а не
+   `className="t-support"` на 14 вызывателях, потому что иначе размер текста в
+   окне становится решением КАЖДОГО экрана: пятнадцатый напишет `t-body`, и в
+   одном окне будет два кегля.
+   ⚠ ЧТО НАМЕРЕННО НЕ СЛЕДУЕТ ЗА ТЕЛОМ: поле ввода (`.input/.select/.textarea`,
+   канон Body 15 + анти-зум-пол 16 на телефоне) — то, что человек НАБИРАЕТ, не
+   вторичная строка; и подпись кнопки (`.btn` → Label 13, и так совпадает).
+   Явные `t-body` внутри диалогов сняты этим же PR — иначе они перебивали бы
+   канон обратно на 15 и давали лоскут.
+   visual-diff-exempt: .dlg__body font-family — тело окна получило канон Support (задание Pavel)
+   visual-diff-exempt: .dlg__body font-size — тело окна Body→Support (15 → 13)
+   visual-diff-exempt: .dlg__body font-weight — канон Support (400)
+   visual-diff-exempt: .dlg__body line-height — канон Support (1.45)
+   visual-diff-exempt: .dlg__body letter-spacing — канон Support (0) */
+.dlg__body,
 .chat-bubble,
 .chat-reply__text,
 .chat-reply__text .cm-p { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
@@ -4148,13 +4194,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    светлой теме и #2a2937 в тёмной. У ящиков редактора `.lp-f` свой фон
    сохраняет: там это панель внутри виджета, а не футер самого виджета.
    visual-diff-exempt: .flow-foot background — цвет футера несёт карточка виджета */
-.lp-f.flow-foot { background: transparent; }
+/* `.lp-f.flow-foot { background: transparent }` СНЯТ: у `.lp-f` заливки больше
+   нет вовсе (одна поверхность на окно/панель), и правило стало дублем дефолта.
+   Селектор из двух классов заводили ровно затем, чтобы перебить `--wash` — как
+   только `--wash` ушёл, исчезла и причина. Сам класс `.flow-foot` в разметке
+   остаётся: он живой носитель раскладки (`.lp-f:not(.flow-foot)` ниже). */
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 /* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
    несёт ОБА класса (`class="lp-b scrollbar-thin flow-lp-b"`), у обоих правил
-   специфичность 0-1-0, а `.lp-b { padding: 14px 15px }` объявлен НИЖЕ - и
-   выигрывает по порядку. Замерено вычисленным стилем: 14px 15px. */
+   специфичность 0-1-0, а `.lp-b` объявлен НИЖЕ - и выигрывает по порядку.
+   Замерено вычисленным стилем (сегодня это `var(--sp-3) 15px`). */
 /* Тело шага: собственные отступы и ритм. Скролл держит ТЕЛО ШЕЛЛА
    (`.mapshell__body` / `.peek-sheet__body`) — два вложенных скроллера дают
    залипающий жест на телефоне, поэтому здесь его нет.
@@ -4295,7 +4345,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      Scoped to the sheet header, so it never touches .t-meta elsewhere. */
   .flow-lp-h .t-meta { display: none; }
   /* Sticky action bar: safe-area padding lifts it above the iOS home indicator. */
-  .flow-foot { flex: none; padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)); }
+  /* Вертикаль берётся у канона хрома (--sp-6), а не переписывается числом:
+     раньше здесь стояло 11 — прежний паддинг `.lp-f`, и после смены ритма это
+     значение молча разъехалось бы с ним.
+     visual-diff-exempt: .flow-foot {@media (max-width: 640px)} padding-bottom — вертикаль подхвачена у канона хрома (11 → --sp-6), чтобы не разъезжалась */
+  .flow-foot { flex: none; padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
@@ -4818,12 +4872,31 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .eed-dtbtn.is-empty { color: var(--muted); }
 @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
 @media (max-width: 720px) {
-  .dlg-backdrop { padding: 12px; }
-  .dlg__head { padding: 14px 16px; }
-  .dlg__body { padding: 14px 16px; }
+  /* ⚠ ЭТОТ БЛОК НЕ РАБОТАЛ. Он объявлен ВЫШЕ базовых `.dlg__head/.dlg__body/
+     .dlg__foot/.dlg-backdrop`, специфичность равная — и базовые правила
+     выигрывали ПО ПОРЯДКУ на ЛЮБОЙ ширине. Замерено в браузере на origin/dev:
+     при 390 px шапка отдавала 18px 22px, а не 14px 16px, то есть телефон всё
+     это время жил на десктопных отступах, а «мобильная геометрия окна»
+     существовала только в исходнике.
+     Четыре мёртвых объявления (padding у backdrop/head/body/foot) сняты. Три из
+     них заменяет ОДНА ручка `--dlg-pad-x` ниже: у окна на телефоне сужается
+     только ГОРИЗОНТАЛЬ, вертикальный ритм (12/6/12) один на всех ширинах.
+     Ручка объявлена РОВНО ЗДЕСЬ и больше нигде — дефолт 22 несёт фолбэк
+     `var(--dlg-pad-x, 22px)` у самих правил, поэтому перебить её порядком
+     нельзя по построению, и та же ловушка не заводится заново.
+     Четвёртое (`.dlg-backdrop { padding: 12px }`) просто удалено: подложка
+     сегодня живёт на 24px, ≤640 она вообще не при делах (там шит), а оживлять
+     невидимое объявление — это новое визуальное решение, которого никто не
+     принимал.
+     visual-diff-exempt: .dlg__head {@media (max-width: 720px)} padding — мёртвое объявление снято; горизонталь телефона теперь через --dlg-pad-x
+     visual-diff-exempt: .dlg__body {@media (max-width: 720px)} padding — мёртвое объявление снято; горизонталь телефона теперь через --dlg-pad-x
+     visual-diff-exempt: .dlg__foot {@media (max-width: 720px)} padding — мёртвое объявление снято; горизонталь телефона теперь через --dlg-pad-x
+     visual-diff-exempt: .dlg {@media (max-width: 720px)} --dlg-pad-x — единственное объявление ручки: горизонталь окна на телефоне 22 → 16
+     visual-diff-exempt: .dlg-backdrop {@media (max-width: 720px)} padding — мёртвое объявление удалено (подложка и так на 24px) */
+  .dlg { --dlg-pad-x: 16px; }
   /* Stack footer buttons full-width on mobile so long labels never clip/overflow
      (e.g. 3-way "Остаться / Выйти без сохранения / Сохранить"). Primary on top. */
-  .dlg__foot { padding: 12px 16px; flex-direction: column-reverse; gap: 8px; align-items: stretch; }
+  .dlg__foot { flex-direction: column-reverse; gap: 8px; align-items: stretch; }
   .dlg__foot .btn { flex: none; width: 100%; justify-content: center; }
   /* TRIP-203: голые h1/h2 больше НЕ понижаются вручную — каноны --fs-h1/--fs-h2
      теперь fluid (clamp) и шринкуются токеном единообразно на всех экранах. */
@@ -4878,9 +4951,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     max-width: 100%;
     display: block;
   }
-  /* The .dlg card inside gets sheet corners, safe-area padding, and a grip handle */
+  /* The .dlg card inside gets sheet corners, safe-area padding, and a grip handle.
+     Углы — та же ступень окна (`--r-dlg`), что у десктопной карточки: это ОДНО
+     окно в двух обликах, и радиус у него один. Своё правило нужно только затем,
+     что нижние углы у шита прямые.
+     visual-diff-exempt: .dlg {@media (max-width: 640px)} border-radius — углы шита следуют за ступенью окна (20 → 14), задание Pavel
+     visual-diff-exempt: .dlg-modal {@media (max-width: 640px)} border-radius — тот же ключ со стороны предка (гард заводит ключ на каждый класс селектора) */
   .dlg-modal .dlg {
-    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    border-radius: var(--r-dlg) var(--r-dlg) 0 0;
     max-height: 92vh;
     max-height: 92dvh;
     max-width: 100%;
@@ -4993,9 +5071,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    контейнеров одного ранга: диалог 16, панель 24, карточка 20, из-за чего одна
    и та же форма события скруглялась по-разному при создании и редактировании,
    а вложенный контейнер (16) оказывался РАВЕН диалогу, в котором лежит.
-   Теперь лестница целая: оболочка 20 > вложенный контейнер 16 > контрол 10. */
+   Лестница карточки: оболочка 20 > вложенный контейнер 16 > контрол 10.
+   ★ ОКНО ушло со ступени карточки на свою (`--r-dlg` 14, см. токен): диалог
+   лежит ПОВЕРХ экрана и скругляется мягче. Лестница внутри окна короче на одну
+   ступень: 14 > 10, поэтому вложенный `<Card>` в диалоге идёт `radius="btn"`.
+   visual-diff-exempt: .dlg border-radius — ступень окна отделена от ступени карточки (20 → 14), задание Pavel */
 .dlg {
-  border-radius: var(--r-xl);
+  border-radius: var(--r-dlg);
   box-shadow: var(--sh-3);
   width: 100%;
   max-width: 560px;
@@ -5012,19 +5094,38 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .dlg--fit width — новая ступень размера диалога (share-UX, апрув = прямое задание Pavel)
    visual-diff-exempt: .dlg--fit margin-inline — новая ступень размера диалога (share-UX) */
 .dlg--fit { width: fit-content; margin-inline: auto; }
+/* ★ ХРОМ ОКНА — ОДНА ПОВЕРХНОСТЬ, А НЕ ТРИ ПОЛОСЫ (задание Pavel).
+   Было: шапка и футер отделены линиями, футер вдобавок залит своим тоном
+   (--wash-2). Три горизонтальные полосы на карточке 420–560 px читаются как
+   таблица, а не как окно: разделитель нужен там, где содержимое СПОРИТ за
+   границу (лента, список), а у окна шапка и футер и так отделены пустотой.
+   Стало: заливка одна на всё окно (`.dlg { background: var(--bg) }` ниже),
+   линий нет, а иерархию несут отступы — 12 у хрома, 6 у тела, то есть между
+   строкой заголовка и телом 18, ровно столько же между телом и кнопками.
+   ⚠ ОТСТУПЫ ХРОМА ПАРНЫЕ И ОСМЫСЛЕННЫЕ: 12 сверху и снизу у шапки/футера — это
+   не «поджали», а половина прежнего разрыва, которую забирала линия. Менять их
+   поодиночке нельзя: сумма 12+6 держит единый вертикальный ритм окна.
+   visual-diff-exempt: .dlg__head padding — хром окна на единый ритм 12/6/12 (задание Pavel)
+   visual-diff-exempt: .dlg__head border-bottom — разделители хрома сняты: у окна одна поверхность (задание Pavel)
+   visual-diff-exempt: .dlg__body padding — тело окна на 6: разрыв до хрома держит сам хром (задание Pavel)
+   visual-diff-exempt: .dlg__foot padding — хром окна на единый ритм 12/6/12 (задание Pavel)
+   visual-diff-exempt: .dlg__foot border-top — разделители хрома сняты (задание Pavel)
+   visual-diff-exempt: .dlg__foot background — футер на заливку тела: одна поверхность на окно (задание Pavel) */
+/* ⚠ ФОЛБЭК В `var()` ОБЯЗАТЕЛЕН, А НЕ «на всякий случай»: `.dlg__foot` живёт не
+   только в `.dlg` — его же канон-футер собирает мобильный confirm ВНУТРИ `<Sheet>`
+   (ConfirmDialog), где ручки `--dlg-pad-x` нет. Без фолбэка `var()` там не
+   разрешается, и padding схлопывается в 0 — кнопки прилипают к краю шита. */
 .dlg__head {
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--line);
+  padding: var(--sp-6) var(--dlg-pad-x, 22px);
   display: flex; align-items: center; gap: 12px;
 }
 .dlg__head h2 { flex: 1; }
-.dlg__body { padding: 20px 22px; overflow: auto; flex: 1; }
+.dlg__body { padding: var(--sp-3) var(--dlg-pad-x, 22px); overflow: auto; flex: 1; }
 .dlg__foot {
-  padding: 14px 22px;
-  border-top: 1px solid var(--line);
+  padding: var(--sp-6) var(--dlg-pad-x, 22px);
   display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
-  background: var(--wash-2);
 }
+
 
 /* ──────────────────────────────────────────────────────────────────────────
    CHAT (Lumo) — shared by the Chat lens (ChatLens) and the floating widget
@@ -6079,7 +6180,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .lp-country { display: inline-flex; align-items: center; gap: .4em; color: var(--ink-2); min-width: 0; max-width: 100%; }
 .lp-country .cflag { flex: none; }
 
-.lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line); }
+/* ★ ХРОМ ПАНЕЛИ — ТЕ ЖЕ ЧЕТЫРЕ РЕШЕНИЯ, ЧТО У ОКНА. `.lp-h/.lp-b/.lp-f` — вторая
+   реализация той же анатомии «шапка / тело / футер»: у окна события она РАБОТАЕТ
+   ВНУТРИ `.dlg` (EventModal, EventEditDialog), поэтому оставить её на прежних
+   числах значило бы получить плоское окно с разлинованной шапкой внутри него.
+   Своя горизонталь (15) остаётся: панель уже окна (392 px у ящика), 22 там
+   съедают строку. Своя типографика тоже остаётся — заголовок панели это ГЕРОЙ с
+   подзаголовком (`.lp-ti b` = Title), а тело панели это плотные пары «ключ —
+   значение» и поля ввода, у которых кегль Body свой по праву.
+   visual-diff-exempt: .lp-h padding — вертикальный ритм хрома сведён с окном (14 → 12)
+   visual-diff-exempt: .lp-h border-bottom — разделители хрома сняты: одна поверхность на окно/панель
+   visual-diff-exempt: .lp-b padding — тело панели на ритм окна (14 → 6 по вертикали)
+   visual-diff-exempt: .lp-f padding — вертикальный ритм хрома сведён с окном (11 → 12)
+   visual-diff-exempt: .lp-f border-top — разделители хрома сняты
+   visual-diff-exempt: .lp-f background — футер на заливку тела: одна поверхность */
+.lp-h { display: flex; align-items: center; gap: 11px; padding: var(--sp-6) 15px; }
 /* Геометрия плитки `.lp-ic` объявлена ОДИН раз - ниже, в блоке EDITOR SIDE
    PANELS. Тут стояла её побайтовая копия под `.lp-h .lp-ic`; лишняя ступень
    специфичности ничего не держала (свойства те же), но перебивала бы правку
@@ -6096,7 +6211,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Ручка `--hl` вместе с ним не нужна: пин на объекте лечил утечку канала тинта
    (TRIP-341), а у канон-класса свой ховер, чужого `--hl` он не читает. */
 
-.lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
+.lp-b { padding: var(--sp-3) 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 /* Футер диалога/панели — СТАНДАРТНЫЙ вид, как в нормальных приложениях: кнопки
    ЗАПОЛНЯЮТ ширину бара, главная (Editar/Guardar/Crear/…) вдвое шире вторичной
    (ratio 1:2, primary справа), деструктивная — призрак слева; одна кнопка → во
@@ -6106,7 +6221,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    плодили разнобой (мелкая справа vs. «во всю ширину» vs. 20/80).
    Исключения: `flow-foot` (визард со спейсером back/reset/next) и `lp-f--single`
    (одиночная модалка) держат свою раскладку. */
-.lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
+.lp-f { margin-top: auto; padding: var(--sp-6) 15px; display: flex; gap: 8px; justify-content: flex-end; }
 .lp-f:not(.flow-foot):not(.lp-f--single) > .btn { flex: 2; }
 .lp-f:not(.flow-foot):not(.lp-f--single) > .btn:first-child:not(:last-child) { flex: 1; }
 /* visual-diff-exempt: .btn flex — футер заполняет ширину поровну (нормальный паттерн, как ConfirmDialog), TRIP-337 апрув Pavel */
@@ -8874,7 +8989,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* tinted header (per-kind colour via --hl-soft/--hl-ink on the .lp root).
    TRIP-176: soft vertical gradient — one drawer-header look shared by the
    add-booking panel and the view/edit panels. */
-.lp-h--ev { background: linear-gradient(180deg, var(--hl-soft), transparent 94%); border-bottom-color: color-mix(in srgb, var(--hl-soft) 60%, var(--line)); }
+/* `border-bottom-color` СНЯТ вместе с самой рамкой у `.lp-h`: тонировать цвет
+   границы, которой нет, — осиротевшее объявление. Отделяет шапку теперь только
+   градиент, и он для этого и заводился (мягкая заливка, гаснущая к телу).
+   visual-diff-exempt: .lp-h--ev border-bottom-color — тонированный цвет рамки осиротел вместе со снятой рамкой .lp-h */
+.lp-h--ev { background: linear-gradient(180deg, var(--hl-soft), transparent 94%); }
 /* Плитка типа события. Цвет брался ИНЛАЙНОМ во всех ЧЕТЫРЁХ шапках события
    (просмотр в диалоге и в панели, редактор, добавление) - одним и тем же
    выражением, при том что `--hl` уже лежит на корне оболочки. Повторённый

@@ -260,7 +260,7 @@ function ChangeRoleDialog({ member, name, tripId, open, onOpenChange }) {
         <Btn variant="secondary" onClick={close} disabled={roleMut.isPending}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" loading={roleMut.isPending} onClick={() => roleMut.mutate()}>{t('trip.form_save')}</Btn>
       </>}>
-      <div className="t-body" style={{ marginBottom: 14, color: 'var(--muted)' }}>
+      <div style={{ marginBottom: 14, color: 'var(--muted)' }}>
         {name}
       </div>
       <Field label={t('member.role_label')}>

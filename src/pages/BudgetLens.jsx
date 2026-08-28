@@ -338,7 +338,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       <Btn variant="primary" icon="check" loading={applyMut.isPending} onClick={() => v.attemptSubmit(() => applyMut.mutate())} disabled={applyMut.isPending} aria-disabled={!v.canSubmit}>{t('budget.apply')}</Btn>
     </>}>
       <div className="col col--g4">
-      <div className="t-body">
+      <div>
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (

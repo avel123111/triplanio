@@ -140,7 +140,7 @@ export default function TripShareFlow({ trip, open, onOpenChange, visits = [], t
 
       <Dialog title={t('trip.copy_link')} icon="link" size="sm" open={open && view === 'link'} onOpenChange={onDismiss}>
         <Col gap="g4">
-          <div className="muted t-body">{t('trip.share_desc')}</div>
+          <div className="muted">{t('trip.share_desc')}</div>
           <Row gap="g3">
             <Input
               readOnly

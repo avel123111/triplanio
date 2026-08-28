@@ -103,7 +103,7 @@ export default function ProUpsellModal({
       )}
     >
       {/* Description — differs by mode */}
-      <div className="muted t-body" style={{ marginBottom: 14 }}>
+      <div className="muted" style={{ marginBottom: 14 }}>
         {copy.desc === 'owner-note' ? (
           <>
             {t('sub.trip_pro_desc_pre')}
@@ -118,7 +118,7 @@ export default function ProUpsellModal({
       {/* Feat-list — both modes (P4 design) */}
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
         {proFeatures.map((feat, i) => (
-          <li key={i} className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--ink-2)' }}>
+          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--ink-2)' }}>
             <Tile as="span" style={{ '--tile': '24px', '--tile-ic': '13px', '--hl-soft': 'var(--pro-soft)', '--hl-ink': 'var(--pro-ink)' }}>
               <Icon name="check" size={13} />
             </Tile>

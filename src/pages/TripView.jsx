@@ -1370,7 +1370,7 @@ export default function TripView() {
         <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>{t('trip.open_settings')}</Btn>
       </>}
     >
-      <div className="muted t-body">
+      <div className="muted">
         {t('trip.budget_addon_off_desc')}
       </div>
     </Dialog>
