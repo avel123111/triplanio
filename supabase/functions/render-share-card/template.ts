@@ -25,6 +25,12 @@
  * Правило проекта: дефис "-", не длинное тире.
  */
 
+import { GLYPH_W, GLYPH_FALLBACK } from './glyphWidths.ts';
+/** Запас на кернинг пар: сумма одиночных глифов его не знает, и на отдельных
+ *  строках он даёт до −0.3% (то есть в ОПАСНУЮ сторону). 1% покрывает это с
+ *  перекрытием и стоит доли пикселя воздуха; генератор таблицы проверяет, что с
+ *  этим запасом занижения не остаётся ни на одной контрольной строке. */
+const KERN_SAFETY = 1.01;
 import { LOGO_SVG_B64 } from './assets_b64.ts';
 import { FLAGS_B64 } from './flags_b64.ts';
 
@@ -127,8 +133,32 @@ function escapeXml(s: string): string {
 }
 
 /** Грубый advance (px). Geologica ~0.54·size на средних весах. */
-function advance(text: string, size: number, factor = 0.54): number {
-  return text.length * size * factor;
+/**
+ * Ширина строки по РЕАЛЬНЫМ ширинам глифов Geologica (таблица `glyphWidths.ts`,
+ * снята с тех же woff2, что грузит приложение и что вшиты в финальный растр).
+ *
+ * Было: `длина_в_символах × кегль × 0.54` — догадка, не знающая, какие это буквы.
+ * В кириллице «ш» вдвое шире «г», и догадка занижала: «Белград» 220 против 237
+ * реальных (+8%), «Балканам» 591 против 664 (+12%), «км» 36 против 42 (+17%).
+ * Зазор до стрелки маршрута заложен 22 единицы — «Белград» съедал 17, и стрелка
+ * садилась на последнюю букву.
+ *
+ * Ширина зависит от ВЕСА, поэтому вес — обязательный аргумент: тот же текст в
+ * 500 и 700 занимает разное место, и «примерно один» коэффициент здесь и был
+ * источником ошибки.
+ *
+ * ★ ОТРИЦАТЕЛЬНЫЙ ТРЕКИНГ (`letter-spacing` −0.5/−1 у заголовка и чисел) в
+ * расчёт НЕ входит СОЗНАТЕЛЬНО. Он делает реальный текст УЖЕ расчётного, то
+ * есть ошибка уходит в запас. Учитывать его значило бы подойти к границе
+ * вплотную и снова получить наезд при первой же неточности; кернинг пар не
+ * учитывается по той же причине (генератор проверяет, что сумма глифов реальную
+ * длину только ЗАВЫШАЕТ, максимум на 4-5%).
+ */
+function advance(text: string, size: number, weight: number): number {
+  const row = GLYPH_W[weight] || GLYPH_W[700];
+  let per1000 = 0;
+  for (const ch of text) per1000 += row[ch] ?? GLYPH_FALLBACK;
+  return (per1000 * size * KERN_SAFETY) / 1000;
 }
 
 /** Плоская тень = тёмная копия со сдвигом (+1,+2), затем белый оригинал поверх.
@@ -173,13 +203,13 @@ function numText(x: number, y: number, size: number, t: string, anchor: 'start' 
 function wrapTitle(title: string, maxW: number, base: number): { lines: string[]; size: number } {
   const words = title.trim().split(/\s+/).filter(Boolean);
   for (let size = base; size >= base * 0.5; size -= 4) {
-    if (advance(title, size, 0.56) <= maxW) return { lines: [title], size };
+    if (advance(title, size, 700) <= maxW) return { lines: [title], size };
     let best: { a: string; b: string; m: number } | null = null;
     for (let k = 1; k < words.length; k++) {
       const a = words.slice(0, k).join(' ');
       const b = words.slice(k).join(' ');
-      const wa = advance(a, size, 0.56);
-      const wb = advance(b, size, 0.56);
+      const wa = advance(a, size, 700);
+      const wb = advance(b, size, 700);
       if (wa <= maxW && wb <= maxW) {
         const m = Math.max(wa, wb);
         if (!best || m < best.m) best = { a, b, m };
@@ -264,7 +294,7 @@ export function buildCardSvg(
   // --- маршрут «from -> to» (белый; стрелка рисуется — глиф → не в сабсете) ---
   const routeY = lastTitleY + L.routeGap;
   const hasTo = data.to && data.to !== data.from;
-  const fromW = advance(data.from, L.routeSize, 0.56);
+  const fromW = advance(data.from, L.routeSize, 600);
   const arrowGap = 22;
   const arrowW = 46;
   let routeSvg = wtext(titleX, routeY, L.routeSize, data.from, { weight: 600 });
@@ -351,7 +381,7 @@ function buildInFrameCountries(L: Layout, g: ReturnType<typeof windowGeom>, d: C
   const parts: string[] = [];
   // Подпись слева (одна строка), baseline по центру ряда.
   parts.push(text(left, cy + c.labSize * 0.34, c.labSize, d.visitedLabel, { weight: 700, fill: C.navy }));
-  const labW = advance(d.visitedLabel, c.labSize, 0.56);
+  const labW = advance(d.visitedLabel, c.labSize, 700);
   // Флаги — от конца подписи + отступ, ПО ЛЕВОМУ КРАЮ с фиксированным шагом.
   const listLeft = left + labW + c.labGap;
   const total = d.flags.length;
@@ -400,7 +430,7 @@ function buildStats(L: Layout, d: CardData): string {
   ];
   const s = L.stats;
   const widths = cells.map((c) =>
-    Math.max(advance(c.num, s.numSize, 0.6), advance(c.lab, s.labSize, 0.6)) + s.cellPad * 2);
+    Math.max(advance(c.num, s.numSize, 700), advance(c.lab, s.labSize, 500)) + s.cellPad * 2);
   const total = widths.reduce((a, b) => a + b, 0);
   let x = (L.w - total) / 2;
   const parts: string[] = [];

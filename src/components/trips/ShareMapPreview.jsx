@@ -49,7 +49,6 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   };
   const [scheme, setScheme] = useState(camera?.scheme || 'LIGHT');
   const [projection, setProjection] = useState(camera?.projection || 'mercator');
-  const [fontTick, setFontTick] = useState(0);
   // Свежая камера для замыканий create-once эффекта (как slotRef выше).
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
@@ -58,17 +57,14 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   // кто-то трогал. Авто-фит по точкам живёт отдельной функцией `fit` внутри эффекта.
   const applyCameraRef = useRef(/** @type {null | (() => void)} */ (null));
 
-  // The frame SVG carries its fonts as @font-face (embedded data URIs). They load
-  // from the data URI ~instantly, but font-display:block hides the text until the
-  // face is ready; nudge a repaint once fonts settle so the frame paints with the
-  // real glyphs (never a device fallback) - this is what keeps it identical across
-  // devices instead of "разъезжается".
-  useEffect(() => {
-    if (!overlaySvg || !document?.fonts?.ready) return undefined;
-    let alive = true;
-    document.fonts.ready.then(() => { if (alive) setFontTick((n) => n + 1); });
-    return () => { alive = false; };
-  }, [overlaySvg]);
+  // ★ ПЕРЕРИСОВКИ ПО `document.fonts.ready` ЗДЕСЬ БОЛЬШЕ НЕТ — и это часть фикса,
+  // а не упрощение. Она пересоздавала весь кадр рамки (сменой `key`) после того,
+  // как осядут шрифты: костыль под `font-display: block` у @font-face, которые
+  // overlay возил внутри себя. Возить их overlay перестал (render-share-card:
+  // рамка вставляется ИНЛАЙНОМ в документ, где Geologica уже загружена), поэтому
+  // блокирующей фазы нет — а пересоздание кадра при КАЖДОЙ смене фона осталось бы
+  // и продолжало моргать само по себе: именно так на телефоне названия городов
+  // появлялись и через полсекунды пропадали.
 
   useEffect(() => {
     if (!MAPBOX_TOKEN || !holderRef.current || mapRef.current) return undefined;
@@ -297,7 +293,6 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       <div ref={holderRef} style={{ position: 'absolute', overflow: 'hidden', ...holeStyle }} />
       {frameSvg && (
         <div
-          key={`frame-${fontTick}`}
           style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: frameSvg }}
