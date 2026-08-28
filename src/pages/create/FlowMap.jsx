@@ -1,3 +1,4 @@
+/* global __SENTRY_RELEASE__ */
 import React, { useRef, useEffect, useState } from 'react';
 import { calmFit } from '@/lib/map/camera';
 import { markFramed } from '@/lib/map/framed';
@@ -381,7 +382,11 @@ export default function FlowMap({
       const bot = Math.round(sheet ? sheet.getBoundingClientRect().top : shell.getBoundingClientRect().bottom);
       const ys = [...document.querySelectorAll('.mapboxgl-marker')]
         .map((e) => Math.round(e.getBoundingClientRect().top)).sort((a, z) => a - z).join(',');
-      setProbe(` · s${s} w${top}..${bot} y${ys}`);
+      // Метка СБОРКИ первой: спор «ты смотришь старый деплой» стоил круга, а
+      // разрешается он одним взглядом. `__SENTRY_RELEASE__` — коммит, которым
+      // Vercel собрал бандл (`vite.config.js`).
+      const b = String(__SENTRY_RELEASE__ || 'dev').slice(0, 7);
+      setProbe(` · ${b} s${s} w${top}..${bot} y${ys}`);
     }, 2500);
     return () => clearTimeout(t);
   }, [ptsKey, fitKey, framed, ready]);
