@@ -107,3 +107,45 @@ test('без темпа задержки нет', () => {
   assert.equal(slotChangeDelay({ prev: 0, next: 500 }), 0);
   assert.equal(slotChangeDelay(), 0);
 });
+
+// ── сколько шит отрезает у слота карты ───────────────────────────────────────
+
+import { mapSlotPx } from './mapShellInsets.js';
+
+const STOPS = [135, 505, 743]; // низ · середина · верх, экран 743
+
+test('★★ ПОКА ИДЁТ ЖЕСТ — крайний размер карты, полосе фона взяться неоткуда', () => {
+  // Замер на живом экране (стенд): без этого правила тяга с середины вниз даёт
+  // ровный рост полосы фона до 350 px, с ним разрыв отрицателен на всех кадрах.
+  for (const h of STOPS) {
+    assert.equal(mapSlotPx({ sheetPx: h, stops: STOPS, dragging: true }), 135, `с высоты ${h}`);
+  }
+});
+
+test('★★ С СЕРЕДИНЫ ВВЕРХ КАРТУ НЕ ТРОГАЕМ — верхний детент закрывает экран', () => {
+  assert.equal(mapSlotPx({ sheetPx: 743, stops: STOPS }), 505, 'верхний детент → как на среднем');
+  assert.equal(mapSlotPx({ sheetPx: 505, stops: STOPS }), 505);
+  assert.equal(mapSlotPx({ sheetPx: 135, stops: STOPS }), 135, 'между низом и серединой — как есть');
+});
+
+test('★ у слота ровно ДВА размера, сколько бы ни было детентов', () => {
+  const seen = new Set(STOPS.map((h) => mapSlotPx({ sheetPx: h, stops: STOPS })));
+  assert.deepEqual([...seen].sort((a, b) => a - b), [135, 505]);
+});
+
+test('★ верхний детент больше не даёт «холст в 20 px» — в него уходил автофокус', () => {
+  const slot = mapSlotPx({ sheetPx: 743, stops: STOPS });
+  // Условие разбито на строки: знаки «больше» и «меньше» на одной строке
+  // сканер i18n читает как JSX-текст.
+  assert.ok(slot <= 505);
+  assert.ok(743 - slot >= 238, 'под верхним детентом карте остаётся полноценное окно');
+});
+
+test('детентов нет (первый кадр) — берём высоту как есть', () => {
+  assert.equal(mapSlotPx({ sheetPx: 400, stops: [] }), 400);
+  assert.equal(mapSlotPx(), 0);
+});
+
+test('два детента: середины нет, значит карта не сжимается вовсе', () => {
+  assert.equal(mapSlotPx({ sheetPx: 743, stops: [135, 743] }), 135);
+});

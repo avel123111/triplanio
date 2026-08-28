@@ -5,7 +5,7 @@ import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { mapShellInsets, slotChangeDelay } from '@/lib/mapShellInsets';
+import { mapShellInsets, mapSlotPx, slotChangeDelay } from '@/lib/mapShellInsets';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
 
@@ -123,7 +123,9 @@ export function MapShell({
   // обновлятель `setState` обязан быть чистым — React вправе позвать его
   // повторно, и таймер завёлся бы дважды.
   const appliedRef = useRef(0);
-  const applySheetPx = useCallback((next) => {
+  const applySheetPx = useCallback((px, meta) => {
+    // Шит отдаёт СВОЮ высоту, слоту нужна другая — правило и замеры в `mapSlotPx`.
+    const next = mapSlotPx({ sheetPx: px, stops: meta?.stops, dragging: meta?.dragging });
     const prev = appliedRef.current;
     if (next === prev) return;
     clearTimeout(applyTimer.current);

@@ -93,7 +93,7 @@ function viewportTop() {
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
  *   detents?: number[],
- *   onHeightChange?: (px: number) => void,
+ *   onHeightChange?: (px: number, meta: { stops: number[], dragging: boolean }) => void,
  *   label: string,
  *   className?: string,
  * }} p
@@ -298,7 +298,15 @@ export function PeekSheet({
   // Высоту сообщаем наверх ТОЛЬКО зафиксированную (не покадрово во время жеста):
   // ею шелл считает закрытую площадь карты, а камера обязана ехать после осадки,
   // а не драться с пальцем.
-  useEffect(() => { onHeightChange && onHeightChange(sheetH); }, [sheetH, onHeightChange]);
+  // ★ ВМЕСТЕ С ВЫСОТОЙ ОТДАЁМ ДЕТЕНТЫ И ФАКТ ЖЕСТА. Слоту карты нужна не эта
+  // высота, а две производные от неё (правило и замеры — `mapSlotPx`):
+  // пока идёт жест — самый большой размер карты, на осадке — не выше среднего
+  // детента. Считать это здесь нельзя (шит не знает про карту), а вычислять
+  // детенты заново на той стороне значит завести вторую копию `resolveDetents`.
+  const dragging = dragY != null;
+  useEffect(() => {
+    onHeightChange && onHeightChange(sheetH, { stops, dragging });
+  }, [sheetH, stops, dragging, onHeightChange]);
 
   const style = {
     '--sheet-y': (dragY ?? restY) + 'px',
