@@ -1,7 +1,7 @@
 // @ts-check
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByLocation } from './markers.js';
+import { groupByLocation, markerZoomScale, markerZoomSizeExpr, cityPoints, MARKER_ZOOM_SCALE } from './markers.js';
 import { isMapAlive } from './alive.js';
 
 // groupByLocation теперь несёт `ids` — единый источник для `data-mids`, которым
@@ -47,4 +47,61 @@ test('isMapAlive: истинно только при живом style', () => {
   assert.equal(isMapAlive({}), false);            // ссылка жива, style снесён
   assert.equal(isMapAlive({ style: null }), false);
   assert.equal(isMapAlive({ style: {} }), true);
+});
+
+// ── размер пина по зуму + нумерация городов (TRIP-443) ───────────────────────
+// Правило размера читают ДВЕ разные машины: живые карты кладут число в CSS-
+// переменную `--mk-scale`, а карта share-карточки — в `icon-size` GL-слоя своих
+// растровых пинов. Пока чисел два, разъехаться они могут молча: обе поверхности
+// продолжат рисовать пины, просто разного размера, и заметить это можно только
+// положив карточку рядом с приложением. Тест держит их на одном источнике.
+
+test('markerZoomScale: MIN на мелком зуме, MAX на детальном, линейно между', () => {
+  const { MIN, MAX, Z_LO, Z_HI } = MARKER_ZOOM_SCALE;
+  assert.equal(markerZoomScale(0), MIN);        // и ниже Z_LO — та же полка
+  assert.equal(markerZoomScale(Z_LO), MIN);
+  assert.equal(markerZoomScale(Z_HI), MAX);
+  assert.equal(markerZoomScale(22), MAX);       // и выше Z_HI — та же полка
+  assert.equal(markerZoomScale((Z_LO + Z_HI) / 2), (MIN + MAX) / 2);
+});
+
+test('markerZoomSizeExpr: выражение mapbox повторяет ту же кривую в тех же стопах', () => {
+  const { Z_LO, Z_HI } = MARKER_ZOOM_SCALE;
+  const [op, interp, zoom, zLo, aLo, zHi, aHi] = markerZoomSizeExpr();
+  assert.equal(op, 'interpolate');
+  assert.deepEqual(interp, ['linear']);
+  assert.deepEqual(zoom, ['zoom']);
+  assert.equal(zLo, Z_LO);
+  assert.equal(zHi, Z_HI);
+  assert.equal(aLo, markerZoomScale(Z_LO));
+  assert.equal(aHi, markerZoomScale(Z_HI));
+});
+
+test('markerZoomSizeExpr: усадка поверхности множит ОБА конца кривой', () => {
+  // Калька карточки мельче финального слота: пин обязан ужаться ровно во
+  // столько же раз на любом зуме, иначе превью перестаёт быть превью.
+  const s = 0.4;
+  const full = markerZoomSizeExpr();
+  const small = markerZoomSizeExpr(s);
+  assert.equal(small[4], full[4] * s);
+  assert.equal(small[6], full[6] * s);
+});
+
+test('cityPoints: номер несут ТОЛЬКО города, роли — нет; нумерация сквозная', () => {
+  const pts = cityPoints([
+    { id: 'a', kind: 'start', latitude: 1, longitude: 2 },
+    { id: 'b', kind: 'transit', latitude: 3, longitude: 4 },
+    { id: 'c', kind: 'waypoint', latitude: 5, longitude: 6 },
+    { id: 'd', kind: undefined, latitude: 7, longitude: 8 }, // легаси-строка = город
+    { id: 'e', kind: 'end', latitude: 9, longitude: 10 },
+  ]);
+  assert.deepEqual(pts.map((p) => p.label), [null, '1', null, '2', null]);
+  // Координаты переезжают в язык маркеров (lng/lat), данные визита — в `data`.
+  assert.deepEqual([pts[1].lng, pts[1].lat], [4, 3]);
+  assert.equal(pts[1].data.id, 'b');
+});
+
+test('cityPoints: пустой/отсутствующий вход — пустой список, не падение', () => {
+  assert.deepEqual(cityPoints([]), []);
+  assert.deepEqual(cityPoints(undefined), []);
 });

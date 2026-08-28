@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { track } from '@/lib/analytics';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { Btn, Carousel, Dialog, EmptyState, IconBtn, Row, Seg, Severity, Skeleton, Swatch, Tile } from '@/design/index';
+import { Btn, Carousel, Dialog, EmptyState, IconBtn, Row, Seg, Severity, Sheet, Skeleton, Swatch, Tile } from '@/design/index';
 import { Icon } from '@/design/icons';
 import LpSheet from '@/components/ui/LpSheet';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
@@ -400,25 +400,26 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     </div>
   );
 
-  // Полноэкранный под-флоу «Настроить карту»: крупная живая карта с жестами,
-  // Done забирает композицию, крестик — отменяет.
+  // Под-флоу «Настроить карту»: крупная живая карта с жестами, Done забирает
+  // композицию, крестик — отменяет.
+  //
+  // На телефоне это КАНОН-шит `<Sheet>` (высота по содержимому, потолок 86dvh), а
+  // не полноэкранный `<LpSheet>`. Причина не в оболочке, а в кадре: `.lp-sheet`
+  // растянут на весь вьюпорт, и карта в нём тоже жила full-bleed
+  // (`aspect-ratio: auto`) — то есть пользователь компоновал кадр 9:16, а
+  // карточка брала из него центральную полосу пропорции СЛОТА. Для «поста»
+  // (866×544, почти 16:10) расхождение доходило до половины кадра: видел одно,
+  // получал другое. Теперь сцена редактора держит пропорцию слота на ОБОИХ
+  // шасси, а высоту шита задаёт она же — поэтому окно редактирования и окно
+  // карты в карточке совпадают по построению, а не по совпадению.
   const editor = editorOpen && overlay && (isPhone ? (
-    <LpSheet open onClose={closeEditor} title={t('share.edit_map')}>
-      <div className="lp">
-        <div className="lp-h">
-          <Tile as="span" className="lp-ic"><Icon name="map" size={17} /></Tile>
-          <div className="lp-ti"><div className="lp-tirow"><b className="t-title">{t('share.edit_map')}</b></div></div>
-          <IconBtn icon="close" onClick={closeEditor} ariaLabel={t('common.close')} />
-        </div>
-        {/* data-vaul-no-drag: жесты карты не должны утаскивать сам шит */}
-        <div className="lp-b sc-edit" data-vaul-no-drag>
-          {editorStage}
-        </div>
-        <div className="lp-f lp-f--single">
-          <Btn variant="primary" icon="check" block onClick={applyEditor}>{t('common.done')}</Btn>
-        </div>
+    <Sheet open onOpenChange={(o) => { if (!o) closeEditor(); }} title={t('share.edit_map')} bodyClassName="sc-edit">
+      {/* data-vaul-no-drag: жесты карты не должны утаскивать сам шит */}
+      <div data-vaul-no-drag>{editorStage}</div>
+      <div className="lp-f lp-f--single">
+        <Btn variant="primary" icon="check" block onClick={applyEditor}>{t('common.done')}</Btn>
       </div>
-    </LpSheet>
+    </Sheet>
   ) : (
     <Dialog
       title={t('share.edit_map')}

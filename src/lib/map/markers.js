@@ -46,6 +46,56 @@ const ICON_PATHS = {
 //   пересадка→ бирюза (`--ev-transfer`, цвет эвента «транспорт»), меньший размер
 const ROLE_CLASS = { start: 'tmk--start', end: 'tmk--finish', waypoint: 'tmk--wp' };
 
+// Зум-зависимый размер пина. Фикс-размер плохо читался на мелком зуме (вся карта
+// мира с полноразмерными кольцами = каша), поэтому в покое пин масштабируется по
+// зуму: MIN на мелком (≤ Z_LO), MAX = полный размер на детальном (≥ Z_HI),
+// линейно между. Пропорции ролей сохраняются сами (масштабируется весь пин).
+//
+// Правило живёт ЗДЕСЬ, рядом с обликом, а не у потребителя, потому что
+// потребителей стало два и приезжают они к пину с РАЗНЫХ сторон: живые карты
+// (`useCityMarkers`) кладут число в CSS-переменную `--mk-scale`, которую читает
+// `transform: scale()` у `.tmk__core`, а карта share-карточки — в `icon-size`
+// GL-слоя своих растровых пинов (у растра каскада нет). Число обязано быть одно.
+export const MARKER_ZOOM_SCALE = { MIN: 0.6, MAX: 1, Z_LO: 4, Z_HI: 8 };
+
+/** Множитель размера пина на зуме `z` (MIN…MAX). @param {number} z */
+export function markerZoomScale(z) {
+  const { MIN, MAX, Z_LO, Z_HI } = MARKER_ZOOM_SCALE;
+  const t = Math.max(0, Math.min(1, (z - Z_LO) / (Z_HI - Z_LO)));
+  return MIN + t * (MAX - MIN);
+}
+
+/**
+ * То же правило, но выражением mapbox — для поверхностей, где пин не DOM-узел, а
+ * иконка GL-слоя (карта share-карточки). Выражение пересчитывается НА КАЖДОМ
+ * КАДРЕ, как и CSS-transform у DOM-пина, поэтому размер едет плавно вместе с
+ * зумом, а не ступеньками по событиям.
+ *
+ * `s` — дополнительная усадка поверхности: калька карточки во столько раз
+ * мельче финального слота, поэтому и пин на ней во столько же раз мельче
+ * (превью == финал).
+ * @param {number} s
+ */
+export function markerZoomSizeExpr(s = 1) {
+  const { MIN, MAX, Z_LO, Z_HI } = MARKER_ZOOM_SCALE;
+  return ['interpolate', ['linear'], ['zoom'], Z_LO, MIN * s, Z_HI, MAX * s];
+}
+
+// Точки городов трипа для сборки пинов. Номер несут ТОЛЬКО транзит-города
+// (1,2,3…) — у старта, финиша и пересадки своя роль и свой глиф, неизвестная
+// роль считается городом, чтобы исторические строки не остались без номера.
+// Правило одно на все поверхности, которые рисуют МАРШРУТ ТРИПА: линза
+// «Маршрут»/редактор и карта share-карточки (у планировщика свой источник и
+// свои роли — он сюда не ходит).
+/** @param {Array<any>} ordered — визиты в порядке маршрута */
+export function cityPoints(ordered) {
+  let transitNo = 0;
+  return (ordered || []).map((v) => {
+    const isTransit = v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint';
+    return { id: v.id, lng: v.longitude, lat: v.latitude, label: isTransit ? String(++transitNo) : null, kind: v.kind, data: v };
+  });
+}
+
 // Group points that share a location (a city visited twice) into one pin that
 // carries every label + kind + id at that spot.
 // points: [{ lng, lat, label, kind?, id?, data? }] → [{ lng, lat, labels:[], kinds:[], ids:[], data:[] }]

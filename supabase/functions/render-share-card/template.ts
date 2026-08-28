@@ -333,8 +333,15 @@ export function buildCardSvg(
   const winPath = roundedRectPath(g.winX, g.winY, g.winW, g.winH, WIN_R);
   const cream = `<path d="${roundedRectPath(g.polaX, g.polaY, g.polaW, g.polaH, POLA_R)} ${winPath}" `
     + `fill="${C.cream}" fill-rule="evenodd" transform="${polaXf}"/>`;
-  const creamShadow = `<path d="${roundedRectPath(g.polaX, g.polaY, g.polaW, g.polaH, POLA_R)}" `
-    + `fill="#000" opacity="0.20" transform="${polaXf} translate(6,14)"/>`;
+  // Тень полароида — СПЛОШНОЙ чёрный прямоугольник рамки под ней. В финале его
+  // накрывает картинка карты, а в overlay окно — ДЫРА, и та же тень просвечивала
+  // сквозь неё, кладя ровные 20% черноты на живую карту: превью было темнее
+  // готовой карточки, хотя ни одного «скрима над картой» в шаблоне нет. Поэтому
+  // окно вырезаем из тени ВСЕГДА (`winhole`), а не только в overlay: в финале
+  // это ничего не меняет (там поверх лежит карта) — расхождению просто негде
+  // взяться по построению.
+  const creamShadow = `<g mask="url(#winhole)"><path d="${roundedRectPath(g.polaX, g.polaY, g.polaW, g.polaH, POLA_R)}" `
+    + `fill="#000" opacity="0.20" transform="${polaXf} translate(6,14)"/></g>`;
   // Карта: axis-aligned image в bbox, обрезка повёрнутым окном. overlay ⇒ дыра.
   const mapImg = overlay
     ? ''
@@ -366,7 +373,11 @@ export function buildCardSvg(
  <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c7e6"/><stop offset="0.32" stop-color="#cfe0ec"/><stop offset="0.62" stop-color="#7fa7b3"/><stop offset="1" stop-color="#274b63"/></linearGradient>
  <linearGradient id="scrimGrad" x1="0" y1="0" x2="0" y2="1">${scrimStops}</linearGradient>
  <clipPath id="winclip"><path d="${winPath}" transform="${polaXf}"/></clipPath>
- <mask id="winhole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${winPath}" transform="${polaXf}" fill="black"/></mask>
+ <!-- maskUnits/x/y/w/h заданы ЯВНО в координатах кадра: по умолчанию область маски
+      считается от bbox ТОГО, кто её применил (-10%…110%), а применяют её теперь и
+      к тени полароида, чей bbox — не весь кадр. Явные единицы делают маску
+      одинаковой для всех потребителей. -->
+ <mask id="winhole" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${winPath}" transform="${polaXf}" fill="black"/></mask>
  <filter id="winInnerA" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"/></filter>
  <filter id="winInnerB" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
  <clipPath id="logoClip"><rect x="${L.padX}" y="${L.brand.cy - L.brand.logo / 2}" width="${L.brand.logo}" height="${L.brand.logo}" rx="${L.brand.logoR}" ry="${L.brand.logoR}"/></clipPath>
@@ -417,16 +428,37 @@ export function scrimGradient(L: Layout, titleLines: number): string {
   // замер давал цифрам 3.68:1 против 4.40:1 у подписей рядом.
   const botStart = (L.stats.y - L.stats.numSize * 1.3) / H;
 
-  // Растушёвка — доля высоты кадра; без неё край подложки читается полосой.
-  const FADE = 0.09;
-  return [
-    st(0, ALPHA),
-    st(topEnd, ALPHA),
-    st(topEnd + FADE, 0),
-    st(botStart - FADE, 0),
-    st(botStart, ALPHA),
-    st(1, ALPHA),
-  ].join('');
+  // Растушёвка — доля высоты кадра. ЛИНЕЙНОГО схода мало: у прямой два излома
+  // (там, где она отходит от полки ALPHA, и там, где упирается в 0), а глаз
+  // усиливает именно излом (полосы Маха) — короткий линейный сход и читался как
+  // ПОЛОСА поперёк обложки, а не как затухание. Поэтому сход, во-первых, длиннее
+  // (0.09 → 0.18 высоты кадра), во-вторых, идёт по smoothstep: на обоих концах
+  // производная равна нулю, ломать нечего.
+  //
+  // Потолок длины задаёт сама раскладка: окно карты обязано остаться ЧИСТЫМ
+  // (это пинит scrim_test), то есть сход не имеет права дотянуться до середины
+  // окна. Самый тесный кадр — story с двухстрочным заголовком: там от низа
+  // текста до середины окна ~0.21 высоты, поэтому 0.18 — с запасом, но у
+  // предела; увеличивать дальше нельзя, не подвинув раскладку.
+  const FADE = 0.18;
+  const STEPS = 6; // промежуточных стопов на сход (кривая рисуется отрезками)
+  const smooth = (t: number) => t * t * (3 - 2 * t); // smoothstep: гладко на обоих концах
+  // Сход от полной непрозрачности в `from` к нулю в `from + dir*FADE`. Сам
+  // `from` не повторяем — его несёт стоп-граница блока.
+  const ramp = (from: number, dir: 1 | -1) =>
+    Array.from({ length: STEPS }, (_, i) => {
+      const t = (i + 1) / STEPS;
+      return { o: from + dir * FADE * t, a: Number((ALPHA * (1 - smooth(t))).toFixed(4)) };
+    });
+  const stops = [
+    { o: 0, a: ALPHA },
+    { o: topEnd, a: ALPHA },
+    ...ramp(topEnd, 1),
+    ...ramp(botStart, -1).reverse(),
+    { o: botStart, a: ALPHA },
+    { o: 1, a: ALPHA },
+  ];
+  return stops.map((s) => st(s.o, s.a)).join('');
 }
 
 function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {

@@ -6,19 +6,28 @@
 // the composed map to a PNG for the browser-rasterised card.
 //
 // TRIP-443: the card map runs on the SAME Mapbox style as every other app
-// surface (MAP_STYLE — the trip Map lens / overview). City markers are BOLD BLUE
-// DOTS (Ilia's request: back to plain markers, no country flags), no city names.
-// The dot colour reuses the route token `--map-route` (mapTokens.routeColor) so
-// the markers match the route line and follow day/night. The map includes the
+// surface (MAP_STYLE — the trip Map lens / overview). The map includes the
 // start/finish cities (showSE) so the whole journey shows — the stats TEXT under
 // the title stays transit-only (edge side).
 //
-// NOTE: HTML markers (mapboxgl.Marker) are DOM overlays and are NOT part of the
-// WebGL canvas, so a canvas snapshot would omit them. City markers are therefore
-// drawn as GL circle layers here (a white halo + a blue dot) so they are captured.
+// СВОЕГО ОБЛИКА У ЭТОЙ КАРТЫ БОЛЬШЕ НЕТ. Раньше здесь жили собственные маркеры
+// (жирная синяя точка в белом ореоле) и собственные, утолщённые веса линий —
+// вторая, ни с чем не сверяемая система поверх той, что рисуют все остальные
+// карты. Теперь это ровно те же городские Ring-пины (`markers.js`, облик в
+// `.tmk*`) с той же нумерацией транзитов, теми же ролевыми глифами и тем же
+// зум-зависимым размером, и линии канонных весов (`mapStyle.js`).
+//
+// Разница остаётся ровно одна, и она вынужденная: HTML-маркер (mapboxgl.Marker)
+// — оверлей НАД canvas, снимок WebGL-канваса его не содержит, а карточка снимает
+// именно канвас. Поэтому пины здесь — GL-слой с иконкой, которую печёт
+// `pinImage.js`, ИЗМЕРЯЯ настоящий `.tmk` (см. разбор там). Цвета берутся под
+// СХЕМУ КАРТЫ (её день/ночь), а не под тему приложения: у растра каскада нет.
 import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, loadMapboxGl } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { routeColor } from '@/lib/map/mapTokens';
+import { cityPoints, groupByLocation, markerZoomSizeExpr } from '@/lib/map/markers';
+import { pinImageData, PIN_DPR } from '@/lib/map/pinImage';
+import { SOLID_WIDTH, DASHED_WIDTH } from '@/lib/map/mapStyle';
 import { sortVisits } from '@/lib/validation';
 import { transitSpan } from '@/lib/trip-cities';
 
@@ -44,61 +53,99 @@ export function buildRoute(visits, transfers, showSE) {
   return { ordered, legs };
 }
 
-// Share-card-only map weights (TRIP-193 → TRIP-443). Bolder than the app maps so
-// the route + markers read at story/post scale. Kept in ONE place because the live
-// preview scales these same base values (ShareMapPreview.applyWeights) to keep
-// preview == final. `dot` = the blue city marker radius; `halo` = the white casing
-// under it (logical px on the full-res card).
-export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 13, halo: 17 };
+const PIN_SOURCE = 'sc-points';
+export const PIN_LAYER = 'sc-pins';
+export const LINE_IDS = { solid: 'sc-solid', dashed: 'sc-dashed' };
 
-/** City point source + white-halo/blue-dot marker layer under EVERY point. The
- *  dot colour reuses the route token (`--map-route`) so markers match the line
- *  and follow day/night; the white halo keeps the dot legible on any basemap. */
-function drawPointLayer(map, ordered) {
-  const src = 'sc-points';
+/** Ячейки пина для спота: по одной на визит, в порядке визитов — ровно тот вход,
+ *  который живые карты отдают `createMarkerEl` (слепленный пилюль складывается
+ *  сам). Отдельно возвращаем координату спота. */
+function pinSpots(ordered) {
+  return groupByLocation(cityPoints(ordered)).map((g) => ({
+    lng: g.lng,
+    lat: g.lat,
+    cells: g.kinds.map((kind, i) => ({ kind, label: g.labels[i], id: g.ids[i] })),
+  }));
+}
+
+/** Ключ иконки: спот с тем же составом ролей/номеров и в той же схеме = та же
+ *  картинка, печь заново нечего. */
+const pinKey = (spot, scheme) => `sc-pin:${scheme}:${spot.cells.map((c) => `${c.kind || ''}#${c.label ?? ''}`).join('|')}`;
+
+/**
+ * Испечь иконки пинов и уложить точки в источник. Асинхронно: иконка ждёт
+ * шрифты (номер) и глиф роли, а слой обязан появиться ТОЛЬКО когда картинки уже
+ * в атласе — иначе mapbox ругается `Image "…" could not be loaded` и рисует
+ * пустоту (та же грабля, что была у прежних бейджей с именами городов).
+ */
+async function drawPinLayer(map, ordered, scheme, pinScale) {
+  const spots = pinSpots(ordered);
+  const keys = [];
+  for (const spot of spots) {
+    const key = pinKey(spot, scheme);
+    keys.push(key);
+    if (map.hasImage(key)) continue;
+    // Последовательно, а не Promise.all: споты делят кэш глифов, и параллельный
+    // запуск печёт одну и ту же картинку по нескольку раз.
+    const { data } = await pinImageData(spot.cells, { scheme });
+    if (!map.style) return; // карту снесли, пока пекли
+    if (!map.hasImage(key)) map.addImage(key, data, { pixelRatio: PIN_DPR });
+  }
   const data = {
     type: 'FeatureCollection',
-    features: ordered.map((v) => ({
+    features: spots.map((spot, i) => ({
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
-      properties: {},
+      geometry: { type: 'Point', coordinates: [spot.lng, spot.lat] },
+      properties: { pin: keys[i] },
     })),
   };
-  if (map.getSource(src)) {
-    map.getSource(src).setData(data);
-    return;
+  if (map.getSource(PIN_SOURCE)) map.getSource(PIN_SOURCE).setData(data);
+  else map.addSource(PIN_SOURCE, { type: 'geojson', data });
+  if (!map.getLayer(PIN_LAYER)) {
+    map.addLayer({
+      id: PIN_LAYER,
+      type: 'symbol',
+      source: PIN_SOURCE,
+      layout: {
+        'icon-image': ['get', 'pin'],
+        'icon-size': markerZoomSizeExpr(pinScale),
+        'icon-anchor': 'center',
+        // Живые карты показывают ВСЕ пины и никогда их не прячут — mapbox по
+        // умолчанию скрывает пересекающиеся символы, и на плотном маршруте
+        // города молча исчезали бы с карточки.
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    });
   }
-  map.addSource(src, { type: 'geojson', data });
-  map.addLayer({
-    id: 'sc-points-halo',
-    type: 'circle',
-    source: src,
-    paint: { 'circle-radius': SC_WEIGHTS.halo, 'circle-color': '#ffffff' },
-  });
-  map.addLayer({
-    id: 'sc-points-dot',
-    type: 'circle',
-    source: src,
-    paint: { 'circle-radius': SC_WEIGHTS.dot, 'circle-color': routeColor() },
-  });
 }
 
 /**
- * Draw the route line + city markers on a map (shared by capture + live preview).
- * Markers are plain GL circle layers (added synchronously), so — unlike the old
- * flag-icon path — there is nothing async to await before snapshotting.
+ * Draw the route line + city pins on a map (shared by capture + live preview).
+ * Возвращает промис ПИНОВ (иконки пекутся асинхронно) — снимок обязан его
+ * дождаться, иначе в PNG уедет карта без городов.
  */
-export function drawTripRoute(map, ordered, legs) {
+export function drawTripRoute(map, ordered, legs, { scheme, pinScale = 1 } = {}) {
   // Подпись маршрута СЧИТАЕТСЯ ИЗ ПЛЕЧ, а не фиксирована строкой: кэш линий
   // сравнивает именно её и на совпадение НЕ перерисовывает. С постоянной
   // подписью живое превью карточки не могло сменить состав маршрута — точки
   // обновлялись (`setData`), а линии оставались от прошлого набора.
   const sig = `sc-route:${legs.map((l) => `${l.from?.id}>${l.to?.id}:${l.kind || ''}`).join('|')}`;
+  const color = routeColor(scheme);
   drawRouteLinesCached(map, sig, legs, {
-    dashedId: 'sc-dashed', solidId: 'sc-solid',
-    solidWidth: SC_WEIGHTS.solid, dashedWidth: SC_WEIGHTS.dashed,
+    dashedId: LINE_IDS.dashed, solidId: LINE_IDS.solid,
+    solidColor: color, dashedColor: color,
+    solidWidth: SOLID_WIDTH, dashedWidth: DASHED_WIDTH,
   });
-  drawPointLayer(map, ordered);
+  // Кэш линий сравнивает ГЕОМЕТРИЮ (подпись плеч) и на совпадении не
+  // перерисовывает вообще ничего — а цвет зависит от СХЕМЫ КАРТЫ, которая
+  // меняется без единого движения маршрута. Поэтому цвет доводим отдельно, на
+  // каждом заходе: иначе тумблер «день/ночь» красил бы подложку, оставляя
+  // маршрут в цвете прежней темы (ровно этот дефект и чинится).
+  [LINE_IDS.solid, LINE_IDS.dashed].forEach((id) => {
+    try { if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', color); } catch { /* слоя нет */ }
+  });
+  return drawPinLayer(map, ordered, scheme, pinScale).catch((e) => { console.error('card pins failed', e); });
 }
 
 // ---- browser-side card rendering (TRIP-193 Ф2) ------------------------------
@@ -165,6 +212,7 @@ export async function renderCardMapPng({
 
     let settled = false;
     let drew = false;
+    let pinsDone = false;
     let safety;
     const cleanup = () => { try { map.remove(); } catch { /* already gone */ } holder.remove(); };
     const snapshot = () => {
@@ -183,16 +231,20 @@ export async function renderCardMapPng({
     };
     // On the Standard style 'load' can precede style readiness, so addLayer would
     // silently no-op and the snapshot would miss the route (same trap the live
-    // preview hit). Draw on 'idle' once the style is ready; markers are plain
-    // circle layers added synchronously, so the next idle can snapshot directly.
+    // preview hit). Draw on 'idle' once the style is ready — и снимаем ТОЛЬКО
+    // после того, как испеклись иконки пинов: они ждут шрифт номера и глиф роли,
+    // и снимок «по первому idle» уехал бы картой без городов.
     const tryDraw = () => {
       if (drew || !map.isStyleLoaded()) return;
       try {
-        drawTripRoute(map, ordered, legs);
+        // Резолв промиса пинов сам по себе кадра не рисует — просим перерисовку,
+        // чтобы idle пришёл ещё раз уже с пинами на канвасе.
+        drawTripRoute(map, ordered, legs, { scheme })
+          .then(() => { pinsDone = true; try { map.triggerRepaint(); } catch { /* карты уже нет */ } });
         drew = true;
       } catch { /* retry next idle */ }
     };
-    const onIdle = () => { if (!drew) tryDraw(); else snapshot(); };
+    const onIdle = () => { if (!drew) tryDraw(); else if (pinsDone) snapshot(); };
     map.once('load', tryDraw);
     map.on('idle', onIdle);
     // Safety net: never hang the "build card" button if 'idle' never settles.
