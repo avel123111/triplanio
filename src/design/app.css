@@ -7846,6 +7846,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    `animation`, `bottom: var(--kb)` or a `--vvh` height cap here: those fought
    vaul and caused the "jump / shrink / fly" the sheet used to have. */
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: calc(var(--z-modal) + 1); background: var(--surface); border-radius: var(--r-card) var(--r-card) 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: 86dvh; display: flex; flex-direction: column; }
+/* ★★ ШИТ С ТЕКСТОВЫМ ВВОДОМ — ВО ВСЮ ВЫСОТУ (<Sheet hasInput>).
+   Разбор правила — у пропа в `components/ui/Sheet.jsx`; коротко: `.sheet` растёт
+   по содержимому от нижней кромки, поэтому короткий шит держит поле внизу
+   экрана, а Safari центрирует фокусное поле в видимой полосе и уводит туда всю
+   страницу. Скроллом это не чинится — у короткого шита `.sheet-b` не переполнен,
+   двигать нечего. Единственный рычаг у прибитой к низу поверхности — высота.
+   Модификатор СУЩЕСТВУЮЩЕЙ семьи `.sheet`, не новое имя-намеспейс.
+   floor-exempt: classes +1 — `.sheet--tall`, модификатор семьи `.sheet`: шит с текстовым вводом обязан быть полноэкранным (замер iOS: короткий шит держит поле внизу и Safari уводит страницу на максимум прокрутки), апрув Pavel — прямое задание в постановке эксперимента
+   visual-diff-exempt: .sheet--tall height — новый модификатор высоты шита под текстовый ввод
+   visual-diff-exempt: .sheet--tall max-height — то же: потолок 86dvh снимается, высоту диктует правило, а не содержимое */
+.sheet--tall { height: 100dvh; max-height: 100dvh; }
 .sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; touch-action: none; cursor: grab; }
 .sheet-grip i { width: 40px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }

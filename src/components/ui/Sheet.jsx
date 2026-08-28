@@ -21,8 +21,28 @@ import { useT } from '@/lib/i18n/I18nContext';
  *     ...rows...
  *   </Sheet>
  */
-/** @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
+/**
+ * ★★ `hasInput` — ШИТ С ТЕКСТОВЫМ ВВОДОМ ОБЯЗАН БЫТЬ ПОЛНОЭКРАННЫМ.
+ *
+ * Правило, а не ручка размера, и выведено оно из замера (iPhone, iOS 26, Safari;
+ * раскладка 766, клавиатура 338, полоса 428): Safari ЦЕНТРИРУЕТ фокусное поле в
+ * видимой полосе, `сдвиг окна = центрПоля − центрПолосы`. Обычный `.sheet`
+ * растёт ПО СОДЕРЖИМОМУ от нижней кромки, то есть короткий шит стоит внизу
+ * экрана — поле оказывается около 600 при цели 168, и Safari уводит всю
+ * страницу на максимум прокрутки.
+ *
+ * ★ И ЭТО НЕ ЛЕЧИТСЯ ЯКОРЕМ (`lib/focusAnchor.js`). Якорь приводит поле наверх
+ * СКРОЛЛОМ контейнера, а у короткого шита скроллить нечего: `.sheet-b` не
+ * переполнен. У бортом прибитой поверхности, растущей по содержимому, рычаг
+ * ровно один — её ВЫСОТА. Полноэкранный шит ставит первое поле под шапку, то
+ * есть выше центра полосы, и желаемый сдвиг Safari уходит в минус.
+ *
+ * Поэтому проп называет ПРИЧИНУ («здесь есть ввод»), а не следствие («сделай
+ * высоким»): следствие может смениться, правило — нет.
+ *
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, hasInput?: boolean }} p
+ */
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, hasInput = false }) {
   const t = useT();
   return (
     // repositionInputs={false}: the app's viewport meta uses
@@ -35,7 +55,7 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
         <Drawer.Overlay className="sheet-backdrop" />
         {/* vaul does NOT auto-focus into the sheet on open, so the mobile keyboard
             stays down until the user taps a field (no jump / iOS zoom on open). */}
-        <Drawer.Content className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
+        <Drawer.Content className={'sheet' + (hasInput ? ' sheet--tall' : '') + (className ? ' ' + className : '')} aria-describedby={undefined}>
           {/* Visual drag affordance only — the whole sheet is draggable (vaul), so
               this carries no handlers. */}
           <div className="sheet-grip" aria-hidden><i /></div>

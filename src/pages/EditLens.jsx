@@ -1764,7 +1764,11 @@ function CityAdder({ onAdd, hasStart, hasEnd }) {
     return (
       <>
         {trigger}
-        <Sheet open={open} onOpenChange={(o) => { if (!o) close(); }} title={t('tse.add_point')}>
+        {/* `hasInput` — шит с полем обязан быть полноэкранным: правило и замер
+            разобраны у пропа в `components/ui/Sheet.jsx`. Поле здесь ПЕРВОЕ в
+            составе (шаг 1), поэтому полная высота сама ставит его под шапку —
+            выше центра видимой полосы, где сдвиг Safari уходит в минус. */}
+        <Sheet open={open} onOpenChange={(o) => { if (!o) close(); }} title={t('tse.add_point')} hasInput>
           <div className="te-add">
             <span className="t-meta muted">{t('tse.add_point_hint')}</span>
             {steps}
