@@ -360,67 +360,53 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     const host = frameRef.current;
     if (!overlaySvg || !host || probedRef.current === overlaySvg) return undefined;
     probedRef.current = overlaySvg;
+    const ROUTE = 'text[font-weight="600"]:not([data-probe])';
     const measure = (n) => {
-      if (!n.textContent || !n.textContent.trim()) return 'empty';
+      if (!n || !n.textContent || !n.textContent.trim()) return 'empty';
       try { return Math.round(n.getBBox().width); } catch { return 'err'; }
     };
     const widths = (sel) => [...host.querySelectorAll(sel)].map(measure);
-
-    // РАЗВОДКА ПРИЧИН. У отказавших узлов две особенности сразу — вес 600 и
-    // кегль 56 — и в самом кадре они неразделимы: другого текста с такой парой
-    // нет. Поэтому кладём В ТОТ ЖЕ <svg> (тот же контекст шрифтов и каскада)
-    // четыре пробника, каждый меняет ОДНУ величину относительно отказавшего:
-    //   [0] вес 600 · кегль 56 · Geologica  — контроль, копия отказавшего
-    //   [1] вес 700 · кегль 56 · Geologica  — снимает ВЕС
-    //   [2] вес 600 · кегль 20 · Geologica  — снимает КЕГЛЬ
-    //   [3] вес 600 · кегль 56 · sans-serif — снимает ГАРНИТУРУ
-    // Ноль там, где величина осталась, и не-ноль там, где её сменили, называет
-    // виновную величину однозначно. `visibility:hidden` раскладку не отменяет
-    // (в отличие от display:none), поэтому пробники невидимы, но измеримы.
-    const probeText = 'Белград'; // константа кода, не данные трипа
     const svg = host.querySelector('svg');
-    const mk = (w, size, font) => {
+    const mk = () => {
       const n = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       n.setAttribute('x', '0'); n.setAttribute('y', '0');
-      n.setAttribute('font-family', font); n.setAttribute('font-weight', String(w));
-      n.setAttribute('font-size', String(size)); n.setAttribute('visibility', 'hidden');
-      n.textContent = probeText;
-      return n;
+      n.setAttribute('font-family', "'Geologica'"); n.setAttribute('font-weight', '600');
+      n.setAttribute('font-size', '56'); n.setAttribute('visibility', 'hidden');
+      n.setAttribute('data-probe', '1');
+      n.textContent = 'Белград'; // константа кода, не данные трипа
+      return svg ? svg.appendChild(n) : null;
     };
-    const cases = [[600, 56, "'Geologica'"], [700, 56, "'Geologica'"], [600, 20, "'Geologica'"], [600, 56, 'sans-serif']];
-    const nodes = svg ? cases.map(([w, size, f]) => svg.appendChild(mk(w, size, f))) : [];
 
-    // ЧЕМ РАЗЛИЧАЮТСЯ ПРЕВЬЮ И ФИНАЛ. Финальную карточку растеризует ТОТ ЖЕ
-    // браузер (`rasterizeSvgToPng`), и там имена целы — значит движок эти строки
-    // раскладывать умеет. Разница одна: в финале шрифт вшит в сам SVG, а в
-    // превью берётся из документа, где Geologica разрезана на четыре сабсета по
-    // `unicode-range`. Спрашиваем об этом НАПРЯМУЮ: второй аргумент
-    // `document.fonts.check` — текст, и ответ означает «загруженное покрывает
-    // именно эти символы», а не «шрифт вообще есть».
-    //
-    // Плюс отпечаток символов БЕЗ самого текста: длина и коды тех знаков, что
-    // выходят за пределы ASCII и основной кириллицы (невидимый пробел, мягкий
-    // перенос, комбинирующая диакритика — любой из них ломает раскладку строки
-    // целиком, а глазами в названии города неотличим).
-    const routeText = [...host.querySelectorAll('text[font-weight="600"]:not([visibility="hidden"])')]
-      .map((n) => n.textContent || '').join('');
-    const ordinary = (cp) => (cp >= 0x20 && cp <= 0x7e) || (cp >= 0x410 && cp <= 0x44f) || cp === 0x401 || cp === 0x451;
-    const odd = [...new Set([...routeText].map((c) => c.codePointAt(0)).filter((cp) => !ordinary(cp)))]
-      .map((cp) => `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`);
+    // ПОСЛЕДНЯЯ РАЗВИЛКА. Предыдущий замер показал: в сломанном кадре настоящие
+    // узлы дают 0, а созданный СКРИПТОМ узел с теми же вес/кегль/гарнитурой в том
+    // же <svg> и в ту же секунду даёт 237. Осталось два объяснения, и они
+    // различаются ВРЕМЕНЕМ, а не свойствами узла:
+    //   А. «разбор против скрипта» — узлы из строки разметки ломаются всегда;
+    //   Б. «переразметка на подмене шрифта» — ломается тот, кто СУЩЕСТВОВАЛ в
+    //      момент, когда `font-display: swap` заменил запасной шрифт на
+    //      Geologica; созданный после — цел. Ровно это и видно глазами:
+    //      «появились на полсекунды и пропали».
+    // Различает их один снимок: мерим ДО паузы и ПОСЛЕ. Узел, созданный рано и
+    // упавший к концу, доказывает Б; ноль с самого начала — А.
+    const early = mk();
+    const t0 = widths(ROUTE);
+    const e0 = measure(early);
     const t = setTimeout(() => {
-      const all = widths('text:not([visibility="hidden"])');
-      const split = nodes.map(measure);
-      nodes.forEach((n) => n.remove());
+      const t1 = widths(ROUTE);
+      const e1 = measure(early);
+      const late = mk();
+      const l1 = measure(late);
+      [early, late].forEach((n) => n && n.remove());
       report(
         new Error(`share card frame probe (fonts=${document.fonts?.status}, geologica=${document.fonts?.check?.('600 56px Geologica')})`),
         {
           surface: 'render',
           source: 'share-card-frame',
-          key: [`route:[${widths('text[font-weight="600"]:not([visibility="hidden"])').join('|')}] split:[${split.join('|')}] covers:${document.fonts?.check?.('600 56px Geologica', routeText)} len:${[...routeText].length} odd:[${odd.join(',')}] all:${all.length} zero:${all.filter((w) => w === 0).length} empty:${all.filter((w) => w === 'empty').length}`],
+          key: [`t0:[${t0.join('|')}] t1:[${t1.join('|')}] early:${e0}->${e1} late:${l1}`],
         },
       );
     }, 1500);
-    return () => { clearTimeout(t); nodes.forEach((n) => n.remove()); };
+    return () => { clearTimeout(t); if (early) early.remove(); };
   }, [overlaySvg]);
 
   return (
