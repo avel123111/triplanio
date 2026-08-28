@@ -11,6 +11,7 @@ import AppErrorBoundary from '@/components/AppErrorBoundary';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { hideSplash } from '@/lib/splash';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider, useI18n } from '@/lib/i18n/I18nContext';
 import { AppLoading } from '@/design/index';
@@ -106,6 +107,14 @@ const AuthenticatedApp = () => {
     const s = screenOpenEvent(location.pathname);
     if (s) track(s.event, s.props);
   }, [location.pathname]);
+
+  // Экран запуска (TRIP-478): приложение отчитывается о готовности ОДИН раз,
+  // при первом кадре. Само снятие откладывается, пока на экране висит
+  // <AppLoading> — он держит splash сам (см. `src/lib/splash.js`), поэтому
+  // перечислять здесь ожидания (авторизация, словарь, Suspense) не нужно и
+  // нельзя: такой список — второй источник правды, который разъедется с
+  // ветками ниже.
+  useEffect(() => { hideSplash(); }, []);
 
   const path = location.pathname;
 
