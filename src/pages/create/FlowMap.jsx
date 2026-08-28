@@ -46,6 +46,13 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
 // пикселям: канвас во весь экран телефона — 22.9 % дымки и все четыре угла вне
 // планеты; слот, равный свободному окну, — ни одной точки рамки вне планеты.
 
+// ★ У НИЖНЕЙ КРОМКИ КАДРА ЛЕЖИТ НАША ЖЕ ПИЛЮЛЯ «N городов · M ночей»
+// (`.flow-map__stat`), и фит про неё не знал: замер на телефоне 393×852 —
+// нижний пин 225..254, пилюля 248..279, то есть город кадра уезжал ПОД неё.
+// Полоса прибавляется ТОЛЬКО к кадру МАРШРУТА: стартовый глобус — предмет по
+// центру холста, его размер считается от того же воздуха, что и был.
+// Само кольцо пина (29px, центрировано на координате) воздух перекрывает.
+const STAT_STRIP = 45; // `.flow-map__stat`: строка 31px + её 14px от низа слота
 function fitPaddingFor(w) {
   return w > PHONE_MAX_W ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 32, left: 40 };
 }
@@ -261,7 +268,7 @@ export default function FlowMap({
         // отдаёт САМ СЛОТ, а воздух кадра несёт `padding` самого фита.
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
-          calmFit(map, fitPositions, { padding: air, maxZoom: 7, singleZoom: 8 });
+          calmFit(map, fitPositions, { padding: { ...air, bottom: air.bottom + STAT_STRIP }, maxZoom: 7, singleZoom: 8 });
           // Отмечаем на ИНСТАНСЕ, что камеру уже ставили по месту: следующий
           // экран с картой (редактор маршрута сразу после создания трипа) возьмёт
           // этот факт и доедет плавно вместо скачка. См. `lib/map/framed.js`.
@@ -342,7 +349,6 @@ export default function FlowMap({
               догадок. Лежит ВНУТРИ существующей пилюли намеренно: свой узел
               потребовал бы инлайна и нового класса, то есть спора с гардами
               ради временной строки. */}
-          {` · pts ${fitPositions.length} cf${canFit ? 1 : 0} f${Math.round(view?.fit?.top || 0)}`}
         </div>
       )}
 
