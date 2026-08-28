@@ -5126,10 +5126,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   outline: none;
   animation: fadeIn .15s ease;
 }
-/* Семья `.dlg-grip` УДАЛЕНА: «бровь» окна-шторки — тот же объект, что «бровь»
-   листа, и рисует её один `SheetGrip` (ui/sheetShell) скином `.sheet-grip`.
-   Правило `display:none` держало на десктопе МЁРТВЫЙ УЗЕЛ в каждой открытой
-   модалке — теперь грипа там нет в разметке, прятать нечего.
+/* Семья `.dlg-grip` УДАЛЕНА: «бровь» окна и «бровь» листа — один объект, его
+   рисует `SheetGrip` (ui/sheetShell) скином `.sheet-grip`. Прежнее
+   `display:none` держало на десктопе мёртвый узел в каждой модалке.
    visual-diff-exempt: .dlg-grip display — семья удалена, грип модалки рисует канон .sheet-grip (узел на десктопе больше не рендерится) */
 
 /* ── C6 Overlay: below 640 px every .dlg-modal becomes a bottom sheet ──
@@ -5159,10 +5158,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     max-width: 100%;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  /* «Бровь» на телефоне рисует канон-грип `.sheet-grip` (см. удаление семьи
-     `.dlg-grip` выше): полоса побайтово та же (40×5, `--r-pill`,
-     `--line-strong`), у обёртки отступ канона 11/3 вместо 10/4 — высота блока
-     та же 19px, полоска ниже на 1px.
+  /* «Бровь» рисует канон `.sheet-grip`: полоса та же (40×5, `--r-pill`,
+     `--line-strong`), отступ обёртки 11/3 вместо 10/4 — блок те же 19px,
+     полоска на 1px ниже (измерено).
      visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} display — семья удалена, грип рисует канон .sheet-grip
      visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} justify-content — то же
      visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} align-items — то же (у канона его нет: потомок один и фиксированной высоты)
@@ -10036,15 +10034,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .vpanel background — фон драйвера --bg → --surface, унификация поверхности оверлеев с .dlg/.lp/.sheet, апрув Pavel */
 .vpanel { position: fixed; z-index: calc(var(--z-panel) + 10); background: var(--surface); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
-/* ≤640 ЭТА ПОВЕРХНОСТЬ БОЛЬШЕ НЕ СВОЯ: на телефоне панель визита рендерится
-   канон-шторкой `.sheet` через общий шов (VisitPanel.jsx), поэтому мобильный
-   скин `.vpanel` и свой грип `.vp-grip` удалены целиком. Разница с прежним
-   мобильным `.vpanel` ровно в том, чем канон лучше: потолок 86dvh вместо 84%,
-   отступ низа под home-полоску, углы `--r-card` (те же) и — главное — здесь
-   больше НЕ ДЕЙСТВУЕТ базовая `animation: vpanelIn` (выезд СПРАВА), которая на
-   телефоне играла поверх подъёма шторки: мобильный блок её не отменял.
-   `.vp-grip` был вторым мёртвым узлом того же рода, что `.dlg-grip`: на
-   десктопе он стоял в разметке и прятался `display:none`.
+/* ≤640 ЭТА ПОВЕРХНОСТЬ БОЛЬШЕ НЕ СВОЯ: телефон рисует панель визита канон-
+   шторкой `.sheet` (VisitPanel.jsx), поэтому мобильный скин `.vpanel` и грип
+   `.vp-grip` удалены. Отличия от прежнего мобильного `.vpanel`: потолок 86dvh
+   вместо 84%, отступ низа под home-полоску, углы те же — и главное, здесь
+   больше не действует базовая `animation: vpanelIn` (выезд СПРАВА), которая
+   на телефоне играла поверх подъёма шторки.
    visual-diff-exempt: .vpanel {@media (max-width: 640px)} top — мобильный скин снят: телефон рисует канон .sheet
    visual-diff-exempt: .vpanel {@media (max-width: 640px)} left — то же
    visual-diff-exempt: .vpanel {@media (max-width: 640px)} right — то же
@@ -10074,12 +10069,10 @@ a.doc-row__n:hover{ color: var(--brand); }
    `margin-left: auto` не переезжает и не нужен: соседний блок заголовка стоит
    на `flex: 1`, поэтому крестик и так прижат вправо. */
 .vp-b { flex: 1; min-height: 0; padding: 6px 20px 24px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-/* Mobile bottom-sheet: тело — скролл-контейнер (flex:1 + min-height:0). Прежний
-   `88px` «под нижнюю навигацию» был мёртвым: шит (z 120) лежит ПОВЕРХ нава (z-nav 95)
-   и накрывает его скримом — навигации под последними строками нет, чистить нечего.
-   Своё мобильное правило отступа тоже снято: home-полоску держит сам канон
-   `.sheet` (`padding-bottom: max(14px, safe-area)`), и складывать два резерва
-   значит вернуть тот самый пустой гэп, ради снятия которого правило и жило.
+/* Mobile bottom-sheet: тело — скролл-контейнер (flex:1 + min-height:0). Своё
+   мобильное правило отступа снято: home-полоску держит канон `.sheet`
+   (`padding-bottom: max(14px, safe-area)`), а два резерва подряд — это тот
+   самый пустой гэп, ради снятия которого правило и жило.
    visual-diff-exempt: .vp-b {@media (max-width: 640px)} padding-bottom — резерв под home-полоску переехал на канон .sheet, второй экземпляр снят */
 .visit { display: flex; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
 .visit:last-child { border-bottom: 0; }
