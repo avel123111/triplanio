@@ -140,6 +140,23 @@ async function measure() {
       for (const c of chars) row[c] = Math.ceil(widthOf(PAD + c + PAD, w) - base);
       table[w] = row;
     }
+    // ВЕРТИКАЛЬ. Раскладка карточки задаёт БАЗОВУЮ ЛИНИЮ (как SVG `<text y>`),
+    // а DOM-текст превью позиционируется ВЕРХОМ бокса — значит кто-то обязан
+    // знать подъём и спуск шрифта. Знает он их здесь, из тех же файлов, что и
+    // ширины: константа, вписанная руками, разъехалась бы при ре-вендоринге
+    // шрифта МОЛЧА и сдвинула бы весь текст превью относительно карточки.
+    const vc = document.createElement('canvas').getContext('2d');
+    const vm = weights.map((w) => {
+      vc.font = `${w} 1000px GeoMeasure`;
+      const m = vc.measureText('Белград');
+      return { w, a: Math.round(m.fontBoundingBoxAscent), d: Math.round(m.fontBoundingBoxDescent) };
+    });
+    // Ось веса высоту строки не двигает (замерено), и на это опирается ОДНА пара
+    // чисел на всю карточку. Если шрифт это нарушит — падаем, а не усредняем.
+    const vbad = vm.find((m) => m.a !== vm[0].a || m.d !== vm[0].d);
+    if (vbad) return { error: `подъём/спуск зависят от веса (${JSON.stringify(vm)}) — одной пары чисел мало` };
+    const vertical = { ascent: vm[0].a, descent: vm[0].d };
+
     // Кернинг-контроль: сумма одиночных глифов против измеренной строки.
     const drift = probes.flatMap((p) => weights.map((w) => {
       const sum = [...p].reduce((a, c) => a + (table[w][c] ?? 540), 0) * kernSafety;
@@ -147,7 +164,7 @@ async function measure() {
       // >0 — сумма завышает (безопасно), <0 — занижает (опасно).
       return { p, w, rel: real ? (sum - real) / real : 0 };
     }));
-    return { table, drift };
+    return { table, drift, vertical };
   }, { chars: CHARS, weights: WEIGHTS, probes: PROBES, kernSafety: KERN_SAFETY });
 
   await browser.close();
@@ -158,9 +175,10 @@ async function measure() {
   return out;
 }
 
-const { table, drift } = await measure();
+const { table, drift, vertical } = await measure();
 const under = drift.reduce((a, b) => (b.rel < a.rel ? b : a));
 const over = drift.reduce((a, b) => (b.rel > a.rel ? b : a));
+console.log(`вертикаль: подъём ${vertical.ascent}, спуск ${vertical.descent} (тысячных кегля)`);
 console.log(`кернинг-контроль: максимум завышения +${(over.rel * 100).toFixed(1)}% («${over.p}», вес ${over.w}), `
   + `максимум занижения ${(under.rel * 100).toFixed(1)}% («${under.p}», вес ${under.w})`);
 if (under.rel < 0) {
@@ -192,6 +210,17 @@ ${body}
 
 /** Доля для символов вне таблицы (редкая пунктуация, иероглифы). */
 export const GLYPH_FALLBACK = 540;
+
+/**
+ * Подъём и спуск Geologica — тысячные доли кегля, замерены на тех же файлах.
+ *
+ * Нужны ОДНОМУ потребителю: раскладка задаёт базовую линию (как SVG \`<text y>\`),
+ * а DOM-текст превью ставится ВЕРХОМ бокса. Перевод одного в другое — ниже, в
+ * \`buildCardText\`; здесь только измеренные числа, чтобы при ре-вендоринге шрифта
+ * они переснялись вместе с ширинами, а не разъехались молча.
+ */
+export const FONT_ASCENT = ${vertical.ascent};
+export const FONT_DESCENT = ${vertical.descent};
 `;
 
 if (CHECK) {

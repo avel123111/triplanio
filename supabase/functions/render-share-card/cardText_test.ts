@@ -33,15 +33,23 @@ const DATA: CardData = {
 
 const FORMATS: Format[] = ['story', 'post'];
 
-Deno.test('весь текст открытой зоны приходит из buildCardText, ничего мимо', () => {
+Deno.test('финальная карточка: весь текст приходит из buildCardText, ничего мимо', () => {
   for (const format of FORMATS) {
     const items = buildCardText(format, DATA);
-    const svg = buildCardSvg(format, DATA, null, true, '');
-    const nodes = (svg.match(/<text\b/g) || []).length;
+    const nodes = (buildCardSvg(format, DATA, null, false, '').match(/<text\b/g) || []).length;
     // Каждый элемент рисуется ДВАЖДЫ (тёмная копия тени + белый оригинал), плюс
     // подпись «Страны» внутри кремовой рамки — она часть картинки, а не текст
     // карточки, и в список намеренно не входит.
     assertEquals(nodes, items.length * 2 + 1, `${format}: текст в кадре разошёлся со списком`);
+  }
+});
+
+Deno.test('превью: кадр НЕ несёт текста открытой зоны — его кладёт клиент', () => {
+  for (const format of FORMATS) {
+    const nodes = (buildCardSvg(format, DATA, null, true, '').match(/<text\b/g) || []).length;
+    // Ровно одна — «Страны» внутри кремовой рамки. Если тут появится ещё текст,
+    // он ляжет ВТОРЫМ СЛОЕМ поверх DOM-ного и будет двоиться на глазах.
+    assertEquals(nodes, 1, `${format}: в overlay остался текст открытой зоны`);
   }
 });
 
@@ -51,7 +59,7 @@ Deno.test('маршрут — ОДНА строка со стрелкой-сим
   assertEquals(route[0].value, 'Белград → Будва');
   // Стрелка — настоящий символ, а не фигура: фигур со скруглённым штрихом
   // (нарисованная стрелка) в кадре больше нет.
-  assert(!buildCardSvg('story', DATA, null, true, '').includes('stroke-linecap="round"'));
+  assert(!buildCardSvg('story', DATA, null, false, '').includes('stroke-linecap="round"'));
 });
 
 Deno.test('маршрут без второго города — просто город, без стрелки', () => {

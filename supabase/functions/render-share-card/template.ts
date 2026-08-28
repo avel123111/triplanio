@@ -25,7 +25,7 @@
  * Правило проекта: дефис "-", не длинное тире.
  */
 
-import { GLYPH_W, GLYPH_FALLBACK } from './glyphWidths.ts';
+import { GLYPH_W, GLYPH_FALLBACK, FONT_ASCENT, FONT_DESCENT } from './glyphWidths.ts';
 /** Запас на кернинг пар: сумма одиночных глифов его не знает, и на отдельных
  *  строках он даёт до −0.3% (то есть в ОПАСНУЮ сторону). 1% покрывает это с
  *  перекрытием и стоит доли пикселя воздуха; генератор таблицы проверяет, что с
@@ -166,7 +166,7 @@ function withShadow(el: (fill: string, dx: number, dy: number) => string): strin
   return el(C.shadow, 1, 2) + el(C.white, 0, 0);
 }
 
-type TextOpts = { anchor?: 'start' | 'middle' | 'end'; weight?: number; ls?: number; font?: string; fill?: string; tabular?: boolean };
+type TextOpts = { anchor?: 'start' | 'middle' | 'end'; weight?: number; ls?: number; font?: string; fill?: string };
 function text(x: number, y: number, size: number, t: string, o: TextOpts = {}): string {
   const a = o.anchor ? ` text-anchor="${o.anchor}"` : '';
   const ls = o.ls ? ` letter-spacing="${o.ls}"` : '';
@@ -176,17 +176,23 @@ function text(x: number, y: number, size: number, t: string, o: TextOpts = {}): 
 
 /** Белый текст с мягкой тенью (плоский offset, без blur — blur рвёт CPU-лимит).
  *  Тень = тёмная копия со сдвигом; читается на любой подложке/карте.
- *  `tabular` — моноширинные цифры (ряд статистики): раньше это была отдельная
- *  функция `numText`, отличавшаяся ровно этим свойством и трекингом. */
+ *
+ *  ★ МОНОШИРИННЫХ ЦИФР ЗДЕСЬ НЕТ И НЕ БЫЛО. Ряд статистики нёс атрибут
+ *  `font-variant-numeric="tabular-nums"` — в SVG это МЁРТВЫЙ атрибут: замер в
+ *  Chromium и WebKit даёт одну и ту же ширину «4 382» с ним и без него (2630
+ *  тысячных), а работает он только как СТИЛЬ (2822). То есть цифры карточки
+ *  всегда были пропорциональными, и таблица ширин, снятая через SVG, это же и
+ *  измерила. Атрибут снят, чтобы код не обещал того, чего не делает; включать
+ *  моноширинные — отдельное решение: они шире на 7%, и колонки ряда придётся
+ *  переснять. */
 function wtext(x: number, y: number, size: number, t: string, o: TextOpts = {}): string {
   const a = o.anchor ? ` text-anchor="${o.anchor}"` : '';
   const ls = o.ls ? ` letter-spacing="${o.ls}"` : '';
-  const num = o.tabular ? ' font-variant-numeric="tabular-nums"' : '';
   const font = o.font || FONT;
   const w = o.weight ?? 700;
   const el = (fill: string, dx: number, dy: number) =>
     `<text x="${x + dx}" y="${y + dy}" font-family="${font}" font-weight="${w}" font-size="${size}" `
-    + `fill="${fill}"${a}${ls}${num}>${escapeXml(t)}</text>`;
+    + `fill="${fill}"${a}${ls}>${escapeXml(t)}</text>`;
   return withShadow(el);
 }
 
@@ -262,19 +268,23 @@ export function mapSlot(format: Format): { x: number; y: number; w: number; h: n
  * DOM-ом поверх кадра. Клиент НИЧЕГО не пересчитывает: два независимых расчёта
  * одного макета — это и есть механизм, которым превью расходится с карточкой.
  *
- * `y` — БАЗОВАЯ ЛИНИЯ (как у SVG `<text>`), не верх строки: потребителю на
- * стороне DOM её придётся сдвинуть, и лучше пусть он знает, что сдвигает.
+ * `y` — БАЗОВАЯ ЛИНИЯ (как у SVG `<text>`); `top` — верх бокса того же текста в
+ * DOM при `line-height: 1`. Оба числа считает раскладка, потому что перевод
+ * одного в другое требует метрик ШРИФТА, а они есть только здесь (замерены
+ * генератором с тех же woff2 — см. glyphWidths.ts). Если бы это делил клиент,
+ * он держал бы у себя копию метрик, и при ре-вендоринге шрифта текст превью
+ * молча уехал бы относительно карточки.
  */
 export type CardTextItem = {
   kind: 'title' | 'route' | 'stat-num' | 'stat-label' | 'brand';
   x: number;
   y: number;
+  top: number;
   size: number;
   weight: number;
   value: string;
   anchor?: 'middle';
   tracking?: number;
-  tabular?: boolean;
 };
 
 /** Текст ОТКРЫТОЙ ЗОНЫ карточки: заголовок, маршрут, ряд статистики, вордмарк.
@@ -285,12 +295,18 @@ export type CardTextItem = {
 export function buildCardText(format: Format, d: CardData): CardTextItem[] {
   const L = LAYOUTS[format];
   const items: CardTextItem[] = [];
+  // Базовая линия → верх бокса при `line-height: 1`: половина «свободного» места
+  // строки (кегль минус содержимое шрифта) плюс подъём. Числа — тысячные доли
+  // кегля, замерены с самих файлов шрифта.
+  const topOf = (y: number, size: number) =>
+    y - size * ((1000 - (FONT_ASCENT + FONT_DESCENT)) / 2 + FONT_ASCENT) / 1000;
+  const add = (i: Omit<CardTextItem, 'top'>) => items.push({ ...i, top: topOf(i.y, i.size) });
 
   // Заголовок: ≤2 строки с усадкой кегля (перенос считает wrapTitle — здесь и
   // сейчас, чтобы клиенту не пришлось повторять разбивку).
   const { lines, size: tSize } = wrapTitle(d.title, L.w - L.titleLeft - L.padX, L.titleSize);
   const lineH = Math.round(tSize * 0.94);
-  lines.forEach((line, i) => items.push({
+  lines.forEach((line, i) => add({
     kind: 'title', x: L.titleLeft, y: L.titleTop + i * lineH, size: tSize, weight: 700, tracking: -0.5, value: line,
   }));
 
@@ -301,7 +317,7 @@ export function buildCardText(format: Format, d: CardData): CardTextItem[] {
   // зазор`), и этот расчёт однажды посадил стрелку на последнюю букву. Теперь
   // стрелка обычный символ (пятый сабсет, один глиф — см. src/design/fonts.css),
   // строку раскладывает движок, а править её можно одним полем.
-  items.push({
+  add({
     kind: 'route', x: L.titleLeft, y: L.titleTop + (lines.length - 1) * lineH + L.routeGap,
     size: L.routeSize, weight: 600, value: d.to && d.to !== d.from ? `${d.from} → ${d.to}` : d.from,
   });
@@ -309,13 +325,13 @@ export function buildCardText(format: Format, d: CardData): CardTextItem[] {
   // Ряд статистики: цифра и подпись по центру своей колонки.
   const s = L.stats;
   statsColumns(L, d).forEach((col) => {
-    items.push({ kind: 'stat-num', x: col.cx, y: s.y, size: s.numSize, weight: 700, anchor: 'middle', tracking: -1, tabular: true, value: col.num });
-    items.push({ kind: 'stat-label', x: col.cx, y: s.y + s.labSize + 8, size: s.labSize, weight: 500, anchor: 'middle', value: col.lab });
+    add({ kind: 'stat-num', x: col.cx, y: s.y, size: s.numSize, weight: 700, anchor: 'middle', tracking: -1, value: col.num });
+    add({ kind: 'stat-label', x: col.cx, y: s.y + s.labSize + 8, size: s.labSize, weight: 500, anchor: 'middle', value: col.lab });
   });
 
   // Вордмарк рядом с логомарком (сам логомарк — картинка, остаётся в SVG).
   const b = L.brand;
-  items.push({ kind: 'brand', x: L.padX + b.logo + b.gap, y: b.cy + b.size * 0.34, size: b.size, weight: 800, value: d.brand });
+  add({ kind: 'brand', x: L.padX + b.logo + b.gap, y: b.cy + b.size * 0.34, size: b.size, weight: 800, value: d.brand });
 
   return items;
 }
@@ -323,7 +339,7 @@ export function buildCardText(format: Format, d: CardData): CardTextItem[] {
 /** Тот же текст, нарисованный в SVG (белый с тенью — облик открытой зоны). */
 function renderTextItems(items: CardTextItem[]): string {
   return items.map((i) => wtext(i.x, i.y, i.size, i.value, {
-    weight: i.weight, anchor: i.anchor, ls: i.tracking, tabular: i.tabular,
+    weight: i.weight, anchor: i.anchor, ls: i.tracking,
   })).join('');
 }
 
@@ -355,7 +371,14 @@ export function buildCardSvg(
   // ровно ту болезнь, из-за которой превью и карточка расходятся.
   const items = buildCardText(format, data);
   const titleLines = items.filter((i) => i.kind === 'title').length;
-  const textSvg = renderTextItems(items);
+  // В OVERLAY кадр текста НЕ несёт: превью кладёт его DOM-ом поверх (тот же
+  // список приезжает в ответе). Причина не в удобстве — SVG-текст, вставленный
+  // в документ строкой, на iOS 26 терял раскладку: строка приходила с верными
+  // ширинами и через полторы секунды обнулялась, а названия городов пропадали
+  // (замер: t0 237/171 → t1 0/0, Sentry TRIPLANIO-2Z). Обычный текст страницы
+  // этой болезни не подвержен, и он же нужен, чтобы текст можно было править.
+  // Финальная карточка растеризуется картинкой — там SVG-текст остаётся.
+  const textSvg = overlay ? '' : renderTextItems(items);
 
   // --- скрим под текстом (TRIP-443) --------------------------------------
   // Белый текст карточки лежит на ПРОИЗВОЛЬНОМ фоне: пресет, фото юзера или

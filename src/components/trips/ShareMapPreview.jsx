@@ -6,6 +6,7 @@ import { SOLID_WIDTH, DASHED_WIDTH } from '@/lib/map/mapStyle';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Skeleton } from '@/design/index';
 import MapControls from '@/lib/map/MapControls';
+import ShareCardText from './ShareCardText';
 
 // Live map for the share card (TRIP-193). The map sits in the card frame's
 // "hole" and the frame SVG (transparent where the map goes) is laid on top with
@@ -29,7 +30,7 @@ import MapControls from '@/lib/map/MapControls';
 // рамки; cardW при этом = ширина СЛОТА, чтобы веса линий/бейджей масштабились
 // от финального разрешения карты.
 const ShareMapPreview = forwardRef(function ShareMapPreview(
-  { visits = [], transfers = [], lang, showSE = true, overlaySvg, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
+  { visits = [], transfers = [], lang, showSE = true, overlaySvg, text = null, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
   ref,
 ) {
   const holderRef = useRef(null);
@@ -343,6 +344,9 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
           dangerouslySetInnerHTML={{ __html: frameSvg }}
         />
       )}
+      {/* Текст карточки — ПОВЕРХ кадра и обычными узлами страницы (см.
+          ShareCardText): в кадре его больше нет. */}
+      {frameSvg && <ShareCardText items={text} cardW={cardW} />}
       {/* Until the frame SVG arrives the map would sit BARE in the box; cover it
           with a loader so the user never sees a frameless map (TRIP-193). В bare-
           режиме рамки нет по замыслу — карта и есть содержимое. */}
