@@ -390,6 +390,23 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     const cases = [[600, 56, "'Geologica'"], [700, 56, "'Geologica'"], [600, 20, "'Geologica'"], [600, 56, 'sans-serif']];
     const nodes = svg ? cases.map(([w, size, f]) => svg.appendChild(mk(w, size, f))) : [];
 
+    // ЧЕМ РАЗЛИЧАЮТСЯ ПРЕВЬЮ И ФИНАЛ. Финальную карточку растеризует ТОТ ЖЕ
+    // браузер (`rasterizeSvgToPng`), и там имена целы — значит движок эти строки
+    // раскладывать умеет. Разница одна: в финале шрифт вшит в сам SVG, а в
+    // превью берётся из документа, где Geologica разрезана на четыре сабсета по
+    // `unicode-range`. Спрашиваем об этом НАПРЯМУЮ: второй аргумент
+    // `document.fonts.check` — текст, и ответ означает «загруженное покрывает
+    // именно эти символы», а не «шрифт вообще есть».
+    //
+    // Плюс отпечаток символов БЕЗ самого текста: длина и коды тех знаков, что
+    // выходят за пределы ASCII и основной кириллицы (невидимый пробел, мягкий
+    // перенос, комбинирующая диакритика — любой из них ломает раскладку строки
+    // целиком, а глазами в названии города неотличим).
+    const routeText = [...host.querySelectorAll('text[font-weight="600"]:not([visibility="hidden"])')]
+      .map((n) => n.textContent || '').join('');
+    const ordinary = (cp) => (cp >= 0x20 && cp <= 0x7e) || (cp >= 0x410 && cp <= 0x44f) || cp === 0x401 || cp === 0x451;
+    const odd = [...new Set([...routeText].map((c) => c.codePointAt(0)).filter((cp) => !ordinary(cp)))]
+      .map((cp) => `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`);
     const t = setTimeout(() => {
       const all = widths('text:not([visibility="hidden"])');
       const split = nodes.map(measure);
@@ -399,7 +416,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
         {
           surface: 'render',
           source: 'share-card-frame',
-          key: [`route:[${widths('text[font-weight="600"]:not([visibility="hidden"])').join('|')}] split:[${split.join('|')}] all:${all.length} zero:${all.filter((w) => w === 0).length} empty:${all.filter((w) => w === 'empty').length}`],
+          key: [`route:[${widths('text[font-weight="600"]:not([visibility="hidden"])').join('|')}] split:[${split.join('|')}] covers:${document.fonts?.check?.('600 56px Geologica', routeText)} len:${[...routeText].length} odd:[${odd.join(',')}] all:${all.length} zero:${all.filter((w) => w === 0).length} empty:${all.filter((w) => w === 'empty').length}`],
         },
       );
     }, 1500);
