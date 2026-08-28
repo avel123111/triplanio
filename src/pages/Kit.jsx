@@ -119,7 +119,7 @@ const TX = {
   save: 'Сохранить', close: 'Закрыть', placeholder: 'Введите значение',
   rates: 'Курсы', add: 'Трата',
   statLabel: 'Всего потрачено', statSub: '10 трат', statTap: 'нажми, чтобы задать',
-  rowTitle: 'Проживание', rowSub: 'Будва · 10 трат',
+  rowTitle: 'Проживание', rowSub: 'Будва · 10 трат', rowDate: '12 – 24 апр',
   donutTotal: 'всего',
   sample: 'Съешь ещё этих мягких булок · Sphinx of black quartz · 0123456789',
   gapDefault: 'по умолчанию', missing: 'ступени нет — молча даёт значение по умолчанию',
@@ -345,6 +345,14 @@ const RECIPES = {
   'list-row': () => [
     { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={v === 'add' ? <Tile tone="quiet" icon="plus" /> : <Tile size="xl" icon="bed" />} title={v === 'add' ? TX.chipAdd : TX.rowTitle} sub={TX.rowSub} trail={v === 'add' ? <Icon name="plus" size={16} /> : <span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' || v === 'add' ? () => {} : undefined} />, true)) },
     { items: [it('selected (on)', <ListRow variant="select" selected lead={<Tile size="xl" icon="bed" />} title={TX.rowTitle} sub={TX.rowSub} trail={<span className="t-strong">₽1 234</span>} onClick={() => {}} />, true)] },
+    {
+      label: 'muted — приглушённая строка (архив/неактивное): гаснет вся строка, вместе с лидом и бейджами',
+      items: [it('muted', <ListRow variant="raised" muted lead={<Cover />} title={TX.rowTitle} sub={TX.rowSub} trail={<Icon name="chev" className="muted" />} onClick={() => {}} />, true)],
+    },
+    {
+      label: 'trailSub — второстепенная половина трейла: прячется ≤600px, тогда как основной трейл (действие/шеврон) остаётся',
+      items: [it('trailSub + trail', <ListRow variant="raised" lead={<Cover />} title={TX.rowTitle} sub={TX.rowSub} trailSub={<><span className="t-meta tab">{TX.rowDate}</span><Badge variant="pro" icon="pro">PRO</Badge></>} trail={<Icon name="chev" className="muted" />} onClick={() => {}} />, true)],
+    },
   ],
   btn: () => [
     { items: [it('force', <ForceHarness kind="btn" states={['default', 'hover', 'active', 'focus', 'disabled', 'loading']} render={(s) => <Btn variant="primary" disabled={s === 'disabled'} loading={s === 'loading'}>{TX.save}</Btn>} />, true)] },
@@ -752,6 +760,15 @@ const RECIPES = {
     },
     {
       items: [it('image (фото поверх фоллбека)', <Cover image="/flags/es.svg" />)],
+    },
+    {
+      label: 'fill — обложка во всю площадь родителя, а не своя миниатюра 62×46; показана в своём вызывателе — постере трипа (.tc__bg под скримом)',
+      items: [it('fill', (
+        <span className="tc tc--live">
+          <span className="tc__bg"><Cover fill image="/flags/es.svg" /></span>
+          <span className="tc__scrim" />
+        </span>
+      ))],
     },
   ],
 
