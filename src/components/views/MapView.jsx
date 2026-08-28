@@ -5,7 +5,6 @@ import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, 
 import { createHotelBadgeEl, createClusterBubbleEl, cityPoints } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
-import { fitHeightSig } from '@/lib/map/insets';
 import { useMapInsets } from '@/lib/map/useMapInsets';
 import { useCityMarkers } from '@/lib/map/useCityMarkers';
 import { useCityBadge } from '@/lib/map/useCityBadge';
@@ -345,16 +344,11 @@ export default function MapView({
     () => ordered.map((v) => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|'),
     [ordered],
   );
-  // ★ ПОДПИСЬ КАДРА ≠ ПОДПИСЬ МАРШРУТА: у кадра есть вторая причина устареть —
-  // ВЫСОТА свободного окна. Шит режет её, и отработать это можно ТОЛЬКО новым
-  // вписыванием: и отступ камеры, и сдвиг холста умеют лишь ПЕРЕНОСИТЬ. Без
-  // этого маршрут, вписанный при низком шите, при поднятом торчит верхними и
-  // нижними точками под шапкой экрана и под шитом. Ширина сюда не входит: её
-  // закрывает панель, и с ней справляется отступ камеры — поэтому на десктопе
-  // подпись постоянна и сворачивание панели остаётся переездом, без зума.
-  // Отдельной подписью, а не добавкой к `visitsSignature`: на той висят ещё и
-  // линии маршрута, и перерисовывать их на каждой осадке детента незачем.
-  const fitSignature = visitsSignature + '#' + fitHeightSig(view?.fit);
+  // ★ ПОДПИСЬ КАДРА = ПОДПИСЬ МАРШРУТА, И БОЛЬШЕ НИЧЕГО. Автофокус случается
+  // только на изменение маршрута; смена свободного окна (детент шита,
+  // сворачивание панели) — не новая цель кадра, а та же самая в окне другого
+  // размера. Под него карта подстраивается отступом камеры (десктоп) или
+  // сдвигом холста (телефон) — переездом, без зума.
 
   // Точки для общего шва `useCityMarkers` (сборка пинов). Само правило нумерации
   // (номер несут ТОЛЬКО транзит-города) живёт в `markers.js` рядом с обликом —
@@ -635,7 +629,7 @@ export default function MapView({
     // Fit only once the slot is MEASURED (canFit) — never into a zero-size
     // container (fit is deferred; the effect re-runs when canFit flips). Markers/
     // lines above still draw on `ready`, so the map is never blank. (TRIP-202)
-    if (canFit && ordered.length > 0 && fittedSigRef.current !== fitSignature && !focusSig) {
+    if (canFit && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
         // ★ СКАЧОК — ТОЛЬКО У КАРТЫ, КОТОРУЮ ЕЩЁ НИ РАЗУ НЕ КАДРИРОВАЛИ. Инстанс
@@ -651,7 +645,7 @@ export default function MapView({
       } else {
         fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 650 }); // public reveal: its own tempo
       }
-      fittedSigRef.current = fitSignature;
+      fittedSigRef.current = visitsSignature;
       markFramed(map);
     }
 
@@ -659,7 +653,7 @@ export default function MapView({
     // `transfers` больше не в deps: фит зависит от набора визитов, не переездов
     // (линии рисует отдельный эффект). focusSig/revealActiveId читаются внутри как
     // и раньше — их смена приходит вместе с ре-рендером visitsSignature/фокуса.
-  }, [ready, canFit, ordered, fitSignature, hideRoute]);
+  }, [ready, canFit, ordered, visitsSignature, hideRoute]);
 
   // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
   // Owns the hotel markers while the overlay is open: builds a moveend listener
