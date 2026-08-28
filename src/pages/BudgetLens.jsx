@@ -30,6 +30,7 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import { classifyError } from '@/lib/errorText';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -206,12 +207,23 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   });
 
   const busy = saveMut.isPending || delMut.isPending;
+  // Трата удалялась БЕЗ подтверждения: `danger`-кнопка стояла в футере рядом с
+  // «Сохранить» и била в мутацию сразу. Промах мышью стоил записи, а вернуть её
+  // нечем — `delMut` оптимистично сносит строку и рапортует успехом.
+  const confirm = useConfirm();
+  const askDelete = () => confirm({
+    title: t('budget.delete_expense_q'),
+    description: t('budget.delete_expense_desc'),
+    confirmLabel: t('common.delete'),
+    variant: 'destructive',
+    onConfirm: () => delMut.mutateAsync({ id: existing.id, row: { id: existing.id, _pending: true } }),
+  });
 
   return (
     <Dialog title={isEdit ? t('budget.edit_expense') : t('budget.manual_expense')} icon="wallet" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
         {isEdit && (
-          <Btn variant="danger" icon="trash" loading={delMut.isPending} onClick={() => delMut.mutate({ id: existing.id, row: { id: existing.id, _pending: true } })} disabled={busy}>{t('trip.delete')}</Btn>
+          <Btn variant="danger" icon="trash" onClick={askDelete} disabled={busy}>{t('trip.delete')}</Btn>
         )}
         <div className="grow" />
         <Btn variant="secondary" onClick={close} disabled={busy}>{t('trip.form_cancel')}</Btn>
@@ -338,7 +350,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       <Btn variant="primary" icon="check" loading={applyMut.isPending} onClick={() => v.attemptSubmit(() => applyMut.mutate())} disabled={applyMut.isPending} aria-disabled={!v.canSubmit}>{t('budget.apply')}</Btn>
     </>}>
       <div className="col col--g4">
-      <div className="t-body">
+      <div>
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (

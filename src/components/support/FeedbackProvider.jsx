@@ -172,7 +172,7 @@ function FeedbackDialog({ source, onClose }) {
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
             >
-              <Card variant="add" radius="md" className="col col--g3 dl-dropzone">
+              <Card variant="add" radius="btn" className="col col--g3 dl-dropzone">
                 <input
                   ref={inputRef}
                   type="file"

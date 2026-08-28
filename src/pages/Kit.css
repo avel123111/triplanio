@@ -100,3 +100,9 @@
    Kit.css, прод не тронут. */
 .toast[data-kit="toast"] { position: static; }
 /* visual-diff-exempt: .toast[data-kit=toast] position — витрина: статичный образец тоста в потоке, только Kit.css, прод не тронут, апрув Pavel */
+
+/* Заставка-образец: `.splash` в проде position:fixed на весь экран (она и есть
+   экран). Витрине нужен образец В ПОТОКЕ ячейки — тем же приёмом, что у тоста
+   выше. Высота задана, потому что у заставки её нет своей: в проде её даёт
+   inset:0. Только Kit.css, прод не тронут. */
+[data-kit="splash"] .splash { position: static; min-height: 280px; border-radius: var(--r-lg); }
