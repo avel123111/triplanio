@@ -1,0 +1,86 @@
+/* ═══ Экран запуска: слой стилей (TRIP-478) ══════════════════════════════
+   ИСТОЧНИК ПРАВДЫ ЖИВЁТ ЗДЕСЬ, а не в `index.html`. В документ этот файл
+   попадает ИНЛАЙНОМ, подстановкой на сборке (плагин `inline-splash` в
+   `vite.config.js` заменяет плейсхолдер `<!--splash:style-->`), потому что
+   заставка обязана работать ДО бандла — внешний `<link>` приехал бы вместе с
+   приложением, то есть когда она уже не нужна.
+
+   ★ ПОЧЕМУ ЭТО ОБЫЧНЫЙ .css В `src/design/`, А НЕ СТРОКА В JS. Файл в этой
+   папке лежит в периметре гардов дизайн-системы: пол 2o считает его классы,
+   2m — его namespace, 2p сверяет его объявления. Спрячь стили в JS-строку или
+   в разметку — и заставка растёт молча, мимо всех счётчиков. Витрина `/kit`
+   рисует заставку ИЗ ЭТОГО ЖЕ файла, поэтому увидеть её можно, не открывая
+   исходник.
+
+   ★ ЦВЕТА — ЛИТЕРАЛЫ, И ЭТО ФИЗИКА, А НЕ ЛЕНЬ. Токены (`--bg`, `--ink`)
+   объявлены в `app.css`, который на момент показа заставки ещё не загружен:
+   `var()` там не разрешается ничем. Поэтому значения скопированы — а чтобы
+   копия не разъехалась с оригиналом, её сверяет тест
+   (`src/lib/splash.test.js`, случай «цвета заставки = токены темы»).
+   Синий знака (константа логотипа) под сверку не идёт: это константа логотипа, одна и
+   та же в обеих темах (в тёмной `--brand` другой, знак — нет).
+
+   ── ПОЛ 2o: ЧТО ИМЕННО ВЫРОСЛО И ПОЧЕМУ ЭТО НЕ РАЗМЕН ─────────────────────
+   Заставка существовала и до этого PR — но жила в `index.html`, вне периметра
+   гардов, поэтому её пять классов не считал никто. Рост чисел здесь означает
+   не «стало больше стилей», а «заставка перестала быть невидимой»: тот же код
+   переехал под счёт. Числа сверены с диффом поштучно.
+
+   floor-exempt: classes +5 — .splash, .splash__mark, .splash__word, .splash__plate, .splash__art: экран запуска переехал из index.html под счёт гардов, новых правил не добавлено. Апрув Pavel (TRIP-478)
+   floor-exempt: namespaces +1 — splash: тот же переезд; namespace ОДИН на всю заставку. Апрув Pavel (TRIP-478)
+   floor-exempt: tokens +1 — --z-splash: ступень лестницы слоёв в app.css. Заставка кроет всё; без ступени её слой был бы безымянным числом (было 2147483000), то есть занятым молча. Апрув Pavel (TRIP-478)
+   floor-exempt: layout +1 — splash: раскладка лок-апа (знак над словом) принадлежит самой заставке и вне её не переиспользуется. Апрув Pavel (TRIP-478)
+
+   prefix-exempt: splash — namespace экрана запуска. Заводится ОДИН на всю
+   заставку (host + знак + слово + плашка); альтернатива — тянуть в документ
+   `app.css` целиком ради пяти правил, то есть весь бандл стилей до первого
+   кадра. Апрув Pavel (TRIP-478, «делай чисто системно»).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.splash{
+  position:fixed;inset:0;
+  z-index:500;         /* design-token-exempt: ступень --z-splash лестницы слоёв (app.css); var() до бандла не разрешается, равенство сверяет splash.test.js */
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;            /* design-token-exempt: зазор знак↔слово принадлежит ЛОК-АПУ логотипа, а не шкале отступов экранов; --sp-N здесь и недоступен (var() до бандла) */
+  background:#f7f9fa;  /* design-token-exempt: --bg светлой темы (app.css), равенство сверяет splash.test.js */
+  transition:opacity .32s ease}
+:root[data-theme="dark"] .splash{background:#0c0e1c} /* design-token-exempt: --bg тёмной темы, сверяется тестом */
+/* Уход. Узел снимает `hideSplash()` (src/lib/splash.js) — там же продублирована
+   длительность .32s: CSS-переменную JS прочитать может, но ради одного числа
+   это лишний слой, поэтому числа связаны комментарием с обеих сторон. */
+.splash[data-out]{opacity:0;pointer-events:none}
+
+.splash__mark{display:block;width:48px;height:48px}
+.splash__word{display:block;width:88px;height:auto;fill:#272433} /* design-token-exempt: --ink светлой темы, сверяется тестом */
+:root[data-theme="dark"] .splash__word{fill:#EDECF4} /* design-token-exempt: --ink тёмной темы, сверяется тестом */
+
+/* Знак собирается каскадом: плашка, затем четыре фигуры по очереди в
+   порядке взлёта — волна (низ слева) → самолёт → след → нос. Порядок
+   в РАЗМЕТКЕ трогать нельзя (это z-порядок логотипа), поэтому очередь
+   задана задержками по nth-child, а не перестановкой узлов. Пришлёт
+   дизайн знак с другим числом фигур — правится ЭТОТ список, а не
+   разметка. */
+.splash__plate{animation:splash-plate .45s cubic-bezier(.34,1.3,.64,1) both}
+.splash__art path{opacity:0;transform:scale(.86);transform-box:fill-box;transform-origin:center;
+  animation:splash-pop .5s cubic-bezier(.22,1,.36,1) forwards}
+.splash__art path:nth-child(1){animation-delay:.23s} /* самолёт */
+.splash__art path:nth-child(2){animation-delay:.12s} /* волна   */
+.splash__art path:nth-child(3){animation-delay:.34s} /* след    */
+.splash__art path:nth-child(4){animation-delay:.45s} /* нос     */
+/* Слово идёт ВНАХЛЁСТ со знаком (вариант S2): шторка стартует на .34s,
+   когда знак собран наполовину, и не ждёт его конца (.95s). */
+.splash__word{clip-path:inset(0 100% 0 0);animation:splash-wipe .46s cubic-bezier(.33,.9,.3,1) .34s forwards}
+
+@keyframes splash-plate{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@keyframes splash-pop{to{opacity:1;transform:none}}
+@keyframes splash-wipe{to{clip-path:inset(0 0 0 0)}}
+
+/* Просьбу убрать движение выполняем целиком: ни каскада, ни шторки —
+   знак и слово проступают одним мягким появлением. */
+@media (prefers-reduced-motion: reduce){
+  .splash__plate,.splash__art path,.splash__word{animation:none}
+  .splash__art path{opacity:1;transform:none}
+  .splash__word{clip-path:none}
+  .splash{animation:splash-calm .45s ease-out both}
+  @keyframes splash-calm{from{opacity:0}to{opacity:1}}
+}

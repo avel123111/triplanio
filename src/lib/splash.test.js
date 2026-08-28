@@ -186,3 +186,49 @@ test('потолок снимает заставку даже под вечны�
       'заставка заперла экран навсегда: под ней уже ничего не появится');
   } finally { s.restore(); }
 });
+
+// ★ ОДИН ИСТОЧНИК, А НЕ ДВЕ ПОХОЖИЕ КОПИИ (TRIP-478). Заставка живёт в
+// дизайн-системе (`src/design/splash.css` + `.html`) и попадает в документ
+// подстановкой на сборке; витрина `/kit/splash` рисует ТЕ ЖЕ файлы. Впиши
+// разметку или стили обратно в `index.html` — и копии начнут расходиться
+// молча: витрина будет показывать одно, человек при запуске видеть другое,
+// а гарды дизайн-системы перестанут видеть заставку вовсе (index.html вне
+// их периметра). Поэтому в документе допустимы ТОЛЬКО плейсхолдеры.
+test('в index.html нет копии заставки — только плейсхолдеры', () => {
+  const html = readFileSync('index.html', 'utf8');
+  assert.ok(html.includes('<!--splash:style-->'), 'потерян плейсхолдер стилей');
+  assert.ok(html.includes('<!--splash:markup-->'), 'потерян плейсхолдер разметки');
+  assert.equal(/\.splash\s*\{/.test(html), false, 'стили заставки вписаны в index.html копией');
+  assert.equal(html.includes('class="splash"'), false, 'разметка заставки вписана в index.html копией');
+});
+
+// ★ КОПИЮ ЦВЕТА ДЕРЖИТ ТЕСТ, А НЕ ОБЕЩАНИЕ. `var()` на заставке не работает
+// физически: `app.css` с токенами приезжает вместе с бандлом, то есть ПОЗЖЕ
+// первого кадра. Значения приходится дублировать литералами — но расхождение
+// с темой видно только глазом и только на первых полсекунды запуска, поэтому
+// сверку делает тест. Синий знака сюда не входит: это константа
+// логотипа, одна в обеих темах.
+test('цвета заставки = токены темы из app.css', () => {
+  const app = readFileSync('src/design/app.css', 'utf8');
+  const splash = readFileSync('src/design/splash.css', 'utf8');
+
+  // Токены светлой темы объявлены в `:root{…}`, тёмной — в `:root[data-theme="dark"]{…}`.
+  const block = (re) => app.match(re)?.[1] ?? '';
+  const light = block(/:root\s*\{([\s\S]*?)\n\}/);
+  const dark = block(/:root\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/);
+  const token = (src, name) => src.match(new RegExp(`--${name}:\\s*([#\\w().,\\s-]+?);`))?.[1]?.trim();
+
+  const expected = {
+    'фон, светлая':  token(light, 'bg'),
+    'фон, тёмная':   token(dark, 'bg'),
+    'слово, светлая': token(light, 'ink'),
+    'слово, тёмная':  token(dark, 'ink'),
+  };
+  for (const [what, value] of Object.entries(expected)) {
+    assert.ok(value, `не найден токен темы для «${what}» — изменилась форма app.css, сверка ослепла`);
+    assert.ok(
+      splash.toLowerCase().includes(value.toLowerCase()),
+      `${what}: в splash.css нет значения ${value} из app.css — заставка разъедется с приложением`,
+    );
+  }
+});

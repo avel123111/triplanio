@@ -67,6 +67,40 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    /**
+     * ЭКРАН ЗАПУСКА — ОДИН ИСТОЧНИК, ПОДСТАВЛЯЕМЫЙ В ДОКУМЕНТ (TRIP-478).
+     *
+     * Заставка обязана работать ДО бандла, поэтому в документе она может быть
+     * только инлайном. Но «инлайн» не обязано значить «написано руками в
+     * index.html»: источник правды лежит в дизайн-системе
+     * (`src/design/splash.css` + `splash.html`), а сюда подставляется здесь.
+     *
+     * Что это покупает, помимо отсутствия второй копии: стили заставки
+     * оказываются ОБЫЧНЫМ CSS-файлом в `src/design/`, то есть в периметре
+     * гардов ДС (пол 2o считает её классы, 2m — namespace, 2p — объявления).
+     * Пока они жили в HTML, заставка росла молча — ни один счётчик её не видел.
+     * Тот же файл рисует витрина `/kit/splash`.
+     *
+     * `apply` не задан НАМЕРЕННО: подстановка нужна и в dev, иначе `npm run
+     * dev` показывал бы приложение без заставки — то есть отлаживали бы одно,
+     * а в прод уезжало другое.
+     */
+    {
+      name: 'inline-splash',
+      transformIndexHtml: {
+        order: 'pre',
+        handler(html) {
+          const read = (f) => readFileSync(fileURLToPath(new URL(`./src/design/${f}`, import.meta.url)), 'utf8');
+          const put = (marker, block) => {
+            if (!html.includes(marker)) throw new Error(`inline-splash: в index.html нет ${marker}`);
+            html = html.replace(marker, block);
+          };
+          put('<!--splash:style-->', `<style>\n${read('splash.css')}\n</style>`);
+          put('<!--splash:markup-->', read('splash.html'));
+          return html;
+        },
+      },
+    },
     // Комментарии не уезжают в браузер. Vite чистит всё, что проходит через
     // сборку, но `public/` копирует байт в байт — а там лежит `site.css`,
     // единственная таблица стилей зоны: 373 КБ, из них 187 КБ комментариев.
@@ -81,6 +115,19 @@ export default defineConfig({
           const file = join(out, rel);
           if (!existsSync(file)) continue;
           writeFileSync(file, strip(readFileSync(file, 'utf8')));
+        }
+        // Внутри <style> живёт CSS, а не HTML, поэтому его комментарии
+        // `stripHtml` не видит по построению. Раньше этого шага не было за
+        // ненадобностью: инлайнового CSS в документе не существовало. С
+        // приездом заставки (TRIP-478) он появился — и её докблоки уезжали бы
+        // в прод целиком, ровно то, против чего заведён весь этот плагин.
+        const indexFile = join(out, 'index.html');
+        if (existsSync(indexFile)) {
+          const html = readFileSync(indexFile, 'utf8');
+          writeFileSync(indexFile, html.replace(
+            /(<style[^>]*>)([\s\S]*?)(<\/style>)/g,
+            (_, open, css, close) => open + stripCss(css).replace(/\n\s*\n/g, '\n').trim() + close,
+          ));
         }
       },
     },
