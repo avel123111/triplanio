@@ -1471,7 +1471,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         // Закрытая площадь приезжает камере отступом вьюпорта там, где она
         // режет ширину (десктоп); на телефоне шит режет высоту, и её забирает
         // сам слот — разбор в `mapShellInsets`.
-        map={(camera, slotPx) => (
+        map={(camera) => (
           <>
             {/* Floating round back control — shown only on the phone shell (the app
                 header is removed there); the canon `.map-back` position/visibility
@@ -1485,7 +1485,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               onClick={() => nav('/trips')}
             />
             <FlowMap
-              camera={camera} slotPx={slotPx}
+              camera={camera}
               colorScheme={isDark ? 'DARK' : 'LIGHT'}
               home={home}
               cities={cities}

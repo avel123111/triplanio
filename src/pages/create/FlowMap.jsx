@@ -4,7 +4,7 @@ import { markFramed } from '@/lib/map/framed';
 import { getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
-import { useMapInsets } from '@/lib/map/useMapInsets';
+import { useCanFrame, useMapInsets } from '@/lib/map/useMapInsets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
@@ -78,15 +78,10 @@ function startGlobeView(map, air, insets) {
 // ScreenMap drives MapView. Marker ids: 'home', the city's own id, 'finish'.
 // =====================================================================
 export default function FlowMap({
-  // Закрытая панелью площадь — приезжает от `<MapShell>` и выражается ОТСТУПОМ
-  // ВЬЮПОРТА: канвас остаётся во всю площадь (карта видна под виджетом), а кадр
-  // уходит в свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
+  // Закрытая площадь — приезжает от `<MapShell>` ОДНОЙ величиной на обе оси:
+  // канвас всегда во всю площадь (карта видна и под виджетом, и под шитом), а
+  // кадр уходит в свободное окно. Разбор — в `mapShellInsets`.
   camera = null,
-  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Маршрут по ней
-  // не перекадрируется (автофокус — только на изменение маршрута); её читает
-  // ПУСТОЙ ГЛОБУС, чей диаметр считается от высоты холста. На телефоне это
-  // единственный сигнал: отступы камеры там всегда нулевые.
-  slotPx = 0,
   home, cities = [], finishCity, transport = {}, isStay = false,
   // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
   // CITY still feeds the camera framing, so stepping between steps toggles what's
@@ -211,24 +206,26 @@ export default function FlowMap({
   // при этом подстраивается по-прежнему: отступ доводит сам хук, без зума.
   //
   // ★★ ПУСТОЙ ГЛОБУС — ИСКЛЮЧЕНИЕ, И ЭТО НЕ ПОБЛАЖКА. Здесь нет маршрута, и
-  // кадрировать нечего: ДИАМЕТР ШАРА считается от высоты ХОЛСТА
-  // (`startGlobeZoom`), поэтому смена слота меняет не кадр, а размер самого
-  // предмета. Оставь зум как есть — и шар, посчитанный для холста в 700px,
-  // окажется обрезан краями холста в 250px. Это ровно тот случай, ради которого
-  // у `useMapInsets` осталась дверь: цель считается от холста, а не от точек.
+  // кадрировать нечего: ДИАМЕТР ШАРА считается от высоты СВОБОДНОГО ОКНА
+  // (`startGlobeZoom` вычитает отступ), поэтому смена отступа меняет не кадр, а
+  // размер самого предмета. Оставь зум как есть — и шар, посчитанный для окна в
+  // 700px, не поместится в окно 250px. Это ровно тот случай, ради которого у
+  // `useMapInsets` осталась дверь: цель считается от окна, а не от точек.
   //
   // Ref'а под цель здесь НЕТ, и это не упущение: `useMapInsets` переприсваивает
   // `reframeRef.current` в теле КАЖДОГО рендера, то есть зовёт самое свежее
   // замыкание. Прежней конструкции ref был нужен, пока из эффекта читали цель
   // маршрута; теперь он фиксировал бы ровно то, что и так актуально.
+  // ★ ГЕЙТ — «ЕСТЬ КУДА ВПИСЫВАТЬ», А НЕ «ХОЛСТ ИЗМЕРЕН» (разбор — `useMapInsets`).
+  const canFrameNow = useCanFrame(mapRef, { ready: canFit, insets: camera });
+
   useMapInsets(mapRef, {
     ready,
     insets: camera,
-    slotPx,
     onReframe: (map) => {
       // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
       // НЕ перекадрирование: зум и границы маршрута он не трогает.
-      if (!canFit || fitPositions.length) return false;
+      if (!canFrameNow || fitPositions.length) return false;
       const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
       try { map.easeTo({ ...view, padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
       return true; // отступ уехал вместе с видом — хуку добавлять нечего
@@ -256,9 +253,9 @@ export default function FlowMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
-    // re-runs when canFit flips. Markers draw on `ready` via the hook. (TRIP-202)
-    if (canFit) {
+    // Fit only when there IS a free window — deferred otherwise; the effect re-runs
+    // when it comes back. Markers draw on `ready` via the hook. (TRIP-202/484)
+    if (canFrameNow) {
       // ВОЗДУХ кадра, и только он: закрытую площадь карта знает сама
       // (`lib/map/insets.js`), поэтому складывать её здесь не нужно и нельзя.
       const air = fitPaddingFor(winW);
@@ -299,7 +296,7 @@ export default function FlowMap({
     // Пересборку пинов делает `useCityMarkers` по ptsKey — здесь его нет.
     // winW/winH читаются внутри (fitPaddingFor / startGlobeView) — перечислены для
     // честности exhaustive-deps, хотя fitKey их и так несёт.
-  }, [ready, canFit, fitKey, winW, winH]);
+  }, [ready, canFrameNow, fitKey, winW, winH]);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).

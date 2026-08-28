@@ -4185,13 +4185,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .flow-map__canvas.is-revealed { opacity: 1; }
 .flow-map__cover { position: absolute; inset: 0; display: grid; place-items: center; background: var(--surface); z-index: 2; }
 /* ★ НИЗ ОТСЧИТЫВАЕТСЯ ОТ ШИТА, А НЕ ОТ НИЗА КАНВАСА. Канвас намеренно уходит под
-   шит на радиус скруглений (иначе в вырезах углов виден фон страницы), поэтому
-   честные 14px от собственного низа оказывались НА шите: 14 − 20 = −6px. Заход
-   объявляет сам шелл (`--mapshell-under`, `lib/mapShellInsets.js`) — второй
-   записи радиуса здесь нет намеренно, она разъехалась бы с токеном на первой же
-   правке. На десктопе шита нет, переменная = 0, и отступ остаётся прежним.
-   visual-diff-exempt: .flow-map__stat bottom — прибавлен заход канваса под шит (на десктопе значение то же) */
-.flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-under, 0px) + 14px); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
+   шит целиком, поэтому честные 14px от собственного низа оказывались ПОД ним.
+   Границу свободного окна объявляет сам шелл (`--mapshell-bottom`,
+   `lib/mapShellInsets.js`) — второй записи высоты шита здесь нет намеренно. На
+   десктопе шита нет, переменная = 0, и отступ остаётся прежним.
+   visual-diff-exempt: .flow-map__stat bottom — пилюля отступает от шита, а не от края экрана (на десктопе значение то же)
+   visual-diff-exempt: .flow-map__stat transition — едет одним темпом с шитом (раньше её низ был низом слота и не двигался) */
+.flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-bottom, 0px) + 14px); transition: bottom var(--surface-settle, .32s) var(--surface-ease, ease); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
 .flow-map__stat-hl { color: var(--ink-2); }
 /* Section sub-heading — the missing mid-tier between the title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…). */
@@ -4493,20 +4493,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      просто выше по дереву. `.mapshell` значение НАСЛЕДУЕТ.
      visual-diff-exempt: .mapshell --mapshell-panel-w — токен поднят в :root (единый источник для .evd-drawer вне .mapshell), значение наследуется */
 }
-/* Слот карты = СВОБОДНОЕ ОКНО: панель и шит не лежат поверх карты, они её
-   граница. Величины приходят от `<MapShell>` двумя переменными (ширина
-   панели · высота шита); по умолчанию слот занимает шелл целиком. */
-/* ★ СЛОТ КАРТЫ И ЕСТЬ СВОБОДНОЕ ОКНО ПО ВЕРТИКАЛИ. Шит режет ВЫСОТУ, и её
-   забирает слот: размер глобуса mapbox считает от высоты ХОЛСТА, поэтому
-   развязать их нельзя — шар начнёт то вылезать за экран, то болтаться в
-   пустоте. Панель режет ШИРИНУ, там холст целый и кадр уводит камера.
-   Момент смены высоты решает `slotChangeDelay` (растём сразу, сжимаемся после
-   приезда шита) — иначе между картой и шитом открывается полоса фона до 351 px.
-   visual-diff-exempt: .mapshell__map top — слот карты = свободное окно шелла
-   visual-diff-exempt: .mapshell__map right — слот карты = свободное окно шелла
-   visual-diff-exempt: .mapshell__map left — слот карты = свободное окно шелла
-   visual-diff-exempt: .mapshell__map bottom — снизу слот кончается там, где начинается шит */
-.mapshell__map { position: absolute; top: 0; right: 0; bottom: var(--mapshell-bottom, 0px); left: 0; overflow: hidden; background: var(--map-backdrop); }
+/* ★ СЛОТ КАРТЫ — ВСЯ ПЛОЩАДЬ ШЕЛЛА, ВСЕГДА. Ни панель, ни шит его не режут: обе
+   поверхности лежат ПОВЕРХ карты, а закрытую ими площадь карта получает
+   ОТСТУПОМ КАМЕРЫ (`lib/mapShellInsets.js`). Прежде шит забирал высоту у самого
+   слота, и это стоило трёх дефектов сразу — полосы фона на всё время жеста,
+   телепорта содержимого на Δ/2 от `map.resize()` и предельного зума,
+   посчитанного в 20-пиксельную щель верхнего детента. Разбор с числами — там же.
+   ⚠️ Вернуть сюда `bottom: var(--mapshell-bottom)` значит вернуть все три.
+   Всё, что обязано остаться НА ВИДУ поверх карты, отступает теперь от шита
+   само — читая ту же `--mapshell-bottom` (пилюля ниже, атрибуция в index.css).
+   visual-diff-exempt: .mapshell__map bottom — холст во всю площадь: закрытую шитом площадь берёт на себя отступ камеры */
+.mapshell__map { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; background: var(--map-backdrop); }
+
 
 /* Новые правила этой задачи — объявлены поимённо (гард 2p сверяет НАБОР итоговых
    объявлений у каждого класса, и появление класса он тоже считает изменением):

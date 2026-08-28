@@ -1,5 +1,5 @@
 // @ts-check
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NO_INSETS, canFrame, getMapInsets, setMapInsets } from './insets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 
@@ -28,9 +28,9 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  * эффект объявляет закрытую площадь и доводит до неё ОТСТУП — не более.
  *
  * `onReframe` — необязательная дверь для цели, РАЗМЕР которой считается от
- * ХОЛСТА, а не от маршрута (пустой глобус планировщика: диаметр шара — доля
- * высоты канваса, и при смене слота он обязан пересчитаться, иначе шар
- * обрезается краем). Вернула `true` — доехала сама, отступ трогать не нужно.
+ * СВОБОДНОГО ОКНА, а не от маршрута (пустой глобус планировщика: диаметр шара —
+ * доля высоты окна, и при смене отступа он обязан пересчитаться, иначе шар не
+ * попадает в окно). Вернула `true` — доехала сама, отступ трогать не нужно.
  * Кадрировать в ней МАРШРУТ нельзя: это и был бы тот самый автофокус.
  *
  * @param {{ current: any }} mapRef ссылка на инстанс (общий синглтон)
@@ -44,18 +44,15 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  * @param {{
  *   ready: boolean,
  *   insets: any,
- *   slotPx?: number,
  *   focusing?: boolean,
  *   onReframe?: (map: any) => boolean | void,
  * }} p
  */
-export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = false, onReframe = null }) {
-  // ★ КЛЮЧ — ВСЁ СВОБОДНОЕ ОКНО, А НЕ ТОЛЬКО ОТСТУПЫ КАМЕРЫ. Свободное окно
-  // меняют ДВЕ вещи, по одной на ось: ширину — отступ камеры (панель), высоту —
-  // размер СЛОТА (шит). Слот нужен здесь ради `onReframe`: на телефоне отступы
-  // камеры всегда нулевые, и по ним одним пустой глобус не узнал бы, что холст
-  // стал другого размера. Экран без `onReframe` слот и не передаёт.
-  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}|${slotPx}`;
+export function useMapInsets(mapRef, { ready, insets, focusing = false, onReframe = null }) {
+  // ★ КЛЮЧ — ОТСТУП, И ЭТОГО ДОСТАТОЧНО. Свободное окно целиком выражено им, обе
+  // оси одной величиной: панель приезжает в `left`, шит — в `bottom`. Прежде
+  // высота ехала отдельным каналом (размером слота), и ключ обязан был знать оба.
+  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}`;
   const seenRef = useRef(false);
   // ★ СОБСТВЕННАЯ ССЫЛКА НА ИНСТАНС, И ЭТО НЕ ДУБЛЬ. `useMapSurface` обнуляет
   // свой `mapRef` в СВОЁМ cleanup, а объявлен он раньше — React зовёт cleanup'ы
@@ -96,27 +93,24 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
     const focusDriven = focusing || wasFocusing.current;
     wasFocusing.current = focusing;
     if (focusDriven) return undefined;
-    // ★ ДОВОДИМ ПОСЛЕ ТОГО, КАК ХОЛСТ ПРИНЯЛ НОВЫЙ РАЗМЕР. Слот меняет высоту
-    // через CSS-переменную, mapbox узнаёт об этом от ResizeObserver — то есть
-    // ПОЗЖЕ нашего рендера. Посчитать раньше значит посчитать по старому
-    // размеру. Два кадра + явный `resize()` (идемпотентный) гарантируют, что
-    // считаем по фактическому холсту.
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
-      const m = mapRef.current;
-      if (!m) return;
-      try { m.resize(); } catch { /* ignore */ }
-      const el = m.getContainer?.();
-      if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(m))) return;
-      // Цель, размер которой считается от холста, обслуживает себя сама.
-      if (reframeRef.current?.(m)) return;
-      // Иначе доезжает ТОЛЬКО отступ — тем же временем и той же кривой, что и
-      // поверхность, которая поехала (шит встаёт на детент за `SURFACE_SETTLE_MS`,
-      // панель уезжает за него же). Ни `center`, ни `zoom` тут не передаются, и
-      // это ГЛАВНОЕ: mapbox сам сдвигает вид в новое свободное окно, а границы
-      // маршрута в расчёт не входят — подстройка есть, автофокуса нет.
-      try { m.easeTo({ padding: getMapInsets(m), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
-    }));
-    return () => cancelAnimationFrame(id);
+    const el = map.getContainer?.();
+    // ★ ЕДЕМ В ТОТ ЖЕ КАДР, ЧТО И ПОВЕРХНОСТЬ. Ждать `requestAnimationFrame` и
+    // звать `resize()` было нужно, пока высоту забирал СЛОТ: mapbox узнавал о
+    // новом размере холста от ResizeObserver, то есть позже нашего рендера, и
+    // посчитать раньше значило посчитать по старому. Холст больше не меняется —
+    // ждать нечего, а задержка в два кадра сдвигала старт камеры относительно
+    // старта шита, то есть ровно та рассинхронизация, ради которой заведён
+    // единый темп.
+    if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(map))) return undefined;
+    // Цель, размер которой считается от свободного окна, обслуживает себя сама.
+    if (reframeRef.current?.(map)) return undefined;
+    // Иначе доезжает ТОЛЬКО отступ — тем же временем и той же кривой, что и
+    // поверхность, которая поехала (шит встаёт на детент за `SURFACE_SETTLE_MS`,
+    // панель уезжает за него же). Ни `center`, ни `zoom` тут не передаются, и
+    // это ГЛАВНОЕ: mapbox сам сдвигает вид в новое свободное окно, а границы
+    // маршрута в расчёт не входят — подстройка есть, автофокуса нет.
+    try { map.easeTo({ padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, key, focusing]);
 
@@ -130,6 +124,45 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
     try { map.easeTo({ padding: NO_INSETS, duration: 0 }); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+}
+
+/**
+ * ЕСТЬ ЛИ КУДА КАДРИРОВАТЬ — реактивный ответ того же закона (`canFrame`).
+ *
+ * ★ ЗАЧЕМ ОТДЕЛЬНО ОТ `canFit`. `canFit` (`useMapSurface`) отвечает на вопрос
+ * «холст измерен», и до этой задачи разницы не было: на телефоне свободное окно
+ * И БЫЛО холстом, поэтому «холст ненулевой» означало «есть куда вписывать».
+ * Теперь холст всегда во всю площадь, а свободное окно режет ОТСТУП — и на
+ * верхнем детенте (шит во весь экран) `canFit` по-прежнему `true`, хотя
+ * вписывать некуда. Фит, посчитанный в этот момент, уходит в предельный зум и
+ * ТАМ ОСТАЁТСЯ: он помечает себя сделанным и не повторяется.
+ *
+ * ★★ ОТВЕТ ОБЯЗАН БЫТЬ ЗАВИСИМОСТЬЮ ЭФФЕКТА, А НЕ ПРОВЕРКОЙ ВНУТРИ НЕГО. Тогда
+ * заблокированный фит не теряется, а откладывается: окно вернулось — эффект
+ * перезапустился и вписал. Проверка внутри дала бы «фит пропущен навсегда».
+ *
+ * @param {{ current: any }} mapRef
+ * @param {{ ready: boolean, insets: any }} p `ready` — холст измерен (`canFit`).
+ * @returns {boolean}
+ */
+export function useCanFrame(mapRef, { ready, insets }) {
+  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}`;
+  const [ok, setOk] = useState(false);
+  const measure = useCallback(() => {
+    const map = mapRef.current;
+    const el = map?.getContainer?.();
+    setOk(!!(map && ready && canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(map))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapRef, ready]);
+  useEffect(() => {
+    measure();
+    // Вьюпорт — вторая величина в ответе (первая — отступ): поворот экрана и
+    // схлопывание адресной строки меняют его, отступ при этом не двигая.
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [measure, key]);
+  return ok;
 }
 
 export default useMapInsets;
