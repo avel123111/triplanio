@@ -8,7 +8,7 @@ import { formatDateRange } from '@/lib/trip-dates';
 import { useTheme } from '@/lib/ThemeContext';
 
 // Route-map preview for the Overview screen. Reuses the same Mapbox MapView as
-// every other map in the app (no schematic/SVG), with on-map controls off, in a
+// every other map in the app (no schematic/SVG), without on-map controls, in a
 // rounded fixed-height panel. The header "Open" button jumps to the full map
 // lens. `active` mirrors whether the Overview lens is visible so MapView can
 // resize() when the panel regains size.
@@ -58,7 +58,6 @@ export default function RouteMapCard({ visits = [], transfers = [], active = tru
             visits={visits}
             transfers={transfers}
             colorScheme={colorScheme}
-            mapControls={false}
             active={active}
             hoveredVisitId={hoveredId}
             selectedVisitId={selectedId}

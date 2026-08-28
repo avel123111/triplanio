@@ -7,7 +7,7 @@ import {
   GripVertical, Crown, ArrowRightLeft, Upload, ImageUp, TrainFront, Sun, Shield, RefreshCw,
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus, AtSign,
-  Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair, SlidersHorizontal,
+  Building2, Layers, Luggage, Heart, Star, Maximize2, Minimize2, Crosshair, SlidersHorizontal,
   Footprints, Headset, LogOut, Mail, Image, Hammer, Clock, Utensils, CheckCheck,
 } from 'lucide-react';
 
@@ -120,7 +120,11 @@ const LUCIDE = {
   'folder-bookmark': FolderBookmark, 'card-sim': CardSim,
   // статистика путешествий (2026-06-20)
   buildings: Building2, layers: Layers, suitcase: Luggage, heart: Heart,
-  star: Star, expand: Maximize2, crosshair: Crosshair,
+  // `shrink` заведён парой к `expand`: кнопка фуллскрина карты называет СЛЕДУЮЩЕЕ
+  // действие (решение Pavel), а «свернуть» реестр не знал — из фуллскрина кнопка
+  // предлагала бы «раскрыть» тем же глифом. Тот же lucide, реестр симметричен —
+  // ровно случай `chevL` выше.
+  star: Star, expand: Maximize2, shrink: Minimize2, crosshair: Crosshair,
   // Тоггл фильтров форк-панели (TRIP-344): реестр знал глифы карты/списка, а
   // «ползунки фильтра» жили сырым lucide-импортом на экране. Тот же lucide,
   // ноль визуальных изменений — форк-кнопка садится на канон `IconBtn`.

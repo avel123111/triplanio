@@ -104,14 +104,16 @@ export default function FlowMap({
   const containerRef = useRef(null);
   const markersRef = useRef([]);
 
-  // On-map controls (same set as MapView): projection / theme / start-finish.
+  // Контролы поверх карты: проекция + тема. Старт-финиша здесь НЕТ (решение
+  // Pavel): в создании маршрута дом и финиш — это то, что пользователь прямо
+  // сейчас выбирает, прятать их нечем и незачем; вместе с кнопкой ушла и ручка
+  // `showSE` — мёртвая развилка была бы вторым правилом показа якорей.
   // Планировщик (оба флоу) открывается на глобусе (запрос Pavel, TRIP-337).
   const [projection, setProjection] = useState('globe');
   // Seed from the app theme prop and follow it live (mirrors MapView): the on-map
   // toggle can still override until the next app-theme change.
   const [scheme, setScheme] = useState(colorScheme);
   useEffect(() => { setScheme(colorScheme); }, [colorScheme]);
-  const [showSE, setShowSE] = useState(true);
 
   // Track viewport width so the fit re-frames when the layout crosses the
   // desktop↔mobile breakpoint or the panel width (40vw) changes on resize.
@@ -156,9 +158,9 @@ export default function FlowMap({
   // pin grouping — no start↔finish name compare. Drawing it requires `drawFinish`.
   // id === data здесь: колбэк планировщика хочет ровно этот ключ ('home' | id |
   // 'finish'), а `useCityMarkers` тегает им `data-mids` для тогла выделения.
-  const hasFinish = !isStay && finishCity?.latitude != null && showSE;
+  const hasFinish = !isStay && finishCity?.latitude != null;
   const pts = [];
-  if (home?.latitude && showSE) pts.push({ id: 'home', lat: home.latitude, lng: home.longitude, label: null, kind: 'start', data: 'home' });
+  if (home?.latitude) pts.push({ id: 'home', lat: home.latitude, lng: home.longitude, label: null, kind: 'start', data: 'home' });
   let transitNo = 0;
   cities.forEach((c) => {
     if (c.latitude == null) return;
@@ -179,7 +181,7 @@ export default function FlowMap({
   // edit / resize re-frames. (TRIP-337, Pavel)
   const ptsKey = pts.map((p) => `${p.kind || ''}:${p.label}@${p.lat},${p.lng}`).join('|');
   const fitPositions = [];
-  if (home?.latitude && showSE) fitPositions.push([home.longitude, home.latitude]);
+  if (home?.latitude) fitPositions.push([home.longitude, home.latitude]);
   cities.forEach((c) => { if (c.latitude != null) fitPositions.push([c.longitude, c.latitude]); });
   if (hasFinish) fitPositions.push([finishCity.longitude, finishCity.latitude]);
   // ★ ЗАКРЫТАЯ ПЛОЩАДЬ В `fitKey` НЕ ВХОДИТ, и теперь по более простой причине,
@@ -327,12 +329,11 @@ export default function FlowMap({
 
       {revealed && (
         <MapControls
+          controls={['projection', 'theme']}
           projection={projection}
           onToggleProjection={() => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe'))}
           scheme={scheme}
           onToggleScheme={() => setScheme((s) => (s === 'DARK' ? 'LIGHT' : 'DARK'))}
-          showSE={showSE}
-          onToggleSE={() => setShowSE((v) => !v)}
         />
       )}
 
