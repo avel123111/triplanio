@@ -335,3 +335,59 @@ test('★ тот же перечень в .js МАСКИРУЕТ - вот цен
   });
   assert.equal(run(f).code, 0, 'литерал в .js читается как разметка - поэтому каталог и не .js');
 });
+
+/* ────────── имя класса, которое ставит РАЗМЕТКА ВНУТРИ ПЕРЕВОДА ─────────────
+ * Богатые строки лендинга/входа/приглашения везут HTML целиком, то есть класс
+ * пишется из JSON локали, а не из JSX. Без этого источника гард сообщал о
+ * сироте, которой нет: правило `.loc-pin` в `public/site.css`, а имя — в
+ * `src/lib/i18n/locales/<lang>/landing.json`. Живой случай, пойманный в CI.
+ *
+ * Вторая фикстура держит ГРАНИЦУ: считается ровно содержимое `class="…"`, а не
+ * все слова перевода. Возьми все — и любое английское слово («card», «row»)
+ * сделает одноимённый класс вечно живым, а гард ослепнет ровно на тех именах,
+ * ради которых написан. Это ослабление молчаливое, поэтому у него свой тест. */
+
+test('★★ класс ставится из class="…" в JSON локали — это ЖИВОЕ имя, не сирота', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/A.jsx': '<p dangerouslySetInnerHTML={{ __html: t("tg.m3") }} />',
+      'src/lib/i18n/locales/ru/landing.json':
+        '{\n  "tg.m3": "вот он:<span class=\\"loc-card\\"><span class=\\"loc-pin\\">x</span></span>"\n}\n',
+      'public/site.css': '.loc-card { display: flex; }\n.loc-pin { width: 26px; }\n',
+    },
+    // PR трогает ТОЛЬКО значение в CSS: имя попадает в удалённые строки диффа и
+    // становится кандидатом. Живым его делает JSON, больше ничто.
+    head: { 'public/site.css': '.loc-card { display: flex; }\n.loc-pin { width: 28px; }\n' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('★★ ГРАНИЦА: слово в тексте перевода класс НЕ оживляет — только class="…"', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/A.jsx': '<span className="vpill">x</span>',
+      'src/lib/i18n/locales/en/landing.json': '{\n  "hero": "Your trip, one vpill at a time"\n}\n',
+      'src/app.css': '.vpill { padding: 4px; }\n',
+    },
+    head: { 'src/A.jsx': '<span className="badge">x</span>' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /vpill/, r.out);
+});
+
+test('★ JSON ВНЕ папки локалей источником не считается', (t) => {
+  // Иначе «живым» станет любое имя из любого data-файла репозитория — а это
+  // те же все идентификаторы, только через другую дверь.
+  const f = fixture(t, {
+    base: {
+      'src/A.jsx': '<span className="vpill">x</span>',
+      'src/design/catalog.json': '{\n  "x": "<i class=\\"vpill\\"/>"\n}\n',
+      'src/app.css': '.vpill { padding: 4px; }\n',
+    },
+    head: { 'src/A.jsx': '<span className="badge">x</span>' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+});
