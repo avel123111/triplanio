@@ -228,6 +228,17 @@
   --rail-w:       70px;
   --header-h:     60px;
 
+  /* ЛОК-АП БРЕНДА: знак + вордмарк. Три числа, потому что раньше их было ноль —
+     зазор между знаком и словом СКЛАДЫВАЛСЯ сам, из чужих величин (TRIP-481).
+     Слот-якорь шире знака, значит справа от знака остаётся воздух
+     (--rail-w − --brand-mark)/2 = 16px; к нему прибавлялся --header-left-gap,
+     общий для всех детей `.app-header__left`. Итог 27px не назначал никто.
+     Теперь зазор — СВОЁ число, отмеряемое от края ЗНАКА, а бокс остаётся тем,
+     чем и был: якорем позиции. Разбор — у `.app-header__brand-name`. */
+  --brand-mark:      38px;   /* сторона знака в шапке; был литералом в четырёх местах */
+  --brand-gap:       12px;   /* зазор знак↔слово. ≈0,3 стороны знака (апрув Pavel, TRIP-481) */
+  --header-left-gap: 11px;   /* gap `.app-header__left`; вычитается из зазора, поэтому обязан быть читаем */
+
   /* Ширина плавающего виджета-панели — ОДИН источник на ВСЕХ потребителей.
      Читают её: колонка редактора/линзы/планировщика (`.mapshell__panel`, +
      замером JS), и глобальный ящик события (`.evd-drawer`) на ленте/бюджете/
@@ -1282,7 +1293,7 @@ h4,
    (16px = центровка 38px-лого в 70px-слоте). Трип не трогаем — там своё поле.
    visual-diff-exempt: .app-header:not(.app-header--trip):has(.app-header__gbtn) padding-left — «назад» вне трипа не прижата к краю */
 .app-header:not(.app-header--trip):has(.app-header__gbtn) { padding-left: var(--sp-7); }
-.app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
+.app-header__left  { display: flex; align-items: center; gap: var(--header-left-gap); min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 
 /* Round glass buttons (back / mobile burger) */
@@ -1307,11 +1318,23 @@ h4,
 /* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
    поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
 .app-header__logo {
-  width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center;
+  width: var(--brand-mark); height: var(--brand-mark); border-radius: var(--r-sm); display: grid; place-items: center;
   overflow: hidden;
 }
-.app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
-.app-header__brand-name { color: var(--ink); border: 0; background: transparent; padding: 0; cursor: pointer; }
+.app-header__logo img { width: var(--brand-mark); height: var(--brand-mark); display: block; border-radius: var(--r-sm); }
+/* ЗАЗОР ОТМЕРЯЕТСЯ ОТ КРАЯ ЗНАКА, А НЕ ОТ КРАЯ СЛОТА (TRIP-481).
+   Слово стоит СНАРУЖИ слота-якоря, поэтому по умолчанию получает два отступа
+   сразу: воздух внутри слота (--rail-w − --brand-mark)/2 и gap контейнера.
+   Оба вычитаются — остаётся ровно --brand-gap, число, которое можно назвать и
+   поменять. Формула, а не готовое отрицательное значение: тронешь --rail-w или
+   размер знака — зазор пересчитается сам, а магическое «-15px» молча разъехалось
+   бы с геометрией. Слово при этом заходит на прозрачную часть слота на 4px:
+   обе кнопки ведут на /trips, перехват клика безразличен.
+   visual-diff-exempt: .app-header__brand-name margin-left — зазор лок-апа стал своим числом вместо суммы чужих (TRIP-481, апрув Pavel) */
+.app-header__brand-name {
+  color: var(--ink); border: 0; background: transparent; padding: 0; cursor: pointer;
+  margin-left: calc(var(--brand-gap) - (var(--rail-w) - var(--brand-mark)) / 2 - var(--header-left-gap));
+}
 /* Второе лицо слота — стрелка выхода из трипа. Лежит в том же боксе поверх
    знака и проступает по наведению; правило контекстное намеренно: в шапке слот
    это ссылка на бренд, в рейле — выход из трипа, и отдельной круглой кнопки
