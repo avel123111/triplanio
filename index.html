@@ -130,7 +130,7 @@
     </script>
     <style>
       .splash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;
-        align-items:center;justify-content:center;gap:22px;background:#f7f9fa;
+        align-items:center;justify-content:center;gap:11px;background:#f7f9fa;
         transition:opacity .32s ease}
       :root[data-theme="dark"] .splash{background:#0c0e1c}
       /* Уход. Узел снимает `hideSplash()` (src/lib/splash.js) — там же продублирована
@@ -138,8 +138,8 @@
          это лишний слой, поэтому числа связаны комментарием с обеих сторон. */
       .splash[data-out]{opacity:0;pointer-events:none}
 
-      .splash__mark{display:block;width:132px;height:132px}
-      .splash__word{display:block;width:126px;height:auto;fill:#272433}
+      .splash__mark{display:block;width:66px;height:66px}
+      .splash__word{display:block;width:63px;height:auto;fill:#272433}
       :root[data-theme="dark"] .splash__word{fill:#EDECF4}
 
       /* Знак собирается каскадом: плашка, затем четыре фигуры по очереди
