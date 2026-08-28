@@ -15,6 +15,15 @@
  * matching guard 2e. To legitimately add a new shell, add its path to ALLOW below
  * in the same PR — which forces the contract review to happen on purpose.
  *
+ * Second policy (TRIP-321 · унификация шторок): THE MOBILE SHEET IS WRITTEN
+ * ONCE. `vaul` (the drawer engine behind every bottom sheet) may be imported
+ * ONLY by the seam `src/components/ui/sheetShell.jsx`. Четыре файла держали
+ * свою копию `Drawer.Root → Portal → Overlay → Content` — а вместе с ней свою
+ * копию `repositionInputs={false}`, своей подложки и своего грипа; пятую копию
+ * теперь нельзя завести не заметив: прямой импорт vaul где угодно ещё роняет
+ * PR. Исключение по построению — `ui/PeekSheet.jsx`: он НЕ на vaul (немодальный
+ * шит с детентами, разбор в его шапке), поэтому в это правило не упирается.
+ *
  * Exit: 0 ok, 1 violation, 2 internal error.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -22,6 +31,7 @@ import { join } from 'node:path';
 
 const ROOT = 'src';
 const RADIX_IMPORT = /from\s+['"]@radix-ui\/react-(alert-)?dialog['"]/;
+const VAUL_IMPORT = /from\s+['"]vaul['"]/;
 
 // Second invariant (TRIP-202): a composed <DialogContent> (the design-system content
 // from ui/dialog, re-exported via @/design) must be NAMED — a <DialogTitle> has to
@@ -37,10 +47,15 @@ const TITLE_PRESENT = /<DialogTitle[\s>]/;
 // a11y contract for its surface (Title + Description opt-out + keepFocusInDialog).
 const ALLOW = new Set([
   'src/components/ui/dialog.jsx',        // centred dialog → bottom-sheet (main shell)
-  'src/components/ui/Sheet.jsx',         // mobile bottom-sheet for menus / pickers
   'src/components/ui/alert-dialog.jsx',  // AlertDialog primitive (confirm)
-  'src/components/common/EventDrawerHost.jsx', // event/city drawer + sheet
-  'src/components/stats/VisitPanel.jsx', // stats visit side-panel
+  'src/components/stats/VisitPanel.jsx', // stats visit side-panel (desktop slide-over)
+]);
+
+// Единственный дом vaul. Список из одного имени — это и есть правило: движение
+// шторки (жест, слайд, подложка, клавиатура, грип) живёт в одном месте, а
+// поверхности приносят только свой скин.
+const VAUL_ALLOW = new Set([
+  'src/components/ui/sheetShell.jsx',    // sheet seam: Root + Surface + Grip
 ]);
 
 function walk(dir, out = []) {
@@ -56,10 +71,12 @@ function walk(dir, out = []) {
 try {
   const offenders = [];
   const nameless = [];
+  const vaulOffenders = [];
   for (const file of walk(ROOT)) {
     const rel = file.split('\\').join('/');
     const src = readFileSync(file, 'utf8');
     if (!ALLOW.has(rel) && RADIX_IMPORT.test(src)) offenders.push(rel);
+    if (!VAUL_ALLOW.has(rel) && VAUL_IMPORT.test(src)) vaulOffenders.push(rel);
     // Any file that renders <DialogContent> must also carry a <DialogTitle>.
     if (CONTENT_USE.test(src) && !TITLE_PRESENT.test(src)) nameless.push(rel);
   }
@@ -74,6 +91,17 @@ try {
     process.exit(1);
   }
 
+  if (vaulOffenders.length) {
+    console.error('✗ 2f dialog-radix guard: raw `vaul` import outside the sheet seam:');
+    for (const f of vaulOffenders) console.error(`    ${f}`);
+    console.error('\nМобильная шторка пишется ОДИН раз. Композируй шов src/components/ui/sheetShell.jsx');
+    console.error('(<SheetRoot> + <SheetSurface> + <SheetGrip>) и приноси только свой класс поверхности —');
+    console.error('так делают ui/Sheet (.sheet), ui/LpSheet (.lp-sheet), ui/dialog (.dlg-modal) и');
+    console.error('stats/VisitPanel. Другой АРХЕТИП поверхности (немодальный шит с детентами) — это');
+    console.error('ui/PeekSheet, и он не на vaul. Новый дом движка добавляется в VAUL_ALLOW тем же PR.');
+    process.exit(1);
+  }
+
   if (nameless.length) {
     console.error('✗ 2f dialog-radix guard: <DialogContent> without a <DialogTitle> (no accessible name):');
     for (const f of nameless) console.error(`    ${f}`);
@@ -84,7 +112,7 @@ try {
     process.exit(1);
   }
 
-  console.log(`✓ 2f dialog-radix guard: raw Radix import confined to ${ALLOW.size} shells; every DialogContent is named`);
+  console.log(`✓ 2f dialog-radix guard: raw Radix import confined to ${ALLOW.size} shells, vaul to ${VAUL_ALLOW.size} seam; every DialogContent is named`);
   process.exit(0);
 } catch (e) {
   console.error('2f dialog-radix guard: internal error', e);
