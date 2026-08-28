@@ -5,7 +5,7 @@ import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { mapShellInsets, slotChangeDelay } from '@/lib/mapShellInsets';
+import { mapShellInsets, mapSlotPx, slotChangeDelay } from '@/lib/mapShellInsets';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
 
@@ -123,7 +123,12 @@ export function MapShell({
   // обновлятель `setState` обязан быть чистым — React вправе позвать его
   // повторно, и таймер завёлся бы дважды.
   const appliedRef = useRef(0);
-  const applySheetPx = useCallback((next) => {
+  // Шит отдаёт СВОЮ высоту, слоту нужна ДРУГАЯ: во время жеста — крайняя (чтобы
+  // не открылась полоса фона), на осадке — не выше среднего детента (с середины
+  // вверх шит закрывает экран целиком). Правило чистое и закрыто тестами —
+  // `mapSlotPx`, там же разбор с числами.
+  const applySheetPx = useCallback((px, meta) => {
+    const next = mapSlotPx({ sheetPx: px, stops: meta?.stops, dragging: meta?.dragging });
     const prev = appliedRef.current;
     if (next === prev) return;
     clearTimeout(applyTimer.current);

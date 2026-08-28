@@ -93,7 +93,7 @@ function viewportTop() {
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
  *   detents?: number[],
- *   onHeightChange?: (px: number) => void,
+ *   onHeightChange?: (px: number, meta: { stops: number[], dragging: boolean }) => void,
  *   label: string,
  *   className?: string,
  * }} p
@@ -298,7 +298,21 @@ export function PeekSheet({
   // Высоту сообщаем наверх ТОЛЬКО зафиксированную (не покадрово во время жеста):
   // ею шелл считает закрытую площадь карты, а камера обязана ехать после осадки,
   // а не драться с пальцем.
-  useEffect(() => { onHeightChange && onHeightChange(sheetH); }, [sheetH, onHeightChange]);
+  // ★ ВМЕСТЕ С ВЫСОТОЙ ОТДАЁМ ДЕТЕНТЫ И ФАКТ ЖЕСТА, и это не «на всякий случай».
+  // Слоту карты нужна не эта высота, а ДВЕ производные от неё:
+  //   · пока идёт жест — САМЫЙ БОЛЬШОЙ размер карты (нижний детент), иначе шит
+  //     уезжает вниз по холсту, который ещё не вырос, и между ними открывается
+  //     полоса фона на всё время движения пальца;
+  //   · на осадке — высота, но НЕ ВЫШЕ среднего детента: с середины вверх шит
+  //     закрывает экран целиком, и трогать карту под ним незачем.
+  // Считать это здесь нельзя (шит не знает про карту), а вычислять детенты
+  // заново на той стороне значит завести вторую копию `resolveDetents`.
+  // Покадрово во время жеста высота НЕ шлётся намеренно: `dragging` булев, и
+  // подписчик получает ровно два события на жест, а не шестьдесят.
+  const dragging = dragY != null;
+  useEffect(() => {
+    onHeightChange && onHeightChange(sheetH, { stops, dragging });
+  }, [sheetH, stops, dragging, onHeightChange]);
 
   const style = {
     '--sheet-y': (dragY ?? restY) + 'px',
