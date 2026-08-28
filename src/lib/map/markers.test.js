@@ -1,7 +1,7 @@
 // @ts-check
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByLocation, markerZoomScale, markerZoomSizeExpr, cityPoints, MARKER_ZOOM_SCALE } from './markers.js';
+import { groupByLocation, markerZoomScale, markerZoomSizeExpr, markerSurfaceWeight, cityPoints, MARKER_REF_WIDTH, MARKER_ZOOM_SCALE } from './markers.js';
 import { isMapAlive } from './alive.js';
 
 // groupByLocation теперь несёт `ids` — единый источник для `data-mids`, которым
@@ -132,4 +132,44 @@ test('cityPoints: номер несут ТОЛЬКО города, роли — 
 test('cityPoints: пустой/отсутствующий вход — пустой список, не падение', () => {
   assert.deepEqual(cityPoints([]), []);
   assert.deepEqual(cityPoints(undefined), []);
+});
+
+// ── вес метки под размер полотна ─────────────────────────────────────────────
+// Дефект, который это сторожит, тоже молчит: метки продолжают рисоваться, просто
+// на широком полотне весят вдвое меньше, чем на эталонном, — и «не видно» ловится
+// только глазами на готовой картинке.
+
+test('markerSurfaceWeight: эталонное полотно = канон, вдвое шире = вдвое тяжелее', () => {
+  assert.equal(markerSurfaceWeight(MARKER_REF_WIDTH), 1);
+  assert.equal(markerSurfaceWeight(MARKER_REF_WIDTH * 2), 2);
+});
+
+test('markerSurfaceWeight: узкое полотно НЕ измельчает метки ниже канона', () => {
+  // Ниже эталона правило перестаёт действовать: узкая карта — повод оставить
+  // канон, а не ужать пин до нечитаемости.
+  assert.equal(markerSurfaceWeight(MARKER_REF_WIDTH / 3), 1);
+  assert.equal(markerSurfaceWeight(0), 1);
+  assert.equal(markerSurfaceWeight(undefined), 1);
+});
+
+test('markerZoomSizeExpr: вес множит амплитуду и НЕ трогает стопы', () => {
+  // Разделение несущее: стопы отвечают на «какой зум у финала», вес — на
+  // «насколько жирно рисовать». Смешать их значило бы двигать кадр размером.
+  const s = 0.25;
+  const plain = markerZoomSizeExpr(s);
+  const heavy = markerZoomSizeExpr(s, 2);
+  assert.equal(heavy[3], plain[3]);
+  assert.equal(heavy[5], plain[5]);
+  assert.equal(heavy[4], plain[4] * 2);
+  assert.equal(heavy[6], plain[6] * 2);
+});
+
+test('вес полотна выравнивает метку карточки с меткой приложения', () => {
+  // Смысл всего правила одним числом: доля пина от ширины карты на слоте
+  // карточки обязана сойтись с долей на эталонной карте приложения.
+  const slot = 810;
+  const share = (px, w) => px / w;
+  const canon = share(29, MARKER_REF_WIDTH);
+  const card = share(29 * markerSurfaceWeight(slot), slot);
+  assert.ok(Math.abs(card - canon) < 1e-9, `карточка ${card} != канон ${canon}`);
 });

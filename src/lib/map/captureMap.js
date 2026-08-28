@@ -25,7 +25,7 @@
 import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, loadMapboxGl } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { routeColor } from '@/lib/map/mapTokens';
-import { cityPoints, groupByLocation, markerZoomSizeExpr } from '@/lib/map/markers';
+import { cityPoints, groupByLocation, markerZoomSizeExpr, markerSurfaceWeight } from '@/lib/map/markers';
 import { pinImageData, PIN_DPR } from '@/lib/map/pinImage';
 import { SOLID_WIDTH, DASHED_WIDTH } from '@/lib/map/mapStyle';
 import { sortVisits } from '@/lib/validation';
@@ -68,9 +68,10 @@ function pinSpots(ordered) {
   }));
 }
 
-/** Ключ иконки: спот с тем же составом ролей/номеров и в той же схеме = та же
- *  картинка, печь заново нечего. */
-const pinKey = (spot, scheme) => `sc-pin:${scheme}:${spot.cells.map((c) => `${c.kind || ''}#${c.label ?? ''}`).join('|')}`;
+/** Ключ иконки: спот с тем же составом ролей/номеров, в той же схеме и в том же
+ *  разрешении = та же картинка, печь заново нечего. Разрешение — часть ключа: на
+ *  другом полотне тот же пин печётся из другого числа пикселей. */
+const pinKey = (spot, scheme, dpr) => `sc-pin:${scheme}:${dpr}:${spot.cells.map((c) => `${c.kind || ''}#${c.label ?? ''}`).join('|')}`;
 
 /**
  * Испечь иконки пинов и уложить точки в источник. Асинхронно: иконка ждёт
@@ -78,18 +79,23 @@ const pinKey = (spot, scheme) => `sc-pin:${scheme}:${spot.cells.map((c) => `${c.
  * в атласе — иначе mapbox ругается `Image "…" could not be loaded` и рисует
  * пустоту (та же грабля, что была у прежних бейджей с именами городов).
  */
-async function drawPinLayer(map, ordered, scheme, pinScale) {
+async function drawPinLayer(map, ordered, scheme, shrink, weight) {
   const spots = pinSpots(ordered);
+  // Тяжёлая метка = растянутая иконка: при весе ~2 `icon-size` тянет 58-пиксельный
+  // исходник на пин шириной под 60 px, и в расшариваемой картинке это мыло.
+  // Печём сразу под нужное число пикселей — логический размер не меняется,
+  // пиксели и `pixelRatio` растут вместе.
+  const dpr = Math.ceil(PIN_DPR * weight);
   const keys = [];
   for (const spot of spots) {
-    const key = pinKey(spot, scheme);
+    const key = pinKey(spot, scheme, dpr);
     keys.push(key);
     if (map.hasImage(key)) continue;
     // Последовательно, а не Promise.all: споты делят кэш глифов, и параллельный
     // запуск печёт одну и ту же картинку по нескольку раз.
-    const { data } = await pinImageData(spot.cells, { scheme });
+    const { data } = await pinImageData(spot.cells, { scheme, dpr });
     if (!map.style) return; // карту снесли, пока пекли
-    if (!map.hasImage(key)) map.addImage(key, data, { pixelRatio: PIN_DPR });
+    if (!map.hasImage(key)) map.addImage(key, data, { pixelRatio: dpr });
   }
   const data = {
     type: 'FeatureCollection',
@@ -108,7 +114,7 @@ async function drawPinLayer(map, ordered, scheme, pinScale) {
       source: PIN_SOURCE,
       layout: {
         'icon-image': ['get', 'pin'],
-        'icon-size': markerZoomSizeExpr(pinScale),
+        'icon-size': markerZoomSizeExpr(shrink, weight),
         'icon-anchor': 'center',
         // Живые карты показывают ВСЕ пины и никогда их не прячут — mapbox по
         // умолчанию скрывает пересекающиеся символы, и на плотном маршруте
@@ -125,7 +131,12 @@ async function drawPinLayer(map, ordered, scheme, pinScale) {
  * Возвращает промис ПИНОВ (иконки пекутся асинхронно) — снимок обязан его
  * дождаться, иначе в PNG уедет карта без городов.
  */
-export function drawTripRoute(map, ordered, legs, { scheme, pinScale = 1 } = {}) {
+export function drawTripRoute(map, ordered, legs, { scheme, surfaceWidth = 0, shrink = 1 } = {}) {
+  // Вес метки — от ширины ФИНАЛЬНОГО полотна (слот карточки), а усадка `shrink`
+  // — от того, во сколько раз мельче его калька. Первое отвечает «насколько
+  // жирно рисовать», второе — «во сколько раз это уменьшить, чтобы превью
+  // осталось превью»; путать их нельзя, поэтому и приезжают они порознь.
+  const weight = markerSurfaceWeight(surfaceWidth);
   // Подпись маршрута СЧИТАЕТСЯ ИЗ ПЛЕЧ, а не фиксирована строкой: кэш линий
   // сравнивает именно её и на совпадение НЕ перерисовывает. С постоянной
   // подписью живое превью карточки не могло сменить состав маршрута — точки
@@ -135,7 +146,7 @@ export function drawTripRoute(map, ordered, legs, { scheme, pinScale = 1 } = {})
   drawRouteLinesCached(map, sig, legs, {
     dashedId: LINE_IDS.dashed, solidId: LINE_IDS.solid,
     solidColor: color, dashedColor: color,
-    solidWidth: SOLID_WIDTH, dashedWidth: DASHED_WIDTH,
+    solidWidth: SOLID_WIDTH * weight * shrink, dashedWidth: DASHED_WIDTH * weight * shrink,
   });
   // Кэш линий сравнивает ГЕОМЕТРИЮ (подпись плеч) и на совпадении не
   // перерисовывает вообще ничего — а цвет зависит от СХЕМЫ КАРТЫ, которая
@@ -145,7 +156,7 @@ export function drawTripRoute(map, ordered, legs, { scheme, pinScale = 1 } = {})
   [LINE_IDS.solid, LINE_IDS.dashed].forEach((id) => {
     try { if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', color); } catch { /* слоя нет */ }
   });
-  return drawPinLayer(map, ordered, scheme, pinScale).catch((e) => { console.error('card pins failed', e); });
+  return drawPinLayer(map, ordered, scheme, shrink, weight).catch((e) => { console.error('card pins failed', e); });
 }
 
 // ---- browser-side card rendering (TRIP-193 Ф2) ------------------------------
@@ -239,7 +250,7 @@ export async function renderCardMapPng({
       try {
         // Резолв промиса пинов сам по себе кадра не рисует — просим перерисовку,
         // чтобы idle пришёл ещё раз уже с пинами на канвасе.
-        drawTripRoute(map, ordered, legs, { scheme })
+        drawTripRoute(map, ordered, legs, { scheme, surfaceWidth: width })
           .then(() => { pinsDone = true; try { map.triggerRepaint(); } catch { /* карты уже нет */ } });
         drew = true;
       } catch { /* retry next idle */ }

@@ -24,9 +24,15 @@ import { schemeTokens } from './mapTokens';
 // ev-transfer) и заливка ядра. Раздаются пробнику инлайном, дальше CSS.
 const PIN_TOKENS = ['--brand', '--surface', '--success', '--warm', '--ev-transfer'];
 
-// Растровое разрешение иконки. Иконка отдаётся mapbox с этим же `pixelRatio`,
-// поэтому на карте она занимает СВОИ логические пиксели (29px ядра), но остаётся
-// резкой на ретине и при съёмке карточки в полном разрешении.
+// Растровое разрешение иконки ПО УМОЛЧАНИЮ. Иконка отдаётся mapbox с этим же
+// `pixelRatio`, поэтому на карте она занимает СВОИ логические пиксели (29px
+// ядра), но остаётся резкой на ретине.
+//
+// Полотно, которое рисует метки тяжелее канона (`markerSurfaceWeight` — карта
+// карточки), обязано просить БОЛЬШЕ: там `icon-size` растягивает иконку почти
+// вдвое, и исходника в 58 px на пин шириной 56 px уже не хватает — в
+// расшариваемой картинке это видно как мыло. Множитель приезжает аргументом,
+// логический размер от него не меняется (пиксели и `pixelRatio` растут вместе).
 export const PIN_DPR = 2;
 
 // Поле вокруг пина под тень (логические px). Тень `.tmk__core` — blur 10 со
@@ -163,10 +169,11 @@ function firstShadow(boxShadow) {
  * слепленный пилюль, роль-глифы и номера получаются сами собой.
  *
  * @param {Array<{kind?: string, label?: any}>} cells
- * @param {{ scheme?: string }} opts — scheme: 'LIGHT' | 'DARK' (тема КАРТЫ)
+ * @param {{ scheme?: string, dpr?: number }} opts — scheme: 'LIGHT' | 'DARK' (тема
+ *   КАРТЫ); dpr: растровое разрешение, оно же `pixelRatio` для `addImage`.
  * @returns {Promise<{ data: ImageData, w: number, h: number }>}
  */
-export async function pinImageData(cells, { scheme } = {}) {
+export async function pinImageData(cells, { scheme, dpr = PIN_DPR } = {}) {
   if (document?.fonts?.ready) { try { await document.fonts.ready; } catch { /* без ожидания */ } }
 
   const el = createMarkerEl(cells); // без колбэков — пробник не кликают
@@ -180,10 +187,10 @@ export async function pinImageData(cells, { scheme } = {}) {
   const W = m.w + PIN_PAD * 2;
   const H = m.h + PIN_PAD * 2;
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(W * PIN_DPR);
-  canvas.height = Math.round(H * PIN_DPR);
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
   const ctx = canvas.getContext('2d');
-  ctx.scale(PIN_DPR, PIN_DPR);
+  ctx.scale(dpr, dpr);
 
   // Ядро: тень → заливка → кольцо. Обводка идёт ПО СЕРЕДИНЕ линии, поэтому путь
   // ужимаем на полтолщины — так внешний край кольца совпадает с краем блока,
@@ -209,7 +216,7 @@ export async function pinImageData(cells, { scheme } = {}) {
   ctx.clip();
   const cy = PIN_PAD + m.h / 2;
   const glyphs = await Promise.all(m.cells.map((c) => (
-    c.glyph ? glyphImage(c.glyph, c.color, Math.max(1, Math.round(c.glyphPx * PIN_DPR))) : null
+    c.glyph ? glyphImage(c.glyph, c.color, Math.max(1, Math.round(c.glyphPx * dpr))) : null
   )));
   m.cells.forEach((c, i) => {
     const cx = PIN_PAD + c.x + c.w / 2;

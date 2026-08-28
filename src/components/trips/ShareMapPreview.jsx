@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, loadMapboxGl } from '@/lib/mapbox';
 import { buildRoute, drawTripRoute, rescaleZoom, PIN_LAYER, LINE_IDS } from '@/lib/map/captureMap';
-import { markerZoomSizeExpr } from '@/lib/map/markers';
+import { markerZoomSizeExpr, markerSurfaceWeight } from '@/lib/map/markers';
 import { SOLID_WIDTH, DASHED_WIDTH } from '@/lib/map/mapStyle';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Skeleton } from '@/design/index';
@@ -43,11 +43,14 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   // Preview shrink factor: the preview canvas is far smaller than the full card,
   // so fixed-px pins/lines are scaled by (preview width / card width) to keep
   // preview == final.
+  // `sw` — ширина ФИНАЛЬНОГО полотна карты (слот карточки): от неё берётся вес
+  // меток, а от отношения к ней — усадка кальки. Два разных вопроса, поэтому
+  // отдаём оба числа, а не одно.
   const currentScale = () => {
     const cw = holderRef.current?.clientWidth || 0;
     const sw = slotRef.current?.w || cardWRef.current || 0;
     const s = cw && sw ? Math.min(1.5, Math.max(0.15, cw / sw)) : 1;
-    return { cw, s };
+    return { cw, s, sw, weight: markerSurfaceWeight(sw) };
   };
   const [scheme, setScheme] = useState(camera?.scheme || 'LIGHT');
   // Схема в рефе: её читают функции create-once эффекта (их замыкание видит
@@ -180,20 +183,20 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       // full-res card (TRIP-193). Re-applied on every settle so it self-corrects once
       // the slot geometry arrives after the overlay loads (hole resizes → idle → here).
       const applyWeights = () => {
-        const { cw, s } = currentScale();
+        const { cw, s, weight } = currentScale();
         if (!cw) return;
-        if (map.getLayer(LINE_IDS.solid)) map.setPaintProperty(LINE_IDS.solid, 'line-width', SOLID_WIDTH * s);
-        if (map.getLayer(LINE_IDS.dashed)) map.setPaintProperty(LINE_IDS.dashed, 'line-width', DASHED_WIDTH * s);
-        // Пин масштабируется тем же множителем, но ВНУТРИ зум-выражения: сам
-        // зум-зависимый размер (как на живых картах) остаётся за mapbox.
-        if (map.getLayer(PIN_LAYER)) map.setLayoutProperty(PIN_LAYER, 'icon-size', markerZoomSizeExpr(s));
+        if (map.getLayer(LINE_IDS.solid)) map.setPaintProperty(LINE_IDS.solid, 'line-width', SOLID_WIDTH * weight * s);
+        if (map.getLayer(LINE_IDS.dashed)) map.setPaintProperty(LINE_IDS.dashed, 'line-width', DASHED_WIDTH * weight * s);
+        // Пин масштабируется теми же двумя множителями, но ВНУТРИ зум-выражения:
+        // сам зум-зависимый размер (как на живых картах) остаётся за mapbox.
+        if (map.getLayer(PIN_LAYER)) map.setLayoutProperty(PIN_LAYER, 'icon-size', markerZoomSizeExpr(s, weight));
       };
       const drawIfNeeded = () => {
         if (!pts.length) return;
         // На уже нарисованном маршруте только доводим веса под текущий размер; фит
         // зовётся лишь по реальным поводам (первый рендер ниже, resize, смена камеры).
         if (map.getSource(LINE_IDS.solid)) { applyWeights(); return; }
-        try { drawTripRoute(map, ordered, legs, { scheme: schemeRef.current, pinScale: currentScale().s }); } catch (err) { console.error('share preview draw failed', err); }
+        try { drawTripRoute(map, ordered, legs, { scheme: schemeRef.current, surfaceWidth: currentScale().sw, shrink: currentScale().s }); } catch (err) { console.error('share preview draw failed', err); }
         applyWeights();
         prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
         fit();
@@ -213,7 +216,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
         ({ ordered, legs } = buildRoute(visits, transfers, nextSe));
         pts = ordered.map((v) => [v.longitude, v.latitude]);
         if (!pts.length) return;
-        try { drawTripRoute(map, ordered, legs, { scheme: schemeRef.current, pinScale: currentScale().s }); } catch (err) { console.error('share preview redraw failed', err); }
+        try { drawTripRoute(map, ordered, legs, { scheme: schemeRef.current, surfaceWidth: currentScale().sw, shrink: currentScale().s }); } catch (err) { console.error('share preview redraw failed', err); }
         applyWeights();
         prewarmRoadGeometry(legs);
         fit();
