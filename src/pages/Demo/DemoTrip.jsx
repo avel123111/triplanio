@@ -138,7 +138,6 @@ export default function DemoTrip() {
                 transfers={DEMO_TRANSFERS}
                 colorScheme="LIGHT"
                 initialProjection="mercator"
-                mapControls={false}
                 showStartEnd
                 active
               />

@@ -2,7 +2,7 @@
 // Run: npm test  (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { uniqueCityCount, uniqueCountryCount, uniqueCountryCodes, transitVisits, isTransitVisit, uniqueTransitCities, cityLabel, localizeVisits } from './trip-cities.js';
+import { uniqueCityCount, uniqueCountryCount, uniqueCountryCodes, transitVisits, isTransitVisit, uniqueTransitCities, cityLabel, localizeVisits, transitSpan } from './trip-cities.js';
 
 // A trip: home anchor (start) → Lisbon → Porto → a pass-through waypoint →
 // Madrid → back to Lisbon → home anchor (end). Anchors + waypoint must not
@@ -150,4 +150,46 @@ test('empty / invalid input -> 0', () => {
   assert.equal(uniqueCityCount([]), 0);
   assert.equal(uniqueCityCount(undefined), 0);
   assert.equal(uniqueCountryCount(null), 0);
+});
+
+// ── transitSpan: что показывает кнопка «старт/финиш» ──────────────────────────
+// Маршрут «из дома»: старт-якорь → пересадка ПО ДОРОГЕ → Лиссабон → пересадка
+// ВНУТРИ маршрута → Порту → пересадка НА ОБРАТНОМ пути → финиш-якорь.
+const SPAN_ROUTE = [
+  { id: 'a0', kind: 'start' },
+  { id: 'w0', kind: 'waypoint' },   // до первого transit — не маршрут
+  { id: 'c1', kind: 'transit' },
+  { id: 'w1', kind: 'waypoint' },   // внутри маршрута — часть его
+  { id: 'c2', kind: 'transit' },
+  { id: 'w2', kind: 'waypoint' },   // после последнего transit — не маршрут
+  { id: 'a1', kind: 'end' },
+];
+
+test('transitSpan: отрезок от первого transit до последнего включительно', () => {
+  assert.deepEqual(transitSpan(SPAN_ROUTE).map((v) => v.id), ['c1', 'w1', 'c2']);
+});
+
+test('transitSpan: якоря и внешние waypoint отрезаны с обеих сторон', () => {
+  const ids = transitSpan(SPAN_ROUTE).map((v) => v.id);
+  assert.equal(ids.includes('a0'), false);
+  assert.equal(ids.includes('a1'), false);
+  assert.equal(ids.includes('w0'), false); // ровно этого старый фильтр не делал
+  assert.equal(ids.includes('w2'), false);
+});
+
+test('transitSpan: один город — сам себе отрезок', () => {
+  const one = [{ id: 'a0', kind: 'start' }, { id: 'c1', kind: 'transit' }, { id: 'a1', kind: 'end' }];
+  assert.deepEqual(transitSpan(one).map((v) => v.id), ['c1']);
+});
+
+test('transitSpan: без transit показывать нечего', () => {
+  assert.deepEqual(transitSpan([{ id: 'a0', kind: 'start' }, { id: 'w0', kind: 'waypoint' }]), []);
+  assert.deepEqual(transitSpan([]), []);
+  assert.deepEqual(transitSpan(null), []);
+});
+
+test('transitSpan: не мутирует вход', () => {
+  const src = SPAN_ROUTE.slice();
+  transitSpan(src);
+  assert.equal(src.length, SPAN_ROUTE.length);
 });

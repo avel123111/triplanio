@@ -322,7 +322,10 @@ export default function PublicTrip() {
                   transfers={transfers}
                   colorScheme="LIGHT"
                   initialProjection="globe"
-                  mapControls={false}
+                  /* Читателю публичной ссылки — два контрола: проекция и
+                     старт-финиш. Темы тут нет намеренно: у неавторизованной зоны
+                     нет тёмной темы, и карта следует ей же. */
+                  mapControls={['projection', 'se']}
                   active
                   hoveredVisitId={hoveredId}
                   selectedVisitId={selectedId}
