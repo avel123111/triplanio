@@ -98,21 +98,52 @@ test('без оси решения нет', () => {
 });
 
 // ── куда улететь ─────────────────────────────────────────────────────────────
-test('по горизонтали хватает собственной ширины с запасом', () => {
-  const r = { width: 400, bottom: 80 };
-  assert.ok(swipeExit('right', r).x > 400);
-  assert.ok(swipeExit('left', r).x < -400);
-  assert.equal(swipeExit('right', r).y, 0);
+// Геометрия карточки в покое на телефоне: дека прижата к верху, высота ~60.
+const REST = { left: 12, right: 378, bottom: 128 };
+const VP = { width: 390 };
+/** Прямоугольник карточки, утащенной вверх на `d`. */
+const draggedUp = (d) => ({ ...REST, bottom: REST.bottom - d });
+/** …и утащенной вбок на `d` (+ вправо). */
+const draggedX = (d) => ({ ...REST, left: REST.left + d, right: REST.right + d });
+
+test('★★ РЕГРЕССИЯ: путь наружу НЕ ЗАВИСИТ от того, насколько далеко утащили', () => {
+  // Первая редакция считала от прямоугольника без пути, и ответ гулял:
+  // 20px → -140 (летит), 80px → -80 (стоит), 110px → -50 (прыгает назад).
+  const ends = [10, 20, 60, 80, 110].map(
+    (d) => swipeExit('up', { x: 0, y: -d }, draggedUp(d), VP).y,
+  );
+  assert.equal(new Set(ends).size, 1, `все должны приехать в одну точку, а приехали в ${ends}`);
 });
 
-test('★ вверх считается от НИЖНЕЙ кромки: карточка из середины деки обязана уйти целиком', () => {
-  const mid = swipeExit('up', { width: 400, bottom: 240 });
-  // собственной высоты (60) не хватило бы — она встала бы на виду
-  assert.ok(mid.y < -240, 'улетает дальше своей нижней кромки');
-  assert.equal(mid.x, 0);
+test('★★ РЕГРЕССИЯ: карточка НИКОГДА не едет назад — только дальше от края', () => {
+  for (const d of [0, 5, 40, 80, 110, 160, 400]) {
+    assert.ok(swipeExit('up', { x: 0, y: -d }, draggedUp(d), VP).y <= -d, `вверх, утащено ${d}`);
+    assert.ok(swipeExit('left', { x: -d, y: 0 }, draggedX(-d), VP).x <= -d, `влево, утащено ${d}`);
+    assert.ok(swipeExit('right', { x: d, y: 0 }, draggedX(d), VP).x >= d, `вправо, утащено ${d}`);
+  }
 });
 
-test('без направления смещения нет', () => {
-  assert.deepEqual(swipeExit(null, { width: 400, bottom: 80 }), { x: 0, y: 0 });
-  assert.deepEqual(swipeExit('up'), { x: 0, y: -32 });
+test('★ уже за краем — остаётся на месте, а не откатывается', () => {
+  // карточка полностью выше вьюпорта: остаток до края нулевой
+  const e = swipeExit('up', { x: 0, y: -400 }, { ...REST, bottom: -100 }, VP);
+  assert.equal(e.y, -400);
+});
+
+test('вверх уводит нижнюю кромку за верх экрана', () => {
+  const travelY = -30;
+  const rect = draggedUp(30);
+  const e = swipeExit('up', { x: 0, y: travelY }, rect, VP);
+  // сдвиг относительно текущего положения = e.y - travelY
+  assert.ok(rect.bottom + (e.y - travelY) < 0, 'нижняя кромка ушла выше нуля');
+});
+
+test('вбок уводит соответствующую кромку за свой край экрана', () => {
+  const l = swipeExit('left', { x: 0, y: 0 }, REST, VP);
+  assert.ok(REST.right + l.x < 0, 'правая кромка ушла левее нуля');
+  const r = swipeExit('right', { x: 0, y: 0 }, REST, VP);
+  assert.ok(REST.left + r.x > VP.width, 'левая кромка ушла правее экрана');
+});
+
+test('без направления путь не меняется', () => {
+  assert.deepEqual(swipeExit(null, { x: 7, y: -3 }, REST, VP), { x: 7, y: -3 });
 });
