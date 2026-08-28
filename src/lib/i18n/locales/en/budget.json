@@ -20,6 +20,8 @@
   "cities_empty_desc": "City expenses appear after the first expense with a city set",
   "color_label": "Color",
   "custom_short": "custom",
+  "delete_expense_desc": "This can't be undone. The expense will disappear from the trip budget and from the shared totals.",
+  "delete_expense_q": "Delete this expense?",
   "deleting": "Deleting…",
   "desc_ph": "E.g. \"Dinner at LX Factory\"",
   "donut_total": "total",

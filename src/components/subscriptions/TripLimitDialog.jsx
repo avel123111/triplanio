@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/design/icons';
-import { Badge, Btn, Card, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Badge, Btn, Card, IconBtn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isActiveTripCapReached } from '@/lib/limits';
@@ -100,52 +100,85 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="dlg--wide" aria-describedby={undefined}>
-        <div style={{ padding: 20, overflowY: 'auto', maxHeight: 'calc(90vh - 32px)', WebkitOverflowScrolling: 'touch' }}>
-          {/* Hero */}
-          <div style={{ position: 'relative', borderRadius: 'var(--r-btn)', overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
-            background: 'var(--pro-hero-grad)', color: 'white' }}>
-            <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>PRO</Badge>
-            <DialogTitle asChild>
-              <div className="t-heading" style={{ marginBottom: 6 }}>
-                {t('sub.limit_hero_title')}
+        {/* ★ ШАПКА ЗДЕСЬ — ГЕРОЙ, И ЭТО ЗАКОННАЯ ВТОРАЯ АНАТОМИЯ ОКНА, а не
+            обход канона: ровно так же устроены окна события (`.lp-h--ev` —
+            тонированная градиентом полоса с заголовком). Сводить её к канон-
+            шапке значило бы разменять обещание («Планируй сколько угодно») на
+            строку 16/600 и оставить градиент полосой без заголовка — то есть
+            перевернуть смысловую иерархию пейволла. Поэтому герой остаётся, а
+            на канон переезжает ХРОМ ВОКРУГ него: тело и футер.
+            Крестик добавлен — до этого окно нельзя было закрыть мышью вовсе
+            (кнопка «Не сейчас» / Esc / подложка), единственное такое в
+            приложении. Он лежит В ГЕРОЕ, как крест шапки события. */}
+        <div className="dlg__body">
+          {/* Hero.
+              ⚠⚠ ЧЕРНИЛА ЗДЕСЬ — ЛИТЕРАЛ, И ЭТО НЕ НЕБРЕЖНОСТЬ. `--pro-hero-grad`
+              это ФИКСИРОВАННЫЙ тёмный градиент: он один и тот же в светлой и в
+              тёмной теме. Значит и текст на нём обязан быть фиксированно
+              светлым. Тема-зависимый токен тут ЛОМАЕТ полосу: `--primary-fg`
+              («чернила НА --brand») в светлой белый, а в тёмной — почти чёрный
+              (см. его объявление в тёмном :root), и заголовок оказывается
+              тёмным на тёмно-синем. Так и вышло — подстановка токена «для
+              чистоты» уронила читаемость в тёмной теме.
+              ★ `--pro-hero-grad` — ЕДИНСТВЕННЫЙ градиент системы без тёмного
+              варианта: `--pro-gradient` и `--ai-gradient` объявлены в обеих
+              темах, а этот только в светлом :root. Поэтому он и единственное
+              место, где литерал — правильный ответ.
+              ПРАВИЛО: цвет берётся у токена только тогда, когда ПОВЕРХНОСТЬ под
+              ним тоже следует за темой. Под фиксированной поверхностью —
+              фиксированные чернила. */}
+          <div className="row" style={{ position: 'relative', alignItems: 'flex-start', borderRadius: 'var(--r-btn)', overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
+            background: 'var(--pro-hero-grad)', color: '#fff' }}>
+            <div className="grow--fit">
+              <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>PRO</Badge>
+              <DialogTitle asChild>
+                <div className="t-heading" style={{ marginBottom: 6 }}>
+                  {t('sub.limit_hero_title')}
+                </div>
+              </DialogTitle>
+              {/* Тот же литерал по той же причине: `opacity` наследовала бы
+                  цвет родителя, а он тут именно фиксированный. */}
+              <div style={{ color: 'rgba(255,255,255,.9)' }}>
+                {t('sub.limit_hero_sub', { count: state.activeCount })}
               </div>
-            </DialogTitle>
-            <div className="t-body" style={{ color: 'rgba(255,255,255,.9)' }}>
-              {t('sub.limit_hero_sub', { count: state.activeCount })}
             </div>
+            <IconBtn icon="close" onClick={() => onOpenChange(false)} ariaLabel={t('common.close')} style={{ color: '#fff' }} />
           </div>
 
           {/* Info strip — TRIP-343 объект 2 (канал 3): скин утоплённой поверхности
               (--wash+рамка+радиус) снят с инлайна на <Card recessed>; бокс внутри
               оболочки диалога (объект 6) — мигрируется бокс, не оболочка. */}
-          <Card recessed radius="md" pad="none" className="t-meta" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 16, color: 'var(--muted)' }}>
+          <Card recessed radius="btn" pad="none" className="t-meta" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 16, color: 'var(--muted)' }}>
             <Icon name="info" size={14} style={{ flexShrink: 0 }} />
             {t('sub.limit_info')}
           </Card>
 
           {/* Two columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: 16 }}>
+            {/* Колонка «Free» — та же поверхность, что и колонка Pro справа, поэтому
+                тот же примитив: рамка/радиус/фон приезжают с <Card>, а не пишутся
+                инлайном рядом с настоящей карточкой. */}
+            <Card radius="btn" pad="none" style={{ padding: 16 }}>
               <div className="t-micro" style={{ color: 'var(--muted)', marginBottom: 12 }}>{t('sub.limit_now_free')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {freeRows.map((r, i) => (
-                  <div key={i} className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 8, color: r.ok ? 'var(--ink-2)' : 'var(--muted-2)' }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, color: r.ok ? 'var(--ink-2)' : 'var(--muted-2)' }}>
                     {r.ok ? <Icon name="check" size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
                           : <Icon name="close" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />}
                     <span>{r.text}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
             {/* TRIP-343 объект 2 (H): скин-форма (радиус+рамка+фон) снята с инлайна на
                 <Card>; Pro-тинт (--pro рамка / --pro-soft фон) остаётся остаточным
                 инлайном — у Card нет тона "pro" (тоны brand/ai), а Pro-золото несёт
                 данные колонки, как акцент вилки. Инлайн больше не surface-формы (радиус на Card). */}
-            <Card radius="md" pad="none" style={{ padding: 16, borderColor: 'var(--pro)', background: 'var(--pro-soft)' }}>
+            <Card radius="btn" pad="none" style={{ padding: 16, borderColor: 'var(--pro)', background: 'var(--pro-soft)' }}>
               <div className="t-micro" style={{ color: 'var(--pro-ink)', marginBottom: 12 }}>PRO</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {proRows.map((node, i) => (
-                  <div key={i} className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ink-2)' }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ink-2)' }}>
                     <Icon name="check" size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
                     <span>{node}</span>
                   </div>
@@ -157,12 +190,15 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           <div className="t-meta" style={{ textAlign: 'center', color: 'var(--muted)', marginTop: 14 }}>
             {t('sub.limit_prices_next')}
           </div>
+        </div>
 
-          {/* Footer */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-            <Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('sub.not_now')}</Btn>
-            <Btn variant="pro" icon="pro" onClick={openUpgrade}>{t('sub.see_plans')}</Btn>
-          </div>
+        {/* Футер — канон `.dlg__foot`, а не инлайновый ряд внутри тела. Кнопки
+            выезжают ИЗ прокручиваемой области: на низком экране они больше не
+            уезжают под сгиб вместе с таблицей сравнения. Раскладку (в колонку и
+            во всю ширину на телефоне) канон даёт сам. */}
+        <div className="dlg__foot">
+          <Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('sub.not_now')}</Btn>
+          <Btn variant="pro" icon="pro" onClick={openUpgrade}>{t('sub.see_plans')}</Btn>
         </div>
       </DialogContent>
     </Dialog>

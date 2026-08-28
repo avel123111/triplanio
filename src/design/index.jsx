@@ -24,7 +24,7 @@ export { eventFamily } from './eventFamily';
 // =====================================================================
 export { UIDialog as DialogRoot, DialogContent, DialogTitle };
 export {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialog, AlertDialogContent, AlertDialogFooter,
   AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
@@ -668,7 +668,17 @@ export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 // `.badge--pro`/`.btn--pro`), поэтому тон приходит В ПАРЕ с `solid`. Строкой
 // `'solid tile--pro'` это выражалось бы только склейкой двух классов в одном
 // поле — то есть белый список перестал бы быть списком ТОНОВ.
-const DLG_ICON_TONES = { activity: { tone: 'activity' }, pro: { tone: 'pro', solid: true } };
+// `success`/`danger` — исход операции (PaymentResultDialog). Тоны НЕ новые: обе
+// мягкие формы (`.tile--success` / `.tile--danger`) объявлены в союзе тонов
+// плитки и уже используются на экранах; сюда добавлен только допуск их в шапку
+// окна. Именно это и убирает «второй облик диалога»: успех и отказ отличаются
+// ТОНОМ плитки, а не собственной центрированной раскладкой.
+const DLG_ICON_TONES = {
+  activity: { tone: 'activity' },
+  pro: { tone: 'pro', solid: true },
+  success: { tone: 'success' },
+  danger: { tone: 'danger' },
+};
 /** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any, busy?: boolean }} p */
 export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange, busy }) => {
   const t = useT();
