@@ -67,8 +67,12 @@ const ICON_FILE = /^\/(og-cover\.jpg|og-join\.jpg|icon-192\.png|icon-512\.png|ap
 function cacheControlFor(urlPath) {
   if (IMMUTABLE_DIR.test(urlPath)) return 'public, max-age=31536000, immutable';
   if (ICON_FILE.test(urlPath)) return 'public, max-age=86400, stale-while-revalidate=604800';
-  // Всё остальное, включая хешированные /assets/* и index.html — как Vercel:
-  // обязательная перепроверка. Ровно она и обнажает ловушку 304.
+  // /assets/* — ОТДЕЛЬНОЙ строкой намеренно: сегодня прод отдаёт хешированный
+  // build-output как «всё остальное» (обязательная перепроверка — она и обнажает
+  // ловушку 304). Ф2 поставит на /assets/ `immutable` в vercel.json — тогда
+  // менять ЗДЕСЬ ЭТУ строку, чтобы стенд не перестал повторять прод молча.
+  if (urlPath.startsWith('/assets/')) return 'public, max-age=0, must-revalidate';
+  // Всё остальное, включая index.html — как Vercel: обязательная перепроверка.
   return 'public, max-age=0, must-revalidate';
 }
 
@@ -184,7 +188,11 @@ async function main() {
     tbt: median(runs.map((r) => r.tbt)),
     cls: median(runs.map((r) => r.cls)),
   };
-  console.log('\n── МЕДИАНА ─────────────────────────────');
+  // ★ Медиана берётся по КАЖДОЙ метрике НЕЗАВИСИМО — напечатанная пятёрка может
+  // не совпасть ни с одним отдельным прогоном. Это осознанно (устойчивый сводный
+  // показатель на метрику), поэтому построчные прогоны выше остаются главным
+  // артефактом отчёта, а сводку помечаем явно.
+  console.log('\n── МЕДИАНА (по каждой метрике независимо) ──');
   console.log(`  score : ${med.score}`);
   console.log(`  FCP   : ${(med.fcp / 1000).toFixed(2)} с`);
   console.log(`  LCP   : ${(med.lcp / 1000).toFixed(2)} с`);
@@ -193,18 +201,29 @@ async function main() {
 }
 
 // Chromium из кэша Playwright (он уже стоит в проекте) — чтобы не тянуть свой.
+// ★ Раскладка кэша разнится между машинами: путь бывает `chrome-linux64/chrome`
+// И `chrome-linux/chrome`, плюс отдельная сборка `chromium_headless_shell-*`.
+// Перебираем ВСЕ известные варианты — иначе стенд молча уедет на СИСТЕМНЫЙ Chrome
+// другой версии, то есть на другой измеритель, ровно против чего он и заведён.
 function findChromium() {
   const roots = [
     process.env.PLAYWRIGHT_BROWSERS_PATH,
     join(process.env.HOME || '', '.cache/ms-playwright'),
     '/data/.cache/ms-playwright',
   ].filter(Boolean);
+  const candidates = [
+    ['chromium-', 'chrome-linux64/chrome'],
+    ['chromium-', 'chrome-linux/chrome'],
+    ['chromium_headless_shell-', 'chrome-headless-shell-linux64/chrome-headless-shell'],
+  ];
   for (const root of roots) {
     if (!existsSync(root)) continue;
     for (const dir of readdirSync(root)) {
-      if (!dir.startsWith('chromium-')) continue;
-      const bin = join(root, dir, 'chrome-linux64/chrome');
-      if (existsSync(bin)) return bin;
+      for (const [prefix, tail] of candidates) {
+        if (!dir.startsWith(prefix)) continue;
+        const bin = join(root, dir, tail);
+        if (existsSync(bin)) return bin;
+      }
     }
   }
   return undefined; // пусть chrome-launcher поищет системный
