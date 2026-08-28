@@ -7,9 +7,9 @@ import { Icon } from '@/design/icons';
 import LpSheet from '@/components/ui/LpSheet';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
-import { invokeCard, applyCardBg, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
-import { MAX_UPLOAD_MB, uploadErrorText } from '@/lib/documentMutations';
+import { uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { prepareImage } from '@/lib/prepareImage';
+import { invokeCard, applyCardBg, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
 
