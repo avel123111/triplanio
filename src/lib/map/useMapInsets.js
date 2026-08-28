@@ -40,19 +40,17 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  *   ready: boolean,
  *   insets: any,
  *   fitInsets?: any,
- *   slotPx?: number,
  *   focusing?: boolean,
  * }} p
  */
-export function useMapInsets(mapRef, { ready, insets, fitInsets = null, slotPx = 0, focusing = false }) {
-  // ★ КЛЮЧ — ВСЁ СВОБОДНОЕ ОКНО, А НЕ ТОЛЬКО ОТСТУПЫ КАМЕРЫ. Свободное окно
-  // меняют ДВЕ вещи, по одной на ось: ширину — отступ камеры (панель), высоту —
-  // размер СЛОТА (шит). Слот нужен здесь ради `onReframe`: на телефоне отступы
-  // камеры всегда нулевые, и по ним одним пустой глобус не узнал бы, что холст
-  // стал другого размера. Экран без `onReframe` слот и не передаёт.
+export function useMapInsets(mapRef, { ready, insets, fitInsets = null, focusing = false }) {
+  // ★ КЛЮЧ — ОБЕ КОРОБКИ, А НЕ ТОЛЬКО КАМЕРНАЯ. Хук объявляет карте и ту, и
+  // другую (`setMapInsets`), и «во что вписывать» на телефоне меняется там, где
+  // камерная стоит нулём: пересчитай ключ по одной камерной — и следующий фит
+  // возьмёт коробку от прошлого детента.
   const f = fitInsets || insets;
   const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}`
-    + `|${f?.top || 0}|${f?.right || 0}|${f?.bottom || 0}|${f?.left || 0}|${slotPx}`;
+    + `|${f?.top || 0}|${f?.right || 0}|${f?.bottom || 0}|${f?.left || 0}`;
   const seenRef = useRef(false);
   // ★ СОБСТВЕННАЯ ССЫЛКА НА ИНСТАНС, И ЭТО НЕ ДУБЛЬ. `useMapSurface` обнуляет
   // свой `mapRef` в СВОЁМ cleanup, а объявлен он раньше — React зовёт cleanup'ы

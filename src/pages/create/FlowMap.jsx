@@ -88,11 +88,6 @@ export default function FlowMap({
   // ВЬЮПОРТА: канвас остаётся во всю площадь (карта видна под виджетом), а кадр
   // уходит в свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   view = null,
-  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Маршрут по ней
-  // не перекадрируется (автофокус — только на изменение маршрута); её читает
-  // ПУСТОЙ ГЛОБУС, чей диаметр считается от высоты холста. На телефоне это
-  // единственный сигнал: отступы камеры там всегда нулевые.
-  slotPx = 0,
   home, cities = [], finishCity, transport = {}, isStay = false,
   // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
   // CITY still feeds the camera framing, so stepping between steps toggles what's
@@ -239,12 +234,7 @@ export default function FlowMap({
   // `reframeRef.current` в теле КАЖДОГО рендера, то есть зовёт самое свежее
   // замыкание. Прежней конструкции ref был нужен, пока из эффекта читали цель
   // маршрута; теперь он фиксировал бы ровно то, что и так актуально.
-  useMapInsets(mapRef, {
-    ready,
-    insets: view?.camera,
-    fitInsets: view?.fit,
-    slotPx: view?.slotPx || 0,
-  });
+  useMapInsets(mapRef, { ready, insets: view?.camera, fitInsets: view?.fit });
 
   // Пины — общий шов `useCityMarkers` (сборка + тогл выделения). Планировщик
   // вынимает из группы ПЕРВЫЙ id ('home' | city.id | 'finish'). rebuildKey =

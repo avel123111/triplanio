@@ -4300,13 +4300,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .flow-map__canvas { position: absolute; inset: 0; opacity: 0; transition: opacity .3s ease; }
 .flow-map__canvas.is-revealed { opacity: 1; }
 .flow-map__cover { position: absolute; inset: 0; display: grid; place-items: center; background: var(--surface); z-index: 2; }
-/* ★ НИЗ ОТСЧИТЫВАЕТСЯ ОТ ШИТА, А НЕ ОТ НИЗА КАНВАСА. Канвас намеренно уходит под
-   шит на радиус скруглений (иначе в вырезах углов виден фон страницы), поэтому
-   честные 14px от собственного низа оказывались НА шите: 14 − 20 = −6px. Заход
-   объявляет сам шелл: холст уезжает ВВЕРХ на половину шита (`--mapshell-shift`),
-   поэтому его низ находится ниже верха шита ровно на эту величину — её и
-   прибавляем, чтобы пилюля снова отступала от ШИТА, а не от края холста. На
-   десктопе шита нет, переменная = 0, и отступ остаётся прежним.
+/* ★ НИЗ ОТСЧИТЫВАЕТСЯ ОТ ШИТА, А НЕ ОТ НИЗА КАНВАСА. Канвас теперь во всю высоту
+   шелла и уходит ПОД шит целиком, поэтому честные 14px от собственного низа
+   приходятся на площадь под шитом — пилюля оказывалась на нём. Высоту шита
+   публикует сам шелл (`--mapshell-bottom`, `lib/mapShellInsets.js`); второй
+   записи этого числа здесь нет намеренно. На десктопе шита нет, переменная = 0,
+   и отступ остаётся прежним.
    visual-diff-exempt: .flow-map__stat bottom — прибавлен сдвиг холста (на десктопе значение то же) */
 .flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-bottom, 0px) + 14px); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
 .flow-map__stat-hl { color: var(--ink-2); }

@@ -121,7 +121,7 @@ export default function MapView({
   // Канвас при этом во всю площадь: карта видна ПОД виджетом, а кадр уходит в
   // свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   // Свободное окно ОДНИМ объектом от `<MapShell>`: `camera` — чем сдвигаем
-  // камеру, `fit` — во что вписываем, `slotPx` — где кончается окно снизу.
+  // камеру, `fit` — во что вписываем маршрут.
   // Раздельными пропами это уже терялось по дороге (см. MapShell).
   view = null,
   // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. На телефоне
@@ -261,7 +261,7 @@ export default function MapView({
   // зум, и центр, хотя маршрут не менялся. Автофокус остался ровно один: фит по
   // `visitsSignature` ниже. Механика — в `lib/map/useMapInsets.js`.
   // ═════════════════════════════════════════════════════════════════════════
-  useMapInsets(mapRef, { ready, insets: view?.camera, fitInsets: view?.fit, slotPx: view?.slotPx || 0, focusing: Array.isArray(focus) && focus.length > 0 });
+  useMapInsets(mapRef, { ready, insets: view?.camera, fitInsets: view?.fit, focusing: Array.isArray(focus) && focus.length > 0 });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);
