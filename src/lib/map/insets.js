@@ -50,18 +50,29 @@ function sameBox(a, b) {
 }
 
 /** Объявить закрытую площадь инстанса; `null` — снять. @param {any} map @param {any} box @returns {Box} */
-export function setMapInsets(map, box) {
+export function setMapInsets(map, box, fitBox) {
   const next = toBox(box);
+  const fit = toBox(fitBox === undefined ? box : fitBox);
   if (map) {
-    if (sameBox(next, NO_INSETS)) store.delete(map);
-    else store.set(map, next);
+    if (sameBox(next, NO_INSETS) && sameBox(fit, NO_INSETS)) store.delete(map);
+    else store.set(map, { camera: next, fit });
   }
   return next;
 }
 
 /** @param {any} map @returns {Box} */
 export function getMapInsets(map) {
-  return (map && store.get(map)) || NO_INSETS;
+  return (map && store.get(map)?.camera) || NO_INSETS;
+}
+
+/**
+ * Коробка для РАСЧЁТА кадра — «во что вписываем». Отличается от камерной там,
+ * где вид уводит не камера, а сам холст (телефон): камере отступ не нужен, а
+ * вписывать всё равно надо в видимую полосу. Разбор — `lib/mapShellInsets.js`.
+ * @param {any} map @returns {Box}
+ */
+export function getFitInsets(map) {
+  return (map && store.get(map)?.fit) || NO_INSETS;
 }
 
 /**
@@ -69,6 +80,53 @@ export function getMapInsets(map) {
  * ОДНО объявление на проект: тем же числом кламп отступа в `mapbox.js` не даёт
  * отступу съесть канвас — это один и тот же закон, записанный один раз.
  */
+/**
+ * ОТСТУП КАМЕРЫ УЖЕ ТАКОЙ — ЕХАТЬ НЕЧЕМ, И ПОСЫЛАТЬ КОМАНДУ НЕЛЬЗЯ.
+ *
+ * ★ Любая команда камере ОБРЫВАЕТ летящую: `easeTo`, который никуда не двигает,
+ * всё равно убивает чужой `flyTo`. А отступ поверхности меняется РЕЖЕ, чем
+ * свободное окно (на телефоне вид уводит сам холст, и коробка камеры там всегда
+ * нулевая) — то есть «применить отступ» сплошь и рядом значит «отменить чужой
+ * перелёт ни за что». Поэтому сравнение с ТЕКУЩИМ состоянием карты, а не с
+ * прошлым намерением: намерение врёт, если камерой ходил кто-то ещё.
+ *
+ * Библиотека без `getPadding` (или упавшая на нём) читается как «не знаем» →
+ * `false`, то есть прежнее поведение: лучше лишняя команда, чем несделанная.
+ *
+ * @param {any} map инстанс карты
+ * @param {any} want целевая коробка
+ * @returns {boolean}
+ */
+export function padUnchanged(map, want) {
+  let cur = null;
+  try { cur = map && map.getPadding ? map.getPadding() : null; } catch { cur = null; }
+  if (!cur || !want) return false;
+  return ['top', 'right', 'bottom', 'left']
+    .every((k) => Math.round(cur[k] || 0) === Math.round(want[k] || 0));
+}
+
+/**
+ * ПОДПИСЬ ВЫСОТЫ СВОБОДНОГО ОКНА — ТОЛЬКО ВЕРТИКАЛЬ, И ЭТО НЕ ЭКОНОМИЯ.
+ *
+ * ★ Ось решает, кто чинит окно (та же развилка, на которой стоит весь
+ * `mapShellInsets`): ШИРИНУ закрывает панель — её отбирает отступ КАМЕРЫ, то
+ * есть вид просто переезжает, зум остаётся верным. ВЫСОТУ закрывает шит — а его
+ * на телефоне отступом камеры не выразить (`transform.padding` рисует на глобусе
+ * диск), там окно уводит сдвиг холста, и он тоже только ПЕРЕНОСИТ. Значит при
+ * смене высоты окна прежний зум становится неверным: маршрут, вписанный в
+ * большое окно, в маленьком вылезает под шапку и под шит.
+ *
+ * Отсюда правило: изменилась ВЫСОТА окна — маршрут вписываем заново; изменилась
+ * ШИРИНА — не трогаем, её доводит отступ. На десктопе `top`/`bottom` всегда
+ * нули, поэтому подпись там постоянна и перекадрирования не бывает вовсе.
+ *
+ * @param {any} box коробка «во что вписываем»
+ * @returns {string}
+ */
+export function fitHeightSig(box) {
+  return `${Math.round(box?.top || 0)}|${Math.round(box?.bottom || 0)}`;
+}
+
 export const MIN_FREE_WINDOW = 80;
 
 /** Свободное окно в px — остаток канваса после закрытой площади. @param {number} W @param {number} H @param {Box} insets */

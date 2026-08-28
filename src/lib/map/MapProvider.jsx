@@ -75,6 +75,17 @@ export function MapProvider({ children }) {
     }
     const el = document.createElement('div');
     el.style.cssText = 'width:100%;height:100%;';
+    // ★ АДРЕС УЗЛА КАРТЫ — НАШ КЛАСС, А НЕ ВЕНДОРНЫЙ. Этот `div` mapbox получает
+    // контейнером и вешает на него СВОЙ `.mapboxgl-map`; по нему и адресовался
+    // сдвиг холста, из-за чего у нас в CSS стояло вендорное имя и три маркера
+    // обхода гардов («это не наш класс»). Имя ставим сами: тогда правило сдвига
+    // адресует то, что мы контролируем, а переименование класса в mapbox нас не
+    // касается. `classList.add`, а не `className =`: порядок с mapbox не
+    // оговорён, а перезапись стёрла бы его класс.
+    // Семья `mapshell__` намеренно: панорамирует именно шелл (он публикует
+    // `--mapshell-shift`), а имя минтуется здесь только потому, что узел рождается
+    // здесь. Вне `<MapShell>` переменной нет — правило вырождается в ноль.
+    el.classList.add('mapshell__pan');
     holderRef.current.appendChild(el);
     const map = new mapboxgl.Map({
       container: el,

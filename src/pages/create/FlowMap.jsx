@@ -1,11 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { calmFit } from '@/lib/map/camera';
 import { markFramed } from '@/lib/map/framed';
-import { getMapInsets } from '@/lib/map/insets';
+import { fitHeightSig, getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
 import { useMapInsets } from '@/lib/map/useMapInsets';
-import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { useCityMarkers } from '@/lib/map/useCityMarkers';
@@ -51,6 +50,38 @@ function fitPaddingFor(w) {
   return w > PHONE_MAX_W ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 32, left: 40 };
 }
 
+/**
+ * ПОЛОСА, КОТОРУЮ У НИЗА СВОБОДНОГО ОКНА ЗАНИМАЕТ НАША ЖЕ ПИЛЮЛЯ
+ * «N городов · M ночей» (`.flow-map__stat`).
+ *
+ * ★ Фит про неё не знал, и нижний город кадра уезжал ПОД неё: замер на телефоне
+ * 393×852 — пин 225..254 против пилюли 248..279.
+ *
+ * ★★ ВЕЛИЧИНА МЕРЯЕТСЯ, А НЕ ПОВТОРЯЕТСЯ ЧИСЛОМ. Она складывается из высоты
+ * строки и её отступа от низа окна — оба живут в CSS (`.flow-map__stat`,
+ * `--mapshell-bottom`), и переписанная сюда константа разъехалась бы с ними на
+ * первой же правке типографики, причём МОЛЧА: кадр стал бы врать на несколько
+ * пикселей, и ни один гард этого не увидит. Тот же приём, которым `<MapShell>`
+ * меряет ширину панели вместо повторения `min()` из CSS.
+ *
+ * Читается СИНХРОННО в момент кадрирования: своё состояние дало бы лишний
+ * рендер и второй фит на первой загрузке. Цена — смена высоты пилюли (подгрузка
+ * шрифта) доедет до кадра со следующим изменением маршрута; на несколько
+ * пикселей воздуха это честный размен.
+ *
+ * @param {any} win узел карты (в нём считается свободное окно)
+ * @param {any} stat узел пилюли; `null`, когда её нет (ноль ночей)
+ * @returns {number}
+ */
+function statStripPx(win, stat) {
+  if (!win || !stat) return 0;
+  // Низ СВОБОДНОГО ОКНА, а не холста: холст уходит под шит целиком, и его
+  // границу публикует шелл (`--mapshell-bottom`, наследуется сюда по каскаду).
+  const bottomVar = parseFloat(getComputedStyle(win).getPropertyValue('--mapshell-bottom')) || 0;
+  const windowBottom = win.getBoundingClientRect().bottom - bottomVar;
+  return Math.max(0, Math.round(windowBottom - stat.getBoundingClientRect().top));
+}
+
 // Нейтральный СТАРТОВЫЙ вид глобуса (до выбора маршрута; сюда же возвращает
 // RESET черновика). Всё, что можно посчитать без DOM, — в `lib/map/globeStart.js`;
 // там же разбор и там же тест: у правила «какого размера шар» нет ни скриншота в
@@ -81,12 +112,7 @@ export default function FlowMap({
   // Закрытая панелью площадь — приезжает от `<MapShell>` и выражается ОТСТУПОМ
   // ВЬЮПОРТА: канвас остаётся во всю площадь (карта видна под виджетом), а кадр
   // уходит в свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
-  camera = null,
-  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Маршрут по ней
-  // не перекадрируется (автофокус — только на изменение маршрута); её читает
-  // ПУСТОЙ ГЛОБУС, чей диаметр считается от высоты холста. На телефоне это
-  // единственный сигнал: отступы камеры там всегда нулевые.
-  slotPx = 0,
+  view = null,
   home, cities = [], finishCity, transport = {}, isStay = false,
   // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
   // CITY still feeds the camera framing, so stepping between steps toggles what's
@@ -103,6 +129,8 @@ export default function FlowMap({
   const t = useT();
   const containerRef = useRef(null);
   const markersRef = useRef([]);
+  // Узел пилюли — её полосу кадр меряет, а не повторяет числом (`statStripPx`).
+  const statRef = useRef(null);
 
   // Контролы поверх карты: проекция + тема. Старт-финиша здесь НЕТ (решение
   // Pavel): в создании маршрута дом и финиш — это то, что пользователь прямо
@@ -188,12 +216,24 @@ export default function FlowMap({
   // чем раньше: смена свободного окна камеру НЕ ДВИГАЕТ ВОВСЕ (★★ ниже). Детент —
   // не новая цель кадра, а та же самая, снятая в другое окно; положи её сюда, и
   // каждая осадка шита заново вписывала бы маршрут — ровно то, что этот PR снял.
-  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
+  // ★ ВЫСОТА СВОБОДНОГО ОКНА — ЧАСТЬ ЦЕЛИ КАДРА, ШИРИНА — НЕТ (`fitHeightSig`).
+  // Шит меняет высоту окна, а на телефоне она ничем, кроме нового вписывания, не
+  // отрабатывается: и отступ камеры, и сдвиг холста умеют только ПЕРЕНОСИТЬ.
+  // Без этого маршрут, вписанный при низком шите, при поднятом торчал верхними и
+  // нижними точками под шапку и под шит. Выше СРЕДНЕГО детента подпись уже не
+  // меняется (потолок `capPx` в `mapShellInsets`) — движение шита с середины
+  // вверх карту не трогает, как и просил Pavel.
+  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}#${fitHeightSig(view?.fit)}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // Did the previous fit draw a route? Lets the empty branch tell a fresh mount /
   // resize (snap to the start globe) apart from a draft RESET (glide back out).
   const prevHadPointsRef = useRef(false);
+  // Подпись пустого глобуса — РАЗМЕР ХОЛСТА, а не свободное окно. Шар считается
+  // от холста, значит смена детента для него не событие; без своей подписи он
+  // прыгал бы на каждой осадке шита — ровно тот «автофокус на пустом глобусе»,
+  // который Pavel просил убрать.
+  const emptySigRef = useRef('');
   // The fitKey the camera was last framed for — so a marker rebuild that leaves the
   // route geometry unchanged (a step change) doesn't re-fit. Reset when the route
   // empties, so the next real route frames again.
@@ -221,19 +261,7 @@ export default function FlowMap({
   // `reframeRef.current` в теле КАЖДОГО рендера, то есть зовёт самое свежее
   // замыкание. Прежней конструкции ref был нужен, пока из эффекта читали цель
   // маршрута; теперь он фиксировал бы ровно то, что и так актуально.
-  useMapInsets(mapRef, {
-    ready,
-    insets: camera,
-    slotPx,
-    onReframe: (map) => {
-      // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
-      // НЕ перекадрирование: зум и границы маршрута он не трогает.
-      if (!canFit || fitPositions.length) return false;
-      const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
-      try { map.easeTo({ ...view, padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
-      return true; // отступ уехал вместе с видом — хуку добавлять нечего
-    },
-  });
+  useMapInsets(mapRef, { ready, insets: view?.camera, fitInsets: view?.fit });
 
   // Пины — общий шов `useCityMarkers` (сборка + тогл выделения). Планировщик
   // вынимает из группы ПЕРВЫЙ id ('home' | city.id | 'finish'). rebuildKey =
@@ -269,7 +297,10 @@ export default function FlowMap({
         // отдаёт САМ СЛОТ, а воздух кадра несёт `padding` самого фита.
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
-          calmFit(map, fitPositions, { padding: air, maxZoom: 7, singleZoom: 8 });
+          // Полоса пилюли прибавляется ТОЛЬКО к кадру МАРШРУТА: стартовый глобус —
+          // предмет по центру холста, его размер считается от того же воздуха.
+          const bottom = air.bottom + statStripPx(containerRef.current, statRef.current);
+          calmFit(map, fitPositions, { padding: { ...air, bottom }, maxZoom: 7, singleZoom: 8 });
           // Отмечаем на ИНСТАНСЕ, что камеру уже ставили по месту: следующий
           // экран с картой (редактор маршрута сразу после создания трипа) возьмёт
           // этот факт и доедет плавно вместо скачка. См. `lib/map/framed.js`.
@@ -281,11 +312,15 @@ export default function FlowMap({
         // сайзится от него (~85% высоты на десктопе), поэтому отступ вьюпорта не
         // нужен и здесь. Returning here from a route (draft RESET) glides back
         // out; a fresh mount / resize just snaps (the fade-in hides it).
-        const view = { ...startGlobeView(map, air, getMapInsets(map)), padding: getMapInsets(map) };
-        if (prevHadPointsRef.current) {
-          try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
-        } else {
-          try { map.jumpTo(view); } catch { /* ignore */ }
+        const canvasSig = `${winW}x${winH}`;
+        if (prevHadPointsRef.current || emptySigRef.current !== canvasSig) {
+          const start = { ...startGlobeView(map, air, getMapInsets(map)), padding: getMapInsets(map) };
+          if (prevHadPointsRef.current) {
+            try { map.easeTo({ ...start, duration: 600 }); } catch { try { map.jumpTo(start); } catch { /* ignore */ } }
+          } else {
+            try { map.jumpTo(start); } catch { /* ignore */ }
+          }
+          emptySigRef.current = canvasSig;
         }
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';
@@ -338,10 +373,18 @@ export default function FlowMap({
       )}
 
       {totalNights > 0 && (
-        <div className="t-meta flow-map__stat">
+        <div ref={statRef} className="t-meta flow-map__stat">
           <span className="flow-map__stat-hl">{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
           <span className="muted-2">·</span>
           <span className="flow-map__stat-hl">{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
+          {/* ⚠️ ВРЕМЕННЫЙ ЗОНД (снять до мержа). На телефоне фит не наводится у
+              Pavel, а на стенде с теми же данными наводится — значит расходится
+              ВХОД, а не расчёт. Печатаем ровно те величины, которые решают,
+              случится фит или нет: сколько точек в него уходит, измерен ли холст
+              и какую коробку дал шелл. Один взгляд на превью заменяет круг
+              догадок. Лежит ВНУТРИ существующей пилюли намеренно: свой узел
+              потребовал бы инлайна и нового класса, то есть спора с гардами
+              ради временной строки. */}
         </div>
       )}
 

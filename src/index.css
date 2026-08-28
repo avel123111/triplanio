@@ -248,5 +248,16 @@ input[type="time"] {
 /* Mapbox GL — keep map controls/markers on a local stack (2), i.e. below every
    floor of the --z-* ladder in app.css, so a dialog/sheet always covers them. */
 .mapboxgl-canvas { outline: none; }
+/* ★ АТРИБУЦИЯ ОБЯЗАНА ОСТАВАТЬСЯ НА ВИДУ (условие лицензии mapbox). В
+   `<MapShell>` холст уезжает ВВЕРХ на половину шита, значит его дно оказывается
+   под шитом — поднимаем атрибуцию на ту же величину. Величину публикует шелл
+   (`--mapshell-attrib`); за его пределами переменной нет, отступ вырождается в
+   0, и на остальных картах правило ничего не меняет — поэтому селектор общий.
+   `!important` по той же причине, что и у `z-index`: `mapbox-gl.css` приезжает
+   ДИНАМИЧЕСКИМ импортом (`lib/mapbox.js`), встаёт в `<head>` после наших таблиц
+   и при равной специфичности выигрывает.
+   visual-diff-exempt: .mapboxgl-ctrl-bottom-left bottom — атрибуция поднята над шитом (вне шелла значение прежнее)
+   visual-diff-exempt: .mapboxgl-ctrl-bottom-right bottom — то же для копирайта
+   orphan-exempt: .mapboxgl-ctrl-bottom-right — имя ставит сам mapbox-gl, в разметке репозитория его нет */
 .mapboxgl-ctrl-bottom-left,
-.mapboxgl-ctrl-bottom-right { z-index: 2 !important; }
+.mapboxgl-ctrl-bottom-right { z-index: 2 !important; bottom: var(--mapshell-attrib, 0px) !important; }
