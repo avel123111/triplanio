@@ -6,7 +6,6 @@ import { Drawer } from "vaul"
 import { cn } from "@/lib/utils"
 import { keepFocusInDialog } from "@/lib/dialogFocus"
 import { useIsPhone } from "@/hooks/use-mobile"
-import { useHostsTextInput } from "@/hooks/useHostsTextInput"
 
 // Responsive modal: on desktop a centred Radix dialog (unchanged); on phones
 // (≤640px) a vaul Drawer bottom-sheet — native full-surface swipe + momentum
@@ -78,12 +77,6 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
  *  редакция так и сделала, ошибки остались - поймано прогоном, не чтением). */
 const DialogContent = React.forwardRef((/** @type {{ className?: string, style?: any, children?: any } & import('react').ComponentPropsWithoutRef<typeof DialogPrimitive.Content>} */ { className, style, children, ...props }, ref) => {
   const isSheet = React.useContext(ResponsiveSheetCtx)
-  // На телефоне `.dlg` — та же прибитая к низу поверхность по содержимому, что и
-  // канон-`<Sheet>`, и болеет тем же: короткая форма держит поле внизу экрана, а
-  // Safari центрирует фокусное поле в видимой полосе и уводит туда всю страницу.
-  // Правило и замер — в `hooks/useHostsTextInput`; оба примитива берут ОДНУ
-  // реализацию, второй копии предиката в проекте быть не должно.
-  const hostRef = useHostsTextInput()
 
   if (isSheet) {
     return (
@@ -92,7 +85,7 @@ const DialogContent = React.forwardRef((/** @type {{ className?: string, style?:
         {/* vaul owns the drag + open/close animation + keyboard reposition. The
             grip is a visual affordance only (the whole surface is draggable). */}
         <Drawer.Content ref={ref} className="dlg-modal" {...props}>
-          <div ref={hostRef} className={cn("dlg", className)} style={style}>
+          <div className={cn("dlg", className)} style={style}>
             <div className="dlg-grip" aria-hidden><i /></div>
             {children}
           </div>

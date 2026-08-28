@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { anchorDelta, TEXT_INPUT_SELECTOR } from './focusAnchor.js';
+import { anchorDelta } from './focusAnchor.js';
 
 // Числа — С УСТРОЙСТВА, а не выдуманные: iPhone, iOS 26, Safari (замер в
 // PR #1067). Раскладка 766, клавиатура занимает 338, видимая полоса 428, и
@@ -55,36 +55,4 @@ test('высокое поле считается по ЦЕНТРУ, а не по
   const short = anchorDelta({ fieldTop: 300, fieldHeight: 44, viewportH: VH });
   assert.ok(tall > short);
   assert.equal(tall - short, 78);
-});
-
-/* ── Предикат и селектор — один источник ─────────────────────────────────── */
-
-// ★ Читателей у вопроса «что такое текстовое поле» ДВА и спрашивают по-разному:
-// якорь проверяет КОНКРЕТНЫЙ элемент, поверхность ищет такое поле У СЕБЯ В
-// ПОДДЕРЕВЕ (селектор). Две формы неизбежны, два ИСТОЧНИКА — нет. Разъедься они,
-// отказ был бы тихим и худшего сорта: поле, которое якорь считает текстовым, а
-// шит нет, дало бы «на одном экране работает, на другом нет».
-
-test('★★ селектор исключает РОВНО те типы, что и предикат', () => {
-  // Список неклавиатурных типов в тесте намеренно выписан РУКАМИ, а не взят из
-  // модуля: иначе тест сверял бы источник сам с собой и прошёл бы любую правку.
-  const nonText = ['button', 'submit', 'reset', 'checkbox', 'radio', 'range', 'color', 'file', 'image'];
-  for (const t of nonText) {
-    assert.ok(TEXT_INPUT_SELECTOR.includes(`[type="${t}"]`), `тип ${t} обязан быть исключён из селектора`);
-  }
-  // И ни одного лишнего: сколько исключений в списке, столько и в селекторе.
-  assert.equal((TEXT_INPUT_SELECTOR.match(/\[type="/g) || []).length, nonText.length);
-});
-
-test('селектор ловит три носителя клавиатуры', () => {
-  assert.ok(TEXT_INPUT_SELECTOR.startsWith('input:not('));
-  assert.ok(TEXT_INPUT_SELECTOR.includes('textarea'));
-  assert.ok(TEXT_INPUT_SELECTOR.includes('[contenteditable]'));
-});
-
-test('★ contenteditable="false" не считается полем', () => {
-  // Иначе любой блок с явно выключенным редактированием делал бы шит
-  // полноэкранным — правило срабатывало бы там, где клавиатуры не будет.
-  assert.ok(TEXT_INPUT_SELECTOR.includes('[contenteditable="false"]'));
-  assert.ok(/\[contenteditable\]:not\(\[contenteditable="false"\]\)/.test(TEXT_INPUT_SELECTOR));
 });

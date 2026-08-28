@@ -5119,25 +5119,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .dlg-grip i { width: 40px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); }
   /* Confirm/alert dialogs: centred content stays centred in the sheet */
   .dlg-modal .dlg__body { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
-  /* ★★ ТО ЖЕ ПРАВИЛО, ЧТО У `.sheet`: диалог с текстовым вводом на телефоне —
-     полноэкранный. `.dlg` здесь такая же прибитая к низу поверхность по
-     содержимому (потолок 92dvh), и болеет тем же. Разбор — `hooks/useHostsTextInput.js`.
-     ВТОРОЙ ПОТОЛОК СНИМАЕТСЯ ЗАОДНО: `.dlg__body { max-height: 70dvh }` выше
-     существует ради коротких confirm/alert (контент по центру шита), но у
-     полноэкранной формы он дрался бы с полной высотой — тело обязано занять всё,
-     что осталось от шапки и футера, иначе поле снова уезжает вниз.
-     visual-diff-exempt: .dlg[data-hosts-input] {@media (max-width: 640px)} height — поверхность с текстовым вводом полноэкранна (то же правило, что у .sheet)
-     visual-diff-exempt: .dlg[data-hosts-input] {@media (max-width: 640px)} max-height — потолок 92dvh снимается: высоту диктует правило, а не содержимое
-     visual-diff-exempt: .dlg__body {@media (max-width: 640px)} max-height — второй потолок снят ТОЛЬКО под полноэкранной формой; у коротких confirm/alert правило выше не тронуто
-
-     Предка `.dlg-modal` в селекторе нет намеренно: атрибут ставит ТОЛЬКО
-     телефонная ветка примитива (`ui/dialog.jsx`), то есть лишняя лексема ничего
-     не сужала бы, зато заводила гарду 2p третий ключ ни о чём. Удельный вес
-     хватает и так: `.dlg[data-hosts-input]` (0-2-0) объявлен НИЖЕ
-     `.dlg-modal .dlg` (0-2-0) и выигрывает порядком, а
-     `.dlg[data-hosts-input] .dlg__body` (0-3-0) — специфичностью. */
-  .dlg[data-hosts-input] { height: 100dvh; max-height: 100dvh; }
-  .dlg[data-hosts-input] .dlg__body { max-height: none; }
   /* Wide dialogs (TripLimitDialog) — full width on mobile, normal layout */
   .dlg-modal .dlg--wide { max-width: 100%; }
   /* backdrop-filter blur is a paint-jank source on mobile (causes the flash on
@@ -7865,21 +7846,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    `animation`, `bottom: var(--kb)` or a `--vvh` height cap here: those fought
    vaul and caused the "jump / shrink / fly" the sheet used to have. */
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: calc(var(--z-modal) + 1); background: var(--surface); border-radius: var(--r-card) var(--r-card) 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: 86dvh; display: flex; flex-direction: column; }
-/* ★★ ПОВЕРХНОСТЬ С ТЕКСТОВЫМ ВВОДОМ — ПОЛНОЭКРАННАЯ.
-   Разбор правила и замер — в `hooks/useHostsTextInput.js`; коротко: `.sheet`
-   растёт по содержимому от нижней кромки, поэтому короткий шит держит поле внизу
+/* ★★ ШИТ С ТЕКСТОВЫМ ВВОДОМ — ВО ВСЮ ВЫСОТУ (<Sheet hasInput>).
+   Разбор правила — у пропа в `components/ui/Sheet.jsx`; коротко: `.sheet` растёт
+   по содержимому от нижней кромки, поэтому короткий шит держит поле внизу
    экрана, а Safari центрирует фокусное поле в видимой полосе и уводит туда всю
    страницу. Скроллом это не чинится — у короткого шита `.sheet-b` не переполнен,
    двигать нечего. Единственный рычаг у прибитой к низу поверхности — высота.
-
-   ★ СОСТОЯНИЕ, А НЕ КЛАСС-МОДИФИКАТОР, И ЭТО КАНОН РЕПО. Факт «внутри есть поле»
-   поверхность ЗАМЕРЯЕТ у себя в рантайме, а состояние элемента здесь всегда
-   data-атрибут (`data-theme`, `data-keyboard`, `data-collapsed`, `data-detent`) —
-   ровно чтобы не растить число классов дизайн-пола (гард 2o) именами, которых
-   нет в языке ДС. Атрибут вешает `useHostsTextInput`, один на оба примитива.
-   visual-diff-exempt: .sheet[data-hosts-input] height — поверхность с текстовым вводом полноэкранна (замер iOS: короткий шит держит поле внизу и Safari уводит страницу на максимум прокрутки)
-   visual-diff-exempt: .sheet[data-hosts-input] max-height — то же: потолок 86dvh снимается, высоту диктует правило, а не содержимое */
-.sheet[data-hosts-input] { height: 100dvh; max-height: 100dvh; }
+   Модификатор СУЩЕСТВУЮЩЕЙ семьи `.sheet`, не новое имя-намеспейс.
+   floor-exempt: classes +1 — `.sheet--tall`, модификатор семьи `.sheet`: шит с текстовым вводом обязан быть полноэкранным (замер iOS: короткий шит держит поле внизу и Safari уводит страницу на максимум прокрутки), апрув Pavel — прямое задание в постановке эксперимента
+   visual-diff-exempt: .sheet--tall height — новый модификатор высоты шита под текстовый ввод
+   visual-diff-exempt: .sheet--tall max-height — то же: потолок 86dvh снимается, высоту диктует правило, а не содержимое */
+.sheet--tall { height: 100dvh; max-height: 100dvh; }
 .sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; touch-action: none; cursor: grab; }
 .sheet-grip i { width: 40px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
