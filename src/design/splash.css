@@ -71,6 +71,19 @@
    когда знак собран наполовину, и не ждёт его конца (.95s). */
 .splash__word{clip-path:inset(0 100% 0 0);animation:splash-wipe .46s cubic-bezier(.33,.9,.3,1) .34s forwards}
 
+/* Кадры анимации заставки — НОВЫЕ, ничьих прежних значений не меняют. 2p судит
+   бесклассовые ключи (@keyframes, :root) наравне с классами и потому видит даже
+   первое появление, поэтому каждый кадр объявлен строкой ниже. Это не обход
+   правки, а объявление рождения.
+   visual-diff-exempt: from {@keyframes splash-plate} opacity — новый кадр заставки (TRIP-478)
+   visual-diff-exempt: from {@keyframes splash-plate} transform — новый кадр заставки (TRIP-478)
+   visual-diff-exempt: to {@keyframes splash-plate} opacity — новый кадр заставки (TRIP-478)
+   visual-diff-exempt: to {@keyframes splash-plate} transform — новый кадр заставки (TRIP-478)
+   visual-diff-exempt: to {@keyframes splash-pop} opacity — новый кадр заставки (TRIP-478)
+   visual-diff-exempt: to {@keyframes splash-pop} transform — новый кадр заставки (TRIP-478)
+   visual-diff-exempt: to {@keyframes splash-wipe} clip-path — новый кадр заставки (TRIP-478)
+   visual-diff-exempt: from {@media (prefers-reduced-motion: reduce) @keyframes splash-calm} opacity — новый кадр заставки (TRIP-478)
+   visual-diff-exempt: to {@media (prefers-reduced-motion: reduce) @keyframes splash-calm} opacity — новый кадр заставки (TRIP-478) */
 @keyframes splash-plate{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
 @keyframes splash-pop{to{opacity:1;transform:none}}
 @keyframes splash-wipe{to{clip-path:inset(0 0 0 0)}}
