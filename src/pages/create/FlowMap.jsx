@@ -5,7 +5,6 @@ import { getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
 import { useMapInsets } from '@/lib/map/useMapInsets';
-import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { useCityMarkers } from '@/lib/map/useCityMarkers';
@@ -227,14 +226,6 @@ export default function FlowMap({
     insets: camera,
     fitInsets,
     slotPx,
-    onReframe: (map) => {
-      // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
-      // НЕ перекадрирование: зум и границы маршрута он не трогает.
-      if (!canFit || fitPositions.length) return false;
-      const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
-      try { map.easeTo({ ...view, padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
-      return true; // отступ уехал вместе с видом — хуку добавлять нечего
-    },
   });
 
   // Пины — общий шов `useCityMarkers` (сборка + тогл выделения). Планировщик

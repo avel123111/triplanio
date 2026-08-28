@@ -11,7 +11,10 @@
  * ⚠️ Развязывать холст и свободное окно нельзя — так ломали глобус дважды:
  * высоты расходятся втрое, шар считается от одной и показывается в другой.
  *
- * @param {{ phone?: boolean, sheetPx?: number, panelPx?: number, overlayOpen?: boolean, collapsed?: boolean, cornerPx?: number }} [p]
+ * @param {{ phone?: boolean, sheetPx?: number, capPx?: number, panelPx?: number, overlayOpen?: boolean, collapsed?: boolean, cornerPx?: number }} [p]
+ *   `capPx` — высота ВТОРОГО СВЕРХУ детента (её знает шит). Выше неё сдвигать
+ *   холст незачем: верхний детент закрывает экран целиком, и всё, что мы там
+ *   двигаем, никто не видит — а движение при этом видно на подходе к нему.
  *   `cornerPx` — радиус скруглений шита (`--r-xl`): на столько слот заходит под
  *   него, иначе в вырезах углов виден фон страницы. Значение ЧИТАЕТСЯ ИЗ CSS
  *   вызывателем — второй записи этого числа в JS быть не должно.
@@ -39,9 +42,12 @@
  *     холст, и половина городов уезжает под шит (замер: города на y=440 и
  *     y=−183 при окне 0..238).
  *
- * @returns {{ slotBottom: number, slotUnder: number, camera: any, fit: any }}
+ * `shift` — НА СКОЛЬКО ХОЛСТ УЕЗЖАЕТ ВВЕРХ (половина закрытого, с потолком по
+ * `capPx`). На десктопе всегда 0: там холст не двигают вовсе.
+ *
+ * @returns {{ slotBottom: number, slotUnder: number, camera: any, fit: any, shift: number }}
  */
-export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, overlayOpen = false, collapsed = false, cornerPx = 0 } = {}) {
+export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx = 0, overlayOpen = false, collapsed = false, cornerPx = 0 } = {}) {
   // Из DOM приходят 0, NaN и отрицательные (первый кадр, размонтирование) —
   // такое обязано выродиться в «карта во всю площадь», а не в отрицательный слот.
   const px = (v) => (Number.isFinite(v) && v > 0 ? Math.round(/** @type {number} */ (v)) : 0);
@@ -54,11 +60,18 @@ export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, overla
     // Заход считается ВЫЧИТАНИЕМ, а не повтором `cornerPx`: шит ниже своего
     // радиуса не бывает, но если бы стал (нулевая высота на первом кадре),
     // повтор объявил бы заход больше самого шита.
-    const half = Math.round(px(sheetPx) / 2);
+    // ★ СДВИГ СЧИТАЕТСЯ ЗДЕСЬ, А НЕ У ЧИТАТЕЛЯ, и это не педантизм: посчитанный
+    // на стороне шелла «просто по высоте шита» он оставался ненулевым при
+    // переходе в десктоп (шит размонтирован, последнее значение осталось) — и
+    // холст держался сдвинутым до перезагрузки страницы. Правило одно, ветка
+    // «телефон» одна, десктоп получает ноль по построению.
+    const capped = px(capPx) > 0 ? Math.min(px(sheetPx), px(capPx)) : px(sheetPx);
+    const half = Math.round(capped / 2);
     return {
       slotBottom, slotUnder: px(sheetPx) - slotBottom,
       camera: none,
       fit: { ...none, top: half, bottom: half },
+      shift: half,
     };
   }
   // Колонка слева закрыта, если раскрыта панель ИЛИ открыт слой — ширина у обоих
@@ -67,7 +80,7 @@ export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, overla
   // Десктоп: панель лежит ПОВЕРХ целого холста — там сдвиг камеры и расчёт
   // кадра это одно и то же.
   const box = { ...none, left: leftClosed ? px(panelPx) : 0 };
-  return { slotBottom: 0, slotUnder: 0, camera: box, fit: box };
+  return { slotBottom: 0, slotUnder: 0, camera: box, fit: box, shift: 0 };
 }
 
 /**

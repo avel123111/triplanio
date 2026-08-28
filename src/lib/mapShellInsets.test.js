@@ -13,55 +13,55 @@ test('★★★ ТЕЛЕФОН: КАМЕРЕ ОТСТУП НЕ НУЖЕН, А Р
   // Но вписывать маршрут всё равно надо в ВИДИМУЮ полосу холста: она
   // центральная, отсюда симметричная коробка по половине шита.
   assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 612, cornerPx: 20 }),
-    { slotBottom: 592, slotUnder: 20, camera: NONE, fit: half(612) });
+    { slotBottom: 592, slotUnder: 20, camera: NONE, fit: half(612), shift: 306 });
   assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 135, cornerPx: 20 }),
-    { slotBottom: 115, slotUnder: 20, camera: NONE, fit: half(135) });
+    { slotBottom: 115, slotUnder: 20, camera: NONE, fit: half(135), shift: 68 });
 });
 
 test('★ без шита обе коробки пусты', () => {
   assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 0 }),
-    { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE });
+    { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE, shift: 0 });
 });
 
 test('★★ ДЕСКТОП: панель режет ШИРИНУ — холст целый, кадр уводит камера', () => {
   // По вертикали не закрыто ничего, высота холста = высоте свободного окна →
   // размер шара попадает точно и без сжатия холста.
-  assert.deepEqual(mapShellInsets({ panelPx: 550 }), { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 }, fit: { ...NONE, left: 550 } });
+  assert.deepEqual(mapShellInsets({ panelPx: 550 }), { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 }, fit: { ...NONE, left: 550 }, shift: 0 });
 });
 
 test('свёрнутая панель не закрывает ничего', () => {
-  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true }), { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE });
+  assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true }), { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE, shift: 0 });
 });
 
 test('★ открытый слой закрывает колонку — и при свёрнутом маршруте (булев флаг)', () => {
   assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true, overlayOpen: true }),
-    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 }, fit: { ...NONE, left: 550 } });
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 }, fit: { ...NONE, left: 550 }, shift: 0 });
   assert.deepEqual(mapShellInsets({ panelPx: 550, overlayOpen: true }),
-    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 }, fit: { ...NONE, left: 550 } });
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 }, fit: { ...NONE, left: 550 }, shift: 0 });
   assert.deepEqual(mapShellInsets({ panelPx: 550, collapsed: true, overlayOpen: false }),
-    { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE });
+    { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE, shift: 0 });
 });
 
 test('★ режимы не смешиваются: чужая величина не читается', () => {
   // Шит в портале успевает подержать прошлую высоту на переходе в десктоп —
   // прочитать её значит отрезать у десктопной карты низ по призраку.
   assert.deepEqual(mapShellInsets({ phone: false, sheetPx: 612, panelPx: 550, cornerPx: 20 }),
-    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 }, fit: { ...NONE, left: 550 } });
+    { slotBottom: 0, slotUnder: 0, camera: { ...NONE, left: 550 }, fit: { ...NONE, left: 550 }, shift: 0 });
   assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 612, panelPx: 550, cornerPx: 20 }),
-    { slotBottom: 592, slotUnder: 20, camera: NONE, fit: half(612) });
+    { slotBottom: 592, slotUnder: 20, camera: NONE, fit: half(612), shift: 306 });
 });
 
 test('заход под скругление не уводит слот в минус', () => {
   assert.deepEqual(mapShellInsets({ phone: true, sheetPx: 12, cornerPx: 20 }),
-    { slotBottom: 0, slotUnder: 12, camera: NONE, fit: half(12) });
+    { slotBottom: 0, slotUnder: 12, camera: NONE, fit: half(12), shift: 6 });
 });
 
 test('★ немеряное вырождается в «карта во всю площадь», а не в минус', () => {
   for (const bad of [0, -40, NaN, Infinity, undefined, null, '550']) {
     assert.deepEqual(mapShellInsets({ phone: true, sheetPx: /** @type {any} */ (bad) }),
-      { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE });
+      { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE, shift: 0 });
     assert.deepEqual(mapShellInsets({ panelPx: /** @type {any} */ (bad) }),
-      { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE });
+      { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE, shift: 0 });
   }
 });
 
@@ -90,7 +90,7 @@ test('дробные измерения округляются (пиксель �
 });
 
 test('без аргументов — карта во всю площадь', () => {
-  assert.deepEqual(mapShellInsets(), { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE });
+  assert.deepEqual(mapShellInsets(), { slotBottom: 0, slotUnder: 0, camera: NONE, fit: NONE, shift: 0 });
 });
 
 // ── момент смены размера слота ───────────────────────────────────────────────
@@ -160,4 +160,21 @@ test('детентов нет (первый кадр) — берём высот�
 
 test('два детента: середины нет, значит карта не сжимается вовсе', () => {
   assert.equal(mapSlotPx({ sheetPx: 743, stops: [135, 743] }), 135);
+});
+
+test('★★★ СДВИГ ХОЛСТА: ПОТОЛОК — ВТОРОЙ СВЕРХУ ДЕТЕНТ', () => {
+  // Подъём шита с середины вверх означает, что он закроет экран целиком: всё,
+  // что мы там подвинем, никто не увидит — а движение видно на подходе. Поэтому
+  // выше `capPx` сдвиг не растёт.
+  const cap = 505;
+  assert.equal(mapShellInsets({ phone: true, sheetPx: 135, capPx: cap }).shift, 68);
+  assert.equal(mapShellInsets({ phone: true, sheetPx: 505, capPx: cap }).shift, 253);
+  assert.equal(mapShellInsets({ phone: true, sheetPx: 743, capPx: cap }).shift, 253, 'верхний детент — как средний');
+});
+
+test('★★★ ДЕСКТОП НЕ ДВИГАЕТ ХОЛСТ НИКОГДА — даже с призраком высоты шита', () => {
+  // Шит живёт в портале и на переходе в десктоп успевает подержать прошлую
+  // высоту. Пока сдвиг считался у читателя «просто по ней», холст оставался
+  // сдвинутым до перезагрузки страницы.
+  assert.equal(mapShellInsets({ phone: false, sheetPx: 505, capPx: 505, panelPx: 550 }).shift, 0);
 });

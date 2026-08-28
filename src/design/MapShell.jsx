@@ -72,6 +72,9 @@ import { cssPx } from '@/lib/cssPx';
  *   children?: any,
  * }} p
  */
+/** Воздух между атрибуцией mapbox и кромкой шита (px). */
+const ATTRIB_AIR = 10;
+
 export function MapShell({
   map,
   panel,
@@ -112,6 +115,7 @@ export function MapShell({
   const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
+  const [capPx, setCapPx] = useState(0);
   const [panelPx, setPanelPx] = useState(0);
 
   // ★ ПРИМЕНЕНИЕ ВЫСОТЫ ШИТА ОТЛОЖЕНО ПО ПРАВИЛУ (`slotChangeDelay`): карта
@@ -123,7 +127,8 @@ export function MapShell({
   // обновлятель `setState` обязан быть чистым — React вправе позвать его
   // повторно, и таймер завёлся бы дважды.
   const appliedRef = useRef(0);
-  const applySheetPx = useCallback((next) => {
+  const applySheetPx = useCallback((next, cap) => {
+    setCapPx(cap || 0);
     const prev = appliedRef.current;
     if (next === prev) return;
     clearTimeout(applyTimer.current);
@@ -139,13 +144,15 @@ export function MapShell({
   // Живой сдвиг холста — мимо React (разбор у пропа `onHeightLive` шита).
   // Пока идёт жест, темп нулевой: холст уже там, где палец. На осадке темп
   // возвращается, и остаток пути доезжает той же кривой, что и шит.
-  const onSheetLive = useCallback((px, phase) => {
+  const onSheetLive = useCallback((px, phase, cap) => {
     const root = rootRef.current;
     if (!root) return;
     root.style.setProperty('--surface-settle', phase === 'end' ? `${SURFACE_SETTLE_MS}ms` : '0ms');
-    const shift = Math.round(Math.max(0, px) / 2);
+    // Тем же правилом, что и на осадке: одна формула на оба пути, иначе они
+    // разъедутся на первой же правке (`mapShellInsets`).
+    const { shift } = mapShellInsets({ phone: true, sheetPx: px, capPx: cap });
     root.style.setProperty('--mapshell-shift', `${shift}px`);
-    root.style.setProperty('--mapshell-attrib', `${shift + 10}px`);
+    root.style.setProperty('--mapshell-attrib', `${shift + ATTRIB_AIR}px`);
   }, []);
 
   const measurePanel = useCallback(() => {
@@ -177,8 +184,8 @@ export function MapShell({
   useLayoutEffect(() => { setCornerPx(Math.round(cssPx('var(--r-xl, 0px)'))); }, []);
 
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayOpen: overlayActive, collapsed, cornerPx }),
-    [isPhone, sheetPx, panelPx, overlayActive, collapsed, cornerPx],
+    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx, overlayOpen: overlayActive, collapsed, cornerPx }),
+    [isPhone, sheetPx, capPx, panelPx, overlayActive, collapsed, cornerPx],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
@@ -204,12 +211,12 @@ export function MapShell({
     // ХОЛСТА (а к нему пришпилен вид) встаёт ровно в центр СВОБОДНОГО окна, а
     // низ холста остаётся под шитом — полосе фона взяться неоткуда. Размер
     // холста при этом не меняется ВООБЩЕ, а только он и двигает шар.
-    '--mapshell-shift': `${Math.round(sheetPx / 2)}px`,
+    '--mapshell-shift': `${box.shift}px`,
     // Где обязана стоять атрибуция mapbox: она лежит на дне КАНВАСА, а канвас
     // уехал вверх — поднимаем на ту же величину плюс воздух. Отдельной
     // переменной, а не `calc` у читателя: вне шелла её нет, и правило там
     // вырождается в прежнее положение.
-    '--mapshell-attrib': `${Math.round(sheetPx / 2) + 10}px`,
+    '--mapshell-attrib': `${box.shift + ATTRIB_AIR}px`,
     '--mapshell-under': `${box.slotUnder}px`,
     '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
     '--surface-ease': SURFACE_EASE_CSS,
