@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { mapboxgl, fitToPoints, fitPadding } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
-import { createHotelBadgeEl, createClusterBubbleEl } from '@/lib/map/markers';
+import { createHotelBadgeEl, createClusterBubbleEl, cityPoints } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import { useMapInsets } from '@/lib/map/useMapInsets';
@@ -343,17 +343,10 @@ export default function MapView({
     [ordered],
   );
 
-  // Точки для общего шва `useCityMarkers` (сборка пинов). Нумеруем ТОЛЬКО транзит-
-  // города (1,2,3…); start/end/waypoint номера не несут — рисуются флагами / глифом
-  // пересадки (глиф выбирает `markers.js` по `ICON_PATHS[kind]`). Неизвестный kind
-  // считаем транзитом (легаси-строки всё равно получают номер). `data` = сам визит.
-  const points = useMemo(() => {
-    let transitNo = 0;
-    return ordered.map((v) => {
-      const isTransit = v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint';
-      return { id: v.id, lng: v.longitude, lat: v.latitude, label: isTransit ? String(++transitNo) : null, kind: v.kind, data: v };
-    });
-  }, [ordered]);
+  // Точки для общего шва `useCityMarkers` (сборка пинов). Само правило нумерации
+  // (номер несут ТОЛЬКО транзит-города) живёт в `markers.js` рядом с обликом —
+  // карта share-карточки рисует тот же маршрут и обязана нумеровать так же.
+  const points = useMemo(() => cityPoints(ordered), [ordered]);
 
   // Сигнатура ПИНОВ для пересборки маркеров — отдельная от `visitsSignature` (та —
   // только id+позиция, гейтит КАМЕРУ и ЛИНИИ). Смена 0↔1 ночи меняет роль узла

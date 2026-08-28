@@ -1,6 +1,8 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, loadMapboxGl } from '@/lib/mapbox';
-import { buildRoute, drawTripRoute, SC_WEIGHTS, rescaleZoom } from '@/lib/map/captureMap';
+import { buildRoute, drawTripRoute, rescaleZoom, PIN_LAYER, LINE_IDS } from '@/lib/map/captureMap';
+import { markerZoomSizeExpr, markerSurfaceWeight } from '@/lib/map/markers';
+import { SOLID_WIDTH, DASHED_WIDTH } from '@/lib/map/mapStyle';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Skeleton } from '@/design/index';
 import MapControls from '@/lib/map/MapControls';
@@ -39,15 +41,21 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   const cardWRef = useRef(cardW);
   cardWRef.current = cardW;
   // Preview shrink factor: the preview canvas is far smaller than the full card,
-  // so fixed-px markers/lines are scaled by (preview width / card width) to keep
+  // so fixed-px pins/lines are scaled by (preview width / card width) to keep
   // preview == final.
+  // `sw` — ширина ФИНАЛЬНОГО полотна карты (слот карточки): от неё берётся вес
+  // меток, а от отношения к ней — усадка кальки. Два разных вопроса, поэтому
+  // отдаём оба числа, а не одно.
   const currentScale = () => {
     const cw = holderRef.current?.clientWidth || 0;
     const sw = slotRef.current?.w || cardWRef.current || 0;
     const s = cw && sw ? Math.min(1.5, Math.max(0.15, cw / sw)) : 1;
-    return { cw, s };
+    return { cw, s, sw, weight: markerSurfaceWeight(sw) };
   };
   const [scheme, setScheme] = useState(camera?.scheme || 'LIGHT');
+  // Схема в рефе: её читают функции create-once эффекта (их замыкание видит
+  // только первый рендер), как и `seRef` ниже.
+  const schemeRef = useRef(scheme);
   const [projection, setProjection] = useState(camera?.projection || 'mercator');
   // Свежая камера для замыканий create-once эффекта (как slotRef выше).
   const cameraRef = useRef(camera);
@@ -175,19 +183,20 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       // full-res card (TRIP-193). Re-applied on every settle so it self-corrects once
       // the slot geometry arrives after the overlay loads (hole resizes → idle → here).
       const applyWeights = () => {
-        const { cw, s } = currentScale();
+        const { cw, s, weight } = currentScale();
         if (!cw) return;
-        if (map.getLayer('sc-points-halo')) map.setPaintProperty('sc-points-halo', 'circle-radius', SC_WEIGHTS.halo * s);
-        if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', SC_WEIGHTS.dot * s);
-        if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', SC_WEIGHTS.solid * s);
-        if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', SC_WEIGHTS.dashed * s);
+        if (map.getLayer(LINE_IDS.solid)) map.setPaintProperty(LINE_IDS.solid, 'line-width', SOLID_WIDTH * weight * s);
+        if (map.getLayer(LINE_IDS.dashed)) map.setPaintProperty(LINE_IDS.dashed, 'line-width', DASHED_WIDTH * weight * s);
+        // Пин масштабируется теми же двумя множителями, но ВНУТРИ зум-выражения:
+        // сам зум-зависимый размер (как на живых картах) остаётся за mapbox.
+        if (map.getLayer(PIN_LAYER)) map.setLayoutProperty(PIN_LAYER, 'icon-size', markerZoomSizeExpr(s, weight));
       };
       const drawIfNeeded = () => {
         if (!pts.length) return;
         // На уже нарисованном маршруте только доводим веса под текущий размер; фит
         // зовётся лишь по реальным поводам (первый рендер ниже, resize, смена камеры).
-        if (map.getSource('sc-solid')) { applyWeights(); return; }
-        try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
+        if (map.getSource(LINE_IDS.solid)) { applyWeights(); return; }
+        try { drawTripRoute(map, ordered, legs, { scheme: schemeRef.current, surfaceWidth: currentScale().sw, shrink: currentScale().s }); } catch (err) { console.error('share preview draw failed', err); }
         applyWeights();
         prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
         fit();
@@ -199,11 +208,15 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       // Смена состава маршрута (кнопка «старт/финиш»): пересобираем набор и
       // перерисовываем на МЕСТЕ — карта создаётся один раз за монтирование.
       // Кадр не трогаем, если пользователь уже скомпоновал его сам (`fit` знает).
+      // Перерисовка НА МЕСТЕ (карта создаётся один раз за монтирование). Поводов
+      // два, и оба меняют картинку, но не камеру: состав маршрута (кнопка
+      // «старт/финиш») и СХЕМА КАРТЫ — у пинов и линий цвет схемы запечён, так
+      // что тумблер «день/ночь» обязан пройти здесь, а не только по подложке.
       redrawRef.current = (nextSe) => {
         ({ ordered, legs } = buildRoute(visits, transfers, nextSe));
         pts = ordered.map((v) => [v.longitude, v.latitude]);
         if (!pts.length) return;
-        try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview redraw failed', err); }
+        try { drawTripRoute(map, ordered, legs, { scheme: schemeRef.current, surfaceWidth: currentScale().sw, shrink: currentScale().s }); } catch (err) { console.error('share preview redraw failed', err); }
         applyWeights();
         prewarmRoadGeometry(legs);
         fit();
@@ -260,9 +273,13 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
 
   function applyScheme(next) {
     setScheme(next);
+    schemeRef.current = next;
     const m = mapRef.current;
     if (!m) return;
-    applyBasemapConfig(m, next); // in-place day/night — маркеры и линии темы не зависят
+    applyBasemapConfig(m, next); // подложка — in-place day/night
+    // Маршрут и пины несут цвет СХЕМЫ КАРТЫ (у растрового пина каскада нет,
+    // а линия красится конкретным хексом), поэтому их перерисовываем сами.
+    redrawRef.current?.(seRef.current);
   }
 
   function toggleTheme() {
