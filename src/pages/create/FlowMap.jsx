@@ -174,6 +174,8 @@ export default function FlowMap({
   // the already-revealed map, exactly like every other map screen. (TRIP-337)
   const [framed, setFramed] = useState(false);
 
+
+
   // Свежесть колбэков (клик/ховер/клик по пустой карте) держат сами хуки
   // `useCityMarkers` / `useMapClick` — отдельных рефов здесь больше нет.
 
@@ -354,6 +356,31 @@ export default function FlowMap({
     return undefined;
   }, [ready, legsKey]);
 
+  // ⚠️ ВРЕМЕННЫЙ ЗОНД (снять до мержа). На стенде кадр из двух точек садится в
+  // окно, у Pavel обе точки за кадром — значит расходится не РАСЧЁТ, а МЕСТО.
+  // Печатаем ровно те три величины, которые их разделяют:
+  //   s — сдвиг холста, который объявил шелл;
+  //   w — видимое окно (низ = верх шита);
+  //   y — где НА ЭКРАНЕ реально стоят пины.
+  // Если пины внутри w — виноват рендер у нас на глазах; если снаружи при
+  // верном s — сдвиг не доехал до узла карты. Один взгляд заменяет круг гипотез.
+  // Лежит ВНУТРИ существующей пилюли: свой узел потребовал бы инлайна и класса.
+  const [probe, setProbe] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const shell = document.querySelector('.mapshell');
+      const sheet = document.querySelector('.peek-sheet');
+      if (!shell) return;
+      const s = Math.round(parseFloat(getComputedStyle(shell).getPropertyValue('--mapshell-shift')) || 0);
+      const top = Math.round(shell.getBoundingClientRect().top);
+      const bot = Math.round(sheet ? sheet.getBoundingClientRect().top : shell.getBoundingClientRect().bottom);
+      const ys = [...document.querySelectorAll('.mapboxgl-marker')]
+        .map((e) => Math.round(e.getBoundingClientRect().top)).sort((a, z) => a - z).join(',');
+      setProbe(` · s${s} w${top}..${bot} y${ys}`);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [ptsKey, fitKey, framed, ready]);
+
   const revealed = ready && framed;
   return (
     <div className="flow-map">
@@ -383,14 +410,8 @@ export default function FlowMap({
           <span className="flow-map__stat-hl">{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
           <span className="muted-2">·</span>
           <span className="flow-map__stat-hl">{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
-          {/* ⚠️ ВРЕМЕННЫЙ ЗОНД (снять до мержа). На телефоне фит не наводится у
-              Pavel, а на стенде с теми же данными наводится — значит расходится
-              ВХОД, а не расчёт. Печатаем ровно те величины, которые решают,
-              случится фит или нет: сколько точек в него уходит, измерен ли холст
-              и какую коробку дал шелл. Один взгляд на превью заменяет круг
-              догадок. Лежит ВНУТРИ существующей пилюли намеренно: свой узел
-              потребовал бы инлайна и нового класса, то есть спора с гардами
-              ради временной строки. */}
+          {/* ⚠️ ВРЕМЕННЫЙ ЗОНД (снять до мержа) — разбор выше, у `probe`. */}
+          {probe}
         </div>
       )}
 
