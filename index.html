@@ -20,7 +20,14 @@
         security_storage: 'granted'
       });
     </script>
+    <!-- Favicon: SVG первым — современные браузеры берут его и игнорируют
+         остальное. .ico оставлен фолбэком для старых и для ботов/читалок,
+         которые дёргают /favicon.ico по конвенции, не читая разметку.
+         apple-touch-icon непрозрачный и НЕскруглённый намеренно: iOS скругляет
+         сам, а альфа в нём даёт чёрные углы на домашнем экране (TRIP-479). -->
     <link rel="icon" type="image/svg+xml" href="/triplanio-logo.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="google-site-verification" content="Jtn6m7Y4ILNIefFuOmuzt63AyuQohMoUmxVg8kJyiow" />
     <meta name="impact-site-verification" value="75cd6594-dce5-4983-9116-8ad4086f84a6" />
@@ -65,7 +72,10 @@
     <meta name="twitter:image" content="https://www.triplanio.com/og-cover.jpg" />
 
     <!-- Site-wide structured data. Page-scoped types are injected per route from
-         React; see src/components/site/jsonLd.js. -->
+         React; see src/components/site/jsonLd.js.
+         Organization.logo reuses the PWA icon (/icon-512.png, the same file
+         manifest.json lists) — one raster to regenerate when the mark changes;
+         the SVG master of the mark is public/triplanio-logo.svg (TRIP-479). -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -75,7 +85,7 @@
             "@id": "https://www.triplanio.com/#organization",
             "name": "Triplanio",
             "url": "https://www.triplanio.com/",
-            "logo": "https://www.triplanio.com/triplanio-logo.png",
+            "logo": "https://www.triplanio.com/icon-512.png",
             "email": "info@triplanio.com"
           },
           {

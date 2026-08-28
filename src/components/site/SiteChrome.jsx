@@ -211,7 +211,7 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
       <header className={`site-header ${scrolled ? 'scrolled' : ''} on-${theme}`} id="siteHeader">
         <div className="wrap">
           <a href={brandHref} className="brand" aria-label={t('nav.aria_home')} onClick={onBrand}>
-            <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo"/></svg>
+            <svg className="logo" viewBox="0 0 192 192" aria-hidden="true"><use href="#tl-logo"/></svg>
             Triplanio
           </a>
           {showNav && (
@@ -278,7 +278,7 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
         <div className="footer-min">
           <div className="footer-brandcol">
             <a href={brandHref} className="brand" onClick={onBrand}>
-              <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo"/></svg>
+              <svg className="logo" viewBox="0 0 192 192" aria-hidden="true"><use href="#tl-logo"/></svg>
               Triplanio
             </a>
             <p className="footer-tag">{t('landing.ft.tag')}</p>
