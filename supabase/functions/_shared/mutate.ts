@@ -60,6 +60,36 @@ async function rpc(name: string, args: Record<string, unknown>): Promise<unknown
 }
 
 /**
+ * Срез трипа, дочитываемый ПОСЛЕ уже закоммиченной записи (`returnChain`/
+ * `returnExpenses`) — тот же запрос, что у read-двери `getTripDetails`:
+ * `select('*')` по `trip_id`, БЕЗ order. Порядок клиенту не важен (строки он
+ * ищет по id), а лишний `order` разъехался бы с формой read-двери — фоновый
+ * рефетч вернул бы срез в другом порядке.
+ *
+ * ★ Идёт НЕ через `rpc()` (тот бросает → 500): запись уже закоммичена, и провал
+ * чисто-обогащающего дочитывания НЕ смеет превратить успешную запись в 500 —
+ * клиент ретраил бы и получил дубль брони. Деградируем как `afterWrite`:
+ * логируем + `null`, клиент падает на рефетч (ровно до-флага поведение).
+ * Текст лога и тег Sentry приходят от вызывателя: они наблюдаемы в мониторинге,
+ * и схлопывать их в одну строку — не рефакторинг, а потеря сигнала.
+ */
+async function readTripSlice(
+  table: string,
+  scope: string,
+  ctx: { label: string; tag: string; slug: string; actionName: string },
+): Promise<unknown> {
+  try {
+    const { data, error } = await supabaseAdmin.from(table).select('*').eq('trip_id', scope);
+    if (error) throw error;
+    return data ?? [];
+  } catch (e) {
+    console.error(`mutate: ${ctx.label} read failed ${ctx.slug}/${ctx.actionName}:`, e);
+    runInBackground(captureEdgeError(e, 'mutate', { [ctx.tag]: `${ctx.slug}/${ctx.actionName}` }));
+    return null;
+  }
+}
+
+/**
  * Требования действия (`requires`) вычисляются ЗДЕСЬ и одинаково для всех
  * ресурсов — ровно поэтому в шве нет `if` по имени действия (правило TRIP-382).
  * Новое требование добавляется одной строкой сюда, а не в каждую функцию.
@@ -324,12 +354,8 @@ export async function mutate(
   // (buildDraft выводит gap из трансферов, а они отставали). Возвращаем набор — клиент
   // заменяет `content.transfers` целиком, одиночный и layover идут одним путём.
   //
-  // Read-АФТЕР-WRITE, поэтому НЕ через `rpc()` (тот бросил бы → 500): запись УЖЕ
-  // закоммичена, и провал чисто-обогащающего дочитывания НЕ смеет превратить
-  // успешную запись в 500 (клиент ретраил бы → дубль трансфера). Деградируем как
-  // `afterWrite`: логируем + `null`, клиент падает на рефетч (ровно до-returnChain
-  // поведение), а не теряет запись. `transfers` — тот же `select('*')`, что и
-  // getTripDetails (та же форма строк, без обогащения → замена среза корректна).
+  // Сами дочитывания идут через `readTripSlice` — там же объяснено, почему их
+  // провал НЕ смеет уронить уже совершённую запись.
   if (action.returnChain || action.returnExpenses) {
     let cities: unknown = null;
     let transfers: unknown = null;
@@ -341,36 +367,17 @@ export async function mutate(
         console.error(`mutate: returnChain chain read failed ${slug}/${actionName}:`, e);
         runInBackground(captureEdgeError(e, 'mutate', { returnChain: `${slug}/${actionName}` }));
       }
-      try {
-        // Тот же запрос, что read-дверь (getTripDetails): `select('*')` по `trip_id`,
-        // БЕЗ order — клиент ищет трансферы по from/to id, порядок массива ему не важен,
-        // а лишний `order` разъехался бы с формой read-двери (фоновый рефетч вернул бы
-        // другой порядок среза). Одна форма на обе двери.
-        const { data: trows, error } = await supabaseAdmin
-          .from('transfers').select('*').eq('trip_id', scope);
-        if (error) throw error;
-        transfers = trows ?? [];
-      } catch (e) {
-        console.error(`mutate: returnChain transfers read failed ${slug}/${actionName}:`, e);
-        runInBackground(captureEdgeError(e, 'mutate', { returnChainTransfers: `${slug}/${actionName}` }));
-      }
+      transfers = await readTripSlice('transfers', scope, {
+        label: 'returnChain transfers', tag: 'returnChainTransfers', slug, actionName,
+      });
     }
     // Зеркало «бронь → трата» ведёт ТРИГГЕР БД (`sync_budget_expense`), и он уже
-    // отработал в транзакции записи. Дочитываем набор трат ТЕМ ЖЕ запросом, что и
-    // read-дверь (`getTripDetails`: `select('*')` по `trip_id`, без order) — форма
-    // строк совпадает, поэтому клиент заменяет срез целиком. Та же деградация, что
-    // у цепочки: провал дочитывания не роняет уже совершённую запись (`null` →
-    // клиент остаётся на до-TRIP-484 поведении, а не теряет бронь).
+    // отработал в транзакции записи. Дочитываем набор трат ТЕМ ЖЕ срезом — форма
+    // строк совпадает с read-дверью, поэтому клиент заменяет срез целиком.
     if (action.returnExpenses) {
-      try {
-        const { data: erows, error } = await supabaseAdmin
-          .from('budget_expenses').select('*').eq('trip_id', scope);
-        if (error) throw error;
-        expenses = erows ?? [];
-      } catch (e) {
-        console.error(`mutate: returnExpenses read failed ${slug}/${actionName}:`, e);
-        runInBackground(captureEdgeError(e, 'mutate', { returnExpenses: `${slug}/${actionName}` }));
-      }
+      expenses = await readTripSlice('budget_expenses', scope, {
+        label: 'returnExpenses', tag: 'returnExpenses', slug, actionName,
+      });
     }
     return mutateSuccess({
       row: data ?? null,

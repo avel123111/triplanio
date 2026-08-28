@@ -283,9 +283,10 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
             язык), а не нативный `<select>`: стрелку тому рисует ОПЕРАЦИОННАЯ
             СИСТЕМА, и она не совпадала ни с шевроном ДС, ни сама с собой между
             двумя полями - ровно та же болезнь, из-за которой в проекте не
-            осталось нативного `<input type="date">` (TRIP-484 §3). Поиск закрытым
-            спискам не нужен (`searchable={false}`); состояние валидации едет
-            атрибутами на триггер - он и есть видимое поле. */}
+            осталось нативного `<input type="date">` (TRIP-484 §3). Поиск - по виду
+            списка, а не по его длине: у категорий он ЗАКРЫТЫЙ (искать нечего),
+            у городов открытый - маршрут бывает и на пятнадцать точек. Состояние
+            валидации едет атрибутами на триггер - он и есть видимое поле. */}
         <Field label={t('budget.field_category')} required={v.isRequired('categoryId')}>
           <div data-vfield="categoryId">
             <SearchSelect
@@ -312,7 +313,6 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
             renderValue={(c) => c.label}
             renderOption={(c) => <span className="grow trunc">{c.label}</span>}
             matches={(c, q) => c.label.toLowerCase().includes(q)}
-            searchable={cityPickerOptions.length > 8}
             searchPlaceholder={t('visit.city')}
             emptyText={t('common.not_found')}
             title={t('visit.city')}

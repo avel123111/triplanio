@@ -783,6 +783,13 @@ export default function EventEditDialog({
     return {};
   }, [currentKind, form, tz, startTz, endTz, entity, isEdit]);
 
+  // Дата контекста события: у отеля/активности — окно города, у переезда — стык
+  // городов, вокруг которого он и создаётся. Ею открывается календарь ПУСТОГО
+  // поля (у услуги города нет — там якорем служит второй конец пары).
+  const dateAnchor = (currentKind === 'transfer'
+    ? (fromVisit?.end_date || toVisit?.start_date)
+    : visit?.start_date) || null;
+
   // Обязательность считается по ТОМУ ЖЕ гейту, который держит кнопку сохранения
   // (`BLOCKING_CODES`, объявлен в шапке модуля), а не по сырому вердикту
   // валидатора. Иначе звёздочка врёт: у аренды авто название - ошибка
@@ -791,13 +798,6 @@ export default function EventEditDialog({
   // списка, И `level === 'error'`. Сегодня это одно и то же: все шесть кодов
   // списка выдаются ТОЛЬКО как `error`. Появится среди них warning - гейты
   // разъедутся молча, и звёздочка снова начнёт врать.
-  // Дата контекста события: у отеля/активности — окно города, у переезда — стык
-  // городов, вокруг которого он и создаётся. Ею открывается календарь ПУСТОГО
-  // поля (у услуги города нет — там якорем служит второй конец пары).
-  const dateAnchor = (currentKind === 'transfer'
-    ? (fromVisit?.end_date || toVisit?.start_date)
-    : visit?.start_date) || null;
-
   const askRequired = useCallback(
     (field) => isFieldRequired(currentKind, vdraft, vctx, field, (i) => BLOCKING_CODES.has(i.code)),
     [currentKind, vdraft, vctx],
@@ -856,10 +856,6 @@ export default function EventEditDialog({
     [issues, isEdit, submitted, aiParsed],
   );
   const OPT_CACHE = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
-  // A create that touches several rows/cities (layover chain or AI extra segments)
-  // can't be cleanly mirrored optimistically — keep the awaited path for those.
-  const isComplexTransferCreate = currentKind === 'transfer' && !entity
-    && (form.hasLayovers && Array.isArray(form.segments) && form.segments.length >= 2);
 
   const handleSaveClick = () => {
     if (!canSave) {
@@ -910,9 +906,6 @@ export default function EventEditDialog({
       return upsert('service', entity, payload, tripId);
     },
     ...formWrite({
-      // Hotel/activity/service (single row): fold from the returned row (edit merges,
-      // create upserts), no full-trip refetch. Transfer (single OR layover): fold the
-      // city chain + full transfers set the seam returns — see the transfer branch.
       reconcile: (/** @type {any} */ data) => {
         // Everything the write reshaped comes back in ONE envelope and is folded by
         // ONE call: the recomputed city chain (a transfer's day_span cascades), the
@@ -926,9 +919,10 @@ export default function EventEditDialog({
           if (!Array.isArray(data?.transfers) && tripId) refetchTrip(qc, tripId, { shell: false, content: true });
           return;
         }
+        // Лист (отель/активность/услуга) — одна строка: сворачиваем её в свой срез.
+        // Инвалидация осталась деградацией: шов ответил без строки (сворачивать нечего).
         const cacheKind = OPT_CACHE[currentKind];
-        const folded = cacheKind && !isComplexTransferCreate
-          && reconcileWriteRow(tripContentBinding(qc, tripId, cacheKind), entity ? 'update' : 'add', row);
+        const folded = cacheKind && reconcileWriteRow(tripContentBinding(qc, tripId, cacheKind), entity ? 'update' : 'add', row);
         if (!folded && tripId) invalidateTripData(qc, tripId);
       },
       onDone: () => {
@@ -1705,6 +1699,7 @@ function SectionHeader({ children }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
+  const dateAnchor = useDateAnchor();
   const { t } = useI18nFormat();
   const color = TYPE_META.hotel.color;
   const st = (f) => fieldState(issues, f);
@@ -1791,7 +1786,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
                   value={form.free_cancellation_until_local}
                   onChange={(v) => setField('free_cancellation_until_local', v)}
                   onTimeMissingChange={(v) => setTime('freeCancel', !!form.free_cancellation && v)}
-                  anchor={form.checkInLocal || null}
+                  anchor={form.checkInLocal || dateAnchor}
                 />
               </AiField>
               <TimezoneHint tz={tz} />

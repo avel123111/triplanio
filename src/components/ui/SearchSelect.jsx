@@ -32,6 +32,12 @@ import { Sheet } from '@/components/ui/Sheet';
  *   ...rest                      — садятся на ТРИГГЕР: он и есть видимое поле,
  *     поэтому через этот же канал едет состояние валидации (`{...fieldState()}`),
  *     как у DateTimeInput.
+ *
+ * @param {{ value: any, onChange: (key: any) => any, options?: any[], getKey?: (o: any) => any,
+ *   matches?: (o: any, q: string) => boolean, renderOption?: (o: any, selected: boolean) => any,
+ *   renderValue?: (o: any) => any, placeholder?: string, searchPlaceholder?: string,
+ *   emptyText?: string, title?: any, triggerClassName?: string, width?: number,
+ *   disabled?: boolean, searchable?: boolean, [x: string]: any }} p
  */
 export default function SearchSelect({
   value,

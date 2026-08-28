@@ -171,7 +171,7 @@ export function reconcileCityChain(qc, tripId, chain) {
  * derives each city's gap from these transfers, so a stale slice flattened the just-
  * recomputed dates until the refetch caught up).
  */
-export function reconcileTransfers(qc, tripId, transfers) {
+function reconcileTransfers(qc, tripId, transfers) {
   if (!tripId || !Array.isArray(transfers)) return;
   qc.setQueryData(TRIP_CONTENT_KEY(tripId), (old) => {
     if (!old) return old;
@@ -193,7 +193,7 @@ export function reconcileTransfers(qc, tripId, transfers) {
  * stale until the next content refetch. Folding the server's own set is the only
  * mirror that does NOT re-derive the trigger's rules on the client.
  */
-export function reconcileExpenses(qc, tripId, expenses) {
+function reconcileExpenses(qc, tripId, expenses) {
   if (!tripId || !Array.isArray(expenses)) return;
   qc.setQueryData(TRIP_CONTENT_KEY(tripId), (old) => {
     if (!old) return old;
@@ -203,7 +203,9 @@ export function reconcileExpenses(qc, tripId, expenses) {
 
 /**
  * Fold EVERYTHING a booking write returned — the single entry point for the seam's
- * `{ row, cities, transfers, expenses }` envelope (`trip-booking/*`).
+ * `{ row, cities, transfers, expenses }` envelope (`trip-booking/*`). The two
+ * slice-folders above are its halves and stay UNEXPORTED on purpose: a call site
+ * that folds one slice by hand is a call site that forgets the other two.
  *
  * One function instead of a line per call site: the three surfaces that delete a
  * booking (edit dialog, budget/timeline loader, editor panel) each carried their own
@@ -255,9 +257,14 @@ export function pruneCityContent(qc, tripId, cityId) {
       hotels,
       activities,
       transfers,
-      budgetExpenses: (old.budgetExpenses || [])
-        .filter((e) => !(e.source_id && gone.has(e.source_id)))
-        .map((e) => (e.city_visit_id === cityId ? { ...e, city_visit_id: null } : e)),
+      // Ключа НЕ появляется там, где его не было: дописать `budgetExpenses: []` в
+      // payload, пришедший без бюджета, значит показать пустой бюджет вместо
+      // загрузки — ровно класс TRIP-277 (тонкий ответ затёр общий кэш).
+      ...(old.budgetExpenses ? {
+        budgetExpenses: old.budgetExpenses
+          .filter((e) => !(e.source_id && gone.has(e.source_id)))
+          .map((e) => (e.city_visit_id === cityId ? { ...e, city_visit_id: null } : e)),
+      } : {}),
     };
   });
 }

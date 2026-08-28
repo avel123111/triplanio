@@ -2642,6 +2642,41 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   padding-inline: 0 12px;
   border-inline-start: none; border-inline-end: 1px solid var(--line);
 }
+/* TRIP-484 §3: класс `.select` СНЯТ — нативных `<select>` в приложении не
+   осталось. Три последних (категория и город траты, роль участника) переехали
+   на канон-пикер ДС `SearchSelect`: стрелку нативному списку рисует
+   ОПЕРАЦИОННАЯ СИСТЕМА, и она не совпадала ни с шевроном ДС, ни сама с собой
+   между двумя соседними полями — та же болезнь, из-за которой в проекте не
+   осталось нативного `<input type="date">`. Правила ушли вместе с классом:
+   объявлений НЕ переносили и значений НЕ меняли, носителей у них ноль.
+   visual-diff-exempt: .select:disabled background — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select:disabled border-color — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select:disabled cursor — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select:focus border-color — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select:focus box-shadow — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select:focus outline — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select:hover:not(:disabled):not(:focus) border-color — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select[aria-invalid=true] border-color — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select[aria-invalid=true] box-shadow — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select[data-warning] border-color — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select[data-warning] box-shadow — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select background — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select border — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select border-radius — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select box-shadow — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select font-family — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select font-size — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select font-weight — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select letter-spacing — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select line-height — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select min-height — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select padding — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select transition — снят мёртвый класс вместе с последним вызывателем
+   visual-diff-exempt: .select width — снят мёртвый класс вместе с последним вызывателем
+   Ячейка валюты — по содержимому вместо фикс. 122px: в узкой колонке диалога
+   те 122px съедали больше половины поля («сумма 50 / валюта 50»).
+   visual-diff-exempt: .input-group width — ячейка валюты по содержимому (TRIP-484 §3)
+   visual-diff-exempt: .input-unit--ccy width — ячейка валюты по содержимому (TRIP-484 §3) */
 /* Ячейка валюты в поле «сумма + валюта» — по СОДЕРЖИМОМУ («EUR · €» + шеврон), а
    не под фиксированные 122px: в узкой колонке диалога (двухколоночный ряд ~250px)
    те 122px съедали больше половины поля, и «сумма + валюта» читалось как две

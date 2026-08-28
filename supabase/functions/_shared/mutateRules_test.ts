@@ -1204,3 +1204,27 @@ Deno.test('register: язык вне enum и марки не-объект отб
   const okNull = validateInput(register, { language: null, marks: null }, { isInsert: true });
   assert(!('status' in okNull), 'null законен для обоих (nullable)');
 });
+
+// ── Зеркало «бронь → трата» объявлено на КАЖДОМ действии (TRIP-484) ──────────
+//
+// Триггер `sync_budget_expense` висит на четырёх booking-таблицах и ведёт строку
+// `budget_expenses` на INSERT/UPDATE/DELETE. Клиент об этом зеркале узнаёт ТОЛЬКО
+// из ответа шва (`returnExpenses` → `expenses` в конверте): забытый флаг ничего не
+// ломает на записи и молча оставляет бюджет позади — ровно тот дефект, из-за
+// которого удалённая бронь висела тратой до перезагрузки. Поэтому флаг проверяется
+// не глазами ревьюера, а здесь.
+Deno.test('★ booking: каждое действие таблиц-зеркал объявляет returnExpenses (TRIP-484)', () => {
+  const MIRRORED = new Set(['hotel_stays', 'transfers', 'activities', 'trip_services']);
+  const missing: string[] = [];
+  let checked = 0;
+  for (const [name, action] of Object.entries(TRIP_BOOKING.actions)) {
+    // Действие пишет либо в таблицу под триггером, либо транзакцией (layover —
+    // те же `transfers` изнутри RPC, таблицы в спецификации нет).
+    const touchesMirror = action.table ? MIRRORED.has(action.table) : action.op === 'rpc';
+    if (!touchesMirror) continue;
+    checked += 1;
+    if (action.returnExpenses !== true) missing.push(name);
+  }
+  assertEquals(missing, [], `действия без returnExpenses: ${missing.join(', ')}`);
+  assert(checked === 9, `ожидалось 9 действий-зеркал, посчитано ${checked}`);
+});

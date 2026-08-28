@@ -32,7 +32,7 @@ const parse = (v) => {
   return { date: (d || '').slice(0, 10), time: tm.slice(0, 5) };
 };
 
-/** @param {{ value: any, onChange: (v: any) => any, onTimeMissingChange?: any, withTime?: boolean, className?: string, variant?: string, cellLabel?: any, cellRequired?: boolean, [x: string]: any }} p */
+/** @param {{ value: any, onChange: (v: any) => any, onTimeMissingChange?: any, withTime?: boolean, className?: string, variant?: string, cellLabel?: any, cellRequired?: boolean, anchor?: string | null, [x: string]: any }} p */
 export default function DateTimeInput({
   value,
   onChange,
