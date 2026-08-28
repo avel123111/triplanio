@@ -19,6 +19,37 @@ export const WORLD_COUNTRIES = 195;
 
 const ccUp = (c) => (c ? String(c).trim().toUpperCase() : '');
 
+// ─── "уже прожито" фильтр (TRIP-264) ─────────────────────────────────────────
+// Числовые виджеты статистики отражают ПРОЙДЕННОЕ, а не планы: запланированный
+// (будущий) визит/переезд из счётчиков исключается. Правило намеренно узкое —
+// отсекаем ТОЛЬКО явно будущее: строка без даты остаётся (доказать можно лишь
+// будущее, не наоборот — недатированный визит ≠ план). Карта этот фильтр НЕ
+// применяет: она по-прежнему показывает и запланированные пины/заливки.
+// `start_date` во всём приложении — КАЛЕНДАРНАЯ дата (date-only, `::date` в RPC),
+// поэтому сравниваем ДНИ, а не моменты. `Date.parse('YYYY-MM-DD')` даёт UTC-
+// полночь; «сегодня» берём как UTC-полночь ЛОКАЛЬНОЙ даты `now` (`Date.UTC` от
+// локальных y/m/d) — обе стороны в одном пространстве, а в поясах западнее UTC
+// завтрашний план не «начинается» сразу после полуночи UTC (Codex P2).
+/** UTC-полночь календарного дня строки start_date (или NaN). */
+function dayStartUtc(raw) {
+  return Date.parse(String(raw).slice(0, 10));
+}
+/** UTC-полночь СЕГОДНЯШНЕГО (локального) календарного дня. */
+function todayUtc(now = new Date()) {
+  return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+}
+/** true, если строка (точка ИЛИ переезд) уже началась к `now` или недатирована. */
+export function isStartedByNow(row, now = new Date()) {
+  const raw = row?.start_date;
+  if (!raw) return true;
+  const t = dayStartUtc(raw);
+  return Number.isNaN(t) || t <= todayUtc(now);
+}
+/** Оставить только не-будущие строки (см. isStartedByNow). */
+export function pastOnly(rows = [], now = new Date()) {
+  return rows.filter((r) => isStartedByNow(r, now));
+}
+
 /** Visit year (start preferred, else end), or null. */
 export function pointYear(p) {
   const d = p?.start_date || p?.end_date;
@@ -207,8 +238,11 @@ export function tripsByYear(points = []) {
 }
 
 // ─── records ─────────────────────────────────────────────────────────────────
-/** Total days spanned across trips (sum of each trip's [minStart..maxEnd]+1). */
-export function daysInTrips(points = []) {
+/** Total days spanned across trips (sum of each trip's [minStart..maxEnd]+1).
+ *  Идущий сейчас трип обрезается по СЕГОДНЯ (`now`): будущие, ещё не прожитые
+ *  дни в «дни в пути» не попадают. Полностью будущие трипы к этому моменту уже
+ *  отфильтрованы вызывающим (pastOnly), но клип держит инвариант и в одиночку. */
+export function daysInTrips(points = [], now = new Date()) {
   const span = new Map();
   for (const p of points) {
     if (p?.kind !== 'trip' || !p.trip_id) continue;
@@ -220,10 +254,16 @@ export function daysInTrips(points = []) {
     cur.min = Math.min(cur.min, s); cur.max = Math.max(cur.max, e);
     span.set(p.trip_id, cur);
   }
+  // Потолок = СЕГОДНЯШНИЙ день. min/max выше — UTC-полночи (date-only), поэтому и
+  // потолок берём как UTC-полночь ЛОКАЛЬНОЙ даты now (`todayUtc`): всё в одном
+  // пространстве, разности — целые дни, TZ-сдвиг не рвёт счёт (Codex P2).
+  const today = todayUtc(now);
   let days = 0;
   for (const { min, max } of span.values()) {
     if (min === Infinity) continue;
-    days += Math.round((max - min) / 86_400_000) + 1;
+    const cappedMax = Math.min(max, today);
+    if (cappedMax < min) continue; // целиком будущий (страховка) — 0 дней
+    days += Math.round((cappedMax - min) / 86_400_000) + 1;
   }
   return days;
 }
@@ -268,8 +308,12 @@ export function homeStats(points = [], transfersTotal = 0) {
 /**
  * "My statistics" screen bundle for the active year selection.
  * `points` and `transfers` must BOTH already be year-filtered by the caller.
+ * TRIP-264: числовые виджеты считают ПРОЙДЕННОЕ — вызывающий подаёт сюда уже
+ * `pastOnly`-набор (будущие визиты/переезды отсечены). Исключение — `byYear`:
+ * шкала «Поездки по годам» намеренно оставлена на ПОЛНОМ наборе и считается
+ * вызывающим отдельно, поэтому её тут больше нет. `now` нужен клипу «дней».
  */
-export function statisticsBundle(points = [], trips = {}, transfers = []) {
+export function statisticsBundle(points = [], trips = {}, transfers = [], now = new Date()) {
   return {
     countries: countCountries(points),
     cities: countCities(points),
@@ -281,9 +325,8 @@ export function statisticsBundle(points = [], trips = {}, transfers = []) {
     continentsBreakdown: continentsBreakdown(points),
     countriesList: countriesList(points),
     citiesList: citiesList(points),
-    byYear: tripsByYear(points),
     records: {
-      days: daysInTrips(points),
+      days: daysInTrips(points, now),
       favoriteCity: favoriteCity(points),
       favoriteCountry: favoriteCountry(points),
       longestTrip: longestTrip(points, trips),

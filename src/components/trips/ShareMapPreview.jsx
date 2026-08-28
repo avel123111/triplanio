@@ -2,16 +2,17 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, loadMapboxGl } from '@/lib/mapbox';
 import { buildRoute, drawTripRoute, SC_WEIGHTS, rescaleZoom } from '@/lib/map/captureMap';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
-import { Btn, Skeleton } from '@/design/index';
-import { useI18n } from '@/lib/i18n/I18nContext';
+import { Skeleton } from '@/design/index';
+import MapControls from '@/lib/map/MapControls';
 
 // Live map for the share card (TRIP-193). The map sits in the card frame's
 // "hole" and the frame SVG (transparent where the map goes) is laid on top with
 // pointer-events:none, so the map spins behind while the frame owns all the
 // framing (rounding/border/shape). The user composes the shot with native
-// gestures (drag/pinch/rotate/tilt) - NO movement buttons; only theme (light/dark)
-// and projection (flat/globe) toggles. getComposition() hands the composed camera
-// to renderCardMapPng, which re-renders the map at full card resolution.
+// gestures (drag/pinch/rotate/tilt) - NO movement buttons; управление — общая
+// плашка `<MapControls>` (тема / проекция / старт-финиш), та же, что у остальных
+// карт приложения. getComposition() hands the composed camera (вместе с составом
+// маршрута) to renderCardMapPng, which re-renders the map at full card resolution.
 //
 // Two roles, one component (share-UX эксперимент): конструктор карточки рендерит
 // его КАЛЬКОЙ (interactive=false — карта без жестов и тогглов, камера приезжает
@@ -22,14 +23,13 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 // slot/cardW/cardH come from the overlay render (source of truth for the hole
 // geometry); until they arrive the map fills the whole box.
 // bare — режим редактора карты: НЕТ рамки-SVG и лоадера под неё, карта во весь
-// контейнер (пропорцию слота держит вызыватель), тогглы темы/проекции живут без
+// контейнер (пропорцию слота держит вызыватель), плашка контролов живёт без
 // рамки; cardW при этом = ширина СЛОТА, чтобы веса линий/бейджей масштабились
 // от финального разрешения карты.
 const ShareMapPreview = forwardRef(function ShareMapPreview(
   { visits = [], transfers = [], lang, showSE = true, overlaySvg, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
   ref,
 ) {
-  const { t } = useI18n();
   const holderRef = useRef(null);
   const mapRef = useRef(null);
   // Latest slot/card geometry, read inside the create-once map effect (whose
@@ -56,6 +56,13 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   // это явное решение пользователя, оно ОБЯЗАНО примениться даже если превью-карту
   // кто-то трогал. Авто-фит по точкам живёт отдельной функцией `fit` внутри эффекта.
   const applyCameraRef = useRef(/** @type {null | (() => void)} */ (null));
+  // Показ старта/финиша — состояние ЭТОЙ поверхности (кнопка в плашке карты), а
+  // проп `showSE` только задаёт начальное значение. `redrawRef` пересобирает
+  // маршрут под новый состав: набор точек меняется, а карта создаётся один раз.
+  const [se, setSe] = useState(camera?.showSE ?? showSE);
+  const seRef = useRef(se);
+  seRef.current = se;
+  const redrawRef = useRef(/** @type {null | ((v: boolean) => void)} */ (null));
 
   // ★ ПЕРЕРИСОВКИ ПО `document.fonts.ready` ЗДЕСЬ БОЛЬШЕ НЕТ — и это часть фикса,
   // а не упрощение. Она пересоздавала весь кадр рамки (сменой `key`) после того,
@@ -76,8 +83,8 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     let alive = true;
     let teardown = null;
     const start = () => {
-      const { ordered, legs } = buildRoute(visits, transfers, showSE);
-      const pts = ordered.map((v) => [v.longitude, v.latitude]);
+      let { ordered, legs } = buildRoute(visits, transfers, seRef.current);
+      let pts = ordered.map((v) => [v.longitude, v.latitude]);
       const map = new mapboxgl.Map({
         container: holderRef.current,
         style: MAP_STYLE,
@@ -189,6 +196,19 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       map.on('idle', drawIfNeeded);
       map.on('styledata', drawIfNeeded);
 
+      // Смена состава маршрута (кнопка «старт/финиш»): пересобираем набор и
+      // перерисовываем на МЕСТЕ — карта создаётся один раз за монтирование.
+      // Кадр не трогаем, если пользователь уже скомпоновал его сам (`fit` знает).
+      redrawRef.current = (nextSe) => {
+        ({ ordered, legs } = buildRoute(visits, transfers, nextSe));
+        pts = ordered.map((v) => [v.longitude, v.latitude]);
+        if (!pts.length) return;
+        try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview redraw failed', err); }
+        applyWeights();
+        prewarmRoadGeometry(legs);
+        fit();
+      };
+
       // The dialog animates open and the hole box resizes with the overlay load, so
       // resize + refit once it settles (until the user takes over).
       const ro = new ResizeObserver(() => { map.resize(); fit(); });
@@ -201,6 +221,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
         map.remove();
         mapRef.current = null;
         applyCameraRef.current = null;
+        redrawRef.current = null;
       };
     };
     loadMapboxGl().then(() => {
@@ -229,10 +250,13 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
         pitch: m.getPitch(),
         projection,
         scheme,
+        // Состав маршрута — часть композиции: финальный PNG рисуется по ней
+        // (`renderCardMapPng`), и без этого поля картинка разошлась бы с превью.
+        showSE: se,
         previewCssWidth: m.getContainer()?.clientWidth || 0,
       };
     },
-  }), [scheme, projection]);
+  }), [scheme, projection, se]);
 
   function applyScheme(next) {
     setScheme(next);
@@ -254,6 +278,10 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       try { mapRef.current?.setProjection(camera.projection); } catch { /* projection unsupported */ }
     }
     if (camera.scheme && camera.scheme !== scheme) applyScheme(camera.scheme);
+    if (typeof camera.showSE === 'boolean' && camera.showSE !== se) {
+      setSe(camera.showSE);
+      redrawRef.current?.(camera.showSE);
+    }
     // Применяем в СЛЕДУЮЩЕМ кадре: на мобиле Done закрывает шит редактора, и
     // контейнер главного превью измеряется (clientWidth) только после рефлоу —
     // синхронный jumpTo здесь взял бы нулевую ширину. rAF ждёт этот кадр.
@@ -262,6 +290,12 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     // scheme/projection здесь — производные той же камеры, не отдельные триггеры.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera]);
+
+  function toggleSE() {
+    const next = !se;
+    setSe(next);
+    redrawRef.current?.(next);
+  }
 
   function toggleProjection() {
     const next = projection === 'globe' ? 'mercator' : 'globe';
@@ -275,12 +309,6 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   const holeStyle = !bare && slot
     ? { left: pct(slot.x, cardW), top: pct(slot.y, cardH), width: pct(slot.w, cardW), height: pct(slot.h, cardH) }
     : { inset: 0 };
-  // Фон задаём через КАНАЛ примитива `--bg`, а не инлайновым `background`: канон
-  // «нажато» (`.btn[aria-pressed]`) красит `background` напрямую и перебивает
-  // `var(--bg)`, а инлайновый `background` перебил бы САМ канон (Г22, ревью Codex)
-  // — тогда нажатое состояние карты-тогглов не встаёт. Тень — для читаемости
-  // кнопки поверх карты, к состоянию отношения не имеет.
-  const btnStyle = { '--bg': 'var(--surface)', boxShadow: 'var(--shadow-1, 0 1px 4px rgba(0,0,0,.2))' };
   // The frame SVG comes from the edge function as markup; render it inline (so it
   // uses the app's loaded fonts) and stretch it to fill the box. Its transparent
   // blob hole reveals the live map behind. pointer-events:none lets gestures pass.
@@ -306,11 +334,21 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
           <Skeleton w="100%" h="100%" r={0} />
         </div>
       )}
+      {/* Кнопки карты — ОБЩАЯ плашка `<MapControls>`, та же, что на всех
+          остальных картах приложения: своя пара кнопок здесь была вторым
+          комплектом (другой примитив, свой угол инлайном, свои ключи перевода)
+          при одинаковом смысле. Своя карта (не синглтон) этому не мешает —
+          плашка чистое представление, состояние живёт тут. */}
       {interactive && (frameSvg || bare) && (
-        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Btn variant="secondary" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
-          <Btn variant="secondary" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />
-        </div>
+        <MapControls
+          controls={['theme', 'projection', 'se']}
+          scheme={scheme}
+          onToggleScheme={toggleTheme}
+          projection={projection}
+          onToggleProjection={toggleProjection}
+          showSE={se}
+          onToggleSE={toggleSE}
+        />
       )}
     </div>
   );

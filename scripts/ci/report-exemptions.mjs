@@ -46,7 +46,14 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
-const ROOT = process.env.AUDIT_ROOT || 'src';
+/* ПЕРИМЕТР — ОБЕ ПАПКИ. Репортёр смотрел только в `src`, а `site-dup-exempt`
+ * и `site-base-exempt` существуют ТОЛЬКО в `public/site.css`: единственный
+ * инструмент, чья работа — печатать сумму законных обходов, не видел ни одного
+ * обхода сайтовой зоны. Тот же промах, что у 2p до TRIP-460 (`-- src` вместо
+ * периметра), и то же лечение. Читаются только расширения, в которых маркер
+ * бывает: в `public/` рядом лежат шрифты и картинки. */
+const ROOTS = (process.env.AUDIT_ROOT || 'src,public').split(',').map((x) => x.trim()).filter(Boolean);
+const TEXT = /\.(css|html?|m?jsx?|tsx?|json|svg|md|txt)$/i;
 
 /** Маркер → как он живёт. `perPr` читается из диффа (один PR), `inFile` - из
  *  файла (накапливается). Разделение НЕ косметика: по нему считаются оба числа. */
@@ -56,9 +63,16 @@ const MARKERS = [
   { name: 'visual-diff-exempt', life: 'perPr' },
   { name: 'visual-diff-move', life: 'perPr' },
   { name: 'door-exempt', life: 'perPr' }, // 2r (TRIP-376) — табло эпика «единая дверь»
+  { name: 'site-shared-ok', life: 'perPr' }, // 2ae — «правку app.css на общем имени проверил»
   { name: 'inline-style-exempt', life: 'inFile' },
   { name: 'design-token-exempt', life: 'inFile' },
   { name: 'orphan-exempt', life: 'inFile' },
+  // Белый список сайтовой зоны: обе строки живут В ФАЙЛЕ, то есть действуют
+  // вечно, и до сих пор их не считал никто. Именно их накопление и означает
+  // «зона согласилась терпеть вторую базу» — это число обязано быть на виду.
+  { name: 'site-dup-exempt', life: 'inFile' },
+  { name: 'site-base-exempt', life: 'inFile' },
+  { name: 'nav-exempt', life: 'inFile' },
 ];
 
 const git = (args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -69,7 +83,7 @@ const count = (text, name) => (text.match(new RegExp(`${name}\\s*:`, 'g')) || []
 
 let added = null;
 try {
-  added = [git(['diff', '--unified=0', `${BASE_REF}...HEAD`, '--', ROOT]), git(['diff', '--unified=0', 'HEAD', '--', ROOT])]
+  added = [git(['diff', '--unified=0', `${BASE_REF}...HEAD`, '--', ...ROOTS]), git(['diff', '--unified=0', 'HEAD', '--', ...ROOTS])]
     .join('\n')
     .split('\n')
     .filter((l) => l.startsWith('+'))
@@ -83,15 +97,16 @@ try {
 /* --------------------------- 2. накоплено в дереве ------------------------- */
 
 const files = [];
-(function walk(dir) {
+const walk = (dir) => {
   if (!existsSync(dir)) return;
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
     const p = join(dir, e.name);
     if (e.isDirectory()) walk(p);
-    else files.push(p);
+    else if (TEXT.test(e.name)) files.push(p);
   }
-})(ROOT);
+};
+ROOTS.forEach(walk);
 // Нечитаемый файл (битая символьная ссылка, права) НЕ должен ронять скрипт,
 // который по определению ничего не блокирует: красная джоба у репортёра - это
 // сломанный гейт по причине, к гейту отношения не имеющей.
@@ -124,4 +139,4 @@ console.log(`  накоплено в дереве: ${accruedTotal}  (${accrued.m
 console.log('     ↑ только построчные: их гард читает ИЗ ФАЙЛА при каждом прогоне');
 
 const inert = count(tree, 'visual-diff-exempt') + count(tree, 'visual-diff-move');
-console.log(`  справочно: строк 2p, оставшихся в ${ROOT} от прошлых PR: ${inert} — ИНЕРТНЫ, ничего не гасят`);
+console.log(`  справочно: строк 2p, оставшихся в ${ROOTS.join(' + ')} от прошлых PR: ${inert} — ИНЕРТНЫ, ничего не гасят`);

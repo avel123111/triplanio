@@ -59,6 +59,7 @@ export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
 export { Cover, COVER_FALLBACK } from './Cover';
 export { Carousel } from './Carousel';
 export { Skeleton } from './Skeleton';
+export { default as AppLoading } from './AppLoading';
 export { CoverPicker } from './CoverPicker';
 export { MapShell } from './MapShell';
 export { EditableText } from './EditableText';

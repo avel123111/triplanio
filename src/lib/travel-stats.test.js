@@ -7,6 +7,7 @@ import {
   tripsByYear, daysInTrips, favoriteCity, favoriteCountry, longestTrip,
   WORLD_COUNTRIES, dominantTone, TONE, TONE_RANK, countVisitUnits,
   countFlights, countGround, statisticsBundle,
+  isStartedByNow, pastOnly,
 } from './travel-stats.js';
 
 // trip A (2024): Madrid, Barcelona (ES) + return Madrid (dedup) → 2 cities, 1 country
@@ -191,6 +192,52 @@ test('TRIP-270: statisticsBundle exposes flights/ground and defaults to 0', () =
   const empty = statisticsBundle(pts, {});
   assert.equal(empty.flights, 0);
   assert.equal(empty.ground, 0);
+});
+
+test('TRIP-264: pastOnly keeps started + undated, drops explicitly-future', () => {
+  // `now` строим из ЛОКАЛЬНЫХ компонент (не из ...Z), чтобы его календарный день
+  // был 2026-08-27 в ЛЮБОМ поясе рануннера — иначе тест TZ-зависим (сама функция
+  // сравнивает локальный день с UTC-полночью date-only, см. isStartedByNow).
+  const now = new Date(2026, 7, 27, 12, 0, 0);
+  const rows = [
+    { id: 'past',    start_date: '2024-03-01' },   // прожито
+    { id: 'today',   start_date: '2026-08-27' },   // начинается сегодня → считается
+    { id: 'ongoing', start_date: '2026-08-20' },   // идёт сейчас
+    { id: 'undated', start_date: null },            // без даты — остаётся
+    { id: 'future',  start_date: '2027-01-01' },   // ещё не наступило → отсекаем
+  ];
+  assert.equal(isStartedByNow(rows[0], now), true);
+  assert.equal(isStartedByNow(rows[1], now), true);
+  assert.equal(isStartedByNow(rows[3], now), true);
+  assert.equal(isStartedByNow(rows[4], now), false);
+  assert.deepEqual(pastOnly(rows, now).map((r) => r.id), ['past', 'today', 'ongoing', 'undated']);
+  // Сравнение по КАЛЕНДАРНОМУ дню, не по моменту (Codex P2): старт «сегодня», но
+  // позже текущего часа, всё равно считается начавшимся — наивный t<=now.getTime()
+  // отверг бы его. Дата-часть берётся и из полного ISO.
+  const earlyNow = new Date(2026, 7, 27, 1, 0, 0);
+  assert.equal(isStartedByNow({ start_date: '2026-08-27T23:00:00Z' }, earlyNow), true);
+  assert.equal(isStartedByNow({ start_date: '2026-08-28' }, earlyNow), false);
+  // Числовые счётчики на прошлом наборе: будущая страна не попадает.
+  const fpts = [
+    { kind: 'trip', trip_id: 'P', geonameid: 1, country_code: 'ES', start_date: '2024-03-01' },
+    { kind: 'trip', trip_id: 'F', geonameid: 2, country_code: 'JP', start_date: '2027-05-01' },
+  ];
+  assert.equal(countCountries(pastOnly(fpts, now)), 1); // только ES, JP (будущее) выпало
+});
+
+test('TRIP-264: daysInTrips clips an ongoing trip to today, drops future days', () => {
+  const now = new Date(2026, 7, 27, 12, 0, 0); // локальный день = 2026-08-27 в любом поясе
+  // Идущий сейчас трип: старт 5 дней назад, конец в будущем — считаем только по сегодня.
+  const ongoing = [
+    { kind: 'trip', trip_id: 'O', geonameid: 1, country_code: 'FR', start_date: '2026-08-22', end_date: '2026-09-02' },
+  ];
+  // 22,23,24,25,26,27 включительно = 6 дней (будущие 28.08–02.09 не в счёте).
+  assert.equal(daysInTrips(ongoing, now), 6);
+  // Полностью прошлый трип не обрезается: 01–04 марта = 4 дня.
+  const pastTrip = [
+    { kind: 'trip', trip_id: 'A', geonameid: 1, country_code: 'ES', start_date: '2024-03-01', end_date: '2024-03-04' },
+  ];
+  assert.equal(daysInTrips(pastTrip, now), 4);
 });
 
 test('TRIP-270: a transfer year absent from points still gets a selector button', () => {

@@ -10697,6 +10697,21 @@ a.doc-row__n:hover{ color: var(--brand); }
    8 px (позиция считается в Tooltip.jsx), и под бренд-слотом рейла подсказка
    висела оторванной. `bottom` в проекте использует только слот, `top` не тронут. */
 .tt__b--bottom { transform: translate(-50%, calc(var(--sp-2) * -1)); }
+/* БОКОВЫЕ СТОРОНЫ — не украшение, а единственное место для подсказки у элемента,
+   прижатого к краю. Кнопки поверх карты стоят в правом верхнем углу: сверху над
+   ними шапка приложения, справа — край экрана, поэтому подсказка там и налезала
+   на шапку, и обрезалась вьюпортом. Пузырь центрируется по ВЫСОТЕ триггера
+   (`translateY(-50%)`) и уходит целиком влево/вправо от него.
+   Текст по левому краю: боковая подсказка стоит в строку с элементом, и
+   центрирование в две строки читается как отдельный блок.
+   floor-exempt: classes +2 — .tt__b--left · .tt__b--right, стороны примитива
+   тултипа ДС (у элемента у края экрана других мест нет), апрув Pavel
+   visual-diff-exempt: .tt__b--left transform — новая сторона примитива тултипа, апрув Pavel
+   visual-diff-exempt: .tt__b--left text-align — новая сторона примитива тултипа, апрув Pavel
+   visual-diff-exempt: .tt__b--right transform — новая сторона примитива тултипа, апрув Pavel
+   visual-diff-exempt: .tt__b--right text-align — новая сторона примитива тултипа, апрув Pavel */
+.tt__b--left { transform: translate(-100%, -50%); text-align: left; }
+.tt__b--right { transform: translate(0, -50%); text-align: left; }
 /* visual-diff-exempt для примитива тултип (.tt) — каждое объявление новое; апрув Pavel TRIP-274 Ф2.2:
    visual-diff-exempt: .tt__b--bottom transform — примитив тултип ДС, апрув Pavel TRIP-274
    visual-diff-exempt: .tt__b--top transform — примитив тултип ДС, апрув Pavel TRIP-274

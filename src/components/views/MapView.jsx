@@ -12,6 +12,7 @@ import { useMapClick } from '@/lib/map/useMapClick';
 import { hasFramed, markFramed } from '@/lib/map/framed';
 import MapControls from '@/lib/map/MapControls';
 import { sortVisits } from '@/lib/validation';
+import { transitSpan } from '@/lib/trip-cities';
 import { haversineKm } from '@/lib/geoDistance';
 
 // Great-circle distance (km) between two visits — used to scale the reveal flyTo
@@ -108,7 +109,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * @param {{ camera?: any, slotPx?: number, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
- *           mapControls?: boolean, initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
+ *           mapControls?: string[], initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
  *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
  *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
  *           onMapClick?: any, cooperativeGestures?: boolean,
@@ -161,8 +162,10 @@ export default function MapView({
   // `active` to false. On re-show its container regains size, so the map needs a
   // resize() (handled in useMapSurface).
   active = true,
-  // Show the on-map control buttons (projection, theme, start/finish toggles).
-  mapControls = false,
+  // Состав кнопок поверх карты — СПИСОК контролов (`['projection','theme','se']`),
+  // тот же способ объявления, что у любой другой поверхности; пустой список (по
+  // умолчанию) = плашки нет. Реестр и порядок кнопок живут в `MapControls`.
+  mapControls = [],
   // Начальная проекция: 'mercator' (плоская) | 'globe'. Дефолт плоская; map-lens и
   // edit-lens открываются на глобусе (запрос Pavel, TRIP-337), overview остаётся плоским.
   initialProjection = 'mercator',
@@ -329,7 +332,10 @@ export default function MapView({
 
   const ordered = useMemo(() => {
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
-    return showSE ? all : all.filter((v) => v.kind !== 'start' && v.kind !== 'end');
+    // Свёрнутый вид — ОТРЕЗОК МАРШРУТА между городами-назначениями (`transitSpan`,
+    // единственное место, где это правило записано): уходят не только якоря, но и
+    // транзитные точки по дороге из дома и обратно.
+    return showSE ? all : transitSpan(all);
   }, [visits, showSE]);
 
   const visitsSignature = useMemo(
@@ -845,8 +851,9 @@ export default function MapView({
           {error ? `Map error: ${error}` : <div className="spin spin--ring spin--lg spin--ink" />}
         </div>
       )}
-      {mapControls && ready && (
+      {mapControls.length > 0 && ready && (
         <MapControls
+          controls={mapControls}
           projection={projection}
           onToggleProjection={() => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe'))}
           scheme={mapScheme}

@@ -57,6 +57,13 @@ import { join } from 'node:path';
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
 const EXEMPT = 'orphan-exempt';
 const MARKUP = /\.(jsx|tsx|js|ts|html)$/;
+/** Богатые строки перевода везут РАЗМЕТКУ целиком: у лендинга/входа/приглашения
+ *  в JSON локали лежит `<span class="loc-pin">…`, то есть имя класса ставится
+ *  оттуда, а не из JSX. Без этого источника гард сообщает о сироте, которой нет
+ *  (поймано на .loc-pin/.loc-txt: правило в site.css, имя — в landing.json).
+ *  Тот же урок, что у 2d: источников ссылок больше одного, и сканировать надо
+ *  ВСЕ (memory/feedback-dead-i18n-key-sweep-must-scan-backend). */
+const LOCALES = 'src/lib/i18n/locales';
 const ROOTS = ['src', 'public', 'index.html'];
 
 const unknown = process.argv.slice(2).filter((a) => a !== '--');
@@ -100,13 +107,14 @@ function walk(root, hit) {
   }
 }
 
-const files = { css: [], markup: [] };
+const files = { css: [], markup: [], locale: [] };
 const collect = () => {
-  files.css.length = files.markup.length = 0;
+  files.css.length = files.markup.length = files.locale.length = 0;
   for (const r of ROOTS)
     walk(r, (p) => {
       if (p.endsWith('.css')) files.css.push(p);
       else if (MARKUP.test(p)) files.markup.push(p);
+      else if (p.endsWith('.json') && p.startsWith(LOCALES)) files.locale.push(p);
     });
 };
 
@@ -132,6 +140,20 @@ function classesInCss(paths) {
 }
 
 const identifiers = (text) => new Set(text.match(/[A-Za-z][\w-]*/g) || []);
+
+/** Классы, которые ставит разметка ВНУТРИ перевода. Берётся РОВНО содержимое
+ *  `class="…"`, а не все идентификаторы файла: возьми все — и любое английское
+ *  слово перевода («card», «row», «badge») станет «живым» классом, а гард
+ *  ослепнет ровно на тех именах, ради которых написан. В JSON кавычка
+ *  экранирована (`class=\\"loc-pin\\"`), поэтому слэш в шаблоне необязателен. */
+const classesInLocales = (paths) => {
+  const out = new Set();
+  for (const path of paths) {
+    for (const m of readFileSync(path, 'utf8').matchAll(/class=\\?"([^"\\]*)/g))
+      for (const c of m[1].trim().split(/\s+/)) if (c) out.add(c);
+  }
+  return out;
+};
 
 /** Начала СОСТАВНЫХ имён: текст прямо перед дырой шаблона (`tile--${тон}`,
  *  `sev--${level}`). Нужны потому, что имя умеет ПЕРЕЕЗЖАТЬ из литерала в
@@ -177,7 +199,7 @@ const candidates = [...identifiers(removedLines)].filter((c) => where.has(c) && 
 let orphans = [];
 if (candidates.length) {
   const markup = files.markup.map((p) => readFileSync(p, 'utf8')).join('\n');
-  const live = identifiers(markup);
+  const live = new Set([...identifiers(markup), ...classesInLocales(files.locale)]);
   const heads = templateHeads(markup);
   orphans = candidates.filter((c) => !live.has(c) && !heads.some((h) => c.startsWith(h))).sort();
 }
