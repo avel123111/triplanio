@@ -52,9 +52,14 @@ test('gap контейнера шапки — тот же токен, что в�
 });
 
 test('размер знака живёт одним токеном, а не копиями', () => {
+  // Пятый носитель — стрелка выхода: она ПОДМЕНЯЕТ знак в том же боксе, значит
+  // это та же величина по смыслу, а не совпадение чисел. Круглая кнопка
+  // `.app-header__gbtn` тоже 38px, но она канон icon-btn — её сюда включать
+  // НЕЛЬЗЯ: связать несвязанное так же плохо, как разъединить связанное.
   for (const [sel, prop] of [
     ['.app-header__logo', 'width'], ['.app-header__logo', 'height'],
     ['.app-header__logo img', 'width'], ['.app-header__logo img', 'height'],
+    ['.app-header__brandback', 'width'], ['.app-header__brandback', 'height'],
   ]) {
     assert.equal(decl(sel, prop), 'var(--brand-mark)',
       `${sel} ${prop} — литерал вместо --brand-mark: формула зазора считает размер знака по токену, `
