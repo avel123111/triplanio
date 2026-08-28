@@ -1,6 +1,4 @@
 {
-  "all_day": "Todo el día",
-  "collapse": "Contraer",
   "free_day": "Día libre",
   "legend_group_cities": "Ciudades",
   "month": "Mes",
@@ -10,5 +8,6 @@
   "prev": "Anterior",
   "to_trip_start": "Al inicio del viaje",
   "today": "Hoy",
-  "week": "Semana"
+  "week": "Semana",
+  "week_word": "semana"
 }
