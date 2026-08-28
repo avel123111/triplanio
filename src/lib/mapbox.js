@@ -5,7 +5,7 @@
 // не импортируется в `node --test`. Та же конвенция, по которой чистым держат
 // `trip-cities.js` — узел, у которого есть тест, не имеет права зависеть от
 // сборщика.
-import { MIN_FREE_WINDOW, addBox, getMapInsets, offsetFor, toBox } from './map/insets.js';
+import { MIN_FREE_WINDOW, addBox, getMapInsets, toBox } from './map/insets.js';
 
 // `?.` — не перестраховка: без него модуль нельзя ИМПОРТИРОВАТЬ вне Vite, а
 // значит нельзя и покрыть тестами (`node --test` про `import.meta.env` не
@@ -200,21 +200,16 @@ export function fitToPoints(map, points, opts = {}) {
     center: cam.center,
     zoom: cam.zoom,
     duration,
-    // ★ ЗАКРЫТАЯ ПЛОЩАДЬ ЕДЕТ СДВИГОМ ЦЕНТРА, А НЕ `padding`: на проекции
-    // `globe` отступ заставляет движок рисовать планету диском и оставлять
-    // остальной канвас прозрачным. Разбор с замером — `lib/map/insets.js`.
-    // `opts.offset` — ручной сдвиг вызывателя (увести точку из-под своего
-    // оверлея); складывается с нашим, а не заменяет его.
-    offset: [
-      offsetFor(getMapInsets(map))[0] + (opts.offset?.[0] ?? 0),
-      offsetFor(getMapInsets(map))[1] + (opts.offset?.[1] ?? 0),
-    ],
+    // Отступ ПОВЕРХНОСТИ — только закрытая площадь. mapbox интерполирует его
+    // сам, поэтому смена отступа едет тем же перелётом, что и сама камера.
+    padding: getMapInsets(map),
     ...(opts.easing ? { easing: opts.easing } : null),
   };
   // Одиночная точка — всегда ровный наезд: дуга `flyTo` на месте выглядит как
-  // рывок.
+  // рывок. `opts.offset` остаётся ради вызывателей, которые уводят точку из-под
+  // своего оверлея вручную.
   if (points.length === 1 || opts.linear) {
-    map.easeTo(move);
+    map.easeTo({ ...move, offset: opts.offset ?? [0, 0] });
     return;
   }
   map.flyTo({ ...move, essential: true });

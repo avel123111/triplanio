@@ -5,7 +5,7 @@ import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, 
 import { createHotelBadgeEl, createClusterBubbleEl } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
-import { useCanFrame, useMapInsets } from '@/lib/map/useMapInsets';
+import { useMapInsets } from '@/lib/map/useMapInsets';
 import { useCityMarkers } from '@/lib/map/useCityMarkers';
 import { useCityBadge } from '@/lib/map/useCityBadge';
 import { useMapClick } from '@/lib/map/useMapClick';
@@ -106,7 +106,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * пометить его обязательным значило бы уронить их в тот момент, когда они
  * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
  *
- * @param {{ camera?: any, live?: any, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ * @param {{ camera?: any, slotPx?: number, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
  *           mapControls?: string[], initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
@@ -116,14 +116,15 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           children?: any }} p
  */
 export default function MapView({
-  // Закрытая площадь (отступы вьюпорта) — приезжает от `<MapShell>` ОДНОЙ
-  // величиной на обе оси: канвас при этом всегда во всю площадь (карта видна и
-  // под виджетом, и под шитом), а кадр уходит в свободное окно. Разбор — в
-  // `mapShellInsets`.
+  // Закрытая панелью площадь (отступы вьюпорта) — приезжает от `<MapShell>`.
+  // Канвас при этом во всю площадь: карта видна ПОД виджетом, а кадр уходит в
+  // свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   camera = null,
-  // Подписка на закрытую площадь ВО ВРЕМЯ ЖЕСТА (кадр в кадр, мимо React) —
-  // ею камера едет за пальцем, а не только на осадке детента.
-  live = null,
+  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. На телефоне
+  // это ЕДИНСТВЕННЫЙ сигнал, что окно поехало, — отступы камеры там всегда
+  // нулевые, и без него подстройка под новый размер на телефоне не случилась бы
+  // вовсе.
+  slotPx = 0,
   visits,
   transfers,
   showStartEnd = true,
@@ -257,13 +258,7 @@ export default function MapView({
   // зум, и центр, хотя маршрут не менялся. Автофокус остался ровно один: фит по
   // `visitsSignature` ниже. Механика — в `lib/map/useMapInsets.js`.
   // ═════════════════════════════════════════════════════════════════════════
-  useMapInsets(mapRef, { ready, insets: camera, live, focusing: Array.isArray(focus) && focus.length > 0 });
-  // ★ ГЕЙТ ВСЕХ ФИТОВ — «ЕСТЬ КУДА ВПИСЫВАТЬ», А НЕ «ХОЛСТ ИЗМЕРЕН» (`canFit`):
-  // холст во всю площадь, и на верхнем детенте он измерен, а вписывать некуда.
-  // Значение стоит в ЗАВИСИМОСТЯХ эффектов ниже, а не в проверке внутри них, —
-  // тогда заблокированный фит не теряется, а ждёт возвращения окна. Разбор — в
-  // `lib/map/useMapInsets.js`.
-  const canFrameNow = useCanFrame(mapRef, { ready: canFit, insets: camera });
+  useMapInsets(mapRef, { ready, insets: camera, slotPx, focusing: Array.isArray(focus) && focus.length > 0 });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);
@@ -459,7 +454,7 @@ export default function MapView({
       revealStateRef.current = { animLeg: -1, animProg: 0, fullLegs: 0, markerMax: -1, revealing: false };
       drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
       applyMarkerVisibility(markersRef.current, orderIndexById, -1, false);
-      if (canFrameNow && leaving && ordered.length > 0) {
+      if (canFit && leaving && ordered.length > 0) {
         fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
       }
       return undefined;
@@ -492,9 +487,9 @@ export default function MapView({
         // Mid-flight zoom-out amount: long legs dip further out so the whole leg
         // is visible, short legs stay near the city zoom (dip ≈ 0).
         let dip = 0;
-        // cameraForBounds is a bounds op → only run it on a usable free window,
+        // cameraForBounds is a bounds op → only run it on a measured slot (canFit),
         // else it warns "cannot fit". dip=0 is the correct fallback. (TRIP-202)
-        if (canFrameNow) {
+        if (canFit) {
           try {
             const cam = map.cameraForBounds(
               new mapboxgl.LngLatBounds([from.longitude, from.latitude], [to.longitude, to.latitude]),
@@ -552,7 +547,7 @@ export default function MapView({
     // equal index — make sure the static draw is correct.
     if (!pumpingRef.current) settle(reachedRef.current < 0 ? 0 : reachedRef.current);
     return undefined;
-  }, [ready, canFrameNow, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered, hideRoute]);
+  }, [ready, canFit, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered, hideRoute]);
 
   // Abort any in-flight reveal pump on unmount (the scroll effect intentionally
   // does NOT cancel on every re-render, so the queue can run across re-renders).
@@ -600,24 +595,20 @@ export default function MapView({
     if (!map || !ready) return;
     // While a progressive reveal is active, the reveal controller owns the camera.
     if (revealActiveId != null) return;
-    // Свободного окна нет (шит во весь экран) — камеру не трогаем ВООБЩЕ и
-    // флаг «был focus» НЕ гасим: иначе обратный ход на полный маршрут потерялся
-    // бы молча. Окно вернулось — эффект перезапустится и доиграет.
-    if (!canFrameNow) return;
     if (focusSig) {
       hadFocusRef.current = true;
       if (focus.length === 1) {
         calmFlyTo(map, { center: focus[0], zoom: FOCUS_CITY_ZOOM });
-      } else {
+      } else if (canFit) {
         calmFit(map, focus, { padding: 110, maxZoom: 9 });
       }
     } else if (hadFocusRef.current) {
       hadFocusRef.current = false;
-      if (ordered.length > 0) {
+      if (canFit && ordered.length > 0) {
         calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
       }
     }
-  }, [ready, canFrameNow, focusSig, revealActiveId]);
+  }, [ready, canFit, focusSig, revealActiveId]);
 
   // --- Кадрирование маршрута под изменившиеся данные. Маркеры строит
   // `useCityMarkers` выше; здесь только камера. Reveal (public) и hotel-pick
@@ -635,12 +626,10 @@ export default function MapView({
     // First fit (after load / style reload) is instant; later changes ease.
     // BUT don't override an active parent focus (e.g. landing straight on a city/
     // transfer via a create-intent) — the focus effect owns the camera then.
-    // Fit only when there IS a free window (`canFrameNow`) — never into a zero-size
-    // container and never into the slit left by a full-screen sheet. The fit is
-    // deferred, not dropped: `fittedSigRef` is only stamped inside this branch, and
-    // `canFrameNow` is a dep — the window comes back, the effect re-runs and fits.
-    // Markers/lines above still draw on `ready`, so the map is never blank. (TRIP-202)
-    if (canFrameNow && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
+    // Fit only once the slot is MEASURED (canFit) — never into a zero-size
+    // container (fit is deferred; the effect re-runs when canFit flips). Markers/
+    // lines above still draw on `ready`, so the map is never blank. (TRIP-202)
+    if (canFit && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
         // ★ СКАЧОК — ТОЛЬКО У КАРТЫ, КОТОРУЮ ЕЩЁ НИ РАЗУ НЕ КАДРИРОВАЛИ. Инстанс
@@ -664,7 +653,7 @@ export default function MapView({
     // `transfers` больше не в deps: фит зависит от набора визитов, не переездов
     // (линии рисует отдельный эффект). focusSig/revealActiveId читаются внутри как
     // и раньше — их смена приходит вместе с ре-рендером visitsSignature/фокуса.
-  }, [ready, canFrameNow, ordered, visitsSignature, hideRoute]);
+  }, [ready, canFit, ordered, visitsSignature, hideRoute]);
 
   // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
   // Owns the hotel markers while the overlay is open: builds a moveend listener
@@ -778,7 +767,7 @@ export default function MapView({
 
     // First paint for this city → fit the camera to the WHOLE pool once. Later pool
     // growth (tail pages) must NOT jump the camera, so guard with hadHotelPinsRef.
-    if (!hadHotelPinsRef.current && canFrameNow) {
+    if (!hadHotelPinsRef.current && canFit) {
       hadHotelPinsRef.current = true;
       const pts = (hotelPins2 || []).filter((h) => h.lat != null && h.lng != null).map((h) => [h.lng, h.lat]);
       if (pts.length) calmFit(map, pts, { padding: 80, maxZoom: 15 });
@@ -792,7 +781,7 @@ export default function MapView({
         hotelMoveHandlerRef.current = null;
       }
     };
-  }, [ready, canFrameNow, hideRoute, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
+  }, [ready, canFit, hideRoute, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
 
   // Hotel selection + hover highlight (no rebuild) + Способ A. Hover/selection just
   // re-toggle classes; a NEW selection buried in a cluster (or off the current

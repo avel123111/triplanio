@@ -94,7 +94,6 @@ function viewportTop() {
  *   onDetentChange?: (i: number) => void,
  *   detents?: number[],
  *   onHeightChange?: (px: number) => void,
- *   onHeightLive?: (px: number, phase: 'move' | 'end') => void,
  *   label: string,
  *   className?: string,
  * }} p
@@ -107,18 +106,6 @@ export function PeekSheet({
   onDetentChange,
   detents = [0.15, 1],
   onHeightChange,
-  // ★ ВЫСОТА ВО ВРЕМЯ ЖЕСТА, КАДР В КАДР. `onHeightChange` отдаёт только
-  // ЗАФИКСИРОВАННУЮ высоту детента — этого хватает списку, но НЕ хватает карте:
-  // пока палец ведёт шит, свободное окно меняется каждый кадр, а камера об этом
-  // не знает и трогается только на осадке. Именно это читается как «стоит-стоит
-  // и дёрнулось», тогда как на десктопе то же движение идёт непрерывно (там
-  // ResizeObserver сыпет кадры при тяге за край окна).
-  //
-  // Канал ОТДЕЛЬНЫЙ, а не второй аргумент того же колбэка, и это не украшение:
-  // зафиксированная высота едет через `setState` (по ней считается тело списка),
-  // а живая обязана идти МИМО React — состояние на кадр жеста стоило бы
-  // перекладки всего содержимого шита.
-  onHeightLive,
   label,
   className = '',
 }) {
@@ -159,7 +146,7 @@ export function PeekSheet({
 
   // Свежие пропы для однажды навешанных нативных слушателей.
   const live = useRef();
-  live.current = { index, stops, vh, onDetentChange, onHeightLive };
+  live.current = { index, stops, vh, onDetentChange };
 
   // ★ ДОК СЧИТАЕТСЯ РОВНО ОДИН РАЗ. Полоса шапки — это ТОЛЬКО грип + header;
   // нижний нав и домашняя полоска сюда НЕ входят. Прошлая редакция добавляла их
@@ -262,8 +249,6 @@ export function PeekSheet({
       const next = Math.max(d.min, Math.min(d.max, d.base + dy));
       d.last = next;
       setDragY(next);
-      // Высота видимой полосы этого кадра — то же, что `vh - сдвиг`.
-      live.current.onHeightLive?.(Math.max(0, live.current.vh - next), 'move');
     };
     const onEnd = (e) => {
       const d = drag.current; drag.current = null;
@@ -279,10 +264,6 @@ export function PeekSheet({
         const isFlick = Math.abs(vy) > FLICK_VELOCITY;
         const flick = isFlick ? Math.sign(-vy) : 0;
         const next = nearestDetent({ stops: st, height: h - d.last, from: i, flick });
-        // Куда шит ПОЕДЕТ — знаем уже здесь, и это важно: если детент не сменился
-        // (шит вернулся на место), состояние не изменится и подписчик иначе так и
-        // остался бы там, куда его увёл палец.
-        live.current.onHeightLive?.(st[next] ?? 0, 'end');
         if (next !== i) cb && cb(next);
       } else if (d.mode === 'idle' && tapSettles(d)) {
         e.preventDefault(); // глушим эмулированный клик и переключаем

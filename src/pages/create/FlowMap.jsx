@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { calmFit } from '@/lib/map/camera';
 import { markFramed } from '@/lib/map/framed';
-import { getMapInsets, offsetFor } from '@/lib/map/insets';
+import { getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
-import { useCanFrame, useMapInsets } from '@/lib/map/useMapInsets';
+import { useMapInsets } from '@/lib/map/useMapInsets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
@@ -33,19 +33,19 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
   return legs;
 }
 
-// ★ ЗДЕСЬ — ТОЛЬКО ВОЗДУХ КАДРА. Закрытую площадь карта знает сама
-// (`lib/map/insets.js`: панель приезжает в `left`, шит — в `bottom`), поэтому здесь
-// нет ни места под панель в отступе кадра, ни сдвига камеры: остался только
-// ВОЗДУХ вокруг маршрута. Раньше ширина панели считалась ЗДЕСЬ (`min(550, 44vw)`
-// и брейкпоинт 960) — вторая копия числа из CSS, которая расходилась с ним
-// на первой же правке раскладки.
+// ★ КАДР СЧИТАЕТСЯ ОТ КОНТЕЙНЕРА, И ЭТОГО ДОСТАТОЧНО. Слот карты, который даёт
+// `<MapShell>`, И ЕСТЬ свободное окно: панель на десктопе и шит на телефоне —
+// граница слота, а не наложение поверх него. Поэтому здесь больше нет ни места
+// под панель в отступе кадра, ни сдвига камеры: осталcя только ВОЗДУХ вокруг
+// маршрута. Раньше ширина панели считалась ЗДЕСЬ (`min(550, 44vw)` и брейкпоинт
+// 960) — вторая копия числа из CSS, которая расходилась с ним на первой же
+// правке раскладки.
 //
-// ⚠️ ПУСТОЙ ГЛОБУС — ЕДИНСТВЕННОЕ ИСКЛЮЧЕНИЕ: диаметр шара Mapbox считает
-// от размеров КАНВАСА, а не от свободной его части — то есть канвас во весь
-// экран даёт шар МЕНЬШЕ свободного окна, и вокруг него видно дымку и космос.
-// Замер по пикселям: канвас во весь экран телефона — 22.9 % дымки и все четыре
-// угла вне планеты. Поэтому его зум считается от СВОБОДНОГО ОКНА: `startGlobeZoom`
-// вычитает и отступ, и воздух из размеров холста (`lib/map/globeStart.js`).
+// Почему не отступ вьюпорта под панель: диаметр глобуса Mapbox считает от
+// размеров КАНВАСА, а не от свободной его части, поэтому канвас во весь экран
+// даёт шар МЕНЬШЕ свободного окна — вокруг него видно дымку и космос. Замер по
+// пикселям: канвас во весь экран телефона — 22.9 % дымки и все четыре угла вне
+// планеты; слот, равный свободному окну, — ни одной точки рамки вне планеты.
 
 function fitPaddingFor(w) {
   return w > PHONE_MAX_W ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 32, left: 40 };
@@ -55,11 +55,11 @@ function fitPaddingFor(w) {
 // RESET черновика). Всё, что можно посчитать без DOM, — в `lib/map/globeStart.js`;
 // там же разбор и там же тест: у правила «какого размера шар» нет ни скриншота в
 // CI, ни гарда, и его уже дважды ломали. Здесь остаётся снять размеры холста.
-function startGlobeView(map, insets) {
+function startGlobeView(map, air, insets) {
   const el = map?.getContainer?.();
   return {
     center: GLOBE_START_CENTER,
-    zoom: startGlobeZoom({ W: el?.clientWidth || 0, H: el?.clientHeight || 0, insets }),
+    zoom: startGlobeZoom({ W: el?.clientWidth || 0, H: el?.clientHeight || 0, insets, air }),
   };
 }
 
@@ -78,13 +78,15 @@ function startGlobeView(map, insets) {
 // ScreenMap drives MapView. Marker ids: 'home', the city's own id, 'finish'.
 // =====================================================================
 export default function FlowMap({
-  // Закрытая площадь — приезжает от `<MapShell>` ОДНОЙ величиной на обе оси:
-  // канвас всегда во всю площадь (карта видна и под виджетом, и под шитом), а
-  // кадр уходит в свободное окно. Разбор — в `mapShellInsets`.
+  // Закрытая панелью площадь — приезжает от `<MapShell>` и выражается ОТСТУПОМ
+  // ВЬЮПОРТА: канвас остаётся во всю площадь (карта видна под виджетом), а кадр
+  // уходит в свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   camera = null,
-  // Подписка на закрытую площадь ВО ВРЕМЯ ЖЕСТА (кадр в кадр, мимо React) —
-  // ею камера едет за пальцем, а не только на осадке детента.
-  live = null,
+  // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. Маршрут по ней
+  // не перекадрируется (автофокус — только на изменение маршрута); её читает
+  // ПУСТОЙ ГЛОБУС, чей диаметр считается от высоты холста. На телефоне это
+  // единственный сигнал: отступы камеры там всегда нулевые.
+  slotPx = 0,
   home, cities = [], finishCity, transport = {}, isStay = false,
   // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
   // CITY still feeds the camera framing, so stepping between steps toggles what's
@@ -209,38 +211,26 @@ export default function FlowMap({
   // при этом подстраивается по-прежнему: отступ доводит сам хук, без зума.
   //
   // ★★ ПУСТОЙ ГЛОБУС — ИСКЛЮЧЕНИЕ, И ЭТО НЕ ПОБЛАЖКА. Здесь нет маршрута, и
-  // кадрировать нечего: ДИАМЕТР ШАРА считается от высоты СВОБОДНОГО ОКНА
-  // (`startGlobeZoom` вычитает отступ), поэтому смена отступа меняет не кадр, а
-  // размер самого предмета. Оставь зум как есть — и шар, посчитанный для окна в
-  // 700px, не поместится в окно 250px. Это ровно тот случай, ради которого у
-  // `useMapInsets` осталась дверь: цель считается от окна, а не от точек.
+  // кадрировать нечего: ДИАМЕТР ШАРА считается от высоты ХОЛСТА
+  // (`startGlobeZoom`), поэтому смена слота меняет не кадр, а размер самого
+  // предмета. Оставь зум как есть — и шар, посчитанный для холста в 700px,
+  // окажется обрезан краями холста в 250px. Это ровно тот случай, ради которого
+  // у `useMapInsets` осталась дверь: цель считается от холста, а не от точек.
   //
   // Ref'а под цель здесь НЕТ, и это не упущение: `useMapInsets` переприсваивает
   // `reframeRef.current` в теле КАЖДОГО рендера, то есть зовёт самое свежее
   // замыкание. Прежней конструкции ref был нужен, пока из эффекта читали цель
   // маршрута; теперь он фиксировал бы ровно то, что и так актуально.
-  //
-  // ★ ГЕЙТ — «ЕСТЬ КУДА ВПИСЫВАТЬ», А НЕ «ХОЛСТ ИЗМЕРЕН» (разбор — `useMapInsets`).
-  // Объявлен ВЫШЕ `useMapInsets` намеренно: его ответ читает `onReframe` ниже.
-  const canFrameNow = useCanFrame(mapRef, { ready: canFit, insets: camera });
-
   useMapInsets(mapRef, {
     ready,
     insets: camera,
-    live,
-    onReframe: (map, { instant = false } = {}) => {
+    slotPx,
+    onReframe: (map) => {
       // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
       // НЕ перекадрирование: зум и границы маршрута он не трогает.
-      if (!canFrameNow || fitPositions.length) return false;
-      const view = startGlobeView(map, getMapInsets(map));
-      const move = { ...view, offset: offsetFor(getMapInsets(map)) };
-      // Кадр жеста — мгновенно (шар растёт вместе с окном, за пальцем); осадка —
-      // тем же темпом и кривой, что и шит. Мгновенность = `duration: 0`, а НЕ
-      // `jumpTo`: тот не поддерживает `offset` и молча ставит кадр по центру
-      // всего холста, то есть под шит.
-      try {
-        map.easeTo({ ...move, duration: instant ? 0 : SURFACE_SETTLE_MS, ...(instant ? null : { easing: surfaceEasing }) });
-      } catch { /* ignore */ }
+      if (!canFit || fitPositions.length) return false;
+      const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
+      try { map.easeTo({ ...view, padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
       return true; // отступ уехал вместе с видом — хуку добавлять нечего
     },
   });
@@ -266,9 +256,9 @@ export default function FlowMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    // Fit only when there IS a free window — deferred otherwise; the effect re-runs
-    // when it comes back. Markers draw on `ready` via the hook. (TRIP-202/484)
-    if (canFrameNow) {
+    // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
+    // re-runs when canFit flips. Markers draw on `ready` via the hook. (TRIP-202)
+    if (canFit) {
       // ВОЗДУХ кадра, и только он: закрытую площадь карта знает сама
       // (`lib/map/insets.js`), поэтому складывать её здесь не нужно и нельзя.
       const air = fitPaddingFor(winW);
@@ -291,14 +281,11 @@ export default function FlowMap({
         // сайзится от него (~85% высоты на десктопе), поэтому отступ вьюпорта не
         // нужен и здесь. Returning here from a route (draft RESET) glides back
         // out; a fresh mount / resize just snaps (the fade-in hides it).
-        const view = { ...startGlobeView(map, getMapInsets(map)), offset: offsetFor(getMapInsets(map)) };
+        const view = { ...startGlobeView(map, air, getMapInsets(map)), padding: getMapInsets(map) };
         if (prevHadPointsRef.current) {
-          try { map.easeTo({ ...view, duration: 600 }); } catch { /* ignore */ }
+          try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
         } else {
-          // `duration: 0`, а не `jumpTo`: последний игнорирует `offset`, и
-          // стартовый шар вставал по центру ВСЕГО холста — наполовину под шитом
-          // на телефоне и по центру экрана вместо свободного места на десктопе.
-          try { map.easeTo({ ...view, duration: 0 }); } catch { /* ignore */ }
+          try { map.jumpTo(view); } catch { /* ignore */ }
         }
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';
@@ -312,7 +299,7 @@ export default function FlowMap({
     // Пересборку пинов делает `useCityMarkers` по ptsKey — здесь его нет.
     // winW/winH читаются внутри (fitPaddingFor / startGlobeView) — перечислены для
     // честности exhaustive-deps, хотя fitKey их и так несёт.
-  }, [ready, canFrameNow, fitKey, winW, winH]);
+  }, [ready, canFit, fitKey, winW, winH]);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).

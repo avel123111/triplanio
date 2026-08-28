@@ -14,7 +14,7 @@
 // (dependency-free → unit-testable).
 import { fitToPoints, cameraForPoints } from '@/lib/mapbox';
 import { calmDuration } from '@/lib/map/calmDuration';
-import { getMapInsets, offsetFor } from '@/lib/map/insets';
+import { getMapInsets } from '@/lib/map/insets';
 
 export { calmDuration };
 
@@ -36,12 +36,11 @@ export function calmFlyTo(map, target = {}) {
   if (!map) return;
   const toZoom = target.zoom != null ? target.zoom : map.getZoom();
   const duration = calmDuration({ dZoom: toZoom - map.getZoom(), screens: centerScreens(map, target.center) });
-  // Сдвиг передаётся ЯВНО, хотя `flyTo` без него и сохранил бы текущий: тогда
+  // Отступ передаётся ЯВНО, хотя `flyTo` без него и сохранил бы текущий: тогда
   // правильность наводки на один город зависела бы от того, кто ходил камерой
   // ДО этого. Здесь цель — «город по центру свободного окна», и она обязана
   // выполняться сама по себе, а не по последствиям предыдущего вызова.
-  // Именно СДВИГ, а не `padding`: отступ ломает рендер глобуса (`map/insets.js`).
-  map.flyTo({ ...target, offset: offsetFor(getMapInsets(map)), duration, essential: true });
+  map.flyTo({ ...target, padding: getMapInsets(map), duration, essential: true });
 }
 
 // Fit a set of [lng,lat] points with an adaptive calm duration. The target zoom is

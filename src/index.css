@@ -248,23 +248,5 @@ input[type="time"] {
 /* Mapbox GL — keep map controls/markers on a local stack (2), i.e. below every
    floor of the --z-* ladder in app.css, so a dialog/sheet always covers them. */
 .mapboxgl-canvas { outline: none; }
-/* ★ АТРИБУЦИЯ ОБЯЗАНА ОСТАВАТЬСЯ НА ВИДУ (условие лицензии mapbox), а холст в
-   `<MapShell>` теперь уходит под шит целиком: логотип и копирайт поднимаются на
-   высоту шита и едут тем же темпом и той же кривой, что и он сам. Величину
-   публикует шелл (`--mapshell-bottom`); за его пределами переменной нет, отступ
-   вырождается в 0, и на остальных картах правило ничего не меняет — поэтому
-   селектор общий, а не привязанный к шеллу.
-   `!important` здесь по той же причине, что и у `z-index` строкой ниже:
-   `mapbox-gl.css` приезжает ДИНАМИЧЕСКИМ импортом (`lib/mapbox.js`), то есть
-   встаёт в `<head>` ПОСЛЕ наших таблиц, и при равной специфичности выигрывает.
-   visual-diff-exempt: .mapboxgl-ctrl-bottom-left bottom — атрибуция поднята над шитом (вне шелла значение прежнее)
-   visual-diff-exempt: .mapboxgl-ctrl-bottom-left transition — едет одним темпом с шитом
-   visual-diff-exempt: .mapboxgl-ctrl-bottom-right bottom — то же для копирайта
-   visual-diff-exempt: .mapboxgl-ctrl-bottom-right transition — то же
-   orphan-exempt: .mapboxgl-ctrl-bottom-right — имя ставит сам mapbox-gl, в разметке репозитория его нет */
 .mapboxgl-ctrl-bottom-left,
-.mapboxgl-ctrl-bottom-right {
-  z-index: 2 !important;
-  bottom: var(--mapshell-bottom, 0px) !important;
-  transition: bottom var(--surface-settle, .32s) var(--surface-ease, ease);
-}
+.mapboxgl-ctrl-bottom-right { z-index: 2 !important; }
