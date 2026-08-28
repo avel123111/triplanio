@@ -7,6 +7,15 @@ import {
   ToastProvider,
   ToastViewport,
 } from "@/components/ui/toast";
+// ★ ОДИН СПИСОК «ЧЕЙ ТАП» НА ВСЁ ПРИЛОЖЕНИЕ. Имя у константы шитовое, потому что
+// шит был первым, кому правило понадобилось; сама она про объект «управление»,
+// а не про шит. Заводить второй такой список рядом значило бы развести их через
+// два PR. Появится третий вызыватель — константа переедет в свой модуль, сейчас
+// это было бы шагом ради шага.
+import { SHEET_CONTROL_SELECTOR, tapSettles } from "@/lib/sheetDetents";
+import {
+  swipeAxis, swipeOffset, swipeCommit, swipeExit, SWIPE_EXIT_MS,
+} from "@/lib/swipeDismiss";
 
 // Per-variant auto-dismiss timing. Errors/warnings linger longer so the user
 // can read the unexpected message; success/info clear quickly. A toast may
@@ -115,10 +124,116 @@ export function Toaster() {
   // reopen collapsed-then-expanded on the next toast.
   const [expanded, setExpanded] = useState(false);
   useEffect(() => { if (!toasts.length) setExpanded(false); }, [toasts.length]);
-  const onHostPointerDown = (e) => {
-    if (e.pointerType === "mouse") return;       // desktop fans on hover
-    if (e.target.closest("button")) return;      // let the close button through
-    setExpanded((v) => !v);
+
+  /* ★★ ОДИН КОНВЕЙЕР УКАЗАТЕЛЯ НА ОБА ЖЕСТА, А НЕ ДВА СОСЕДНИХ ОБРАБОТЧИКА.
+   * На касании у деки теперь ДВА намерения — тап (раскрыть колонку) и свайп
+   * (закрыть карточку), — и живут они на одной поверхности. Развести их можно
+   * только там, где известен ИСХОД жеста, то есть на отпускании: пока палец не
+   * поехал, тап и свайп неотличимы по построению. Поэтому раскрытие переехало
+   * с `pointerdown` на `pointerup` — иначе первый же свайп сначала раскрывал бы
+   * деку, а потом закрывал карточку.
+   *
+   * ★ Ровно это правило репозиторий уже вывел для шита (`tapSettles`,
+   * `sheetDetents.js`): тянуть поверхность можно откуда угодно, ВКЛЮЧАЯ кнопку
+   * (палец поехал — намерение однозначно), а ТАП по кнопке принадлежит кнопке.
+   * Здесь берётся та же функция, а не переписывается условие: разойдись они —
+   * и крестик тоста повёл бы себя не так, как крестик шита.
+   *
+   * Мышь не трогаем вовсе: на десктопе дека раскрывается ховером из CSS. */
+  const swipe = useRef(/** @type {any} */(null));
+  const exitTimers = useRef(new Map());
+  useEffect(() => () => { exitTimers.current.forEach(clearTimeout); exitTimers.current.clear(); }, []);
+
+  const onPointerDown = (e) => {
+    if (e.pointerType === "mouse") return;
+    const card = e.target.closest?.(".toast");
+    if (!card) return;
+    swipe.current = {
+      card,
+      id: card.dataset.toastId,
+      x0: e.clientX, y0: e.clientY,
+      lastX: e.clientX, lastY: e.clientY, lastT: e.timeStamp,
+      vx: 0, vy: 0,
+      axis: null,
+      onControl: !!e.target.closest?.(SHEET_CONTROL_SELECTOR),
+      pointerId: e.pointerId,
+    };
+    // ★ ЗАХВАТ УКАЗАТЕЛЯ СТАВИТСЯ НЕ ЗДЕСЬ, А В `pointermove`, КОГДА ОСЬ УЖЕ
+    // ВЫБРАНА. Захват перенаправляет `pointerup` на карточку, а `click` браузер
+    // шлёт общему предку точек нажатия и отпускания — то есть тоже карточке, а
+    // не крестику. В Chromium это обошлось (проверено A/B-прогоном на стенде:
+    // обе редакции закрывают тост крестиком), но захватывать жест, которого ещё
+    // нет, неверно само по себе: до порога намерения касание принадлежит тому,
+    // на ком оно началось, и отнимать его у кнопки не за что.
+  };
+
+  const onPointerMove = (e) => {
+    const s = swipe.current;
+    if (!s) return;
+    const dx = e.clientX - s.x0;
+    const dy = e.clientY - s.y0;
+    const dt = e.timeStamp - s.lastT;
+    if (dt > 0) {
+      s.vx = (e.clientX - s.lastX) / dt;
+      s.vy = (e.clientY - s.lastY) / dt;
+    }
+    s.lastX = e.clientX; s.lastY = e.clientY; s.lastT = e.timeStamp;
+    if (!s.axis) {
+      s.axis = swipeAxis(dx, dy);
+      if (!s.axis) return;               // намерения ещё нет — это может быть тап
+      s.card.dataset.swipe = "";         // снимает transition: палец ведёт 1:1
+      // Теперь жест точно наш: карточка уезжает из-под пальца, и без захвата
+      // `pointermove` перестал бы приходить на середине хода.
+      try { s.card.setPointerCapture?.(s.pointerId); } catch { /* указателя уже нет */ }
+    }
+    const { x, y } = swipeOffset(s.axis, dx, dy);
+    s.card.style.setProperty("--sw-x", `${x}px`);
+    s.card.style.setProperty("--sw-y", `${y}px`);
+  };
+
+  const settle = (s) => {
+    delete s.card.dataset.swipe;
+    s.card.style.removeProperty("--sw-x");
+    s.card.style.removeProperty("--sw-y");
+  };
+
+  const onPointerUp = (e) => {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s) return;
+
+    // Оси нет — палец не поехал, значит это был ТАП.
+    if (!s.axis) {
+      if (tapSettles({ onHandle: true, onControl: s.onControl })) setExpanded((v) => !v);
+      return;
+    }
+
+    const dir = swipeCommit({
+      axis: s.axis, dx: e.clientX - s.x0, dy: e.clientY - s.y0, vx: s.vx, vy: s.vy,
+    });
+    if (!dir) { settle(s); return; }
+
+    // Улетает по тому же каналу, что и вело палец, — вторая формула не заводится.
+    // Время публикует компонент (`--sw-exit`), кривую берёт токен: тот же приём,
+    // каким шит публикует свой темп (`--surface-settle`, lib/surfaceMotion).
+    const r = s.card.getBoundingClientRect();
+    const exit = swipeExit(dir, { width: r.width, bottom: r.bottom });
+    s.card.dataset.swipeOut = "";
+    s.card.style.setProperty("--sw-exit", `${SWIPE_EXIT_MS}ms`);
+    s.card.style.setProperty("--sw-x", `${exit.x}px`);
+    s.card.style.setProperty("--sw-y", `${exit.y}px`);
+    // Из стора карточка уходит ПОСЛЕ полёта: снять её сразу — значит включить
+    // штатную выходную анимацию (`data-state="leave"`) поверх летящей карточки.
+    if (s.id) {
+      const h = setTimeout(() => { exitTimers.current.delete(s.id); dismiss(s.id); }, SWIPE_EXIT_MS);
+      exitTimers.current.set(s.id, h);
+    }
+  };
+
+  const onPointerCancel = () => {
+    const s = swipe.current;
+    swipe.current = null;
+    if (s && s.axis) settle(s);
   };
 
   const openIndex = new Map(
@@ -126,7 +241,13 @@ export function Toaster() {
   );
 
   return (
-    <ToastProvider data-expanded={expanded ? "" : undefined} onPointerDown={onHostPointerDown}>
+    <ToastProvider
+      data-expanded={expanded ? "" : undefined}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+    >
       {toasts.map(function ({ id, title, description, action, open, onOpenChange: _onOpenChange, ...props }) {
         const leaving = open === false;
         const state = leaving ? "leave" : (entered.has(id) ? "visible" : "enter");
@@ -135,6 +256,7 @@ export function Toaster() {
           <Toast
             key={id}
             ref={(el) => { if (el) nodes.current.set(id, el); else nodes.current.delete(id); }}
+            data-toast-id={id}
             data-state={state}
             data-deep={deep ? "" : undefined}
             {...props}

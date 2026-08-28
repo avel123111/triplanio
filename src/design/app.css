@@ -7343,7 +7343,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   padding: 12px 15px; border-radius: var(--r-md); box-shadow: var(--sh-3);
   pointer-events: auto; transform-origin: bottom center;
   z-index: calc(100 - var(--i, 0));
-  transform: translateY(calc(var(--i, 0) * -12px)) scale(calc(1 - var(--i, 0) * 0.05));
+  transform: translate(var(--sw-x, 0px), var(--sw-y, 0px)) translateY(calc(var(--i, 0) * -12px)) scale(calc(1 - var(--i, 0) * 0.05));
   transition: transform .38s var(--ease-spring), opacity .3s var(--ease-out);
   will-change: transform, opacity;
 }
@@ -7355,7 +7355,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .toast-host:has(.toast:hover) .toast[data-state="visible"],
 .toast-host:focus-within .toast[data-state="visible"],
 .toast-host[data-expanded] .toast[data-state="visible"] {
-  transform: translateY(calc(var(--y, 0px) * -1)) scale(1);
+  transform: translate(var(--sw-x, 0px), var(--sw-y, 0px)) translateY(calc(var(--y, 0px) * -1)) scale(1);
   opacity: 1;
 }
 /* Enter / leave: slide in and out past the anchored (bottom) edge. */
@@ -7363,6 +7363,47 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .toast-host .toast[data-state="leave"] {
   transform: translateY(24px) scale(.94); opacity: 0;
 }
+
+/* ─── Свайп-закрытие карточки (касание): вверх · влево · вправо ───────────────
+   ★ КАНАЛ, А НЕ ВТОРАЯ ФОРМУЛА. Смещение пальца приезжает парой `--sw-x/--sw-y`
+   и КОМПОЗИТСЯ в тот же `transform`, которым дека уже раскладывает карточки —
+   в обе ступени (покой и раскрытая колонка) и в обе раскладки (десктоп и
+   мобайл). При дефолтах `0px` это `translate(0, 0)`, то есть no-op: итоговое
+   значение прежнее. Отдельное правило свайпа с собственным `transform`
+   пришлось бы писать дважды и держать в синхроне с декой руками — это ровно та
+   вторая формула, из-за которой облики и расходятся. Тот же приём, что у
+   `--fab-tint` в `.icon-btn--fab` и у `--hl` в `.tile`.
+
+   ★ ЖЕСТ НАШ, ЗНАЧИТ СТРАНИЦА ПОД ПАЛЬЦЕМ НЕ ЕДЕТ. `touch-action: none` — не
+   перестраховка: без него вертикальный свайп по тосту прокручивал бы страницу,
+   а горизонтальный на iOS уводил бы назад по истории.
+
+   ── 2p. Канал добавлен в ЧЕТЫРЕ существующих `transform`, но строк десять:
+   раскрытую деку гард ключует по ХОСТУ, а раскрывают её три условия (ховер ·
+   фокус · тап) — и то же объявление приписывается ещё и самой карточке.
+   Плюс `touch-action` и два новых состояния жеста.
+   visual-diff-exempt: .toast transform — канал смещения `--sw-x/--sw-y`; при дефолтах 0px это translate(0,0), итоговое значение прежнее (свайп-закрытие тоста)
+   visual-diff-exempt: .toast {@media (max-width: 640px)} transform — тот же канал в мобильной раскладке
+   visual-diff-exempt: .toast[data-state=visible] transform — тот же канал в раскрытой деке (ключ на карточке: составное правило гард приписывает и хосту, и ей)
+   visual-diff-exempt: .toast[data-state=visible] {@media (max-width: 640px)} transform — то же на телефоне
+   visual-diff-exempt: .toast-host:focus-within transform — тот же канал в раскрытой деке (раскрыта фокусом)
+   visual-diff-exempt: .toast-host:has(.toast:hover) transform — тот же канал в раскрытой деке (раскрыта ховером)
+   visual-diff-exempt: .toast-host[data-expanded] transform — тот же канал в раскрытой деке (раскрыта тапом)
+   visual-diff-exempt: .toast-host:focus-within {@media (max-width: 640px)} transform — то же на телефоне
+   visual-diff-exempt: .toast-host:has(.toast:hover) {@media (max-width: 640px)} transform — то же на телефоне
+   visual-diff-exempt: .toast-host[data-expanded] {@media (max-width: 640px)} transform — то же на телефоне
+   visual-diff-exempt: .toast touch-action — жест принадлежит карточке: без него свайп прокручивал бы страницу (вертикаль) и уводил назад по истории (горизонталь на iOS)
+   visual-diff-exempt: .toast[data-swipe] transition — новое состояние «палец на экране»: сглаживание снято, карточка идёт за пальцем 1:1
+   visual-diff-exempt: .toast[data-swipe-out] transition — новое состояние «полёт за край»: своё время (--sw-exit) на одном transform */
+.toast { touch-action: none; }
+/* Палец на экране — карточка идёт за ним 1:1, без сглаживания. Тот же приём и
+   то же имя состояния, что у `.peek-sheet.is-dragging`. */
+.toast[data-swipe] { transition: none; }
+/* Полёт за край. Время публикует сам компонент (`--sw-exit`; число живёт в
+   `lib/swipeDismiss`), кривая — существующий токен. `transform` тут НЕ объявлен
+   намеренно: он приезжает из деки вместе с каналом, поэтому карточка стартует
+   ровно оттуда, где стояла, а не прыгает в ноль. */
+.toast[data-swipe-out] { transition: transform var(--sw-exit, 200ms) var(--ease-out); }
 /* Mobile: same deck, top-anchored, growing downward — newest on top. Tap fans
    it into a column; enter/leave slide past the top edge. */
 @media (max-width: 640px) {
@@ -7373,12 +7414,12 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   }
   .toast {
     top: 0; bottom: auto; transform-origin: top center;
-    transform: translateY(calc(var(--i, 0) * 12px)) scale(calc(1 - var(--i, 0) * 0.05));
+    transform: translate(var(--sw-x, 0px), var(--sw-y, 0px)) translateY(calc(var(--i, 0) * 12px)) scale(calc(1 - var(--i, 0) * 0.05));
   }
   .toast-host:has(.toast:hover) .toast[data-state="visible"],
   .toast-host:focus-within .toast[data-state="visible"],
   .toast-host[data-expanded] .toast[data-state="visible"] {
-    transform: translateY(var(--y, 0px)) scale(1);
+    transform: translate(var(--sw-x, 0px), var(--sw-y, 0px)) translateY(var(--y, 0px)) scale(1);
   }
   .toast-host .toast[data-state="enter"],
   .toast-host .toast[data-state="leave"] {
