@@ -7,14 +7,11 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { report } from '@/lib/reportDataError';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
-import { uploadErrorText } from '@/lib/documentMutations';
+import { uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentMutations';
+import { prepareImage } from '@/lib/prepareImage';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { composeCoverSlides } from '@/lib/coverSlides';
-
-// Экспорт: тот же потолок держит фон share-карточки (ShareCardDialog) — картинка
-// одного класса, кэп один.
-export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
 
 // Каталог пресетов читаем через edge-витрину getCoverPresets (дверь auth,
 // service_role) — прямого клиентского SELECT нет (эпик «единая дверь» TRIP-374).
@@ -121,13 +118,9 @@ export default function TripCoverPicker({
     }
   }, [autoSelect, coverImageUrl, presetUrls, onChange]);
 
-  const handleUpload = async (file) => {
-    if (!isAllowedUpload(file, ALLOWED_IMAGE_EXTENSIONS)) {
-      setError(t('doc.bad_format', { name: file.name }));
-      return;
-    }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setError(t('trip.cover_too_large'));
+  const handleUpload = async (picked) => {
+    if (!isAllowedUpload(picked, ALLOWED_IMAGE_EXTENSIONS)) {
+      setError(t('doc.bad_format', { name: picked.name }));
       return;
     }
     // A draft cover is keyed by its uploader, so without a session there is no
@@ -139,6 +132,17 @@ export default function TripCoverPicker({
     setError('');
     setUploading(true);
     try {
+      // Обложку крупнее 1920 px не покажет ни один экран — в Storage едет ужатая
+      // копия, оригинал дальше этой строки не живёт. Декодирование
+      // 12-мегапиксельного фото занимает доли секунды, поэтому индикатор уже включён.
+      const file = await prepareImage(picked);
+      // Потолок остался СТРАХОВКОЙ на файл, который браузер не смог открыть (HEIC
+      // в десктопном Chrome): такой приезжает сюда исходником. Число — то же, что
+      // у документов, то есть реальный `file_size_limit` бакета `trips`.
+      if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+        setError(uploadErrorText({ file, reason: 'size' }, t));
+        return;
+      }
       // Before the trip exists, park the file in the uploader's own draft folder
       // (`_drafts/<userId>/…`, the only one RLS lets them touch); finalizeDraftCover
       // moves it under `<tripId>/` on trip creation. The bucket is private, so the
@@ -161,7 +165,7 @@ export default function TripCoverPicker({
     } catch (err) {
       // Storage-ошибка (кода НЕТ) → её дом uploadErrorText, не сырой показ .message.
       const storageMsg = err?.message;
-      setError(uploadErrorText({ file, reason: 'upload', message: storageMsg }, t));
+      setError(uploadErrorText({ file: picked, reason: 'upload', message: storageMsg }, t));
     } finally {
       setUploading(false);
     }
