@@ -19,7 +19,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Badge, Toggle, Btn, Card, IconBtn, Tile, Seg, Severity, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Badge, Toggle, Btn, Card, IconBtn, Tile, Seg, useToast } from '@/design/index';
 import {
   Trash2, ArrowRight, Repeat,
   Plane, Car as CarIcon, ShieldCheck,
@@ -131,6 +131,7 @@ function makeSegment(defCur = 'EUR') {
 import { invokeFn } from '@/lib/invokeFn';
 import { goPro } from '@/lib/goPro';
 import { useTripProStatus } from '@/lib/subscription';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import { errorText } from '@/lib/errorText';
 import { refusalError } from '@/lib/refusalError';
 import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
@@ -609,7 +610,15 @@ export default function EventEditDialog({
   // сохранение замьючено с тултипом-причиной. Серверный шов всё равно 403-ит.
   const { canEdit } = useTripAccess();
 
-  const [confirmDel, setConfirmDel] = useState(false);
+  // ★ ЗДЕСЬ И БЫЛ ЗАПИСАН УСТАРЕВШИЙ ДОВОД. Комментарий у снятой ветки гласил:
+  // «Inline delete-confirm view — replaces the form when active to avoid nesting
+  // Radix modals (which would intercept pointer events on the inner buttons)».
+  // Предпосылка неверна: `DocDetailDialog` (DocsLens) зовёт этот же
+  // `useConfirm()` изнутри открытого канон-диалога и работает, а лестница этажей
+  // заведена ровно под вложение — `--z-confirm` 300 против `--z-modal` 200.
+  // Из-за этого довода в приложении жили ТРИ копии одной стейт-машины, и в
+  // каждой форма редактирования исчезала в момент подтверждения.
+  const confirm = useConfirm();
   const [uploading, setUploading] = useState(false);
 
   // Soft note when an AI-parsed multi-leg booking's endpoints differ from the
@@ -1229,17 +1238,7 @@ export default function EventEditDialog({
             </div>
           )}
 
-          {/* Inline delete-confirm view - replaces the form when active to
-              avoid nesting Radix modals (which would intercept pointer
-              events on the inner buttons). */}
-          {confirmDel ? (
-            <div className={bodyCls}>
-              <Severity level="error" icon="trash" title={t('event.delete_q', { label: t(meta.labelKey).toLowerCase() })}>
-                <div className="t-meta">{t('event.delete_irreversible')}</div>
-              </Severity>
-            </div>
-          ) : (
-          /* Body */
+          {/* Body */}
           <div className={bodyCls}>
             {/* AI block - only for hotel & transfer (the kinds with parsers). */}
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
@@ -1343,7 +1342,6 @@ export default function EventEditDialog({
             </fieldset>
             </RequiredFieldsCtx.Provider>
           </div>
-          )}
 
           {/* Footer — единый канон с event view / city view: стандартный `.lp-f`
               (кнопки справа, натуральной ширины), удалить (danger) + primary.
@@ -1354,15 +1352,22 @@ export default function EventEditDialog({
             className="lp-f"
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
-            {confirmDel ? (
-              <>
-                <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>{t('common.cancel')}</Btn>
-                <Btn variant="danger-solid" icon="trash" loading={deleteMut.isPending} disabled={deleteMut.isPending} onClick={() => deleteMut.mutate({ id: entity.id, row: { id: entity.id, _pending: true } })}>{t('common.delete')}</Btn>
-              </>
-            ) : (
-              <>
-                {isEdit && (
-                  <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} disabled={deleteMut.isPending} ariaLabel={t('common.delete')}>
+            {isEdit && (
+                  <Btn
+                    variant="danger"
+                    icon="trash"
+                    disabled={deleteMut.isPending}
+                    ariaLabel={t('common.delete')}
+                    /* `mutateAsync` отдаёт промис самому confirm — спиннер живёт
+                       на его кнопке, форма редактирования остаётся на экране. */
+                    onClick={() => confirm({
+                      title: t('event.delete_q', { label: t(meta.labelKey).toLowerCase() }),
+                      description: t('event.delete_irreversible'),
+                      confirmLabel: t('common.delete'),
+                      variant: 'destructive',
+                      onConfirm: () => deleteMut.mutateAsync({ id: entity.id, row: { id: entity.id, _pending: true } }),
+                    })}
+                  >
                     {t('common.delete')}
                   </Btn>
                 )}
@@ -1377,9 +1382,7 @@ export default function EventEditDialog({
                   lockedHint={t('trip.viewer_locked')}
                 >
                   {isEdit ? t('common.save') : t('event.create')}
-                </Btn>
-              </>
-            )}
+            </Btn>
           </div>
     </>
   );

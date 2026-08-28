@@ -38,7 +38,8 @@
     "check:roles": "node scripts/ci/check-role-gate.mjs",
     "check:confirm": "node scripts/ci/check-confirm-copy.mjs",
     "check:site-dup": "node scripts/ci/check-site-primitive-dup.mjs",
-    "check:proto": "node scripts/ci/compare-prototype.mjs"
+    "check:proto": "node scripts/ci/compare-prototype.mjs",
+    "check:destructive": "node scripts/ci/check-destructive-confirm.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",

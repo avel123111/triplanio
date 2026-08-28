@@ -18,9 +18,10 @@
  *
  * Visual reference: Lumo design system event shell (EVENTS_SERVICES_REDESIGN).
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Btn, IconBtn, Severity, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import {
   useEventViewModel, useEntityDocs, EventViewSections, eventHeader,
 } from '@/components/common/EventViewBody';
@@ -71,11 +72,27 @@ export default function EventModal(props) {
     else if (!next) props.onClose?.();
   };
 
-  const [confirmDel, setConfirmDel] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  React.useEffect(() => {
-    if (!open) { setConfirmDel(false); setDeleting(false); }
-  }, [open]);
+  // ★ ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ — ОБЩЕЕ, А НЕ СВОЁ. Здесь стояла собственная
+  // стейт-машина (`confirmDel` + `deleting`), которая ПОДМЕНЯЛА тело окна
+  // баннером `<Severity>` и переписывала футер. Причина была записана в
+  // EventEditDialog: «avoid nesting Radix modals». Предпосылка неверна —
+  // `DocDetailDialog` (DocsLens) зовёт этот же `useConfirm()` ИЗНУТРИ открытого
+  // канон-диалога, а лестница этажей заведена ровно под это: `--z-confirm` 300
+  // против `--z-modal` 200, подтверждение обязано крыть открытое окно.
+  // Цена своей копии была не только в дублировании: тело окна ИСЧЕЗАЛО, то есть
+  // человек переставал видеть то, что удаляет, спиннер жил на своей кнопке, а
+  // «результат» сводился к тому, что окно закрылось.
+  //
+  // ★ ПОЧЕМУ ЗДЕСЬ ВТОРОЙ ОБХОД ПОЛА. `dsshare` — ДОЛЯ, а не счётчик, и она
+  // проседает от УДАЛЕНИЯ разметки, если удалённый кусок был чище среднего.
+  // Замер по всем трём экранам этой правки: 1443/3366 = 42.87% → 1434/3353 =
+  // 42.77%, то есть числитель −9 при знаменателе −13. Снятые ветки состояли из
+  // `<Severity>` и второй кнопки `<Btn>` — оба вызова ДС, — поэтому их доля была
+  // 69% при средней 42.87%. Метрика по построению не отличает «разметку убрали»
+  // от «разметку написали сырой»; тот же эффект фиксировали при переводе
+  // ProUpsellModal и PaymentResultDialog на обёртку.
+  // floor-exempt: dsshare +10 — снятие трёх копий inline-подтверждения убрало 9 вызовов ДС из 13 узлов (доля −0.10 п.п.); апрув Pavel 28.08.2026
+  const confirm = useConfirm();
 
   const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit, subEvent);
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, entity, canEdit);
@@ -119,17 +136,11 @@ export default function EventModal(props) {
 
         {/* Body */}
         <div className="lp-b scrollbar-thin">
-          {confirmDel ? (
-            <Severity level="error" icon="trash" title={t('event.delete_q', { label: themeLabel.toLowerCase() })}>
-              <div className="t-meta">{t('event.delete_irreversible')}</div>
-            </Severity>
-          ) : (
-            <EventViewSections
-              kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
-              accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}
-              externalWarning={warning} subEvent={subEvent}
-            />
-          )}
+          <EventViewSections
+            kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
+            accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}
+            externalWarning={warning} subEvent={subEvent}
+          />
         </div>
 
         {/* Footer — only when there are edit/delete actions (map + booking moved
@@ -140,34 +151,28 @@ export default function EventModal(props) {
            стандартный `.lp-f` (кнопки справа, натуральной ширины). Корзина
            рисуется `icon`-пропом, не сырым lucide. */
         <div className="lp-f">
-          {confirmDel ? (
-            <>
-              <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleting}>{t('common.cancel')}</Btn>
-              <Btn
-                variant="danger-solid"
-                icon="trash"
-                loading={deleting}
-                disabled={deleting}
-                onClick={async () => {
-                  if (!onDelete) return;
-                  try { setDeleting(true); await onDelete(); }
-                  finally { setDeleting(false); setConfirmDel(false); }
-                }}
-              >
-                {t('common.delete')}
-              </Btn>
-            </>
-          ) : (
-            <>
-              {onDelete && (
-                <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('common.delete')}>
-                  {t('common.delete')}
-                </Btn>
-              )}
-              {onEdit && (
-                <Btn variant="primary" icon="edit" onClick={onEdit}>{t('trip.edit_trip')}</Btn>
-              )}
-            </>
+          {onDelete && (
+            <Btn
+              variant="danger"
+              icon="trash"
+              ariaLabel={t('common.delete')}
+              /* Спиннер держит САМ confirm (`onConfirm: async`), поэтому у этой
+                 кнопки нет ни `loading`, ни своего in-flight состояния. Окно
+                 события при этом остаётся открытым — закрыть его решает
+                 вызыватель, когда запись действительно удалена. */
+              onClick={() => confirm({
+                title: t('event.delete_q', { label: themeLabel.toLowerCase() }),
+                description: t('event.delete_irreversible'),
+                confirmLabel: t('common.delete'),
+                variant: 'destructive',
+                onConfirm: () => onDelete(),
+              })}
+            >
+              {t('common.delete')}
+            </Btn>
+          )}
+          {onEdit && (
+            <Btn variant="primary" icon="edit" onClick={onEdit}>{t('trip.edit_trip')}</Btn>
           )}
         </div>
         )}

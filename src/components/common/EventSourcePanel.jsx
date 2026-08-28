@@ -12,7 +12,8 @@ import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, withOptimism, reconcileCityChain } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
-import { Btn, Severity, Skeleton, useToast } from '@/design/index';
+import { Btn, Skeleton, useToast } from '@/design/index';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource, useEntityDocs, EventViewSections, eventTheme, eventHeader } from '@/components/common/EventViewBody';
 import { PanelShell, kindIcon } from '@/components/common/EventPanels';
@@ -29,14 +30,16 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
   const { toast } = useToast();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(autoEdit);
-  const [confirmDel, setConfirmDel] = useState(false);
+  // Подтверждение удаления — общий `useConfirm` (см. разбор в EventModal):
+  // своей стейт-машины и подмены тела панели здесь больше нет.
+  const confirm = useConfirm();
 
   // Reset view/edit state when a different entity is opened. Skip the first run
   // so an autoEdit intent (edit-from-timeline) isn't immediately cleared.
   const firstRef = React.useRef(true);
   React.useEffect(() => {
     if (firstRef.current) { firstRef.current = false; return; }
-    setEditMode(false); setConfirmDel(false);
+    setEditMode(false);
   }, [kind, id]);
 
   // Reads the row from the getTripDetails cache (TRIP-405): a live edit invalidates
@@ -126,7 +129,16 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
     // gone, never on rollback (TRIP-117). The mutation owns the optimistic dim,
     // the write and the reconcile.
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
-    deleteMut.mutate({ id: data.id, orphanPaths, row: { id: data.id, _pending: true } });
+    // `mutateAsync`, а не `mutate`: спиннер держит кнопка подтверждения, пока
+    // промис не разрешится. Панель при этом остаётся открытой — её закрывает
+    // `onSuccess` мутации, как и раньше.
+    return confirm({
+      title: t('event.delete_q', { label: themeLabel.toLowerCase() }),
+      description: t('event.delete_irreversible'),
+      confirmLabel: t('common.delete'),
+      variant: 'destructive',
+      onConfirm: () => deleteMut.mutateAsync({ id: data.id, orphanPaths, row: { id: data.id, _pending: true } }),
+    });
   };
 
   return (
@@ -140,30 +152,19 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
       // Футер рисуется ТОЛЬКО когда в нём есть кнопки: у наблюдателя (`!canEdit`)
       // действий нет, поэтому `foot` = null и PanelShell вообще не выводит `.lp-f`
       // (иначе пустой фрагмент оставался тонкой полоской с border-top).
-      foot={confirmDel ? (
+      foot={canEdit ? (
         <>
-          <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>{t('common.cancel')}</Btn>
-          <Btn variant="danger-solid" icon="trash" loading={deleteMut.isPending} disabled={deleteMut.isPending} onClick={startDelete}>{t('common.delete')}</Btn>
-        </>
-      ) : canEdit ? (
-        <>
-          <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('common.delete')}>{t('common.delete')}</Btn>
+          <Btn variant="danger" icon="trash" onClick={startDelete} ariaLabel={t('common.delete')}>{t('common.delete')}</Btn>
           <Btn variant="primary" icon="edit" onClick={() => setEditMode(true)}>{t('trip.edit_trip')}</Btn>
         </>
       ) : null}
     >
-      {confirmDel ? (
-        <Severity level="error" icon="trash" title={t('event.delete_q', { label: themeLabel.toLowerCase() })}>
-          <div className="t-meta">{t('event.delete_irreversible')}</div>
-        </Severity>
-      ) : (
-        <EventViewSections
-          kind={kind} entity={data} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
-          accent={eventTheme(kind, data).color}
-          docs={docs} canEdit={false} uploading={uploading} uploadFiles={uploadFiles}
-          externalWarning={warning}
-        />
-      )}
+      <EventViewSections
+        kind={kind} entity={data} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
+        accent={eventTheme(kind, data).color}
+        docs={docs} canEdit={false} uploading={uploading} uploadFiles={uploadFiles}
+        externalWarning={warning}
+      />
     </PanelShell>
   );
 }
