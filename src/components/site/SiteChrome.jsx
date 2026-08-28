@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useLightZone } from '@/lib/ThemeContext';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
 import { useZoneCta, isPlainLeftClick } from './zoneCta';
@@ -457,6 +458,12 @@ export function SiteZone({ children }) {
  * /join и лендинг у залогиненного, они приходят не из зоны.
  */
 export function useSiteCss() {
+  // ★ Тема документа — такая же принадлежность зоны, как её слой стилей: зона
+  // светлая по построению, тёмной темы у неё нет. Вызов стоит ЗДЕСЬ, а не в
+  // `SiteZone`, потому что этот хук зовут все семь страниц зоны, включая
+  // лендинг, который залогиненному рендерится ВНЕ `SiteZone`. Разбор — в
+  // `ThemeContext`.
+  useLightZone();
   const hosted = useContext(ZoneCssCtx);
   const own = useSiteCssLink(hosted === null);
   return hosted === null ? own : hosted;
