@@ -1586,3 +1586,225 @@ test('★ ложное срабатывание: маркер в public/ при�
   assert.equal(code, 0, out);
   assert.match(out, /объявлено намеренным/, out);
 });
+
+/* ─────────────── переспеллинг через var(): текст другой, вычисленное то же ────
+ * Перевод сырого значения на имя (`#FFFFFF` → `var(--white)`) — цель эпика ДС, а
+ * не смена облика: на экране не меняется ни один пиксель. До этой ветки такой ход
+ * требовал маркера на КАЖДОЕ объявление (замер по альфа-хвосту зоны: 171 маркер
+ * за нулевую визуальную разницу), то есть правильная работа стоила дороже
+ * неправильной — а гард, красный на правильном ходе, выключают.
+ *
+ * Четыре фикстуры ниже пинят ровно границу: пропускается ТОЛЬКО случай «текст
+ * разный, вычисленное совпало», и ни один из трёх соседних. */
+
+test('★★★ сырое значение уехало на var() при том же вычисленном — ЗЕЛЁНЫЙ', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: #FFFFFF; }\n' },
+    head: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: var(--white); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /переспеллинг|переспеллингов/, out);
+  assert.match(out, /\.btn background/, out);
+});
+
+test('★★★ переспеллинг СО СМЕНОЙ значения токена — КРАСНЫЙ (иначе это дыра)', (t) => {
+  // Автор одновременно уводит значение на имя И правит само имя. Вычисленное
+  // расходится, значит это смена облика и она обязана блокировать.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: #FFFFFF; }\n' },
+    head: { 'src/a.css': ':root { --white: #EEEEEE; }\n.btn { background: var(--white); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.btn background/, out);
+});
+
+test('★★ токен объявлен НЕ на :root — переспеллинг остаётся КРАСНЫМ (отказ в безопасную сторону)', (t) => {
+  // Резолвер знает два словаря: `:root` и — для объявлений из `public/site.css` —
+  // `html.site` поверх него. Имя, объявленное на ЛЮБОМ другом селекторе, не
+  // разворачивается: тексты остаются разными, и ключ продолжает блокировать.
+  // Граница названа вслух, а не подразумевается.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.host { --w: #FFFFFF; }\n.btn { background: #FFFFFF; }\n' },
+    head: { 'src/a.css': '.host { --w: #FFFFFF; }\n.btn { background: var(--w); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+});
+
+test('★★ правка САМОГО токена по-прежнему краснеет — доктрина гарда не тронута', (t) => {
+  // Вторая строка таблицы в докблоке: текст у потребителя не менялся, вычисленное
+  // изменилось. Ключ токена обязан гореть, и ровно он — потребителей не зажигаем.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: var(--white); }\n' },
+    head: { 'src/a.css': ':root { --white: #EEEEEE; }\n.btn { background: var(--white); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /--white/, out);
+  assert.doesNotMatch(out, /\.btn background/, 'потребитель гореть не должен — это и есть цена, названная в шапке');
+});
+
+test('★★★ каждая сторона разворачивается по СВОЕМУ словарю — иначе смена облика прячется', (t) => {
+  // Обратное направление предыдущего теста, и ровно оно ловит мутацию «резолвить
+  // обе стороны словарём HEAD»: та проходит все остальные фикстуры насквозь.
+  //
+  // База: `.btn` берёт цвет ИМЕНЕМ, имя = #FFFFFF. HEAD: имя стало #EEEEEE, а
+  // `.btn` переписан сырым #EEEEEE. Облик изменился (#FFF → #EEE) — значит
+  // блокировать обязаны ДВА ключа: сам токен и потребитель. Если развернуть базу
+  // HEAD'овым словарём, `var(--white)` даст #EEEEEE, совпадёт с новым текстом, и
+  // потребитель уедет в «переспеллинг» — смена цвета кнопки пройдёт молча.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: var(--white); }\n' },
+    head: { 'src/a.css': ':root { --white: #EEEEEE; }\n.btn { background: #EEEEEE; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /блокирует: 2/, `оба ключа обязаны блокировать, а не один:\n${out}`);
+});
+
+/* ───────── область видимости токена = ФАЙЛ, в котором написано объявление ────
+ * Зона объявляет свои токены на `html.site` (TRIP-446), и часть имён СОВПАДАЕТ
+ * с именами приложения при ДРУГИХ значениях: `--ink` в зоне `#13324E`, на
+ * `:root` приложения `#272433`. Один словарь на оба конца невозможен по
+ * построению — резолвер выбрал бы «какое-то» значение и молча соврал бы про
+ * половину дерева, причём в ту сторону, где ошибка выглядит как зелёный.
+ *
+ * Выбирать и не надо: `public/site.css` приезжает ТОЛЬКО на страницы зоны, где
+ * `html.site` уже на корне. Поэтому применимый словарь определяется ФАЙЛОМ
+ * объявления, и три фикстуры ниже пинят обе стороны границы и её порядок. */
+
+test('★★★ переспеллинг В ФАЙЛЕ ЗОНЫ разворачивается зонным словарём — ЗЕЛЁНЫЙ', (t) => {
+  const f = fixture(t, {
+    base: {
+      'public/site.css': 'html.site { --ink: #13324E; }\n.hero { color: #13324E; }\n',
+      'src/a.css': ':root { --ink: #272433; }\n',
+    },
+    head: {
+      'public/site.css': 'html.site { --ink: #13324E; }\n.hero { color: var(--ink); }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /\.hero color/, out);
+});
+
+test('★★★ то же имя в файле ПРИЛОЖЕНИЯ зонное значение НЕ получает — КРАСНЫЙ', (t) => {
+  // Ровно случай `.consent`: объявлен в app.css, показывается и на странице
+  // зоны, но `html.site` ему ничего не переопределяет — у него своя дельта.
+  // Развернуть его зонным словарём значило бы пропустить смену цвета
+  // #13324E → #272433 как «переспеллинг». Эта фикстура и есть мутация
+  // «слить словари, зона побеждает»: без неё та проходит насквозь.
+  const f = fixture(t, {
+    base: {
+      'public/site.css': 'html.site { --ink: #13324E; }\n',
+      'src/a.css': ':root { --ink: #272433; }\n.card { color: #13324E; }\n',
+    },
+    head: {
+      'src/a.css': ':root { --ink: #272433; }\n.card { color: var(--ink); }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.card color/, out);
+});
+
+test('★★★ в файле зоны побеждает ЗОННОЕ значение, а не корневое — КРАСНЫЙ', (t) => {
+  // Обратное направление: автор пишет в site.css имя, чьё КОРНЕВОЕ значение
+  // совпадает с прежним текстом. На странице зоны в силе `html.site`
+  // (специфичность 0,1,1 против 0,1,0 у `:root`), значит цвет меняется
+  // #272433 → #13324E и обязан блокировать. Ловит мутацию «резолвить всё
+  // корневым словарём» и мутацию «корень поверх зоны» в порядке слияния.
+  const f = fixture(t, {
+    base: {
+      'public/site.css': 'html.site { --ink: #13324E; }\n.hero { color: #272433; }\n',
+      'src/a.css': ':root { --ink: #272433; }\n',
+    },
+    head: {
+      'public/site.css': 'html.site { --ink: #13324E; }\n.hero { color: var(--ink); }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.hero color/, out);
+});
+
+/* ───────────────── канон цвета: один пиксель — одно значение ────────────────
+ * Вторая попытка сверяет РАЗВЁРНУТЫЙ текст, и на нотации она спотыкалась:
+ * токен объявлен `#FFFFFF`, правило написано `#fff`. Замер по зоне: из 111
+ * переводов на имя так выглядят 96 — то есть без канона ветка не работала бы
+ * там, ради чего заводилась. Фикстуры пинят обе стороны: одинаковый цвет в
+ * разной записи молчит, РАЗНЫЙ цвет краснеет, а неразобранная запись
+ * (именованный цвет, `hsl()`) остаётся строгой. */
+
+test('★★★ #fff ↔ #FFFFFF — один цвет в двух записях, переспеллинг ЗЕЛЁНЫЙ', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: #fff; }\n' },
+    head: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: var(--white); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /\.btn background/, out);
+});
+
+test('★★ канон работает и внутри СОСТАВНОГО значения (2px solid #fff)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.av { border: 2px solid #fff; }\n' },
+    head: { 'src/a.css': ':root { --white: #FFFFFF; }\n.av { border: 2px solid var(--white); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ rgba ↔ hex с альфой — тот же цвет, тоже ЗЕЛЁНЫЙ', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --veil: rgba(19, 50, 78, 0.5); }\n.x { color: #13324e80; }\n' },
+    head: { 'src/a.css': ':root { --veil: rgba(19, 50, 78, 0.5); }\n.x { color: var(--veil); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★★ БЛИЗКИЙ, но не равный цвет — КРАСНЫЙ (канон не про «похоже»)', (t) => {
+  // #fffffe отличается от #ffffff на единицу в синем канале. Это ДРУГОЙ цвет,
+  // и никакая канонизация не имеет права его проглотить: канон приводит записи
+  // к одной форме, он не меряет расстояние.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: #fffffe; }\n' },
+    head: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: var(--white); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.btn background/, out);
+});
+
+test('★★ альфа участвует в сравнении: .5 против .55 — КРАСНЫЙ', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --veil: rgba(19,50,78,.55); }\n.x { color: rgba(19,50,78,.5); }\n' },
+    head: { 'src/a.css': ':root { --veil: rgba(19,50,78,.55); }\n.x { color: var(--veil); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+});
+
+test('★★ ИМЕНОВАННЫЙ цвет не канонизируется — граница, а не забывчивость', (t) => {
+  // `white` — единственное имя во всём периметре (4 применения). Таблица из 148
+  // строк спецификации ради них не заводится, поэтому имя остаётся текстом и
+  // ключ продолжает блокировать. Тест ловит МОЛЧАЛИВОЕ расширение этой границы.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: white; }\n' },
+    head: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: var(--white); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+});
+
+test('★★ неразобранная запись (hsl) остаётся строгой', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: hsl(0 0% 100%); }\n' },
+    head: { 'src/a.css': ':root { --white: #FFFFFF; }\n.btn { background: var(--white); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+});
