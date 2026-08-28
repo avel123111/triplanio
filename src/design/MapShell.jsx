@@ -105,6 +105,29 @@ export function MapShell({
   const [sheetPx, setSheetPx] = useState(0);
   const [panelPx, setPanelPx] = useState(0);
 
+  // ★ ЖИВОЙ КАНАЛ ЗАКРЫТОЙ ПЛОЩАДИ — МИМО REACT, И ЭТО НЕСУЩЕЕ. Пока палец ведёт
+  // шит, свободное окно меняется каждый кадр. Состояние на кадр жеста стоило бы
+  // перекладки всей панели, поэтому живая величина идёт подпиской: карта на неё
+  // подписывается и двигает камеру сама (`lib/map/useMapInsets.js`), а шелл тем
+  // же кадром обновляет свою переменную для того, что лежит поверх карты.
+  // Зафиксированная высота по-прежнему едет состоянием — она и остаётся истиной.
+  const subsRef = useRef(/** @type {Set<(px: number, phase: string) => void>} */ (new Set()));
+  const live = useMemo(() => ({
+    subscribe: (fn) => { subsRef.current.add(fn); return () => { subsRef.current.delete(fn); }; },
+  }), []);
+  const onSheetLive = useCallback((px, phase) => {
+    const root = rootRef.current;
+    const v = Math.round(px);
+    if (root) {
+      // Темп ставим ДО величины: на кадре жеста ехать нечему (всё уже там, где
+      // палец), а на осадке — наоборот, оставшийся путь обязан доехать плавно,
+      // и переключить темп нужно раньше, чем задать цель.
+      root.style.setProperty('--surface-settle', phase === 'end' ? `${SURFACE_SETTLE_MS}ms` : '0ms');
+      root.style.setProperty('--mapshell-bottom', `${v}px`);
+    }
+    subsRef.current.forEach((fn) => fn(v, phase));
+  }, []);
+
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
   // число разъехалось бы с ней на первой же правке раскладки.
@@ -155,7 +178,7 @@ export function MapShell({
 
   return (
     <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={rootStyle}>
-      <div className="mapshell__map">{typeof map === 'function' ? map(box.camera) : map}</div>
+      <div className="mapshell__map">{typeof map === 'function' ? map(box.camera, live) : map}</div>
 
       {panel && (isPhone ? (
         <PeekSheet
@@ -163,6 +186,7 @@ export function MapShell({
           detent={detent}
           onDetentChange={onDetentChange}
           onHeightChange={setSheetPx}
+          onHeightLive={onSheetLive}
           header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
           footer={panelFooter}
           label={panelLabel}

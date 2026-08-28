@@ -106,7 +106,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * пометить его обязательным значило бы уронить их в тот момент, когда они
  * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
  *
- * @param {{ camera?: any, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ * @param {{ camera?: any, live?: any, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
  *           mapControls?: string[], initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
@@ -121,6 +121,9 @@ export default function MapView({
   // под виджетом, и под шитом), а кадр уходит в свободное окно. Разбор — в
   // `mapShellInsets`.
   camera = null,
+  // Подписка на закрытую площадь ВО ВРЕМЯ ЖЕСТА (кадр в кадр, мимо React) —
+  // ею камера едет за пальцем, а не только на осадке детента.
+  live = null,
   visits,
   transfers,
   showStartEnd = true,
@@ -254,7 +257,7 @@ export default function MapView({
   // зум, и центр, хотя маршрут не менялся. Автофокус остался ровно один: фит по
   // `visitsSignature` ниже. Механика — в `lib/map/useMapInsets.js`.
   // ═════════════════════════════════════════════════════════════════════════
-  useMapInsets(mapRef, { ready, insets: camera, focusing: Array.isArray(focus) && focus.length > 0 });
+  useMapInsets(mapRef, { ready, insets: camera, live, focusing: Array.isArray(focus) && focus.length > 0 });
   // ★ ГЕЙТ ВСЕХ ФИТОВ — «ЕСТЬ КУДА ВПИСЫВАТЬ», А НЕ «ХОЛСТ ИЗМЕРЕН» (`canFit`):
   // холст во всю площадь, и на верхнем детенте он измерен, а вписывать некуда.
   // Значение стоит в ЗАВИСИМОСТЯХ эффектов ниже, а не в проверке внутри них, —

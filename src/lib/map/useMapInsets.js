@@ -55,11 +55,12 @@ function insetsKey(insets) {
  * @param {{
  *   ready: boolean,
  *   insets: any,
+ *   live?: { subscribe: (fn: (px: number, phase: string) => void) => (() => void) } | null,
  *   focusing?: boolean,
- *   onReframe?: (map: any) => boolean | void,
+ *   onReframe?: (map: any, opts?: { instant?: boolean }) => boolean | void,
  * }} p
  */
-export function useMapInsets(mapRef, { ready, insets, focusing = false, onReframe = null }) {
+export function useMapInsets(mapRef, { ready, insets, live = null, focusing = false, onReframe = null }) {
   // ★ КЛЮЧ — ОТСТУП, И ЭТОГО ДОСТАТОЧНО: он и есть всё свободное окно. Прежде
   // высота ехала отдельным каналом (размером слота), и ключ обязан был знать оба.
   const key = insetsKey(insets);
@@ -82,6 +83,10 @@ export function useMapInsets(mapRef, { ready, insets, focusing = false, onRefram
   // ЗАПУСКАЕТ обратный `calmFit`); две реакции на одно событие в двух эффектах,
   // связывать их — только жёстче сцепить. Здесь — «отступ не трогаем сам».
   const wasFocusing = useRef(false);
+  // Свежий отступ для живого канала: он меняет ОДНУ сторону (низ), остальные
+  // обязан взять актуальные, а сам по их смене не перезапускаться.
+  const insetsRef = useRef(insets);
+  insetsRef.current = insets;
 
   useEffect(() => {
     const map = mapRef.current;
@@ -123,6 +128,35 @@ export function useMapInsets(mapRef, { ready, insets, focusing = false, onRefram
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, key, focusing]);
+
+  // ★ КАМЕРА ЗА ПАЛЬЦЕМ — ОТДЕЛЬНЫЙ КАНАЛ, МИМО REACT. Пока шит едет, свободное
+  // окно меняется каждый кадр; состояние на кадр жеста стоило бы перекладки всей
+  // панели, поэтому шелл отдаёт живую величину подпиской, а мы двигаем ОТСТУП
+  // немедленно. `setPadding` здесь — не ошибка, а ровно то, чем он и является:
+  // мгновенная установка. Рывком он был бы ВМЕСТО анимации; здесь он и есть
+  // слежение 1:1, кадр в кадр, как на десктопе за краем окна.
+  //
+  // Ни `center`, ни `zoom` не трогаем — это по-прежнему подстройка, а не
+  // автофокус. Исключение то же, что и у осадки: цель, размер которой считается
+  // от свободного окна (пустой глобус), обязана пересчитаться, иначе шар
+  // «прыгнет» в конце жеста вместо того, чтобы расти вместе с окном.
+  useEffect(() => {
+    if (!live?.subscribe || !ready) return undefined;
+    return live.subscribe((bottom, phase) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const box = { ...toBox(insetsRef.current), bottom: Math.max(0, Math.round(bottom)) };
+      setMapInsets(map, box);
+      const el = map.getContainer?.();
+      if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, box)) return;
+      const instant = phase !== 'end';
+      if (reframeRef.current?.(map, { instant })) return;
+      try {
+        if (instant) map.setPadding(box);
+        else map.easeTo({ padding: box, duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
+      } catch { /* ignore */ }
+    });
+  }, [live, ready, mapRef]);
 
   // Уборка — ОТДЕЛЬНЫМ эффектом с пустыми зависимостями (правило 3 выше).
   // Инстанс карты общий и живёт дольше экрана: не снять отступ значит отрезать

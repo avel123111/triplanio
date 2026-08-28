@@ -82,6 +82,9 @@ export default function FlowMap({
   // канвас всегда во всю площадь (карта видна и под виджетом, и под шитом), а
   // кадр уходит в свободное окно. Разбор — в `mapShellInsets`.
   camera = null,
+  // Подписка на закрытую площадь ВО ВРЕМЯ ЖЕСТА (кадр в кадр, мимо React) —
+  // ею камера едет за пальцем, а не только на осадке детента.
+  live = null,
   home, cities = [], finishCity, transport = {}, isStay = false,
   // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
   // CITY still feeds the camera framing, so stepping between steps toggles what's
@@ -224,12 +227,19 @@ export default function FlowMap({
   useMapInsets(mapRef, {
     ready,
     insets: camera,
-    onReframe: (map) => {
+    live,
+    onReframe: (map, { instant = false } = {}) => {
       // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
       // НЕ перекадрирование: зум и границы маршрута он не трогает.
       if (!canFrameNow || fitPositions.length) return false;
       const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
-      try { map.easeTo({ ...view, padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
+      const move = { ...view, padding: getMapInsets(map) };
+      // Кадр жеста — мгновенно (шар растёт вместе с окном, за пальцем); осадка —
+      // тем же темпом и кривой, что и шит.
+      try {
+        if (instant) map.jumpTo(move);
+        else map.easeTo({ ...move, duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
+      } catch { /* ignore */ }
       return true; // отступ уехал вместе с видом — хуку добавлять нечего
     },
   });

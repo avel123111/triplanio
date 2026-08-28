@@ -32,6 +32,23 @@ const ZERO = { top: 0, right: 0, bottom: 0, left: 0 };
 /** Ниже этого зума Standard перестаёт рисовать страны — одноцветный диск. */
 export const GLOBE_DETAIL_ZOOM = 1;
 
+/**
+ * ★ КОГДА ШАР ПЕРЕСТАЁТ ВПИСЫВАТЬСЯ И НАЧИНАЕТ ЗАКРЫВАТЬ (доля ширины окна).
+ *
+ * «Вписать» (contain) даёт вид «планета в кадре» — вокруг неё намеренно виден
+ * космос, и на высоком окне это правильно. Но чем ниже окно, тем меньше шар: на
+ * полосе 366×95 вписанный диаметр = 81px, то есть шарик посреди пустоты. Это и
+ * есть тот дефект, который на скриншотах читается как «круги вокруг глобуса», и
+ * до TRIP-484 он был не виден лишь потому, что холст был ростом с окно и шар
+ * не помещался в него целиком.
+ *
+ * Поэтому: пока вписанный шар не уже окна (по ширине) — вписываем; как только
+ * стал уже — ЗАКРЫВАЕМ окно шаром (cover) и показываем поверхность, а не диск.
+ * Порог 0.9, а не 1.0: у вписывания свои поля (0.92 по ширине), и точное
+ * равенство перещёлкивало бы режим на ровном месте.
+ */
+const COVER_AT = 0.9;
+
 /** Центр стартового вида: Атлантика, чуть выше экватора. */
 export const GLOBE_START_CENTER = [0, 20];
 
@@ -43,8 +60,14 @@ export const GLOBE_START_CENTER = [0, 20];
  */
 export function startGlobeZoom({ W = 0, H = 0, insets = ZERO, air = ZERO } = {}) {
   if (!(H > 0) || !(W > 0)) return 2.4;
-  const visW = Math.max(200, W - insets.left - insets.right - air.left - air.right);
-  const visH = Math.max(200, H - insets.top - insets.bottom - air.top - air.bottom);
-  const targetD = Math.min(0.85 * visH, 0.92 * visW);
+  // Свободное окно считаем ЧЕСТНО, без пола в 200px: пол врал ровно там, где
+  // окно короткое, и подменял ответ «шар сюда целиком не помещается» ответом
+  // «помещается, просто маленький».
+  const visW = Math.max(0, W - insets.left - insets.right - air.left - air.right);
+  const visH = Math.max(0, H - insets.top - insets.bottom - air.top - air.bottom);
+  if (!(visW > 0) || !(visH > 0)) return 2.4;
+  // ВПИСАТЬ шар целиком — вид «планета в кадре», ради которого глобус и выбран.
+  const contain = Math.min(0.85 * visH, 0.92 * visW);
+  const targetD = contain >= COVER_AT * visW ? contain : Math.max(visW, visH);
   return Math.max(GLOBE_DETAIL_ZOOM, Math.min(5, Math.log2((targetD * Math.PI) / 512)));
 }
