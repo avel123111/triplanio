@@ -7,7 +7,7 @@
 // it lives in exactly one place.
 import { lineFeature, setLineLayer } from '@/lib/mapbox';
 import { fetchRoadRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
-import { DASHED_OPACITY, SOLID_WIDTH, DASHED_WIDTH } from './mapStyle';
+import { DASHED_OPACITY, SOLID_WIDTH, DASHED_WIDTH, legLook } from './mapStyle';
 import { routeColor, routeRingColor } from './mapTokens';
 import { isMapAlive } from './alive';
 
@@ -64,6 +64,7 @@ function drawRouteLines(map, legs, opts) {
     dashedId, solidId,
     dashedColor = routeColor(), solidColor = routeColor(),
     dashedWidth = DASHED_WIDTH, solidWidth = SOLID_WIDTH, dashedOpacity = DASHED_OPACITY,
+    markGaps = true,
   } = opts;
 
   const dashed = [];
@@ -74,7 +75,9 @@ function drawRouteLines(map, legs, opts) {
     const { from, to, kind } = leg;
     if (!from?.latitude || !to?.latitude) return;
     const straight = [[from.longitude, from.latitude], [to.longitude, to.latitude]];
-    if (!kind) { dashed.push(lineFeature(straight)); return; }
+    // Плечо без переезда: облик решает ОБЩЕЕ правило (`legLook`), а геометрия у
+    // него в любом случае прямая — резолвить нечего, транспорта нет.
+    if (!kind) { (legLook(kind, markGaps) === 'dashed' ? dashed : solid).push(lineFeature(straight)); return; }
     if (isFlightTransport(kind)) {
       const arc = geodesicLine(from.latitude, from.longitude, to.latitude, to.longitude).map(([la, lo]) => [lo, la]);
       solid.push(lineFeature(arc));
@@ -186,13 +189,14 @@ export function drawRouteReveal(map, legs, activeIdx, progress, opts) {
     dashedId = 'mv-dashed', solidId = 'mv-solid',
     dashedColor = routeColor(), solidColor = routeColor(),
     dashedWidth = DASHED_WIDTH, solidWidth = SOLID_WIDTH, dashedOpacity = DASHED_OPACITY,
+    markGaps = true,
   } = opts || {};
 
   const dashed = [];
   const solid = [];
   const push = (kind, coords) => {
     if (!coords || coords.length < 2) return;
-    (kind ? solid : dashed).push(lineFeature(coords));
+    (legLook(kind, markGaps) === 'dashed' ? dashed : solid).push(lineFeature(coords));
   };
 
   legs.forEach((leg, i) => {
@@ -292,9 +296,13 @@ function renderHighlight(map, leg) {
     coords = [[from.longitude, from.latitude], [to.longitude, to.latitude]];
   }
   const features = [lineFeature(coords)];
-  const base = kind ? SOLID_WIDTH : DASHED_WIDTH;
+  // Подсветка повторяет облик плеча, которое подсвечивает, — иначе выбранный
+  // сегмент рисовался бы не тем, чем он есть на базовой линии. Живая карта дыры
+  // показывает, поэтому `markGaps` здесь дефолтный.
+  const gap = legLook(kind) === 'dashed';
+  const base = gap ? DASHED_WIDTH : SOLID_WIDTH;
   setLineLayer(map, HL_CASING_ID, features, { color: routeRingColor(), width: base + 8, opacity: 1 });
-  setLineLayer(map, HL_MAIN_ID, features, { color: routeColor(), width: base + 1.5, dashed: !kind, opacity: 1 });
+  setLineLayer(map, HL_MAIN_ID, features, { color: routeColor(), width: base + 1.5, dashed: gap, opacity: 1 });
 }
 
 // Draw the "selected route" state for a single leg, over the base route. Works
@@ -323,12 +331,16 @@ export function drawRouteHighlight(map, leg) {
 export function drawRouteLinesCached(map, sig, legs, opts) {
   if (!isMapAlive(map)) return; // синглтон снесли — сырой getSource ниже упал бы
   const st = map.__routeLines || (map.__routeLines = { sig: null, cancel: null });
-  if (st.sig === sig && map.getSource(opts.solidId)) return; // unchanged → leave it
+  // Облик — ЧАСТЬ подписи. Кэш сравнивает геометрию, а `markGaps` меняет то, чем
+  // рисуется плечо без переезда, не двигая ни одной точки: с подписью «только по
+  // плечам» смена режима молча не перерисовала бы ничего.
+  const key = `${sig}|gaps:${opts.markGaps !== false}`;
+  if (st.sig === key && map.getSource(opts.solidId)) return; // unchanged → leave it
   if (st.cancel) { try { st.cancel(); } catch { /* ignore */ } st.cancel = null; }
   ALL_LINE_LAYER_IDS.forEach((id) => {
     try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
     try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
   });
   st.cancel = drawRouteLines(map, legs, opts);
-  st.sig = sig;
+  st.sig = key;
 }

@@ -147,6 +147,10 @@ export function drawTripRoute(map, ordered, legs, { scheme, surfaceWidth = 0, sh
     dashedId: LINE_IDS.dashed, solidId: LINE_IDS.solid,
     solidColor: color, dashedColor: color,
     solidWidth: SOLID_WIDTH * weight * shrink, dashedWidth: DASHED_WIDTH * weight * shrink,
+    // Карточка — законченная картинка, а не план: дыру «переезд не заведён» ей
+    // предупреждать не перед кем, и приглушённый пунктир читался бы на ней
+    // дефектом печати. Маршрут рисуется целым (см. `legLook` в mapStyle.js).
+    markGaps: false,
   });
   // Кэш линий сравнивает ГЕОМЕТРИЮ (подпись плеч) и на совпадении не
   // перерисовывает вообще ничего — а цвет зависит от СХЕМЫ КАРТЫ, которая
