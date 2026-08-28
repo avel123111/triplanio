@@ -7989,8 +7989,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .peek-sheet.is-dragging { transition: none; } /* follow the finger 1:1 mid-drag */
 /* Grip + header are the drag zones (touch-action:none → the gesture is ours);
    the body scrolls natively (pan-y). */
-.peek-sheet__grip { display: flex; justify-content: center; width: 100%; padding: 11px 0 3px; flex: none; border: 0; background: none; cursor: grab; touch-action: none; }
-.peek-sheet__grip i { width: 40px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); }
+/* Скин «брови» — канон `.sheet-grip` (носитель несёт оба класса): здесь
+   остаётся ТОЛЬКО отличие функционального грипа — он тянется во всю ширину
+   шита и сбрасывает хром носителя. Полоса `i` уехала на канон целиком.
+   visual-diff-move: .peek-sheet__grip -> .sheet-grip — общий скин «брови» на канон, отличия остались на месте
+   visual-diff-exempt: .peek-sheet__grip i width — полоса уехала на канон `.sheet-grip i`, который теперь действует на этот носитель (он несёт оба класса); значение то же 40px
+   visual-diff-exempt: .peek-sheet__grip i height — то же, 5px
+   visual-diff-exempt: .peek-sheet__grip i border-radius — то же, var(--r-pill)
+   visual-diff-exempt: .peek-sheet__grip i background — то же, var(--line-strong)
+   (перенос выражен исключением, а не `visual-diff-move`: цель у 2p называется
+   классами, а канон полосы — правило с потомком-тегом `.sheet-grip i`) */
+.peek-sheet__grip { width: 100%; border: 0; background: none; }
 .peek-sheet__head { flex: none; touch-action: none; }
 /* flex:0 1 auto → the body is its content height until the sheet hits the cap,
    then it shrinks and scrolls. padding-bottom = dock zone + a small gap so the
