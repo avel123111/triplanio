@@ -4742,7 +4742,24 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    рамку», а фоллбек-подложка и onError достаются даром (протухший signed URL
    своей фотки покажет фоллбек, а не битую картинку). */
 .tcp__slide { flex: none; width: 100%; height: 100%; border-radius: 0; scroll-snap-align: center; }
-.tcp__hero .tc__scrim { pointer-events: none; }
+/* ★ ОВЕРЛЕИ КАДРА — В СВОИ КОМПОЗИТНЫЕ СЛОИ, И ЭТО НЕ УКРАШЕНИЕ.
+   Объявленных уровней (лента 0 · скрим 2 · контролы 4) достаточно ТОЛЬКО пока
+   движок сортирует слои по z-index. Мобильный WebKit этого не гарантирует:
+   скроллер ленты он уносит на GPU, а неускоренных соседей рисует отдельным
+   проходом — и композитный слой ложится поверх них, сколько уровень ни объявляй.
+   Лечение — симметрия: у кого сосед на GPU, тот тоже обязан быть на GPU. Тогда
+   оба слоя сортируются как слои, по объявленному z-index, и порядок снова
+   значит то, что написано.
+   `translateZ(0)`, а не `will-change`: обещание постоянного слоя тут не нужно,
+   нужен сам слой — и он дешевле для памяти на длинном экране создания.
+   visual-diff-exempt: .tc__scrim transform — скрим кадра на своём слое (симметрия с ускоренной лентой)
+   visual-diff-exempt: .tcp__title transform — название на своём слое (иначе композитная лента накрывает его)
+   visual-diff-exempt: .tcp__ctl transform — контролы кадра на своём слое
+   visual-diff-exempt: .tcp__nav transform — стрелки: к центровке добавлен свой слой
+   visual-diff-exempt: .tcp__hero transform — ключ предка от составного селектора .tcp__hero .tcp__nav (своего объявления у кадра нет) */
+.tcp__hero .tc__scrim { pointer-events: none; transform: translateZ(0); }
+.tcp__hero .tcp__title, .tcp__hero .tcp__ctl { transform: translateZ(0); }
+.tcp__hero .tcp__nav { transform: translateY(-50%) translateZ(0); }
 /* Лента миниатюр пикера — примитив <Carousel> со <Swatch variant="round">.
    Миниатюры пейзажной формы (как в референсе): размер/радиус/кольцо выбора — на
    самом Swatch, активная расширяется. Правила приехали из `TripCoverPicker.css`
