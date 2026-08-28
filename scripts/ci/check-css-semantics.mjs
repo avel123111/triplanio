@@ -251,9 +251,14 @@ const PERIMETER = ['src', 'public'];
  * одинаково на обеих сторонах, а граф на базе и на HEAD может отличаться. Если
  * пиннинг в main.jsx изменят — сравнение останется честным (обе стороны меряются
  * этим же порядком), изменится лишь то, чьё значение названо победителем.    */
+/** Единственная таблица стилей неавторизованной зоны. Имя вынесено, потому что
+ *  на него завязаны ДВА разных факта: ранг каскада (ниже) и ОБЛАСТЬ ВИДИМОСТИ
+ *  токенов (правила этого файла применяются только под `html.site`). */
+export const ZONE_CSS = 'public/site.css';
+
 const fileRank = (p) => (
   p === 'src/design/app.css' ? 0
-    : p === 'public/site.css' ? 1000
+    : p === ZONE_CSS ? 1000
       : p === 'src/index.css' ? 999
         : 500);
 const orderOf = (p, i) => [fileRank(p), p, i];
@@ -369,7 +374,7 @@ const unitsOf = (sel) => {
     const state = compoundState(compound);
     for (const cls of classesOf(stripFnPseudo(compound))) {
       const unit = `.${cls}`;
-      const id = unit + ' ' + state;
+      const id = unit + '\u0000' + state;
       if (seen.has(id)) continue;
       seen.add(id);
       out.push({ unit, state });
@@ -431,7 +436,7 @@ function semantics(files) {
               // Селектор-победитель хранится не ради ключа (ключ — единица), а
               // ради ИСТОЧНИКА: им печатается строка изменения и им же скоупится
               // перенос из составного правила (TRIP-363).
-              best.set(key, { weight, value: decl.value.replace(/\s+/g, ' ').trim(), sel: normSel(sel) });
+              best.set(key, { weight, value: decl.value.replace(/\s+/g, ' ').trim(), sel: normSel(sel), path });
             }
           }
         });
@@ -546,6 +551,8 @@ const mkChange = (key, was, now) => ({
   to: now?.value ?? null,
   fromSel: was?.sel ?? null,
   toSel: now?.sel ?? null,
+  fromPath: was?.path ?? null,
+  toPath: now?.path ?? null,
 });
 
 const changes = [];
@@ -575,7 +582,9 @@ for (const [key, was] of base.best) if (!head.best.has(key)) changes.push(mkChan
  * ГРАНИЦЫ, названные вслух:
  *   · берётся словарь ровно `:root` в БАЗОВОМ контексте — без `@media` и без
  *     `:root[data-theme=dark]`: тема это ВТОРОЙ словарь, и сверять перенос по
- *     двум сразу значило бы выбирать, какой из них «настоящий»;
+ *     двум сразу значило бы выбирать, какой из них «настоящий». Ровно по той же
+ *     причине зона получает СВОЙ словарь, а не добавку к этому: см. блок
+ *     «область видимости токена» ниже;
  *   · цепочка разворачивается до 6 проходов и до неподвижной точки; цикл или
  *     неизвестное имя оставляют `var()` в тексте — тогда сравнение остаётся
  *     текстовым, то есть строгим;
@@ -597,6 +606,38 @@ const rootTokensOf = (sem) => {
 };
 const baseTokens = rootTokensOf(base);
 const headTokens = rootTokensOf(head);
+
+/* ── ОБЛАСТЬ ВИДИМОСТИ ТОКЕНА = ФАЙЛ, В КОТОРОМ НАПИСАНО ОБЪЯВЛЕНИЕ ───────────
+ * Зона объявляет свои токены на `html.site`, а не на голом `:root` (TRIP-446),
+ * и часть имён у двух систем ОБЩАЯ при разных значениях. Замерено на дереве: из
+ * 62 токенов зоны 13 имён есть и на `:root` приложения, и РАСХОДЯТСЯ ВСЕ 13 —
+ * `--ink` #13324E против #272433, `--brand` #2380D6 против #2173C8, `--r-sm`
+ * 10px против 8px, `--fs-h2` 30px против 18px. Совпадающих нет ни одного.
+ *
+ * Значит СЛИВАТЬ словари нельзя: резолвер выбрал бы «какое-то» значение и молча
+ * соврал бы про половину дерева — причём в сторону зелёного, где ошибку не видно.
+ *
+ * Но выбирать и не надо: `public/site.css` подключается ТОЛЬКО на страницах
+ * зоны, где `html.site` уже стоит на корне. Значит для объявления, написанного
+ * в этом файле, применимый словарь — зонный поверх корневого; для написанного
+ * в любом другом — корневой. Это утверждение о каскаде, а не догадка.
+ *
+ * Ровно поэтому предикат по ФАЙЛУ, а не «есть ли имя в зонном словаре»: второе
+ * дало бы `.consent` (объявлен в `app.css`, но стоит и на странице зоны)
+ * зонное значение `--ink`, которого он не получает — у него своя закреплённая
+ * дельта. Файл — то, что известно точно.                                    */
+const zoneTokensOf = (sem) => {
+  const map = new Map();
+  for (const [key, v] of sem.best) {
+    const { unit, media, state, prop } = partsOf(key);
+    if (unit === '.site' && !media && !state && prop.startsWith('--')) map.set(prop, v.value);
+  }
+  return map;
+};
+const baseZoneTokens = new Map([...baseTokens, ...zoneTokensOf(base)]);
+const headZoneTokens = new Map([...headTokens, ...zoneTokensOf(head)]);
+/** Словарь, применимый к объявлению из этого файла. */
+const dictFor = (path, root, zone) => (path === ZONE_CSS ? zone : root);
 
 /* ── ручки плитки: резолв ВЫЧИСЛЕННОГО в сверке переноса (TRIP-391 объект 3) ────
  * Канон плитки переводит скин с прямых значений на ступень/канал: `.statbar .ic
@@ -1060,7 +1101,10 @@ for (const e of exempts) {
 let respelled = [];
 for (const c of changes) {
   if (c.from === null || c.to === null || declared.has(c.key)) continue;
-  if (!sameMovedValue(c.from, c.to)) continue;
+  // Каждая сторона — своим словарём и своей областью видимости.
+  const rf = resolveVars(c.from, dictFor(c.fromPath, baseTokens, baseZoneTokens));
+  const rt = resolveVars(c.to, dictFor(c.toPath, headTokens, headZoneTokens));
+  if (rf !== rt) continue;
   declared.add(c.key);
   respelled.push(c);
 }
