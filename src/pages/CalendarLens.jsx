@@ -124,7 +124,7 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
               {bands.length > 0 && (
                 <div className="ncal-daytop">
                   {bands.map((b, bi) => (
-                    <CityBar key={bi} variant="strip" tone={b.city.colorIdx} label={b.city.name}
+                    <CityBar key={bi} tone={b.city.colorIdx} label={b.city.name}
                       className="t-tiny" style={bandStyle(b)}
                       onClick={() => onOpenCity?.(b.city.v)} ariaLabel={b.city.name} />
                   ))}
@@ -206,7 +206,7 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
               имя внутри неё, день пересадки делится между городами. */}
           <div className="ncal-daytop">
             {cityBands(days).map((b, bi) => (
-              <CityBar key={bi} variant="strip" tone={b.city.colorIdx} label={b.city.name}
+              <CityBar key={bi} tone={b.city.colorIdx} label={b.city.name}
                 className="t-tiny" style={bandStyle(b)}
                 onClick={() => onOpenCity?.(b.city.v)} ariaLabel={b.city.name} />
             ))}
