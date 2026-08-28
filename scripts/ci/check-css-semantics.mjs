@@ -639,6 +639,46 @@ const headZoneTokens = new Map([...headTokens, ...zoneTokensOf(head)]);
 /** Словарь, применимый к объявлению из этого файла. */
 const dictFor = (path, root, zone) => (path === ZONE_CSS ? zone : root);
 
+/* ── ЦВЕТ — ЭТО ЦВЕТ, А НЕ ЕГО НАПИСАНИЕ ──────────────────────────────────────
+ * Переспеллинг сверяется РАЗВЁРНУТЫМ текстом, и ровно на нотации он спотыкался:
+ * `--white` объявлен `#FFFFFF`, а в правилах написано `#fff`. Строки разные,
+ * цвет один, пикселей ноль — то есть гард краснел на том самом ходе, ради
+ * которого ветка и заводилась. Замер по зоне: из 111 переводов на имя ровно
+ * так выглядят 96, и без канона они прошли бы только маркерами.
+ *
+ * Канон применяется ТОЛЬКО во второй попытке. Основное сравнение остаётся
+ * текстовым — доктрина гарда не трогается, умнеет лишь вопрос «а это точно
+ * изменение?».
+ *
+ * ГРАНИЦЫ, названные вслух:
+ *   · канонизируются `#rgb`/`#rgba`/`#rrggbb`/`#rrggbbaa` и `rgb()`/`rgba()`
+ *     в обоих синтаксисах (запятые и слэш-альфа), числа и проценты;
+ *   · ИМЕНОВАННЫЕ цвета НЕ канонизируются. Во всём периметре их четыре штуки
+ *     (`white`), а таблица имён CSS — 148 строк спецификации ради четырёх
+ *     применений. Имя остаётся текстом, сравнение по нему — строгим;
+ *   · `color-mix()`, `hsl()`, `oklch()` не разбираются — тот же отказ в
+ *     безопасную сторону: не понял, значит блокирую;
+ *   · равенство здесь ровно одно и оно бесспорно: одна и та же точка sRGB,
+ *     записанная двумя способами, даёт один пиксель. Никакой близости, никаких
+ *     ΔE — только точное совпадение.                                        */
+const canonColor = (lit) => {
+  const v = lit.trim().toLowerCase();
+  let m = /^#([0-9a-f]{3,4})$/.exec(v);
+  if (m) return canonColor('#' + [...m[1]].map((c) => c + c).join(''));
+  m = /^#([0-9a-f]{6})([0-9a-f]{2})?$/.exec(v);
+  if (m) return m[2] && m[2] !== 'ff' ? `#${m[1]}${m[2]}` : `#${m[1]}`;
+  m = /^rgba?\(\s*([\d.]+%?)[\s,]+([\d.]+%?)[\s,]+([\d.]+%?)\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/.exec(v);
+  if (!m) return v;
+  const ch = (x) => (x.endsWith('%') ? parseFloat(x) * 2.55 : parseFloat(x));
+  const al = m[4] === undefined ? 1 : (m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4]));
+  const rgb = [m[1], m[2], m[3]].map(ch);
+  if (![...rgb, al].every(Number.isFinite)) return v;
+  const hx = (n) => Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, '0');
+  return `#${rgb.map(hx).join('')}${al >= 1 ? '' : hx(al * 255)}`;
+};
+const COLOR_LIT = /#[0-9a-f]{3,8}\b|rgba?\([^()]*\)/gi;
+const canonValue = (v) => v.replace(COLOR_LIT, canonColor).replace(/\s+/g, ' ').trim();
+
 /* ── ручки плитки: резолв ВЫЧИСЛЕННОГО в сверке переноса (TRIP-391 объект 3) ────
  * Канон плитки переводит скин с прямых значений на ступень/канал: `.statbar .ic
  * { width:42px; background:var(--brand-soft) }` → элемент уезжает на примитив
@@ -1102,8 +1142,8 @@ let respelled = [];
 for (const c of changes) {
   if (c.from === null || c.to === null || declared.has(c.key)) continue;
   // Каждая сторона — своим словарём и своей областью видимости.
-  const rf = resolveVars(c.from, dictFor(c.fromPath, baseTokens, baseZoneTokens));
-  const rt = resolveVars(c.to, dictFor(c.toPath, headTokens, headZoneTokens));
+  const rf = canonValue(resolveVars(c.from, dictFor(c.fromPath, baseTokens, baseZoneTokens)));
+  const rt = canonValue(resolveVars(c.to, dictFor(c.toPath, headTokens, headZoneTokens)));
   if (rf !== rt) continue;
   declared.add(c.key);
   respelled.push(c);
