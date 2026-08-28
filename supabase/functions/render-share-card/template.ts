@@ -83,7 +83,7 @@ const POLA_R = 26; // радиус рамки
 const WIN_R = 12; // радиус окна карты (углы почти прямые)
 
 // ---- per-format geometry (числа транскрибированы из прототипа v34) -----------
-type Layout = {
+export type Layout = {
   w: number;
   h: number;
   padX: number;
@@ -99,7 +99,7 @@ type Layout = {
   brand: { cy: number; logo: number; logoR: number; size: number; gap: number };
 };
 
-const LAYOUTS: Record<Format, Layout> = {
+export const LAYOUTS: Record<Format, Layout> = {
   story: {
     w: 1080, h: 1920, padX: 66,
     titleLeft: 110, titleTop: 265, titleSize: 132,
@@ -309,6 +309,26 @@ export function buildCardSvg(
     routeSvg += wtext(ax + arrowW + arrowGap, routeY, L.routeSize, data.to, { weight: 600 });
   }
 
+  // --- скрим под текстом (TRIP-443) --------------------------------------
+  // Белый текст карточки лежит на ПРОИЗВОЛЬНОМ фоне: пресет, фото юзера или
+  // базовый градиент. Без подложки читаемость — лотерея, и проигрывает она не
+  // в экзотике: `bgGrad` СВЕТЛЫЙ в верхней трети (#cfe0ec, контраст с белым
+  // 1.36:1), а закатный/снежный пресет даёт ту же яркую полосу ровно на высоте
+  // строки городов. Именно так «названия городов пропадали»: они не исчезали,
+  // они СЛИВАЛИСЬ, а на смене обложки читались лишь те доли секунды, пока
+  // новое фото не отрисовалось. Тем же объясняется «тень у цифр»: тёмная копия
+  // из withShadow не видна на тёмном фоне и проявляется, когда под ней встаёт
+  // светлое фото.
+  // Канон ДС — `.tc__scrim` (вертикальный градиент rgba(8,10,20,α)); цвет берём
+  // его, форму задаёт РАСКЛАДКА: текст стоит двумя блоками (заголовок+маршрут
+  // сверху, цифры+бренд снизу), середину занимает полароид — там подложка не
+  // нужна и только мешала бы фотографии.
+  const scrimStops = scrimGradient(L, lines.length);
+  const scrimBase = `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#scrimGrad)"/>`;
+  // В overlay окно вырезано под живую карту — скрим тоже обязан обойти дырку,
+  // иначе он затенит карту, которая лежит НЕ в SVG.
+  const scrim = overlay ? `<g mask="url(#winhole)">${scrimBase}</g>` : scrimBase;
+
   // --- полароид: кремовая рамка с ВЫРЕЗАННЫМ окном (evenodd), карта, ряд стран ---
   const winPath = roundedRectPath(g.winX, g.winY, g.winW, g.winH, WIN_R);
   const cream = `<path d="${roundedRectPath(g.polaX, g.polaY, g.polaW, g.polaH, POLA_R)} ${winPath}" `
@@ -344,6 +364,7 @@ export function buildCardSvg(
 <defs>
  ${fontCss}
  <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c7e6"/><stop offset="0.32" stop-color="#cfe0ec"/><stop offset="0.62" stop-color="#7fa7b3"/><stop offset="1" stop-color="#274b63"/></linearGradient>
+ <linearGradient id="scrimGrad" x1="0" y1="0" x2="0" y2="1">${scrimStops}</linearGradient>
  <clipPath id="winclip"><path d="${winPath}" transform="${polaXf}"/></clipPath>
  <mask id="winhole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${winPath}" transform="${polaXf}" fill="black"/></mask>
  <filter id="winInnerA" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"/></filter>
@@ -351,6 +372,7 @@ export function buildCardSvg(
  <clipPath id="logoClip"><rect x="${L.padX}" y="${L.brand.cy - L.brand.logo / 2}" width="${L.brand.logo}" height="${L.brand.logo}" rx="${L.brand.logoR}" ry="${L.brand.logoR}"/></clipPath>
 </defs>
 ${bg}
+${scrim}
 ${creamShadow}
 ${cream}
 ${mapImg}
@@ -361,6 +383,50 @@ ${routeSvg}
 ${stats}
 ${brand}
 </svg>`;
+}
+
+/**
+ * Стопы скрима под текстом карточки (TRIP-443).
+ *
+ * ПОЧЕМУ СЧИТАЕМ, А НЕ ПОДБИРАЕМ ПРОЦЕНТЫ. Скрим обязан накрывать ровно те
+ * полосы, где стоит текст. Полосы заданы раскладкой (`LAYOUTS`) и разные у
+ * story и post, а верхняя ещё и плавает: заголовок бывает в одну строку и в
+ * две. Проценты, подобранные под один кадр, на другом сползают с текста —
+ * и дефект возвращается молча, потому что скрим при этом ЕСТЬ.
+ *
+ * ALPHA выведена из требования к контрасту, а не из вкуса: худший фон — белый
+ * (снег, засвеченное небо, светлая часть базового градиента). Белый под
+ * подложкой rgba(8,10,20,a) даёт канал 255*(1-a)+8*a; при a=0.55 это ~119,
+ * относительная яркость ~0.183, контраст с белым текстом ~4.5:1 — порог
+ * WCAG AA для обычного текста. Меньше 0.55 порог не берётся.
+ */
+export function scrimGradient(L: Layout, titleLines: number): string {
+  const H = L.h;
+  const ALPHA = 0.55;
+  const c = (a: number) => `rgba(8,10,20,${a})`;
+  const st = (off: number, a: number) =>
+    `<stop offset="${Math.max(0, Math.min(1, off)).toFixed(4)}" stop-color="${c(a)}"/>`;
+
+  // Верхний блок: заголовок (может быть 2 строки) + строка маршрута.
+  const lineH = Math.round(L.titleSize * 0.94);
+  const routeBase = L.titleTop + (titleLines - 1) * lineH + L.routeGap;
+  const topEnd = (routeBase + L.routeSize * 0.34) / H; // низ выносных маршрута
+  // Нижний блок: цифры статистики (верх кегля) и всё, что ниже, включая бренд.
+  // Кегль ≠ высота кадра глифа: рамка цифры уходит ВЫШЕ линии (stats.y -
+  // numSize) на выносные, и без запаса её верх попадал в растушёвку —
+  // замер давал цифрам 3.68:1 против 4.40:1 у подписей рядом.
+  const botStart = (L.stats.y - L.stats.numSize * 1.3) / H;
+
+  // Растушёвка — доля высоты кадра; без неё край подложки читается полосой.
+  const FADE = 0.09;
+  return [
+    st(0, ALPHA),
+    st(topEnd, ALPHA),
+    st(topEnd + FADE, 0),
+    st(botStart - FADE, 0),
+    st(botStart, ALPHA),
+    st(1, ALPHA),
+  ].join('');
 }
 
 function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
