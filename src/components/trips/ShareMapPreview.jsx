@@ -339,54 +339,44 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   // ── ЛОВУШКА: «в превью пропали названия городов» ───────────────────────────
   // ponytail: диагностический зонд, снять вместе с починкой (потолок — он ничего
   // не чинит и ничего не отображает). Заведён потому, что баг чинили ДВАЖДЫ по
-  // догадке о причине (шрифты, потом контраст) и оба раза мимо: отказавшее
-  // состояние никто ни разу не видел.
+  // догадке о причине и оба раза мимо: отказавшее состояние никто не видел.
   //
-  // Он делит пространство причин ПОПОЛАМ, а не угадывает. Текст рамки — обычные
-  // `<text>` в SVG; спрашиваем у них самих, получили ли они РАЗМЕР:
-  //   ширина 0 при непустом тексте → текст не разложился (шрифт / разбор);
-  //   ширина не 0, а глазами не видно → разложился, но не нарисован (композитинг).
-  // Второй случай из JS не виден, поэтому ОТСУТСТВИЕ события при очередном
-  // проёбе — тоже ответ, и именно он указывает на композитинг.
+  // ДОКЛАДЫВАЕТ ВСЕГДА, один раз на приехавшую рамку — не только при отказе.
+  // Первая версия говорила только про нулевую ширину, и тогда «узлов нет»,
+  // «узлы нулевые» и «всё хорошо» выглядели ОДИНАКОВО (тишина). Молчание не
+  // должно быть ответом на два разных вопроса.
   //
-  // Меряем дважды: сразу после вставки и через паузу. Ноль в первом замере и
-  // размер во втором — это нормальная жизнь шрифта, не дефект; сообщаем только
-  // про УСТОЙЧИВЫЙ ноль. Ни одной строки текста наружу не уходит (это данные
-  // трипа) — только числа, кегли и статус шрифта. Сообщение держим с НИЗКОЙ
-  // кардинальностью (4 варианта), иначе Sentry сгруппирует каждый замер в
-  // отдельную issue; счётчики уезжают тегом.
+  // Строку маршрута адресуем весом: `font-weight="600"` в рамке несёт ТОЛЬКО
+  // она (заголовок 700, подписи 500) — это её опознавательный знак, не выдумка
+  // зонда. Наружу едут счётчики и ширины, ни одной строки текста (это данные
+  // трипа).
+  //
+  // ★ Зависимость — `overlaySvg` (ПРОП), а не производный `frameSvg`: последний
+  // пересчитывается в теле компонента, то есть на каждый рендер это НОВАЯ
+  // строка. С ним эффект перезапускался постоянно, уборка гасила отложенный
+  // замер, и зонд не доживал до отсечки ни разу.
+  const probedRef = useRef(null);
   useEffect(() => {
     const host = frameRef.current;
-    if (!frameSvg || !host) return undefined;
-    const zeros = () => {
-      const out = [];
-      host.querySelectorAll('text').forEach((n) => {
-        if (!n.textContent || !n.textContent.trim()) return;
-        let w = -1;
-        try { w = n.getBBox().width; } catch { /* узел вне отрисовки */ }
-        if (w === 0) out.push(n.getAttribute('font-size') || '?');
-      });
-      return out;
-    };
-    let raf = requestAnimationFrame(() => {
-      raf = 0;
-      if (!zeros().length) return;
-      const t = setTimeout(() => {
-        const stuck = zeros();
-        if (!stuck.length) return; // шрифт доехал — это не дефект
-        const total = host.querySelectorAll('text').length;
-        report(
-          new Error(`share card frame: text has no size (fonts=${document.fonts?.status}, geologica=${document.fonts?.check?.('600 56px Geologica')})`),
-          { surface: 'render', source: 'share-card-frame', key: [`zeros:${stuck.length}/${total}@${stuck.join('+')}`] },
-        );
-      }, 1500);
-      timerRef.current = t;
+    if (!overlaySvg || !host || probedRef.current === overlaySvg) return undefined;
+    probedRef.current = overlaySvg;
+    const widths = (sel) => [...host.querySelectorAll(sel)].map((n) => {
+      if (!n.textContent || !n.textContent.trim()) return 'empty';
+      try { return Math.round(n.getBBox().width); } catch { return 'err'; }
     });
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [frameSvg]);
+    const t = setTimeout(() => {
+      const all = widths('text');
+      report(
+        new Error(`share card frame probe (fonts=${document.fonts?.status}, geologica=${document.fonts?.check?.('600 56px Geologica')})`),
+        {
+          surface: 'render',
+          source: 'share-card-frame',
+          key: [`route:[${widths('text[font-weight="600"]').join('|')}] all:${all.length} zero:${all.filter((w) => w === 0).length} empty:${all.filter((w) => w === 'empty').length}`],
+        },
+      );
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [overlaySvg]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
