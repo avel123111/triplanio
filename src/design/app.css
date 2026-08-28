@@ -5151,10 +5151,45 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      на клавиатуре не скрывался.
      Первая строка (`.lp-sheet .lp-f`) оставлена как есть — селектор с двумя
      классами держит ключ `.lp-sheet` неизменным; вторая (широкая, один класс
-     `.lp-f`) накрывает ОСТАЛЬНЫЕ оболочки, `display:none` у `.lp-f` тот же. */
-  [data-keyboard] .lp-sheet .lp-f { display: none; }
-  [data-keyboard] .lp-f { display: none; }
-  [data-keyboard] .mbnav { display: none; }
+     `.lp-f`) накрывает ОСТАЛЬНЫЕ оболочки.
+
+     ★★ УБИРАЕМ С ГЛАЗ, НО НЕ ИЗ РАСКЛАДКИ. `display: none` здесь стоил ровно
+     того дефекта, ради которого правило и заводили. Он вынимает элемент из
+     потока, и дальше по цепочке: нав исчезает -> его издатель (`--nav-dock-h`,
+     MobileBottomNav) перепубликовывает 0 -> у переменной ДВА читателя
+     (`padding-bottom` скроллера `.app-shell > main` и футер `.peek-sheet__foot`)
+     -> у контента отваливается 84-118px нижнего запаса, и он съезжает ВНИЗ
+     внутри скроллера ровно в тот кадр, когда Safari панорамирует окно ВВЕРХ.
+     Два встречных движения за один кадр - это и есть «экран разваливается».
+
+     `transform` даёт тот же видимый результат (полосы нет) и НЕ трогает
+     раскладку: коробка на месте, `getBoundingClientRect().height` у нава не
+     меняется, издатель молчит, ни один скроллер не пересчитывается. Полоса
+     остаётся зарезервированной - она под клавиатурой, её всё равно не видно.
+     `visibility` добавлен, чтобы уехавшая полоса не ловила тапы.
+
+     Темп - общий `--surface-settle` (тот же, что у шита и камеры карты): всё,
+     что едет на одном экране, обязано ехать одним временем и одной кривой.
+     visual-diff-exempt: .lp-f {@media (max-width: 640px)} display — хром убирается transform-ом вместо display:none: display вынимал элемент из потока и через издателя --nav-dock-h пересчитывал скроллеры
+     visual-diff-exempt: .mbnav {@media (max-width: 640px)} display — то же: нав уезжает, а не исчезает, иначе его издатель обнуляет --nav-dock-h
+     visual-diff-exempt: .lp-f {@media (max-width: 640px)} transform — чем именно уезжает хром при клавиатуре
+     visual-diff-exempt: .lp-f {@media (max-width: 640px)} visibility — уехавшая полоса не ловит тапы
+     visual-diff-exempt: .lp-f {@media (max-width: 640px)} transition — темп общий с шитом и камерой (--surface-settle)
+     visual-diff-exempt: .mbnav {@media (max-width: 640px)} transform — нав уезжает за нижнюю кромку
+     visual-diff-exempt: .mbnav {@media (max-width: 640px)} visibility — уехавший нав не ловит тапы
+     visual-diff-exempt: .mbnav {@media (max-width: 640px)} transition — темп общий
+
+     Селектор `[data-keyboard] .lp-sheet .lp-f` УДАЛЁН как избыточный: широкий
+     `[data-keyboard] .lp-f` накрывает футер внутри `.lp-sheet` тоже. Двумя
+     правилами он был только ради стабильности ключа `.lp-sheet` у гарда 2p;
+     раз правило всё равно переписывается, дубль уходит вместе с ним.
+     visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} display — снят избыточный селектор `[data-keyboard] .lp-sheet .lp-f`: широкое правило по `.lp-f` накрывает тот же футер, у `.lp-sheet` остаётся его собственный display: flex */
+  [data-keyboard] .lp-f,
+  [data-keyboard] .mbnav {
+    transform: translateY(100%);
+    visibility: hidden;
+    transition: transform var(--surface-settle, .32s) var(--surface-ease, cubic-bezier(.22, 1, .36, 1)), visibility 0s linear var(--surface-settle, .32s);
+  }
 
 
   /* Editor side panels become FULL-SCREEN panels on phones (a standalone screen

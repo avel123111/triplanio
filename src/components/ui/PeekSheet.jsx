@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { SHEET_CONTROL_SELECTOR, gestureOwner, nearestDetent, resolveDetents, tapSettles } from '@/lib/sheetDetents';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
-import { useKeyboardOpen } from '@/lib/keyboardOpen';
+import { isKeyboardOpen, useKeyboardOpen } from '@/lib/keyboardOpen';
 
 /**
  * PeekSheet — НЕМОДАЛЬНЫЙ постоянный боттом-шит с ДЕТЕНТАМИ: он всегда на
@@ -148,12 +148,25 @@ export function PeekSheet({
   // считает шит — второй копии `resolveDetents` в проекте быть не должно.
   const capOf = (st) => (st.length ? st[Math.max(0, st.length - 2)] : 0);
   const capPx = capOf(stops);
-  // ★ КЛАВИАТУРА ПОДНИМАЕТ ШИТ НА ВЕРХНИЙ ДЕТЕНТ. Видимая область сжата, и
-  // «как было» в ней — это полоска с обрезанным содержимым; поле, ради которого
-  // клавиатуру открыли, оказывается за кадром. Детент ЭКРАНА при этом не
-  // трогаем: закрылась клавиатура — шит вернулся туда, где его оставили.
+  // ★★ НА КЛАВИАТУРУ ШИТ НЕ РЕАГИРУЕТ — НИ ДЕТЕНТОМ, НИ ПЕРЕСЧЁТОМ.
+  //
+  // Прошлая редакция поднимала шит на верхний детент. Замерено на устройстве
+  // (iPhone, iOS 26, Safari): раскладочный вьюпорт при клавиатуре НЕ меняется —
+  // Safari панорамирует ОКНО, и вместе с ним едет вся картинка, `position:fixed`
+  // включительно. То есть шит и так уезжает вверх вместе со всем остальным, а
+  // наш `transform` на 320мс ехал ПОВЕРХ этой панорамы: два независимых движения
+  // за одни и те же 250мс, которых никто не проектировал вместе.
+  //
+  // Поле в кадр возвращает не детент, а упреждающий якорь по `focusin`
+  // (`lib/keyboardOpen.js`): он ставит фокусное поле в верхнюю четверть окна ДО
+  // того, как клавиатура поехала. Детент к этому отношения не имеет.
+  //
+  // `keyboard` здесь остаётся ровно для ОДНОГО — оживить замер, когда клавиатура
+  // ушла. Саму заморозку решает синхронный `isKeyboardOpen()` внутри `measure`:
+  // тот сидит на том же событии `visualViewport.resize` и обязан отвечать в ТОМ
+  // ЖЕ кадре, а хук доносит значение через рендер, то есть позже.
   const keyboard = useKeyboardOpen();
-  const index = keyboard ? stops.length - 1 : Math.max(0, Math.min(stops.length - 1, detent));
+  const index = Math.max(0, Math.min(stops.length - 1, detent));
   const sheetH = stops[index] ?? 0;
   const restY = Math.max(0, vh - sheetH) + vTop;
 
@@ -167,9 +180,19 @@ export function PeekSheet({
   // тело кончалось выше дна, а футер повисал посреди шита. Док нужен в ДВУХ
   // ролях, и они разные: он поднимает МИНИМАЛЬНЫЙ детент (чтобы заголовок не
   // ушёл под нав) и держит отступ ФУТЕРА. Высота тела к нему отношения не имеет.
+  //
+  // ★★ ПОКА КЛАВИАТУРА ОТКРЫТА, НЕ МЕРЯЕМ ВООБЩЕ. `visualViewport` во время её
+  // подъёма шлёт `resize` ПОКАДРОВО, и каждый замер менял `--sheet-h`, от
+  // которого считается высота тела (`calc(--sheet-h - head - reserve)`), — то
+  // есть весь список перекладывался каждый кадр анимации клавиатуры. Замер при
+  // сжатой видимой полосе к тому же ЛОЖНЫЙ: он описывает не экран, а экран минус
+  // клавиатура, и шит на нём пересобирался под размер, которого через 250мс не
+  // будет. Геометрия замораживается на последнем «тихом» значении и оживает,
+  // когда клавиатура ушла.
   const measure = useCallback(() => {
     const sheet = sheetRef.current, head = headRef.current;
     if (!sheet || !head) return;
+    if (isKeyboardOpen()) return;
     const band = head.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
     setHeadPx(Math.round(band));
     // Полосу нижнего нава публикует сам нав (`--nav-dock-h`, safe-area уже
@@ -179,6 +202,9 @@ export function PeekSheet({
     setVh(viewportH());
     setVTop(viewportTop());
   }, []);
+
+  // Клавиатура ушла → один честный замер по вернувшейся геометрии.
+  useEffect(() => { if (!keyboard) measure(); }, [keyboard, measure]);
 
   useLayoutEffect(() => {
     measure();

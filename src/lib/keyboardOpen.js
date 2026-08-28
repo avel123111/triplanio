@@ -24,15 +24,11 @@
 // keyboard that resizes content is the resize itself. Upgrade path: the
 // VirtualKeyboard API (`navigator.virtualKeyboard`) once broadly supported.
 import { useSyncExternalStore } from 'react';
+import { isTextInput, startFocusAnchor } from './focusAnchor';
 
 // A drop bigger than this (px) counts as "keyboard is up". Keeps the URL-bar
 // show/hide (~60–100px) from flipping it; a soft keyboard is ~260–320px.
 const OPEN_DELTA = 120;
-
-// Типы <input>, которые НЕ поднимают экранную клавиатуру (в отличие от
-// text/email/search/url/number/tel/password/…). Вынесено в модуль, чтобы не
-// пересоздавать массив на каждый resize вьюпорта.
-const NON_TEXT_INPUT_TYPES = new Set(['button', 'submit', 'reset', 'checkbox', 'radio', 'range', 'color', 'file', 'image']);
 
 let open = false;
 const subscribers = new Set();
@@ -45,15 +41,11 @@ const subscribers = new Set();
 // боттом-нав до перезагрузки. Фокус здесь НЕ замена геометрии (та racy сама по
 // себе — тап по наву возвращал фокус в поле), а ДОПОЛНИТЕЛЬНОЕ условие: при тапе
 // по кнопке геометрия не двигается, поэтому старый race не воскресает.
+// Предикат «текстовое ли поле» общий с якорем (`focusAnchor.js`) — вопрос один и
+// тот же, и второй его копии в проекте быть не должно.
 function isTextInputFocused() {
   if (typeof document === 'undefined') return false;
-  const el = document.activeElement;
-  if (!(el instanceof HTMLElement)) return false;
-  if (el instanceof HTMLTextAreaElement) return true;
-  if (el instanceof HTMLInputElement) {
-    return !NON_TEXT_INPUT_TYPES.has((el.type || 'text').toLowerCase());
-  }
-  return el.isContentEditable;
+  return isTextInput(document.activeElement);
 }
 
 /** @param {() => void} cb */
@@ -62,6 +54,18 @@ function subscribe(cb) {
   return () => subscribers.delete(cb);
 }
 const getSnapshot = () => open;
+
+/** Синхронное чтение того же флага — для НЕ-реактивных читателей.
+ *
+ *  ★ Зачем рядом с хуком. `update()` пишет `open` СИНХРОННО, в том же событии
+ *  `visualViewport.resize`, и только потом зовёт `notify()`; хук же доносит
+ *  значение через рендер React, то есть на кадр-другой позже. Читателю, который
+ *  сам сидит на том же `resize` и должен решить «мерить или не мерить ПРЯМО
+ *  СЕЙЧАС» (`PeekSheet`), кадр опоздания означает несколько лишних перекладок в
+ *  начале подъёма клавиатуры — ровно то, что здесь и убирается. Порядок
+ *  гарантирован регистрацией: этот наблюдатель стартует в `main.jsx`, то есть
+ *  раньше любого шита, а слушатели одного события идут в порядке подписки. */
+export const isKeyboardOpen = () => open;
 const notify = () => subscribers.forEach((cb) => cb());
 
 /** React hook: true while the soft keyboard is up. For a canon primitive that
@@ -89,6 +93,11 @@ export function startKeyboardOpenWatch() {
   // so they're unaffected on desktop either way; this only fixes the JS hook.)
   if (!window.matchMedia?.('(pointer: coarse)').matches) return;
   started = true;
+
+  // Упреждающий якорь поля — тот же гейт (touch + visualViewport), поэтому
+  // запускается отсюда, а не второй строкой в `main.jsx`: два бутстрапа одного
+  // поведения разъехались бы на первой правке гейта.
+  startFocusAnchor(vv);
 
   const root = document.documentElement;
   let baseline = vv.height; // tallest height this orientation = no keyboard
