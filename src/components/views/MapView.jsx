@@ -629,7 +629,10 @@ export default function MapView({
     // Fit only once the slot is MEASURED (canFit) — never into a zero-size
     // container (fit is deferred; the effect re-runs when canFit flips). Markers/
     // lines above still draw on `ready`, so the map is never blank. (TRIP-202)
-    if (canFit && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
+    // Кадрируем, только когда известны ОБЕ величины: холст (`canFit`) и свободное
+    // окно (`view.measured`) — разбор в `MapShell`. Окно приезжает от шита своим
+    // эффектом и штатно опаздывает на кадр, а перекадрирования не будет.
+    if (canFit && view?.measured !== false && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
         // ★ СКАЧОК — ТОЛЬКО У КАРТЫ, КОТОРУЮ ЕЩЁ НИ РАЗУ НЕ КАДРИРОВАЛИ. Инстанс
@@ -653,7 +656,7 @@ export default function MapView({
     // `transfers` больше не в deps: фит зависит от набора визитов, не переездов
     // (линии рисует отдельный эффект). focusSig/revealActiveId читаются внутри как
     // и раньше — их смена приходит вместе с ре-рендером visitsSignature/фокуса.
-  }, [ready, canFit, ordered, visitsSignature, hideRoute]);
+  }, [ready, canFit, view?.measured, ordered, visitsSignature, hideRoute]);
 
   // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
   // Owns the hotel markers while the overlay is open: builds a moveend listener

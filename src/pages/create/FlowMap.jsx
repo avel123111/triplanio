@@ -294,7 +294,12 @@ export default function FlowMap({
     if (!map || !ready) return undefined;
     // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
     // re-runs when canFit flips. Markers draw on `ready` via the hook. (TRIP-202)
-    if (canFit) {
+    // ★ КАДРИРУЕМ, ТОЛЬКО КОГДА ИЗВЕСТНЫ ОБЕ ВЕЛИЧИНЫ: холст (`canFit`) И
+    // свободное окно (`view.measured`). Второе приезжает от шита СВОИМ эффектом
+    // и штатно опаздывает на кадр — а перекадрирования не будет, автофокус
+    // только на изменение маршрута. Пустой глобус ждать не обязан: его размер
+    // считается от ХОЛСТА, окно ему не нужно.
+    if (canFit && (view?.measured !== false || !fitPositions.length)) {
       // ВОЗДУХ кадра, и только он: закрытую площадь карта знает сама
       // (`lib/map/insets.js`), поэтому складывать её здесь не нужно и нельзя.
       const air = fitPaddingFor(winW);
@@ -342,7 +347,7 @@ export default function FlowMap({
     // Пересборку пинов делает `useCityMarkers` по ptsKey — здесь его нет.
     // winW/winH читаются внутри (fitPaddingFor / startGlobeView) — перечислены для
     // честности exhaustive-deps, хотя fitKey их и так несёт.
-  }, [ready, canFit, fitKey, winW, winH]);
+  }, [ready, canFit, view?.measured, fitKey, winW, winH]);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).
