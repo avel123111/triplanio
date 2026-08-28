@@ -111,9 +111,24 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
             (кнопка «Не сейчас» / Esc / подложка), единственное такое в
             приложении. Он лежит В ГЕРОЕ, как крест шапки события. */}
         <div className="dlg__body">
-          {/* Hero */}
+          {/* Hero.
+              ⚠⚠ ЧЕРНИЛА ЗДЕСЬ — ЛИТЕРАЛ, И ЭТО НЕ НЕБРЕЖНОСТЬ. `--pro-hero-grad`
+              это ФИКСИРОВАННЫЙ тёмный градиент: он один и тот же в светлой и в
+              тёмной теме. Значит и текст на нём обязан быть фиксированно
+              светлым. Тема-зависимый токен тут ЛОМАЕТ полосу: `--primary-fg`
+              («чернила НА --brand») в светлой белый, а в тёмной — почти чёрный
+              (см. его объявление в тёмном :root), и заголовок оказывается
+              тёмным на тёмно-синем. Так и вышло — подстановка токена «для
+              чистоты» уронила читаемость в тёмной теме.
+              ★ `--pro-hero-grad` — ЕДИНСТВЕННЫЙ градиент системы без тёмного
+              варианта: `--pro-gradient` и `--ai-gradient` объявлены в обеих
+              темах, а этот только в светлом :root. Поэтому он и единственное
+              место, где литерал — правильный ответ.
+              ПРАВИЛО: цвет берётся у токена только тогда, когда ПОВЕРХНОСТЬ под
+              ним тоже следует за темой. Под фиксированной поверхностью —
+              фиксированные чернила. */}
           <div className="row" style={{ position: 'relative', alignItems: 'flex-start', borderRadius: 'var(--r-btn)', overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
-            background: 'var(--pro-hero-grad)', color: 'var(--primary-fg)' }}>
+            background: 'var(--pro-hero-grad)', color: '#fff' }}>
             <div className="grow--fit">
               <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>PRO</Badge>
               <DialogTitle asChild>
@@ -121,11 +136,13 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
                   {t('sub.limit_hero_title')}
                 </div>
               </DialogTitle>
-              <div style={{ opacity: .9 }}>
+              {/* Тот же литерал по той же причине: `opacity` наследовала бы
+                  цвет родителя, а он тут именно фиксированный. */}
+              <div style={{ color: 'rgba(255,255,255,.9)' }}>
                 {t('sub.limit_hero_sub', { count: state.activeCount })}
               </div>
             </div>
-            <IconBtn icon="close" onClick={() => onOpenChange(false)} ariaLabel={t('common.close')} style={{ color: 'var(--primary-fg)' }} />
+            <IconBtn icon="close" onClick={() => onOpenChange(false)} ariaLabel={t('common.close')} style={{ color: '#fff' }} />
           </div>
 
           {/* Info strip — TRIP-343 объект 2 (канал 3): скин утоплённой поверхности
