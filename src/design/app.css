@@ -7361,7 +7361,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Enter / leave: slide in and out past the anchored (bottom) edge. */
 .toast-host .toast[data-state="enter"],
 .toast-host .toast[data-state="leave"] {
-  transform: translateY(24px) scale(.94); opacity: 0;
+  transform: translate(var(--sw-x, 0px), var(--sw-y, 0px)) translateY(24px) scale(.94); opacity: 0;
 }
 
 /* ─── Свайп-закрытие карточки (касание): вверх · влево · вправо ───────────────
@@ -7393,6 +7393,12 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .toast-host:has(.toast:hover) {@media (max-width: 640px)} transform — то же на телефоне
    visual-diff-exempt: .toast-host[data-expanded] {@media (max-width: 640px)} transform — то же на телефоне
    visual-diff-exempt: .toast touch-action — жест принадлежит карточке: без него свайп прокручивал бы страницу (вертикаль) и уводил назад по истории (горизонталь на iOS)
+   visual-diff-exempt: .toast-host transform — тот же канал в выходной позе, ключ на ХОСТЕ: правило `.toast-host .toast[data-state=leave]` гард приписывает обеим единицам
+   visual-diff-exempt: .toast-host {@media (max-width: 640px)} transform — то же на телефоне
+   visual-diff-exempt: .toast[data-state=leave] transform — тот же канал в ВЫХОДНОЙ позе: без него улетевшая карточка возвращалась и садилась у края (замерено покадрово: 398px → 7px), потому что поза `leave` про канал не знала
+   visual-diff-exempt: .toast[data-state=leave] {@media (max-width: 640px)} transform — то же на телефоне
+   visual-diff-exempt: .toast[data-state=enter] transform — та же пара селекторов (enter и leave объявлены вместе); у входа канал не задан, значит no-op
+   visual-diff-exempt: .toast[data-state=enter] {@media (max-width: 640px)} transform — то же на телефоне
    visual-diff-exempt: .toast[data-swipe] transition — новое состояние «палец на экране»: сглаживание снято, карточка идёт за пальцем 1:1
    visual-diff-exempt: .toast[data-swipe-out] transition — новое состояние «полёт за край»: своё время (--sw-exit) на одном transform */
 .toast { touch-action: none; }
@@ -7423,7 +7429,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   }
   .toast-host .toast[data-state="enter"],
   .toast-host .toast[data-state="leave"] {
-    transform: translateY(-16px) scale(.96);
+    transform: translate(var(--sw-x, 0px), var(--sw-y, 0px)) translateY(-16px) scale(.96);
   }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }

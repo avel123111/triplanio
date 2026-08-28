@@ -60,7 +60,18 @@ export function swipeAxis(dx, dy) {
 }
 
 /**
- * Куда сдвинуть карточку прямо сейчас: палец ведёт её 1:1 по выбранной оси.
+ * ★★ ПОРОГ РАСПОЗНАЁТ НАМЕРЕНИЕ, А НЕ ВЫБРАСЫВАЕТ ДИСТАНЦИЮ. Первая редакция
+ * применяла СЫРОЕ смещение, и каждый свайп начинался с телепорта: до 6px
+ * карточка стоит, на 6-м прыгает сразу на 6 (замерено покадрово — палец 1..5 →
+ * 0, палец 6 → 6). Пальцем это читается как рывок в начале КАЖДОГО жеста.
+ * Поэтому порог ВЫЧИТАЕТСЯ: путь считается от точки, где намерение опознано,
+ * и начинается с нуля.
+ *
+ * ★ ВЫЧИТАНИЕ С УПОРОМ В НОЛЬ, А НЕ ПРОСТОЕ `d - 6`. Ось выбирается по большей
+ * проекции, поэтому по ВЫБРАННОЙ оси смещение может оказаться меньше порога
+ * (ось взяли из-за другой оси, или палец поехал назад). Голое вычитание в этот
+ * момент перевернуло бы знак — карточка поехала бы В ПРОТИВОПОЛОЖНУЮ сторону.
+ * Ноль в этой зоне держит путь монотонным.
  *
  * По второй оси смещения нет вовсе — это и есть замок. Тяга вниз обрезается в
  * ноль: карточка упирается, вместо того чтобы уезжать в контент.
@@ -68,12 +79,18 @@ export function swipeAxis(dx, dy) {
  * @param {'x'|'y'|null} axis
  * @param {number} dx
  * @param {number} dy
- * @returns {{ x: number, y: number }} px
+ * @returns {{ x: number, y: number }} путь карточки, px
  */
 export function swipeOffset(axis, dx, dy) {
-  if (axis === 'x') return { x: dx, y: 0 };
-  if (axis === 'y') return { x: 0, y: Math.min(0, dy) };
+  if (axis === 'x') return { x: lead(dx), y: 0 };
+  if (axis === 'y') return { x: 0, y: Math.min(0, lead(dy)) };
   return { x: 0, y: 0 };
+}
+
+/** Смещение пальца → путь карточки: порог снят, знак не переворачивается. */
+function lead(d) {
+  if (Math.abs(d) <= SWIPE_INTENT_PX) return 0;
+  return d - Math.sign(d) * SWIPE_INTENT_PX;
 }
 
 /**
@@ -87,12 +104,18 @@ export function swipeOffset(axis, dx, dy) {
  * Направление броска берётся у СКОРОСТИ, а не у смещения: палец мог уехать
  * вправо и вернуться, и закрыть должно то, куда он летел в момент отпускания.
  *
- * @param {{ axis: 'x'|'y'|null, dx: number, dy: number, vx?: number, vy?: number }} p
+ * ★ ДИСТАНЦИЯ МЕРЯЕТСЯ ПУТЁМ КАРТОЧКИ (`swipeOffset`), А НЕ СЫРЫМ СМЕЩЕНИЕМ
+ * ПАЛЬЦА. Иначе у модуля два разных понятия «докуда доехали»: карточка стоит на
+ * 50, а решение принимается по 56 — жест закрывается раньше, чем выглядит
+ * закрытым. Одно понятие пути на весь модуль.
+ *
+ * @param {{ axis: 'x'|'y'|null, x: number, y: number, vx?: number, vy?: number }} p
+ *   `x`/`y` — путь карточки, тот самый, что вернул `swipeOffset`.
  * @returns {'up' | 'left' | 'right' | null}
  */
-export function swipeCommit({ axis, dx, dy, vx = 0, vy = 0 }) {
+export function swipeCommit({ axis, x, y, vx = 0, vy = 0 }) {
   if (axis === 'x') {
-    if (Math.abs(dx) >= SWIPE_COMMIT_PX) return dx > 0 ? 'right' : 'left';
+    if (Math.abs(x) >= SWIPE_COMMIT_PX) return x > 0 ? 'right' : 'left';
     if (Math.abs(vx) >= SWIPE_FLICK_VELOCITY) return vx > 0 ? 'right' : 'left';
     return null;
   }
@@ -101,7 +124,7 @@ export function swipeCommit({ axis, dx, dy, vx = 0, vy = 0 }) {
     // броска вниз. Условие разбито на две строки не для красоты: знаки «больше»
     // и «меньше» на одной строке сканер i18n читает как JSX-текст (та же
     // ловушка описана у разбора броска в `PeekSheet`).
-    if (dy <= -SWIPE_COMMIT_PX) return 'up';
+    if (y <= -SWIPE_COMMIT_PX) return 'up';
     if (vy <= -SWIPE_FLICK_VELOCITY) return 'up';
     return null;
   }

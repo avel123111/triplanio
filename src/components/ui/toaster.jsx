@@ -187,6 +187,7 @@ export function Toaster() {
       try { s.card.setPointerCapture?.(s.pointerId); } catch { /* указателя уже нет */ }
     }
     const { x, y } = swipeOffset(s.axis, dx, dy);
+    s.x = x; s.y = y;                    // путь карточки — им же решается закрытие
     s.card.style.setProperty("--sw-x", `${x}px`);
     s.card.style.setProperty("--sw-y", `${y}px`);
   };
@@ -208,9 +209,7 @@ export function Toaster() {
       return;
     }
 
-    const dir = swipeCommit({
-      axis: s.axis, dx: e.clientX - s.x0, dy: e.clientY - s.y0, vx: s.vx, vy: s.vy,
-    });
+    const dir = swipeCommit({ axis: s.axis, x: s.x || 0, y: s.y || 0, vx: s.vx, vy: s.vy });
     if (!dir) { settle(s); return; }
 
     // Улетает по тому же каналу, что и вело палец, — вторая формула не заводится.
@@ -218,6 +217,9 @@ export function Toaster() {
     // каким шит публикует свой темп (`--surface-settle`, lib/surfaceMotion).
     const r = s.card.getBoundingClientRect();
     const exit = swipeExit(dir, { width: r.width, bottom: r.bottom });
+    // Состояния меняются местами, а не накладываются: иначе какое из двух правил
+    // `transition` победит, решал бы порядок строк в CSS, а не намерение.
+    delete s.card.dataset.swipe;
     s.card.dataset.swipeOut = "";
     s.card.style.setProperty("--sw-exit", `${SWIPE_EXIT_MS}ms`);
     s.card.style.setProperty("--sw-x", `${exit.x}px`);
