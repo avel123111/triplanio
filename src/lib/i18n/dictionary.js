@@ -32,13 +32,29 @@ export function hasLang(lang) {
   return Boolean(LOADERS[lang]);
 }
 
-// Load every namespace of one locale and assemble { [namespace]: { [bareKey]: value } }.
-// Returns an empty object for an unknown language (caller falls back).
-export async function loadLocale(lang) {
+/** Имена всех словарей языка — нужны, чтобы посчитать «остальные». */
+export function namespacesOf(lang) {
+  return Object.keys(LOADERS[lang] || {});
+}
+
+/**
+ * Собрать { [namespace]: { [bareKey]: value } } для одного языка.
+ *
+ * `only` — ПОДМНОЖЕСТВО имён словарей. Без него грузится всё, как и раньше;
+ * с ним — ровно перечисленное. Так первый кадр неавторизованной зоны перестаёт
+ * ждать 48 чанков ради шести (`zoneNamespaces.js`), а остальные догружаются
+ * тем же вызовом следом и МЕРДЖАТСЯ в тот же словарь.
+ *
+ * Возвращает пустой объект для неизвестного языка (вызыватель падает на фолбэк).
+ */
+export async function loadLocale(lang, only) {
   const nsLoaders = LOADERS[lang];
   if (!nsLoaders) return {};
+  const wanted = only
+    ? Object.entries(nsLoaders).filter(([ns]) => only.includes(ns))
+    : Object.entries(nsLoaders);
   const entries = await Promise.all(
-    Object.entries(nsLoaders).map(async ([ns, load]) => {
+    wanted.map(async ([ns, load]) => {
       // Degrade per-namespace, never crash the whole language (TRIP-441). A lazy
       // JSON chunk can fail to load — a hashed asset 404s after a redeploy replaced
       // it under an open tab, or `import()` resolves to `undefined` — and a bare
