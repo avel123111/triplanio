@@ -25,6 +25,12 @@
  * Правило проекта: дефис "-", не длинное тире.
  */
 
+import { GLYPH_W, GLYPH_FALLBACK } from './glyphWidths.ts';
+/** Запас на кернинг пар: сумма одиночных глифов его не знает, и на отдельных
+ *  строках он даёт до −0.3% (то есть в ОПАСНУЮ сторону). 1% покрывает это с
+ *  перекрытием и стоит доли пикселя воздуха; генератор таблицы проверяет, что с
+ *  этим запасом занижения не остаётся ни на одной контрольной строке. */
+const KERN_SAFETY = 1.01;
 import { LOGO_SVG_B64 } from './assets_b64.ts';
 import { FLAGS_B64 } from './flags_b64.ts';
 
@@ -77,7 +83,7 @@ const POLA_R = 26; // радиус рамки
 const WIN_R = 12; // радиус окна карты (углы почти прямые)
 
 // ---- per-format geometry (числа транскрибированы из прототипа v34) -----------
-type Layout = {
+export type Layout = {
   w: number;
   h: number;
   padX: number;
@@ -93,7 +99,7 @@ type Layout = {
   brand: { cy: number; logo: number; logoR: number; size: number; gap: number };
 };
 
-const LAYOUTS: Record<Format, Layout> = {
+export const LAYOUTS: Record<Format, Layout> = {
   story: {
     w: 1080, h: 1920, padX: 66,
     titleLeft: 110, titleTop: 265, titleSize: 132,
@@ -127,8 +133,32 @@ function escapeXml(s: string): string {
 }
 
 /** Грубый advance (px). Geologica ~0.54·size на средних весах. */
-function advance(text: string, size: number, factor = 0.54): number {
-  return text.length * size * factor;
+/**
+ * Ширина строки по РЕАЛЬНЫМ ширинам глифов Geologica (таблица `glyphWidths.ts`,
+ * снята с тех же woff2, что грузит приложение и что вшиты в финальный растр).
+ *
+ * Было: `длина_в_символах × кегль × 0.54` — догадка, не знающая, какие это буквы.
+ * В кириллице «ш» вдвое шире «г», и догадка занижала: «Белград» 220 против 237
+ * реальных (+8%), «Балканам» 591 против 664 (+12%), «км» 36 против 42 (+17%).
+ * Зазор до стрелки маршрута заложен 22 единицы — «Белград» съедал 17, и стрелка
+ * садилась на последнюю букву.
+ *
+ * Ширина зависит от ВЕСА, поэтому вес — обязательный аргумент: тот же текст в
+ * 500 и 700 занимает разное место, и «примерно один» коэффициент здесь и был
+ * источником ошибки.
+ *
+ * ★ ОТРИЦАТЕЛЬНЫЙ ТРЕКИНГ (`letter-spacing` −0.5/−1 у заголовка и чисел) в
+ * расчёт НЕ входит СОЗНАТЕЛЬНО. Он делает реальный текст УЖЕ расчётного, то
+ * есть ошибка уходит в запас. Учитывать его значило бы подойти к границе
+ * вплотную и снова получить наезд при первой же неточности; кернинг пар не
+ * учитывается по той же причине (генератор проверяет, что сумма глифов реальную
+ * длину только ЗАВЫШАЕТ, максимум на 4-5%).
+ */
+function advance(text: string, size: number, weight: number): number {
+  const row = GLYPH_W[weight] || GLYPH_W[700];
+  let per1000 = 0;
+  for (const ch of text) per1000 += row[ch] ?? GLYPH_FALLBACK;
+  return (per1000 * size * KERN_SAFETY) / 1000;
 }
 
 /** Плоская тень = тёмная копия со сдвигом (+1,+2), затем белый оригинал поверх.
@@ -173,13 +203,13 @@ function numText(x: number, y: number, size: number, t: string, anchor: 'start' 
 function wrapTitle(title: string, maxW: number, base: number): { lines: string[]; size: number } {
   const words = title.trim().split(/\s+/).filter(Boolean);
   for (let size = base; size >= base * 0.5; size -= 4) {
-    if (advance(title, size, 0.56) <= maxW) return { lines: [title], size };
+    if (advance(title, size, 700) <= maxW) return { lines: [title], size };
     let best: { a: string; b: string; m: number } | null = null;
     for (let k = 1; k < words.length; k++) {
       const a = words.slice(0, k).join(' ');
       const b = words.slice(k).join(' ');
-      const wa = advance(a, size, 0.56);
-      const wb = advance(b, size, 0.56);
+      const wa = advance(a, size, 700);
+      const wb = advance(b, size, 700);
       if (wa <= maxW && wb <= maxW) {
         const m = Math.max(wa, wb);
         if (!best || m < best.m) best = { a, b, m };
@@ -264,7 +294,7 @@ export function buildCardSvg(
   // --- маршрут «from -> to» (белый; стрелка рисуется — глиф → не в сабсете) ---
   const routeY = lastTitleY + L.routeGap;
   const hasTo = data.to && data.to !== data.from;
-  const fromW = advance(data.from, L.routeSize, 0.56);
+  const fromW = advance(data.from, L.routeSize, 600);
   const arrowGap = 22;
   const arrowW = 46;
   let routeSvg = wtext(titleX, routeY, L.routeSize, data.from, { weight: 600 });
@@ -278,6 +308,26 @@ export function buildCardSvg(
     routeSvg += withShadow(arrow);
     routeSvg += wtext(ax + arrowW + arrowGap, routeY, L.routeSize, data.to, { weight: 600 });
   }
+
+  // --- скрим под текстом (TRIP-443) --------------------------------------
+  // Белый текст карточки лежит на ПРОИЗВОЛЬНОМ фоне: пресет, фото юзера или
+  // базовый градиент. Без подложки читаемость — лотерея, и проигрывает она не
+  // в экзотике: `bgGrad` СВЕТЛЫЙ в верхней трети (#cfe0ec, контраст с белым
+  // 1.36:1), а закатный/снежный пресет даёт ту же яркую полосу ровно на высоте
+  // строки городов. Именно так «названия городов пропадали»: они не исчезали,
+  // они СЛИВАЛИСЬ, а на смене обложки читались лишь те доли секунды, пока
+  // новое фото не отрисовалось. Тем же объясняется «тень у цифр»: тёмная копия
+  // из withShadow не видна на тёмном фоне и проявляется, когда под ней встаёт
+  // светлое фото.
+  // Канон ДС — `.tc__scrim` (вертикальный градиент rgba(8,10,20,α)); цвет берём
+  // его, форму задаёт РАСКЛАДКА: текст стоит двумя блоками (заголовок+маршрут
+  // сверху, цифры+бренд снизу), середину занимает полароид — там подложка не
+  // нужна и только мешала бы фотографии.
+  const scrimStops = scrimGradient(L, lines.length);
+  const scrimBase = `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#scrimGrad)"/>`;
+  // В overlay окно вырезано под живую карту — скрим тоже обязан обойти дырку,
+  // иначе он затенит карту, которая лежит НЕ в SVG.
+  const scrim = overlay ? `<g mask="url(#winhole)">${scrimBase}</g>` : scrimBase;
 
   // --- полароид: кремовая рамка с ВЫРЕЗАННЫМ окном (evenodd), карта, ряд стран ---
   const winPath = roundedRectPath(g.winX, g.winY, g.winW, g.winH, WIN_R);
@@ -314,6 +364,7 @@ export function buildCardSvg(
 <defs>
  ${fontCss}
  <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c7e6"/><stop offset="0.32" stop-color="#cfe0ec"/><stop offset="0.62" stop-color="#7fa7b3"/><stop offset="1" stop-color="#274b63"/></linearGradient>
+ <linearGradient id="scrimGrad" x1="0" y1="0" x2="0" y2="1">${scrimStops}</linearGradient>
  <clipPath id="winclip"><path d="${winPath}" transform="${polaXf}"/></clipPath>
  <mask id="winhole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><path d="${winPath}" transform="${polaXf}" fill="black"/></mask>
  <filter id="winInnerA" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"/></filter>
@@ -321,6 +372,7 @@ export function buildCardSvg(
  <clipPath id="logoClip"><rect x="${L.padX}" y="${L.brand.cy - L.brand.logo / 2}" width="${L.brand.logo}" height="${L.brand.logo}" rx="${L.brand.logoR}" ry="${L.brand.logoR}"/></clipPath>
 </defs>
 ${bg}
+${scrim}
 ${creamShadow}
 ${cream}
 ${mapImg}
@@ -331,6 +383,50 @@ ${routeSvg}
 ${stats}
 ${brand}
 </svg>`;
+}
+
+/**
+ * Стопы скрима под текстом карточки (TRIP-443).
+ *
+ * ПОЧЕМУ СЧИТАЕМ, А НЕ ПОДБИРАЕМ ПРОЦЕНТЫ. Скрим обязан накрывать ровно те
+ * полосы, где стоит текст. Полосы заданы раскладкой (`LAYOUTS`) и разные у
+ * story и post, а верхняя ещё и плавает: заголовок бывает в одну строку и в
+ * две. Проценты, подобранные под один кадр, на другом сползают с текста —
+ * и дефект возвращается молча, потому что скрим при этом ЕСТЬ.
+ *
+ * ALPHA выведена из требования к контрасту, а не из вкуса: худший фон — белый
+ * (снег, засвеченное небо, светлая часть базового градиента). Белый под
+ * подложкой rgba(8,10,20,a) даёт канал 255*(1-a)+8*a; при a=0.55 это ~119,
+ * относительная яркость ~0.183, контраст с белым текстом ~4.5:1 — порог
+ * WCAG AA для обычного текста. Меньше 0.55 порог не берётся.
+ */
+export function scrimGradient(L: Layout, titleLines: number): string {
+  const H = L.h;
+  const ALPHA = 0.55;
+  const c = (a: number) => `rgba(8,10,20,${a})`;
+  const st = (off: number, a: number) =>
+    `<stop offset="${Math.max(0, Math.min(1, off)).toFixed(4)}" stop-color="${c(a)}"/>`;
+
+  // Верхний блок: заголовок (может быть 2 строки) + строка маршрута.
+  const lineH = Math.round(L.titleSize * 0.94);
+  const routeBase = L.titleTop + (titleLines - 1) * lineH + L.routeGap;
+  const topEnd = (routeBase + L.routeSize * 0.34) / H; // низ выносных маршрута
+  // Нижний блок: цифры статистики (верх кегля) и всё, что ниже, включая бренд.
+  // Кегль ≠ высота кадра глифа: рамка цифры уходит ВЫШЕ линии (stats.y -
+  // numSize) на выносные, и без запаса её верх попадал в растушёвку —
+  // замер давал цифрам 3.68:1 против 4.40:1 у подписей рядом.
+  const botStart = (L.stats.y - L.stats.numSize * 1.3) / H;
+
+  // Растушёвка — доля высоты кадра; без неё край подложки читается полосой.
+  const FADE = 0.09;
+  return [
+    st(0, ALPHA),
+    st(topEnd, ALPHA),
+    st(topEnd + FADE, 0),
+    st(botStart - FADE, 0),
+    st(botStart, ALPHA),
+    st(1, ALPHA),
+  ].join('');
 }
 
 function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
@@ -351,7 +447,7 @@ function buildInFrameCountries(L: Layout, g: ReturnType<typeof windowGeom>, d: C
   const parts: string[] = [];
   // Подпись слева (одна строка), baseline по центру ряда.
   parts.push(text(left, cy + c.labSize * 0.34, c.labSize, d.visitedLabel, { weight: 700, fill: C.navy }));
-  const labW = advance(d.visitedLabel, c.labSize, 0.56);
+  const labW = advance(d.visitedLabel, c.labSize, 700);
   // Флаги — от конца подписи + отступ, ПО ЛЕВОМУ КРАЮ с фиксированным шагом.
   const listLeft = left + labW + c.labGap;
   const total = d.flags.length;
@@ -400,7 +496,7 @@ function buildStats(L: Layout, d: CardData): string {
   ];
   const s = L.stats;
   const widths = cells.map((c) =>
-    Math.max(advance(c.num, s.numSize, 0.6), advance(c.lab, s.labSize, 0.6)) + s.cellPad * 2);
+    Math.max(advance(c.num, s.numSize, 700), advance(c.lab, s.labSize, 500)) + s.cellPad * 2);
   const total = widths.reduce((a, b) => a + b, 0);
   let x = (L.w - total) / 2;
   const parts: string[] = [];
