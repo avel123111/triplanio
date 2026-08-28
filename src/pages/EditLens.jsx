@@ -1327,8 +1327,8 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
 
   return (
     <MapShell
-      map={(camera, slotPx) => (
-            <MapView camera={camera} slotPx={slotPx} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls={['projection', 'theme', 'se']} initialProjection="globe"
+      map={(view) => (
+            <MapView view={view} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls={['projection', 'theme', 'se']} initialProjection="globe"
               /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
                  «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
               cooperativeGestures={false}

@@ -9,7 +9,7 @@
  */
 import React, { useState } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, withOptimism, reconcileCityChain } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, withOptimism, reconcileBookingWrite } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { Btn, Skeleton, useToast } from '@/design/index';
@@ -65,9 +65,11 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
       if (error) throw Object.assign(new Error('delete_failed'), { code });
       // deleted:false = already gone / RLS hid it — surface so the row rolls back.
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
-      // Transfer delete un-shifts downstream city dates on the server; reconcile the
-      // returned chain into the shell so the timeline updates without a reload.
-      if (kind === 'transfer' && res?.cities) reconcileCityChain(qc, tripId, res.cities);
+      // Fold everything the delete reshaped, from its own answer: downstream city
+      // dates (transfer recompute) and the budget-expense mirror the DB trigger drops
+      // with the booking (TRIP-484). One fold for every kind — the three delete
+      // surfaces used to carry three copies of the transfer-only half.
+      reconcileBookingWrite(qc, tripId, res);
     },
     ...withOptimism(delBinding, {
       op: 'update',     // dim the row (`_pending`), don't yank it yet

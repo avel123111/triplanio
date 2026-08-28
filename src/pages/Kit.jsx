@@ -38,7 +38,7 @@ import {
   BookingWarning, TimelineEmptyDay,
   CityBar, EventChip,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
-  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, CITYBAR_VARIANTS, EVENTCHIP_VARIANTS, toast,
+  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, EVENTCHIP_VARIANTS, toast,
 } from '@/design/index';
 import { Icon } from '@/design/icons';
 import Accordion from '@/components/common/Accordion';
@@ -508,10 +508,12 @@ const RECIPES = {
   // floor-exempt: inline +5 — образцы витрины /kit для CityBar/EventChip: размер полосы и позиционирование block-варианта задаёт ячейка/тайм-грид, в галерее их даёт обёртка; апрув Pavel
   'city-bar': () => [
     {
-      label: 'variant (карта CITYBAR_VARIANTS): bar (дефолт) · strip',
+      // Оси у полосы нет — обличье одно. Показываем его на двух тонах палитры:
+      // витрина иллюстрирует ТОН (данные), а не выбор облика.
+      label: 'полоса города (обличье одно, ось снята): тон из CITY_TONES',
       items: [
-        it('bar (дефолт, только цвет)', <span style={{ display: 'flex', width: 120, height: 19 }}><CityBar tone={0} ariaLabel="Рим" /></span>), // inline-style-exempt: размер образца полосы (в календаре высоту даёт ячейка)
-        ...CITYBAR_VARIANTS.map((v) => it(`variant="${v}"`, <span style={{ display: 'flex', width: 120, height: 22 }}><CityBar variant={v} tone={1} label="Витербо" /></span>)), // inline-style-exempt: размер образца полосы
+        it('tone={0}', <span style={{ display: 'flex', width: 120, height: 22 }}><CityBar tone={0} label="Рим" /></span>), // inline-style-exempt: размер образца полосы (в календаре высоту даёт ячейка)
+        it('tone={1}', <span style={{ display: 'flex', width: 120, height: 22 }}><CityBar tone={1} label="Витербо" /></span>), // inline-style-exempt: размер образца полосы
       ],
     },
   ],

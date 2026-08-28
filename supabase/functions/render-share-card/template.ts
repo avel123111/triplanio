@@ -25,7 +25,7 @@
  * Правило проекта: дефис "-", не длинное тире.
  */
 
-import { GLYPH_W, GLYPH_FALLBACK } from './glyphWidths.ts';
+import { GLYPH_W, GLYPH_FALLBACK, FONT_ASCENT, FONT_DESCENT } from './glyphWidths.ts';
 /** Запас на кернинг пар: сумма одиночных глифов его не знает, и на отдельных
  *  строках он даёт до −0.3% (то есть в ОПАСНУЮ сторону). 1% покрывает это с
  *  перекрытием и стоит доли пикселя воздуха; генератор таблицы проверяет, что с
@@ -39,9 +39,8 @@ const flagUri = (cc: string) => (FLAGS_B64[cc] ? `data:image/svg+xml;base64,${FL
 
 export type Format = 'story' | 'post';
 
-// Данные карточки собирает index.ts и передаёт литералом; тип живёт для сигнатуры
-// buildCardSvg, наружу не экспортируется (никто не импортирует).
-type CardData = {
+// Данные карточки собирает index.ts и передаёт литералом.
+export type CardData = {
   title: string;
   from: string; // первый город маршрута
   to: string; // последний город (пусто/равен from ⇒ маршрут без стрелки)
@@ -176,7 +175,16 @@ function text(x: number, y: number, size: number, t: string, o: TextOpts = {}): 
 }
 
 /** Белый текст с мягкой тенью (плоский offset, без blur — blur рвёт CPU-лимит).
- *  Тень = тёмная копия со сдвигом; читается на любой подложке/карте. */
+ *  Тень = тёмная копия со сдвигом; читается на любой подложке/карте.
+ *
+ *  ★ МОНОШИРИННЫХ ЦИФР ЗДЕСЬ НЕТ И НЕ БЫЛО. Ряд статистики нёс атрибут
+ *  `font-variant-numeric="tabular-nums"` — в SVG это МЁРТВЫЙ атрибут: замер в
+ *  Chromium и WebKit даёт одну и ту же ширину «4 382» с ним и без него (2630
+ *  тысячных), а работает он только как СТИЛЬ (2822). То есть цифры карточки
+ *  всегда были пропорциональными, и таблица ширин, снятая через SVG, это же и
+ *  измерила. Атрибут снят, чтобы код не обещал того, чего не делает; включать
+ *  моноширинные — отдельное решение: они шире на 7%, и колонки ряда придётся
+ *  переснять. */
 function wtext(x: number, y: number, size: number, t: string, o: TextOpts = {}): string {
   const a = o.anchor ? ` text-anchor="${o.anchor}"` : '';
   const ls = o.ls ? ` letter-spacing="${o.ls}"` : '';
@@ -185,14 +193,6 @@ function wtext(x: number, y: number, size: number, t: string, o: TextOpts = {}):
   const el = (fill: string, dx: number, dy: number) =>
     `<text x="${x + dx}" y="${y + dy}" font-family="${font}" font-weight="${w}" font-size="${size}" `
     + `fill="${fill}"${a}${ls}>${escapeXml(t)}</text>`;
-  return withShadow(el);
-}
-
-/** Белая цифра с тенью (tabular-nums, отрицательный трекинг — как в прототипе). */
-function numText(x: number, y: number, size: number, t: string, anchor: 'start' | 'middle' | 'end'): string {
-  const el = (fill: string, dx: number, dy: number) =>
-    `<text x="${x + dx}" y="${y + dy}" font-family="${FONT}" font-weight="700" font-size="${size}" `
-    + `fill="${fill}" text-anchor="${anchor}" font-variant-numeric="tabular-nums" letter-spacing="-1">${escapeXml(t)}</text>`;
   return withShadow(el);
 }
 
@@ -260,6 +260,89 @@ export function mapSlot(format: Format): { x: number; y: number; w: number; h: n
   return { x: Math.round(x), y: Math.round(y), w: Math.round(Math.max(...xs) - x), h: Math.round(Math.max(...ys) - y) };
 }
 
+// ---- раскладка текста -------------------------------------------------------
+/**
+ * Один элемент текста карточки: строка, её базовая точка и облик — в единицах
+ * КАРТОЧКИ (1080 × высота формата), а не экрана. Потребителей двое и они равны:
+ * SVG-рендер здесь же (`renderTextItems`) и клиент, который кладёт этот текст
+ * DOM-ом поверх кадра. Клиент НИЧЕГО не пересчитывает: два независимых расчёта
+ * одного макета — это и есть механизм, которым превью расходится с карточкой.
+ *
+ * `y` — БАЗОВАЯ ЛИНИЯ (как у SVG `<text>`); `top` — верх бокса того же текста в
+ * DOM при `line-height: 1`. Оба числа считает раскладка, потому что перевод
+ * одного в другое требует метрик ШРИФТА, а они есть только здесь (замерены
+ * генератором с тех же woff2 — см. glyphWidths.ts). Если бы это делил клиент,
+ * он держал бы у себя копию метрик, и при ре-вендоринге шрифта текст превью
+ * молча уехал бы относительно карточки.
+ */
+export type CardTextItem = {
+  kind: 'title' | 'route' | 'stat-num' | 'stat-label' | 'brand';
+  x: number;
+  y: number;
+  top: number;
+  size: number;
+  weight: number;
+  value: string;
+  anchor?: 'middle';
+  tracking?: number;
+};
+
+/** Текст ОТКРЫТОЙ ЗОНЫ карточки: заголовок, маршрут, ряд статистики, вордмарк.
+ *
+ *  Подпись «Страны» сюда НЕ входит намеренно: она лежит внутри кремовой рамки и
+ *  повёрнута вместе с ней — это часть картинки, а не текст карточки.
+ */
+export function buildCardText(format: Format, d: CardData): CardTextItem[] {
+  const L = LAYOUTS[format];
+  const items: CardTextItem[] = [];
+  // Базовая линия → верх бокса при `line-height: 1`: половина «свободного» места
+  // строки (кегль минус содержимое шрифта) плюс подъём. Числа — тысячные доли
+  // кегля, замерены с самих файлов шрифта.
+  const topOf = (y: number, size: number) =>
+    y - size * ((1000 - (FONT_ASCENT + FONT_DESCENT)) / 2 + FONT_ASCENT) / 1000;
+  const add = (i: Omit<CardTextItem, 'top'>) => items.push({ ...i, top: topOf(i.y, i.size) });
+
+  // Заголовок: ≤2 строки с усадкой кегля (перенос считает wrapTitle — здесь и
+  // сейчас, чтобы клиенту не пришлось повторять разбивку).
+  const { lines, size: tSize } = wrapTitle(d.title, L.w - L.titleLeft - L.padX, L.titleSize);
+  const lineH = Math.round(tSize * 0.94);
+  lines.forEach((line, i) => add({
+    kind: 'title', x: L.titleLeft, y: L.titleTop + i * lineH, size: tSize, weight: 700, tracking: -0.5, value: line,
+  }));
+
+  // Маршрут — ОДНА строка «город → город». Раньше это были два текста с
+  // нарисованной стрелкой между ними: глифа U+2192 не было ни в одном сабсете
+  // Geologica, который отдаёт Google. Цена была не косметическая — координата
+  // второго города складывалась вручную (`x + advance(from) + зазор + стрелка +
+  // зазор`), и этот расчёт однажды посадил стрелку на последнюю букву. Теперь
+  // стрелка обычный символ (пятый сабсет, один глиф — см. src/design/fonts.css),
+  // строку раскладывает движок, а править её можно одним полем.
+  add({
+    kind: 'route', x: L.titleLeft, y: L.titleTop + (lines.length - 1) * lineH + L.routeGap,
+    size: L.routeSize, weight: 600, value: d.to && d.to !== d.from ? `${d.from} → ${d.to}` : d.from,
+  });
+
+  // Ряд статистики: цифра и подпись по центру своей колонки.
+  const s = L.stats;
+  statsColumns(L, d).forEach((col) => {
+    add({ kind: 'stat-num', x: col.cx, y: s.y, size: s.numSize, weight: 700, anchor: 'middle', tracking: -1, value: col.num });
+    add({ kind: 'stat-label', x: col.cx, y: s.y + s.labSize + 8, size: s.labSize, weight: 500, anchor: 'middle', value: col.lab });
+  });
+
+  // Вордмарк рядом с логомарком (сам логомарк — картинка, остаётся в SVG).
+  const b = L.brand;
+  add({ kind: 'brand', x: L.padX + b.logo + b.gap, y: b.cy + b.size * 0.34, size: b.size, weight: 800, value: d.brand });
+
+  return items;
+}
+
+/** Тот же текст, нарисованный в SVG (белый с тенью — облик открытой зоны). */
+function renderTextItems(items: CardTextItem[]): string {
+  return items.map((i) => wtext(i.x, i.y, i.size, i.value, {
+    weight: i.weight, anchor: i.anchor, ls: i.tracking,
+  })).join('');
+}
+
 // ---- render -----------------------------------------------------------------
 export function buildCardSvg(
   format: Format,
@@ -281,33 +364,21 @@ export function buildCardSvg(
     + `<image href="${BG_TOKEN}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`;
   const bg = overlay ? `<g mask="url(#winhole)">${bgBase}</g>` : bgBase;
 
-  // --- заголовок (белый, по левому краю, ≤2 строки с усадкой) ---
-  const maxTitleW = W - L.titleLeft - L.padX;
-  const { lines, size: tSize } = wrapTitle(data.title, maxTitleW, L.titleSize);
-  const lineH = Math.round(tSize * 0.94);
-  const titleX = L.titleLeft;
-  const titleSvg = lines
-    .map((l, i) => wtext(titleX, L.titleTop + i * lineH, tSize, l, { weight: 700, ls: -0.5 }))
-    .join('');
-  const lastTitleY = L.titleTop + (lines.length - 1) * lineH;
-
-  // --- маршрут «from -> to» (белый; стрелка рисуется — глиф → не в сабсете) ---
-  const routeY = lastTitleY + L.routeGap;
-  const hasTo = data.to && data.to !== data.from;
-  const fromW = advance(data.from, L.routeSize, 600);
-  const arrowGap = 22;
-  const arrowW = 46;
-  let routeSvg = wtext(titleX, routeY, L.routeSize, data.from, { weight: 600 });
-  if (hasTo) {
-    const ax = titleX + fromW + arrowGap;
-    const ay = routeY - L.routeSize * 0.28;
-    const arrow = (stroke: string, dx: number, dy: number) =>
-      `<g transform="translate(${dx},${dy})" stroke="${stroke}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">`
-      + `<line x1="${ax}" y1="${ay}" x2="${ax + arrowW - 12}" y2="${ay}"/>`
-      + `<path d="M${ax + arrowW - 20},${ay - 9} L${ax + arrowW},${ay} L${ax + arrowW - 20},${ay + 9}"/></g>`;
-    routeSvg += withShadow(arrow);
-    routeSvg += wtext(ax + arrowW + arrowGap, routeY, L.routeSize, data.to, { weight: 600 });
-  }
+  // --- текст открытой зоны: ОДНА раскладка на всех потребителей ------------
+  // Позиции считает `buildCardText`, и он же отдаётся клиенту в ответе overlay.
+  // Здесь мы его только РИСУЕМ. Так у макета один источник: если бы превью
+  // считало те же координаты у себя, мы бы завели два расчёта одного макета —
+  // ровно ту болезнь, из-за которой превью и карточка расходятся.
+  const items = buildCardText(format, data);
+  const titleLines = items.filter((i) => i.kind === 'title').length;
+  // В OVERLAY кадр текста НЕ несёт: превью кладёт его DOM-ом поверх (тот же
+  // список приезжает в ответе). Причина не в удобстве — SVG-текст, вставленный
+  // в документ строкой, на iOS 26 терял раскладку: строка приходила с верными
+  // ширинами и через полторы секунды обнулялась, а названия городов пропадали
+  // (замер: t0 237/171 → t1 0/0, Sentry TRIPLANIO-2Z). Обычный текст страницы
+  // этой болезни не подвержен, и он же нужен, чтобы текст можно было править.
+  // Финальная карточка растеризуется картинкой — там SVG-текст остаётся.
+  const textSvg = overlay ? '' : renderTextItems(items);
 
   // --- скрим под текстом (TRIP-443) --------------------------------------
   // Белый текст карточки лежит на ПРОИЗВОЛЬНОМ фоне: пресет, фото юзера или
@@ -323,7 +394,7 @@ export function buildCardSvg(
   // его, форму задаёт РАСКЛАДКА: текст стоит двумя блоками (заголовок+маршрут
   // сверху, цифры+бренд снизу), середину занимает полароид — там подложка не
   // нужна и только мешала бы фотографии.
-  const scrimStops = scrimGradient(L, lines.length);
+  const scrimStops = scrimGradient(L, titleLines);
   const scrimBase = `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#scrimGrad)"/>`;
   // В overlay окно вырезано под живую карту — скрим тоже обязан обойти дырку,
   // иначе он затенит карту, которая лежит НЕ в SVG.
@@ -361,11 +432,9 @@ export function buildCardSvg(
   // --- ряд «Countries» + флаги ВНУТРИ кремовой рамки (под окном, повёрнут с рамкой) ---
   const countries = buildInFrameCountries(L, g, data, polaXf);
 
-  // --- ряд статистики (4 ячейки, золотые разделители, белые цифры+подписи) ---
-  const stats = buildStats(L, data);
-
-  // --- логотип «Triplanio» в левом нижнем углу ---
-  const brand = buildBrand(L, data);
+  // --- фигуры ряда статистики и логомарк (текст этих блоков — в items) ---
+  const separators = statsSeparators(L, data);
+  const brandMark = buildBrandMark(L);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
@@ -389,10 +458,9 @@ ${cream}
 ${mapImg}
 ${innerShadow}
 ${countries}
-${titleSvg}
-${routeSvg}
-${stats}
-${brand}
+${separators}
+${brandMark}
+${textSvg}
 </svg>`;
 }
 
@@ -518,8 +586,10 @@ function flagCircle(cx: number, cy: number, d: number, ring: number, cc: string)
     + `preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>${ringEl}`;
 }
 
-// Ряд статистики: 4 ячейки, центрированы; между ячейками золотой разделитель.
-function buildStats(L: Layout, d: CardData): string {
+// Колонки ряда статистики: 4 ячейки по содержимому, центрированы. Геометрия
+// вынесена отдельно, потому что её читают ДВОЕ — золотые разделители (фигуры,
+// остаются в SVG) и текст ячеек (уезжает в раскладку). Один расчёт на обоих.
+function statsColumns(L: Layout, d: CardData): { x: number; cx: number; num: string; lab: string }[] {
   const cells = [
     { num: d.distanceStr, lab: d.kmLabel },
     { num: d.days, lab: d.daysLabel },
@@ -529,30 +599,27 @@ function buildStats(L: Layout, d: CardData): string {
   const s = L.stats;
   const widths = cells.map((c) =>
     Math.max(advance(c.num, s.numSize, 700), advance(c.lab, s.labSize, 500)) + s.cellPad * 2);
-  const total = widths.reduce((a, b) => a + b, 0);
-  let x = (L.w - total) / 2;
-  const parts: string[] = [];
-  cells.forEach((c, i) => {
-    const cw = widths[i];
-    const cxc = x + cw / 2;
-    if (i > 0) {
-      parts.push(`<rect x="${Math.round(x)}" y="${s.y - s.numSize + 8}" width="2" height="${s.numSize + 10}" fill="${C.gold}" opacity="0.7"/>`);
-    }
-    parts.push(numText(cxc, s.y, s.numSize, c.num, 'middle'));
-    parts.push(wtext(cxc, s.y + s.labSize + 8, s.labSize, c.lab, { weight: 500, anchor: 'middle' }));
-    x += cw;
+  let x = (L.w - widths.reduce((a, b) => a + b, 0)) / 2;
+  return cells.map((c, i) => {
+    const col = { x, cx: x + widths[i] / 2, num: c.num, lab: c.lab };
+    x += widths[i];
+    return col;
   });
-  return parts.join('');
 }
 
-// Логотип «Triplanio» в левом нижнем углу: логомарк + вордмарк (белый, с тенью —
-// открытая зона; вордмарк Geologica 800, первая заглавная).
-function buildBrand(L: Layout, d: CardData): string {
+// Золотые разделители между ячейками статистики (текст ячеек — в buildCardText).
+function statsSeparators(L: Layout, d: CardData): string {
+  const s = L.stats;
+  return statsColumns(L, d).slice(1)
+    .map((col) => `<rect x="${Math.round(col.x)}" y="${s.y - s.numSize + 8}" width="2" height="${s.numSize + 10}" fill="${C.gold}" opacity="0.7"/>`)
+    .join('');
+}
+
+// Логомарк «Triplanio» в левом нижнем углу — картинка (вордмарк рядом с ним
+// уехал в buildCardText: он текст).
+function buildBrandMark(L: Layout): string {
   const b = L.brand;
-  const x = L.padX;
-  const logoY = b.cy - b.logo / 2;
   // Лого со скруглёнными углами (как в макете): обрезаем <image> rounded-rect'ом
   // (clipPath logoClip объявлен в <defs> по геометрии этого формата).
-  return `<image href="${LOGO_URI}" x="${x}" y="${logoY}" width="${b.logo}" height="${b.logo}" clip-path="url(#logoClip)"/>`
-    + wtext(x + b.logo + b.gap, b.cy + b.size * 0.34, b.size, d.brand, { weight: 800 });
+  return `<image href="${LOGO_URI}" x="${L.padX}" y="${b.cy - b.logo / 2}" width="${b.logo}" height="${b.logo}" clip-path="url(#logoClip)"/>`;
 }

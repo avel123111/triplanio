@@ -5,9 +5,8 @@ import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { mapShellInsets, slotChangeDelay } from '@/lib/mapShellInsets';
+import { mapShellInsets } from '@/lib/mapShellInsets';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
-import { cssPx } from '@/lib/cssPx';
 
 /**
  * MapShell — раскладка «карта во всю площадь + панель над ней» (TRIP-422).
@@ -18,17 +17,17 @@ import { cssPx } from '@/lib/cssPx';
  * заканчивается карта. Здесь она одна, и вместе с ней один ответ на главный
  * вопрос — СКОЛЬКО МЕСТА НА ЭКРАНЕ СВОБОДНО.
  *
- * ★★ ЧТО ЗАКРЫТО — РЕШАЕТ ОСЬ, А НЕ ПЛАТФОРМА. Панель режет ШИРИНУ: холст
- * остаётся во всю площадь, кадр уводится отступом камеры, карта видна и под
- * виджетом. Шит режет ВЫСОТУ: её забирает САМ СЛОТ, потому что размер глобуса
- * mapbox считает от высоты ХОЛСТА — развяжи их, и шар начнёт то вылезать за
- * экран, то болтаться в пустоте. Разбор с замерами — `lib/mapShellInsets.js`.
+ * ★★ ЧТО ЗАКРЫТО — РЕШАЕТ ОСЬ, А НЕ ПЛАТФОРМА. Панель режет ШИРИНУ: кадр
+ * уводится отступом КАМЕРЫ, карта видна и под виджетом. Шит режет ВЫСОТУ: кадр
+ * уводит СДВИГ холста, а отступ камеры остаётся нулевым — `transform.padding`
+ * на проекции `globe` рисует планету диском. Разбор — `lib/mapShellInsets.js`.
  *
- * ★★★ РАЗМЕР СЛОТА МЕНЯЕТСЯ СКАЧКОМ, НО В ПРАВИЛЬНЫЙ МОМЕНТ. Анимировать его
- * нельзя (каждый кадр = переаллокация GL-буфера), поэтому единственная ручка —
- * КОГДА. Карта растёт сразу, сжимается после приезда шита (`slotChangeDelay`):
- * тогда она всегда занимает больший из двух размеров, и полоса фона между ней и
- * шитом не показывается ни разу. Без правила замер давал разрыв до 351 px.
+ * ★★★ РАЗМЕР ХОЛСТА НЕ МЕНЯЕТСЯ НИКОГДА — ХОЛСТ УЕЗЖАЕТ. Ресайз двигает мир на
+ * половину дельты и роняет шар (вид пришпилен к центру холста), а каждый его
+ * кадр — переаллокация GL-буфера. Сдвиг не делает ни того, ни другого: размер
+ * постоянен, а центр холста при сдвиге на половину шита встаёт ровно в центр
+ * СВОБОДНОГО окна. Низ холста при этом всегда под шитом, поэтому полосы фона
+ * между картой и шитом не бывает ни на одном кадре жеста.
  *
  * ★★★ ВСЁ, ЧТО ЕДЕТ, ЕДЕТ ОДНИМ ТЕМПОМ: шит и панель (CSS transform) приезжают
  * за `SURFACE_SETTLE_MS` по одной кривой. Шелл публикует темп переменными на
@@ -40,18 +39,19 @@ import { cssPx } from '@/lib/cssPx';
  * колонка слева, которую можно свернуть (кнопка на шве панели и карты).
  *
  *   <MapShell
- *     map={(camera, slotPx) => <MapView camera={camera} slotPx={slotPx} … />}
+ *     map={(view) => <MapView view={view} … />}
  *     panel={<RoutePanel/>} panelLabel="Маршрут"
  *     detents={[0.15, 0.68, 1]} detent={i} onDetentChange={setI}
  *   />
  */
 
 /**
- * `map` — узел ИЛИ функция `(camera, slotPx) => node`. Свободное окно меняют
- * ДВЕ вещи, по одной на ось: ширину — отступ камеры, высоту — размер слота.
- * Карте нужны обе: по первой она подстраивает вид под новое окно (и кадрирует
- * следующий фит маршрута), по второй понимает, что окно уехало, — на телефоне
- * отступы всегда нулевые, и без слота смена детента прошла бы для неё незаметно.
+ * `map` — узел ИЛИ функция `(view) => node`, где `view` = `{ camera, fit }`.
+ * ДВЕ коробки, по одной на роль: `camera` — чем сдвигаем камеру, `fit` — во что
+ * вписываем маршрут. На телефоне первая нулевая (вид уводит сдвиг холста), и
+ * без второй фит вписывал бы маршрут во весь холст, то есть наполовину под шит.
+ * Одним объектом, а не двумя аргументами: позиционные уже стоили дефекта —
+ * экран forwardил первый и молча терял второй, и ни один гард этого не видит.
  *
  * @param {{
  *   map: any,
@@ -72,6 +72,9 @@ import { cssPx } from '@/lib/cssPx';
  *   children?: any,
  * }} p
  */
+/** Воздух между атрибуцией mapbox и кромкой шита (px). */
+const ATTRIB_AIR = 10;
+
 export function MapShell({
   map,
   panel,
@@ -112,30 +115,34 @@ export function MapShell({
   const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
+  const [capPx, setCapPx] = useState(0);
   const [panelPx, setPanelPx] = useState(0);
 
-  // ★ ПРИМЕНЕНИЕ ВЫСОТЫ ШИТА ОТЛОЖЕНО ПО ПРАВИЛУ (`slotChangeDelay`): карта
-  // растёт сразу, сжимается после приезда шита. Правило чистое и закрыто
-  // тестами — у полосы фона между картой и шитом нет ни скриншота в CI, ни
-  // гарда, а стоила она 351 px на 160 мс.
-  const applyTimer = useRef(/** @type {any} */ (null));
-  // Применённое значение зеркалим в ref: планировать нужно ДО рендера, а
-  // обновлятель `setState` обязан быть чистым — React вправе позвать его
-  // повторно, и таймер завёлся бы дважды.
-  const appliedRef = useRef(0);
-  const applySheetPx = useCallback((next) => {
-    const prev = appliedRef.current;
-    if (next === prev) return;
-    clearTimeout(applyTimer.current);
-    const commit = () => { appliedRef.current = next; setSheetPx(next); };
-    const wait = slotChangeDelay({ prev, next, settleMs: SURFACE_SETTLE_MS });
-    if (wait === 0) commit(); else applyTimer.current = setTimeout(commit, wait);
-  }, []);
-  useEffect(() => () => clearTimeout(applyTimer.current), []);
+  // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
+  // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
+  // между ними откроется полоса фона (замер: до 351 px на 160 мс). Холст больше
+  // не режется — он во всю площадь и уезжает целиком, его низ всегда под шитом,
+  // полосе взяться неоткуда. Задержка вместе с её правилом снята: механизм без
+  // причины следующий читатель принял бы за работающий.
+  const applySheetPx = useCallback((next, cap) => { setCapPx(cap || 0); setSheetPx(next); }, []);
 
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
   // число разъехалось бы с ней на первой же правке раскладки.
+  // Живой сдвиг холста — мимо React (разбор у пропа `onHeightLive` шита).
+  // Пока идёт жест, темп нулевой: холст уже там, где палец. На осадке темп
+  // возвращается, и остаток пути доезжает той же кривой, что и шит.
+  const onSheetLive = useCallback((px, phase, cap) => {
+    const root = rootRef.current;
+    if (!root) return;
+    root.style.setProperty('--surface-settle', phase === 'end' ? `${SURFACE_SETTLE_MS}ms` : '0ms');
+    // Тем же правилом, что и на осадке: одна формула на оба пути, иначе они
+    // разъедутся на первой же правке (`mapShellInsets`).
+    const { shift } = mapShellInsets({ phone: true, sheetPx: px, capPx: cap });
+    root.style.setProperty('--mapshell-shift', `${shift}px`);
+    root.style.setProperty('--mapshell-attrib', `${shift + ATTRIB_AIR}px`);
+  }, []);
+
   const measurePanel = useCallback(() => {
     const root = rootRef.current, el = panelRef.current;
     if (!root || !el) { setPanelPx(0); return; }
@@ -159,14 +166,9 @@ export function MapShell({
   // ★ ЗАМЕР ПАНЕЛИ НЕ ЗАВИСИТ ОТ СВЁРНУТОСТИ, И ЭТО НАМЕРЕННО. Свёрнутая панель
   // уезжает `transform`-ом — её ширина не меняется, и «померить свёрнутую» дало
   // бы правильный ответ по случайности. Про свёрнутость знает правило.
-  // Радиус скруглений шита объявлен в CSS (`--r-xl`) — здесь его МЕРЯЮТ, а не
-  // повторяют числом: вторая запись разъехалась бы с токеном на первой правке.
-  const [cornerPx, setCornerPx] = useState(0);
-  useLayoutEffect(() => { setCornerPx(Math.round(cssPx('var(--r-xl, 0px)'))); }, []);
-
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, panelPx, overlayOpen: overlayActive, collapsed, cornerPx }),
-    [isPhone, sheetPx, panelPx, overlayActive, collapsed, cornerPx],
+    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx, overlayOpen: overlayActive, collapsed }),
+    [isPhone, sheetPx, capPx, panelPx, overlayActive, collapsed],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
@@ -179,23 +181,32 @@ export function MapShell({
   // десктопе, а плавающие контролы там либо справа, либо скрыты), а переменная
   // без читателя — мёртвый механизм, который следующий разработчик примет за
   // работающий. Появится читатель — появится и она.
-  //
-  // ★ `--mapshell-under` — ЗАХОД НИЗА СЛОТА ПОД ШИТ, и у неё читатель есть
-  // (пилюля планировщика `.flow-map__stat`). Она нужна тому, что лежит ВНУТРИ
-  // слота: его «низ» — это низ КАНВАСА, а канвас намеренно уходит под шит на
-  // радиус скруглений, иначе в вырезах углов виден фон страницы. Отступ от
-  // собственного низа поэтому меряется не от края шита, и элемент оказывается
-  // лежащим на нём. Прибавь эту величину — и отступ снова считается от шита.
+  // ★ КАРТЕ ОТДАЁМ ОДИН ОБЪЕКТ, А НЕ НЕСКОЛЬКО АРГУМЕНТОВ. Позиционные уже
+  // стоили дефекта: экран forwardил первый и молча терял второй (коробку «во что
+  // вписывать») — маршрут вписывался во весь холст, и обе точки оказывались за
+  // кромкой шита. Ни один гард такого не видит: пропа нет, значение просто
+  // `null`. Один объект делает пропуск невозможным.
+  const view = useMemo(() => ({ camera: box.camera, fit: box.fit }), [box]);
+
   const rootStyle = useMemo(() => ({
     '--mapshell-bottom': `${box.slotBottom}px`,
-    '--mapshell-under': `${box.slotUnder}px`,
+    // ★ СКОЛЬКО ХОЛСТ УЕЗЖАЕТ ВВЕРХ. Половина закрытой шитом высоты: тогда центр
+    // ХОЛСТА (а к нему пришпилен вид) встаёт ровно в центр СВОБОДНОГО окна, а
+    // низ холста остаётся под шитом — полосе фона взяться неоткуда. Размер
+    // холста при этом не меняется ВООБЩЕ, а только он и двигает шар.
+    '--mapshell-shift': `${box.shift}px`,
+    // Где обязана стоять атрибуция mapbox: она лежит на дне КАНВАСА, а канвас
+    // уехал вверх — поднимаем на ту же величину плюс воздух. Отдельной
+    // переменной, а не `calc` у читателя: вне шелла её нет, и правило там
+    // вырождается в прежнее положение.
+    '--mapshell-attrib': `${box.shift + ATTRIB_AIR}px`,
     '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
     '--surface-ease': SURFACE_EASE_CSS,
   }), [box]);
 
   return (
     <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={rootStyle}>
-      <div className="mapshell__map">{typeof map === 'function' ? map(box.camera, box.slotBottom) : map}</div>
+      <div className="mapshell__map">{typeof map === 'function' ? map(view) : map}</div>
 
       {panel && (isPhone ? (
         <PeekSheet
@@ -203,6 +214,7 @@ export function MapShell({
           detent={detent}
           onDetentChange={onDetentChange}
           onHeightChange={applySheetPx}
+          onHeightLive={onSheetLive}
           header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
           footer={panelFooter}
           label={panelLabel}

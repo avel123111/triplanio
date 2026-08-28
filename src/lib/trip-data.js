@@ -171,12 +171,57 @@ export function reconcileCityChain(qc, tripId, chain) {
  * derives each city's gap from these transfers, so a stale slice flattened the just-
  * recomputed dates until the refetch caught up).
  */
-export function reconcileTransfers(qc, tripId, transfers) {
+function reconcileTransfers(qc, tripId, transfers) {
   if (!tripId || !Array.isArray(transfers)) return;
   qc.setQueryData(TRIP_CONTENT_KEY(tripId), (old) => {
     if (!old) return old;
     return { ...old, transfers };
   });
+}
+
+/**
+ * Reconcile the authoritative budget-expense set a BOOKING write returns (seam flag
+ * `returnExpenses`, TRIP-484) into the content cache. Same wholesale replacement as
+ * {@link reconcileTransfers} and for the same reason: the rows come from the seam's
+ * `select('*')`, byte-for-byte the read door's query, so the slice is interchangeable.
+ *
+ * WHY IT EXISTS. The booking→expense mirror is written by the DB alone (trigger
+ * `sync_budget_expense` on the four booking tables, INSERT/UPDATE/DELETE). The client
+ * never touched `budgetExpenses`, so a deleted booking left its expense row behind
+ * (tapping it then loaded a row that no longer exists — the "hangs and won't open"
+ * report), a created booking's expense never appeared, and an edited price stayed
+ * stale until the next content refetch. Folding the server's own set is the only
+ * mirror that does NOT re-derive the trigger's rules on the client.
+ */
+function reconcileExpenses(qc, tripId, expenses) {
+  if (!tripId || !Array.isArray(expenses)) return;
+  qc.setQueryData(TRIP_CONTENT_KEY(tripId), (old) => {
+    if (!old) return old;
+    return { ...old, budgetExpenses: expenses };
+  });
+}
+
+/**
+ * Fold EVERYTHING a booking write returned — the single entry point for the seam's
+ * `{ row, cities, transfers, expenses }` envelope (`trip-booking/*`). The two
+ * slice-folders above are its halves and stay UNEXPORTED on purpose: a call site
+ * that folds one slice by hand is a call site that forgets the other two.
+ *
+ * One function instead of a line per call site: the three surfaces that delete a
+ * booking (edit dialog, budget/timeline loader, editor panel) each carried their own
+ * copy of `if (kind === 'transfer' && res?.cities) reconcileCityChain(...)`, and the
+ * budget slice was in none of them. A part the seam did not send is absent/null and
+ * simply skipped, so one call is right for every kind and every op.
+ *
+ * @returns {any} the written row (`data.row`), so the caller can still fold it into
+ *   its own slice via {@link reconcileWriteRow}; null for delete / void-rpc writes.
+ */
+export function reconcileBookingWrite(qc, tripId, res) {
+  if (!res || typeof res !== 'object') return null;
+  reconcileCityChain(qc, tripId, res.cities);
+  reconcileTransfers(qc, tripId, res.transfers);
+  reconcileExpenses(qc, tripId, res.expenses);
+  return res.row ?? null;
 }
 
 /**
@@ -190,11 +235,36 @@ export function pruneCityContent(qc, tripId, cityId) {
   if (!tripId || !cityId) return;
   qc.setQueryData(TRIP_CONTENT_KEY(tripId), (old) => {
     if (!old) return old;
+    // Split rather than filter: the DROPPED rows are needed too — they name the
+    // expenses that go with them (below), and re-filtering with a negated copy of
+    // each predicate is how the two halves drift apart.
+    const split = (list, isGone) => {
+      const keep = [], drop = [];
+      for (const row of list || []) (isGone(row) ? drop : keep).push(row);
+      return [keep, drop];
+    };
+    const [hotels, goneHotels]     = split(old.hotels,     (h) => h.city_visit_id === cityId);
+    const [activities, goneActs]   = split(old.activities, (a) => a.city_visit_id === cityId);
+    const [transfers, goneTrs]     = split(old.transfers,  (tr) => tr.from_city_visit_id === cityId || tr.to_city_visit_id === cityId);
+    // The budget half of the same cascade, mirrored by those very ids (TRIP-484).
+    // Two server rules, no re-derivation: the sync trigger DELETES the expense of
+    // every booking that goes with the city, and `budget_expenses.city_visit_id` is
+    // ON DELETE SET NULL — a MANUAL expense survives, losing only the relation (its
+    // `city_name` stays as the fallback label the "by city" grouping reads).
+    const gone = new Set([...goneHotels, ...goneActs, ...goneTrs].map((row) => row.id));
     return {
       ...old,
-      hotels:     (old.hotels     || []).filter((h) => h.city_visit_id !== cityId),
-      activities: (old.activities || []).filter((a) => a.city_visit_id !== cityId),
-      transfers:  (old.transfers  || []).filter((tr) => tr.from_city_visit_id !== cityId && tr.to_city_visit_id !== cityId),
+      hotels,
+      activities,
+      transfers,
+      // Ключа НЕ появляется там, где его не было: дописать `budgetExpenses: []` в
+      // payload, пришедший без бюджета, значит показать пустой бюджет вместо
+      // загрузки — ровно класс TRIP-277 (тонкий ответ затёр общий кэш).
+      ...(old.budgetExpenses ? {
+        budgetExpenses: old.budgetExpenses
+          .filter((e) => !(e.source_id && gone.has(e.source_id)))
+          .map((e) => (e.city_visit_id === cityId ? { ...e, city_visit_id: null } : e)),
+      } : {}),
     };
   });
 }

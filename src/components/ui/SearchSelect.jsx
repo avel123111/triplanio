@@ -24,6 +24,20 @@ import { Sheet } from '@/components/ui/Sheet';
  *   renderValue(current)         — trigger label for the current option
  *   placeholder, searchPlaceholder, emptyText, title (mobile sheet header)
  *   triggerClassName (default 'input'), width (desktop popover px), disabled
+ *   searchable                   — строка поиска (по умолчанию есть). Списку из
+ *     пяти категорий бюджета или трёх ролей участника искать нечего, а пустая
+ *     строка поиска над коротким листом — шум; закрытые списки поэтому берут
+ *     `searchable={false}`. Это ПРОП примитива, а не второй компонент: пикер в
+ *     приложении один (TRIP-484 §3).
+ *   ...rest                      — садятся на ТРИГГЕР: он и есть видимое поле,
+ *     поэтому через этот же канал едет состояние валидации (`{...fieldState()}`),
+ *     как у DateTimeInput.
+ *
+ * @param {{ value: any, onChange: (key: any) => any, options?: any[], getKey?: (o: any) => any,
+ *   matches?: (o: any, q: string) => boolean, renderOption?: (o: any, selected: boolean) => any,
+ *   renderValue?: (o: any) => any, placeholder?: string, searchPlaceholder?: string,
+ *   emptyText?: string, title?: any, triggerClassName?: string, width?: number,
+ *   disabled?: boolean, searchable?: boolean, [x: string]: any }} p
  */
 export default function SearchSelect({
   value,
@@ -40,13 +54,15 @@ export default function SearchSelect({
   triggerClassName = 'input',
   width = 264,
   disabled = false,
+  searchable = true,
+  ...rest
 }) {
   const isPhone = useIsPhone();
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
 
   const current = options.find((o) => getKey(o) === value);
-  const q = query.trim().toLowerCase();
+  const q = searchable ? query.trim().toLowerCase() : '';
   const filtered = !q
     ? options
     : options.filter((o) => (matches ? matches(o, q) : String(getKey(o)).toLowerCase().includes(q)));
@@ -63,6 +79,7 @@ export default function SearchSelect({
       className={triggerClassName}
       disabled={disabled}
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', textAlign: 'left' }}
+      {...rest}
       {...extra}
     >
       <span style={current ? undefined : { color: 'var(--muted-2)' }}>
@@ -78,17 +95,22 @@ export default function SearchSelect({
           поля: у неё собственный padding, а обёртка декораций обязана облегать
           поле вплотную - иначе иконка отсчитывается от края паддинга и встаёт
           на 6px вместо 12 (поймано замером). */}
-      <div className="ss-search">
-        <Input
-          icon="search"
-          autoFocus={!isPhone}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={searchPlaceholder}
-          aria-label={searchPlaceholder}
-        />
-      </div>
-      <div className="ss-list" onWheel={(e) => e.stopPropagation()}>
+      {searchable && (
+        <div className="ss-search">
+          <Input
+            icon="search"
+            autoFocus={!isPhone}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+          />
+        </div>
+      )}
+      {/* `scrollbar-thin` — канон ДС (app.css), а не свои правила скролла: лист
+          длинный (валюты, языки), и полоса браузера по умолчанию рисуется мимо
+          системы. Тот же класс несёт лист автокомплита — хром у них общий. */}
+      <div className="ss-list scrollbar-thin" onWheel={(e) => e.stopPropagation()}>
         {filtered.length === 0 ? (
           <div className="ss-empty">{emptyText}</div>
         ) : (

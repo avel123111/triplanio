@@ -66,7 +66,7 @@ export { EditableText } from './EditableText';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';
-export { CityBar, CITYBAR_VARIANTS, CITY_TONES, cityTone, cityToneVars } from './CityBar';
+export { CityBar, CITY_TONES, cityTone, cityToneVars } from './CityBar';
 export { EventChip, EVENTCHIP_VARIANTS } from './EventChip';
 export { NotifRow } from './NotifRow';
 export { Swatch, SWATCH_VARIANTS } from './Swatch';

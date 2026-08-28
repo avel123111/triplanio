@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NO_INSETS, addBox, canFrame, getMapInsets, setMapInsets, toBox } from './insets.js';
+import { NO_INSETS, addBox, canFrame, fitHeightSig, getMapInsets, padUnchanged, setMapInsets, toBox } from './insets.js';
 
 const B = (top, right, bottom, left) => ({ top, right, bottom, left });
 
@@ -86,4 +86,61 @@ test('★ немеряный канвас — не кадрируем', () => {
   // Ноль приходит первым кадром и на размонтировании; «вписаться в ничто» —
   // это не ошибка вызывателя, а нормальное состояние, и ответ на него «подожди».
   assert.equal(canFrame(0, 0, NO_INSETS), false);
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// «ОТСТУП УЖЕ ТАКОЙ» — ГЕЙТ ПРОТИВ ОБРЫВА ЧУЖОГО ПЕРЕЛЁТА
+// Любая команда камере отменяет летящую, поэтому `easeTo` с тем же отступом
+// это не «ничего не делает», а «убивает автофокус». Замер на живом экране:
+// без вмешательства камера доезжает до зума 4.57, с «нулевым» easeTo через
+// 200 мс после старта — остаётся на 2.15.
+// ═════════════════════════════════════════════════════════════════════════════
+const mapWithPad = (pad) => ({ getPadding: () => pad });
+
+test('★ совпадающий отступ опознан — команду камере слать нельзя', () => {
+  const map = mapWithPad({ top: 0, right: 0, bottom: 0, left: 0 });
+  assert.equal(padUnchanged(map, NO_INSETS), true);
+});
+
+test('★ отличие хоть по одной стороне = отступ ехать обязан', () => {
+  const map = mapWithPad({ top: 0, right: 0, bottom: 0, left: 0 });
+  assert.equal(padUnchanged(map, { top: 0, right: 0, bottom: 0, left: 380 }), false);
+});
+
+test('дробные значения сравниваются округлёнными (mapbox хранит float)', () => {
+  const map = mapWithPad({ top: 260.4, right: 0, bottom: 259.5, left: 0 });
+  assert.equal(padUnchanged(map, { top: 260, right: 0, bottom: 260, left: 0 }), true);
+});
+
+test('★ библиотека без getPadding читается как «не знаем» → прежнее поведение', () => {
+  assert.equal(padUnchanged({}, NO_INSETS), false);
+  assert.equal(padUnchanged(null, NO_INSETS), false);
+  assert.equal(padUnchanged(mapWithPad({ top: 0, right: 0, bottom: 0, left: 0 }), null), false);
+});
+
+test('упавший getPadding не роняет вызывателя', () => {
+  const map = { getPadding: () => { throw new Error('boom'); } };
+  assert.equal(padUnchanged(map, NO_INSETS), false);
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ПОДПИСЬ ВЫСОТЫ ОКНА — ЧТО ЗАСТАВЛЯЕТ ВПИСАТЬ МАРШРУТ ЗАНОВО
+// Ось решает: ширину закрывает панель (её доводит отступ камеры — переезд без
+// зума), высоту закрывает шит (переносом не отработать, нужен новый кадр).
+// ═════════════════════════════════════════════════════════════════════════════
+test('★ ширина окна на подпись НЕ влияет — иначе десктоп зумил бы на каждом сворачивании панели', () => {
+  assert.equal(fitHeightSig({ top: 0, right: 0, bottom: 0, left: 380 }), fitHeightSig(NO_INSETS));
+});
+
+test('★ высота окна подпись меняет — маршрут обязан вписаться заново', () => {
+  assert.notEqual(fitHeightSig({ top: 52, right: 0, bottom: 52, left: 0 }), fitHeightSig({ top: 239, right: 0, bottom: 239, left: 0 }));
+});
+
+test('подпись переживает отсутствие коробки (первый кадр, размонтирование)', () => {
+  assert.equal(fitHeightSig(null), fitHeightSig(NO_INSETS));
+  assert.equal(fitHeightSig(undefined), '0|0');
+});
+
+test('дробная высота округляется — пиксель дрожания не гоняет камеру', () => {
+  assert.equal(fitHeightSig({ top: 239.4, bottom: 239.5 }), fitHeightSig({ top: 239, bottom: 240 }));
 });

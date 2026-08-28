@@ -1,6 +1,6 @@
 // @ts-check
 import { useEffect, useRef } from 'react';
-import { NO_INSETS, canFrame, getMapInsets, setMapInsets } from './insets';
+import { NO_INSETS, getMapInsets, padUnchanged, setMapInsets } from './insets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 
 /**
@@ -27,11 +27,6 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  * это читалось как «карта сама наводится», хотя маршрут не менялся. Теперь
  * эффект объявляет закрытую площадь и доводит до неё ОТСТУП — не более.
  *
- * `onReframe` — необязательная дверь для цели, РАЗМЕР которой считается от
- * ХОЛСТА, а не от маршрута (пустой глобус планировщика: диаметр шара — доля
- * высоты канваса, и при смене слота он обязан пересчитаться, иначе шар
- * обрезается краем). Вернула `true` — доехала сама, отступ трогать не нужно.
- * Кадрировать в ней МАРШРУТ нельзя: это и был бы тот самый автофокус.
  *
  * @param {{ current: any }} mapRef ссылка на инстанс (общий синглтон)
  * `focusing` — камерой СЕЙЧАС правит focus (открыта панель, идёт/предстоит её
@@ -44,18 +39,18 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  * @param {{
  *   ready: boolean,
  *   insets: any,
- *   slotPx?: number,
+ *   fitInsets?: any,
  *   focusing?: boolean,
- *   onReframe?: (map: any) => boolean | void,
  * }} p
  */
-export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = false, onReframe = null }) {
-  // ★ КЛЮЧ — ВСЁ СВОБОДНОЕ ОКНО, А НЕ ТОЛЬКО ОТСТУПЫ КАМЕРЫ. Свободное окно
-  // меняют ДВЕ вещи, по одной на ось: ширину — отступ камеры (панель), высоту —
-  // размер СЛОТА (шит). Слот нужен здесь ради `onReframe`: на телефоне отступы
-  // камеры всегда нулевые, и по ним одним пустой глобус не узнал бы, что холст
-  // стал другого размера. Экран без `onReframe` слот и не передаёт.
-  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}|${slotPx}`;
+export function useMapInsets(mapRef, { ready, insets, fitInsets = null, focusing = false }) {
+  // ★ КЛЮЧ — ОБЕ КОРОБКИ, А НЕ ТОЛЬКО КАМЕРНАЯ. Хук объявляет карте и ту, и
+  // другую (`setMapInsets`), и «во что вписывать» на телефоне меняется там, где
+  // камерная стоит нулём: пересчитай ключ по одной камерной — и следующий фит
+  // возьмёт коробку от прошлого детента.
+  const f = fitInsets || insets;
+  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}`
+    + `|${f?.top || 0}|${f?.right || 0}|${f?.bottom || 0}|${f?.left || 0}`;
   const seenRef = useRef(false);
   // ★ СОБСТВЕННАЯ ССЫЛКА НА ИНСТАНС, И ЭТО НЕ ДУБЛЬ. `useMapSurface` обнуляет
   // свой `mapRef` в СВОЁМ cleanup, а объявлен он раньше — React зовёт cleanup'ы
@@ -63,10 +58,6 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
   // Опереться на него значит НЕ СНЯТЬ отступ вовсе: карта общая, и следующий
   // экран получил бы её с отрезанной полосой — без единой ошибки в консоли.
   const liveRef = useRef(/** @type {any} */ (null));
-  // Свежий колбэк для эффекта, который зависит только от отступа: перекадрирование
-  // обязано брать АКТУАЛЬНУЮ цель, но само по смене цели не запускаться.
-  const reframeRef = useRef(onReframe);
-  reframeRef.current = onReframe;
   // Держим камеру за focus-эффектом не только ПОКА панель открыта, но и на кадре
   // её ЗАКРЫТИЯ: focus тогда уходит на полный маршрут (тоже зум), и наш свой
   // easeTo оборвал бы его. Смена отступа на закрытии совпадает с
@@ -80,43 +71,44 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
     const map = mapRef.current;
     if (!map || !ready) return undefined;
     liveRef.current = map;
-    setMapInsets(map, insets);
+    setMapInsets(map, insets, fitInsets || insets);
+    const focusDriven = focusing || wasFocusing.current;
+    wasFocusing.current = focusing;
+    if (focusDriven) return undefined;
+    // ★ ОТСТУП КАМЕРЫ — СОСТОЯНИЕ, А НЕ КАДРИРОВАНИЕ, поэтому применяется ДО
+    // гейта «есть куда вписывать». Пока он стоял ПОСЛЕ гейта, переход
+    // десктоп→телефон оставлял на карте отступ от панели: гейт не пускал, и
+    // `transform.padding` держался от прошлой раскладки — а на проекции `globe`
+    // это ровно заливка с круглым вырезом.
     if (!seenRef.current) {
       seenRef.current = true;
       try { map.easeTo({ padding: getMapInsets(map), duration: 0 }); } catch { /* ignore */ }
       return undefined;
     }
-    // ★ Панель правит камерой (focus) или ТОЛЬКО ЧТО правила (её закрытие уводит
-    // focus на полный маршрут): отступ УЖЕ сохранён (`setMapInsets` выше), а саму
-    // камеру мы НЕ трогаем ВООБЩЕ. Её ведёт focus-эффект (`calmFlyTo`/`calmFit`
-    // ниже по дереву, эффект объявлен ПОЗЖЕ нашего), и он передаёт наш отступ в
-    // ту же команду (`padding: getMapInsets(map)`) — центр, зум И отступ едут
-    // ОДНОЙ плавной анимацией. Любой свой `easeTo` тут — вторая команда на ту же
-    // камеру: она и рвала зум (мгновенная — рывок на открытии, обрыв на закрытии).
-    const focusDriven = focusing || wasFocusing.current;
-    wasFocusing.current = focusing;
-    if (focusDriven) return undefined;
-    // ★ ДОВОДИМ ПОСЛЕ ТОГО, КАК ХОЛСТ ПРИНЯЛ НОВЫЙ РАЗМЕР. Слот меняет высоту
-    // через CSS-переменную, mapbox узнаёт об этом от ResizeObserver — то есть
-    // ПОЗЖЕ нашего рендера. Посчитать раньше значит посчитать по старому
-    // размеру. Два кадра + явный `resize()` (идемпотентный) гарантируют, что
-    // считаем по фактическому холсту.
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
-      const m = mapRef.current;
-      if (!m) return;
-      try { m.resize(); } catch { /* ignore */ }
-      const el = m.getContainer?.();
-      if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(m))) return;
-      // Цель, размер которой считается от холста, обслуживает себя сама.
-      if (reframeRef.current?.(m)) return;
-      // Иначе доезжает ТОЛЬКО отступ — тем же временем и той же кривой, что и
-      // поверхность, которая поехала (шит встаёт на детент за `SURFACE_SETTLE_MS`,
-      // панель уезжает за него же). Ни `center`, ни `zoom` тут не передаются, и
-      // это ГЛАВНОЕ: mapbox сам сдвигает вид в новое свободное окно, а границы
-      // маршрута в расчёт не входят — подстройка есть, автофокуса нет.
-      try { m.easeTo({ padding: getMapInsets(m), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
-    }));
-    return () => cancelAnimationFrame(id);
+    // ★★★ ОТСТУП, РАВНЫЙ ТЕКУЩЕМУ, НЕ ЕДЕТ — ЕГО НЕЛЬЗЯ И ПОСЫЛАТЬ. Любая
+    // команда камере ОБРЫВАЕТ летящую: `easeTo` без движения всё равно убивает
+    // чужой `flyTo`. А свободное окно меняют ДВЕ вещи, и на телефоне коробка
+    // камеры при этом всегда нулевая (вид уводит сам холст) — значит каждая
+    // осадка шита слала «нулевой» easeTo ровно в тот момент, когда автофокус
+    // летел к маршруту. Замер на живом экране (стенд, телефон 393×702,
+    // Москва+Ярославль): без вмешательства камера доезжает до зума 4.57 и
+    // центра [38.8, 56.7]; тот же «нулевой» easeTo через 200 мс после старта
+    // оставляет её на зуме 2.15 и центре [17.5, 39] — Африка по центру, то
+    // есть ровно тот «статичный глобус, которому похуй на маршрут». Повтора не
+    // будет никогда: подпись кадра уже записана (`fittedSigRef`).
+    if (!padUnchanged(map, getMapInsets(map))) {
+      try {
+        map.easeTo({ padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
+      } catch { /* ignore */ }
+    }
+    // ★ ДВЕРИ «ПЕРЕКАДРИРУЙ СЕБЯ» ЗДЕСЬ БОЛЬШЕ НЕТ, И ЭТО НЕ УПУЩЕНИЕ. Она
+    // существовала ради цели, размер которой считается от ХОЛСТА (пустой глобус
+    // планировщика): пока шит резал холст, шар при смене детента обязан был
+    // пересчитываться. Холст стал постоянным — пересчитывать нечего, а вызов
+    // остался бы ровно тем «автофокусом на пустом глобусе», которого быть не
+    // должно. Размер холста меняет теперь только вьюпорт, и на него у экрана
+    // свой эффект.
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, key, focusing]);
 

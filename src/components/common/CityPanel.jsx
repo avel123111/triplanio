@@ -130,7 +130,7 @@ export default function CityPanel({
       <div className="lp-stepper" style={{ marginBottom: 6 }}>
         <Tile as="span" className="lp-stepper__ic"><Icon name="moon" size={17} /></Tile>
         <div className="lp-stepper__tx">
-          <b className="t-strong">{t('tse.nights_in_city')}</b>
+          <b className="t-label">{t('tse.nights_in_city')}</b>
           <span className="t-meta">{rangeText(node.start_date, node.end_date) || '—'}</span>
         </div>
         <Stepper
