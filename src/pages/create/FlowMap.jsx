@@ -377,14 +377,6 @@ export default function FlowMap({
           <span className="flow-map__stat-hl">{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
           <span className="muted-2">·</span>
           <span className="flow-map__stat-hl">{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
-          {/* ⚠️ ВРЕМЕННЫЙ ЗОНД (снять до мержа). На телефоне фит не наводится у
-              Pavel, а на стенде с теми же данными наводится — значит расходится
-              ВХОД, а не расчёт. Печатаем ровно те величины, которые решают,
-              случится фит или нет: сколько точек в него уходит, измерен ли холст
-              и какую коробку дал шелл. Один взгляд на превью заменяет круг
-              догадок. Лежит ВНУТРИ существующей пилюли намеренно: свой узел
-              потребовал бы инлайна и нового класса, то есть спора с гардами
-              ради временной строки. */}
         </div>
       )}
 
