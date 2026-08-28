@@ -82,8 +82,12 @@ export default function MapControls({
   if (!shown.length) return null;
   return (
     <div className="map-ctl">
+      {/* Подсказка уходит ВЛЕВО: плашка стоит в правом верхнем углу карты —
+          сверху над ней шапка приложения, справа край экрана, и подсказка там
+          и налезала на шапку, и обрезалась. Примитив всё равно проверит, что
+          влезло, и перевернёт/зажмёт сам — сторона это предпочтение. */}
       {shown.map((b) => (
-        <Tooltip key={b.id} content={b.label}>
+        <Tooltip key={b.id} content={b.label} side="left">
           <IconBtn icon={b.icon} onClick={b.onClick} ariaLabel={b.label} size="sm" />
         </Tooltip>
       ))}
