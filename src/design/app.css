@@ -235,6 +235,7 @@
      общий для всех детей `.app-header__left`. Итог 27px не назначал никто.
      Теперь зазор — СВОЁ число, отмеряемое от края ЗНАКА, а бокс остаётся тем,
      чем и был: якорем позиции. Разбор — у `.app-header__brand-name`. */
+  /* floor-exempt: tokens +3 — --brand-mark/--brand-gap/--header-left-gap: у лок-апа бренда не было НИ ОДНОГО своего числа, зазор складывался из чужих (27px, которых никто не назначал). Два из трёх токенов не добавляют величин, а СХЛОПЫВАЮТ существующие: --brand-mark заменяет четыре литерала 38px, --header-left-gap — литерал gap. Апрув Pavel (TRIP-481) */
   --brand-mark:      38px;   /* сторона знака в шапке; был литералом в четырёх местах */
   --brand-gap:       12px;   /* зазор знак↔слово. ≈0,3 стороны знака (апрув Pavel, TRIP-481) */
   --header-left-gap: 11px;   /* gap `.app-header__left`; вычитается из зазора, поэтому обязан быть читаем */
@@ -1317,6 +1318,14 @@ h4,
 }
 /* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
    поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
+/* Ниже литералы заменены токеном БЕЗ смены величины: 38px = --brand-mark,
+   11px = --header-left-gap. Для 2p это изменение объявления (он сравнивает
+   текст, а не вычисленное значение), поэтому объявлено построчно.
+   visual-diff-exempt: .app-header__logo width — 38px → --brand-mark, величина та же (TRIP-481)
+   visual-diff-exempt: .app-header__logo height — 38px → --brand-mark, величина та же (TRIP-481)
+   visual-diff-exempt: .app-header__logo img width — 38px → --brand-mark, величина та же (TRIP-481)
+   visual-diff-exempt: .app-header__logo img height — 38px → --brand-mark, величина та же (TRIP-481)
+   visual-diff-exempt: .app-header__left gap — 11px → --header-left-gap, величина та же (TRIP-481) */
 .app-header__logo {
   width: var(--brand-mark); height: var(--brand-mark); border-radius: var(--r-sm); display: grid; place-items: center;
   overflow: hidden;
