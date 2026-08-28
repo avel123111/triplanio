@@ -1,6 +1,6 @@
 // @ts-check
 import { useEffect, useRef } from 'react';
-import { NO_INSETS, getMapInsets, setMapInsets } from './insets';
+import { NO_INSETS, getMapInsets, padUnchanged, setMapInsets } from './insets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 
 /**
@@ -87,9 +87,22 @@ export function useMapInsets(mapRef, { ready, insets, fitInsets = null, slotPx =
       try { map.easeTo({ padding: getMapInsets(map), duration: 0 }); } catch { /* ignore */ }
       return undefined;
     }
-    try {
-      map.easeTo({ padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
-    } catch { /* ignore */ }
+    // ★★★ ОТСТУП, РАВНЫЙ ТЕКУЩЕМУ, НЕ ЕДЕТ — ЕГО НЕЛЬЗЯ И ПОСЫЛАТЬ. Любая
+    // команда камере ОБРЫВАЕТ летящую: `easeTo` без движения всё равно убивает
+    // чужой `flyTo`. А свободное окно меняют ДВЕ вещи, и на телефоне коробка
+    // камеры при этом всегда нулевая (вид уводит сам холст) — значит каждая
+    // осадка шита слала «нулевой» easeTo ровно в тот момент, когда автофокус
+    // летел к маршруту. Замер на живом экране (стенд, телефон 393×702,
+    // Москва+Ярославль): без вмешательства камера доезжает до зума 4.57 и
+    // центра [38.8, 56.7]; тот же «нулевой» easeTo через 200 мс после старта
+    // оставляет её на зуме 2.15 и центре [17.5, 39] — Африка по центру, то
+    // есть ровно тот «статичный глобус, которому похуй на маршрут». Повтора не
+    // будет никогда: подпись кадра уже записана (`fittedSigRef`).
+    if (!padUnchanged(map, getMapInsets(map))) {
+      try {
+        map.easeTo({ padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
+      } catch { /* ignore */ }
+    }
     // ★ ДВЕРИ «ПЕРЕКАДРИРУЙ СЕБЯ» ЗДЕСЬ БОЛЬШЕ НЕТ, И ЭТО НЕ УПУЩЕНИЕ. Она
     // существовала ради цели, размер которой считается от ХОЛСТА (пустой глобус
     // планировщика): пока шит резал холст, шар при смене детента обязан был
