@@ -43,6 +43,14 @@ const useFieldRequired = (field) => {
   return !!(field && ask && ask(field));
 };
 
+// Якорь месяца календаря — дата контекста события (город отеля/активности, стык
+// городов у переезда). Контекстом, а не пропом, по той же причине, что и
+// обязательность выше: поля дат живут в четырёх под-формах, и проп пришлось бы
+// помнить в каждой — то есть в четырёх местах его и забывать. Значение поля
+// всегда главнее якоря, якорь работает только на ПУСТОМ поле (TRIP-484 §4.3).
+const DateAnchorCtx = React.createContext(null);
+const useDateAnchor = () => React.useContext(DateAnchorCtx);
+
 // `field` - токен валидации (тот же, что у `data-vfield` и `fieldState`).
 // Звёздочку рисует CSS по `[data-required]`, поэтому она не может разъехаться с
 // остальным приложением ни знаком, ни цветом: до этого она была вшита прямо в
@@ -139,6 +147,7 @@ import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
+import { endAfterStart, relinkChain } from '@/lib/dateRange';
 import { validateEntity, transferAiCityAdvisories, issuesToShow, isFieldRequired } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldState } from '@/components/common/ValidationUI';
 import { faviconUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
@@ -147,7 +156,7 @@ import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/sto
 import { aiField } from '@/lib/ai-values';
 import { deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
-import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow, reconcileCityChain, reconcileTransfers } from '@/lib/trip-data';
+import { invalidateTripData, tripContentBinding, withOptimism, formWrite, reconcileWriteRow, reconcileBookingWrite } from '@/lib/trip-data';
 import { refetchTrip } from '@/lib/tripEdit';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
@@ -677,12 +686,31 @@ export default function EventEditDialog({
     startLocal: 'start', endLocal: 'end', pickup_address: 'pickupAddress',
     pickup_at_local: 'pickup', dropoff_at_local: 'dropoff',
   };
+  // Пары дат формы: КАЖДОЕ начало знает свой конец. Карта живёт здесь, рядом с
+  // FIELD_TOKEN, а не в ветках формы, ровно по той же причине: связку, разложенную
+  // по четырём под-формам, забывают в пятой. Правку конца эта карта не описывает —
+  // назад цепочка не тянется (см. закон в lib/dateRange).
+  const RANGE_END = {
+    checkInLocal: 'checkOutLocal',   // отель
+    startLocal: 'endLocal',          // переезд (прямой) и активность
+    pickup_at_local: 'dropoff_at_local', // аренда авто
+    date_start: 'date_finish',       // страховка
+  };
+
   const setField = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    // Конец пары считаем от ТЕКУЩЕГО кадра формы (обработчик пользовательского
+    // ввода — свежее значение здесь есть), а кладём функционально, одним патчем:
+    // два setForm подряд разъехались бы, если бы конец зависел от нового начала.
+    const endKey = RANGE_END[key];
+    const end = endKey ? endAfterStart(form[key], value, form[endKey]) : null;
+    const endMoved = !!endKey && end !== form[endKey];
+    setForm((prev) => (endMoved ? { ...prev, [key]: value, [endKey]: end } : { ...prev, [key]: value }));
     markTouched(FIELD_TOKEN[key]);
+    if (endMoved) markTouched(FIELD_TOKEN[endKey]);
     setAiFields((prev) => {
-      if (!prev.has(key)) return prev;
-      const next = new Set(prev); next.delete(key); return next;
+      const moved = endMoved ? [key, endKey] : [key];
+      if (!moved.some((k) => prev.has(k))) return prev;
+      const next = new Set(prev); moved.forEach((k) => next.delete(k)); return next;
     });
   };
 
@@ -763,6 +791,13 @@ export default function EventEditDialog({
   // списка, И `level === 'error'`. Сегодня это одно и то же: все шесть кодов
   // списка выдаются ТОЛЬКО как `error`. Появится среди них warning - гейты
   // разъедутся молча, и звёздочка снова начнёт врать.
+  // Дата контекста события: у отеля/активности — окно города, у переезда — стык
+  // городов, вокруг которого он и создаётся. Ею открывается календарь ПУСТОГО
+  // поля (у услуги города нет — там якорем служит второй конец пары).
+  const dateAnchor = (currentKind === 'transfer'
+    ? (fromVisit?.end_date || toVisit?.start_date)
+    : visit?.start_date) || null;
+
   const askRequired = useCallback(
     (field) => isFieldRequired(currentKind, vdraft, vctx, field, (i) => BLOCKING_CODES.has(i.code)),
     [currentKind, vdraft, vctx],
@@ -879,23 +914,21 @@ export default function EventEditDialog({
       // create upserts), no full-trip refetch. Transfer (single OR layover): fold the
       // city chain + full transfers set the seam returns — see the transfer branch.
       reconcile: (/** @type {any} */ data) => {
-        // Transfer writes reshape the date chain (day_span → server recompute) AND,
-        // for a layover, add N new segment rows. The seam answers `{ row, cities,
-        // transfers }`: fold the recomputed city chain into the shell (dates) and
-        // REPLACE the content transfers slice with the authoritative set — both from
-        // THIS response, one round-trip, for single AND layover alike. buildDraft then
-        // sees the new segments at once (no stale-gap window where the dates land a
-        // beat late). refetch stays ONLY as the degrade path (seam couldn't read the
-        // set → transfers null), mirroring the cities-null degrade.
+        // Everything the write reshaped comes back in ONE envelope and is folded by
+        // ONE call: the recomputed city chain (a transfer's day_span cascades), the
+        // authoritative transfers set (a layover adds N segment rows an id-fold could
+        // never swap in), and the budget-expense mirror the DB trigger keeps in step
+        // (TRIP-484 — without it a saved price never reached the budget screen).
+        const row = reconcileBookingWrite(qc, tripId, data);
+        // Transfer: the slice IS the fold (single and layover go one path). refetch
+        // stays ONLY as the degrade path — the seam could not read the set back.
         if (currentKind === 'transfer') {
-          if (data?.cities) reconcileCityChain(qc, tripId, data.cities);
-          if (Array.isArray(data?.transfers)) reconcileTransfers(qc, tripId, data.transfers);
-          else if (tripId) refetchTrip(qc, tripId, { shell: false, content: true });
+          if (!Array.isArray(data?.transfers) && tripId) refetchTrip(qc, tripId, { shell: false, content: true });
           return;
         }
         const cacheKind = OPT_CACHE[currentKind];
         const folded = cacheKind && !isComplexTransferCreate
-          && reconcileWriteRow(tripContentBinding(qc, tripId, cacheKind), entity ? 'update' : 'add', data);
+          && reconcileWriteRow(tripContentBinding(qc, tripId, cacheKind), entity ? 'update' : 'add', row);
         if (!folded && tripId) invalidateTripData(qc, tripId);
       },
       onDone: () => {
@@ -940,10 +973,10 @@ export default function EventEditDialog({
       // deleted:false = the row is already gone (seam answered 404) → surface it
       // (rollback restores the row), don't close as a phantom success.
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
-      // Deleting a transfer (esp. an overnight one) un-shifts the downstream city
-      // dates on the server (DELETE recompute trigger); reconcile the returned chain
-      // into the shell so the timeline reflects it without a reload (returnChain).
-      if (currentKind === 'transfer' && data?.cities) reconcileCityChain(qc, tripId, data.cities);
+      // The delete reshapes the same things the write does — downstream city dates
+      // (DELETE recompute trigger) and the budget-expense mirror (the deleted booking's
+      // expense row goes with it) — and the seam returns both. One fold, every kind.
+      reconcileBookingWrite(qc, tripId, data);
     },
     ...withOptimism(delBinding, {
       op: 'update',     // dim the row (`_pending`), don't yank it yet
@@ -1270,6 +1303,7 @@ export default function EventEditDialog({
             )}
 
             <RequiredFieldsCtx.Provider value={askRequired}>
+            <DateAnchorCtx.Provider value={dateAnchor}>
             <fieldset
               disabled={aiState === 'parsing'}
               style={{
@@ -1343,6 +1377,7 @@ export default function EventEditDialog({
               {/* Summary panel: revealed on edit-open, save attempt or AI parse. Click row -> field. */}
               <IssuesPanel issues={[...panelIssues, ...aiAdvisories]} style={{ marginTop: 12 }} />
             </fieldset>
+            </DateAnchorCtx.Provider>
             </RequiredFieldsCtx.Provider>
           </div>
 
@@ -1432,7 +1467,11 @@ async function upsert(action, entity, payload, tripId) {
   const body = entity ? { tripId, id: entity.id, ...payload } : { tripId, ...payload };
   const { data, error, code } = await invokeFn(`trip-booking/${action}`, { body });
   if (error) throw refusalError(code);
-  return data ?? null; // the seam answers the row payload flat
+  // The seam answers the write envelope `{ row, cities, transfers, expenses }` for
+  // every booking kind (TRIP-484): the row it wrote plus whatever the DB reshaped
+  // around it — recomputed city dates, the transfers set, and the budget-expense
+  // mirror its trigger maintains. `reconcileBookingWrite` folds all of it.
+  return data ?? null;
 }
 
 function buildHotelPayload(form, visit, tz) {
@@ -1752,6 +1791,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
                   value={form.free_cancellation_until_local}
                   onChange={(v) => setField('free_cancellation_until_local', v)}
                   onTimeMissingChange={(v) => setTime('freeCancel', !!form.free_cancellation && v)}
+                  anchor={form.checkInLocal || null}
                 />
               </AiField>
               <TimezoneHint tz={tz} />
@@ -2106,6 +2146,7 @@ function DateRangeBlock({
   startLabel, startValue, onStart, onStartMissing, startVField, startTz, startAi,
   endLabel, endValue, onEnd, onEndMissing, endVField, endTz, endAi,
 }) {
+  const anchor = useDateAnchor();
   // Обязательность у каждого конца СВОЯ и адресуется своим токеном (у переезда с
   // пересадками это `seg0.start` и т.п.), поэтому спрашиваем по отдельности.
   const startRequired = useFieldRequired(startVField);
@@ -2125,14 +2166,17 @@ function DateRangeBlock({
       <div className="eed-dateblock__lbl">{label}</div>
       <div className="stay-dates">
         <div className={`sd-cellwrap${startAi ? ' ai-filled' : ''}`} data-vfield={startVField}>
-          <DateTimeInput variant="cell" cellLabel={startLabel} cellRequired={startRequired} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
+          {/* Якорь месяца: у каждого конца это ВТОРОЙ конец пары, а если пуста и
+              пара — контекст события (дата города / старт трипа), который даёт
+              вызыватель. Календарь открывается там, где событие, а не «сегодня». */}
+          <DateTimeInput variant="cell" cellLabel={startLabel} cellRequired={startRequired} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} anchor={endValue || anchor} />
         </div>
         <div className="stay-dates__mid">
           <ArrowRight size={14} style={{ color: accent || 'var(--muted-2)' }} />
           {midText && <span className="t-meta">{midText}</span>}
         </div>
         <div className={`sd-cellwrap${endAi ? ' ai-filled' : ''}`} data-vfield={endVField}>
-          <DateTimeInput variant="cell" cellLabel={endLabel} cellRequired={endRequired} value={endValue} onChange={onEnd} onTimeMissingChange={onEndMissing} />
+          <DateTimeInput variant="cell" cellLabel={endLabel} cellRequired={endRequired} value={endValue} onChange={onEnd} onTimeMissingChange={onEndMissing} anchor={startValue || anchor} />
         </div>
       </div>
       {(startTz || endTz) && (
@@ -2175,11 +2219,27 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   const patchSeg = (i, partial) => {
     const id = segs[i]?.id;
     Object.keys(partial).forEach((k) => { if (SEG_TOKEN[k]) onTouch?.(`seg${i}.${SEG_TOKEN[k]}`); });
-    setForm((prev) => ({ ...prev, segments: prev.segments.map((s, idx) => {
-      if (idx !== i) return s;
-      const merged = { ...s, ...partial };
-      return merged;
-    }) }));
+    setForm((prev) => {
+      const merged = prev.segments.map((s, idx) => (idx === i ? { ...s, ...partial } : s));
+      // Даты сегментов — ЦЕПОЧКА, а не N независимых пар: прилёт в город пересадки
+      // и есть вылет из него, поэтому правка границы разливается вперёд одним
+      // законом (lib/dateRange) — пустое начало следующего звена наследует конец
+      // предыдущего, а более раннее уезжает вперёд вместе со своим звеном. До
+      // этого сегменты стояли пустыми и не подсказывали друг другу ничего.
+      if (partial.startLocal === undefined && partial.endLocal === undefined) {
+        return { ...prev, segments: merged };
+      }
+      // Цепочка строится из ДОпатченного состояния, а патч отдаётся связке отдельно:
+      // прежнее начало — это то, от чего считается сохраняемая длительность, и
+      // подсунув сюда уже новое, мы бы её обнулили (звено схлопнулось бы в точку).
+      const linked = relinkChain(
+        prev.segments.map((s) => ({ start: s.startLocal || '', end: s.endLocal || '' })),
+        i,
+        { ...(partial.startLocal !== undefined ? { start: partial.startLocal } : {}),
+          ...(partial.endLocal !== undefined ? { end: partial.endLocal } : {}) },
+      );
+      return { ...prev, segments: merged.map((s, idx) => ({ ...s, startLocal: linked[idx].start, endLocal: linked[idx].end })) };
+    });
     // Editing a field clears its AI highlight (mirrors single-leg setField).
     if (id && setAiSegFields) {
       setAiSegFields((prev) => {
@@ -2215,7 +2275,11 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   const toggleOpen = (seg, i) => setOpenMap((m) => ({ ...m, [seg.id]: !isOpen(seg, i) }));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+    // Раскладка — канон-колонка ДС со ступенью шкалы: инлайновый flex с `gap: 0`
+    // приклеивал плашку «добавить пересадку» вплотную к карточке последнего
+    // сегмента (TRIP-484 §5). Ряд-разделитель с чипом пересадки свой вертикальный
+    // отступ отдал контейнеру — иначе ритм удвоился бы.
+    <div className="col col--g4">
       {segs.map((seg, i) => {
         const isFirst = i === 0; const isLast = i === N - 1;
         const fromName = isFirst ? (fromVisit?.city_name || '-') : (segs[i - 1].toCity?.city_name || '…');
@@ -2250,7 +2314,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
             />
 
             {!isLast && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px' }}>
                 <span style={{ width: 1, height: 14, background: 'var(--line)', marginLeft: 16 }} />
                 <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 'var(--r-pill)', whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color }}>
                   <Repeat size={12} style={{ flexShrink: 0 }} />
@@ -2396,6 +2460,7 @@ function EsimServiceFields({ form, setField, issues, onTouch, setUploading, trip
 }
 
 function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
+  const dateAnchor = useDateAnchor();
   const { t } = useI18nFormat();
   const st = (f) => fieldState(issues, f);
   return (
@@ -2416,11 +2481,11 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
         <div data-vfield="date_start">
           <Label>{t('service.date_start')}</Label>
           {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx */}
-          <DateTimeInput {...st('date_start')} withTime={false} value={form.date_start} onChange={(d) => setField('date_start', d)} />
+          <DateTimeInput {...st('date_start')} withTime={false} value={form.date_start} onChange={(d) => setField('date_start', d)} anchor={form.date_finish || dateAnchor} />
         </div>
         <div data-vfield="date_finish">
           <Label>{t('service.date_finish')}</Label>
-          <DateTimeInput {...st('date_finish')} withTime={false} value={form.date_finish} onChange={(d) => setField('date_finish', d)} />
+          <DateTimeInput {...st('date_finish')} withTime={false} value={form.date_finish} onChange={(d) => setField('date_finish', d)} anchor={form.date_start || dateAnchor} />
           <FieldError issues={issues} field="date_finish" />
         </div>
       </div>
@@ -2461,6 +2526,10 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, onT
 }
 
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
+  // Пара дат, собранная из двух отдельных ячеек (а не из общего блока), поэтому
+  // якорь месяца ей нужно раздать здесь — сам закон тот же: пустое поле
+  // открывается на месяце соседнего конца.
+  const dateAnchor = useDateAnchor();
   const { t } = useI18nFormat();
   const color = TYPE_META.service.color;
   const st = (f) => fieldState(issues, f);
@@ -2506,6 +2575,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
             value={form.pickup_at_local}
             onChange={(v) => setField('pickup_at_local', v)}
             onTimeMissingChange={(v) => setTime('pickup', v)}
+            anchor={form.dropoff_at_local || dateAnchor}
           />
           <TimezoneHint tz={form.pickup_timezone} />
           <FieldError issues={issues} field="pickup" />
@@ -2548,6 +2618,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
             value={form.dropoff_at_local}
             onChange={(v) => setField('dropoff_at_local', v)}
             onTimeMissingChange={(v) => setTime('dropoff', v)}
+            anchor={form.pickup_at_local || dateAnchor}
           />
           <TimezoneHint tz={form.return_different_location ? form.dropoff_timezone : form.pickup_timezone} />
           <FieldError issues={issues} field="dropoff" />

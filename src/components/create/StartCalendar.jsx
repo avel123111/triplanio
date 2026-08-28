@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 import { Icon } from '../../design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -11,10 +11,20 @@ import { useT } from '@/lib/i18n/I18nContext';
 // `withTime` is set a time row appears under the grid; `time` is an "HH:mm"
 // string and `onTimeChange` reports edits. Callers that only need a date (trip
 // start) simply omit these props and get the original date-only calendar.
-export default function StartCalendar({ value, onPick, lang = 'ru', withTime = false, time = '', onTimeChange }) {
+export default function StartCalendar({ value, onPick, lang = 'ru', withTime = false, time = '', onTimeChange, anchor = null }) {
   const t = useT();
-  const sel = value ? DateTime.fromISO(value, { zone: 'utc' }) : DateTime.utc();
-  const [view, setView] = useState(sel.startOf('month'));
+  const sel = value ? DateTime.fromISO(value, { zone: 'utc' }) : null;
+  // Какой месяц ПОКАЗАТЬ, когда значения ещё нет. Раньше это всегда был текущий:
+  // событие в полугоде отсюда открывалось на сегодняшнем месяце, и до нужного
+  // приходилось листать вручную. `anchor` — ближайшая известная дата контекста
+  // (соседний конец пары → дата города → старт путешествия), её даёт вызыватель.
+  const seed = (sel || (anchor ? DateTime.fromISO(anchor, { zone: 'utc' }) : null) || DateTime.utc()).startOf('month');
+  const [view, setView] = useState(seed);
+  const seedKey = seed.toISODate();
+  // Пере-навестись на новый якорь/значение, но НЕ на перелистывание месяцев: ключ
+  // меняется только когда меняется сам контекст (шторка на телефоне живёт между
+  // открытиями, поповер десктопа монтируется заново — правило одно на оба).
+  useEffect(() => { setView(seed); }, [seedKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const monday = DateTime.utc(2024, 1, 1); // a known Monday → localized weekday heads
   const lead = (view.weekday + 6) % 7;     // cells before day 1 (Mon-first)
   const cells = [];
@@ -42,7 +52,7 @@ export default function StartCalendar({ value, onPick, lang = 'ru', withTime = f
           : <button
               key={d}
               type="button"
-              className={'ts-cal__day' + (sel.hasSame(view.set({ day: d }), 'day') ? ' on' : '')}
+              className={'ts-cal__day' + (sel && sel.hasSame(view.set({ day: d }), 'day') ? ' on' : '')}
               onClick={() => onPick(view.set({ day: d }).toISODate())}
             >{d}</button>
         ))}

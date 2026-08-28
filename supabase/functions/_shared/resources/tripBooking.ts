@@ -152,6 +152,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       op: 'upsert',
       table: 'hotel_stays',
       requires: ['editor'],
+      returnExpenses: true,
       fields: {
         ...COMMON_BOOKING_FIELDS,
         city_visit_id: { type: 'uuid', required: true },
@@ -169,7 +170,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       },
       forcedOnInsert: { created_by: '@actor' },
     },
-    'hotel/delete': { op: 'delete', table: 'hotel_stays', requires: ['editor'], loadTarget: true },
+    'hotel/delete': { op: 'delete', table: 'hotel_stays', requires: ['editor'], loadTarget: true, returnExpenses: true },
 
     // ── Переезд (простой) ─────────────────────────────────────────────────────
     // `returnChain`: запись переезда двигает даты городов через `day_span`
@@ -180,6 +181,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       table: 'transfers',
       requires: ['editor'],
       returnChain: true,
+      returnExpenses: true,
       fields: {
         ...COMMON_BOOKING_FIELDS,
         from_city_visit_id: { type: 'uuid', nullable: true },
@@ -188,7 +190,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       },
       forcedOnInsert: { created_by: '@actor' },
     },
-    'transfer/delete': { op: 'delete', table: 'transfers', requires: ['editor'], loadTarget: true, returnChain: true },
+    'transfer/delete': { op: 'delete', table: 'transfers', requires: ['editor'], loadTarget: true, returnChain: true, returnExpenses: true },
 
     // ── Активность ────────────────────────────────────────────────────────────
     // У `activities` НЕТ верхних booking_reference/booking_url — поэтому активность
@@ -198,6 +200,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       op: 'upsert',
       table: 'activities',
       requires: ['editor'],
+      returnExpenses: true,
       fields: {
         ...MONEY_FIELDS,
         ...DOCS_NOTES_FIELDS,
@@ -212,7 +215,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       },
       forcedOnInsert: { created_by: '@actor' },
     },
-    'activity/delete': { op: 'delete', table: 'activities', requires: ['editor'], loadTarget: true },
+    'activity/delete': { op: 'delete', table: 'activities', requires: ['editor'], loadTarget: true, returnExpenses: true },
 
     // ── Услуга (eSIM / аренда авто / страховка) ───────────────────────────────
     // У услуги нет верхних колонок под бронь/доки: всё в `details` (jsonb).
@@ -220,6 +223,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       op: 'upsert',
       table: 'trip_services',
       requires: ['editor'],
+      returnExpenses: true,
       fields: {
         ...MONEY_FIELDS,
         kind: { type: 'string', enum: ['esim', 'car_rental', 'insurance'], nullable: true },
@@ -230,7 +234,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       },
       forcedOnInsert: { created_by: '@actor' },
     },
-    'service/delete': { op: 'delete', table: 'trip_services', requires: ['editor'], loadTarget: true },
+    'service/delete': { op: 'delete', table: 'trip_services', requires: ['editor'], loadTarget: true, returnExpenses: true },
 
     // ── Сложный переезд с пересадками (транзакция) ────────────────────────────
     // >1 записи в БД в одной транзакции → op:'rpc' (правило TRIP-405). Per-segment
@@ -240,6 +244,7 @@ export const TRIP_BOOKING: ResourceSpec = {
       rpc: 'add_layover_transfer',
       requires: ['editor'],
       returnChain: true,
+      returnExpenses: true,
       fields: {
         from_city_visit_id: { type: 'uuid', required: true },
         to_city_visit_id: { type: 'uuid', required: true },

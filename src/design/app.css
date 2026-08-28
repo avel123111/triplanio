@@ -953,7 +953,7 @@ h4,
    `.t-label` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
    как надпись НА кнопке (канон .t-label, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
    её держит `min-height: var(--ctl-h)` при нулевом вертикальном паддинге. */
-.input, .select, .textarea,
+.input, .textarea,
 .sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
 .stay-dates__lbl,  /* они же в просмотре события */
 /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base). .ptrip/.pt-cstop__num сняты: /public/trip переписан на сайтовую ДС (TRIP-461) */
@@ -996,7 +996,7 @@ h4,
    `className="t-support"` на 14 вызывателях, потому что иначе размер текста в
    окне становится решением КАЖДОГО экрана: пятнадцатый напишет `t-body`, и в
    одном окне будет два кегля.
-   ⚠ ЧТО НАМЕРЕННО НЕ СЛЕДУЕТ ЗА ТЕЛОМ: поле ввода (`.input/.select/.textarea`,
+   ⚠ ЧТО НАМЕРЕННО НЕ СЛЕДУЕТ ЗА ТЕЛОМ: поле ввода (`.input`/`.textarea`,
    канон Body 15 + анти-зум-пол 16 на телефоне) — то, что человек НАБИРАЕТ, не
    вторичная строка; и подпись кнопки (`.btn` → Label 13, и так совпадает).
    Явные `t-body` внутри диалогов сняты этим же PR — иначе они перебивали бы
@@ -2417,7 +2417,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    держал свою побайтово одинаковую копию, а `.stay-dates` сидел в роли
    ПОВЕРХНОСТИ - оттуда бледная `--line` в светлой и чужой фон в тёмной.
    Раскладка у каждого своя и остаётся при своём правиле. */
-.input, .select, .textarea, .input-group, .stay-dates {
+.input, .textarea, .input-group, .stay-dates {
  width: 100%;
  border-radius: var(--r-btn);
  border: 1px solid var(--line-strong);
@@ -2431,13 +2431,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 /* Нулевой вертикальный паддинг - чтобы высота не зависела от кегля. */
-.input, .select { min-height: var(--ctl-h); padding: 0 13px; }
+.input { min-height: var(--ctl-h); padding: 0 13px; }
 /* Многострочному высоту задаёт содержимое, поэтому паддинг настоящий. */
 .textarea { padding: 11px 13px; min-height: 80px; resize: vertical; }
 /* Тёмный близнец фона. Рядом с полями - контролы, которые ЧИТАЮТСЯ как поле:
    собраны здесь, иначе «сделать фон полей» пришлось бы искать по пяти местам. */
 [data-theme="dark"] .input,
-[data-theme="dark"] .select,
 [data-theme="dark"] .textarea,
 [data-theme="dark"] .lp-stepper,
 [data-theme="dark"] .s22f-gcard,
@@ -2446,7 +2445,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .stepper--block { background: var(--bg); }
 /* Тень - светлотемная компенсация слабой рамки, в тёмной она только грязнит. */
 [data-theme="dark"] .input,
-[data-theme="dark"] .select,
 [data-theme="dark"] .textarea,
 [data-theme="dark"] .input-group,
 [data-theme="dark"] .stay-dates { box-shadow: none; }
@@ -2458,14 +2456,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .chat-composer__row { background: var(--surface); box-shadow: var(--sh-1); }
 .ai-input { box-shadow: none; }
 .input::placeholder, .textarea::placeholder { color: var(--muted-2); }
-/* Ховер = «сюда можно писать», поэтому у нерабочего поля его нет. У `.select`
-   нет `[readonly]`: по спеке атрибут на `<select>` не действует. */
+/* Ховер = «сюда можно писать», поэтому у нерабочего поля его нет. */
 .input:hover:not(:focus):not([readonly]):not(:disabled),
-.select:hover:not(:focus):not(:disabled),
 .textarea:hover:not(:focus):not([readonly]):not(:disabled) { border-color: var(--line-hover); }
 /* Фокус БЕЗ смены фона: в светлой правило было бы пустым, в тёмной поле прыгало
    бы с почти-чёрного на серый панели. Цвет несёт рамка. */
-.input:focus, .select:focus, .textarea:focus {
+.input:focus, .textarea:focus {
   outline: none; border-color: var(--brand);
   box-shadow: 0 0 0 3px var(--primary-ring);
 }
@@ -2487,7 +2483,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ★Плашка у `:disabled` и `[readonly]` одна (`--wash`), различают их чернила и
    курсор: выключенное в `--muted-2`, только-для-чтения в `--ink-2` (его
    копируют). На одном экране эти два состояния не встречаются. */
-.input:disabled, .select:disabled, .textarea:disabled {
+.input:disabled, .textarea:disabled {
   background: var(--wash);
   border-color: var(--line);
   color: var(--muted-2);
@@ -2516,11 +2512,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ошибались). Теперь вопрос «куда вешать» не возникает.
    `aria-invalid` вместо своего data-атрибута - стандартный признак; в
    приложении не было ни одного, ошибка существовала только для зрячих. */
-.input[aria-invalid="true"], .select[aria-invalid="true"], .textarea[aria-invalid="true"] {
+.input[aria-invalid="true"], .textarea[aria-invalid="true"] {
   border-color: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-soft);
 }
-.input[data-warning], .select[data-warning], .textarea[data-warning] {
+.input[data-warning], .textarea[data-warning] {
   border-color: var(--warning);
   box-shadow: 0 0 0 3px var(--warning-soft);
 }
@@ -2646,10 +2642,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   padding-inline: 0 12px;
   border-inline-start: none; border-inline-end: 1px solid var(--line);
 }
-/* Ширина ячейки валюты в поле «сумма + валюта»: триггер CurrencyCombobox без
-   ширины растягивается и накрывает ввод суммы. Фикс под длину кода+символа.
-   Модификатор канон-семьи input (не приватное имя экрана). */
-.input-group .input-unit--ccy { width: 122px; }
+/* Ячейка валюты в поле «сумма + валюта» — по СОДЕРЖИМОМУ («EUR · €» + шеврон), а
+   не под фиксированные 122px: в узкой колонке диалога (двухколоночный ряд ~250px)
+   те 122px съедали больше половины поля, и «сумма + валюта» читалось как две
+   равные половины (TRIP-484 §3). Растянуться и накрыть ввод суммы ячейка всё
+   равно не может — `flex: none` держит правило выше. Модификатор канон-семьи
+   input (не приватное имя экрана). */
+.input-group .input-unit--ccy { width: max-content; }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
@@ -5543,7 +5542,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ellipsis at any width. */
 .chat-ov__ph { display: block; color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Mobile (≤640px) bumps .textarea to 16px to stop iOS zoom-on-focus (see the
-   .input/.select/.textarea rule in the responsive section). The overlay is a
+   .input/.textarea rule in the responsive section). The overlay is a
    <div>, not a .textarea, so it stayed 14px → 16-vs-14 advance mismatch pushed
    the caret ahead of the visible text at narrow widths. Keep BOTH layers at
    16px on mobile so their glyph advances stay identical. */
@@ -9102,7 +9101,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
-   EVERY editable field on phones — covers .input/.select/.textarea AND any
+   EVERY editable field on phones — covers .input/.textarea AND any
    off-canon field (.auth-input on login, .s22f-field price filters, future
    fields) without per-class upkeep. Non-text controls (checkbox/radio/
    file/range/color) are excluded — they never trigger focus-zoom. We deliberately

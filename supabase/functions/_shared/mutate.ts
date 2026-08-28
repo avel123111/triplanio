@@ -311,8 +311,12 @@ export async function mutate(
   // либо внутри RPC layover) и закоммичен. Дочитываем АВТОРИТЕТНУЮ цепочку И полный
   // набор трансферов трипа, отдаём их в ОДНОМ ответе — клиент реконсилит даты
   // городов и срез трансферов из этого ответа, без второго рефетча (тот же контракт,
-  // что route-RPC, TRIP-435). Форма: `{ row, cities, transfers }` (row = записанная
-  // строка / null у delete/void-rpc).
+  // что route-RPC, TRIP-435). ЛИБО запись зеркалится триггером в траты бюджета
+  // (`returnExpenses`, TRIP-484) — тогда к ответу прикладывается набор трат.
+  // Форма ответа с любым из флагов ОДНА: `{ row, cities, transfers, expenses }`
+  // (row = записанная строка / null у delete/void-rpc; незапрошенные части — null).
+  // Одна форма на все действия с дочитыванием: две разные (плоская строка у листьев,
+  // конверт у трансфера) заставляли бы клиента ветвиться по виду брони.
   //
   // Зачем `transfers`: одиночный трансфер клиент сворачивал из `row`, но layover
   // пишет N новых сегментов (RPC → `row:null`), которые построчный fold свернуть не
@@ -326,29 +330,54 @@ export async function mutate(
   // `afterWrite`: логируем + `null`, клиент падает на рефетч (ровно до-returnChain
   // поведение), а не теряет запись. `transfers` — тот же `select('*')`, что и
   // getTripDetails (та же форма строк, без обогащения → замена среза корректна).
-  if (action.returnChain) {
+  if (action.returnChain || action.returnExpenses) {
     let cities: unknown = null;
     let transfers: unknown = null;
-    try {
-      cities = await rpc('_trip_city_chain', { p_trip: scope });
-    } catch (e) {
-      console.error(`mutate: returnChain chain read failed ${slug}/${actionName}:`, e);
-      runInBackground(captureEdgeError(e, 'mutate', { returnChain: `${slug}/${actionName}` }));
+    let expenses: unknown = null;
+    if (action.returnChain) {
+      try {
+        cities = await rpc('_trip_city_chain', { p_trip: scope });
+      } catch (e) {
+        console.error(`mutate: returnChain chain read failed ${slug}/${actionName}:`, e);
+        runInBackground(captureEdgeError(e, 'mutate', { returnChain: `${slug}/${actionName}` }));
+      }
+      try {
+        // Тот же запрос, что read-дверь (getTripDetails): `select('*')` по `trip_id`,
+        // БЕЗ order — клиент ищет трансферы по from/to id, порядок массива ему не важен,
+        // а лишний `order` разъехался бы с формой read-двери (фоновый рефетч вернул бы
+        // другой порядок среза). Одна форма на обе двери.
+        const { data: trows, error } = await supabaseAdmin
+          .from('transfers').select('*').eq('trip_id', scope);
+        if (error) throw error;
+        transfers = trows ?? [];
+      } catch (e) {
+        console.error(`mutate: returnChain transfers read failed ${slug}/${actionName}:`, e);
+        runInBackground(captureEdgeError(e, 'mutate', { returnChainTransfers: `${slug}/${actionName}` }));
+      }
     }
-    try {
-      // Тот же запрос, что read-дверь (getTripDetails): `select('*')` по `trip_id`,
-      // БЕЗ order — клиент ищет трансферы по from/to id, порядок массива ему не важен,
-      // а лишний `order` разъехался бы с формой read-двери (фоновый рефетч вернул бы
-      // другой порядок среза). Одна форма на обе двери.
-      const { data: trows, error } = await supabaseAdmin
-        .from('transfers').select('*').eq('trip_id', scope);
-      if (error) throw error;
-      transfers = trows ?? [];
-    } catch (e) {
-      console.error(`mutate: returnChain transfers read failed ${slug}/${actionName}:`, e);
-      runInBackground(captureEdgeError(e, 'mutate', { returnChainTransfers: `${slug}/${actionName}` }));
+    // Зеркало «бронь → трата» ведёт ТРИГГЕР БД (`sync_budget_expense`), и он уже
+    // отработал в транзакции записи. Дочитываем набор трат ТЕМ ЖЕ запросом, что и
+    // read-дверь (`getTripDetails`: `select('*')` по `trip_id`, без order) — форма
+    // строк совпадает, поэтому клиент заменяет срез целиком. Та же деградация, что
+    // у цепочки: провал дочитывания не роняет уже совершённую запись (`null` →
+    // клиент остаётся на до-TRIP-484 поведении, а не теряет бронь).
+    if (action.returnExpenses) {
+      try {
+        const { data: erows, error } = await supabaseAdmin
+          .from('budget_expenses').select('*').eq('trip_id', scope);
+        if (error) throw error;
+        expenses = erows ?? [];
+      } catch (e) {
+        console.error(`mutate: returnExpenses read failed ${slug}/${actionName}:`, e);
+        runInBackground(captureEdgeError(e, 'mutate', { returnExpenses: `${slug}/${actionName}` }));
+      }
     }
-    return mutateSuccess({ row: data ?? null, cities: cities ?? null, transfers: transfers ?? null }, corsHeaders);
+    return mutateSuccess({
+      row: data ?? null,
+      cities: cities ?? null,
+      transfers: transfers ?? null,
+      expenses: expenses ?? null,
+    }, corsHeaders);
   }
 
   return mutateSuccess(data, corsHeaders);

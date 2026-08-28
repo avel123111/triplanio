@@ -20,7 +20,7 @@ import { tripContentBinding, formWrite, reconcileWriteRow } from '@/lib/trip-dat
 import { refusalError } from '@/lib/refusalError';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, SearchSelect, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { withOwnerRow } from '@/lib/members';
@@ -264,9 +264,20 @@ function ChangeRoleDialog({ member, name, tripId, open, onOpenChange }) {
         {name}
       </div>
       <Field label={t('member.role_label')}>
-        <select className="select" value={role} onChange={e => setRole(e.target.value)}>
-          {ROLES.map(r => <option key={r.value} value={r.value}>{t(r.labelKey)}</option>)}
-        </select>
+        {/* Канон-пикер ДС (тот же, что несёт валюту, язык и категорию траты), не
+            нативный `<select>`: его стрелку рисует ОС мимо системы (TRIP-484 §3).
+            Ролей три — искать нечего, строки поиска нет. */}
+        <SearchSelect
+          value={role}
+          onChange={setRole}
+          options={ROLES}
+          getKey={(r) => r.value}
+          renderValue={(r) => t(r.labelKey)}
+          renderOption={(r) => <span className="grow trunc">{t(r.labelKey)}</span>}
+          searchable={false}
+          placeholder={t('common.choose')}
+          title={t('member.role_label')}
+        />
       </Field>
       {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>

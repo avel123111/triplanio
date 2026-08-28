@@ -44,6 +44,11 @@ export default function DateTimeInput({
   // the plain input button. Same calendar, same value contract.
   variant,
   cellLabel,
+  // Месяц, на котором открыть календарь, ПОКА значения нет (TRIP-484): ближайшая
+  // известная дата контекста — соседний конец пары, дата города, старт трипа.
+  // Без него календарь всегда открывался на текущем месяце, и событие через
+  // полгода приходилось долистывать вручную. Значение всегда главнее якоря.
+  anchor = null,
   // Обязательность подписи-бровки в ячейке: звёздочку рисует тот же CSS, что и у
   // подписи обычного поля (`[data-required]`), поэтому знак и цвет общие.
   cellRequired,
@@ -107,6 +112,7 @@ export default function DateTimeInput({
       time={time}
       onPick={(iso) => emit(iso, time)}
       onTimeChange={(tm) => emit(date, tm)}
+      anchor={anchor}
     />
   );
 
