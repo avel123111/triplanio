@@ -1500,29 +1500,45 @@ section{position:relative}
 
 .bud-bars{display:grid;gap:9px;margin-top:12px}
 
-/* site-dup-exempt: bud-bar — восьмая коллизия имён (ревью TRIP-460, п.2). В
-   app.css:6269 `.bud-bar` — САМА полоска (height:11px;display:flex;overflow:hidden;
-   margin:12px 0 14px), в прототипе `.bud-bar` — КОНТЕЙНЕР СТРОКИ (метка над треком).
-   Без своей базы app-правило сплющивало строку: .lbl 76×7 вместо 326×20, .track
-   width:0. Прототип базы `.bud-bar` не объявляет (обычный блок) — возвращаем блок,
-   снимая flex/height/overflow/фон/радиус/margin приложения. */
-.bud-bar{display:block;height:auto;overflow:visible;margin:0;background:none;border-radius:0}
+/* Строка бюджета лендинга. Имя РАЗВЯЗАНО с `app.css` (было `.bud-bar`, восьмая
+   коллизия имён site↔app). В приложении `.bud-bar` — САМА полоска
+   (`height:11px;display:flex;overflow:hidden;margin:12px 0 14px`), здесь —
+   КОНТЕЙНЕР СТРОКИ: метка над треком. Разные объекты под одним именем.
 
-.bud-bar .lbl{display:flex;justify-content:space-between;font-size: var(--fs-small);color:var(--muted);margin-bottom:4px}
+   Держалось это сбросом из шести объявлений, гасившим правило приложения. Сброс
+   работал, но был БЕЛЫМ СПИСКОМ: седьмое объявление у `.bud-bar` в `app.css`
+   протекло бы на лендинг, а автор той правки об этом бы не узнал — она не
+   открывает `site.css` и не обязана. Гард 2ae такую течь тоже не видит: обе
+   стороны объявляют базу, коллизия «под маркером», то есть согласована.
 
-.bud-bar .track{height:9px;border-radius: var(--r-xs);background:#E3EDF7;overflow:hidden}
+   Теперь имя своё, сброса нет, объекты независимы. Семья `bud-` та же —
+   нового пространства имён не заводится. */
+/* Элемент лендинга переехал с `.bud-bar` на `.bud-row` — это ПЕРЕНОС, и гард
+   сверяет его сам: объявления обязаны найтись на цели с теми же значениями. */
+/* visual-diff-move: bud-bar -> bud-row */
+/* Четыре ключа переносом не объясняются: у единицы `.bud-bar` они не УШЛИ, а
+   вернулись к значениям приложения — зона их больше не гасит. Это и есть смысл
+   правки, поэтому объявлено построчно. */
+/* visual-diff-exempt: .bud-bar background — сброс зоны снят, у класса приложения своё значение (TRIP-460) */
+/* visual-diff-exempt: .bud-bar border-radius — то же */
+/* visual-diff-exempt: .bud-bar height — то же */
+/* visual-diff-exempt: .bud-bar margin — то же */
 
-.bud-bar .fill{height:100%;border-radius: var(--r-xs);width:0;transition:width 1.1s var(--ease-out)}
+.bud-row .lbl{display:flex;justify-content:space-between;font-size: var(--fs-small);color:var(--muted);margin-bottom:4px}
 
-.in .bud-bar .fill{width:var(--w)}
+.bud-row .track{height:9px;border-radius: var(--r-xs);background:#E3EDF7;overflow:hidden}
 
-.bud-bar:nth-child(1) .fill{background:var(--brand)}
+.bud-row .fill{height:100%;border-radius: var(--r-xs);width:0;transition:width 1.1s var(--ease-out)}
 
-.bud-bar:nth-child(2) .fill{background:var(--sky)}
+.in .bud-row .fill{width:var(--w)}
 
-.bud-bar:nth-child(3) .fill{background:var(--sunset)}
+.bud-row:nth-child(1) .fill{background:var(--brand)}
 
-.bud-bar:nth-child(4) .fill{background:var(--mint)}
+.bud-row:nth-child(2) .fill{background:var(--sky)}
+
+.bud-row:nth-child(3) .fill{background:var(--sunset)}
+
+.bud-row:nth-child(4) .fill{background:var(--mint)}
 
 .tl{margin-top:16px;display:grid;position:relative}
 
