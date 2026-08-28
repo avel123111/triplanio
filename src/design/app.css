@@ -4636,19 +4636,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Сдвиг ведётся ПОКАДРОВО во время жеста (переменную пишет шелл напрямую) —
    отсюда плавность: карта едет за пальцем, ни одного ресайза.
    visual-diff-exempt: .mapshell__map bottom — холст во всю высоту: закрытую шитом площадь берёт на себя сдвиг
-   visual-diff-exempt: .mapboxgl-map transform — сдвиг вместо ресайза: ресайз двигает мир и роняет шар, сдвиг нет
+   visual-diff-exempt: .mapshell__pan transform — сдвиг вместо ресайза: ресайз двигает мир и роняет шар, сдвиг нет
    visual-diff-exempt: .mapshell__map transform — тот же ключ у предка составного правила
    visual-diff-exempt: .mapshell__map transition — то же
-   visual-diff-exempt: .mapboxgl-map transition — сдвиг едет одним темпом с шитом
-   orphan-exempt: .mapboxgl-map — имя ставит сам mapbox-gl, в разметке репозитория его нет
-   floor-exempt: classes +1 — `.mapboxgl-map` не наш класс: имя ставит сам движок, это адрес узла карты, а не новая семья ДС
-   floor-exempt: triage +1 — то же имя, оно вендорное и в каталог ДС не заводится */
+   visual-diff-exempt: .mapshell__pan transition — сдвиг едет одним темпом с шитом
+   floor-exempt: classes +1 — `.mapshell__pan`: адрес узла, в который рисует mapbox (имя ставит `MapProvider`), апрув Pavel
+   floor-exempt: triage +1 — тот же класс в семье mapshell, апрув Pavel */
 .mapshell__map { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; background: var(--map-backdrop); }
 /* ★ УЕЗЖАЕТ САМА КАРТА, А НЕ СЛОТ. В слоте вместе с картой живут кнопка «назад»
    и плашка контролов — сдвинь слот, и они уедут за верхний край экрана вместе с
-   ней. Узел карты — это элемент, который mapbox получает контейнером
-   (`.mapboxgl-map`), и он единственный, кому сдвиг адресован. */
-.mapshell__map .mapboxgl-map { transform: translateY(calc(-1 * var(--mapshell-shift, 0px))); transition: transform var(--surface-settle, .32s) var(--surface-ease, ease); }
+   ней. Сдвиг адресован ровно одному узлу — тому, в который рисует mapbox; класс
+   на него вешает `MapProvider` (там же разбор, почему НЕ вендорное имя). */
+.mapshell__pan { transform: translateY(calc(-1 * var(--mapshell-shift, 0px))); transition: transform var(--surface-settle, .32s) var(--surface-ease, ease); }
 
 /* Новые правила этой задачи — объявлены поимённо (гард 2p сверяет НАБОР итоговых
    объявлений у каждого класса, и появление класса он тоже считает изменением):

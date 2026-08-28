@@ -46,15 +46,40 @@ function buildLegs(home, cities, finishCity, isStay, drawFinish) {
 // пикселям: канвас во весь экран телефона — 22.9 % дымки и все четыре угла вне
 // планеты; слот, равный свободному окну, — ни одной точки рамки вне планеты.
 
-// ★ У НИЖНЕЙ КРОМКИ КАДРА ЛЕЖИТ НАША ЖЕ ПИЛЮЛЯ «N городов · M ночей»
-// (`.flow-map__stat`), и фит про неё не знал: замер на телефоне 393×852 —
-// нижний пин 225..254, пилюля 248..279, то есть город кадра уезжал ПОД неё.
-// Полоса прибавляется ТОЛЬКО к кадру МАРШРУТА: стартовый глобус — предмет по
-// центру холста, его размер считается от того же воздуха, что и был.
-// Само кольцо пина (29px, центрировано на координате) воздух перекрывает.
-const STAT_STRIP = 45; // `.flow-map__stat`: строка 31px + её 14px от низа слота
 function fitPaddingFor(w) {
   return w > PHONE_MAX_W ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 32, left: 40 };
+}
+
+/**
+ * ПОЛОСА, КОТОРУЮ У НИЗА СВОБОДНОГО ОКНА ЗАНИМАЕТ НАША ЖЕ ПИЛЮЛЯ
+ * «N городов · M ночей» (`.flow-map__stat`).
+ *
+ * ★ Фит про неё не знал, и нижний город кадра уезжал ПОД неё: замер на телефоне
+ * 393×852 — пин 225..254 против пилюли 248..279.
+ *
+ * ★★ ВЕЛИЧИНА МЕРЯЕТСЯ, А НЕ ПОВТОРЯЕТСЯ ЧИСЛОМ. Она складывается из высоты
+ * строки и её отступа от низа окна — оба живут в CSS (`.flow-map__stat`,
+ * `--mapshell-bottom`), и переписанная сюда константа разъехалась бы с ними на
+ * первой же правке типографики, причём МОЛЧА: кадр стал бы врать на несколько
+ * пикселей, и ни один гард этого не увидит. Тот же приём, которым `<MapShell>`
+ * меряет ширину панели вместо повторения `min()` из CSS.
+ *
+ * Читается СИНХРОННО в момент кадрирования: своё состояние дало бы лишний
+ * рендер и второй фит на первой загрузке. Цена — смена высоты пилюли (подгрузка
+ * шрифта) доедет до кадра со следующим изменением маршрута; на несколько
+ * пикселей воздуха это честный размен.
+ *
+ * @param {any} win узел карты (в нём считается свободное окно)
+ * @param {any} stat узел пилюли; `null`, когда её нет (ноль ночей)
+ * @returns {number}
+ */
+function statStripPx(win, stat) {
+  if (!win || !stat) return 0;
+  // Низ СВОБОДНОГО ОКНА, а не холста: холст уходит под шит целиком, и его
+  // границу публикует шелл (`--mapshell-bottom`, наследуется сюда по каскаду).
+  const bottomVar = parseFloat(getComputedStyle(win).getPropertyValue('--mapshell-bottom')) || 0;
+  const windowBottom = win.getBoundingClientRect().bottom - bottomVar;
+  return Math.max(0, Math.round(windowBottom - stat.getBoundingClientRect().top));
 }
 
 // Нейтральный СТАРТОВЫЙ вид глобуса (до выбора маршрута; сюда же возвращает
@@ -104,6 +129,8 @@ export default function FlowMap({
   const t = useT();
   const containerRef = useRef(null);
   const markersRef = useRef([]);
+  // Узел пилюли — её полосу кадр меряет, а не повторяет числом (`statStripPx`).
+  const statRef = useRef(null);
 
   // Контролы поверх карты: проекция + тема. Старт-финиша здесь НЕТ (решение
   // Pavel): в создании маршрута дом и финиш — это то, что пользователь прямо
@@ -270,7 +297,10 @@ export default function FlowMap({
         // отдаёт САМ СЛОТ, а воздух кадра несёт `padding` самого фита.
         if (fitKey !== fittedSigRef.current) {
           fittedSigRef.current = fitKey;
-          calmFit(map, fitPositions, { padding: { ...air, bottom: air.bottom + STAT_STRIP }, maxZoom: 7, singleZoom: 8 });
+          // Полоса пилюли прибавляется ТОЛЬКО к кадру МАРШРУТА: стартовый глобус —
+          // предмет по центру холста, его размер считается от того же воздуха.
+          const bottom = air.bottom + statStripPx(containerRef.current, statRef.current);
+          calmFit(map, fitPositions, { padding: { ...air, bottom }, maxZoom: 7, singleZoom: 8 });
           // Отмечаем на ИНСТАНСЕ, что камеру уже ставили по месту: следующий
           // экран с картой (редактор маршрута сразу после создания трипа) возьмёт
           // этот факт и доедет плавно вместо скачка. См. `lib/map/framed.js`.
@@ -343,7 +373,7 @@ export default function FlowMap({
       )}
 
       {totalNights > 0 && (
-        <div className="t-meta flow-map__stat">
+        <div ref={statRef} className="t-meta flow-map__stat">
           <span className="flow-map__stat-hl">{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
           <span className="muted-2">·</span>
           <span className="flow-map__stat-hl">{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
