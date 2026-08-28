@@ -59,7 +59,6 @@
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import postcss from 'postcss';
 import { SITE_ZONE, assertZonePerimeter } from './zone-perimeter.mjs';
 import { join } from 'node:path';
 
@@ -154,25 +153,52 @@ function addedLines(path) {
   return lines;
 }
 
-/** Имена общих классов, у правил-одиночек которых этот PR ДОБАВИЛ объявление.
- *  Разбор через postcss, а не через брейс-регулярку соседних проверок: нужны
- *  ТОЧНЫЕ номера строк объявлений, а комментарии этого репозитория содержат
- *  фигурные скобки (цитаты JSX) — самодельный скан на них рассыпается, и это
- *  уже записано у гарда 2n как «пришлось писать дважды». */
+/** Комментарии → пробелы С СОХРАНЕНИЕМ ДЛИНЫ И ПЕРЕВОДОВ СТРОК. Нужно и то и
+ *  другое сразу: фигурная скобка внутри комментария рассинхронизирует брейс-скан
+ *  (комментарии этого репозитория цитируют JSX), а сдвиг строк развалил бы
+ *  сверку с диффом. Тот же приём и по той же причине, что у гарда 2n. */
+function blankComments(css) {
+  const out = css.split('');
+  for (let i = 0; i < css.length; i += 1) {
+    if (css[i] !== '/' || css[i + 1] !== '*') continue;
+    const end = css.indexOf('*/', i + 2);
+    const stop = end === -1 ? css.length : end + 2;
+    for (; i < stop; i += 1) if (css[i] !== '\n') out[i] = ' ';
+    i -= 1;
+  }
+  return out.join('');
+}
+
+/** Имена общих классов, чьё правило-одиночку этот PR тронул: номера строк ТЕЛА
+ *  правила пересекаются с добавленными.
+ *
+ *  ★ БЕЗ `postcss` И ВООБЩЕ БЕЗ ЗАВИСИМОСТЕЙ. У джобы `guards` нет `npm ci`, и
+ *  это её ЗАЯВЛЕННОЕ свойство: каждый гард там живёт на стандартной библиотеке.
+ *  Первая редакция брала postcss ради точных номеров строк и легла в CI с
+ *  `ERR_MODULE_NOT_FOUND` — проверять надо не только предикат, но и то, в какой
+ *  комнате гард будет жить. Скан тот же, что у `singleClassRules` выше, только
+ *  считает ещё и строки.
+ *
+ *  Гранулярность — ПРАВИЛО, а не объявление: любая добавленная строка внутри
+ *  тела значит «PR тронул это правило». Для вопроса «а ты посмотрел на зону?»
+ *  это ровно та точность, что нужна. */
 function touchedSharedNames(appCss, shared, added) {
   const hit = new Set();
-  let root;
-  try { root = postcss.parse(appCss, { from: APP }); } catch { return hit; }
-  root.walkRules((rule) => {
-    const names = (rule.selectors || [])
-      .map((sel) => /^\.([-\w]+)$/.exec(sel.trim())?.[1])
-      .filter((n) => n && shared.has(n));
-    if (!names.length) return;
-    rule.walkDecls((d) => {
-      const line = d.source?.start?.line;
-      if (line && added.has(line)) names.forEach((n) => hit.add(n));
-    });
-  });
+  const blanked = blankComments(appCss);
+  for (const m of blanked.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const names = m[1].split(',')
+      .map((sel) => sel.trim())
+      .filter((sel) => /^\.[-\w]+$/.test(sel))
+      .map((sel) => sel.slice(1))
+      .filter((n) => shared.has(n));
+    if (!names.length) continue;
+    const bodyAt = m.index + m[1].length + 1;
+    const from = blanked.slice(0, bodyAt).split('\n').length;
+    const to = from + (m[2].match(/\n/g) || []).length;
+    for (let line = from; line <= to; line += 1) {
+      if (added.has(line)) { names.forEach((n) => hit.add(n)); break; }
+    }
+  }
   return hit;
 }
 
