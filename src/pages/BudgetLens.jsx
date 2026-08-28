@@ -895,11 +895,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             <div className="row row--g6">
               <span className="tile tile--xl" style={{ background: activeCat.color + '22', color: activeCat.color }}><Icon name={catIcon(activeCat)} size={22} /></span>
               <div className="grow--fit">
-                <div className="t-title row row--g4">{activeCat.displayName}{activeCat.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</div>
+                <div className="t-subheading row row--g4">{activeCat.displayName}{activeCat.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</div>
                 <div className="t-meta muted">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
               </div>
-              <div className="col col--g1">
-                <div className="t-title">{money(activeCat.spent, mainCurrency)}</div>
+              {/* Потрачено — цифра и её подпись прижаты ВПРАВО осью `col--a-end`
+                  (запрос Pavel): у колонки ширину задаёт подпись, и выключка
+                  влево оставляла цифру висеть слева от собственного лейбла.
+                  Ось существующая — своего выравнивания не заводим. */}
+              <div className="col col--g1 col--a-end">
+                <div className="t-heading">{money(activeCat.spent, mainCurrency)}</div>
                 <div className="t-meta muted">{t('budget.spent_label')}</div>
               </div>
               {activeCat.kind === 'custom' && !readOnly && (

@@ -3364,16 +3364,39 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .citybar background — полоса города плотная в обеих темах (запрос Pavel): подкраска --cc-soft заменена плотным тоном --cc
    visual-diff-exempt: .citybar box-shadow — солид-кант сверху держал тон у прозрачного тела; на плотном теле это цвет по тому же цвету, снят как невидимый
    visual-diff-exempt: .citybar__lbl color — имя города на плотном тоне: --cc-ink заменён --primary-fg (белый в светлой, тёмный в тёмной), запрос Pavel
-   visual-diff-exempt: .citybar--strip box-shadow — отмена канта, которого больше нет в базе (парная уборка к снятому box-shadow у .citybar) */
-.citybar { flex: 1; min-width: 0; border: none; cursor: pointer; background: var(--cc); transition: filter .14s, background .14s; }
+   visual-diff-exempt: .citybar--strip box-shadow — отмена канта, которого больше нет в базе (парная уборка к снятому box-shadow у .citybar)
+
+   ★ ОБЛИЧЬЕ ОДНО, МОДИФИКАТОРА `--strip` БОЛЬШЕ НЕТ. Обличий было два: `bar`
+   (полоса-цвет без имени) и `strip` (полоса с именем). `bar` в продукте не звали
+   ни разу — обе поверхности календаря рисуют прогон с именем, единственный его
+   рендер жил в витрине `/kit`. После перевода полосы на плотный тон от `bar`
+   оставалось ровно «`strip` без полей и скругления», то есть ось на одно
+   значение. Объявления `--strip` перенесены СЮДА без изменения значений, парные
+   правила соседства стали `.citybar + .citybar` (все полосы теперь одного
+   обличья, набор пар тот же).
+
+   ★ ПОЧЕМУ ПЕРЕНОС ОБЪЯВЛЕН НЕ ОДНИМ МАРКЕРОМ. `visual-diff-move` по КЛАССУ
+   закрывает ВСЁ, что ушло с источника, а с `--strip` ушло ещё и `box-shadow:
+   none` — отмена канта, которого в базе больше нет (снят выше по этому же
+   правилу). Это удаление, а не переезд: на цели такого объявления нет и быть не
+   должно, а дописать `box-shadow: none` в `.citybar` ради зелёного маркера
+   значит кормить гард шумом. Поэтому проверяемым маркером объявлено то, что
+   переезжает ЦЕЛИКОМ (парное правило соседства — оба его объявления), а четыре
+   объявления базового правила названы поштучно.
+   visual-diff-move: .citybar--strip + .citybar--strip -> citybar
+   visual-diff-exempt: .citybar--strip padding — обличье одно: объявление снято с модификатора и перенесено в .citybar тем же значением (3px var(--sp-3))
+   visual-diff-exempt: .citybar--strip margin — обличье одно: объявление снято с модификатора и перенесено в .citybar тем же значением (3px 0)
+   visual-diff-exempt: .citybar--strip border-radius — обличье одно: объявление снято с модификатора и перенесено в .citybar тем же значением (var(--r-xs))
+   visual-diff-exempt: .citybar padding — база приобрела объявление снятого модификатора --strip, значение то же (3px var(--sp-3))
+   visual-diff-exempt: .citybar margin — база приобрела объявление снятого модификатора --strip, значение то же (3px 0)
+   visual-diff-exempt: .citybar border-radius — база приобрела объявление снятого модификатора --strip, значение то же (var(--r-xs))
+   */
+.citybar { flex: 1; min-width: 0; border: none; cursor: pointer; background: var(--cc); transition: filter .14s, background .14s; padding: 3px var(--sp-3); margin: 3px 0; border-radius: var(--r-xs); }
 .citybar:hover { filter: brightness(1.05); }
 .citybar:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .citybar__lbl { color: var(--primary-fg); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* `strip` — плашка города в НЕДЕЛЕ: цельная на весь прогон, имя внутри,
-   отделена воздухом сверху и снизу. */
-.citybar--strip { padding: 3px var(--sp-3); margin: 3px 0; border-radius: var(--r-xs); }
-.citybar--strip + .citybar--strip { margin-left: 2px; }   /* design-token-exempt: 2px — зазор между половинками дня-пересадки */
-.citybar--strip + .citybar--strip { border-left: 1px solid var(--surface); }   /* design-token-exempt: 1px — хайрлайн-разделитель сегментов */
+.citybar + .citybar { margin-left: 2px; }   /* design-token-exempt: 2px — зазор между половинками дня-пересадки */
+.citybar + .citybar { border-left: 1px solid var(--surface); }   /* design-token-exempt: 1px — хайрлайн-разделитель сегментов */
 
 /* ----- EventChip ----- (TRIP-321 линза «Календарь») компактный эвент-токен.
    Цвет — семейство события `ev-<fam>` (`eventFamily`). Три облика осью `variant`:
