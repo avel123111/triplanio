@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Что здесь держится (TRIP-478). У экрана запуска нет ни скриншота, ни гарда:
 // он снимается СОБЫТИЯМИ, а не значением, поэтому регресс выглядит как
@@ -28,17 +30,29 @@ async function freshSplash(caseId) {
   const realTimeout = globalThis.setTimeout;
 
   globalThis.document = /** @type {any} */ ({ getElementById: (id) => (id === 'splash' ? el : null) });
-  // Таймеры собираем, а не ждём: тест про ПОРЯДОК событий, а не про задержки.
-  globalThis.setTimeout = /** @type {any} */ ((fn) => { timers.push(fn); return 0; });
+  // Таймеры собираем вместе с их задержкой, а не ждём: тест про ПОРЯДОК
+  // событий. Задержка нужна, чтобы отделить обычный ход от ПОТОЛКА (10 с) —
+  // иначе любой прогон таймеров снимал бы заставку по потолку и тест проверял
+  // бы не то поведение.
+  globalThis.setTimeout = /** @type {any} */ ((fn, ms = 0) => { timers.push({ fn, ms }); return 0; });
 
   const mod = await import(`./splash.js?case=${caseId}`);
+  const runUpTo = (limit) => {
+    for (let i = 0; i < timers.length; i += 1) {
+      if (timers[i].ms >= limit) continue;
+      const { fn } = timers.splice(i, 1)[0];
+      i -= 1;
+      fn();
+    }
+  };
   return {
     ...mod,
     el,
     // Решение о снятии откладывается на микрозадачу — она встаёт в очередь
     // раньше этого await, поэтому одного тика достаточно.
     tick: () => Promise.resolve(),
-    flush: () => { while (timers.length) timers.shift()(); },
+    flush: () => runUpTo(5000),      // обычный ход: всё, кроме потолка
+    flushCeiling: () => runUpTo(Infinity),
     restore: () => { globalThis.document = realDoc; globalThis.setTimeout = realTimeout; },
   };
 }
@@ -127,5 +141,48 @@ test('эстафета между двумя ожиданиями одного �
     await s.tick();
     s.flush();
     assert.equal(s.el.attrs['data-out'], '', 'заставка не ушла, когда всё готово');
+  } finally { s.restore(); }
+});
+
+
+// ★ ПРАВИЛО ЦЕЛИКОМ, А НЕ ТОЛЬКО ЕГО ЛОГИКА. Всё, что откладывает первый
+// читаемый кадр, обязано пройти через <AppLoading> — только он держит заставку.
+// Дыра была ровно в обходе: `<Suspense fallback={null}>` — тоже ожидание, но
+// молча, поэтому заставка его не видела и уходила в пустой кадр. Теперь у
+// молчаливого ожидания есть свой облик (`<AppLoading silent />`), и этот тест
+// закрывает возврат к обходу: он ищет `fallback={null}` во всём src.
+//
+// Ловит именно РЕГРЕСС ПРАВИЛА, а не опечатку: `fallback={null}` пишется легко
+// и выглядит невинно — «мне тут нечего показать», — а стоит пустого кадра
+// между заставкой и страницей.
+function jsxFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const full = join(dir, e.name);
+    if (e.isDirectory()) return jsxFiles(full);
+    return e.isFile() && e.name.endsWith('.jsx') ? [full] : [];
+  });
+}
+
+test('молчаливое ожидание идёт через <AppLoading silent>, а не через fallback={null}', () => {
+  const offenders = jsxFiles('src')
+    .filter((f) => /<Suspense[^>]*fallback=\{null\}/s.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(offenders, [],
+    'fallback={null} — ожидание, невидимое для экрана запуска: между заставкой и '
+    + 'страницей появится пустой кадр. Нужен <AppLoading silent />.');
+});
+
+test('потолок снимает заставку даже под вечным удержанием', async () => {
+  const s = await freshSplash('ceiling');
+  try {
+    s.holdSplash();          // ожидание, которое никогда не кончится:
+                             // site.css отдал 404, запрос завис
+    await s.tick();
+    s.flush();
+    assert.equal(s.el.attrs['data-out'], undefined, 'ушла раньше потолка');
+
+    s.flushCeiling();        // прошло 10 секунд
+    s.flush();
+    assert.equal(s.el.attrs['data-out'], '',
+      'заставка заперла экран навсегда: под ней уже ничего не появится');
   } finally { s.restore(); }
 });
