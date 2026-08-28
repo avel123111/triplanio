@@ -20,11 +20,16 @@ import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, loadMapboxGl } from '@/l
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
+import { transitSpan } from '@/lib/trip-cities';
 
-/** Ordered geo points + route legs for the trip, mirroring MapView's rule. */
+/**
+ * Ordered geo points + route legs for the trip. Свёрнутый вид считает ОБЩЕЕ
+ * правило `transitSpan` — то же самое, по которому рисует живая карта: рукописной
+ * копии фильтра здесь больше нет (две копии разъехались молча, разбор — там же).
+ */
 export function buildRoute(visits, transfers, showSE) {
   const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
-  const ordered = showSE ? all : all.filter((v) => v.kind !== 'start' && v.kind !== 'end');
+  const ordered = showSE ? all : transitSpan(all);
   const byPair = new globalThis.Map();
   (transfers || []).forEach((t) => {
     const k = `${t.from_city_visit_id}__${t.to_city_visit_id}`;
@@ -84,7 +89,12 @@ function drawPointLayer(map, ordered) {
  * flag-icon path — there is nothing async to await before snapshotting.
  */
 export function drawTripRoute(map, ordered, legs) {
-  drawRouteLinesCached(map, 'sc-route', legs, {
+  // Подпись маршрута СЧИТАЕТСЯ ИЗ ПЛЕЧ, а не фиксирована строкой: кэш линий
+  // сравнивает именно её и на совпадение НЕ перерисовывает. С постоянной
+  // подписью живое превью карточки не могло сменить состав маршрута — точки
+  // обновлялись (`setData`), а линии оставались от прошлого набора.
+  const sig = `sc-route:${legs.map((l) => `${l.from?.id}>${l.to?.id}:${l.kind || ''}`).join('|')}`;
+  drawRouteLinesCached(map, sig, legs, {
     dashedId: 'sc-dashed', solidId: 'sc-solid',
     solidWidth: SC_WEIGHTS.solid, dashedWidth: SC_WEIGHTS.dashed,
   });

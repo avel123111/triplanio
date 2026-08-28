@@ -43,8 +43,6 @@
   "live_left_many": "{count} days left",
   "live_left_one": "{count} day left",
   "live_now": "On the road",
-  "map_fullscreen": "Fullscreen",
-  "map_globe": "Map or globe",
   "n_cities": "cities: {n}",
   "nav": "Statistics",
   "next_start_in": "Starts in",

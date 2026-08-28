@@ -12,7 +12,8 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
-import { I18nProvider } from '@/lib/i18n/I18nContext';
+import { I18nProvider, useI18n } from '@/lib/i18n/I18nContext';
+import { AppLoading } from '@/design/index';
 import PublicTrip from '@/pages/PublicTrip';
 import JoinTrip from '@/pages/JoinTrip';
 import Login from '@/pages/Login';
@@ -94,22 +95,9 @@ function RedirectToEditSection() {
   return <Navigate to={`/trip/${tripId}?lens=route`} replace />;
 }
 
-// Ожидание на всю площадь — ОДИН элемент на оба своих места в этом файле
-// (гейт авторизации и Suspense маршрутов). Разметка `.app-loading` +
-// `.spin spin--ring` уже жила здесь копией, и `<Suspense>` ниже добавил бы
-// ТРЕТЬЮ: повторённая рядом с существующим классом разметка — признак того,
-// что у неё нет своего имени (правило #6 / TRIP-282), а не повод скопировать
-// ещё раз. Четвёртый экземпляр живёт в I18nContext и ждёт общего дома —
-// shared-компонент это «новое» и идёт через апрув, поэтому здесь схлопнуто
-// ровно то, что схлопывается без него.
-const AppLoading = () => (
-  <div className="app-loading">
-    <div className="spin spin--ring spin--xl spin--ink" />
-  </div>
-);
-
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
+  const { dictFull } = useI18n();
   const location = useLocation();
 
   // Fire the screen-open event on SPA navigation. Fires before the auth/route
@@ -182,16 +170,29 @@ const AuthenticatedApp = () => {
   //
   // Теперь ветка одна и оболочка <SiteZone> над маршрутами: внутри зоны она не
   // размонтируется, поэтому слой стилей стоит на месте, а меняется только
-  // содержимое. Ветки страниц остались ДО аут-гейта (демо, юр-страницы и вход
-  // доступны и разлогиненному, и залогиненному), условие на «/» — прежнее:
-  // лендинг показываем только после того, как авторизация РАЗРЕШЕНА, иначе
-  // вернувшийся из OAuth видит вспышку лендинга.
+  // содержимое. Ветки страниц стоят ДО аут-гейта — демо, юр-страницы и вход
+  // доступны и разлогиненному, и залогиненному.
+  //
+  // ★ «/» ТЕПЕРЬ ЗОНА БЕЗУСЛОВНО. Условие было `!isAuthenticated &&
+  // !isLoadingAuth`, «чтобы вернувшийся из OAuth не видел вспышки лендинга», и
+  // ценой этого лендинг ЖДАЛ ОТВЕТА про авторизацию, чтобы нарисоваться. Он ей
+  // не пользуется: ни `LandingPage`, ни `SiteChrome`, ни `SiteTrip` не читают
+  // `useAuth` — проверено грепом. То есть маркетинговая страница ждала ответа
+  // на вопрос, который сама не задаёт, и посетитель без единого визита в жизни
+  // смотрел на спиннер.
+  //
+  // Вспышка при этом не возвращается, а исчезает: она была не «зона показалась
+  // рано», а СМЕНА ВЛАДЕЛЬЦА — залогиненному «/» рисовала таблица приложения
+  // (ниже), и лендинг перемонтировался, теряя reveal-анимации. Теперь владелец
+  // ОДИН на оба состояния, поэтому перемонтирования нет вовсе, а маршрут «/» из
+  // таблицы приложения убран как недостижимый. OAuth сюда и не возвращается:
+  // `redirectTo` — `postLoginPath()`, то есть `/trips` либо сохранённый путь.
   //
   // `Suspense` тоже один: демо и юр-страницы приезжают отдельными чанками.
-  const inZone = path.startsWith('/d/')
+  const inZone = path === '/'
+    || path.startsWith('/d/')
     || path === '/terms' || path === '/privacy'
-    || path === '/login' || path === '/reset-password'
-    || (path === '/' && !isAuthenticated && !isLoadingAuth);
+    || path === '/login' || path === '/reset-password';
 
   if (inZone) {
     return (
@@ -238,6 +239,17 @@ const AuthenticatedApp = () => {
     );
   }
 
+  // ★ Экраны приложения ждут ПОЛНОГО словаря, зона — нет. Готовность языка
+  // раньше значила «все 48 словарей загружены», и это ждал КАЖДЫЙ первый кадр,
+  // включая лендинг, которому нужно шесть (`i18n/zoneNamespaces.js`). Теперь
+  // провайдер отпускает первый кадр после зонного набора, а остальные 42
+  // догружает фоном — и ждать их обязано ровно то, что ими пользуется. Гейт
+  // стоит ЗДЕСЬ, а не в общем ожидании выше: ветки зоны возвращаются раньше
+  // него, поэтому лендинг, вход, демо, юр-страницы, join и публичка не ждут.
+  if (!dictFull) {
+    return <AppLoading />;
+  }
+
   return (
     <MobileNavProvider>
      <CreateTripProvider>
@@ -258,9 +270,10 @@ const AuthenticatedApp = () => {
       <Suspense fallback={<AppLoading />}>
       <Routes>
       {/* New design - standalone (own app-header, no Layout) */}
-      {/* Logged-in users can still view the landing at "/" (no auto-redirect);
-          the landing's CTA takes them into the app. */}
-      <Route path="/" element={<LandingPage />} />
+      {/* «/» здесь больше нет: лендинг — страница ЗОНЫ в обоих состояниях
+          авторизации, и владелец у него один (ветка `inZone` выше). Пока
+          маршрут был и там, и тут, залогиненному лендинг перемонтировался при
+          получении ответа про авторизацию. */}
       <Route path="/trips" element={<Trips />} />
       <Route path="/stats" element={<Statistics />} />
       <Route path="/new-trip" element={<ManualPlanner />} />

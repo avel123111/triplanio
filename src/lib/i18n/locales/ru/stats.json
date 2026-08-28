@@ -43,8 +43,6 @@
   "live_left_many": "Осталось {count} дней",
   "live_left_one": "Остался {count} день",
   "live_now": "Идёт",
-  "map_fullscreen": "На весь экран",
-  "map_globe": "Карта или глобус",
   "n_cities": "городов: {n}",
   "nav": "Статистика",
   "next_start_in": "Старт через",

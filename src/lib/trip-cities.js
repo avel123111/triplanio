@@ -140,3 +140,32 @@ export function uniqueCountryCodes(visits = []) {
 export function uniqueCountryCount(visits = []) {
   return uniqueCountryCodes(visits).length;
 }
+
+/**
+ * ОТРЕЗОК МАРШРУТА МЕЖДУ ПУНКТАМИ НАЗНАЧЕНИЯ — предикат кнопки «старт/финиш».
+ *
+ * Кнопка на карте прячет не «два якоря», а ВСЁ, что не является самим
+ * путешествием: домашний старт, финиш и транзитные точки (`waypoint`) ДО первого
+ * и ПОСЛЕ последнего города-назначения. Внутренние waypoint остаются — пересадка
+ * между Мадридом и Порту это часть маршрута, а пересадка по дороге из дома в
+ * аэропорт — нет.
+ *
+ * ★ ПОЧЕМУ ЗДЕСЬ, А НЕ НА ЭКРАНЕ. Правило жило ДВУМЯ рукописными копиями —
+ * `MapView` (живая карта) и `captureMap.buildRoute` (карта share-картинки), — и
+ * обе фильтровали по `kind !== 'start' && kind !== 'end'`, то есть оставляли
+ * дорогу из дома видимой. У поведения нет скриншота: разъехаться копии могли
+ * молча, и разъехались. Здесь оно одно и закрыто тестом.
+ *
+ * Вход — УЖЕ упорядоченный список (порядок маршрута — дело вызывателя,
+ * `sortVisits`). Ни одного `transit` в списке ⇒ показывать нечего: пустой
+ * массив, а не «весь список» — иначе кнопка молча перестаёт работать ровно там,
+ * где её нажали.
+ */
+export function transitSpan(ordered = []) {
+  if (!Array.isArray(ordered)) return [];
+  const first = ordered.findIndex(isTransitVisit);
+  if (first === -1) return [];
+  let last = ordered.length - 1;
+  while (last > first && !isTransitVisit(ordered[last])) last -= 1;
+  return ordered.slice(first, last + 1);
+}

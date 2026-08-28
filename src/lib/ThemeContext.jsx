@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react';
+import { isZoneRoute, resolveDark } from '@/lib/documentTheme';
 
 // ⚠️ ТИП БЕРЁТСЯ С ДЕФОЛТНОГО ЗНАЧЕНИЯ, А НЕ С РЕАЛИЗАЦИИ - `createContext`
 // выводит форму отсюда. Голая заглушка `setTheme: () => {}` объявляла функцию
@@ -13,6 +14,8 @@ const ThemeContext = createContext({
   setTheme: () => {},
   isDark: false,
   toggle: () => {},
+  /** @type {(on: boolean) => void} */
+  setLightZone: () => {},
 });
 
 export function ThemeProvider({ children }) {
@@ -23,10 +26,37 @@ export function ThemeProvider({ children }) {
   });
   const [isDark, setIsDark] = useState(false);
 
+  /* ★ НЕАВТОРИЗОВАННАЯ ЗОНА СВЕТЛАЯ ПО ПОСТРОЕНИЮ — У НЕЁ НЕТ ТЕМЫ.
+     Тема по умолчанию `system`, поэтому у человека с тёмной ОС `[data-theme=dark]`
+     оказывался на `<html>` и на лендинге, куда он ещё даже не логинился. Своя
+     палитра зоны от этого защищена (токены на `html.site`), а вот всё остальное —
+     нет: любой компонент ПРИЛОЖЕНИЯ на странице зоны (баннер cookie смонтирован
+     вне роутера, чтобы показываться и на анонимных входах) читал тёмные токены и
+     вставал тёмным пятном на белом листе. И — хуже — между 112 мс (тема легла) и
+     моментом, когда догрузился `site.css`, ТЁМНОЙ была вся страница: замерено
+     `rgb(12,14,28)` у `body` на лендинге.
+
+     Лечить это на уровне отдельных элементов бессмысленно: каждый следующий
+     компонент приложения, попавший на страницу зоны, принесёт ту же проблему.
+     Правило одно и живёт здесь: пока смонтирована оболочка зоны, документ
+     светлый. Выбор темы пользователя при этом НЕ трогается — в `tp-theme`
+     остаётся то, что он выбрал, и на экранах приложения снова действует. */
+  // Затравка — ПО АДРЕСУ, до того как что-либо смонтировалось: страницы зоны
+  // ленивые и приезжают позже, чем этот эффект кладёт тему (см. `zoneRoutes.js`).
+  // Дальше владельцем становится сама страница через `useLightZone`, поэтому
+  // ошибка затравки стоит одного кадра, а не неверной темы.
+  const [lightZone, setLightZone] = useState(
+    () => (typeof window !== 'undefined' && isZoneRoute(window.location.pathname)),
+  );
+
   useEffect(() => {
     const root = document.documentElement;
     const apply = (t) => {
-      const dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const dark = resolveDark({
+        stored: t,
+        systemDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
+        lightZone,
+      });
       // [data-theme] is the ONLY theming switch — nothing reads a `.dark`
       // class any more, so don't reintroduce one alongside it (TRIP-321).
       root.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -39,15 +69,31 @@ export function ThemeProvider({ children }) {
     const listener = () => { if (theme === 'system') apply('system'); };
     mq.addEventListener('change', listener);
     return () => mq.removeEventListener('change', listener);
-  }, [theme]);
+  }, [theme, lightZone]);
 
   const toggle = () => setThemeState(isDark ? 'light' : 'dark');
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: setThemeState, isDark, toggle }}>
+    <ThemeContext.Provider value={{ theme, setTheme: setThemeState, isDark, toggle, setLightZone }}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
 export const useTheme = () => useContext(ThemeContext);
+
+/**
+ * Пока компонент смонтирован, документ светлый. Зовёт ОБОЛОЧКА зоны
+ * (`SiteZone`) — там же, где живут её `<html lang>`, слой стилей и прокрутка.
+ *
+ * `useLayoutEffect`, а не `useEffect`: layout-эффекты потомков выполняются ДО
+ * пассивного эффекта провайдера в том же коммите, поэтому провайдер применяет
+ * тему уже зная про зону — тёмного кадра не существует, а не «он короткий».
+ */
+export function useLightZone() {
+  const { setLightZone } = useContext(ThemeContext);
+  useLayoutEffect(() => {
+    setLightZone(true);
+    return () => setLightZone(false);
+  }, [setLightZone]);
+}

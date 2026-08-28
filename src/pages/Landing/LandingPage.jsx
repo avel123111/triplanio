@@ -449,10 +449,10 @@ function Bento() {
             <p>{t('landing.bento.budD')}</p>
             <div className="bud-sum">€2,140 <small>{t('landing.bento.budOf')}</small></div>
             <div className="bud-bars">
-              <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.flights')}</span><span>€860</span></div><div className="track"><div className="fill" style={{ '--w': '86%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
-              <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.stays')}</span><span>€720</span></div><div className="track"><div className="fill" style={{ '--w': '64%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
-              <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.food')}</span><span>€390</span></div><div className="track"><div className="fill" style={{ '--w': '42%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
-              <div className="bud-bar"><div className="lbl"><span>{t('landing.bud.transport')}</span><span>€170</span></div><div className="track"><div className="fill" style={{ '--w': '24%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+              <div className="bud-row"><div className="lbl"><span>{t('landing.bud.flights')}</span><span>€860</span></div><div className="track"><div className="fill" style={{ '--w': '86%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+              <div className="bud-row"><div className="lbl"><span>{t('landing.bud.stays')}</span><span>€720</span></div><div className="track"><div className="fill" style={{ '--w': '64%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+              <div className="bud-row"><div className="lbl"><span>{t('landing.bud.food')}</span><span>€390</span></div><div className="track"><div className="fill" style={{ '--w': '42%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
+              <div className="bud-row"><div className="lbl"><span>{t('landing.bud.transport')}</span><span>€170</span></div><div className="track"><div className="fill" style={{ '--w': '24%' }} /></div></div>{/* inline-style-exempt: data-driven bar fill */}
             </div>
           </article>
 

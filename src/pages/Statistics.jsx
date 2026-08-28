@@ -399,9 +399,7 @@ export default function Statistics() {
                     композиции (вне числителя доли), ровно кейс «правильный ход опускает
                     долю» из §1 эпика. Апрув Pavel на унификацию карты. */}
                 <MapControls
-                  withTheme={false}
-                  withSE={false}
-                  withFullscreen
+                  controls={['projection', 'fullscreen']}
                   projection={globe ? 'globe' : 'mercator'}
                   onToggleProjection={() => setGlobe((g) => !g)}
                   fullscreen={fs}
