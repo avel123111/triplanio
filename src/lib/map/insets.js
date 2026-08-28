@@ -50,18 +50,29 @@ function sameBox(a, b) {
 }
 
 /** Объявить закрытую площадь инстанса; `null` — снять. @param {any} map @param {any} box @returns {Box} */
-export function setMapInsets(map, box) {
+export function setMapInsets(map, box, fitBox) {
   const next = toBox(box);
+  const fit = toBox(fitBox === undefined ? box : fitBox);
   if (map) {
-    if (sameBox(next, NO_INSETS)) store.delete(map);
-    else store.set(map, next);
+    if (sameBox(next, NO_INSETS) && sameBox(fit, NO_INSETS)) store.delete(map);
+    else store.set(map, { camera: next, fit });
   }
   return next;
 }
 
 /** @param {any} map @returns {Box} */
 export function getMapInsets(map) {
-  return (map && store.get(map)) || NO_INSETS;
+  return (map && store.get(map)?.camera) || NO_INSETS;
+}
+
+/**
+ * Коробка для РАСЧЁТА кадра — «во что вписываем». Отличается от камерной там,
+ * где вид уводит не камера, а сам холст (телефон): камере отступ не нужен, а
+ * вписывать всё равно надо в видимую полосу. Разбор — `lib/mapShellInsets.js`.
+ * @param {any} map @returns {Box}
+ */
+export function getFitInsets(map) {
+  return (map && store.get(map)?.fit) || NO_INSETS;
 }
 
 /**

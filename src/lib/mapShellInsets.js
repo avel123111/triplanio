@@ -28,7 +28,18 @@
  * под шитом. Ровно так пилюля «6 городов · 12 ночей» планировщика оказывалась
  * лежащей на шите, хотя честно отступала 14px от своего низа.
  *
- * @returns {{ slotBottom: number, slotUnder: number, camera: { top: number, right: number, bottom: number, left: number } }}
+ * ★★ ДВЕ КОРОБКИ, И ПУТАТЬ ИХ НЕЛЬЗЯ:
+ *   `camera` — ЧЕМ СДВИГАЕМ КАМЕРУ (`transform.padding`). На телефоне НОЛЬ:
+ *     вид туда, куда надо, уводит сам холст (он уезжает вверх на половину
+ *     шита), а `padding` на проекции `globe` рисует планету диском с
+ *     прозрачным остатком — замерено, это и были «круги».
+ *   `fit` — ВО ЧТО ВПИСЫВАЕМ маршрут. Видимая часть холста — его ЦЕНТРАЛЬНАЯ
+ *     полоса высотой «холст минус шит», поэтому коробка симметрична: по
+ *     половине шита сверху и снизу. Без неё фит вписывает маршрут во весь
+ *     холст, и половина городов уезжает под шит (замер: города на y=440 и
+ *     y=−183 при окне 0..238).
+ *
+ * @returns {{ slotBottom: number, slotUnder: number, camera: any, fit: any }}
  */
 export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, overlayOpen = false, collapsed = false, cornerPx = 0 } = {}) {
   // Из DOM приходят 0, NaN и отрицательные (первый кадр, размонтирование) —
@@ -43,12 +54,20 @@ export function mapShellInsets({ phone = false, sheetPx = 0, panelPx = 0, overla
     // Заход считается ВЫЧИТАНИЕМ, а не повтором `cornerPx`: шит ниже своего
     // радиуса не бывает, но если бы стал (нулевая высота на первом кадре),
     // повтор объявил бы заход больше самого шита.
-    return { slotBottom, slotUnder: px(sheetPx) - slotBottom, camera: none };
+    const half = Math.round(px(sheetPx) / 2);
+    return {
+      slotBottom, slotUnder: px(sheetPx) - slotBottom,
+      camera: none,
+      fit: { ...none, top: half, bottom: half },
+    };
   }
   // Колонка слева закрыта, если раскрыта панель ИЛИ открыт слой — ширина у обоих
   // одна (panelPx). Оба сигнала булевы → сдвиг мгновенный, без замера.
   const leftClosed = overlayOpen || !collapsed;
-  return { slotBottom: 0, slotUnder: 0, camera: { ...none, left: leftClosed ? px(panelPx) : 0 } };
+  // Десктоп: панель лежит ПОВЕРХ целого холста — там сдвиг камеры и расчёт
+  // кадра это одно и то же.
+  const box = { ...none, left: leftClosed ? px(panelPx) : 0 };
+  return { slotBottom: 0, slotUnder: 0, camera: box, fit: box };
 }
 
 /**

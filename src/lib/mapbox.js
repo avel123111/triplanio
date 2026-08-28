@@ -5,7 +5,7 @@
 // не импортируется в `node --test`. Та же конвенция, по которой чистым держат
 // `trip-cities.js` — узел, у которого есть тест, не имеет права зависеть от
 // сборщика.
-import { MIN_FREE_WINDOW, addBox, getMapInsets, toBox } from './map/insets.js';
+import { MIN_FREE_WINDOW, addBox, getFitInsets, getMapInsets, toBox } from './map/insets.js';
 
 // `?.` — не перестраховка: без него модуль нельзя ИМПОРТИРОВАТЬ вне Vite, а
 // значит нельзя и покрыть тестами (`node --test` про `import.meta.env` не
@@ -140,7 +140,10 @@ export function clampPadding(map, padding = 0) {
  * из них у вызывателя нельзя по построению.
  */
 export function fitPadding(map, air = 0) {
-  return clampPadding(map, addBox(toBox(air), getMapInsets(map)));
+  // ВОЗДУХ + «во что вписываем». Именно `fit`, а не камерная коробка: там, где
+  // вид уводит сам холст, камере отступ не нужен, а вписывать всё равно надо в
+  // видимую полосу (`lib/mapShellInsets.js`).
+  return clampPadding(map, addBox(toBox(air), getFitInsets(map)));
 }
 
 /**

@@ -4187,11 +4187,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ★ НИЗ ОТСЧИТЫВАЕТСЯ ОТ ШИТА, А НЕ ОТ НИЗА КАНВАСА. Канвас намеренно уходит под
    шит на радиус скруглений (иначе в вырезах углов виден фон страницы), поэтому
    честные 14px от собственного низа оказывались НА шите: 14 − 20 = −6px. Заход
-   объявляет сам шелл (`--mapshell-under`, `lib/mapShellInsets.js`) — второй
-   записи радиуса здесь нет намеренно, она разъехалась бы с токеном на первой же
-   правке. На десктопе шита нет, переменная = 0, и отступ остаётся прежним.
-   visual-diff-exempt: .flow-map__stat bottom — прибавлен заход канваса под шит (на десктопе значение то же) */
-.flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-under, 0px) + 14px); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
+   объявляет сам шелл: холст уезжает ВВЕРХ на половину шита (`--mapshell-shift`),
+   поэтому его низ находится ниже верха шита ровно на эту величину — её и
+   прибавляем, чтобы пилюля снова отступала от ШИТА, а не от края холста. На
+   десктопе шита нет, переменная = 0, и отступ остаётся прежним.
+   visual-diff-exempt: .flow-map__stat bottom — прибавлен сдвиг холста (на десктопе значение то же) */
+.flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-shift, 0px) + 14px); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
 .flow-map__stat-hl { color: var(--ink-2); }
 /* Section sub-heading — the missing mid-tier between the title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…). */
@@ -4505,8 +4506,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__map top — слот карты = свободное окно шелла
    visual-diff-exempt: .mapshell__map right — слот карты = свободное окно шелла
    visual-diff-exempt: .mapshell__map left — слот карты = свободное окно шелла
-   visual-diff-exempt: .mapshell__map bottom — снизу слот кончается там, где начинается шит */
-.mapshell__map { position: absolute; top: 0; right: 0; bottom: var(--mapshell-bottom, 0px); left: 0; overflow: hidden; background: var(--map-backdrop); }
+   ★★ ХОЛСТ НЕ МЕНЯЕТ РАЗМЕР — ОН УЕЗЖАЕТ. Замер на живом экране: РЕСАЙЗ холста
+   двигает мир на половину дельты (детент 1→0 уводил точку из y=100 в y=297), а
+   на пустом глобусе ещё и роняет шар вниз на 197 px, потому что вид пришпилен к
+   центру ХОЛСТА. Сдвиг (`transform`) не делает ни того, ни другого: размер
+   постоянен, шар неподвижен относительно холста, а центр холста при сдвиге на
+   половину шита встаёт ровно в центр СВОБОДНОГО окна. Низ холста при этом
+   всегда под шитом — полосе фона взяться неоткуда (замер: запас 186 px на всех
+   кадрах тяги вместо разрыва до 350 px).
+   Сдвиг ведётся ПОКАДРОВО во время жеста (переменную пишет шелл напрямую) —
+   отсюда плавность: карта едет за пальцем, ни одного ресайза.
+   visual-diff-exempt: .mapshell__map bottom — холст во всю высоту: закрытую шитом площадь берёт на себя сдвиг
+   visual-diff-exempt: .mapshell__map transform — сдвиг вместо ресайза: ресайз двигает мир и роняет шар, сдвиг нет
+   visual-diff-exempt: .mapshell__map transition — сдвиг едет одним темпом с шитом */
+.mapshell__map { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; background: var(--map-backdrop); transform: translateY(calc(-1 * var(--mapshell-shift, 0px))); transition: transform var(--surface-settle, .32s) var(--surface-ease, ease); }
 
 /* Новые правила этой задачи — объявлены поимённо (гард 2p сверяет НАБОР итоговых
    объявлений у каждого класса, и появление класса он тоже считает изменением):

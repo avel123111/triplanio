@@ -93,7 +93,8 @@ function viewportTop() {
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
  *   detents?: number[],
- *   onHeightChange?: (px: number, meta: { stops: number[], dragging: boolean }) => void,
+ *   onHeightChange?: (px: number) => void,
+ *   onHeightLive?: (px: number, phase: 'move' | 'end') => void,
  *   label: string,
  *   className?: string,
  * }} p
@@ -106,6 +107,13 @@ export function PeekSheet({
   onDetentChange,
   detents = [0.15, 1],
   onHeightChange,
+  // ★ ВЫСОТА ВО ВРЕМЯ ЖЕСТА, КАДР В КАДР. `onHeightChange` отдаёт только
+  // ЗАФИКСИРОВАННУЮ высоту детента — этого хватает списку, но не хватает карте:
+  // пока палец ведёт шит, свободное окно меняется каждый кадр. Канал ОТДЕЛЬНЫЙ
+  // и идёт МИМО React: состояние на кадр жеста стоило бы перекладки всего
+  // содержимого шита. Читатель у него один — CSS-переменная сдвига холста, а
+  // сдвиг это `transform`: ни ресайза, ни команд камере.
+  onHeightLive,
   label,
   className = '',
 }) {
@@ -146,7 +154,7 @@ export function PeekSheet({
 
   // Свежие пропы для однажды навешанных нативных слушателей.
   const live = useRef();
-  live.current = { index, stops, vh, onDetentChange };
+  live.current = { index, stops, vh, onDetentChange, onHeightLive };
 
   // ★ ДОК СЧИТАЕТСЯ РОВНО ОДИН РАЗ. Полоса шапки — это ТОЛЬКО грип + header;
   // нижний нав и домашняя полоска сюда НЕ входят. Прошлая редакция добавляла их
@@ -249,6 +257,7 @@ export function PeekSheet({
       const next = Math.max(d.min, Math.min(d.max, d.base + dy));
       d.last = next;
       setDragY(next);
+      live.current.onHeightLive?.(Math.max(0, live.current.vh - next), 'move');
     };
     const onEnd = (e) => {
       const d = drag.current; drag.current = null;
@@ -264,6 +273,9 @@ export function PeekSheet({
         const isFlick = Math.abs(vy) > FLICK_VELOCITY;
         const flick = isFlick ? Math.sign(-vy) : 0;
         const next = nearestDetent({ stops: st, height: h - d.last, from: i, flick });
+        // Куда шит ПОЕДЕТ — знаем уже здесь: если детент не сменился, состояние
+        // не обновится, и холст иначе остался бы там, куда его увёл палец.
+        live.current.onHeightLive?.(st[next] ?? 0, 'end');
         if (next !== i) cb && cb(next);
       } else if (d.mode === 'idle' && tapSettles(d)) {
         e.preventDefault(); // глушим эмулированный клик и переключаем
@@ -295,18 +307,14 @@ export function PeekSheet({
     else if (e.key === 'Enter' || e.key === ' ') go(index >= last ? 0 : index + 1);
   };
 
-  // Высоту сообщаем наверх ТОЛЬКО зафиксированную (не покадрово во время жеста):
-  // ею шелл считает закрытую площадь карты, а камера обязана ехать после осадки,
-  // а не драться с пальцем.
-  // ★ ВМЕСТЕ С ВЫСОТОЙ ОТДАЁМ ДЕТЕНТЫ И ФАКТ ЖЕСТА. Слоту карты нужна не эта
-  // высота, а две производные от неё (правило и замеры — `mapSlotPx`):
-  // пока идёт жест — самый большой размер карты, на осадке — не выше среднего
-  // детента. Считать это здесь нельзя (шит не знает про карту), а вычислять
-  // детенты заново на той стороне значит завести вторую копию `resolveDetents`.
-  const dragging = dragY != null;
-  useEffect(() => {
-    onHeightChange && onHeightChange(sheetH, { stops, dragging });
-  }, [sheetH, stops, dragging, onHeightChange]);
+  // ★ ДВА КАНАЛА, И ЭТО НЕ ДУБЛЬ. Наверх идёт ЗАФИКСИРОВАННАЯ высота детента
+  // (`onHeightChange`) — ею считается всё, что требует перекладки; и ЖИВАЯ,
+  // кадр в кадр (`onHeightLive`) — её единственный читатель двигает холст
+  // `transform`-ом, то есть не платит ни перекладкой, ни ресайзом. Слить их в
+  // один канал значит либо потерять плавность, либо перекладывать список на
+  // каждом кадре жеста.
+
+  useEffect(() => { onHeightChange && onHeightChange(sheetH); }, [sheetH, onHeightChange]);
 
   const style = {
     '--sheet-y': (dragY ?? restY) + 'px',

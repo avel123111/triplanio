@@ -106,7 +106,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  * пометить его обязательным значило бы уронить их в тот момент, когда они
  * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
  *
- * @param {{ camera?: any, slotPx?: number, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ * @param {{ camera?: any, fitInsets?: any, slotPx?: number, visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
  *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
  *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
  *           mapControls?: string[], initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
@@ -120,6 +120,8 @@ export default function MapView({
   // Канвас при этом во всю площадь: карта видна ПОД виджетом, а кадр уходит в
   // свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   camera = null,
+  // «Во что вписываем» — отдельно от «чем сдвигаем камеру» (`lib/mapShellInsets.js`).
+  fitInsets = null,
   // Высота слота карты: ею шит режет свободное окно по ВЕРТИКАЛИ. На телефоне
   // это ЕДИНСТВЕННЫЙ сигнал, что окно поехало, — отступы камеры там всегда
   // нулевые, и без него подстройка под новый размер на телефоне не случилась бы
@@ -258,7 +260,7 @@ export default function MapView({
   // зум, и центр, хотя маршрут не менялся. Автофокус остался ровно один: фит по
   // `visitsSignature` ниже. Механика — в `lib/map/useMapInsets.js`.
   // ═════════════════════════════════════════════════════════════════════════
-  useMapInsets(mapRef, { ready, insets: camera, slotPx, focusing: Array.isArray(focus) && focus.length > 0 });
+  useMapInsets(mapRef, { ready, insets: camera, fitInsets, slotPx, focusing: Array.isArray(focus) && focus.length > 0 });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
   useEffect(() => { fittedSigRef.current = ''; }, []);

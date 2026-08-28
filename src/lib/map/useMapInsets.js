@@ -1,6 +1,6 @@
 // @ts-check
 import { useEffect, useRef } from 'react';
-import { NO_INSETS, canFrame, getMapInsets, setMapInsets } from './insets';
+import { NO_INSETS, canFrame, getFitInsets, getMapInsets, setMapInsets } from './insets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 
 /**
@@ -44,18 +44,21 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  * @param {{
  *   ready: boolean,
  *   insets: any,
+ *   fitInsets?: any,
  *   slotPx?: number,
  *   focusing?: boolean,
  *   onReframe?: (map: any) => boolean | void,
  * }} p
  */
-export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = false, onReframe = null }) {
+export function useMapInsets(mapRef, { ready, insets, fitInsets = null, slotPx = 0, focusing = false, onReframe = null }) {
   // ★ КЛЮЧ — ВСЁ СВОБОДНОЕ ОКНО, А НЕ ТОЛЬКО ОТСТУПЫ КАМЕРЫ. Свободное окно
   // меняют ДВЕ вещи, по одной на ось: ширину — отступ камеры (панель), высоту —
   // размер СЛОТА (шит). Слот нужен здесь ради `onReframe`: на телефоне отступы
   // камеры всегда нулевые, и по ним одним пустой глобус не узнал бы, что холст
   // стал другого размера. Экран без `onReframe` слот и не передаёт.
-  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}|${slotPx}`;
+  const f = fitInsets || insets;
+  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}`
+    + `|${f?.top || 0}|${f?.right || 0}|${f?.bottom || 0}|${f?.left || 0}|${slotPx}`;
   const seenRef = useRef(false);
   // ★ СОБСТВЕННАЯ ССЫЛКА НА ИНСТАНС, И ЭТО НЕ ДУБЛЬ. `useMapSurface` обнуляет
   // свой `mapRef` в СВОЁМ cleanup, а объявлен он раньше — React зовёт cleanup'ы
@@ -80,7 +83,7 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
     const map = mapRef.current;
     if (!map || !ready) return undefined;
     liveRef.current = map;
-    setMapInsets(map, insets);
+    setMapInsets(map, insets, fitInsets || insets);
     if (!seenRef.current) {
       seenRef.current = true;
       try { map.easeTo({ padding: getMapInsets(map), duration: 0 }); } catch { /* ignore */ }
@@ -127,7 +130,7 @@ export function useMapInsets(mapRef, { ready, insets, slotPx = 0, focusing = fal
       // обязаны считаться от вида, который пользователь видит.
       if (hold) { try { m.jumpTo({ center: hold }); } catch { /* ignore */ } }
       const el = m.getContainer?.();
-      if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(m))) return;
+      if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getFitInsets(m))) return;
       // Цель, размер которой считается от холста, обслуживает себя сама.
       if (reframeRef.current?.(m)) return;
       // Иначе доезжает ТОЛЬКО отступ — тем же временем и той же кривой, что и

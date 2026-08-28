@@ -5,7 +5,7 @@ import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { mapShellInsets, mapSlotPx, slotChangeDelay } from '@/lib/mapShellInsets';
+import { mapShellInsets, slotChangeDelay } from '@/lib/mapShellInsets';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
 
@@ -123,9 +123,7 @@ export function MapShell({
   // обновлятель `setState` обязан быть чистым — React вправе позвать его
   // повторно, и таймер завёлся бы дважды.
   const appliedRef = useRef(0);
-  const applySheetPx = useCallback((px, meta) => {
-    // Шит отдаёт СВОЮ высоту, слоту нужна другая — правило и замеры в `mapSlotPx`.
-    const next = mapSlotPx({ sheetPx: px, stops: meta?.stops, dragging: meta?.dragging });
+  const applySheetPx = useCallback((next) => {
     const prev = appliedRef.current;
     if (next === prev) return;
     clearTimeout(applyTimer.current);
@@ -138,6 +136,18 @@ export function MapShell({
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
   // число разъехалось бы с ней на первой же правке раскладки.
+  // Живой сдвиг холста — мимо React (разбор у пропа `onHeightLive` шита).
+  // Пока идёт жест, темп нулевой: холст уже там, где палец. На осадке темп
+  // возвращается, и остаток пути доезжает той же кривой, что и шит.
+  const onSheetLive = useCallback((px, phase) => {
+    const root = rootRef.current;
+    if (!root) return;
+    root.style.setProperty('--surface-settle', phase === 'end' ? `${SURFACE_SETTLE_MS}ms` : '0ms');
+    const shift = Math.round(Math.max(0, px) / 2);
+    root.style.setProperty('--mapshell-shift', `${shift}px`);
+    root.style.setProperty('--mapshell-attrib', `${shift + 10}px`);
+  }, []);
+
   const measurePanel = useCallback(() => {
     const root = rootRef.current, el = panelRef.current;
     if (!root || !el) { setPanelPx(0); return; }
@@ -190,6 +200,16 @@ export function MapShell({
   // лежащим на нём. Прибавь эту величину — и отступ снова считается от шита.
   const rootStyle = useMemo(() => ({
     '--mapshell-bottom': `${box.slotBottom}px`,
+    // ★ СКОЛЬКО ХОЛСТ УЕЗЖАЕТ ВВЕРХ. Половина закрытой шитом высоты: тогда центр
+    // ХОЛСТА (а к нему пришпилен вид) встаёт ровно в центр СВОБОДНОГО окна, а
+    // низ холста остаётся под шитом — полосе фона взяться неоткуда. Размер
+    // холста при этом не меняется ВООБЩЕ, а только он и двигает шар.
+    '--mapshell-shift': `${Math.round(sheetPx / 2)}px`,
+    // Где обязана стоять атрибуция mapbox: она лежит на дне КАНВАСА, а канвас
+    // уехал вверх — поднимаем на ту же величину плюс воздух. Отдельной
+    // переменной, а не `calc` у читателя: вне шелла её нет, и правило там
+    // вырождается в прежнее положение.
+    '--mapshell-attrib': `${Math.round(sheetPx / 2) + 10}px`,
     '--mapshell-under': `${box.slotUnder}px`,
     '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
     '--surface-ease': SURFACE_EASE_CSS,
@@ -197,7 +217,7 @@ export function MapShell({
 
   return (
     <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={rootStyle}>
-      <div className="mapshell__map">{typeof map === 'function' ? map(box.camera, box.slotBottom) : map}</div>
+      <div className="mapshell__map">{typeof map === 'function' ? map(box.camera, box.slotBottom, box.fit) : map}</div>
 
       {panel && (isPhone ? (
         <PeekSheet
@@ -205,6 +225,7 @@ export function MapShell({
           detent={detent}
           onDetentChange={onDetentChange}
           onHeightChange={applySheetPx}
+          onHeightLive={onSheetLive}
           header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
           footer={panelFooter}
           label={panelLabel}
