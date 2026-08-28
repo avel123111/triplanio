@@ -3419,7 +3419,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* allday — плоская плашка события на весь день */
 .evchip--allday { padding: 3px 8px; border-radius: var(--r-xs); border: none; cursor: pointer; text-align: left; background: var(--surface-2); color: var(--ink-2); overflow: hidden; }
 /* block — позиционируемая timed-карточка в тайм-гриде недели */
-.evchip--block { position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden; padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; text-align: left; background: var(--surface); color: var(--ink-2); box-shadow: var(--sh-1); transition: filter .14s, transform .1s var(--ease-spring); }   /* design-token-exempt: 1px/6px — радиус 6 карточки события (апрув Pavel), 1px gap */
+/* Тени у блока НЕТ. В тайм-гриде блоки стоят вплотную (час к часу), и тень
+   каждого ложилась на соседа — сетка читалась стопкой приподнятых карточек, а
+   не занятым временем. Границу объекта держит хайрлайн-рамка в СВОЁМ цвете
+   семейства (currentColor = `--ev-*-ink`): на плотной сетке нейтральная --line
+   спорила бы с заливкой, а тон семейства обводит блок, не добавляя второго
+   цвета. Радиус — канон --r-xs (4px): своей ступени 3px в шкале нет, а заводить
+   её ради одного объекта = новый токен (правило #6).
+   visual-diff-exempt: .evchip--block box-shadow — тень снята: блоки тайм-грида стоят вплотную, тень соседа ложилась на соседа (правка Pavel «убрать тень»)
+   visual-diff-exempt: .evchip--block border-radius — 6px → канон --r-xs (4px), правка Pavel «радиус до 3px», ближайшая ступень шкалы
+   visual-diff-exempt: .evchip--block border — добавлена хайрлайн-рамка в цвете семейства (правка Pavel «тонкий лёгкий бордер») */
+.evchip--block { position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden; padding: 4px 8px; border-radius: var(--r-xs); border: 1px solid color-mix(in srgb, currentColor 20%, transparent); cursor: pointer; text-align: left; background: var(--surface); color: var(--ink-2); transition: filter .14s, transform .1s var(--ease-spring); }   /* design-token-exempt: 1px gap/рамка — хайрлайн вне шкалы отступов */
 .evchip--block:hover { filter: brightness(1.04); }
 .evchip--block:active { transform: scale(.98); }
 .evchip--block .evchip__tm { color: var(--muted); }

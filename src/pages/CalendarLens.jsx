@@ -33,6 +33,7 @@ import { Row, Col } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { isTransitVisit } from '@/lib/trip-cities';
 import { cityBands, bandStyle } from '@/lib/calendar-bands';
+import { eventLanes } from '@/lib/calendar-lanes';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
 import './CalendarLens.css';
@@ -140,6 +141,13 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
 
 // ─── WeekGrid — columns + full-day time axis ──────────────────────────────────
 const HOUR_H = 44;
+/** Своей длительности у события в потоке нет — блок рисуется слотом в час, и
+ *  ровно этот же слот считается пересечением (`eventLanes`). */
+const SLOT_MIN = 60;
+/** Зазор между блоками. Событие «впритык» (конец одного = начало другого) без
+ *  него сливается с соседом в один прямоугольник: границы блоков совпадают
+ *  ровно, и два часа читаются как один. Тот же зазор, что по горизонтали. */
+const EV_GAP = 2;
 
 function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHour, weekKey, onOpenEvent, onOpenCity, t }) {
   const scrollRef = useRef(/** @type {HTMLDivElement | null} */(null));
@@ -248,9 +256,9 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
                   <EventChip key={ii} variant="block" type={it.ev.type} time={it.ev.time} title={it.ev.title}
                     className="t-tiny"
                     style={{
-                      top: it.top, height: Math.max(it.height, 30),
-                      left: `calc(${(it.lane / it.lanes) * 100}% + 2px)`,
-                      width: `calc(${(1 / it.lanes) * 100}% - 4px)`,
+                      top: it.top, height: it.height - EV_GAP,
+                      left: `calc(${(it.lane / it.lanes) * 100}% + ${EV_GAP}px)`,
+                      width: `calc(${(1 / it.lanes) * 100}% - ${EV_GAP * 2}px)`,
                     }}
                     onClick={() => onOpenEvent?.(it.ev)} ariaLabel={`${it.ev.time} ${it.ev.title}`} />
                 ))}
@@ -419,16 +427,17 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
 
     days.forEach(day => {
       day.timed.sort((a, b) => a.startMin - b.startMin);
-      const laneEnds = [];
-      day.timed.forEach(it => {
-        const top = (it.startMin / 60 - startHour) * HOUR_H;
-        const endMin = it.startMin + 60;
-        let lane = laneEnds.findIndex(end => end <= it.startMin);
-        if (lane < 0) { lane = laneEnds.length; laneEnds.push(endMin); } else laneEnds[lane] = endMin;
-        it.top = top; it.height = HOUR_H; it.lane = lane;
+      // Ширину блока решает КЛАСТЕР пересекающихся событий, а не день целиком
+      // (модель — `lib/calendar-lanes.js`, под тестом): пара на 14:00/14:10
+      // делит колонку пополам, а утренний перелёт рядом с ними остаётся во всю
+      // ширину. Прежняя редакция раздавала число дорожек всему дню сразу.
+      const packed = eventLanes(day.timed.map(it => it.startMin), SLOT_MIN);
+      day.timed.forEach((it, i) => {
+        it.top = (it.startMin / 60 - startHour) * HOUR_H;
+        it.height = HOUR_H;
+        it.lane = packed[i].lane;
+        it.lanes = packed[i].lanes;
       });
-      const lanes = Math.max(1, day.timed.reduce((mx, it) => Math.max(mx, it.lane + 1), 1));
-      day.timed.forEach(it => { it.lanes = lanes; });
     });
 
     return { days, hours, lines, gridH, startHour, hasAllDay: days.some(d => d.allDay.length > 0), weekStart, weekKey: naiveDayKey(weekStart.toISO()), scrollToHour: 8 };
