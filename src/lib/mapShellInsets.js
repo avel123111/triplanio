@@ -14,8 +14,15 @@
  * холста), а каждый кадр ресайза — переаллокация GL-буфера. Тянет «подогнать
  * холст под свободное окно» — значит правило ниже прочитано не до конца.
  *
- * @param {{ phone?: boolean, sheetPx?: number, capPx?: number, panelPx?: number, overlayOpen?: boolean, collapsed?: boolean }} [p]
- *   `capPx` — высота ВТОРОГО СВЕРХУ детента (её знает шит). Выше неё сдвигать
+ * @param {{ phone?: boolean, coveredPx?: number, capPx?: number, panelPx?: number, overlayOpen?: boolean, collapsed?: boolean }} [p]
+ *   `coveredPx` — СКОЛЬКО СВОЕЙ ВЫСОТЫ ШЕЛЛ ОТДАЛ ШИТУ, а не «какой шит высоты».
+ *   Числа совпадают ровно тогда, когда низ шита совпадает с низом шелла; шит
+ *   стоит по ВЬЮПОРТУ, шелл — коробка в раскладке, и на мобильном браузере их
+ *   низы расходятся (адресная строка, `dvh` против `visualViewport`). Замер:
+ *   шелл короче вьюпорта на 160 px — и две точки маршрута из трёх ушли выше
+ *   верхней кромки окна. Перевод «кромка шита → закрытая высота» делает шелл,
+ *   он единственный знает, где его собственный низ.
+ *   `capPx` — та же величина на ВТОРОМ СВЕРХУ детенте. Выше неё сдвигать
  *   холст незачем: верхний детент закрывает экран целиком, и всё, что мы там
  *   двигаем, никто не видит — а движение при этом видно на подходе к нему.
  *   `overlayOpen` — открыт ли слой города/события. Он занимает ТУ ЖЕ левую
@@ -24,7 +31,7 @@
  *   слой. Чтобы сдвиг под слой не прерывал focus-камеру, отступ применяется
  *   мгновенно на стороне `useMapInsets` (см. там про `focusing`).
  *
- * `slotBottom` — ГДЕ КОНЧАЕТСЯ СВОБОДНОЕ ОКНО СНИЗУ, то есть высота шита. Её
+ * `slotBottom` — ГДЕ КОНЧАЕТСЯ СВОБОДНОЕ ОКНО СНИЗУ, то есть закрытая высота. Её
  * читает то, что экран кладёт ПОВЕРХ карты (пилюля планировщика): холст теперь
  * во всю высоту шелла и уходит ПОД шит целиком, поэтому отступ от собственного
  * низа у такого элемента приходится на площадь под шитом — прибавь эту
@@ -46,7 +53,7 @@
  *
  * @returns {{ slotBottom: number, camera: any, fit: any, shift: number }}
  */
-export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx = 0, overlayOpen = false, collapsed = false } = {}) {
+export function mapShellInsets({ phone = false, coveredPx = 0, capPx = 0, panelPx = 0, overlayOpen = false, collapsed = false } = {}) {
   // Из DOM приходят 0, NaN и отрицательные (первый кадр, размонтирование) —
   // такое обязано выродиться в «карта во всю площадь», а не в отрицательный слот.
   const px = (v) => (Number.isFinite(v) && v > 0 ? Math.round(/** @type {number} */ (v)) : 0);
@@ -60,10 +67,10 @@ export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx 
     // переходе в десктоп (шит размонтирован, последнее значение осталось) — и
     // холст держался сдвинутым до перезагрузки страницы. Правило одно, ветка
     // «телефон» одна, десктоп получает ноль по построению.
-    const capped = px(capPx) > 0 ? Math.min(px(sheetPx), px(capPx)) : px(sheetPx);
+    const capped = px(capPx) > 0 ? Math.min(px(coveredPx), px(capPx)) : px(coveredPx);
     const half = Math.round(capped / 2);
     return {
-      slotBottom: px(sheetPx),
+      slotBottom: px(coveredPx),
       camera: none,
       fit: { ...none, top: half, bottom: half },
       shift: half,
@@ -76,6 +83,31 @@ export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx 
   // кадра это одно и то же.
   const box = { ...none, left: leftClosed ? px(panelPx) : 0 };
   return { slotBottom: 0, camera: box, fit: box, shift: 0 };
+}
+
+/**
+ * СКОЛЬКО СВОЕЙ ВЫСОТЫ КОРОБКА ОТДАЛА ШИТУ — по низу коробки и верхней кромке
+ * шита, оба в координатах вьюпорта.
+ *
+ * ★ Это НЕ «высота шита», и подмена одного другим — вся суть дефекта. Шит стоит
+ * по ВЬЮПОРТУ (портал в `<body>`, `position: fixed`), коробка живёт в РАСКЛАДКЕ:
+ * их низы совпадают не всегда. На мобильном браузере расхождение штатное —
+ * адресная строка, `dvh` против `visualViewport`. Замер на стенде: коробка
+ * короче вьюпорта на 160 px, «высота шита» врёт на те же 160, холст уезжает
+ * вверх на 80 лишних, и две точки маршрута из трёх оказываются выше верхней
+ * кромки окна. С этим правилом пины стоят на одном месте при хвосте 0/60/110/160.
+ *
+ * Отрицательное (шит ниже коробки целиком) вырождается в 0: закрыть меньше
+ * нуля нельзя.
+ *
+ * @param {number} boxBottomPx низ коробки (`getBoundingClientRect().bottom`)
+ * @param {number} sheetTopPx верхняя кромка шита
+ * @returns {number}
+ */
+export function coveredHeight(boxBottomPx, sheetTopPx) {
+  const a = Number.isFinite(boxBottomPx) ? boxBottomPx : 0;
+  const b = Number.isFinite(sheetTopPx) ? sheetTopPx : 0;
+  return Math.max(0, Math.round(a - b));
 }
 
 export default mapShellInsets;

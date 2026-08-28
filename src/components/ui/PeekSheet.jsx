@@ -93,8 +93,8 @@ function viewportTop() {
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
  *   detents?: number[],
- *   onHeightChange?: (px: number, capPx: number) => void,
- *   onHeightLive?: (px: number, phase: 'move' | 'end', capPx: number) => void,
+ *   onEdge?: (e: { topPx: number, capTopPx: number }) => void,
+ *   onEdgeLive?: (e: { topPx: number, capTopPx: number, phase: 'move' | 'end' }) => void,
  *   label: string,
  *   className?: string,
  * }} p
@@ -106,14 +106,22 @@ export function PeekSheet({
   detent = 0,
   onDetentChange,
   detents = [0.15, 1],
-  onHeightChange,
-  // ★ ВЫСОТА ВО ВРЕМЯ ЖЕСТА, КАДР В КАДР. `onHeightChange` отдаёт только
-  // ЗАФИКСИРОВАННУЮ высоту детента — этого хватает списку, но не хватает карте:
-  // пока палец ведёт шит, свободное окно меняется каждый кадр. Канал ОТДЕЛЬНЫЙ
-  // и идёт МИМО React: состояние на кадр жеста стоило бы перекладки всего
-  // содержимого шита. Читатель у него один — CSS-переменная сдвига холста, а
-  // сдвиг это `transform`: ни ресайза, ни команд камере.
-  onHeightLive,
+  // ★ ШИТ СООБЩАЕТ, ГДЕ ЕГО ВЕРХНЯЯ КРОМКА, А НЕ КАКОЙ ОН ВЫСОТЫ. Разница не
+  // косметическая: высота отвечает на вопрос «какой я», а вызывателю нужен
+  // ответ на «сколько МОЕГО ты закрыл», и эти два числа совпадают ровно тогда,
+  // когда низ шита совпадает с низом вызывателя. Шит — портал в <body> и стоит
+  // по ВЬЮПОРТУ; вызыватель — коробка в раскладке. На мобильном браузере их
+  // низы расходятся (адресная строка, `dvh` против `visualViewport`), и тогда
+  // «высота» врёт на эту разницу — молча, без единой ошибки.
+  // `capTopPx` — кромка на ВТОРОМ СВЕРХУ детенте, в тех же координатах.
+  onEdge,
+  // ★ ЖИВОЙ КАНАЛ, КАДР В КАДР. `onEdge` отдаёт только ЗАФИКСИРОВАННУЮ кромку —
+  // этого хватает списку, но не хватает карте: пока палец ведёт шит, свободное
+  // окно меняется каждый кадр. Канал ОТДЕЛЬНЫЙ и идёт МИМО React: состояние на
+  // кадр жеста стоило бы перекладки всего содержимого шита. Читатель у него
+  // один — CSS-переменная сдвига холста, а сдвиг это `transform`: ни ресайза,
+  // ни команд камере.
+  onEdgeLive,
   label,
   className = '',
 }) {
@@ -155,11 +163,14 @@ export function PeekSheet({
   const keyboard = useKeyboardOpen();
   const index = keyboard ? stops.length - 1 : Math.max(0, Math.min(stops.length - 1, detent));
   const sheetH = stops[index] ?? 0;
-  const restY = Math.max(0, vh - sheetH) + vTop;
+  // Кромка = верх шита в координатах вьюпорта. Ровно это значение уезжает в
+  // `--sheet-y`, поэтому «где кромка» и «как нарисовано» — одно число, а не два.
+  const topOf = (h) => Math.max(0, vh - (h || 0)) + vTop;
+  const restY = topOf(sheetH);
 
   // Свежие пропы для однажды навешанных нативных слушателей.
   const live = useRef();
-  live.current = { index, stops, vh, onDetentChange, onHeightLive, capOf };
+  live.current = { index, stops, vh, vTop, onDetentChange, onEdgeLive, capOf, topOf };
 
   // ★ ДОК СЧИТАЕТСЯ РОВНО ОДИН РАЗ. Полоса шапки — это ТОЛЬКО грип + header;
   // нижний нав и домашняя полоска сюда НЕ входят. Прошлая редакция добавляла их
@@ -262,7 +273,7 @@ export function PeekSheet({
       const next = Math.max(d.min, Math.min(d.max, d.base + dy));
       d.last = next;
       setDragY(next);
-      live.current.onHeightLive?.(Math.max(0, live.current.vh - next), 'move', live.current.capOf(live.current.stops));
+      live.current.onEdgeLive?.({ topPx: next, capTopPx: live.current.topOf(live.current.capOf(live.current.stops)), phase: 'move' });
     };
     const onEnd = (e) => {
       const d = drag.current; drag.current = null;
@@ -280,7 +291,7 @@ export function PeekSheet({
         const next = nearestDetent({ stops: st, height: h - d.last, from: i, flick });
         // Куда шит ПОЕДЕТ — знаем уже здесь: если детент не сменился, состояние
         // не обновится, и холст иначе остался бы там, куда его увёл палец.
-        live.current.onHeightLive?.(st[next] ?? 0, 'end', live.current.capOf(st));
+        live.current.onEdgeLive?.({ topPx: live.current.topOf(st[next] ?? 0), capTopPx: live.current.topOf(live.current.capOf(st)), phase: 'end' });
         if (next !== i) cb && cb(next);
       } else if (d.mode === 'idle' && tapSettles(d)) {
         e.preventDefault(); // глушим эмулированный клик и переключаем
@@ -312,14 +323,14 @@ export function PeekSheet({
     else if (e.key === 'Enter' || e.key === ' ') go(index >= last ? 0 : index + 1);
   };
 
-  // ★ ДВА КАНАЛА, И ЭТО НЕ ДУБЛЬ. Наверх идёт ЗАФИКСИРОВАННАЯ высота детента
-  // (`onHeightChange`) — ею считается всё, что требует перекладки; и ЖИВАЯ,
-  // кадр в кадр (`onHeightLive`) — её единственный читатель двигает холст
-  // `transform`-ом, то есть не платит ни перекладкой, ни ресайзом. Слить их в
-  // один канал значит либо потерять плавность, либо перекладывать список на
-  // каждом кадре жеста.
+  // ★ ДВА КАНАЛА, И ЭТО НЕ ДУБЛЬ. Наверх идёт ЗАФИКСИРОВАННАЯ кромка (`onEdge`) —
+  // ею считается всё, что требует перекладки; и ЖИВАЯ, кадр в кадр
+  // (`onEdgeLive`) — её единственный читатель двигает холст `transform`-ом, то
+  // есть не платит ни перекладкой, ни ресайзом. Слить их в один канал значит
+  // либо потерять плавность, либо перекладывать список на каждом кадре жеста.
 
-  useEffect(() => { onHeightChange && onHeightChange(sheetH, capPx); }, [sheetH, capPx, onHeightChange]);
+  const capTopPx = topOf(capPx);
+  useEffect(() => { onEdge && onEdge({ topPx: restY, capTopPx }); }, [restY, capTopPx, onEdge]);
 
   const style = {
     '--sheet-y': (dragY ?? restY) + 'px',

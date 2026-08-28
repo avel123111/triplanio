@@ -5,7 +5,7 @@ import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { mapShellInsets } from '@/lib/mapShellInsets';
+import { coveredHeight, mapShellInsets } from '@/lib/mapShellInsets';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 
 /**
@@ -114,9 +114,25 @@ export function MapShell({
   const isPhone = useIsPhone();
   const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
-  const [sheetPx, setSheetPx] = useState(0);
+  const [coveredPx, setCoveredPx] = useState(0);
   const [capPx, setCapPx] = useState(0);
   const [panelPx, setPanelPx] = useState(0);
+  // ★ НИЗ СВОЕЙ КОРОБКИ — ЗАМЕР, А НЕ «НИЗ ЭКРАНА». Шит стоит по ВЬЮПОРТУ
+  // (портал в <body>, `position: fixed`), а закрывает он ШЕЛЛ. Пока их низы
+  // совпадают, «высота шита» и «сколько закрыто» — одно число; на мобильном
+  // браузере они расходятся (адресная строка, `dvh` против `visualViewport`), и
+  // тогда шелл считает закрытым не то, что закрыто: холст уезжает не на столько,
+  // и кадр вписывается не в ту полосу — точки маршрута уходят под шапку и под
+  // шит одновременно. Замер на стенде (шелл короче вьюпорта на 160 px): две
+  // точки из трёх ушли выше верхней кромки окна.
+  // Читается лениво и обновляется на осадке и ресайзе: за кадр жеста layout не
+  // трогаем, а меняется эта величина только вместе с раскладкой.
+  const bottomRef = useRef(0);
+  const measureBottom = useCallback(() => {
+    const r = rootRef.current?.getBoundingClientRect();
+    if (r) bottomRef.current = r.bottom;
+    return bottomRef.current;
+  }, []);
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -124,7 +140,13 @@ export function MapShell({
   // не режется — он во всю площадь и уезжает целиком, его низ всегда под шитом,
   // полосе взяться неоткуда. Задержка вместе с её правилом снята: механизм без
   // причины следующий читатель принял бы за работающий.
-  const applySheetPx = useCallback((next, cap) => { setCapPx(cap || 0); setSheetPx(next); }, []);
+  // Кромки шита → «сколько закрыто у МЕНЯ» (`coveredHeight` — правило чистое и
+  // закрыто тестами). Перевод один на оба канала.
+  const onSheetEdge = useCallback(({ topPx, capTopPx }) => {
+    const bottom = measureBottom();
+    setCapPx(coveredHeight(bottom, capTopPx));
+    setCoveredPx(coveredHeight(bottom, topPx));
+  }, [measureBottom]);
 
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
@@ -132,13 +154,16 @@ export function MapShell({
   // Живой сдвиг холста — мимо React (разбор у пропа `onHeightLive` шита).
   // Пока идёт жест, темп нулевой: холст уже там, где палец. На осадке темп
   // возвращается, и остаток пути доезжает той же кривой, что и шит.
-  const onSheetLive = useCallback((px, phase, cap) => {
+  const onSheetLive = useCallback(({ topPx, capTopPx, phase }) => {
     const root = rootRef.current;
     if (!root) return;
     root.style.setProperty('--surface-settle', phase === 'end' ? `${SURFACE_SETTLE_MS}ms` : '0ms');
+    // Низ коробки берём ИЗ КЭША: за кадр жеста layout не трогаем. Он не менялся —
+    // двигается верхняя кромка шита, а не низ шелла.
+    const bottom = bottomRef.current;
     // Тем же правилом, что и на осадке: одна формула на оба пути, иначе они
     // разъедутся на первой же правке (`mapShellInsets`).
-    const { shift } = mapShellInsets({ phone: true, sheetPx: px, capPx: cap });
+    const { shift } = mapShellInsets({ phone: true, coveredPx: coveredHeight(bottom, topPx), capPx: coveredHeight(bottom, capTopPx) });
     root.style.setProperty('--mapshell-shift', `${shift}px`);
     root.style.setProperty('--mapshell-attrib', `${shift + ATTRIB_AIR}px`);
   }, []);
@@ -149,6 +174,12 @@ export function MapShell({
     const r = el.getBoundingClientRect(), b = root.getBoundingClientRect();
     setPanelPx(Math.max(0, Math.round(r.right - b.left)));
   }, []);
+
+  useLayoutEffect(() => {
+    measureBottom();
+    window.addEventListener('resize', measureBottom);
+    return () => window.removeEventListener('resize', measureBottom);
+  }, [measureBottom, isPhone]);
 
   useLayoutEffect(() => {
     if (isPhone) { setPanelPx(0); return undefined; }
@@ -167,8 +198,8 @@ export function MapShell({
   // уезжает `transform`-ом — её ширина не меняется, и «померить свёрнутую» дало
   // бы правильный ответ по случайности. Про свёрнутость знает правило.
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx, overlayOpen: overlayActive, collapsed }),
-    [isPhone, sheetPx, capPx, panelPx, overlayActive, collapsed],
+    () => mapShellInsets({ phone: isPhone, coveredPx, capPx, panelPx, overlayOpen: overlayActive, collapsed }),
+    [isPhone, coveredPx, capPx, panelPx, overlayActive, collapsed],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
@@ -213,8 +244,8 @@ export function MapShell({
           detents={detents}
           detent={detent}
           onDetentChange={onDetentChange}
-          onHeightChange={applySheetPx}
-          onHeightLive={onSheetLive}
+          onEdge={onSheetEdge}
+          onEdgeLive={onSheetLive}
           header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
           footer={panelFooter}
           label={panelLabel}
