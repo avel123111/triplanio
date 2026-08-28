@@ -20,6 +20,8 @@
   "cities_empty_desc": "Los gastos por ciudad aparecen tras el primer gasto con ciudad indicada",
   "color_label": "Color",
   "custom_short": "pers",
+  "delete_expense_desc": "Esta acción no se puede deshacer. El gasto desaparecerá del presupuesto del viaje y de los totales compartidos.",
+  "delete_expense_q": "¿Eliminar este gasto?",
   "deleting": "Eliminando…",
   "desc_ph": "Ej. «Cena en LX Factory»",
   "donut_total": "total",

@@ -334,7 +334,7 @@ function Pain() {
                 <div className="aw-browserbar" aria-hidden="true"><span className="wdots"><i /><i /><i /></span><span className="aw-url"><svg width="12" height="12"><use href="#i-lock" /></svg>{SHARE_URL}</span>{/* i18n-ignore: demo URL */}</div>
                 <div className="aw-phonebar" aria-hidden="true"><i /></div>
                 <div className="aw-head">
-                  <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
+                  <svg className="logo" viewBox="0 0 192 192" aria-hidden="true"><use href="#tl-logo" /></svg>
                   <div><b>{t('landing.aw.title')}</b><small>{t('landing.aw.dates')}</small></div>
                   <div className="avs">
                     <span style={{ background: 'var(--ice)', color: 'var(--brand-deep)' }}>M</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}
@@ -662,7 +662,7 @@ function Share() {
             </div>
             <div className="browser-body">
               <div className="bb-head">
-                <svg className="logo" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
+                <svg className="logo" viewBox="0 0 192 192" aria-hidden="true"><use href="#tl-logo" /></svg>
                 <div><b>{t('landing.sh.bT')}</b><small>{t('landing.sh.bS')}</small></div>
                 <span className="viewer">{t('landing.sh.viewer')}</span>
               </div>
@@ -755,7 +755,7 @@ function Collab() {
         <div className="rv-r">
           <div className="feed-card">
             <div className="feed-head">
-              <svg className="logo" width="30" height="30" viewBox="0 0 342 341" aria-hidden="true"><use href="#tl-logo" /></svg>
+              <svg className="logo" width="30" height="30" viewBox="0 0 192 192" aria-hidden="true"><use href="#tl-logo" /></svg>
               <div><b>{t('landing.col.tripT')}</b><small>{t('landing.col.tripS')}</small></div>
               <div className="avs">
                 <span className="av" aria-hidden="true" style={{ background: '#2173C8' }}>A</span>{/* inline-style-exempt: цвет аватара мокапа — как в макете (TRIP-460) */}

@@ -34,11 +34,15 @@ const AlertDialogContent = React.forwardRef(({ className, children, ...props }, 
 ))
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
 
-// Header — .dlg__body (title + description inside)
-const AlertDialogHeader = ({ className, ...props }) => (
-  <div className={cn("dlg__body", className)} {...props} />
-)
-AlertDialogHeader.displayName = "AlertDialogHeader"
+// ★ `AlertDialogHeader` УДАЛЁН. Он рисовал `.dlg__body` — то есть у окна
+// подтверждения ТЕЛО работало ШАПКОЙ: заголовок лежал в теле, а `.dlg__head` не
+// было вовсе. Пока у тела был крупный паддинг (20), это не бросалось в глаза;
+// после перевода тела на 6 заголовок оказался бы в 6 px от края карточки. Плюс
+// заголовок был голым `<h2>` и брал канон от ТЕГА, поэтому мимо него проходила
+// любая правка `.dlg__head h2` — confirm молча оставался на прежней типографике.
+// Теперь ConfirmDialog собирает ту же анатомию, что и все окна: `.dlg__head` с
+// заголовком + `.dlg__body` с описанием. Сам компонент-обёртка не нужен — его
+// телом был один className, а вызыватель ровно один.
 
 // Footer — .dlg__foot
 const AlertDialogFooter = ({ className, ...props }) => (
@@ -46,7 +50,8 @@ const AlertDialogFooter = ({ className, ...props }) => (
 )
 AlertDialogFooter.displayName = "AlertDialogFooter"
 
-// Title — renders as h2; styled by .dlg__body or .dlg--confirm h2
+// Title — renders as h2; внутри `.dlg__head` его типографику держит канон
+// `.dlg__head h2` (Subheading), общий со всеми остальными окнами.
 const AlertDialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Title
     ref={ref}
@@ -55,11 +60,14 @@ const AlertDialogTitle = React.forwardRef(({ className, ...props }, ref) => (
 ))
 AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName
 
+// Description — тон `muted`, а кегль приходит от тела окна (канон `.dlg__body`
+// = Support). Свой `t-body` снят: он перебивал канон обратно на 15 и делал из
+// окна лоскут. Инлайновый `marginTop: 6` тоже снят — отступ до заголовка держит
+// хром (12 у шапки + 6 у тела), а не соседний узел.
 const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
-    className={cn("muted t-body", className)}
-    style={{ marginTop: 6 }}
+    className={cn("muted", className)}
     {...props} />
 ))
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName
@@ -97,7 +105,6 @@ export {
   AlertDialogOverlay,
   AlertDialogTrigger,
   AlertDialogContent,
-  AlertDialogHeader,
   AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogDescription,

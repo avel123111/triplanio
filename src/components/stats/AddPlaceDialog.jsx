@@ -9,6 +9,7 @@ import { Dialog, Btn, Card, Field, useToast } from '@/design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import CitySearch from '@/components/cities/CitySearch';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 
 // Add / edit / delete a manual visit (user_custom_visits) — the write side of the
 // "My statistics" map. Backend (table + RLS by auth.uid() + the custom-point
@@ -91,6 +92,21 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     onOpenChange(false);
   };
 
+  const confirm = useConfirm();
+  // Место удалялось БЕЗ подтверждения — `danger`-кнопка била в шов напрямую.
+  // Спиннер держит кнопка подтверждения (`onConfirm` возвращает промис `remove`),
+  // поэтому у самой кнопки удаления своего `loading` больше нет. Локальный
+  // `deleting` остаётся, но ровно за одним: обе кнопки футера мьютит `saving`, а
+  // `deleting` отличает «идёт удаление» от «идёт сохранение», чтобы спиннер не
+  // зажигался на «Сохранить» во время удаления (`loading={saving && !deleting}`).
+  const askDelete = () => confirm({
+    title: t('stats.delete_place_q', { name: editing?.city_name || '' }),
+    description: t('stats.delete_place_desc'),
+    confirmLabel: t('common.delete'),
+    variant: 'destructive',
+    onConfirm: remove,
+  });
+
   const remove = async () => {
     if (!isEdit) return;
     setSaving(true); setDeleting(true); setErr('');
@@ -112,7 +128,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const foot = (
     <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
       {isEdit && (
-        <Btn variant="danger" onClick={remove} loading={deleting} disabled={saving} style={{ marginRight: 'auto' }}>
+        <Btn variant="danger" onClick={askDelete} disabled={saving} style={{ marginRight: 'auto' }}>
           {t('stats.delete_btn')}
         </Btn>
       )}

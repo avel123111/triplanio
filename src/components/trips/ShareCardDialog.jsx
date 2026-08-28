@@ -359,7 +359,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
         <Btn variant="secondary" disabled={!ready} onClick={() => setEditorOpen(true)}>
           {t('share.edit_map')}
         </Btn>
-        {!isPhone && <div className="muted t-body">{t('share.menu_card_hint')}</div>}
+        {!isPhone && <div className="muted">{t('share.menu_card_hint')}</div>}
         {uploadError && <p className="tcp__err sc-note">{uploadError}</p>}
         {buildError && <div className="sc-note"><Severity level="error">{buildError}</Severity></div>}
       </div>

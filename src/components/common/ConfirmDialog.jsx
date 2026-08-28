@@ -1,5 +1,5 @@
 import React from 'react';
-import { Btn, AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel, Sheet } from '@/design/index';
+import { Btn, AlertDialog, AlertDialogContent, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel, Sheet } from '@/design/index';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
 
@@ -43,14 +43,22 @@ export default function ConfirmDialog({
       // accessible name still rides `titleText` (sr-only Drawer.Title).
       <Sheet open={open} onOpenChange={onOpenChange} title={content ? undefined : title} titleText={title || finalConfirmLabel}>
         {content || (description && (
+          // Кегль тот же, что у десктопного подтверждения (канон Support). На
+          // десктопе его даёт `.dlg__body`, здесь тело — общий `.sheet-b` всех
+          // шитов, у него канона нет, поэтому строка называет свой сама.
           <p
-            className="muted t-body"
+            className="muted t-support"
             style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
           >
             {description}
           </p>
         ))}
-        <div className="dlg__foot" style={{ border: 'none', background: 'none', padding: '14px 0 4px' }}>
+        {/* Инлайн ужался до того, ЧЕГО НЕТ В КАНОНЕ: рамка и заливка теперь и так
+            сняты у `.dlg__foot` (одна поверхность на окно), поэтому их дубли
+            здесь удалены. Остался горизонтальный ноль — футер лежит внутри
+            `.sheet-b`, у которого свой боковой отступ, и 22 px канона дали бы
+            двойной. Вертикаль — тот же ритм 12. */}
+        <div className="dlg__foot" style={{ padding: '12px 0 4px' }}>
           {!singleButton && (
             <Btn variant="secondary" disabled={busy} style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenChange?.(false)}>
               {finalCancelLabel}
@@ -85,14 +93,19 @@ export default function ConfirmDialog({
             {content}
           </>
         ) : (
-          <AlertDialogHeader>
-            {title && <AlertDialogTitle>{title}</AlertDialogTitle>}
+          // Та же анатомия, что у любого окна: заголовок в `.dlg__head`, текст в
+          // `.dlg__body`. Крестика у подтверждения нет намеренно — выход из него
+          // это ответ (кнопка / Esc / подложка), а не «закрыть и забыть».
+          <>
+            {title && <div className="dlg__head"><AlertDialogTitle>{title}</AlertDialogTitle></div>}
             {description && (
-              <AlertDialogDescription className="whitespace-pre-wrap break-words">
-                {description}
-              </AlertDialogDescription>
+              <div className="dlg__body">
+                <AlertDialogDescription className="whitespace-pre-wrap break-words">
+                  {description}
+                </AlertDialogDescription>
+              </div>
             )}
-          </AlertDialogHeader>
+          </>
         )}
         <AlertDialogFooter>
           {!singleButton && <AlertDialogCancel disabled={busy}>{finalCancelLabel}</AlertDialogCancel>}

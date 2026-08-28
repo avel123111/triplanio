@@ -127,6 +127,12 @@ export const KIT_OBJECTS = [
   { id: 'col', family: 'col', group: 'layout', css: true },
   { id: 'grid', family: 'grid', group: 'layout', css: true },
   // ── Секции-замер (читаются из живых стилей приборно) ─────────────────────
+  // Экран запуска (TRIP-478). `family: null` — как у замеров: у заставки нет
+  // оси обличий, это ОДИН цельный объект, а не семья с вариантами; сверять
+  // тесту дрейфа тут нечего. Витрина рисует её из тех же `src/design/splash.*`,
+  // что подставляются в документ на сборке, — увидеть заставку можно, не
+  // перезагружая приложение и не читая исходник.
+  { id: 'splash', family: null, group: 'components', special: 'splash' },
   { id: 'spacing', family: null, group: 'scale', special: 'spacing' },
   { id: 'typography', family: null, group: 'type', special: 'typography' },
   { id: 'tokens', family: null, group: 'tokens', special: 'tokens' },
