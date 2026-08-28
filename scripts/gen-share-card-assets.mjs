@@ -12,6 +12,7 @@
  *   1 Geologica cyrillic-ext (woff2)
  *   2 Geologica latin (woff2)
  *   3 Geologica latin-ext (woff2)
+ *   4 Geologica arrow (woff2, один глиф U+2192)
  * Caveat (рукописное «My trip!»/«Scan to explore»), Montserrat/Rubik и фоновый
  * jpeg выпилены: дизайн v34 — единственный шрифт Geologica, фон приходит
  * подложкой с фронта.
@@ -33,9 +34,13 @@ const geoCyr = b64(resolve(FONT_DIR, 'geologica-cyrillic.woff2'));
 const geoCyrExt = b64(resolve(FONT_DIR, 'geologica-cyrillic-ext.woff2'));
 const geoLat = b64(resolve(FONT_DIR, 'geologica-latin.woff2'));
 const geoLatExt = b64(resolve(FONT_DIR, 'geologica-latin-ext.woff2'));
+// Пятый сабсет — один глиф U+2192: у Google его нет ни в одном стандартном
+// сабсете, а без него стрелку маршрута приходилось рисовать фигурой (и строка
+// городов не была одной строкой). Подробности — в src/design/fonts.css.
+const geoArrow = b64(resolve(FONT_DIR, 'geologica-arrow.woff2'));
 const logoB64 = b64(LOGO);
 
-const fonts = [geoCyr, geoCyrExt, geoLat, geoLatExt];
+const fonts = [geoCyr, geoCyrExt, geoLat, geoLatExt, geoArrow];
 
 const out = `// AUTO-GENERATED (TRIP-443) — base64-встроенные ассеты share-карточки.
 // Встроены (не с диска, не с CDN), потому что Supabase edge НЕ отдаёт бандлённые
@@ -45,6 +50,7 @@ const out = `// AUTO-GENERATED (TRIP-443) — base64-встроенные асс
 // FONT_B64 (порядок читает fontFaces.ts):
 //   0 Geologica cyrillic (woff2)     2 Geologica latin (woff2)
 //   1 Geologica cyrillic-ext (woff2) 3 Geologica latin-ext (woff2)
+//   4 Geologica arrow (woff2, один глиф U+2192)
 // Geologica — вариативный woff2 (одна ось веса 400..800 на сабсет).
 export const FONT_B64: string[] = [
 ${fonts.map((f) => `  "${f}",`).join('\n')}

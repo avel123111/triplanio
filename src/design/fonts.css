@@ -61,3 +61,14 @@
 @font-face{font-family:'Geologica';font-style:normal;font-weight:400 800;font-display:swap;src:url('/fonts/geologica/geologica-cyrillic.woff2') format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}
 @font-face{font-family:'Geologica';font-style:normal;font-weight:400 800;font-display:swap;src:url('/fonts/geologica/geologica-latin-ext.woff2') format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
 @font-face{font-family:'Geologica';font-style:normal;font-weight:400 800;font-display:swap;src:url('/fonts/geologica/geologica-latin.woff2') format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+/* Пятый сабсет — ОДИН глиф, стрелка вправо U+2192. Google в своих сабсетах её не
+   отдаёт (в latin есть U+2191 и U+2193, а U+2192 нет — проверено по cmap самих
+   файлов), поэтому стрелка маршрута на share-карточке была НАРИСОВАНА линией и
+   треугольником. Рисованная стрелка означала, что строка городов состоит из двух
+   отдельных текстов с фигурой между ними: такую строку нельзя ни отредактировать
+   одним полем, ни разложить браузеру самому — координаты второго слова считались
+   вручную через таблицу ширин. С этим файлом стрелка становится обычным символом,
+   а маршрут — одной строкой.
+   Файл выкачан тем же путём, что и остальные четыре (Google css2 с Chrome-UA,
+   `text=%E2%86%92`), вариативный, 1420 байт. Руками не править. */
+@font-face{font-family:'Geologica';font-style:normal;font-weight:400 800;font-display:swap;src:url('/fonts/geologica/geologica-arrow.woff2') format('woff2');unicode-range:U+2192;}

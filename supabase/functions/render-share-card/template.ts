@@ -291,23 +291,22 @@ export function buildCardSvg(
     .join('');
   const lastTitleY = L.titleTop + (lines.length - 1) * lineH;
 
-  // --- маршрут «from -> to» (белый; стрелка рисуется — глиф → не в сабсете) ---
+  // --- маршрут «from → to»: ОДНА строка -----------------------------------
+  // Раньше строка состояла из двух отдельных текстов с НАРИСОВАННОЙ стрелкой
+  // между ними — глифа U+2192 не было ни в одном сабсете Geologica, который
+  // отдаёт Google. Цена такой конструкции была не косметическая:
+  //   · координата второго города считалась вручную (`titleX + advance(from) +
+  //     зазор + стрелка + зазор`) — расчёт, который однажды посадил стрелку на
+  //     последнюю букву и рождал координаты вида 440.19223999999997;
+  //   · строку нельзя отредактировать одним полем — а карточка идёт к тому,
+  //     чтобы текст правил человек.
+  // Теперь стрелка — обычный символ (пятый сабсет, один глиф; см.
+  // src/design/fonts.css), маршрут — одна строка, и раскладывает её сам движок:
+  // складывать нечего. Ширина этой строки нигде не меряется, поэтому U+2192 в
+  // таблицу `glyphWidths` не заводится.
   const routeY = lastTitleY + L.routeGap;
-  const hasTo = data.to && data.to !== data.from;
-  const fromW = advance(data.from, L.routeSize, 600);
-  const arrowGap = 22;
-  const arrowW = 46;
-  let routeSvg = wtext(titleX, routeY, L.routeSize, data.from, { weight: 600 });
-  if (hasTo) {
-    const ax = titleX + fromW + arrowGap;
-    const ay = routeY - L.routeSize * 0.28;
-    const arrow = (stroke: string, dx: number, dy: number) =>
-      `<g transform="translate(${dx},${dy})" stroke="${stroke}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">`
-      + `<line x1="${ax}" y1="${ay}" x2="${ax + arrowW - 12}" y2="${ay}"/>`
-      + `<path d="M${ax + arrowW - 20},${ay - 9} L${ax + arrowW},${ay} L${ax + arrowW - 20},${ay + 9}"/></g>`;
-    routeSvg += withShadow(arrow);
-    routeSvg += wtext(ax + arrowW + arrowGap, routeY, L.routeSize, data.to, { weight: 600 });
-  }
+  const route = data.to && data.to !== data.from ? `${data.from} → ${data.to}` : data.from;
+  const routeSvg = wtext(titleX, routeY, L.routeSize, route, { weight: 600 });
 
   // --- скрим под текстом (TRIP-443) --------------------------------------
   // Белый текст карточки лежит на ПРОИЗВОЛЬНОМ фоне: пресет, фото юзера или
