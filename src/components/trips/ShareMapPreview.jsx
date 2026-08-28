@@ -360,22 +360,50 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     const host = frameRef.current;
     if (!overlaySvg || !host || probedRef.current === overlaySvg) return undefined;
     probedRef.current = overlaySvg;
-    const widths = (sel) => [...host.querySelectorAll(sel)].map((n) => {
+    const measure = (n) => {
       if (!n.textContent || !n.textContent.trim()) return 'empty';
       try { return Math.round(n.getBBox().width); } catch { return 'err'; }
-    });
+    };
+    const widths = (sel) => [...host.querySelectorAll(sel)].map(measure);
+
+    // РАЗВОДКА ПРИЧИН. У отказавших узлов две особенности сразу — вес 600 и
+    // кегль 56 — и в самом кадре они неразделимы: другого текста с такой парой
+    // нет. Поэтому кладём В ТОТ ЖЕ <svg> (тот же контекст шрифтов и каскада)
+    // четыре пробника, каждый меняет ОДНУ величину относительно отказавшего:
+    //   [0] вес 600 · кегль 56 · Geologica  — контроль, копия отказавшего
+    //   [1] вес 700 · кегль 56 · Geologica  — снимает ВЕС
+    //   [2] вес 600 · кегль 20 · Geologica  — снимает КЕГЛЬ
+    //   [3] вес 600 · кегль 56 · sans-serif — снимает ГАРНИТУРУ
+    // Ноль там, где величина осталась, и не-ноль там, где её сменили, называет
+    // виновную величину однозначно. `visibility:hidden` раскладку не отменяет
+    // (в отличие от display:none), поэтому пробники невидимы, но измеримы.
+    const probeText = 'Белград'; // константа кода, не данные трипа
+    const svg = host.querySelector('svg');
+    const mk = (w, size, font) => {
+      const n = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      n.setAttribute('x', '0'); n.setAttribute('y', '0');
+      n.setAttribute('font-family', font); n.setAttribute('font-weight', String(w));
+      n.setAttribute('font-size', String(size)); n.setAttribute('visibility', 'hidden');
+      n.textContent = probeText;
+      return n;
+    };
+    const cases = [[600, 56, "'Geologica'"], [700, 56, "'Geologica'"], [600, 20, "'Geologica'"], [600, 56, 'sans-serif']];
+    const nodes = svg ? cases.map(([w, size, f]) => svg.appendChild(mk(w, size, f))) : [];
+
     const t = setTimeout(() => {
-      const all = widths('text');
+      const all = widths('text:not([visibility="hidden"])');
+      const split = nodes.map(measure);
+      nodes.forEach((n) => n.remove());
       report(
         new Error(`share card frame probe (fonts=${document.fonts?.status}, geologica=${document.fonts?.check?.('600 56px Geologica')})`),
         {
           surface: 'render',
           source: 'share-card-frame',
-          key: [`route:[${widths('text[font-weight="600"]').join('|')}] all:${all.length} zero:${all.filter((w) => w === 0).length} empty:${all.filter((w) => w === 'empty').length}`],
+          key: [`route:[${widths('text[font-weight="600"]:not([visibility="hidden"])').join('|')}] split:[${split.join('|')}] all:${all.length} zero:${all.filter((w) => w === 0).length} empty:${all.filter((w) => w === 'empty').length}`],
         },
       );
     }, 1500);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); nodes.forEach((n) => n.remove()); };
   }, [overlaySvg]);
 
   return (
