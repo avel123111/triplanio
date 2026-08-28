@@ -30,7 +30,7 @@ import ShareCardText from './ShareCardText';
 // рамки; cardW при этом = ширина СЛОТА, чтобы веса линий/бейджей масштабились
 // от финального разрешения карты.
 const ShareMapPreview = forwardRef(function ShareMapPreview(
-  { visits = [], transfers = [], lang, showSE = true, overlaySvg, text, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
+  { visits = [], transfers = [], lang, showSE = true, overlaySvg, text = null, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
   ref,
 ) {
   const holderRef = useRef(null);
