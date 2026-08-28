@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, loadMapboxGl } from '@/lib/mapbox';
 import { buildRoute, drawTripRoute, rescaleZoom, PIN_LAYER, LINE_IDS } from '@/lib/map/captureMap';
 import { markerZoomSizeExpr, markerSurfaceWeight } from '@/lib/map/markers';
@@ -6,6 +6,7 @@ import { SOLID_WIDTH, DASHED_WIDTH } from '@/lib/map/mapStyle';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Skeleton } from '@/design/index';
 import { report } from '@/lib/reportDataError';
+import { CARD_BG_BLANK } from '@/lib/shareCardBg';
 import MapControls from '@/lib/map/MapControls';
 
 // Live map for the share card (TRIP-193). The map sits in the card frame's
@@ -30,7 +31,7 @@ import MapControls from '@/lib/map/MapControls';
 // рамки; cardW при этом = ширина СЛОТА, чтобы веса линий/бейджей масштабились
 // от финального разрешения карты.
 const ShareMapPreview = forwardRef(function ShareMapPreview(
-  { visits = [], transfers = [], lang, showSE = true, overlaySvg, slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
+  { visits = [], transfers = [], lang, showSE = true, overlaySvg, bgUri = '', slot, cardW = 1080, cardH = 1920, interactive = true, camera = null, bare = false },
   ref,
 ) {
   const holderRef = useRef(null);
@@ -355,6 +356,28 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   // пересчитывается в теле компонента, то есть на каждый рендер это НОВАЯ
   // строка. С ним эффект перезапускался постоянно, уборка гасила отложенный
   // замер, и зонд не доживал до отсечки ни разу.
+  // ── ПОДЛОЖКА ЕЗДИТ АТРИБУТОМ, А НЕ СТРОКОЙ ────────────────────────────────
+  // Кадр приезжает с ПУСТЫМ фоном-местом (`blankCardBg`) и разбирается один раз
+  // за открытие; выбранная подложка садится на уже разобранный элемент. Так и
+  // должно быть по существу: смена обложки меняет одну картинку, а не кадр —
+  // пересобирать ради неё 27 текстовых узлов не за чем. Ровно этот пере-разбор
+  // и убивал названия городов на iOS (см. `blankCardBg`).
+  //
+  // Элемент ищем ОДИН раз по пустому href — у шаблона нет своего опознавателя
+  // для фона, а заводить его значило бы менять edge-функцию (она катится только
+  // мерджем в dev, то есть починку нельзя было бы проверить на превью ветки).
+  // Слой раскладки: эффект layout-фазы, чтобы подложка встала ДО первого кадра.
+  const bgNodeRef = useRef(null);
+  useLayoutEffect(() => {
+    const host = frameRef.current;
+    if (!overlaySvg || !host) return;
+    if (!bgNodeRef.current || !host.contains(bgNodeRef.current)) {
+      bgNodeRef.current = [...host.querySelectorAll('image')]
+        .find((n) => n.getAttribute('href') === CARD_BG_BLANK) || null;
+    }
+    bgNodeRef.current?.setAttribute('href', bgUri || CARD_BG_BLANK);
+  }, [overlaySvg, bgUri]);
+
   const probedRef = useRef(null);
   useEffect(() => {
     const host = frameRef.current;

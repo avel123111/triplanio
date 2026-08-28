@@ -7,7 +7,7 @@ import { Icon } from '@/design/icons';
 import LpSheet from '@/components/ui/LpSheet';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
-import { invokeCard, applyCardBg, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
+import { invokeCard, applyCardBg, blankCardBg, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
 import { MAX_UPLOAD_BYTES } from './TripCoverPicker';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
@@ -105,9 +105,16 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   const buildGenRef = useRef(0);
   useEffect(() => { buildGenRef.current += 1; builtRef.current = null; setBuildError(''); }, [format, bg, camera]);
 
-  // Превью-SVG: подложка (пусто = базовый градиент шаблона, не прозрачно). Флаги
-  // уже встроены edge'ом, инлайнить нечего — чистая синхронная подмена фона.
-  const framedSvg = useMemo(() => (overlay ? applyCardBg(overlay.svg, bgUri) : null), [overlay, bgUri]);
+  // Кадр превью НЕ ЗАВИСИТ от подложки — и это несущее, а не оптимизация.
+  // Превью вставляет кадр разметкой, поэтому новая строка = полный пере-разбор
+  // всех текстовых узлов ради одной картинки; на iOS 26 после пере-разбора
+  // строка маршрута теряет ширину и названия городов пропадают (замер:
+  // t0:[237|237|171|171] → t1:[0|0|0|0], Sentry TRIPLANIO-2Y). Поэтому строка
+  // собирается ОДИН раз на приехавший оверлей, а выбранная подложка едет в
+  // превью отдельным пропом и садится атрибутом на уже разобранный элемент.
+  // Финальная карточка растеризуется целой строкой — там пересборка уместна и
+  // остаётся через `applyCardBg` (см. buildPng).
+  const frameSvg = useMemo(() => (overlay ? blankCardBg(overlay.svg) : null), [overlay]);
 
   const ready = Boolean(overlay) && !overlayCode;
   // Пропорция сцены едет двумя каналами (см. ShareCardDialog.css): --sc-ar для
@@ -266,7 +273,8 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
             visits={visits}
             transfers={transfers}
             lang={lang}
-            overlaySvg={framedSvg}
+            overlaySvg={frameSvg}
+            bgUri={bgUri}
             slot={overlay.slot}
             cardW={overlay.w}
             cardH={overlay.h}

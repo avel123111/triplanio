@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyCardBg } from './shareCardBg.js';
+import { applyCardBg, blankCardBg, CARD_BG_BLANK } from './shareCardBg.js';
 
 // Фикстура повторяет структуру шаблона render-share-card (TRIP-443): фон —
 // full-bleed <image> с токеном __SHARE_CARD_BG__ в самом низу; карта — свой токен.
@@ -35,4 +35,37 @@ test('applyCardBg не интерпретирует спецпаттерны rep
   // будущих форм URI — фиксируем поведение на строке с "$&".
   const out = applyCardBg(SVG, 'data:image/webp;base64,$&');
   assert.ok(out.includes('href="data:image/webp;base64,$&"'));
+});
+
+// ЗАЧЕМ ЭТИ ТЕСТЫ. `blankCardBg` — не второй `applyCardBg`, а другой ответ на
+// другой вопрос: превью вставляет кадр РАЗМЕТКОЙ, и пересборка строки ради
+// подложки заново разбирает все текстовые узлы. На iOS 26 после такого
+// пере-разбора строка маршрута теряет ширину (замер: 237/171 → 0), и названия
+// городов пропадают. Поэтому элемент фона обязан ОСТАТЬСЯ в кадре — подложка
+// потом садится ему атрибутом. Если кто-то «унифицирует» две функции в одну,
+// удалив элемент и здесь, баг вернётся молча: кадр выглядит правильно.
+
+test('blankCardBg оставляет элемент фона на месте (его находят по пустому href)', () => {
+  const out = blankCardBg(SVG);
+  assert.ok(out.includes(`href="${CARD_BG_BLANK}"`));
+  assert.ok(!out.includes('__SHARE_CARD_BG__'));
+  // Именно ЭЛЕМЕНТ, а не только токен: превью ищет его в разобранном кадре.
+  assert.equal((out.match(/<image /g) || []).length, (SVG.match(/<image /g) || []).length);
+});
+
+test('blankCardBg: пустая подложка не рисует и не ходит в сеть', () => {
+  // Валидный пустой SVG в data-URI: без сети и без ошибки декодирования
+  // (`data:,` браузер считает битой картинкой и шумит в консоль).
+  assert.ok(CARD_BG_BLANK.startsWith('data:image/svg+xml,'));
+});
+
+test('blankCardBg не трогает токен карты и текст', () => {
+  const out = blankCardBg(SVG);
+  assert.ok(out.includes('__SHARE_CARD_MAP__'));
+  assert.ok(out.includes('<text>t</text>'));
+});
+
+test('blankCardBg: пустой/битый вход', () => {
+  assert.equal(blankCardBg(''), '');
+  assert.equal(blankCardBg(undefined), undefined);
 });
