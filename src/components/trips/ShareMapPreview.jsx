@@ -390,46 +390,56 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     };
     const widths = (sel) => [...host.querySelectorAll(sel)].map(measure);
     const svg = host.querySelector('svg');
-    const mk = () => {
+
+    // ЕДИНСТВЕННОЕ НЕПРОВЕРЕННОЕ ОТЛИЧИЕ. Настоящие узлы умирают (237 → 0), а
+    // мои пробники живут — но они создавались СКРИПТОМ, а настоящие приходят
+    // РАЗБОРОМ РАЗМЕТКИ. Пере-разбор кадра как причину уже сняли (правка его
+    // убрала, замер не изменился), значит проверять надо сам путь рождения узла.
+    //
+    // Поэтому пробники теперь вставляются той же дверью, что и кадр —
+    // `insertAdjacentHTML`, — и каждый меняет ОДНУ величину относительно
+    // отказавшего: вес, кегль, трекинг. `fill="none"` вместо `visibility:hidden`
+    // намеренно: раскладка идёт как у обычного узла, невидимость даёт только
+    // отсутствие заливки, то есть пробник отличается от настоящего лишь тем, что
+    // проверяется. Ставим их на тот же baseline и за правым краем кадра.
+    const PARSED = [
+      '<text data-probe="p" x="1200" y="493" font-family="\'Geologica\'" font-weight="600" font-size="56" fill="none">Белград</text>',
+      '<text data-probe="p" x="1200" y="493" font-family="\'Geologica\'" font-weight="700" font-size="56" fill="none">Белград</text>',
+      '<text data-probe="p" x="1200" y="493" font-family="\'Geologica\'" font-weight="600" font-size="20" fill="none">Белград</text>',
+      '<text data-probe="p" x="1200" y="493" font-family="\'Geologica\'" font-weight="600" font-size="56" fill="none" letter-spacing="-0.5">Белград</text>',
+    ];
+    if (svg) svg.insertAdjacentHTML('beforeend', PARSED.join(''));
+    const parsed = [...host.querySelectorAll('text[data-probe="p"]')];
+
+    const mkScripted = () => {
       const n = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      n.setAttribute('x', '0'); n.setAttribute('y', '0');
+      n.setAttribute('x', '1200'); n.setAttribute('y', '493');
       n.setAttribute('font-family', "'Geologica'"); n.setAttribute('font-weight', '600');
-      n.setAttribute('font-size', '56'); n.setAttribute('visibility', 'hidden');
-      n.setAttribute('data-probe', '1');
+      n.setAttribute('font-size', '56'); n.setAttribute('fill', 'none');
+      n.setAttribute('data-probe', 's');
       n.textContent = 'Белград'; // константа кода, не данные трипа
       return svg ? svg.appendChild(n) : null;
     };
+    const scripted = mkScripted();
 
-    // ПОСЛЕДНЯЯ РАЗВИЛКА. Предыдущий замер показал: в сломанном кадре настоящие
-    // узлы дают 0, а созданный СКРИПТОМ узел с теми же вес/кегль/гарнитурой в том
-    // же <svg> и в ту же секунду даёт 237. Осталось два объяснения, и они
-    // различаются ВРЕМЕНЕМ, а не свойствами узла:
-    //   А. «разбор против скрипта» — узлы из строки разметки ломаются всегда;
-    //   Б. «переразметка на подмене шрифта» — ломается тот, кто СУЩЕСТВОВАЛ в
-    //      момент, когда `font-display: swap` заменил запасной шрифт на
-    //      Geologica; созданный после — цел. Ровно это и видно глазами:
-    //      «появились на полсекунды и пропали».
-    // Различает их один снимок: мерим ДО паузы и ПОСЛЕ. Узел, созданный рано и
-    // упавший к концу, доказывает Б; ноль с самого начала — А.
-    const early = mk();
     const t0 = widths(ROUTE);
-    const e0 = measure(early);
+    const p0 = parsed.map(measure);
     const t = setTimeout(() => {
       const t1 = widths(ROUTE);
-      const e1 = measure(early);
-      const late = mk();
-      const l1 = measure(late);
-      [early, late].forEach((n) => n && n.remove());
+      const p1 = parsed.map(measure);
+      const s1 = measure(scripted);
+      const title = host.querySelector('text[font-size]')?.getAttribute('font-size');
+      [...parsed, scripted].forEach((n) => n && n.remove());
       report(
-        new Error(`share card frame probe (fonts=${document.fonts?.status}, geologica=${document.fonts?.check?.('600 56px Geologica')})`),
+        new Error(`share card frame probe (fonts=${document.fonts?.status})`),
         {
           surface: 'render',
           source: 'share-card-frame',
-          key: [`t0:[${t0.join('|')}] t1:[${t1.join('|')}] early:${e0}->${e1} late:${l1}`],
+          key: [`t0:[${t0.join('|')}] t1:[${t1.join('|')}] parsed:[${p0.join('|')}]->[${p1.join('|')}] scripted:${s1} title:${title}`],
         },
       );
     }, 1500);
-    return () => { clearTimeout(t); if (early) early.remove(); };
+    return () => { clearTimeout(t); [...parsed, scripted].forEach((n) => n && n.remove()); };
   }, [overlaySvg]);
 
   return (
