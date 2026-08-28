@@ -22,6 +22,7 @@ import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, IconBtn, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { eventDeleteConfirm } from '@/lib/eventDeleteConfirm';
 import {
   useEventViewModel, useEntityDocs, EventViewSections, eventHeader,
 } from '@/components/common/EventViewBody';
@@ -160,13 +161,7 @@ export default function EventModal(props) {
                  кнопки нет ни `loading`, ни своего in-flight состояния. Окно
                  события при этом остаётся открытым — закрыть его решает
                  вызыватель, когда запись действительно удалена. */
-              onClick={() => confirm({
-                title: t('event.delete_q', { label: themeLabel.toLowerCase() }),
-                description: t('event.delete_irreversible'),
-                confirmLabel: t('common.delete'),
-                variant: 'destructive',
-                onConfirm: () => onDelete(),
-              })}
+              onClick={() => confirm(eventDeleteConfirm(t, themeLabel, onDelete))}
             >
               {t('common.delete')}
             </Btn>

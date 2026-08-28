@@ -214,7 +214,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const askDelete = () => confirm({
     title: t('budget.delete_expense_q'),
     description: t('budget.delete_expense_desc'),
-    confirmLabel: t('trip.delete'),
+    confirmLabel: t('common.delete'),
     variant: 'destructive',
     onConfirm: () => delMut.mutateAsync({ id: existing.id, row: { id: existing.id, _pending: true } }),
   });

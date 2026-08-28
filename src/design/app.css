@@ -6218,7 +6218,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .lp-f padding — вертикальный ритм хрома сведён с окном (11 → 12)
    visual-diff-exempt: .lp-f border-top — разделители хрома сняты
    visual-diff-exempt: .lp-f background — футер на заливку тела: одна поверхность */
-.lp-h { display: flex; align-items: center; gap: 11px; padding: var(--sp-6) 15px; }
+/* Отступы — ОДНИМ объявлением на все три полосы, как у `.dlg__*` выше: у панели
+   и у окна это один и тот же объект «шапка / тело / футер», и лечится он
+   одинаково. До этого `padding: var(--sp-6) 15px` стоял трижды, в трёх правилах,
+   разнесённых по файлу на сорок строк, — то есть «горизонталь панели» нельзя
+   было поменять, не найдя все три. Своей ручки (как `--dlg-pad-x` у окна) тут
+   нет намеренно: у панели горизонталь не меняется ни на одной ширине, а ручка
+   без второго значения — это имя ради имени. */
+.lp-h,
+.lp-b,
+.lp-f { padding: var(--sp-6) 15px; }
+.lp-h { display: flex; align-items: center; gap: 11px; }
 /* Та же пара «край / сосед», что у окна: у панели футер тоже необязателен —
    `EventPanels` рисует `.lp-f` только при `foot`, у просмотра события в
    read-only его нет вовсе, а у подбора партнёра нет никогда. Дефолт снова
@@ -6244,7 +6254,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Ручка `--hl` вместе с ним не нужна: пин на объекте лечил утечку канала тинта
    (TRIP-341), а у канон-класса свой ховер, чужого `--hl` он не читает. */
 
-.lp-b { padding: var(--sp-6) 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
+.lp-b { display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 /* Футер диалога/панели — СТАНДАРТНЫЙ вид, как в нормальных приложениях: кнопки
    ЗАПОЛНЯЮТ ширину бара, главная (Editar/Guardar/Crear/…) вдвое шире вторичной
    (ratio 1:2, primary справа), деструктивная — призрак слева; одна кнопка → во
@@ -6254,7 +6264,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    плодили разнобой (мелкая справа vs. «во всю ширину» vs. 20/80).
    Исключения: `flow-foot` (визард со спейсером back/reset/next) и `lp-f--single`
    (одиночная модалка) держат свою раскладку. */
-.lp-f { margin-top: auto; padding: var(--sp-6) 15px; display: flex; gap: 8px; justify-content: flex-end; }
+.lp-f { margin-top: auto; display: flex; gap: 8px; justify-content: flex-end; }
 .lp-f:not(.flow-foot):not(.lp-f--single) > .btn { flex: 2; }
 .lp-f:not(.flow-foot):not(.lp-f--single) > .btn:first-child:not(:last-child) { flex: 1; }
 /* visual-diff-exempt: .btn flex — футер заполняет ширину поровну (нормальный паттерн, как ConfirmDialog), TRIP-337 апрув Pavel */

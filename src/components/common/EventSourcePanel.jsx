@@ -14,6 +14,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { Btn, Skeleton, useToast } from '@/design/index';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { eventDeleteConfirm } from '@/lib/eventDeleteConfirm';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource, useEntityDocs, EventViewSections, eventTheme, eventHeader } from '@/components/common/EventViewBody';
 import { PanelShell, kindIcon } from '@/components/common/EventPanels';
@@ -49,9 +50,12 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, data, canEdit);
 
   // Delete: same optimistic dim-then-drop as EventEditDialog / documents. The panel
-  // stays open with the button in its loading state (`deleteMut.isPending`) — no
-  // early close, so no survive-unmount engine — the row greys out (`_pending`) while
-  // the write runs, then drops on success or un-dims on refusal. Defined as a hook
+  // stays open while the write runs — no early close, so no survive-unmount engine —
+  // the row greys out (`_pending`), then drops on success or un-dims on refusal.
+  // ⚠ Спиннер держит КНОПКА ПОДТВЕРЖДЕНИЯ (`onConfirm` возвращает `mutateAsync`),
+  // а не кнопка панели: своего `loading` у неё больше нет. Отказ приезжает тостом
+  // из `onError` ниже — подтверждение к тому моменту уже закрыто, как и у города.
+  // Defined as a hook
   // (before the early returns); the id + orphan file keys travel via mutate vars, so
   // it needs no `data` from the render closure.
   const delBinding = tripContentBinding(qc, tripId, CACHE_KIND[kind]);
@@ -122,7 +126,7 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
   const title = isSvc ? (data.name || themeLabel) : (hdr.title || themeLabel);
   const sub = isSvc ? (visitCity || '') : hdr.sub;
 
-  const startDelete = () => {
+  const askDelete = () => {
     if (!ENTITY_TABLE_BY_KIND[kind]) return;
     // Entity gone → its attachments are orphaned. Capture their object keys before
     // delete; deleteSourceEntity sweeps best-effort only once the row is actually
@@ -132,13 +136,8 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
     // `mutateAsync`, а не `mutate`: спиннер держит кнопка подтверждения, пока
     // промис не разрешится. Панель при этом остаётся открытой — её закрывает
     // `onSuccess` мутации, как и раньше.
-    return confirm({
-      title: t('event.delete_q', { label: themeLabel.toLowerCase() }),
-      description: t('event.delete_irreversible'),
-      confirmLabel: t('common.delete'),
-      variant: 'destructive',
-      onConfirm: () => deleteMut.mutateAsync({ id: data.id, orphanPaths, row: { id: data.id, _pending: true } }),
-    });
+    return confirm(eventDeleteConfirm(t, themeLabel,
+      () => deleteMut.mutateAsync({ id: data.id, orphanPaths, row: { id: data.id, _pending: true } })));
   };
 
   return (
@@ -154,7 +153,7 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
       // (иначе пустой фрагмент оставался тонкой полоской с border-top).
       foot={canEdit ? (
         <>
-          <Btn variant="danger" icon="trash" onClick={startDelete} ariaLabel={t('common.delete')}>{t('common.delete')}</Btn>
+          <Btn variant="danger" icon="trash" onClick={askDelete} ariaLabel={t('common.delete')}>{t('common.delete')}</Btn>
           <Btn variant="primary" icon="edit" onClick={() => setEditMode(true)}>{t('trip.edit_trip')}</Btn>
         </>
       ) : null}

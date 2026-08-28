@@ -95,13 +95,14 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const confirm = useConfirm();
   // Место удалялось БЕЗ подтверждения — `danger`-кнопка била в шов напрямую.
   // Спиннер держит кнопка подтверждения (`onConfirm` возвращает промис `remove`),
-  // поэтому у самой кнопки удаления своего `loading` больше нет; локальный
-  // `deleting` остался только затем, чтобы «Сохранить» было замьючено, пока
-  // удаление в полёте.
-  const askRemove = () => confirm({
+  // поэтому у самой кнопки удаления своего `loading` больше нет. Локальный
+  // `deleting` остаётся, но ровно за одним: обе кнопки футера мьютит `saving`, а
+  // `deleting` отличает «идёт удаление» от «идёт сохранение», чтобы спиннер не
+  // зажигался на «Сохранить» во время удаления (`loading={saving && !deleting}`).
+  const askDelete = () => confirm({
     title: t('stats.delete_place_q', { name: editing?.city_name || '' }),
     description: t('stats.delete_place_desc'),
-    confirmLabel: t('stats.delete_btn'),
+    confirmLabel: t('common.delete'),
     variant: 'destructive',
     onConfirm: remove,
   });
@@ -127,7 +128,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const foot = (
     <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
       {isEdit && (
-        <Btn variant="danger" onClick={askRemove} disabled={saving} style={{ marginRight: 'auto' }}>
+        <Btn variant="danger" onClick={askDelete} disabled={saving} style={{ marginRight: 'auto' }}>
           {t('stats.delete_btn')}
         </Btn>
       )}

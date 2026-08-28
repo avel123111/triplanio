@@ -132,6 +132,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { goPro } from '@/lib/goPro';
 import { useTripProStatus } from '@/lib/subscription';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { eventDeleteConfirm } from '@/lib/eventDeleteConfirm';
 import { errorText } from '@/lib/errorText';
 import { refusalError } from '@/lib/refusalError';
 import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
@@ -924,8 +925,10 @@ export default function EventEditDialog({
   // Optimistic dim-then-drop: the row is marked `_pending` on mutate (its timeline
   // card greys out — the same feedback as a document delete) while the write runs;
   // on success it drops, on refusal/already-gone the seam rolls the dim back. No
-  // full-trip refetch, and the dialog stays open with the button in its loading
-  // state (`deleteMut.isPending`) until it resolves.
+  // full-trip refetch, и форма остаётся открытой, пока запись идёт.
+  // ⚠ Спиннер держит КНОПКА ПОДТВЕРЖДЕНИЯ (`onConfirm` возвращает `mutateAsync`),
+  // а не кнопка формы: у неё остался только `disabled`, чтобы удаление нельзя было
+  // запросить дважды. Отказ приезжает тостом из `onError` ниже.
   const delBinding = tripContentBinding(qc, tripId, OPT_CACHE[currentKind]);
   const deleteMut = useMutation({
     mutationFn: async () => {
@@ -1360,13 +1363,8 @@ export default function EventEditDialog({
                     ariaLabel={t('common.delete')}
                     /* `mutateAsync` отдаёт промис самому confirm — спиннер живёт
                        на его кнопке, форма редактирования остаётся на экране. */
-                    onClick={() => confirm({
-                      title: t('event.delete_q', { label: t(meta.labelKey).toLowerCase() }),
-                      description: t('event.delete_irreversible'),
-                      confirmLabel: t('common.delete'),
-                      variant: 'destructive',
-                      onConfirm: () => deleteMut.mutateAsync({ id: entity.id, row: { id: entity.id, _pending: true } }),
-                    })}
+                    onClick={() => confirm(eventDeleteConfirm(t, t(meta.labelKey),
+                      () => deleteMut.mutateAsync({ id: entity.id, row: { id: entity.id, _pending: true } })))}
                   >
                     {t('common.delete')}
                   </Btn>
