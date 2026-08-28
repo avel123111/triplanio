@@ -27,8 +27,9 @@ html.site {
      --sky 2.21, --mint 2.30, --sunset 2.05, аватарные градиенты 2.56/1.68).
      Пары взяты с публичной поездки — светлый tint под фон, тёмный вариант
      оттенка под текст, оба ≥4.5:1 на своей паре. */
-  --violet-text:#4B3FA8; --violet-tint:#E7E4FB;
+  --violet:#7A5CF0; --violet-text:#4B3FA8; --violet-tint:#E7E4FB;
   --coral-text:#A32B60; --coral-tint:#FBE3EC;
+  --rose:#E0568F;
 
   --font-display:'Onest', ui-sans-serif, system-ui, sans-serif;
   --font-body:'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -3274,11 +3275,15 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
    против `'Onest', ui-sans-serif, system-ui, sans-serif`): при неподгрузившемся
    Onest демо падало на родовой sans-serif, а остальная зона — на системный.
    Сведено к зонному стеку; при загруженных шрифтах разницы нет.
-   Базовые тона `--violet`/`--rose`/`--coral` остаются здесь: у зоны объявлены
-   только их производные `*-text`/`*-tint`, самих баз на `html.site` нет. */
-.demo{--violet:#7A5CF0; --violet-soft:#F0EBFE;
-  --rose:#E0568F;   --rose-soft:#FDEBF2;
-  --coral:#EE6A72}
+   Базовые тона `--violet`/`--rose` уехали на `html.site` к своим производным
+   `*-text`/`*-tint` (TRIP-466): палитра была разрезана посередине — база на
+   странице, производные в зоне. Читатели у обеих только внутри `.demo`, а
+   `html.site` им предок, поэтому значение приходит наследованием тем же.
+   Здесь остались только ступени `*-soft` и `--coral`: у них НЕТ ни одного
+   читателя, и снимаются они отдельным ходом — у удаления другой инструмент,
+   чем у переноса, и в одном диффе они мешают друг другу. */
+/* visual-diff-move: .demo -> .site */
+.demo{--violet-soft:#F0EBFE; --rose-soft:#FDEBF2; --coral:#EE6A72}
 
 /* visual-diff-exempt: .demo --band — снята копия токена `html.site`, значение то же приходит наследованием */
 /* visual-diff-exempt: .demo --brand — снята копия токена `html.site`, значение то же приходит наследованием */
