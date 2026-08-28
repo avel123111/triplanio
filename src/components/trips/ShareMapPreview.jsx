@@ -390,56 +390,57 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     };
     const widths = (sel) => [...host.querySelectorAll(sel)].map(measure);
     const svg = host.querySelector('svg');
+    // Образец — БЕЛАЯ копия строки, а не её тень: клоны A и D рисуют тот же
+    // текст поверх оригинала, и белое по белому незаметно, а тень по белому
+    // перекрашивает слово в серое (проверено на стенде — видно глазами).
+    const origin = [...host.querySelectorAll(ROUTE)].find((n) => n.getAttribute('fill') === '#FFFFFF')
+      || host.querySelector(ROUTE);
 
-    // ЕДИНСТВЕННОЕ НЕПРОВЕРЕННОЕ ОТЛИЧИЕ. Настоящие узлы умирают (237 → 0), а
-    // мои пробники живут — но они создавались СКРИПТОМ, а настоящие приходят
-    // РАЗБОРОМ РАЗМЕТКИ. Пере-разбор кадра как причину уже сняли (правка его
-    // убрала, замер не изменился), значит проверять надо сам путь рождения узла.
+    // ПОСЛЕДНЯЯ ВИЛКА. Снято уже всё: шрифт, вес, кегль, гарнитура, символы,
+    // контраст, пере-разбор кадра и даже путь рождения узла (копии, вставленные
+    // тем же `insertAdjacentHTML`, живут). Осталось одно неразделённое: мои копии
+    // стояли ЗА КРАЕМ кадра и БЕЗ ЗАЛИВКИ, а настоящие — внутри и с заливкой.
     //
-    // Поэтому пробники теперь вставляются той же дверью, что и кадр —
-    // `insertAdjacentHTML`, — и каждый меняет ОДНУ величину относительно
-    // отказавшего: вес, кегль, трекинг. `fill="none"` вместо `visibility:hidden`
-    // намеренно: раскладка идёт как у обычного узла, невидимость даёт только
-    // отсутствие заливки, то есть пробник отличается от настоящего лишь тем, что
-    // проверяется. Ставим их на тот же baseline и за правым краем кадра.
-    const PARSED = [
-      '<text data-probe="p" x="1200" y="493" font-family="\'Geologica\'" font-weight="600" font-size="56" fill="none">Белград</text>',
-      '<text data-probe="p" x="1200" y="493" font-family="\'Geologica\'" font-weight="700" font-size="56" fill="none">Белград</text>',
-      '<text data-probe="p" x="1200" y="493" font-family="\'Geologica\'" font-weight="600" font-size="20" fill="none">Белград</text>',
-      '<text data-probe="p" x="1200" y="493" font-family="\'Geologica\'" font-weight="600" font-size="56" fill="none" letter-spacing="-0.5">Белград</text>',
-    ];
-    if (svg) svg.insertAdjacentHTML('beforeend', PARSED.join(''));
-    const parsed = [...host.querySelectorAll('text[data-probe="p"]')];
-
-    const mkScripted = () => {
-      const n = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      n.setAttribute('x', '1200'); n.setAttribute('y', '493');
-      n.setAttribute('font-family', "'Geologica'"); n.setAttribute('font-weight', '600');
-      n.setAttribute('font-size', '56'); n.setAttribute('fill', 'none');
-      n.setAttribute('data-probe', 's');
-      n.textContent = 'Белград'; // константа кода, не данные трипа
-      return svg ? svg.appendChild(n) : null;
-    };
-    const scripted = mkScripted();
+    // Поэтому теперь копируется САМ отказавший узел (`cloneNode`), и у каждого
+    // клона меняется РОВНО ОДНО свойство. Ни один из них не виден: A и D рисуют
+    // тот же текст на том же месте поверх оригинала, B уезжает за кадр, C без
+    // заливки.
+    //   A — клон на месте, ничего не изменено  → умрёт ⇒ дело не в самом узле
+    //   B — то же, но за краем кадра (x=1200)  → выживет ⇒ дело в МЕСТЕ
+    //   C — то же, но fill="none"              → выживет ⇒ дело в ОТРИСОВКЕ
+    //   D — то же, но последним ребёнком <svg> → выживет ⇒ дело в ПОРЯДКЕ рисования
+    const clones = [];
+    if (origin && svg) {
+      const add = (tag, mutate, place) => {
+        const n = origin.cloneNode(true);
+        n.setAttribute('data-probe', tag);
+        mutate(n);
+        place(n);
+        clones.push(n);
+      };
+      const after = (n) => origin.insertAdjacentElement('afterend', n);
+      add('a', () => {}, after);
+      add('b', (n) => n.setAttribute('x', '1200'), after);
+      add('c', (n) => n.setAttribute('fill', 'none'), after);
+      add('d', () => {}, (n) => svg.appendChild(n));
+    }
 
     const t0 = widths(ROUTE);
-    const p0 = parsed.map(measure);
+    const c0 = clones.map(measure);
     const t = setTimeout(() => {
       const t1 = widths(ROUTE);
-      const p1 = parsed.map(measure);
-      const s1 = measure(scripted);
-      const title = host.querySelector('text[font-size]')?.getAttribute('font-size');
-      [...parsed, scripted].forEach((n) => n && n.remove());
+      const c1 = clones.map(measure);
+      clones.forEach((n) => n.remove());
       report(
         new Error(`share card frame probe (fonts=${document.fonts?.status})`),
         {
           surface: 'render',
           source: 'share-card-frame',
-          key: [`t0:[${t0.join('|')}] t1:[${t1.join('|')}] parsed:[${p0.join('|')}]->[${p1.join('|')}] scripted:${s1} title:${title}`],
+          key: [`t0:[${t0.join('|')}] t1:[${t1.join('|')}] abcd:[${c0.join('|')}]->[${c1.join('|')}]`],
         },
       );
     }, 1500);
-    return () => { clearTimeout(t); [...parsed, scripted].forEach((n) => n && n.remove()); };
+    return () => { clearTimeout(t); clones.forEach((n) => n.remove()); };
   }, [overlaySvg]);
 
   return (
