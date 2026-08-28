@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { anchorDelta } from './focusAnchor.js';
+import { anchorDelta, reserveNeeded } from './focusAnchor.js';
 
 // Числа — С УСТРОЙСТВА, а не выдуманные: iPhone, iOS 26, Safari (замер в
 // PR #1067). Раскладка 766, клавиатура занимает 338, видимая полоса 428, и
@@ -55,4 +55,34 @@ test('высокое поле считается по ЦЕНТРУ, а не по
   const short = anchorDelta({ fieldTop: 300, fieldHeight: 44, viewportH: VH });
   assert.ok(tall > short);
   assert.equal(tall - short, 78);
+});
+
+/* ── Запас прокрутки снизу (contentInset.bottom) ─────────────────────────── */
+
+test('★★ форма умещается в экран, поле внизу — запас берётся из НЕДОСТАЧИ', () => {
+  // Тот самый случай, который валил всю конструкцию: крутить некуда
+  // (scrollHeight === clientHeight), и без запаса поле не поднять ничем.
+  const delta = anchorDelta({ fieldTop: 600, fieldHeight: 44, viewportH: VH });
+  const need = reserveNeeded({ delta, scrollTop: 0, scrollHeight: 700, clientHeight: 700 });
+  assert.equal(need, delta, 'места нет вовсе → запас равен всей недостаче');
+});
+
+test('★ длинная форма: запас только на НЕДОСТАЮЩЕЕ, а не на всю клавиатуру', () => {
+  // Смысл в том, чтобы не оставлять под формой 340px мёртвого поля: если 200px
+  // прокрутки уже есть, добирать надо 253, а не 453.
+  const delta = anchorDelta({ fieldTop: 600, fieldHeight: 44, viewportH: VH }); // 453
+  assert.equal(reserveNeeded({ delta, scrollTop: 0, scrollHeight: 900, clientHeight: 700 }), delta - 200);
+});
+
+test('места хватает — запас не добавляется вовсе', () => {
+  assert.equal(reserveNeeded({ delta: 100, scrollTop: 0, scrollHeight: 1200, clientHeight: 700 }), 0);
+});
+
+test('★ уже прокрученный контейнер: считается ОСТАТОК, а не полный ход', () => {
+  // scrollTop=400 из 500 возможных → доступно 100, недостача 150.
+  assert.equal(reserveNeeded({ delta: 250, scrollTop: 400, scrollHeight: 1200, clientHeight: 700 }), 150);
+});
+
+test('прокрученный за предел не даёт отрицательного запаса', () => {
+  assert.equal(reserveNeeded({ delta: 50, scrollTop: 9999, scrollHeight: 1200, clientHeight: 700 }), 50);
 });
