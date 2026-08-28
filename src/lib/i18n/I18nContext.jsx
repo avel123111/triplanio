@@ -5,6 +5,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
 import { toast } from '@/components/ui/use-toast';
 import { hasLang, loadLocale } from './dictionary';
+import { ZONE_NAMESPACES } from './zoneNamespaces';
 import { LANGUAGES, LANG_STORAGE_KEY, detectLandingLang, localeTag } from './translations';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
@@ -46,6 +47,9 @@ const I18nContext = createContext({
   // тот объект, который приходит потребителю.
   locale: localeTag('en'),
   languages: LANGUAGES,
+  // Загружены ли ВСЕ словари активного языка. Первый кадр зоны его не ждёт
+  // (ей хватает шести), а экраны приложения ждут — гейт в `App.jsx`.
+  dictFull: false,
 });
 
 // Active locale falls back to this one (then to the raw key) for missing strings,
@@ -101,36 +105,56 @@ export function I18nProvider({ children }) {
   // (to gate the first paint) and the active language. `loadingRef` holds the
   // in-flight load promise per locale so each is fetched at most once.
   const [ready, setReady] = useState(() => new Set());
+  // Языки, у которых загружены ВСЕ словари. `ready` — «можно рисовать зону»,
+  // `full` — «можно рисовать приложение»; это два разных вопроса.
+  const [full, setFull] = useState(() => new Set());
   const dictsRef = useRef({});
   const loadingRef = useRef({});
 
   // Load a language (and the fallback) exactly once into our dictionary. Only in
   // an in-context editing session do we ALSO mirror it into Tolgee (so the observer
   // can wrap these strings) — normal users never put anything in Tolgee.
-  const ensureLoaded = useCallback((target) => {
-    const need = target === FALLBACK_LANG ? [FALLBACK_LANG] : [target, FALLBACK_LANG];
-    return Promise.all(need.map((l) => {
-      if (!loadingRef.current[l]) {
-        loadingRef.current[l] = loadLocale(l).then((d) => {
-          dictsRef.current[l] = d;
-          if (IN_CONTEXT) addLocaleToTolgee(l, d); // BEFORE ensureTolgeeRunning()
-          return d;
-        });
-      }
-      return loadingRef.current[l];
-    }));
+  // Одна фаза загрузки одного языка. `only` — подмножество словарей: с ним
+  // грузится зонный набор (шесть из 48), без него — всё остальное. Результат
+  // МЕРДЖИТСЯ в тот же словарь, поэтому вторая фаза дополняет первую, а не
+  // заменяет её. Ключ кэша учитывает фазу: иначе фоновая догрузка вернула бы
+  // промис первой и «полный словарь» никогда бы не наступил.
+  const loadPhase = useCallback((l, only) => {
+    const key = only ? `${l}:zone` : `${l}:full`;
+    if (!loadingRef.current[key]) {
+      loadingRef.current[key] = loadLocale(l, only).then((d) => {
+        dictsRef.current[l] = { ...dictsRef.current[l], ...d };
+        // Зеркалим в Tolgee только на ПОЛНОЙ фазе: сессия in-context — режим
+        // разработки, и половинчатый словарь там был бы хуже, чем поздний.
+        if (!only && IN_CONTEXT) addLocaleToTolgee(l, dictsRef.current[l]); // BEFORE ensureTolgeeRunning()
+        return dictsRef.current[l];
+      });
+    }
+    return loadingRef.current[key];
   }, []);
+
+  const langsFor = (target) => (target === FALLBACK_LANG ? [FALLBACK_LANG] : [target, FALLBACK_LANG]);
+
+  const ensureLoaded = useCallback(
+    (target, only) => Promise.all(langsFor(target).map((l) => loadPhase(l, only))),
+    [loadPhase],
+  );
 
   // Make a language usable, then expose it. Tolgee is started either way so the
   // browser extension can detect the page and offer in-context editing. In an
   // editing session we also switch Tolgee to the active language BEFORE exposing it
   // (so tolgee.t() resolves the right language with no wrong-language frame); normal
   // users never call tolgee.t(), so no language switch is needed for them.
-  const activate = useCallback(async (target) => {
-    await ensureLoaded(target);
+  const activate = useCallback(async (target, { fast = false } = {}) => {
+    // `fast` — только первое монтирование: ждём шесть словарей зоны, остальные
+    // догружаем фоном. Переключение языка руками идёт ПОЛНЫМ путём: оно бывает
+    // и на экране приложения, где половина словаря — это сырые ключи на экране.
+    await ensureLoaded(target, fast ? ZONE_NAMESPACES : undefined);
     ensureTolgeeRunning();
     if (IN_CONTEXT) await tolgee.changeLanguage(target);
     setReady((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
+    const rest = fast ? ensureLoaded(target) : Promise.resolve();
+    await rest.then(() => setFull((prev) => (prev.has(target) ? prev : new Set(prev).add(target))));
   }, [ensureLoaded]);
 
   // Load+activate the active locale, then make it visible — a language switch
@@ -142,7 +166,7 @@ export function I18nProvider({ children }) {
 
   // Activate the initial locale on mount (detected browser/stored language). A
   // signed-in user whose language differs triggers a follow-up load below.
-  useEffect(() => { activate(detectInitialLang(null)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { activate(detectInitialLang(null), { fast: true }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply Luxon default locale on mount and whenever lang changes,
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.
@@ -214,6 +238,13 @@ export function I18nProvider({ children }) {
     await persistProfile({ unit_system: newUnits });
   }, [persistProfile]);
 
+  const dictFull = full.has(lang);
+
+  // ★ `dictFull` ОБЯЗАН быть в зависимостях мемо. `t` — стабильный колбэк, он
+  // читает словарь через ref и при фоновой догрузке НЕ меняется; без этой
+  // зависимости объект контекста остался бы тем же, потребители не
+  // перерисовались бы, и строки, приехавшие второй фазой, не появились бы до
+  // следующего рендера по другой причине.
   const value = useMemo(() => ({
     lang,
     setLang,
@@ -222,12 +253,15 @@ export function I18nProvider({ children }) {
     t,
     languages: LANGUAGES,
     locale: localeTag(lang),
-  }), [lang, setLang, units, setUnits, t]);
+    dictFull,
+  }), [lang, setLang, units, setUnits, t, dictFull]);
 
-  // Gate the first paint until the active locale is ready in Tolgee, so no screen
-  // ever renders raw keys. Mirrors the app's existing loading splash (reuse). Once
-  // ready, language switches no longer hit this branch (applyLang/setLang flip
-  // `lang` only after `activate` has loaded + switched Tolgee to the new locale).
+  // Gate the first paint until the active locale is ready. «Готов» теперь значит
+  // «загружены словари ЗОНЫ» — шесть из 48 (`zoneNamespaces.js`): маркетинговой
+  // странице остальные 42 не нужны, а ждала она их все. Экраны приложения ждут
+  // ПОЛНОГО словаря — их гейт в `App.jsx`, там же, где ожидание авторизации.
+  // Сырых ключей это не добавляет: ни один экран приложения не рисуется, пока
+  // `dictFull` не станет true.
   if (!ready.has(lang)) {
     return (
       <div className="app-loading">
