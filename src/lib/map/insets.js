@@ -39,6 +39,44 @@ export function toBox(v) {
   return { top: n(v.top), right: n(v.right), bottom: n(v.bottom), left: n(v.left) };
 }
 
+/**
+ * ★★★ ЗАКРЫТАЯ ПЛОЩАДЬ КАМЕРЕ ПЕРЕДАЁТСЯ СДВИГОМ ЦЕНТРА, А НЕ `transform.padding`.
+ *
+ * ⚠️ `transform.padding` НА ПРОЕКЦИИ `globe` ЛОМАЕТ РЕНДЕР. Замер (реальный
+ * mapbox 3.24, холст 446x600, зум 4, отступ снизу 456): движок рисует ПЛАНЕТУ
+ * ДИСКОМ и оставляет остальную площадь канваса ПРОЗРАЧНОЙ — сквозь неё видна
+ * подложка элемента, то есть заливка цветом темы приложения с круглым вырезом.
+ * Диаметр диска растёт с зумом (зум 5 — заметно больше зума 4), на `mercator`
+ * дефекта нет вовсе. Это ровно те «круги и заливки», на которые жаловались.
+ *
+ * Сдвиг центра даёт тот же кадр без единого артефакта: канвас залит от края до
+ * края, вид стоит в центре СВОБОДНОГО окна. Проверено тем же замером.
+ *
+ * Знак: свободное окно смещено ОТ закрытой стороны, поэтому цель уезжает в
+ * противоположную ей сторону — панель слева даёт `+x`, шит снизу даёт `−y`.
+ *
+ * @param {Box} box @returns {[number, number]} `offset` для `easeTo`/`flyTo`
+ */
+export function offsetFor(box) {
+  const b = toBox(box);
+  return [(b.left - b.right) / 2, (b.top - b.bottom) / 2];
+}
+
+/**
+ * Географическая точка, стоящая в центре СВОБОДНОГО окна. Нужна, когда окно
+ * меняет размер: «оставить вид на месте» значит оставить на месте ЕЁ, а не
+ * центр холста (тот вообще может оказаться под шитом).
+ * @param {any} map @param {Box} box
+ */
+export function freeWindowCenter(map, box) {
+  try {
+    const el = map.getContainer();
+    const [ox, oy] = offsetFor(box);
+    const p = map.unproject([el.clientWidth / 2 + ox, el.clientHeight / 2 + oy]);
+    return [p.lng, p.lat];
+  } catch { return null; }
+}
+
 /** Сумма коробок — «воздух кадра плюс закрытая площадь». @param {Box} a @param {Box} b @returns {Box} */
 export function addBox(a, b) {
   return { top: a.top + b.top, right: a.right + b.right, bottom: a.bottom + b.bottom, left: a.left + b.left };

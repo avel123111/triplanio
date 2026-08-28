@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { calmFit } from '@/lib/map/camera';
 import { markFramed } from '@/lib/map/framed';
-import { getMapInsets } from '@/lib/map/insets';
+import { getMapInsets, offsetFor } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
 import { useCanFrame, useMapInsets } from '@/lib/map/useMapInsets';
@@ -233,7 +233,7 @@ export default function FlowMap({
       // НЕ перекадрирование: зум и границы маршрута он не трогает.
       if (!canFrameNow || fitPositions.length) return false;
       const view = startGlobeView(map, getMapInsets(map));
-      const move = { ...view, padding: getMapInsets(map) };
+      const move = { ...view, offset: offsetFor(getMapInsets(map)) };
       // Кадр жеста — мгновенно (шар растёт вместе с окном, за пальцем); осадка —
       // тем же темпом и кривой, что и шит.
       try {
@@ -290,7 +290,7 @@ export default function FlowMap({
         // сайзится от него (~85% высоты на десктопе), поэтому отступ вьюпорта не
         // нужен и здесь. Returning here from a route (draft RESET) glides back
         // out; a fresh mount / resize just snaps (the fade-in hides it).
-        const view = { ...startGlobeView(map, getMapInsets(map)), padding: getMapInsets(map) };
+        const view = { ...startGlobeView(map, getMapInsets(map)), offset: offsetFor(getMapInsets(map)) };
         if (prevHadPointsRef.current) {
           try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
         } else {

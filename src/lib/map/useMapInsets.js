@@ -1,6 +1,6 @@
 // @ts-check
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NO_INSETS, canFrame, getMapInsets, setMapInsets, toBox } from './insets';
+import { canFrame, freeWindowCenter, getMapInsets, offsetFor, setMapInsets, toBox } from './insets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 
 /**
@@ -92,19 +92,23 @@ export function useMapInsets(mapRef, { ready, insets, live = null, focusing = fa
     const map = mapRef.current;
     if (!map || !ready) return undefined;
     liveRef.current = map;
+    // Точку снимаем по СТАРОЙ коробке — до записи новой: «оставить вид на
+    // месте» значит оставить на месте центр СВОБОДНОГО окна, а не центр холста
+    // (тот вообще может быть под шитом).
+    const keep = freeWindowCenter(map, getMapInsets(map));
     setMapInsets(map, insets);
     if (!seenRef.current) {
       seenRef.current = true;
-      try { map.easeTo({ padding: getMapInsets(map), duration: 0 }); } catch { /* ignore */ }
       return undefined;
     }
     // ★ Панель правит камерой (focus) или ТОЛЬКО ЧТО правила (её закрытие уводит
     // focus на полный маршрут): отступ УЖЕ сохранён (`setMapInsets` выше), а саму
     // камеру мы НЕ трогаем ВООБЩЕ. Её ведёт focus-эффект (`calmFlyTo`/`calmFit`
     // ниже по дереву, эффект объявлен ПОЗЖЕ нашего), и он передаёт наш отступ в
-    // ту же команду (`padding: getMapInsets(map)`) — центр, зум И отступ едут
-    // ОДНОЙ плавной анимацией. Любой свой `easeTo` тут — вторая команда на ту же
-    // камеру: она и рвала зум (мгновенная — рывок на открытии, обрыв на закрытии).
+    // ту же команду (`offset: offsetFor(getMapInsets(map))`) — центр, зум И
+    // сдвиг едут ОДНОЙ плавной анимацией. Любой свой `easeTo` тут — вторая
+    // команда на ту же камеру: она и рвала зум (мгновенная — рывок на открытии,
+    // обрыв на закрытии).
     const focusDriven = focusing || wasFocusing.current;
     wasFocusing.current = focusing;
     if (focusDriven) return undefined;
@@ -119,12 +123,17 @@ export function useMapInsets(mapRef, { ready, insets, live = null, focusing = fa
     if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(map))) return undefined;
     // Цель, размер которой считается от свободного окна, обслуживает себя сама.
     if (reframeRef.current?.(map)) return undefined;
-    // Иначе доезжает ТОЛЬКО отступ — тем же временем и той же кривой, что и
-    // поверхность, которая поехала (шит встаёт на детент за `SURFACE_SETTLE_MS`,
-    // панель уезжает за него же). Ни `center`, ни `zoom` тут не передаются, и
-    // это ГЛАВНОЕ: mapbox сам сдвигает вид в новое свободное окно, а границы
-    // маршрута в расчёт не входят — подстройка есть, автофокуса нет.
-    try { map.easeTo({ padding: getMapInsets(map), duration: SURFACE_SETTLE_MS, easing: surfaceEasing }); } catch { /* ignore */ }
+    // Иначе доезжает ТОЛЬКО кадр: та же географическая точка встаёт в центр
+    // НОВОГО свободного окна. Зум не трогаем — это подстройка, а не автофокус.
+    if (!keep) return undefined;
+    try {
+      map.easeTo({
+        center: keep,
+        offset: offsetFor(getMapInsets(map)),
+        duration: SURFACE_SETTLE_MS,
+        easing: surfaceEasing,
+      });
+    } catch { /* ignore */ }
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, key, focusing]);
@@ -132,7 +141,7 @@ export function useMapInsets(mapRef, { ready, insets, live = null, focusing = fa
   // ★ КАМЕРА ЗА ПАЛЬЦЕМ — ОТДЕЛЬНЫЙ КАНАЛ, МИМО REACT. Пока шит едет, свободное
   // окно меняется каждый кадр; состояние на кадр жеста стоило бы перекладки всей
   // панели, поэтому шелл отдаёт живую величину подпиской, а мы двигаем ОТСТУП
-  // немедленно. `setPadding` здесь — не ошибка, а ровно то, чем он и является:
+  // немедленно. `jumpTo` здесь — не ошибка, а ровно то, чем он и является:
   // мгновенная установка. Рывком он был бы ВМЕСТО анимации; здесь он и есть
   // слежение 1:1, кадр в кадр, как на десктопе за краем окна.
   //
@@ -146,14 +155,17 @@ export function useMapInsets(mapRef, { ready, insets, live = null, focusing = fa
       const map = mapRef.current;
       if (!map) return;
       const box = { ...toBox(insetsRef.current), bottom: Math.max(0, Math.round(bottom)) };
+      const keep = freeWindowCenter(map, getMapInsets(map));
       setMapInsets(map, box);
       const el = map.getContainer?.();
       if (!canFrame(el?.clientWidth || 0, el?.clientHeight || 0, box)) return;
       const instant = phase !== 'end';
       if (reframeRef.current?.(map, { instant })) return;
+      if (!keep) return;
+      const move = { center: keep, offset: offsetFor(box) };
       try {
-        if (instant) map.setPadding(box);
-        else map.easeTo({ padding: box, duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
+        if (instant) map.jumpTo(move);
+        else map.easeTo({ ...move, duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
       } catch { /* ignore */ }
     });
   }, [live, ready, mapRef]);
@@ -164,8 +176,10 @@ export function useMapInsets(mapRef, { ready, insets, live = null, focusing = fa
   useEffect(() => () => {
     const map = liveRef.current;
     if (!map) return;
+    // Камеру трогать не нужно: закрытая площадь больше не живёт в состоянии
+    // карты (`transform.padding` мы не пишем вовсе), она есть только в наших
+    // командах. Снять объявление — достаточно.
     setMapInsets(map, null);
-    try { map.easeTo({ padding: NO_INSETS, duration: 0 }); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

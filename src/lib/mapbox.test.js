@@ -19,39 +19,56 @@ function fakeMap({ W = 1280, H = 900, zoom = 3, cam = { center: { lng: 10, lat: 
 }
 const call = (m, name) => m.calls.find(([n]) => n === name)?.[1];
 
-test('★★ В ФИТ УХОДИТ СУММА, В ПОВЕРХНОСТЬ — ТОЛЬКО ЗАКРЫТАЯ ПЛОЩАДЬ', () => {
-  // Ровно то правило, которое нарушает штатный `map.fitBounds`: он кладёт
-  // отступ фита (с ВОЗДУХОМ) и в расчёт, и в состояние карты — и состояние
-  // молча уезжает на величину воздуха при каждом кадрировании.
+test('★★★ В РАСЧЁТ КАДРА — ОТСТУП, В КАМЕРУ — СДВИГ. `padding` В КАМЕРУ НЕ УХОДИТ НИКОГДА', () => {
+  // ГЛАВНОЕ правило этого файла, и оно куплено дорого. `transform.padding` на
+  // проекции `globe` ломает рендер: движок рисует планету ДИСКОМ и оставляет
+  // остальной канвас ПРОЗРАЧНЫМ, сквозь него видна подложка элемента — те самые
+  // «круги и заливка вокруг глобуса». Замер: холст 446x600, зум 4, отступ снизу
+  // 456 → диск радиусом ~215px; на зуме 5 диск заметно больше; на `mercator`
+  // дефекта нет. Поэтому закрытая площадь уходит в камеру СДВИГОМ ЦЕНТРА.
+  //
+  // В РАСЧЁТ (`cameraForBounds`) отступ по-прежнему уходит, и это другое: там
+  // он только уменьшает коробку и состояния карты не касается.
   const m = fakeMap();
   setMapInsets(m, { left: 550 });
   fitToPoints(m, [[0, 0], [20, 40]], { padding: 60, maxZoom: 8 });
 
   assert.deepEqual(call(m, 'cameraForBounds').padding, { top: 60, right: 60, bottom: 60, left: 610 },
     'расчёт кадра обязан знать и воздух, и закрытую площадь');
-  assert.deepEqual(call(m, 'flyTo').padding, { top: 0, right: 0, bottom: 0, left: 550 },
-    'состояние карты — ТОЛЬКО закрытая площадь, без воздуха');
+  assert.equal(call(m, 'flyTo').padding, undefined,
+    '★ в камеру `padding` не передаётся ВООБЩЕ — он ломает глобус');
+  assert.deepEqual(call(m, 'flyTo').offset, [275, 0],
+    'панель слева на 550 → цель уезжает вправо на половину закрытого');
 });
 
-test('закрытой площади нет — отступ поверхности нулевой', () => {
+test('закрытой площади нет — сдвига нет', () => {
   const m = fakeMap();
   setMapInsets(m, null);
   fitToPoints(m, [[0, 0], [20, 40]], { padding: 60 });
   assert.deepEqual(call(m, 'cameraForBounds').padding, { top: 60, right: 60, bottom: 60, left: 60 });
-  assert.deepEqual(call(m, 'flyTo').padding, { top: 0, right: 0, bottom: 0, left: 0 });
+  assert.equal(call(m, 'flyTo').padding, undefined);
+  assert.deepEqual(call(m, 'flyTo').offset, [0, 0]);
 });
 
 test('★ одиночная точка встаёт по центру СВОБОДНОГО окна', () => {
-  // Для одной точки вписывать нечего, и отступ поверхности — единственное, что
-  // уводит её из-под виджета. Раньше это делал ручной `offset` у вызывателя.
+  // Для одной точки вписывать нечего, и сдвиг — единственное, что уводит её
+  // из-под виджета.
   const m = fakeMap();
   setMapInsets(m, { bottom: 612 });
   fitToPoints(m, [[7, 8]], { singleZoom: 9 });
   const ease = call(m, 'easeTo');
   assert.deepEqual(ease.center, [7, 8]);
   assert.equal(ease.zoom, 9);
-  assert.deepEqual(ease.padding, { top: 0, right: 0, bottom: 612, left: 0 });
+  assert.equal(ease.padding, undefined);
+  assert.deepEqual(ease.offset, [0, -306], 'шит снизу на 612 → цель уезжает вверх на половину');
   assert.equal(call(m, 'cameraForBounds'), undefined, 'одну точку через bounds не гоняем');
+});
+
+test('★ ручной сдвиг вызывателя СКЛАДЫВАЕТСЯ с нашим, а не заменяет его', () => {
+  const m = fakeMap();
+  setMapInsets(m, { bottom: 400 });
+  fitToPoints(m, [[7, 8]], { offset: [10, -30] });
+  assert.deepEqual(call(m, 'easeTo').offset, [10, -230]);
 });
 
 test('★ singleZoom не режется потолком maxZoom — они про разное', () => {
