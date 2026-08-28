@@ -21,6 +21,7 @@
     "test": "node --test \"src/**/*.test.js\" \"scripts/**/*.test.mjs\"",
     "preview": "vite preview",
     "perf:lh": "node scripts/perf/lh.mjs",
+    "check:design-sync": "node scripts/perf/design-sync-consumers.mjs",
     "check:semantics": "node scripts/ci/check-css-semantics.mjs",
     "check:axes": "node scripts/ci/check-design-axes.mjs",
     "report:exemptions": "node scripts/ci/report-exemptions.mjs",

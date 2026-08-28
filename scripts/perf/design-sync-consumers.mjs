@@ -35,7 +35,9 @@ function walk(file) {
   seen.add(file);
   let raw;
   try { raw = fs.readFileSync(file, 'utf8'); } catch { return; }
-  for (const m of strip(raw).matchAll(/^\s*import\s+(?:[^'"]*?from\s+)?['"]([^'"]+)['"]/gm)) {
+  // import И export-from: `export { X } from '@/design'` — такой же синхронный
+  // вход в чанк, как import; слепота к ре-экспорту = латентная дыра ценой 8 байт.
+  for (const m of strip(raw).matchAll(/^\s*(?:import|export)\s+(?:[^'"]*?from\s+)?['"]([^'"]+)['"]/gm)) {
     if (/^@\/design(\/index)?$/.test(m[1])) hits.push(file);
     const t = resolve(file, m[1]);
     if (t && !parent.has(t)) parent.set(t, file);
