@@ -233,7 +233,10 @@ export async function mutate(
 
   const actionName = parseAction(new URL(req.url).pathname, slug);
   const action = actionName ? resource.actions[actionName] : undefined;
-  if (!action) return jsonError(404, 'Unknown action', 'UNKNOWN_ACTION', corsHeaders);
+  // `actionName` названо в условии вторым НЕ для читателя, а для типа: без него
+  // имя остаётся `string | null` до конца функции, хотя `action` без имени
+  // существовать не может. Пустое имя и незнакомое действие — один и тот же 404.
+  if (!actionName || !action) return jsonError(404, 'Unknown action', 'UNKNOWN_ACTION', corsHeaders);
 
   const actor = await getRequestUser(req); // throws 503 on Auth outage
   // Машинный код на 401 — как у всех прочих edge-функций (`UNAUTHORIZED` — мёртвый
