@@ -8,13 +8,19 @@ import LpSheet from '@/components/ui/LpSheet';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
 import { invokeCard, applyCardBg, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
-import { MAX_UPLOAD_BYTES } from './TripCoverPicker';
+import { MAX_UPLOAD_MB, uploadErrorText } from '@/lib/documentMutations';
+import { prepareImage } from '@/lib/prepareImage';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
 
 // Заглушки миниатюр, пока едет каталог фонов (как у CoverPicker: ряд должен
 // читаться «сейчас будет ещё», а не прыгать с одной плитки до десятка).
 const SKELETON_THUMBS = [0, 1, 2];
+
+// Потолок веса фона — тот же, что у документов и обложки трипа: реальный
+// `file_size_limit` бакета `trips`. Держит два случая: файл, который браузер не
+// смог ужать (не открыл), и вес пресета, скачиваемого с сервера в data-URI.
+const MAX_BG_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 // Конструктор share-карточки (share-UX эксперимент поверх TRIP-193).
 // Одна сцена вместо двух стадий edit→card:
@@ -97,7 +103,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
     let cancelled = false;
     if (!bg) { setBgUri(''); return undefined; }
     if (bg.startsWith('data:')) { setBgUri(bg); return undefined; }
-    fetchImageDataUri(bg, MAX_UPLOAD_BYTES)
+    fetchImageDataUri(bg, MAX_BG_BYTES)
       .then((uri) => { if (!cancelled) setBgUri(uri); })
       .catch(() => { if (!cancelled) { setBg(''); setBgUri(''); } });
     return () => { cancelled = true; };
@@ -148,13 +154,20 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   // теперь несёт сам примитив <Carousel> (общий с лентой миниатюр обложек), а не
   // кустарный listener здесь (реюз, TRIP-443).
 
-  function handleFile(e) {
-    const file = e.target.files?.[0];
+  async function handleFile(e) {
+    const picked = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
-    if (!isAllowedUpload(file, ALLOWED_IMAGE_EXTENSIONS)) { setUploadError(t('doc.bad_format', { name: file.name })); return; }
-    if (file.size > MAX_UPLOAD_BYTES) { setUploadError(t('trip.cover_too_large')); return; }
+    if (!picked) return;
+    if (!isAllowedUpload(picked, ALLOWED_IMAGE_EXTENSIONS)) { setUploadError(t('doc.bad_format', { name: picked.name })); return; }
     setUploadError('');
+    // Фон едет в кадр base64-строкой внутри SVG, и эта строка пересобирается на
+    // каждое переключение фона — цену платит превью на телефоне. Карточка при
+    // этом рисуется ровно в 1080 px, так что подробнее 1920 по длинной стороне
+    // хранить нечего: ужимаем до того, как файл вообще станет строкой.
+    const file = await prepareImage(picked);
+    // Страховка на файл, который браузер не открыл (HEIC в десктопном Chrome) —
+    // он приезжает сюда исходником.
+    if (file.size > MAX_BG_BYTES) { setUploadError(uploadErrorText({ file, reason: 'size' }, t)); return; }
     blobToDataUri(file)
       .then((uri) => { setUploaded(uri); setBg(uri); })
       .catch(() => setUploadError(t('trip.cover_upload_failed')));
@@ -185,7 +198,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
       // клик «Скачать» в окно, пока data-URI пресета ещё качается, иначе собрал
       // бы карточку со штатным фоном. Кэш fetchImageDataUri общий с превью —
       // второй раз пресет не качается.
-      const finalBgUri = bg ? (bg.startsWith('data:') ? bg : await fetchImageDataUri(bg, MAX_UPLOAD_BYTES)) : '';
+      const finalBgUri = bg ? (bg.startsWith('data:') ? bg : await fetchImageDataUri(bg, MAX_BG_BYTES)) : '';
       const mapBlob = await renderCardMapPng({ visits, transfers, ...comp, width: slot.w, height: slot.h });
       if (!mapBlob) throw new Error('map render failed');
       const mapUri = await blobToDataUri(mapBlob);
