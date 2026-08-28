@@ -45,7 +45,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Sheet, Skeleton, Severity, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, SearchSelect, Seg, Sheet, Skeleton, Severity, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
@@ -121,7 +121,7 @@ const ORPHAN_CITY = '__orphan_city__';
 // `cities` — the trip's city_visits (already localized). The picker stores the
 // VISIT, not its label: a label frozen at save time is stuck in whatever language
 // the UI was in, and the two writers disagreed on that (TRIP-230).
-export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, open, onOpenChange, onProRefusal }) {
+export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, prefill = null, open, onOpenChange, onProRefusal }) {
   const isPhone = useIsPhone();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -129,7 +129,12 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const [title, setTitle] = useState(existing?.title || '');
   const [amount, setAmount] = useState(existing?.original_amount != null ? String(existing.original_amount) : '');
   const [currency, setCurrency] = useState(existing?.original_currency || mainCurrency || 'EUR');
-  const [categoryId, setCategoryId] = useState(existing?.category_id || categories[0]?.id || '');
+  // Ступени начального значения: правка строки → контекст точки входа (`prefill`)
+  // → общий дефолт. Диалог до этого не принимал НИЧЕГО (TRIP-484 §1): из пустого
+  // состояния открытой категории он всё равно вставал на первую категорию списка.
+  // `prefill` — объект, а не проп на поле: следующая точка входа со своим
+  // контекстом (город, дата) добавит СВОЙ ключ, а не третий проп.
+  const [categoryId, setCategoryId] = useState(existing?.category_id || prefill?.categoryId || categories[0]?.id || '');
   const [date, setDate] = useState(existing?.spent_on || '');
   // An expense saved before TRIP-230 (or one the backfill couldn't resolve
   // unambiguously) remembers only a city STRING. Offer it as its own option:
@@ -141,6 +146,19 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const [err, setErr] = useState('');
   const v = useHybridValidation('expense', { title, amount, categoryId });
   const st = (f) => fieldState(v.displayIssues, f);
+
+  // Пустое значение города - опция списка, а не отдельная ветка разметки: пикер
+  // берёт ОДИН массив, и «Без города» обязано жить в нём наравне с городами.
+  const cityPickerOptions = useMemo(() => [
+    { id: '', label: t('budget.no_city') },
+    ...(orphanCity ? [{ id: ORPHAN_CITY, label: orphanCity }] : []),
+    ...cities.map((c) => ({ id: c.id, label: c.city_name })),
+  ], [cities, orphanCity, t]);
+  // Самая ранняя дата маршрута - якорь календаря пустого поля даты.
+  const tripAnchor = useMemo(
+    () => cities.map((c) => c.start_date).filter(Boolean).sort()[0] || null,
+    [cities],
+  );
 
   const qc = useQueryClient();
   const expenseBinding = tripContentBinding(qc, tripId, 'budgetExpenses');
@@ -254,25 +272,51 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
         <Field label={t('budget.field_date')}>
-          {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx */}
-          <DateTimeInput withTime={false} value={date} onChange={setDate} />
+          {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx.
+              Якорь = начало путешествия: без него календарь пустого поля открывался
+              на текущем месяце, хотя трата принадлежит трипу (TRIP-484 §4.3). */}
+          <DateTimeInput withTime={false} value={date} onChange={setDate} anchor={tripAnchor} />
         </Field>
       </div>
       <div className="field-row cols-2">
+        {/* Оба списка - канон-пикер ДС (`SearchSelect`, тот же, что несёт валюту и
+            язык), а не нативный `<select>`: стрелку тому рисует ОПЕРАЦИОННАЯ
+            СИСТЕМА, и она не совпадала ни с шевроном ДС, ни сама с собой между
+            двумя полями - ровно та же болезнь, из-за которой в проекте не
+            осталось нативного `<input type="date">` (TRIP-484 §3). Оба списка -
+            трип-ские и короткие, поэтому оба БЕЗ строки поиска: два соседних поля,
+            ведущих себя по-разному, читаются как два разных примитива (замечание
+            Pavel). Состояние валидации едет атрибутами на триггер - он и есть
+            видимое поле. */}
         <Field label={t('budget.field_category')} required={v.isRequired('categoryId')}>
           <div data-vfield="categoryId">
-            <select className="select" {...st('categoryId')} value={categoryId} onChange={e => { setCategoryId(e.target.value); v.markTouched('categoryId'); }}>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.displayName || c.name}</option>)}
-            </select>
+            <SearchSelect
+              {...st('categoryId')}
+              value={categoryId}
+              onChange={(id) => { setCategoryId(id); v.markTouched('categoryId'); }}
+              options={categories}
+              getKey={(c) => c.id}
+              renderValue={(c) => c.displayName || c.name}
+              renderOption={(c) => <span className="grow trunc">{c.displayName || c.name}</span>}
+              searchable={false}
+              placeholder={t('common.choose')}
+              title={t('budget.field_category')}
+            />
           </div>
           <FieldError issues={v.displayIssues} field="categoryId" />
         </Field>
         <Field label={t('visit.city')}>
-          <select className="select" value={cityVisitId} onChange={e => setCityVisitId(e.target.value)}>
-            <option value="">-</option>
-            {orphanCity && <option value={ORPHAN_CITY}>{orphanCity}</option>}
-            {cities.map((c) => <option key={c.id} value={c.id}>{c.city_name}</option>)}
-          </select>
+          <SearchSelect
+            value={cityVisitId}
+            onChange={setCityVisitId}
+            options={cityPickerOptions}
+            getKey={(c) => c.id}
+            renderValue={(c) => c.label}
+            renderOption={(c) => <span className="grow trunc">{c.label}</span>}
+            searchable={false}
+            placeholder={t('common.choose')}
+            title={t('visit.city')}
+          />
         </Field>
       </div>
       <Field label={t('doc.notes_label')}>
@@ -609,9 +653,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   const cityOptions = cityVisits.filter(v => v.city_name);
 
-  function openAddExpense() {
+  // Контекст точки входа едет в диалог ОДНИМ объектом `prefill` (категория/город/
+  // дата): отдельный проп на каждое поле пришлось бы заводить трижды. Точка входа
+  // отдаёт то, что знает; шапка и «+» нижней навигации не знают ничего.
+  function openAddExpense(prefill) {
     if (readOnly) return;
-    setExpenseModal({});
+    setExpenseModal({ prefill: prefill || null });
   }
   function openEditExpense(expense) {
     if (readOnly) return;
@@ -732,7 +779,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         actions={!readOnly && !isPhone && (
           <>
             <Btn variant="secondary" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
-            <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
+            <Btn variant="primary" icon="plus" onClick={() => openAddExpense()}>{t('budget.manual_expense')}</Btn>
           </>
         )}
       />
@@ -815,7 +862,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             <b>{t('budget.no_expenses')}</b>
             <span>{t('budget.no_expenses_desc')}</span>
           </span>
-          {!readOnly && <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>}
+          {!readOnly && <Btn variant="primary" icon="plus" onClick={() => openAddExpense()}>{t('budget.first_expense')}</Btn>}
         </Card>
       )}
 
@@ -861,7 +908,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             </div>
             {activeCat.items.length === 0 ? (
               <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.displayName })}
-                action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
+                action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={() => openAddExpense({ categoryId: activeCat.id })}>{t('budget.add_first')}</Btn>} />
             ) : (
               <div className="col col--g4">
                 {activeCat.items.map(exp => {
@@ -913,10 +960,10 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         );
       })() : (
         <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc} isPhone={isPhone}
-          expensesPlural={expensesPlural} onOpen={openExpense} onAdd={openAddExpense} readOnly={readOnly} />
+          expensesPlural={expensesPlural} onOpen={openExpense} onAdd={() => openAddExpense()} readOnly={readOnly} />
       )}
 
-      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} onProRefusal={onProRefusal} />}
+      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} prefill={expenseModal.prefill ?? null} onProRefusal={onProRefusal} />}
       {categoryModal !== null && <AddCategoryDialog open={true} onOpenChange={(o) => { if (!o) setCategoryModal(null); }} tripId={tripId} existing={categoryModal.existing ?? null} onProRefusal={onProRefusal} />}
       <FxRatesDialog open={fxOpen} onOpenChange={setFxOpen} tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies} currentOverrides={budget?.fx_overrides} fx={fx} onProRefusal={onProRefusal} />
     </div>
@@ -935,7 +982,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
   if (cityGroups.length === 0) {
     return (
       <EmptyState icon="pin" title={t('budget.cities_empty')} body={t('budget.cities_empty_desc')}
-        action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={onAdd}>{t('budget.add_expense')}</Btn>} />
+        action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={() => onAdd()}>{t('budget.add_expense')}</Btn>} />
     );
   }
   if (!cur) return null;

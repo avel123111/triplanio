@@ -40,3 +40,16 @@ metadata:
 **Миграции — ТЕПЕРЬ CI/CD** (TRIP-68 Ф3, 2026-06-26): тот же воркфлоу `supabase-deploy.yml`, job `migrate` = `supabase db push` (merge→dev→Supabase dev, merge→main→prod; секреты `SUPABASE_DB_URL_DEV`/`_PROD`; IPv4 Session pooler в db-url); dev-прогон зелёный (no-op на baseline). **И функции, И миграции деплоим ТОЛЬКО через CI/CD — руками не катим и ручной деплой не предлагаем** (см. [[feedback-no-manual-deploy-cicd-only]]). Все 3 гейта (frontend/typecheck/deno) — **блокирующие** (TRIP-93 + TRIP-94 закрыли остаток non-blocking).
 
 **Аудит 2026-06-25 (по запросу Pavel):** ядро (авто-деплой функций dev+prod) подтверждено на ЖИВОМ рантайме обоих проектов — все 45 функций задеплоены раннером GitHub Actions (entrypoint_path=/home/runner/...), 13 pinned-false=false 1:1 с config.toml на проде И dev, орфанов нет, CI-ассерт зелёный на прод-прогоне. **РЕШЕНИЕ Pavel:** «CI-гейт на PR» остаётся **advisory** (branch protection не энфорсится на free private GitHub) — деплой защищён `needs:gate`, мердж красного на доверии; это принято осознанно, НЕ недоделка, TRIP-73 закрывается так. Остаточные риски (приняты для MVP): все 3 гейта blocking (deno = TRIP-94, typecheck = TRIP-93), но required-энфорс на мердж = advisory (free GitHub, как frontend) — красный можно домерджить; ассерт verify_jwt односторонний (ловит false→true, не true→false); docs-PR #140 на dev, до main доедет следующим dev→main; TRIP-50 (зонтик деплой-дрейфа) — **закрыт полностью: и функции, и миграции через CI/CD** (миграции = TRIP-68, готово 2026-06-26).
+
+## Грабля: edge-типы локально проверяет ТОЛЬКО deno (и он ставится за минуту)
+
+`npm run typecheck` до `supabase/functions/**` не достаёт вовсе, а `esbuild`
+проверяет синтаксис, а НЕ типы: правка `_shared/*.ts` уезжала в CI «зелёной» и
+падала там на джобе `Deno typecheck` (TRIP-484: `actionName` — `string | null`,
+сузить его в TS помогает только явное `if (!actionName || !action)`).
+Если `deno` в окружении нет, он ставится одной строкой и после этого CI-джоба
+воспроизводится один в один:
+
+    curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/tmp/deno sh -s -- -y
+    /tmp/deno/bin/deno check --no-lock --node-modules-dir=none $(find supabase/functions -name '*.ts')
+    /tmp/deno/bin/deno test  --no-lock --no-check --node-modules-dir=none $(find supabase/functions -name '*_test.ts')

@@ -144,10 +144,6 @@
       "object": "control",
       "reason": "многострочное поле — объект «контрол»"
     },
-    "select": {
-      "object": "control",
-      "reason": "селект — объект «контрол»"
-    },
     "switch": {
       "object": "control",
       "reason": "переключатель — объект «контрол»"
