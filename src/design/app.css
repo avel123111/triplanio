@@ -3753,7 +3753,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Поэтому уровень объявляет тот, у кого есть оверлеи, — семья пикера
    (`.tcp__hero` изолирован, `.tcp__slide` назван нулём), а примитив остаётся
    нейтральным. Контракт при этом не на словах: его держит гард 2af.
-   visual-diff-exempt: .cover__img z-index — слой картинки назван явно (как .tc__img), слот <Cover> рисуется поверх */
 .cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
 .cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 /* Обложка во всю площадь родителя (постер трипа, виджет «идёт») вместо
@@ -4725,7 +4724,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Обложка = горизонтальная scroll-snap-лента слайдов (нативный свайп + доводка
    снапом, как <Carousel>); скроллбар скрыт. Скрим НЕ ловит касания, чтобы свайп
    доходил до ленты под ним. */
-.tcp__track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
+/* ★ ЛЕНТА — НИЖНИЙ СЛОЙ КАДРА, И ЭТО ОБЪЯВЛЕНО. Композитный слой на мобильном
+   движке получает САМ СКРОЛЛЕР (`overflow-x:auto` + `scroll-snap`), и всплывает
+   он целиком — вместе со всем, что внутри. Поэтому запирать надо ЕГО: пин на
+   слайде или на картинке этот случай не покрывает по построению (заперто
+   содержимое слоя, а поднимается слой). `position: relative; z-index: 0` даёт
+   ленте свой стековый контекст на уровне 0 — ниже скрима (2) и контролов (4)
+   изолированного `.tcp__hero` при любом решении движка о композитинге.
+   visual-diff-exempt: .tcp__track position — лента = нижний слой кадра (нужна позиционированность под уровень)
+   visual-diff-exempt: .tcp__track z-index — уровень ленты назван явно (0) */
+.tcp__track { display: flex; position: relative; z-index: 0; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .tcp__track::-webkit-scrollbar { display: none; }
 /* Зрителю (read-only) прокрутку глушим АТРИБУТОМ, а не классом: состояние — это
    данные. <fieldset disabled> сюда не достаёт — прокрутка не элемент формы. */
@@ -4733,14 +4741,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Слайд — примитив <Cover>: его размер/радиус тут перебиваются на «во всю
    рамку», а фоллбек-подложка и onError достаются даром (протухший signed URL
    своей фотки покажет фоллбек, а не битую картинку). */
-/* Уровень слайда назван ЯВНО — нижний слой кадра. Изолированный `.tcp__hero`
-   считает порядок честно, но внутри него слайды по-прежнему СОРЕВНУЮТСЯ со
-   скримом и контролами: изоляция запирает всплытие наружу, а не между детьми
-   одного кадра. `z-index: 0` — ровно то же, что `.cover__img`, но на уровень
-   выше: даже если движок промоутит не картинку, а сам слайд, выше уровня 0 он
-   не поднимется.
-   visual-diff-exempt: .tcp__slide z-index — слайд = нижний слой кадра обложки (назван явно) */
-.tcp__slide { flex: none; width: 100%; height: 100%; z-index: 0; border-radius: 0; scroll-snap-align: center; }
+.tcp__slide { flex: none; width: 100%; height: 100%; border-radius: 0; scroll-snap-align: center; }
 .tcp__hero .tc__scrim { pointer-events: none; }
 /* Лента миниатюр пикера — примитив <Carousel> со <Swatch variant="round">.
    Миниатюры пейзажной формы (как в референсе): размер/радиус/кольцо выбора — на
