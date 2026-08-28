@@ -62,41 +62,9 @@ export function isTextInput(el) {
 }
 
 /**
- * Сколько ПИКСЕЛЕЙ ЗАПАСА не хватает контейнеру, чтобы прокрутиться на `delta`.
- *
- * ★★ ЭТО `contentInset.bottom` ИЗ НАТИВА, И БЕЗ НЕГО МЕХАНИЗМ НЕПОЛНЫЙ.
- * Поле у нижней кромки формы, которая умещается в экран, поднять НЕЧЕМ:
- * `scrollHeight === clientHeight`, крутить некуда, и никакая высота поверхности
- * этого не меняет. Нативный скролл-вью в этот момент получает снизу инсет
- * размером с клавиатуру — место для прокрутки ПОЯВЛЯЕТСЯ там, где его не было.
- * Ровно поэтому в нормальном приложении последнее поле длинной формы всегда
- * можно выкрутить наверх.
- *
- * ★ ВЫСОТУ КЛАВИАТУРЫ МЫ ПРИ ЭТОМ НЕ УГАДЫВАЕМ, И НЕ ДОЛЖНЫ. На `focusin`
- * клавиатура ещё не поехала, `visualViewport.height` полная — её высота в этот
- * момент попросту неизвестна. Но она и не нужна: нужно не «сколько займёт
- * клавиатура», а «сколько НЕ ХВАТАЕТ, чтобы доехать до цели», а это считается
- * из того, что уже есть. Заодно запас получается минимальным — ровно недостача,
- * а не 340 px мёртвого поля под формой.
- *
- * @param {{ delta: number, scrollTop: number, scrollHeight: number, clientHeight: number }} p
- * @returns {number} px запаса снизу (>= 0)
- */
-export function reserveNeeded({ delta, scrollTop, scrollHeight, clientHeight }) {
-  const available = Math.max(0, scrollHeight - clientHeight - scrollTop);
-  return Math.max(0, Math.round(delta - available));
-}
-
-/**
- * Ближайший предок, ОБЪЯВЛЕННЫЙ прокручиваемым.
- *
- * ★ ПЕРЕПОЛНЕНИЕ ЗДЕСЬ НЕ ПРОВЕРЯЕТСЯ, И ЭТО ПРАВКА ПО СУЩЕСТВУ. Прошлая
- * редакция требовала `scrollHeight > clientHeight` («у кого есть куда ехать») и
- * тем самым отсеивала РОВНО ТОТ случай, ради которого всё делается: форма
- * умещается в экран, поле внизу, ехать некуда — и функция возвращала null, то
- * есть сдавалась. Запас снизу (`reserveNeeded`) как раз и создаёт место там,
- * где его нет, поэтому решает объявление `overflow-y`, а не текущий размер.
- *
+ * Ближайший предок, который РЕАЛЬНО может прокрутиться. Не «у кого overflow
+ * auto», а «у кого есть куда ехать»: контейнер с `auto` и без переполнения
+ * прокруткой не является, и остановиться на нём значило бы не доехать никуда.
  * Ничего не нашли → поле в непрокручиваемой поверхности (композер чата прибит к
  * низу): двигать нечего, и это законный случай, а не ошибка.
  * @param {Element | null} el
@@ -104,29 +72,9 @@ export function reserveNeeded({ delta, scrollTop, scrollHeight, clientHeight }) 
 function scrollableAncestor(el) {
   for (let n = el?.parentElement; n; n = n.parentElement) {
     const oy = getComputedStyle(n).overflowY;
-    if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') return n;
+    if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && n.scrollHeight - n.clientHeight > 1) return n;
   }
   return null;
-}
-
-// Запас живёт РОВНО ОДИН и хранится вместе с тем, что было до него: инлайновый
-// стиль надо вернуть как был, а не затереть в пустую строку — у контейнера мог
-// стоять свой.
-let reserved = /** @type {{ el: HTMLElement, prev: string } | null} */ (null);
-
-/** @param {HTMLElement} el @param {number} px */
-function reserve(el, px) {
-  release();
-  if (px <= 0) return;
-  const base = parseFloat(getComputedStyle(el).paddingBottom) || 0;
-  reserved = { el, prev: el.style.paddingBottom };
-  el.style.paddingBottom = `${Math.round(base + px)}px`;
-}
-
-function release() {
-  if (!reserved) return;
-  reserved.el.style.paddingBottom = reserved.prev;
-  reserved = null;
 }
 
 let started = false;
@@ -155,20 +103,6 @@ export function startFocusAnchor(vv) {
     const delta = anchorDelta({ fieldTop: box.top, fieldHeight: box.height, viewportH: vv.height });
     if (delta <= 0) return;
     const sc = scrollableAncestor(/** @type {HTMLElement} */ (el));
-    if (!sc) return;
-    // Порядок несущий: запас СНАЧАЛА (он меняет `scrollHeight`), прокрутка потом.
-    // Обе операции — в одном синхронном обработчике, то есть до того, как
-    // клавиатура тронулась: браузеру, когда он придёт считать свой сдвиг, поле
-    // уже видно на нужном месте.
-    reserve(sc, reserveNeeded({ delta, scrollTop: sc.scrollTop, scrollHeight: sc.scrollHeight, clientHeight: sc.clientHeight }));
-    sc.scrollTop += delta;
-  }, true);
-
-  // Ушли из поля — запас снимается, иначе под формой навсегда осталась бы
-  // мёртвая полоса. `focusout` приходит ДО следующего `focusin`, поэтому решение
-  // принимается на следующем тике, по фактическому `activeElement`: переход из
-  // поля в поле запас не роняет.
-  document.addEventListener('focusout', () => {
-    setTimeout(() => { if (!isTextInput(document.activeElement)) release(); }, 0);
+    if (sc) sc.scrollTop += delta;
   }, true);
 }
