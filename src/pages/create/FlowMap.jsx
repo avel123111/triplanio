@@ -55,11 +55,11 @@ function fitPaddingFor(w) {
 // RESET черновика). Всё, что можно посчитать без DOM, — в `lib/map/globeStart.js`;
 // там же разбор и там же тест: у правила «какого размера шар» нет ни скриншота в
 // CI, ни гарда, и его уже дважды ломали. Здесь остаётся снять размеры холста.
-function startGlobeView(map, air, insets) {
+function startGlobeView(map, insets) {
   const el = map?.getContainer?.();
   return {
     center: GLOBE_START_CENTER,
-    zoom: startGlobeZoom({ W: el?.clientWidth || 0, H: el?.clientHeight || 0, insets, air }),
+    zoom: startGlobeZoom({ W: el?.clientWidth || 0, H: el?.clientHeight || 0, insets }),
   };
 }
 
@@ -232,7 +232,7 @@ export default function FlowMap({
       // Маршрут есть — подстройку под новое окно делает сам хук отступом, и это
       // НЕ перекадрирование: зум и границы маршрута он не трогает.
       if (!canFrameNow || fitPositions.length) return false;
-      const view = startGlobeView(map, fitPaddingFor(winW), getMapInsets(map));
+      const view = startGlobeView(map, getMapInsets(map));
       const move = { ...view, padding: getMapInsets(map) };
       // Кадр жеста — мгновенно (шар растёт вместе с окном, за пальцем); осадка —
       // тем же темпом и кривой, что и шит.
@@ -290,7 +290,7 @@ export default function FlowMap({
         // сайзится от него (~85% высоты на десктопе), поэтому отступ вьюпорта не
         // нужен и здесь. Returning here from a route (draft RESET) glides back
         // out; a fresh mount / resize just snaps (the fade-in hides it).
-        const view = { ...startGlobeView(map, air, getMapInsets(map)), padding: getMapInsets(map) };
+        const view = { ...startGlobeView(map, getMapInsets(map)), padding: getMapInsets(map) };
         if (prevHadPointsRef.current) {
           try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
         } else {
