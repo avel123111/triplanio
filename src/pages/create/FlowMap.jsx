@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { calmFit } from '@/lib/map/camera';
 import { markFramed } from '@/lib/map/framed';
-import { getMapInsets } from '@/lib/map/insets';
+import { fitHeightSig, getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
 import { useMapInsets } from '@/lib/map/useMapInsets';
@@ -194,12 +194,24 @@ export default function FlowMap({
   // чем раньше: смена свободного окна камеру НЕ ДВИГАЕТ ВОВСЕ (★★ ниже). Детент —
   // не новая цель кадра, а та же самая, снятая в другое окно; положи её сюда, и
   // каждая осадка шита заново вписывала бы маршрут — ровно то, что этот PR снял.
-  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}`;
+  // ★ ВЫСОТА СВОБОДНОГО ОКНА — ЧАСТЬ ЦЕЛИ КАДРА, ШИРИНА — НЕТ (`fitHeightSig`).
+  // Шит меняет высоту окна, а на телефоне она ничем, кроме нового вписывания, не
+  // отрабатывается: и отступ камеры, и сдвиг холста умеют только ПЕРЕНОСИТЬ.
+  // Без этого маршрут, вписанный при низком шите, при поднятом торчал верхними и
+  // нижними точками под шапку и под шит. Выше СРЕДНЕГО детента подпись уже не
+  // меняется (потолок `capPx` в `mapShellInsets`) — движение шита с середины
+  // вверх карту не трогает, как и просил Pavel.
+  const fitKey = `${fitPositions.map((p) => p.join(',')).join('|')}@${winW}x${winH}#${fitHeightSig(view?.fit)}`;
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // Did the previous fit draw a route? Lets the empty branch tell a fresh mount /
   // resize (snap to the start globe) apart from a draft RESET (glide back out).
   const prevHadPointsRef = useRef(false);
+  // Подпись пустого глобуса — РАЗМЕР ХОЛСТА, а не свободное окно. Шар считается
+  // от холста, значит смена детента для него не событие; без своей подписи он
+  // прыгал бы на каждой осадке шита — ровно тот «автофокус на пустом глобусе»,
+  // который Pavel просил убрать.
+  const emptySigRef = useRef('');
   // The fitKey the camera was last framed for — so a marker rebuild that leaves the
   // route geometry unchanged (a step change) doesn't re-fit. Reset when the route
   // empties, so the next real route frames again.
@@ -280,11 +292,15 @@ export default function FlowMap({
         // сайзится от него (~85% высоты на десктопе), поэтому отступ вьюпорта не
         // нужен и здесь. Returning here from a route (draft RESET) glides back
         // out; a fresh mount / resize just snaps (the fade-in hides it).
-        const view = { ...startGlobeView(map, air, getMapInsets(map)), padding: getMapInsets(map) };
-        if (prevHadPointsRef.current) {
-          try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
-        } else {
-          try { map.jumpTo(view); } catch { /* ignore */ }
+        const canvasSig = `${winW}x${winH}`;
+        if (prevHadPointsRef.current || emptySigRef.current !== canvasSig) {
+          const start = { ...startGlobeView(map, air, getMapInsets(map)), padding: getMapInsets(map) };
+          if (prevHadPointsRef.current) {
+            try { map.easeTo({ ...start, duration: 600 }); } catch { try { map.jumpTo(start); } catch { /* ignore */ } }
+          } else {
+            try { map.jumpTo(start); } catch { /* ignore */ }
+          }
+          emptySigRef.current = canvasSig;
         }
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';

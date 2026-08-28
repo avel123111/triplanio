@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NO_INSETS, addBox, canFrame, getMapInsets, padUnchanged, setMapInsets, toBox } from './insets.js';
+import { NO_INSETS, addBox, canFrame, fitHeightSig, getMapInsets, padUnchanged, setMapInsets, toBox } from './insets.js';
 
 const B = (top, right, bottom, left) => ({ top, right, bottom, left });
 
@@ -121,4 +121,26 @@ test('★ библиотека без getPadding читается как «не 
 test('упавший getPadding не роняет вызывателя', () => {
   const map = { getPadding: () => { throw new Error('boom'); } };
   assert.equal(padUnchanged(map, NO_INSETS), false);
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ПОДПИСЬ ВЫСОТЫ ОКНА — ЧТО ЗАСТАВЛЯЕТ ВПИСАТЬ МАРШРУТ ЗАНОВО
+// Ось решает: ширину закрывает панель (её доводит отступ камеры — переезд без
+// зума), высоту закрывает шит (переносом не отработать, нужен новый кадр).
+// ═════════════════════════════════════════════════════════════════════════════
+test('★ ширина окна на подпись НЕ влияет — иначе десктоп зумил бы на каждом сворачивании панели', () => {
+  assert.equal(fitHeightSig({ top: 0, right: 0, bottom: 0, left: 380 }), fitHeightSig(NO_INSETS));
+});
+
+test('★ высота окна подпись меняет — маршрут обязан вписаться заново', () => {
+  assert.notEqual(fitHeightSig({ top: 52, right: 0, bottom: 52, left: 0 }), fitHeightSig({ top: 239, right: 0, bottom: 239, left: 0 }));
+});
+
+test('подпись переживает отсутствие коробки (первый кадр, размонтирование)', () => {
+  assert.equal(fitHeightSig(null), fitHeightSig(NO_INSETS));
+  assert.equal(fitHeightSig(undefined), '0|0');
+});
+
+test('дробная высота округляется — пиксель дрожания не гоняет камеру', () => {
+  assert.equal(fitHeightSig({ top: 239.4, bottom: 239.5 }), fitHeightSig({ top: 239, bottom: 240 }));
 });
