@@ -4,6 +4,9 @@ import { useAuth } from '@/lib/AuthContext';
 import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
 import { toast } from '@/components/ui/use-toast';
+// Файл напрямую, НЕ через `@/design/index`: тот импортирует `useT` отсюда,
+// и обращение через индекс замкнуло бы цикл. Разбор — в шапке AppLoading.jsx.
+import AppLoading from '@/design/AppLoading';
 import { hasLang, loadLocale } from './dictionary';
 import { ZONE_NAMESPACES } from './zoneNamespaces';
 import { LANGUAGES, LANG_STORAGE_KEY, detectLandingLang, localeTag } from './translations';
@@ -263,11 +266,7 @@ export function I18nProvider({ children }) {
   // Сырых ключей это не добавляет: ни один экран приложения не рисуется, пока
   // `dictFull` не станет true.
   if (!ready.has(lang)) {
-    return (
-      <div className="app-loading">
-        <div className="spin spin--ring spin--xl spin--ink" />
-      </div>
-    );
+    return <AppLoading />;
   }
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
