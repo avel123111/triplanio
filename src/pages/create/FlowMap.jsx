@@ -235,10 +235,11 @@ export default function FlowMap({
       const view = startGlobeView(map, getMapInsets(map));
       const move = { ...view, offset: offsetFor(getMapInsets(map)) };
       // Кадр жеста — мгновенно (шар растёт вместе с окном, за пальцем); осадка —
-      // тем же темпом и кривой, что и шит.
+      // тем же темпом и кривой, что и шит. Мгновенность = `duration: 0`, а НЕ
+      // `jumpTo`: тот не поддерживает `offset` и молча ставит кадр по центру
+      // всего холста, то есть под шит.
       try {
-        if (instant) map.jumpTo(move);
-        else map.easeTo({ ...move, duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
+        map.easeTo({ ...move, duration: instant ? 0 : SURFACE_SETTLE_MS, ...(instant ? null : { easing: surfaceEasing }) });
       } catch { /* ignore */ }
       return true; // отступ уехал вместе с видом — хуку добавлять нечего
     },
@@ -292,9 +293,12 @@ export default function FlowMap({
         // out; a fresh mount / resize just snaps (the fade-in hides it).
         const view = { ...startGlobeView(map, getMapInsets(map)), offset: offsetFor(getMapInsets(map)) };
         if (prevHadPointsRef.current) {
-          try { map.easeTo({ ...view, duration: 600 }); } catch { try { map.jumpTo(view); } catch { /* ignore */ } }
+          try { map.easeTo({ ...view, duration: 600 }); } catch { /* ignore */ }
         } else {
-          try { map.jumpTo(view); } catch { /* ignore */ }
+          // `duration: 0`, а не `jumpTo`: последний игнорирует `offset`, и
+          // стартовый шар вставал по центру ВСЕГО холста — наполовину под шитом
+          // на телефоне и по центру экрана вместо свободного места на десктопе.
+          try { map.easeTo({ ...view, duration: 0 }); } catch { /* ignore */ }
         }
         prevHadPointsRef.current = false;
         fittedSigRef.current = '';

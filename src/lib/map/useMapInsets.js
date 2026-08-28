@@ -99,6 +99,14 @@ export function useMapInsets(mapRef, { ready, insets, live = null, focusing = fa
     setMapInsets(map, insets);
     if (!seenRef.current) {
       seenRef.current = true;
+      // ПЕРВОЕ применение — без анимации, но применить его НУЖНО: инстанс общий
+      // и приезжает с камерой прошлого экрана, где закрытой площади не было.
+      // Берём точку из центра холста и ставим её в центр свободного окна —
+      // тогда вид сразу стоит там, где его увидят, а не наполовину под шитом.
+      try {
+        const c = map.getCenter();
+        map.easeTo({ center: [c.lng, c.lat], offset: offsetFor(getMapInsets(map)), duration: 0 });
+      } catch { /* ignore */ }
       return undefined;
     }
     // ★ Панель правит камерой (focus) или ТОЛЬКО ЧТО правила (её закрытие уводит
@@ -141,9 +149,13 @@ export function useMapInsets(mapRef, { ready, insets, live = null, focusing = fa
   // ★ КАМЕРА ЗА ПАЛЬЦЕМ — ОТДЕЛЬНЫЙ КАНАЛ, МИМО REACT. Пока шит едет, свободное
   // окно меняется каждый кадр; состояние на кадр жеста стоило бы перекладки всей
   // панели, поэтому шелл отдаёт живую величину подпиской, а мы двигаем ОТСТУП
-  // немедленно. `jumpTo` здесь — не ошибка, а ровно то, чем он и является:
-  // мгновенная установка. Рывком он был бы ВМЕСТО анимации; здесь он и есть
-  // слежение 1:1, кадр в кадр, как на десктопе за краем окна.
+  // немедленно, `easeTo` с нулевой длительностью.
+  //
+  // ⚠️ `jumpTo` ЗДЕСЬ НЕЛЬЗЯ, И ЭТО НЕ ПРИДИРКА: он не поддерживает `offset` и
+  // МОЛЧА его игнорирует (в его CameraOptions такого поля нет). Кадр тогда
+  // встаёт по центру ВСЕГО холста, то есть наполовину под шитом — ровно этот
+  // дефект и приехал, когда сдвиг сюда только въехал. Мгновенность даёт
+  // `duration: 0`, а не другой метод.
   //
   // Ни `center`, ни `zoom` не трогаем — это по-прежнему подстройка, а не
   // автофокус. Исключение то же, что и у осадки: цель, размер которой считается
@@ -164,7 +176,7 @@ export function useMapInsets(mapRef, { ready, insets, live = null, focusing = fa
       if (!keep) return;
       const move = { center: keep, offset: offsetFor(box) };
       try {
-        if (instant) map.jumpTo(move);
+        if (instant) map.easeTo({ ...move, duration: 0 });
         else map.easeTo({ ...move, duration: SURFACE_SETTLE_MS, easing: surfaceEasing });
       } catch { /* ignore */ }
     });
