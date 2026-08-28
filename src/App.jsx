@@ -13,6 +13,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider } from '@/lib/i18n/I18nContext';
+import { AppLoading } from '@/design/index';
 import PublicTrip from '@/pages/PublicTrip';
 import JoinTrip from '@/pages/JoinTrip';
 import Login from '@/pages/Login';
@@ -93,20 +94,6 @@ function RedirectToEditSection() {
   const { tripId } = useParams();
   return <Navigate to={`/trip/${tripId}?lens=route`} replace />;
 }
-
-// Ожидание на всю площадь — ОДИН элемент на оба своих места в этом файле
-// (гейт авторизации и Suspense маршрутов). Разметка `.app-loading` +
-// `.spin spin--ring` уже жила здесь копией, и `<Suspense>` ниже добавил бы
-// ТРЕТЬЮ: повторённая рядом с существующим классом разметка — признак того,
-// что у неё нет своего имени (правило #6 / TRIP-282), а не повод скопировать
-// ещё раз. Четвёртый экземпляр живёт в I18nContext и ждёт общего дома —
-// shared-компонент это «новое» и идёт через апрув, поэтому здесь схлопнуто
-// ровно то, что схлопывается без него.
-const AppLoading = () => (
-  <div className="app-loading">
-    <div className="spin spin--ring spin--xl spin--ink" />
-  </div>
-);
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
