@@ -5,6 +5,7 @@ import { markerZoomSizeExpr, markerSurfaceWeight } from '@/lib/map/markers';
 import { SOLID_WIDTH, DASHED_WIDTH } from '@/lib/map/mapStyle';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Skeleton } from '@/design/index';
+import { report } from '@/lib/reportDataError';
 import MapControls from '@/lib/map/MapControls';
 
 // Live map for the share card (TRIP-193). The map sits in the card frame's
@@ -33,6 +34,8 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   ref,
 ) {
   const holderRef = useRef(null);
+  const frameRef = useRef(null);
+  const timerRef = useRef(/** @type {any} */ (null));
   const mapRef = useRef(null);
   // Latest slot/card geometry, read inside the create-once map effect (whose
   // closure would otherwise see only the first render's values).
@@ -333,11 +336,64 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     ? overlaySvg.replace('<svg ', '<svg preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block" ')
     : null;
 
+  // ── ЛОВУШКА: «в превью пропали названия городов» ───────────────────────────
+  // ponytail: диагностический зонд, снять вместе с починкой (потолок — он ничего
+  // не чинит и ничего не отображает). Заведён потому, что баг чинили ДВАЖДЫ по
+  // догадке о причине (шрифты, потом контраст) и оба раза мимо: отказавшее
+  // состояние никто ни разу не видел.
+  //
+  // Он делит пространство причин ПОПОЛАМ, а не угадывает. Текст рамки — обычные
+  // `<text>` в SVG; спрашиваем у них самих, получили ли они РАЗМЕР:
+  //   ширина 0 при непустом тексте → текст не разложился (шрифт / разбор);
+  //   ширина не 0, а глазами не видно → разложился, но не нарисован (композитинг).
+  // Второй случай из JS не виден, поэтому ОТСУТСТВИЕ события при очередном
+  // проёбе — тоже ответ, и именно он указывает на композитинг.
+  //
+  // Меряем дважды: сразу после вставки и через паузу. Ноль в первом замере и
+  // размер во втором — это нормальная жизнь шрифта, не дефект; сообщаем только
+  // про УСТОЙЧИВЫЙ ноль. Ни одной строки текста наружу не уходит (это данные
+  // трипа) — только числа, кегли и статус шрифта. Сообщение держим с НИЗКОЙ
+  // кардинальностью (4 варианта), иначе Sentry сгруппирует каждый замер в
+  // отдельную issue; счётчики уезжают тегом.
+  useEffect(() => {
+    const host = frameRef.current;
+    if (!frameSvg || !host) return undefined;
+    const zeros = () => {
+      const out = [];
+      host.querySelectorAll('text').forEach((n) => {
+        if (!n.textContent || !n.textContent.trim()) return;
+        let w = -1;
+        try { w = n.getBBox().width; } catch { /* узел вне отрисовки */ }
+        if (w === 0) out.push(n.getAttribute('font-size') || '?');
+      });
+      return out;
+    };
+    let raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (!zeros().length) return;
+      const t = setTimeout(() => {
+        const stuck = zeros();
+        if (!stuck.length) return; // шрифт доехал — это не дефект
+        const total = host.querySelectorAll('text').length;
+        report(
+          new Error(`share card frame: text has no size (fonts=${document.fonts?.status}, geologica=${document.fonts?.check?.('600 56px Geologica')})`),
+          { surface: 'render', source: 'share-card-frame', key: [`zeros:${stuck.length}/${total}@${stuck.join('+')}`] },
+        );
+      }, 1500);
+      timerRef.current = t;
+    });
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [frameSvg]);
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={holderRef} style={{ position: 'absolute', overflow: 'hidden', ...holeStyle }} />
       {frameSvg && (
         <div
+          ref={frameRef}
           style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: frameSvg }}
