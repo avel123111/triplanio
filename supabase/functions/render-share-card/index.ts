@@ -16,7 +16,7 @@
  * POST { trip_id, format?: 'story'|'post', lang?: 'ru'|'en'|'es',
  *        mode?: 'overlay'|'card_svg' }
  *   auth: JWT; caller must be an active participant of the trip.
- * 200 overlay:  { svg, width, height, slot, backgrounds } — backgrounds = публичные
+ * 200 overlay:  { svg, width, height, slot, backgrounds, text } — backgrounds = публичные
  *               URL пресет-фонов ЗАПРОШЕННОГО format из бакета `card-bg-presets`
  *               (папки story/ и post/ — у форматов разный арт; дверь экрана
  *               конструктора, TRIP-374: каталог фонов едет тем же кругом, что и
@@ -39,7 +39,7 @@ import {
   cityLabel, dateSpan, orderedCountryCodes, routeDistanceKm, tripDays,
   uniqueCityCount, uniqueCountryCount, uniqueTransitCities, type Visit,
 } from './stats.ts';
-import { buildCardSvg, cardSize, MAP_TOKEN, mapSlot, type Format } from './template.ts';
+import { buildCardSvg, buildCardText, cardSize, MAP_TOKEN, mapSlot, type Format } from './template.ts';
 import { fontFaceStyle } from './fontFaces.ts';
 
 // Публичный бакет пресет-фонов карточки. Таблицы-каталога НЕТ намеренно: на фон
@@ -163,11 +163,16 @@ Deno.serve(async (req) => {
     // КАРТИНКОЙ, изолирован — шрифты страницы в него не попадают. ----
     if (mode === 'overlay') {
       const svg = buildCardSvg(format, data, null, true, '');
+      // Раскладка текста открытой зоны — ТЕМИ ЖЕ числами, которыми он нарисован
+      // в svg выше (общий `buildCardText`). Клиент кладёт текст поверх кадра и
+      // ничего не пересчитывает: второй расчёт того же макета — это механизм,
+      // которым превью расходится с готовой карточкой.
+      const text = buildCardText(format, data);
       const backgrounds = await listCardBackgrounds(format).catch(async (e) => {
         await captureEdgeError(e, 'render-share-card');
         return [] as string[];
       });
-      return Response.json({ svg, width: outW, height: outH, slot, backgrounds }, { headers: cors });
+      return Response.json({ svg, width: outW, height: outH, slot, backgrounds, text }, { headers: cors });
     }
 
     // ---- card_svg mode (default): the FULL card SVG (fonts embedded, map left as
