@@ -42,8 +42,7 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 /**
  * `map` — узел ИЛИ функция `(camera) => node`. Аргумент ОДИН, и это главное
  * следствие модели: свободное окно целиком выражено отступом камеры, обе оси
- * одной величиной. Второго аргумента (размера слота) больше нет — слот равен
- * шеллу всегда.
+ * одной величиной, а слот карты равен шеллу всегда.
  *
  * @param {{
  *   map: any,
@@ -105,7 +104,6 @@ export function MapShell({
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
   const [panelPx, setPanelPx] = useState(0);
-
 
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS

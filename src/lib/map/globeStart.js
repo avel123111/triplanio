@@ -37,7 +37,8 @@ export const GLOBE_START_CENTER = [0, 20];
 
 /**
  * @param {{ W?: number, H?: number, insets?: Box, air?: Box }} [p]
- *   `W`/`H` — размеры ХОЛСТА; `insets` — закрытая площадь камеры (панель).
+ *   `W`/`H` — размеры ХОЛСТА; `insets` — закрытая площадь камеры (панель на
+ *   десктопе, шит на телефоне).
  * @returns {number} зум
  */
 export function startGlobeZoom({ W = 0, H = 0, insets = ZERO, air = ZERO } = {}) {

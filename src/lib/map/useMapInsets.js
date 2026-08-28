@@ -1,7 +1,18 @@
 // @ts-check
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NO_INSETS, canFrame, getMapInsets, setMapInsets } from './insets';
+import { NO_INSETS, canFrame, getMapInsets, setMapInsets, toBox } from './insets';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
+
+/**
+ * Отступ как СТРОКА-КЛЮЧ зависимостей: свободное окно целиком выражено им, обе
+ * оси одной величиной (панель приезжает в `left`, шит — в `bottom`). Объявление
+ * одно на оба хука — разъехавшись, они реагировали бы на разные события.
+ * @param {any} insets
+ */
+function insetsKey(insets) {
+  const b = toBox(insets);
+  return `${b.top}|${b.right}|${b.bottom}|${b.left}`;
+}
 
 /**
  * Механика закрытой площади для экрана с картой (TRIP-422).
@@ -49,10 +60,9 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  * }} p
  */
 export function useMapInsets(mapRef, { ready, insets, focusing = false, onReframe = null }) {
-  // ★ КЛЮЧ — ОТСТУП, И ЭТОГО ДОСТАТОЧНО. Свободное окно целиком выражено им, обе
-  // оси одной величиной: панель приезжает в `left`, шит — в `bottom`. Прежде
+  // ★ КЛЮЧ — ОТСТУП, И ЭТОГО ДОСТАТОЧНО: он и есть всё свободное окно. Прежде
   // высота ехала отдельным каналом (размером слота), и ключ обязан был знать оба.
-  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}`;
+  const key = insetsKey(insets);
   const seenRef = useRef(false);
   // ★ СОБСТВЕННАЯ ССЫЛКА НА ИНСТАНС, И ЭТО НЕ ДУБЛЬ. `useMapSurface` обнуляет
   // свой `mapRef` в СВОЁМ cleanup, а объявлен он раньше — React зовёт cleanup'ы
@@ -141,27 +151,33 @@ export function useMapInsets(mapRef, { ready, insets, focusing = false, onRefram
  * заблокированный фит не теряется, а откладывается: окно вернулось — эффект
  * перезапустился и вписал. Проверка внутри дала бы «фит пропущен навсегда».
  *
+ * ★★★ ОТСТУП БЕРЁТСЯ ИЗ АРГУМЕНТА, А НЕ С ИНСТАНСА (`getMapInsets`). На инстанс
+ * его кладёт эффект `useMapInsets` — то есть ПОРЯДКОМ ОБЪЯВЛЕНИЯ хуков решалось
+ * бы, свежий отступ мы читаем или прошлый: в `FlowMap` этот хук стоит РАНЬШЕ
+ * (его значение читает `onReframe`), и на инстансе в тот момент лежит ещё старая
+ * величина. Аргумент — та же величина без этой зависимости.
+ *
  * @param {{ current: any }} mapRef
  * @param {{ ready: boolean, insets: any }} p `ready` — холст измерен (`canFit`).
  * @returns {boolean}
  */
 export function useCanFrame(mapRef, { ready, insets }) {
-  const key = `${insets?.top || 0}|${insets?.right || 0}|${insets?.bottom || 0}|${insets?.left || 0}`;
+  const key = insetsKey(insets);
   const [ok, setOk] = useState(false);
   const measure = useCallback(() => {
-    const map = mapRef.current;
-    const el = map?.getContainer?.();
-    setOk(!!(map && ready && canFrame(el?.clientWidth || 0, el?.clientHeight || 0, getMapInsets(map))));
+    const el = mapRef.current?.getContainer?.();
+    setOk(!!(ready && canFrame(el?.clientWidth || 0, el?.clientHeight || 0, toBox(insets))));
+    // `insets` читается ПО ЗНАЧЕНИЮ (ключ выше), а не по ссылке: объект приезжает
+    // новым на каждый рендер, и по ссылке пересчёт шёл бы вхолостую всегда.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapRef, ready]);
+  }, [mapRef, ready, key]);
   useEffect(() => {
     measure();
     // Вьюпорт — вторая величина в ответе (первая — отступ): поворот экрана и
     // схлопывание адресной строки меняют его, отступ при этом не двигая.
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [measure, key]);
+  }, [measure]);
   return ok;
 }
 

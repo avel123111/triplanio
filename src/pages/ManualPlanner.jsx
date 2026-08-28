@@ -1468,9 +1468,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         )}
         panelFooter={FOOTER}
         panel={BODY}
-        // Закрытая площадь приезжает камере отступом вьюпорта там, где она
-        // режет ширину (десктоп); на телефоне шит режет высоту, и её забирает
-        // сам слот — разбор в `mapShellInsets`.
+        // Закрытая площадь приезжает камере отступом вьюпорта на ОБЕИХ осях:
+        // панель режет ширину (десктоп), шит — высоту (телефон), холст в обоих
+        // случаях остаётся во всю площадь — разбор в `mapShellInsets`.
         map={(camera) => (
           <>
             {/* Floating round back control — shown only on the phone shell (the app
