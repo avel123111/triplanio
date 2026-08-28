@@ -3341,18 +3341,37 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* ----- CityBar ----- (TRIP-321 линза «Календарь») цветная полоса города.
    Тон приходит инлайном каналом `--cc/--cc-soft/--cc-ink` (палитра в CityBar.jsx).
-   `bar` (умолчание) — полоса-цвет с солид-кантом сверху (сетка месяца); `strip`
-   — та же полоса с именем по центру (шапка недели), разделитель между сегментами.
-   prefix-exempt: citybar — новый примитив ДС «полоса города», апрув Pavel 2026 */
-.citybar { flex: 1; min-width: 0; border: none; cursor: pointer; background: var(--cc-soft); box-shadow: inset 0 2px 0 var(--cc); transition: filter .14s, background .14s; }   /* design-token-exempt: 2px — солид-кант полосы (деталь примитива, не --sp) */
+   `bar` (умолчание) — полоса-цвет (сетка месяца); `strip` — та же полоса с именем
+   по центру (шапка недели), разделитель между сегментами.
+
+   ★ ПОЛОСА ПЛОТНАЯ В ОБЕИХ ТЕМАХ (решение Pavel). Была подкраска `--cc-soft`
+   (11–16% тона) плюс солид-кант сверху; кант существовал ровно потому, что тело
+   полосы было прозрачным и само по себе тон не держало. На плотном теле кант —
+   тот же цвет по тому же цвету, то есть невидимое объявление: снят вместе с
+   отменой `box-shadow: none` у `strip`, которой больше нечего отменять.
+
+   ★ ЧЕРНИЛА — `--primary-fg` (белые в светлой, #08182B в тёмной). Это готовый
+   токен «чернила НА насыщенной поверхности», он уже флипается по теме — тот же
+   ход, что у `.btn--ai`; своего канала для этого заводить не нужно.
+   ⚠️ ЗАМЕРЕНО И ПРИНЯТО ОСОЗНАННО: в СВЕТЛОЙ теме белый на плотном тоне даёт
+   3.04–5.70:1, то есть пять тонов из шести не проходят WCAG AA 4.5:1
+   (ev-car 3.04 · ev-transfer 3.08 · warm 3.55 · ev-activity 3.56 · ev-hotel 4.34;
+   проходит только ai 5.70). В тёмной теме всё шесть проходят с запасом
+   (6.76–8.68). Это НЕ недосмотр и не цель для авто-починки: контраст показан
+   Pavel числами, вариант «тёмные чернила в обеих темах» отклонён в пользу
+   белого. Менять — только новым решением владельца дизайна.
+   prefix-exempt: citybar — новый примитив ДС «полоса города», апрув Pavel 2026
+   visual-diff-exempt: .citybar background — полоса города плотная в обеих темах (запрос Pavel): подкраска --cc-soft заменена плотным тоном --cc
+   visual-diff-exempt: .citybar box-shadow — солид-кант сверху держал тон у прозрачного тела; на плотном теле это цвет по тому же цвету, снят как невидимый
+   visual-diff-exempt: .citybar__lbl color — имя города на плотном тоне: --cc-ink заменён --primary-fg (белый в светлой, тёмный в тёмной), запрос Pavel
+   visual-diff-exempt: .citybar--strip box-shadow — отмена канта, которого больше нет в базе (парная уборка к снятому box-shadow у .citybar) */
+.citybar { flex: 1; min-width: 0; border: none; cursor: pointer; background: var(--cc); transition: filter .14s, background .14s; }
 .citybar:hover { filter: brightness(1.05); }
 .citybar:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
-.citybar__lbl { color: var(--cc-ink); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* `strip` — плашка города в НЕДЕЛЕ: цельная на весь прогон, имя внутри. Канта
-   сверху у неё нет (он остался обличью `bar` в сетке месяца, где полоса лежит
-   вплотную к краю ячейки): здесь плашка отделена воздухом сверху и снизу, и
-   кант на скруглённом теле читался бы как ошибка отрисовки, а не как акцент. */
-.citybar--strip { padding: 3px var(--sp-3); margin: 3px 0; border-radius: var(--r-xs); box-shadow: none; }
+.citybar__lbl { color: var(--primary-fg); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* `strip` — плашка города в НЕДЕЛЕ: цельная на весь прогон, имя внутри,
+   отделена воздухом сверху и снизу. */
+.citybar--strip { padding: 3px var(--sp-3); margin: 3px 0; border-radius: var(--r-xs); }
 .citybar--strip + .citybar--strip { margin-left: 2px; }   /* design-token-exempt: 2px — зазор между половинками дня-пересадки */
 .citybar--strip + .citybar--strip { border-left: 1px solid var(--surface); }   /* design-token-exempt: 1px — хайрлайн-разделитель сегментов */
 
@@ -6569,7 +6588,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .stepper button:active:not(:disabled) { transform: none; }
 }
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
-.lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }
+.lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-btn); }   /* visual-diff-exempt: .lp-stepper border-radius — контейнер «ночей в городе» на 10px (запрос Pavel): --r-md 16px → существующий --r-btn 10px, свой радиус не заводится */
 /* visual-diff-move: lp-stepper__ic -> tile — плитка-иконка степпера ночёвки на <Tile> (34/r-sm/brand — всё дефолт .tile) */
 .lp-stepper__ic { --tile: 34px; }
 .lp-stepper__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
