@@ -228,6 +228,23 @@
   --rail-w:       70px;
   --header-h:     60px;
 
+  /* ЛОК-АП БРЕНДА: знак + вордмарк. Три числа, потому что раньше их было ноль —
+     зазор между знаком и словом СКЛАДЫВАЛСЯ сам, из чужих величин (TRIP-481).
+     Слот-якорь шире знака, значит справа от знака остаётся воздух
+     (--rail-w − --brand-mark)/2 = 16px; к нему прибавлялся --header-left-gap,
+     общий для всех детей `.app-header__left`. Итог 27px не назначал никто.
+     Теперь зазор — СВОЁ число, отмеряемое от края ЗНАКА, а бокс остаётся тем,
+     чем и был: якорем позиции. Разбор — у `.app-header__brand-name`. */
+  /* floor-exempt: tokens +3 — --brand-mark/--brand-gap/--header-left-gap: у лок-апа бренда не было НИ ОДНОГО своего числа, зазор складывался из чужих (27px, которых никто не назначал). Два из трёх токенов не добавляют величин, а СХЛОПЫВАЮТ существующие: --brand-mark заменяет ПЯТЬ литералов 38px, --header-left-gap — литерал gap. Апрув Pavel (TRIP-481) */
+  /* Сами токены для 2p — тоже объявления, и он судит их наравне с классами:
+     появление токена он видит как изменение бесклассового ключа.
+     visual-diff-exempt: :root --brand-mark — новый токен: сторона знака вместо четырёх литералов (TRIP-481)
+     visual-diff-exempt: :root --brand-gap — новый токен: зазор лок-апа, которого раньше не существовало (TRIP-481)
+     visual-diff-exempt: :root --header-left-gap — новый токен: gap шапки, теперь читаемый формулой зазора (TRIP-481) */
+  --brand-mark:      38px;   /* сторона знака в шапке; был литералом в пяти местах, включая стрелку, которая знак подменяет */
+  --brand-gap:       12px;   /* зазор знак↔слово. ≈0,3 стороны знака (апрув Pavel, TRIP-481) */
+  --header-left-gap: 11px;   /* gap `.app-header__left`; вычитается из зазора, поэтому обязан быть читаем */
+
   /* Ширина плавающего виджета-панели — ОДИН источник на ВСЕХ потребителей.
      Читают её: колонка редактора/линзы/планировщика (`.mapshell__panel`, +
      замером JS), и глобальный ящик события (`.evd-drawer`) на ленте/бюджете/
@@ -1282,7 +1299,7 @@ h4,
    (16px = центровка 38px-лого в 70px-слоте). Трип не трогаем — там своё поле.
    visual-diff-exempt: .app-header:not(.app-header--trip):has(.app-header__gbtn) padding-left — «назад» вне трипа не прижата к краю */
 .app-header:not(.app-header--trip):has(.app-header__gbtn) { padding-left: var(--sp-7); }
-.app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
+.app-header__left  { display: flex; align-items: center; gap: var(--header-left-gap); min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 
 /* Round glass buttons (back / mobile burger) */
@@ -1306,24 +1323,48 @@ h4,
 }
 /* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
    поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
+/* Ниже литералы заменены токеном БЕЗ смены величины: 38px = --brand-mark,
+   11px = --header-left-gap. Для 2p это изменение объявления (он сравнивает
+   текст, а не вычисленное значение), поэтому объявлено построчно.
+   visual-diff-exempt: .app-header__logo width — 38px → --brand-mark, величина та же (TRIP-481)
+   visual-diff-exempt: .app-header__logo height — 38px → --brand-mark, величина та же (TRIP-481)
+   visual-diff-exempt: .app-header__logo img width — 38px → --brand-mark, величина та же (TRIP-481)
+   visual-diff-exempt: .app-header__logo img height — 38px → --brand-mark, величина та же (TRIP-481)
+   visual-diff-exempt: .app-header__left gap — 11px → --header-left-gap, величина та же (TRIP-481) */
 .app-header__logo {
-  width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center;
+  width: var(--brand-mark); height: var(--brand-mark); border-radius: var(--r-sm); display: grid; place-items: center;
   overflow: hidden;
 }
-.app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
-.app-header__brand-name { color: var(--ink); border: 0; background: transparent; padding: 0; cursor: pointer; }
+.app-header__logo img { width: var(--brand-mark); height: var(--brand-mark); display: block; border-radius: var(--r-sm); }
+/* ЗАЗОР ОТМЕРЯЕТСЯ ОТ КРАЯ ЗНАКА, А НЕ ОТ КРАЯ СЛОТА (TRIP-481).
+   Слово стоит СНАРУЖИ слота-якоря, поэтому по умолчанию получает два отступа
+   сразу: воздух внутри слота (--rail-w − --brand-mark)/2 и gap контейнера.
+   Оба вычитаются — остаётся ровно --brand-gap, число, которое можно назвать и
+   поменять. Формула, а не готовое отрицательное значение: тронешь --rail-w или
+   размер знака — зазор пересчитается сам, а магическое «-15px» молча разъехалось
+   бы с геометрией. Слово при этом заходит на прозрачную часть слота на 4px:
+   обе кнопки ведут на /trips, перехват клика безразличен.
+   visual-diff-exempt: .app-header__brand-name margin-left — зазор лок-апа стал своим числом вместо суммы чужих (TRIP-481, апрув Pavel) */
+.app-header__brand-name {
+  color: var(--ink); border: 0; background: transparent; padding: 0; cursor: pointer;
+  margin-left: calc(var(--brand-gap) - (var(--rail-w) - var(--brand-mark)) / 2 - var(--header-left-gap));
+}
 /* Второе лицо слота — стрелка выхода из трипа. Лежит в том же боксе поверх
    знака и проступает по наведению; правило контекстное намеренно: в шапке слот
    это ссылка на бренд, в рейле — выход из трипа, и отдельной круглой кнопки
    «назад» в шапке из-за этого больше нет (на телефоне рейла нет — там кнопка
    остаётся). */
 .app-header__brandback {
-  /* Размер — РОВНО как у знака, который стрелка подменяет: слот шире (он держит
-     геометрию колонки), и подложка во весь слот читалась бы огромной кнопкой.
+  /* Размер — РОВНО как у знака, который стрелка подменяет, и это тот же токен
+     (TRIP-481): слот шире (он держит геометрию колонки), и подложка во весь
+     слот читалась бы огромной кнопкой. Пока здесь стоял литерал, «ровно как у
+     знака» держалось только словами — правка знака разъехалась бы со стрелкой.
      Центрируется отдельным `translate`, чтобы `transform` остался свободен под
      анимацию подмены. */
   position: absolute; top: 50%; left: 50%; translate: -50% -50%;
-  width: 38px; height: 38px; border-radius: var(--r-sm);
+  /* visual-diff-exempt: .app-header__brandback width — 38px → --brand-mark, величина та же (TRIP-481)
+     visual-diff-exempt: .app-header__brandback height — 38px → --brand-mark, величина та же (TRIP-481) */
+  width: var(--brand-mark); height: var(--brand-mark); border-radius: var(--r-sm);
   display: grid; place-items: center;
   /* design-token-exempt: 5px — амплитуда подмены знака стрелкой, не шаг раскладки */
   color: var(--nav-ink-hi); opacity: 0; transform: translateX(5px) scale(.82);
