@@ -3751,8 +3751,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    в WebKit поднимает фото НАД этой накладкой (Chromium — нет; воспроизведено
    повторно, 4 прогона), то есть общий пин чинит один экран и ломает другой.
    Поэтому уровень объявляет тот, у кого есть оверлеи, — семья пикера
-   (`.tcp__hero` изолирован, `.tcp__slide` назван нулём), а примитив остаётся
-   нейтральным. Контракт при этом не на словах: его держит гард 2af.
+   (`.tcp__hero` изолирован, лента `.tcp__track` названа нулём), а примитив
+   остаётся нейтральным. Контракт при этом не на словах: его держит гард 2af. */
 .cover { position: relative; overflow: hidden; flex: none; width: 62px; height: 46px; border-radius: var(--r-sm); background: var(--surface-2) url('/covers/fallback.webp') center/cover; }
 .cover__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 /* Обложка во всю площадь родителя (постер трипа, виджет «идёт») вместо
