@@ -2,6 +2,7 @@
 import { Drawer } from 'vaul';
 import { IconBtn } from '@/design/IconBtn';
 import { useT } from '@/lib/i18n/I18nContext';
+import { useHostsTextInput } from '@/hooks/useHostsTextInput';
 
 /**
  * C6 · Sheet — canonical mobile bottom-sheet (Lumo `.sheet`).
@@ -22,28 +23,34 @@ import { useT } from '@/lib/i18n/I18nContext';
  *   </Sheet>
  */
 /**
- * ★★ `hasInput` — ШИТ С ТЕКСТОВЫМ ВВОДОМ ОБЯЗАН БЫТЬ ПОЛНОЭКРАННЫМ.
+ * ★★ ПОВЕРХНОСТЬ С ТЕКСТОВЫМ ВВОДОМ — ПОЛНОЭКРАННАЯ, И РЕШАЕТ ЭТО ОНА САМА.
  *
- * Правило, а не ручка размера, и выведено оно из замера (iPhone, iOS 26, Safari;
- * раскладка 766, клавиатура 338, полоса 428): Safari ЦЕНТРИРУЕТ фокусное поле в
- * видимой полосе, `сдвиг окна = центрПоля − центрПолосы`. Обычный `.sheet`
- * растёт ПО СОДЕРЖИМОМУ от нижней кромки, то есть короткий шит стоит внизу
- * экрана — поле оказывается около 600 при цели 168, и Safari уводит всю
- * страницу на максимум прокрутки.
+ * Правило выведено из замера (iPhone, iOS 26, Safari; раскладка 766, клавиатура
+ * 338, полоса 428): Safari ЦЕНТРИРУЕТ фокусное поле в видимой полосе,
+ * `сдвиг окна = центрПоля − центрПолосы`. `.sheet` растёт ПО СОДЕРЖИМОМУ от
+ * нижней кромки, поэтому короткий шит держит поле внизу экрана — и браузер
+ * уводит туда всю страницу, на максимум прокрутки.
  *
  * ★ И ЭТО НЕ ЛЕЧИТСЯ ЯКОРЕМ (`lib/focusAnchor.js`). Якорь приводит поле наверх
  * СКРОЛЛОМ контейнера, а у короткого шита скроллить нечего: `.sheet-b` не
- * переполнен. У бортом прибитой поверхности, растущей по содержимому, рычаг
+ * переполнен. У прибитой к низу поверхности, растущей по содержимому, рычаг
  * ровно один — её ВЫСОТА. Полноэкранный шит ставит первое поле под шапку, то
- * есть выше центра полосы, и желаемый сдвиг Safari уходит в минус.
+ * есть выше центра полосы, где желаемый сдвиг уходит в минус и упирается в верх
+ * документа.
  *
- * Поэтому проп называет ПРИЧИНУ («здесь есть ввод»), а не следствие («сделай
- * высоким»): следствие может смениться, правило — нет.
+ * Кто именно несёт поле — НЕ дело вызывателя (разбор в `useHostsTextInput`):
+ * шит смотрит своё поддерево и вешает на себя `data-hosts-input`, CSS читает.
  *
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, hasInput?: boolean }} p
+ * ⚠️ Аннотация обязательна не для красоты: без неё TS выводит тип из
+ * ДЕСТРУКТУРИЗАЦИИ и делает обязательным КАЖДЫЙ проп без дефолта — законный
+ * вызов «шит с видимым заголовком, без `titleText`» краснел на четырёх
+ * вызывателях. Та же грабля разобрана в шапке `MobileBottomNav.jsx`.
+ *
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string }} p
  */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, hasInput = false }) {
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
   const t = useT();
+  const hostRef = useHostsTextInput();
   return (
     // repositionInputs={false}: the app's viewport meta uses
     // `interactive-widget=resizes-content`, so the layout viewport already
@@ -55,7 +62,7 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
         <Drawer.Overlay className="sheet-backdrop" />
         {/* vaul does NOT auto-focus into the sheet on open, so the mobile keyboard
             stays down until the user taps a field (no jump / iOS zoom on open). */}
-        <Drawer.Content className={'sheet' + (hasInput ? ' sheet--tall' : '') + (className ? ' ' + className : '')} aria-describedby={undefined}>
+        <Drawer.Content ref={hostRef} className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
           {/* Visual drag affordance only — the whole sheet is draggable (vaul), so
               this carries no handlers. */}
           <div className="sheet-grip" aria-hidden><i /></div>

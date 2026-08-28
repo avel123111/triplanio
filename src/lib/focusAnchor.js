@@ -53,6 +53,23 @@ export function anchorDelta({ fieldTop, fieldHeight, viewportH, ratio = ANCHOR_R
   return Math.max(0, Math.round(fieldCenter - viewportH * ratio));
 }
 
+/**
+ * ★★ ОДИН ОТВЕТ НА ВОПРОС «ЧТО ТАКОЕ ТЕКСТОВОЕ ПОЛЕ» — В ДВУХ ФОРМАХ.
+ *
+ * Читателей у этого вопроса ДВА и спрашивают они по-разному: якорь проверяет
+ * КОНКРЕТНЫЙ элемент (`isTextInput`), а поверхность ищет такое поле У СЕБЯ В
+ * ПОДДЕРЕВЕ (`querySelector`, то есть селектор). Две формы неизбежны, а вот два
+ * ИСТОЧНИКА — нет: селектор СОБИРАЕТСЯ из того же набора исключений, что читает
+ * предикат. Разъехаться им негде, и это закрыто тестом — ровно тот класс тихой
+ * поломки, ради которого в репо и заводят гарды: поле, которое якорь считает
+ * текстовым, а шит — нет, дало бы «на одном экране работает, на другом нет».
+ */
+export const TEXT_INPUT_SELECTOR = [
+  `input:not(${[...NON_TEXT_INPUT_TYPES].map((t) => `[type="${t}"]`).join(',')})`,
+  'textarea',
+  '[contenteditable]:not([contenteditable="false"])',
+].join(',');
+
 /** Текстовое ли это поле (то, что поднимает клавиатуру). @param {any} el */
 export function isTextInput(el) {
   if (typeof HTMLElement === 'undefined' || !(el instanceof HTMLElement)) return false;
