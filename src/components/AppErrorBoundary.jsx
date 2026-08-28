@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sentry } from '@/lib/sentry';
+import { hideSplash } from '@/lib/splash';
 
 // Self-contained copy for the crash screen. An error boundary can render when
 // the app (incl. the i18n provider) has failed, so it must NOT depend on the
@@ -29,6 +30,13 @@ export default class AppErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('[AppErrorBoundary]', error, info);
+    // Экран запуска (TRIP-478) стоит поверх всего, а сюда мы попадаем именно
+    // тогда, когда приложение до отчёта о готовности не дошло. Без этой строки
+    // человек остался бы под заставкой и НЕ УВИДЕЛ БЫ сообщения о крахе —
+    // заставка выглядела бы вечной загрузкой. `crashed` снимает её мимо
+    // удержаний: упавшее поддерево могло унести с собой <AppLoading>, чей
+    // эффект очистки в этот момент уже не выполнится.
+    hideSplash({ crashed: true });
     // No-op when Sentry isn't initialised (no DSN, e.g. local dev).
     Sentry.captureException(error, {
       contexts: { react: { componentStack: info?.componentStack } },

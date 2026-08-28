@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext, createContext } from 'r
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useLightZone } from '@/lib/ThemeContext';
+import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
 import { useZoneCta, isPlainLeftClick } from './zoneCta';
@@ -475,6 +476,20 @@ function useSiteCssLink(enabled) {
     const el = document.getElementById('site-css');
     return !!(el && el.sheet);
   });
+
+  // Экран запуска (TRIP-478) держится, пока слой стилей зоны не приехал.
+  // Это САМОЕ ТИХОЕ ожидание в приложении: страницы зоны стоят на
+  // `if (!cssReady) return null`, то есть не рисуют ни кружка, ни разметки —
+  // ровно пустоту. Заставка про такое ожидание узнать ниоткуда не может,
+  // поэтому без этих строк она уходила по готовности приложения, а человек
+  // получал белый кадр между ней и лендингом. Удержание живёт ЗДЕСЬ, в
+  // единственном владельце `cssReady`, — значит накрывает все страницы зоны
+  // разом и новую тоже.
+  useEffect(() => {
+    if (!enabled || cssReady) return undefined;
+    return holdSplash();
+  }, [enabled, cssReady]);
+
   useEffect(() => {
     if (!enabled) return undefined;
     siteCssRefs += 1;
