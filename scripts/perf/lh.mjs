@@ -26,11 +26,20 @@
 // фиксированном качестве. Абсолютные байты разойдутся с Vercel — это ожидаемо;
 // важно, что ВСЕ варианты жмутся одинаково, поэтому дельта между ними честная.
 //
-// ЗАПУСК:  npx vite build && node scripts/perf/lh.mjs
+// ★ СТЕНД СОБИРАЕТ dist САМ, с фейковым `VITE_SENTRY_DSN`. Без DSN `initSentry()`
+// уходит в `if (!DSN) return`, SDK не грузится вовсе — и замер идёт по НЕ ТОМУ
+// сценарию: на проде DSN есть, и любой условно-инициализируемый модуль (Sentry,
+// аналитика) на стенде без него ведёт себя иначе, чем в проде. Фейковый DSN
+// безопасен: `*sentry*` и так заблокирован `blockedUrlPatterns`, наружу ничего
+// не уходит. (Дефект Ф0: раньше стенд мерил заранее собранный `dist`, и замер
+// Ф1.4 без DSN показал нулевую дельту — «SDK мёртв, но скачан» vs «SDK нет».)
+//
+// ЗАПУСК:  npm run perf:lh   (собирает dist сам — отдельный `vite build` не нужен)
 //   аргументы: --runs=3  --path=/  --port=0  (0 = свободный порт)
 //   env: CHROME_PATH=/путь/к/chrome  (иначе берётся Chromium из кэша Playwright)
+//        VITE_SENTRY_DSN / VITE_SUPABASE_* — переопределяют дефолты стенда, если заданы
 //
-// НЕ CI-гард: запускается руками, ничего не собирает и не деплоит.
+// НЕ CI-гард: запускается руками; СОБИРАЕТ dist (с фейковым DSN), не деплоит.
 // ═══════════════════════════════════════════════════════════════════════════
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
@@ -38,6 +47,7 @@ import { join, extname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, constants as zlibC } from 'node:zlib';
 import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { launch } from 'chrome-launcher';
 import lighthouse from 'lighthouse';
 
@@ -53,10 +63,16 @@ const RUNS = Number(arg('runs', '3'));
 const PATHNAME = arg('path', '/');
 const PORT = Number(arg('port', '0'));
 
-if (!existsSync(join(DIST, 'index.html'))) {
-  console.error('dist/index.html не найден — сначала `npx vite build`.');
-  process.exit(1);
-}
+// Собираем dist ЗДЕСЬ, с гарантированным окружением (см. докблок «★ СТЕНД
+// СОБИРАЕТ dist САМ»). `??=` — явно заданный env (реальный DSN/Supabase) побеждает
+// дефолт стенда. Supabase-дефолты нужны, чтобы приложение поднималось и без
+// `.env.local` (CI): без них `#root` пуст и FCP/LCP врут.
+const BUILD_ENV = { ...process.env };
+BUILD_ENV.VITE_SENTRY_DSN ??= 'https://stand@o0.ingest.de.sentry.io/0';
+BUILD_ENV.VITE_SUPABASE_URL ??= 'https://stand.supabase.co';
+BUILD_ENV.VITE_SUPABASE_ANON_KEY ??= 'stand-anon-key';
+console.log('Сборка dist (VITE_SENTRY_DSN задан) …');
+execSync('npx vite build', { cwd: ROOT, env: BUILD_ENV, stdio: 'inherit' });
 
 // ── зеркало Cache-Control из vercel.json ──────────────────────────────────────
 // Держим синхронно с `vercel.json` РУКАМИ: файл там — источник истины, здесь его
