@@ -197,7 +197,10 @@ async function loadRealSentry() {
     // globalHandlersIntegration), наши бы дублировали.
     window.removeEventListener('error', onGlobalError);
     window.removeEventListener('unhandledrejection', onUnhandledRejection);
-    // Проиграть всё, что накопилось за idle-зазор.
+    // Проиграть всё, что накопилось за idle-зазор. ⚠️ Осознанная плата: у этих
+    // ошибок timestamp = момент ДРЕНАЖА (не момента ошибки) и нет breadcrumbs —
+    // диагностика ранних сбоев чуть беднее. Это не баг; если понадобится точность,
+    // класть в очередь снимок времени/скоупа и передавать хинтом (отдельная задача).
     drainCaptureQueue(pending, ({ error, ctx }) => S.captureException(error, ctx));
   } catch (e) {
     // Мониторинг не должен ронять приложение. SDK не приехал вовсе — ранние
