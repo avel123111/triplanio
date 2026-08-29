@@ -1,4 +1,5 @@
 import React from 'react';
+import { flushSync } from 'react-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronDown } from 'lucide-react';
 // Напрямую из модуля, а НЕ из '@/design': барраль реэкспортит этот файл, и
@@ -69,6 +70,10 @@ export default function SearchSelect({
     : options.filter((o) => (matches ? matches(o, q) : String(getKey(o)).toLowerCase().includes(q)));
 
   const close = () => { setOpen(false); setQuery(''); };
+  // ★ Синхронный коммит — половина клавиатуры на iOS: поле поиска должно
+  // ОКАЗАТЬСЯ В DOM ещё внутри обработчика тапа, иначе фокусить в жесте нечего,
+  // а поздний фокус Safari принимает без клавиатуры (разбор — в `PickerSheet`).
+  const openSheet = () => flushSync(() => setOpen(true));
   const pick = (o) => { onChange(getKey(o)); close(); };
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 
@@ -146,7 +151,7 @@ export default function SearchSelect({
   if (isPhone) {
     return (
       <>
-        {trigger({ onClick: () => !disabled && setOpen(true) })}
+        {trigger({ onClick: () => !disabled && openSheet() })}
         <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl}>
           {listEl}
         </PickerSheet>

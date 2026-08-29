@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/design/Input';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
@@ -83,7 +84,15 @@ export default function Autocomplete({
   // только пока есть результаты, а шторка обязана стоять и на пустом запросе,
   // и пока идёт поиск. Свести их в одну переменную = закрывать поверхность под
   // пальцем на каждый неудачный запрос.
-  const [sheetOpen, setSheetOpen] = useState(false);
+  //
+  // ★ `autoFocus` РАСПАХИВАЕТ ШТОРКУ НАЧАЛЬНЫМ СОСТОЯНИЕМ, А НЕ ЭФФЕКТОМ, И ЭТО
+  // ТОТ ЖЕ ВОПРОС КЛАВИАТУРЫ. Так поле оказывается в DOM в ПЕРВОМ коммите — а
+  // первый коммит здесь принадлежит жесту: этот пикер монтируется в ответ на тап
+  // («изменить город» в ряду визарда), React 18 сбрасывает такие обновления
+  // синхронно, и `useLayoutEffect` поверхности успевает поставить фокус внутри
+  // жеста. Прежняя редакция открывала шторку эффектом, то есть ВТОРЫМ коммитом,
+  // уже после жеста, — и на iOS этот путь открывался без клавиатуры.
+  const [sheetOpen, setSheetOpen] = useState(() => isPhone && !!autoFocus);
   const [loading, setLoading] = useState(false);
   // ЗАПРОС, ПО КОТОРОМУ УЖЕ ЕСТЬ ОТВЕТ. Без него «ничего не найдено» врёт дважды,
   // и оба раза в обычном потоке: сразу после выбора города (в поле стоит имя, а
@@ -162,12 +171,6 @@ export default function Autocomplete({
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  // `autoFocus` НА ТЕЛЕФОНЕ ЗНАЧИТ «ОТКРОЙ ПИКЕР», А НЕ «ПОСТАВЬ КАРЕТКУ».
-  // Смысл пропа один на обеих платформах — «человек прямо сейчас собирается
-  // вводить сюда»; разное у платформ только то, ГДЕ этот ввод происходит. Ставить
-  // фокус на поле-триггер бессмысленно: оно ввод не принимает.
-  useEffect(() => { if (isPhone && autoFocus) setSheetOpen(true); }, [isPhone, autoFocus]);
-
   const isOpen = open && results.length > 0;
   // «Ничего не найдено» показываем, только когда ответ пришёл ИМЕННО НА ЭТОТ
   // текст и оказался пуст. На попапе развилки не было вовсе — он просто не
@@ -210,6 +213,11 @@ export default function Autocomplete({
 
   if (isPhone) {
     const closeSheet = () => { setSheetOpen(false); setOpen(false); setHighlighted(-1); };
+    // ★ `flushSync` — ПОЛОВИНА КЛАВИАТУРЫ, а не оптимизация. iOS поднимает её
+    // только когда `focus()` случился в обработчике жеста; без синхронного
+    // коммита поля в этот момент ещё нет в DOM, и фокусить нечего. Вторая
+    // половина — `useLayoutEffect` в `PickerSheet` (разбор — в его шапке).
+    const openSheet = () => flushSync(() => setSheetOpen(true));
     return (
       <>
         {/* Триггер — ТО ЖЕ поле, а не его двойник: те же декорации (флаг
@@ -222,7 +230,7 @@ export default function Autocomplete({
           icon={icon}
           value={inputValue || ''}
           readOnly
-          onMouseDown={(e) => { e.preventDefault(); if (!disabled) setSheetOpen(true); }}
+          onMouseDown={(e) => { e.preventDefault(); if (!disabled) openSheet(); }}
           placeholder={placeholder}
           disabled={disabled}
           role="combobox"
