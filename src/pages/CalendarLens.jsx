@@ -34,6 +34,7 @@ import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { isTransitVisit } from '@/lib/trip-cities';
 import { cityBands, bandStyle } from '@/lib/calendar-bands';
 import { eventLanes } from '@/lib/calendar-lanes';
+import { eventSegments } from '@/lib/calendar-spans';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
 import './CalendarLens.css';
@@ -45,6 +46,12 @@ const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) 
 /** День попадает в окно визита (границы включительно). ОДИН предикат на оба
  *  вида: месяц и неделя спрашивали одно и то же двумя копиями строки. */
 const visitCoversDay = (v, dt) => dt >= v.s.startOf('day') && dt <= v.e.startOf('day'); // i18n-ignore: не UI-строка — сравнение дат; `>=` в стрелке гард 2d читает как закрытие тега и принимает хвост выражения за текст JSX
+
+/** Подпись события для скринридера: «10:00–12:00 Название». Конец печатается
+ *  только там, где он есть в данных (активность и переезд) — у момента его нет,
+ *  а у короткого блока время с экрана снято, и подпись остаётся единственным
+ *  местом, где точное время звучит целиком. */
+const evLabel = (ev) => `${ev.time || ''}${ev.endTime ? '–' + ev.endTime : ''} ${ev.title || ''}`.trim();
 
 // ─── MonthView ────────────────────────────────────────────────────────────────
 function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
@@ -98,9 +105,11 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
                     {c.events.length > 0 && (
                       <>
                         <div className="ncal-evl" data-open={isOpen || undefined}>
-                          {shown.map((e, ei) => (
-                            <EventChip key={ei} variant="inline" type={e.type} time={e.time} title={e.title}
-                              onClick={() => onOpenEvent?.(e)} ariaLabel={`${e.time ? e.time + ' ' : ''}${e.title}`} className="t-tiny" />
+                          {shown.map((it, ei) => (
+                            <EventChip key={ei} variant="inline" type={it.ev.type}
+                              /* на продолжении после полуночи время начала соврало бы */
+                              time={it.contPrev ? null : it.ev.time} title={it.ev.title}
+                              onClick={() => onOpenEvent?.(it.ev)} ariaLabel={evLabel(it.ev)} className="t-tiny" />
                           ))}
                           {c.events.length > 2 && (
                             <Btn variant="link" className="t-tiny" onClick={() => toggle(ci)}>
@@ -109,7 +118,7 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
                           )}
                         </div>
                         <div className="ncal-dots" aria-hidden="true">
-                          {c.events.slice(0, 5).map((e, ei) => <span key={ei} className={`ncal-dot ev-${eventFamily(e.type)}`} />)}
+                          {c.events.slice(0, 5).map((it, ei) => <span key={ei} className={`ncal-dot ev-${eventFamily(it.ev.type)}`} />)}
                         </div>
                       </>
                     )}
@@ -141,13 +150,26 @@ function MonthView({ cells, weekdays, onOpenEvent, onOpenCity, t }) {
 
 // ─── WeekGrid — columns + full-day time axis ──────────────────────────────────
 const HOUR_H = 44;
-/** Своей длительности у события в потоке нет — блок рисуется слотом в час, и
- *  ровно этот же слот считается пересечением (`eventLanes`). */
-const SLOT_MIN = 60;
 /** Зазор между блоками. Событие «впритык» (конец одного = начало другого) без
  *  него сливается с соседом в один прямоугольник: границы блоков совпадают
  *  ровно, и два часа читаются как один. Тот же зазор, что по горизонтали. */
 const EV_GAP = 2;
+/**
+ * Порог, ниже которого блок печатает ТОЛЬКО НАЗВАНИЕ.
+ *
+ * Высота блока теперь — данные (реальная длительность), и получасовое событие
+ * это 22px: две строки `t-tiny` (10px, ~13px строка + 8 паддинга + рамка ≈ 36px)
+ * в него не влезают, а обрезается по построению НИЖНЯЯ — то есть название,
+ * которое единственное и опознаёт событие. Поэтому у короткого блока снимается
+ * ВРЕМЯ: его и так сообщает положение блока на оси часов, а точное значение
+ * лежит в карточке события и в `aria-label`. Тот же выбор «имя важнее времени»
+ * уже принят в этом экране для узкой ячейки месяца.
+ *
+ * Переверстки в одну строку тут нет намеренно: она потребовала бы у примитива
+ * ДС нового состояния (класс/проп) ради случая, который решается непечатанием
+ * одного span'а.
+ */
+const TWO_LINE_H = 36;
 
 function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHour, weekKey, onOpenEvent, onOpenCity, t }) {
   const scrollRef = useRef(/** @type {HTMLDivElement | null} */(null));
@@ -253,14 +275,19 @@ function WeekGrid({ days, hours, lines, gridH, startHour, hasAllDay, scrollToHou
             {days.map((d, di) => (
               <div key={di} className={`ncal-wk-col${d.isToday ? ' is-today' : ''}`}>
                 {d.timed.map((it, ii) => (
-                  <EventChip key={ii} variant="block" type={it.ev.type} time={it.ev.time} title={it.ev.title}
+                  <EventChip key={ii} variant="block" type={it.ev.type} title={it.ev.title}
+                    /* Время печатается, только если блок его вмещает И это ПЕРВЫЙ
+                       отрезок события: на продолжении после полуночи время начала
+                       соврало бы (блок начинается в 00:00), а время конца читалось
+                       бы как начало. */
+                    time={it.seg.contPrev || it.height < TWO_LINE_H ? null : it.ev.time}
                     className="t-tiny"
                     style={{
                       top: it.top, height: it.height - EV_GAP,
                       left: `calc(${(it.lane / it.lanes) * 100}% + ${EV_GAP}px)`,
                       width: `calc(${(1 / it.lanes) * 100}% - ${EV_GAP * 2}px)`,
                     }}
-                    onClick={() => onOpenEvent?.(it.ev)} ariaLabel={`${it.ev.time} ${it.ev.title}`} />
+                    onClick={() => onOpenEvent?.(it.ev)} ariaLabel={evLabel(it.ev)} />
                 ))}
               </div>
             ))}
@@ -370,11 +397,20 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
     const evByDay = {};
     for (const e of stream) {
       if (!e.date) continue;
-      const dt = parseNaive(e.date + 'T00:00:00');
-      if (!dt || dt.year !== y || dt.month !== m) continue;
-      (evByDay[dt.day] ||= []).push(e);
+      // Те же отрезки, что и в неделе: событие через полночь стоит в ОБОИХ днях,
+      // а не только в дне старта. Без времени — один день и в конец списка
+      // (порядок дня: сначала по часам, «весь день» последним).
+      const segs = eventSegments(e);
+      const places = segs.length
+        ? segs.map(sg => ({ key: sg.dateKey, from: sg.from, contPrev: sg.contPrev }))
+        : [{ key: e.date, from: Number.MAX_SAFE_INTEGER, contPrev: false }];
+      for (const pl of places) {
+        const dt = parseNaive(pl.key + 'T00:00:00');
+        if (!dt || dt.year !== y || dt.month !== m) continue;
+        (evByDay[dt.day] ||= []).push({ ev: e, from: pl.from, contPrev: pl.contPrev });
+      }
     }
-    Object.values(evByDay).forEach(arr => arr.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')));
+    Object.values(evByDay).forEach(arr => arr.sort((a, b) => a.from - b.from));
 
     const todayDay = today.year === y && today.month === m ? today.day : null;
 
@@ -411,11 +447,20 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
 
     for (const e of stream) {
       if (!e.date) continue;
-      const di = days.findIndex(d => d.dateStr === e.date);
-      if (di < 0) continue;
-      const mt = /^(\d{1,2}):(\d{2})/.exec(e.time || '');
-      if (mt) { const h = +mt[1]; days[di].timed.push({ ev: e, startMin: h * 60 + +mt[2] }); }
-      else days[di].allDay.push(e);
+      // Событие приезжает ОТРЕЗКАМИ ПО ДНЯМ (`lib/calendar-spans.js`, под
+      // тестом): активность и переезд — своей реальной длительностью, заезд/
+      // выезд/дедлайн/авто — назначенным часом, а интервал через полночь —
+      // двумя отрезками, в конце своего дня и в начале следующего.
+      const segs = eventSegments(e);
+      if (!segs.length) {                       // без времени — полоса «весь день»
+        const di = days.findIndex(d => d.dateStr === e.date);
+        if (di >= 0) days[di].allDay.push(e);
+        continue;
+      }
+      for (const seg of segs) {
+        const di = days.findIndex(d => d.dateStr === seg.dateKey);
+        if (di >= 0) days[di].timed.push({ ev: e, seg });
+      }
     }
 
     // Полные сутки 00–24 — событие в 2 ночи видно так же, как в 2 дня. При
@@ -426,15 +471,15 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent, o
     const gridH = (endHour - startHour) * HOUR_H;
 
     days.forEach(day => {
-      day.timed.sort((a, b) => a.startMin - b.startMin);
-      // Ширину блока решает КЛАСТЕР пересекающихся событий, а не день целиком
+      day.timed.sort((a, b) => a.seg.from - b.seg.from || a.seg.to - b.seg.to);
+      // Ширину блока решает КЛАСТЕР пересекающихся отрезков, а не день целиком
       // (модель — `lib/calendar-lanes.js`, под тестом): пара на 14:00/14:10
       // делит колонку пополам, а утренний перелёт рядом с ними остаётся во всю
       // ширину. Прежняя редакция раздавала число дорожек всему дню сразу.
-      const packed = eventLanes(day.timed.map(it => it.startMin), SLOT_MIN);
+      const packed = eventLanes(day.timed.map(it => it.seg));
       day.timed.forEach((it, i) => {
-        it.top = (it.startMin / 60 - startHour) * HOUR_H;
-        it.height = HOUR_H;
+        it.top = (it.seg.from / 60 - startHour) * HOUR_H;
+        it.height = ((it.seg.to - it.seg.from) / 60) * HOUR_H;
         it.lane = packed[i].lane;
         it.lanes = packed[i].lanes;
       });

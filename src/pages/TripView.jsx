@@ -186,8 +186,11 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       address: a.location_address,
       duration: a.end_datetime ? formatDuration(t, a.start_datetime, a.end_datetime) : null,
       // Naive clock end (HH:mm) — used by the calendar week-view to size blocks
-      // by real duration instead of a fixed guess.
+      // by real duration instead of a fixed guess. `endDate` is the DAY of that
+      // end: without it an interval crossing midnight cannot be drawn (HH:mm
+      // alone says "07:00" and not "07:00 of which day").
       endTime: a.end_datetime ? formatNaive(a.end_datetime, 'HH:mm') : null,
+      endDate: naiveDayKey(a.end_datetime),
       _ms: parseNaive(a.start_datetime)?.toMillis() ?? 0,
     });
   }
@@ -229,6 +232,9 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       platformUrl: tr.booking_url,
       duration: tr.end_datetime ? formatDuration(t, tr.start_datetime, tr.end_datetime, visits.find(v => v.id === tr.from_city_visit_id)?.timezone, visits.find(v => v.id === tr.to_city_visit_id)?.timezone) : null,
       endTime: tr.end_datetime ? formatNaive(tr.end_datetime, 'HH:mm') : null,
+      // Day of arrival — a night flight ends on the NEXT day, and the calendar
+      // draws it in both (see `lib/calendar-spans.js`).
+      endDate: naiveDayKey(tr.end_datetime),
       _ms: eventMs,
     });
   }

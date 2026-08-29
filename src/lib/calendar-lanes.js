@@ -11,24 +11,26 @@
  * из накопленных: за пределами кластера дорожек нет, и событие занимает колонку
  * целиком.
  *
- * ★ ДЛИТЕЛЬНОСТЬ ЗДЕСЬ ОДНА НА ВСЕХ (`slotMin`) — ровно та, которой тайм-грид
- * рисует блок. Модель шире, чем сетка, не бывает: если блок высотой в час, то и
- * пересечением считается час, иначе на экране разъедутся ширина и высота.
+ * ★ ПЕРЕСЕЧЕНИЕ СЧИТАЕТСЯ ПО ТОМУ ЖЕ ОТРЕЗКУ, КОТОРЫЙ НАРИСОВАН. На вход идут
+ * готовые отрезки дня (`lib/calendar-spans.js`), а не «начало + слот в час»:
+ * пока длительность выдумывалась, событие 10:00–10:30 «занимало» до 11:00 и
+ * ложно жалось с соседом в 10:45, а активность 10:00–14:00 не замечала перелёта
+ * в 12:00. Ширина и высота обязаны расходиться из одного источника.
  */
 
 /**
- * @param {number[]} starts начала событий в минутах от полуночи (порядок любой)
- * @param {number} [slotMin] длительность блока в минутах (высота блока сетки)
+ * @param {{ from: number, to: number }[]} spans отрезки дня в минутах от
+ *   полуночи (порядок любой; конец — тот же, каким блок нарисован)
  * @returns {{ lane: number, lanes: number }[]} дорожка и число дорожек её
  *   кластера — В ПОРЯДКЕ ВХОДА, чтобы результат ложился на исходный массив
  */
-export function eventLanes(starts, slotMin = 60) {
-  const order = starts
-    .map((startMin, i) => ({ startMin, i }))
-    .sort((a, b) => a.startMin - b.startMin || a.i - b.i);
+export function eventLanes(spans) {
+  const order = spans
+    .map((s, i) => ({ from: s.from, to: s.to, i }))
+    .sort((a, b) => a.from - b.from || a.to - b.to || a.i - b.i);
 
   /** @type {{ lane: number, lanes: number }[]} */
-  const out = new Array(starts.length);
+  const out = new Array(spans.length);
   /** @type {{ i: number, lane: number }[]} */
   let cluster = [];
   /** @type {number[]} */
@@ -44,9 +46,9 @@ export function eventLanes(starts, slotMin = 60) {
   for (const it of order) {
     // Кластер кончился: событие начинается не раньше, чем кончилось последнее
     // из накопленных. Все дорожки свободны — счёт начинается заново.
-    if (it.startMin >= clusterEnd) flush();
-    const end = it.startMin + slotMin;
-    let lane = laneEnds.findIndex((e) => e <= it.startMin);
+    if (it.from >= clusterEnd) flush();
+    const end = it.to > it.from ? it.to : it.from + 1;
+    let lane = laneEnds.findIndex((e) => e <= it.from);
     if (lane < 0) { lane = laneEnds.length; laneEnds.push(end); } else laneEnds[lane] = end;
     cluster.push({ i: it.i, lane });
     clusterEnd = Math.max(clusterEnd, end);
