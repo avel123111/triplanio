@@ -22,7 +22,7 @@ import { buildSubscriptionUpsertRow, buildSubscriptionRefreshPatch } from './pay
 import { isDuplicateEntitlingSub } from './payments/subscriptionDedup.ts';
 import { getProviderCustomerId } from './payments/customer.ts';
 import { reportPaymentAnomaly } from './sentry.ts';
-import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from './revokeLostProFeatures.ts';
+import { recomputeUserEntitlement, recomputeTripEntitlement } from './entitlementRecompute.ts';
 
 const THROTTLE_MIN = 10;
 
@@ -135,8 +135,15 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
     }
   }
 
-  await admin.rpc('recompute_user_entitlement', { p_user_id: userId });
-  await revokeLostProFeaturesForUser(admin, userId);
+  // Пересчёт права — общей дверью (она же откатывает аддоны и сообщает о ПОЯВЛЕНИИ
+  // права: ветка stuck-FREE выше как раз лечит потерянную активацию, о которой
+  // пользователю иначе никто не сказал бы). Путь ЧТЕНИЯ: сбой не должен ронять
+  // открытие экрана, поэтому ошибка гасится здесь — в Sentry она уже ушла.
+  try {
+    await recomputeUserEntitlement(admin, userId);
+  } catch (e) {
+    console.error('reconcileEntitlement: recompute failed', userId, (e as Error).message);
+  }
   return true;
 }
 
@@ -192,8 +199,9 @@ export async function reconcileTripEntitlement(admin: SupabaseClient, tripId: st
         status: fullyRefunded ? 'refunded' : 'disputed',
         ...(fullyRefunded ? { refunded_at: new Date().toISOString() } : {}),
       }).eq('id', p.id);
-      await admin.rpc('recompute_trip_entitlement', { p_trip_id: tripId });
-      await revokeLostProFeaturesForTrip(admin, tripId);
+      // Той же дверью: право здесь только ТЕРЯЕТСЯ (рефанд/диспут), перехода в Pro
+      // не бывает — уведомления не будет, откат аддонов случится.
+      await recomputeTripEntitlement(admin, tripId);
       await reportPaymentAnomaly('reconcile_revoked_trip', { trip_id: tripId, payment_intent: p.provider_charge_id }, 'warning');
     }
   } catch (e) {
