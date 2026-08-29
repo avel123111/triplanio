@@ -72,6 +72,7 @@ export function boot(client) {
     capture_pageview: false, // our own page_view via track() replaces it (no dupe)
     capture_performance: false,
     disable_session_recording: true,
+    disable_surveys: true, // опросами не пользуемся — иначе SDK тянет ~33 КБ с их CDN (TRIP-475)
     // Код — единственный замок на сбор: настройка проекта (heatmaps_opt_in)
     // не должна включать сбор мыше-движений без нашего ведома (TRIP-328).
     enable_heatmaps: false,

@@ -34,6 +34,10 @@
 // не уходит. (Дефект Ф0: раньше стенд мерил заранее собранный `dist`, и замер
 // Ф1.4 без DSN показал нулевую дельту — «SDK мёртв, но скачан» vs «SDK нет».)
 //
+// ⚠ ПОБОЧКА: прогон ОСТАВЛЯЕТ `dist`, собранный с ФЕЙКОВЫМ Supabase (`.env.local`
+// не виден `process.env`, поэтому `??=` берёт дефолт стенда) — следующий
+// `npm run preview` молча пойдёт в `stand.supabase.co`. Пересобери перед preview.
+//
 // ЗАПУСК:  npm run perf:lh   (собирает dist сам — отдельный `vite build` не нужен)
 //   аргументы: --runs=3  --path=/  --port=0  (0 = свободный порт)
 //   env: CHROME_PATH=/путь/к/chrome  (иначе берётся Chromium из кэша Playwright)
@@ -83,11 +87,11 @@ const ICON_FILE = /^\/(og-cover\.jpg|og-join\.jpg|icon-192\.png|icon-512\.png|ap
 function cacheControlFor(urlPath) {
   if (IMMUTABLE_DIR.test(urlPath)) return 'public, max-age=31536000, immutable';
   if (ICON_FILE.test(urlPath)) return 'public, max-age=86400, stale-while-revalidate=604800';
-  // /assets/* — ОТДЕЛЬНОЙ строкой намеренно: сегодня прод отдаёт хешированный
-  // build-output как «всё остальное» (обязательная перепроверка — она и обнажает
-  // ловушку 304). Ф2 поставит на /assets/ `immutable` в vercel.json — тогда
-  // менять ЗДЕСЬ ЭТУ строку, чтобы стенд не перестал повторять прод молча.
-  if (urlPath.startsWith('/assets/')) return 'public, max-age=0, must-revalidate';
+  // /assets/* — ОТДЕЛЬНОЙ строкой намеренно: имя хешировано содержимым, поэтому
+  // прод отдаёт build-output как `immutable` (правило `/assets/:path*` в
+  // vercel.json). Держим синхронно: смена значения ТАМ — правка и ЗДЕСЬ, иначе
+  // стенд перестанет повторять прод молча.
+  if (urlPath.startsWith('/assets/')) return 'public, max-age=31536000, immutable';
   // Всё остальное, включая index.html — как Vercel: обязательная перепроверка.
   return 'public, max-age=0, must-revalidate';
 }
@@ -191,6 +195,13 @@ async function main() {
       };
       runs.push(m);
       console.log(`  прогон ${i + 1}: score ${m.score} · FCP ${(m.fcp / 1000).toFixed(2)} · LCP ${(m.lcp / 1000).toFixed(2)} · TBT ${Math.round(m.tbt)} · CLS ${m.cls.toFixed(3)}`);
+      // ★ КАКОЙ ЭЛЕМЕНТ Lighthouse счёл LCP (TRIP-475 шаг 5). Печатаем В КАЖДОМ
+      // прогоне: следующие фазы меняют сам LCP-кандидат (ConsentBanner → lazy,
+      // затем hero-фон), поэтому приёмка «по LCP» без имени элемента слепа —
+      // числа до и после несравнимы, если под ними разные элементы. Путь до узла:
+      // audit `details` — список из двух таблиц, первая = элемент, её items[0].node.
+      const lcpNode = lhr.audits['largest-contentful-paint-element']?.details?.items?.[0]?.items?.[0]?.node;
+      console.log(`    LCP-элемент: ${lcpNode ? (lcpNode.nodeLabel || lcpNode.snippet || lcpNode.selector) : '—'}`);
     }
   } finally {
     await chrome.kill();
