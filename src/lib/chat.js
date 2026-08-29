@@ -1,6 +1,7 @@
 // Helpers for the trip chat: chat_id lookup, message paging, sending, unread
-// counter and the shared realtime channel. Read markers are written inline by
-// the lens and the widget (a plain upsert), so this module no longer wraps them.
+// counter, the read marker and the shared realtime channel. Every rule the lens
+// and the widget share lives here — a rule copied into both screens is a rule
+// that has already started drifting.
 //
 // All queries pivot on chat_id (from the chats table - one "group" chat per
 // trip) and on user_id (uuid) rather than user_email.
@@ -295,6 +296,41 @@ export function useUnreadChatCount(tripId, { enabled = true } = {}) {
     refetchOnWindowFocus: true,
   });
   return q.data || 0;
+}
+
+// ── Read marker ───────────────────────────────────────────────────────────────
+//
+// "Seen up to now": one chat_reads row per (chat_id, user_id) — the timestamp
+// useUnreadChatCount above counts from. ONE implementation for both surfaces.
+//
+// The lens and the widget each used to write this upsert inline, and the two
+// copies had drifted on the only thing that matters: WHEN the marker moves. The
+// lens re-marked on every new message; the widget marked once, at the moment it
+// was opened. So a widget kept open through a conversation — the normal shape of
+// a chat with the assistant, where every reply is a message from someone else —
+// went on counting those replies as unread while the reader was looking straight
+// at them, and the sidebar badge climbed until the widget was reopened. Same
+// behaviour on both surfaces now, and the difference between them is an ARGUMENT:
+//
+//   active  this surface is in front of the reader (lens: always; widget: open)
+//   tailId  id of the newest message — the marker rides the TAIL of the stream,
+//           not msgs.length: prepending an older page (the "load more" button)
+//           grows the array without anything new arriving, and used to write a
+//           marker for it. Same reasoning as the lens autoscroll effect.
+export function useMarkChatRead(chatId, tripId, { active = true, tailId = null } = {}) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const userId = user?.id;
+  useEffect(() => {
+    if (!active || !chatId || !userId) return;
+    supabase.from('chat_reads').upsert(
+      { chat_id: chatId, user_id: userId, trip_id: tripId, last_read_at: new Date().toISOString() },
+      { onConflict: 'chat_id,user_id' },
+    ).then(({ error }) => {
+      if (error) report(error, { surface: 'data', source: 'chat_read' });
+      qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
+    });
+  }, [active, chatId, userId, tripId, tailId, qc]);
 }
 
 // ── Shared realtime: ONE channel per chat_id per client (TRIP-208 Ф2-2b) ──────
