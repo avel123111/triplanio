@@ -78,6 +78,31 @@ Deno.test('pro_activated: системная строка — без автор�
   assertEquals(spec!.trip_id, null);
 });
 
+// Покупка Pro НА ТРИП: тоже без автора-человека, но строка про трип — иначе рендер
+// не покажет ссылку «Открыть путешествие» (`showLink` требует trip_id), а в тексте
+// не будет названия. Обе половины и пиним.
+Deno.test('trip_pro_activated: без автора, но с трипом — ссылка и название', () => {
+  const spec = INAPP.trip_pro_activated(data({ trip: { id: 't-1', title: 'Рим' }, recipients: [{ id: 'owner-1' }] }));
+  assertEquals(spec, {
+    type: 'trip_pro_activated',
+    i18n_title_key: 'notif.tpl_trip_pro_activated_title',
+    i18n_message_key: 'notif.tpl_trip_pro_activated_msg',
+    i18n_params: { trip: 'Рим' },
+    trip_id: 't-1',
+    trip_member_id: null,
+    created_by: null,
+  });
+});
+
+// Адресат один (владелец трипа — он же единственный, кто может купить), но
+// разбрасывает строку по получателям общий шов: проверяем, что он это делает.
+Deno.test('trip_pro_activated: строка уходит владельцу трипа', () => {
+  const rows = buildInAppRows('trip_pro_activated', data({ trip: { id: 't-1', title: 'Рим' }, recipients: [{ id: 'owner-1' }] }));
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].user_id, 'owner-1');
+  assertEquals(rows[0].read, false);
+});
+
 // ── бронь добавлена (per-kind заголовок, сырой kind в params, автор из created_by) ──
 
 Deno.test('booking_added: заголовок per-kind, сырой kind в params, имя НЕ снапшотим', () => {
@@ -136,7 +161,7 @@ Deno.test('EXTERNAL: внешний канал у invite_created / invite_resent
   // In-app-only события в n8n не ходят (их ветки удалены) — POST дал бы 404.
   for (const e of ['trip_member_joined', 'trip_invite_declined', 'trip_member_left',
     'trip_member_removed', 'trip_role_changed', 'invite_linked', 'pro_activated', 'pro_payment_failed',
-    'booking_added']) {
+    'trip_pro_activated', 'booking_added']) {
     assertEquals(EXTERNAL.has(e), false, `${e} не должно ходить в n8n`);
   }
 });

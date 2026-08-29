@@ -34,8 +34,10 @@ import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
 // скачивали планировщик, редактор поездки и статистику вместе с их зависимостями
 // — притом что незалогиненный посетитель не откроет ни один из них. Техника не
 // новая: Kit / DemoTrip / Legal уже приезжают так же.
-// `MapProvider` при этом остаётся статическим и держит `mapbox-gl` синхронным —
-// сам по себе этот `lazy` полмегабайта карты не снимает, см. vite.config.js.
+// `MapProvider` при этом остаётся статическим, но `mapbox-gl` синхронным НЕ
+// делает: библиотека грузится по требованию через `loadMapboxGl()` (динамический
+// `import`, см. src/lib/mapbox.js), в стартовый граф не входит и на лендинг не
+// приезжает — этот `lazy` про экраны приложения, не про карту.
 const Trips = lazy(() => import('@/pages/Trips'));
 const Statistics = lazy(() => import('@/pages/Statistics'));
 const TripView = lazy(() => import('@/pages/TripView'));

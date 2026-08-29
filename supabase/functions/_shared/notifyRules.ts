@@ -154,6 +154,21 @@ export const INAPP: Record<string, (d: NotifyData) => InAppSpec | null> = {
   pro_activated: () => systemSpec('pro_activated', 'notif.tpl_pro_activated_title', 'notif.tpl_pro_activated_msg'),
   pro_payment_failed: () => systemSpec('pro_payment_failed', 'notif.tpl_pro_payment_failed_title', 'notif.tpl_pro_payment_failed_msg'),
 
+  // Pro куплен на КОНКРЕТНЫЙ трип. Тоже без автора-человека (покупка, не чьё-то
+  // действие → без аватара), но, в отличие от аккаунтной, строка ПРО ТРИП: несёт
+  // `trip_id`, из которого рендер сам даёт ссылку «Открыть путешествие»
+  // (`showLink` в notifView), и название трипа параметром текста. Поэтому не
+  // `systemSpec` — тот по определению вне трипа и без параметров.
+  trip_pro_activated: (d) => ({
+    type: 'trip_pro_activated',
+    i18n_title_key: 'notif.tpl_trip_pro_activated_title',
+    i18n_message_key: 'notif.tpl_trip_pro_activated_msg',
+    i18n_params: { trip: tripTitle(d) },
+    trip_id: tripId(d),
+    trip_member_id: null,
+    created_by: null,
+  }),
+
   // Бронь добавлена — получатели владелец+участники; автор = добавивший.
   //   • ЗАГОЛОВОК: per-kind ключ (грамматика — реюз booking_kind_* запрещён;
   //     механизм выбора ключа как у trip_role_changed по роли);

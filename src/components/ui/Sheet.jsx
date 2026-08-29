@@ -1,17 +1,16 @@
 // @ts-check
-import { Drawer } from 'vaul';
+import { SheetClose, SheetRoot, SheetSurface, SheetTitle } from '@/components/ui/sheetShell';
 import { IconBtn } from '@/design/IconBtn';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * C6 · Sheet — canonical mobile bottom-sheet (Lumo `.sheet`).
  *
- * Built on vaul's `Drawer` (which itself wraps Radix Dialog, so we keep the
- * focus-trap, Esc / outside-click and scroll-lock we had before). vaul owns the
- * gesture + animation: the whole surface is draggable with native momentum,
- * velocity-based dismiss, and a spring settle — replacing the old grip-only
- * hand-rolled drag. `repositionInputs` (default) lifts the sheet above the iOS
- * keyboard instead of the page jumping/shrinking, so inputs behave.
+ * Движение (жест, слайд, клавиатура, портал, подложка, грип) принадлежит шву
+ * `ui/sheetShell` — единственному дому vaul; здесь остаётся только СКИН
+ * `.sheet` и его состав: грип · шапка с заголовком и крестиком · тело.
+ * Раньше этот файл держал свою копию `Drawer.Root → Portal → Overlay →
+ * Content`, и таких копий в приложении было четыре.
  *
  * Used as the mobile shell for menus (ActionMenu) and pickers (SearchSelect)
  * under the mobile breakpoint. On desktop those components render their anchored
@@ -25,41 +24,28 @@ import { useT } from '@/lib/i18n/I18nContext';
 export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
   const t = useT();
   return (
-    // repositionInputs={false}: the app's viewport meta uses
-    // `interactive-widget=resizes-content`, so the layout viewport already
-    // shrinks above the keyboard and this bottom-anchored sheet (bottom:0 +
-    // dvh) sits above it natively. Letting vaul ALSO reposition (its default)
-    // double-moves the sheet → the "flying / jumps on focus" bug.
-    <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
-      <Drawer.Portal>
-        <Drawer.Overlay className="sheet-backdrop" />
-        {/* vaul does NOT auto-focus into the sheet on open, so the mobile keyboard
-            stays down until the user taps a field (no jump / iOS zoom on open). */}
-        <Drawer.Content className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
-          {/* Visual drag affordance only — the whole sheet is draggable (vaul), so
-              this carries no handlers. */}
-          <div className="sheet-grip" aria-hidden><i /></div>
-          {title ? (
-            <div className="sheet-h">
-              <Drawer.Title asChild><h3>{title}</h3></Drawer.Title>
-              {/* ★TRIP-344: крестик - тот же объект, что в диалоге, и рисуется
-                  тем же примитивом. `asChild` нужен, чтобы vaul повесил свои
-                  обработчики на САМУ кнопку, а не на лишнюю обёртку. Тон quiet
-                  (без tone) — единый крест закрытия, как в канон-диалоге (TRIP-337);
-                  ховер приходит от базового `.icon-btn`. */}
-              <Drawer.Close asChild>
-                <IconBtn icon="close" ariaLabel={t('common.close')} />
-              </Drawer.Close>
-            </div>
-          ) : (
-            <Drawer.Title className="sr-only">
-              {titleText || t('common.menu')}
-            </Drawer.Title>
-          )}
-          <div className={'sheet-b' + (bodyClassName ? ' ' + bodyClassName : '')}>{children}</div>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
+    <SheetRoot open={open} onOpenChange={onOpenChange}>
+      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
+        {title ? (
+          <div className="sheet-h">
+            <SheetTitle asChild><h3>{title}</h3></SheetTitle>
+            {/* ★TRIP-344: крестик - тот же объект, что в диалоге, и рисуется
+                тем же примитивом. `asChild` нужен, чтобы vaul повесил свои
+                обработчики на САМУ кнопку, а не на лишнюю обёртку. Тон quiet
+                (без tone) — единый крест закрытия, как в канон-диалоге (TRIP-337);
+                ховер приходит от базового `.icon-btn`. */}
+            <SheetClose asChild>
+              <IconBtn icon="close" ariaLabel={t('common.close')} />
+            </SheetClose>
+          </div>
+        ) : (
+          <SheetTitle className="sr-only">
+            {titleText || t('common.menu')}
+          </SheetTitle>
+        )}
+        <div className={'sheet-b' + (bodyClassName ? ' ' + bodyClassName : '')}>{children}</div>
+      </SheetSurface>
+    </SheetRoot>
   );
 }
 

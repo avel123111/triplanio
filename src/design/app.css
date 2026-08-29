@@ -3419,7 +3419,23 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* allday — плоская плашка события на весь день */
 .evchip--allday { padding: 3px 8px; border-radius: var(--r-xs); border: none; cursor: pointer; text-align: left; background: var(--surface-2); color: var(--ink-2); overflow: hidden; }
 /* block — позиционируемая timed-карточка в тайм-гриде недели */
-.evchip--block { position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden; padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; text-align: left; background: var(--surface); color: var(--ink-2); box-shadow: var(--sh-1); transition: filter .14s, transform .1s var(--ease-spring); }   /* design-token-exempt: 1px/6px — радиус 6 карточки события (апрув Pavel), 1px gap */
+/* Тени у блока НЕТ. В тайм-гриде блоки стоят вплотную (час к часу), и тень
+   каждого ложилась на соседа — сетка читалась стопкой приподнятых карточек, а
+   не занятым временем. Границу объекта держит хайрлайн-рамка в СВОЁМ цвете
+   семейства (currentColor = `--ev-*-ink`): на плотной сетке нейтральная --line
+   спорила бы с заливкой, а тон семейства обводит блок, не добавляя второго
+   цвета. Радиус — канон --r-xs (4px): своей ступени 3px в шкале нет, а заводить
+   её ради одного объекта = новый токен (правило #6).
+   visual-diff-exempt: .evchip--block box-shadow — тень снята: блоки тайм-грида стоят вплотную, тень соседа ложилась на соседа (правка Pavel «убрать тень»)
+   visual-diff-exempt: .evchip--block border-radius — 6px → канон --r-xs (4px), правка Pavel «радиус до 3px», ближайшая ступень шкалы
+   visual-diff-exempt: .evchip--block border — добавлена хайрлайн-рамка в цвете семейства (правка Pavel «тонкий лёгкий бордер»)
+   Пол по высоте = ОДНА строка названия. Высота блока теперь данные (реальная
+   длительность), и 15-минутное событие это 11px — в них не видно ничего. Пол
+   считан из канона, а не подобран: `.t-tiny` 10px × 1.3 ≈ 13px строка + 8px
+   паддингов + 2px рамки = 23px. Блок ниже своей длительности честнее пустого:
+   опознать событие можно только по названию.
+   visual-diff-exempt: .evchip--block min-height — пол в одну строку названия под реальную длительность (короткое событие иначе 11px) */
+.evchip--block { position: absolute; display: flex; flex-direction: column; gap: 1px; overflow: hidden; min-height: 23px; padding: 4px 8px; border-radius: var(--r-xs); border: 1px solid color-mix(in srgb, currentColor 20%, transparent); cursor: pointer; text-align: left; background: var(--surface); color: var(--ink-2); transition: filter .14s, transform .1s var(--ease-spring); }   /* design-token-exempt: 1px gap/рамка/23px пол — хайрлайн и высота строки вне шкалы отступов */
 .evchip--block:hover { filter: brightness(1.04); }
 .evchip--block:active { transform: scale(.98); }
 .evchip--block .evchip__tm { color: var(--muted); }
@@ -5105,11 +5121,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* =================================================================
    DIALOG / MODAL — used everywhere (event details, confirm, share…)
    ================================================================= */
+/* ★ ТРИ ОБЪЯВЛЕНИЯ УДАЛЕНЫ КАК МЁРТВЫЕ (`display: grid`, `place-items: center`,
+   `padding: 24px`). Они центрировали окно ВНУТРИ подложки — архитектура, которой
+   больше нет: Radix рендерит Overlay и Content СИБЛИНГАМИ, `<DialogOverlay />`
+   и `<AlertDialogOverlay />` самозакрывающиеся, детей у подложки ноль. Окно
+   центрирует себя само (`.dlg-modal`: fixed + translate(-50%,-50%)), а на
+   телефоне и вовсе стоит у нижнего края. Правила пережили переезд и обещали
+   раскладку, которой не происходит.
+   visual-diff-exempt: .dlg-backdrop display — мёртвое объявление: у подложки нет детей (Overlay самозакрывающийся), центрировать нечего
+   visual-diff-exempt: .dlg-backdrop place-items — то же
+   visual-diff-exempt: .dlg-backdrop padding — то же */
 .dlg-backdrop {
   position: fixed; inset: 0; background: var(--scrim);
-  z-index: var(--z-modal); display: grid; place-items: center;
+  z-index: var(--z-modal);
   backdrop-filter: blur(2px);
-  padding: 24px;
   animation: fadeIn .15s ease;
 }
 /* Radix-powered modal layer: ModalHost renders the scrim as a Radix Overlay
@@ -5126,8 +5151,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   outline: none;
   animation: fadeIn .15s ease;
 }
-/* Drag handle is a bottom-sheet affordance only — hidden on desktop dialogs. */
-.dlg-grip { display: none; }
+/* Семья `.dlg-grip` УДАЛЕНА: «бровь» окна и «бровь» листа — один объект, его
+   рисует `SheetGrip` (ui/sheetShell) скином `.sheet-grip`. Прежнее
+   `display:none` держало на десктопе мёртвый узел в каждой модалке.
+   visual-diff-exempt: .dlg-grip display — семья удалена, грип модалки рисует канон .sheet-grip (узел на десктопе больше не рендерится) */
 
 /* ── C6 Overlay: below 640 px every .dlg-modal becomes a bottom sheet ──
    The mobile Content is a vaul Drawer (see ui/dialog.jsx), which owns the drag
@@ -5156,9 +5183,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     max-width: 100%;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  /* Real drag handle ("бровь") — visible only as a bottom sheet. */
-  .dlg-grip { display: flex; justify-content: center; align-items: center; padding: 10px 0 4px; flex: none; touch-action: none; cursor: grab; }
-  .dlg-grip i { width: 40px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); }
+  /* «Бровь» рисует канон `.sheet-grip`: полоса та же (40×5, `--r-pill`,
+     `--line-strong`), отступ обёртки 11/3 вместо 10/4 — блок те же 19px,
+     полоска на 1px ниже (измерено).
+     visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} display — семья удалена, грип рисует канон .sheet-grip
+     visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} justify-content — то же
+     visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} align-items — то же (у канона его нет: потомок один и фиксированной высоты)
+     visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} padding — то же: отступ канона 11/3 вместо 10/4, высота блока прежняя
+     visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} flex — то же
+     visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} touch-action — то же
+     visual-diff-exempt: .dlg-grip {@media (max-width: 640px)} cursor — то же
+     visual-diff-exempt: .dlg-grip i {@media (max-width: 640px)} width — полоса переехала на .sheet-grip i, значения те же
+     visual-diff-exempt: .dlg-grip i {@media (max-width: 640px)} height — то же
+     visual-diff-exempt: .dlg-grip i {@media (max-width: 640px)} border-radius — то же
+     visual-diff-exempt: .dlg-grip i {@media (max-width: 640px)} background — то же */
   /* Confirm/alert dialogs: centred content stays centred in the sheet */
   .dlg-modal .dlg__body { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
   /* Wide dialogs (TripLimitDialog) — full width on mobile, normal layout */
@@ -7976,8 +8014,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .peek-sheet.is-dragging { transition: none; } /* follow the finger 1:1 mid-drag */
 /* Grip + header are the drag zones (touch-action:none → the gesture is ours);
    the body scrolls natively (pan-y). */
-.peek-sheet__grip { display: flex; justify-content: center; width: 100%; padding: 11px 0 3px; flex: none; border: 0; background: none; cursor: grab; touch-action: none; }
-.peek-sheet__grip i { width: 40px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); }
+/* Скин «брови» — канон `.sheet-grip` (носитель несёт оба класса): здесь
+   остаётся ТОЛЬКО отличие функционального грипа — он тянется во всю ширину
+   шита и сбрасывает хром носителя. Полоса `i` уехала на канон целиком.
+   visual-diff-move: .peek-sheet__grip -> .sheet-grip — общий скин «брови» на канон, отличия остались на месте
+   visual-diff-exempt: .peek-sheet__grip i width — полоса уехала на канон `.sheet-grip i`, который теперь действует на этот носитель (он несёт оба класса); значение то же 40px
+   visual-diff-exempt: .peek-sheet__grip i height — то же, 5px
+   visual-diff-exempt: .peek-sheet__grip i border-radius — то же, var(--r-pill)
+   visual-diff-exempt: .peek-sheet__grip i background — то же, var(--line-strong)
+   (перенос выражен исключением, а не `visual-diff-move`: цель у 2p называется
+   классами, а канон полосы — правило с потомком-тегом `.sheet-grip i`) */
+.peek-sheet__grip { width: 100%; border: 0; background: none; }
 .peek-sheet__head { flex: none; touch-action: none; }
 /* flex:0 1 auto → the body is its content height until the sheet hits the cap,
    then it shrinks and scrolls. padding-bottom = dock zone + a small gap so the
@@ -10015,17 +10062,38 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* — visit panel (desktop right slide-over / mobile bottom sheet) over the app — */
 .vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: var(--z-panel); }
-/* Фон драйвера сведён к канон-поверхности модалок `--surface` (как `.dlg`/`.lp`/
-   `.sheet`) — единый фон оверлеев (решение Pavel, TRIP-337: `--bg` был
-   единственным расхождением поверхности среди всех оверлеев).
+/* Фон панели — `--surface`, как у листа `.sheet` и карточки `.card` (TRIP-337).
+   ⚠ ПРЕЖНЯЯ ФОРМУЛИРОВКА ЗДЕСЬ ВРАЛА: она утверждала «единый фон оверлеев (как
+   `.dlg`/`.lp`)», но окно и панель формы с тех пор объявлены на ХОЛСТЕ
+   (`.lp, .dlg { background: var(--bg) }`) — и это осознанный второй канон: на
+   холсте лежат карточки и поля (`--surface`), поэтому он обязан быть темнее их.
+   Канонов поверхности два, и выбор между ними делает РОЛЬ: список/меню/панель —
+   поверхность `--surface`; форма — холст `--bg`.
    visual-diff-exempt: .vpanel background — фон драйвера --bg → --surface, унификация поверхности оверлеев с .dlg/.lp/.sheet, апрув Pavel */
 .vpanel { position: fixed; z-index: calc(var(--z-panel) + 10); background: var(--surface); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
-/* ≤640 the panel is a vaul Drawer (see VisitPanel.jsx) — vaul owns the slide-up
-   and drag transform, so no `animation` here (it would fight vaul). */
-@media (max-width: 640px) { .vpanel { top: auto; left: 0; right: 0; bottom: 0; height: auto; width: 100%; max-height: 84%; border-left: 0; border-radius: var(--r-card) var(--r-card) 0 0; } }
-.vp-grip { display: none; }
-@media (max-width: 640px) { .vp-grip { display: block; width: 42px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); margin: 10px auto 2px; } }
+/* ≤640 ЭТА ПОВЕРХНОСТЬ БОЛЬШЕ НЕ СВОЯ: телефон рисует панель визита канон-
+   шторкой `.sheet` (VisitPanel.jsx), поэтому мобильный скин `.vpanel` и грип
+   `.vp-grip` удалены. Отличия от прежнего мобильного `.vpanel`: потолок 86dvh
+   вместо 84%, отступ низа под home-полоску, углы те же — и главное, здесь
+   больше не действует базовая `animation: vpanelIn` (выезд СПРАВА), которая
+   на телефоне играла поверх подъёма шторки.
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} top — мобильный скин снят: телефон рисует канон .sheet
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} left — то же
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} right — то же
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} bottom — то же
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} height — то же
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} width — то же
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} max-height — то же: потолок канона 86dvh вместо 84%
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} border-left — то же
+   visual-diff-exempt: .vpanel {@media (max-width: 640px)} border-radius — то же (у канона те же --r-card сверху)
+   visual-diff-exempt: .vp-grip display — семья удалена: грип рисует канон .sheet-grip, мёртвый узел на десктопе снят
+   visual-diff-exempt: .vp-grip {@media (max-width: 640px)} display — то же
+   visual-diff-exempt: .vp-grip {@media (max-width: 640px)} width — полоса канона 40px вместо 42px
+   visual-diff-exempt: .vp-grip {@media (max-width: 640px)} height — то же (5px, значение канона)
+   visual-diff-exempt: .vp-grip {@media (max-width: 640px)} border-radius — то же
+   visual-diff-exempt: .vp-grip {@media (max-width: 640px)} background — то же
+   visual-diff-exempt: .vp-grip {@media (max-width: 640px)} margin — отступ канона держит обёртка .sheet-grip (padding 11/3) */
 .vp-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
 /* visual-diff-move: .vp-h .ic -> tile — плитка-иконка шапки визита на <Tile> (ступень+тон)
    visual-diff-exempt: .vp-h display — grid дочернего .ic всплыл как flex шапки (огрубление 2p: .vp-h .tile держит grid базы — рендер)
@@ -10039,12 +10107,11 @@ a.doc-row__n:hover{ color: var(--brand); }
    `margin-left: auto` не переезжает и не нужен: соседний блок заголовка стоит
    на `flex: 1`, поэтому крестик и так прижат вправо. */
 .vp-b { flex: 1; min-height: 0; padding: 6px 20px 24px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-/* Mobile bottom-sheet: тело — скролл-контейнер (flex:1 + min-height:0). Прежний
-   `88px` «под нижнюю навигацию» был мёртвым: шит (z 120) лежит ПОВЕРХ нава (z-nav 95)
-   и накрывает его скримом — навигации под последними строками нет, чистить нечего.
-   Отступ низа сведён к канону шитов (safe-area + дыхание), убран большой пустой гэп.
-   visual-diff-exempt: .vp-b padding-bottom — снят мёртвый 88px-клиренс нава (нав перекрыт шитом), гэп низа (просьба Pavel, TRIP-337) */
-@media (max-width: 640px) { .vp-b { padding-bottom: calc(var(--sp-8) + env(safe-area-inset-bottom)); } }
+/* Mobile bottom-sheet: тело — скролл-контейнер (flex:1 + min-height:0). Своё
+   мобильное правило отступа снято: home-полоску держит канон `.sheet`
+   (`padding-bottom: max(14px, safe-area)`), а два резерва подряд — это тот
+   самый пустой гэп, ради снятия которого правило и жило.
+   visual-diff-exempt: .vp-b {@media (max-width: 640px)} padding-bottom — резерв под home-полоску переехал на канон .sheet, второй экземпляр снят */
 .visit { display: flex; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
 .visit:last-child { border-bottom: 0; }
 .visit .when { flex: none; width: 44px; text-align: center; padding-top: 2px; }

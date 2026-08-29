@@ -2514,11 +2514,11 @@ export type Database = {
       }
       recompute_trip_entitlement: {
         Args: { p_trip_id: string }
-        Returns: undefined
+        Returns: boolean
       }
       recompute_user_entitlement: {
         Args: { p_user_id: string }
-        Returns: undefined
+        Returns: boolean
       }
       reminder_true_instant: {
         Args: { ts: string; tz: string }
