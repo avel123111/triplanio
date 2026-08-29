@@ -876,21 +876,30 @@
    `overflow:hidden` (недели делят экран поровну, без страничного скролла),
    поэтому раскрытый список раньше клипался и уходил под полосу города следующего
    ряда (`.ncal-daytop` z-index:2 = тот же). Снимаем overflow у ячейки, поднимаем
-   z-index выше полосы, а сам список в раскрытом состоянии (`data-open`, как
-   data-required/data-dragover в остальном коде) получает подложку/тень поповера
-   (рецепт `.menu`: --popover + --sh-3) — читается плавающей карточкой и не
-   просвечивает ряд снизу.
+   а сам список в раскрытом состоянии (`data-open`, как data-required/
+   data-dragover в остальном коде) получает подложку/тень поповера (рецепт
+   `.menu`: --popover + --sh-3) — читается плавающей карточкой и не просвечивает
+   ряд снизу.
+
+   ★ ВСПЛЫВАЕТ СПИСОК, А НЕ ЯЧЕЙКА. `z-index` стоял на самой `.ncal-dc`, и
+   раскрытый день поднимался ЦЕЛИКОМ — вместе со своей непрозрачной подложкой,
+   которая закрывала полосу города (слой `.ncal-daytop`, z-index 2, лежит поверх
+   ряда): полосы пропадали ровно в колонке раскрытого дня. Поднимаем ТОЛЬКО
+   плавающую карточку: ячейка остаётся под полосой, карточка — над ней и над
+   рядами снизу.
    visual-diff-exempt: .ncal-dc overflow — раскрытый день всплывает поверх соседей (был клип)
-   visual-diff-exempt: .ncal-dc z-index — над полосой города следующего ряда (была 2 = равна)
    visual-diff-exempt: .is-open overflow — то же (ключ на классе состояния)
-   visual-diff-exempt: .is-open z-index — то же (ключ на классе состояния)
+   visual-diff-exempt: .ncal-dc z-index — СНЯТ: поднималась вся ячейка, её подложка закрывала полосу города (правка Pavel «+N ещё скрывает полосы»)
+   visual-diff-exempt: .is-open z-index — СНЯТ: поднималась вся ячейка, её подложка закрывала полосу города (правка Pavel «+N ещё скрывает полосы»)
+   visual-diff-exempt: .ncal-evl[data-open] position — карточка всплывает сама (позиционируется ради z-index)
+   visual-diff-exempt: .ncal-evl[data-open] z-index — над полосой города (2) и рядами снизу, вместо z-index на ячейке
    visual-diff-exempt: .ncal-evl[data-open] background — подложка плавающей карточки раскрытого дня
    visual-diff-exempt: .ncal-evl[data-open] border — рамка плавающей карточки
    visual-diff-exempt: .ncal-evl[data-open] border-radius — радиус плавающей карточки
    visual-diff-exempt: .ncal-evl[data-open] box-shadow — тень поповера (--sh-3)
    visual-diff-exempt: .ncal-evl[data-open] padding — воздух внутри карточки */
-.ncal-dc.is-open { overflow: visible; z-index: 5; }
-.ncal-evl[data-open] { background: var(--popover); border: 1px solid var(--line); border-radius: var(--r-btn); box-shadow: var(--sh-3); padding: var(--sp-2); }
+.ncal-dc.is-open { overflow: visible; }
+.ncal-evl[data-open] { position: relative; z-index: 5; background: var(--popover); border: 1px solid var(--line); border-radius: var(--r-btn); box-shadow: var(--sh-3); padding: var(--sp-2); }
 
 .ncal-dots { display: none; gap: 4px; flex-wrap: wrap; padding: var(--sp-1) var(--sp-1) 0; }
 .ncal-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted-2); }
