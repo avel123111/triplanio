@@ -5105,11 +5105,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* =================================================================
    DIALOG / MODAL — used everywhere (event details, confirm, share…)
    ================================================================= */
+/* ★ ТРИ ОБЪЯВЛЕНИЯ УДАЛЕНЫ КАК МЁРТВЫЕ (`display: grid`, `place-items: center`,
+   `padding: 24px`). Они центрировали окно ВНУТРИ подложки — архитектура, которой
+   больше нет: Radix рендерит Overlay и Content СИБЛИНГАМИ, `<DialogOverlay />`
+   и `<AlertDialogOverlay />` самозакрывающиеся, детей у подложки ноль. Окно
+   центрирует себя само (`.dlg-modal`: fixed + translate(-50%,-50%)), а на
+   телефоне и вовсе стоит у нижнего края. Правила пережили переезд и обещали
+   раскладку, которой не происходит.
+   visual-diff-exempt: .dlg-backdrop display — мёртвое объявление: у подложки нет детей (Overlay самозакрывающийся), центрировать нечего
+   visual-diff-exempt: .dlg-backdrop place-items — то же
+   visual-diff-exempt: .dlg-backdrop padding — то же */
 .dlg-backdrop {
   position: fixed; inset: 0; background: var(--scrim);
-  z-index: var(--z-modal); display: grid; place-items: center;
+  z-index: var(--z-modal);
   backdrop-filter: blur(2px);
-  padding: 24px;
   animation: fadeIn .15s ease;
 }
 /* Radix-powered modal layer: ModalHost renders the scrim as a Radix Overlay
@@ -10037,9 +10046,13 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* — visit panel (desktop right slide-over / mobile bottom sheet) over the app — */
 .vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: var(--z-panel); }
-/* Фон драйвера сведён к канон-поверхности модалок `--surface` (как `.dlg`/`.lp`/
-   `.sheet`) — единый фон оверлеев (решение Pavel, TRIP-337: `--bg` был
-   единственным расхождением поверхности среди всех оверлеев).
+/* Фон панели — `--surface`, как у листа `.sheet` и карточки `.card` (TRIP-337).
+   ⚠ ПРЕЖНЯЯ ФОРМУЛИРОВКА ЗДЕСЬ ВРАЛА: она утверждала «единый фон оверлеев (как
+   `.dlg`/`.lp`)», но окно и панель формы с тех пор объявлены на ХОЛСТЕ
+   (`.lp, .dlg { background: var(--bg) }`) — и это осознанный второй канон: на
+   холсте лежат карточки и поля (`--surface`), поэтому он обязан быть темнее их.
+   Канонов поверхности два, и выбор между ними делает РОЛЬ: список/меню/панель —
+   поверхность `--surface`; форма — холст `--bg`.
    visual-diff-exempt: .vpanel background — фон драйвера --bg → --surface, унификация поверхности оверлеев с .dlg/.lp/.sheet, апрув Pavel */
 .vpanel { position: fixed; z-index: calc(var(--z-panel) + 10); background: var(--surface); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
