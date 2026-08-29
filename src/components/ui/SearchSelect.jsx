@@ -1,5 +1,4 @@
 import React from 'react';
-import { flushSync } from 'react-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronDown } from 'lucide-react';
 // Напрямую из модуля, а НЕ из '@/design': барраль реэкспортит этот файл, и
@@ -70,10 +69,18 @@ export default function SearchSelect({
     : options.filter((o) => (matches ? matches(o, q) : String(getKey(o)).toLowerCase().includes(q)));
 
   const close = () => { setOpen(false); setQuery(''); };
-  // ★ Синхронный коммит — половина клавиатуры на iOS: поле поиска должно
-  // ОКАЗАТЬСЯ В DOM ещё внутри обработчика тапа, иначе фокусить в жесте нечего,
-  // а поздний фокус Safari принимает без клавиатуры (разбор — в `PickerSheet`).
-  const openSheet = () => flushSync(() => setOpen(true));
+  // Обычный setState: фокус в шторке ставит штатный хук диалога
+  // (`onOpenAutoFocus`, разбор — в `PickerSheet`), и подпирать его синхронным
+  // коммитом больше не нужно.
+  //
+  // ⚠️ ИЗВЕСТНАЯ ГРАНИЦА, И ОНА В ПРИРОДЕ ТРИГГЕРА, А НЕ В КОДЕ. Здесь триггер —
+  // КНОПКА (она показывает выбранное значение разметкой: флаг, код, название, —
+  // полем такое не нарисовать). По кнопке нативного фокуса в текстовое поле нет,
+  // а iOS поднимает клавиатуру только по нему. Значит на iOS этот пикер
+  // открывается со списком, но без клавиатуры, пока не тронешь строку поиска, —
+  // ровно как ведут себя системные пикеры. У города и адреса триггер сам поле,
+  // поэтому там клавиатура поднимается тапом.
+  const openSheet = () => setOpen(true);
   const pick = (o) => { onChange(getKey(o)); close(); };
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 

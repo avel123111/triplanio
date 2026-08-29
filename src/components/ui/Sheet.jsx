@@ -20,16 +20,20 @@ import { useT } from '@/lib/i18n/I18nContext';
  *     ...rows...
  *   </Sheet>
  */
-/** `onCloseAutoFocus` уезжает в `Drawer.Content` (то есть в контракт Radix): это
- *  ЕДИНСТВЕННЫЙ штатный способ сказать «не возвращай фокус туда, откуда открыли».
- *  Нужен пикеру: он открывается из ПОЛЯ, и возврат фокуса в поле после закрытия
- *  снова поднял бы клавиатуру — уже поверх экрана, который человек закрыл.
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, onCloseAutoFocus?: (e: any) => void }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, onCloseAutoFocus }) {
+/** `onOpenAutoFocus` / `onCloseAutoFocus` уезжают в `Drawer.Content`, то есть в
+ *  ШТАТНЫЙ контракт Radix «куда встаёт фокус при открытии и куда возвращается
+ *  при закрытии». Это не расширение примитива, а перестало быть его запечатыванием:
+ *  vaul по умолчанию ГАСИТ автофокус диалога (`autoFocus = false` -> он зовёт
+ *  `preventDefault()` на открытии), и, пока шов не пробрасывал этот хук, поверх
+ *  подавления приходилось ставить фокус руками — эффектами, кадрами и синхронными
+ *  коммитами. Всё это удалено: у задачи «поле в фокусе при открытии шторки» есть
+ *  штатный хук, и теперь он доступен.
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, onOpenAutoFocus?: (e: any) => void, onCloseAutoFocus?: (e: any) => void }} p */
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, onOpenAutoFocus, onCloseAutoFocus }) {
   const t = useT();
   return (
     <SheetRoot open={open} onOpenChange={onOpenChange}>
-      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onCloseAutoFocus={onCloseAutoFocus}>
+      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onOpenAutoFocus={onOpenAutoFocus} onCloseAutoFocus={onCloseAutoFocus}>
         {title ? (
           <div className="sheet-h">
             <SheetTitle asChild><h3>{title}</h3></SheetTitle>

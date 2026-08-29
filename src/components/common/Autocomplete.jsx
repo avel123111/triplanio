@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/design/Input';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
@@ -213,11 +212,10 @@ export default function Autocomplete({
 
   if (isPhone) {
     const closeSheet = () => { setSheetOpen(false); setOpen(false); setHighlighted(-1); };
-    // ★ `flushSync` — ПОЛОВИНА КЛАВИАТУРЫ, а не оптимизация. iOS поднимает её
-    // только когда `focus()` случился в обработчике жеста; без синхронного
-    // коммита поля в этот момент ещё нет в DOM, и фокусить нечего. Вторая
-    // половина — `useLayoutEffect` в `PickerSheet` (разбор — в его шапке).
-    const openSheet = () => flushSync(() => setSheetOpen(true));
+    // Синхронный коммит тут больше не нужен и удалён: клавиатуру поднимает
+    // нативный фокус поля-триггера, а каретку переставляет сама поверхность
+    // (разбор — в шапке `PickerSheet`). Обычный setState.
+    const openSheet = () => setSheetOpen(true);
     return (
       <>
         {/* Триггер — ТО ЖЕ поле, а не его двойник: те же декорации (флаг
