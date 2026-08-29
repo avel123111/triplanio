@@ -19,7 +19,7 @@ import { Drawer } from 'vaul';
  * (vaul лочит страницу и ставит `touch-action: none` на всю поверхность, что
  * несовместимо с постоянным шитом над живой картой; разбор в его шапке).
  *
- * floor-exempt: dsshare +2 — схлопывание 4 копий vaul-обвязки в один шов убирает JSX-узлы обвязки (Portal/Overlay/Content ×4 → SheetSurface); поручение Pavel «схлопывай и унифицируй шторки»
+ * floor-exempt: dsshare +2 — схлопывание 4 копий vaul-обвязки в один шов убирает JSX-узлы обвязки (Portal/Overlay/Content ×4 → SheetSurface); апрув НЕ получен заранее, решение по метрике — на ревью PR #1080
  */
 
 /**
