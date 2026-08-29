@@ -15,17 +15,15 @@
  */
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { resolveMembers } from '@/lib/resolveAuthor';
-import { report } from '@/lib/reportDataError';
 import ChatStream from '@/components/chat/ChatStream';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { Avatar, AvatarStack, EmptyState, RoleBadge, Severity, Skeleton, Btn, Chip, Grow, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { chatParticipants, pluralPeople, useChatId, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, fetchOlderMessages, prependChatMessages, CHAT_PAGE } from '@/lib/chat';
+import { chatParticipants, pluralPeople, useChatId, useChatRows, useChatMessages, useChatSend, useMarkChatRead, applyChatRow, isAiThinking, fetchOlderMessages, prependChatMessages, CHAT_PAGE } from '@/lib/chat';
 
 
 // ─── ChatMember ───────────────────────────────────────────────────────────────
@@ -178,17 +176,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId, profil
     }
   }, [msgs, user?.id]);
 
-  // ── Mark read while viewing (and after each new message) ──
-  useEffect(() => {
-    if (!chatId || !user?.id) return;
-    supabase.from('chat_reads').upsert(
-      { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
-      { onConflict: 'chat_id,user_id' },
-    ).then(({ error }) => {
-      if (error) report(error, { surface: 'data', source: 'chat_read' });
-      qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
-    });
-  }, [chatId, user?.id, msgs.length]);
+  // ── Mark read while viewing (and after each new message) ── shared seam with
+  // the widget: the room is always the active surface, so `active` is constant.
+  useMarkChatRead(chatId, tripId, { tailId: msgs[msgs.length - 1]?.id });
 
   // ── Thinking state ── read from the server: an open assistant run on any row.
   // It used to be guessed from the tail of the local cache ("the last message

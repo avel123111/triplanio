@@ -12,13 +12,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { useChatId, useUnreadChatCount, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, chatParticipants, pluralPeople, CHAT_MESSAGES_KEY } from '@/lib/chat';
+import { useChatId, useUnreadChatCount, useChatRows, useChatMessages, useChatSend, useMarkChatRead, applyChatRow, isAiThinking, chatParticipants, pluralPeople, CHAT_MESSAGES_KEY } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { AvatarStack, EmptyState, IconBtn, UnreadBadge } from '@/design/index';
 import { resolveMembers } from '@/lib/resolveAuthor';
-import { report } from '@/lib/reportDataError';
 import ChatStream from './ChatStream';
 import ChatComposer from './ChatComposer';
 
@@ -62,17 +60,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId, p
     if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, open]);
 
-  // ── Mark read on open ──
-  useEffect(() => {
-    if (!open || !chatId || !user?.id) return;
-    supabase.from('chat_reads').upsert(
-      { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
-      { onConflict: 'chat_id,user_id' },
-    ).then(({ error }) => {
-      if (error) report(error, { surface: 'data', source: 'chat_read' });
-      qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
-    });
-  }, [open, chatId, user?.id]);
+  // ── Mark read while the panel is open ── shared seam with the lens.
+  useMarkChatRead(chatId, tripId, { active: open, tailId: msgs[msgs.length - 1]?.id });
 
   // ── Display names ── from the ONE profile bundle shipped with the trip
   // content (getTripDetails, owner included), handed down by TripView — same
