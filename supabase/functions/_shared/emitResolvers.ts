@@ -135,6 +135,15 @@ const proResolver: Resolver = async (db, ids) => ({
   recipients: await loadUsers(db, [ids.recipient_id]),
 });
 
+/** Pro куплен на КОНКРЕТНЫЙ трип: адресат — владелец трипа (только он может
+ *  оформить покупку, остальным createStripeCheckout отдаёт 403), поэтому
+ *  recipient_id не нужен — он выводится из самого трипа. Трип едет в фактах ради
+ *  названия в тексте и ссылки «Открыть путешествие». */
+const tripProResolver: Resolver = async (db, ids) => {
+  const trip = await loadTrip(db, ids.trip_id);
+  return { trip, actor: null, member: null, recipients: await loadUsers(db, [trip?.created_by]) };
+};
+
 // ── реестр по имени события (зеркально AFTER_WRITE) ───────────────────────────
 
 export const RESOLVERS: Record<string, Resolver> = {
@@ -187,6 +196,7 @@ export const RESOLVERS: Record<string, Resolver> = {
   trip_invite_declined: respondResolver,
   pro_activated: proResolver,
   pro_payment_failed: proResolver,
+  trip_pro_activated: tripProResolver,
 
   // Бронь добавлена (все 4 вида) — адресаты = владелец + активные участники, без
   // автора. `kind` едет id-слотом (в данных трипа/актора его нет). member не нужен.

@@ -49,6 +49,8 @@
   "tpl_role_changed_admin_msg": "You are now an admin in \"{trip}\"",
   "tpl_role_changed_title": "Your role has changed",
   "tpl_role_changed_viewer_msg": "You are now a viewer in \"{trip}\"",
+  "tpl_trip_pro_activated_msg": "All Pro features are unlocked in \"{trip}\"",
+  "tpl_trip_pro_activated_title": "Trip is now Pro",
   "unread": "Unread",
   "updates": "Updates",
   "updates_desc": "Changes in shared trips",

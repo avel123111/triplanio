@@ -68,6 +68,8 @@ export const PROTECTED_KEYS = [
   'notif.tpl_role_changed_admin_msg',
   'notif.tpl_role_changed_title',
   'notif.tpl_role_changed_viewer_msg',
+  'notif.tpl_trip_pro_activated_msg',
+  'notif.tpl_trip_pro_activated_title',
 
   // (3) Финальный CTA неавторизованной зоны (TRIP-445). Один компонент
   // `SiteTrip.SiteCta` обслуживает лендинг, демо и публичную поездку, а текст
