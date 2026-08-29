@@ -1,4 +1,5 @@
 // @ts-check
+import { cloneElement, useEffect, useRef } from 'react';
 import { Sheet } from '@/components/ui/Sheet';
 
 /**
@@ -33,10 +34,52 @@ import { Sheet } from '@/components/ui/Sheet';
  * Шторка над шторкой (пикер города из окна события) работает без единого слова
  * здесь: вложенность разбирает шов `ui/sheetShell` по факту дерева.
  *
+ * ★★ КАРЕТКУ СТАВИТ ЭТА ПОВЕРХНОСТЬ, И ТОЛЬКО ПОСЛЕ ТОГО, КАК ШТОРКА ВСТАЛА.
+ * Первая редакция вешала React-`autoFocus` на поле в шторке, и шторка улетала
+ * вверх на первом же открытии с клавиатурой. Причина в двух вещах сразу, и обе
+ * снимаются здесь:
+ *   1) `autoFocus` срабатывает НА МОНТИРОВАНИИ — то есть посреди входной
+ *      анимации vaul (0.5 c), когда поле физически ещё за нижним краем экрана;
+ *   2) React зовёт голый `focus()`, а он ОБЯЗЫВАЕТ браузер доскроллить к полю.
+ *      Браузер честно скроллит к тому месту, где поле находится В ЭТОТ МОМЕНТ, —
+ *      и уносит поверхность вместе с собой.
+ * Поэтому: ждём, пока шторка доедет (её собственный `transitionend`, а не
+ * таймер-угадайка), и ставим фокус с `preventScroll` — поле пришпилено сверху по
+ * построению, доскроллить к нему НЕКУДА, и просить об этом браузер незачем.
+ * `onAnimationEnd` у vaul для этого не годится: он стреляет из внутреннего
+ * сеттера `useControllableState`, а `open` здесь — полностью контролируемый проп,
+ * и при программном открытии колбэк не приходит вовсе (проверено по коду vaul).
+ * Худший исход этой ветки — «каретка не встала, нужен тап по полю». Улететь она
+ * не может: ни одного вызова, способного проскроллить страницу, тут не осталось.
+ *
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any,
  *   search?: any, children?: any }} p
  */
 export function PickerSheet({ open, onOpenChange, title, search = null, children }) {
+  const searchRef = useRef(/** @type {any} */ (null));
+  const hasSearch = !!search;
+
+  useEffect(() => {
+    if (!open || !hasSearch) return undefined;
+    const box = searchRef.current;
+    const field = box?.querySelector('input');
+    // Анимируется САМА поверхность (`.sheet`), она же несёт трансформ vaul.
+    const surface = box?.closest('.sheet');
+    if (!field || !surface) return undefined;
+    let spent = false;
+    const put = () => {
+      if (spent) return;
+      spent = true;
+      field.focus({ preventScroll: true });
+    };
+    surface.addEventListener('transitionend', put, { once: true });
+    // Страховка: у поверхности может не оказаться перехода вовсе (открытие без
+    // анимации, `prefers-reduced-motion`) — тогда события не будет никогда.
+    // Порог заведомо больше входа vaul (0.5 c), чтобы страховка не обгоняла его.
+    const late = setTimeout(put, 700);
+    return () => { spent = true; surface.removeEventListener('transitionend', put); clearTimeout(late); };
+  }, [open, hasSearch]);
+
   return (
     <Sheet
       open={open}
@@ -44,7 +87,10 @@ export function PickerSheet({ open, onOpenChange, title, search = null, children
       title={title}
       className={search ? 'sheet--full' : ''}
     >
-      {search}
+      {/* Ссылка вешается КЛОНИРОВАНИЕМ, а не обёрткой: лишний узел стал бы
+          флекс-элементом шторки вместо `.ss-search` и забрал бы себе правило
+          `flex: none`, то есть поле перестало бы быть пришпиленным. */}
+      {search ? cloneElement(search, { ref: searchRef }) : null}
       {children}
     </Sheet>
   );

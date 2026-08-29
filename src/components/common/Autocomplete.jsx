@@ -238,7 +238,8 @@ export default function Autocomplete({
               <Input
                 icon={icon}
                 loading={loading}
-                autoFocus
+                /* Без `autoFocus`: каретку ставит поверхность, когда шторка
+                   встала (разбор — в шапке `PickerSheet`). */
                 value={inputValue || ''}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
