@@ -22,15 +22,24 @@ import { fileURLToPath } from 'node:url';
 const SRC = fileURLToPath(new URL('../..', import.meta.url));
 const UI = fileURLToPath(new URL('.', import.meta.url));
 
-/** Все `.jsx` дерева `src/` — периметр разметки, в котором скин мог бы всплыть. */
-function jsxFiles(dir, acc = []) {
+/** Файлы дерева `src/` с нужным расширением — периметр, в котором проверяемое
+ *  могло бы всплыть вторым экземпляром.
+ *
+ *  ⚠️ САМИ ТЕСТЫ ИЗ ПЕРИМЕТРА ИСКЛЮЧЕНЫ, И ЭТО НЕ УДОБСТВО. Проверка ищет строки
+ *  кода, а этот файл их ЦИТИРУЕТ — то есть без исключения он находил бы сам себя
+ *  и краснел на собственном утверждении. Поймано трижды подряд (на `autoFocus`,
+ *  на `transitionend`, на `setProperty`), поэтому вырезано ОДИН раз здесь, а не
+ *  заплаткой в каждой проверке. Периметр — это продуктовый исходник. */
+function filesWithExt(dir, ext, acc = []) {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
-    if (statSync(full).isDirectory()) jsxFiles(full, acc);
-    else if (name.endsWith('.jsx')) acc.push(full);
+    if (statSync(full).isDirectory()) filesWithExt(full, ext, acc);
+    else if (name.endsWith(ext) && !/\.test\.[jt]sx?$/.test(name)) acc.push(full);
   }
   return acc;
 }
+const jsxFiles = (dir) => filesWithExt(dir, '.jsx');
+const jsFiles = (dir) => filesWithExt(dir, '.js');
 
 test('скин полноростной шторки объявлен РОВНО В ОДНОЙ разметке — PickerSheet', () => {
   const carriers = jsxFiles(SRC).filter((f) => readFileSync(f, 'utf8').includes('sheet--full'));
@@ -68,19 +77,52 @@ test('корень шторки выбирается по ГЛУБИНЕ вло�
   );
 });
 
-test('каретку ставит ПОВЕРХНОСТЬ: после того как шторка встала, и без доскролла', () => {
-  // Комментарии срезаются по той же причине, что и в проверке ниже: оба условия
+test('коробка полноростной шторки берётся у ВИЗУАЛЬНОГО вьюпорта', () => {
+  const css = readFileSync(join(SRC, 'design/app.css'), 'utf8');
+  const rule = css.slice(css.indexOf('.sheet--full {'), css.indexOf('\n', css.indexOf('.sheet--full {')));
+  // Прод-баг, стоивший двух заходов: `100dvh` и пара `top/bottom` считаются от
+  // вьюпорта РАСКЛАДКИ, а его сжимает под клавиатуру только Chrome. На iOS
+  // раскладка остаётся во весь экран, и Safari панорамирует визуальный вьюпорт к
+  // полю в фокусе — унося приклеенную шторку вверх. Единственная величина,
+  // верная на обеих платформах, — сам visualViewport.
+  assert.ok(rule.includes('var(--vv-h'), 'высота от раскладки врёт на iOS: там её клавиатура не сжимает');
+  assert.ok(rule.includes('var(--vv-top'), 'без смещения шторка не догонит уже случившееся панорамирование');
+});
+
+test('видимую область публикует ОДИН наблюдатель visualViewport', () => {
+  const owner = readFileSync(join(SRC, 'lib/keyboardOpen.js'), 'utf8');
+  assert.ok(owner.includes("setProperty('--vv-h'") && owner.includes("setProperty('--vv-top'"),
+    'геометрию публикует тот же модуль, что уже слушает visualViewport');
+  assert.ok(owner.includes("vv.addEventListener('scroll'"),
+    'панорамирование меняет смещение БЕЗ resize — без этой подписки шторка узнает о сдвиге слишком поздно');
+
+  // Второй ПУБЛИКАТОР разъедётся с первым молча: оба будут «работать», а числа
+  // разойдутся — у них разные пороги, разная реакция на поворот и разный гейт по
+  // типу указателя. Проверяется именно публикация, а не всякое чтение
+  // `visualViewport`: `PeekSheet` читает его сам под свои детенты (высота нужна
+  // ему числом в JS, а не переменной в CSS), и это отдельный, более старый долг —
+  // не предмет этой проверки.
+  const publishers = jsxFiles(SRC)
+    .concat(jsFiles(SRC))
+    .filter((f) => readFileSync(f, 'utf8').includes("setProperty('--vv-"))
+    .map((f) => f.slice(SRC.length));
+  assert.deepEqual(publishers, ['lib/keyboardOpen.js'], 'видимую область публикует ровно один модуль');
+});
+
+test('каретку ставит ПОВЕРХНОСТЬ, без доскролла и без ожиданий', () => {
+  // Комментарии срезаются по той же причине, что и в проверке ниже: условия
   // ОБЪЯСНЕНЫ прозой прямо в этом файле, и сверка по сырому тексту зеленела бы от
   // объяснения даже после удаления кода (поймано мутацией, не чтением).
   const src = readFileSync(join(UI, 'PickerSheet.jsx'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  // Оба условия — половины ОДНОГО дефекта: шторка улетала вверх, потому что
-  // фокус ставился на монтировании (посреди входной анимации) голым `focus()`,
-  // а он обязывает браузер доскроллить к полю — туда, где оно в тот миг было.
   assert.match(src, /focus\(\{\s*preventScroll:\s*true\s*\}\)/,
     'фокус без preventScroll просит браузер доскроллить к полю, которое и так пришпилено');
-  assert.ok(src.includes("addEventListener('transitionend'"),
-    'ждать надо СОБЫТИЯ поверхности, а не таймера-угадайки под длительность vaul');
+  // ★ Ожидание анимации ЗАПРЕЩЕНО намеренно. Оно тут было и лечило симптом: пока
+  // коробка считалась от раскладки, iOS уводил шторку независимо от момента
+  // фокуса, поздний фокус лишь делал это реже. Вернуть таймер = вернуть веру в
+  // то, что дело было в моменте.
+  assert.ok(!/setTimeout|transitionend|animationend/.test(src),
+    'ожидание = лечение симптома: причина в системе координат коробки, а не в моменте фокуса');
 });
 
 test('движки не ставят фокус в шторке сами — это дело поверхности', () => {
