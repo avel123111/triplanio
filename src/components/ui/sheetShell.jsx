@@ -79,8 +79,16 @@ export function SheetGrip() {
  * (полноэкранная панель редактора). Остаток пропов уезжает в `Drawer.Content`
  * — там `aria-describedby`, `onOpenAutoFocus` и прочий контракт Radix.
  *
+ * ⚠️ БАЗА АННОТАЦИИ = ТО, КУДА УЕЗЖАЕТ ОСТАТОК, а он уезжает в `Drawer.Content`.
+ * Закрытый объект из пяти ключей (первая редакция) запечатывал именно то, ради
+ * чего остаток и пробрасывается: у `Drawer.Content` есть `onCloseAutoFocus`,
+ * `onOpenAutoFocus`, `onEscapeKeyDown`, `onPointerDownOutside` — весь контракт
+ * Radix, — и законный вызов краснел. Тот же виток ошибки разобран в
+ * `design/props.test.js`; здесь он повторился шестым.
+ *
  * @param {{ className: string, backdropClassName?: string, grip?: boolean,
- *   contentRef?: any, children?: any }} p
+ *   contentRef?: any, children?: any }
+ *   & import('react').ComponentPropsWithoutRef<typeof Drawer.Content>} p
  */
 export function SheetSurface({
   className,

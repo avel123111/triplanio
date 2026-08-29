@@ -74,6 +74,12 @@ export function PickerSheet({ open, onOpenChange, title, search = null, children
       onOpenChange={onOpenChange}
       title={title}
       className={search ? 'sheet--full' : ''}
+      /* Фокус НЕ возвращается туда, откуда открыли. У пикера с поиском открывают
+         из ПОЛЯ, и штатный возврат Radix снова поднял бы клавиатуру — поверх
+         экрана, который человек только что закрыл. Заодно это снимает петлю
+         «вернули фокус в поле -> поле открыло шторку заново» по построению, без
+         флагов-сторожей. */
+      onCloseAutoFocus={search ? (e) => e.preventDefault() : undefined}
     >
       {/* Ссылка вешается КЛОНИРОВАНИЕМ, а не обёрткой: лишний узел стал бы
           флекс-элементом шторки вместо `.ss-search` и забрал бы себе правило

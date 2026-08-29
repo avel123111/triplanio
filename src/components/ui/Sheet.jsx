@@ -20,12 +20,16 @@ import { useT } from '@/lib/i18n/I18nContext';
  *     ...rows...
  *   </Sheet>
  */
-/** @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
+/** `onCloseAutoFocus` уезжает в `Drawer.Content` (то есть в контракт Radix): это
+ *  ЕДИНСТВЕННЫЙ штатный способ сказать «не возвращай фокус туда, откуда открыли».
+ *  Нужен пикеру: он открывается из ПОЛЯ, и возврат фокуса в поле после закрытия
+ *  снова поднял бы клавиатуру — уже поверх экрана, который человек закрыл.
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, onCloseAutoFocus?: (e: any) => void }} p */
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, onCloseAutoFocus }) {
   const t = useT();
   return (
     <SheetRoot open={open} onOpenChange={onOpenChange}>
-      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
+      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onCloseAutoFocus={onCloseAutoFocus}>
         {title ? (
           <div className="sheet-h">
             <SheetTitle asChild><h3>{title}</h3></SheetTitle>
