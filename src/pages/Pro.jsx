@@ -184,6 +184,16 @@ export default function Pro() {
   const yearStrike = monthlyAmt ? fmtMoney((monthlyAmt * 12) / 100, currency, { minFraction: 0, maxFraction: 2 }) : null;
   const yearPerMonth = yearlyAmt ? fmtMoney(yearlyAmt / 12 / 100, currency, { minFraction: 0, maxFraction: 2 }) : null;
   const savePct = (monthlyAmt && yearlyAmt) ? Math.round((1 - yearlyAmt / (monthlyAmt * 12)) * 100) : null;
+  // ★ У НУЛЯ СВОЯ ВАЛЮТА. Общий `currency` выше год-first, поэтому Free наследовал
+  // валюту ГОДА — и пока строка года лежала в кэше цен протухшей (lazy TTL 1 ч,
+  // TRIP-155), карточка показывала «0 $» рядом с уже переведённым на евро месяцем.
+  // В норме валюты каталога совпадают, расходятся они только в окне смены цен в
+  // Stripe; спрашиваем в порядке соседства по сетке — Free стоит слева от месячной
+  // карточки, у неё ноль валюту и берёт.
+  const freeCurrency = prices?.account_pro_monthly?.currency
+    || prices?.account_pro_yearly?.currency
+    || prices?.trip_pro_lifetime?.currency
+    || currency;
 
   // Feature matrix (TRIP-229). Free unlocks only rows 1-2; every Pro plan unlocks all.
   const freeFeatures = [
@@ -218,7 +228,7 @@ export default function Pro() {
   const cards = [
     {
       key: 'free', name: t('sub.plan_free_title'),
-      price: fmtMoney(0, currency, { minFraction: 0, maxFraction: 0 }),
+      price: fmtMoney(0, freeCurrency, { minFraction: 0, maxFraction: 0 }),
       caption: t('sub.free_forever'), features: freeFeatures,
       cta: { label: t('sub.stay_free'), variant: 'secondary', onClick: () => nav(-1) },
     },
