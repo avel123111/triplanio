@@ -49,6 +49,8 @@
   "tpl_role_changed_admin_msg": "Теперь ты администратор в «{trip}»",
   "tpl_role_changed_title": "Твоя роль изменилась",
   "tpl_role_changed_viewer_msg": "Теперь ты наблюдатель в «{trip}»",
+  "tpl_trip_pro_activated_msg": "Все Pro-функции доступны в «{trip}»",
+  "tpl_trip_pro_activated_title": "Путешествие теперь Pro",
   "unread": "Непрочитанные",
   "updates": "Обновления",
   "updates_desc": "Правки в общих путешествиях",

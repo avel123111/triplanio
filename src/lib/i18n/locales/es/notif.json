@@ -49,6 +49,8 @@
   "tpl_role_changed_admin_msg": "Ahora eres administrador en «{trip}»",
   "tpl_role_changed_title": "Tu rol ha cambiado",
   "tpl_role_changed_viewer_msg": "Ahora eres lector en «{trip}»",
+  "tpl_trip_pro_activated_msg": "Todas las funciones Pro están disponibles en «{trip}»",
+  "tpl_trip_pro_activated_title": "El viaje ahora es Pro",
   "unread": "No leídas",
   "updates": "Actualizaciones",
   "updates_desc": "Cambios en viajes compartidos",

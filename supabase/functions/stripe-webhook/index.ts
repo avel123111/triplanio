@@ -29,7 +29,7 @@ import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
 import { buildSubscriptionUpsertRow, buildSubscriptionRefreshPatch } from '../_shared/payments/subscriptionRow.ts';
 import { isDuplicateEntitlingSub } from '../_shared/payments/subscriptionDedup.ts';
 import { buildPurchaseRow } from '../_shared/payments/purchaseRow.ts';
-import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
+import { recomputeUserEntitlement, recomputeTripEntitlement } from '../_shared/entitlementRecompute.ts';
 import { captureServer } from '../_shared/analytics.ts';
 
 // Ошибка записи права → Sentry + throw (Stripe ретраит). Только для
@@ -50,26 +50,11 @@ function isStaleEvent(eventCreatedUnix: number, existingEventAt: unknown): boole
   return !!existingEventAt && eventCreatedUnix * 1000 <= new Date(existingEventAt as string).getTime();
 }
 
-async function recomputeUser(userId: string | null | undefined) {
-  if (!userId) return;
-  const { error } = await supabaseAdmin.rpc('recompute_user_entitlement', { p_user_id: userId });
-  if (error) {
-    await captureEdgeError(new Error(`recompute_user_entitlement (user ${userId}): ${error.message}`), 'stripe-webhook');
-    throw new Error('recompute_user_entitlement failed');
-  }
-  // Кэш осел — откатываем Pro-аддоны трипов, потерявших Pro. Self-gating +
-  // best-effort (не бросает, иначе здоровую запись ретраил бы Stripe).
-  await revokeLostProFeaturesForUser(supabaseAdmin, userId);
-}
-
-async function recomputeTrip(tripId: string | null | undefined) {
-  if (!tripId) return;
-  const { error } = await supabaseAdmin.rpc('recompute_trip_entitlement', { p_trip_id: tripId });
-  if (error) {
-    await captureEdgeError(new Error(`recompute_trip_entitlement (trip ${tripId}): ${error.message}`), 'stripe-webhook');
-    throw new Error('recompute_trip_entitlement failed');
-  }
-}
+// Пересчёт права — через общую дверь (`_shared/entitlementRecompute.ts`): она же
+// откатывает Pro-аддоны и сообщает пользователю о ПОЯВЛЕНИИ права. Здесь только
+// связывание с клиентом, чтобы вызовы ниже не таскали `supabaseAdmin`.
+const recomputeUser = (userId: string | null | undefined) => recomputeUserEntitlement(supabaseAdmin, userId);
+const recomputeTrip = (tripId: string | null | undefined) => recomputeTripEntitlement(supabaseAdmin, tripId);
 
 // Платёжная идентичность — provider_customer (канон; колонка users.stripe_customer_id
 // дропнута). Best-effort, идемпотентно.
@@ -228,16 +213,21 @@ Deno.serve(async (req) => {
             periodEndIso = unixToIso(getPeriodEndUnix(sub));
             cancelAtPeriodEnd = sub.cancel_at_period_end === true;
           }
-          // Тот же sub уже записан → идемпотентный апдейт.
+          // Тот же sub уже записан → идемпотентный апдейт. Строку мог создать не
+          // checkout, а invoice.paid / invoice.payment_failed (3DS-ретрай) или
+          // reconcile-on-read, поэтому «строка уже есть» НЕ значит «оплату уже
+          // засчитали»: последствия оплаты живут ниже, общим хвостом.
           const existing = subId ? await findSubRow(subId) : null;
+          // Дубль-платёж = вторая энтайтлинг-подписка у того же юзера: у записанной
+          // строки признак уже в статусе, для новой считаем сейчас.
+          const isDup = existing
+            ? existing.status === 'duplicate'
+            : await isDuplicateEntitlingSub(supabaseAdmin, user_id, subId, status);
           if (existing) {
             await ensureWrite('subscription update (checkout)', supabaseAdmin.from('subscription')
               .update(buildSubscriptionRefreshPatch({ status, cancelAtPeriodEnd, currentPeriodEnd: periodEndIso }))
               .eq('id', existing.id));
-            await recomputeUser(user_id);
           } else {
-            // Новая подписка. Есть ли уже энтайтлинг у юзера → дубль.
-            const isDup = await isDuplicateEntitlingSub(supabaseAdmin, user_id, subId, status);
             if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id, sub_id: subId, session_id: session.id }, 'error');
             // upsert по provider_subscription_id — гонко-безопасно: конкурентная
             // доставка invoice.paid для той же подписки станет апдейтом, не 500.
@@ -250,19 +240,21 @@ Deno.serve(async (req) => {
                 currency: session.currency || 'usd', billingInterval: billingIntervalForProduct(productCode),
                 providerMeta: { mode: 'leave' },
               }), { onConflict: 'provider_subscription_id' }));
-            if (!isDup) {
-              await saveCustomer(user_id, session.customer);
-              await recomputeUser(user_id);
-              // Revenue truth from the webhook (TRIP-213 Ф2) — genuine NEW subscription.
-              captureServer('purchase_completed', user_id, {
-                plan: productCode === 'account_pro_yearly' ? 'yearly' : 'monthly',
-                product_code: productCode,
-                value: (session.amount_total || 0) / 100, currency: session.currency || 'usd',
-                transaction_id: session.id,
-              });
-              // TRIP-356 / TRIP-374: notify writes the in-app row in edge; n8n resolves text for external channels.
-              await notify('pro_activated', { recipient_id: user_id }, { db: supabaseAdmin });
-            }
+          }
+          // Право пересчитываем всегда (идемпотентно): дверь сама решит, появилось
+          // ли оно этим платежом, и сама сообщит об этом пользователю.
+          await recomputeUser(user_id);
+          if (!isDup) {
+            await saveCustomer(user_id, session.customer);
+            // Revenue truth from the webhook (TRIP-213 Ф2). Живёт ЗДЕСЬ, а не в ветке
+            // «строку создал я»: когда строку создавал invoice.paid или 3DS-ретрай,
+            // выручка терялась молча — подписка 27.08 в PostHog так и не попала.
+            captureServer('purchase_completed', user_id, {
+              plan: productCode === 'account_pro_yearly' ? 'yearly' : 'monthly',
+              product_code: productCode,
+              value: (session.amount_total || 0) / 100, currency: session.currency || 'usd',
+              transaction_id: session.id,
+            });
           }
         }
         break;
@@ -329,8 +321,15 @@ Deno.serve(async (req) => {
             providerMeta: nextAttemptIso ? { mode: 'set', nextPaymentAttempt: nextAttemptIso } : { mode: 'leave' },
           }), { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
-        // TRIP-356 / TRIP-374: notify writes the in-app row in edge; n8n resolves text for external channels.
-        await notify('pro_payment_failed', { recipient_id: resolved.userId }, { db: supabaseAdmin });
+        // Первый инвойс подписки (`subscription_create`) — ЕЩЁ НЕ дённинг: пользователь
+        // стоит перед формой Stripe и сам видит отказ/3DS-челлендж, а Stripe штатно шлёт
+        // payment_failed перед успешной попыткой — 27.08 такое уведомление ушло за 13
+        // секунд до оплаты, то есть соврало. Сообщаем только когда за экраном никого:
+        // автосписание по циклу.
+        if (invoice.billing_reason !== 'subscription_create') {
+          // TRIP-356 / TRIP-374: notify writes the in-app row in edge; n8n resolves text for external channels.
+          await notify('pro_payment_failed', { recipient_id: resolved.userId }, { db: supabaseAdmin });
+        }
         break;
       }
 
@@ -462,7 +461,6 @@ Deno.serve(async (req) => {
         await ensureWrite('refund/dispute status', supabaseAdmin.from(row.kind).update(patch).eq('id', row.id));
         if (row.kind === 'purchase' && row.trip_id) {
           await recomputeTrip(row.trip_id);
-          await revokeLostProFeaturesForTrip(supabaseAdmin, row.trip_id);
           console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
         } else {
           await recomputeUser(row.user_id);
