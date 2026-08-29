@@ -352,8 +352,11 @@ export function PeekSheet({
       data-detent={index}
       data-detent-max={stops.length - 1}
     >
+      {/* Скин «брови» — канон `.sheet-grip`; свой класс несёт только то, чем
+          ЭТОТ грип отличается: он функциональный (слайдер по детентам), а не
+          декорация, и тянется во всю ширину шита. */}
       <div
-        className="peek-sheet__grip"
+        className="peek-sheet__grip sheet-grip"
         data-peek-grip
         role="slider"
         tabIndex={0}

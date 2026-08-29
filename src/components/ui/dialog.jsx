@@ -2,34 +2,35 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { Drawer } from "vaul"
+import { SheetGrip, SheetRoot, SheetSurface } from "@/components/ui/sheetShell"
 import { cn } from "@/lib/utils"
 import { keepFocusInDialog } from "@/lib/dialogFocus"
 import { useIsPhone } from "@/hooks/use-mobile"
 
 // Responsive modal: on desktop a centred Radix dialog (unchanged); on phones
-// (≤640px) a vaul Drawer bottom-sheet — native full-surface swipe + momentum
-// dismiss and `repositionInputs` keyboard handling (replaces the old
-// `useSheetSwipe` grip-drag + manual `--kb`/`--vvh`). The breakpoint matches the
+// (≤640px) the SHARED sheet seam (ui/sheetShell) — native full-surface swipe +
+// momentum dismiss and keyboard handling. The breakpoint matches the
 // `.dlg-modal` bottom-sheet CSS (≤640) so DOM and styling switch together.
 //
-// vaul wraps Radix Dialog, so Title / Description / Close / Trigger stay the raw
-// Radix primitives below — they work inside either Root. Only the Root and the
-// Portal+Overlay+Content need to switch libraries, driven by this context.
+// Окно НЕ пишет свою шторку: движение целиком у шва, здесь остаётся скин
+// (`.dlg-modal` + карточка `.dlg`). Раньше этот файл держал свою копию
+// `Drawer.Root → Portal → Overlay → Content` — одну из четырёх в приложении.
+//
+// vaul (внутри шва) оборачивает Radix Dialog, поэтому Title / Description /
+// Close / Trigger ниже остаются сырыми примитивами Radix — они работают внутри
+// любого корня. Переключаются только корень и портал, по этому контексту.
 const ResponsiveSheetCtx = React.createContext(false)
 
-// Root — vaul Drawer on phones, Radix Dialog on desktop. Same open/onOpenChange
-// contract either way; the chosen engine is published to DialogContent.
+// Root — the sheet seam on phones, Radix Dialog on desktop. Same
+// open/onOpenChange contract either way; the chosen engine is published to
+// DialogContent.
 // useIsPhone is the shared ≤640px sheet breakpoint (src/hooks/use-mobile).
 const Dialog = ({ children, ...props }) => {
   const isSheet = useIsPhone()
   if (isSheet) {
-    // repositionInputs={false}: the viewport meta (`interactive-widget=
-    // resizes-content`) already lifts a bottom-anchored sheet above the
-    // keyboard; letting vaul reposition too double-moves it (the "flying" bug).
     return (
       <ResponsiveSheetCtx.Provider value={true}>
-        <Drawer.Root repositionInputs={false} {...props}>{children}</Drawer.Root>
+        <SheetRoot {...props}>{children}</SheetRoot>
       </ResponsiveSheetCtx.Provider>
     )
   }
@@ -54,8 +55,8 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 // Content — .dlg-modal positions the portal. Desktop: centred Radix Content.
-// Phones (≤640px): vaul Drawer.Content — the whole sheet is draggable (native
-// swipe-to-dismiss) and vaul lifts it above the keyboard. className + style are
+// Phones (≤640px): the shared <SheetSurface> — the whole sheet is draggable
+// (native swipe-to-dismiss) and the seam lifts it above the keyboard. className + style are
 // forwarded to the inner .dlg card so callers can pass .dlg--wide / .dlg--sm.
 // No built-in close button — each dialog has its own in the header.
 /** ⚠️⚠️ БАЗА АННОТАЦИИ = ТО, КУДА КОМПОНЕНТ РЕАЛЬНО ОТДАЁТ `...props`, А НЕ
@@ -80,17 +81,14 @@ const DialogContent = React.forwardRef((/** @type {{ className?: string, style?:
 
   if (isSheet) {
     return (
-      <Drawer.Portal>
-        <Drawer.Overlay className="dlg-backdrop" />
-        {/* vaul owns the drag + open/close animation + keyboard reposition. The
-            grip is a visual affordance only (the whole surface is draggable). */}
-        <Drawer.Content ref={ref} className="dlg-modal" {...props}>
-          <div className={cn("dlg", className)} style={style}>
-            <div className="dlg-grip" aria-hidden><i /></div>
-            {children}
-          </div>
-        </Drawer.Content>
-      </Drawer.Portal>
+      <SheetSurface className="dlg-modal" backdropClassName="dlg-backdrop" grip={false} contentRef={ref} {...props}>
+        <div className={cn("dlg", className)} style={style}>
+          {/* Грип ВНУТРИ карточки: шторкой становится само окно, и «бровь»
+              принадлежит ему, а не порталу. */}
+          <SheetGrip />
+          {children}
+        </div>
+      </SheetSurface>
     )
   }
 
@@ -100,9 +98,8 @@ const DialogContent = React.forwardRef((/** @type {{ className?: string, style?:
       {/* Focus lands on the dialog CONTENT container (not an input) so it stays
           INSIDE the dialog without popping a field. Shared owner: keepFocusInDialog. */}
       <DialogPrimitive.Content ref={ref} className="dlg-modal" onOpenAutoFocus={keepFocusInDialog} {...props}>
+        {/* Грипа нет: на десктопе это окно, а не шторка. */}
         <div className={cn("dlg", className)} style={style}>
-          {/* Drag handle — hidden on desktop via CSS. */}
-          <div className="dlg-grip" aria-hidden><i /></div>
           {children}
         </div>
       </DialogPrimitive.Content>

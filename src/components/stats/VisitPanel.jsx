@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { Drawer } from 'vaul';
+import { SheetRoot, SheetSurface } from '@/components/ui/sheetShell';
 import { pointType, TONE } from '@/lib/travel-stats';
 import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -7,16 +7,19 @@ import { Icon } from '@/design/icons';
 import { COVER_FALLBACK, IconBtn, Tile } from '@/design/index';
 import { formatDateRange } from '@/lib/trip-dates';
 
-// ≤640px the panel is a bottom sheet — render it through vaul (native swipe +
-// keyboard-safe) instead of the CSS-restyled Radix drawer. Above 640 it stays
-// the desktop right slide-over. Uses the shared ≤640px sheet breakpoint hook
-// (src/hooks/use-mobile), matching the `.vpanel` breakpoint in app.css.
+// ≤640px the panel IS the canonical bottom sheet: the shared seam (ui/sheetShell)
+// carries the movement and `.sheet` carries the skin — the same shell every other
+// sheet in the app uses. Раньше здесь стояла своя копия vaul-обвязки и свой
+// мобильный скин `.vpanel` (+ свой грип `.vp-grip`), то есть пятая реализация
+// шторки ради поверхности, ничем от канона не отличавшейся.
+// Above 640 it stays the desktop right slide-over (`.vpanel`). Uses the shared
+// ≤640px sheet breakpoint hook (src/hooks/use-mobile).
 
 // Visit panel for the "My statistics" screen — opens when a country/city/pin is
 // selected and lists the visits at that place. Reuses Radix Dialog (focus-trap /
 // Esc / scroll-lock / outside-click) exactly like the canonical Sheet; the
-// `.vpanel` CSS makes it a right slide-over on desktop and a bottom sheet under
-// 640px (same breakpoint as the rest of the app).
+// `.vpanel` CSS is the desktop right slide-over; the phone rendering is the
+// canonical `.sheet` (same breakpoint as the rest of the app).
 //
 // Visits are GROUPED BY TRIP — one trip = one row. On a country panel the row
 // lists the cities visited on that trip ("Мадрид, Барселона +2", same shape as a
@@ -167,8 +170,8 @@ export default function VisitPanel({
   // Root (vaul wraps Radix Dialog), so the header is identical for both.
   const body = (
     <>
-      {/* Visual drag affordance only — vaul drags the whole sheet on mobile. */}
-      <div className="vp-grip" aria-hidden />
+      {/* «Бровь» рисует шов, и только на телефоне: на десктопе это боковая
+          панель, а не шторка. */}
       <div className={`vp-h${isCity ? ' city' : ''}`}>
         <Tile as="div" style={cc ? { background: 'transparent', borderRadius: '50%' } : undefined}><PanelFlag cc={cc} isCity={isCity} /></Tile>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -193,16 +196,11 @@ export default function VisitPanel({
 
   if (isSheet) {
     return (
-      // repositionInputs={false}: viewport meta already lifts the sheet above
-      // the keyboard; vaul repositioning too would double-move it.
-      <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="vscrim" />
-          <Drawer.Content className="vpanel" aria-describedby={undefined}>
-            {body}
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+      <SheetRoot open={open} onOpenChange={onOpenChange}>
+        <SheetSurface className="sheet" aria-describedby={undefined}>
+          {body}
+        </SheetSurface>
+      </SheetRoot>
     );
   }
 
