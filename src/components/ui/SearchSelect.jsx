@@ -5,15 +5,16 @@ import { Check, ChevronDown } from 'lucide-react';
 // импорт оттуда замкнул бы зависимость в кольцо (TRIP-333).
 import { Input } from '@/design/Input';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { Sheet } from '@/components/ui/Sheet';
+import { PickerSheet } from '@/components/ui/PickerSheet';
 
 /**
  * C4 · SearchSelect — the canonical searchable picker (currency, language, …).
  *
  * Desktop: an anchored Radix popover with a search box + scrollable list.
- * Mobile (useIsPhone): the same search + list inside a bottom-sheet (.sheet).
- * One component, so currency and language pickers (and any future one) share a
- * single behaviour and style. Esc / outside-click close it for free.
+ * Mobile (useIsPhone): the same search + list inside <PickerSheet> — общая
+ * поверхность пикера, которая и решает, шторка по содержимому или во весь рост
+ * (правило «есть поиск -> полный рост» записано ТАМ, не здесь: второй экземпляр
+ * правила разъехался бы с первым). Esc / outside-click close it for free.
  *
  * Props:
  *   value, onChange(key)         — controlled selected key
@@ -82,64 +83,73 @@ export default function SearchSelect({
       {...rest}
       {...extra}
     >
-      <span style={current ? undefined : { color: 'var(--muted-2)' }}>
+      {/* Тон незаполненной подписи — канон `.muted-2` (он уже есть в app.css), а
+          не свой инлайн с тем же токеном. */}
+      <span className={current ? undefined : 'muted-2'}>
         {current ? (renderValue ? renderValue(current) : getKey(current)) : placeholder}
       </span>
       <ChevronDown size={14} style={{ opacity: 0.5 }} />
     </button>
   );
 
-  const body = (
-    <>
-      {/* `.ss-search` остаётся ОТДЕЛЬНОЙ обёрткой, а не уезжает в className
-          поля: у неё собственный padding, а обёртка декораций обязана облегать
-          поле вплотную - иначе иконка отсчитывается от края паддинга и встаёт
-          на 6px вместо 12 (поймано замером). */}
-      {searchable && (
-        <div className="ss-search">
-          <Input
-            icon="search"
-            autoFocus={!isPhone}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-          />
-        </div>
+  /* `.ss-search` остаётся ОТДЕЛЬНОЙ обёрткой, а не уезжает в className поля: у
+     неё собственный padding, а обёртка декораций обязана облегать поле вплотную
+     - иначе иконка отсчитывается от края паддинга и встаёт на 6px вместо 12
+     (поймано замером).
+     Поле объявлено ОТДЕЛЬНО от листа, потому что на телефоне они живут в разных
+     слотах поверхности: поле пришпилено, лист скроллит. */
+  const searchEl = searchable ? (
+    <div className="ss-search">
+      <Input
+        icon="search"
+        /* Каретка встаёт в поле сразу, в том числе на телефоне. Раньше на
+           телефоне фокус НЕ ставили намеренно: клавиатура меняла высоту шторки,
+           собранной по содержимому. У полноростной поверхности высоты от
+           содержимого больше нет, и лишний тап по полю ничем не оправдан. */
+        autoFocus
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={searchPlaceholder}
+        aria-label={searchPlaceholder}
+      />
+    </div>
+  ) : null;
+
+  const listEl = (
+    /* `scrollbar-thin` — канон ДС (app.css), а не свои правила скролла: лист
+       длинный (валюты, языки), и полоса браузера по умолчанию рисуется мимо
+       системы. Тот же класс несёт лист автокомплита — хром у них общий. */
+    <div className="ss-list scrollbar-thin" onWheel={(e) => e.stopPropagation()}>
+      {filtered.length === 0 ? (
+        <div className="ss-empty">{emptyText}</div>
+      ) : (
+        filtered.map((o) => {
+          const selected = getKey(o) === value;
+          // TRIP-391 объект 1 → объект 5: опция листа комбобокса (поле), не кнопка-примитив.
+          return (
+            <button
+              key={getKey(o)}
+              type="button"
+              className="ss-opt"
+              data-active={selected ? '' : undefined}
+              onClick={() => pick(o)}
+            >
+              {renderOption ? renderOption(o, selected) : <span className="grow">{getKey(o)}</span>}
+              {selected && <Check className="chk" />}
+            </button>
+          );
+        })
       )}
-      {/* `scrollbar-thin` — канон ДС (app.css), а не свои правила скролла: лист
-          длинный (валюты, языки), и полоса браузера по умолчанию рисуется мимо
-          системы. Тот же класс несёт лист автокомплита — хром у них общий. */}
-      <div className="ss-list scrollbar-thin" onWheel={(e) => e.stopPropagation()}>
-        {filtered.length === 0 ? (
-          <div className="ss-empty">{emptyText}</div>
-        ) : (
-          filtered.map((o) => {
-            const selected = getKey(o) === value;
-            // TRIP-391 объект 1 → объект 5: опция листа комбобокса (поле), не кнопка-примитив.
-            return (
-              <button
-                key={getKey(o)}
-                type="button"
-                className="ss-opt"
-                data-active={selected ? '' : undefined}
-                onClick={() => pick(o)}
-              >
-                {renderOption ? renderOption(o, selected) : <span className="grow">{getKey(o)}</span>}
-                {selected && <Check className="chk" />}
-              </button>
-            );
-          })
-        )}
-      </div>
-    </>
+    </div>
   );
 
   if (isPhone) {
     return (
       <>
         {trigger({ onClick: () => !disabled && setOpen(true) })}
-        <Sheet open={open} onOpenChange={onOpenChange} title={title}>{body}</Sheet>
+        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl}>
+          {listEl}
+        </PickerSheet>
       </>
     );
   }
@@ -154,7 +164,8 @@ export default function SearchSelect({
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
-        {body}
+        {searchEl}
+        {listEl}
       </PopoverContent>
     </Popover>
   );

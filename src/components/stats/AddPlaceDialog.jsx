@@ -9,6 +9,7 @@ import { Dialog, Btn, Card, Field, useToast } from '@/design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import CitySearch from '@/components/cities/CitySearch';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 
 // Add / edit / delete a manual visit (user_custom_visits) — the write side of the
@@ -28,6 +29,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const isPhone = useIsPhone();
   const isEdit = !!editing;
 
   const [city, setCity] = useState(null);   // { geonameid, name_i18n, city_name, country_code, latitude, longitude }
@@ -151,7 +153,14 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {picking ? (
           <Field label={t('stats.field_city')} required>
-            <CitySearch onSelect={(c) => { setCity(c); setPicking(false); setErr(''); }} />
+            {/* `autoFocus` тут ЗНАЧИТ РАЗНОЕ на двух платформах и потому задан
+                явно: на десктопе это каретка в первом поле окна, на телефоне —
+                РАСПАХНУТЬ пикер поверх окна. Второе неверно: окно только что
+                открылось, человек его ещё не видел, а закрыв пикер, он оказался бы
+                в форме, которую ему не показали. Тот же явный отказ стоит у
+                композера «добавить точку» в редакторе маршрута — по той же
+                причине, а не «на всякий случай». */}
+            <CitySearch autoFocus={!isPhone} onSelect={(c) => { setCity(c); setPicking(false); setErr(''); }} />
           </Field>
         ) : (
           /* Та же звёздочка, что и в ветке выбора: поле одно и то же, и город

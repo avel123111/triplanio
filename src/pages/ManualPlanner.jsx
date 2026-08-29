@@ -31,7 +31,8 @@ import FlowMap from '@/pages/create/FlowMap';
 import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
 import ChatComposer from '@/components/chat/ChatComposer';
-import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
+import { CityAnchorRow } from '@/pages/create/anchors';
+import CityPicker from '@/components/cities/CityPicker';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
