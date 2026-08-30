@@ -150,7 +150,11 @@ function onUnhandledRejection(event) {
 
 async function loadRealSentry() {
   try {
-    const S = await import('@sentry/react');
+    // Через `sentrySdk.js`, а НЕ напрямую: прямой `import('@sentry/react')`
+    // отдаёт namespace, по которому сборщик не может отсечь неиспользуемое,
+    // и в чанк едут виджет обратной связи и запись canvas, которых у нас нет.
+    // Разбор с числами — в шапке `sentrySdk.js`.
+    const S = await import('@/lib/sentrySdk');
     S.init({
       dsn: DSN,
       environment: ENVIRONMENT,
