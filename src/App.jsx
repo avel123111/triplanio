@@ -1,47 +1,41 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Toaster } from "@/design/index"
+// ★ `<Toaster>` БЕРЁТСЯ ИЗ СВОЕГО МОДУЛЯ, А НЕ ИЗ БАРРЕЛЯ `@/design/index`
+// (TRIP-475). Любое имя, взятое из барреля, делает весь баррель узлом графа
+// лендинга, а он тянет слой оверлеев (диалоги → шторки → vaul). Сам компонент
+// при этом НЕ переезжал: он и был и остался в `components/ui`, баррель лишь
+// перепродавал его наружу.
+//
+// Следствие для метрики: аудит ДС классифицирует элемент по ПУТИ ИМПОРТА, и
+// два `<Toaster>` ниже переехали из кучи `ds` в кучу «легаси components/ui»,
+// то есть доля ДС падает на 5 bp (4284 → 4279). Это не регресс разметки —
+// это снятие грима: баррель выдавал легаси-компонент за элемент системы.
+// Вернуть 5 bp честно можно только одним способом — по-настоящему завести
+// тосты в ДС, и это отдельная работа с апрувом, а не строчка в этом PR.
+/* floor-exempt: dsshare +5 — `<Toaster>` снят с барреля ради лендинга; сам компонент как был в components/ui, так и остался (апрув Pavel в PR) */
+import { Toaster } from "@/components/ui/toaster"
 import { track } from '@/lib/analytics'
 import { isProdHost } from '@/lib/analyticsEnv'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
-import ErrorBoundary from '@/components/ErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { hideSplash } from '@/lib/splash';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider, useI18n } from '@/lib/i18n/I18nContext';
-import { AppLoading } from '@/design/index';
+// ★ ПРЯМО ИЗ СВОИХ МОДУЛЕЙ, А НЕ ЧЕРЕЗ БАРРЕЛЬ `@/design/index` (TRIP-475).
+// Оба и так самостоятельные файлы; импорт через баррель тащил на лендинг весь
+// слой оверлеев (диалоги → шторки → vaul), который анониму не показывается.
+import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import StripeReturnModals from '@/components/common/StripeReturnModals';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
-import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav';
-import { CreateTripProvider } from '@/components/create/CreateTripProvider';
-import { FeedbackProvider } from '@/components/support/FeedbackProvider';
-import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
 
-// ★ ЭКРАНЫ ПРИЛОЖЕНИЯ — LAZY (TRIP-445). Семь статических импортов держали весь
-// авторизованный продукт в ГЛАВНОМ чанке, поэтому лендинг, вход и юр-страницы
-// скачивали планировщик, редактор поездки и статистику вместе с их зависимостями
-// — притом что незалогиненный посетитель не откроет ни один из них. Техника не
-// новая: Kit / DemoTrip / Legal уже приезжают так же.
-// `MapProvider` при этом остаётся статическим, но `mapbox-gl` синхронным НЕ
-// делает: библиотека грузится по требованию через `loadMapboxGl()` (динамический
-// `import`, см. src/lib/mapbox.js), в стартовый граф не входит и на лендинг не
-// приезжает — этот `lazy` про экраны приложения, не про карту.
-const Trips = lazy(() => import('@/pages/Trips'));
-const Statistics = lazy(() => import('@/pages/Statistics'));
-const TripView = lazy(() => import('@/pages/TripView'));
-const ScreenAccount = lazy(() => import('@/pages/ScreenAccount'));
-const ManualPlanner = lazy(() => import('@/pages/ManualPlanner'));
-const Inbox = lazy(() => import('@/pages/Inbox'));
-const Pro = lazy(() => import('@/pages/Pro'));
 
 // Витрина дизайн-системы (TRIP-340). Вне прода и БЕЗ логина: геометрия - чистый
 // CSS, поэтому визуальный гейт снимает именно её, а не рукописный стенд.
@@ -64,6 +58,13 @@ const DemoTrip = lazy(() => import('@/pages/Demo/DemoTrip'));
 // logged-out visitor gets the document, not the catch-all landing, and a
 // logged-in one doesn't 404.
 const Legal = lazy(() => import('@/pages/Legal'));
+
+// ★ ОБОЛОЧКА АВТОРИЗОВАННОГО ПРИЛОЖЕНИЯ — ОТДЕЛЬНЫМ ЧАНКОМ (TRIP-475).
+// Провайдеры продукта и таблица его маршрутов уехали в `AuthenticatedShell`:
+// анониму они не показываются никогда, а платил за них байтами каждый, кто
+// открыл лендинг. Граница ОДНА, дерево залогиненного не тронуто — подробности
+// в докблоке самого файла.
+const AuthenticatedShell = lazy(() => import('./AuthenticatedShell'));
 
 // ★ ТРИ ПУБЛИЧНЫХ ЭКРАНА — ТОЖЕ LAZY (TRIP-475 шаг 2). Они остались СТАТИЧЕСКИМИ,
 // когда TRIP-445 переводил экраны на `lazy`, и это стоило дорого: их код лежал в
@@ -96,18 +97,6 @@ function screenOpenEvent(pathname) {
   if (pathname.startsWith('/d/')) return { event: 'demo_viewed' };
   if (pathname === '/terms' || pathname === '/privacy') return { event: 'legal_viewed', props: { doc: pathname === '/terms' ? 'terms' : 'privacy' } };
   return null;
-}
-
-// Старый адрес редактора → секция того же трипа. Событие `route_opened` отсюда
-// УБРАНО намеренно: оно переехало на саму секцию (реестр секций), то есть теперь
-// считается и при переходе из меню, а не только при заходе по адресу.
-//
-// Целится в 'route': редактор и линза карты схлопнуты в один экран «Маршрут»
-// (TRIP-459). Сам `?lens=edit` из чужих закладок тоже жив — его разворачивает
-// карта легаси-имён в реестре секций.
-function RedirectToEditSection() {
-  const { tripId } = useParams();
-  return <Navigate to={`/trip/${tripId}?lens=route`} replace />;
 }
 
 const AuthenticatedApp = () => {
@@ -284,58 +273,14 @@ const AuthenticatedApp = () => {
     return <AppLoading />;
   }
 
+  // Всё, что видит ТОЛЬКО залогиненный, живёт отдельным чанком: провайдеры
+  // продукта и таблица его маршрутов. Ожидание — тот же <AppLoading>, что и у
+  // гейта авторизации выше, поэтому для человека ничего не меняется: он и так
+  // смотрел на него, пока проверялась авторизация.
   return (
-    <MobileNavProvider>
-     <CreateTripProvider>
-      <ProUpsellProvider>
-      <FeedbackProvider>
-      {/* One global Stripe-return handler for the whole logged-in app - shows the
-          success/fail modal regardless of which screen Stripe came back to. */}
-      <StripeReturnModals />
-      {/* Route-level crash isolation (TRIP-219 F2): a render crash in one screen
-          shows an in-place retry fallback instead of white-screening the whole
-          app; the global bottom-nav (sibling) stays alive. Keyed by pathname so
-          navigating away resets a crashed route. */}
-      <ErrorBoundary key={path} region={`route:${path}`}>
-      {/* Экраны приезжают отдельными чанками, поэтому нужен ВИДИМЫЙ ожидатель —
-          ТОТ ЖЕ, что у гейта авторизации выше: ожидание выглядит одинаково,
-          откуда бы ни пришло. Молчаливый (`silent`, как в зоне) здесь дал бы
-          белый кадр: приложение уже на экране, и человеку надо сказать, что
-          оно занято. В зоне наоборот — там своя ДС и до приезда site.css
-          страница не рисует ничего, поэтому ожидание молчит; заставку оба
-          облика держат одинаково (TRIP-478). */}
-      <Suspense fallback={<AppLoading />}>
-      <Routes>
-      {/* New design - standalone (own app-header, no Layout) */}
-      {/* «/» здесь больше нет: лендинг — страница ЗОНЫ в обоих состояниях
-          авторизации, и владелец у него один (ветка `inZone` выше). Пока
-          маршрут был и там, и тут, залогиненному лендинг перемонтировался при
-          получении ответа про авторизацию. */}
-      <Route path="/trips" element={<Trips />} />
-      <Route path="/stats" element={<Statistics />} />
-      <Route path="/new-trip" element={<ManualPlanner />} />
-      <Route path="/trip/:tripId" element={<TripView />} />
-      {/* TRIP-349: редактор стал секцией (сегодня ?lens=route). Роут оставлен РЕДИРЕКТОМ -
-          по нему живут закладки, история браузера и ссылки в уже отправленных
-          письмах; replace, чтобы «назад» не возвращало в редирект. */}
-      <Route path="/trip/:tripId/edit" element={<RedirectToEditSection />} />
-      <Route path="/settings" element={<ScreenAccount />} />
-      <Route path="/inbox" element={<Inbox />} />
-      <Route path="/pro" element={<Pro />} />
-
-      <Route path="/plan-trip-ai" element={<ManualPlanner initialMethod="ai" />} />
-
-      <Route path="*" element={<PageNotFound />} />
-      </Routes>
-      </Suspense>
-      </ErrorBoundary>
-      {/* Custom mobile bottom nav (≤640px); hides itself on planner / create /
-          landing / login routes. */}
-      <MobileBottomNav />
-      </FeedbackProvider>
-      </ProUpsellProvider>
-     </CreateTripProvider>
-    </MobileNavProvider>
+    <Suspense fallback={<AppLoading />}>
+      <AuthenticatedShell />
+    </Suspense>
   );
 };
 

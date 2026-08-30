@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Btn } from '@/design/index';
+// Кнопка — из своего модуля, не через баррель: баннер стоит на ЛЕНДИНГЕ и он же
+// LCP-элемент, а баррель тянет за собой весь слой оверлеев (TRIP-475).
+import { Btn } from '@/design/Btn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { isPersisting } from '@/lib/destinations/posthog';
