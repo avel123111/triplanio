@@ -13,7 +13,7 @@ import { LANGUAGES, LANG_STORAGE_KEY, detectLandingLang, localeTag } from './tra
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
   applyLuxonLocale,
-  formatDateTime,
+  formatDayMonth,
   localizeCountry,
   localizeCurrencyName,
   formatMoney,
@@ -289,7 +289,7 @@ export function useI18nFormat() {
     units,
     locale: localeTag(lang),
     t,
-    fmtDate: (value, tz, fmt) => formatDateTime(value, tz, fmt, lang),
+    fmtDate: (value, tz) => formatDayMonth(value, tz, lang),
     fmtCountry: (code, fallback) => localizeCountry(code, lang, fallback),
     fmtCurrencyName: (code) => localizeCurrencyName(code, lang),
     fmtMoney: (amount, currency, opts) => formatMoney(amount, currency, lang, opts),

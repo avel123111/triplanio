@@ -86,7 +86,7 @@ export default function PublicTrip() {
   const transfers = useMemo(() => data?.transfers || [], [data]);
   const ordered = useMemo(() => sortVisits(visits), [visits]);
 
-  const fmt = (d) => (d ? fmtDate(d, 'utc', 'd MMM') : '');
+  const fmt = (d) => (d ? fmtDate(d, 'utc') : '');
 
   // Participants = owner first, then the travelling members (accepted + offline
   // placeholders), deduping the owner (matched by name — the payload gives the
@@ -167,7 +167,7 @@ export default function PublicTrip() {
     if (!v || v.latitude == null || v.longitude == null) return null;
     return {
       lng: v.longitude, lat: v.latitude, countryCode: v.country_code, name: v.city_name,
-      dates: formatDateRange(v.start_date, v.end_date, (iso) => fmtDate(iso, undefined, 'd MMM')),
+      dates: formatDateRange(v.start_date, v.end_date, (iso) => fmtDate(iso)),
     };
   }, [badgeId, visits, fmtDate]);
 
