@@ -5102,15 +5102,15 @@ button.input[data-empty] { color: var(--muted-2); }
    `--del` это НЕ шаг степпера, а разрушающее действие, и красится оно по своей
    роли, а не по тому, в каком ряду очутилось.
    Объявления не изменились — изменился их АДРЕС: приглушение и опасный ховер
-   теперь висят на `.te-step--del`, а не на `.te-row--plan .te-step--del`. Ключи
-   гард заводит на каждый класс селектора, поэтому носитель их «теряет».
+   теперь висят на самом `.te-step--del`, а не на `.te-row--plan .te-step--del`.
+   Само правило стоит НЕ ЗДЕСЬ, а сразу под базовым `.te-step` ниже по файлу —
+   разбор там же, это условие того, чтобы оно вообще применилось.
+   Ключи гард заводит на каждый класс селектора, поэтому носитель их «теряет».
    (Маркером переноса это не объявить: он требует, чтобы на цели нашлись ВСЕ
    утраченные носителем объявления, а у ряда их больше, чем у кнопки.)
    visual-diff-exempt: .te-row--plan background — опасный ховер удаления переехал с носителя на сам контрол
    visual-diff-exempt: .te-row background — тот же ключ со стороны базового класса
    visual-diff-exempt: .te-row color — там же, тон опасного ховера */
-.te-step--del { color: var(--muted); }
-.te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
 
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
@@ -6354,6 +6354,17 @@ button.input[data-empty] { color: var(--muted-2); }
     .te-step:hover { background: var(--surface); }
     .te-step:active:not(:disabled) { transform: scale(0.9); }
     .te-step:disabled { color: var(--muted-2); cursor: default; }
+    /* ★ УДАЛЕНИЕ — НЕ ШАГ СТЕПЕРА, И ЦВЕТ У НЕГО СВОЙ. Базовый `.te-step` выше
+       красит brand: он одевал и «−»/«+», и удаление, поэтому тон достался общий.
+       Приглушение висело на ОДНОМ носителе (`.te-row--plan .te-step--del`), и та
+       же кнопка у якоря выходила СИНЕЙ — разрушающее действие цветом основного.
+       ⚠️ МЕСТО В ФАЙЛЕ — ЧАСТЬ ПРАВИЛА. У `.te-step--del` и `.te-step` РАВНАЯ
+       специфичность (0,1,0), спор решает порядок. Первая редакция объявила
+       `--del` на 1200 строк ВЫШЕ базового `.te-step`, и правило проиграло молча:
+       в файле оно есть, гард его видит, браузер берёт brand — кнопка осталась
+       синей. Держать `--del` сразу под базой обязательно. */
+    .te-step--del { color: var(--muted); }
+    .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
     /* `justify-self` поднят с модификаторов на САМУ ЯЧЕЙКУ (TRIP-459). Колонки
        ряда центрованы по шапке (`.te-th--c`), и объявляли это две ячейки из трёх:
        жильё и активности. Ночи ячейкой не были вовсе — их содержимое стояло в
@@ -8273,6 +8284,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .sheet-b flex — тело занимает весь рост шторки
    visual-diff-exempt: .sheet-b min-height — иначе колонка не сожмётся ниже содержимого и лист не получит скролла */
 .sheet--full .sheet-b { display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
+/* Верхний воздух в полноростной шторке даёт её тело; композер добавлял сверху
+   ещё свой паддинг — два отступа подряд между шапкой и полем поиска.
+   Ключи гард заводит на каждый класс селектора, и медиа тут НЕТ: правило верхнего
+   уровня, потому что полноростная шторка и так только на телефоне.
+   visual-diff-exempt: .te-add padding-top — воздух над полем даёт тело шторки, а не композер
+   visual-diff-exempt: .sheet--full padding-top — тот же ключ со стороны предка */
+.sheet--full .te-add { padding-top: 0; }
 /* visual-diff-exempt: .ss-search flex — поле поиска пришпилено сверху и в скролл не уезжает */
 .sheet--full .ss-search { flex: none; }
 /* Кэп 56vh для полноростной шторки бессмыслен: он и делал её наполовину пустой.
