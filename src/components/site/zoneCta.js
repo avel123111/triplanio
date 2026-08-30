@@ -59,8 +59,8 @@ export function zoneHome() {
 
 /**
  * @param {string} location МЕСТО кнопки — единственное, чего не знает хук:
- *   `header` · `menu` · `menu_signin` · `hero` · `hero_signin` · `final` ·
- *   `final_demo`. Три последних имени уже живут в аналитике — не переименовывать.
+ *   `header` · `menu` · `menu_signin` · `hero` · `hero_demo` · `final` ·
+ *   `final_demo`. `final` и `final_demo` уже живут в аналитике — не переименовывать.
  * @param {string} [to] Адрес, если кнопка ведёт НЕ в продукт (ссылка на демо в
  *   финальном блоке лендинга). По умолчанию — вход, а для вошедшего «Мои поездки».
  * @returns {{href: string, onClick: (e: MouseEvent) => void}} раскрыть на `<a>`.
