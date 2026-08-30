@@ -3,7 +3,7 @@
   "add_departure": "Добавить отправление",
   "add_point": "Добавить точку",
   "add_point_btn": "Добавить точку маршрута",
-  "add_point_hint": "Сначала выбери город, потом тип",
+  "add_point_hint": "Выбери тип и город",
   "add_transfer": "Добавить переезд",
   "already_set": "Уже задан",
   "arrival_word": "Прилёт",
@@ -44,11 +44,9 @@
   "nights_remove": "Убрать ночь",
   "node_visit": "Посещение",
   "overnight_title": "Переезд со сменой дней: +{count} дн — следующий город и все последующие сдвигаются на {count} дн",
-  "pt_change": "Изменить",
   "pt_end_sub": "Конец поездки",
   "pt_start_sub": "Начало поездки",
   "pt_transit_sub": "Остановка с ночёвками",
-  "pt_type_label": "Тип точки",
   "pt_waypoint": "Пересадка",
   "pt_waypoint_sub": "На 1 день, без ночёвки",
   "remove": "убрать",
@@ -57,6 +55,7 @@
   "route_show": "Показать маршрут",
   "section_road": "Дорога",
   "start_already_set": "Старт уже задан, сначала убери текущий",
+  "tk_plane": "Перелёт",
   "transfers_out_of_plan": "Переезды вне плана",
   "warns_short": "{n} предупр"
 }
