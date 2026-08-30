@@ -245,6 +245,11 @@ export default function Autocomplete({
           placeholder={placeholder}
           disabled={disabled}
           role="combobox"
+          /* Попап у этого комбобокса — ДИАЛОГ, а не лист: сам лист живёт внутри
+             шторки и вместе с ней размонтирован, пока она закрыта. Без
+             `aria-haspopup` комбобокс объявляет попап-по-умолчанию (`listbox`),
+             которого в дереве нет, и скринридер обещает лист, которого не будет. */
+          aria-haspopup="dialog"
           aria-expanded={sheetOpen}
           {...inputProps}
         />

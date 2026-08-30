@@ -101,8 +101,12 @@ export function SheetSurface({
   return (
     <Drawer.Portal>
       <Drawer.Overlay className={backdropClassName} />
-      {/* vaul не переводит фокус внутрь на открытии — клавиатура остаётся
-          опущенной, пока не тронули поле (без прыжка и зума iOS). */}
+      {/* Фокус на открытии vaul гасит ПО УМОЛЧАНИЮ (`autoFocus = false` -> он
+          зовёт `preventDefault()`), поэтому шторка открывается с опущенной
+          клавиатурой. Это умолчание, а не запрет: поверхности, которой поле
+          нужно в фокусе, достаточно передать штатный `onOpenAutoFocus` —
+          он уезжает в `Drawer.Content` вместе с остатком пропов (так делает
+          `ui/PickerSheet`). */}
       <Drawer.Content ref={contentRef} className={className} {...rest}>
         {grip ? <SheetGrip /> : null}
         {children}
