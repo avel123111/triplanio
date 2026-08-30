@@ -6,6 +6,7 @@ import { useI18n, useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import GeoAttribution from '@/components/common/GeoAttribution';
+import { Trunc } from '@/design/Layout';
 
 /**
  * Autocomplete — the single, canonical async search-as-you-type field + dropdown
@@ -324,10 +325,15 @@ export default function Autocomplete({
         >
           {/* У кнопки нет атрибута `placeholder`, поэтому подпись — её содержимое.
               «Не заполнено» объявлено СОСТОЯНИЕМ контрола (`data-empty`), а не
-              обёрткой вокруг текста: обёртка была бы узлом разметки ради цвета,
-              а тон пустого поля — ровно то, что `::placeholder` делает у
-              настоящего поля, то есть свойство контрола. */}
-          {inputValue || placeholder}
+              обёрткой вокруг текста: тон пустого поля — ровно то, что
+              `::placeholder` делает у настоящего поля, то есть свойство контрола.
+              ★ А вот ОДНОЙ СТРОКОЙ подпись держит обёртка, и это не украшение:
+              содержимое кнопки переносится, у настоящего поля — нет. Длинный
+              плейсхолдер («Берлин, Лиссабон, Прага…») разъезжал на две строки, и
+              контрол менял ВЫСОТУ — то есть ряд «город + дата» на шаге старта
+              прыгал от одной только подписи. `Trunc` — канон-примитив обрезки,
+              `grow--fit` даёт ему сжимаемость рядом с шевроном. */}
+          <Trunc as="span" className="grow--fit">{inputValue || placeholder}</Trunc>
         </Input>
         <PickerSheet
           open={sheetOpen}

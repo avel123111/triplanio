@@ -143,21 +143,34 @@ function cityDateRange(city, lang) {
 // CityPicker + CityAnchorRow live in ./create/anchors (shared by the planner
 // steps and the AI panel — one picker/anchor, no circular import).
 
-/* floor-exempt: dsshare +5 — ЗАМЕР, А НЕ ОЦЕНКА. Доля 42.92% → 42.73%,
-   числитель 1455 → 1435, знаменатель 3390 → 3358. Слагаемых два, и оба —
-   известные слепые зоны метрики, а не сырая разметка:
-   (1) −2bp: разметка УДАЛЕНА, не добавлена. Режим редактирования в ряду (своё
-       поле города, «✓», staged) и инлайн-пикер в плитке старта были дублями
-       общего композера; удалённые дубли оказались плотнее по ДС, чем среднее по
-       репозиторию (19 из 32 листьев против 42.9%), поэтому доля падает ровно
-       оттого, что дублей стало меньше.
-   (2) −3bp: композер на телефоне сменил `<Sheet>` (ДС) на `<PickerSheet>` —
-       метрика считает `components/ui/` ЛЕГАСИ: в знаменателе, но не в
-       числителе. Тот же капкан уже описан в маркере PR #1086. Переезд
-       `Sheet`/`PickerSheet` в `src/design/` поднимет долю обратно и тянет всех
-       вызывателей — отдельная задача, флаг по правилу #6.
-   Остальные числа пола не выросли НИ ОДНО: классов 1216 → 1215, namespace 118=,
-   инлайнов 480=, токенов 177=, на разборе 878 → 877. Ждёт явного апрува Pavel. */
+// floor-exempt: dsshare +14 — ЗАМЕР, А НЕ ОЦЕНКА. Доля 42.92% → 42.64%,
+// числитель 1455 → 1427, знаменатель 3390 → 3347. Слагаемых три, и все три —
+// известные слепые зоны метрики, а не сырая разметка:
+//   (1) −2bp: разметка УДАЛЕНА, не добавлена. Режим редактирования в ряду (своё
+//       поле города, «✓», staged) и инлайн-пикер в плитке старта были дублями
+//       общего композера; удалённые дубли оказались плотнее по ДС, чем среднее
+//       по репозиторию, поэтому доля падает оттого, что дублей стало меньше.
+//   (2) −3bp: композер на телефоне сменил примитив `Sheet` (ДС) на
+//       `PickerSheet` — метрика считает `components/ui/` ЛЕГАСИ: в знаменателе,
+//       но не в числителе. Тот же капкан описан в маркере PR #1086.
+//   (3) −9bp: якорь маршрута рисовали ДВА компонента, и второй (`GridEndpoint`
+//       в редакторе) был собран из восьми примитивов ДС. Он схлопнут в ОДИН
+//       вызов общего `CityAnchorRow` — то есть восемь листьев ДС заменились
+//       одним вызовом компонента, который живёт в `pages/create/` и в числитель
+//       не идёт. Тот же счёт наказывает и снятие четырёх инлайнов у его кнопки
+//       удаления (инлайнов в этом PR стало на 3 МЕНЬШЕ, 480 → 477).
+// Направление лечения общее для (2) и (3): переезд общих поверхностей и рядов
+// в `src/design/` поднимет долю обратно и тянет всех вызывателей — отдельная
+// задача, флаг по правилу #6.
+// Остальные числа пола не выросли НИ ОДНО: классов 1216 → 1215, namespace 118=,
+// инлайнов 480 → 477, токенов 177=, на разборе 878 → 877.
+//
+// ⚠️ ПОСТРОЧНЫЕ `//`, А НЕ БЛОК, И ЭТО НЕ ВКУС: гард i18n признаёт комментарием
+// строку, начинающуюся с `//`, `*` или `/*` (`isCommentLine`), поэтому у блока
+// `/* … */` продолжения без ведущей звёздочки читаются как КОД — и текст в
+// обратных кавычках попадает под правило «сырая строка в JSX».
+//
+// Ждёт явного апрува Pavel.
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
 // City row built from the EDITOR's primitives (.te-row / .te-grip / .te-row__num /
@@ -366,14 +379,29 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null, selectedId = null, onHover }) {
+function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null, selectedId = null, onHover, onComposingChange }) {
   const t = useT();
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   // Все три ручки бьют в ОДИН список и гоняют ОДНУ раскладку дат — как в
   // редакторе. Якоря в цепочку дат не входят: это знает модель, не эта функция.
   const patch = (node) => setNodes(ns => recomputeDates(ns.map(n => (n.id === node.id ? node : n)), startDate));
-  const remove = (id) => setNodes(ns => recomputeDates(ns.filter(n => n.id !== id), startDate));
+  const drop = (id) => setNodes(ns => recomputeDates(ns.filter(n => n.id !== id), startDate));
+  /* Удаление города спрашивает — так же, как в редакторе маршрута, и той же
+     дверью (`useConfirm`). Описание своё: редакторское говорит про каскадное
+     удаление броней, а до создания трипа броней не существует, и обещать
+     удаление того, чего нет, нельзя. */
+  const remove = (node) => {
+    if (!node.city_name) { drop(node.id); return; }   // ряд без города спрашивать не о чем
+    confirm({
+      title: t('tse.delete_city_q', { city: node.city_name }),
+      description: t('planner.delete_city_desc'),
+      confirmLabel: t('tse.delete_city'),
+      variant: 'destructive',
+      onConfirm: () => drop(node.id),
+    });
+  };
 
   // Добавление из общего композера: он отдаёт (город, вид), вставку делает модель
   // по правилам редактора — старт в начало, финиш в конец, остальное ПЕРЕД
@@ -416,6 +444,12 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
     return () => clearTimeout(id);
   }, [nodes.length]);
 
+  /* Открыт ли композер. Читателей два: пустое состояние (уступает ему место) и
+     футер шага (не пускает «Далее», пока город не сохранён или не отменён) —
+     второй живёт выше, поэтому факт уходит наружу тем же значением. */
+  const [composing, setComposing] = useState(false);
+  const onComposing = (v) => { setComposing(v); onComposingChange?.(v); };
+
   const hasStart = !!startOf(nodes);
   const hasEnd = hasExplicitEnd(nodes);
   // Нумеруются только города: у якорей номера нет ни в редакторе, ни здесь.
@@ -454,13 +488,19 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
             hasStart={hasStart}
             hasEnd={hasEnd}
             defaultKind="start"
+            onOpenChange={onComposing}
             renderTrigger={({ open }) => (
               <CityAnchorRow label={t('ai_plan.start')} city={null} editable onAdd={open} />
             )}
           />
         )}
 
-        {nodes.length === 0 ? (
+        {/* ⚠️ ПУСТОЕ СОСТОЯНИЕ УСТУПАЕТ МЕСТО КОМПОЗЕРУ, А НЕ ВСТАЁТ НАД НИМ. Пока
+            оно рисовалось безусловно, открытый композер на десктопе выезжал ПОД
+            приглашением «Куда едем?» — то есть экран одновременно звал добавить
+            город и показывал форму добавления. Пустое состояние — это ОТСУТСТВИЕ
+            содержимого, а раз композер открыт, содержимое уже есть. */}
+        {nodes.length === 0 && !composing ? (
           <EmptyState
             icon="pin"
             title={t('planner.where_to')}
@@ -476,7 +516,7 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
                   label={n.kind === 'start' ? t('ai_plan.start') : t('ai_plan.end')}
                   city={n}
                   editable
-                  onRemove={() => remove(n.id)}
+                  onRemove={() => remove(n)}
                 />
               </div>
             );
@@ -500,7 +540,7 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
                 active={hoveredId === rowId || selectedId === rowId}
                 onArm={(e) => armDrag(e, n.id)}
                 onChange={patch}
-                onRemove={() => remove(n.id)}
+                onRemove={() => remove(n)}
                 onMove={(dir) => moveNodeById(n.id, dir)}
               />
             </div>
@@ -512,7 +552,7 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
             на десктопе (инлайн-карточка) — этому экрану знать про платформу
             нечего. `defaultKind` называет НАМЕРЕНИЕ входа: с этой кнопки
             добавляют город посещения. */}
-        <CityAdder onAdd={add} hasStart={hasStart} hasEnd={hasEnd} defaultKind="transit" />
+        <CityAdder onAdd={add} hasStart={hasStart} hasEnd={hasEnd} defaultKind="transit" onOpenChange={onComposing} />
       </div>
     </div>
   );
@@ -838,6 +878,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [savedTripId, setSavedTripId] = useState(null);
   const [error, setError]           = useState(null);
   const [restored, setRestored]     = useState(false);
+  /* Композер города открыт — шаг не завершён. «Далее» с открытым композером
+     уводило бы с шага, бросив наполовину введённый город: он нигде не
+     сохранён и просто исчезал. Факт приходит из шага одним каналом
+     (`CityAdder.onOpenChange`), второго способа его узнать нет. */
+  const [composing, setComposing] = useState(false);
   // Map ↔ list linking (Map-lens parity, TRIP-337): the pin/list row hovered or
   // selected. Ids match FlowMap's marker ids ('home' | city.id | 'finish').
   const [hoveredMapId, setHoveredMapId]   = useState(null);
@@ -1149,6 +1194,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // return pin, only shown on return/review) must not leave a tooltip floating at
   // its coordinate once the step no longer renders it.
   useEffect(() => { setHoveredMapId(null); setSelectedMapId(null); }, [step]);
+  // Шаг сменился — композера на нём больше нет, и его флаг не должен пережить
+  // уход: иначе «Далее» осталось бы выключенным на следующем шаге.
+  useEffect(() => { setComposing(false); }, [step]);
 
   // ── Supabase save ────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -1351,7 +1399,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     // композера (пусто → Далее, есть текст → Отправить). Так внизу один ряд.
     if (isAi) showFooter = false;
   } else if (step === 'cities') {
-    primaryDisabled = !citiesValid;
+    primaryDisabled = !citiesValid || composing;
   } else if (step === 'review') {
     primaryLabel = saving ? t('planner.saving_btn') : t('planner.save_trip');
     primaryAction = handleSave;
@@ -1374,7 +1422,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
         ))}
         {step === 'cities' && (
-          <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} />
+          <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={setComposing} />
         )}
         {step === 'return' && (
           <StepReturn

@@ -42,7 +42,12 @@ import CountryFlag from '@/components/common/CountryFlag';
  */
 
 export const POINT_TYPES = [
-  { id: 'transit', labelKey: 'event.city', icon: 'bed', subKey: 'tse.pt_transit_sub' },
+  /* ⚠️ `tse.node_visit` («Посещение»), а НЕ `event.city` («Город»): панель узла
+     (`CityPanel`) уже зовёт этот же узел посещением, и плитка звала его городом —
+     одно понятие под двумя именами на соседних экранах. Ключ существующий, в
+     Tolgee заводить нечего. `event.city` остался тем, чем и был: подписью ПОЛЯ
+     города в окне события, а это другой смысл. */
+  { id: 'transit', labelKey: 'tse.node_visit', icon: 'bed', subKey: 'tse.pt_transit_sub' },
   { id: 'waypoint', labelKey: 'tse.pt_waypoint', icon: 'arrowSwap', subKey: 'tse.pt_waypoint_sub' },
   { id: 'start', labelKey: 'ai_plan.start', icon: 'flag', subKey: 'tse.pt_start_sub' },
   { id: 'end', labelKey: 'ai_plan.end', icon: 'flag', subKey: 'tse.pt_end_sub' },
@@ -51,12 +56,21 @@ export const POINT_TYPES = [
 /**
  * @param {{ onAdd: (city: any, kind: string) => void, hasStart?: boolean,
  *   hasEnd?: boolean, defaultKind?: string,
- *   renderTrigger?: (api: { open: () => void }) => any }} p
+ *   renderTrigger?: (api: { open: () => void }) => any,
+ *   onOpenChange?: (open: boolean) => void }} p
  */
-export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'transit', renderTrigger }) {
+export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'transit', renderTrigger, onOpenChange }) {
   const t = useT();
   const isPhone = useIsPhone();
   const [open, setOpen] = useState(false);
+  /* ★ ОТКРЫТОСТЬ СООБЩАЕТСЯ НАРУЖУ ОДНИМ КАНАЛОМ, и читателей у неё два: шаг
+     визарда не даёт нажать «Далее», пока работа с городом не закончена
+     (сохранена или отменена), и пустое состояние списка уступает композеру
+     место, а не встаёт над ним. Оба факта — про «композер сейчас открыт», и
+     второго способа это узнать заводить незачем.
+     Эффект, а не вызов в обработчиках: закрытий у композера три (подтверждение,
+     отмена, «×»), и обработчиков пришлось бы обвешивать все три. */
+  useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
   const [city, setCity] = useState(null);
   // Предвыбор плитки = намерение входа. Если этот вид уже занят (старт задан, а
   // открыли с плейсхолдера старта — так бывает после «назад»), падаем на
@@ -197,7 +211,6 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
           full
         >
           <div className="te-add grow">
-            <span className="t-meta muted">{t('tse.add_point_hint')}</span>
             {!city ? cityStep : typeStep}
           </div>
           {/* Футер — только когда есть что подтверждать. На фазе поиска
@@ -215,10 +228,7 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
     <div ref={rootRef} className="te-addwrap">
       <Card recessed radius="md" pad="none" className="te-add">
         <Row justify="j-between" align="a-start">
-          <Col gap="g1">
-            <b>{t('tse.add_point')}</b>
-            <span className="t-meta muted">{t('tse.add_point_hint')}</span>
-          </Col>
+          <b>{t('tse.add_point')}</b>
           <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </Row>
         {steps}

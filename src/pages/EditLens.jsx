@@ -221,8 +221,9 @@ import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { tripDuration } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } from '../design/index';
-import { Row, Trunc, Grow } from '../design/Layout';
+import { Row, Trunc } from '../design/Layout';
 import CityAdder from '@/components/cities/CityAdder';
+import { CityAnchorRow } from '@/pages/create/anchors';
 import { tzFromCoords } from '@/lib/timezone';
 import { useTheme } from '@/lib/ThemeContext';
 import LpSheet from '@/components/ui/LpSheet';
@@ -1621,28 +1622,21 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
 
 // Start / Finish anchor row — flag (start) / check (finish) node, label + city,
 // departure/arrival date below. Flat flex row in the itinerary table.
+// Якорь маршрута рисует ОБЩИЙ `CityAnchorRow` (`create/anchors`) — тот же ряд,
+// что в визарде создания. Здесь остаётся только то, что этот экран знает про
+// узел: подпись «вылет/прилёт» с датой (TRIP-484 §4).
 function GridEndpoint({ node, date, onRemove }) {
   const t = useT();
   const { lang } = useI18n();
   const isStart = node.kind === 'start';
-  const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
-  const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
-    <Card recessed radius="md" pad="none" className="row row--g6 te-end">
-      <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></Tile>
-      <Grow className="te-citycell">
-        <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-        <Row gap="g3" className="te-cityline">
-          <Trunc as="span" className="te-cityname">{node.city_name}</Trunc>
-        </Row>
-        <Row gap="g3" className="te-dts">
-          {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(date || node.start_date || node.end_date, lang)}
-        </Row>
-      </Grow>
-      {/* Удаление якоря — запись, наблюдателю его нет вовсе (TRIP-459). Ряд
-          якоря раскладывает flex, не сетка, поэтому место держать не нужно. */}
-      {onRemove && <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>}
-    </Card>
+    <CityAnchorRow
+      label={isStart ? t('ai_plan.start') : t('ai_plan.end')}
+      city={node}
+      editable={!!onRemove}
+      onRemove={onRemove || undefined}
+      meta={<>{isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(date || node.start_date || node.end_date, lang)}</>}
+    />
   );
 }
 

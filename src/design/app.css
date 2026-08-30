@@ -4365,7 +4365,10 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .flow-lp-h padding — воздух шапки переехал в слот шелла (значение то же) */
 /* Фон шапки снят: цвет несёт карточка виджета (одно правило на оба экрана).
    visual-diff-exempt: .flow-lp-h background — цвет шапки несёт карточка виджета */
-.flow-lp-h { flex: none; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Линии под шапкой нет: прогресс-полоса сама по себе граница шага, а вторая
+   черта под ней делит панель дважды подряд.
+   visual-diff-exempt: .flow-lp-h border-bottom — вторая черта под прогресс-полосой */
+.flow-lp-h { flex: none; display: flex; align-items: flex-start; gap: var(--sp-6); }
 /* Футер флоу — тот же фон приложения, что и шапка. Раньше правило было scoped к
    `.flow-editcol` (колонка удалена вместе с раскладкой); теперь оно висит на
    СВОЁМ классе футера, а общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся
@@ -4428,8 +4431,21 @@ button.input[data-empty] { color: var(--muted-2); }
 .flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-bottom, 0px) + 14px); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
 .flow-map__stat-hl { color: var(--ink-2); }
 /* Section sub-heading — the missing mid-tier between the title and the
-   14–15px body. Use for in-step section labels ("Старт", "Города"…). */
-.flow-lp-b .section-sub { color: var(--ink); margin: 0 0 12px; }
+   14–15px body. Use for in-step section labels ("Старт", "Города"…).
+   ★ ВЕРХНИЙ ОТСТУП НЕСЁТ САМ ЗАГОЛОВОК, а не то, что стоит перед ним. Его не
+   было вовсе, и работало это ровно до тех пор, пока над заголовком стоял абзац
+   со своим нижним отступом: заголовок «Рядом» идёт сразу за рядом полей, у
+   которого его нет, — и прилипал к полю старта вплотную. Соседние отступы в
+   обычном потоке СХЛОПЫВАЮТСЯ (берётся больший), поэтому там, где сверху уже
+   был воздух, ничего не прибавилось: правило чинит только голый случай.
+   Ключи гард заводит на КАЖДЫЙ класс селектора, отсюда их четыре на две правки.
+   visual-diff-exempt: .section-sub margin — заголовок секции обязан отбиваться от того, что над ним, чем бы оно ни было
+   visual-diff-exempt: .flow-lp-b margin — тот же ключ со стороны предка
+   visual-diff-exempt: .section-sub:first-child margin-top — первому заголовку воздух даёт шапка шага
+   visual-diff-exempt: .flow-lp-b margin-top — тот же ключ со стороны предка */
+.flow-lp-b .section-sub { color: var(--ink); margin: var(--sp-8) 0 12px; }
+/* Первый заголовок в шаге отбивается шапкой шага, второй раз воздух не нужен. */
+.flow-lp-b .section-sub:first-child { margin-top: 0; }
 /* Заголовок раздела с контролом справа. Отдельным рядом это не собрать: своё
    поле снизу заголовок несёт сам, и в общем ряду контрол уезжает вверх на его
    половину. Поэтому контрол живёт ВНУТРИ заголовка - шапка секции остаётся
@@ -5053,6 +5069,16 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .te-end--add border-style — пунктир на канон .card--add (1px dashed line-strong, скрин)
    visual-diff-exempt: .te-end--add transition — переход снят: add-скин статичен, ховер несёт канон .card--add */
 .te-end--add { width: 100%; text-align: left; cursor: pointer; }
+/* ★ УДАЛЕНИЕ ЯКОРЯ ВИДНО ВСЕГДА, И ЭТО НЕ ВКУС. `.te-step` по умолчанию
+   `opacity: 0` и открывается правилом `.te-row:hover .te-step` — плотностью
+   таблицы редактора. Якорь таблицей не является (`.te-end` — карточка-ряд), и
+   ховера, которым кнопка открывается, у него нет ВООБЩЕ: она лежала в разметке
+   и не показывалась никогда, ни на одном экране. На тач ховера нет и подавно —
+   ровно та же причина, по которой удаление всегда видно у ряда планировщика.
+   Маркера обхода тут нет и не нужно: `opacity: 1` у `.te-step` в наборе уже есть
+   (его даёт ряд планировщика), поэтому итоговых объявлений правило не меняет —
+   оно лишь распространяет то же значение на второго носителя. */
+.te-end .te-step { opacity: 1; }
 
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
