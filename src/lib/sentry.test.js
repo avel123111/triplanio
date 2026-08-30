@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { enqueueCapture, drainCaptureQueue, CAPTURE_QUEUE_MAX } from './sentry.js';
 
 // Ф1.4: захват отделён от отправки — до приезда SDK ошибки копятся в очереди и
@@ -36,4 +37,45 @@ test('пустая очередь: дренаж не зовёт sink', () => {
   let calls = 0;
   drainCaptureQueue([], () => { calls++; });
   assert.equal(calls, 0);
+});
+
+/* ★★★ ДВЕРЬ К ВЕНДОРСКОМУ SDK ОДНА, И ОНА НА ИМЕНОВАННЫХ ИМПОРТАХ (TRIP-475).
+ *
+ * Свойство, которое здесь сторожится, невидимо ни одному гарду и не ломает
+ * ничего в рантайме: `await import('@sentry/react')` отдаёт namespace, сборщик
+ * не знает, какие свойства с него возьмут, и вынужден оставить живыми ВСЕ
+ * экспорты пакета. Цена — 64 332 байта brotli на каждой загрузке, из них
+ * виджет обратной связи и запись canvas, которые мы не включаем.
+ *
+ * Обратный ход стоит одной строки и выглядит как упрощение («зачем лишний
+ * файл»), поэтому правило пинится тестом, а не комментарием.
+ *
+ * ⚠️ МУТАЦИИ, КОТОРЫМИ ТЕСТ ПРОВЕРЕН КРАСНЫМ:
+ *   · вернуть в `sentry.js` прямой `await import('@sentry/react')` — падает;
+ *   · заменить содержимое `sentrySdk.js` на `export * from '@sentry/react'` — падает.
+ */
+/** Только КОД: комментарии выброшены. Оба файла подробно объясняют в прозе
+ *  ровно то, что запрещено, — грепом по сырому тексту эти объяснения читаются
+ *  как нарушения (тест поймал это на себе с первого прогона). */
+const codeOf = (name) => readFileSync(new URL(name, import.meta.url), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, ' ')
+  .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+const sdkSrc = codeOf('./sentrySdk.js');
+const facadeSrc = codeOf('./sentry.js');
+
+test('★★★ sentry.js берёт SDK только через дверь sentrySdk.js', () => {
+  assert.match(facadeSrc, /import\(['"]@\/lib\/sentrySdk['"]\)/,
+    'sentry.js больше не ходит через sentrySdk.js');
+  assert.doesNotMatch(facadeSrc, /import\(['"]@sentry\/react['"]\)/,
+    'sentry.js снова тянет @sentry/react напрямую: namespace ломает отсечение неиспользуемого');
+});
+
+test('★★★ дверь на ИМЕНОВАННЫХ импортах — ни звёздочки, ни реэкспорта всего', () => {
+  assert.doesNotMatch(sdkSrc, /import\s*\*\s*as/,
+    'в sentrySdk.js появился `import * as` — это ровно та болезнь, ради которой файл заведён');
+  assert.doesNotMatch(sdkSrc, /export\s*\*\s*from/,
+    'в sentrySdk.js появился `export * from` — сборщик снова обязан сохранить весь пакет');
+  assert.match(sdkSrc, /import\s*\{[\s\S]*?\}\s*from\s*['"]@sentry\/react['"]/,
+    'sentrySdk.js обязан импортировать @sentry/react ИМЕНОВАННО');
 });
