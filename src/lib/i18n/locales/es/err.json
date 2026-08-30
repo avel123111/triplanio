@@ -14,6 +14,7 @@
   "PRO_REQUIRED": "Esto requiere un viaje Pro. Pásate a Pro para continuar.",
   "RATE_LIMITED": "Demasiados intentos. Inténtalo de nuevo en un momento.",
   "REMOVE_SELF": "Usa «Salir del viaje» para quitarte a ti mismo.",
+  "TRIP_LIMIT_REACHED": "Has alcanzado el límite de viajes activos. Espera a que termine el actual o pásate a Pro.",
   "UNAUTHENTICATED": "Vuelve a iniciar sesión.",
   "UNAUTHORIZED": "No tienes permiso para hacer eso.",
   "refusal": "Esta acción no está disponible.",
