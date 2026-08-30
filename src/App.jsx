@@ -15,9 +15,6 @@ import { hideSplash } from '@/lib/splash';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider, useI18n } from '@/lib/i18n/I18nContext';
 import { AppLoading } from '@/design/index';
-import PublicTrip from '@/pages/PublicTrip';
-import JoinTrip from '@/pages/JoinTrip';
-import Login from '@/pages/Login';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
@@ -67,6 +64,21 @@ const DemoTrip = lazy(() => import('@/pages/Demo/DemoTrip'));
 // logged-out visitor gets the document, not the catch-all landing, and a
 // logged-in one doesn't 404.
 const Legal = lazy(() => import('@/pages/Legal'));
+
+// ★ ТРИ ПУБЛИЧНЫХ ЭКРАНА — ТОЖЕ LAZY (TRIP-475 шаг 2). Они остались СТАТИЧЕСКИМИ,
+// когда TRIP-445 переводил экраны на `lazy`, и это стоило дорого: их код лежал в
+// ГЛАВНОМ чанке, то есть его качал КАЖДЫЙ, кто открыл лендинг, — включая того,
+// кто никогда не откроет чужой публичный трип и не пойдёт логиниться. Замер по
+// карте исходников: 95 366 байт главного чанка, из них тяжёлое — цепочка
+// `PublicTrip → MapView` (кластеризация точек, разметка маркеров и линий) и
+// `Login` (24 КБ).
+//
+// Карту у публичного трипа НИКТО не забирает: `lazy` не меняет, что грузится на
+// экране, — он меняет, В КАКОМ ФАЙЛЕ это лежит. Открыл `/public/trip/:id` →
+// чанк приехал, карта на месте. Открыл только лендинг → чанк не приехал вовсе.
+const PublicTrip = lazy(() => import('@/pages/PublicTrip'));
+const JoinTrip = lazy(() => import('@/pages/JoinTrip'));
+const Login = lazy(() => import('@/pages/Login'));
 
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
@@ -149,11 +161,19 @@ const AuthenticatedApp = () => {
   // 13/24), а PageNotFound собран из <Btn> app-ДС — 404 приезжал бы кнопкой из
   // двух дизайн-систем (замерено: 13px 24px/99px/0 вместо 0 15px/10px/1px).
   // 404 — не страница зоны: ни шапки, ни подвала, ни её ДС ему не нужно.
-  // <Suspense> и lazy тут не нужны — обе страницы в главном чанке.
+  //
+  // <Suspense> стоит ВНУТРИ <SiteZone>, на том же маршруте, и по той же причине,
+  // что и сама обёртка: 404 не должен ни ждать чанк зоны, ни рисоваться её ДС.
+  // Ожидание МОЛЧАЛИВОЕ (`silent`), как у остальных страниц зоны: до приезда
+  // site.css зона не рисует ничего, и видимый спиннер здесь дал бы вспышку
+  // чужого облика (в приложении наоборот — там ожидание видимое).
   if (path.startsWith('/public/trip/')) {
     return (
       <Routes>
-        <Route path="/public/trip/:tripId" element={<SiteZone><PublicTrip /></SiteZone>} />
+        <Route
+          path="/public/trip/:tripId"
+          element={<SiteZone><Suspense fallback={<AppLoading silent />}><PublicTrip /></Suspense></SiteZone>}
+        />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     );
@@ -164,7 +184,10 @@ const AuthenticatedApp = () => {
   if (path.startsWith('/join/')) {
     return (
       <Routes>
-        <Route path="/join/:token" element={<SiteZone><JoinTrip /></SiteZone>} />
+        <Route
+          path="/join/:token"
+          element={<SiteZone><Suspense fallback={<AppLoading silent />}><JoinTrip /></Suspense></SiteZone>}
+        />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     );
