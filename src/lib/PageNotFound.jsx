@@ -2,7 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Btn, Tile } from '@/design/index';
+// Из своих модулей, не через баррель: 404 отдаётся и в неавторизованной зоне,
+// то есть лежит в синхронном графе лендинга (TRIP-475).
+import { Btn } from '@/design/Btn';
+import { Tile } from '@/design/Tile';
 import { useT } from '@/lib/i18n/I18nContext';
 
 // Shared system-stub layout - one visual family with the no-access page

@@ -1,5 +1,18 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Toaster } from "@/design/index"
+// ★ `<Toaster>` БЕРЁТСЯ ИЗ СВОЕГО МОДУЛЯ, А НЕ ИЗ БАРРЕЛЯ `@/design/index`
+// (TRIP-475). Любое имя, взятое из барреля, делает весь баррель узлом графа
+// лендинга, а он тянет слой оверлеев (диалоги → шторки → vaul). Сам компонент
+// при этом НЕ переезжал: он и был и остался в `components/ui`, баррель лишь
+// перепродавал его наружу.
+//
+// Следствие для метрики: аудит ДС классифицирует элемент по ПУТИ ИМПОРТА, и
+// два `<Toaster>` ниже переехали из кучи `ds` в кучу «легаси components/ui»,
+// то есть доля ДС падает на 5 bp (4284 → 4279). Это не регресс разметки —
+// это снятие грима: баррель выдавал легаси-компонент за элемент системы.
+// Вернуть 5 bp честно можно только одним способом — по-настоящему завести
+// тосты в ДС, и это отдельная работа с апрувом, а не строчка в этом PR.
+/* floor-exempt: dsshare +5 — `<Toaster>` снят с барреля ради лендинга; сам компонент как был в components/ui, так и остался (апрув Pavel в PR) */
+import { Toaster } from "@/components/ui/toaster"
 import { track } from '@/lib/analytics'
 import { isProdHost } from '@/lib/analyticsEnv'
 import { Analytics } from '@vercel/analytics/react'
@@ -13,7 +26,10 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { hideSplash } from '@/lib/splash';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider, useI18n } from '@/lib/i18n/I18nContext';
-import { AppLoading } from '@/design/index';
+// ★ ПРЯМО ИЗ СВОИХ МОДУЛЕЙ, А НЕ ЧЕРЕЗ БАРРЕЛЬ `@/design/index` (TRIP-475).
+// Оба и так самостоятельные файлы; импорт через баррель тащил на лендинг весь
+// слой оверлеев (диалоги → шторки → vaul), который анониму не показывается.
+import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
