@@ -5,7 +5,7 @@ import { Check, ChevronDown } from 'lucide-react';
 // импорт оттуда замкнул бы зависимость в кольцо (TRIP-333).
 import { Input } from '@/design/Input';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
+import { PickerSheet } from '@/components/ui/PickerSheet';
 
 /**
  * C4 · SearchSelect — the canonical searchable picker (currency, language, …).
@@ -72,12 +72,16 @@ export default function SearchSelect({
 
   const close = () => { setOpen(false); setQuery(''); };
 
-  // Дисциплина фокуса — у поверхности (`usePickerFocus` в `PickerSheet`), здесь
-  // только вызовы. На десктопе поверхность другая (попап), и правило к ней не
-  // применяется: там фокус ставит `autoFocus` поля.
-  const { searchRef, openInGesture, release } = usePickerFocus();
-  const openSheet = () => (isPhone ? openInGesture(setOpen) : setOpen(true));
-  const pick = (o) => { release(); onChange(getKey(o)); close(); };
+  // ⚠️ ПЕРЕЛЁТ ПОЛЯ СЮДА НЕ ПРИМЕНИМ, И ЭТО СВОЙСТВО ТРИГГЕРА, А НЕ НЕДОДЕЛКА.
+  // У города и адреса поле ОДНО: тапнул по нему — оно и улетело наверх, унеся с
+  // собой фокус и клавиатуру. Здесь триггер показывает СОБРАННОЕ значение (флаг,
+  // код, название) — полем такое не нарисовать, значит поле поиска может жить
+  // только внутри шторки, и оно там второе. Фокусировать его программно нельзя:
+  // на тач-платформе это даст каретку без клавиатуры, а посреди въезда шторки —
+  // ещё и прыгающую (разбор — в шапке `PickerSheet`). Поэтому его тапают, ровно
+  // как в системных пикерах; так этот компонент и работал всегда.
+  const openSheet = () => setOpen(true);
+  const pick = (o) => { onChange(getKey(o)); close(); };
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 
   // TRIP-391 объект 1 → объект 5: контрол-триггер комбобокса (поле) — открывает
@@ -117,12 +121,9 @@ export default function SearchSelect({
   const searchEl = searchable ? (
     <div className="ss-search">
       <Input
-        ref={searchRef}
         icon="search"
-        /* ТОЛЬКО десктоп. На телефоне `autoFocus` срабатывает на монтировании —
-           то есть уже ПОСЛЕ жеста, и клавиатуры не даёт (даёт каретку, вдобавок
-           посреди входной анимации, из-за чего её видно отдельно от поля).
-           Фокус там ставит триггер, внутри тапа — разбор у `openSheet`. */
+        /* ТОЛЬКО десктоп: на телефоне программный фокус даёт каретку без
+           клавиатуры (разбор у `openSheet`). */
         autoFocus={!isPhone}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
