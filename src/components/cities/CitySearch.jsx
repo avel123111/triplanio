@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { searchCities } from '@/lib/geo';
-import { useT } from '@/lib/i18n/I18nContext';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
 import { cityRowKey } from '@/components/cities/cityRowKey';
+import { resolveCity } from '@/components/cities/resolveCity';
 import cityOptionRow from '@/components/common/cityOptionRow';
 
 /**
@@ -20,6 +21,7 @@ import cityOptionRow from '@/components/common/cityOptionRow';
  */
 export default function CitySearch({ onSelect, autoFocus = true, embedded = false, fieldRef = undefined }) {
   const t = useT();
+  const { lang } = useI18n();
   const [q, setQ] = useState('');
 
   return (
@@ -28,7 +30,9 @@ export default function CitySearch({ onSelect, autoFocus = true, embedded = fals
       onInputChange={setQ}
       search={(query, lang) => searchCities(query, lang)}
       getKey={cityRowKey}
-      onPick={(c) => { onSelect(c); setQ(''); }}
+      /* Тот же общий шаг, что у `CityPicker`: строка справочника доводится до
+         города (имя страны + таймзона) ДО того, как уедет наружу. */
+      onPick={(c) => { onSelect(resolveCity(c, lang)); setQ(''); }}
       renderRow={cityOptionRow}
       placeholder={t('visit.search_city')}
       title={t('visit.city')}

@@ -224,7 +224,6 @@ import { Badge, Btn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } f
 import { Row, Trunc } from '../design/Layout';
 import CityAdder from '@/components/cities/CityAdder';
 import { CityAnchorRow } from '@/pages/create/anchors';
-import { tzFromCoords } from '@/lib/timezone';
 import { useTheme } from '@/lib/ThemeContext';
 import LpSheet from '@/components/ui/LpSheet';
 import MapView from '@/components/views/MapView';
@@ -867,10 +866,10 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // Commit a city picked in the inline adder (below the route list). The adder
   // owns its own open/pick/type state and collapses itself, so there's no panel
   // to close here — just enrich with the timezone and hand off to addCity.
-  const addPickedCity = (c, kind) => {
-    const tz = tzFromCoords(c.latitude, c.longitude);
-    addCity({ ...c, timezone: tz }, kind);
-  };
+  // Город приезжает из композера УЖЕ доведённым (`cities/resolveCity`): таймзона
+  // и имя страны — часть контракта города, а не работа этого экрана. Своей копии
+  // расчёта таймзоны здесь больше нет.
+  const addPickedCity = (c, kind) => addCity(c, kind);
 
   // ---- transfer dialogs (REAL app dialogs → write to DB → refetch) ----
   const openTransferRow = (a, b, tr) => {

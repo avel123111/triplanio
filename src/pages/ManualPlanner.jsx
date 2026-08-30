@@ -802,7 +802,7 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
                   name={c.city_name}
                   sub={isFin
                     ? `${c.country || '-'} · ${t('planner.sub_finish')}`
-                    : `${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${c.startDate}` : ''}`}
+                    : `${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
                   muted={isFin}
                 />
               );

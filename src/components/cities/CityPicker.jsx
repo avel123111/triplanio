@@ -1,12 +1,11 @@
 // @ts-check
 import React, { useState, useEffect } from 'react';
 import { searchCities } from '@/lib/geo';
-import { tzFromCoords } from '@/lib/timezone';
-import { localizeCountry } from '@/lib/i18n/format';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
 import { cityRowKey } from '@/components/cities/cityRowKey';
+import { resolveCity } from '@/components/cities/resolveCity';
 import CountryFlag from '@/components/common/CountryFlag';
 
 /**
@@ -60,11 +59,10 @@ export default function CityPicker({ value, onChange, placeholder, autoFocus, ..
       getKey={cityRowKey}
       onPick={(city) => {
         setQ(city.city_name);
-        // Gazetteer rows carry country_code but never a country name (mapGazCity
-        // sets country: null) → derive the localized name here so the anchor/review
-        // shows a country, not blank. This is the single point that enriches a raw
-        // search result; downstream consumers already receive the derived name.
-        onChange({ ...city, country: localizeCountry(city.country_code, lang), timezone: tzFromCoords(city.latitude, city.longitude) });
+        // Доведение строки справочника до города — общий шаг (`resolveCity`), а не
+        // копия здесь: тот же шаг обязан отработать у КАЖДОГО фасада, и когда он
+        // жил в одном, второй молча отдавал город без таймзоны.
+        onChange(resolveCity(city, lang));
       }}
       renderRow={cityOptionRow}
       placeholder={placeholder || t('planner.city_search_ph')}

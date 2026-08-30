@@ -438,3 +438,28 @@ test('★ удаление города в планировщике СПРАШИ
     'редакторское описание обещает удалить брони, которых в визарде ещё нет');
   assert.match(planner, /planner\.delete_city_desc/, 'у планировщика своё описание');
 });
+
+test('★★ строка справочника доводится до города В ОДНОМ месте, и её зовут ОБА фасада', () => {
+  // ★ ЦЕНА РАЗЪЕЗДА БЫЛА НЕ КОСМЕТИЧЕСКОЙ. `search_gazetteer` отдаёт строку
+  // СПРАВОЧНИКА: `country` там всегда null (есть только код), таймзоны нет вовсе
+  // — её считают из координат. Обогащение жило у ОДНОГО фасада из двух, и как
+  // только на второй (`CitySearch`) сел общий композер города, каждый
+  // добавленный им город поехал в сохранение БЕЗ ТАЙМЗОНЫ. Пропавшую страну было
+  // видно в обзоре, пропавшую таймзону — нет.
+  const home = codeOf(join(UI, '../cities/resolveCity.js'));
+  assert.match(home, /export function resolveCity/, 'дом у шага один');
+  assert.match(home, /localizeCountry/, 'имя страны выводится из кода');
+  assert.match(home, /tzFromCoords/, 'таймзона выводится из координат');
+
+  for (const rel of ['../cities/CityPicker.jsx', '../cities/CitySearch.jsx']) {
+    const src = codeOf(join(UI, rel));
+    assert.match(src, /resolveCity\(/, `${rel}: фасад обязан ЗВАТЬ общий шаг`);
+    // Своей копии быть не должно: две копии одного шага — это и был дефект.
+    assert.ok(!/localizeCountry\(|tzFromCoords\(/.test(src),
+      `${rel}: обогащение на месте = вторая копия шага`);
+  }
+  // И у экрана-вызывателя копии тоже нет: город приезжает готовым.
+  const editor = codeOf(join(UI, '../../pages/EditLens.jsx'));
+  assert.ok(!/tzFromCoords\(/.test(editor),
+    'редактор досчитывал таймзону сам — третья копия того же шага');
+});

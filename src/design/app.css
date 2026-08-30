@@ -2444,7 +2444,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    быть не может: у кнопки свой курсор и своя выключка текста.
    visual-diff-exempt: button.input cursor — триггер нажимают, а не печатают в него
    visual-diff-exempt: button.input text-align — кнопка центрует текст, поле выключает влево */
-button.input { cursor: pointer; text-align: left; }
+/* ⚠️ `min-width: 0` — НЕ УКРАШЕНИЕ, А УСЛОВИЕ ТОГО, ЧТОБЫ РЯД ВООБЩЕ СЖИМАЛСЯ.
+   Подпись триггера не переносится (иначе контрол менял бы высоту от длины
+   текста), а нерасторжимая строка задаёт элементу min-content во всю свою
+   ширину. В грид-ряду поля («город» + «дата», `7fr 3fr`) минимум колонки по
+   умолчанию `auto` = min-content, поэтому длинный плейсхолдер РАЗДВИГАЛ ряд:
+   замер на 390 — раскладка 459, дата уезжала за край. Контрол обязан уметь
+   сжаться, а обрезку подписи внутри него делает `Trunc`. */
+button.input { cursor: pointer; text-align: left; min-width: 0; }
 /* Незаполненный триггер: тот же тон, что `::placeholder` даёт настоящему полю.
    visual-diff-exempt: button.input[data-empty] color — тон пустого триггера = тон плейсхолдера поля */
 button.input[data-empty] { color: var(--muted-2); }
@@ -2860,7 +2867,18 @@ button.input[data-empty] { color: var(--muted-2); }
 /* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
    неравные, и низ у них разной высоты - выравнивание по НИЗУ, иначе контрол
    всплывает к верхнему краю более высокого поля. */
-.field-row--aside { grid-template-columns: 7fr 3fr; align-items: start; transition: grid-template-columns .18s var(--ease-out); }
+/* ⚠️ СЖИМАЕТСЯ ПОЛЕ, А НЕ АСИ́Д, И ЭТО НЕСУЩЕЕ. Уступать место обязан ПЕРВЫЙ трек:
+   его содержимое (подпись города) умеет обрезаться, а контрол даты — нет, у него
+   «−», дата и «+», и ужать его ниже min-content значит клипнуть плюс. Ровно это
+   уже ловили (баг #8, разбор у схлопа ниже), поэтому у второго трека минимум
+   остаётся `auto` = min-content.
+   Первому же треку минимум нужен НУЛЕВОЙ: подпись триггера не переносится, её
+   min-content — вся строка целиком, и с умолчанием `auto` длинный плейсхолдер
+   раздвигал ряд ШИРЕ ЭКРАНА (замер на 390: раскладка 459, дата уезжала за край).
+   visual-diff-exempt: .field-row--aside grid-template-columns — поле уступает место асиду, а не раздвигает ряд
+   visual-diff-exempt: .field-row--aside:has grid-template-columns — тот же нулевой минимум у схлопнутого состояния
+   visual-diff-exempt: .field:first-child:focus-within grid-template-columns — тот же ключ со стороны условия */
+.field-row--aside { grid-template-columns: minmax(0, 7fr) 3fr; align-items: start; transition: grid-template-columns .18s var(--ease-out); }
 /* На фокусе ПЕРВОГО поля (город старта) строка ПЛАВНО схлопывает правый контрол-
    «аси́д» (дату) — поле и его дропдаун занимают всю ширину
    шага 2. Это канон «раздвижение по фокусу» (TRIP-337), переиспользуемый дальше.
@@ -2874,7 +2892,7 @@ button.input[data-empty] { color: var(--muted-2); }
    видна целиком; клип нужен лишь пока трек анимируется к нулю.
    `align-items: start` (не end): при схлопе аси́д может стать выше (перенос узкого
    контента), и на `end` это опускало бы город с датой ВНИЗ — баг #10. */
-.field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: 1fr 0fr; }
+.field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: minmax(0, 1fr) 0fr; }
 /* nowrap on the aside so it NEVER reflows taller as its track shrinks to 0 — otherwise
    the label wraps to many lines, grows the row, and everything BELOW the row (the
    "Рядом" section) is pushed down mid-animation (Pavel). Height stays constant → the
@@ -4576,8 +4594,6 @@ button.input[data-empty] { color: var(--muted-2); }
 /* Planner has no reliable row-hover (esp. touch) → the delete is ALWAYS visible
    (the editor reveals it on hover for table density). */
 .te-row.te-row--plan .te-step { opacity: 1; }
-.te-row.te-row--plan .te-step--del { color: var(--muted); }
-.te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
 /* ★ СОСТОЯНИЕ «РЯД РЕДАКТИРУЕТ» УДАЛЕНО ВМЕСТЕ С САМИМ РЕЖИМОМ (TRIP-484 §4).
    Ряд визарда больше не превращается в поле города: добавление уехало в общий
    композер, и схлопывать колонки грипа и номера стало не подо что. Правило
@@ -5079,6 +5095,22 @@ button.input[data-empty] { color: var(--muted-2); }
    (его даёт ряд планировщика), поэтому итоговых объявлений правило не меняет —
    оно лишь распространяет то же значение на второго носителя. */
 .te-end .te-step { opacity: 1; }
+/* ★ УДАЛЕНИЕ ВЫГЛЯДИТ ОДИНАКОВО ВЕЗДЕ. Базовый `.te-step` — brand: он одевал и
+   шаги степпера, и удаление, поэтому цвет достался общий. Приглушение висело на
+   ОДНОМ носителе (`.te-row--plan`), и та же кнопка у якоря выходила синей —
+   удаление, покрашенное как основное действие. Правило переехало на сам контрол:
+   `--del` это НЕ шаг степпера, а разрушающее действие, и красится оно по своей
+   роли, а не по тому, в каком ряду очутилось.
+   Объявления не изменились — изменился их АДРЕС: приглушение и опасный ховер
+   теперь висят на `.te-step--del`, а не на `.te-row--plan .te-step--del`. Ключи
+   гард заводит на каждый класс селектора, поэтому носитель их «теряет».
+   (Маркером переноса это не объявить: он требует, чтобы на цели нашлись ВСЕ
+   утраченные носителем объявления, а у ряда их больше, чем у кнопки.)
+   visual-diff-exempt: .te-row--plan background — опасный ховер удаления переехал с носителя на сам контрол
+   visual-diff-exempt: .te-row background — тот же ключ со стороны базового класса
+   visual-diff-exempt: .te-row color — там же, тон опасного ховера */
+.te-step--del { color: var(--muted); }
+.te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
 
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
