@@ -34,8 +34,14 @@ export function startKbProbe() {
   // Инлайн-стили намеренно: блок обязан работать, даже если стили приложения не
   // приехали, и не должен попадать ни в один гард дизайн-системы.
   box.setAttribute('style', [
-    'position:fixed', 'left:4px', 'top:4px', 'z-index:2147483647',
-    'background:rgba(0,0,0,.82)', 'color:#0f0', 'font:11px/1.35 ui-monospace,monospace',
+    'position:fixed', 'left:4px', 'top:4px',
+    // Верх лестницы слоёв, а не «побольше»: сырое число мимо `--z-*` ловит гард 2o.
+    'z-index:calc(var(--z-popover) + 10)',
+    // Цвета НАМЕРЕННО мимо токенов: блок обязан читаться поверх чего угодно —
+    // поверх шторки, скрима и любой темы, — то есть не должен следовать теме.
+    'background:rgba(0,0,0,.82)', // design-token-exempt: временный отладочный блок, вне темы по построению
+    'color:#0f0', // design-token-exempt: то же
+    'font:11px/1.35 ui-monospace,monospace',
     'padding:6px 8px', 'border-radius:6px', 'white-space:pre', 'pointer-events:none',
     'max-width:min(96vw,340px)',
   ].join(';'));
