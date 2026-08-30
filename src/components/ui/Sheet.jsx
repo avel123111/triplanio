@@ -27,12 +27,11 @@ import { useT } from '@/lib/i18n/I18nContext';
  *  внутрь — оказалось верным поведением, и переопределять его некому.
  *  Понадобится снова — контракт Radix никуда не делся: остаток пропов
  *  `SheetSurface` уезжает прямо в `Drawer.Content`.
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string,
- *   repositionInputs?: boolean }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, repositionInputs }) {
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string }} p */
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
   const t = useT();
   return (
-    <SheetRoot open={open} onOpenChange={onOpenChange} repositionInputs={repositionInputs}>
+    <SheetRoot open={open} onOpenChange={onOpenChange}>
       <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
         {title ? (
           <div className="sheet-h">

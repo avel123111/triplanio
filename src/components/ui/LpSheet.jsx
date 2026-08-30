@@ -20,10 +20,7 @@ import { SheetRoot, SheetSurface, SheetTitle } from '@/components/ui/sheetShell'
  */
 export default function LpSheet({ open, onClose, title = '', children }) {
   return (
-    /* Подъём над клавиатурой выключен: панель полноэкранная, её коробка уже
-       берётся у видимой полосы (`.lp-sheet` в app.css), и подъём vaul стал бы
-       для неё вторым. Разбор — в шапке `ui/sheetShell`. */
-    <SheetRoot open={open} onOpenChange={(o) => { if (!o) onClose?.(); }} repositionInputs={false}>
+    <SheetRoot open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
       {/* vaul wraps Radix Dialog, which requires a Title for a11y — kept sr-only
           since the hosted panel renders its own visible heading. */}
       <SheetSurface className="lp-sheet" grip={false} aria-describedby={undefined}>

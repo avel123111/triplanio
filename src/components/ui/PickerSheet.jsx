@@ -63,13 +63,6 @@ export function PickerSheet({ open, onOpenChange, title, search = null, children
       onOpenChange={onOpenChange}
       title={title}
       className={search ? 'sheet--full' : ''}
-      /* Подъём над клавиатурой (`repositionInputs` vaul) — ТОЛЬКО шторке по
-         содержимому. У полноростной коробка уже равна видимой полосе
-         (`--vv-h`/`--vv-top`, см. `.sheet--full` в app.css), и подъём стал бы
-         вторым: тот самый «улетающий шит». Условие ТО ЖЕ, что у скина, и это не
-         совпадение — «полный рост» и «поднимать не надо» суть одно и то же
-         свойство поверхности. */
-      repositionInputs={!search}
     >
       {search}
       {children}

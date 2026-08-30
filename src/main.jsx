@@ -43,8 +43,6 @@ import { boot as bootPosthog } from '@/lib/destinations/posthog'
 import { boot as bootAds } from '@/lib/destinations/ads'
 import { isProdHost } from '@/lib/analyticsEnv'
 import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
-// ВРЕМЕННО: живой замер клавиатуры под `?kbdebug=1` (см. lib/kbProbe.js). Удалить вместе с диагностикой.
-import { startKbProbe } from '@/lib/kbProbe'
 import App from '@/App.jsx'
 import '@/index.css'
 
@@ -90,6 +88,5 @@ if (!isProdHost) {
 // Flag `has-keyboard` on <html> while the soft keyboard is up (mobile) so CSS can
 // hide the bottom nav / sheet footer above it. Geometry-based, not focus-based.
 startKeyboardOpenWatch()
-startKbProbe()
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />)

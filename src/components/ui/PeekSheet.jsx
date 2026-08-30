@@ -177,8 +177,26 @@ export function PeekSheet({
   // поле, и вопрос «моё ли оно» решается принадлежностью узла, а не флагом
   // вызывателя. Портал шторки живёт в `document.body`, поэтому `contains` для неё
   // честно даёт `false`.
+  // ⚠️ ВЛАДЕНИЕ ФОКУСОМ — ПОДПИСКА, А НЕ ЧТЕНИЕ В РЕНДЕРЕ. Первая редакция звала
+  // `isMine()` прямо в теле компонента. Это работало на разобранном сценарии —
+  // перерисовку приносил сам флаг клавиатуры, и `activeElement` к тому моменту был
+  // уже верным, — но врало бы, как только фокус переезжает БЕЗ смены флага: из
+  // поля шторки в поле этого шита клавиатура не опускается, перерисовки нет, и
+  // признак остался бы прежним. Чтение живого DOM в рендере вдобавок делает его
+  // нечистым.
+  // Хватает `focusin`: он приходит на КАЖДОЕ получение фокуса. Уход фокуса в
+  // никуда отдельно слушать не нужно — тогда клавиатура закрывается, и
+  // перерисовку приносит сам флаг. (`focusout` к тому же приходит РАНЬШЕ, чем
+  // новый фокус встал, и в этот момент `activeElement` — это `body`.)
   const keyboardOpen = useKeyboardOpen();
-  const keyboardMine = keyboardOpen && isMine(sheetRef.current);
+  const [focusInside, setFocusInside] = useState(false);
+  useEffect(() => {
+    const sync = () => setFocusInside(isMine(sheetRef.current));
+    sync();
+    document.addEventListener('focusin', sync);
+    return () => document.removeEventListener('focusin', sync);
+  }, []);
+  const keyboardMine = keyboardOpen && focusInside;
   const index = keyboardMine ? stops.length - 1 : Math.max(0, Math.min(stops.length - 1, detent));
   const sheetH = stops[index] ?? 0;
   const restY = Math.max(0, vh - sheetH) + vTop;
