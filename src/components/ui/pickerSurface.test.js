@@ -299,6 +299,27 @@ test('машинерия под клавиатуру не возвращаетс
   }
 });
 
+test('полноростная шторка не носит постоянный композитный слой', () => {
+  // ★ ЧТО ЗДЕСЬ ПИННИТСЯ И ПОЧЕМУ ЭТО НЕ ВИДНО НИ ОДНОМУ ГАРДУ. vaul кладёт на
+  // КАЖДУЮ свою шторку `will-change: transform` — постоянно, не на время
+  // анимации, — и въезд трансформом. Оба признака держат элемент в композитном
+  // слое, а каретку WebKit рисует мимо него: она встаёт вне поля и догоняет.
+  // Правило одно: у ЭТОГО варианта вход идёт по раскладке, а слой снят. Снять
+  // любую из двух строк — вернуть баг, и ни 2p (значения объявлены маркерами),
+  // ни 2o, ни глаз на десктопе этого не увидят: Chromium каретку не отрывает.
+  const css = readFileSync(join(SRC, 'design/app.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rule = css.slice(css.indexOf(".sheet--full[data-vaul-drawer] {"));
+  assert.ok(rule.startsWith('.sheet--full[data-vaul-drawer] {'), 'правило въезда не найдено');
+  const body = rule.slice(0, rule.indexOf('}'));
+  assert.match(body, /will-change:\s*auto/, 'постоянный композитный слой vaul обязан быть снят');
+  assert.match(body, /animation-name:\s*none/, 'вход трансформом обязан быть погашен');
+  for (const kf of ['sheetRise', 'sheetSink']) {
+    assert.match(css, new RegExp(`@keyframes ${kf}[^}]*top`), `${kf} обязан ехать по top, а не трансформом`);
+    assert.ok(!new RegExp(`@keyframes ${kf}[^{]*\\{[^@]*transform`).test(css),
+      `${kf}: трансформ вернул бы композитный слой, ради снятия которого всё и делалось`);
+  }
+});
+
 test('правило «есть поиск -> полный рост» записано условием, а не прибито намертво', () => {
   const src = readFileSync(join(UI, 'PickerSheet.jsx'), 'utf8');
   // Скин обязан зависеть от `search`: безусловный `sheet--full` растянул бы во
