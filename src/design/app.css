@@ -6512,7 +6512,19 @@ button.input[data-empty] { color: var(--muted-2); }
        икона над короткой подписью, узкий горизонтальный отступ. */
     .te-add-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
     .te-add-type { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink-2); cursor: pointer; text-align: center; transition: background .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out); }
-    .te-add-type:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+    /* ★ ХОВЕР ТОЛЬКО ТАМ, ГДЕ ЕСТЬ КУРСОР. На тач-платформе `:hover` ЗАЛИПАЕТ на
+       последнем нажатом элементе до следующего тапа, и плитка, по которой только
+       что ткнули, оставалась в brand-рамке РЯДОМ с настоящей выбранной: две
+       активные плитки на четыре, и человек не знает, какая из них выбрана.
+       Ховер — свойство указателя, а не элемента, поэтому гейт на медиа: та же
+       пара `(hover: hover) and (pointer: fine)`, что уже стоит у add-рядов.
+       Ключ у гарда включает @media и полный селектор, отсюда четыре строки.
+       visual-diff-exempt: .te-add-type:hover:not(:disabled) border-color — ховер снят с базового контекста
+       visual-diff-exempt: .te-add-type:hover:not(:disabled) {@media (hover: hover) and (pointer: fine)} border-color — и объявлен под медиа указателя
+       visual-diff-exempt: .te-add-type:hover:not(:disabled) {@media (hover: hover) and (pointer: fine)} color — там же */
+    @media (hover: hover) and (pointer: fine) {
+      .te-add-type:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+    }
     .te-add-type[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
     .te-add-type:disabled { opacity: .5; cursor: not-allowed; color: var(--muted-2); }
     .te-add-type:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
@@ -8284,13 +8296,28 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .sheet-b flex — тело занимает весь рост шторки
    visual-diff-exempt: .sheet-b min-height — иначе колонка не сожмётся ниже содержимого и лист не получит скролла */
 .sheet--full .sheet-b { display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
-/* Верхний воздух в полноростной шторке даёт её тело; композер добавлял сверху
-   ещё свой паддинг — два отступа подряд между шапкой и полем поиска.
-   Ключи гард заводит на каждый класс селектора, и медиа тут НЕТ: правило верхнего
-   уровня, потому что полноростная шторка и так только на телефоне.
-   visual-diff-exempt: .te-add padding-top — воздух над полем даёт тело шторки, а не композер
-   visual-diff-exempt: .sheet--full padding-top — тот же ключ со стороны предка */
+/* ★ ВОЗДУХ МЕЖДУ ЗАГОЛОВКОМ И СОДЕРЖИМЫМ — ОДНО ЗНАЧЕНИЕ У ОДНОГО ВЛАДЕЛЬЦА.
+   Складывался он из ЧЕТЫРЁХ паддингов четырёх разных хозяев: низ шапки (12) +
+   верх тела (2) + верх композера (12) + верх обёртки поля (6) — и заголовок с
+   полем читались как из разных вселенных, а на двух фазах отступ был ещё и
+   РАЗНЫЙ (у поля поиска своя обёртка с паддингом, у ряда города её нет).
+   Теперь все слагаемые обнулены, и зазор остался ОДИН — тот, что даёт сама шапка:
+   её высоту задаёт кнопка «×» (44 px), заголовок в ней центрируется, и под
+   текстом остаётся 12 px. Замер: 22 → 12 на обеих фазах, и они наконец равны.
+   Добавлять к этим 12 ещё своё слагаемое незачем — получалось «из разных
+   вселенных»; заголовок и первое содержимое встают как подпись и её поле.
+   Ключи гард заводит на каждый класс селектора; медиа тут НЕТ — правило верхнего
+   уровня, полноростная шторка и так живёт только на телефоне.
+   visual-diff-exempt: .te-add padding-top — слагаемое воздуха обнулено, зазор объявлен телом шторки
+   visual-diff-exempt: .sheet--full padding-top — тот же ключ со стороны предка
+   visual-diff-exempt: .sheet-h padding-bottom — там же, низ шапки
+   visual-diff-exempt: .sheet--full padding-bottom — тот же ключ со стороны предка
+   visual-diff-exempt: .sheet-b padding-top — единственный владелец зазора
+   visual-diff-exempt: .ss-search padding-top — обёртка поля больше не добавляет свой */
 .sheet--full .te-add { padding-top: 0; }
+.sheet--full .sheet-h { padding-bottom: 0; }
+.sheet--full .sheet-b { padding-top: 0; }
+.sheet--full .ss-search { padding-top: 0; }
 /* visual-diff-exempt: .ss-search flex — поле поиска пришпилено сверху и в скролл не уезжает */
 .sheet--full .ss-search { flex: none; }
 /* Кэп 56vh для полноростной шторки бессмыслен: он и делал её наполовину пустой.

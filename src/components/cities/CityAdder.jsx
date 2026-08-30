@@ -3,11 +3,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/design/icons';
 import { Btn, IconBtn, Card } from '@/design/index';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
-import { Row, Col, Trunc } from '@/design/Layout';
+import { Row, Col } from '@/design/Layout';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
 import CitySearch from '@/components/cities/CitySearch';
-import CountryFlag from '@/components/common/CountryFlag';
+import SelectedCity from '@/components/cities/SelectedCity';
 
 /**
  * КОМПОЗЕР ДОБАВЛЕНИЯ ГОРОДА — ОДИН НА РЕДАКТОР МАРШРУТА И ВИЗАРД (TRIP-484 §4).
@@ -125,14 +125,11 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
 
   const typeStep = city ? (
     <>
-      <Row gap="g3" className="te-add-city">
-        <CountryFlag code={city.country_code} />
-        <Trunc as="span" className="te-add-cityname">{city.city_name}</Trunc>
-        {/* «Изменить» возвращает ТУ ЖЕ шторку к поиску — не открывает вторую.
-            Фокус ставится в этом же жесте, иначе поле получит каретку без
-            клавиатуры (разбор — в шапке `ui/PickerSheet`). */}
-        <Btn variant="quiet" size="sm" icon="edit" onClick={backToSearch}>{t('tse.pt_change')}</Btn>
-      </Row>
+      {/* «Изменить» возвращает ТУ ЖЕ шторку к поиску — не открывает вторую. Фокус
+          ставится в этом же жесте, иначе поле получит каретку без клавиатуры
+          (разбор — в шапке `ui/PickerSheet`). Сам ряд общий: тот же, что в
+          диалоге «добавить место» (`cities/SelectedCity`). */}
+      <SelectedCity city={city} onChange={backToSearch} />
 
       {/* Вид точки. aria-pressed несёт выбор в AT; тон активной плитки — из
           .te-add-type[aria-pressed="true"]. */}
