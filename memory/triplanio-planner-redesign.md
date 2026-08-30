@@ -9,7 +9,7 @@ metadata:
 
 Редизайн manual + AI планнеров под «единый create-flow» (прототип загружен 2026-06-02: index.jsx=ScreenCreateFlow/ScreenCreateMethod, flow-map=FlowMap, flow-panels=PanelAi, flow-bookings=BookingsEntry, flow-progress=FlowProgress). Прототип — standalone (глобалы Icon/Btn/MPStep*, window.__navigate, SVG-карта, хардкод RU), в живом репо этих компонентов НЕТ — net-new.
 
-Живое состояние: `pages/ManualPlanner.jsx` (5 шагов home→cities→return→transport→review, лейаут .planner-grid с маленькой Mapbox-картой-превью 320px сбоку, сохраняет city_visits+transfers через RPC create_trip). `pages/AiTripPlanner.jsx` (НЕ мастер, 50/50, состояния empty/generating/draft/saving, planTripWithAi edge→n8n отдаёт города+активности по дням, сохраняет city_visits+activities, всё на t()). Вход — модалка NewTripDialog в Trips.jsx, 2 кнопки (manual/ai). Роуты /new-trip, /plan-trip-ai.
+Живое состояние: `pages/ManualPlanner.jsx` (4 шага home→cities→return→review — «Транспорт» убран решением 1 ниже; шаг «Возврат» пропускается, если последний город помечен финишем, лейаут .planner-grid с маленькой Mapbox-картой-превью 320px сбоку, сохраняет city_visits+transfers через RPC create_trip). `pages/AiTripPlanner.jsx` (НЕ мастер, 50/50, состояния empty/generating/draft/saving, planTripWithAi edge→n8n отдаёт города+активности по дням, сохраняет city_visits+activities, всё на t()). Вход — модалка NewTripDialog в Trips.jsx, 2 кнопки (manual/ai). Роуты /new-trip, /plan-trip-ai.
 
 РЕШЕНИЯ Pavel (2026-06-02):
 1. Шаг «Транспорт» — УБРАТЬ из создания. transfers/transport_type при создании не пишем; переезды добавляются позже в таймлайне/Edit Mode.
