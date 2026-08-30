@@ -36,7 +36,7 @@ export default function RouteMapCard({ visits = [], transfers = [], active = tru
     if (!v || v.latitude == null || v.longitude == null) return null;
     return {
       lng: v.longitude, lat: v.latitude, countryCode: v.country_code, name: v.city_name,
-      dates: formatDateRange(v.start_date, v.end_date, (iso) => fmtDate(iso, undefined, 'd MMM')),
+      dates: formatDateRange(v.start_date, v.end_date, (iso) => fmtDate(iso)),
     };
   }, [badgeId, visits, fmtDate]);
 
