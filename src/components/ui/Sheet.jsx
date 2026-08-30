@@ -27,12 +27,17 @@ import { useT } from '@/lib/i18n/I18nContext';
  *  внутрь — оказалось верным поведением, и переопределять его некому.
  *  Понадобится снова — контракт Radix никуда не делся: остаток пропов
  *  `SheetSurface` уезжает прямо в `Drawer.Content`.
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
+ *  `contentRef` — ссылка НА САМУ поверхность (`Drawer.Content`). Нужна тем, у
+ *  кого есть правило вида «моё ли это поддерево»: клавиатуру держит
+ *  сфокусированное поле, и снять фокус на закрытии может только тот, кто умеет
+ *  отличить своё поле от чужого (`contains`). `SheetSurface` этот проп уже
+ *  принимает — здесь он просто не был проброшен.
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, contentRef?: any }} p */
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, contentRef }) {
   const t = useT();
   return (
     <SheetRoot open={open} onOpenChange={onOpenChange}>
-      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
+      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} contentRef={contentRef} aria-describedby={undefined}>
         {title ? (
           <div className="sheet-h">
             <SheetTitle asChild><h3>{title}</h3></SheetTitle>

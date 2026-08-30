@@ -110,7 +110,7 @@ export default function Autocomplete({
   const [highlighted, setHighlighted] = useState(-1);
   // Дисциплина фокуса — у поверхности (`usePickerFocus`), здесь только вызовы:
   // «открыть в жесте» и «выбор сделан». Второго экземпляра правила нет.
-  const { searchRef, openInGesture, release } = usePickerFocus();
+  const { searchRef, openInGesture } = usePickerFocus();
   const timerRef = useRef(null);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
@@ -154,7 +154,9 @@ export default function Autocomplete({
   };
 
   const pick = (r) => {
-    release();
+    /* Фокус здесь НЕ снимается: это делает поверхность на закрытии — там правило
+       накрывает все четыре двери (выбор, Esc, тап мимо, свайп), а здесь накрывало
+       бы одну. Разбор и замер — в шапке `PickerSheet`. */
     setOpen(false);
     setSheetOpen(false);
     setResults([]);
