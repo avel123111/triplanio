@@ -3,7 +3,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Input } from '@/design/Input';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { PickerSheet } from '@/components/ui/PickerSheet';
+import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import GeoAttribution from '@/components/common/GeoAttribution';
 
 /**
@@ -86,11 +86,9 @@ export default function Autocomplete({
   //
   // ★ `autoFocus` РАСПАХИВАЕТ ШТОРКУ НАЧАЛЬНЫМ СОСТОЯНИЕМ, А НЕ ЭФФЕКТОМ, И ЭТО
   // ТОТ ЖЕ ВОПРОС КЛАВИАТУРЫ. Так поле оказывается в DOM в ПЕРВОМ коммите — а
-  // первый коммит здесь принадлежит жесту: этот пикер монтируется в ответ на тап
-  // («изменить город» в ряду визарда), React 18 сбрасывает такие обновления
-  // синхронно, и `useLayoutEffect` поверхности успевает поставить фокус внутри
-  // жеста. Прежняя редакция открывала шторку эффектом, то есть ВТОРЫМ коммитом,
-  // уже после жеста, — и на iOS этот путь открывался без клавиатуры.
+  // первый коммит здесь принадлежит жесту (см. `useLayoutEffect` ниже). Прежняя
+  // редакция открывала шторку эффектом, то есть ВТОРЫМ коммитом, уже после
+  // жеста, — и на iOS этот путь открывался без клавиатуры.
   const [sheetOpen, setSheetOpen] = useState(() => isPhone && !!autoFocus);
   const [loading, setLoading] = useState(false);
   // ЗАПРОС, ПО КОТОРОМУ УЖЕ ЕСТЬ ОТВЕТ. Без него «ничего не найдено» врёт дважды,
@@ -100,12 +98,16 @@ export default function Autocomplete({
   // Признак не «список пуст», а «на ЭТОТ текст пришёл пустой ответ».
   const [settled, setSettled] = useState('');
   const [highlighted, setHighlighted] = useState(-1);
+  // Дисциплина фокуса — у поверхности (`usePickerFocus`), здесь только вызовы:
+  // «открыть в жесте» и «выбор сделан». Второго экземпляра правила нет.
+  const { searchRef, openInGesture, release } = usePickerFocus({ focusOnMount: isPhone && !!autoFocus });
   const timerRef = useRef(null);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
   // Read inside the debounce timer so a mid-debounce language switch isn't stale.
   const langRef = useRef(lang);
   useEffect(() => { langRef.current = lang; }, [lang]);
+
 
   const runSearch = (query) => {
     clearTimeout(timerRef.current);
@@ -142,6 +144,7 @@ export default function Autocomplete({
   };
 
   const pick = (r) => {
+    release();
     setOpen(false);
     setSheetOpen(false);
     setResults([]);
@@ -212,10 +215,7 @@ export default function Autocomplete({
 
   if (isPhone) {
     const closeSheet = () => { setSheetOpen(false); setOpen(false); setHighlighted(-1); };
-    // Синхронный коммит тут больше не нужен и удалён: клавиатуру поднимает
-    // нативный фокус поля-триггера, а каретку переставляет сама поверхность
-    // (разбор — в шапке `PickerSheet`). Обычный setState.
-    const openSheet = () => setSheetOpen(true);
+    const openSheet = () => openInGesture(setSheetOpen);
     return (
       <>
         {/* ★ ТРИГГЕР — КНОПКА, А НЕ ТЕКСТОВОЕ ПОЛЕ, И ЭТО НЕСУЩЕЕ.
@@ -272,10 +272,12 @@ export default function Autocomplete({
           search={(
             <div className="ss-search">
               <Input
+                ref={searchRef}
                 icon={icon}
                 loading={loading}
-                /* Без `autoFocus`: каретку ставит поверхность, когда шторка
-                   встала (разбор — в шапке `PickerSheet`). */
+                /* Без `autoFocus`: он срабатывает на монтировании, то есть уже
+                   ПОСЛЕ жеста, и клавиатуры не даёт. Фокус ставит триггер, внутри
+                   тапа (разбор выше, у `openSheet`). */
                 value={inputValue || ''}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}

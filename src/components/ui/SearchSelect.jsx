@@ -5,7 +5,7 @@ import { Check, ChevronDown } from 'lucide-react';
 // импорт оттуда замкнул бы зависимость в кольцо (TRIP-333).
 import { Input } from '@/design/Input';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { PickerSheet } from '@/components/ui/PickerSheet';
+import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 
 /**
  * C4 · SearchSelect — the canonical searchable picker (currency, language, …).
@@ -71,20 +71,13 @@ export default function SearchSelect({
     : options.filter((o) => (matches ? matches(o, q) : String(getKey(o)).toLowerCase().includes(q)));
 
   const close = () => { setOpen(false); setQuery(''); };
-  // Обычный setState: фокуса в шторке не ставит никто (разбор — в шапке
-  // `PickerSheet`), подпирать нечего.
-  //
-  // ⚠️ ИЗВЕСТНАЯ ГРАНИЦА, И ОНА В ПРИРОДЕ ТРИГГЕРА, А НЕ В КОДЕ. Триггер — КНОПКА,
-  // а iOS поднимает клавиатуру только по настоящему тапу в настоящее текстовое
-  // поле. Значит на iOS пикер открывается со списком, но без клавиатуры, пока не
-  // тронешь строку поиска, — ровно как ведут себя системные пикеры.
-  // Это НЕ недоделка, а сторона размена, и размен теперь один на все пикеры
-  // приложения: город и адрес пришли сюда же (TRIP-484 §4). Обратная сторона —
-  // текстовое поле-триггер НА СТРАНИЦЕ — поднимала клавиатуру мгновенно, но
-  // платила тем, что страница ужималась и доскролливалась к полю ещё ДО открытия
-  // шторки, а на закрытии возвращалась. Разбор — в шапке `design/Input`.
-  const openSheet = () => setOpen(true);
-  const pick = (o) => { onChange(getKey(o)); close(); };
+
+  // Дисциплина фокуса — у поверхности (`usePickerFocus` в `PickerSheet`), здесь
+  // только вызовы. На десктопе поверхность другая (попап), и правило к ней не
+  // применяется: там фокус ставит `autoFocus` поля.
+  const { searchRef, openInGesture, release } = usePickerFocus();
+  const openSheet = () => (isPhone ? openInGesture(setOpen) : setOpen(true));
+  const pick = (o) => { release(); onChange(getKey(o)); close(); };
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 
   // TRIP-391 объект 1 → объект 5: контрол-триггер комбобокса (поле) — открывает
@@ -124,12 +117,12 @@ export default function SearchSelect({
   const searchEl = searchable ? (
     <div className="ss-search">
       <Input
+        ref={searchRef}
         icon="search"
-        /* ТОЛЬКО десктоп. На телефоне каретку не ставит НИКТО: программный фокус
-           там даёт каретку без клавиатуры, а `autoFocus` вдобавок срабатывает на
-           монтировании — посреди входной анимации шторки, из-за чего каретка
-           видна отдельно от поля и «догоняет» его. Разбор — в шапке
-           `ui/PickerSheet`. */
+        /* ТОЛЬКО десктоп. На телефоне `autoFocus` срабатывает на монтировании —
+           то есть уже ПОСЛЕ жеста, и клавиатуры не даёт (даёт каретку, вдобавок
+           посреди входной анимации, из-за чего её видно отдельно от поля).
+           Фокус там ставит триггер, внутри тапа — разбор у `openSheet`. */
         autoFocus={!isPhone}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
