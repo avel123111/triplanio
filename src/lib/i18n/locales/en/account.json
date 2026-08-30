@@ -1,4 +1,5 @@
 {
+  "access_until": "access until {date}",
   "active": "Active",
   "after_cancel_access": "After cancellation, access stays until the end of the paid period",
   "badge_pro_cancelled": "Pro · cancelled",
@@ -36,6 +37,7 @@
   "err_portal_open": "Could not open the billing portal. Try later.",
   "error_title": "Error",
   "free_desc": "1 active trip · no AI assistant, booking recognition or calendar section",
+  "free_tariff": "Free plan",
   "go_to_pro": "Go to Pro",
   "identity": "Profile",
   "inbox_sub": "Invites, replies and trip updates",
@@ -50,8 +52,6 @@
   "per_month_short": "/mo",
   "per_year_short": "/yr",
   "plan_current": "Current plan",
-  "free_tariff": "Free plan",
-  "access_until": "access until {date}",
   "pref_language": "Language",
   "pref_language_sub": "Interface language",
   "pref_theme_sub": "Light or dark appearance",

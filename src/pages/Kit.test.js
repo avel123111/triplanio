@@ -68,10 +68,16 @@ const DECLARED = declaredClasses();
 /** Обличья, которые компонент `index.jsx` склеивает САМ (выведены из-под суда
  *  направления 1: определить, что ветка сработала, можно только рендером;
  *  вместо «считать показанными» — вывести из наблюдения, а существование правила
- *  под них держит направление 2б). Читается ТОЛЬКО `index.jsx`: примитивы своих
- *  модулей (`IconBtn`/`Chip`/…) держит связка «карта на витрине» + направление 2. */
+ *  под них держит направление 2б). Читается баррель — И `Btn.jsx`: кнопка уехала
+ *  из барреля в свой модуль (TRIP-475), но склеивать обличья (`btn--block`,
+ *  `btn--sm`) продолжает САМА, а наблюдение обязано следовать за КОМПОНЕНТОМ, а
+ *  не за файлом. Остальные примитивы своих модулей (`IconBtn`/`Chip`/…) сюда НЕ
+ *  добавляются: их держит связка «карта на витрине» + направление 2. */
 function emittedByComponents() {
-  const idx = stripComments(read('../design/index.jsx'));
+  const idx = [
+    stripComments(read('../design/index.jsx')),
+    stripComments(read('../design/Btn.jsx')),
+  ].join('\n');
   const KIT = stripComments(read('./Kit.jsx'));
   const out = new Set();
   const parts = idx.split(/export const ([A-Z][A-Za-z0-9]*) *=/).slice(1);
@@ -95,7 +101,7 @@ const VARIANTS = [...DECLARED]
 /** Значения карт вариантов — из ТЕКСТА модулей примитивов (единый источник:
  *  тот же массив, что типизирует проп). Регекс, а не импорт, потому что
  *  `node --test` не парсит JSX модулей `@/design/*.jsx`. */
-const DESIGN_SRC = ['index.jsx', 'IconBtn.jsx', 'Tile.jsx', 'Chip.jsx', 'Seg.jsx', 'Stepper.jsx', 'Swatch.jsx', 'Stat.jsx', 'ListRow.jsx', 'CityBar.jsx', 'EventChip.jsx']
+const DESIGN_SRC = ['index.jsx', 'Btn.jsx', 'IconBtn.jsx', 'Tile.jsx', 'Chip.jsx', 'Seg.jsx', 'Stepper.jsx', 'Swatch.jsx', 'Stat.jsx', 'ListRow.jsx', 'CityBar.jsx', 'EventChip.jsx']
   .map((f) => stripComments(read(`../design/${f}`))).join('\n');
 function mapValues(name) {
   const m = DESIGN_SRC.match(new RegExp(`export const ${name}\\s*=\\s*\\[([^\\]]*)\\]`, 's'));

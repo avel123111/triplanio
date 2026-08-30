@@ -1,5 +1,18 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import ConfirmDialog from '@/components/common/ConfirmDialog';
+import React, { createContext, useContext, useState, useCallback, useRef, lazy, Suspense } from 'react';
+import AppLoading from '@/design/AppLoading';
+
+// ★ ДИАЛОГ ПРИЕЗЖАЕТ ПО ПЕРВОМУ СПРОСУ (TRIP-475).
+//
+// Провайдер стоит НАД роутером, то есть в синхронном графе ЛЕНДИНГА, а сам
+// диалог тянет весь слой оверлеев: `AlertDialog` (radix), `Sheet` → `sheetShell`
+// → `vaul`. Аноним на лендинге ни одного подтверждения не увидит, но платил за
+// них байтами на критическом пути.
+//
+// Монтируем не по `open`, а по ФАКТУ ПЕРВОГО ВЫЗОВА (`armed`): после этого узел
+// остаётся в дереве и живёт своим `open` как раньше — иначе размонтирование на
+// закрытии оборвало бы анимацию ухода. Цена — только самый первый `confirm()` в
+// сессии ждёт чанк; дальше диалог уже здесь.
+const ConfirmDialog = lazy(() => import('@/components/common/ConfirmDialog'));
 
 /**
  * App-wide promise-based confirm/alert, layered on the canonical ConfirmDialog
@@ -34,9 +47,11 @@ export function ConfirmProvider({ children }) {
   const [opts, setOpts] = useState({});
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
   const resolverRef = useRef(null);
 
   const confirm = useCallback((options = {}) => {
+    setArmed(true); // первый вызов заказывает чанк диалога
     return new Promise((resolve) => {
       // If a previous prompt is somehow still pending, dismiss it as cancelled.
       if (resolverRef.current) resolverRef.current(false);
@@ -80,6 +95,11 @@ export function ConfirmProvider({ children }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
+      {/* Молчаливое ожидание — КАНОННОЕ (`<AppLoading silent />`), а не
+          `fallback={null}`: пустой fallback невидим экрану запуска, и заставка
+          ушла бы в пустой кадр. Правило пинит `splash.test.js`. */}
+      {armed && (
+      <Suspense fallback={<AppLoading silent />}>
       <ConfirmDialog
         open={open}
         onOpenChange={handleOpenChange}
@@ -94,6 +114,8 @@ export function ConfirmProvider({ children }) {
         busy={busy}
         onConfirm={handleConfirm}
       />
+      </Suspense>
+      )}
     </ConfirmContext.Provider>
   );
 }
