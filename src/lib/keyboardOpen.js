@@ -16,10 +16,13 @@
 //     полосы: разбор ниже, и он несущий.
 //
 // The signal is VIEWPORT GEOMETRY, not input focus. The keyboard shrinks the
-// VISUAL viewport on every platform (the app's meta is
-// `interactive-widget=overlays-content`, so the LAYOUT viewport deliberately
-// stays put); we flag it open when the height drops well below the tallest
-// height seen in the current orientation. Focus was the first attempt and it was racy:
+// VISUAL viewport on every platform — that is the one thing both engines agree
+// on. (The app's meta is `interactive-widget=resizes-content`: on Chrome the
+// LAYOUT viewport shrinks with it, on the iOS engine the directive is not
+// supported at all and the layout viewport stays put. The `overlays-content`
+// variant was tried on this branch and rolled back as unverified on device.)
+// We flag it open when the height drops well below the tallest height seen in
+// the current orientation. Focus was the first attempt and it was racy:
 // on mobile, tapping the bottom nav can restore focus to the last field, which
 // re-hid the nav the instant it was pressed. Geometry does not move when you tap
 // a button.

@@ -3,7 +3,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Input } from '@/design/Input';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { PickerSheet, usePickerFlight } from '@/components/ui/PickerSheet';
+import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import GeoAttribution from '@/components/common/GeoAttribution';
 
 /**
@@ -108,8 +108,9 @@ export default function Autocomplete({
   // Признак не «список пуст», а «на ЭТОТ текст пришёл пустой ответ».
   const [settled, setSettled] = useState('');
   const [highlighted, setHighlighted] = useState(-1);
-  // Перелёт поля — у поверхности (`usePickerFlight`), здесь только вызовы.
-  const { flyRef, slotRef, capture, flying } = usePickerFlight(sheetOpen);
+  // Дисциплина фокуса — у поверхности (`usePickerFocus`), здесь только вызовы:
+  // «открыть в жесте» и «выбор сделан». Второго экземпляра правила нет.
+  const { searchRef, openInGesture, release } = usePickerFocus();
   const timerRef = useRef(null);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
@@ -153,7 +154,7 @@ export default function Autocomplete({
   };
 
   const pick = (r) => {
-    flyRef.current?.querySelector('input')?.blur();
+    release();
     setOpen(false);
     setSheetOpen(false);
     setResults([]);
@@ -212,26 +213,6 @@ export default function Autocomplete({
     </button>
   ));
 
-  /* ...и САМ ЛИСТ тоже один — вместе с контейнером, ролью и `id`, на который
-     ссылается `aria-controls`. Вторая копия контейнера (она тут была ровно один
-     заход) — это не «почти то же самое»: у неё свои условия показа пустоты и
-     атрибуции, то есть развилка поведения, которую никто не увидит, пока экраны
-     не разъедутся.
-     Условия здесь СИЛЬНЕЕ, и на десктопе это ничего не меняет: попап открыт
-     только при `results.length > 0` (`isOpen`), значит `noMatches` там не
-     наступает по построению, а `results.length > 0` у атрибуции — тавтология. */
-  const listEl = (
-    <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
-      {rows}
-      {/* Пусто — только когда искать УЖЕ было что: до порога лист молчит, иначе
-          «ничего не найдено» встречало бы человека до первой буквы. */}
-      {noMatches && <div className="ss-empty">{t('common.not_found')}</div>}
-      {/* Атрибуция обязательна там, где показаны данные поставщика, — на пустом
-          экране ей нечего атрибутировать. */}
-      {attribution && results.length > 0 && <GeoAttribution />}
-    </div>
-  );
-
   // Общие атрибуты комбобокса — на том поле, которое В ДАННЫЙ МОМЕНТ принимает
   // ввод (на десктопе это поле в разметке, на телефоне — поле в шторке).
   const comboAria = {
@@ -244,44 +225,89 @@ export default function Autocomplete({
 
   if (isPhone) {
     const closeSheet = () => { setSheetOpen(false); setOpen(false); setHighlighted(-1); };
+    const openSheet = () => openInGesture(setSheetOpen);
     return (
       <>
-        {/* ★★ ОДНО ПОЛЕ, КОТОРОЕ УЛЕТАЕТ НАВЕРХ. Не триггер и его двойник в
-            шторке, а тот же самый узел: тапнул — клавиатуру поднял НАТИВНЫЙ тап
-            по настоящему полю, каретка родилась в нём и никуда не переезжает,
-            поле поехало к верху экрана, под ним раскрылся список.
-            Отсюда исчезают все задачи, которые мы решали пять заходов: ловить
-            жест синхронным коммитом (клавиатуру даёт платформа), переносить
-            фокус между двумя полями (второго нет), объяснять каретке, где встать
-            (она всё время в одном элементе). Кода стало меньше, а не больше. */}
+        {/* ★ ТРИГГЕР — КНОПКА, А НЕ ТЕКСТОВОЕ ПОЛЕ, И ЭТО НЕСУЩЕЕ.
+            Облик тот же: та же коробка `<Input>`, тот же скин, те же декорации —
+            флаг выбранной страны, «×», состояние валидации из `inputProps`.
+            Меняется РОЛЬ контрола: он открывает выбор, а не принимает ввод.
+
+            Поле-триггер тревожит саму страницу, и неизбежно. Тап фокусирует его,
+            платформа поднимает клавиатуру, вьюпорт раскладки ужимается под неё и
+            браузер доскролливает страницу к сфокусированному полю — всё это ДО
+            того, как шторка появилась. Шторка накрывает уже уехавшую страницу, а
+            на закрытии та возвращается: «страницу раздёргивает клавиатурой»,
+            хотя внутри шторки не двигается ничего. Полный рост тут бессилен —
+            дёргается не шторка, а то, что под ней.
+            Именно поэтому панели города и события (`.lp-sheet`) страницу не
+            тревожили никогда: их открывают кликом по строке, и на странице не
+            остаётся ничего сфокусированного.
+            У кнопки клавиатуре подниматься не над чем, а доскролливать как к
+            полю ввода — нечего. Клавиатура целиком уезжает внутрь шторки,
+            которая эту страницу и закрывает.
+
+            Цена — ровно одна, и она в приложении УЖЕ принята (валюта, язык): на
+            iOS клавиатура поднимается не тапом по триггеру, а когда тронешь поле
+            поиска внутри шторки. Так ведут себя системные пикеры. Обменивать её
+            обратно на спокойную страницу нельзя: платформа поднимает клавиатуру
+            только по настоящему тапу в настоящее текстовое поле, а единственное
+            такое поле до открытия шторки — это поле НА СТРАНИЦЕ. */}
         <Input
-          /* Летит ОБЁРТКА самого примитива, а не своя вокруг него: `boxRef` и
-             `className` у `<Input>` для этого и существуют — обёртка там уже
-             есть, и вторая означала бы, что декорации поля (иконка, кольцо
-             загрузки) остались в одной коробке, а летит другая. */
-          boxRef={flyRef}
-          className={flying ? 'ss-fly' : ''}
+          as="button"
           icon={icon}
-          loading={loading}
-          value={inputValue || ''}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => { if (disabled) return; capture(); setSheetOpen(true); }}
-          placeholder={placeholder}
+          onClick={() => { if (!disabled) openSheet(); }}
           disabled={disabled}
-          aria-expanded={isOpen}
-          {...comboAria}
+          role="combobox"
+          /* Попап у этого комбобокса — ДИАЛОГ, а не лист: сам лист живёт внутри
+             шторки и вместе с ней размонтирован, пока она закрыта. Без
+             `aria-haspopup` комбобокс объявляет попап-по-умолчанию (`listbox`),
+             которого в дереве нет, и скринридер обещает лист, которого не будет. */
+          aria-haspopup="dialog"
+          aria-expanded={sheetOpen}
+          data-empty={inputValue ? undefined : ''}
           {...inputProps}
-        />
+        >
+          {/* У кнопки нет атрибута `placeholder`, поэтому подпись — её содержимое.
+              «Не заполнено» объявлено СОСТОЯНИЕМ контрола (`data-empty`), а не
+              обёрткой вокруг текста: обёртка была бы узлом разметки ради цвета,
+              а тон пустого поля — ровно то, что `::placeholder` делает у
+              настоящего поля, то есть свойство контрола. */}
+          {inputValue || placeholder}
+        </Input>
         <PickerSheet
           open={sheetOpen}
           onOpenChange={(o) => { if (!o) closeSheet(); }}
           title={title || t('common.search')}
-          /* Слот ПУСТ намеренно: поле в него не кладут, оно садится НАД ним,
-             долетев. Слот держит его рост, чтобы лист начинался там, где надо. */
-          search={<div className="ss-search" ref={slotRef} />}
+          search={(
+            <div className="ss-search">
+              <Input
+                ref={searchRef}
+                icon={icon}
+                loading={loading}
+                /* Без `autoFocus`: он срабатывает на монтировании, то есть уже
+                   ПОСЛЕ жеста, и клавиатуры не даёт. Фокус ставит триггер, внутри
+                   тапа (разбор выше, у `openSheet`). */
+                value={inputValue || ''}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                placeholder={placeholder}
+                aria-expanded={isOpen}
+                {...comboAria}
+                {...inputProps}
+              />
+            </div>
+          )}
         >
-          {listEl}
+          <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
+            {rows}
+            {/* Пусто — только когда искать УЖЕ было что: до порога лист молчит,
+                иначе «ничего не найдено» встречало бы человека до первой буквы. */}
+            {noMatches && <div className="ss-empty">{t('common.not_found')}</div>}
+            {/* Атрибуция обязательна там, где показаны данные поставщика, —
+                на пустом экране ей нечего атрибутировать. */}
+            {attribution && results.length > 0 && <GeoAttribution />}
+          </div>
         </PickerSheet>
       </>
     );
@@ -322,7 +348,10 @@ export default function Autocomplete({
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
-        {listEl}
+        <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
+          {rows}
+          {attribution && <GeoAttribution />}
+        </div>
       </PopoverContent>
     </Popover>
   );
