@@ -32,13 +32,17 @@ import CountryFlag from '@/components/common/CountryFlag';
  * Родственник, который НЕ сюда: `CitySearch` — выбор БЕЗ состояния («сообщи, что
  * выбрали, и очистись»). Разные контракты, а не разные копии одного.
  *
- * `blurOnPick` — снять фокус с поля после выбора. На шаге 1 визарда дата вылета
- * схлопывается из ряда, пока поле города в фокусе (`:focus-within`); без снятия
- * фокуса она осталась бы спрятанной за уже заполненным полем.
+ * ФЛАГА `blurOnPick` БОЛЬШЕ НЕТ, И ЭТО НЕ ПОТЕРЯ ПОВЕДЕНИЯ. Нужен он был шагу 1
+ * визарда: там дата вылета схлопывается из ряда, пока поле города в фокусе
+ * (`:focus-within`). Но «выбор состоялся — поле отпускает фокус» это свойство
+ * ПИКЕРА, а не того экрана, который первым об него споткнулся, и живёт оно
+ * теперь в `Autocomplete.pick()` — для всех вызывателей и обеих поверхностей.
+ * Прежняя реализация вдобавок звала `document.activeElement.blur()` через кадр,
+ * то есть могла ударить по узлу, которому Radix уже вернул фокус.
  * Остаток пропов (`...rest`) уезжает НА ПОЛЕ — этим каналом едет состояние
  * валидации (`{...fieldState()}`) у города пересадки.
  */
-export default function CityPicker({ value, onChange, placeholder, autoFocus, blurOnPick, ...rest }) {
+export default function CityPicker({ value, onChange, placeholder, autoFocus, ...rest }) {
   const t = useT();
   const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
@@ -64,7 +68,6 @@ export default function CityPicker({ value, onChange, placeholder, autoFocus, bl
         // shows a country, not blank. This is the single point that enriches a raw
         // search result; downstream consumers already receive the derived name.
         onChange({ ...city, country: localizeCountry(city.country_code, lang), timezone: tzFromCoords(city.latitude, city.longitude) });
-        if (blurOnPick) requestAnimationFrame(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       }}
       renderRow={cityOptionRow}
       placeholder={placeholder || t('planner.city_search_ph')}

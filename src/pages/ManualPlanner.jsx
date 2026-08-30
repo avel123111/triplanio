@@ -311,7 +311,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       <div className="field-row field-row--aside">
         <div className="field">
           <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
-          <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} blurOnPick />
+          <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} />
         </div>
         <div className="field">
           <label className="field__label">{t('planner.departure_date')}</label>
