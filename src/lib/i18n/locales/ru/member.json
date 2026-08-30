@@ -20,6 +20,7 @@
   "join_invited": "Тебя пригласили в путешествие",
   "join_joining": "Присоединяем тебя к поездке<span class=\"grad\">…</span>",
   "join_joining_sub": "Секунду — готовим план.",
+  "join_signin_alt": "Создать аккаунт",
   "join_signin_btn": "Войти и присоединиться",
   "join_signin_lede": "Войди или создай аккаунт — и сразу окажешься в общем плане.",
   "join_signin_title": "Присоединяйся к поездке в <span class=\"grad\">Triplanio</span>",
@@ -38,6 +39,5 @@
   "status_declined": "Отклонил",
   "status_pending": "Ожидает",
   "tab_email": "По e-mail",
-  "you_self": "Я",
-  "join_signin_alt": "Создать аккаунт"
+  "you_self": "Я"
 }
