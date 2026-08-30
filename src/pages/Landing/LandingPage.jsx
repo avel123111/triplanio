@@ -5,7 +5,7 @@ import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
 import { useJsonLd, faqPageLd } from '@/components/site/jsonLd';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
-import { WORLD_MAP_SVG } from './WorldMapSvg';
+import worldMapUrl from './world-map.svg?url';
 import {
   SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
 } from '@/components/site/SiteChrome';
@@ -820,6 +820,46 @@ function Audience() {
   );
 }
 
+// ★ КАРТА МИРА — ФАЙЛ-РЕСУРС, А НЕ 57 КБ СТРОКИ В КОДЕ (TRIP-475).
+//
+// Раньше контуры ~250 стран лежали в `WorldMapSvg.js` шаблонной строкой, то есть
+// ехали в ГЛАВНОМ чанке: их качал и РАЗБИРАЛ КАК JAVASCRIPT каждый, кто открыл
+// лендинг, — при том что карта живёт в секции «Архив», ниже первого экрана.
+// 57 262 байта исходника ≈ 19 КБ на проводе с критического пути.
+//
+// Теперь это `world-map.svg` рядом, который эмитит сборщик: файл получает хеш в
+// имени (значит вечный кэш безопасен), лежит отдельно и парсером JS не проходит.
+//
+// ★ ПОЧЕМУ `fetch` + вставка, А НЕ `<img src>`. Карту красит CSS СТРАНИЦЫ:
+// `.world-svg path{fill:…;stroke:var(--white)}` и `.world-svg [data-v]{fill:var(--brand)}`
+// (site.css). Внутрь `<img>` стили документа не достают — страны потеряли бы и
+// заливку, и токены. Вшить цвета в сам файл значит завести ВТОРОЙ источник для
+// `--brand`, который молча разойдётся с дизайн-системой. Поэтому SVG приезжает
+// текстом и вставляется в документ — ровно как и раньше, только не из бандла.
+//
+// Грузим по приближению к вьюпорту (запас 600 px — до того, как секцию увидят),
+// тем же IntersectionObserver, что и вся зона. Не приехала — секция живёт
+// дальше: карта иллюстративная, легенда и чипы под ней самостоятельны.
+function WorldMap() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const host = ref.current;
+    if (!host) return undefined;
+    let alive = true;
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((en) => en.isIntersecting)) return;
+      io.disconnect();
+      fetch(worldMapUrl)
+        .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`world-map ${r.status}`))))
+        .then((svg) => { if (alive && host.isConnected) host.innerHTML = svg; })
+        .catch(() => { /* иллюстрация: без неё секция полноценна */ });
+    }, { rootMargin: '600px 0px' });
+    io.observe(host);
+    return () => { alive = false; io.disconnect(); };
+  }, []);
+  return <div className="world-map-holder" ref={ref} />;
+}
+
 function Archive() {
   const t = useT();
   return (
@@ -827,7 +867,7 @@ function Archive() {
       <div className="wrap archive-grid">
         <div className="rv-l">
           <div className="world-card">
-            <div className="world-map-holder" dangerouslySetInnerHTML={{ __html: WORLD_MAP_SVG }} />
+            <WorldMap />
             <div className="world-foot">
               <span className="lg"><i style={{ background: 'var(--brand)' }} /><span>{t('landing.wm.visited')}</span></span>{/* inline-style-exempt: legend swatch colour */}
               <span className="lg"><i style={{ background: '#E2ECF5' }} /><span>{t('landing.wm.next')}</span></span>{/* inline-style-exempt: legend swatch colour */}
