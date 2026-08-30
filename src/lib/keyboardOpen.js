@@ -15,25 +15,25 @@
 //     для поверхности, которая обязана лечь ровно в неё (полноростная шторка
 //     пикера). Разбор — ниже, это не «ещё одна удобная переменная».
 //
-// The signal is VIEWPORT GEOMETRY, not input focus. The app's viewport meta uses
-// `interactive-widget=resizes-content`, so the keyboard SHRINKS the visual
-// viewport; we flag it open when the height drops well below the tallest height
-// seen in the current orientation. Focus was the first attempt and it was racy:
+// The signal is VIEWPORT GEOMETRY, not input focus. The keyboard shrinks the
+// VISUAL viewport on every platform (the app's meta is
+// `interactive-widget=overlays-content`, so the LAYOUT viewport deliberately
+// stays put); we flag it open when the height drops well below the tallest
+// height seen in the current orientation. Focus was the first attempt and it was racy:
 // on mobile, tapping the bottom nav can restore focus to the last field, which
 // re-hid the nav the instant it was pressed. Geometry does not move when you tap
 // a button.
 //
 // ★★ ПОЧЕМУ ГЕОМЕТРИЯ ПУБЛИКУЕТСЯ, А НЕ ВЫЧИСЛЯЕТСЯ CSS-ЕДИНИЦАМИ (TRIP-484 §4).
-// `interactive-widget=resizes-content` в мета-вьюпорте ЧЕСТЕН ТОЛЬКО ДЛЯ CHROME.
-// iOS Safari эту директиву не поддерживает вовсе: клавиатура там сжимает ТОЛЬКО
-// визуальный вьюпорт, а вьюпорт РАСКЛАДКИ остаётся во весь экран. А `position:
-// fixed`, `100dvh` и `top/bottom` считаются именно от вьюпорта РАСКЛАДКИ.
-// Отсюда прод-баг, стоивший двух заходов: полноростная шторка на Android честно
-// ужималась под клавиатуру, а на iOS оставалась 844 px высотой, клавиатура
-// накрывала её низ, и Safari, чтобы показать поле в фокусе, ПАНОРАМИРОВАЛ
-// визуальный вьюпорт — то есть уводил всю приклеенную шторку вверх за край
-// экрана. Ни момент фокуса, ни `preventScroll` этого не лечат: браузер двигает
-// не элемент, а то, через что на элемент смотрят.
+// `position: fixed`, `100dvh` и `top/bottom` считаются от вьюпорта РАСКЛАДКИ, а
+// он под клавиатуру НЕ ужимается — намеренно (`interactive-widget=overlays-content`:
+// именно это и оставляет страницу под шторкой неподвижной). Значит полноэкранная
+// поверхность, заданная в единицах раскладки, накрывается клавиатурой снизу; а
+// когда Safari панорамирует визуальный вьюпорт к полю в фокусе, приклеенная
+// поверхность уезжает ещё и за ВЕРХНИЙ край. Ни момент фокуса, ни `preventScroll`
+// этого не лечат: браузер двигает не элемент, а то, через что на элемент смотрят.
+// (До перехода на `overlays-content` этот дефект был виден только на iOS — Safari
+// директиву `resizes-content` не поддерживал и вёл себя так всегда.)
 // Единственная величина, знающая правду на ОБЕИХ платформах, — сам
 // `visualViewport`. Поверхность, которой отдали его высоту и смещение, ложится
 // ровно в видимую область, и панорамировать браузеру становится нечего.

@@ -28,11 +28,12 @@ import { useT } from '@/lib/i18n/I18nContext';
  *  подавления приходилось ставить фокус руками — эффектами, кадрами и синхронными
  *  коммитами. Всё это удалено: у задачи «поле в фокусе при открытии шторки» есть
  *  штатный хук, и теперь он доступен.
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, onOpenAutoFocus?: (e: any) => void, onCloseAutoFocus?: (e: any) => void }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, onOpenAutoFocus, onCloseAutoFocus }) {
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, onOpenAutoFocus?: (e: any) => void, onCloseAutoFocus?: (e: any) => void,
+ *   repositionInputs?: boolean }} p */
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, onOpenAutoFocus, onCloseAutoFocus, repositionInputs }) {
   const t = useT();
   return (
-    <SheetRoot open={open} onOpenChange={onOpenChange}>
+    <SheetRoot open={open} onOpenChange={onOpenChange} repositionInputs={repositionInputs}>
       <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onOpenAutoFocus={onOpenAutoFocus} onCloseAutoFocus={onCloseAutoFocus}>
         {title ? (
           <div className="sheet-h">

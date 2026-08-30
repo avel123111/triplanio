@@ -1762,7 +1762,8 @@ function CityAdder({ onAdd, hasStart, hasEnd }) {
 
   // Телефон: кнопка в списке + композер в КАНОН-шите <Sheet> — ровно то, что
   // делает <SearchSelect> (поле поиска в шите). Нижний шит + `interactive-widget=
-  // resizes-content` держат поле над клавиатурой платформой, без своего скролла.
+  // overlays-content` + штатный подъём vaul держат поле над клавиатурой, без
+  // своего скролла.
   if (isPhone) {
     return (
       <>
