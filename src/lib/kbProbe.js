@@ -93,12 +93,18 @@ export function startKbProbe() {
     const inner = track('inner', window.innerHeight);
     const visual = track('visual', vv ? Math.round(vv.height) : NaN);
     const offTop = track('offTop', vv ? Math.round(vv.offsetTop) : NaN);
+    // ⚠️ МЕРИТЬ НАДО ТО, ЧТО ДВИГАЕТСЯ. Первая редакция брала оболочку экрана —
+    // и честно печатала «размаха нет», потому что оболочка и правда стоит. Ездил
+    // `.peek-sheet` (трёхдетентный шит над картой), которого в замере не было.
+    const peekEl = document.querySelector('.peek-sheet');
     const pageEl = document.querySelector('.flow-page, .app-shell, #root > *');
     const pr = pageEl && pageEl.getBoundingClientRect();
     if (pr) { track('pageTop', Math.round(pr.top)); track('pageBot', Math.round(pr.bottom)); }
+    const kr = peekEl && peekEl.getBoundingClientRect();
+    if (kr) { track('peekTop', Math.round(kr.top)); track('peekH', Math.round(kr.height)); }
     const bs = document.body.style;
 
-    note(`in ${inner} vis ${visual} off ${offTop} page ${pr ? Math.round(pr.top) + '..' + Math.round(pr.bottom) : '—'}`);
+    note(`vis ${visual} peek ${kr ? Math.round(kr.top) + '/' + Math.round(kr.height) : '—'} page ${pr ? Math.round(pr.top) + '..' + Math.round(pr.bottom) : '—'}`);
 
     box.textContent = [
       `inner   ${show('inner', inner)}`,
@@ -109,6 +115,7 @@ export function startKbProbe() {
       `kbd     ${document.documentElement.hasAttribute('data-keyboard')}`,
       `page    ${show('pageTop', pr ? Math.round(pr.top) : '—')} .. ${show('pageBot', pr ? Math.round(pr.bottom) : '—')}`,
       `sheet   ${rect('.sheet, .lp-sheet')}`,
+      `peek    верх ${show('peekTop', kr ? Math.round(kr.top) : '—')}  выс ${show('peekH', kr ? Math.round(kr.height) : '—')}`,
       '— история —',
       ...log,
     ].join('\n');
