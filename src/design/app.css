@@ -2862,7 +2862,7 @@ button.input[data-empty] { color: var(--muted-2); }
    всплывает к верхнему краю более высокого поля. */
 .field-row--aside { grid-template-columns: 7fr 3fr; align-items: start; transition: grid-template-columns .18s var(--ease-out); }
 /* На фокусе ПЕРВОГО поля (город старта) строка ПЛАВНО схлопывает правый контрол-
-   «аси́д» (дату) — поле и его дропдаун занимают всю ширину, как is-editing у рядов
+   «аси́д» (дату) — поле и его дропдаун занимают всю ширину
    шага 2. Это канон «раздвижение по фокусу» (TRIP-337), переиспользуемый дальше.
    Анимируем ТРЕК грида 3fr→0fr (fr↔fr интерполируется на современных движках; на
    очень старых — жёсткий схлоп, но рабочий), а не `display:none` (его анимировать
@@ -4562,12 +4562,21 @@ button.input[data-empty] { color: var(--muted-2); }
 .te-row.te-row--plan .te-step { opacity: 1; }
 .te-row.te-row--plan .te-step--del { color: var(--muted); }
 .te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
-/* While a row is in the picker, collapse the grip + number columns so the search
-   field (and its dropdown) spans the whole row — no longer cramped by the
-   stepper/icon on desktop or squeezed on mobile. */
-.te-row.te-row--plan.is-editing { grid-template-columns: minmax(0, 1fr) auto; }
-.te-row.te-row--plan.is-editing .te-grip,
-.te-row.te-row--plan.is-editing .te-row__num { display: none; }
+/* ★ СОСТОЯНИЕ «РЯД РЕДАКТИРУЕТ» УДАЛЕНО ВМЕСТЕ С САМИМ РЕЖИМОМ (TRIP-484 §4).
+   Ряд визарда больше не превращается в поле города: добавление уехало в общий
+   композер, и схлопывать колонки грипа и номера стало не подо что. Правило
+   `.te-row--plan.is-editing` держало ровно это схлопывание — оно ушло, и вместе
+   с ним ушли объявления, которые оно вносило в каскад соседних классов. Гард 2n
+   поймал бы осиротевшее правило, если бы я его оставил; гард 2p видит остаток
+   объявлений и требует назвать каждое.
+   visual-diff-exempt: .is-editing display — состояния «ряд редактирует» больше нет
+   visual-diff-exempt: .is-editing grid-template-columns — там же
+   visual-diff-exempt: .te-grip display — грип больше не прячется: ряд не становится полем
+   visual-diff-exempt: .te-row__num display — номер по той же причине снова виден всегда
+   visual-diff-exempt: .te-row--plan display — ключ со стороны предка того же правила
+   visual-diff-exempt: .te-row--plan grid-template-columns — колонки ряда больше не схлопываются
+   visual-diff-exempt: .te-row display — тот же ключ со стороны базового класса
+   visual-diff-exempt: .te-row grid-template-columns — там же */
 /* Mobile: drop the grip column (long-press the row still reorders). */
 @media (max-width: 640px) {
   .te-row.te-row--plan { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px; }
@@ -5274,9 +5283,12 @@ button.input[data-empty] { color: var(--muted-2); }
      вместе с `.sheet--full` одним правилом (см. «ПОЛНОЭКРАННАЯ ПОВЕРХНОСТЬ»
      ниже по файлу) — это ОДНА И ТА ЖЕ вещь, и второй экземпляр правила разъехался
      бы с первым.
-     visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} top — верх от ВИДИМОЙ полосы, а не от раскладки: иначе панель уезжает за край при панорамировании Safari
-     visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} bottom — низ задаёт height от видимой полосы, пара top/bottom от раскладки врёт на iOS
-     visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} height — та самая высота видимой полосы (на Android тождественно прежнему) */
+     Маркеров обхода тут НЕТ намеренно: коробку объявляет общее правило ниже, и
+     ключи `top`/`bottom`/`height` закрыты ЕГО маркерами. Второй экземпляр тех же
+     ключей стоял здесь и объяснял ОБРАТНОЕ («верх от видимой полосы») — то есть
+     редакцию, которая не поехала: сегодня это `height: 100dvh`, вьюпорт
+     РАСКЛАДКИ. Проверено мутацией: без этих трёх строк гард 2p зелёный, значит
+     они ничего не гасили, а только удваивали бюджет обхода. */
   .lp-sheet {
     position: fixed; left: 0; right: 0;
     width: 100%;

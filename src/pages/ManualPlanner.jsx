@@ -17,7 +17,6 @@ import CountryFlag from '@/components/common/CountryFlag';
 import { tzFromCoords } from '@/lib/timezone';
 import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
-import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
@@ -32,7 +31,12 @@ import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { CityAnchorRow } from '@/pages/create/anchors';
+import CityAdder from '@/components/cities/CityAdder';
 import CityPicker from '@/components/cities/CityPicker';
+import {
+  startOf, endOf, cityNodesOf, isStayNode, hasExplicitEnd, isAnchorNode,
+  insertNode, withNights, withKind, recomputeDates, toCitiesPayload, makeNode, asCity,
+} from '@/pages/create/routeModel';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
@@ -59,10 +63,11 @@ const STEPS = [
 
 // Storage key is user- and method-specific so the manual and AI drafts don't
 // leak into each other (the same flow component serves both routes).
-// `-v2-`: the draft shape changed (returnMode/returnCity/finalPoint → single `end`
-// node). Bumping the key invalidates any old-shape draft still in sessionStorage
-// instead of shipping a one-off migration mapper for a minutes-lived cache.
-const storageKey = (userId, method = 'manual') => `triplanio-planner-v2-${method}-${userId || 'guest'}`;
+// `-v3-`: форма черновика сменилась снова — три переменные (`home`/`cities`/`end`)
+// стали ОДНИМ списком узлов с видом у каждого (`create/routeModel`, TRIP-484 §4).
+// Ключ поднимается, а не мигрируется: черновик живёт минуты, и мапперу старой
+// формы пришлось бы пережить обе, чтобы обслужить вкладку, открытую в обед.
+const storageKey = (userId, method = 'manual') => `triplanio-planner-v3-${method}-${userId || 'guest'}`;
 
 // Same physical city (external directory id / geonameid, else name — тёзки-города в
 // разных странах ≠ один город). Used by StepReturn to decide which return card looks
@@ -118,12 +123,11 @@ function computeAutoTitle(home, cities, t) {
   return startName || lastName || t('trips.new');
 }
 
-// A 0-night stop is a same-day layover/waypoint (mirrors the editor's
-// kind:'waypoint') — one predicate, so the row, the map pin and the save payload
-// can't drift on what counts as a waypoint.
-function isPlannerWaypoint(city) {
-  return (+city.nights || 0) === 0 && !!city.city_name;
-}
+// Вид узла объявлен НА УЗЛЕ (`kind`), а не выводится из ночей: связь «ноль ночей
+// = пересадка» держит `routeModel.withNights`/`withKind` — одно место на обе
+// ручки (степпер в ряду и плитка вида в шторке), поэтому разойтись им нечем.
+// Прежний предикат `isPlannerWaypoint(city)` был вторым толкованием того же
+// факта и удалён вместе с моделью, которая его требовала.
 
 // City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
 // null when the trip start isn't set yet. Shared by the city row and the map
@@ -135,72 +139,44 @@ function cityDateRange(city, lang) {
   return start ? (end ? `${start} – ${end}` : start) : null;
 }
 
-function recomputeDates(list, anchorISO) {
-  // Chain anchor = the STABLE trip-start date (the top "Старт" control), NOT the
-  // current first element's date. Mirrors the editor, which anchors on the start
-  // anchor's own start_date (TripStructureEdit: layoutDates(..., d.startDate)) —
-  // a value independent of city order. Deriving the anchor from list[0] re-anchored
-  // the whole chain to whatever city was dragged to the top / left after deleting
-  // the first one (TRIP-216). Fallback to list[0].startDate keeps callers that don't
-  // yet have a trip start working; bail only when there's no anchor at all.
-  const base = anchorISO || list[0]?.startDate;
-  if (list.length === 0 || !base) return list;
-  // Pre-creation planner cities are a flat nights-only chain (no transfers yet → no
-  // gap, no waypoints/anchors). Adapt to the shared canonical layout (lib/tripDates,
-  // mirroring server recompute_trip) so the planner and the editor produce identical
-  // dates on identical input — one date engine, no second implementation.
-  // Dates come purely from `base` + each city's nights (layoutDates walks a cursor);
-  // the per-node start_date seed is unused here, so it's omitted.
-  const nodes = list.map((c) => ({ kind: 'transit', nights: +c.nights || 0, gap: 0 }));
-  const laid = layoutDates(nodes, base);
-  // Lay out EVERY city (index 0 too) from the anchor: layoutDates puts city 0 back
-  // on `base`, so no stale first-city date can leak through after a reorder.
-  return list.map((c, i) => ({ ...c, startDate: laid[i].start_date }));
-}
 
 // CityPicker + CityAnchorRow live in ./create/anchors (shared by the planner
 // steps and the AI panel — one picker/anchor, no circular import).
 
+/* floor-exempt: dsshare +2 — ЗАМЕР, А НЕ ОЦЕНКА: числитель 1455 → 1436 (−19),
+   знаменатель 3390 → 3358 (−32), доля 42.92% → 42.76%. Разметка не добавлена —
+   она УДАЛЕНА: режим редактирования в ряду (своё поле города, «✓», staged) и
+   инлайн-пикер в плитке старта были дублями общего композера. Удалённые дубли
+   оказались плотнее по ДС, чем среднее по репозиторию (19 из 32 листьев против
+   42.9%), поэтому доля падает ровно оттого, что дублей стало меньше. Ни одно из
+   остальных девяти чисел пола не сдвинулось: классов 1216=, namespace 118=,
+   инлайнов 480=, токенов 177=. Ждёт явного апрува Pavel. */
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
 // City row built from the EDITOR's primitives (.te-row / .te-grip / .te-row__num /
 // .te-citycell / .te-cityname / .te-dts + <Stepper> nights) so the planner route
 // looks and behaves identically to the structural editor — same bold city
-// names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
-// final-point toggle lives once in StepCities (not per row).
-// Planner route row. Owns its editing state + pick/remove/nights handlers, then
-// delegates LAYOUT to the shared <CityRowBase> (variant="planner") so the planner
-// list and the structural editor render the SAME row skeleton — one component,
-// two variants. The trailing actions (nights stepper + delete) are the only
-// per-screen difference; the final-point toggle still lives on the last card.
-function CityRow({ idx, city, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
+// names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts.
+//
+// ★ РЯД БОЛЬШЕ НЕ РЕДАКТИРУЕТ, И ЭТО НЕСУЩЕЕ (TRIP-484 §4). Раньше он держал
+// собственный режим `editing` со своим пикером внутри, собственный `staged`
+// (выбранный, но ещё не записанный город) и кнопку «✓» — то есть ПОДТВЕРЖДЕНИЕ
+// ТОГО ЖЕ ГОРОДА, который только что выбрали: между выбором и записью не
+// происходило ничего. Добавление уехало в общий композер (`cities/CityAdder`,
+// тот же, что в редакторе маршрута), где между выбором и записью стоит выбор
+// ВИДА точки, — и подтверждение стало осмысленным вместо переспроса.
+// Ряд теперь показывает готовый узел и правит у него ровно две вещи: ночи и
+// порядок. Смена города = удалить и добавить заново — ровно как в редакторе.
+function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
-  const invalid = !!city.city_name && city.latitude == null;
-  const nights = +city.nights || 0;
-  // 0 nights = a layover/waypoint (same-day stop) — mirrors the editor: dashed
-  // transfer-tinted node + a "Пересадка" badge instead of a nights range.
-  // (predicate + date range come from the shared helpers above)
-  const isWaypoint = isPlannerWaypoint(city);
-  const dateRange = cityDateRange(city, lang);
-  // Empty rows open in the picker; once a city is chosen it shows read-only
-  // (change a city by deleting + re-adding) so it can never get stuck as an input.
-  const [editing, setEditing] = useState(!city.city_name);
-  // Confirm-on-add: a search result is STAGED (shown in the field) and only
-  // written into the plan when the user taps "Добавить" — an accidental tap on a
-  // search result no longer commits a city.
-  const [staged, setStaged] = useState(null);
+  const invalid = !!node.city_name && node.latitude == null;
+  const nights = +node.nights || 0;
+  // Вид приходит С УЗЛА, а не выводится из ночей: у пересадки пунктирный узел с
+  // тоном переезда и бейдж вместо диапазона дат — как в редакторе.
+  const isWaypoint = node.kind === 'waypoint';
+  const dateRange = cityDateRange(node, lang);
   const stopArm = (e) => e.stopPropagation();
-
-  const cityFields = (p) => ({ city_name: p.city_name, city_name_en: p.city_name_en, geonameid: p.geonameid ?? null, name_i18n: p.name_i18n || null, country: p.country || localizeCountry(p.country_code, lang), country_code: p.country_code, latitude: p.latitude, longitude: p.longitude, timezone: p.timezone, external_city_id: p.external_city_id });
-  // Picking a result stages it (typing again clears the stage); confirm commits.
-  const onSearchPick = (picked) => setStaged(picked || null);
-  const confirmStaged = () => {
-    if (!staged) return;
-    onChange(cityFields(staged));
-    setStaged(null);
-    setEditing(false);
-  };
 
   const grip = (
     <span className="te-grip" role="button" tabIndex={0} aria-label={t('planner.drag')} title={t('planner.drag')}
@@ -219,41 +195,29 @@ function CityRow({ idx, city, isDragging, isPressing, active = false, onArm, onC
   return (
     <CityRowBase
       variant="planner"
-      // `is-editing` collapses the grip + number columns so the search field (and
-      // its dropdown) spans the whole row — no longer cramped by the stepper/icon.
       // `is-hover` mirrors the map pin's hover/selected state (Map-lens parity).
-      className={[editing ? 'is-editing' : '', active ? 'is-hover' : ''].filter(Boolean).join(' ')}
+      className={active ? 'is-hover' : ''}
       dragging={isDragging}
       pressing={isPressing}
       invalid={invalid}
       onArm={onArm}
-      stopCellPointer={editing}
       grip={grip}
       lead={lead}
-      name={editing ? undefined : city.city_name}
-      country={editing ? undefined : city.country}
-      dates={editing ? undefined : dates}
-      editingSlot={editing
-        ? <CityPicker value={staged || (city.city_name ? city : null)} onChange={onSearchPick} placeholder={t('planner.city_ph')} autoFocus />
-        : undefined}
+      name={node.city_name}
+      country={node.country}
+      dates={dates}
     >
-      {editing ? (
-        // Icon-only primary button (canon <Btn>, no text) attached at the end of the
-        // search field — full-height control, so it's a proper tap target on mobile
-        // without being oversized. Wrapped so the row's pointerdown doesn't arm a drag
-        // (Btn does not forward onPointerDown).
-        <span onPointerDown={stopArm}>
-          <Btn variant="primary" icon="check" ariaLabel={t('common.add')} title={t('common.add')} disabled={!staged} onClick={(e) => { e.stopPropagation(); confirmStaged(); }} />
-        </span>
-      ) : (
-        <NightsStepper
-          value={nights}
-          onMinus={() => onChange({ nights: Math.max(0, nights - 1) })}
-          onPlus={() => onChange({ nights: Math.min(30, nights + 1) })}
-          minusDisabled={nights <= 0}
-          plusDisabled={nights >= 30}
-        />
-      )}
+      {/* Степпер ночей — ЕДИНСТВЕННАЯ ручка вида в ряду: ноль ночей и есть
+          пересадка, и связь эту держит модель (`withNights`), а не этот файл.
+          Поэтому плитка вида в композере и степпер здесь не могут разойтись —
+          они пишут через одну функцию. */}
+      <NightsStepper
+        value={nights}
+        onMinus={() => onChange(withNights(node, nights - 1))}
+        onPlus={() => onChange(withNights(node, nights + 1))}
+        minusDisabled={nights <= 0}
+        plusDisabled={nights >= 30}
+      />
       <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
     </CityRowBase>
   );
@@ -395,48 +359,63 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, setHome, startDate, setStartDate, hoveredId = null, selectedId = null, onHover }) {
+function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null, selectedId = null, onHover }) {
   const t = useT();
-  const addCity = (preset = null) => {
-    const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
-    setCities(cs => recomputeDates([...cs, { id: Date.now(), ...base, startDate: cs[0]?.startDate || startDate || '', nights: preset?.nights || 3 }], startDate));
-  };
+  const { toast } = useToast();
 
-  const remove = (id) => setCities(cs => recomputeDates(cs.filter(c => c.id !== id), startDate));
+  // Все три ручки бьют в ОДИН список и гоняют ОДНУ раскладку дат — как в
+  // редакторе. Якоря в цепочку дат не входят: это знает модель, не эта функция.
+  const patch = (node) => setNodes(ns => recomputeDates(ns.map(n => (n.id === node.id ? node : n)), startDate));
+  const remove = (id) => setNodes(ns => recomputeDates(ns.filter(n => n.id !== id), startDate));
 
-  // Cities are laid contiguously from the FIXED trip start (city N starts where
-  // N-1 ends), so any nights / order change re-cascades - but the trip start
-  // itself never moves (only the top date control changes it).
-  const update = (id, patch) => setCities(cs => recomputeDates(cs.map(c => c.id === id ? { ...c, ...patch } : c), startDate));
+  // Добавление из общего композера: он отдаёт (город, вид), вставку делает модель
+  // по правилам редактора — старт в начало, финиш в конец, остальное ПЕРЕД
+  // финишем. Занятый якорь отказывает тем же тостом, что и редактор.
+  const add = (city, kind) => setNodes(ns => {
+    const next = insertNode(ns, makeNode(city, kind));
+    if (!next) {
+      toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });
+      return ns;
+    }
+    return recomputeDates(next, startDate);
+  });
 
   // Reorder via the SAME engine as the structural editor (useRouteDnD): pointer
   // drag (mouse-immediate / touch-long-press), FLIP slide, keyboard a11y — one
-  // implementation, no second copy to drift. Creation cities have no pinned ends,
-  // so every row is movable (isAnchor → false); a commit just reorders the list
-  // by id and re-cascades the dates through the shared layout engine.
+  // implementation, no second copy to drift.
+  // ★ ЯКОРЯ ТЕПЕРЬ НАСТОЯЩИЕ. Здесь стояла заглушка `isAnchor: () => false` —
+  // у визарда просто не было якорей в списке, чтобы их пиннить. Теперь они в
+  // списке, и хук пиннит их сам, тем же кодом, что в редакторе.
   const { draggingId, pressingId, displayNodes, setRowRef, armDrag, moveNodeById } = useRouteDnD({
-    ordered: cities,
-    isAnchor: () => false,
-    onCommitOrder: (ids) => setCities(cs => {
-      const byId = new Map(cs.map(c => [c.id, c]));
+    ordered: nodes,
+    isAnchor: isAnchorNode,
+    onCommitOrder: (ids) => setNodes(ns => {
+      const byId = new Map(ns.map(n => [n.id, n]));
       return recomputeDates(ids.map(id => byId.get(id)).filter(Boolean), startDate);
     }),
   });
 
-  // Добавили город → докручиваем к концу списка, чтобы пикер нового ряда не
-  // оставался за кадром. Тот же приём scrollIntoView, что у CityAdder в
-  // структурном редакторе (EditLens) — одна логика скролла на оба флоу. Скроллим
-  // ПОСЛЕДНИЙ элемент существующего контейнера (кнопку «Добавить ещё город»),
-  // которая стоит сразу под новым рядом — без отдельного якоря в разметке.
+  // Добавили город → докручиваем к концу списка, чтобы новый ряд не оставался за
+  // кадром. Тот же приём scrollIntoView, что у композера — одна логика скролла на
+  // оба флоу. Скроллим ПОСЛЕДНИЙ элемент контейнера (композер), который стоит
+  // сразу под новым рядом — без отдельного якоря в разметке.
   const listRef = useRef(/** @type {HTMLDivElement | null} */(null));
-  const prevCount = useRef(cities.length);
+  const prevCount = useRef(nodes.length);
   useEffect(() => {
-    const grew = cities.length > prevCount.current;
-    prevCount.current = cities.length;
+    const grew = nodes.length > prevCount.current;
+    prevCount.current = nodes.length;
     if (!grew) return;
     const id = setTimeout(() => listRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
     return () => clearTimeout(id);
-  }, [cities.length]);
+  }, [nodes.length]);
+
+  const hasStart = !!startOf(nodes);
+  const hasEnd = hasExplicitEnd(nodes);
+  // Нумеруются только города: у якорей номера нет ни в редакторе, ни здесь.
+  // Номер берётся из ЗАФИКСИРОВАННОГО порядка, а не из превью перетаскивания —
+  // иначе цифры прыгали бы под пальцем. Сверка по id, а не по ссылке: хук возит
+  // те же объекты, но полагаться на это в нумерации незачем.
+  const numberOf = (node) => cityNodesOf(nodes).findIndex((n) => n.id === node.id);
 
   return (
     <div>
@@ -452,84 +431,82 @@ function StepCities({ cities, setCities, home, setHome, startDate, setStartDate,
         <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} label={t('ai_plan.start')} />
       </h2>
 
-      {/* Start anchor — OPTIONAL. Empty → an inline "+ Указать старт" affordance
-          (one control for both flows: manual skip + AI no-origin).
-          Якорь и список - одна колонка: отступ между ними даёт шаг примитива, а
-          не поле, приписанное руками обеим веткам «пусто / есть города». */}
-      <div className="col">
-        <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
+      {/* ★ ОДИН СПИСОК: старт, города и финиш — РЯДЫ одного и того же перечня,
+          как в редакторе маршрута. Прежде старт стоял отдельной плиткой НАД
+          списком, а финиша в нём не было вовсе — из-за этого его нельзя было ни
+          показать на своём месте, ни задать иначе как отдельным шагом. */}
+      <div className="col" ref={listRef}>
+        {/* ПЛИТКА «СТАРТ» — ВХОД В ТОТ ЖЕ КОМПОЗЕР, а не свой пикер. Старт
+            необязателен (шаг 1 можно пропустить), поэтому место под него на шаге
+            городов есть всегда, пока он не задан. Вид точки в композере
+            предвыбран стартом — это намерение входа, а не запрет: плитку можно
+            сменить. */}
+        {!hasStart && (
+          <CityAdder
+            onAdd={add}
+            hasStart={hasStart}
+            hasEnd={hasEnd}
+            defaultKind="start"
+            renderTrigger={({ open }) => (
+              <CityAnchorRow label={t('ai_plan.start')} city={null} editable onAdd={open} />
+            )}
+          />
+        )}
 
-        {cities.length === 0 ? (
+        {nodes.length === 0 ? (
           <EmptyState
             icon="pin"
             title={t('planner.where_to')}
             body={t('planner.add_first_city')}
-            action={<Btn variant="primary" icon="plus" onClick={() => addCity()}>{t('planner.add_city')}</Btn>}
           />
-        ) : (
-        <div className="col" ref={listRef}>
-          {displayNodes.map((c) => {
-            // dIdx = the row's index in the committed order (stable while the
-            // preview reorders), used for numbering / isLast; the hook owns the
-            // FLIP shuffle and commit.
-            const dIdx = cities.indexOf(c);
-            const rowId = String(c.id);
-            // Mutual hover with the map pin. onMouseEnter/Leave live on the wrapper
-            // (not the row) so they never interfere with the pointer-drag arming.
+        ) : displayNodes.map((n) => {
+          const rowId = String(n.id);
+          // Якорь — плитка старта/финиша (тот же элемент, что `.te-end` редактора).
+          if (isAnchorNode(n) && !isStayNode(n)) {
             return (
-              <div
-                key={c.id}
-                ref={setRowRef(c.id)}
-                /* ★ РЯД, КОТОРЫЙ ЕЩЁ НЕ ГОРОД, ХОВЕР КАРТЫ НЕ ЗАБИРАЕТ. Здесь
-                   город ВЫДЕЛЯЛСЯ САМ сразу после добавления, и виноват не въезд
-                   под курсор, а ПОРЯДОК: новый ряд открывается ПИКЕРОМ, города в
-                   нём ещё нет. Чтобы ткнуть в подсказку, мышь реально въезжает в
-                   ряд — ховер честно армится, но показывать нечего (координат
-                   нет, маркера нет). Кнопка «✓» стоит В ТОМ ЖЕ ряду, курсор из
-                   него не выходит, поэтому `mouseleave` не приходит; а когда
-                   подтверждение выдаёт координаты, маркер РОЖДАЕТСЯ уже
-                   наведённым — с подсветкой и плашкой. Снять это было нечем:
-                   клик по карте гасит только ВЫБОР, до ховера ему дела нет.
-                   Визуально `.is-hover` от `.is-sel` почти неотличим (scale 1.1
-                   против 1.12) — отсюда и «город автоселектится».
-                   Условие сравнивает КООРДИНАТЫ, а не режим ряда: «есть ли у него
-                   точка на карте» — это ровно тот же предикат, по которому пин
-                   вообще рисуется (`FlowMap`: `if (c.latitude == null) return`).
-                   Ховер к пину и привязан, поэтому и спрашивать надо про пин, а
-                   не про внутреннее состояние ряда, до которого этому месту дела
-                   нет. Дальше всё как было: въехал мышью в готовый ряд — пин
-                   подсветился, выехал — погас.
-                   Пропуск въезда во время перетаскивания остаётся: FLIP-перестановка
-                   возит ряды под удержанным пальцем и иначе дёргала бы подсветку. */
-                onMouseEnter={onHover ? () => { if (!draggingId && c.latitude != null) onHover(rowId); } : undefined}
-                onMouseLeave={onHover ? () => onHover(null) : undefined}
-              >
-                <CityRow
-                  idx={dIdx}
-                  city={c}
-                  isDragging={draggingId === c.id}
-                  isPressing={pressingId === c.id}
-                  active={hoveredId === rowId || selectedId === rowId}
-                  onArm={(e) => armDrag(e, c.id)}
-                  onChange={(patch) => update(c.id, patch)}
-                  onRemove={() => remove(c.id)}
-                  onMove={(dir) => moveNodeById(c.id, dir)}
+              <div key={n.id} ref={setRowRef(n.id)}>
+                <CityAnchorRow
+                  label={n.kind === 'start' ? t('ai_plan.start') : t('ai_plan.end')}
+                  city={n}
+                  editable
+                  onRemove={() => remove(n.id)}
                 />
               </div>
             );
-          })}
-          {/* Плейсхолдер «добавить» — тон `dashed` самой кнопки системы: серый
-              пунктир в покое, акцент на ховере. Акцент тут не задаётся: здесь не
-              выбирают тип, поэтому канал `--a` остаётся при умолчании (brand). */}
-          <Btn variant="dashed" block icon="plus" onClick={() => addCity()}>
-            {t('planner.add_more_city')}
-          </Btn>
-        </div>
-        )}
-      </div>
+          }
+          return (
+            <div
+              key={n.id}
+              ref={setRowRef(n.id)}
+              /* Ряд без координат ховер карты не забирает: показывать нечего,
+                 пина у него нет (тот же предикат, по которому FlowMap его и не
+                 рисует). Въезд во время перетаскивания пропускаем — FLIP возит
+                 ряды под удержанным пальцем и иначе дёргал бы подсветку. */
+              onMouseEnter={onHover ? () => { if (!draggingId && n.latitude != null) onHover(rowId); } : undefined}
+              onMouseLeave={onHover ? () => onHover(null) : undefined}
+            >
+              <CityRow
+                idx={numberOf(n)}
+                node={n}
+                isDragging={draggingId === n.id}
+                isPressing={pressingId === n.id}
+                active={hoveredId === rowId || selectedId === rowId}
+                onArm={(e) => armDrag(e, n.id)}
+                onChange={patch}
+                onRemove={() => remove(n.id)}
+                onMove={(dir) => moveNodeById(n.id, dir)}
+              />
+            </div>
+          );
+        })}
 
-      {/* Finish is expressed by the last city's "финиш" switch (below) — no
-          separate end/finish plate on this step, unified with the manual flow. */}
+        {/* Композер — ТОТ ЖЕ, что в редакторе маршрута: город, затем вид точки,
+            затем подтверждение. Он и решает, что показать на телефоне (шторка) и
+            на десктопе (инлайн-карточка) — этому экрану знать про платформу
+            нечего. `defaultKind` называет НАМЕРЕНИЕ входа: с этой кнопки
+            добавляют город посещения. */}
+        <CityAdder onAdd={add} hasStart={hasStart} hasEnd={hasEnd} defaultKind="transit" />
+      </div>
     </div>
   );
 }
@@ -560,25 +537,33 @@ function ReturnOption({ on, onClick, icon, tone, title, desc }) {
   );
 }
 
-function StepReturn({ home, lastCityName, end, setEnd }) {
+// ★ ШАГ ВОЗВРАТА ПИШЕТ В ТОТ ЖЕ СПИСОК, ЧТО И ШАГ ГОРОДОВ (TRIP-484 §4). Раньше
+// он владел собственной переменной `end` со своим алфавитом (`null | город |
+// 'stay'`) — третьим представлением конца маршрута вдобавок к списку и к
+// полезной нагрузке. Теперь у него нет своего состояния вовсе: три карточки —
+// это три способа записать ОДИН узел `kind:'end'`, и ровно поэтому шаг можно
+// пропустить, когда тот же узел уже задан плиткой на шаге городов.
+//   «домой»    → узел-клон старта;
+//   «другой»   → узел выбранного города;
+//   «останусь» → последний город МЕНЯЕТ ВИД на финиш (нового узла нет).
+function StepReturn({ home, lastCityName, endNode, isStay, onFinishHome, onFinishCity, onStay, onClearFinish }) {
   const t = useT();
   // «Домой» (финиш = город старта) доступен, если старт вообще есть. Никаких сравнений
   // старт↔последний-город — финиш это самостоятельный узел.
   const canHome = !!home?.city_name;
 
-  // `end` is the single source of truth (null | city | 'stay'); `otherMode` is a
-  // LOCAL UI flag for the «другой» card (the picker writes the city into `end`).
-  // `endIsHome` here is COSMETIC only — decides which card looks active on revisit,
-  // not any data behaviour.
-  const endIsCity = !!end && end !== 'stay';
-  const endIsHome = endIsCity && sameCity(end, home);
+  const endIsCity = !!endNode && !isStay;
+  const endIsHome = endIsCity && sameCity(endNode, home);
+  // `otherMode` — ЛОКАЛЬНЫЙ флаг вида карточки «другой», а не данные: сам город
+  // едет в список. Нужен, чтобы поле выбора осталось открытым, пока в нём ещё
+  // ничего не выбрали.
   const [otherMode, setOtherMode] = useState(endIsCity && !endIsHome);
   // No origin → «домой» impossible: default the choice to «другой».
-  useEffect(() => { if (!canHome && end !== 'stay') setOtherMode(true); }, [canHome]);
+  useEffect(() => { if (!canHome && !isStay) setOtherMode(true); }, [canHome, isStay]);
 
-  const onStay = end === 'stay';
-  const onOther = otherMode && !onStay;
-  const onHome = !onStay && !onOther && canHome; // null default resolves to «домой» when possible
+  const onStayCard = isStay;
+  const onOther = otherMode && !onStayCard;
+  const onHome = !onStayCard && !onOther && canHome; // дефолт разрешается в «домой», когда старт есть
 
   return (
     <div>
@@ -596,7 +581,7 @@ function StepReturn({ home, lastCityName, end, setEnd }) {
           {canHome && (
             <ReturnOption
               on={onHome}
-              onClick={() => { setEnd({ ...home }); setOtherMode(false); }}
+              onClick={() => { onFinishHome(); setOtherMode(false); }}
               icon="flag" tone="brand"
               title={t('planner.return_home', { city: home?.city_name || '…' })}
               desc={<>{t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}</>}
@@ -604,16 +589,16 @@ function StepReturn({ home, lastCityName, end, setEnd }) {
           )}
           <ReturnOption
             on={onOther}
-            onClick={() => { setEnd(null); setOtherMode(true); }}
+            onClick={() => { onClearFinish(); setOtherMode(true); }}
             icon="globe" tone="warm"
             title={t('planner.return_other')}
             desc={t('planner.return_other_desc')}
           />
-          {/* «Останусь в {город}» = финиш: возврата нет (переносит смысл убранного
-              тумблера шага 2). */}
+          {/* «Останусь в {город}» = финиш: возврата нет. Узла не создаёт —
+              последний город меняет вид, ночи в нём остаются. */}
           <ReturnOption
-            on={onStay}
-            onClick={() => { setEnd('stay'); setOtherMode(false); }}
+            on={onStayCard}
+            onClick={() => { onStay(); setOtherMode(false); }}
             icon="check" tone="success"
             title={t('planner.stay_title', { city: lastCityName })}
             desc={t('planner.stay_desc', { city: lastCityName })}
@@ -624,8 +609,8 @@ function StepReturn({ home, lastCityName, end, setEnd }) {
           <div className="field">
             <label className="field__label">{t('planner.return_city')}</label>
             <CityPicker
-              value={endIsCity && !endIsHome ? end : null}
-              onChange={(c) => setEnd(c)}
+              value={endIsCity && !endIsHome ? endNode : null}
+              onChange={(c) => (c ? onFinishCity(c) : onClearFinish())}
               placeholder={t('planner.return_city_ph')}
               autoFocus
             />
@@ -830,15 +815,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // ── Wizard state ─────────────────────────────────────────────────────────
   const [step, setStep]             = useState('home');
-  const [home, setHome]             = useState(null);
   const [startDate, setStartDateRaw] = useState(defaultStartISO()); // YYYY-MM-DD, trip start; prefilled +1 month
-  const [cities, setCities]         = useState([]);
-  // Finish узел — единственный источник истины по концу маршрута (заменил
-  // returnMode/returnCity/finalPoint). Значения:
-  //   null   — дефолт: финиш = город старта, если старт задан; иначе терминала нет;
-  //   city   — узел финиша (домой = клон старта / другой город / финиш из ИИ);
-  //   'stay' — «останусь»: последний город и есть терминал (kind:'end', без ночей).
-  const [end, setEnd] = useState(null);
+  // ★ МАРШРУТ — ОДИН СПИСОК УЗЛОВ, КАК В РЕДАКТОРЕ (TRIP-484 §4). Было три
+  // переменные: `home` (старт), `cities` (список) и `end` (`null | город |
+  // 'stay'`). Старт и финиш при этом не были рядами списка — их нельзя было ни
+  // перетащить, ни занумеровать вместе с остальными, а «вставить перед финишем»
+  // выражалось тем, что финиша в списке просто нет.
+  // Все прежние величины стали ВЫВОДОМ (ниже, у `routeModel`): второго источника
+  // правды по маршруту в этом файле больше нет.
+  const [nodes, setNodes] = useState([]);
   const [tripTitle, setTripTitle]   = useState('');
   const [cover, setCover]           = useState({ cover_image_url: '' });
   const [saving, setSaving]         = useState(false);
@@ -871,9 +856,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       if (raw) {
         const saved = JSON.parse(raw);
         if (saved.step) setStep(saved.step);
-        if (saved.home) setHome(saved.home);
-        if (saved.cities?.length) setCities(saved.cities);
-        if (saved.end !== undefined) setEnd(saved.end);
+        if (saved.nodes?.length) setNodes(saved.nodes);
         if (saved.tripTitle) setTripTitle(saved.tripTitle);
         if (saved.startDate) setStartDateRaw(saved.startDate);
         if (saved.cover) setCover(saved.cover);
@@ -888,9 +871,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, end, tripTitle, startDate, cover, aiState, aiMessages }));
+      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, nodes, tripTitle, startDate, cover, aiState, aiMessages }));
     } catch {}
-  }, [step, home, cities, end, tripTitle, startDate, cover, aiState, aiMessages, restored, user?.id]);
+  }, [step, nodes, tripTitle, startDate, cover, aiState, aiMessages, restored, user?.id]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
   // Empty/invalid values are IGNORED - the trip start is required and can't be
@@ -899,8 +882,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     if (!dateStr) return;
     setStartDateRaw(dateStr);
     // Re-anchor the whole chain on the new trip start (recomputeDates forces city 0
-    // onto the anchor, so no manual first-city patch is needed).
-    setCities(cs => (cs.length === 0 ? cs : recomputeDates(cs, dateStr)));
+    // onto the anchor, so no manual first-city patch is needed). Якоря в цепочку
+    // не входят — за это отвечает сама модель, а не эта строка.
+    setNodes(ns => (ns.length === 0 ? ns : recomputeDates(ns, dateStr)));
   };
 
   // ── AI draft → shared skeleton ─────────────────────────────────────────────
@@ -977,26 +961,31 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       transitResolved.push({ ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) });
     }
 
-    // Start city → home (origin marker; optional, no nights/dates of its own).
-    const resolvedHome = startCity?.city_name ? startCity : null;
-    setHome(resolvedHome);
-
-    // Transit cities anchored to the first city's start_date (or default).
+    // ★ ЧЕРНОВИК ИИ СОБИРАЕТСЯ В ТОТ ЖЕ СПИСОК, что и ручной маршрут — одной
+    // фабрикой и одними правилами вставки. Прежде он раскладывался по трём
+    // переменным, то есть был четвёртым местом, знающим форму маршрута.
     const anchor = transitResolved[0]?.startDate || defaultStartISO();
-    const resolvedCities = recomputeDates(transitResolved, anchor);
-    setCities(resolvedCities);
+    let draftNodes = [];
+    if (startCity?.city_name) draftNodes = insertNode(draftNodes, makeNode(startCity, 'start')) || draftNodes;
+    for (const c of transitResolved) {
+      // Ночи ведёт ВИД: ноль ночей от ИИ — это пересадка, и вид ей ставит модель.
+      const node = withNights(makeNode(c, 'transit', { nights: c.nights }), c.nights);
+      draftNodes = insertNode(draftNodes, node) || draftNodes;
+    }
+    // Финиш — только если ИИ дал его ЯВНО отдельным узлом `kind:'end'`. Не дал —
+    // узла не выдумываем: финиш определится на шаге возврата (дефолт «домой»).
+    if (endCity?.city_name) draftNodes = insertNode(draftNodes, makeNode(endCity, 'end')) || draftNodes;
+    const resolvedNodes = recomputeDates(draftNodes, anchor);
+    setNodes(resolvedNodes);
     setStartDateRaw(anchor);
 
-    // Finish узел — только если ИИ дал его явно (n8n отдаёт `kind:'end'` отдельным
-    // узлом). Не дал — узел не выдумываем: финиш определится на шаге 3 (дефолт
-    // «домой»). Узел `end` едет насквозь и виден в чате/ревью/карте как есть.
-    const endNode = endCity?.city_name ? endCity : null;
-    setEnd(endNode);
+    const resolvedHome = startOf(resolvedNodes);
+    const resolvedCities = cityNodesOf(resolvedNodes);
 
     if (d?.title) setTripTitle(d.title);
     // Return the resolved draft so the caller can snapshot it into the chat message
     // (each assistant turn shows the itinerary it proposed).
-    return { home: resolvedHome, cities: resolvedCities, end: endNode, title: d?.title || '' };
+    return { home: resolvedHome, cities: resolvedCities, end: endOf(resolvedNodes), title: d?.title || '' };
   };
 
   const planMut = useMutation({
@@ -1050,9 +1039,20 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // The entry step's label depends on the method (origin vs AI prompt).
   const entryLabel = isAi ? t('planner.step_home_ai') : t('planner.step_home');
-  // The "Возврат" decision (round-trip / other city / stay = finish) now lives
-  // ENTIRELY on step 3, so the step is always present — no step is ever skipped.
+  // ★ ШАГ ВОЗВРАТА ПРОПУСКАЕТСЯ, КОГДА ФИНИШ УЖЕ ВЫБРАН (TRIP-484 §4). Плитка
+  // «финиш» в композере задаёт конец маршрута прямо на шаге городов — и тогда
+  // спрашивать «чем закончим?» отдельным шагом значит переспрашивать уже
+  // решённое. Предикат ОДИН (`hasExplicitEnd`) и покрывает обе формы выбора:
+  // финиш отдельным городом и «останусь» (последний город помечен финишем).
+  // Не выбрал — шаг остаётся целиком, со всеми тремя карточками, включая
+  // «домой»: он не выбор города, а ссылка на старт, и живёт только там.
+  // ⚠️ `step !== 'return'` — НЕ УКРАШЕНИЕ. На самом шаге возврата выбор финиша
+  // («в другой город») тоже создаёт узел `end`, и без этой половины шаг исчез бы
+  // ПРЯМО ПОД ЧЕЛОВЕКОМ, который на нём стоит: прогресс потерял бы текущую
+  // ступень, а `goNext` — свой индекс. Со шага, на котором стоишь, не выселяют.
+  const skipReturn = hasExplicitEnd(nodes) && step !== 'return';
   const visibleSteps = STEPS
+    .filter(s => !(s.id === 'return' && skipReturn))
     .map(s => ({ ...s, label: s.id === 'home' ? entryLabel : t(s.labelKey) }));
   const goNext = () => {
     const i = visibleSteps.findIndex(s => s.id === step);
@@ -1066,9 +1066,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // Reset draft and go back to step 1
   const resetToStart = () => {
     setStep('home');
-    setHome(null);
-    setCities([]);
-    setEnd(null);
+    setNodes([]);
     setStartDateRaw(defaultStartISO());
     setTripTitle('');
     setCover({ cover_image_url: '' });
@@ -1082,14 +1080,50 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
   };
 
-  // Финиш — самостоятельный узел (kind:'end'), а не «возврат»: 4 типа города —
-  // старт / финиш / пересадка / посещение. `isStay` («останусь») = последний город
-  // сам становится терминалом. Иначе финиш = явно заданный узел `end`, а если он не
-  // задан — дефолт «домой» = город старта. Никаких сравнений старт↔финиш.
+  // ★ ВСЁ, ЧЕМ ПОЛЬЗУЕТСЯ ОСТАЛЬНОЙ ЭКРАН, — ВЫВОД ИЗ СПИСКА, А НЕ СОСТОЯНИЕ.
+  // Так «маршрут» остаётся одним объектом: карта, ревью и сохранение читают одни
+  // и те же узлы, а не три переменные, которые обязаны сойтись.
+  const home = startOf(nodes);
+  const endNode = endOf(nodes);
+  // Города для карты и ревью: без якорей, но С «останусь» — он город и есть.
+  const cities = cityNodesOf(nodes);
   const lastCity = cities[cities.length - 1] || null;
-  const isStay = end === 'stay';
-  const finishCity = isStay ? null : (end || home || null);
+  // «Останусь» = финиш, которым помечен город списка. Карте это значит «не рисуй
+  // отдельный пин финиша»: он уже нарисован как город.
+  const isStay = !!endNode && isStayNode(endNode);
+  // Финиш ДЛЯ ПОКАЗА. Не выбран, но есть старт → «домой»: тот же дефолт, что
+  // уходит в сохранение (`toCitiesPayload`), просто здесь он ещё и рисуется.
+  const finishCity = isStay ? null : (endNode || home || null);
   const autoTitle = computeAutoTitle(home, cities, t);
+
+  // ── Ручки записи маршрута ──────────────────────────────────────────────────
+  // Шаги 1 и 3 пишут в ТОТ ЖЕ список, что шаг 2. Своих переменных у них больше
+  // нет: «старт» и «финиш» — это узлы, а не состояния шагов.
+  const setHome = (city) => setNodes(ns => {
+    const rest = ns.filter(n => n.kind !== 'start');
+    if (!city?.city_name) return rest;
+    return insertNode(rest, makeNode(city, 'start')) || rest;
+  });
+  // Заменить финиш: сначала снимаем прежний (метку с города — сменой вида,
+  // отдельный узел — удалением), потом ставим новый. Иначе `insertNode` честно
+  // откажет вторым якорем.
+  const clearFinish = (ns) => ns
+    .filter(n => !(n.kind === 'end' && !isStayNode(n)))
+    .map(n => (isStayNode(n) ? asCity(n) : n));
+  const setFinishCity = (city) => setNodes(ns => {
+    const rest = clearFinish(ns);
+    if (!city?.city_name) return recomputeDates(rest, startDate);
+    return recomputeDates(insertNode(rest, makeNode(city, 'end')) || rest, startDate);
+  });
+  const clearFinishNode = () => setNodes(ns => recomputeDates(clearFinish(ns), startDate));
+  // «Останусь» — последний ГОРОД становится финишем. Нового узла нет, ночи целы.
+  const setStay = () => setNodes(ns => {
+    const rest = clearFinish(ns);
+    const cityNodes = cityNodesOf(rest);
+    const last = cityNodes[cityNodes.length - 1];
+    if (!last) return recomputeDates(rest, startDate);
+    return recomputeDates(rest.map(n => (n.id === last.id ? withKind(n, 'end') : n)), startDate);
+  });
 
   // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed the same
   // way FlowMap tags its pins ('home' | city.id | 'finish'). A city's date range is
@@ -1132,38 +1166,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setError(null);
 
     try {
-      // 1. Cities payload: identity (CITY_FIELDS) + role in the chain + nights
-      // (span). Dates are NOT computed here — the SERVER lays them
-      // (create_trip_with_route → recompute_trip), the same engine as live-edit, so
-      // parity with the old client addDays is structural. Home = start anchor; the
-      // final point (or return) = end anchor (no nights); the rest are transit.
-      const cityIdentity = (c) => ({
-        external_city_id: c.external_city_id || null,
-        geonameid: c.geonameid ?? null,
-        name_i18n: c.name_i18n || null,
-        city_name_en: c.city_name_en || null,
-        country_code: c.country_code || null,
-        latitude: c.latitude || null,
-        longitude: c.longitude || null,
-        timezone: c.timezone || null,
-      });
-      const citiesPayload = [];
-      if (home?.city_name) citiesPayload.push({ ...cityIdentity(home), kind: 'start' });
-      cities.forEach((c, i) => {
-        if (!c.city_name) return;
-        const isFinalAnchor = isStay && i === cities.length - 1;
-        // 0 nights = a layover/waypoint — save it with the SAME kind the editor uses
-        // (kind:'waypoint'), so it's excluded from city/country counts and reopens as
-        // a пересадка, not a numbered stop. A distinct final anchor stays kind:'end'.
-        const id = cityIdentity(c);
-        if (isFinalAnchor) citiesPayload.push({ ...id, kind: 'end' });
-        else if (+c.nights === 0) citiesPayload.push({ ...id, kind: 'waypoint' });
-        else citiesPayload.push({ ...id, kind: 'transit', nights: +c.nights || 0 });
-      });
-      // Separate finish node → kind:'end' (домой = город старта / другой город / явный
-      // финиш из ИИ). «Останусь» отдельного узла не создаёт — последний город выше уже
-      // помечен kind:'end' (isFinalAnchor).
-      if (finishCity?.city_name) citiesPayload.push({ ...cityIdentity(finishCity), kind: 'end' });
+      // 1. Полезная нагрузка маршрута — ОДНА проекция списка узлов
+      // (`create/routeModel.toCitiesPayload`). Даты здесь не считаются: их кладёт
+      // СЕРВЕР (`create_trip_with_route` → `recompute_trip`), тем же движком, что
+      // и живое редактирование. Правила «якорь без ночей» и «финиш по умолчанию =
+      // клон старта» живут в модели и запинены тестом — здесь их копии нет.
+      const citiesPayload = toCitiesPayload(nodes);
 
       // Atomic create through the single door (TRIP-406): trips + city_visits +
       // recompute in one transaction. The seam authenticates (JWT), gates the
@@ -1359,14 +1367,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
         ))}
         {step === 'cities' && (
-          <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} />
+          <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} />
         )}
         {step === 'return' && (
           <StepReturn
             home={home}
             lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
-            end={end}
-            setEnd={setEnd}
+            endNode={endNode}
+            isStay={isStay}
+            onFinishHome={() => setFinishCity(home)}
+            onFinishCity={setFinishCity}
+            onStay={setStay}
+            onClearFinish={clearFinishNode}
           />
         )}
         {step === 'review' && (
@@ -1497,7 +1509,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               // (resolved to home only for display) is NOT an explicit finish, so it
               // still waits for step 3 → no pre-drawn line home on the earlier steps.
               finishCity={finishCity}
-              drawFinish={(!!end && end !== 'stay') || step === 'return' || step === 'review'}
+              /* Финиш рисуем, когда он УЖЕ РЕШЁН (узел есть — задан плиткой на шаге
+                 городов, выбран на шаге возврата или пришёл от ИИ) либо когда шаг
+                 сам про него. Молчаливый дефолт «домой» решением не считается,
+                 поэтому линия домой заранее не рисуется. */
+              drawFinish={!!endNode || step === 'return' || step === 'review'}
               isStay={isStay}
               hoveredId={hoveredMapId}
               selectedId={selectedMapId}

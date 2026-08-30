@@ -27,10 +27,6 @@ import React from 'react';
 //   name,country  city name + (optional) country shown on the .te-cityline.
 //   conf          ReactNode — optional conflict badge (editor) on the cityline.
 //   dates         ReactNode|string — the .te-dts line (range / layover / hint).
-//   editingSlot   ReactNode — when set, REPLACES the name/dates with this
-//                 (planner: the CityPicker for an empty/new row).
-//   stopCellPointer  stop pointerdown on the citycell so typing/clicking inside
-//                 it never arms the drag (planner).
 //   children      trailing action cells (planner: stepper + delete, wrapped in
 //                 `.te-row__pacts`; editor: stepper + hotel + activity cells,
 //                 rendered as direct grid cells to fill the 96px columns).
@@ -44,12 +40,15 @@ import React from 'react';
  *
  * Каждый `?` - заявление «без этого компонент работает», и каждый проверен
  * УСТРОЙСТВОМ КОДА, а не намерением:
- *   дефолт в сигнатуре   variant · dragging · pressing · invalid · stopCellPointer · className
+ *   дефолт в сигнатуре   variant · dragging · pressing · invalid · className
  *   стоит под условием   country `{country ? … : null}` · conf `{conf || null}`
- *                        dates `{dates ? … : null}` · editingSlot `{editingSlot || (…)}`
- *                        name - НЕ безусловное содержимое: он живёт в ветке
- *                        `{editingSlot || (…)}`, и планировщик в режиме выбора
- *                        города передаёт `undefined` явно (`ManualPlanner:185`)
+ *                        dates `{dates ? … : null}`
+ *                        ⚠️ `name` СТАЛ безусловным содержимым, и `?` у него —
+ *                        остаток: слот `editingSlot` (им планировщик подменял имя
+ *                        полем города) снят вместе с режимом редактирования в
+ *                        ряду (TRIP-484 §4), и подменять содержимое ячейки больше
+ *                        некому. `?` оставлен: пустое имя рисуется пустой строкой
+ *                        и это законно у ряда, чей город ещё не разрешён
  *   не передаётся вовсе  onClick - у ряда планировщика клика нет (см. список
  *                        пропов выше); замерено прогоном с `// @ts-check` в
  *                        `ManualPlanner`: обязательный `onClick` = TS2741
@@ -81,8 +80,6 @@ export default function CityRow({
   country,
   conf,
   dates,
-  editingSlot,
-  stopCellPointer = false,
   className = '',
   children,
 }) {
@@ -99,17 +96,13 @@ export default function CityRow({
     <div className={cls} onPointerDown={onArm} onClick={onClick}>
       {grip}
       {lead}
-      <div className="te-citycell" onPointerDown={stopCellPointer ? (e) => e.stopPropagation() : undefined}>
-        {editingSlot || (
-          <>
-            <div className="row row--g3 te-cityline">
-              <span className="trunc te-cityname">{name}</span>
-              {country ? <span className="te-country">{country}</span> : null}
-              {conf || null}
-            </div>
-            {dates ? <div className="row row--g3 te-dts">{dates}</div> : null}
-          </>
-        )}
+      <div className="te-citycell">
+        <div className="row row--g3 te-cityline">
+          <span className="trunc te-cityname">{name}</span>
+          {country ? <span className="te-country">{country}</span> : null}
+          {conf || null}
+        </div>
+        {dates ? <div className="row row--g3 te-dts">{dates}</div> : null}
       </div>
       {variant === 'planner' ? <div className="row row--inline row--g4 te-row__pacts">{children}</div> : children}
     </div>

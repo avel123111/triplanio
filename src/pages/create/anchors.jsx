@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Icon } from '../../design/icons';
 import { Card, Tile } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
-import CityPicker from '@/components/cities/CityPicker';
 
 // ─── CityAnchorRow ────────────────────────────────────────────────────────────
 // Start / finish plate — the SAME element as the editor's GridEndpoint (.te-end:
@@ -12,30 +11,23 @@ import CityPicker from '@/components/cities/CityPicker';
 //
 // Modes:
 //   • read-only (default): shows the resolved city, or "не указан" when empty.
-//   • editable: when empty renders a dashed "+ {label}" affordance that expands
-//     into the CityPicker; when filled shows a trailing clear button. Used for
-//     the OPTIONAL origin so manual (skipped on step 1) and AI (origin not
-//     recognised) share one add-start control.
-export function CityAnchorRow({ label, city, editable = false, onPick }) {
+//   • editable: пусто → пунктирный аффорданс «+ {label}», нажатие ведёт в ОБЩИЙ
+//     композер города (`cities/CityAdder`) с предвыбранным видом; заполнено →
+//     кнопка удаления. Своего поля города у плитки нет намеренно: вход в
+//     добавление на экране один (TRIP-484 §4).
+export function CityAnchorRow({ label, city, editable = false, onAdd, onRemove }) {
   const t = useT();
-  const [adding, setAdding] = useState(false);
   const hasCity = !!city?.city_name;
   const accent = 'var(--brand)';
   const soft = 'var(--brand-soft)';
 
-  // Editable + empty → an inline "add start" affordance. One element for both
-  // flows (manual skip + AI no-origin) — the origin can always be added later.
+  // Пусто и можно править → аффорданс «добавить». Своего пикера у него БОЛЬШЕ
+  // НЕТ: раньше плитка разворачивалась в собственное поле города — четвёртый вход
+  // добавления со своими правилами (без выбора вида, без подтверждения). Теперь
+  // нажатие ведёт в общий композер, и вид точки там предвыбран стартом.
   if (editable && !hasCity) {
-    if (adding) {
-      return (
-        <div className="field">
-          <label className="field__label">{label}</label>
-          <CityPicker value={null} onChange={(c) => { onPick(c); setAdding(false); }} placeholder={t('planner.start_city_ph')} autoFocus />
-        </div>
-      );
-    }
     return (
-      <Card as="button" variant="add" radius="btn" pad="none" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
+      <Card as="button" variant="add" radius="btn" pad="none" className="row row--g6 te-end te-end--add" onClick={onAdd}>
         <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="plus" size={13} /></Tile>
         <div className="te-citycell grow">
           <span className="te-endlabel" style={{ color: accent }}>{label}</span>
@@ -57,8 +49,8 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
       </div>
       {/* TRIP-391 объект 1: .te-step — КОНТРОЛ степпера маршрута (удалить точку),
           не кнопка-примитив. */}
-      {editable && hasCity && (
-        <button type="button" className="te-step te-step--del" onClick={() => onPick(null)} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
+      {editable && hasCity && onRemove && (
+        <button type="button" className="te-step te-step--del" onClick={onRemove} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
       )}
     </Card>
   );

@@ -166,7 +166,18 @@ export default function SearchSelect({
   if (isPhone) {
     return (
       <>
-        {trigger({ onClick: () => !disabled && openSheet() })}
+        {/* Роль триггера объявляется ЗДЕСЬ, а не у примитива: на десктопе те же
+            атрибуты дорисовывает `PopoverTrigger`, а в этой ветке Radix нет
+            вовсе — без них комбобокс объявлялся скринридеру просто кнопкой.
+            `dialog`, а не `listbox`: лист живёт ВНУТРИ шторки и размонтирован,
+            пока она закрыта, — обещать лист, которого нет в дереве, нельзя (тот
+            же разбор у мобильного триггера `common/Autocomplete`). */}
+        {trigger({
+          onClick: () => !disabled && openSheet(),
+          role: 'combobox',
+          'aria-haspopup': 'dialog',
+          'aria-expanded': open,
+        })}
         <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl}>
           {listEl}
         </PickerSheet>

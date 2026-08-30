@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useEffect, useRef, useState } from 'react';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/design/Input';

@@ -28,7 +28,10 @@
     "src/design/**/*.js",
     "src/types/*.d.ts",
     "src/components/ui/**/*.jsx",
-    "src/components/ui/**/*.js"
+    "src/components/ui/**/*.js",
+    "src/components/cities/**/*.jsx",
+    "src/components/cities/**/*.js",
+    "src/components/common/**/*.jsx"
   ],
   "exclude": [
     "node_modules",
