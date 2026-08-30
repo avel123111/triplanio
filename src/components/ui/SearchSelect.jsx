@@ -24,7 +24,9 @@ import { PickerSheet } from '@/components/ui/PickerSheet';
  *   renderOption(option, sel)    — inner content of an option row
  *   renderValue(current)         — trigger label for the current option
  *   placeholder, searchPlaceholder, emptyText, title (mobile sheet header)
- *   triggerClassName (default 'input'), width (desktop popover px), disabled
+ *   triggerClassName            — РАСКЛАДКА ряда, уезжает на обёртку поля. Скин
+ *     контрола даёт сам примитив (`.input` на кнопке), передавать его тут не надо.
+ *   width (desktop popover px), disabled
  *   searchable                   — строка поиска (по умолчанию есть). Списку из
  *     пяти категорий бюджета или трёх ролей участника искать нечего, а пустая
  *     строка поиска над коротким листом — шум; закрытые списки поэтому берут
@@ -52,7 +54,7 @@ export default function SearchSelect({
   searchPlaceholder = '',
   emptyText = '—',
   title,
-  triggerClassName = 'input',
+  triggerClassName = '',
   width = 264,
   disabled = false,
   searchable = true,
@@ -73,35 +75,45 @@ export default function SearchSelect({
   // (`onOpenAutoFocus`, разбор — в `PickerSheet`), и подпирать его синхронным
   // коммитом больше не нужно.
   //
-  // ⚠️ ИЗВЕСТНАЯ ГРАНИЦА, И ОНА В ПРИРОДЕ ТРИГГЕРА, А НЕ В КОДЕ. Здесь триггер —
-  // КНОПКА (она показывает выбранное значение разметкой: флаг, код, название, —
-  // полем такое не нарисовать). По кнопке нативного фокуса в текстовое поле нет,
-  // а iOS поднимает клавиатуру только по нему. Значит на iOS этот пикер
-  // открывается со списком, но без клавиатуры, пока не тронешь строку поиска, —
-  // ровно как ведут себя системные пикеры. У города и адреса триггер сам поле,
-  // поэтому там клавиатура поднимается тапом.
+  // ⚠️ ИЗВЕСТНАЯ ГРАНИЦА, И ОНА В ПРИРОДЕ ТРИГГЕРА, А НЕ В КОДЕ. Триггер — КНОПКА,
+  // а iOS поднимает клавиатуру только по настоящему тапу в настоящее текстовое
+  // поле. Значит на iOS пикер открывается со списком, но без клавиатуры, пока не
+  // тронешь строку поиска, — ровно как ведут себя системные пикеры.
+  // Это НЕ недоделка, а сторона размена, и размен теперь один на все пикеры
+  // приложения: город и адрес пришли сюда же (TRIP-484 §4). Обратная сторона —
+  // текстовое поле-триггер НА СТРАНИЦЕ — поднимала клавиатуру мгновенно, но
+  // платила тем, что страница ужималась и доскролливалась к полю ещё ДО открытия
+  // шторки, а на закрытии возвращалась. Разбор — в шапке `design/Input`.
   const openSheet = () => setOpen(true);
   const pick = (o) => { onChange(getKey(o)); close(); };
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 
-  // TRIP-391 объект 1 → объект 5: контрол-триггер комбобокса (поле) — className задаёт
-  // вызыватель (triggerClassName), открывает лист, не кнопка-примитив.
+  // TRIP-391 объект 1 → объект 5: контрол-триггер комбобокса (поле) — открывает
+  // лист, не кнопка-примитив.
+  //
+  // ★ РИСУЕТ ЕГО ПРИМИТИВ, А НЕ ЭТОТ ФАЙЛ. Шесть инлайнов, которыми триггер
+  // собирался здесь (`display/align/justify/gap/cursor/textAlign`), — это
+  // объявления, которых не хватало классу `.input` на кнопке; они переехали в
+  // правило `button.input`, а форма «поле в роли триггера» стала `<Input
+  // as="button">`. Тот же примитив несёт теперь и триггер пикера города, то есть
+  // копий этой кнопки в приложении больше нет.
+  // `triggerClassName` уезжает на ОБЁРТКУ поля (`className` примитива) — там ему
+  // и место: вызыватели передают в нём раскладку ряда, а не скин контрола.
   const trigger = (extra = {}) => (
-    <button
-      type="button"
+    <Input
+      as="button"
       className={triggerClassName}
       disabled={disabled}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', textAlign: 'left' }}
       {...rest}
       {...extra}
     >
       {/* Тон незаполненной подписи — канон `.muted-2` (он уже есть в app.css), а
           не свой инлайн с тем же токеном. */}
-      <span className={current ? undefined : 'muted-2'}>
+      <span className={current ? 'grow--fit' : 'grow--fit muted-2'}>
         {current ? (renderValue ? renderValue(current) : getKey(current)) : placeholder}
       </span>
       <ChevronDown size={14} style={{ opacity: 0.5 }} />
-    </button>
+    </Input>
   );
 
   /* `.ss-search` остаётся ОТДЕЛЬНОЙ обёрткой, а не уезжает в className поля: у

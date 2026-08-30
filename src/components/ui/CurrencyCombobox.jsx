@@ -29,7 +29,7 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
       searchPlaceholder={t('common.currency_search_ph')}
       emptyText={t('common.not_found')}
       title={t('common.choose')}
-      triggerClassName={`input ${className}`.trim()}
+      triggerClassName={className}
       width={256}
     />
   );

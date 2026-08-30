@@ -827,7 +827,6 @@ export default function ScreenAccount() {
                     searchPlaceholder={t('common.search')}
                     emptyText={t('common.not_found')}
                     title={t('settings.language')}
-                    triggerClassName="input"
                     width={240}
                   />
                 </div>
