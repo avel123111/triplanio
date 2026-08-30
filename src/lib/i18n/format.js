@@ -1,8 +1,8 @@
 // Localization formatters for dynamic data: countries, currencies, plurals,
 // Luxon dates. Lightweight wrappers around Intl.* + Luxon - call from React via
 // useI18nFormat() (see I18nContext).
-import { DateTime, Settings } from 'luxon';
 import { localeTag } from './translations';
+import { dayMonth } from './dayMonth';
 
 // ---- Active language (module-level) ---------------------------------------
 // Mirror of the current UI language so module-level helpers (formatters defined
@@ -12,27 +12,52 @@ let _activeLang = 'ru';
 export function getActiveLang() { return _activeLang; }
 export function getActiveLocale() { return localeTag(_activeLang); }
 
-// ---- Luxon ----------------------------------------------------------------
-// Set the default Luxon locale globally; callers that pass setLocale() on a
-// DateTime keep precedence. We re-call this from I18nProvider on language change.
+// ---- Активный язык + глобальная локаль Luxon --------------------------------
+// Зовётся из I18nProvider на смену языка. Делает две вещи, и вторая — ЛЕНИВО.
+//
+// ★ ПОЧЕМУ `import()`, А НЕ СТАТИЧЕСКИЙ ИМПОРТ (TRIP-475 шаг 3). Этот модуль —
+// часть СИНХРОННОГО графа лендинга (`main.jsx → App.jsx → I18nContext →`
+// сюда), поэтому статический `import { Settings } from 'luxon'` затаскивал
+// luxon (24 КБ на проводе) в главный чанк и в `modulepreload` — то есть его
+// качал анонимный посетитель, которому дат не показывают вовсе. Сам luxon в
+// проекте живой и нужный: на нём арифметика дат редактора, календаря и
+// валидации, — но все они приезжают ленивыми чанками.
+//
+// ⚠️ `Settings.defaultLocale` — ГЛОБАЛ, и на него молча опираются четыре модуля,
+// которые форматируют БЕЗ явного `setLocale`: `EventViewBody` (`fmtDT`/`fmtDate`),
+// `trip-dates.js`, `time.js`, `naive-time.js` (ветка без локали). Убрать глобал
+// правильно — значит проставить локаль явно в каждом из них (её отдаёт
+// `getActiveLocale()` ниже, мирроринг для этого и заведён); это отдельная работа,
+// она меняет отрисовку дат на экранах трипа и в перф-правку не входит. Пока
+// глобал остаётся, но применяется, когда luxon доехал.
+//
+// Гонки нет по построению: все четыре читателя живут в ленивых чанках экранов
+// приложения, а `import('luxon')` стартует на смене языка — то есть на монтаже
+// провайдера, задолго до того, как эти чанки будут запрошены.
 export function applyLuxonLocale(lang) {
   _activeLang = lang;
-  Settings.defaultLocale = localeTag(lang);
+  import('luxon')
+    .then(({ Settings }) => { Settings.defaultLocale = localeTag(lang); })
+    .catch(() => { /* язык дат — не повод ронять приложение */ });
 }
 
 // Canonical money/date formatters for module-level (non-hook) call sites.
 // Components should prefer useI18nFormat(); these read the active language.
 export function fmtMoneyActive(amount, currency, opts) { return formatMoney(amount, currency, _activeLang, opts); }
 
-// Format a DateTime (or ISO string + timezone) using Luxon's localized tokens.
-// Example: formatDateTime(iso, tz, 'd LLL yyyy', 'ru') → "5 авг 2026"
-export function formatDateTime(value, timezone, fmt, lang) {
-  if (!value) return '';
-  const dt = value instanceof DateTime
-    ? value
-    : DateTime.fromISO(value, { zone: timezone || 'utc' });
-  if (!dt.isValid) return '';
-  return dt.setLocale(localeTag(lang)).toFormat(fmt);
+// «День + короткий месяц» — 5 авг. · 5 Aug · 5 ago (TRIP-475 шаг 3).
+//
+// Раньше это была общая `formatDateTime(value, tz, fmt, lang)` на luxon-токенах.
+// Токен у неё был РОВНО ОДИН на весь репозиторий — `'d MMM'`, у двух вызывающих
+// (`PublicTrip`, `RouteMapCard`); обобщение не использовал никто. Поэтому функция
+// сузилась до своего единственного смысла и переехала на нативный `Intl` — и
+// luxon ушёл из синхронного графа лендинга.
+//
+// Тело — в `./dayMonth.js` (без импортов, чтобы его брал `node --test`); здесь
+// остаётся перевод языка в locale-тег. Ловушки порядка слов и даты без времени
+// описаны там же.
+export function formatDayMonth(value, timezone, lang) {
+  return dayMonth(value, timezone, localeTag(lang));
 }
 
 // ---- Countries ------------------------------------------------------------
