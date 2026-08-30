@@ -95,33 +95,6 @@ function SwitchRow({ on, onChange, title, hint, children }) {
   );
 }
 
-// City autocomplete for layover (waypoint) cities — resolves a full city object
-// (coords + IANA timezone) so the saved waypoint city_visit has real geo data.
-// Thin facade over the shared <Autocomplete> engine (identical field/dropdown/
-// scroll/hover as every other city & address picker).
-function CityPicker({ value, onPick, placeholder, ...rest }) {
-  const { t } = useI18nFormat();
-  const [q, setQ] = useState(value?.city_name || '');
-  useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
-  return (
-    <Autocomplete
-      inputProps={rest}
-      inputValue={q}
-      onInputChange={(val) => { setQ(val); if (value) onPick(null); }}
-      search={(query, lang) => searchCities(query, lang)}
-      getKey={(c) => c.geonameid ?? c.external_city_id ?? c.city_name}
-      onPick={(c) => {
-        setQ(c.city_name);
-        onPick({ city_name: c.city_name, city_name_en: c.city_name_en, geonameid: c.geonameid ?? null, name_i18n: c.name_i18n || null, country: c.country, country_code: c.country_code, latitude: c.latitude, longitude: c.longitude, timezone: tzFromCoords(c.latitude, c.longitude), external_city_id: c.external_city_id });
-      }}
-      renderRow={cityOptionRow}
-      placeholder={placeholder || t('event.layover_city_ph')}
-      icon="pin"
-      attribution={false}
-    />
-  );
-}
-
 let __segUid = 1;
 function makeSegment(defCur = 'EUR') {
   return {
@@ -143,7 +116,7 @@ import { useConfirm } from '@/components/common/ConfirmProvider';
 import { eventDeleteConfirm } from '@/lib/eventDeleteConfirm';
 import { errorText } from '@/lib/errorText';
 import { refusalError } from '@/lib/refusalError';
-import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
+import { resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
@@ -224,8 +197,7 @@ import TimezoneHint from '@/components/common/TimezoneHint';
 import DocumentsField from '@/components/common/DocumentsField';
 import Accordion from '@/components/common/Accordion';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
-import Autocomplete from '@/components/common/Autocomplete';
-import cityOptionRow from '@/components/common/cityOptionRow';
+import CityPicker from '@/components/cities/CityPicker';
 import EventAiBlock from '@/components/common/EventAiBlock';
 import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
@@ -1959,7 +1931,7 @@ function TransferLegCard({
               {toCityEditable ? (
                 <>
                   <AiField active={aiHas('toCity')}>
-                    <CityPicker {...stF('toCity')} value={leg.toCity} onPick={(c) => patch({ toCity: c })} placeholder={layoverCityPh} />
+                    <CityPicker {...stF('toCity')} value={leg.toCity} onChange={(c) => patch({ toCity: c })} placeholder={layoverCityPh} />
                   </AiField>
                   <FieldError issues={issues} field={vf('toCity')} />
                 </>

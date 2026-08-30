@@ -242,10 +242,12 @@ function usePainScrub(ready) {
 /* ── Hero ── */
 function Hero() {
   const t = useT();
-  // Обе кнопки героя — через общий хелпер зоны. Вторая («Войти») до этого не
-  // слала события вовсе, хотя это вход в продукт с первого экрана.
+  // Обе кнопки героя — через общий хелпер зоны. Первая ведёт в продукт, вторая
+  // («смотреть демо») — в демо-поездку, тем же путём и с тем же событием
+  // `cta_clicked`, что и финальный CTA `final_demo`: единственное отличие —
+  // метка места `hero_demo` (верх воронки против низа).
   const cta = useZoneCta('hero');
-  const signin = useZoneCta('hero_signin');
+  const demo = useZoneCta('hero_demo', withVisitCampaign(DEMO_PATH));
   return (
     <section className="hero" data-hdr="light" id="top">
       <div className="hero-bg" aria-hidden="true">
@@ -266,7 +268,7 @@ function Hero() {
             <a className="btn btn-primary" {...cta}>
               <span>{t('landing.hero.cta1')}</span>
             </a>
-            <a className="btn btn-ghost" {...signin}>
+            <a className="btn btn-ghost" {...demo}>
               {t('landing.hero.cta2')}
             </a>
           </div>

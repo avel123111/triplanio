@@ -11,14 +11,24 @@
 //     `.dlg__foot`, owned by <Dialog>). Reaching into a canon primitive from an
 //     outer selector is the coupling the design floor (guard 2o `reach`) forbids,
 //     so the primitive hides ITSELF via this hook.
+//   • `--kb-h` на <html> — СКОЛЬКО СНИЗУ ЗАКРЫТО клавиатурой, для поверхности,
+//     которая обязана оставить под неё место. Именно инсет, а не высота видимой
+//     полосы: разбор ниже, и он несущий.
 //
-// The signal is VIEWPORT GEOMETRY, not input focus. The app's viewport meta uses
-// `interactive-widget=resizes-content`, so the keyboard SHRINKS the visual
-// viewport; we flag it open when the height drops well below the tallest height
-// seen in the current orientation. Focus was the first attempt and it was racy:
-// on mobile, tapping the bottom nav can restore focus to the last field, which
-// re-hid the nav the instant it was pressed. Geometry does not move when you tap
-// a button.
+// The signal is VIEWPORT GEOMETRY, not input focus. The keyboard shrinks the
+// VISUAL viewport on every platform — the one thing both engines agree on. We
+// flag it open when the height drops well below the tallest height seen in the
+// current orientation. Focus was the first attempt and it was racy: tapping the
+// bottom nav can restore focus to the last field, which re-hid the nav the
+// instant it was pressed. Geometry does not move when you tap a button.
+//
+// ★★ ПОЧЕМУ ИНСЕТ ПУБЛИКУЕТСЯ, А НЕ ВЫЧИСЛЯЕТСЯ CSS-ЕДИНИЦАМИ. «Сколько закрыто
+// клавиатурой» в CSS не выразить: `dvh` за клавиатурой не следует, а
+// `interactive-widget` понимает только Chrome — на iOS-движке (то есть в ЛЮБОМ
+// браузере на iPhone) вьюпорт раскладки под клавиатуру не ужимается вовсе
+// (замерено на устройстве: `innerHeight` 766 неизменен при видимой полосе 431).
+// Единственная величина, знающая правду на обеих платформах, — `visualViewport`,
+// и живёт она здесь, в том единственном модуле, что уже на него подписан.
 //
 // ponytail: a minimal DOM-level watcher (no lib) — the one honest signal for a
 // keyboard that resizes content is the resize itself. Upgrade path: the
@@ -93,7 +103,31 @@ export function startKeyboardOpenWatch() {
   const root = document.documentElement;
   let baseline = vv.height; // tallest height this orientation = no keyboard
 
+  // ВЫСОТА КЛАВИАТУРЫ — сколько снизу закрыто. Пишем ЦЕЛЫЕ пиксели и только на
+  // изменение: `scroll` визуального вьюпорта на iOS сыплется пачками, а каждая
+  // запись переменной — это пересчёт стилей.
+  //
+  // ★★ ПОЧЕМУ ИМЕННО ИНСЕТ, А НЕ ВЫСОТА ВИДИМОЙ ПОЛОСЫ. Прежде публиковались
+  // `--vv-h`/`--vv-top`, и полноэкранная шторка задавала ими СВОЮ КОРОБКУ. То
+  // есть коробка менялась вместе с клавиатурой — а vaul анимирует въезд
+  // ключевым кадром `from { translate3d(0, 100%, 0) }`, где 100% это ПРОЦЕНТ ОТ
+  // СОБСТВЕННОЙ ВЫСОТЫ элемента. Мы фокусируем поле в жесте, клавиатура встаёт
+  // ОДНОВРЕМЕННО с въездом, высота едет 766 -> 431 — и точка старта анимации
+  // пересчитывается на лету. Шторка дёргается, каретка едет с ней: «встала в
+  // поле, улетела, опять встала».
+  // Поэтому коробка поверхности неподвижна, а клавиатура резервирует место
+  // ВНУТРИ — отступом у скроллера. Так это и устроено у нормальных приложений, и
+  // движущихся частей становится на одну меньше.
+  let lastKb = -1;
+  const publish = () => {
+    // `innerHeight` — вьюпорт раскладки, `vv.height + offsetTop` — то, что от
+    // него видно сверху. Разница и есть закрытое клавиатурой.
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    if (kb !== lastKb) { lastKb = kb; root.style.setProperty('--kb-h', `${kb}px`); }
+  };
+
   const update = () => {
+    publish();
     const h = vv.height;
     if (h > baseline) baseline = h;          // grow baseline (URL bar hides, rotate)
     // Геометрия — НЕОБХОДИМОЕ, но не достаточное условие; фокус в текстовом поле —
@@ -105,6 +139,10 @@ export function startKeyboardOpenWatch() {
   };
 
   vv.addEventListener('resize', update);
+  // Смещение меняется БЕЗ resize — именно так выглядит панорамирование Safari к
+  // полю в фокусе. Без этой подписки шторка узнала бы о сдвиге только вместе со
+  // следующим изменением высоты, то есть уже после того, как уехала.
+  vv.addEventListener('scroll', publish);
   // Orientation flips the height; drop the flag and re-seat the baseline once
   // the new size settles so a rotate doesn't read as a keyboard.
   window.addEventListener('orientationchange', () => {

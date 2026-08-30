@@ -26,13 +26,14 @@
     "src/pages/**/*.jsx",
     "src/design/**/*.jsx",
     "src/design/**/*.js",
-    "src/types/*.d.ts"
+    "src/types/*.d.ts",
+    "src/components/ui/**/*.jsx",
+    "src/components/ui/**/*.js"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "src/vite-plugins",
-    "src/components/ui",
     "src/api",
     "src/lib"
   ]

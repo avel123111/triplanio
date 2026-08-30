@@ -1,7 +1,13 @@
-// keepFocusInDialog — the SINGLE onOpenAutoFocus handler shared by every Radix
-// dialog / sheet / drawer shell (ui/dialog, ui/Sheet, EventDrawerHost, and the
-// stats/editor sheet surfaces). One owner of "where focus lands when a dialog
-// opens", so the behaviour can't drift between shells. (TRIP-202)
+// keepFocusInDialog — the shared onOpenAutoFocus handler for the Radix shells
+// that need one: `ui/dialog` and `stats/VisitPanel`. One owner of "where focus
+// lands when a dialog opens", so the behaviour can't drift between them.
+// (TRIP-202)
+//
+// ⚠️ ЭТО НЕ ВЕСЬ ПЕРИМЕТР, И ПРЕЖНЯЯ ШАПКА ВРАЛА, ЧТО ВЕСЬ. Шторки на vaul
+// (`ui/sheetShell` и всё, что через него: `ui/Sheet`, `ui/LpSheet`,
+// `EventDrawerHost`) сюда НЕ ходят и никогда не ходили: vaul гасит автофокус
+// диалога сам, своим умолчанием, и подавлять уже подавленное незачем. Список
+// шеллов проверяется грепом по `keepFocusInDialog` — их два.
 //
 // Why not Radix's default: it moves focus to the first focusable element, which
 // on mobile is often a search input → the keyboard pops and yanks the fixed
