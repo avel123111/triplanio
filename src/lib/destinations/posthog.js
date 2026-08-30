@@ -21,7 +21,27 @@
 // MUST key on `persisting`, never `phReady`: under B `phReady` is true for a
 // memory-only tab that wrote nothing, and clearing/reloading it on a foreign
 // refusal would be wrong.
-import posthog from 'posthog-js';
+// ★ ТОЧКА ВХОДА — `dist/module.slim.js`, А НЕ `posthog-js` (TRIP-475).
+// Обычный вход тянет `dist/module.js` — 231 КБ уже собранного кода ОДНИМ куском,
+// который сборщик разобрать не может. Внутри лежат РЕАЛИЗАЦИИ автозахвата
+// кликов, тепловых карт, rage/dead-кликов, web-vitals, автоперехвата исключений,
+// опросов и записи сессий — то есть ровно то, что мы ниже в `init` выключаем
+// руками (`autocapture:false`, `enable_heatmaps:false`, `capture_performance:false`,
+// `disable_session_recording:true`, `disable_surveys:true`). Мы платили 118 КБ за
+// код, которому сами запретили запускаться, и платил их КАЖДЫЙ анонимный
+// посетитель лендинга: замер — главный чанк 951 532 → 833 875 байт, brotli
+// 260 167 → 230 925 (на прод-сжатии ≈ −36 КБ с критического пути).
+// `module.slim.js` — официальная вторая точка входа ТОГО ЖЕ пакета (113 КБ), где
+// эти реализации не собраны; ключи конфига остаются и безвредно игнорируются.
+// Поведение не меняется ни в одном месте: `persistence:'memory'` до согласия,
+// `set_config` после, `identify`, `camp_*`, `before_send` — всё как в TRIP-407.
+// ⚠️ ЧТО СЛИМ НЕ УМЕЕТ: запускать визуальный тулбар PostHog — функции
+// `maybeLoadToolbar` в нём НЕТ вовсе (в полной сборке она есть). Понадобится
+// тулбар — вернуть полный вход придётся ВМЕСТЕ с ленивой загрузкой SDK, иначе
+// 118 КБ снова уедут на критический путь.
+// ⚠️ Глубокий путь, а не `posthog-js/slim`: у пакета нет поля `exports`, только
+// `main`/`module`, поэтому короткого псевдонима не существует.
+import posthog from 'posthog-js/dist/module.slim.js';
 import { analyticsEnabledHere, isLocalhost, isProdHost } from '@/lib/analyticsEnv';
 
 const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
