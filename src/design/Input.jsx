@@ -48,9 +48,45 @@ const requiredAttrs = (on) => (on
  * (идёт поиск). Правый отступ резервируется, как только поле ВООБЩЕ очищаемое, —
  * иначе строка дёргалась бы в момент появления `×` (та же причина, что у кольца).
  */
-/** @param {{ icon?: string, iconNode?: any, loading?: boolean, onClear?: any, clearLabel?: string, num?: boolean, className?: string, boxRef?: any } & import('react').ComponentPropsWithoutRef<'input'>} p */
-export const Input = ({ icon, iconNode, loading, onClear, clearLabel, num, className = '', boxRef, ...rest }) => {
+/**
+ * ★ `as="button"` — ПОЛЕ, КОТОРОЕ ОТКРЫВАЕТ ВЫБОР, А НЕ ПРИНИМАЕТ ВВОД.
+ * Это не второй объект и не «поле-обманка»: коробка, скин, лид-иконка, кольцо и
+ * `×` те же самые, меняется только КОНТРОЛ внутри — `<button>` вместо `<input>`,
+ * а значение приезжает детьми, потому что у кнопки нет `value`.
+ *
+ * Роль существует в приложении давно: `SearchSelect` (валюта, язык) ровно так и
+ * рисует свой триггер — `<button className="input">` со своими инлайнами. Здесь
+ * эта форма объявлена примитивом, а инлайны переехали в правило `button.input`.
+ *
+ * ★★ ПОЧЕМУ ЭТО НЕСУЩЕЕ, А НЕ УДОБСТВО. Текстовое поле НА СТРАНИЦЕ, открывающее
+ * шторку, тревожит саму страницу, и неизбежно: тап фокусирует его, браузер
+ * поднимает клавиатуру, вьюпорт раскладки ужимается под неё и страница
+ * доскролливается к полю — всё это ДО того, как шторка появилась. Шторка потом
+ * накрывает уже уехавшую страницу, а на закрытии та возвращается. Полный рост
+ * шторки тут бессилен: дёргается не она, а то, что под ней.
+ * У кнопки поднимать клавиатуру нечему, доскролливать как к полю ввода — нечего.
+ * Поэтому панели города и события (`.lp-sheet`, открываются кликом по строке)
+ * страницу никогда не тревожили, а пикер с полем-триггером — тревожил.
+ * Цена ровно одна и она уже принята для валюты и языка: на iOS клавиатура
+ * поднимается не тапом по триггеру, а когда тронешь поле поиска ВНУТРИ шторки —
+ * так же ведут себя системные пикеры.
+ *
+ * ⚠️ АННОТАЦИЯ СТОИТ НА ПАРАМЕТРЕ, А НЕ ПЕРЕД `const`: у `forwardRef` функция —
+ * это АРГУМЕНТ, и JSDoc перед объявлением к ней не относится. Промах молчит не
+ * до конца: пропы схлопываются в `RefAttributes<any>`, и краснеют ВЫЗЫВАТЕЛИ
+ * (20 штук), а не этот файл. Та же грабля разобрана в `design/IconBtn` (TRIP-388).
+ */
+export const Input = React.forwardRef(
+  /**
+   * @param {{ icon?: string, iconNode?: any, loading?: boolean, onClear?: any,
+   *   clearLabel?: string, num?: boolean, className?: string, boxRef?: any,
+   *   as?: 'input' | 'button', children?: any }
+   *   & import('react').ComponentPropsWithoutRef<'input'>} p
+   * @param {any} ref
+   */
+  ({ icon, iconNode, loading, onClear, clearLabel, num, className = '', boxRef, as = 'input', children, ...rest }, ref) => {
   const required = React.useContext(RequiredCtx);
+  const isButton = as === 'button';
   const hasLead = Boolean(icon || iconNode);
   const ringReplacesLead = Boolean(loading && hasLead);
   // Правый слот: кольцо у поля БЕЗ лид-иконки, либо кнопка очистки. `×` скрыта на
@@ -66,7 +102,11 @@ export const Input = ({ icon, iconNode, loading, onClear, clearLabel, num, class
   const ring = <span className="spin spin--ring" />;
   return (
     <div className={boxClass} ref={boxRef}>
-      <input className={num ? 'input num' : 'input'} {...requiredAttrs(rest.required ?? required)} {...rest} />
+      {/* Обязательность — свойство ПОЛЯ ВВОДА: у кнопки-триггера нет ни значения,
+          ни встроенной валидации, и `required` на ней ничего не значил бы. */}
+      {isButton
+        ? <button type="button" className="input row row--g4" ref={ref} {...rest}>{children}</button>
+        : <input className={num ? 'input num' : 'input'} ref={ref} {...requiredAttrs(rest.required ?? required)} {...rest} />}
       {hasLead && (
         <span className="input-affix__ic" aria-hidden="true">
           {ringReplacesLead ? ring : (iconNode || <Icon name={icon} size={16} />)}
@@ -97,7 +137,8 @@ export const Input = ({ icon, iconNode, loading, onClear, clearLabel, num, class
       )}
     </div>
   );
-};
+  });
+Input.displayName = 'Input';
 
 // Пара к <Input> для многострочного поля: тот же канон `.textarea`, декораций
 // у него нет, поэтому и обёртки-позиционера нет - внешний класс идёт на само

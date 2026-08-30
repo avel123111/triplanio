@@ -1,4 +1,5 @@
 // @ts-check
+import { createContext, useContext } from 'react';
 import { Drawer } from 'vaul';
 
 /**
@@ -11,9 +12,15 @@ import { Drawer } from 'vaul';
  * слайд, портал, подложка, клавиатура, грип), вызыватель — СКИНОМ.
  *
  * ★ `repositionInputs={false}` — не вкус. Вьюпорт объявлен
- * `interactive-widget=resizes-content`: раскладка уже сжимается над
- * клавиатурой, и приклеенный к низу шит встаёт над ней сам. Позволить vaul
- * поднять его ВТОРОЙ раз — это «улетающий» шит при фокусе в поле.
+ * `interactive-widget=resizes-content`: раскладка уже сжимается над клавиатурой,
+ * и приклеенный к низу шит встаёт над ней сам. Позволить vaul поднять его ВТОРОЙ
+ * раз — это «улетающий» шит при фокусе в поле.
+ *
+ * ⚠️ ЦЕНА ПАРЫ: `resizes-content` перекладывает страницу под шитом на
+ * Chrome/Android (на iOS-движке директива не поддерживается и раскладку не
+ * трогает). Обратная пара (`overlays-content` + подъём средствами vaul) это
+ * снимает, но трогает КАЖДЫЙ экран с полем ввода на обеих платформах — отдельная
+ * задача со своей проверкой на устройстве.
  *
  * НЕ сюда: `PeekSheet` — немодальный шит с детентами, намеренно не на vaul
  * (vaul лочит страницу и ставит `touch-action: none` на всю поверхность, что
@@ -21,11 +28,43 @@ import { Drawer } from 'vaul';
  */
 
 /**
+ * ГЛУБИНА ВЛОЖЕННОСТИ ШТОРОК. Шторка над шторкой — не экзотика, а норма: окно
+ * события и окно «добавить место» САМИ являются шторками на телефоне, и пикер
+ * города, открытый из них, обязан лечь ПОВЕРХ. У vaul для этого отдельный корень
+ * (`Drawer.NestedRoot`), и выбирать между ним и обычным нужно ПО ФАКТУ ДЕРЕВА, а
+ * не пропом вызывателя: проп означал бы, что каждый пикер обязан знать, кто его
+ * открыл, и соврал бы ровно в тот день, когда экран переставили.
+ *
+ * ⚠️ ОШИБКА ЗДЕСЬ НЕ ПАДАЕТ, А ТИХО МЕНЯЕТ ПОВЕДЕНИЕ — и это единственная причина,
+ * по которой выбор стоит того, чтобы быть автоматическим. Проверено на месте:
+ * `NestedRoot` вне родителя НЕ бросает, хотя и содержит `throw`, — у vaul в
+ * дефолтном значении контекста `onNestedDrag` объявлен заглушкой, и условие
+ * никогда не выполняется. Значит цена промаха такая:
+ *   • `NestedRoot` на глубине 0 → в `Root` уезжает `nested: true`, а закрытие и
+ *     перетаскивание привязаны к заглушкам родителя, которого нет;
+ *   • обычный `Root` на глубине >0 → родитель не узнаёт об открытии ребёнка и
+ *     продолжает считать себя верхней поверхностью.
+ * Ни то, ни другое не даёт ни исключения, ни красного теста.
+ *
+ * Контекст течёт СКВОЗЬ портал (React), поэтому вложенная шторка видит родителя,
+ * хотя физически живёт в `document.body`. Глубина растёт только внутри
+ * отрисованного содержимого: закрытая шторка портал не монтирует, и её потомков
+ * в дереве нет.
+ */
+const SheetDepth = createContext(0);
+
+/**
  * Корень шторки. Открытость контролирует вызыватель — как у `Drawer.Root`.
  * @param {{ open?: boolean, onOpenChange?: (v: boolean) => void, children?: any }} p
  */
 export function SheetRoot({ children, ...props }) {
-  return <Drawer.Root repositionInputs={false} {...props}>{children}</Drawer.Root>;
+  const depth = useContext(SheetDepth);
+  const Root = depth > 0 ? Drawer.NestedRoot : Drawer.Root;
+  return (
+    <SheetDepth.Provider value={depth + 1}>
+      <Root repositionInputs={false} {...props}>{children}</Root>
+    </SheetDepth.Provider>
+  );
 }
 
 /**
@@ -46,8 +85,16 @@ export function SheetGrip() {
  * (полноэкранная панель редактора). Остаток пропов уезжает в `Drawer.Content`
  * — там `aria-describedby`, `onOpenAutoFocus` и прочий контракт Radix.
  *
+ * ⚠️ БАЗА АННОТАЦИИ = ТО, КУДА УЕЗЖАЕТ ОСТАТОК, а он уезжает в `Drawer.Content`.
+ * Закрытый объект из пяти ключей (первая редакция) запечатывал именно то, ради
+ * чего остаток и пробрасывается: у `Drawer.Content` есть `onCloseAutoFocus`,
+ * `onOpenAutoFocus`, `onEscapeKeyDown`, `onPointerDownOutside` — весь контракт
+ * Radix, — и законный вызов краснел. Тот же виток ошибки разобран в
+ * `design/props.test.js`; здесь он повторился шестым.
+ *
  * @param {{ className: string, backdropClassName?: string, grip?: boolean,
- *   contentRef?: any, children?: any }} p
+ *   contentRef?: any, children?: any }
+ *   & import('react').ComponentPropsWithoutRef<typeof Drawer.Content>} p
  */
 export function SheetSurface({
   className,
@@ -60,8 +107,14 @@ export function SheetSurface({
   return (
     <Drawer.Portal>
       <Drawer.Overlay className={backdropClassName} />
-      {/* vaul не переводит фокус внутрь на открытии — клавиатура остаётся
-          опущенной, пока не тронули поле (без прыжка и зума iOS). */}
+      {/* Фокус на открытии vaul гасит ПО УМОЛЧАНИЮ (`autoFocus = false` -> он
+          зовёт `preventDefault()`), поэтому шторка открывается с опущенной
+          клавиатурой. Это умолчание, а не запрет: поверхности, которой поле
+          нужно в фокусе, достаточно передать штатный `onOpenAutoFocus` — он
+          уезжает в `Drawer.Content` вместе с остатком пропов. Сегодня этого не
+          делает НИКТО, и это вывод, а не пробел: на тач-платформе программный
+          фокус ставит каретку, но не поднимает клавиатуру (разбор — в шапке
+          `ui/PickerSheet`). */}
       <Drawer.Content ref={contentRef} className={className} {...rest}>
         {grip ? <SheetGrip /> : null}
         {children}

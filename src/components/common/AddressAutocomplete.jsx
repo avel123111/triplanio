@@ -47,7 +47,7 @@ export default function AddressAutocomplete({
   // движка через его же `inputProps` (TRIP-333).
   ...rest
 }) {
-  const { lang: appLang } = useI18n();
+  const { lang: appLang, t } = useI18n();
 
   const search = async (q, engineLang) => {
     const effectiveLang = language || engineLang || appLang || 'en';
@@ -91,6 +91,7 @@ export default function AddressAutocomplete({
         </>
       )}
       placeholder={placeholder}
+      title={t('event.address')}
       disabled={disabled}
       icon="pin"
     />

@@ -31,7 +31,8 @@ import FlowMap from '@/pages/create/FlowMap';
 import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
 import ChatComposer from '@/components/chat/ChatComposer';
-import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
+import { CityAnchorRow } from '@/pages/create/anchors';
+import CityPicker from '@/components/cities/CityPicker';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
@@ -310,7 +311,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       <div className="field-row field-row--aside">
         <div className="field">
           <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
-          <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} blurOnPick />
+          <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} />
         </div>
         <div className="field">
           <label className="field__label">{t('planner.departure_date')}</label>
