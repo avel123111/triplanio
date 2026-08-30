@@ -15,7 +15,10 @@
 //
 // Naming convention: object_action, snake_case; variant info goes in props, never
 // in the event name. No PII in props (uid only, set via identify).
-import posthog from 'posthog-js';
+// Точка входа — slim-сборка пакета; почему именно она и что она не умеет,
+// см. докблок в `destinations/posthog.js` (TRIP-475). Обе двери обязаны
+// импортировать ОДИН вход, иначе в бандл приедут ДВЕ копии SDK.
+import posthog from 'posthog-js/dist/module.slim.js';
 import { CAMPAIGN_KEYS, campaignQuery, resolveCampaign } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 import { entrySearch } from '@/lib/analyticsEnv';
