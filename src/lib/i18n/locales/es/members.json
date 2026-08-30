@@ -3,6 +3,7 @@
   "badge_admin": "Admin",
   "badge_owner": "Propietario",
   "badge_viewer": "Lector",
+  "blocked_title": "Bloqueados",
   "change_role": "Cambiar rol",
   "empty": "Solo estás tú. ¡Invita a alguien!",
   "invite": "Invitar",
@@ -10,8 +11,10 @@
   "offline_name": "Nombre",
   "pending": "pendiente",
   "remove": "Quitar del viaje",
+  "remove_and_block": "Eliminar y bloquear",
   "resend": "Reenviar",
   "send_invite": "Enviar invitación",
   "title": "Participantes",
+  "unblock": "Desbloquear",
   "you": "tú"
 }

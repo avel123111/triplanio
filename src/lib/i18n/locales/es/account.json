@@ -1,4 +1,5 @@
 {
+  "access_until": "acceso hasta {date}",
   "active": "Activa",
   "after_cancel_access": "Tras cancelar, el acceso se mantiene hasta el final del periodo pagado",
   "badge_pro_cancelled": "Pro · cancelada",
@@ -36,6 +37,7 @@
   "err_portal_open": "No se pudo abrir el portal de facturación. Inténtalo más tarde.",
   "error_title": "Error",
   "free_desc": "1 viaje activo · sin asistente de IA, reconocimiento de reservas ni sección de calendario",
+  "free_tariff": "Plan gratuito",
   "go_to_pro": "Pasar a Pro",
   "identity": "Perfil",
   "inbox_sub": "Invitaciones, respuestas y novedades del viaje",
@@ -50,8 +52,6 @@
   "per_month_short": "/mes",
   "per_year_short": "/año",
   "plan_current": "Plan actual",
-  "free_tariff": "Plan gratuito",
-  "access_until": "acceso hasta {date}",
   "pref_language": "Idioma",
   "pref_language_sub": "Idioma de la interfaz",
   "pref_theme_sub": "Apariencia clara u oscura",
