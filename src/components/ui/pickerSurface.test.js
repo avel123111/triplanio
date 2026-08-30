@@ -349,6 +349,36 @@ test('панель едет, поле стоит — обе группы объ�
     'кадр проявления в файле уже есть — второй экземпляр это дубль (правило #6)');
 });
 
+test('движки берут у хука только то, что он отдаёт', () => {
+  // ★★ ЭТОТ ТЕСТ НАПИСАН ПОСЛЕ ПАДЕНИЯ В ПРОДЕ, И ВОТ ПОЧЕМУ ИМЕННО ТАК.
+  // Правило «закрытие снимает фокус» переехало из хука к поверхности, и `release`
+  // из `usePickerFocus` исчез. В `Autocomplete` вызов убрали, в `SearchSelect`
+  // ЗАБЫЛИ — там осталось `release()`, то есть вызов `undefined`. Каждый клик по
+  // пункту валился TypeError, выбор не работал вовсе.
+  //
+  // Не поймал НИКТО: eslint деструктуризацию несуществующего свойства не считает
+  // ошибкой, тесты кликов не делают, а `tsc` эту папку не видит — `src/components/ui`
+  // стоит в `exclude` у `jsconfig.json`, поэтому и `// @ts-check` тут был бы
+  // украшением (проверено мутацией: с возвращённым `release` typecheck зелёный).
+  // Пока папка исключена, единственный, кто может это ловить, — вот этот тест.
+  const surface = readFileSync(join(UI, 'PickerSheet.jsx'), 'utf8');
+  const body = surface.slice(surface.indexOf('export function usePickerFocus'));
+  const returned = new Set(
+    [...body.slice(0, body.indexOf('\n}')).matchAll(/^\s{4}([A-Za-z_$][\w$]*)\s*[:,]/gm)].map((m) => m[1]),
+  );
+  assert.ok(returned.size > 0, 'не разобрал, что возвращает хук — тест обязан читать то, что проверяет');
+
+  for (const rel of ['SearchSelect.jsx', '../common/Autocomplete.jsx']) {
+    const src = readFileSync(join(UI, rel), 'utf8');
+    const m = src.match(/const\s*\{([^}]*)\}\s*=\s*usePickerFocus\(\)/);
+    if (!m) continue;
+    for (const name of m[1].split(',').map((x) => x.trim().split(':')[0].trim()).filter(Boolean)) {
+      assert.ok(returned.has(name),
+        `${rel}: берёт у usePickerFocus «${name}», а хук такого не отдаёт — это вызов undefined в рантайме`);
+    }
+  }
+});
+
 test('закрытие снимает фокус — у ПОВЕРХНОСТИ, а не у одной из четырёх дверей', () => {
   // ★ ЗАМЕР: закрытий четыре (выбор, Esc, тап мимо, свайп), блюр стоял на одном.
   //   было  фокус жил ВСЕ 500 мс выезда, узел уходил из DOM на 543-м мс

@@ -75,9 +75,11 @@ export default function SearchSelect({
   // Дисциплина фокуса — у поверхности (`usePickerFocus` в `PickerSheet`), здесь
   // только вызовы. На десктопе поверхность другая (попап), и правило к ней не
   // применяется: там фокус ставит `autoFocus` поля.
-  const { searchRef, openInGesture, release } = usePickerFocus();
+  const { searchRef, openInGesture } = usePickerFocus();
   const openSheet = () => (isPhone ? openInGesture(setOpen) : setOpen(true));
-  const pick = (o) => { release(); onChange(getKey(o)); close(); };
+  /* Фокус здесь НЕ снимается: это делает поверхность на закрытии, где правило
+     накрывает все четыре двери (выбор, Esc, тап мимо, свайп). */
+  const pick = (o) => { onChange(getKey(o)); close(); };
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 
   // TRIP-391 объект 1 → объект 5: контрол-триггер комбобокса (поле) — открывает
