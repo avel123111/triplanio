@@ -14,7 +14,11 @@ import cityOptionRow from '@/components/common/cityOptionRow';
  * identical to the address picker and the ManualPlanner city rows.
  * onSelect(result) is unchanged, so every consumer behaves identically.
  */
-export default function CitySearch({ onSelect, autoFocus = true }) {
+/**
+ * @param {{ onSelect: (city: any) => void, autoFocus?: boolean,
+ *   embedded?: boolean, fieldRef?: any }} p
+ */
+export default function CitySearch({ onSelect, autoFocus = true, embedded = false, fieldRef = undefined }) {
   const t = useT();
   const [q, setQ] = useState('');
 
@@ -29,6 +33,10 @@ export default function CitySearch({ onSelect, autoFocus = true }) {
       placeholder={t('visit.search_city')}
       title={t('visit.city')}
       autoFocus={autoFocus}
+      /* `embedded` — поверхность уже есть у хозяина (композер города): движок
+         отдаёт поле и лист без своей шторки, разбор — в `common/Autocomplete`. */
+      embedded={embedded}
+      fieldRef={fieldRef}
       attribution={false}
     />
   );

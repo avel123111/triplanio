@@ -1,7 +1,8 @@
 // @ts-check
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, IconBtn, Card, Sheet } from '@/design/index';
+import { Btn, IconBtn, Card } from '@/design/index';
+import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import { Row, Col, Trunc } from '@/design/Layout';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -61,9 +62,21 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
   // открыли с плейсхолдера старта — так бывает после «назад»), падаем на
   // посещение: предвыбирать заведомо серую плитку нельзя.
   const [kind, setKind] = useState(defaultKind);
+  /* Открыть поверхность и сфокусировать её поле, не выходя из жеста: на тач-
+     платформе клавиатуру поднимает только `focus()` внутри пользовательского
+     жеста. Правило живёт у поверхности (`usePickerFocus`), здесь только вызовы. */
+  const { searchRef, openInGesture } = usePickerFocus();
   const rootRef = useRef(null); // десктоп-композер целиком
   const footRef = useRef(null); // футер с кнопками — последний элемент композера
   const close = () => { setOpen(false); setCity(null); setKind(defaultKind); };
+  /* На телефоне открытие обязано ПОСТАВИТЬ ФОКУС в поле шторки тем же жестом —
+     иначе человек видит поиск, но клавиатуру ему надо вызывать вторым тапом.
+     На десктопе поверхности нет, каретку ставит `autoFocus` поля. */
+  const openComposer = () => (isPhone ? openInGesture(setOpen) : setOpen(true));
+  /* «Изменить город» — та же шторка возвращается к поиску. Не вторая шторка и не
+     переоткрытие: коробка остаётся на месте, меняется её содержимое. Хук зовём
+     тем же входом — ему всё равно, что именно переключает жест. */
+  const backToSearch = () => (isPhone ? openInGesture(() => setCity(null)) : setCity(null));
   const disabledFor = (id) => (id === 'start' && !!hasStart) || (id === 'end' && !!hasEnd);
   // Плитка, на которой стоит выбор, не может быть погашенной — иначе кнопка
   // «Добавить» пишет вид, которого на экране не выбрать.
@@ -88,65 +101,71 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
     return () => clearTimeout(id);
   }, [open, city, isPhone]);
 
-  // Общие шаги композера (город → тип → подтверждение) — без своей шапки: на
-  // десктопе шапку рисует карточка ниже, на телефоне её даёт сам <Sheet>.
+  // ── Фазы композера ────────────────────────────────────────────────────────
+  // Их две, и на телефоне они обязаны жить в ОДНОЙ коробке: «найди город» и
+  // «выбери вид точки». Разводить их по двум шторкам (как было) — это лишняя
+  // поверхность и лишний тап на каждое действие, включая «изменить город».
+  const cityStep = isPhone
+    ? <CitySearch embedded fieldRef={searchRef} onSelect={setCity} />
+    : <CitySearch onSelect={setCity} />;
+
+  const typeStep = city ? (
+    <>
+      <Row gap="g3" className="te-add-city">
+        <CountryFlag code={city.country_code} />
+        <Trunc as="span" className="te-add-cityname">{city.city_name}</Trunc>
+        {/* «Изменить» возвращает ТУ ЖЕ шторку к поиску — не открывает вторую.
+            Фокус ставится в этом же жесте, иначе поле получит каретку без
+            клавиатуры (разбор — в шапке `ui/PickerSheet`). */}
+        <Btn variant="quiet" size="sm" icon="edit" onClick={backToSearch}>{t('tse.pt_change')}</Btn>
+      </Row>
+
+      {/* Вид точки. aria-pressed несёт выбор в AT; тон активной плитки — из
+          .te-add-type[aria-pressed="true"]. */}
+      <Col gap="g2">
+        <span className="eyebrow">{t('tse.pt_type_label')}</span>
+        <div className="te-add-grid" role="group" aria-label={t('tse.pt_type_label')}>
+          {POINT_TYPES.map((pt) => {
+            const dis = disabledFor(pt.id);
+            return (
+              <button key={pt.id} type="button" className="te-add-type"
+                aria-pressed={effKind === pt.id} disabled={dis || undefined}
+                title={dis ? t('tse.already_set') : t(pt.subKey)}
+                onClick={() => setKind(pt.id)}>
+                <Icon name={pt.icon} size={17} />
+                <span className="t-label">{t(pt.labelKey)}</span>
+              </button>
+            );
+          })}
+        </div>
+        <span className="t-meta muted">{meta ? t(meta.subKey) : ''}</span>
+      </Col>
+    </>
+  ) : null;
+
+  // Подтверждение. Осмысленное: между выбором города и записью стоит выбор вида.
+  const footer = (
+    <Row gap="g3" justify="j-between" className="te-add-ft" ref={footRef}>
+      <Btn variant="secondary" onClick={close}>{t('common.cancel')}</Btn>
+      <Btn variant="primary" disabled={!city} onClick={submit}>
+        <Icon name="plus" size={15} /> {t('common.add')}
+      </Btn>
+    </Row>
+  );
+
+  // Десктоп: обе фазы подряд в одной карточке — поверхностей там нет вовсе,
+  // прятать одну за другой незачем.
   const steps = (
     <>
-      {/* Шаг 1 — город. Выбор заполняет слот (флаг+имя+«Изменить»), не добавляя
-          сразу; это открывает шаг типа ниже. `autoFocus` — каретка в поле на
-          ДЕСКТОПЕ; на телефоне шторка себя не открывает по правилу движка
-          (разбор — в `common/Autocomplete`), поэтому гасить его тут не нужно. */}
-      {!city ? (
-        <CitySearch onSelect={setCity} />
-      ) : (
-        <Row gap="g3" className="te-add-city">
-          <CountryFlag code={city.country_code} />
-          <Trunc as="span" className="te-add-cityname">{city.city_name}</Trunc>
-          <Btn variant="quiet" size="sm" icon="edit" onClick={() => setCity(null)}>{t('tse.pt_change')}</Btn>
-        </Row>
-      )}
-
-      {/* Шаг 2 — тип (появляется после выбора города). aria-pressed несёт выбор
-          в AT; тон активной плитки — из .te-add-type[aria-pressed="true"]. */}
-      {city && (
-        <Col gap="g2">
-          <span className="eyebrow">{t('tse.pt_type_label')}</span>
-          <div className="te-add-grid" role="group" aria-label={t('tse.pt_type_label')}>
-            {POINT_TYPES.map((pt) => {
-              const dis = disabledFor(pt.id);
-              return (
-                <button key={pt.id} type="button" className="te-add-type"
-                  aria-pressed={effKind === pt.id} disabled={dis || undefined}
-                  title={dis ? t('tse.already_set') : t(pt.subKey)}
-                  onClick={() => setKind(pt.id)}>
-                  <Icon name={pt.icon} size={17} />
-                  <span className="t-label">{t(pt.labelKey)}</span>
-                </button>
-              );
-            })}
-          </div>
-          <span className="t-meta muted">{meta ? t(meta.subKey) : ''}</span>
-        </Col>
-      )}
-
-      {/* Шаг 3 — осознанное подтверждение, которого не было у мгновенного add. */}
-      <Row gap="g3" justify="j-between" className="te-add-ft" ref={footRef}>
-        <Btn variant="secondary" onClick={close}>{t('common.cancel')}</Btn>
-        <Btn variant="primary" disabled={!city} onClick={submit}>
-          <Icon name="plus" size={15} /> {t('common.add')}
-        </Btn>
-      </Row>
+      {!city ? cityStep : typeStep}
+      {footer}
     </>
   );
 
-  // Аффорданс открытия может быть чужим: плитка «Старт» на шаге городов — это
-  // тот же вход в композер, только выглядит она рядом маршрута, а не кнопкой под
-  // списком. Отдаём наружу ОТКРЫТИЕ, а не состояние: кто рисует триггер, тот не
-  // должен знать, что у композера внутри.
   const trigger = renderTrigger
-    ? renderTrigger({ open: () => setOpen(true) })
+    ? renderTrigger({ open: openComposer })
     : (
-      <Btn variant="soft" block className="te-add-open" onClick={() => setOpen(true)}>
+      <Btn variant="soft" block className="te-add-open" onClick={openComposer}>
         <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
       </Btn>
     );
@@ -154,19 +173,42 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
   // Телефон: кнопка в списке + композер в КАНОН-шите <Sheet>. Держать поле над
   // клавиатурой этому шиту НЕ НАДО: полей ввода в нём нет — город выбирается в
   // своей шторке поверх (разбор в шапке компонента).
+  /* ★ ТЕЛЕФОН — ОДНА ПОВЕРХНОСТЬ НА ВСЁ ДЕЙСТВИЕ (TRIP-484 §4).
+     Было две вложенных: маленькая шторка композера, в ней ТРИГГЕР, тап по
+     триггеру открывал вторую во весь рост, выбор возвращал в первую. То есть
+     «добавить город» стоило четырёх тапов и двух поверхностей, а «изменить
+     город» гоняло по той же лестнице второй раз.
+     Теперь коробка одна и она не меняет высоту между фазами: открылась — уже
+     ищешь (поле пришпилено, фокус в жесте, клавиатура сразу), выбрал — та же
+     коробка показывает город и виды точки, «изменить» возвращает её к поиску.
+     Полный рост заявлен явно (`full`), потому что поле здесь не в слоте
+     поверхности, а внутри содержимого: на второй фазе его нет вовсе, а коробка
+     обязана остаться прежней — сжимать её между фазами и есть тот дефект, ради
+     которого полный рост заведён.
+     Подтверждение прижато книзу: `.te-add` растёт (`grow`), футер идёт следом. */
   if (isPhone) {
     return (
       <>
         {trigger}
-        <Sheet open={open} onOpenChange={(o) => { if (!o) close(); }} title={t('tse.add_point')}>
-          <div className="te-add">
+        <PickerSheet
+          open={open}
+          onOpenChange={(o) => { if (!o) close(); }}
+          title={t('tse.add_point')}
+          full
+        >
+          <div className="te-add grow">
             <span className="t-meta muted">{t('tse.add_point_hint')}</span>
-            {steps}
+            {!city ? cityStep : typeStep}
           </div>
-        </Sheet>
+          {/* Футер — только когда есть что подтверждать. На фазе поиска
+              «Добавить» всё равно выключена, а «Отмена» повторяет «×» в шапке:
+              две мёртвые кнопки под списком результатов. */}
+          {city ? footer : null}
+        </PickerSheet>
       </>
     );
   }
+
   // Десктоп: инлайн в виджете со своей шапкой и лёгкой анимацией появления.
   if (!open) return trigger;
   return (

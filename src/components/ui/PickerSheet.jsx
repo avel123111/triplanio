@@ -55,6 +55,13 @@ export function usePickerFocus() {
 }
 
 /**
+ * `full` — «поиск у меня ВНУТРИ, а не в слоте». Правило геометрии не меняется
+ * («есть поиск -> полный рост»), меняется способ его заявить: поверхность с
+ * НЕСКОЛЬКИМИ фазами (композер города: найти город -> выбрать вид точки) не может
+ * отдать поле в отдельный слот — на второй фазе поля нет вовсе, а коробка обязана
+ * остаться той же. Сжать её между фазами нельзя: меняющаяся высота коробки — это
+ * ровно тот дефект, ради которого полный рост и заведён.
+ *
  * ЗАКРЫТИЕ СНИМАЕТ ФОКУС — ЗДЕСЬ, А НЕ У ВЫЗЫВАТЕЛЯ. Клавиатуру держит
  * сфокусированное поле, значит «шторка закрывается» и «клавиатура уходит» — одно
  * событие, и знает про него поверхность. Дверей у закрытия ЧЕТЫРЕ (выбор, Esc,
@@ -65,9 +72,9 @@ export function usePickerFocus() {
  * поддерево (`contains`) — фокус, возвращённый Radix на триггер, не наш.
  *
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any,
- *   search?: any, children?: any }} p
+ *   search?: any, full?: boolean, children?: any }} p
  */
-export function PickerSheet({ open, onOpenChange, title, search = null, children }) {
+export function PickerSheet({ open, onOpenChange, title, search = null, full = false, children }) {
   const boxRef = useRef(/** @type {any} */ (null));
   useEffect(() => {
     if (open) return;
@@ -80,7 +87,7 @@ export function PickerSheet({ open, onOpenChange, title, search = null, children
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      className={search ? 'sheet--full' : ''}
+      className={(search || full) ? 'sheet--full' : ''}
       contentRef={boxRef}
     >
       {search}
