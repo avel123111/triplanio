@@ -20,21 +20,20 @@ import { useT } from '@/lib/i18n/I18nContext';
  *     ...rows...
  *   </Sheet>
  */
-/** `onOpenAutoFocus` / `onCloseAutoFocus` уезжают в `Drawer.Content`, то есть в
- *  ШТАТНЫЙ контракт Radix «куда встаёт фокус при открытии и куда возвращается
- *  при закрытии». Это не расширение примитива, а перестало быть его запечатыванием:
- *  vaul по умолчанию ГАСИТ автофокус диалога (`autoFocus = false` -> он зовёт
- *  `preventDefault()` на открытии), и, пока шов не пробрасывал этот хук, поверх
- *  подавления приходилось ставить фокус руками — эффектами, кадрами и синхронными
- *  коммитами. Всё это удалено: у задачи «поле в фокусе при открытии шторки» есть
- *  штатный хук, и теперь он доступен.
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, onOpenAutoFocus?: (e: any) => void, onCloseAutoFocus?: (e: any) => void,
+/** Проброса `onOpenAutoFocus`/`onCloseAutoFocus` здесь НЕТ намеренно. Он был
+ *  заведён под пикер, который ставил фокус в поле поиска, и вместе с той затеей
+ *  и ушёл: на тач-платформе программный фокус даёт каретку без клавиатуры
+ *  (разбор — в шапке `ui/PickerSheet`). Умолчание vaul — не переводить фокус
+ *  внутрь — оказалось верным поведением, и переопределять его некому.
+ *  Понадобится снова — контракт Radix никуда не делся: остаток пропов
+ *  `SheetSurface` уезжает прямо в `Drawer.Content`.
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string,
  *   repositionInputs?: boolean }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, onOpenAutoFocus, onCloseAutoFocus, repositionInputs }) {
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, repositionInputs }) {
   const t = useT();
   return (
     <SheetRoot open={open} onOpenChange={onOpenChange} repositionInputs={repositionInputs}>
-      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onOpenAutoFocus={onOpenAutoFocus} onCloseAutoFocus={onCloseAutoFocus}>
+      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
         {title ? (
           <div className="sheet-h">
             <SheetTitle asChild><h3>{title}</h3></SheetTitle>
