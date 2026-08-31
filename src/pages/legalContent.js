@@ -32,8 +32,8 @@ function tocOf(html) {
 }
 
 export const LEGAL_META = {
-  updated: 'Last updated 26 August 2026',
-  version: 'Version 1.0',
+  updated: 'Last updated 31 August 2026',
+  version: 'Version 1.1',
   effective: 'Effective 26 August 2026',
 };
 
