@@ -24,6 +24,8 @@
 <dd>your plan, purchase and subscription history, amounts and currency, and our payment provider’s identifiers. We never receive or store card numbers — payment details are entered directly with Stripe</dd>
 <dt>Technical data</dt>
 <dd>IP address, browser and device information, timestamps, error reports, and short-lived rate-limiting records that protect the Service from abuse</dd>
+<dt>Session replays (only if you accept analytics cookies)</dt>
+<dd>for some sessions, a masked reconstruction of your visit — layout, clicks, scrolling and navigation. All text and all input fields are hidden, and profile photos are not captured, before the recording leaves your browser. See “Analytics and advertising” below</dd>
 </dl>
 </section>
 <section id="use">
@@ -45,6 +47,7 @@
 <p>We want this to be precise, because it is often written vaguely:</p>
 <p><strong>Before you answer the cookie banner</strong> (and if you choose “Necessary only”), our product analytics (PostHog) runs in a <strong>cookieless mode</strong>: nothing is stored on your device, and events are anonymous — they are not linked to your account. Error monitoring (Sentry) and privacy-friendly aggregate visit counting (Vercel Web Analytics) also run without storing anything on your device.</p>
 <p><strong>If you choose “Accept all”</strong>, analytics additionally stores identifiers on your device (see the next section) and links usage to your account, so we can understand how the product is used. With the same choice, we load <strong>Google Ads</strong> measurement, which stores advertising identifiers on your device to attribute sign-ups and purchases to ad clicks. To improve conversion matching we send Google a <strong>SHA-256 hash</strong> of your email address — never the raw address.</p>
+<p><strong>Session replay.</strong> With the same choice, some sessions are also recorded as a <strong>session replay</strong> — a reconstruction of how the interface behaved as you moved through it, which we use to find where the product is confusing or broken. <strong>All text and all input fields are masked, and profile photos are blocked, before anything leaves your browser</strong>: we see layout, clicks and navigation, never what you or anyone else wrote. Nothing is recorded before you accept, only sessions matching rules we configure are kept (for example, a session in which a purchase was started), and replays are deleted after 30 days.</p>
 <p><strong>You can change your choice at any time</strong> via “Cookie settings” in the footer or in your account. Withdrawing consent stops analytics storage and advertising measurement; identifiers already stored are removed, and any remaining Google cookies can be deleted in your browser settings.</p>
 <p>Independent of the banner, when a new account is created we record the campaign tags of the visit that led to the sign-up (for example <code>utm_source</code> or an ad-click ID) as part of the account record — this is a one-time note about how you found us, not ongoing tracking.</p>
 </section>
@@ -75,7 +78,7 @@
 <dt>Stripe</dt>
 <dd>processes payments. Receives your email address and account ID; card details stay with Stripe</dd>
 <dt>PostHog (EU)</dt>
-<dd>product analytics, as described above</dd>
+<dd>product analytics and masked session replays, as described above</dd>
 <dt>Sentry (EU)</dt>
 <dd>error monitoring. Reports are scrubbed of personal details; session replays are captured only when an error occurs and mask all text and inputs</dd>
 <dt>Google</dt>
@@ -118,6 +121,8 @@
 <dd>6 years, as Spanish commercial law requires</dd>
 <dt>Error reports</dt>
 <dd>90 days</dd>
+<dt>Session replays</dt>
+<dd>30 days</dd>
 <dt>Database backups</dt>
 <dd>data you delete disappears from live systems immediately, but may persist in our backups for up to 7 days before they are overwritten</dd>
 <dt>Support requests</dt>
