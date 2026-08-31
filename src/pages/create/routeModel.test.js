@@ -24,7 +24,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   insertNode, withNights, withKind, recomputeDates, makeNode, asCity,
-  startOf, endOf, hasExplicitEnd, isAnchorNode, toCitiesPayload, isStayNode, cityNodesOf,
+  startOf, endOf, hasExplicitEnd, finishOf, isAnchorNode, toCitiesPayload, isStayNode, cityNodesOf,
 } from './routeModel.js';
 
 const city = (name, extra = {}) => ({
@@ -199,4 +199,32 @@ test('★★ снятие финиша с города возвращает ви
   const cityStay = withKind(stop('Неаполь', 3), 'end');
   assert.equal(asCity(cityStay).kind, 'transit');
   assert.equal(asCity(cityStay).nights, 3, 'ночи города переживают оба переключения');
+});
+
+// ─── Где финиш: ОДИН ответ на весь флоу ──────────────────────────────────────
+
+test('★★ finishOf различает четыре формы, и «домой» выбором НЕ считается', () => {
+  const start = anchor('Москва', 'start');
+  const rome = stop('Рим');
+  assert.deepEqual(
+    ['none', 'home', 'city', 'stay'].map((m, i) => {
+      const nodes = [[], [start], [start, rome, anchor('Париж', 'end')],
+        [start, withKind(rome, 'end')]][i];
+      const f = finishOf(nodes);
+      return [f.mode, f.decided];
+    }),
+    [['none', false], ['home', false], ['city', true], ['stay', true]],
+  );
+});
+
+test('★★ «останусь» ОДИНАКОВО читается всеми: и финиш, и город списка', () => {
+  // Расхождение здесь и было багом: шаг возврата помечал город финишем, шаг
+  // городов рисовал его обычным городом, а шаг пропускался как «финиш выбран».
+  const nodes = [anchor('Москва', 'start'), withKind(stop('Рим'), 'end')];
+  const f = finishOf(nodes);
+  assert.equal(f.mode, 'stay');
+  assert.equal(f.decided, true, 'выбор сделан — иначе шаг возврата не пропустится');
+  assert.ok(isStayNode(f.node), 'узел остаётся городом с ночами');
+  assert.deepEqual(cityNodesOf(nodes).map(n => n.city_name), ['Рим'],
+    'город из списка не исчезает оттого, что он же финиш');
 });

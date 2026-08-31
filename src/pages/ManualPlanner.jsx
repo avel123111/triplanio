@@ -33,7 +33,7 @@ import CityAdder from '@/components/cities/CityAdder';
 import CityPicker from '@/components/cities/CityPicker';
 import { resolveCity } from '@/components/cities/resolveCity';
 import {
-  startOf, endOf, cityNodesOf, isStayNode, hasExplicitEnd, isAnchorNode,
+  startOf, endOf, cityNodesOf, isStayNode, hasExplicitEnd, finishOf, isAnchorNode,
   insertNode, withNights, withKind, recomputeDates, toCitiesPayload, makeNode, asCity,
 } from '@/pages/create/routeModel';
 import { useRouteDnD } from '@/lib/useRouteDnD';
@@ -194,9 +194,16 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
   const lead = isWaypoint
     ? <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>
     : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
+  /* «Останусь» — это ГОРОД, помеченный финишем: он остаётся рядом списка со
+     своими ночами, поэтому роль объявляется бейджем в той же ячейке, что и
+     «пересадка» — второго способа сказать «чем закончим» в ряду нет. Без него
+     шаг городов рисовал выбранный на шаге возврата финиш обычным городом, и
+     флоу противоречил сам себе. */
   const dates = isWaypoint
     ? <><Badge size="tiny">{t('tse.layover')}</Badge>{dateRange}</>
-    : dateRange;
+    : isStayNode(node)
+      ? <><Badge size="tiny">{t('ai_plan.end')}</Badge>{dateRange}</>
+      : dateRange;
 
   return (
     <CityRowBase
@@ -1090,28 +1097,34 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // The entry step's label depends on the method (origin vs AI prompt).
   const entryLabel = isAi ? t('planner.step_home_ai') : t('planner.step_home');
-  // ★ ШАГ ВОЗВРАТА ПРОПУСКАЕТСЯ, КОГДА ФИНИШ УЖЕ ВЫБРАН (TRIP-484 §4). Плитка
-  // «финиш» в композере задаёт конец маршрута прямо на шаге городов — и тогда
-  // спрашивать «чем закончим?» отдельным шагом значит переспрашивать уже
-  // решённое. Предикат ОДИН (`hasExplicitEnd`) и покрывает обе формы выбора:
-  // финиш отдельным городом и «останусь» (последний город помечен финишем).
-  // Не выбрал — шаг остаётся целиком, со всеми тремя карточками, включая
-  // «домой»: он не выбор города, а ссылка на старт, и живёт только там.
-  // ⚠️ `step !== 'return'` — НЕ УКРАШЕНИЕ. На самом шаге возврата выбор финиша
-  // («в другой город») тоже создаёт узел `end`, и без этой половины шаг исчез бы
-  // ПРЯМО ПОД ЧЕЛОВЕКОМ, который на нём стоит: прогресс потерял бы текущую
-  // ступень, а `goNext` — свой индекс. Со шага, на котором стоишь, не выселяют.
-  const skipReturn = hasExplicitEnd(nodes) && step !== 'return';
+  /* ★ ШАГ ВОЗВРАТА ПРОПУСКАЕТСЯ ХОДОМ, НО НЕ ИСЧЕЗАЕТ ИЗ РЕЙЛА (TRIP-484).
+     Финиш выбран на шаге городов -> спрашивать «чем закончим?» отдельным шагом
+     значит переспрашивать решённое, и «Далее» через него перешагивает.
+     ⚠️ НО УБИРАТЬ ЕГО ИЗ СПИСКА НЕЛЬЗЯ, И ЭТО НЕ ВКУС. Шаг — ЕДИНСТВЕННОЕ место,
+     где финиш меняют («домой» / «останусь» / другой город). Пока он вычитался
+     из `visibleSteps`, выбор становился НЕОБРАТИМЫМ: выбрал «останусь» — шаг
+     исчез, плитка «финиш» в композере погасла (финиш уже есть), и поменять было
+     нечем. Ступень остаётся в рейле и доступна тапом (`FlowProgress` пускает на
+     пройденные), а «пропускается» относится к ходу, а не к существованию.
+     Предикат — общий `finishOf(...).decided`: дефолт «домой» выбором не
+     считается, иначе шаг пропускался бы у всех. */
+  const finishDecided = hasExplicitEnd(nodes);
   const visibleSteps = STEPS
-    .filter(s => !(s.id === 'return' && skipReturn))
     .map(s => ({ ...s, label: s.id === 'home' ? entryLabel : t(s.labelKey) }));
+  // Ход перешагивает решённую ступень в ОБЕ стороны — одним правилом, а не двумя.
+  const stepAt = (from, dir) => {
+    let i = from + dir;
+    if (visibleSteps[i]?.id === 'return' && finishDecided && step !== 'return') i += dir;
+    return visibleSteps[i] || null;
+  };
   const goNext = () => {
-    const i = visibleSteps.findIndex(s => s.id === step);
-    if (i >= 0 && i < visibleSteps.length - 1) setStep(visibleSteps[i + 1].id);
+    const next = stepAt(visibleSteps.findIndex(s => s.id === step), +1);
+    if (next) setStep(next.id);
   };
   const goPrev = () => {
     const i = visibleSteps.findIndex(s => s.id === step);
-    if (i > 0) setStep(visibleSteps[i - 1].id);
+    const prev = i > 0 ? stepAt(i, -1) : null;
+    if (prev) setStep(prev.id);
   };
 
   // Reset draft and go back to step 1
@@ -1141,10 +1154,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const lastCity = cities[cities.length - 1] || null;
   // «Останусь» = финиш, которым помечен город списка. Карте это значит «не рисуй
   // отдельный пин финиша»: он уже нарисован как город.
-  const isStay = !!endNode && isStayNode(endNode);
-  // Финиш ДЛЯ ПОКАЗА. Не выбран, но есть старт → «домой»: тот же дефолт, что
-  // уходит в сохранение (`toCitiesPayload`), просто здесь он ещё и рисуется.
-  const finishCity = isStay ? null : (endNode || home || null);
+  // Финиш — ОДИН ответ на весь флоу (`finishOf`), а не три условия по месту.
+  // Карте «останусь» значит «не рисуй отдельный пин»: он уже нарисован городом.
+  const finish = finishOf(nodes);
+  const isStay = finish.mode === 'stay';
+  const finishCity = isStay ? null : finish.node;
   const autoTitle = computeAutoTitle(home, cities, t);
 
   // ── Ручки записи маршрута ──────────────────────────────────────────────────
