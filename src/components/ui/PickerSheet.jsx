@@ -20,7 +20,7 @@ import { Sheet } from '@/components/ui/Sheet';
  * ★ ФОКУС СТАВИТСЯ РОВНО В ЖЕСТЕ. WebKit (а на iOS это любой браузер) поднимает
  * клавиатуру только на `focus()` внутри пользовательского жеста, в поле, которое
  * уже в DOM. Фокус после жеста — эффектом, `onOpenAutoFocus`, следующим кадром —
- * даёт каретку без клавиатуры. Отсюда синхронный `openInGesture` ниже.
+ * даёт каретку без клавиатуры. Отсюда синхронный `inGesture` ниже.
  *
  * ⚠️ «ПОЛЕ УЛЕТАЕТ НАВЕРХ» ЗДЕСЬ НЕ РАБОТАЕТ, И ЭТО СВОЙСТВО ДЕРЕВА. Поле города
  * живёт внутри `PeekSheet`, а тот `position: fixed` + `transform`. Значит (а) он
@@ -40,21 +40,41 @@ import { Sheet } from '@/components/ui/Sheet';
  * этого удалённый отсюда `release` продолжал вызываться в `SearchSelect` и падал
  * у каждого на клике по пункту (Sentry TRIPLANIO-33): его не видели ни eslint,
  * ни `tsc`. С объявленным типом это ошибка компиляции — проверено мутацией.
- * @returns {{ searchRef: any, openInGesture: (setOpen: any) => void }}
+ * ⚠️ ИМЯ ГОВОРИТ РОВНО ТО, ЧТО ФУНКЦИЯ ДЕЛАЕТ. Прежнее `openInGesture(setOpen)`
+ * принимало СЕТТЕР ОТКРЫТОСТИ и звало его с `true` — а звали им и «открыть
+ * шторку», и «вернуться к поиску» (`() => setCity(null)`), то есть передавали
+ * лямбду, которая аргумент игнорирует. Работало, но тип и имя врали, и третий
+ * вызыватель уже подстраивался под ложь. Теперь принимается ДЕЙСТВИЕ: «сделай
+ * это и поставь фокус, не выходя из жеста» — и обе нужды выражаются честно.
+ * @returns {{ searchRef: any, inGesture: (change: () => void) => void }}
  */
 export function usePickerFocus() {
   const searchRef = useRef(/** @type {any} */ (null));
-  const focus = () => searchRef.current?.focus({ preventScroll: true });
 
   return {
     /** Ссылка на поле поиска ВНУТРИ шторки. */
     searchRef,
-    /** Открыть поверхность и сфокусировать её поле, не выходя из жеста. */
-    openInGesture: (setOpen) => { flushSync(() => setOpen(true)); focus(); },
+    /** Применить изменение и сфокусировать поле, не выходя из жеста. */
+    inGesture: (change) => {
+      flushSync(change);
+      searchRef.current?.focus({ preventScroll: true });
+    },
   };
 }
 
 /**
+ * `full` — ЕДИНСТВЕННЫЙ способ заявить полный рост. Само правило прежнее («есть
+ * поиск -> полный рост»), но объявляется оно теперь ОДНОЙ ручкой: было две —
+ * непустой слот `search` включал рост САМ, и вдобавок появился явный `full`. Два
+ * способа сказать одно и то же — это развилка, на которой два вызывателя однажды
+ * разъедутся; `search` остался тем, чем и должен быть, — просто слотом.
+ * Что рост нужен КАЖДОЙ поверхности с полем поиска, сторожит тест: он проверяет,
+ * что всякий вызыватель, передающий `search`, передаёт и `full`.
+ * Поверхность с НЕСКОЛЬКИМИ фазами (композер города: найти город -> выбрать вид
+ * точки) слотом обойтись и не могла: на второй фазе поля нет вовсе, а коробка
+ * обязана остаться той же. Сжать её между фазами нельзя — меняющаяся высота и
+ * есть тот дефект, ради которого полный рост заведён.
+ *
  * ЗАКРЫТИЕ СНИМАЕТ ФОКУС — ЗДЕСЬ, А НЕ У ВЫЗЫВАТЕЛЯ. Клавиатуру держит
  * сфокусированное поле, значит «шторка закрывается» и «клавиатура уходит» — одно
  * событие, и знает про него поверхность. Дверей у закрытия ЧЕТЫРЕ (выбор, Esc,
@@ -65,9 +85,9 @@ export function usePickerFocus() {
  * поддерево (`contains`) — фокус, возвращённый Radix на триггер, не наш.
  *
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any,
- *   search?: any, children?: any }} p
+ *   search?: any, full?: boolean, children?: any }} p
  */
-export function PickerSheet({ open, onOpenChange, title, search = null, children }) {
+export function PickerSheet({ open, onOpenChange, title, search = null, full = false, children }) {
   const boxRef = useRef(/** @type {any} */ (null));
   useEffect(() => {
     if (open) return;
@@ -80,7 +100,7 @@ export function PickerSheet({ open, onOpenChange, title, search = null, children
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      className={search ? 'sheet--full' : ''}
+      className={full ? 'sheet--full' : ''}
       contentRef={boxRef}
     >
       {search}

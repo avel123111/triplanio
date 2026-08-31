@@ -7,6 +7,7 @@ import { Check, ChevronDown } from 'lucide-react';
 import { Input } from '@/design/Input';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
+import { tapPick } from '@/lib/tapGesture';
 
 /**
  * C4 · SearchSelect — the canonical searchable picker (currency, language, …).
@@ -76,11 +77,23 @@ export default function SearchSelect({
   // Дисциплина фокуса — у поверхности (`usePickerFocus` в `PickerSheet`), здесь
   // только вызовы. На десктопе поверхность другая (попап), и правило к ней не
   // применяется: там фокус ставит `autoFocus` поля.
-  const { searchRef, openInGesture } = usePickerFocus();
-  const openSheet = () => (isPhone ? openInGesture(setOpen) : setOpen(true));
+  const { searchRef, inGesture } = usePickerFocus();
+  const openSheet = () => (isPhone ? inGesture(() => setOpen(true)) : setOpen(true));
   /* Фокус здесь НЕ снимается: это делает поверхность на закрытии, где правило
      накрывает все четыре двери (выбор, Esc, тап мимо, свайп). */
-  const pick = (o) => { onChange(getKey(o)); close(); };
+  /* Тот же жест выбора, что у второго движка (`common/Autocomplete`), и это
+     один вызов `lib/tapGesture`, а не копия правила: строка листа у них одна
+     (`.ss-opt`), поверхность одна, поле поиска одно — дефект общий. */
+  const tapRef = React.useRef(/** @type {any} */ (null));
+  const pickedRef = React.useRef(false);
+  const pick = (o) => {
+    if (pickedRef.current) return;
+    pickedRef.current = true;
+    onChange(getKey(o));
+    close();
+  };
+  // Лист открыт заново — снова можно выбрать.
+  React.useEffect(() => { if (open) pickedRef.current = false; }, [open]);
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 
   // TRIP-391 объект 1 → объект 5: контрол-триггер комбобокса (поле) — открывает
@@ -152,6 +165,16 @@ export default function SearchSelect({
               type="button"
               className="ss-opt"
               data-active={selected ? '' : undefined}
+              onPointerDown={(e) => { tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, row: o }; }}
+              onPointerCancel={() => { tapRef.current = null; }}
+              onPointerUp={(e) => {
+                const picked = tapPick(tapRef.current, { id: e.pointerId, x: e.clientX, y: e.clientY });
+                tapRef.current = null;
+                // `!== null`, а не «истинно»: опцией листа законно бывает 0 или пустая
+                // строка, и такую нельзя молча объявить «не выбрано».
+                if (picked !== null) pick(picked);
+              }}
+              // Вход для клавиатуры и ВТ (`el.click()` pointer-событий не шлёт).
               onClick={() => pick(o)}
             >
               {renderOption ? renderOption(o, selected) : <span className="grow">{getKey(o)}</span>}
@@ -166,8 +189,19 @@ export default function SearchSelect({
   if (isPhone) {
     return (
       <>
-        {trigger({ onClick: () => !disabled && openSheet() })}
-        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl}>
+        {/* Роль триггера объявляется ЗДЕСЬ, а не у примитива: на десктопе те же
+            атрибуты дорисовывает `PopoverTrigger`, а в этой ветке Radix нет
+            вовсе — без них комбобокс объявлялся скринридеру просто кнопкой.
+            `dialog`, а не `listbox`: лист живёт ВНУТРИ шторки и размонтирован,
+            пока она закрыта, — обещать лист, которого нет в дереве, нельзя (тот
+            же разбор у мобильного триггера `common/Autocomplete`). */}
+        {trigger({
+          onClick: () => !disabled && openSheet(),
+          role: 'combobox',
+          'aria-haspopup': 'dialog',
+          'aria-expanded': open,
+        })}
+        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl} full>
           {listEl}
         </PickerSheet>
       </>

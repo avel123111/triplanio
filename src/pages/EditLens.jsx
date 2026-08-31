@@ -220,11 +220,10 @@ import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { tripDuration } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, Card, MapShell, Tile, PageHead, Tooltip, Sheet, useToast } from '../design/index';
-import { Row, Col, Trunc, Grow } from '../design/Layout';
-import CitySearch from '@/components/cities/CitySearch';
-import CountryFlag from '@/components/common/CountryFlag';
-import { tzFromCoords } from '@/lib/timezone';
+import { Badge, Btn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } from '../design/index';
+import { Row, Trunc } from '../design/Layout';
+import CityAdder from '@/components/cities/CityAdder';
+import { CityAnchorRow } from '@/pages/create/anchors';
 import { useTheme } from '@/lib/ThemeContext';
 import LpSheet from '@/components/ui/LpSheet';
 import MapView from '@/components/views/MapView';
@@ -864,14 +863,6 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
     }, insertIdx), { okKey: 'city_added' });
   };
-  // Commit a city picked in the inline adder (below the route list). The adder
-  // owns its own open/pick/type state and collapses itself, so there's no panel
-  // to close here — just enrich with the timezone and hand off to addCity.
-  const addPickedCity = (c, kind) => {
-    const tz = tzFromCoords(c.latitude, c.longitude);
-    addCity({ ...c, timezone: tz }, kind);
-  };
-
   // ---- transfer dialogs (REAL app dialogs → write to DB → refetch) ----
   const openTransferRow = (a, b, tr) => {
     if (tr) {
@@ -1294,7 +1285,10 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
               (клавиатуру держит платформа), на десктопе — инлайн в виджете. */}
           {canEdit && (
             <CityAdder
-              onAdd={addPickedCity}
+              /* Город приезжает из композера УЖЕ доведённым (`cities/resolveCity`):
+                 таймзона и имя страны — часть контракта города, а не работа этого
+                 экрана, поэтому обёртки между ними нет. */
+              onAdd={addCity}
               hasStart={ordered.some((n) => n.kind === 'start')}
               hasEnd={ordered.some((n) => n.kind === 'end')}
             />
@@ -1622,176 +1616,27 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
 
 // Start / Finish anchor row — flag (start) / check (finish) node, label + city,
 // departure/arrival date below. Flat flex row in the itinerary table.
+// Якорь маршрута рисует ОБЩИЙ `CityAnchorRow` (`create/anchors`) — тот же ряд,
+// что в визарде создания. Здесь остаётся только то, что этот экран знает про
+// узел: подпись «вылет/прилёт» с датой (TRIP-484 §4).
 function GridEndpoint({ node, date, onRemove }) {
   const t = useT();
   const { lang } = useI18n();
   const isStart = node.kind === 'start';
-  const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
-  const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
-    <Card recessed radius="md" pad="none" className="row row--g6 te-end">
-      <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></Tile>
-      <Grow className="te-citycell">
-        <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-        <Row gap="g3" className="te-cityline">
-          <Trunc as="span" className="te-cityname">{node.city_name}</Trunc>
-        </Row>
-        <Row gap="g3" className="te-dts">
-          {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(date || node.start_date || node.end_date, lang)}
-        </Row>
-      </Grow>
-      {/* Удаление якоря — запись, наблюдателю его нет вовсе (TRIP-459). Ряд
-          якоря раскладывает flex, не сетка, поэтому место держать не нужно. */}
-      {onRemove && <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>}
-    </Card>
+    <CityAnchorRow
+      label={isStart ? t('ai_plan.start') : t('ai_plan.end')}
+      city={node}
+      editable={!!onRemove}
+      onRemove={onRemove || undefined}
+      meta={<>{isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(date || node.start_date || node.end_date, lang)}</>}
+    />
   );
 }
 
-const POINT_TYPES = [
-  { id: 'transit', labelKey: 'event.city', icon: 'bed', subKey: 'tse.pt_transit_sub' },
-  { id: 'waypoint', labelKey: 'tse.pt_waypoint', icon: 'arrowSwap', subKey: 'tse.pt_waypoint_sub' },
-  { id: 'start', labelKey: 'ai_plan.start', icon: 'flag', subKey: 'tse.pt_start_sub' },
-  { id: 'end', labelKey: 'ai_plan.end', icon: 'flag', subKey: 'tse.pt_end_sub' },
-];
-
-// Inline "add a city" composer — lives at the END of the route list. Collapsed
-// it's one soft button; opened it walks the deliberate order the old instant-add
-// flow lacked: 1) pick a CITY (a dropdown pick fills the slot, it does NOT add
-// yet), 2) pick its TYPE (revealed after a city is chosen), 3) confirm with a
-// dedicated button. It owns its whole flow; the parent only gets the final
-// (city, kind) via onAdd once the user confirms.
-//
-// ★ ГДЕ ЖИВЁТ ПОЛЕ ВВОДА — ПО ОБЩЕЙ ЛОГИКЕ АППА, А НЕ СВОЕЙ.
-//   Десктоп: инлайн в теле виджета (клавиатуры нет — проблем нет).
-//   Телефон: композер лежит в канон-шите <Sheet>, и КЛАВИАТУРЫ В НЁМ НЕТ ВООБЩЕ
-//   (TRIP-484 §4). Поле города здесь — триггер: ввод уезжает в свою полноростную
-//   шторку поверх этой (движок <Autocomplete>, поверхность <PickerSheet>). Так
-//   композер перестал быть поверхностью, высоту которой меняет клавиатура: у
-//   него снова только собственное содержимое.
-//   Прежняя редакция подпирала инлайн-инпут скроллом по visualViewport, а нижний
-//   нав, спрятанный клавиатурой, ронял `--nav-dock-h` в 0 (фикс — в
-//   MobileBottomNav); ни того, ни другого этому экрану больше не нужно.
-function CityAdder({ onAdd, hasStart, hasEnd }) {
-  const t = useT();
-  const isPhone = useIsPhone();
-  const [open, setOpen] = useState(false);
-  const [city, setCity] = useState(null);
-  const [kind, setKind] = useState('transit');
-  const rootRef = useRef(null); // десктоп-композер целиком
-  const footRef = useRef(null); // футер с кнопками — последний элемент композера
-  const close = () => { setOpen(false); setCity(null); setKind('transit'); };
-  const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
-  const submit = () => { if (city) { onAdd(city, kind); close(); } };
-  const meta = POINT_TYPES.find((p) => p.id === kind);
-
-  // Докрутка тем же приёмом scrollIntoView, что и по всему аппу (ValidationUI,
-  // CoverPicker, …) — в ЛЮБОМ скролл-контейнере (тело виджета на десктопе / тело
-  // <Sheet> на телефоне), без платформенных веток и вычислений вьюпорта:
-  //   • выбран город → появились плитки + кнопки: докручиваем К ФУТЕРУ (он
-  //     последний), так в кадр попадают и плитки, и кнопки «Добавить/Отмена» —
-  //     на ОБЕИХ платформах;
-  //   • только открыли, города ещё нет: на десктопе — к самому композеру; на
-  //     телефоне открытие ведёт <Sheet>/платформа, скролл не трогаем.
-  // Небольшая задержка — дать разметке (появление плиток) осесть перед замером.
-  useEffect(() => {
-    if (!open) return;
-    const target = city ? footRef.current : (isPhone ? null : rootRef.current);
-    if (!target) return;
-    const id = setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
-    return () => clearTimeout(id);
-  }, [open, city, isPhone]);
-
-  // Общие шаги композера (город → тип → подтверждение) — без своей шапки: на
-  // десктопе шапку рисует карточка ниже, на телефоне её даёт сам <Sheet>.
-  const steps = (
-    <>
-      {/* Шаг 1 — город. Выбор заполняет слот (флаг+имя+«Изменить»), не добавляя
-          сразу; это открывает шаг типа ниже. `autoFocus` — каретка в поле на
-          ДЕСКТОПЕ; на телефоне шторка себя не открывает по правилу движка
-          (разбор — в `common/Autocomplete`), поэтому гасить его тут не нужно. */}
-      {!city ? (
-        <CitySearch onSelect={setCity} />
-      ) : (
-        <Row gap="g3" className="te-add-city">
-          <CountryFlag code={city.country_code} />
-          <Trunc as="span" className="te-add-cityname">{city.city_name}</Trunc>
-          <Btn variant="quiet" size="sm" icon="edit" onClick={() => setCity(null)}>{t('tse.pt_change')}</Btn>
-        </Row>
-      )}
-
-      {/* Шаг 2 — тип (появляется после выбора города). aria-pressed несёт выбор
-          в AT; тон активной плитки — из .te-add-type[aria-pressed="true"]. */}
-      {city && (
-        <Col gap="g2">
-          <span className="eyebrow">{t('tse.pt_type_label')}</span>
-          <div className="te-add-grid" role="group" aria-label={t('tse.pt_type_label')}>
-            {POINT_TYPES.map((pt) => {
-              const dis = disabledFor(pt.id);
-              return (
-                <button key={pt.id} type="button" className="te-add-type"
-                  aria-pressed={kind === pt.id} disabled={dis || undefined}
-                  title={dis ? t('tse.already_set') : t(pt.subKey)}
-                  onClick={() => setKind(pt.id)}>
-                  <Icon name={pt.icon} size={17} />
-                  <span className="t-label">{t(pt.labelKey)}</span>
-                </button>
-              );
-            })}
-          </div>
-          <span className="t-meta muted">{meta ? t(meta.subKey) : ''}</span>
-        </Col>
-      )}
-
-      {/* Шаг 3 — осознанное подтверждение, которого не было у мгновенного add. */}
-      <Row gap="g3" justify="j-between" className="te-add-ft" ref={footRef}>
-        <Btn variant="secondary" onClick={close}>{t('common.cancel')}</Btn>
-        <Btn variant="primary" disabled={!city} onClick={submit}>
-          <Icon name="plus" size={15} /> {t('common.add')}
-        </Btn>
-      </Row>
-    </>
-  );
-
-  const trigger = (
-    <Btn variant="soft" block className="te-add-open" onClick={() => setOpen(true)}>
-      <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
-    </Btn>
-  );
-
-  // Телефон: кнопка в списке + композер в КАНОН-шите <Sheet> — ровно то, что
-  // делает <SearchSelect> (поле поиска в шите). Нижний шит + `interactive-widget=
-  // overlays-content` + штатный подъём vaul держат поле над клавиатурой, без
-  // своего скролла.
-  if (isPhone) {
-    return (
-      <>
-        {trigger}
-        <Sheet open={open} onOpenChange={(o) => { if (!o) close(); }} title={t('tse.add_point')}>
-          <div className="te-add">
-            <span className="t-meta muted">{t('tse.add_point_hint')}</span>
-            {steps}
-          </div>
-        </Sheet>
-      </>
-    );
-  }
-  // Десктоп: инлайн в виджете со своей шапкой и лёгкой анимацией появления.
-  if (!open) return trigger;
-  return (
-    <div ref={rootRef} className="te-addwrap">
-      <Card recessed radius="md" pad="none" className="te-add">
-        <Row justify="j-between" align="a-start">
-          <Col gap="g1">
-            <b>{t('tse.add_point')}</b>
-            <span className="t-meta muted">{t('tse.add_point_hint')}</span>
-          </Col>
-          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
-        </Row>
-        {steps}
-      </Card>
-    </div>
-  );
-}
+// Композер добавления города переехал в `components/cities/CityAdder` — он ОБЩИЙ
+// с визардом создания (TRIP-484 §4). Словарь видов точки (`POINT_TYPES`) уехал
+// вместе с ним: вид точки — понятие МАРШРУТА, а не этого экрана.
 
 // (Conflicts and transfer rows now open in-place LEFT panels: EventSourcePanel
 //  for view/edit/delete, EventEditDialog variant="panel" for transfer create.

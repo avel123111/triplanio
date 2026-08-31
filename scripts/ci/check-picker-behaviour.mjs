@@ -93,6 +93,61 @@ if (rows > 0) {
   check(errors.length === 0, 'выбор не бросил исключение', errors.join(' | ') || 'ошибок нет');
 }
 
+/* 2а. ВЫБОР БЕЗ `click` — репро продового бага (iPhone/WebKit): слово из
+   подсказки клавиатуры остаётся композицией, первое касание тратится на её
+   коммит, `click` до строки не доходит. Chromium этого не воспроизводит, поэтому
+   потерю моделируем: шлём строке только пару pointerdown/pointerup. */
+await trigger.tap();
+await page.waitForTimeout(700);
+await page.locator('.sheet--full input.input').fill('Мад');
+await page.waitForTimeout(400);
+const pointerOnly = await page.evaluate(() => {
+  const row = document.querySelector('.sheet--full .ss-opt');
+  if (!row) return 'строки нет';
+  const r = row.getBoundingClientRect();
+  const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+  const ev = (type, dx = 0, dy = 0) => new PointerEvent(type, {
+    bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch',
+    clientX: x + dx, clientY: y + dy,
+  });
+  row.dispatchEvent(ev('pointerdown'));
+  row.dispatchEvent(ev('pointerup'));
+  return null;
+});
+await page.waitForTimeout(600);
+const pointerValue = await page.locator('button.input').first().textContent();
+check(pointerOnly === null && /Мадрид/.test(pointerValue || ''),
+  'ВЫБОР РАБОТАЕТ БЕЗ `click` (репро iOS: тач без мышиной совместимости)',
+  pointerOnly || `в поле: «${(pointerValue || '').trim()}»`);
+
+/* 2б. Обратная сторона того же жеста: протяжка по списку — скролл, не выбор.
+   Прежде границу держал сам `click` (браузер его на протяжке не рождает), теперь
+   держит порог смещения. */
+await trigger.tap();
+await page.waitForTimeout(700);
+await page.locator('.sheet--full input.input').fill('Мад');
+await page.waitForTimeout(400);
+const dragged = await page.evaluate(() => {
+  const row = document.querySelector('.sheet--full .ss-opt');
+  if (!row) return 'строки нет';
+  const r = row.getBoundingClientRect();
+  const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+  const ev = (type, dy) => new PointerEvent(type, {
+    bubbles: true, cancelable: true, pointerId: 8, pointerType: 'touch',
+    clientX: x, clientY: y + dy,
+  });
+  row.dispatchEvent(ev('pointerdown', 0));
+  row.dispatchEvent(ev('pointerup', -60));
+  return null;
+});
+await page.waitForTimeout(500);
+const stillOpen = await page.locator('.sheet--full .ss-opt').count();
+check(dragged === null && stillOpen > 0,
+  'ПРОТЯЖКА ПО СПИСКУ НЕ ВЫБИРАЕТ (скролл остался скроллом)',
+  dragged || `лист на месте, строк: ${stillOpen}`);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(500);
+
 /* 3. Закрытие снимает фокус сразу, а не в конце выходной анимации. */
 await trigger.tap();
 await page.waitForTimeout(700);
