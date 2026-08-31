@@ -102,6 +102,15 @@ export function readMarks(search) {
   return Object.keys(out).length ? out : null;
 }
 
+/** Does the set about to be written say exactly what is already stored? */
+function sameCampaign(set, stored) {
+  // Walked over MARKS, not CAMPAIGN_KEYS: the marks are what identifies a click,
+  // and `camp_ts` is the answer being decided — comparing it would be circular.
+  return MARKS.every(
+    ({ param }) => (set[campKey(param)] || null) === (stored[campKey(param)] || null),
+  );
+}
+
 /**
  * Decide what to do with the campaign mark this visit arrived with.
  *
@@ -110,12 +119,29 @@ export function readMarks(search) {
  * from the carrier that crossed an OAuth redirect or a confirmation email
  * (TRIP-335). The decision is the same whichever door they came through.
  *
+ * `stored` is the WHOLE stored set, not just its timestamp: without the stored
+ * marks this cannot tell a NEW click from the SAME click seen twice, and that
+ * difference is the rule below.
+ *
+ * THE SAME CLICK IS ONE TOUCH, however often the page loads (TRIP-493).
+ * `camp_ts` starts the 30-day last-touch window, so rewriting it on every load
+ * of a marked address extends that window for as long as the address is around.
+ * That was harmless while the only marked address was the landing page, and
+ * stopped being harmless once the marks began riding the address INTO the app
+ * (`/trips?utm_source=…`) — a screen that is reloaded all day. So an unchanged
+ * mark writes nothing at all, and the window runs from the first sight of it.
+ * Accepted consequence: clicking the SAME ad again inside the window does not
+ * extend it — that campaign already owns the person for the rest of it, and
+ * once it expires the mark is cleared, so the next click registers fresh. A
+ * DIFFERENT mark still wins immediately, which is what last touch means.
+ *
  * @param {Record<string, string>|null} marks  as read by `readMarks`
- * @param {string|null} storedTs               `camp_ts` already persisted (ISO)
+ * @param {Record<string, string>|null} stored the `camp_*` super-properties this
+ *   browser already carries (including `camp_ts`), null when nothing is stored
  * @param {number} now                         Date.now()
  * @returns {{ set: Record<string, string> } | { clear: true } | null}
  */
-export function resolveCampaign(marks, storedTs, now) {
+export function resolveCampaign(marks, stored, now) {
   // A fresh click always wins (last-touch): without overwrite the first channel
   // owns the person forever and the second never gets its conversion.
   if (isCampaign(marks)) {
@@ -123,10 +149,13 @@ export function resolveCampaign(marks, storedTs, now) {
     for (const { param } of MARKS) {
       if (marks[param]) set[campKey(param)] = marks[param];
     }
+    // Already stored, to the letter: this is the same click coming round again,
+    // and the only thing a rewrite would change is the window's start date.
+    if (stored?.camp_ts && sameCampaign(set, stored)) return null;
     return { set };
   }
 
-  const ts = Date.parse(storedTs || '');
+  const ts = Date.parse(stored?.camp_ts || '');
   if (Number.isFinite(ts) && now - ts > CAMPAIGN_TTL_MS) return { clear: true };
   return null;
 }
