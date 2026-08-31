@@ -10,7 +10,7 @@
 //
 // Browser-only (reads the entrySearch snapshot + sessionStorage); the node-safe,
 // testable form of a mark is campaign.js (`pickSignupMarks` / the whitelist).
-import { pickSignupMarks, readMarks } from '@/lib/campaign';
+import { readMarks, resolveSignupMarks } from '@/lib/campaign';
 import { entrySearch } from '@/lib/analyticsEnv';
 
 // The campaign marks of THIS document, from the entry-URL snapshot. Null on any
@@ -75,27 +75,25 @@ export function forgetStashedAttribution() {
  * written for EVERY visitor, refusers included — this is why "which campaign
  * brought this signup" has an answer that does not depend on consent.
  *
- * Read-and-forget on the stash: the marks belong to ONE signup, and leaving them
- * would credit them to whoever registers next in this tab.
+ * A THIN SHELL over `resolveSignupMarks` (campaign.js): the two rules — the
+ * address wins, and a resolved signup spends the stash whichever carrier won —
+ * are a pure function with a test, because they are worth ad spend and used to be
+ * unobservable until a paid signup showed up months later filed under "organic".
+ * All this reads is storage, and a browser refusing storage (private mode, ITP)
+ * must NOT take the address carrier down with it — hence the two separate `try`s.
  *
  * @returns {Record<string, string> | null}  marks, keyed by query parameter
  */
 export function getSignupMarks() {
-  if (visitMarks) return visitMarks;
+  let stashedRaw = null;
+  try { stashedRaw = sessionStorage.getItem(REDIRECT_KEY); } catch { /* storage refused */ }
 
-  try {
-    const stashed = sessionStorage.getItem(REDIRECT_KEY);
-    if (!stashed) return null;
-    sessionStorage.removeItem(REDIRECT_KEY);
-    // Recovered = they made it across the redirect, so the campaign side gets them
-    // too. Stored here; analytics.setCampaign() (run by identifyUser right after
-    // AuthContext calls this path) picks them up via getActiveMarks().
-    const marks = pickSignupMarks(JSON.parse(stashed));
-    rememberSignupMarks(marks);
-    return marks;
-  } catch {
-    return null;
-  }
+  const { marks, spendStash } = resolveSignupMarks(visitMarks, stashedRaw);
+  if (spendStash) forgetStashedAttribution();
+  // Only the RECOVERED path has to hand them on: when the address carried the
+  // marks, `getActiveMarks()` already reads them straight off `visitMarks`.
+  if (marks && !visitMarks) rememberSignupMarks(marks);
+  return marks;
 }
 
 /**
