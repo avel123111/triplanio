@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
@@ -35,10 +35,34 @@ export function SystemStub({ icon, tone = 'brand', title, body, primary, seconda
   );
 }
 
+/**
+ * `noindex` на время жизни страницы (TRIP-497).
+ *
+ * Сервер на любой адрес отдаёт один `index.html` и статус 200 — «страницы нет»
+ * из React заголовком не скажешь. Единственный носитель этого факта для
+ * поисковика — мета-запрет в разметке той страницы, которую он в итоге увидит
+ * после рендера.
+ *
+ * Ставится эффектом и снимается уборкой — идиома `canonical` из `SiteZone` и
+ * `useJsonLd`: без уборки запрет пережил бы клиентский переход и запретил бы
+ * индексацию СЛЕДУЮЩЕЙ страницы, а это ровно тот класс ошибки, который никто не
+ * замечает месяцами.
+ */
+function useNoIndex() {
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex';
+    document.head.appendChild(meta);
+    return () => { meta.remove(); };
+  }, []);
+}
+
 export default function PageNotFound() {
   const t = useT();
   const nav = useNavigate();
   const { user } = useAuth();
+  useNoIndex();
   // Logged in → back to the trip collection; otherwise → public landing.
   const goHome = () => nav(user ? '/trips' : '/');
   return (
