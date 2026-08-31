@@ -146,7 +146,7 @@
 - [[triplanio-n8n-jwt-auth]] — исходящие вызовы в n8n требуют HS256-JWT (`signN8nJwt`), не сырой N8N_SECRET.
 - [[triplanio-stripe-integration]] — состояние, 2 Supabase-проекта (prod/dev), webhook-URL, целевая архитектура «1 режим на проект».
 - [[triplanio-validation-unification]] — единый validateEntity + единый показ (инлайн+панель) + блок всех save-дыр; решения Pavel (out-of-bounds=error, все даты обязательны/предзаполнены, фронт-only); фазы Ф0–Ф5.
-- [[triplanio-pro-model]] — ★ИСТОЧНИК ИСТИНЫ тарифов Pro; TRIP-181 публичный якорь $39.99/год·$6.99/мес·$8.99/трип, граница Free/Pro (бюджет полностью Pro), value metric не per-seat; флаги: WTP RU не валидирован, Stripe не сеттлит RUB.
+- [[triplanio-pro-model]] — ★ИСТОЧНИК ИСТИНЫ тарифов Pro; якорь TRIP-181 сформулирован в долларах ($39.99/год·$6.99/мес·$8.99/трип), а прод СПИСЫВАЕТ ТЕ ЖЕ ЧИСЛА В EUR (каталог `provider_price` live, сверено 2026-08-31) → конкурентную рамку считать по курсу, не читать числа как долларовые; граница Free/Pro (бюджет полностью Pro), value metric не per-seat; флаги: WTP RU не валидирован, Stripe не сеттлит RUB.
 - [[triplanio-pro-audit]] — уязвимости enforcement Pro (V1–V8), расхождения визуала; отчёт PRO_AUDIT_2026-05-29.md.
 - [[triplanio-timeline-order]] — фикс варнингов «Нет переезда»: рендер Hero по дню прибытия, sortVisits тай-брейк по end, единый prevCity.
 - [[triplanio-ai-booking-parse]] — EventAiBlock с base44 InvokeLLM на свой pipeline: edge `parseBookingWithAi`→n8n→Gemini; промпты в n8n.

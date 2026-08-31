@@ -16,7 +16,8 @@
 //   - `phReady`   — init has run (memory OR localStorage). The gate `track()` and
 //                   `identifyUser()` read. TRUE under B even while memory-only.
 //   - `persisting`— this document writes PostHog keys to the DEVICE. Only true
-//                   after consent flips persistence to localStorage.
+//                   after consent flips persistence to localStorage. It is the
+//                   replay gate too: session recording starts in `onConsent`.
 // Device-level actions (the cross-tab silencer, the banner's downgrade-reload)
 // MUST key on `persisting`, never `phReady`: under B `phReady` is true for a
 // memory-only tab that wrote nothing, and clearing/reloading it on a foreign
@@ -42,6 +43,15 @@
 // ⚠️ Глубокий путь, а не `posthog-js/slim`: у пакета нет поля `exports`, только
 // `main`/`module`, поэтому короткого псевдонима не существует.
 import posthog from 'posthog-js/dist/module.slim.js';
+// Реплей приезжает ОТДЕЛЬНОЙ посылкой, потому что бандл slim (TRIP-475). Slim —
+// это ядро: capture / identify / group. Всё остальное существует, только если
+// передать его классы в `__extensionClasses` — и НЕ передать не значит «выключено»,
+// значит «расширения нет»: `startSessionRecording()` тогда выставляет флаг, который
+// внутри SDK читает `this.sessionRecording?.startIfEnabledOrStop()`, а он undefined.
+// Ни ошибки, ни запроса, ни лога — запись просто не начинается (замер TRIP-500).
+// Сам рекордер (rrweb, ~200 КБ) в бандл по-прежнему не попадает: он грузится с
+// нашего /ingest по требованию, здесь только контроллер, решающий когда его звать.
+import { SessionReplayExtensions } from 'posthog-js/dist/extension-bundles';
 import { analyticsEnabledHere, isLocalhost, isProdHost } from '@/lib/analyticsEnv';
 
 const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
@@ -91,6 +101,20 @@ export function boot(client) {
     autocapture: false,
     capture_pageview: false, // our own page_view via track() replaces it (no dupe)
     capture_performance: false,
+    // Адрес уезжает в событие БЕЗ фрагмента. После OAuth-редиректа Supabase
+    // кладёт в `#` пару access/refresh-токенов, и `$current_url` +
+    // `$session_entry_url` увозили их в аналитику как обычную строку (замер
+    // TRIP-500: живой JWT в свойстве события). Начиная с набора умолчаний
+    // '2026-06-25' это дефолт SDK; мы на '2026-05-30', поэтому объявляем явно —
+    // поднимать весь набор ради одного пункта значит менять заодно запись
+    // canvas и тела запросов.
+    disable_capture_url_hashes: true,
+    // Replay is CONSENT-GATED, not off. The client boots before the banner is
+    // answered, and a recording of the screen is the one thing that must never
+    // happen on an unanswered visit; `onConsent` lifts this. WHICH sessions are
+    // then recorded is NOT decided here — that is the project's own ingestion
+    // config (trigger groups, sampling), which lives in PostHog and changes
+    // without a deploy.
     disable_session_recording: true,
     disable_surveys: true, // опросами не пользуемся — иначе SDK тянет ~33 КБ с их CDN (TRIP-475)
     // Код — единственный замок на сбор: настройка проекта (heatmaps_opt_in)
@@ -98,6 +122,24 @@ export function boot(client) {
     enable_heatmaps: false,
     person_profiles: 'identified_only',
     persistence: 'memory', // variant B: nothing on the device until consent
+    // The privacy FLOOR of a replay — same reason as `enable_heatmaps` above
+    // (TRIP-328): the project's masking settings only move the DEFAULTS of these
+    // three, so a click in the PostHog UI can lower them, an explicit value here
+    // cannot. WHICH sessions are recorded is policy and lives in the UI; WHAT a
+    // recording may contain is safety and lives here.
+    // Text is masked whole-sale (`*`) because most of what our screens show
+    // belongs to OTHER people — a trip's members, their emails, the chat, file
+    // names — who never saw our banner. An unmask-list would be a denylist: the
+    // screen that forgets to join it leaks silently. `.avatar` is blocked on top,
+    // since text masking does not touch images and a member's photo is their face
+    // (it rides in as an inline `background-image`); one selector, because
+    // <Avatar> is the single door onto every avatar in the product.
+    session_recording: {
+      maskTextSelector: '*',
+      maskAllInputs: true,
+      blockSelector: '.avatar',
+    },
+    __extensionClasses: { ...SessionReplayExtensions },
   });
   // `env` super-property tags every event → prod dashboards filter env=prod.
   ph.register({ env: isProdHost ? 'prod' : 'dev' });
@@ -115,6 +157,11 @@ export function boot(client) {
 export function onConsent(record) {
   if (!phReady || persisting || !record?.analytics) return;
   ph.set_config({ persistence: 'localStorage+cookie' });
+  // Lift the replay gate. No argument ON PURPOSE: a bare `startSessionRecording()`
+  // OBEYS the project's ingestion controls, so this call says "allowed", never
+  // "record this one". Passing the override options would drag the recording
+  // policy into the bundle and fork it from the settings in PostHog.
+  ph.startSessionRecording?.();
   persisting = true;
 }
 
@@ -126,5 +173,8 @@ export function onConsent(record) {
 export function stopAnalytics() {
   phReady = false;
   persisting = false;
+  // Stopped explicitly rather than left to opt-out's side effects: a recorder
+  // still running after a withdrawal is the one failure here nobody would see.
+  ph.stopSessionRecording?.();
   ph.opt_out_capturing?.();
 }

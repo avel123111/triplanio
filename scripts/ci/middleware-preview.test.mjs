@@ -31,6 +31,13 @@ const SEARCH = {
 const HUMAN = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36';
 
 const ask = (path, ua) => middleware(new Request(`https://www.triplanio.com${path}`, { headers: { 'user-agent': ua } }));
+
+// ★ СЕТЬ ЗАГЛУШЕНА. Ветка 404 берёт тело у самого приложения
+// (`fetch('/index.html')`), и без подмены этот тест ходил бы за ним в ЖИВОЙ
+// прод — из CI, на каждый прогон. Заглушка отдаёт узнаваемую оболочку, чтобы
+// проверять можно было именно «тело = приложение», а не «интернет доступен».
+const SHELL = '<!doctype html><html><body><div id="root"></div></body></html>';
+globalThis.fetch = async () => new Response(SHELL, { status: 200, headers: { 'content-type': 'text/html' } });
 const bodyOf = async (res) => (res ? res.text() : null);
 const readMiddleware = () => readFileSync(new URL('../../middleware.js', import.meta.url), 'utf8');
 
@@ -124,19 +131,37 @@ test('★★ незнакомый краулер на токен-адресе т
     'человек на том же адресе обязан получить приложение');
 });
 
-test('чужой адрес боту не подменяется — превью только там, где объявлено', () => {
-  for (const p of ['/', '/login', '/trips', '/pro', '/d', '/publicity', '/termsandconditions']) {
+test('чужой адрес боту не подменяется — превью только там, где объявлено', async () => {
+  // Существующие адреса без превью: бот идёт в приложение, как и человек.
+  for (const p of ['/', '/login', '/trips', '/pro']) {
     assert.equal(ask(p, BOT), undefined, p);
+  }
+  // ★ А НЕСУЩЕСТВУЮЩИЕ теперь отвечают 404 — ВСЕМ, включая краулер превью
+  // (TRIP-497). Раньше здесь стоял `undefined`, то есть бот получал 200 и
+  // содержимое главной под любым набором букв. Превью при этом по-прежнему нет:
+  // его не на что вешать.
+  for (const p of ['/d', '/publicity', '/termsandconditions']) {
+    const res = await ask(p, BOT);
+    assert.equal(res?.status, 404, `${p} обязан отдать 404`);
+    assert.equal(res.headers.get('x-robots-tag'), 'noindex', `${p}: 404 обязан нести запрет индексации`);
+    assert.match(await bodyOf(res), /id="root"/, `${p}: тело 404 — приложение, а не заглушка края`);
   }
 });
 
-test('★★ демо — ТОЧНЫЙ адрес: несуществующий слаг не получает превью', () => {
+test('★★ демо — ТОЧНЫЙ адрес: несуществующий слаг не получает превью', async () => {
   // Найдено ревью-ботом на PR #1030. Префикс `/d/` отдавал боту 200 и
   // индексируемое превью на ЛЮБОЙ слаг, включая опечатку и мёртвую ссылку, —
   // при том что человеку там 404 (маршрут точный, `demoPath.js`). Превью,
   // расходящееся со страницей, — это ложная запись в поисковом индексе.
-  for (const p of ['/d/spain-may-27', '/d/whatever-next', '/d/not-real', '/d/']) {
-    assert.equal(ask(p, BOT), undefined, p);
+  // ПЕРЕЕХАВШИЙ слаг — особый случай: страницы нет, но есть постоянный редирект
+  // в `vercel.json`. Оборви его 404-м, и вместо переезда на канонический адрес
+  // человек получит «не найдено», а накопленный ссылочный вес пропадёт.
+  assert.equal(ask('/d/spain-may-27', BOT), undefined, 'адрес с редиректом обязан дойти до платформы');
+  // Остальные чужие слаги — 404 (TRIP-497), и превью на них по-прежнему нет.
+  for (const p of ['/d/whatever-next', '/d/not-real', '/d/']) {
+    const res = await ask(p, BOT);
+    assert.equal(res?.status, 404, p);
+    assert.equal(res.headers.get('x-robots-tag'), 'noindex', `${p}: 404 обязан нести запрет индексации`);
   }
   assert.ok(ask(DEMO_PATH, BOT), 'канонический адрес превью получает');
 });

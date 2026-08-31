@@ -13,13 +13,13 @@ import { lazy, Suspense, useEffect } from 'react'
 // тосты в ДС, и это отдельная работа с апрувом, а не строчка в этом PR.
 /* floor-exempt: dsshare +5 — `<Toaster>` снят с барреля ради лендинга; сам компонент как был в components/ui, так и остался (апрув Pavel в PR) */
 import { Toaster } from "@/components/ui/toaster"
-import { track } from '@/lib/analytics'
+import { track, withVisitCampaign } from '@/lib/analytics'
 import { isProdHost } from '@/lib/analyticsEnv'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -33,6 +33,8 @@ import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
+import { APP_ROUTES, isZoneRoute } from '@/lib/routePaths';
+import { rememberPostLogin } from '@/lib/postLoginPath';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
 
@@ -97,6 +99,31 @@ function screenOpenEvent(pathname) {
   if (pathname.startsWith('/d/')) return { event: 'demo_viewed' };
   if (pathname === '/terms' || pathname === '/privacy') return { event: 'legal_viewed', props: { doc: pathname === '/terms' ? 'terms' : 'privacy' } };
   return null;
+}
+
+/**
+ * Адрес приложения, открытый без сессии → вход, и после входа человек попадает
+ * ТУДА, КУДА ШЁЛ (TRIP-497).
+ *
+ * Механизм не новый: адрес кладётся в тот же `sessionStorage`, из которого его
+ * читает `Login` (`postLoginPath()`), — им же с Ф3 живут ссылки-приглашения.
+ * Здесь только второй писатель.
+ *
+ * ★ ЗАПИСЬ В РЕНДЕРЕ, А НЕ В ЭФФЕКТЕ, И ЭТО НАМЕРЕННО. `<Navigate>` уходит на
+ * `/login` своим эффектом, а эффекты ребёнка выполняются РАНЬШЕ родительских —
+ * то есть из эффекта мы бы записали адрес уже после того, как `Login`
+ * смонтировался и прочитал хранилище, и возврат молча терялся бы. Запись
+ * идемпотентна и без уборки, поэтому повтор в StrictMode безвреден.
+ *
+ * Адрес входа — через `withVisitCampaign`, как у всех переходов зоны в auth
+ * (`zoneCta.js`): метка кампании обязана ехать В АДРЕСЕ, иначе она теряется на
+ * первой же перезагрузке документа — а вход именно ею и заканчивается, уходя к
+ * провайдеру OAuth (TRIP-329/493).
+ */
+function RedirectToLogin() {
+  const { pathname, search } = useLocation();
+  rememberPostLogin(pathname + search);
+  return <Navigate to={withVisitCampaign('/login')} replace />;
 }
 
 const AuthenticatedApp = () => {
@@ -212,10 +239,9 @@ const AuthenticatedApp = () => {
   // `redirectTo` — `postLoginPath()`, то есть `/trips` либо сохранённый путь.
   //
   // `Suspense` тоже один: демо и юр-страницы приезжают отдельными чанками.
-  const inZone = path === '/'
-    || path.startsWith('/d/')
-    || path === '/terms' || path === '/privacy'
-    || path === '/login' || path === '/reset-password';
+  // Состав зоны — в `routePaths.js`: тот же список отвечает на вопрос «есть ли
+  // по этому адресу страница» для `canonical` в `SiteZone`.
+  const inZone = isZoneRoute(path);
 
   if (inZone) {
     return (
@@ -243,19 +269,30 @@ const AuthenticatedApp = () => {
     return <AppLoading />;
   }
 
-  // Not authenticated and on a non-root path - send to landing. Оболочка и
-  // <Suspense> ТЕ ЖЕ, что в ветке зоны выше, и это несущее: React сверяет по
-  // типу элемента, поэтому переход «чужой адрес → /terms» не пересоздаёт ни
-  // <SiteZone>, ни <Suspense> — слой стилей зоны не роняется. Разойдись эти
-  // две обёртки по составу, и первый же lazy-маршрут, добавленный сюда,
-  // вернул бы пустой кадр, который вся эта ветка и убирает.
+  // Без сессии и вне зоны. Оболочка и <Suspense> ТЕ ЖЕ, что в ветке зоны выше,
+  // и это несущее: React сверяет по типу элемента, поэтому переход «чужой адрес
+  // → /terms» не пересоздаёт ни <SiteZone>, ни <Suspense> — слой стилей зоны не
+  // роняется. Разойдись эти две обёртки по составу, и первый же lazy-маршрут,
+  // добавленный сюда, вернул бы пустой кадр, который вся эта ветка и убирает.
+  //
+  // ★ ЗДЕСЬ СХОДИЛИСЬ ДВА РАЗНЫХ СЛУЧАЯ, И ОБА ОТДАВАЛИ ЛЕНДИНГ (TRIP-497):
+  //   · `/trip/<id>` из письма, открытый без сессии, — страница ЕСТЬ, человеку
+  //     нужен вход; лендинг вместо входа терял его по дороге к своей поездке;
+  //   · Любой другой набор букв — страницы НЕТ, и лендинг под этим адресом отвечал
+  //     краулеру «200, вот содержимое», да ещё и с `canonical` на самого себя,
+  //     то есть каждая битая ссылка на нас становилась отдельной «страницей».
+  // Различает их таблица маршрутов приложения: совпал шаблон — вход с
+  // возвратом, не совпал — 404. Сопоставление делает сам react-router, второго
+  // матчера здесь нет.
   if (!isAuthenticated) {
     return (
       <SiteZone>
         <Suspense fallback={<AppLoading silent />}>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="*" element={<LandingPage />} />
+            {APP_ROUTES.map((pattern) => (
+              <Route key={pattern} path={pattern} element={<RedirectToLogin />} />
+            ))}
+            <Route path="*" element={<PageNotFound />} />
           </Routes>
         </Suspense>
       </SiteZone>

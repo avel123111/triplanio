@@ -6,8 +6,9 @@ import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
-// Ключ ОДИН на пишущего (здесь) и читающего (Login) — был выписан в обоих.
-import { PENDING_KEY } from '@/lib/postLoginPath';
+// Ключ ОДИН на пишущего и читающего, и живёт он в своём модуле вместе с
+// проверкой адреса — здесь только вызовы (TRIP-497).
+import { rememberPostLogin, forgetPostLogin } from '@/lib/postLoginPath';
 
 
 // Maps the invite-link edge function's machine `code` to its error i18n key.
@@ -35,7 +36,7 @@ export default function JoinTrip() {
       if (cancelled) return;
 
       if (!session) {
-        try { sessionStorage.setItem(PENDING_KEY, `/join/${token}`); } catch { /* ignore */ }
+        rememberPostLogin(`/join/${token}`);
         setState('signin');
         return;
       }
@@ -44,7 +45,7 @@ export default function JoinTrip() {
       if (cancelled) return;
 
       if (!error && data?.ok && data?.tripId) {
-        try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
+        forgetPostLogin();
         // the trip a user joined THROUGH is their referral source (K-factor)
         setRefTripId(data.tripId);
         track('trip_invite_joined', { trip_id: data.tripId });

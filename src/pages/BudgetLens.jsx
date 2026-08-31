@@ -239,6 +239,11 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
 
   return (
     <Dialog title={isEdit ? t('budget.edit_expense') : t('budget.manual_expense')} icon="wallet" size="" open={open} onOpenChange={onOpenChange}
+      /* На телефоне это ЭКРАН: пять полей, из них два текстовых. Шторка по
+         содержимому приклеена к низу и высоту берёт от контента — встающая
+         клавиатура поднимает её нижний край, и коробка уезжает вверх вместе с
+         кареткой. Полный рост убирает эту высоту как величину (TRIP-499). */
+      full
       foot={<>
         {isEdit && (
           <Btn variant="danger" icon="trash" onClick={askDelete} disabled={busy}>{t('trip.delete')}</Btn>
@@ -259,6 +264,13 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <Input {...st('title')} value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus={!isPhone} />
         </div>
         <FieldError issues={v.displayIssues} field="title" />
+      </Field>
+      {/* Заметки идут ВТОРЫМИ, сразу за названием: это продолжение той же мысли
+          («что это за трата»), тогда как сумма, дата, категория и город — её
+          учётные атрибуты. Внизу поле собирало остаток внимания уже после того,
+          как форма прочитана как заполненная (задание Pavel). */}
+      <Field label={t('doc.notes_label')}>
+        <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
       </Field>
       <div className="field-row cols-2">
         <Field label={t('budget.field_amount')} required={v.isRequired('amount')}>
@@ -319,9 +331,6 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           />
         </Field>
       </div>
-      <Field label={t('doc.notes_label')}>
-        <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
-      </Field>
       <IssuesPanel issues={v.panelIssues} />
       {err && <Severity level="error">{err}</Severity>}
       </div>
