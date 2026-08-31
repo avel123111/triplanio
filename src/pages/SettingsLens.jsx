@@ -207,7 +207,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
           три разных мнения об одном ритме в одном окне. */}
       <Col gap="g7">
       <div className="muted">
-        {t('settings.tg_connect_desc')}
+        {t('settings.tg_section_empty_desc')}
       </div>
 
       {stage === 'generating' && (
