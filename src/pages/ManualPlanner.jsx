@@ -455,6 +455,12 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
   const onComposing = (v) => { setComposing(v); onComposingChange?.(v); };
 
   const hasStart = !!startOf(nodes);
+  /* ⚠️ «ПУСТО» — ЭТО НЕТ ГОРОДОВ, А НЕ НЕТ УЗЛОВ. Предикат СМЕНИЛ СМЫСЛ под
+     переездом на один список: раньше он читал `cities` (только города, старт
+     лежал отдельной переменной), а `nodes` включает и якоря — поэтому заданный
+     старт молча выключал приглашение «Куда едем?», хотя маршрута ещё нет.
+     Старт городом не является: из него выезжают, в нём не ночуют. */
+  const hasCities = cityNodesOf(nodes).length > 0;
   const hasEnd = hasExplicitEnd(nodes);
   // Нумеруются только города: у якорей номера нет ни в редакторе, ни здесь.
   // Номер берётся из ЗАФИКСИРОВАННОГО порядка, а не из превью перетаскивания —
@@ -499,18 +505,7 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
           />
         )}
 
-        {/* ⚠️ ПУСТОЕ СОСТОЯНИЕ УСТУПАЕТ МЕСТО КОМПОЗЕРУ, А НЕ ВСТАЁТ НАД НИМ. Пока
-            оно рисовалось безусловно, открытый композер на десктопе выезжал ПОД
-            приглашением «Куда едем?» — то есть экран одновременно звал добавить
-            город и показывал форму добавления. Пустое состояние — это ОТСУТСТВИЕ
-            содержимого, а раз композер открыт, содержимое уже есть. */}
-        {nodes.length === 0 && !composing ? (
-          <EmptyState
-            icon="pin"
-            title={t('planner.where_to')}
-            body={t('planner.add_first_city')}
-          />
-        ) : displayNodes.map((n) => {
+        {displayNodes.map((n) => {
           const rowId = String(n.id);
           // Якорь — плитка старта/финиша (тот же элемент, что `.te-end` редактора).
           if (isAnchorNode(n) && !isStayNode(n)) {
@@ -555,8 +550,33 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
             затем подтверждение. Он и решает, что показать на телефоне (шторка) и
             на десктопе (инлайн-карточка) — этому экрану знать про платформу
             нечего. `defaultKind` называет НАМЕРЕНИЕ входа: с этой кнопки
-            добавляют город посещения. */}
-        <CityAdder onAdd={add} hasStart={hasStart} hasEnd={hasEnd} defaultKind="transit" onOpenChange={onComposing} />
+            добавляют город посещения.
+
+            ★ ПУСТОЕ СОСТОЯНИЕ — ЭТО И ЕСТЬ ЕГО ТРИГГЕР, а не сосед сверху. Пока
+            они стояли рядом, экран показывал приглашение «Куда едем?» И
+            отдельную кнопку во всю ширину под ним: два зова одного действия, с
+            дырой между ними. Теперь зов один — кнопка живёт В приглашении, как
+            обычная кнопка пустого состояния. Композер при этом ОДИН и тот же:
+            меняется только облик его триггера, а не число композеров (иначе на
+            переключении сбрасывалось бы его состояние).
+            Прятать приглашение на время работы не нужно: на десктопе композер
+            открывается ВМЕСТО триггера (`if (!open) return trigger`), на
+            телефоне лежит под своей шторкой. */}
+        <CityAdder
+          onAdd={add}
+          hasStart={hasStart}
+          hasEnd={hasEnd}
+          defaultKind="transit"
+          onOpenChange={onComposing}
+          renderTrigger={hasCities ? undefined : ({ open }) => (
+            <EmptyState
+              icon="pin"
+              title={t('planner.where_to')}
+              body={t('planner.add_first_city')}
+              action={<Btn variant="primary" icon="plus" onClick={open}>{t('planner.add_city')}</Btn>}
+            />
+          )}
+        />
       </div>
     </div>
   );
