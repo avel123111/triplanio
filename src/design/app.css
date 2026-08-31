@@ -8314,7 +8314,18 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .sheet--full padding-bottom — тот же ключ со стороны предка
    visual-diff-exempt: .sheet-b padding-top — единственный владелец зазора
    visual-diff-exempt: .ss-search padding-top — обёртка поля больше не добавляет свой */
-.sheet--full .te-add { padding-top: 0; }
+/* ★ `min-height: 0` — НЕ ПОДПОРКА, А ВТОРАЯ ПОЛОВИНА ПРАВИЛА «СКРОЛЛЕР РОВНО
+   ОДИН, И ЭТО ЛИСТ». В шторке без композера лист — прямой ребёнок `.sheet-b`, и
+   тот объявляет `min-height: 0` про себя; в композере между ними встал ещё один
+   flex-столбец (`.te-add`), а у элемента флекса автоматический минимум равен
+   его СОДЕРЖИМОМУ, не нулю. Столбец отказывался сжиматься, лист получал высоту
+   по содержимому и переставал скроллиться совсем: хвост уезжал под низ экрана и
+   резался `overflow: hidden` тела. Замер на 390x844, 20 строк: лист 905 при
+   содержимом 905, низ листа 1006 против экрана 844; с этой строкой — 745 при
+   905 и низ 831. Правило действует только там, где лист обязан скроллиться
+   (`.sheet--full`); инлайн-композер на десктопе высоту по содержимому и держит.
+   visual-diff-exempt: .te-add min-height — промежуточный столбец обязан сжиматься, иначе лист не скроллер */
+.sheet--full .te-add { padding-top: 0; min-height: 0; }
 .sheet--full .sheet-h { padding-bottom: 0; }
 .sheet--full .sheet-b { padding-top: 0; }
 .sheet--full .ss-search { padding-top: 0; }

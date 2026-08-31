@@ -128,15 +128,10 @@ export default function Autocomplete({
     else if (fieldRef) fieldRef.current = el;
   };
   const timerRef = useRef(null);
-  /* ЖЕСТ ВЫБОРА СТРОКИ. `pointerdown` запоминает, по чему нажали, `pointerup`
-     решает, был ли это тап (`lib/tapGesture` — там же разбор, почему выбор
-     снят с синтетического `click`: на iOS его съедает коммит marked text от
-     подсказки клавиатуры, а на едущем списке он рождается на контейнере).
-     `pickedRef` — защёлка: `click` остаётся ЖИВЫМ входом (нативная активация
-     <button> с клавиатуры и от вспомогательных технологий, которые зовут
-     `el.click()` и pointer-событий не шлют вовсе), и без защёлки один тап
-     выбрал бы дважды. Снимается вместе с новым списком — «из свежего списка
-     можно выбрать один раз». */
+  /* Выбор строки делает пара pointerdown/pointerup, а не `click` — разбор в
+     `lib/tapGesture`. `pickedRef` — защёлка: `click` остаётся входом для
+     клавиатуры и ВТ (`el.click()` pointer-событий не шлёт), иначе тап выберет
+     дважды. Снимается вместе с новым списком. */
   const tapRef = useRef(/** @type {any} */ (null));
   const pickedRef = useRef(false);
   const lastQueryRef = useRef('');
@@ -243,15 +238,8 @@ export default function Autocomplete({
       // Keep the input focused on tap (no keyboard flicker / iOS double-tap).
       // mousedown does NOT fire on a touch-drag, so this never blocks scroll.
       onMouseDown={(e) => e.preventDefault()}
-      /* ★ ВЫБОР ДЕЛАЕТ ПАРА pointerdown/pointerup, А НЕ `click`. Разбор целиком —
-         в шапке `lib/tapGesture`; коротко: на iOS слово из подсказки клавиатуры
-         остаётся незакоммиченной композицией, первое касание вне поля тратится
-         на её коммит, и остаток мышиной совместимости движок не досылает —
-         строка подсвечивалась (`mouseenter` доходил), а выбор не случался до
-         Enter. У тач-указателя неявный захват, поэтому `pointerup` придёт сюда
-         же, даже если список под пальцем уехал.
-         Скролл списка выбором НЕ становится: жест гасят порог смещения и
-         `pointercancel` (браузер шлёт его, забирая жест под скролл). */
+      /* Тап, а не `click`: на iOS его съедает коммит композиции от подсказки
+         клавиатуры. Скролл списка выбором не становится — порог + pointercancel. */
       onPointerDown={(e) => { tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, row: r }; }}
       onPointerCancel={() => { tapRef.current = null; }}
       onPointerUp={(e) => {
