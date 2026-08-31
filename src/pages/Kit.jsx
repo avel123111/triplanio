@@ -146,6 +146,9 @@ const TX = {
   fsPickerTitle: 'Полноростная шторка', fsPanelTitle: 'Полноростная панель',
   fsBack: 'Назад', fsCancel: 'Отмена', fsSave: 'Сохранить',
   fsPhaseHint: 'Вид точки', fsChange: 'Изменить', fsAdd: 'Добавить',
+  // Подписи плиток — те же четыре вида точки, что у настоящего композера
+  // (`cities/CityAdder`): витрина показывает ОБЪЕКТ, а не случайный текст.
+  fsKinds: ['Посещение', 'Пересадка', 'Старт', 'Финиш'],
   cardTitle: 'Заголовок карточки', cardBody: 'Тело карточки: обычный текст на поверхности.',
   cardHead: 'Заголовок', sevText: 'Текст',
   sevInvite: 'Нажмите, чтобы разрешить', sevInviteTitle: 'Приглашение',
@@ -353,7 +356,7 @@ function FullSurfaceDemo() {
             <span className="eyebrow">{TX.fsPhaseHint}</span>
             <div className="te-add-grid">
               {['bed', 'arrowSwap', 'flag', 'flag'].map((ic, i) => (
-                <button key={i} type="button" className="te-add-type"><Icon name={ic} size={17} /><span className="t-label">{KIT_CITIES[i].sub}</span></button>
+                <button key={i} type="button" className="te-add-type"><Icon name={ic} size={17} /><span className="t-label">{TX.fsKinds[i]}</span></button>
               ))}
             </div>
             <Btn variant="primary" onClick={() => setPicker(false)}>{TX.fsAdd}</Btn>
