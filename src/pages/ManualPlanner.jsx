@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
@@ -882,8 +882,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   /* Композер города открыт — шаг не завершён. «Далее» с открытым композером
      уводило бы с шага, бросив наполовину введённый город: он нигде не
      сохранён и просто исчезал. Факт приходит из шага одним каналом
-     (`CityAdder.onOpenChange`), второго способа его узнать нет. */
-  const [composing, setComposing] = useState(false);
+     (`CityAdder.onOpenChange`), второго способа его узнать нет.
+     ⚠️ СЧЁТЧИК, А НЕ ФЛАГ: композеров на шаге городов бывает ДВА одновременно
+     (плитка «Старт» и пустое состояние, пока нет ни старта, ни городов), и оба
+     пишут сюда. С булевым закрытие одного гасило факт при втором ОТКРЫТОМ.
+     Канал шлёт переходы парно (открытие → уборка эффекта, в том числе на
+     размонтировании), поэтому складывать их законно. */
+  const [composingCount, setComposingCount] = useState(0);
+  const onComposingChange = useCallback((open) => setComposingCount((c) => c + (open ? 1 : -1)), []);
+  const composing = composingCount > 0;
   // Map ↔ list linking (Map-lens parity, TRIP-337): the pin/list row hovered or
   // selected. Ids match FlowMap's marker ids ('home' | city.id | 'finish').
   const [hoveredMapId, setHoveredMapId]   = useState(null);
@@ -1026,7 +1033,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       draftNodes = insertNode(draftNodes, node) || draftNodes;
     }
     // Финиш — только если ИИ дал его ЯВНО отдельным узлом `kind:'end'`. Не дал —
-    // узла не выдумываем: финиш определится на шаге возврата (дефолт «домой»).
+    // узла не выдумываем: конец маршрута выберут на шаге возврата, а пока его не
+    // выбрали, маршрут кончается последним городом («останусь»).
     if (endCity?.city_name) draftNodes = insertNode(draftNodes, makeNode(endCity, 'end')) || draftNodes;
     const resolvedNodes = recomputeDates(draftNodes, anchor);
     setNodes(resolvedNodes);
@@ -1101,8 +1109,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
      исчез, плитка «финиш» в композере погасла (финиш уже есть), и поменять было
      нечем. Ступень остаётся в рейле и доступна тапом (`FlowProgress` пускает на
      пройденные), а «пропускается» относится к ходу, а не к существованию.
-     Предикат — общий `finishOf(...).decided`: дефолт «домой» выбором не
-     считается, иначе шаг пропускался бы у всех. */
+     Предикат — `hasExplicitEnd(nodes)`, то есть «узел `end` в списке ЕСТЬ».
+     Молчаливого финиша не бывает (дефолт «домой» снят), поэтому и пропускать
+     шаг у того, кто ничего не выбирал, нечему. */
   const finishDecided = hasExplicitEnd(nodes);
   const visibleSteps = STEPS
     .map(s => ({ ...s, label: s.id === 'home' ? entryLabel : t(s.labelKey) }));
@@ -1144,11 +1153,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // и те же узлы, а не три переменные, которые обязаны сойтись.
   const home = startOf(nodes);
   const endNode = endOf(nodes);
-  // Города для карты и ревью: без якорей, но С «останусь» — он город и есть.
+  // Города для карты и ревью — всё, кроме якорей. «Останусь» отдельным узлом не
+  // лежит, поэтому и вычитать из списка нечего: последний город остаётся городом.
   const cities = cityNodesOf(nodes);
   const lastCity = cities[cities.length - 1] || null;
-  // «Останусь» = финиш, которым помечен город списка. Карте это значит «не рисуй
-  // отдельный пин финиша»: он уже нарисован как город.
   /* Финиш — ЭТО УЗЕЛ `end`, и другого его вида не бывает. Нет узла — маршрут
      кончается последним городом («останусь»), и рисовать нечего: ни пина, ни
      ряда, ни бейджа. Отдельного признака у этого состояния нет намеренно —
@@ -1194,9 +1202,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // return pin, only shown on return/review) must not leave a tooltip floating at
   // its coordinate once the step no longer renders it.
   useEffect(() => { setHoveredMapId(null); setSelectedMapId(null); }, [step]);
-  // Шаг сменился — композера на нём больше нет, и его флаг не должен пережить
-  // уход: иначе «Далее» осталось бы выключенным на следующем шаге.
-  useEffect(() => { setComposing(false); }, [step]);
+  // Шаг сменился — композеров на нём больше нет, и счёт не должен пережить уход:
+  // иначе «Далее» осталось бы выключенным на следующем шаге. (Уборка эффекта
+  // тоже отсчитает своё, но обнуление здесь — не дубль, а гарантия: считает
+  // шаг, и обнулить счёт при смене того, что считается, обязан он.)
+  useEffect(() => { setComposingCount(0); }, [step]);
 
   // ── Supabase save ────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -1224,8 +1234,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // 1. Полезная нагрузка маршрута — ОДНА проекция списка узлов
       // (`create/routeModel.toCitiesPayload`). Даты здесь не считаются: их кладёт
       // СЕРВЕР (`create_trip_with_route` → `recompute_trip`), тем же движком, что
-      // и живое редактирование. Правила «якорь без ночей» и «финиш по умолчанию =
-      // клон старта» живут в модели и запинены тестом — здесь их копии нет.
+      // и живое редактирование. Правило «якорь едет без ночей» живёт в модели и
+      // запинено тестом — здесь его копии нет; финиша по умолчанию нет вовсе,
+      // маршрут без узла `end` кончается последним городом.
       const citiesPayload = toCitiesPayload(nodes);
 
       // Atomic create through the single door (TRIP-406): trips + city_visits +
@@ -1422,7 +1433,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
         ))}
         {step === 'cities' && (
-          <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={setComposing} />
+          <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={onComposingChange} />
         )}
         {step === 'return' && (
           <StepReturn

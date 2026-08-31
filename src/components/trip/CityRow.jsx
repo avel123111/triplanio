@@ -64,8 +64,8 @@ import React from 'react';
  *
  * @param {{ variant?: 'planner'|'editor', dragging?: boolean, pressing?: boolean,
  *           invalid?: boolean, onArm?: any, onClick?: any, grip: any, lead: any,
- *           name?: any, country?: any, conf?: any, dates?: any, editingSlot?: any,
- *           stopCellPointer?: boolean, className?: string, children: any }} p
+ *           name?: any, country?: any, conf?: any, dates?: any,
+ *           className?: string, children: any }} p
  */
 export default function CityRow({
   variant = 'planner',

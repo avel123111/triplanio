@@ -863,11 +863,6 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
     }, insertIdx), { okKey: 'city_added' });
   };
-  // Commit a city picked in the inline adder (below the route list). The adder
-  // owns its own open/pick/type state and collapses itself, so there's no panel
-  // to close here — just enrich with the timezone and hand off to addCity.
-
-
   // ---- transfer dialogs (REAL app dialogs → write to DB → refetch) ----
   const openTransferRow = (a, b, tr) => {
     if (tr) {

@@ -267,10 +267,17 @@ export default function Autocomplete({
     'aria-activedescendant': highlighted >= 0 ? `${uid}-opt-${highlighted}` : undefined,
   };
 
-  /* Поле и лист шторки объявлены ОДИН раз: их берут две ветки — своя шторка
-     (пикер открывают из строки) и ВСТРОЕННЫЙ режим (поверхность уже есть у
-     хозяина). Разойдись они — получились бы два поиска, похожие на один. */
-  const sheetField = (
+  /* ПОЛЕ — ОДНО на обе ветки с поверхностью: свою шторку (пикер открыли из
+     строки) и ВСТРОЕННЫЙ режим (поверхность уже есть у хозяина). Разойдись они —
+     получились бы два поиска, похожие на один.
+     ЛИСТ — ОДИН на ВСЕ ТРИ ветки, включая десктопный попап. Его оболочка стояла
+     здесь дважды, и копии уже разошлись: «ничего не найдено» было объявлено
+     только у шторки, а атрибуция у попапа — без проверки на непустой результат.
+     Разницы в рисунке это не давало (попап живёт ТОЛЬКО при непустых
+     результатах: `isOpen = open && results.length > 0`, поэтому там `noMatches`
+     ложно, а `results.length > 0` истинно) — то есть вторая копия ничего не
+     делала, кроме как ждала, когда разойдётся заметно. */
+  const pinnedField = (
     <div className="ss-search">
       <Input
         ref={attachField}
@@ -289,7 +296,7 @@ export default function Autocomplete({
       />
     </div>
   );
-  const sheetList = (
+  const listEl = (
     <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
       {rows}
       {/* Пусто — только когда искать УЖЕ было что: до порога лист молчит,
@@ -313,7 +320,7 @@ export default function Autocomplete({
      скроллит) — он адресует `.ss-search`/`.ss-list` как ПОТОМКОВ тела шторки, а
      не как содержимое конкретного слота, поэтому обе ветки укладываются одним
      правилом и второго экземпляра геометрии не появляется. */
-  if (embedded) return <>{sheetField}{sheetList}</>;
+  if (embedded) return <>{pinnedField}{listEl}</>;
 
   if (isPhone) {
     const closeSheet = () => { setSheetOpen(false); setOpen(false); setHighlighted(-1); };
@@ -360,10 +367,10 @@ export default function Autocomplete({
           open={sheetOpen}
           onOpenChange={(o) => { if (!o) closeSheet(); }}
           title={title || t('common.search')}
-          search={sheetField}
+          search={pinnedField}
           full
         >
-          {sheetList}
+          {listEl}
         </PickerSheet>
       </>
     );
@@ -407,10 +414,7 @@ export default function Autocomplete({
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
-        <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
-          {rows}
-          {attribution && <GeoAttribution />}
-        </div>
+        {listEl}
       </PopoverContent>
     </Popover>
   );
