@@ -56,7 +56,7 @@ test('предикаты: страница зоны, адрес зоны и вс
   assert.equal(isZonePage('/d/opechatka'), false);
 
   // Чужой адрес и адрес приложения — ни то, ни другое.
-  for (const p of ['/kakoy-to-mysor', '/trips', '/trip/123', '/settings']) {
+  for (const p of ['/no-such-page', '/trips', '/trip/123', '/settings']) {
     assert.equal(isZoneRoute(p), false, `${p} — не зона`);
     assert.equal(isZonePage(p), false, `${p} — не страница зоны`);
   }
