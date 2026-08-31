@@ -142,6 +142,9 @@ const TX = {
   chipAdd: 'Добавить переезд', chipMore: '+2 ещё', chipRemove: 'Снять фильтр',
   roleOwner: 'Владелец', roleAdmin: 'Админ', roleViewer: 'Наблюдатель', rolePending: 'Ожидает',
   overnight: 'Ночной переезд', acSearchPh: 'Начните вводить город…',
+  fsPicker: 'Шторка пикера', fsPanel: 'Панель редактора',
+  fsPickerTitle: 'Полноростная шторка', fsPanelTitle: 'Полноростная панель',
+  fsBack: 'Назад', fsCancel: 'Отмена', fsSave: 'Сохранить',
   cardTitle: 'Заголовок карточки', cardBody: 'Тело карточки: обычный текст на поверхности.',
   cardHead: 'Заголовок', sevText: 'Текст',
   sevInvite: 'Нажмите, чтобы разрешить', sevInviteTitle: 'Приглашение',
@@ -312,13 +315,13 @@ function FullSurfaceDemo() {
   const rows = KIT_CITIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <div className="row row--g4">
-      <Btn variant="secondary" onClick={() => setPicker(true)}>Шторка пикера</Btn>
-      <Btn variant="secondary" onClick={() => setPanel(true)}>Панель редактора</Btn>
+      <Btn variant="secondary" onClick={() => setPicker(true)}>{TX.fsPicker}</Btn>
+      <Btn variant="secondary" onClick={() => setPanel(true)}>{TX.fsPanel}</Btn>
 
       <PickerSheet
         open={picker}
         onOpenChange={setPicker}
-        title="Полноростная шторка"
+        title={TX.fsPickerTitle}
         full
         search={(
           <div className="ss-search">
@@ -335,11 +338,11 @@ function FullSurfaceDemo() {
         </div>
       </PickerSheet>
 
-      <LpSheet open={panel} onClose={() => setPanel(false)} title="Полноростная панель">
+      <LpSheet open={panel} onClose={() => setPanel(false)} title={TX.fsPanelTitle}>
         <div className="lp">
           <div className="lp-h">
-            <IconBtn icon="chevL" tone="soft" round ariaLabel="Назад" onClick={() => setPanel(false)} />
-            <div className="lp-ti"><b>Панель редактора</b></div>
+            <IconBtn icon="chevL" tone="soft" round ariaLabel={TX.fsBack} onClick={() => setPanel(false)} />
+            <div className="lp-ti"><b>{TX.fsPanel}</b></div>
           </div>
           <div className="lp-b scrollbar-thin" {...sheetScroller}>
             {KIT_CITIES.map((c) => (
@@ -347,8 +350,8 @@ function FullSurfaceDemo() {
             ))}
           </div>
           <div className="lp-f">
-            <Btn variant="secondary" onClick={() => setPanel(false)}>Отмена</Btn>
-            <Btn variant="primary" onClick={() => setPanel(false)}>Сохранить</Btn>
+            <Btn variant="secondary" onClick={() => setPanel(false)}>{TX.fsCancel}</Btn>
+            <Btn variant="primary" onClick={() => setPanel(false)}>{TX.fsSave}</Btn>
           </div>
         </div>
       </LpSheet>
