@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useEffect, useRef, useState } from 'react';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/design/Input';
@@ -5,6 +6,9 @@ import { useI18n, useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import GeoAttribution from '@/components/common/GeoAttribution';
+import { Trunc } from '@/design/Layout';
+import { tapPick } from '@/lib/tapGesture';
+import { sheetScroller } from '@/components/ui/sheetShell';
 
 /**
  * Autocomplete — the single, canonical async search-as-you-type field + dropdown
@@ -54,6 +58,7 @@ import GeoAttribution from '@/components/common/GeoAttribution';
  *   placeholder?: string, title?: string, autoFocus?: boolean, disabled?: boolean,
  *   icon?: string, minChars?: number, debounceMs?: number,
  *   attribution?: boolean, inputProps?: object,
+ *   embedded?: boolean, fieldRef?: any,
  * }} p
  */
 export default function Autocomplete({
@@ -72,6 +77,8 @@ export default function Autocomplete({
   debounceMs = 300,
   attribution = true,
   inputProps = {},
+  embedded = false,
+  fieldRef,
 }) {
   const { lang } = useI18n();
   const t = useT();
@@ -110,8 +117,24 @@ export default function Autocomplete({
   const [highlighted, setHighlighted] = useState(-1);
   // Дисциплина фокуса — у поверхности (`usePickerFocus`), здесь только вызовы:
   // «открыть в жесте» и «выбор сделан». Второго экземпляра правила нет.
-  const { searchRef, openInGesture } = usePickerFocus();
+  const { searchRef, inGesture } = usePickerFocus();
+  /* Поле принадлежит движку, но во ВСТРОЕННОМ режиме открывает поверхность
+     хозяин — и фокус обязан встать в том же жесте, что и открытие. Поэтому
+     ссылка раздваивается: своя (движок отпускает поле на выборе) и хозяйская
+     (`fieldRef`). Раздача через колбэк, а не `ref` в `inputProps`: React
+     вынимает `ref` из пропов, и спред его не донёс бы. */
+  const attachField = (el) => {
+    searchRef.current = el;
+    if (typeof fieldRef === 'function') fieldRef(el);
+    else if (fieldRef) fieldRef.current = el;
+  };
   const timerRef = useRef(null);
+  /* Выбор строки делает пара pointerdown/pointerup, а не `click` — разбор в
+     `lib/tapGesture`. `pickedRef` — защёлка: `click` остаётся входом для
+     клавиатуры и ВТ (`el.click()` pointer-событий не шлёт), иначе тап выберет
+     дважды. Снимается вместе с новым списком. */
+  const tapRef = useRef(/** @type {any} */ (null));
+  const pickedRef = useRef(false);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
   // Read inside the debounce timer so a mid-debounce language switch isn't stale.
@@ -134,6 +157,7 @@ export default function Autocomplete({
         const r = (await search(query.trim(), langRef.current)) || [];
         if (lastQueryRef.current !== query) return; // ignore stale
         setResults(r);
+        pickedRef.current = false;   // свежий список — снова можно выбрать
         setSettled(query.trim());
         setOpen(r.length > 0);
         setHighlighted(-1);
@@ -162,6 +186,8 @@ export default function Autocomplete({
      узлу, которому Radix уже вернул фокус. Теперь поле отпускает СЕБЯ: ссылка
      одна на обе ветки (они взаимоисключающие), чужого узла не существует. */
   const pick = (r) => {
+    if (pickedRef.current) return;
+    pickedRef.current = true;
     searchRef.current?.blur();
     setOpen(false);
     setSheetOpen(false);
@@ -213,8 +239,19 @@ export default function Autocomplete({
       // Keep the input focused on tap (no keyboard flicker / iOS double-tap).
       // mousedown does NOT fire on a touch-drag, so this never blocks scroll.
       onMouseDown={(e) => e.preventDefault()}
-      // Select on a real tap/click only — a touch-drag scrolls the list and
-      // fires no click, so the user can scroll before choosing.
+      /* Тап, а не `click`: на iOS его съедает коммит композиции от подсказки
+         клавиатуры. Скролл списка выбором не становится — порог + pointercancel. */
+      onPointerDown={(e) => { tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, row: r }; }}
+      onPointerCancel={() => { tapRef.current = null; }}
+      onPointerUp={(e) => {
+        const picked = tapPick(tapRef.current, { id: e.pointerId, x: e.clientX, y: e.clientY });
+        tapRef.current = null;
+        // `!== null`, а не «истинно»: опцией листа законно бывает 0 или пустая
+        // строка, и такую нельзя молча объявить «не выбрано».
+        if (picked !== null) pick(picked);
+      }}
+      // Остаётся ВХОДОМ ДЛЯ КЛАВИАТУРЫ И ВТ (`el.click()` pointer-событий не
+      // шлёт). Двойного выбора нет: `pick` под защёлкой `pickedRef`.
       onClick={() => pick(r)}
     >
       {renderRow(r)}
@@ -231,9 +268,65 @@ export default function Autocomplete({
     'aria-activedescendant': highlighted >= 0 ? `${uid}-opt-${highlighted}` : undefined,
   };
 
+  /* ПОЛЕ — ОДНО на обе ветки с поверхностью: свою шторку (пикер открыли из
+     строки) и ВСТРОЕННЫЙ режим (поверхность уже есть у хозяина). Разойдись они —
+     получились бы два поиска, похожие на один.
+     ЛИСТ — ОДИН на ВСЕ ТРИ ветки, включая десктопный попап. Его оболочка стояла
+     здесь дважды, и копии уже разошлись: «ничего не найдено» было объявлено
+     только у шторки, а атрибуция у попапа — без проверки на непустой результат.
+     Разницы в рисунке это не давало (попап живёт ТОЛЬКО при непустых
+     результатах: `isOpen = open && results.length > 0`, поэтому там `noMatches`
+     ложно, а `results.length > 0` истинно) — то есть вторая копия ничего не
+     делала, кроме как ждала, когда разойдётся заметно. */
+  const pinnedField = (
+    <div className="ss-search">
+      <Input
+        ref={attachField}
+        icon={icon}
+        loading={loading}
+        /* Без `autoFocus`: он срабатывает на монтировании, то есть уже ПОСЛЕ
+           жеста, и клавиатуры не даёт. Фокус ставит тот, кто открыл поверхность,
+           внутри тапа — свой триггер ниже либо хозяин через `fieldRef`. */
+        value={inputValue || ''}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        aria-expanded={isOpen}
+        {...comboAria}
+        {...inputProps}
+      />
+    </div>
+  );
+  const listEl = (
+    <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin" {...sheetScroller}>
+      {rows}
+      {/* Пусто — только когда искать УЖЕ было что: до порога лист молчит,
+          иначе «ничего не найдено» встречало бы человека до первой буквы. */}
+      {noMatches && <div className="ss-empty">{t('common.not_found')}</div>}
+      {/* Атрибуция обязательна там, где показаны данные поставщика, —
+          на пустом экране ей нечего атрибутировать. */}
+      {attribution && results.length > 0 && <GeoAttribution />}
+    </div>
+  );
+
+  /* ★ ВСТРОЕННЫЙ РЕЖИМ — ДВИЖОК БЕЗ СВОЕЙ ПОВЕРХНОСТИ (TRIP-484 §4).
+     Нужен там, где полноростная шторка УЖЕ ЕСТЬ и принадлежит хозяину, потому
+     что у него не один шаг: композер города — это «найди город», а потом «выбери
+     вид точки», и обе фазы обязаны жить в ОДНОЙ коробке.
+     Без него композер открывал маленькую шторку, в ней стоял триггер, тап по
+     триггеру открывал ВТОРУЮ шторку во весь рост, выбор возвращал в первую — две
+     поверхности и лишний тап на одно действие, и то же самое ещё раз на «изменить
+     город».
+     Геометрию по-прежнему задаёт правило семьи `[data-sheet-full]` (поле
+     пришпилено, лист скроллит) — оно адресует `.ss-search`/`.ss-list` как
+     ПОТОМКОВ тела шторки, а не как содержимое конкретного слота, поэтому обе
+     ветки укладываются одним правилом и второго экземпляра геометрии не
+     появляется. */
+  if (embedded) return <>{pinnedField}{listEl}</>;
+
   if (isPhone) {
     const closeSheet = () => { setSheetOpen(false); setOpen(false); setHighlighted(-1); };
-    const openSheet = () => openInGesture(setSheetOpen);
+    const openSheet = () => inGesture(() => setSheetOpen(true));
     return (
       <>
         {/* ★ ТРИГГЕР — КНОПКА, А НЕ ТЕКСТОВОЕ ПОЛЕ, И ЭТО НЕСУЩЕЕ. Облик тот
@@ -242,9 +335,7 @@ export default function Autocomplete({
             Поле-триггер тревожит саму страницу и неизбежно: тап фокусирует его,
             платформа поднимает клавиатуру, вьюпорт сжимается и браузер
             доскролливает страницу к полю — всё ДО появления шторки. Полный рост
-            тут бессилен: дёргается не она, а то, что под ней. Панели города и
-            события (`.lp-sheet`) страницу не тревожат никогда — их открывают
-            кликом по строке.
+            тут бессилен: дёргается не она, а то, что под ней.
             Цена принята и в приложении уже была (валюта, язык): клавиатура
             приходит не на тап по триггеру, а когда тронешь поле в шторке. */}
         <Input
@@ -264,44 +355,25 @@ export default function Autocomplete({
         >
           {/* У кнопки нет атрибута `placeholder`, поэтому подпись — её содержимое.
               «Не заполнено» объявлено СОСТОЯНИЕМ контрола (`data-empty`), а не
-              обёрткой вокруг текста: обёртка была бы узлом разметки ради цвета,
-              а тон пустого поля — ровно то, что `::placeholder` делает у
-              настоящего поля, то есть свойство контрола. */}
-          {inputValue || placeholder}
+              обёрткой вокруг текста: тон пустого поля — ровно то, что
+              `::placeholder` делает у настоящего поля, то есть свойство контрола.
+              ★ А вот ОДНОЙ СТРОКОЙ подпись держит обёртка, и это не украшение:
+              содержимое кнопки переносится, у настоящего поля — нет. Длинный
+              плейсхолдер («Берлин, Лиссабон, Прага…») разъезжал на две строки, и
+              контрол менял ВЫСОТУ — то есть ряд «город + дата» на шаге старта
+              прыгал от одной только подписи. `Trunc` — канон-примитив обрезки,
+              `grow--fit` даёт ему сжимаемость рядом с шевроном. */}
+          <Trunc as="span" className="grow--fit">{inputValue || placeholder}</Trunc>
         </Input>
         <PickerSheet
           open={sheetOpen}
           onOpenChange={(o) => { if (!o) closeSheet(); }}
           title={title || t('common.search')}
-          search={(
-            <div className="ss-search">
-              <Input
-                ref={searchRef}
-                icon={icon}
-                loading={loading}
-                /* Без `autoFocus`: он срабатывает на монтировании, то есть уже
-                   ПОСЛЕ жеста, и клавиатуры не даёт. Фокус ставит триггер, внутри
-                   тапа (разбор выше, у `openSheet`). */
-                value={inputValue || ''}
-                onChange={handleChange}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                aria-expanded={isOpen}
-                {...comboAria}
-                {...inputProps}
-              />
-            </div>
-          )}
+          search={pinnedField}
+          full
+          pinned
         >
-          <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
-            {rows}
-            {/* Пусто — только когда искать УЖЕ было что: до порога лист молчит,
-                иначе «ничего не найдено» встречало бы человека до первой буквы. */}
-            {noMatches && <div className="ss-empty">{t('common.not_found')}</div>}
-            {/* Атрибуция обязательна там, где показаны данные поставщика, —
-                на пустом экране ей нечего атрибутировать. */}
-            {attribution && results.length > 0 && <GeoAttribution />}
-          </div>
+          {listEl}
         </PickerSheet>
       </>
     );
@@ -315,9 +387,9 @@ export default function Autocomplete({
       <PopoverAnchor asChild>
         <div ref={wrapRef} style={{ minWidth: 0 }}>
           <Input
-            /* Та же ссылка, что у поля в шторке: ветки взаимоисключающие, поэтому
+            /* Та же раздача, что у поля в шторке: ветки взаимоисключающие, поэтому
                «поле этого пикера» — одно, и правило отпускания у него одно. */
-            ref={searchRef}
+            ref={attachField}
             icon={icon}
             loading={loading}
             value={inputValue || ''}
@@ -345,10 +417,7 @@ export default function Autocomplete({
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
-        <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
-          {rows}
-          {attribution && <GeoAttribution />}
-        </div>
+        {listEl}
       </PopoverContent>
     </Popover>
   );

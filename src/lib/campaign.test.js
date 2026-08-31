@@ -14,14 +14,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CAMPAIGN_KEYS, CAMPAIGN_TTL_MS, campaignQuery, pickSignupMarks,
-  readMarks, resolveCampaign,
+  readMarks, resolveCampaign, resolveSignupMarks,
 } from './campaign.js';
 
 const NOW = Date.parse('2026-07-30T12:00:00.000Z');
 const iso = (ms) => new Date(ms).toISOString();
 
 // What the app actually does: read the address, then decide.
-const campaignFor = (search, storedTs, now) => resolveCampaign(readMarks(search), storedTs, now);
+const campaignFor = (search, stored, now) => resolveCampaign(readMarks(search), stored, now);
+// The stored super-properties, as PostHog hands them back. A bare timestamp is
+// the common case in these tests: nothing stored but the clock.
+const at = (ts) => ({ camp_ts: ts });
 
 test('a campaign link is captured with all five marks plus a timestamp', () => {
   const r = campaignFor(
@@ -48,19 +51,19 @@ test('a gclid alone is a campaign: Google auto-tagging sends no utm at all', () 
 });
 
 test('last touch wins: a newer campaign replaces the one already stored', () => {
-  const r = campaignFor('?utm_source=google&utm_campaign=ads_aug', iso(NOW - 1000), NOW);
+  const r = campaignFor('?utm_source=google&utm_campaign=ads_aug', at(iso(NOW - 1000)), NOW);
   assert.deepEqual(r, {
     set: { camp_ts: iso(NOW), camp_source: 'google', camp_campaign: 'ads_aug' },
   });
 });
 
 test('a plain visit keeps a mark that is still inside the 30-day window', () => {
-  assert.equal(campaignFor('', iso(NOW - CAMPAIGN_TTL_MS + 60_000), NOW), null);
+  assert.equal(campaignFor('', at(iso(NOW - CAMPAIGN_TTL_MS + 60_000)), NOW), null);
 });
 
 test('a plain visit clears a mark older than the 30-day window', () => {
   assert.deepEqual(
-    campaignFor('?lens=chat', iso(NOW - CAMPAIGN_TTL_MS - 60_000), NOW),
+    campaignFor('?lens=chat', at(iso(NOW - CAMPAIGN_TTL_MS - 60_000)), NOW),
     { clear: true },
   );
 });
@@ -73,10 +76,43 @@ test('junk from the URL cannot poison the marks', () => {
   // Empty and whitespace-only values are not a campaign...
   assert.equal(campaignFor('?utm_source=%20&utm_campaign=', null, NOW), null);
   // ...an unreadable stored timestamp is ignored instead of clearing the mark...
-  assert.equal(campaignFor('', 'not-a-date', NOW), null);
+  assert.equal(campaignFor('', at('not-a-date'), NOW), null);
   // ...and a value long enough to bloat every event is capped.
   const long = campaignFor(`?utm_campaign=${'x'.repeat(500)}`, null, NOW);
   assert.equal(long.set.camp_campaign.length, 200);
+});
+
+// ── The same click is one touch (TRIP-493) ──────────────────────────────────────
+// `camp_ts` starts the 30-day last-touch window. Since the marks ride the address
+// into the app, that address is reloaded all day — and a rewrite on every load
+// would push the window's start forward forever, so the click would never expire.
+test('the same click seen again writes nothing — the window does not restart', () => {
+  const first = campaignFor('?utm_source=google&utm_campaign=ads_aug', null, NOW - 60_000);
+  const again = campaignFor('?utm_source=google&utm_campaign=ads_aug', first.set, NOW);
+  assert.equal(again, null);
+});
+
+test('a different mark still wins immediately — that is what last touch means', () => {
+  const first = campaignFor('?utm_source=google&utm_campaign=ads_aug', null, NOW - 60_000);
+  const second = campaignFor('?utm_source=instagram&utm_campaign=ads_aug', first.set, NOW);
+  assert.deepEqual(second, {
+    set: { camp_ts: iso(NOW), camp_source: 'instagram', camp_campaign: 'ads_aug' },
+  });
+});
+
+test('the same source with one mark MORE is a different touch, not the same one', () => {
+  // Sameness is judged on every mark, not on the source alone: a gclid arriving
+  // where there was none is new information and must be stored.
+  const first = campaignFor('?utm_source=google', null, NOW - 60_000);
+  const second = campaignFor('?utm_source=google&gclid=Cj0KCQ', first.set, NOW);
+  assert.equal(second.set.camp_gclid, 'Cj0KCQ');
+});
+
+test('the same marks with no stored timestamp are written, not skipped', () => {
+  // Nothing stored means nothing to compare against — an empty jar is not
+  // "already up to date", it is the first sight of this click.
+  const r = campaignFor('?utm_source=google', { camp_source: 'google' }, NOW);
+  assert.equal(r.set.camp_ts, iso(NOW));
 });
 
 // The border-crossing case (TRIP-335): by the time consent is given the address
@@ -193,4 +229,48 @@ test('every mark reaches both client projections, agreeing on the vocabulary', (
     new URLSearchParams(campaignQuery('?utm_source=a&utm_medium=b&utm_campaign=c&utm_content=d&gclid=e')),
     new URLSearchParams(marks),
   );
+});
+
+// ── Which carrier owns a signup (TRIP-316/TRIP-335 follow-up) ────────────────────
+// The rule that lost a real paid signup: the marks have to cross a document
+// replacement (login → hard navigation to the app), and the ONLY carrier across
+// that border was a sessionStorage stash — which a browser is free to refuse
+// without telling anyone. Below is the decision, on a pure function, so the next
+// break is a red test and not a quarter of ad spend filed under "organic".
+const STASH = JSON.stringify({ utm_source: 'google', utm_campaign: '24192647759', gclid: 'CjwK' });
+
+test('the address wins: a mark in the URL beats the stash it crossed with', () => {
+  const r = resolveSignupMarks(readMarks('?utm_source=instagram&utm_campaign=aug'), STASH);
+  assert.deepEqual(r.marks, { utm_source: 'instagram', utm_campaign: 'aug' });
+});
+
+test('a resolved signup spends the stash even when the ADDRESS won', () => {
+  // The regression this pins: skip it and the stash outlives its signup, so the
+  // NEXT person to register in the same tab inherits this click.
+  const r = resolveSignupMarks(readMarks('?utm_source=instagram'), STASH);
+  assert.equal(r.spendStash, true);
+});
+
+test('the stash carries the signup when the address lost its marks', () => {
+  // Exactly the OAuth/One-Tap border: the app is re-entered on a bare `/trips`.
+  const r = resolveSignupMarks(readMarks(''), STASH);
+  assert.deepEqual(r.marks, { utm_source: 'google', utm_campaign: '24192647759', gclid: 'CjwK' });
+  assert.equal(r.spendStash, true);
+});
+
+test('no address marks and no stash is not a signup to attribute', () => {
+  const r = resolveSignupMarks(readMarks('?ref=friend'), null);
+  assert.equal(r.marks, null);
+  assert.equal(r.spendStash, false); // nothing stored → nothing to drop
+});
+
+test('a malformed stash is data, not a crash', () => {
+  const r = resolveSignupMarks(null, '{not json');
+  assert.equal(r.marks, null);
+  assert.equal(r.spendStash, true); // it existed, so it is still spent
+});
+
+test('a stash cannot smuggle columns the address never could', () => {
+  const r = resolveSignupMarks(null, JSON.stringify({ utm_source: 'google', is_pro_trip: true }));
+  assert.deepEqual(r.marks, { utm_source: 'google' });
 });

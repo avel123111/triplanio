@@ -17,6 +17,7 @@
   "date_required_hint": "Indica una fecha, si no, las fechas no se guardarán",
   "day_earlier": "Un día antes",
   "day_later": "Un día después",
+  "delete_city_desc": "La ciudad se eliminará de la ruta y las fechas se recalcularán.",
   "departure_date": "Fecha de salida",
   "detecting": "Detectando tu ubicación…",
   "drag": "Arrastrar",

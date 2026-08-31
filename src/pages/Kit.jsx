@@ -43,6 +43,9 @@ import {
 import { Icon } from '@/design/icons';
 import Accordion from '@/components/common/Accordion';
 import Autocomplete from '@/components/common/Autocomplete';
+import { PickerSheet } from '@/components/ui/PickerSheet';
+import LpSheet from '@/components/ui/LpSheet';
+import { sheetScroller } from '@/components/ui/sheetShell';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Экран запуска (TRIP-478) — ровно те файлы, что подставляются в документ на
 // сборке (плагин `inline-splash`). Витрина не пересобирает заставку по образу и
@@ -73,7 +76,7 @@ const TX = {
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
     'splash': 'Экран запуска', 'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
-    'coverpicker': 'Пикер обложки',
+    'coverpicker': 'Пикер обложки', 'full-surface': 'Полноростная поверхность',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -91,6 +94,7 @@ const TX = {
     'field': 'Подпись, подсказка, обязательность; состояния prop-driven.',
     'input': 'Декорации поля, которые эмитит сам <Input>: иконка, кольцо, валюта, ряд.',
     'autocomplete': 'Поиск-по-мере-ввода: поле + выпадающий лист на Popover (лист-хром .ss-* общий с SearchSelect). Флип и «клик мимо» — от Popover.',
+    'full-surface': 'Экран во весь вьюпорт. Их ДВЕ и это одна вещь: шторка пикера и оболочка панелей редактора — общая коробка, краска (--bg), бровь и резерв под клавиатуру у скроллера. Смотреть на 390: правила семьи живут ≤640.',
     'avatar': 'Инициалы / фото / AI / плейсхолдер / удалён; размеры и стопка.',
     'sev': 'Тон по уровню важности (info/warning/error/success/quiet).',
     'empty-state': 'Каркас с иконкой, текстом и призывом к действию.',
@@ -138,6 +142,15 @@ const TX = {
   chipAdd: 'Добавить переезд', chipMore: '+2 ещё', chipRemove: 'Снять фильтр',
   roleOwner: 'Владелец', roleAdmin: 'Админ', roleViewer: 'Наблюдатель', rolePending: 'Ожидает',
   overnight: 'Ночной переезд', acSearchPh: 'Начните вводить город…',
+  fsPicker: 'Шторка пикера', fsPanel: 'Панель редактора',
+  fsPickerTitle: 'Полноростная шторка', fsPanelTitle: 'Полноростная панель',
+  fsBack: 'Назад', fsCancel: 'Отмена', fsSave: 'Сохранить',
+  fsPhaseHint: 'Вид точки', fsChange: 'Изменить', fsAdd: 'Добавить',
+  // Подписи плиток — те же четыре вида точки, что у настоящего композера
+  // (`cities/CityAdder`): витрина показывает ОБЪЕКТ, а не случайный текст.
+  fsKinds: ['Посещение', 'Пересадка', 'Старт', 'Финиш'],
+  fsDrill: 'Открыть переезд (слой поверх)', fsDrillTitle: 'Переезд',
+  fsDrillBody: 'Второй слой ВНУТРИ той же шторки — как город → переезд в редакторе. Свайп вниз закрывает ПОВЕРХНОСТЬ, «Назад» снимает один слой.',
   cardTitle: 'Заголовок карточки', cardBody: 'Тело карточки: обычный текст на поверхности.',
   cardHead: 'Заголовок', sevText: 'Текст',
   sevInvite: 'Нажмите, чтобы разрешить', sevInviteTitle: 'Приглашение',
@@ -250,12 +263,155 @@ const Specimen = ({ label, items }) => (
 /** Живое демо поискового пикера для витрины: контролируемый <Autocomplete> с
  *  локальным мок-поиском (без сети/атрибуции LocationIQ). Показывает поле; лист
  *  на Popover + `.ss-*` появляется по вводу. */
+/* ⚠️ СПИСОК ДЛИННЕЕ ЭКРАНА — ЭТО ТРЕБОВАНИЕ, А НЕ ЩЕДРОСТЬ (TRIP-494). Их было
+   четыре, и такой лист не переполняется физически: «скроллер ровно один» и
+   «резерв под клавиатуру достаётся скроллеру» на нём НЕДОКАЗУЕМЫ — оба гейта
+   зелены при сломанном скролле. i18n-ignore: демо-данные витрины /kit. */
 const KIT_CITIES = [
-  { id: 'lis', name: 'Лиссабон', sub: 'Португалия' },   // i18n-ignore: демо-данные витрины /kit
-  { id: 'por', name: 'Порту', sub: 'Португалия' },       // i18n-ignore: демо-данные витрины /kit
-  { id: 'mad', name: 'Мадрид', sub: 'Испания' },         // i18n-ignore: демо-данные витрины /kit
-  { id: 'bcn', name: 'Барселона', sub: 'Испания' },      // i18n-ignore: демо-данные витрины /kit
+  { id: 'lis', name: 'Лиссабон', sub: 'Португалия' },
+  { id: 'por', name: 'Порту', sub: 'Португалия' },
+  { id: 'mad', name: 'Мадрид', sub: 'Испания' },
+  { id: 'bcn', name: 'Барселона', sub: 'Испания' },
+  { id: 'val', name: 'Валенсия', sub: 'Испания' },
+  { id: 'sev', name: 'Севилья', sub: 'Испания' },
+  { id: 'bil', name: 'Бильбао', sub: 'Испания' },
+  { id: 'mal', name: 'Малага', sub: 'Испания' },
+  { id: 'gra', name: 'Гранада', sub: 'Испания' },
+  { id: 'ali', name: 'Аликанте', sub: 'Испания' },
+  { id: 'ber', name: 'Берлин', sub: 'Германия' },
+  { id: 'mun', name: 'Мюнхен', sub: 'Германия' },
+  { id: 'ham', name: 'Гамбург', sub: 'Германия' },
+  { id: 'kel', name: 'Кёльн', sub: 'Германия' },
+  { id: 'mil', name: 'Милан', sub: 'Италия' },
+  { id: 'rom', name: 'Рим', sub: 'Италия' },
+  { id: 'nap', name: 'Неаполь', sub: 'Италия' },
+  { id: 'tur', name: 'Турин', sub: 'Италия' },
+  { id: 'ven', name: 'Венеция', sub: 'Италия' },
+  { id: 'bol', name: 'Болонья', sub: 'Италия' },
 ];
+/* floor-exempt: dsshare +14 — стенд семьи поверхностей (TRIP-494), апрув Pavel
+   («делай всё чисто системно» + решение по трём пунктам 31.08.2026). Замер:
+   4266 → 4252 bp. Из них 4 bp добавила ВТОРАЯ ФАЗА стенда (ряд выбранного
+   города + плитки вида): без неё дефект «шторка проигрывает появление второй раз
+   после выбора города» на витрине невидим — у обоих движков выбора поле живёт всю
+   жизнь поверхности, и менять на них нечего. Причина известная и названа в самой метрике: `components/ui/**`
+   она считает легаси — в знаменателе, но не в числителе, — а стенд ОБЯЗАН звать
+   `<PickerSheet>` и `<LpSheet>` НАСТОЯЩИЕ (иначе он показывает не те поверхности,
+   что живут в приложении). Плюс разметка панели (`.lp-h`/`.lp-b`/`.lp-f`) —
+   host-теги: компонента-панели в ДС нет, есть доменные обёртки. Числитель при
+   этом ВЫРОС (Btn/Card/IconBtn/Input стенда), просто знаменатель вырос сильнее.
+   Лечится переездом семьи в `src/design/` — отдельная задача, в этот PR она не
+   входит осознанно (замер: весь слой `components/ui/**` = 14 элементов из 3343,
+   потолок переезда +41 bp; тронет всех вызывателей и сделает дифф хрома
+   нечитаемым). */
+/**
+ * ОБЕ ПОЛНОРОСТНЫЕ ПОВЕРХНОСТИ РЯДОМ (TRIP-494).
+ *
+ * ★ ЗАЧЕМ СТЕНД. У этой семьи не было ни одного: `check-picker-behaviour` знает
+ * только шторку пикера, а панель редактора живёт за логином. Поэтому и краска с
+ * бровью разъехались молча, и скролл композера доехал до человека сломанным.
+ * Здесь они стоят рядом и открываются анонимно — на них можно СМОТРЕТЬ.
+ *
+ * ⚠️ СПИСОК ЗАВЕДОМО ДЛИННЕЕ ЭКРАНА. Прежняя витрина показывала четыре города —
+ * такой лист не переполняется физически, и «скроллер ровно один» на нём
+ * недоказуем: именно это и пропустило дефект, при котором лист переставал
+ * скроллиться совсем.
+ */
+function FullSurfaceDemo() {
+  const [picker, setPicker] = useState(false);
+  const [q, setQ] = useState('');
+  /* ★ ВТОРАЯ ФАЗА — ЧАСТЬ СТЕНДА, А НЕ УКРАШЕНИЕ. Композер города меняет
+     содержимое ОДНОЙ открытой поверхности: поле и лист уходят, приходят плитки
+     вида. Ровно на этой смене и сломался въезд (условие стояло живым запросом по
+     содержимому, и перебивание vaul отваливалось вместе с полем — шторка
+     проигрывала появление второй раз). Без фазы на стенде дефект невидим: у
+     обоих движков выбора поле живёт всю жизнь поверхности. */
+  const [picked, setPicked] = useState(null);
+  /* ★ СТОПКА СЛОЁВ ВНУТРИ ОДНОЙ ШТОРКИ — модель редактора (TRIP-496). Именно на
+     ней ломалось закрытие: свайп вниз vaul считает закрытием ПОВЕРХНОСТИ, а
+     обработчик снимал только верхний слой — поверхность оставалась «открытой» и
+     залипала там, где её бросил палец. Стенд держит стопку затем, чтобы это
+     проверялось жестом, а не рассуждением. */
+  const [layers, setLayers] = useState(/** @type {string[]} */ ([]));
+  const top = layers[layers.length - 1] || null;
+  const rows = KIT_CITIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div className="row row--g4">
+      <Btn variant="secondary" onClick={() => setPicker(true)}>{TX.fsPicker}</Btn>
+      <Btn variant="secondary" onClick={() => setLayers(['city'])}>{TX.fsPanel}</Btn>
+
+      <PickerSheet
+        open={picker}
+        onOpenChange={(o) => { setPicker(o); if (!o) setPicked(null); }}
+        title={TX.fsPickerTitle}
+        full
+        pinned
+        /* Поле — в слоте, пока фаза первая. На второй его нет ВОВСЕ: коробка та
+           же, содержимое другое. `pinned` при этом не мигает — способ въезда
+           объявлен поверхностью на всю её жизнь. */
+        search={picked ? null : (
+          <div className="ss-search">
+            <Input icon="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={TX.acSearchPh} />
+          </div>
+        )}
+      >
+        {picked ? (
+          <div className="col col--g4">
+            <div className="row row--g3 te-add-city">
+              <span className="te-add-cityname">{picked.name}</span>
+              <Btn variant="link" icon="edit" onClick={() => setPicked(null)}>{TX.fsChange}</Btn>
+            </div>
+            <span className="eyebrow">{TX.fsPhaseHint}</span>
+            <div className="te-add-grid">
+              {['bed', 'arrowSwap', 'flag', 'flag'].map((ic, i) => (
+                <button key={i} type="button" className="te-add-type"><Icon name={ic} size={17} /><span className="t-label">{TX.fsKinds[i]}</span></button>
+              ))}
+            </div>
+            <Btn variant="primary" onClick={() => setPicker(false)}>{TX.fsAdd}</Btn>
+          </div>
+        ) : (
+          <div className="ss-list scrollbar-thin" role="listbox" {...sheetScroller}>
+            {rows.map((c) => (
+              <button key={c.id} type="button" className="ss-opt" onClick={() => setPicked(c)}>
+                <span className="col col--g1"><span className="t-strong">{c.name}</span><span className="t-meta">{c.sub}</span></span>
+              </button>
+            ))}
+          </div>
+        )}
+      </PickerSheet>
+
+      {/* ★ ВЛОЖЕННОСТЬ — ОТДЕЛЬНЫЙ СЛУЧАЙ СТЕНДА (TRIP-496). В приложении шторка
+          поверх шторки — обычное дело (панель города → бронь/переезд), а приёмки
+          у этой пары не было: витрина показывала поверхности поодиночке. */}
+      {/* Открытость — ФАКТ (`open={!!top}`), а дисмисс закрывает ПОВЕРХНОСТЬ
+          (`setLayers([])`), а не снимает слой: свайп и тап по фону — жесты про всю
+          шторку. «Назад» снимает ровно один слой. */}
+      <LpSheet open={!!top} onClose={() => setLayers([])} title={TX.fsPanelTitle}>
+        <div className="lp">
+          <div className="lp-h">
+            <IconBtn icon="chevL" tone="soft" round ariaLabel={TX.fsBack}
+              onClick={() => setLayers((l) => l.slice(0, -1))} />
+            <div className="lp-ti"><b>{top === 'transfer' ? TX.fsDrillTitle : TX.fsPanel}</b></div>
+          </div>
+          <div className="lp-b scrollbar-thin" {...sheetScroller}>
+            {top === 'transfer'
+              ? <p className="t-body">{TX.fsDrillBody}</p>
+              : KIT_CITIES.map((c) => (
+                <Card key={c.id} recessed radius="md"><div className="t-strong">{c.name}</div><div className="t-meta muted">{c.sub}</div></Card>
+              ))}
+          </div>
+          <div className="lp-f">
+            {top === 'transfer'
+              ? <Btn variant="secondary" onClick={() => setLayers((l) => l.slice(0, -1))}>{TX.fsBack}</Btn>
+              : <Btn variant="secondary" onClick={() => setLayers((l) => [...l, 'transfer'])}>{TX.fsDrill}</Btn>}
+            <Btn variant="primary" onClick={() => setLayers([])}>{TX.fsSave}</Btn>
+          </div>
+        </div>
+      </LpSheet>
+    </div>
+  );
+}
+
 function AutocompleteDemo() {
   const [q, setQ] = useState('');
   return (
@@ -654,6 +810,10 @@ const RECIPES = {
         ))}
       </div>
     ), true)],
+  }],
+
+  'full-surface': () => [{
+    items: [it('обе поверхности семьи — открыть и сравнить', <FullSurfaceDemo />, true)],
   }],
 
   autocomplete: () => [{

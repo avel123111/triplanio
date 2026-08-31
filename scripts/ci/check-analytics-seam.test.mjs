@@ -30,7 +30,10 @@ const GUARD = fileURLToPath(new URL('./check-analytics-seam.mjs', import.meta.ur
 // "clean", TRIP-282): without a valid signUp somewhere, the seam-passes tests
 // would trip D. Its path is one NO other fixture overrides, so adding an A/B/C
 // violation elsewhere leaves this valid signUp/provider pair in place and only
-// the intended rule fires.
+// the intended rule fires. PostLoginDoor.jsx is there for the same reason on F,
+// which is the same kind of rule: zero call sites is a moved seam, not a clean
+// one. It is its OWN file rather than a line inside Auth.jsx precisely because
+// the E fixtures replace Auth.jsx wholesale.
 const SEAM = {
   'src/lib/analytics.js': "import posthog from 'posthog-js';\nexport function track(e) { posthog?.capture?.(e); }\n",
   'src/lib/destinations/posthog.js': "import posthog from 'posthog-js';\nexport function boot() { posthog.init('phc_x', {}); }\n",
@@ -44,6 +47,9 @@ const SEAM = {
     "  rememberAttributionForRedirect();\n" +
     "  await supabase.auth.signInWithOAuth({ provider: 'google' });\n" +
     "}\n",
+  'src/pages/PostLoginDoor.jsx':
+    "const postLoginHref = () => withVisitCampaign(postLoginPath());\n" +
+    "export function go() { window.location.href = postLoginHref(); }\n",
 };
 
 function put(dir, path, body) {
@@ -325,4 +331,54 @@ test('running from outside the repo root cannot report success', (t) => {
   const r = run(dir);
   assert.equal(r.status, 2);
   assert.doesNotMatch(r.stdout, /OK/);
+});
+
+// ── F — the post-login destination is decided in one module-scope helper ─────
+
+test('F: postLoginPath() called inline at the door is a violation', (t) => {
+  // The One Tap shape that lost a paid signup: the destination decided at the
+  // call site, so the "carries the campaign marks" rule is simply not applied.
+  const r = run(fixture(t, {
+    'src/pages/Login.jsx':
+      "export async function oneTap() {\n" +
+      "  window.location.href = postLoginPath();\n" +
+      "}\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /postLoginHref/);
+  assert.match(r.stderr, /src\/pages\/Login\.jsx:2/);
+});
+
+test('F: the same call inside a module-scope helper passes', (t) => {
+  const r = run(fixture(t, {
+    'src/pages/Login.jsx':
+      "const postLoginRedirectTo = () => window.location.origin + postLoginPath();\n" +
+      "export async function apple() {\n" +
+      "  await supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: postLoginRedirectTo() } });\n" +
+      "}\n",
+  }));
+  assert.equal(r.status, 1); // E fires (no stash) — F must NOT be among the reasons
+  assert.doesNotMatch(r.stderr, /more than one author/);
+});
+
+test('F: a helper written across two lines is still one place', (t) => {
+  // Depth, not line shape, is the predicate: a prettier-wrapped helper is the
+  // same single author and must not read as an inline call.
+  const r = run(fixture(t, {
+    'src/pages/Login.jsx':
+      "const postLoginHref = () =>\n" +
+      "  withVisitCampaign(postLoginPath());\n" +
+      "export function go() { window.location.href = postLoginHref(); }\n",
+  }));
+  assert.equal(r.status, 0, r.stderr);
+});
+
+test('F: zero call sites is a moved seam, not a clean tree', (t) => {
+  // An empty room passes anything (TRIP-282). Strip the helper out of the seam
+  // and the guard must say the destination seam moved, not "OK".
+  const seam = { ...SEAM };
+  delete seam['src/pages/PostLoginDoor.jsx'];
+  const r = run(fixture(t, {}, { seam }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /destination seam moved/);
 });

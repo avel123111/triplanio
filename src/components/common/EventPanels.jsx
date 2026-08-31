@@ -14,6 +14,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { IconBtn, Tile } from '@/design/index';
 import { transferKind } from '@/lib/transport';
+import { sheetScroller } from '@/components/ui/sheetShell';
 
 const EV = {
   hotel:    { color: 'var(--ev-hotel)',    soft: 'var(--ev-hotel-soft)',    ink: 'var(--ev-hotel-ink)' },
@@ -44,7 +45,7 @@ export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, 
         </div>
         <IconBtn icon="close" onClick={onBack} ariaLabel={t('common.close')} />
       </div>
-      <div className="lp-b scrollbar-thin">{children}</div>
+      <div className="lp-b scrollbar-thin" {...sheetScroller}>{children}</div>
       {foot && <div className={'lp-f' + (footClass ? ' ' + footClass : '')}>{foot}</div>}
     </div>
   );

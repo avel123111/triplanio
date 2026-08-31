@@ -17,6 +17,7 @@
   "date_required_hint": "Set a date, otherwise dates won't be saved",
   "day_earlier": "One day earlier",
   "day_later": "One day later",
+  "delete_city_desc": "The city will be removed from the route and the dates will be recalculated.",
   "departure_date": "Departure date",
   "detecting": "Detecting your location…",
   "drag": "Drag",

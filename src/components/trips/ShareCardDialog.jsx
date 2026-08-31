@@ -12,6 +12,7 @@ import { prepareImage } from '@/lib/prepareImage';
 import { invokeCard, applyCardBg, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
+import { sheetScroller } from '@/components/ui/sheetShell';
 
 // Заглушки миниатюр, пока едет каталог фонов (как у CoverPicker: ряд должен
 // читаться «сейчас будет ещё», а не прыгать с одной плитки до десятка).
@@ -429,8 +430,15 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
   // получал другое. Теперь сцена редактора держит пропорцию слота на ОБОИХ
   // шасси, а высоту шита задаёт она же — поэтому окно редактирования и окно
   // карты в карточке совпадают по построению, а не по совпадению.
-  const editor = editorOpen && overlay && (isPhone ? (
-    <Sheet open onOpenChange={(o) => { if (!o) closeEditor(); }} title={t('share.edit_map')} bodyClassName="sc-edit">
+  /* ⚠️ ОТКРЫТОСТЬ — ФАКТ ПОВЕРХНОСТИ, А НЕ «ОТРИСОВАН ЛИ ЭЛЕМЕНТ» (TRIP-496).
+     Здесь стоял литерал `open`, а видимость выражалась внешним условием: на
+     закрытии узел исчезал целиком, то есть шит ПРОПАДАЛ вместо того, чтобы
+     уехать, а vaul не успевал доиграть уход. Тот же литерал в панели редактора
+     дал залипание шторки на полпути (разбор — в `EditLens`), поэтому чинится
+     класс, а не один экран: условие остаётся на данных (`overlay` — есть что
+     редактировать), открытость уезжает в проп. */
+  const editor = overlay && (isPhone ? (
+    <Sheet open={editorOpen} onOpenChange={(o) => { if (!o) closeEditor(); }} title={t('share.edit_map')} bodyClassName="sc-edit">
       {/* data-vaul-no-drag: жесты карты не должны утаскивать сам шит */}
       <div data-vaul-no-drag>{editorStage}</div>
       <div className="lp-f lp-f--single">
@@ -442,7 +450,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
       title={t('share.edit_map')}
       icon="map"
       size="fit"
-      open
+      open={editorOpen}
       onOpenChange={(o) => { if (!o) closeEditor(); }}
       foot={<Btn variant="primary" icon="check" onClick={applyEditor}>{t('common.done')}</Btn>}
     >
@@ -460,7 +468,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
               <div className="lp-ti"><div className="lp-tirow"><b className="t-title">{t('share.card_title')}</b></div></div>
               <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
             </div>
-            <div className="lp-b">{body}</div>
+            <div className="lp-b" {...sheetScroller}>{body}</div>
             {!overlayCode && <div className="lp-f"><Row className="grow">{footBtns(true)}</Row></div>}
           </div>
         </LpSheet>

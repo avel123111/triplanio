@@ -2444,7 +2444,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    быть не может: у кнопки свой курсор и своя выключка текста.
    visual-diff-exempt: button.input cursor — триггер нажимают, а не печатают в него
    visual-diff-exempt: button.input text-align — кнопка центрует текст, поле выключает влево */
-button.input { cursor: pointer; text-align: left; }
+/* ⚠️ `min-width: 0` — НЕ УКРАШЕНИЕ, А УСЛОВИЕ ТОГО, ЧТОБЫ РЯД ВООБЩЕ СЖИМАЛСЯ.
+   Подпись триггера не переносится (иначе контрол менял бы высоту от длины
+   текста), а нерасторжимая строка задаёт элементу min-content во всю свою
+   ширину. В грид-ряду поля («город» + «дата», `7fr 3fr`) минимум колонки по
+   умолчанию `auto` = min-content, поэтому длинный плейсхолдер РАЗДВИГАЛ ряд:
+   замер на 390 — раскладка 459, дата уезжала за край. Контрол обязан уметь
+   сжаться, а обрезку подписи внутри него делает `Trunc`. */
+button.input { cursor: pointer; text-align: left; min-width: 0; }
 /* Незаполненный триггер: тот же тон, что `::placeholder` даёт настоящему полю.
    visual-diff-exempt: button.input[data-empty] color — тон пустого триггера = тон плейсхолдера поля */
 button.input[data-empty] { color: var(--muted-2); }
@@ -2856,13 +2863,24 @@ button.input[data-empty] { color: var(--muted-2); }
 }
 
 .field-row { display: grid; gap: 12px; }
-.field-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.field-row.cols-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 /* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
    неравные, и низ у них разной высоты - выравнивание по НИЗУ, иначе контрол
    всплывает к верхнему краю более высокого поля. */
-.field-row--aside { grid-template-columns: 7fr 3fr; align-items: start; transition: grid-template-columns .18s var(--ease-out); }
+/* ⚠️ СЖИМАЕТСЯ ПОЛЕ, А НЕ АСИ́Д, И ЭТО НЕСУЩЕЕ. Уступать место обязан ПЕРВЫЙ трек:
+   его содержимое (подпись города) умеет обрезаться, а контрол даты — нет, у него
+   «−», дата и «+», и ужать его ниже min-content значит клипнуть плюс. Ровно это
+   уже ловили (баг #8, разбор у схлопа ниже), поэтому у второго трека минимум
+   остаётся `auto` = min-content.
+   Первому же треку минимум нужен НУЛЕВОЙ: подпись триггера не переносится, её
+   min-content — вся строка целиком, и с умолчанием `auto` длинный плейсхолдер
+   раздвигал ряд ШИРЕ ЭКРАНА (замер на 390: раскладка 459, дата уезжала за край).
+   visual-diff-exempt: .field-row--aside grid-template-columns — поле уступает место асиду, а не раздвигает ряд
+   visual-diff-exempt: .field-row--aside:has grid-template-columns — тот же нулевой минимум у схлопнутого состояния
+   visual-diff-exempt: .field:first-child:focus-within grid-template-columns — тот же ключ со стороны условия */
+.field-row--aside { grid-template-columns: minmax(0, 7fr) 3fr; align-items: start; transition: grid-template-columns .18s var(--ease-out); }
 /* На фокусе ПЕРВОГО поля (город старта) строка ПЛАВНО схлопывает правый контрол-
-   «аси́д» (дату) — поле и его дропдаун занимают всю ширину, как is-editing у рядов
+   «аси́д» (дату) — поле и его дропдаун занимают всю ширину
    шага 2. Это канон «раздвижение по фокусу» (TRIP-337), переиспользуемый дальше.
    Анимируем ТРЕК грида 3fr→0fr (fr↔fr интерполируется на современных движках; на
    очень старых — жёсткий схлоп, но рабочий), а не `display:none` (его анимировать
@@ -2874,7 +2892,7 @@ button.input[data-empty] { color: var(--muted-2); }
    видна целиком; клип нужен лишь пока трек анимируется к нулю.
    `align-items: start` (не end): при схлопе аси́д может стать выше (перенос узкого
    контента), и на `end` это опускало бы город с датой ВНИЗ — баг #10. */
-.field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: 1fr 0fr; }
+.field-row--aside:has(> .field:first-child:focus-within) { grid-template-columns: minmax(0, 1fr) 0fr; }
 /* nowrap on the aside so it NEVER reflows taller as its track shrinks to 0 — otherwise
    the label wraps to many lines, grows the row, and everything BELOW the row (the
    "Рядом" section) is pushed down mid-animation (Pavel). Height stays constant → the
@@ -3514,11 +3532,29 @@ button.input[data-empty] { color: var(--muted-2); }
    Зазор берётся с ТОЙ ЖЕ шкалы, что у ряда и колонки: одна лестница на три
    примитива, иначе шкала снова расползётся по трём именам. */
 .grid { display: grid; gap: var(--sp-5); }
-.grid--2 { grid-template-columns: 1fr 1fr; }
+/* ★★ ТРЕК НЕ САЙЗИТСЯ СОДЕРЖИМЫМ, И ЭТО НЕ ПРИДИРКА (TRIP-495).
+   `1fr` — это `minmax(auto, 1fr)`, то есть у трека АВТОМИНИМУМ = min-content.
+   Элемент сетки раздувается до самой длинной НЕРАЗРЫВНОЙ строки внутри, и всё
+   под ним наследует эту ширину: `min-width: 0` у поля, у обёртки и у `.trunc`
+   уже ничего не решают — они честно сжимаются ВНУТРИ бокса, который сам стал
+   шире контейнера. Замер на блоке «Откуда/Куда» окна события (390×844): контейнер
+   сетки 292, элемент сетки 719, тело шита `scrollWidth` 767 против `clientWidth`
+   388 — экран уезжал вширь, а адрес не обрезался.
+   Нулевой минимум возвращает работу тому, чьё это дело: ширину держит ТРЕК,
+   обрезает себя КОНТРОЛ. Тот же приём уже стоит у `.field-row--aside` (TRIP-484).
+   visual-diff-exempt: .grid--2 grid-template-columns — трек получает нулевой минимум: содержимое больше не диктует ширину
+   visual-diff-exempt: .grid--split grid-template-columns — то же у второго примитива семьи
+   visual-diff-exempt: .grid--split {@media (max-width: 880px)} grid-template-columns — и у его одноколоночной ступени
+   visual-diff-exempt: .fld-grid {@media (max-width: 640px)} grid-template-columns — сетка полей на телефоне: одна колонка, тот же нулевой минимум
+   visual-diff-exempt: .field-row grid-template-columns — семья ряда полей: тот же минимум (ключ гарда со стороны базового класса)
+   visual-diff-exempt: .cols-2 grid-template-columns — тот же ключ со стороны модификатора
+   visual-diff-exempt: .field-row {@media (max-width: 720px)} grid-template-columns — одноколоночная ступень ряда полей: тот же минимум
+   visual-diff-exempt: .cols-2 {@media (max-width: 720px)} grid-template-columns — тот же ключ со стороны модификатора */
+.grid--2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 /* Две колонки, что стекаются в одну на планшете (брейкпоинт 880, R2). Общая
    раскладка «список + деталь» / «виз + сводка» — вместо приватных сеток экранов. */
-.grid--split { grid-template-columns: 1fr 1fr; }
-@media (max-width: 880px) { .grid--split { grid-template-columns: 1fr; } }
+.grid--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 880px) { .grid--split { grid-template-columns: minmax(0, 1fr); } }
 /* Кнопка в ячейке сетки переносит строку. `.btn` по умолчанию nowrap, а трек
    сетки задаёт ей ширину извне - значит длинная локаль («Solo las necesarias»)
    не сжимается, а вылезает. Свойство принадлежит паре «кнопка в сетке», а не
@@ -4365,7 +4401,10 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .flow-lp-h padding — воздух шапки переехал в слот шелла (значение то же) */
 /* Фон шапки снят: цвет несёт карточка виджета (одно правило на оба экрана).
    visual-diff-exempt: .flow-lp-h background — цвет шапки несёт карточка виджета */
-.flow-lp-h { flex: none; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Линии под шапкой нет: прогресс-полоса сама по себе граница шага, а вторая
+   черта под ней делит панель дважды подряд.
+   visual-diff-exempt: .flow-lp-h border-bottom — вторая черта под прогресс-полосой */
+.flow-lp-h { flex: none; display: flex; align-items: flex-start; gap: var(--sp-6); }
 /* Футер флоу — тот же фон приложения, что и шапка. Раньше правило было scoped к
    `.flow-editcol` (колонка удалена вместе с раскладкой); теперь оно висит на
    СВОЁМ классе футера, а общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся
@@ -4428,8 +4467,21 @@ button.input[data-empty] { color: var(--muted-2); }
 .flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-bottom, 0px) + 14px); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
 .flow-map__stat-hl { color: var(--ink-2); }
 /* Section sub-heading — the missing mid-tier between the title and the
-   14–15px body. Use for in-step section labels ("Старт", "Города"…). */
-.flow-lp-b .section-sub { color: var(--ink); margin: 0 0 12px; }
+   14–15px body. Use for in-step section labels ("Старт", "Города"…).
+   ★ ВЕРХНИЙ ОТСТУП НЕСЁТ САМ ЗАГОЛОВОК, а не то, что стоит перед ним. Его не
+   было вовсе, и работало это ровно до тех пор, пока над заголовком стоял абзац
+   со своим нижним отступом: заголовок «Рядом» идёт сразу за рядом полей, у
+   которого его нет, — и прилипал к полю старта вплотную. Соседние отступы в
+   обычном потоке СХЛОПЫВАЮТСЯ (берётся больший), поэтому там, где сверху уже
+   был воздух, ничего не прибавилось: правило чинит только голый случай.
+   Ключи гард заводит на КАЖДЫЙ класс селектора, отсюда их четыре на две правки.
+   visual-diff-exempt: .section-sub margin — заголовок секции обязан отбиваться от того, что над ним, чем бы оно ни было
+   visual-diff-exempt: .flow-lp-b margin — тот же ключ со стороны предка
+   visual-diff-exempt: .section-sub:first-child margin-top — первому заголовку воздух даёт шапка шага
+   visual-diff-exempt: .flow-lp-b margin-top — тот же ключ со стороны предка */
+.flow-lp-b .section-sub { color: var(--ink); margin: var(--sp-8) 0 12px; }
+/* Первый заголовок в шаге отбивается шапкой шага, второй раз воздух не нужен. */
+.flow-lp-b .section-sub:first-child { margin-top: 0; }
 /* Заголовок раздела с контролом справа. Отдельным рядом это не собрать: своё
    поле снизу заголовок несёт сам, и в общем ряду контрол уезжает вверх на его
    половину. Поэтому контрол живёт ВНУТРИ заголовка - шапка секции остаётся
@@ -4560,14 +4612,21 @@ button.input[data-empty] { color: var(--muted-2); }
 /* Planner has no reliable row-hover (esp. touch) → the delete is ALWAYS visible
    (the editor reveals it on hover for table density). */
 .te-row.te-row--plan .te-step { opacity: 1; }
-.te-row.te-row--plan .te-step--del { color: var(--muted); }
-.te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
-/* While a row is in the picker, collapse the grip + number columns so the search
-   field (and its dropdown) spans the whole row — no longer cramped by the
-   stepper/icon on desktop or squeezed on mobile. */
-.te-row.te-row--plan.is-editing { grid-template-columns: minmax(0, 1fr) auto; }
-.te-row.te-row--plan.is-editing .te-grip,
-.te-row.te-row--plan.is-editing .te-row__num { display: none; }
+/* ★ СОСТОЯНИЕ «РЯД РЕДАКТИРУЕТ» УДАЛЕНО ВМЕСТЕ С САМИМ РЕЖИМОМ (TRIP-484 §4).
+   Ряд визарда больше не превращается в поле города: добавление уехало в общий
+   композер, и схлопывать колонки грипа и номера стало не подо что. Правило
+   `.te-row--plan.is-editing` держало ровно это схлопывание — оно ушло, и вместе
+   с ним ушли объявления, которые оно вносило в каскад соседних классов. Гард 2n
+   поймал бы осиротевшее правило, если бы я его оставил; гард 2p видит остаток
+   объявлений и требует назвать каждое.
+   visual-diff-exempt: .is-editing display — состояния «ряд редактирует» больше нет
+   visual-diff-exempt: .is-editing grid-template-columns — там же
+   visual-diff-exempt: .te-grip display — грип больше не прячется: ряд не становится полем
+   visual-diff-exempt: .te-row__num display — номер по той же причине снова виден всегда
+   visual-diff-exempt: .te-row--plan display — ключ со стороны предка того же правила
+   visual-diff-exempt: .te-row--plan grid-template-columns — колонки ряда больше не схлопываются
+   visual-diff-exempt: .te-row display — тот же ключ со стороны базового класса
+   visual-diff-exempt: .te-row grid-template-columns — там же */
 /* Mobile: drop the grip column (long-press the row still reorders). */
 @media (max-width: 640px) {
   .te-row.te-row--plan { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px; }
@@ -5044,6 +5103,32 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .te-end--add border-style — пунктир на канон .card--add (1px dashed line-strong, скрин)
    visual-diff-exempt: .te-end--add transition — переход снят: add-скин статичен, ховер несёт канон .card--add */
 .te-end--add { width: 100%; text-align: left; cursor: pointer; }
+/* ★ УДАЛЕНИЕ ЯКОРЯ ВИДНО ВСЕГДА, И ЭТО НЕ ВКУС. `.te-step` по умолчанию
+   `opacity: 0` и открывается правилом `.te-row:hover .te-step` — плотностью
+   таблицы редактора. Якорь таблицей не является (`.te-end` — карточка-ряд), и
+   ховера, которым кнопка открывается, у него нет ВООБЩЕ: она лежала в разметке
+   и не показывалась никогда, ни на одном экране. На тач ховера нет и подавно —
+   ровно та же причина, по которой удаление всегда видно у ряда планировщика.
+   Маркера обхода тут нет и не нужно: `opacity: 1` у `.te-step` в наборе уже есть
+   (его даёт ряд планировщика), поэтому итоговых объявлений правило не меняет —
+   оно лишь распространяет то же значение на второго носителя. */
+.te-end .te-step { opacity: 1; }
+/* ★ УДАЛЕНИЕ ВЫГЛЯДИТ ОДИНАКОВО ВЕЗДЕ. Базовый `.te-step` — brand: он одевал и
+   шаги степпера, и удаление, поэтому цвет достался общий. Приглушение висело на
+   ОДНОМ носителе (`.te-row--plan`), и та же кнопка у якоря выходила синей —
+   удаление, покрашенное как основное действие. Правило переехало на сам контрол:
+   `--del` это НЕ шаг степпера, а разрушающее действие, и красится оно по своей
+   роли, а не по тому, в каком ряду очутилось.
+   Объявления не изменились — изменился их АДРЕС: приглушение и опасный ховер
+   теперь висят на самом `.te-step--del`, а не на `.te-row--plan .te-step--del`.
+   Само правило стоит НЕ ЗДЕСЬ, а сразу под базовым `.te-step` ниже по файлу —
+   разбор там же, это условие того, чтобы оно вообще применилось.
+   Ключи гард заводит на каждый класс селектора, поэтому носитель их «теряет».
+   (Маркером переноса это не объявить: он требует, чтобы на цели нашлись ВСЕ
+   утраченные носителем объявления, а у ряда их больше, чем у кнопки.)
+   visual-diff-exempt: .te-row--plan background — опасный ховер удаления переехал с носителя на сам контрол
+   visual-diff-exempt: .te-row background — тот же ключ со стороны базового класса
+   visual-diff-exempt: .te-row color — там же, тон опасного ховера */
 
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
@@ -5135,7 +5220,7 @@ button.input[data-empty] { color: var(--muted-2); }
   /* TRIP-203: голые h1/h2 больше НЕ понижаются вручную — каноны --fs-h1/--fs-h2
      теперь fluid (clamp) и шринкуются токеном единообразно на всех экранах. */
   /* Stack 2-column grids to 1 on small screens */
-  .field-row.cols-2 { grid-template-columns: 1fr !important; }
+  .field-row.cols-2 { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
 /* (removed) The old `.mobile-bottom-nav` + `.trip-2col/3col` + `.budget-2col`
@@ -5271,19 +5356,35 @@ button.input[data-empty] { color: var(--muted-2); }
      keyboard reposition — no `bottom: var(--kb)` / `animation` here. Closes via
      the panel's own Back button, swipe-down, or backdrop tap. */
   /* Коробки здесь НЕТ намеренно: `top`/`height` этой поверхности объявлены
-     вместе с `.sheet--full` одним правилом (см. «ПОЛНОЭКРАННАЯ ПОВЕРХНОСТЬ»
+     общим правилом семьи `[data-sheet-full]` (см. «ПОЛНОЭКРАННАЯ ПОВЕРХНОСТЬ»
      ниже по файлу) — это ОДНА И ТА ЖЕ вещь, и второй экземпляр правила разъехался
      бы с первым.
-     visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} top — верх от ВИДИМОЙ полосы, а не от раскладки: иначе панель уезжает за край при панорамировании Safari
-     visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} bottom — низ задаёт height от видимой полосы, пара top/bottom от раскладки врёт на iOS
-     visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} height — та самая высота видимой полосы (на Android тождественно прежнему) */
+     Маркеров обхода тут НЕТ намеренно: коробку объявляет общее правило ниже, и
+     ключи `top`/`bottom`/`height` закрыты ЕГО маркерами. Второй экземпляр тех же
+     ключей стоял здесь и объяснял ОБРАТНОЕ («верх от видимой полосы») — то есть
+     редакцию, которая не поехала: сегодня это `height: 100dvh`, вьюпорт
+     РАСКЛАДКИ. Проверено мутацией: без этих трёх строк гард 2p зелёный, значит
+     они ничего не гасили, а только удваивали бюджет обхода. */
+  /* ⚠️ КОЛОНКА, А НЕ РЯД, И ЭТО ОБЯЗАТЕЛЬНО С ПОЯВЛЕНИЕМ БРОВИ (TRIP-494).
+     Пока детей было ровно один (карточка `.lp`), направление флекса не решало
+     ничего. Бровь — ВТОРОЙ ребёнок, и на дефолтном `row` она встала бы СЛЕВА от
+     панели, отъев ширину: типичная цена того, что раскладку контейнера
+     определял единственный ребёнок.
+     visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} flex-direction — бровь стала вторым ребёнком поверхности */
   .lp-sheet {
     position: fixed; left: 0; right: 0;
     width: 100%;
     z-index: calc(var(--z-modal) + 1);
     display: flex;
+    flex-direction: column;
     will-change: transform;
   }
+  /* Карточка панели ОТДАЁТ КРАСКУ СЕМЬЕ. Полноростная поверхность красится сама
+     (`[data-sheet-full]::before`, `--bg`), и второй слой той же краски внутри —
+     это второй владелец одного факта: разъедутся молча, как разъехались фоны
+     шторки и панели до сведения. На десктопе и внутри окна `.lp` красится
+     по-прежнему — там она карточка НАД поверхностью, а не сама поверхность.
+     visual-diff-exempt: .lp {@media (max-width: 640px)} background — краску полноростной поверхности держит семья, а не карточка внутри */
   .lp-sheet > .lp {
     width: 100%;
     height: 100%;
@@ -5291,6 +5392,7 @@ button.input[data-empty] { color: var(--muted-2); }
     min-height: 0;
     border-radius: 0;
     border: 0;
+    background: transparent;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 }
@@ -6284,6 +6386,17 @@ button.input[data-empty] { color: var(--muted-2); }
     .te-step:hover { background: var(--surface); }
     .te-step:active:not(:disabled) { transform: scale(0.9); }
     .te-step:disabled { color: var(--muted-2); cursor: default; }
+    /* ★ УДАЛЕНИЕ — НЕ ШАГ СТЕПЕРА, И ЦВЕТ У НЕГО СВОЙ. Базовый `.te-step` выше
+       красит brand: он одевал и «−»/«+», и удаление, поэтому тон достался общий.
+       Приглушение висело на ОДНОМ носителе (`.te-row--plan .te-step--del`), и та
+       же кнопка у якоря выходила СИНЕЙ — разрушающее действие цветом основного.
+       ⚠️ МЕСТО В ФАЙЛЕ — ЧАСТЬ ПРАВИЛА. У `.te-step--del` и `.te-step` РАВНАЯ
+       специфичность (0,1,0), спор решает порядок. Первая редакция объявила
+       `--del` на 1200 строк ВЫШЕ базового `.te-step`, и правило проиграло молча:
+       в файле оно есть, гард его видит, браузер берёт brand — кнопка осталась
+       синей. Держать `--del` сразу под базой обязательно. */
+    .te-step--del { color: var(--muted); }
+    .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
     /* `justify-self` поднят с модификаторов на САМУ ЯЧЕЙКУ (TRIP-459). Колонки
        ряда центрованы по шапке (`.te-th--c`), и объявляли это две ячейки из трёх:
        жильё и активности. Ночи ячейкой не были вовсе — их содержимое стояло в
@@ -6431,7 +6544,19 @@ button.input[data-empty] { color: var(--muted-2); }
        икона над короткой подписью, узкий горизонтальный отступ. */
     .te-add-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
     .te-add-type { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink-2); cursor: pointer; text-align: center; transition: background .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out); }
-    .te-add-type:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+    /* ★ ХОВЕР ТОЛЬКО ТАМ, ГДЕ ЕСТЬ КУРСОР. На тач-платформе `:hover` ЗАЛИПАЕТ на
+       последнем нажатом элементе до следующего тапа, и плитка, по которой только
+       что ткнули, оставалась в brand-рамке РЯДОМ с настоящей выбранной: две
+       активные плитки на четыре, и человек не знает, какая из них выбрана.
+       Ховер — свойство указателя, а не элемента, поэтому гейт на медиа: та же
+       пара `(hover: hover) and (pointer: fine)`, что уже стоит у add-рядов.
+       Ключ у гарда включает @media и полный селектор, отсюда четыре строки.
+       visual-diff-exempt: .te-add-type:hover:not(:disabled) border-color — ховер снят с базового контекста
+       visual-diff-exempt: .te-add-type:hover:not(:disabled) {@media (hover: hover) and (pointer: fine)} border-color — и объявлен под медиа указателя
+       visual-diff-exempt: .te-add-type:hover:not(:disabled) {@media (hover: hover) and (pointer: fine)} color — там же */
+    @media (hover: hover) and (pointer: fine) {
+      .te-add-type:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+    }
     .te-add-type[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
     .te-add-type:disabled { opacity: .5; cursor: not-allowed; color: var(--muted-2); }
     .te-add-type:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
@@ -8100,10 +8225,47 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    Короткому списку без поиска полный рост, наоборот, ВРЕДЕН: три роли во весь
    экран - это модальный экран ради трёх строк. Он остаётся по содержимому.
 
-   ⚠️ МЕСТО В ФАЙЛЕ - ЧАСТЬ ПРАВИЛА, А НЕ ВКУСОВЩИНА. `.sheet--full .ss-list` и
-   `.sheet .ss-list` (строкой выше) имеют РАВНУЮ специфичность (0,2,0), поэтому
-   спор решает порядок. Перенос этого блока выше вернёт листу кэп 56vh, и
-   полноростная шторка молча станет наполовину пустой. */
+   ⚠️ МЕСТО В ФАЙЛЕ - ЧАСТЬ ПРАВИЛА, А НЕ ВКУСОВЩИНА. `[data-sheet-full] .ss-list`
+   (в конце этого раздела) и `.sheet .ss-list` (строкой выше) имеют РАВНУЮ
+   специфичность (0,2,0) — признак весит столько же, сколько класс, — поэтому спор
+   решает порядок. Перенос блока выше вернёт листу кэп 56vh, и полноростная шторка
+   молча станет наполовину пустой. */
+/* ★★ РОЛЬ ПОЛНОРОСТНОЙ ПОВЕРХНОСТИ ПЕРЕЕХАЛА С КЛАССА НА ПРИЗНАК (TRIP-494).
+   Ниже — ОДНА причина, размноженная на 26 ключей, и размножает её устройство
+   гарда, а не правка: 2p ведёт учёт ПО ИМЕНАМ КЛАССОВ, поэтому класс, который
+   перестал существовать, отчитывается каждым объявлением, что он нёс. Сами
+   значения на месте — они просто адресуются признаком семьи `[data-sheet-full]`,
+   который ставит шов по пропу `full`. Исключения из «значения те же» ровно два, и
+   оба названы отдельно: краска (цвет карточки → цвет страницы) и резерв под
+   клавиатуру (уехал скроллеру по его собственному признаку).
+   Маркером переноса это не объявить: `visual-diff-move` требует, чтобы ЦЕЛЬ была
+   классом, а цель здесь — признак; отказ в безопасную сторону, поэтому поимённо.
+   visual-diff-exempt: .lp-b {@media (max-width: 640px)} padding-bottom — резерв достаётся скроллеру по его признаку, а не по имени класса
+   visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} background — краску полноростной поверхности держит семья, карточка внутри её отдала
+   visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} bottom — коробку объявляет признак роли, а не перечень скинов
+   visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} padding-bottom — у ключа остался только safe-area-отступ карточки: резерв под клавиатуру ушёл скроллеру
+   visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} top — коробку объявляет признак роли, а не перечень скинов
+   visual-diff-exempt: .sheet--full::before[data-state=open][data-vaul-drawer] {@media (max-width: 640px)} animation — въезд адресует поверхность С ПРИШПИЛЕННЫМ ПОЛЕМ, а не имя скина
+   visual-diff-exempt: .sheet--full::before[data-vaul-drawer] {@media (max-width: 640px)} background — краска семьи: цвет страницы вместо цвета карточки, слой тот же
+   visual-diff-exempt: .sheet--full::before[data-vaul-drawer] {@media (max-width: 640px)} content — слой краски переехал на признак семьи
+   visual-diff-exempt: .sheet--full::before[data-vaul-drawer] {@media (max-width: 640px)} inset — там же
+   visual-diff-exempt: .sheet--full::before[data-vaul-drawer] {@media (max-width: 640px)} position — там же
+   visual-diff-exempt: .sheet--full::before[data-vaul-drawer] {@media (max-width: 640px)} z-index — там же: уровень слоя объявлен и не изменился
+   visual-diff-exempt: .sheet--full[data-state=open][data-vaul-drawer-direction=bottom][data-vaul-drawer][data-vaul-snap-points=false] {@media (max-width: 640px)} animation-name — перебивание въезда vaul переехало на признак + условие пришпиленного поля
+   visual-diff-exempt: .sheet--full[data-state=open][data-vaul-drawer] {@media (max-width: 640px)} animation — проявление хрома на месте — там же
+   visual-diff-exempt: .sheet--full[data-vaul-drawer] {@media (max-width: 640px)} background — прозрачная коробка — теперь факт семьи: красит её слой
+   visual-diff-exempt: .sheet--full[data-vaul-drawer] {@media (max-width: 640px)} will-change — снятие композитного слоя осталось у поверхности с пришпиленным полем
+   visual-diff-exempt: .sheet--full {@media (max-width: 640px)} bottom — коробку объявляет признак роли
+   visual-diff-exempt: .sheet--full {@media (max-width: 640px)} height — там же
+   visual-diff-exempt: .sheet--full {@media (max-width: 640px)} padding-bottom — резерв под клавиатуру ушёл скроллеру по его признаку
+   visual-diff-exempt: .sheet--full {@media (max-width: 640px)} top — коробку объявляет признак роли
+   visual-diff-exempt: .sheet--full display — раскладка тела полноростной поверхности — ключ семьи
+   visual-diff-exempt: .sheet--full flex — рост листа — ключ семьи
+   visual-diff-exempt: .sheet--full flex-direction — раскладка тела — ключ семьи
+   visual-diff-exempt: .sheet--full min-height — сжимаемость листа — ключ семьи
+   visual-diff-exempt: .sheet--full overflow — скроллер ровно один — ключ семьи
+   visual-diff-exempt: .sheet--full padding-bottom — воздух под шапкой — ключ семьи
+   visual-diff-exempt: .sheet--full padding-top — воздух над полем — ключ семьи */
 /* ★★ КОРОБКА ПОЛНОЭКРАННОЙ ПОВЕРХНОСТИ НЕПОДВИЖНА, А КЛАВИАТУРА РЕЗЕРВИРУЕТ
    МЕСТО ВНУТРИ. vaul анимирует въезд кадром `translate3d(0, 100%, 0)`, где
    `100%` — процент ОТ СОБСТВЕННОЙ ВЫСОТЫ. Пока высоту задавала видимая полоса,
@@ -8116,17 +8278,26 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} bottom — там же
    visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} height — там же */
 @media (max-width: 640px) {
-  .sheet--full, .lp-sheet { top: 0; height: 100dvh; bottom: auto; }
-  /* Клавиатура ест снизу у ТОГО, ЧТО СКРОЛЛИТСЯ, а не у коробки: лист пикера и
-     тело панели редактора. Поле поиска пришпилено сверху и её не касается.
-     `.lp` со своим safe-area-отступом не тронут: инсет идёт ТЕЛУ (`.lp-b`), а не
-     карточке. Ключи гард заводит на каждый класс селектора — отсюда третий.
-     visual-diff-exempt: .ss-list {@media (max-width: 640px)} padding-bottom — место под клавиатуру внутри неподвижной коробки
+  [data-sheet-full] { top: 0; height: 100dvh; bottom: auto; }
+  /* Клавиатура ест снизу у ТОГО, ЧТО СКРОЛЛИТСЯ, а не у коробки. Поле поиска
+     пришпилено сверху и её не касается; `.lp` со своим safe-area-отступом не
+     тронут: инсет идёт ТЕЛУ, а не карточке.
+     ★ СКРОЛЛЕР НАЗЫВАЕТ СЕБЯ САМ (TRIP-494). Здесь стояло
+     `.sheet--full .ss-list, .lp-sheet .lp-b` — то есть шов знал, КАК ЗОВУТ
+     скроллер у двух чужих скинов, и третья поверхность со своим скроллером не
+     получила бы резерва МОЛЧА (ничего не ломается, поле просто оказывается под
+     клавиатурой). Теперь элемент объявляет, что он скроллер
+     (`{...sheetScroller}` из `ui/sheetShell`), а кому это важно — решает семья.
+     visual-diff-exempt: .ss-list {@media (max-width: 640px)} padding-bottom — резерв достаётся скроллеру по его собственному признаку, а не по имени класса
      visual-diff-exempt: .lp-b {@media (max-width: 640px)} padding-bottom — то же у тела панели редактора
      visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} padding-bottom — тот же ключ со стороны предка */
-  .sheet--full .ss-list, .lp-sheet .lp-b { padding-bottom: var(--kb-h, 0px); }
+  [data-sheet-full] [data-sheet-scroller] { padding-bottom: var(--kb-h, 0px); }
 }
-.sheet--full { max-height: none; border-radius: 0; }
+/* Полный рост = экран: кэпа по содержимому нет, углов нет. Ключ семьи, а не
+   скина: у обеих поверхностей это одно и то же.
+   visual-diff-exempt: .sheet--full max-height — роль поверхности переехала с класса на признак семьи
+   visual-diff-exempt: .sheet--full border-radius — там же */
+[data-sheet-full] { max-height: none; border-radius: 0; }
 
 /* ★★ ПАНЕЛЬ ЕДЕТ, ПОЛЕ СТОИТ. ОБА ТРЕБОВАНИЯ, А НЕ ОДНО ИЗ ДВУХ.
 
@@ -8145,7 +8316,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
    visual-diff-exempt: from {@keyframes sheetPanelRise} transform — панель приезжает снизу
    visual-diff-exempt: to {@keyframes sheetPanelRise} transform — и встаёт на место
-   visual-diff-exempt: .sheet--full {@media (max-width: 640px)} background — заливка уехала в ::before
    visual-diff-exempt: .sheet-grip {@media (max-width: 640px)} animation — хром проявляется на месте
    visual-diff-exempt: .sheet-h {@media (max-width: 640px)} animation — иначе шапка идёт СКВОЗЬ неподвижное поле
    visual-diff-exempt: .ss-list {@media (max-width: 640px)} animation — движение переехало с коробки на лист
@@ -8153,25 +8323,53 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    `sheetFade` не объявляется заново — он уже есть в файле. */
 @keyframes sheetPanelRise { from { transform: translateY(100vh); } to { transform: none; } }
 @media (max-width: 640px) {
-  /* Постоянный композитный слой vaul снят: он делает коробку контейнером для
-     `position: fixed` у всего, что внутри. */
-  .sheet--full[data-vaul-drawer] { will-change: auto; background: transparent; }
+  /* ★★ КРАСКА У СЕМЬИ, И ЭТО `--bg`, А НЕ `--surface` (TRIP-494).
+     Полноростная поверхность — ЭКРАН, а не карточка над экраном, поэтому
+     красится в цвет страницы, как панель редактора (`.lp`) и окно (`.dlg`).
+     Замер до правки: шторка `#FFFFFF`/`rgb(31,33,47)` против панели
+     `#F7F9FA`/`rgb(12,14,28)` — в тёмной теме это не оттенок, а ступень: два
+     полноэкранных экрана одного приложения разного цвета. И цена была не только
+     в этом: карточки ВНУТРИ шторки красятся `--surface`, то есть совпадали с ней
+     байт-в-байт (`.te-add-type`: rgb(31,33,47) на rgb(31,33,47)) и держались на
+     одной рамке.
+     Красит слой `::before`, а не сама коробка: у шторки пикера он ещё и ЕДЕТ
+     отдельно от содержимого (разбор ниже). Уровень объявлен — слой лежит ПОД
+     содержимым своей же коробки (гард 2af).
+     (ключи 2p для этого блока объявлены общим списком выше — там же разбор.) */
+  [data-sheet-full][data-vaul-drawer] { background: transparent; }
+  [data-sheet-full][data-vaul-drawer]::before {
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: var(--bg);
+  }
   /* ⚠️ СЕЛЕКТОР ДЛИННЫЙ НЕ ОТ ЛЮБВИ К ДЛИНЕ — ЭТО ЦЕНА ПЕРЕОПРЕДЕЛЕНИЯ vaul, И
      ОНА ЗАМЕРЕНА. Свой въезд он объявляет ЧЕТЫРЬМЯ атрибутами. Правило
      класс+два атрибута (0,3,0) ему ПРОИГРЫВАЕТ и не применяется вовсе — молча:
      объявление в файле есть, браузер берёт чужое, снаружи «ты ничего не
      поменял». Ровно это и уехало на превью прошлым заходом. */
-  .sheet--full[data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='bottom'][data-state='open'] {
+  /* ★ УСЛОВИЕ ВЪЕЗДА — ОБЪЯВЛЕННОЕ СВОЙСТВО ПОВЕРХНОСТИ, А НЕ ЕЁ СОДЕРЖИМОЕ.
+     Приём существует затем, чтобы поле с кареткой не ехало, и адресует он
+     поверхности, объявившие `pinned` (признак ставит шов).
+
+     ⚠️ ЗДЕСЬ СТОЯЛ ЖИВОЙ ЗАПРОС `:has(.ss-search)`, И ЭТО БЫЛ ДЕФЕКТ. У композера
+     города поле живёт только на ПЕРВОЙ фазе: выбрал город — поле ушло, условие
+     перестало совпадать, `animation-name: none` отвалилось, и vaul проиграл свой
+     въезд ЗАНОВО, посреди жизни открытой шторки. Снаружи это читалось как «шит
+     закрылся и открылся второй такой же, но с плитками». Замер на живом билде: с
+     полем `none`, без поля `slideFromBottom` + событие `animationstart`.
+     Урок общий: способ въезда — свойство поверхности на всю её жизнь, а
+     содержимое внутри меняется; выводить первое из второго нельзя.
+
+     Панель редактора `pinned` не объявляет и въезжает штатным слайдом vaul
+     целиком: дать ей этот приём значило бы получить ПОЛОВИНУ анимации (у неё нет
+     ни `.ss-list`, ни `.ss-search`) — отдельная работа, не побочный эффект.
+     Снятие композитного слоя — часть того же приёма: постоянный слой делает
+     коробку контейнером для `position: fixed` у всего, что внутри. */
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer] { will-change: auto; }
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='bottom'][data-state='open'] {
     animation-name: none;
   }
-  /* Заливка поверхности — отдельный слой, чтобы ехать без содержимого.
-     Уровень объявлен: слой лежит ПОД содержимым своей же коробки (гард 2af). */
-  .sheet--full[data-vaul-drawer]::before {
-    content: ''; position: absolute; inset: 0; z-index: -1;
-    background: var(--surface);
-  }
-  .sheet--full[data-vaul-drawer][data-state='open']::before,
-  .sheet--full[data-vaul-drawer][data-state='open'] .ss-list {
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open']::before,
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open'] .ss-list {
     animation: sheetPanelRise .42s cubic-bezier(.32, .72, 0, 1);
   }
   /* ⚠️ ГРИП И ШАПКА ЕДУТ НЕ ВМЕСТЕ С ПАНЕЛЬЮ, И ЭТО НЕ ЭКОНОМИЯ. Они лежат НАД
@@ -8185,9 +8383,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
      на 150-й мс — до этого хром рисовался поверх ЖИВОЙ СТРАНИЦЫ, буквой на
      букву. Тоже видно только глазами, числа показывали идеальную картину.
      `both` обязателен: без него хром виден до начала своей же анимации. */
-  .sheet--full[data-vaul-drawer][data-state='open'] .sheet-grip,
-  .sheet--full[data-vaul-drawer][data-state='open'] .sheet-h,
-  .sheet--full[data-vaul-drawer][data-state='open'] .ss-search {
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open'] .sheet-grip,
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open'] .sheet-h,
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open'] .ss-search {
     animation: sheetFade .26s var(--ease-out) .15s both;
   }
 }
@@ -8196,36 +8394,54 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    Отсюда и все маркеры 2p ниже: у варианта нет способа отдать листу рост, не
    изменив итоговых объявлений тела и самого листа, - это и есть предмет правки,
    а не побочный эффект. Базовая (не полноростная) шторка не тронута ни в одном
-   объявлении: каждый ключ живёт под `.sheet--full`.
+   объявлении: каждый ключ живёт под признаком семьи.
    visual-diff-exempt: .sheet-b display — тело полноростной шторки держит колонку «поле + лист», а не скролл
    visual-diff-exempt: .sheet-b flex-direction — то же
    visual-diff-exempt: .sheet-b overflow — скроллер ровно один, и это лист
    visual-diff-exempt: .sheet-b flex — тело занимает весь рост шторки
    visual-diff-exempt: .sheet-b min-height — иначе колонка не сожмётся ниже содержимого и лист не получит скролла */
-.sheet--full .sheet-b { display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
+[data-sheet-full] .sheet-b { display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
+/* ★ ВОЗДУХ МЕЖДУ ЗАГОЛОВКОМ И СОДЕРЖИМЫМ — ОДНО ЗНАЧЕНИЕ У ОДНОГО ВЛАДЕЛЬЦА.
+   Складывался он из ЧЕТЫРЁХ паддингов четырёх разных хозяев: низ шапки (12) +
+   верх тела (2) + верх композера (12) + верх обёртки поля (6) — и заголовок с
+   полем читались как из разных вселенных, а на двух фазах отступ был ещё и
+   РАЗНЫЙ (у поля поиска своя обёртка с паддингом, у ряда города её нет).
+   Теперь все слагаемые обнулены, и зазор остался ОДИН — тот, что даёт сама шапка:
+   её высоту задаёт кнопка «×» (44 px), заголовок в ней центрируется, и под
+   текстом остаётся 12 px. Замер: 22 → 12 на обеих фазах, и они наконец равны.
+   Добавлять к этим 12 ещё своё слагаемое незачем — получалось «из разных
+   вселенных»; заголовок и первое содержимое встают как подпись и её поле.
+   Ключи гард заводит на каждый класс селектора; медиа тут НЕТ — правило верхнего
+   уровня, полноростная шторка и так живёт только на телефоне.
+   visual-diff-exempt: .te-add padding-top — слагаемое воздуха обнулено, зазор объявлен телом шторки
+   visual-diff-exempt: .sheet--full padding-top — тот же ключ со стороны предка
+   visual-diff-exempt: .sheet-h padding-bottom — там же, низ шапки
+   visual-diff-exempt: .sheet--full padding-bottom — тот же ключ со стороны предка
+   visual-diff-exempt: .sheet-b padding-top — единственный владелец зазора
+   visual-diff-exempt: .ss-search padding-top — обёртка поля больше не добавляет свой */
+/* ★ `min-height: 0` — НЕ ПОДПОРКА, А ВТОРАЯ ПОЛОВИНА ПРАВИЛА «СКРОЛЛЕР РОВНО
+   ОДИН, И ЭТО ЛИСТ». В шторке без композера лист — прямой ребёнок `.sheet-b`, и
+   тот объявляет `min-height: 0` про себя; в композере между ними встал ещё один
+   flex-столбец (`.te-add`), а у элемента флекса автоматический минимум равен
+   его СОДЕРЖИМОМУ, не нулю. Столбец отказывался сжиматься, лист получал высоту
+   по содержимому и переставал скроллиться совсем: хвост уезжал под низ экрана и
+   резался `overflow: hidden` тела. Замер на 390x844, 20 строк: лист 905 при
+   содержимом 905, низ листа 1006 против экрана 844; с этой строкой — 745 при
+   905 и низ 831. Правило действует только там, где лист обязан скроллиться
+   (полноростная поверхность); инлайн-композер на десктопе высоту по содержимому и держит.
+   visual-diff-exempt: .te-add min-height — промежуточный столбец обязан сжиматься, иначе лист не скроллер */
+[data-sheet-full] .te-add { padding-top: 0; min-height: 0; }
+[data-sheet-full] .sheet-h { padding-bottom: 0; }
+[data-sheet-full] .sheet-b { padding-top: 0; }
+[data-sheet-full] .ss-search { padding-top: 0; }
 /* visual-diff-exempt: .ss-search flex — поле поиска пришпилено сверху и в скролл не уезжает */
-.sheet--full .ss-search { flex: none; }
+[data-sheet-full] .ss-search { flex: none; }
 /* Кэп 56vh для полноростной шторки бессмыслен: он и делал её наполовину пустой.
    visual-diff-exempt: .ss-list max-height — рост листа задаёт шторка, а не кэп по вьюпорту
    visual-diff-exempt: .ss-list flex — лист забирает всё, что осталось от поля
    visual-diff-exempt: .ss-list min-height — без этого лист не сжимается и скроллит страницу, а не себя */
-.sheet--full .ss-list { max-height: none; flex: 1; min-height: 0; }
+[data-sheet-full] .ss-list { max-height: none; flex: 1; min-height: 0; }
 
-/* floor-exempt: classes +1 — `.sheet--full`: вариант канон-семьи `sheet`, поверхность
-   пикера с поиском (TRIP-484 §4). Апрув Pavel — «Апрув на .sheet--full ок».
-   floor-exempt: layout +1 — тот же вариант: `sheet-b` становится классом с раскладкой,
-   потому что рост листа объявить больше негде. Апрув там же.
-   floor-exempt: dsshare +1 — падение РОВНО на 1bp (4279 -> 4278 по печати гарда),
-   и ЧИСЛИТЕЛЬ ПРИ ЭТОМ ВЫРОС: ds +2 (оба триггера пикера стали `<Input
-   as="button">` вместо рукописных кнопок с инлайнами), ui +3 (`<PickerSheet>` в
-   двух движках и `<Sheet>` — метрика считает `components/ui/` легаси: в
-   знаменателе, но не в числителе; переезд в `src/design/` тянет `Sheet` и всех
-   его вызывателей — отдельная задача, флаг по правилу #6), host +3 (обёртка поля
-   поиска, контейнер листа и «ничего не найдено», которого на базе не показывал
-   НИКТО). Итого числитель +2, знаменатель +8.
-   ⚠️ Числа здесь уже были неверны один раз («ui +1» при +3), и маркеров было ДВА
-   — бюджет выдавался вчетверо шире нарушения. Сверять по печати гарда.
-   Апрув Pavel — полноростная шторка пикера. */
 /* 16px search font prevents iOS Safari from auto-zooming on focus */
 
 /* ============================================================
@@ -9375,7 +9591,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .f-sec{ color:var(--hl);display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--hl) 18%,transparent);}
 .fld-grid{gap:9px 13px;}
-@media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
+@media(max-width:640px){.fld-grid{grid-template-columns:minmax(0,1fr);}}
 
 /* booking-link platform logo chip (was unsized → giant logo) */
 .bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center; color:#fff;flex:none;overflow:hidden;}

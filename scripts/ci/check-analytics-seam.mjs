@@ -62,6 +62,18 @@
  *      document, and the hard nav after it happens once the session exists, when
  *      there is nothing left to lose.
  *
+ *   F. `postLoginPath()` is called only at MODULE SCOPE (TRIP-493). Where a
+ *      person lands after signing in is decided in ONE named helper per kind of
+ *      door, never inline at the door itself: `postLoginHref()` (navigation we
+ *      perform — carries the campaign marks in the address) and
+ *      `postLoginRedirectTo()` (the address handed to Supabase, checked against
+ *      its Redirect URL list). Inline `window.location.href = postLoginPath()`
+ *      is how the marks were lost: the rule "this destination carries the marks"
+ *      was written at three call sites and simply not written at the fourth, and
+ *      nothing anywhere noticed. Brace depth is the machine form of "one place":
+ *      a helper sits at depth 0, anything inside a component or a handler does
+ *      not. Zero call sites means the seam moved — an empty room, not "clean".
+ *
  * A self-consistency invariant over the whole tree (not a diff), the twin of
  * `check-invoke-seam.mjs` (2i). Tested by `check-analytics-seam.test.mjs`.
  *
@@ -333,6 +345,47 @@ try {
         'Each entry that leaves the document (or ends in a hard nav) must stash the visit marks',
         'first: call rememberAttributionForRedirect() in the same handler, BEFORE the provider',
         'call. A fourth provider added without it silently loses campaign attribution (TRIP-329).',
+      ],
+    });
+  }
+
+  // Rule F — the post-login destination is decided in one named helper, not inline.
+  const POST_LOGIN = /postLoginPath\s*\(/g;
+  const POST_LOGIN_HOME = 'src/lib/postLoginPath.js'; // where it is DEFINED
+  const inlineDestinations = [];
+  let postLoginCalls = 0;
+  for (const f of browserFiles) {
+    if (f === POST_LOGIN_HOME) continue;
+    const code = maskCode(readFileSync(f, 'utf8'));
+    const depth = depthArray(code);
+    for (const m of code.matchAll(POST_LOGIN)) {
+      postLoginCalls++;
+      // Depth 0 = module scope = a named helper. Anything deeper is a call site
+      // deciding the destination for itself, which is the thing being banned.
+      if (depth[m.index] > 0) inlineDestinations.push(`  ✗ ${f}:${lineOf(code, m.index)}`);
+    }
+  }
+  if (postLoginCalls === 0) {
+    callSiteFailures.push({
+      id: 'F',
+      title: 'no postLoginPath() call left — the post-login destination seam moved',
+      lines: [
+        'Nobody decides where a signed-in person lands, which cannot be true of a working',
+        'app: the seam was renamed or moved. Update this guard in the same commit, or it',
+        'watches an empty room and passes anything (TRIP-282).',
+      ],
+    });
+  } else if (inlineDestinations.length) {
+    callSiteFailures.push({
+      id: 'F',
+      title: 'postLoginPath() called inline — the post-login destination has more than one author',
+      lines: [
+        ...inlineDestinations,
+        'Route it through the module-scope helper for its kind of door: postLoginHref() for',
+        'navigation we perform (it carries the campaign marks in the address), or',
+        'postLoginRedirectTo() for an address handed to Supabase. An inline call writes the',
+        '"carries the marks" rule a second time — and the next door will be the one that',
+        'forgets it, exactly as One Tap did (TRIP-493).',
       ],
     });
   }

@@ -1,45 +1,51 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Icon } from '../../design/icons';
 import { Card, Tile } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
-import CityPicker from '@/components/cities/CityPicker';
 
 // ─── CityAnchorRow ────────────────────────────────────────────────────────────
-// Start / finish plate — the SAME element as the editor's GridEndpoint (.te-end:
-// flag node, eyebrow label, bold .te-cityname). One look across every create
-// screen (planner steps + AI draft). Endpoint marker is a single blue flag
-// (unified — no green-check / orange-globe divergence).
+// ЯКОРЬ МАРШРУТА — ОДИН РЯД НА ОБА ЭКРАНА (TRIP-484 §4).
 //
-// Modes:
-//   • read-only (default): shows the resolved city, or "не указан" when empty.
-//   • editable: when empty renders a dashed "+ {label}" affordance that expands
-//     into the CityPicker; when filled shows a trailing clear button. Used for
-//     the OPTIONAL origin so manual (skipped on step 1) and AI (origin not
-//     recognised) share one add-start control.
-export function CityAnchorRow({ label, city, editable = false, onPick }) {
+// ★ ЕГО РИСОВАЛИ ДВА КОМПОНЕНТА, И ОБА НА ОДНОМ КЛАССЕ `.te-end`: этот и
+// `GridEndpoint` в редакторе маршрута. Один объект, две реализации — и они уже
+// разошлись, причём молча:
+//   • ОБЛИК: планировщик рисовал синий флаг обоим концам, редактор — зелёную
+//     галочку финишу. Сведено к флагу (решение Pavel): у старта и финиша одна
+//     роль — конец маршрута, и красить их по-разному незачем.
+//   • УДАЛЕНИЕ: у редактора кнопка `.ts-step` с ЧЕТЫРЬМЯ инлайнами, у
+//     планировщика `.te-step--del`, который НЕ БЫЛО ВИДНО ВООБЩЕ: у `.te-step`
+//     базовый `opacity: 0`, открывает его правило `.te-row:hover .te-step`, а
+//     якорь — не `.te-row`. То есть кнопка была в разметке и не показывалась
+//     никогда, ни на одном экране, ни на десктопе, ни на тач.
+//
+// Слоты необязательные, потому что экраны показывают РАЗНОЕ об одном узле:
+// планировщику важна страна (рядом с именем), редактору — дата вылета/прилёта
+// (строкой ниже, `.te-dts`). Это не два облика одного ряда, а один ряд с двумя
+// местами под факты.
+//
+// Режимы:
+//   • read-only (по умолчанию): показывает город, либо «не указан», если пусто.
+//   • editable: пусто → пунктирный аффорданс «+ {label}», нажатие ведёт в ОБЩИЙ
+//     композер города (`cities/CityAdder`) с предвыбранным видом; заполнено →
+//     кнопка удаления. Своего поля города у плитки нет намеренно: вход в
+//     добавление на экране один.
+/**
+ * @param {{ label: any, city?: any, editable?: boolean, addLabel?: string,
+ *   meta?: any, onAdd?: () => void, onRemove?: () => void }} p
+ */
+export function CityAnchorRow({ label, city, editable = false, addLabel, meta, onAdd, onRemove }) {
   const t = useT();
-  const [adding, setAdding] = useState(false);
   const hasCity = !!city?.city_name;
   const accent = 'var(--brand)';
   const soft = 'var(--brand-soft)';
 
-  // Editable + empty → an inline "add start" affordance. One element for both
-  // flows (manual skip + AI no-origin) — the origin can always be added later.
   if (editable && !hasCity) {
-    if (adding) {
-      return (
-        <div className="field">
-          <label className="field__label">{label}</label>
-          <CityPicker value={null} onChange={(c) => { onPick(c); setAdding(false); }} placeholder={t('planner.start_city_ph')} autoFocus />
-        </div>
-      );
-    }
     return (
-      <Card as="button" variant="add" radius="btn" pad="none" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
+      <Card as="button" variant="add" radius="btn" pad="none" className="row row--g6 te-end te-end--add" onClick={onAdd}>
         <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="plus" size={13} /></Tile>
         <div className="te-citycell grow">
           <span className="te-endlabel" style={{ color: accent }}>{label}</span>
-          <span className="trunc te-cityname muted">{t('planner.add_start')}</span>
+          <span className="trunc te-cityname muted">{addLabel || t('planner.add_start')}</span>
         </div>
       </Card>
     );
@@ -54,11 +60,14 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
           <span className="trunc te-cityname">{city?.city_name || <span className="muted">{t('planner.not_set')}</span>}</span>
           {city?.country && <span className="muted t-meta">{city.country}</span>}
         </div>
+        {meta ? <div className="row row--g3 te-dts">{meta}</div> : null}
       </div>
-      {/* TRIP-391 объект 1: .te-step — КОНТРОЛ степпера маршрута (удалить точку),
-          не кнопка-примитив. */}
-      {editable && hasCity && (
-        <button type="button" className="te-step te-step--del" onClick={() => onPick(null)} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
+      {/* Удаление — тот же контрол, что у ряда города (`.te-step--del`), а не своя
+          кнопка с инлайнами. Видимость держит правило на `.te-end` в app.css:
+          у якоря нет ховера ряда, которым `.te-step` открывается в таблице
+          редактора, и на тач его нет ни у кого. */}
+      {editable && hasCity && onRemove && (
+        <button type="button" className="te-step te-step--del" onClick={onRemove} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
       )}
     </Card>
   );

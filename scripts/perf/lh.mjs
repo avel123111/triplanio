@@ -149,6 +149,13 @@ const server = createServer((req, res) => {
   const urlPath = decodeURIComponent(req.url.split('?')[0]);
   const entry = files.get(urlPath);
   if (entry) return send(res, entry, req);
+  // /assets/* ИСКЛЮЧЕНЫ из фолбэка — как в vercel.json (TRIP-284): пропавший чанк
+  // обязан отдавать 404, а не index.html под именем .js. Стенд повторяет прод, и
+  // разъехаться им нельзя: именно на таком расхождении измерение начинает врать.
+  if (urlPath.startsWith('/assets/')) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Not Found');
+  }
   // SPA-фолбэк: любой не-файловый путь → index.html (rewrite Vercel в /index.html).
   return send(res, files.get('/index.html'), req);
 });

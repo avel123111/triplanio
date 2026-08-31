@@ -16,6 +16,7 @@ import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
+import { sheetScroller } from '@/components/ui/sheetShell';
 const money = (p, c) => fmtPrice(p, c) || '';
 const rangeText = (a, b) => formatDateRange(a, b, fmtDate);
 
@@ -125,7 +126,7 @@ export default function CityPanel({
         <IconBtn icon="close" onClick={onBack} ariaLabel={t('common.close')} />
       </div>
 
-      <div className="lp-b scrollbar-thin">
+      <div className="lp-b scrollbar-thin" {...sheetScroller}>
       {/* Nights card — иконка · (заголовок + даты) · степпер (макет CityView). */}
       <div className="lp-stepper" style={{ marginBottom: 6 }}>
         <Tile as="span" className="lp-stepper__ic"><Icon name="moon" size={17} /></Tile>
