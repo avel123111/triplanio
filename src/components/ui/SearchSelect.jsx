@@ -202,7 +202,7 @@ export default function SearchSelect({
           'aria-haspopup': 'dialog',
           'aria-expanded': open,
         })}
-        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl} full>
+        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl} full pinned>
           {listEl}
         </PickerSheet>
       </>

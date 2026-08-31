@@ -203,6 +203,46 @@ const openSurface = async (label) => {
   return got;
 };
 
+/* ★★ СМЕНА ФАЗЫ НЕ ПЕРЕЗАПУСКАЕТ ВЪЕЗД (TRIP-494). Композер города меняет
+   содержимое ОДНОЙ открытой поверхности: поле и лист уходят, приходят плитки.
+   Пока условие въезда стояло живым запросом по содержимому (`:has(.ss-search)`),
+   на этой смене перебивание собственной анимации vaul отваливалось вместе с
+   полем, и открытая шторка ЗАНОВО проигрывала появление — снаружи «шит закрылся
+   и открылся второй такой же, но с плитками».
+   Проверяется то, что видно снаружи: та же коробка (узел не подменился) и НИ
+   ОДНОГО старта анимации на ней после смены фазы. */
+await page.goto(`${BASE}/kit/full-surface`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(800);
+await page.locator('button:has-text("Шторка пикера")').first().tap();
+await page.waitForTimeout(1100);
+const phase = await page.evaluate(async () => {
+  const el = document.querySelector('[data-sheet-full]');
+  if (!el) return { err: 'шторка не открылась' };
+  el.dataset.kitMark = 'same-box';           // метка на УЗЛЕ: переживёт только он сам
+  const started = [];
+  el.addEventListener('animationstart', (e) => started.push(e.animationName));
+  const before = getComputedStyle(el).animationName;
+  el.querySelector('.ss-opt')?.click();      // выбор строки = переход на вторую фазу
+  await new Promise((r) => setTimeout(r, 700));
+  const now = document.querySelector('[data-sheet-full]');
+  return {
+    sameBox: !!now && now.dataset.kitMark === 'same-box',
+    fieldGone: !!now && !now.querySelector('.ss-search'),
+    tiles: !!now && !!now.querySelector('.te-add-type'),
+    before,
+    after: now ? getComputedStyle(now).animationName : null,
+    started,
+  };
+});
+check(phase.sameBox === true && phase.fieldGone === true && phase.tiles === true,
+  'смена фазы прошла В ТОЙ ЖЕ коробке (поле ушло, плитки пришли)',
+  phase.err || `та же коробка: ${phase.sameBox} · поля нет: ${phase.fieldGone} · плитки: ${phase.tiles}`);
+check(phase.started && phase.started.length === 0 && phase.after === phase.before,
+  'СМЕНА ФАЗЫ НЕ ПЕРЕЗАПУСКАЕТ ВЪЕЗД (шторка не появляется второй раз)',
+  `анимаций стартовало: ${(phase.started || []).join(', ') || 'ни одной'} · было «${phase.before}» стало «${phase.after}»`);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(700);
+
 const picker = await openSurface('Шторка пикера');
 const panel = await openSurface('Панель редактора');
 check(!!picker && !!panel, 'обе поверхности семьи открылись на витрине',

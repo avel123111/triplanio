@@ -103,6 +103,26 @@ export const SHEET_FULL_ATTR = 'data-sheet-full';
 export const sheetScroller = { 'data-sheet-scroller': '' };
 
 /**
+ * ПОЛЕ ПРИШПИЛЕНО — СВОЙСТВО ПОВЕРХНОСТИ, И ОНО ОБЯЗАНО БЫТЬ НЕПОДВИЖНЫМ.
+ *
+ * Поверхность с пришпиленным полем въезжает иначе: едут заливка и лист, а хром и
+ * поле проявляются на месте — иначе каретке достаётся 840 px пути за полсекунды.
+ * Приём перебивает СОБСТВЕННЫЙ въезд vaul (`animation-name: none`), и вот это
+ * перебивание обязано держаться ВСЁ ВРЕМЯ, пока поверхность открыта.
+ *
+ * ⚠️ ЖИВОЙ ЗАПРОС ПО СОДЕРЖИМОМУ ЗДЕСЬ — ДЕФЕКТ, И ОН БЫЛ ПОСТАВЛЕН. Условие
+ * стояло как `:has(.ss-search)`, то есть «у поверхности сейчас есть поле». У
+ * композера города поле живёт только на ПЕРВОЙ фазе: выбрал город — поле ушло,
+ * `:has()` перестал совпадать, перебивание отвалилось, и vaul проиграл свой
+ * въезд ЗАНОВО. Снаружи это читалось как «шит закрылся и открылся второй такой
+ * же, но с плитками». Замер на живом билде: с полем `animation-name: none`, без
+ * поля `slideFromBottom` + событие `animationstart`.
+ * Поэтому факт объявляет ВЛАДЕЛЕЦ поверхности и один раз: содержимое внутри
+ * меняется, способ въезда — нет.
+ */
+export const SHEET_PINNED_ATTR = 'data-sheet-pinned';
+
+/**
  * Грип — «бровь» шторки: affordance и ничего больше (тянется вся поверхность,
  * это делает vaul), поэтому обработчиков на нём нет. Единственная разметка
  * грипа в приложении; функциональный грип `PeekSheet` — не отсюда.
@@ -133,13 +153,14 @@ export function SheetGrip() {
  */
 /**
  * @param {{ className?: string, backdropClassName?: string, grip?: boolean,
- *   full?: boolean, contentRef?: any, children?: any }} p
+ *   full?: boolean, pinned?: boolean, contentRef?: any, children?: any }} p
  */
 export function SheetSurface({
   className,
   backdropClassName = 'sheet-backdrop',
   grip = true,
   full = false,
+  pinned = false,
   contentRef,
   children,
   ...rest
@@ -155,7 +176,13 @@ export function SheetSurface({
           делает НИКТО, и это вывод, а не пробел: на тач-платформе программный
           фокус ставит каретку, но не поднимает клавиатуру (разбор — в шапке
           `ui/PickerSheet`). */}
-      <Drawer.Content ref={contentRef} className={className} {...(full ? { [SHEET_FULL_ATTR]: '' } : null)} {...rest}>
+      <Drawer.Content
+        ref={contentRef}
+        className={className}
+        {...(full ? { [SHEET_FULL_ATTR]: '' } : null)}
+        {...(pinned ? { [SHEET_PINNED_ATTR]: '' } : null)}
+        {...rest}
+      >
         {grip ? <SheetGrip /> : null}
         {children}
       </Drawer.Content>

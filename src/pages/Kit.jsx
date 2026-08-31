@@ -145,6 +145,7 @@ const TX = {
   fsPicker: 'Шторка пикера', fsPanel: 'Панель редактора',
   fsPickerTitle: 'Полноростная шторка', fsPanelTitle: 'Полноростная панель',
   fsBack: 'Назад', fsCancel: 'Отмена', fsSave: 'Сохранить',
+  fsPhaseHint: 'Вид точки', fsChange: 'Изменить', fsAdd: 'Добавить',
   cardTitle: 'Заголовок карточки', cardBody: 'Тело карточки: обычный текст на поверхности.',
   cardHead: 'Заголовок', sevText: 'Текст',
   sevInvite: 'Нажмите, чтобы разрешить', sevInviteTitle: 'Приглашение',
@@ -283,9 +284,12 @@ const KIT_CITIES = [
   { id: 'ven', name: 'Венеция', sub: 'Италия' },
   { id: 'bol', name: 'Болонья', sub: 'Италия' },
 ];
-/* floor-exempt: dsshare +10 — стенд семьи поверхностей (TRIP-494), апрув Pavel
+/* floor-exempt: dsshare +14 — стенд семьи поверхностей (TRIP-494), апрув Pavel
    («делай всё чисто системно» + решение по трём пунктам 31.08.2026). Замер:
-   4266 → 4256 bp. Причина известная и названа в самой метрике: `components/ui/**`
+   4266 → 4252 bp. Из них 4 bp добавила ВТОРАЯ ФАЗА стенда (ряд выбранного
+   города + плитки вида): без неё дефект «шторка проигрывает появление второй раз
+   после выбора города» на витрине невидим — у обоих движков выбора поле живёт всю
+   жизнь поверхности, и менять на них нечего. Причина известная и названа в самой метрике: `components/ui/**`
    она считает легаси — в знаменателе, но не в числителе, — а стенд ОБЯЗАН звать
    `<PickerSheet>` и `<LpSheet>` НАСТОЯЩИЕ (иначе он показывает не те поверхности,
    что живут в приложении). Плюс разметка панели (`.lp-h`/`.lp-b`/`.lp-f`) —
@@ -312,6 +316,13 @@ function FullSurfaceDemo() {
   const [picker, setPicker] = useState(false);
   const [panel, setPanel] = useState(false);
   const [q, setQ] = useState('');
+  /* ★ ВТОРАЯ ФАЗА — ЧАСТЬ СТЕНДА, А НЕ УКРАШЕНИЕ. Композер города меняет
+     содержимое ОДНОЙ открытой поверхности: поле и лист уходят, приходят плитки
+     вида. Ровно на этой смене и сломался въезд (условие стояло живым запросом по
+     содержимому, и перебивание vaul отваливалось вместе с полем — шторка
+     проигрывала появление второй раз). Без фазы на стенде дефект невидим: у
+     обоих движков выбора поле живёт всю жизнь поверхности. */
+  const [picked, setPicked] = useState(null);
   const rows = KIT_CITIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <div className="row row--g4">
@@ -320,22 +331,42 @@ function FullSurfaceDemo() {
 
       <PickerSheet
         open={picker}
-        onOpenChange={setPicker}
+        onOpenChange={(o) => { setPicker(o); if (!o) setPicked(null); }}
         title={TX.fsPickerTitle}
         full
-        search={(
+        pinned
+        /* Поле — в слоте, пока фаза первая. На второй его нет ВОВСЕ: коробка та
+           же, содержимое другое. `pinned` при этом не мигает — способ въезда
+           объявлен поверхностью на всю её жизнь. */
+        search={picked ? null : (
           <div className="ss-search">
             <Input icon="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={TX.acSearchPh} />
           </div>
         )}
       >
-        <div className="ss-list scrollbar-thin" role="listbox" {...sheetScroller}>
-          {rows.map((c) => (
-            <button key={c.id} type="button" className="ss-opt" onClick={() => setPicker(false)}>
-              <span className="col col--g1"><span className="t-strong">{c.name}</span><span className="t-meta">{c.sub}</span></span>
-            </button>
-          ))}
-        </div>
+        {picked ? (
+          <div className="col col--g4">
+            <div className="row row--g3 te-add-city">
+              <span className="te-add-cityname">{picked.name}</span>
+              <Btn variant="link" icon="edit" onClick={() => setPicked(null)}>{TX.fsChange}</Btn>
+            </div>
+            <span className="eyebrow">{TX.fsPhaseHint}</span>
+            <div className="te-add-grid">
+              {['bed', 'arrowSwap', 'flag', 'flag'].map((ic, i) => (
+                <button key={i} type="button" className="te-add-type"><Icon name={ic} size={17} /><span className="t-label">{KIT_CITIES[i].sub}</span></button>
+              ))}
+            </div>
+            <Btn variant="primary" onClick={() => setPicker(false)}>{TX.fsAdd}</Btn>
+          </div>
+        ) : (
+          <div className="ss-list scrollbar-thin" role="listbox" {...sheetScroller}>
+            {rows.map((c) => (
+              <button key={c.id} type="button" className="ss-opt" onClick={() => setPicked(c)}>
+                <span className="col col--g1"><span className="t-strong">{c.name}</span><span className="t-meta">{c.sub}</span></span>
+              </button>
+            ))}
+          </div>
+        )}
       </PickerSheet>
 
       <LpSheet open={panel} onClose={() => setPanel(false)} title={TX.fsPanelTitle}>

@@ -226,6 +226,13 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
           onOpenChange={(o) => { if (!o) close(); }}
           title={t('tse.add_point')}
           full
+          /* ★ ПОЛЕ ПРИШПИЛЕНО — И ЭТО СВОЙСТВО ПОВЕРХНОСТИ, А НЕ ФАЗЫ. Оно живёт
+             в содержимом (режим `embedded`) и только на первой фазе, но способ
+             ВЪЕЗДА у коробки один на всё действие: выводить его из «есть ли
+             сейчас поле» значит вернуть собственный въезд vaul в момент, когда
+             поле уходит, — то есть проиграть появление шторки второй раз уже
+             после выбора города (разбор — в шапке `ui/sheetShell`). */
+          pinned
         >
           <div className="te-add grow">
             {!city ? cityStep : typeStep}

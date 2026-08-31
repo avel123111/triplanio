@@ -8328,23 +8328,30 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
      класс+два атрибута (0,3,0) ему ПРОИГРЫВАЕТ и не применяется вовсе — молча:
      объявление в файле есть, браузер берёт чужое, снаружи «ты ничего не
      поменял». Ровно это и уехало на превью прошлым заходом. */
-  /* ★ УСЛОВИЕ ВЪЕЗДА — ПРИШПИЛЕННОЕ ПОЛЕ, А НЕ ИМЯ ПОВЕРХНОСТИ (TRIP-494).
-     Весь этот приём существует ровно затем, чтобы поле с кареткой не ехало;
-     значит и адресовать надо ТО, У ЧЕГО ПОЛЕ ЕСТЬ (`:has(.ss-search)`), а не
-     «шторку пикера» по имени. Разница не косметическая: поле приезжает и слотом
-     поверхности (оба движка выбора), и внутри содержимого (композер города в
-     режиме `embedded`) — по слоту второй случай не поймался бы. Панель редактора
-     пришпиленного поля не имеет и въезжает штатным слайдом vaul целиком; дать ей
-     этот приём общим ключом значило бы получить половину анимации (у неё нет ни
-     `.ss-list`, ни `.ss-search`) — отдельная работа, не побочный эффект.
+  /* ★ УСЛОВИЕ ВЪЕЗДА — ОБЪЯВЛЕННОЕ СВОЙСТВО ПОВЕРХНОСТИ, А НЕ ЕЁ СОДЕРЖИМОЕ.
+     Приём существует затем, чтобы поле с кареткой не ехало, и адресует он
+     поверхности, объявившие `pinned` (признак ставит шов).
+
+     ⚠️ ЗДЕСЬ СТОЯЛ ЖИВОЙ ЗАПРОС `:has(.ss-search)`, И ЭТО БЫЛ ДЕФЕКТ. У композера
+     города поле живёт только на ПЕРВОЙ фазе: выбрал город — поле ушло, условие
+     перестало совпадать, `animation-name: none` отвалилось, и vaul проиграл свой
+     въезд ЗАНОВО, посреди жизни открытой шторки. Снаружи это читалось как «шит
+     закрылся и открылся второй такой же, но с плитками». Замер на живом билде: с
+     полем `none`, без поля `slideFromBottom` + событие `animationstart`.
+     Урок общий: способ въезда — свойство поверхности на всю её жизнь, а
+     содержимое внутри меняется; выводить первое из второго нельзя.
+
+     Панель редактора `pinned` не объявляет и въезжает штатным слайдом vaul
+     целиком: дать ей этот приём значило бы получить ПОЛОВИНУ анимации (у неё нет
+     ни `.ss-list`, ни `.ss-search`) — отдельная работа, не побочный эффект.
      Снятие композитного слоя — часть того же приёма: постоянный слой делает
      коробку контейнером для `position: fixed` у всего, что внутри. */
-  [data-sheet-full]:has(.ss-search)[data-vaul-drawer] { will-change: auto; }
-  [data-sheet-full]:has(.ss-search)[data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='bottom'][data-state='open'] {
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer] { will-change: auto; }
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='bottom'][data-state='open'] {
     animation-name: none;
   }
-  [data-sheet-full]:has(.ss-search)[data-vaul-drawer][data-state='open']::before,
-  [data-sheet-full]:has(.ss-search)[data-vaul-drawer][data-state='open'] .ss-list {
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open']::before,
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open'] .ss-list {
     animation: sheetPanelRise .42s cubic-bezier(.32, .72, 0, 1);
   }
   /* ⚠️ ГРИП И ШАПКА ЕДУТ НЕ ВМЕСТЕ С ПАНЕЛЬЮ, И ЭТО НЕ ЭКОНОМИЯ. Они лежат НАД
@@ -8358,9 +8365,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
      на 150-й мс — до этого хром рисовался поверх ЖИВОЙ СТРАНИЦЫ, буквой на
      букву. Тоже видно только глазами, числа показывали идеальную картину.
      `both` обязателен: без него хром виден до начала своей же анимации. */
-  [data-sheet-full]:has(.ss-search)[data-vaul-drawer][data-state='open'] .sheet-grip,
-  [data-sheet-full]:has(.ss-search)[data-vaul-drawer][data-state='open'] .sheet-h,
-  [data-sheet-full]:has(.ss-search)[data-vaul-drawer][data-state='open'] .ss-search {
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open'] .sheet-grip,
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open'] .sheet-h,
+  [data-sheet-full][data-sheet-pinned][data-vaul-drawer][data-state='open'] .ss-search {
     animation: sheetFade .26s var(--ease-out) .15s both;
   }
 }

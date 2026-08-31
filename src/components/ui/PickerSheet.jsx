@@ -87,10 +87,16 @@ export function usePickerFocus() {
  * переход один, обработчиков пришлось бы вешать четыре. Блюрим только СВОЁ
  * поддерево (`contains`) — фокус, возвращённый Radix на триггер, не наш.
  *
+ * ⚠️ `pinned` ОБЪЯВЛЯЕТ ВЫЗЫВАТЕЛЬ, И ЭТО НЕ ДУБЛЬ `search`. Вывести его из слота
+ * нельзя: поле приезжает и слотом (оба движка выбора), и ВНУТРИ содержимого
+ * (композер города в режиме `embedded`). А главное — он обязан быть НЕПОДВИЖНЫМ:
+ * у композера поле живёт только на первой фазе, и любой вывод «поле сейчас есть»
+ * отвалится на второй, вернув собственный въезд vaul посреди жизни поверхности
+ * (разбор — в шапке `ui/sheetShell`).
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any,
- *   search?: any, full?: boolean, children?: any }} p
+ *   search?: any, full?: boolean, pinned?: boolean, children?: any }} p
  */
-export function PickerSheet({ open, onOpenChange, title, search = null, full = false, children }) {
+export function PickerSheet({ open, onOpenChange, title, search = null, full = false, pinned = false, children }) {
   const boxRef = useRef(/** @type {any} */ (null));
   useEffect(() => {
     if (open) return;
@@ -104,6 +110,7 @@ export function PickerSheet({ open, onOpenChange, title, search = null, full = f
       onOpenChange={onOpenChange}
       title={title}
       full={full}
+      pinned={pinned}
       contentRef={boxRef}
     >
       {search}

@@ -371,6 +371,7 @@ export default function Autocomplete({
           title={title || t('common.search')}
           search={pinnedField}
           full
+          pinned
         >
           {listEl}
         </PickerSheet>

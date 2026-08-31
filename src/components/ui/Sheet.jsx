@@ -32,15 +32,16 @@ import { useT } from '@/lib/i18n/I18nContext';
  *  сфокусированное поле, и снять фокус на закрытии может только тот, кто умеет
  *  отличить своё поле от чужого (`contains`). `SheetSurface` этот проп уже
  *  принимает — здесь он просто не был проброшен.
- *  `full` — РОЛЬ, а не скин: «эта поверхность — экран во весь вьюпорт». Признак
- *  ставит шов (`ui/sheetShell`), CSS адресует признак; здесь проп только
- *  проезжает насквозь, чтобы у роли был один способ заявиться (TRIP-494).
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, full?: boolean, contentRef?: any }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, full = false, contentRef }) {
+ *  `full` — РОЛЬ, а не скин: «эта поверхность — экран во весь вьюпорт». `pinned` —
+ *  второе свойство поверхности: «моё поле пришпилено, въезжай так, чтобы оно не
+ *  ехало». Оба признака ставит шов (`ui/sheetShell`), CSS адресует признаки;
+ *  здесь пропы только проезжают насквозь (TRIP-494).
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, full?: boolean, pinned?: boolean, contentRef?: any }} p */
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, full = false, pinned = false, contentRef }) {
   const t = useT();
   return (
     <SheetRoot open={open} onOpenChange={onOpenChange}>
-      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} full={full} contentRef={contentRef} aria-describedby={undefined}>
+      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} full={full} pinned={pinned} contentRef={contentRef} aria-describedby={undefined}>
         {title ? (
           <div className="sheet-h">
             <SheetTitle asChild><h3>{title}</h3></SheetTitle>
