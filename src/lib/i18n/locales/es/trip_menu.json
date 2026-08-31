@@ -2,7 +2,7 @@
   "budget": "Presupuesto",
   "calendar": "Calendario",
   "chat": "Chat",
-  "documents": "Documentos",
+  "documents": "Arhivos",
   "free_trip_title": "Viaje Free",
   "members": "Miembros",
   "open": "Abrir menú",
@@ -10,6 +10,6 @@
   "section_manage": "Gestión",
   "settings": "Ajustes del viaje",
   "share": "Compartir",
-  "timeline": "Cronología",
-  "upgrade_trip": "Mejorar el viaje"
+  "timeline": "Día a día",
+  "upgrade_trip": "Mejorar a Pro"
 }

@@ -2,7 +2,7 @@
   "budget": "Budget",
   "calendar": "Calendar",
   "chat": "Chat",
-  "documents": "Documents",
+  "documents": "Files",
   "free_trip_title": "Free trip",
   "members": "Members",
   "open": "Open menu",
@@ -11,5 +11,5 @@
   "settings": "Trip settings",
   "share": "Share",
   "timeline": "Timeline",
-  "upgrade_trip": "Upgrade trip"
+  "upgrade_trip": "Upgrade to Pro"
 }
