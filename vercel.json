@@ -62,7 +62,7 @@
       "destination": "/api/proxy?path=:path"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path((?!assets/).*)",
       "destination": "/index.html"
     }
   ]
