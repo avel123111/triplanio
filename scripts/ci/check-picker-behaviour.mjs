@@ -93,6 +93,68 @@ if (rows > 0) {
   check(errors.length === 0, 'выбор не бросил исключение', errors.join(' | ') || 'ошибок нет');
 }
 
+/* 2а. ВЫБОР БЕЗ `click` — РЕПРО ПРОДОВОГО БАГА (iPhone/WebKit).
+   Слово, набранное подсказкой клавиатуры, WebKit держит незакоммиченной
+   композицией: первое касание вне поля тратится на её коммит, и совместимый
+   `click` до строки не доходит — список виден, строка подсвечивается, город не
+   выбирается до Enter. Chromium этого не воспроизводит, поэтому потерю `click`
+   здесь МОДЕЛИРУЕМ: шлём строке только пару pointerdown/pointerup. Если выбор
+   снова начнёт зависеть от `click`, эта проверка краснеет.
+   Синтетические события идут через `dispatchEvent` с `bubbles: true` — React
+   слушает делегированно на корне, так что обработчик строки получит их так же,
+   как настоящие. */
+await trigger.tap();
+await page.waitForTimeout(700);
+await page.locator('.sheet--full input.input').fill('Мад');
+await page.waitForTimeout(400);
+const pointerOnly = await page.evaluate(() => {
+  const row = document.querySelector('.sheet--full .ss-opt');
+  if (!row) return 'строки нет';
+  const r = row.getBoundingClientRect();
+  const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+  const ev = (type, dx = 0, dy = 0) => new PointerEvent(type, {
+    bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch',
+    clientX: x + dx, clientY: y + dy,
+  });
+  row.dispatchEvent(ev('pointerdown'));
+  row.dispatchEvent(ev('pointerup'));
+  return null;
+});
+await page.waitForTimeout(600);
+const pointerValue = await page.locator('button.input').first().textContent();
+check(pointerOnly === null && /Мадрид/.test(pointerValue || ''),
+  'ВЫБОР РАБОТАЕТ БЕЗ `click` (репро iOS: тач без мышиной совместимости)',
+  pointerOnly || `в поле: «${(pointerValue || '').trim()}»`);
+
+/* 2б. ОБРАТНАЯ СТОРОНА ТОГО ЖЕ ЖЕСТА: протяжка по списку — это СКРОЛЛ, а не
+   выбор. Ровно эту границу и держал прежний `click` (браузер его на протяжке не
+   рождает); сняв `click`, границу обязан держать порог смещения. Палец уходит
+   на 60px вниз — заведомо за порог. */
+await trigger.tap();
+await page.waitForTimeout(700);
+await page.locator('.sheet--full input.input').fill('Мад');
+await page.waitForTimeout(400);
+const dragged = await page.evaluate(() => {
+  const row = document.querySelector('.sheet--full .ss-opt');
+  if (!row) return 'строки нет';
+  const r = row.getBoundingClientRect();
+  const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+  const ev = (type, dy) => new PointerEvent(type, {
+    bubbles: true, cancelable: true, pointerId: 8, pointerType: 'touch',
+    clientX: x, clientY: y + dy,
+  });
+  row.dispatchEvent(ev('pointerdown', 0));
+  row.dispatchEvent(ev('pointerup', -60));
+  return null;
+});
+await page.waitForTimeout(500);
+const stillOpen = await page.locator('.sheet--full .ss-opt').count();
+check(dragged === null && stillOpen > 0,
+  'ПРОТЯЖКА ПО СПИСКУ НЕ ВЫБИРАЕТ (скролл остался скроллом)',
+  dragged || `лист на месте, строк: ${stillOpen}`);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(500);
+
 /* 3. Закрытие снимает фокус сразу, а не в конце выходной анимации. */
 await trigger.tap();
 await page.waitForTimeout(700);

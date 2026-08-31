@@ -7,6 +7,7 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import GeoAttribution from '@/components/common/GeoAttribution';
 import { Trunc } from '@/design/Layout';
+import { tapPick } from '@/lib/tapGesture';
 
 /**
  * Autocomplete — the single, canonical async search-as-you-type field + dropdown
@@ -127,6 +128,17 @@ export default function Autocomplete({
     else if (fieldRef) fieldRef.current = el;
   };
   const timerRef = useRef(null);
+  /* ЖЕСТ ВЫБОРА СТРОКИ. `pointerdown` запоминает, по чему нажали, `pointerup`
+     решает, был ли это тап (`lib/tapGesture` — там же разбор, почему выбор
+     снят с синтетического `click`: на iOS его съедает коммит marked text от
+     подсказки клавиатуры, а на едущем списке он рождается на контейнере).
+     `pickedRef` — защёлка: `click` остаётся ЖИВЫМ входом (нативная активация
+     <button> с клавиатуры и от вспомогательных технологий, которые зовут
+     `el.click()` и pointer-событий не шлют вовсе), и без защёлки один тап
+     выбрал бы дважды. Снимается вместе с новым списком — «из свежего списка
+     можно выбрать один раз». */
+  const tapRef = useRef(/** @type {any} */ (null));
+  const pickedRef = useRef(false);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
   // Read inside the debounce timer so a mid-debounce language switch isn't stale.
@@ -149,6 +161,7 @@ export default function Autocomplete({
         const r = (await search(query.trim(), langRef.current)) || [];
         if (lastQueryRef.current !== query) return; // ignore stale
         setResults(r);
+        pickedRef.current = false;   // свежий список — снова можно выбрать
         setSettled(query.trim());
         setOpen(r.length > 0);
         setHighlighted(-1);
@@ -177,6 +190,8 @@ export default function Autocomplete({
      узлу, которому Radix уже вернул фокус. Теперь поле отпускает СЕБЯ: ссылка
      одна на обе ветки (они взаимоисключающие), чужого узла не существует. */
   const pick = (r) => {
+    if (pickedRef.current) return;
+    pickedRef.current = true;
     searchRef.current?.blur();
     setOpen(false);
     setSheetOpen(false);
@@ -228,8 +243,26 @@ export default function Autocomplete({
       // Keep the input focused on tap (no keyboard flicker / iOS double-tap).
       // mousedown does NOT fire on a touch-drag, so this never blocks scroll.
       onMouseDown={(e) => e.preventDefault()}
-      // Select on a real tap/click only — a touch-drag scrolls the list and
-      // fires no click, so the user can scroll before choosing.
+      /* ★ ВЫБОР ДЕЛАЕТ ПАРА pointerdown/pointerup, А НЕ `click`. Разбор целиком —
+         в шапке `lib/tapGesture`; коротко: на iOS слово из подсказки клавиатуры
+         остаётся незакоммиченной композицией, первое касание вне поля тратится
+         на её коммит, и остаток мышиной совместимости движок не досылает —
+         строка подсвечивалась (`mouseenter` доходил), а выбор не случался до
+         Enter. У тач-указателя неявный захват, поэтому `pointerup` придёт сюда
+         же, даже если список под пальцем уехал.
+         Скролл списка выбором НЕ становится: жест гасят порог смещения и
+         `pointercancel` (браузер шлёт его, забирая жест под скролл). */
+      onPointerDown={(e) => { tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, row: r }; }}
+      onPointerCancel={() => { tapRef.current = null; }}
+      onPointerUp={(e) => {
+        const picked = tapPick(tapRef.current, { id: e.pointerId, x: e.clientX, y: e.clientY });
+        tapRef.current = null;
+        // `!== null`, а не «истинно»: опцией листа законно бывает 0 или пустая
+        // строка, и такую нельзя молча объявить «не выбрано».
+        if (picked !== null) pick(picked);
+      }}
+      // Остаётся ВХОДОМ ДЛЯ КЛАВИАТУРЫ И ВТ (`el.click()` pointer-событий не
+      // шлёт). Двойного выбора нет: `pick` под защёлкой `pickedRef`.
       onClick={() => pick(r)}
     >
       {renderRow(r)}

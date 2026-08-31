@@ -7,6 +7,7 @@ import { Check, ChevronDown } from 'lucide-react';
 import { Input } from '@/design/Input';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
+import { tapPick } from '@/lib/tapGesture';
 
 /**
  * C4 · SearchSelect — the canonical searchable picker (currency, language, …).
@@ -80,7 +81,24 @@ export default function SearchSelect({
   const openSheet = () => (isPhone ? inGesture(() => setOpen(true)) : setOpen(true));
   /* Фокус здесь НЕ снимается: это делает поверхность на закрытии, где правило
      накрывает все четыре двери (выбор, Esc, тап мимо, свайп). */
-  const pick = (o) => { onChange(getKey(o)); close(); };
+  /* ЖЕСТ ВЫБОРА ОПЦИИ — ТОТ ЖЕ, ЧТО У ВТОРОГО ДВИЖКА (`common/Autocomplete`), и
+     это не копия правила, а один и тот же вызов `lib/tapGesture`. Строка листа
+     у обоих физически одна (`.ss-opt`), поверхность на телефоне одна
+     (`PickerSheet`) и поле поиска одно — значит и дефект у них общий: на iOS
+     слово, набранное подсказкой клавиатуры, остаётся незакоммиченной
+     композицией, первое касание вне поля тратится на её коммит, и `click` до
+     строки не доходит. Данные у движков разные (здесь фильтр на клиенте, там
+     запрос к серверу) — жест выбора одинаковый. */
+  const tapRef = React.useRef(/** @type {any} */ (null));
+  const pickedRef = React.useRef(false);
+  const pick = (o) => {
+    if (pickedRef.current) return;
+    pickedRef.current = true;
+    onChange(getKey(o));
+    close();
+  };
+  // Лист открыт заново — снова можно выбрать.
+  React.useEffect(() => { if (open) pickedRef.current = false; }, [open]);
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 
   // TRIP-391 объект 1 → объект 5: контрол-триггер комбобокса (поле) — открывает
@@ -152,6 +170,16 @@ export default function SearchSelect({
               type="button"
               className="ss-opt"
               data-active={selected ? '' : undefined}
+              onPointerDown={(e) => { tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, row: o }; }}
+              onPointerCancel={() => { tapRef.current = null; }}
+              onPointerUp={(e) => {
+                const picked = tapPick(tapRef.current, { id: e.pointerId, x: e.clientX, y: e.clientY });
+                tapRef.current = null;
+                // `!== null`, а не «истинно»: опцией листа законно бывает 0 или пустая
+                // строка, и такую нельзя молча объявить «не выбрано».
+                if (picked !== null) pick(picked);
+              }}
+              // Вход для клавиатуры и ВТ (`el.click()` pointer-событий не шлёт).
               onClick={() => pick(o)}
             >
               {renderOption ? renderOption(o, selected) : <span className="grow">{getKey(o)}</span>}
