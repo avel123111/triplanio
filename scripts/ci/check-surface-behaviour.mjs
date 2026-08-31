@@ -243,6 +243,38 @@ check(phase.started && phase.started.length === 0 && phase.after === phase.befor
 await page.keyboard.press('Escape');
 await page.waitForTimeout(700);
 
+/* ★★ ДИСМИСС ДОВОДИТСЯ ДО КОНЦА, ДАЖЕ КОГДА ВНУТРИ СТОПКА СЛОЁВ (TRIP-496).
+   Панель редактора держит стопку (город → переезд) в ОДНОЙ шторке. Пока
+   открытость задавалась литералом, свайп вниз по верхнему слою кончался так:
+   vaul дотягивал коробку до низа и сообщал «закрыто», обработчик снимал только
+   верхний слой, элемент оставался отрисованным — и шторка залипала там, где её
+   бросил палец (замер модели: `translate3d(0px, 460px, 0px)`, и через 2.4 с то
+   же самое). Здесь это проверяется ЖЕСТОМ: уводим стенд на второй слой и тащим
+   поверхность вниз. */
+await page.goto(`${BASE}/kit/full-surface`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(800);
+await page.locator('button:has-text("Панель редактора")').first().tap();
+await page.waitForTimeout(900);
+await page.locator('button:has-text("Открыть переезд")').first().tap();
+await page.waitForTimeout(700);
+const drilled = await page.evaluate(() => !!document.querySelector('.lp-sheet'));
+// свайп вниз по шторке — как пальцем по её верхней части
+await page.mouse.move(195, 40);
+await page.mouse.down();
+for (const y of [80, 160, 260, 380, 500]) { await page.mouse.move(195, y); await page.waitForTimeout(30); }
+await page.mouse.up();
+await page.waitForTimeout(1400);
+const afterSwipe = await page.evaluate(() => {
+  const el = document.querySelector('.lp-sheet');
+  if (!el) return { gone: true };
+  const r = el.getBoundingClientRect();
+  return { gone: false, top: Math.round(r.top), inline: el.style.transform || '(нет)', visible: r.top < innerHeight - 8 };
+});
+check(drilled, 'стопка слоёв открылась (город → переезд)', drilled ? 'второй слой на месте' : 'слой не открылся');
+check(afterSwipe.gone === true || afterSwipe.visible === false,
+  'СВАЙП ВНИЗ ЗАКРЫВАЕТ ПОВЕРХНОСТЬ ДО КОНЦА (не залипает на полпути)',
+  afterSwipe.gone ? 'шторки в дереве нет' : `верх ${afterSwipe.top}, transform ${afterSwipe.inline}`);
+
 const picker = await openSurface('Шторка пикера');
 const panel = await openSurface('Панель редактора');
 check(!!picker && !!panel, 'обе поверхности семьи открылись на витрине',

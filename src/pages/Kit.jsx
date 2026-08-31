@@ -149,6 +149,8 @@ const TX = {
   // Подписи плиток — те же четыре вида точки, что у настоящего композера
   // (`cities/CityAdder`): витрина показывает ОБЪЕКТ, а не случайный текст.
   fsKinds: ['Посещение', 'Пересадка', 'Старт', 'Финиш'],
+  fsDrill: 'Открыть переезд (слой поверх)', fsDrillTitle: 'Переезд',
+  fsDrillBody: 'Второй слой ВНУТРИ той же шторки — как город → переезд в редакторе. Свайп вниз закрывает ПОВЕРХНОСТЬ, «Назад» снимает один слой.',
   cardTitle: 'Заголовок карточки', cardBody: 'Тело карточки: обычный текст на поверхности.',
   cardHead: 'Заголовок', sevText: 'Текст',
   sevInvite: 'Нажмите, чтобы разрешить', sevInviteTitle: 'Приглашение',
@@ -317,7 +319,6 @@ const KIT_CITIES = [
  */
 function FullSurfaceDemo() {
   const [picker, setPicker] = useState(false);
-  const [panel, setPanel] = useState(false);
   const [q, setQ] = useState('');
   /* ★ ВТОРАЯ ФАЗА — ЧАСТЬ СТЕНДА, А НЕ УКРАШЕНИЕ. Композер города меняет
      содержимое ОДНОЙ открытой поверхности: поле и лист уходят, приходят плитки
@@ -326,11 +327,18 @@ function FullSurfaceDemo() {
      проигрывала появление второй раз). Без фазы на стенде дефект невидим: у
      обоих движков выбора поле живёт всю жизнь поверхности. */
   const [picked, setPicked] = useState(null);
+  /* ★ СТОПКА СЛОЁВ ВНУТРИ ОДНОЙ ШТОРКИ — модель редактора (TRIP-496). Именно на
+     ней ломалось закрытие: свайп вниз vaul считает закрытием ПОВЕРХНОСТИ, а
+     обработчик снимал только верхний слой — поверхность оставалась «открытой» и
+     залипала там, где её бросил палец. Стенд держит стопку затем, чтобы это
+     проверялось жестом, а не рассуждением. */
+  const [layers, setLayers] = useState(/** @type {string[]} */ ([]));
+  const top = layers[layers.length - 1] || null;
   const rows = KIT_CITIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <div className="row row--g4">
       <Btn variant="secondary" onClick={() => setPicker(true)}>{TX.fsPicker}</Btn>
-      <Btn variant="secondary" onClick={() => setPanel(true)}>{TX.fsPanel}</Btn>
+      <Btn variant="secondary" onClick={() => setLayers(['city'])}>{TX.fsPanel}</Btn>
 
       <PickerSheet
         open={picker}
@@ -372,20 +380,31 @@ function FullSurfaceDemo() {
         )}
       </PickerSheet>
 
-      <LpSheet open={panel} onClose={() => setPanel(false)} title={TX.fsPanelTitle}>
+      {/* ★ ВЛОЖЕННОСТЬ — ОТДЕЛЬНЫЙ СЛУЧАЙ СТЕНДА (TRIP-496). В приложении шторка
+          поверх шторки — обычное дело (панель города → бронь/переезд), а приёмки
+          у этой пары не было: витрина показывала поверхности поодиночке. */}
+      {/* Открытость — ФАКТ (`open={!!top}`), а дисмисс закрывает ПОВЕРХНОСТЬ
+          (`setLayers([])`), а не снимает слой: свайп и тап по фону — жесты про всю
+          шторку. «Назад» снимает ровно один слой. */}
+      <LpSheet open={!!top} onClose={() => setLayers([])} title={TX.fsPanelTitle}>
         <div className="lp">
           <div className="lp-h">
-            <IconBtn icon="chevL" tone="soft" round ariaLabel={TX.fsBack} onClick={() => setPanel(false)} />
-            <div className="lp-ti"><b>{TX.fsPanel}</b></div>
+            <IconBtn icon="chevL" tone="soft" round ariaLabel={TX.fsBack}
+              onClick={() => setLayers((l) => l.slice(0, -1))} />
+            <div className="lp-ti"><b>{top === 'transfer' ? TX.fsDrillTitle : TX.fsPanel}</b></div>
           </div>
           <div className="lp-b scrollbar-thin" {...sheetScroller}>
-            {KIT_CITIES.map((c) => (
-              <Card key={c.id} recessed radius="md"><div className="t-strong">{c.name}</div><div className="t-meta muted">{c.sub}</div></Card>
-            ))}
+            {top === 'transfer'
+              ? <p className="t-body">{TX.fsDrillBody}</p>
+              : KIT_CITIES.map((c) => (
+                <Card key={c.id} recessed radius="md"><div className="t-strong">{c.name}</div><div className="t-meta muted">{c.sub}</div></Card>
+              ))}
           </div>
           <div className="lp-f">
-            <Btn variant="secondary" onClick={() => setPanel(false)}>{TX.fsCancel}</Btn>
-            <Btn variant="primary" onClick={() => setPanel(false)}>{TX.fsSave}</Btn>
+            {top === 'transfer'
+              ? <Btn variant="secondary" onClick={() => setLayers((l) => l.slice(0, -1))}>{TX.fsBack}</Btn>
+              : <Btn variant="secondary" onClick={() => setLayers((l) => [...l, 'transfer'])}>{TX.fsDrill}</Btn>}
+            <Btn variant="primary" onClick={() => setLayers([])}>{TX.fsSave}</Btn>
           </div>
         </div>
       </LpSheet>

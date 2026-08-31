@@ -225,7 +225,7 @@ import { Row, Trunc } from '../design/Layout';
 import CityAdder from '@/components/cities/CityAdder';
 import { CityAnchorRow } from '@/pages/create/anchors';
 import { useTheme } from '@/lib/ThemeContext';
-import LpSheet from '@/components/ui/LpSheet';
+import EventDrawerHost from '@/components/common/EventDrawerHost';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
@@ -1424,13 +1424,32 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
           visual-diff-exempt: .ts-warnfab gap — то же
           visual-diff-exempt: .ts-warnfab max-width — то же
           visual-diff-exempt: .ts-warnfab transition — то же */}
-      {/* Телефон: панель открывается тем же общим шитом, что и глобальный
-          EventDrawerHost (родной свайп, безопасная перестановка под клавиатуру,
-          закрытие по фону / свайпу вниз / Back). */}
-      {isSheet && leftPanelEl && (
-        <LpSheet open onClose={closeLeftPanel} title={t('trip.sidebar_route')}>
+      {/* ★★ ПАНЕЛЬ В ШТОРКЕ — ЧЕРЕЗ ОБЩИЙ ХОСТ, И ЭТО ПОЧИН ЗАЛИПАНИЯ (TRIP-496).
+          Здесь стоял свой `<LpSheet open …>` с открытостью, заданной ЛИТЕРАЛОМ:
+          «шторка открыта» выражалось тем, что элемент вообще отрисован. Пока слой
+          был один, это сходило с рук; со стопкой (город → переезд) сломалось так:
+          свайп вниз по верхнему слою vaul честно считает закрытием, дотягивает
+          коробку до низа и сообщает `onOpenChange(false)`, а обработчик снимал
+          ТОЛЬКО ВЕРХНИЙ слой — под ним оставался город, элемент оставался
+          отрисованным, и `open` (литерал!) не менялся никогда. vaul считал, что
+          закрыл; экран считал, что ничего не произошло; шторка оставалась там, где
+          её бросил палец. Замер модели на стенде: `translate3d(0px, 460px, 0px)`,
+          и через 2.4 с — то же самое.
+          Открытость — ФАКТ поверхности, а не «отрисован ли элемент»: он и уезжает
+          в `open`. Дальше всё уже есть у общего хоста — он же обслуживает эти
+          панели на остальных экранах: живёт в дереве постоянно (иначе vaul не
+          доиграет уход), замораживает содержимое на время выхода (иначе шторка
+          уезжает ПУСТОЙ) и отдаёт `open` внутрь.
+          ⚠️ ДИСМИСС ЗАКРЫВАЕТ ПОВЕРХНОСТЬ, А НЕ СНИМАЕТ СЛОЙ. Свайп вниз и тап по
+          фону — жесты про ВСЮ шторку; «на шаг назад» живёт кнопкой «Назад» самой
+          панели (`onBack={closeLeftPanel}`), и она снимает ровно один слой.
+          Выразить «свайпом снять один слой» нечем: vaul уже дотащил коробку до
+          закрытия, и вернуть её на место можно только закрыв и открыв заново —
+          то есть морганием. */}
+      {isSheet && (
+        <EventDrawerHost open={!!leftPanelEl} onClose={closeAll} title={t('trip.sidebar_route')}>
           {leftPanelEl}
-        </LpSheet>
+        </EventDrawerHost>
       )}
     </MapShell>
   );
