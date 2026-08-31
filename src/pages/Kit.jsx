@@ -344,7 +344,12 @@ function FullSurfaceDemo() {
   const top = layers[layers.length - 1] || null;
   const rows = KIT_CITIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
   return (
-    <div className="row row--g4">
+    /* ★ ПЕРЕНОС — НЕ УКРАШЕНИЕ. Третья кнопка увела ряд за край: замер на 390 —
+       ряд 437 px, правая кнопка кончалась на 476, переполнение 86 px, и движок
+       отзумивал страницу целиком (`innerWidth` 477 вместо 390). Стенд, который
+       сам просит смотреть на 390, обязан на 390 помещаться. Класс канонный
+       (`.row--wrap`), это та же семья ряда. */
+    <div className="row row--g4 row--wrap">
       <Btn variant="secondary" onClick={() => setPicker(true)}>{TX.fsPicker}</Btn>
       <Btn variant="secondary" onClick={() => setLayers(['city'])}>{TX.fsPanel}</Btn>
       <Btn variant="secondary" onClick={() => setDlgFull(true)}>{TX.fsDialog}</Btn>
