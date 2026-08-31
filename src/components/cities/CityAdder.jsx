@@ -79,18 +79,18 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
   /* Открыть поверхность и сфокусировать её поле, не выходя из жеста: на тач-
      платформе клавиатуру поднимает только `focus()` внутри пользовательского
      жеста. Правило живёт у поверхности (`usePickerFocus`), здесь только вызовы. */
-  const { searchRef, openInGesture } = usePickerFocus();
+  const { searchRef, inGesture } = usePickerFocus();
   const rootRef = useRef(null); // десктоп-композер целиком
   const footRef = useRef(null); // футер с кнопками — последний элемент композера
   const close = () => { setOpen(false); setCity(null); setKind(defaultKind); };
   /* На телефоне открытие обязано ПОСТАВИТЬ ФОКУС в поле шторки тем же жестом —
      иначе человек видит поиск, но клавиатуру ему надо вызывать вторым тапом.
      На десктопе поверхности нет, каретку ставит `autoFocus` поля. */
-  const openComposer = () => (isPhone ? openInGesture(setOpen) : setOpen(true));
+  const openComposer = () => (isPhone ? inGesture(() => setOpen(true)) : setOpen(true));
   /* «Изменить город» — та же шторка возвращается к поиску. Не вторая шторка и не
      переоткрытие: коробка остаётся на месте, меняется её содержимое. Хук зовём
      тем же входом — ему всё равно, что именно переключает жест. */
-  const backToSearch = () => (isPhone ? openInGesture(() => setCity(null)) : setCity(null));
+  const backToSearch = () => (isPhone ? inGesture(() => setCity(null)) : setCity(null));
   const disabledFor = (id) => (id === 'start' && !!hasStart) || (id === 'end' && !!hasEnd);
   // Плитка, на которой стоит выбор, не может быть погашенной — иначе кнопка
   // «Добавить» пишет вид, которого на экране не выбрать.

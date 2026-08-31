@@ -866,10 +866,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // Commit a city picked in the inline adder (below the route list). The adder
   // owns its own open/pick/type state and collapses itself, so there's no panel
   // to close here — just enrich with the timezone and hand off to addCity.
-  // Город приезжает из композера УЖЕ доведённым (`cities/resolveCity`): таймзона
-  // и имя страны — часть контракта города, а не работа этого экрана. Своей копии
-  // расчёта таймзоны здесь больше нет.
-  const addPickedCity = (c, kind) => addCity(c, kind);
+
 
   // ---- transfer dialogs (REAL app dialogs → write to DB → refetch) ----
   const openTransferRow = (a, b, tr) => {
@@ -1293,7 +1290,10 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
               (клавиатуру держит платформа), на десктопе — инлайн в виджете. */}
           {canEdit && (
             <CityAdder
-              onAdd={addPickedCity}
+              /* Город приезжает из композера УЖЕ доведённым (`cities/resolveCity`):
+                 таймзона и имя страны — часть контракта города, а не работа этого
+                 экрана, поэтому обёртки между ними нет. */
+              onAdd={addCity}
               hasStart={ordered.some((n) => n.kind === 'start')}
               hasEnd={ordered.some((n) => n.kind === 'end')}
             />

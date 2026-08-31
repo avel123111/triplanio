@@ -115,7 +115,7 @@ export default function Autocomplete({
   const [highlighted, setHighlighted] = useState(-1);
   // Дисциплина фокуса — у поверхности (`usePickerFocus`), здесь только вызовы:
   // «открыть в жесте» и «выбор сделан». Второго экземпляра правила нет.
-  const { searchRef, openInGesture } = usePickerFocus();
+  const { searchRef, inGesture } = usePickerFocus();
   /* Поле принадлежит движку, но во ВСТРОЕННОМ режиме открывает поверхность
      хозяин — и фокус обязан встать в том же жесте, что и открытие. Поэтому
      ссылка раздваивается: своя (движок отпускает поле на выборе) и хозяйская
@@ -296,7 +296,7 @@ export default function Autocomplete({
 
   if (isPhone) {
     const closeSheet = () => { setSheetOpen(false); setOpen(false); setHighlighted(-1); };
-    const openSheet = () => openInGesture(setSheetOpen);
+    const openSheet = () => inGesture(() => setSheetOpen(true));
     return (
       <>
         {/* ★ ТРИГГЕР — КНОПКА, А НЕ ТЕКСТОВОЕ ПОЛЕ, И ЭТО НЕСУЩЕЕ. Облик тот
@@ -340,6 +340,7 @@ export default function Autocomplete({
           onOpenChange={(o) => { if (!o) closeSheet(); }}
           title={title || t('common.search')}
           search={sheetField}
+          full
         >
           {sheetList}
         </PickerSheet>

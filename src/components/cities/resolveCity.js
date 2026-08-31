@@ -2,6 +2,9 @@
 import { tzFromCoords } from '@/lib/timezone';
 import { localizeCountry } from '@/lib/i18n/format';
 
+/** Координаты есть и они числа — иначе выводить таймзону не из чего. */
+const hasCoords = (row) => Number.isFinite(Number(row?.latitude)) && Number.isFinite(Number(row?.longitude));
+
 /**
  * ДОВЕДЕНИЕ СТРОКИ ГАЗЕТТИРА ДО ГОРОДА — ОДНО МЕСТО НА ВСЕ ФАСАДЫ.
  *
@@ -32,7 +35,10 @@ export function resolveCity(row, lang) {
     // Газеттир знает код страны, но не её имя: имя зависит от языка зрителя и
     // берётся из `Intl` (TRIP-223), а не хранится строкой.
     country: row.country || localizeCountry(row.country_code, lang) || '',
-    // Таймзона выводится из координат — своего поля у неё в справочнике нет.
-    timezone: row.timezone || tzFromCoords(row.latitude, row.longitude),
+    /* Таймзона выводится из координат — своего поля у неё в справочнике нет.
+       ⚠️ ТОЛЬКО ПРИ КООРДИНАТАХ. `tzFromCoords` на пустом входе отдаёт `'UTC'`,
+       и без этой развилки нерезолвнутый город (ИИ назвал, справочник не нашёл)
+       получал бы выдуманный часовой пояс вместо честного «неизвестно». */
+    timezone: row.timezone || (hasCoords(row) ? tzFromCoords(row.latitude, row.longitude) : null),
   };
 }

@@ -14,9 +14,7 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { resolveCities, nearbyCities } from '@/lib/geo';
 import CountryFlag from '@/components/common/CountryFlag';
-import { tzFromCoords } from '@/lib/timezone';
 import { haversineKm } from '@/lib/trip-stats';
-import { localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
@@ -33,6 +31,7 @@ import ChatComposer from '@/components/chat/ChatComposer';
 import { CityAnchorRow } from '@/pages/create/anchors';
 import CityAdder from '@/components/cities/CityAdder';
 import CityPicker from '@/components/cities/CityPicker';
+import { resolveCity } from '@/components/cities/resolveCity';
 import {
   startOf, endOf, cityNodesOf, isStayNode, hasExplicitEnd, isAnchorNode,
   insertNode, withNights, withKind, recomputeDates, toCitiesPayload, makeNode, asCity,
@@ -268,12 +267,11 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
         // The closest point is often a suburb, so we let the user pick.
         const found = await nearbyCities(pos.coords.latitude, pos.coords.longitude, lang);
         if (found.length) {
-          // Localize country from country_code like CityPicker does — mapGazCity
-          // leaves country=null, but the review row + payload expect a country name.
+          // Подсказка по геолокации приходит ТОЙ ЖЕ строкой справочника, что и
+          // выбор в пикере, поэтому и доводится тем же общим шагом
+          // (`cities/resolveCity`): имя страны из кода, таймзона из координат.
           setCandidates(found.map((c) => ({
-            ...c,
-            country: c.country || localizeCountry(c.country_code, lang),
-            timezone: tzFromCoords(c.latitude, c.longitude),
+            ...resolveCity(c, lang),
             // Distance from the user's GPS point to the gazetteer city (its
             // centroid) — shown in the chip so a suburb-vs-city pick is informed.
             distanceKm: haversineKm(pos.coords.latitude, pos.coords.longitude, c.latitude, c.longitude),
@@ -448,12 +446,6 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
     return () => clearTimeout(id);
   }, [nodes.length]);
 
-  /* Открыт ли композер. Читателей два: пустое состояние (уступает ему место) и
-     футер шага (не пускает «Далее», пока город не сохранён или не отменён) —
-     второй живёт выше, поэтому факт уходит наружу тем же значением. */
-  const [composing, setComposing] = useState(false);
-  const onComposing = (v) => { setComposing(v); onComposingChange?.(v); };
-
   const hasStart = !!startOf(nodes);
   /* ⚠️ «ПУСТО» — ЭТО НЕТ ГОРОДОВ, А НЕ НЕТ УЗЛОВ. Предикат СМЕНИЛ СМЫСЛ под
      переездом на один список: раньше он читал `cities` (только города, старт
@@ -498,7 +490,7 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
             hasStart={hasStart}
             hasEnd={hasEnd}
             defaultKind="start"
-            onOpenChange={onComposing}
+            onOpenChange={onComposingChange}
             renderTrigger={({ open }) => (
               <CityAnchorRow label={t('ai_plan.start')} city={null} editable onAdd={open} />
             )}
@@ -567,7 +559,7 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
           hasStart={hasStart}
           hasEnd={hasEnd}
           defaultKind="transit"
-          onOpenChange={onComposing}
+          onOpenChange={onComposingChange}
           renderTrigger={hasCities ? undefined : ({ open }) => (
             <EmptyState
               icon="pin"
@@ -975,27 +967,27 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // Shape one AI city into the planner shape (coords + timezone) from an already
   // resolved `best` (or null). Geocoding is now batched in applyAiDraft via
   // resolveCities (TRIP-145 P2), so this is pure shaping — no network here.
-  const shapeAiCity = (c, idx, best) => {
-    const tz = best?.latitude ? tzFromCoords(best.latitude, best.longitude) : null;
-    return {
-      id: Date.now() + idx,
-      external_city_id: best?.external_city_id || null,
-      geonameid: best?.geonameid ?? null,
-      name_i18n: best?.name_i18n || null,
-      city_name: c.city_name || '',
-      // English name kept for partner links (Stay22/Viator) and the directory:
-      // prefer the AI's city_name_en, else the geocoder's canonical en name.
-      city_name_en: c.city_name_en || best?.city_name_en || '',
-      // The gazetteer (TRIP-146) resolves country=null (only country_code), so
-      // derive the localized country name from the code when neither the AI nor
-      // the geocoder gave one — otherwise the review/rail shows "-".
-      country: c.country || best?.country || localizeCountry(c.country_code || best?.country_code, lang) || '',
-      country_code: (c.country_code || best?.country_code || '').toUpperCase(),
-      latitude: best?.latitude ?? null,
-      longitude: best?.longitude ?? null,
-      timezone: tz || best?.timezone || null,
-    };
-  };
+  const shapeAiCity = (c, idx, best) => resolveCity({
+    id: Date.now() + idx,
+    external_city_id: best?.external_city_id || null,
+    geonameid: best?.geonameid ?? null,
+    name_i18n: best?.name_i18n || null,
+    // Имя от ИИ выигрывает: его человек и видел в ответе бота.
+    city_name: c.city_name || '',
+    // English name kept for partner links (Stay22/Viator) and the directory:
+    // prefer the AI's city_name_en, else the geocoder's canonical en name.
+    city_name_en: c.city_name_en || best?.city_name_en || '',
+    country: c.country || best?.country || '',
+    country_code: (c.country_code || best?.country_code || '').toUpperCase(),
+    latitude: best?.latitude ?? null,
+    longitude: best?.longitude ?? null,
+  }, lang);
+  /* ⚠️ ДОВОДКА (имя страны из кода + таймзона из координат) НЕ ПИШЕТСЯ ЗДЕСЬ, а
+     идёт общим шагом `cities/resolveCity` — тем же, что у пикеров. Своя копия
+     жила тут ровно потому, что справочник отдаёт СТРОКУ, а не готовый узел; две
+     копии одного шага и разъезжаются молча. Нерезолвнутый город (ИИ назвал,
+     справочник не нашёл) остаётся без таймзоны, а не получает выдуманный UTC —
+     за это отвечает сам шаг. */
 
   const applyAiDraft = async (d) => {
     const dc = Array.isArray(d?.cities) ? d.cities : [];

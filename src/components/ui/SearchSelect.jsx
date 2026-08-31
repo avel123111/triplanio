@@ -76,8 +76,8 @@ export default function SearchSelect({
   // Дисциплина фокуса — у поверхности (`usePickerFocus` в `PickerSheet`), здесь
   // только вызовы. На десктопе поверхность другая (попап), и правило к ней не
   // применяется: там фокус ставит `autoFocus` поля.
-  const { searchRef, openInGesture } = usePickerFocus();
-  const openSheet = () => (isPhone ? openInGesture(setOpen) : setOpen(true));
+  const { searchRef, inGesture } = usePickerFocus();
+  const openSheet = () => (isPhone ? inGesture(() => setOpen(true)) : setOpen(true));
   /* Фокус здесь НЕ снимается: это делает поверхность на закрытии, где правило
      накрывает все четыре двери (выбор, Esc, тап мимо, свайп). */
   const pick = (o) => { onChange(getKey(o)); close(); };
@@ -178,7 +178,7 @@ export default function SearchSelect({
           'aria-haspopup': 'dialog',
           'aria-expanded': open,
         })}
-        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl}>
+        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl} full>
           {listEl}
         </PickerSheet>
       </>

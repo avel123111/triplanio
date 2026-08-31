@@ -198,6 +198,7 @@ import DocumentsField from '@/components/common/DocumentsField';
 import Accordion from '@/components/common/Accordion';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
 import CityPicker from '@/components/cities/CityPicker';
+import { resolveCity } from '@/components/cities/resolveCity';
 import EventAiBlock from '@/components/common/EventAiBlock';
 import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
@@ -1090,8 +1091,12 @@ export default function EventEditDialog({
         lvIdx.forEach((segIdx, k) => {
           const best = lvLists[k]?.[0];
           if (best?.latitude) {
-            const tz = tzFromCoords(best.latitude, best.longitude);
-            formSegs[segIdx].toCity = { city_name: best.city_name, city_name_en: best.city_name_en, geonameid: best.geonameid ?? null, name_i18n: best.name_i18n || null, country: best.country, country_code: best.country_code, latitude: best.latitude, longitude: best.longitude, timezone: tz, external_city_id: best.external_city_id };
+            /* Тот же общий шаг, что у пикеров (`cities/resolveCity`): строка
+               справочника доводится до города. Своя сборка здесь клала `country`
+               СЫРЫМ — а у строк газеттира он всегда null, и у города пересадки,
+               найденного ИИ, страны не было. Ровно та же дыра, что уже была
+               описана у слитого `CityPicker`. */
+            formSegs[segIdx].toCity = resolveCity(best, lang);
           } else {
             unresolved.push(lvQ[k]);
           }
