@@ -46,7 +46,6 @@
   "tg_addon_off_confirm_body": "The trip has connected Telegram chats. Turning the assistant off will unlink them all, and the bot will stop sending reminders.",
   "tg_addon_off_confirm_title": "Turn the Telegram assistant off?",
   "tg_after_start": "After pressing Start in Telegram, come back here, the panel updates automatically",
-  "tg_connect_desc": "Link Telegram to get reminders about hotels, transfers and activities for this trip",
   "tg_connected_desc": "Notifications for this trip will now arrive in Telegram",
   "tg_copy": "Copy",
   "tg_creating": "Creating a unique link to the Triplanio bot for this trip",
