@@ -14,17 +14,15 @@ import MapControls from '@/lib/map/MapControls';
 import { useT } from '@/lib/i18n/I18nContext';
 
 // Build ordered legs (home → cities → finish) - self-contained so the map has
-// no dependency on the planner's save logic. The finish leg is drawn only when
-// `drawFinish` (the finish/review steps), so the default never pre-draws a line
-// to the finish on the earlier steps.
-function buildLegs(home, cities, finishCity, isStay, drawFinish) {
+// no dependency on the planner's save logic. Финиш — узел: есть он, есть и плечо.
+function buildLegs(home, cities, finishCity) {
   const stops = [];
   if (home?.latitude) stops.push(home);
   cities.forEach((c) => { if (c.latitude) stops.push(c); });
   const lastCity = cities[cities.length - 1];
   // Не тянем нулевое плечо, если финиш совпадает по координате с последним городом.
   const sameSpot = (a, b) => a && b && a.latitude === b.latitude && a.longitude === b.longitude;
-  if (!isStay && drawFinish && finishCity?.latitude && !sameSpot(finishCity, lastCity)) {
+  if (finishCity?.latitude && !sameSpot(finishCity, lastCity)) {
     stops.push(finishCity);
   }
   const legs = [];
@@ -113,11 +111,7 @@ export default function FlowMap({
   // ВЬЮПОРТА: канвас остаётся во всю площадь (карта видна под виджетом), а кадр
   // уходит в свободное окно. Разбор, почему не всегда так, — в `mapShellInsets`.
   view = null,
-  home, cities = [], finishCity, transport = {}, isStay = false,
-  // `drawFinish` — draw the finish pin + leg (the finish/review steps). The finish
-  // CITY still feeds the camera framing, so stepping between steps toggles what's
-  // drawn WITHOUT re-framing.
-  drawFinish = false,
+  home, cities = [], finishCity, transport = {},
   // Тема приложения приезжает ПРОПОМ (как у `MapView`) — один способ «следовать
   // теме» на обе карты. Родитель считает `isDark` и отдаёт 'LIGHT'|'DARK'; свой
   // `useTheme()` здесь больше не читаем.
@@ -181,12 +175,12 @@ export default function FlowMap({
   // cities numbered 1..N, a 0-night stop → waypoint glyph (NOT a number, same as the
   // editor / Map lens). Each pin carries a stable id ('home' | city.id | 'finish')
   // so hover/click can address it and the tooltip can be looked up by the parent.
-  // The finish pin is drawn whenever a finish node exists (кроме «останусь»); a
-  // round-trip finish that coincides with the start is deduped by the по-координате
-  // pin grouping — no start↔finish name compare. Drawing it requires `drawFinish`.
+  // Финиш рисуется, когда узел финиша есть — другого условия нет. Круговой
+  // маршрут (финиш совпал со стартом) схлопывает группировка пинов ПО КООРДИНАТЕ,
+  // без сравнения имён.
   // id === data здесь: колбэк планировщика хочет ровно этот ключ ('home' | id |
   // 'finish'), а `useCityMarkers` тегает им `data-mids` для тогла выделения.
-  const hasFinish = !isStay && finishCity?.latitude != null;
+  const hasFinish = finishCity?.latitude != null;
   const pts = [];
   if (home?.latitude) pts.push({ id: 'home', lat: home.latitude, lng: home.longitude, label: null, kind: 'start', data: 'home' });
   let transitNo = 0;
@@ -195,12 +189,12 @@ export default function FlowMap({
     const isWaypoint = (+c.nights || 0) === 0 && !!c.city_name;
     pts.push({ id: String(c.id), lat: c.latitude, lng: c.longitude, label: isWaypoint ? null : String(++transitNo), kind: isWaypoint ? 'waypoint' : 'transit', data: String(c.id) });
   });
-  if (hasFinish && drawFinish) {
+  if (hasFinish) {
     pts.push({ id: 'finish', lat: finishCity.latitude, lng: finishCity.longitude, label: null, kind: 'end', data: 'finish' });
   }
 
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
-  const legs = buildLegs(home, cities, finishCity, isStay, drawFinish);
+  const legs = buildLegs(home, cities, finishCity);
 
   // DRAW key — markers rebuild when this changes (incl. the finish pin appearing on
   // step 3). FIT key — the camera re-frames ONLY when this changes: the real route

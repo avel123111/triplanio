@@ -33,8 +33,8 @@ import CityAdder from '@/components/cities/CityAdder';
 import CityPicker from '@/components/cities/CityPicker';
 import { resolveCity } from '@/components/cities/resolveCity';
 import {
-  startOf, endOf, cityNodesOf, isStayNode, hasExplicitEnd, finishOf, isAnchorNode,
-  insertNode, withNights, withKind, recomputeDates, toCitiesPayload, makeNode, asCity,
+  startOf, endOf, cityNodesOf, hasExplicitEnd, isAnchorNode,
+  insertNode, withNights, recomputeDates, toCitiesPayload, makeNode,
 } from '@/pages/create/routeModel';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -123,8 +123,8 @@ function computeAutoTitle(home, cities, t) {
 }
 
 // Вид узла объявлен НА УЗЛЕ (`kind`), а не выводится из ночей: связь «ноль ночей
-// = пересадка» держит `routeModel.withNights`/`withKind` — одно место на обе
-// ручки (степпер в ряду и плитка вида в шторке), поэтому разойтись им нечем.
+// = пересадка» держит `routeModel.withNights` — одно место, поэтому степпер в
+// ряду и плитка вида в шторке разойтись не могут.
 // Прежний предикат `isPlannerWaypoint(city)` был вторым толкованием того же
 // факта и удалён вместе с моделью, которая его требовала.
 
@@ -194,16 +194,9 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
   const lead = isWaypoint
     ? <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>
     : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
-  /* «Останусь» — это ГОРОД, помеченный финишем: он остаётся рядом списка со
-     своими ночами, поэтому роль объявляется бейджем в той же ячейке, что и
-     «пересадка» — второго способа сказать «чем закончим» в ряду нет. Без него
-     шаг городов рисовал выбранный на шаге возврата финиш обычным городом, и
-     флоу противоречил сам себе. */
   const dates = isWaypoint
     ? <><Badge size="tiny">{t('tse.layover')}</Badge>{dateRange}</>
-    : isStayNode(node)
-      ? <><Badge size="tiny">{t('ai_plan.end')}</Badge>{dateRange}</>
-      : dateRange;
+    : dateRange;
 
   return (
     <CityRowBase
@@ -490,7 +483,7 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
         {displayNodes.map((n) => {
           const rowId = String(n.id);
           // Якорь — плитка старта/финиша (тот же элемент, что `.te-end` редактора).
-          if (isAnchorNode(n) && !isStayNode(n)) {
+          if (isAnchorNode(n)) {
             return (
               <div key={n.id} ref={setRowRef(n.id)}>
                 <CityAnchorRow
@@ -598,25 +591,27 @@ function ReturnOption({ on, onClick, icon, tone, title, desc }) {
 // пропустить, когда тот же узел уже задан плиткой на шаге городов.
 //   «домой»    → узел-клон старта;
 //   «другой»   → узел выбранного города;
-//   «останусь» → последний город МЕНЯЕТ ВИД на финиш (нового узла нет).
-function StepReturn({ home, lastCityName, endNode, isStay, onFinishHome, onFinishCity, onStay, onClearFinish }) {
+//   «останусь» → узла НЕТ (маршрут кончается последним городом).
+// ★ ПОДСВЕЧЕННАЯ КАРТОЧКА ВЫВОДИТСЯ ИЗ УЗЛА, А НЕ ИЗ СВОЕГО СОСТОЯНИЯ. Раз
+// «останусь» — это отсутствие узла, дефолтом (ничего не выбрано) становится
+// ИМЕННО «останусь»: подсвечивать «домой», не записав его, значило бы показать
+// один выбор и сохранить другой.
+function StepReturn({ home, lastCityName, endNode, onFinishHome, onFinishCity, onClearFinish }) {
   const t = useT();
   // «Домой» (финиш = город старта) доступен, если старт вообще есть. Никаких сравнений
   // старт↔последний-город — финиш это самостоятельный узел.
   const canHome = !!home?.city_name;
 
-  const endIsCity = !!endNode && !isStay;
-  const endIsHome = endIsCity && sameCity(endNode, home);
+  const endIsHome = !!endNode && sameCity(endNode, home);
+  const endIsOther = !!endNode && !endIsHome;
   // `otherMode` — ЛОКАЛЬНЫЙ флаг вида карточки «другой», а не данные: сам город
   // едет в список. Нужен, чтобы поле выбора осталось открытым, пока в нём ещё
   // ничего не выбрали.
-  const [otherMode, setOtherMode] = useState(endIsCity && !endIsHome);
-  // No origin → «домой» impossible: default the choice to «другой».
-  useEffect(() => { if (!canHome && !isStay) setOtherMode(true); }, [canHome, isStay]);
+  const [otherMode, setOtherMode] = useState(endIsOther);
 
-  const onStayCard = isStay;
-  const onOther = otherMode && !onStayCard;
-  const onHome = !onStayCard && !onOther && canHome; // дефолт разрешается в «домой», когда старт есть
+  const onHome = endIsHome;
+  const onOther = endIsOther || (otherMode && !endIsHome);
+  const onStayCard = !endNode && !otherMode;
 
   return (
     <div>
@@ -647,11 +642,11 @@ function StepReturn({ home, lastCityName, endNode, isStay, onFinishHome, onFinis
             title={t('planner.return_other')}
             desc={t('planner.return_other_desc')}
           />
-          {/* «Останусь в {город}» = финиш: возврата нет. Узла не создаёт —
-              последний город меняет вид, ночи в нём остаются. */}
+          {/* «Останусь в {город}» = финиша НЕТ. Единственная запись — снять узел;
+              последний город остаётся обычным последним городом. */}
           <ReturnOption
             on={onStayCard}
-            onClick={() => { onStay(); setOtherMode(false); }}
+            onClick={() => { onClearFinish(); setOtherMode(false); }}
             icon="check" tone="success"
             title={t('planner.stay_title', { city: lastCityName })}
             desc={t('planner.stay_desc', { city: lastCityName })}
@@ -662,7 +657,7 @@ function StepReturn({ home, lastCityName, endNode, isStay, onFinishHome, onFinis
           <div className="field">
             <label className="field__label">{t('planner.return_city')}</label>
             <CityPicker
-              value={endIsCity && !endIsHome ? endNode : null}
+              value={endIsOther ? endNode : null}
               onChange={(c) => (c ? onFinishCity(c) : onClearFinish())}
               placeholder={t('planner.return_city_ph')}
               autoFocus
@@ -710,7 +705,7 @@ function Stat({ label, value, hint, warn }) {
   );
 }
 
-function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
+function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
   const nav = useNavigate();
   const t = useT();
   const { lang } = useI18n();
@@ -797,9 +792,9 @@ function StepReview({ home, cities, finishCity, isStay, cover, setCover, tripTit
               <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
             )}
             {cities.map((c, i) => {
-              // Last city with «останусь» chosen on step 3 → the endpoint marker
-              // (single blue flag, unified with the start), not a numbered stop.
-              const isFin = isStay && i === cities.length - 1;
+              // Финиша-города не бывает: конец маршрута — это отдельный узел
+              // (рисуется ниже) либо его нет вовсе. Город списка всегда город.
+              const isFin = false;
               return (
                 <ReviewRow
                   key={c.id}
@@ -1154,11 +1149,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const lastCity = cities[cities.length - 1] || null;
   // «Останусь» = финиш, которым помечен город списка. Карте это значит «не рисуй
   // отдельный пин финиша»: он уже нарисован как город.
-  // Финиш — ОДИН ответ на весь флоу (`finishOf`), а не три условия по месту.
-  // Карте «останусь» значит «не рисуй отдельный пин»: он уже нарисован городом.
-  const finish = finishOf(nodes);
-  const isStay = finish.mode === 'stay';
-  const finishCity = isStay ? null : finish.node;
+  /* Финиш — ЭТО УЗЕЛ `end`, и другого его вида не бывает. Нет узла — маршрут
+     кончается последним городом («останусь»), и рисовать нечего: ни пина, ни
+     ряда, ни бейджа. Отдельного признака у этого состояния нет намеренно —
+     признак и был тем, что заводил второй вид финиша. */
+  const finishCity = endNode;
   const autoTitle = computeAutoTitle(home, cities, t);
 
   // ── Ручки записи маршрута ──────────────────────────────────────────────────
@@ -1169,26 +1164,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     if (!city?.city_name) return rest;
     return insertNode(rest, makeNode(city, 'start')) || rest;
   });
-  // Заменить финиш: сначала снимаем прежний (метку с города — сменой вида,
-  // отдельный узел — удалением), потом ставим новый. Иначе `insertNode` честно
-  // откажет вторым якорем.
-  const clearFinish = (ns) => ns
-    .filter(n => !(n.kind === 'end' && !isStayNode(n)))
-    .map(n => (isStayNode(n) ? asCity(n) : n));
+  // Снять финиш = удалить узел. Метить и размечать больше нечего, поэтому и
+  // «останусь», и «сейчас выберу другой город» — ОДНА запись: узла нет.
+  const clearFinish = (ns) => ns.filter(n => n.kind !== 'end');
   const setFinishCity = (city) => setNodes(ns => {
     const rest = clearFinish(ns);
     if (!city?.city_name) return recomputeDates(rest, startDate);
     return recomputeDates(insertNode(rest, makeNode(city, 'end')) || rest, startDate);
   });
+  // «Останусь в X» и «сейчас выберу другой» — одно и то же состояние МОДЕЛИ
+  // (финиша нет); различаются они только видом карточки на шаге, и этот вид —
+  // локальный флаг шага, а не факт маршрута.
   const clearFinishNode = () => setNodes(ns => recomputeDates(clearFinish(ns), startDate));
-  // «Останусь» — последний ГОРОД становится финишем. Нового узла нет, ночи целы.
-  const setStay = () => setNodes(ns => {
-    const rest = clearFinish(ns);
-    const cityNodes = cityNodesOf(rest);
-    const last = cityNodes[cityNodes.length - 1];
-    if (!last) return recomputeDates(rest, startDate);
-    return recomputeDates(rest.map(n => (n.id === last.id ? withKind(n, 'end') : n)), startDate);
-  });
 
   // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed the same
   // way FlowMap tags its pins ('home' | city.id | 'finish'). A city's date range is
@@ -1442,10 +1429,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             home={home}
             lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
             endNode={endNode}
-            isStay={isStay}
             onFinishHome={() => setFinishCity(home)}
             onFinishCity={setFinishCity}
-            onStay={setStay}
             onClearFinish={clearFinishNode}
           />
         )}
@@ -1454,7 +1439,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             home={home}
             cities={cities}
             finishCity={finishCity}
-            isStay={isStay}
             cover={cover}
             setCover={setCover}
             tripTitle={tripTitle}
@@ -1573,16 +1557,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               // Always pass the finish city (it feeds the camera framing). DRAW the
               // finish pin + leg when it's ALREADY DECIDED — the AI put it in the draft,
               // or the user picked it — so a known finish shows immediately (incl. on
-              // the AI chat step), not only from step 3. The manual null-default
-              // (resolved to home only for display) is NOT an explicit finish, so it
-              // still waits for step 3 → no pre-drawn line home on the earlier steps.
+              /* Финиш — это узел, и рисуется он ровно тогда, когда узел есть.
+                 Прежние `drawFinish`/`isStay` были следствием молчаливого дефолта
+                 «домой» и второго вида финиша: одному надо было не рисовать линию
+                 заранее, другому — не рисовать пин поверх города. Ни того, ни
+                 другого больше нет. */
               finishCity={finishCity}
-              /* Финиш рисуем, когда он УЖЕ РЕШЁН (узел есть — задан плиткой на шаге
-                 городов, выбран на шаге возврата или пришёл от ИИ) либо когда шаг
-                 сам про него. Молчаливый дефолт «домой» решением не считается,
-                 поэтому линия домой заранее не рисуется. */
-              drawFinish={!!endNode || step === 'return' || step === 'review'}
-              isStay={isStay}
               hoveredId={hoveredMapId}
               selectedId={selectedMapId}
               cityBadge={cityBadge}

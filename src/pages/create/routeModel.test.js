@@ -16,15 +16,16 @@
  *   · `insertNode`: `end` вставлять `unshift` вместо `push` — падает «финиш последний»;
  *   · `insertNode`: снять гейт по занятому виду — падает «второго якоря не бывает»;
  *   · `withNights`: убрать смену `kind` — падает «ночи и вид не расходятся»;
- *   · `withKind('end')`: вернуть `nights: null` — падает «останусь не двигает даты»;
- *   · `toCitiesPayload`: снять дописывание клона старта — падает «домой по умолчанию»;
- *   · `toCitiesPayload`: отдать якорю `nights` — падает «якорь едет без ночей».
+ *   · `withNights`: дать ночи якорю — падает «у финиша ночей не бывает»;
+ *   · `toCitiesPayload`: дописать клон старта — падает «нет узла = кончается городом»;
+ *   · `toCitiesPayload`: отдать якорю `nights` — падает «якорь едет без ночей»;
+ *   · `cityNodesOf`: пустить якорь в города — падает «финиш не город списка».
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  insertNode, withNights, withKind, recomputeDates, makeNode, asCity,
-  startOf, endOf, hasExplicitEnd, finishOf, isAnchorNode, toCitiesPayload, isStayNode, cityNodesOf,
+  insertNode, withNights, recomputeDates, makeNode,
+  startOf, endOf, hasExplicitEnd, isAnchorNode, toCitiesPayload, cityNodesOf,
 } from './routeModel.js';
 
 const city = (name, extra = {}) => ({
@@ -68,17 +69,14 @@ test('★★ ночи и вид не могут разойтись: ноль н�
   const t = stop('Милан', 3);
   assert.equal(withNights(t, 0).kind, 'waypoint', 'степпер увёл ночи в ноль — вид обязан стать пересадкой');
   assert.equal(withNights(withNights(t, 0), 2).kind, 'transit', 'ночи вернулись — вид тоже');
-  const w = withKind(t, 'waypoint');
-  assert.equal(w.nights, 0, 'плитка «пересадка» обязана обнулить ночи');
-  assert.equal(withKind(w, 'transit').nights, 1, 'плитка «посещение» обязана вернуть ночь');
 });
 
-test('★★ «останусь» = смена вида, а НЕ выселение: ночи города переживают её', () => {
-  const last = stop('Неаполь', 4);
-  const stay = withKind(last, 'end');
-  assert.equal(stay.kind, 'end');
-  assert.equal(stay.nights, 4, 'ночи обнулять нельзя — это молча укоротило бы человеку маршрут');
-  assert.equal(withKind(stay, 'transit').nights, 4, 'и возвращаются при обратном переключении');
+test('★★ У ФИНИША НОЧЕЙ НЕ БЫВАЕТ: якорь степперу не поддаётся', () => {
+  // Прежняя редакция помечала последний город финишем, СОХРАНЯЯ ему ночи, — и
+  // этим заводила второй вид финиша (у одного ночей нет, у другого три).
+  const end = makeNode(city('Ницца'), 'end');
+  assert.equal(end.nights, null, 'финиш родится без ночей');
+  assert.equal(withNights(end, 3).nights, null, 'и ночей ему не выдать');
 });
 
 // ─── Даты: переезд не сместил ни одной ───────────────────────────────────────
@@ -98,20 +96,32 @@ test('★★ даты цепочки те же, что до переезда: я
   assert.equal(laid[laid.length - 1].startDate, undefined, 'и у финиша тоже');
 });
 
-test('★ город-финиш («останусь») ОСТАЁТСЯ в цепочке дат — у него есть ночи', () => {
-  const nodes = [stop('Милан', 2), withKind(stop('Неаполь', 3), 'end')];
+test('★ «останусь» = финиша нет, и цепочка дат кончается последним городом', () => {
+  const nodes = [anchor('Рим', 'start'), stop('Милан', 2), stop('Неаполь', 3)];
   const laid = recomputeDates(nodes, '2026-09-01');
-  assert.equal(laid[1].startDate, '2026-09-03', 'финиш-город датируется как город, иначе маршрут схлопнется');
+  assert.equal(laid[2].startDate, '2026-09-03', 'последний город датируется как город');
+  assert.equal(endOf(nodes), null, 'узла финиша нет — рисовать и сохранять нечего');
+  assert.deepEqual(cityNodesOf(nodes).map((n) => n.city_name), ['Милан', 'Неаполь']);
 });
 
 // ─── Полезная нагрузка: побайтово прежняя ────────────────────────────────────
 
-test('★★ финиш «домой» по умолчанию: узла нет, а в сохранение он едет', () => {
+test('★★ НЕТ УЗЛА ФИНИША ⇒ маршрут кончается последним городом (дефолт «домой» снят)', () => {
+  // Прежде здесь дописывался клон старта, и «не выбрал» молча значило «домой».
+  // Именно из-за этого «останусь» приходилось помечать на узле — иначе оно было
+  // неотличимо от «не выбрал». Решение Pavel: возврат домой = ЯВНЫЙ узел.
   const nodes = [anchor('Рим', 'start'), stop('Милан', 2)];
-  assert.equal(hasExplicitEnd(nodes), false, 'молчаливый дефолт не смеет считаться выбранным финишем');
+  assert.equal(hasExplicitEnd(nodes), false);
+  assert.deepEqual(toCitiesPayload(nodes).map((p) => p.kind), ['start', 'transit']);
+});
+
+test('★★ «домой» — ЯВНЫЙ узел, и он такой же, как любой другой финиш', () => {
+  const start = anchor('Рим', 'start');
+  const nodes = [start, stop('Милан', 2), makeNode(start, 'end')];
   const payload = toCitiesPayload(nodes);
   assert.deepEqual(payload.map((p) => p.kind), ['start', 'transit', 'end']);
-  assert.equal(payload[2].geonameid, payload[0].geonameid, 'дефолтный финиш = клон старта');
+  assert.equal(payload[2].geonameid, payload[0].geonameid, '«домой» = тот же город, что старт');
+  assert.equal(endOf(nodes).nights, null, 'и ночей у него нет, как у любого финиша');
 });
 
 test('★★ финиш выбран — клон старта НЕ дописывается', () => {
@@ -122,22 +132,18 @@ test('★★ финиш выбран — клон старта НЕ дописы
   assert.equal(endOf(nodes).city_name, 'Ницца');
 });
 
-test('★★ «останусь» и «выбран другой город» — ОДИН предикат для пропуска шага', () => {
-  const stay = [anchor('Рим', 'start'), withKind(stop('Неаполь', 3), 'end')];
+test('★★ шаг возврата пропускается ровно тогда, когда узел финиша ЕСТЬ', () => {
   const other = [anchor('Рим', 'start'), stop('Милан', 2), anchor('Ницца', 'end')];
-  const none = [anchor('Рим', 'start'), stop('Милан', 2)];
-  assert.equal(hasExplicitEnd(stay), true, '«останусь» — тоже выбранный финиш');
+  const stay = [anchor('Рим', 'start'), stop('Милан', 2)];
   assert.equal(hasExplicitEnd(other), true);
-  assert.equal(hasExplicitEnd(none), false, 'не дошёл до выбора — шаг возврата обязан остаться');
-  // И «останусь» не плодит клона старта: финиш уже есть.
-  assert.equal(toCitiesPayload(stay).filter((p) => p.kind === 'end').length, 1);
+  assert.equal(hasExplicitEnd(stay), false, '«останусь» — отсутствие финиша, шаг обязан остаться');
 });
 
 test('★★ якорь едет БЕЗ ночей, даже когда они у него есть', () => {
-  const stay = [anchor('Рим', 'start'), withKind(stop('Неаполь', 3), 'end')];
-  const [start, end] = toCitiesPayload(stay);
+  const nodes = [anchor('Рим', 'start'), stop('Милан', 2), anchor('Ницца', 'end')];
+  const [start, , end] = toCitiesPayload(nodes);
   assert.ok(!('nights' in start), 'у старта ночей в нагрузке не было и не должно быть');
-  assert.ok(!('nights' in end), 'город-финиш сохраняется якорем — так было до переезда, дословно');
+  assert.ok(!('nights' in end), 'и у финиша тоже — он якорь');
 });
 
 test('★ проекция ПОИМЁННАЯ: служебные поля модели наружу не текут', () => {
@@ -154,7 +160,7 @@ test('★ проекция ПОИМЁННАЯ: служебные поля мо�
 
 test('★ безымянный ряд (только что добавленный, город ещё не выбран) в нагрузку не едет', () => {
   const nodes = [anchor('Рим', 'start'), { id: 9, kind: 'transit', nights: 3, city_name: '' }];
-  assert.deepEqual(toCitiesPayload(nodes).map((p) => p.kind), ['start', 'end']);
+  assert.deepEqual(toCitiesPayload(nodes).map((p) => p.kind), ['start']);
 });
 
 test('★ якорь опознаётся по виду, а не по месту в списке', () => {
@@ -166,17 +172,10 @@ test('★ якорь опознаётся по виду, а не по месту
 
 // ─── Кто «город» для карты и ревью ───────────────────────────────────────────
 
-test('★★ «останусь» считается ГОРОДОМ, финиш-отдельный город — НЕ считается', () => {
-  const stay = withKind(stop('Неаполь', 3), 'end');
-  const term = anchor('Ницца', 'end');
-  assert.equal(isStayNode(stay), true, 'в нём ночуют — значит это город');
-  assert.equal(isStayNode(term), false, 'терминал без ночей городом списка не является');
-
-  const withStay = [anchor('Рим', 'start'), stop('Милан', 2), stay];
-  const withTerm = [anchor('Рим', 'start'), stop('Милан', 2), term];
-  assert.deepEqual(cityNodesOf(withStay).map((n) => n.city_name), ['Милан', 'Неаполь']);
-  assert.deepEqual(cityNodesOf(withTerm).map((n) => n.city_name), ['Милан'],
-    'иначе карта нарисует финиш дважды: пином города и пином финиша');
+test('★★ финиш НИКОГДА не город списка — иначе карта нарисует его дважды', () => {
+  const nodes = [anchor('Рим', 'start'), stop('Милан', 2), anchor('Ницца', 'end')];
+  assert.deepEqual(cityNodesOf(nodes).map((n) => n.city_name), ['Милан'],
+    'пином города И пином финиша — ровно это и рисовал прежний второй вид финиша');
 });
 
 test('★ фабрика узла: ночи выдаёт ВИД, а не вызыватель', () => {
@@ -190,41 +189,13 @@ test('★ фабрика узла: ночи выдаёт ВИД, а не выз�
   assert.equal(makeNode(null, 'transit').city_name, '');
 });
 
-test('★★ снятие финиша с города возвращает вид ПО НОЧАМ, а не «посещение» всегда', () => {
-  // Пересадку (0 ночей) можно пометить финишем — и снятие обязано вернуть её
-  // пересадкой. `withKind(n,'transit')` дал бы ночь и превратил бы её в ночёвку.
-  const wpStay = withKind(stop('Генуя', 0), 'end');
-  assert.equal(asCity(wpStay).kind, 'waypoint');
-  assert.equal(asCity(wpStay).nights, 0);
-  const cityStay = withKind(stop('Неаполь', 3), 'end');
-  assert.equal(asCity(cityStay).kind, 'transit');
-  assert.equal(asCity(cityStay).nights, 3, 'ночи города переживают оба переключения');
-});
 
-// ─── Где финиш: ОДИН ответ на весь флоу ──────────────────────────────────────
+// ─── Финиш — один объект ─────────────────────────────────────────────────────
 
-test('★★ finishOf различает четыре формы, и «домой» выбором НЕ считается', () => {
-  const start = anchor('Москва', 'start');
-  const rome = stop('Рим');
-  assert.deepEqual(
-    ['none', 'home', 'city', 'stay'].map((m, i) => {
-      const nodes = [[], [start], [start, rome, anchor('Париж', 'end')],
-        [start, withKind(rome, 'end')]][i];
-      const f = finishOf(nodes);
-      return [f.mode, f.decided];
-    }),
-    [['none', false], ['home', false], ['city', true], ['stay', true]],
-  );
-});
-
-test('★★ «останусь» ОДИНАКОВО читается всеми: и финиш, и город списка', () => {
-  // Расхождение здесь и было багом: шаг возврата помечал город финишем, шаг
-  // городов рисовал его обычным городом, а шаг пропускался как «финиш выбран».
-  const nodes = [anchor('Москва', 'start'), withKind(stop('Рим'), 'end')];
-  const f = finishOf(nodes);
-  assert.equal(f.mode, 'stay');
-  assert.equal(f.decided, true, 'выбор сделан — иначе шаг возврата не пропустится');
-  assert.ok(isStayNode(f.node), 'узел остаётся городом с ночами');
-  assert.deepEqual(cityNodesOf(nodes).map(n => n.city_name), ['Рим'],
-    'город из списка не исчезает оттого, что он же финиш');
+test('★★ ФИНИШ НЕ ГОРОД СПИСКА: он якорь, и в города не попадает', () => {
+  // Ровно этим и был зоопарк: «останусь» лежало в списке городом с ночами и
+  // бейджем, а выбранный плиткой финиш — якорём без ночей. Один объект.
+  const nodes = [anchor('Рим', 'start'), stop('Милан', 2), anchor('Ницца', 'end')];
+  assert.deepEqual(cityNodesOf(nodes).map((n) => n.city_name), ['Милан']);
+  assert.ok(isAnchorNode(endOf(nodes)));
 });
