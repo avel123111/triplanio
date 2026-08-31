@@ -1,17 +1,11 @@
 /**
- * Несуществующий адрес отвечает 404 НА КРАЮ (TRIP-497).
+ * Несуществующий адрес отвечает 404 на краю (TRIP-497; зачем — докблок
+ * `notFound` в `middleware.js`).
  *
- * ПОЧЕМУ У ЭТОГО ЕСТЬ ТЕСТ, И ПОЧЕМУ ОН СТРОГИЙ. Цена ошибки здесь
- * НЕСИММЕТРИЧНА, и обе стороны молчаливые:
- *   · забыли адрес в списке → живой экран отдаёт «страница не найдена» ВСЕМ, и
- *     узнаем мы об этом от пользователя, а не от гарда;
- *   · пропустили лишнее → всё выглядит рабочим, просто индексаторы продолжают
- *     считать выдуманные адреса страницами — то, ради чего правка и делалась.
- *
- * Замер 31.08 на проде: выдуманный адрес, названный в тексте публичного PR, за
- * два часа собрал десяток заходов (часть — с реферером bing.com), и каждому был
- * отдан 200 с содержимым главной. Приложение к тому моменту уже умело рисовать
- * свою 404 — но только ПОСЛЕ выполнения JavaScript, которого у этих гостей нет.
+ * Цена ошибки НЕСИММЕТРИЧНА, и обе стороны молчаливые: забыли адрес в списке —
+ * живой экран 404-ит всем, и узнаём мы это от пользователя; пропустили лишнее —
+ * всё выглядит рабочим, просто индексаторы дальше едят мусор. Отсюда поимённый
+ * список живых маршрутов ниже.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -62,7 +56,7 @@ test('источники редиректов из vercel.json известны 
 /* ── что обязано отвечать 404 ────────────────────────────────────────────── */
 
 test('★★★ несуществующий адрес отвечает 404 с запретом индексации', async () => {
-  for (const p of ['/kakoy-to-mysor', '/d/opechatka', '/trips/extra', '/settings/lишнее', '/pricing']) {
+  for (const p of ['/no-such-page', '/d/opechatka', '/trips/extra', '/settings/lишнее', '/pricing']) {
     const res = await ask(p);
     assert.ok(res, `${p}: край обязан ответить сам`);
     assert.equal(res.status, 404, p);
@@ -73,20 +67,20 @@ test('★★★ несуществующий адрес отвечает 404 с 
 test('★★ тело 404 — само приложение, а не заглушка края', async () => {
   // Человек по битой ссылке обязан увидеть нашу 404 со стилями и шапкой.
   // Меняются только статус и заголовок.
-  const body = await (await ask('/kakoy-to-mysor')).text();
+  const body = await (await ask('/no-such-page')).text();
   assert.match(body, /id="root"/);
 });
 
 test('★★★ краулер движка ответов получает тот же честный 404, что и человек', async () => {
   // Ради него всё и делалось: JavaScript он не выполняет, поэтому `noindex` из
   // приложения до него не доходит — только статус и заголовок.
-  const res = await ask('/kakoy-to-mysor', AI);
+  const res = await ask('/no-such-page', AI);
   assert.equal(res.status, 404);
   assert.equal(res.headers.get('x-robots-tag'), 'noindex');
 });
 
 test('★ 404 не кэшируется надолго — сегодняшний мусор завтра может стать страницей', async () => {
-  const cc = (await ask('/kakoy-to-mysor')).headers.get('cache-control');
+  const cc = (await ask('/no-such-page')).headers.get('cache-control');
   assert.match(cc, /max-age=0|no-cache|must-revalidate/);
 });
 
@@ -94,7 +88,7 @@ test('падение сети не превращает 404 в 200', async () =>
   const saved = globalThis.fetch;
   globalThis.fetch = async () => { throw new Error('сеть легла'); };
   try {
-    const res = await ask('/kakoy-to-mysor');
+    const res = await ask('/no-such-page');
     assert.equal(res.status, 404, 'без оболочки статус обязан остаться 404');
     assert.match(await res.text(), /noindex/, 'минимальное тело обязано нести запрет');
   } finally {
