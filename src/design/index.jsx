@@ -5,6 +5,7 @@ import { Tile } from './Tile';
 import { Tooltip } from './Tooltip';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
+import { sheetScroller } from '@/components/ui/sheetShell';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
@@ -582,8 +583,14 @@ const DLG_ICON_TONES = {
   success: { tone: 'success' },
   danger: { tone: 'danger' },
 };
-/** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any, busy?: boolean }} p */
-export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange, busy }) => {
+/** `full` — РОЛЬ поверхности на телефоне: «это не окно, это экран во весь вьюпорт».
+ *  Роль объявляет ВЫЗЫВАТЕЛЬ и один раз на всю жизнь поверхности; выводить её из
+ *  содержимого («а есть ли сейчас поле?») нельзя — живой запрос уже отваливался
+ *  посреди открытой шторки и возвращал въезд заново (разбор в `ui/sheetShell`).
+ *  Признак ставит шов, CSS адресует признак — тот же путь, что у шторки пикера и
+ *  оболочки панелей редактора. На десктопе роли нет: окно остаётся окном.
+ * @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any, busy?: boolean, full?: boolean }} p */
+export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange, busy, full = false }) => {
   const t = useT();
   // The dialog OWNS its footer: on mobile it hides it while the keyboard is up
   // (it would otherwise rise above the keyboard and cover the autofill bar).
@@ -600,7 +607,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
           no hidden duplicate, zero visual change). With no subtitle we opt out of
           the description explicitly (aria-describedby={undefined}) so Radix stays
           quiet without a bogus empty node. (TRIP-202) */}
-      <DialogContent className={size ? `dlg--${size}` : ''} {...(subtitle ? {} : { 'aria-describedby': undefined })}>
+      <DialogContent full={full} className={size ? `dlg--${size}` : ''} {...(subtitle ? {} : { 'aria-describedby': undefined })}>
         <div className="dlg__head">
           {icon && (
             /* Геометрия - примитив .tile (34px, значок 17px = дефолт лестницы;
@@ -626,7 +633,12 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
               документа): та же защита, что раньше вешали на хендролл-крест. */}
           <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} disabled={busy} />
         </div>
-        <div className="dlg__body">{children}</div>
+        {/* ★ СКРОЛЛЕР НАЗЫВАЕТ СЕБЯ САМ. Признак стоит ВСЕГДА, а не только у
+            полноростного окна: он говорит про САМ элемент («я то, что скроллит»),
+            а решает, кому это важно, семья (`[data-sheet-full] [data-sheet-scroller]`
+            отдаёт ему резерв под клавиатуру). У обычного окна правило семьи до
+            него не дотягивается, и лишним признак не становится. */}
+        <div className="dlg__body" {...sheetScroller}>{children}</div>
         {foot && !kbOpen && <div className="dlg__foot">{foot}</div>}
       </DialogContent>
     </UIDialog>
