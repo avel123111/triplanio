@@ -195,7 +195,12 @@ export const AuthProvider = ({ children }) => {
         // the server, TRIP-411), so the client no longer filters before sending —
         // both carriers are already param-keyed, so the campaign super-property is
         // unchanged; the RPC picks the four `signup_*` columns and nothing else.
-        const signupMarks = authUser.user_metadata?.signup_attribution || getSignupMarks();
+        // Read FIRST and unconditionally, because reading is also what SPENDS the
+        // OAuth stash, and a stash outliving its signup is inherited by whoever
+        // registers next in this tab. Inside a `||` that spending depended on which
+        // carrier won — the metadata path skipped it (TRIP-493). Priority unchanged.
+        const localMarks = getSignupMarks();
+        const signupMarks = authUser.user_metadata?.signup_attribution || localMarks;
         rememberSignupMarks(signupMarks);
 
         // Profile doesn't exist yet — create it за швом, идемпотентно (first login

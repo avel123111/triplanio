@@ -111,11 +111,12 @@ export function withVisitCampaign(url) {
  */
 export function setCampaign() {
   if (!isReady()) return;
-  const decision = resolveCampaign(
-    getActiveMarks(),
-    posthog?.get_property?.('camp_ts') || null,
-    Date.now(),
+  // The WHOLE stored set, not only its timestamp: `resolveCampaign` needs the
+  // stored marks to tell the same click coming round again from a new one.
+  const stored = Object.fromEntries(
+    CAMPAIGN_KEYS.map((key) => [key, posthog?.get_property?.(key) ?? null]),
   );
+  const decision = resolveCampaign(getActiveMarks(), stored, Date.now());
   if (!decision) return;
   // Both outcomes start by dropping what is stored: a new campaign must not blend
   // with leftovers of the old one, an expired one must stop riding events at all.
