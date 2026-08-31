@@ -1,6 +1,6 @@
 {
   "add_btn": "Añadir",
-  "add_place": "Añadir lugar",
+  "add_place": "Añadir visita",
   "added_manually": "Añadido manualmente",
   "all_stats": "Toda la estadística",
   "byyear_title": "Viajes por año",
@@ -21,7 +21,7 @@
   "delete_btn": "Eliminar",
   "delete_place_desc": "Esta acción no se puede deshacer. El lugar desaparecerá del mapa y de tus estadísticas.",
   "delete_place_q": "¿Eliminar {name}?",
-  "edit_place": "Editar lugar",
+  "edit_place": "Editar visita",
   "empty_sub": "Así se verá tu estadística. Puedes añadir lugares pasados manualmente — sin viaje.",
   "empty_title": "El mapa espera su primer pin",
   "err_date_order": "«Hasta» no puede ser anterior a «Desde»",
@@ -59,10 +59,10 @@
   "plan_trip": "Planificar viaje",
   "rec_cities": "Ciudades",
   "rec_days": "Días de viaje",
-  "rec_days_sub": "en total por ciudades",
+  "rec_days_sub": "en total de todos tus viajes",
   "rec_fav_city": "Ciudad favorita",
   "rec_fav_country": "País favorito",
-  "rec_longest": "El más grande",
+  "rec_longest": "El viaje más grande",
   "rec_soon": "aparecerá luego",
   "records_title": "Récords",
   "save_btn": "Guardar",
@@ -96,5 +96,5 @@
   "world_label": "mundo",
   "year_all": "Todo el tiempo",
   "year_review": "Resumen del año",
-  "year_review_soon": "Esta sección está en desarrollo. Vuelve un poco más tarde - ya estamos trabajando en ella."
+  "year_review_soon": "Esta sección está en desarrollo. Vuelve un poco más tarde, ya estamos trabajando en ella."
 }

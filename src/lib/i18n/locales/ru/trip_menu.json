@@ -2,7 +2,7 @@
   "budget": "Бюджет",
   "calendar": "Календарь",
   "chat": "Чат",
-  "documents": "Документы",
+  "documents": "Файлы",
   "free_trip_title": "Free-путешествие",
   "members": "Участники",
   "open": "Открыть меню",
@@ -10,6 +10,6 @@
   "section_manage": "Управление",
   "settings": "Настройки путешествия",
   "share": "Поделиться",
-  "timeline": "Хронология",
-  "upgrade_trip": "Улучшить путешествие"
+  "timeline": "Лента",
+  "upgrade_trip": "Улучшить до Pro"
 }

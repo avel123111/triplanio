@@ -1,6 +1,6 @@
 {
   "add_trip": "Добавить путешествие",
-  "add_trip_sub": "Собрать руками или начать с ИИ",
+  "add_trip_sub": "Собрать самому или попросить Triplanio",
   "ai": "Начать с ИИ",
   "ai_desc_short": "Описать словами и получить черновик",
   "brand_eyebrow": "Triplanio · Путешествия",
@@ -25,7 +25,7 @@
   "role_viewer": "Наблюдатель",
   "search_placeholder": "Поиск по названию, стране, городу, описанию",
   "shared_badge": "Совместный",
-  "start_manual": "Собрать руками",
+  "start_manual": "Собрать вручную",
   "start_with_ai": "Начать с Triplanio",
   "tab_active": "Активные",
   "tab_past": "Прошедшие"
