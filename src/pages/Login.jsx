@@ -20,15 +20,24 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 // метку кампании» должно приниматься здесь — иначе девятая дверь молча приедет
 // без метки, ровно как приехала One Tap (метку теряло хранилище, адрес бы донёс).
 //
-// Двери двух видов, и разделяет их не наше желание, а чужая проверка:
-//   · postLoginHref      — навигация, которую делаем МЫ. Метку несёт.
-//   · postLoginRedirectTo — адрес, который отдаём SUPABASE (redirectTo /
-//     emailRedirectTo). Он сверяется со списком Redirect URLs в настройках
-//     проекта, и query-строка, которую тот список не допускает, сломала бы вход
-//     целиком. Поэтому пока без метки; там её держит заначка. Проверить список —
-//     и обернуть здесь же, одной строкой: правило уже стоит на месте.
+// Двери двух видов, и обе несут метку — разделяет их только форма адреса:
+//   · postLoginHref      — навигация, которую делаем МЫ (путь).
+//   · postLoginRedirectTo — адрес, который отдаём SUPABASE (полный, с origin):
+//     `redirectTo` / `emailRedirectTo`.
+//
+// Вторая ветка метку не несла, пока не проверили ЧУЖУЮ сторону, а не свою
+// (TRIP-493). Замерено на dev-проекте зондом `/auth/v1/verify` с заведомо
+// негодным токеном — он отвечает 303 и показывает готовый адрес возврата:
+//   · адрес ВНЕ списка Redirect URLs не ломает вход, а молча уезжает на Site
+//     URL — то есть человек попал бы на лендинг вместо приложения (аллоу-лист
+//     несёт `https://triplanio.com/**` и `https://www.triplanio.com/**`, `**`
+//     покрывает и строку запроса, поэтому метка через него проходит);
+//   · query СОХРАНЯЕТСЯ дословно, а своё Supabase дописывает во ФРАГМЕНТ —
+//     столкнуться с нашей меткой ему нечем.
+// Наша сторона тоже чиста: `safeRedirect` в signupPrecheck и
+// requestPasswordReset смотрит только на хост, query ему безразличен.
 const postLoginHref = () => withVisitCampaign(postLoginPath());
-const postLoginRedirectTo = () => window.location.origin + postLoginPath();
+const postLoginRedirectTo = () => withVisitCampaign(window.location.origin + postLoginPath());
 
 /* floor-exempt: dsshare +30 — неавторизованная зона живёт на СВОЕЙ ДС (site.css
    §AUTH), а не на app-DS из src/design: перенос логина/join с компонентов
