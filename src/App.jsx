@@ -13,7 +13,7 @@ import { lazy, Suspense, useEffect } from 'react'
 // тосты в ДС, и это отдельная работа с апрувом, а не строчка в этом PR.
 /* floor-exempt: dsshare +5 — `<Toaster>` снят с барреля ради лендинга; сам компонент как был в components/ui, так и остался (апрув Pavel в PR) */
 import { Toaster } from "@/components/ui/toaster"
-import { track } from '@/lib/analytics'
+import { track, withVisitCampaign } from '@/lib/analytics'
 import { isProdHost } from '@/lib/analyticsEnv'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
@@ -114,11 +114,16 @@ function screenOpenEvent(pathname) {
  * то есть из эффекта мы бы записали адрес уже после того, как `Login`
  * смонтировался и прочитал хранилище, и возврат молча терялся бы. Запись
  * идемпотентна и без уборки, поэтому повтор в StrictMode безвреден.
+ *
+ * Адрес входа — через `withVisitCampaign`, как у всех переходов зоны в auth
+ * (`zoneCta.js`): метка кампании обязана ехать В АДРЕСЕ, иначе она теряется на
+ * первой же перезагрузке документа — а вход именно ею и заканчивается, уходя к
+ * провайдеру OAuth (TRIP-329/493).
  */
 function RedirectToLogin() {
   const { pathname, search } = useLocation();
   rememberPostLogin(pathname + search);
-  return <Navigate to="/login" replace />;
+  return <Navigate to={withVisitCampaign('/login')} replace />;
 }
 
 const AuthenticatedApp = () => {
