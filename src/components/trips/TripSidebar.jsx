@@ -144,8 +144,7 @@ export default function TripSidebar({
             {/* Апселл — ПУНКТ меню, а не баннер: тот же ряд, только в Pro-цвете,
                 и стоит он в общем списке под «Поделиться». В подвале колонки его
                 не видели: низ рейла — край экрана, туда не смотрят. */}
-            {/* i18n-ignore — «Pro» имя тарифа, не переводится */}
-            {showTail && showUpgrade && <RailItem icon="pro" label="Pro" pro onClick={onProUpsell} />}
+            {showTail && showUpgrade && <RailItem icon="pro" label={t('trip_menu.upgrade_trip')} pro onClick={onProUpsell} />}
           </div>
         )}
       </nav>
@@ -177,7 +176,7 @@ function SidebarSheetBody({
     ...(canShare && onShare ? [{ id: 'share', icon: 'share', labelKey: 'trip.share', onClick: onShare }] : []),
     // Апселл — такой же ряд меню, что и на десктопе, и ведёт в ту же модалку:
     // одно поведение — одна реализация, только оболочки разные.
-    ...(showUpgrade ? [{ id: 'pro', icon: 'pro', label: 'Pro', pro: true, onClick: onProUpsell }] : []),   // i18n-ignore — имя тарифа
+    ...(showUpgrade ? [{ id: 'pro', icon: 'pro', labelKey: 'trip_menu.upgrade_trip', pro: true, onClick: onProUpsell }] : []),
   ];
 
   return (
@@ -206,7 +205,7 @@ function SidebarSheetBody({
             {manageRows.map((row) => (
               <button key={row.id} className={'tm-manage__row' + (row.active ? ' is-active' : '') + (row.pro ? ' app-side__item--pro' : '')} onClick={row.onClick} aria-current={row.active ? 'page' : undefined}>
                 <span className="tm-manage__ico"><Icon name={row.icon} size={16} /></span>
-                <span className="tm-manage__lbl t-label">{row.label || t(row.labelKey)}</span>
+                <span className="tm-manage__lbl t-label">{t(row.labelKey)}</span>
                 <Icon name="chevron" size={16} className="tm-manage__chev" />
               </button>
             ))}

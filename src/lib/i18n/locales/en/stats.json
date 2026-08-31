@@ -1,6 +1,6 @@
 {
   "add_btn": "Add",
-  "add_place": "Add a place",
+  "add_place": "Add a visit",
   "added_manually": "Added manually",
   "all_stats": "All statistics",
   "byyear_title": "Trips by year",
@@ -21,7 +21,7 @@
   "delete_btn": "Delete",
   "delete_place_desc": "This can't be undone. The place will disappear from the map and from your stats.",
   "delete_place_q": "Delete {name}?",
-  "edit_place": "Edit place",
+  "edit_place": "Edit visit",
   "empty_sub": "This is how your stats will look. You can add past places manually — without a trip.",
   "empty_title": "The map awaits its first pin",
   "err_date_order": "\"To\" cannot be earlier than \"From\"",
@@ -59,7 +59,7 @@
   "plan_trip": "Plan a trip",
   "rec_cities": "Cities",
   "rec_days": "Days traveling",
-  "rec_days_sub": "across all cities",
+  "rec_days_sub": "across all trips",
   "rec_fav_city": "Favorite city",
   "rec_fav_country": "Favorite country",
   "rec_longest": "Biggest trip",
@@ -96,5 +96,5 @@
   "world_label": "world",
   "year_all": "All time",
   "year_review": "Year in review",
-  "year_review_soon": "This section is still in the works. Check back a little later - we're building it."
+  "year_review_soon": "This section is still in the works. Check back a little later, we're building it."
 }
