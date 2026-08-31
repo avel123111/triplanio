@@ -1,0 +1,70 @@
+# Triplanio
+
+> Plan your whole trip in one place: timeline, map, budget and bookings, with an AI agent that reads your confirmations. Free to start, no card.
+
+Triplanio is a web app for planning multi-city trips and sharing the costs of them. A trip holds its cities and dates, a day-by-day timeline, the route on a map, every booking, the budget in any currency, and the travel documents — all in one place, for one traveller or a whole group. An AI agent reads forwarded booking confirmations and files them into the trip; a Telegram assistant answers questions about the itinerary while you are on the road.
+
+This file is written for AI agents and answer engines: the site itself is a JavaScript application, so its pages carry no text until they are rendered. Everything below is the same content a person sees on https://www.triplanio.com/.
+
+## What it does
+
+- Day-by-day plan — transfers, check-ins and plans lined up hour by hour, easy to scan, impossible to mix up.
+- Your route on the map — cities, stays and transfers line up into one clear route, the whole trip at a glance.
+- Budget on autopilot — booking prices land in the budget automatically; cash expenses take two taps to add. Any currency.
+- Documents at hand — tickets, vouchers, passports and insurance live inside the trip, two taps away, even offline.
+- Booking status — every item is either done or still waiting, so you always know what is left to arrange.
+- AI booking recognition — forward an email, paste text or upload a PDF or a screenshot; dates, places, confirmation codes and prices are extracted automatically and the trip updates everywhere at once.
+- Plan together — invite any number of companions into a trip; everyone works in the same space, uploads bookings and sees changes live, and the group chat includes the AI assistant.
+- Telegram assistant — reminders before check-ins, departures and cancellation deadlines, answers about the itinerary with bookings, locations and files attached, and advice on the go, without switching apps mid-journey.
+- Public share link — a read-only view of the trip opens in any browser, with no registration and no app install.
+
+## Who it's for
+
+- Solo traveller — a quiet command centre: every reservation, address and note exactly where you left it, with an AI that watches the deadlines.
+- Trip for two — one shared plan instead of "I thought you booked it": both of you see everything, both can add anything.
+- Group adventure — everyone plans in one space, uploads bookings, splits tasks and tracks the shared status.
+
+## Pricing
+
+Core planning is free, and no payment card is needed to start: trips, bookings, budget, documents and the timeline are all in the free plan. Advanced collaboration and the AI features are part of Pro.
+
+- Pro, monthly — EUR 6.99 per month.
+- Pro, yearly — EUR 39.99 per year.
+- Pro for a single trip — EUR 8.99, one-time, unlocks Pro features for that one trip and does not renew.
+
+Prices are per account (not per traveller in a trip) and are charged in euro. A subscription can be cancelled at any time from the account settings.
+
+## FAQ
+
+### Is Triplanio free to use?
+
+Yes — start planning for free with all the core features: trips, bookings, budget, documents and the timeline. Advanced collaboration and AI features are part of the Pro plan.
+
+### How does the AI booking recognition work?
+
+Forward a confirmation email, paste text or upload a PDF or screenshot. The AI extracts dates, locations, confirmation codes and prices, then files a structured booking into the right trip — and updates your budget and readiness status automatically.
+
+### Can my friends plan the trip with me?
+
+Absolutely. Invite any number of companions into a trip. Everyone works in the same space, uploads bookings, sees changes live — and the group chat includes the AI assistant.
+
+### Do people need an account to view my shared trip?
+
+No. A public share link opens a read-only view of your trip in any browser — no registration, no app install.
+
+### What can the Telegram assistant do?
+
+It sends reminders about trip events, answers questions about your itinerary, shares booking details, locations and files, and gives general travel advice — all inside Telegram, no app needed mid-journey.
+
+### Are my documents and data safe?
+
+Your data is encrypted in transit and at rest. Documents are visible only to you and the companions you invite. Public links show the plan — never your personal documents.
+
+## Links
+
+- Home: https://www.triplanio.com/
+- Demo trip (a full example trip, no account needed): https://www.triplanio.com/d/europe-may-2027
+- Terms of Service: https://www.triplanio.com/terms
+- Privacy Policy: https://www.triplanio.com/privacy
+
+Contact: info@triplanio.com
