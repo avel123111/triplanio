@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { track } from '@/lib/analytics';
+import { track, withVisitCampaign } from '@/lib/analytics';
 import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
@@ -14,6 +14,21 @@ import AuthShell from '@/components/site/AuthShell';
 import { setRemember as setRememberFlag } from '@/api/authStorage';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+// Куда человек попадает после входа. ОДНО место, а не восемь: из этого экрана
+// ведут восемь дверей, каждая ЗАМЕНЯЕТ документ, и решение «несёт ли адрес
+// метку кампании» должно приниматься здесь — иначе девятая дверь молча приедет
+// без метки, ровно как приехала One Tap (метку теряло хранилище, адрес бы донёс).
+//
+// Двери двух видов, и разделяет их не наше желание, а чужая проверка:
+//   · postLoginHref      — навигация, которую делаем МЫ. Метку несёт.
+//   · postLoginRedirectTo — адрес, который отдаём SUPABASE (redirectTo /
+//     emailRedirectTo). Он сверяется со списком Redirect URLs в настройках
+//     проекта, и query-строка, которую тот список не допускает, сломала бы вход
+//     целиком. Поэтому пока без метки; там её держит заначка. Проверить список —
+//     и обернуть здесь же, одной строкой: правило уже стоит на месте.
+const postLoginHref = () => withVisitCampaign(postLoginPath());
+const postLoginRedirectTo = () => window.location.origin + postLoginPath();
 
 /* floor-exempt: dsshare +30 — неавторизованная зона живёт на СВОЕЙ ДС (site.css
    §AUTH), а не на app-DS из src/design: перенос логина/join с компонентов
@@ -265,7 +280,7 @@ export default function Login() {
   useEffect(() => {
     if (isRecoveryRoute) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) window.location.href = postLoginPath();
+      if (session) window.location.href = postLoginHref();
     });
   }, [isRecoveryRoute]);
 
@@ -381,7 +396,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + postLoginPath(),
+        redirectTo: postLoginRedirectTo(),
         queryParams: { prompt: 'select_account' },
       },
     });
@@ -427,7 +442,7 @@ export default function Login() {
       // page stays mounted on /login - redirect explicitly (same as email login
       // and the Google redirect flow's redirectTo). Keep isLoading=true so the
       // buttons don't flash re-enabled before the navigation tears the page down.
-      window.location.href = postLoginPath();
+      window.location.href = postLoginHref();
     } catch (err) {
       reportAuthError(err, 'id_token');
       setError(authErrorText(t, err));
@@ -502,7 +517,7 @@ export default function Login() {
     rememberAttributionForRedirect();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
-      options: { redirectTo: window.location.origin + postLoginPath() },
+      options: { redirectTo: postLoginRedirectTo() },
     });
     if (error) { reportAuthError(error, 'oauth'); trackSignupFailed('oauth_error', 'apple'); setError(authErrorText(t, error)); setIsLoading(false); }
   };
@@ -517,7 +532,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { reportAuthError(error, 'signin'); setError(authErrorText(t, error)); setIsLoading(false); return; }
     track('user_logged_in', { method: 'email' });
-    window.location.href = postLoginPath();
+    window.location.href = postLoginHref();
   };
 
   const handleSignup = async (e) => {
@@ -540,7 +555,7 @@ export default function Login() {
     // server (signupPrecheck) before creating the account. This lets us show an
     // explicit message instead of a silent "check your email".
     const { data: pre, error: preErr } = await invokeFn('signupPrecheck', {
-      body: { email, redirectTo: window.location.origin + postLoginPath() },
+      body: { email, redirectTo: postLoginRedirectTo() },
     });
     // Every rejection carries its own reason: without it the gap between
     // "opened the form" and "registered" is one number that cannot be acted on
@@ -573,7 +588,7 @@ export default function Login() {
         // Undefined when the visit carried no marks.
         data: { full_name: name, language: lang, signup_attribution: getSignupMarks() || undefined },
         // Land confirmed users in the app, not on the Site-URL landing page.
-        emailRedirectTo: window.location.origin + postLoginPath(),
+        emailRedirectTo: postLoginRedirectTo(),
       },
     });
     if (error) { reportAuthError(error, 'signup'); trackSignupFailed('signup_error'); setError(authErrorText(t, error)); setIsLoading(false); }
@@ -646,7 +661,7 @@ export default function Login() {
     const flow = resendFlow === 'signup' ? 'signup' : 'reset';
     const fn = flow === 'signup' ? 'signupPrecheck' : 'requestPasswordReset';
     const body = flow === 'signup'
-      ? { email: sentEmail, redirectTo: window.location.origin + postLoginPath() }
+      ? { email: sentEmail, redirectTo: postLoginRedirectTo() }
       : { email: sentEmail, redirectTo: window.location.origin + '/reset-password' };
     const { data, error: invErr } = await invokeFn(fn, { body });
     setIsLoading(false);
