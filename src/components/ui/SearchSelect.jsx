@@ -34,7 +34,9 @@ import { sheetScroller } from '@/components/ui/sheetShell';
  *     пяти категорий бюджета или трёх ролей участника искать нечего, а пустая
  *     строка поиска над коротким листом — шум; закрытые списки поэтому берут
  *     `searchable={false}`. Это ПРОП примитива, а не второй компонент: пикер в
- *     приложении один (TRIP-484 §3).
+ *     приложении один (TRIP-484 §3). Он же решает РОСТ шторки на телефоне —
+ *     правило `PickerSheet` «есть поиск -> полный рост» здесь только питается
+ *     фактом, а не объявляется заново (TRIP-498).
  *   ...rest                      — садятся на ТРИГГЕР: он и есть видимое поле,
  *     поэтому через этот же канал едет состояние валидации (`{...fieldState()}`),
  *     как у DateTimeInput.
@@ -202,7 +204,14 @@ export default function SearchSelect({
           'aria-haspopup': 'dialog',
           'aria-expanded': open,
         })}
-        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl} full pinned>
+        {/* ★ РОСТ — СЛЕДСТВИЕ ПОИСКА, А НЕ ЛИТЕРАЛ (TRIP-498). Здесь стояло
+            `full pinned` без условия, и проп `searchable` управлял только тем,
+            рисовать ли поле: закрытый список (три роли, пять категорий) открывался
+            модальным экраном, пустым на девять десятых, — ровно тем, что шапка
+            `PickerSheet` называет запрещённым. Оба признака идут ОТ ОДНОГО факта:
+            рост нужен затем, чтобы лист не прыгал под встающей клавиатурой, а
+            клавиатуру поднимает поле — нет поля, нет ни того, ни другого. */}
+        <PickerSheet open={open} onOpenChange={onOpenChange} title={title} search={searchEl} full={searchable} pinned={searchable}>
           {listEl}
         </PickerSheet>
       </>
