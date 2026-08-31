@@ -43,6 +43,15 @@
 // ⚠️ Глубокий путь, а не `posthog-js/slim`: у пакета нет поля `exports`, только
 // `main`/`module`, поэтому короткого псевдонима не существует.
 import posthog from 'posthog-js/dist/module.slim.js';
+// Реплей приезжает ОТДЕЛЬНОЙ посылкой, потому что бандл slim (TRIP-475). Slim —
+// это ядро: capture / identify / group. Всё остальное существует, только если
+// передать его классы в `__extensionClasses` — и НЕ передать не значит «выключено»,
+// значит «расширения нет»: `startSessionRecording()` тогда выставляет флаг, который
+// внутри SDK читает `this.sessionRecording?.startIfEnabledOrStop()`, а он undefined.
+// Ни ошибки, ни запроса, ни лога — запись просто не начинается (замер TRIP-500).
+// Сам рекордер (rrweb, ~200 КБ) в бандл по-прежнему не попадает: он грузится с
+// нашего /ingest по требованию, здесь только контроллер, решающий когда его звать.
+import { SessionReplayExtensions } from 'posthog-js/dist/extension-bundles';
 import { analyticsEnabledHere, isLocalhost, isProdHost } from '@/lib/analyticsEnv';
 
 const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
@@ -92,6 +101,14 @@ export function boot(client) {
     autocapture: false,
     capture_pageview: false, // our own page_view via track() replaces it (no dupe)
     capture_performance: false,
+    // Адрес уезжает в событие БЕЗ фрагмента. После OAuth-редиректа Supabase
+    // кладёт в `#` пару access/refresh-токенов, и `$current_url` +
+    // `$session_entry_url` увозили их в аналитику как обычную строку (замер
+    // TRIP-500: живой JWT в свойстве события). Начиная с набора умолчаний
+    // '2026-06-25' это дефолт SDK; мы на '2026-05-30', поэтому объявляем явно —
+    // поднимать весь набор ради одного пункта значит менять заодно запись
+    // canvas и тела запросов.
+    disable_capture_url_hashes: true,
     // Replay is CONSENT-GATED, not off. The client boots before the banner is
     // answered, and a recording of the screen is the one thing that must never
     // happen on an unanswered visit; `onConsent` lifts this. WHICH sessions are
@@ -122,6 +139,7 @@ export function boot(client) {
       maskAllInputs: true,
       blockSelector: '.avatar',
     },
+    __extensionClasses: { ...SessionReplayExtensions },
   });
   // `env` super-property tags every event → prod dashboards filter env=prod.
   ph.register({ env: isProdHost ? 'prod' : 'dev' });
