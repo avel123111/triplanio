@@ -2863,7 +2863,7 @@ button.input[data-empty] { color: var(--muted-2); }
 }
 
 .field-row { display: grid; gap: 12px; }
-.field-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.field-row.cols-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 /* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
    неравные, и низ у них разной высоты - выравнивание по НИЗУ, иначе контрол
    всплывает к верхнему краю более высокого поля. */
@@ -3532,11 +3532,29 @@ button.input[data-empty] { color: var(--muted-2); }
    Зазор берётся с ТОЙ ЖЕ шкалы, что у ряда и колонки: одна лестница на три
    примитива, иначе шкала снова расползётся по трём именам. */
 .grid { display: grid; gap: var(--sp-5); }
-.grid--2 { grid-template-columns: 1fr 1fr; }
+/* ★★ ТРЕК НЕ САЙЗИТСЯ СОДЕРЖИМЫМ, И ЭТО НЕ ПРИДИРКА (TRIP-495).
+   `1fr` — это `minmax(auto, 1fr)`, то есть у трека АВТОМИНИМУМ = min-content.
+   Элемент сетки раздувается до самой длинной НЕРАЗРЫВНОЙ строки внутри, и всё
+   под ним наследует эту ширину: `min-width: 0` у поля, у обёртки и у `.trunc`
+   уже ничего не решают — они честно сжимаются ВНУТРИ бокса, который сам стал
+   шире контейнера. Замер на блоке «Откуда/Куда» окна события (390×844): контейнер
+   сетки 292, элемент сетки 719, тело шита `scrollWidth` 767 против `clientWidth`
+   388 — экран уезжал вширь, а адрес не обрезался.
+   Нулевой минимум возвращает работу тому, чьё это дело: ширину держит ТРЕК,
+   обрезает себя КОНТРОЛ. Тот же приём уже стоит у `.field-row--aside` (TRIP-484).
+   visual-diff-exempt: .grid--2 grid-template-columns — трек получает нулевой минимум: содержимое больше не диктует ширину
+   visual-diff-exempt: .grid--split grid-template-columns — то же у второго примитива семьи
+   visual-diff-exempt: .grid--split {@media (max-width: 880px)} grid-template-columns — и у его одноколоночной ступени
+   visual-diff-exempt: .fld-grid {@media (max-width: 640px)} grid-template-columns — сетка полей на телефоне: одна колонка, тот же нулевой минимум
+   visual-diff-exempt: .field-row grid-template-columns — семья ряда полей: тот же минимум (ключ гарда со стороны базового класса)
+   visual-diff-exempt: .cols-2 grid-template-columns — тот же ключ со стороны модификатора
+   visual-diff-exempt: .field-row {@media (max-width: 720px)} grid-template-columns — одноколоночная ступень ряда полей: тот же минимум
+   visual-diff-exempt: .cols-2 {@media (max-width: 720px)} grid-template-columns — тот же ключ со стороны модификатора */
+.grid--2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 /* Две колонки, что стекаются в одну на планшете (брейкпоинт 880, R2). Общая
    раскладка «список + деталь» / «виз + сводка» — вместо приватных сеток экранов. */
-.grid--split { grid-template-columns: 1fr 1fr; }
-@media (max-width: 880px) { .grid--split { grid-template-columns: 1fr; } }
+.grid--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 880px) { .grid--split { grid-template-columns: minmax(0, 1fr); } }
 /* Кнопка в ячейке сетки переносит строку. `.btn` по умолчанию nowrap, а трек
    сетки задаёт ей ширину извне - значит длинная локаль («Solo las necesarias»)
    не сжимается, а вылезает. Свойство принадлежит паре «кнопка в сетке», а не
@@ -5202,7 +5220,7 @@ button.input[data-empty] { color: var(--muted-2); }
   /* TRIP-203: голые h1/h2 больше НЕ понижаются вручную — каноны --fs-h1/--fs-h2
      теперь fluid (clamp) и шринкуются токеном единообразно на всех экранах. */
   /* Stack 2-column grids to 1 on small screens */
-  .field-row.cols-2 { grid-template-columns: 1fr !important; }
+  .field-row.cols-2 { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
 /* (removed) The old `.mobile-bottom-nav` + `.trip-2col/3col` + `.budget-2col`
@@ -9573,7 +9591,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .f-sec{ color:var(--hl);display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--hl) 18%,transparent);}
 .fld-grid{gap:9px 13px;}
-@media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
+@media(max-width:640px){.fld-grid{grid-template-columns:minmax(0,1fr);}}
 
 /* booking-link platform logo chip (was unsized → giant logo) */
 .bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center; color:#fff;flex:none;overflow:hidden;}
