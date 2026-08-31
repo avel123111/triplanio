@@ -94,7 +94,7 @@ const TX = {
     'field': 'Подпись, подсказка, обязательность; состояния prop-driven.',
     'input': 'Декорации поля, которые эмитит сам <Input>: иконка, кольцо, валюта, ряд.',
     'autocomplete': 'Поиск-по-мере-ввода: поле + выпадающий лист на Popover (лист-хром .ss-* общий с SearchSelect). Флип и «клик мимо» — от Popover.',
-    'full-surface': 'Экран во весь вьюпорт. Их ДВЕ и это одна вещь: шторка пикера и оболочка панелей редактора — общая коробка, краска (--bg), бровь и резерв под клавиатуру у скроллера. Смотреть на 390: правила семьи живут ≤640.',
+    'full-surface': 'Экран во весь вьюпорт. Их ТРИ и это одна вещь: шторка пикера, оболочка панелей редактора и окно с полями (<Dialog full>) — общая коробка, краска (--bg), бровь и резерв под клавиатуру у скроллера. Смотреть на 390: правила семьи живут ≤640.',
     'avatar': 'Инициалы / фото / AI / плейсхолдер / удалён; размеры и стопка.',
     'sev': 'Тон по уровню важности (info/warning/error/success/quiet).',
     'empty-state': 'Каркас с иконкой, текстом и призывом к действию.',
@@ -142,8 +142,11 @@ const TX = {
   chipAdd: 'Добавить переезд', chipMore: '+2 ещё', chipRemove: 'Снять фильтр',
   roleOwner: 'Владелец', roleAdmin: 'Админ', roleViewer: 'Наблюдатель', rolePending: 'Ожидает',
   overnight: 'Ночной переезд', acSearchPh: 'Начните вводить город…',
-  fsPicker: 'Шторка пикера', fsPanel: 'Панель редактора',
+  fsPicker: 'Шторка пикера', fsPanel: 'Панель редактора', fsDialog: 'Окно с полями',
   fsPickerTitle: 'Полноростная шторка', fsPanelTitle: 'Полноростная панель',
+  fsDialogTitle: 'Полноростное окно', fsDialogField: 'Что случилось',
+  fsDialogHint: 'То же окно без `full` — шторка по содержимому: сравнить переключателем.',
+  fsDialogOn: 'Включить полный рост', fsDialogOff: 'Выключить полный рост',
   fsBack: 'Назад', fsCancel: 'Отмена', fsSave: 'Сохранить',
   fsPhaseHint: 'Вид точки', fsChange: 'Изменить', fsAdd: 'Добавить',
   // Подписи плиток — те же четыре вида точки, что у настоящего композера
@@ -333,12 +336,23 @@ function FullSurfaceDemo() {
      залипала там, где её бросил палец. Стенд держит стопку затем, чтобы это
      проверялось жестом, а не рассуждением. */
   const [layers, setLayers] = useState(/** @type {string[]} */ ([]));
+  /* ★ ТРЕТЬЯ ПОВЕРХНОСТЬ СЕМЬИ — ОКНО (TRIP-499), и роль у него ПЕРЕКЛЮЧАЕМАЯ.
+     Стенд показывает не «как выглядит полный рост» (это видно и на одной кнопке),
+     а РАЗНИЦУ: то же окно, то же содержимое, отличается один проп. Без сравнения
+     рядом «92% против 100%» на глаз не читается — а именно им роль и меряют. */
+  const [dlgFull, setDlgFull] = useState(/** @type {boolean|null} */ (null));
   const top = layers[layers.length - 1] || null;
   const rows = KIT_CITIES.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
   return (
-    <div className="row row--g4">
+    /* ★ ПЕРЕНОС — НЕ УКРАШЕНИЕ. Третья кнопка увела ряд за край: замер на 390 —
+       ряд 437 px, правая кнопка кончалась на 476, переполнение 86 px, и движок
+       отзумивал страницу целиком (`innerWidth` 477 вместо 390). Стенд, который
+       сам просит смотреть на 390, обязан на 390 помещаться. Класс канонный
+       (`.row--wrap`), это та же семья ряда. */
+    <div className="row row--g4 row--wrap">
       <Btn variant="secondary" onClick={() => setPicker(true)}>{TX.fsPicker}</Btn>
       <Btn variant="secondary" onClick={() => setLayers(['city'])}>{TX.fsPanel}</Btn>
+      <Btn variant="secondary" onClick={() => setDlgFull(true)}>{TX.fsDialog}</Btn>
 
       <PickerSheet
         open={picker}
@@ -408,6 +422,36 @@ function FullSurfaceDemo() {
           </div>
         </div>
       </LpSheet>
+
+      {/* Окно берёт у семьи коробку, краску, бровь и резерв под клавиатуру; своё у
+          него — карточка `.dlg` между поверхностью и телом. `pinned` не даётся
+          намеренно: приём ключуется на слотах пикера, которых тут нет. */}
+      {dlgFull !== null && (
+        <Dialog
+          title={TX.fsDialogTitle}
+          icon="headset"
+          full={dlgFull}
+          onClose={() => setDlgFull(null)}
+          foot={(
+            <>
+              <Btn variant="quiet" onClick={() => setDlgFull(!dlgFull)}>
+                {dlgFull ? TX.fsDialogOff : TX.fsDialogOn}
+              </Btn>
+              <Btn variant="primary" onClick={() => setDlgFull(null)}>{TX.fsSave}</Btn>
+            </>
+          )}
+        >
+          <div className="col">
+            <Field label={TX.fsDialogField}>
+              <Textarea rows={5} placeholder={TX.acSearchPh} />
+            </Field>
+            <span className="t-meta muted">{TX.fsDialogHint}</span>
+            {KIT_CITIES.map((c) => (
+              <Card key={c.id} recessed radius="md"><div className="t-strong">{c.name}</div><div className="t-meta muted">{c.sub}</div></Card>
+            ))}
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }
@@ -813,7 +857,7 @@ const RECIPES = {
   }],
 
   'full-surface': () => [{
-    items: [it('обе поверхности семьи — открыть и сравнить', <FullSurfaceDemo />, true)],
+    items: [it('три поверхности семьи — открыть и сравнить', <FullSurfaceDemo />, true)],
   }],
 
   autocomplete: () => [{

@@ -811,7 +811,6 @@ export default function ScreenAccount() {
                     onChange={setLang}
                     options={LANGS}
                     getKey={(l) => l.code}
-                    matches={(l, q) => l.native.toLowerCase().includes(q) || l.sub.toLowerCase().includes(q) || l.code.includes(q)}
                     renderValue={(l) => (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                         <Tile as="span" className="acct-lang__flag">{l.flag}</Tile>{l.native}
@@ -824,8 +823,13 @@ export default function ScreenAccount() {
                         <span className="t-meta muted">{l.sub}</span>
                       </>
                     )}
-                    searchPlaceholder={t('common.search')}
-                    emptyText={t('common.not_found')}
+                    /* Языка три — искать нечего, как у ролей участника. Без поиска
+                       шторка на телефоне встаёт по содержимому: правило живёт в
+                       `PickerSheet`, сюда едет одним фактом (TRIP-498). Вместе с
+                       поиском ушли мёртвые при нём `matches` (фильтр не зовут),
+                       `searchPlaceholder` и `emptyText` (лист из трёх статичных
+                       строк пустым не бывает). */
+                    searchable={false}
                     title={t('settings.language')}
                     width={240}
                   />

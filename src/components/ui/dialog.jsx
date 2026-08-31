@@ -76,12 +76,22 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
  *  ⚠️ Аннотация стоит НА ПАРАМЕТРЕ, а не перед `const`: функция здесь -
  *  АРГУМЕНТ `forwardRef`, и `@param` над объявлением к ней не относится (первая
  *  редакция так и сделала, ошибки остались - поймано прогоном, не чтением). */
-const DialogContent = React.forwardRef((/** @type {{ className?: string, style?: any, children?: any } & import('react').ComponentPropsWithoutRef<typeof DialogPrimitive.Content>} */ { className, style, children, ...props }, ref) => {
+/** ★ `full` ВЫНУТ ИЗ ОСТАТКА ЯВНО, И ЭТО НЕ СТИЛЬ. Остаток пропов уезжает в ДВА
+ *  разных места: на телефоне в `SheetSurface` (там роль и нужна), на десктопе в
+ *  `DialogPrimitive.Content`, то есть в конечном счёте на DOM-узел — и `full`
+ *  сел бы туда неизвестным атрибутом с руганью React. Роль в принципе мобильная:
+ *  «экран во весь вьюпорт» — это про телефон, на десктопе окно остаётся окном.
+ *
+ *  `pinned` СЮДА НЕ ПРОВОДИТСЯ НАМЕРЕННО. Приём «поле стоит, едет заливка»
+ *  ключуется на `.ss-list`/`.ss-search` — слотах пикера, которых у окна нет; окно
+ *  получило бы ПОЛОВИНУ анимации. Это уже записано в `app.css` про панель
+ *  редактора, и здесь тот же вывод: окно въезжает штатным слайдом vaul. */
+const DialogContent = React.forwardRef((/** @type {{ className?: string, style?: any, full?: boolean, children?: any } & import('react').ComponentPropsWithoutRef<typeof DialogPrimitive.Content>} */ { className, style, full = false, children, ...props }, ref) => {
   const isSheet = React.useContext(ResponsiveSheetCtx)
 
   if (isSheet) {
     return (
-      <SheetSurface className="dlg-modal" backdropClassName="dlg-backdrop" grip={false} contentRef={ref} {...props}>
+      <SheetSurface className="dlg-modal" backdropClassName="dlg-backdrop" grip={false} full={full} contentRef={ref} {...props}>
         <div className={cn("dlg", className)} style={style}>
           {/* Грип ВНУТРИ карточки: шторкой становится само окно, и «бровь»
               принадлежит ему, а не порталу. */}
