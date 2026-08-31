@@ -16,6 +16,7 @@ import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 import Stay22HotelList from '@/components/bookings/Stay22HotelList';
 import ViatorActivityList from '@/components/bookings/ViatorActivityList';
+import { sheetScroller } from '@/components/ui/sheetShell';
 
 // Visual + copy metadata per fork type. Service colours (esim/car/insurance)
 // come from the shared SERVICE_KINDS source so the fork modal matches the
@@ -306,7 +307,7 @@ export default function ForkPartnerModal({
   if (embedded) {
     return (
       <>
-        <div className="lp-b scrollbar-thin">{body}</div>
+        <div className="lp-b scrollbar-thin" {...sheetScroller}>{body}</div>
         {styleTag}
       </>
     );
@@ -320,7 +321,7 @@ export default function ForkPartnerModal({
           <Tile as="span" className="lp-ic" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}><ManualIcon size={16} /></Tile>
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
-        <div className="lp-b scrollbar-thin">{body}</div>
+        <div className="lp-b scrollbar-thin" {...sheetScroller}>{body}</div>
         {styleTag}
       </div>
     );

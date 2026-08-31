@@ -13,7 +13,10 @@ import { Sheet } from '@/components/ui/Sheet';
  *   есть поиск -> шторка во весь рост, поле пришпилено сверху, скроллит лист;
  *   нет поиска  -> шторка по содержимому (три роли во весь экран — модальный
  *                  экран ради трёх строк).
- * Скин полного роста — `.sheet--full` (app.css, там же разбор анимации).
+ * Полный рост — РОЛЬ поверхности, и её объявляет шов: проп `full` ставит признак
+ * `data-sheet-full`, по которому семья (эта шторка и оболочка панелей редактора)
+ * берёт коробку, краску и резерв под клавиатуру из ОДНОГО правила (app.css, там
+ * же разбор анимации въезда).
  * Поиск передаётся УЗЛОМ: у двух движков это разные поля, а поверхность отвечает
  * за геометрию, не за ввод.
  *
@@ -84,10 +87,16 @@ export function usePickerFocus() {
  * переход один, обработчиков пришлось бы вешать четыре. Блюрим только СВОЁ
  * поддерево (`contains`) — фокус, возвращённый Radix на триггер, не наш.
  *
+ * ⚠️ `pinned` ОБЪЯВЛЯЕТ ВЫЗЫВАТЕЛЬ, И ЭТО НЕ ДУБЛЬ `search`. Вывести его из слота
+ * нельзя: поле приезжает и слотом (оба движка выбора), и ВНУТРИ содержимого
+ * (композер города в режиме `embedded`). А главное — он обязан быть НЕПОДВИЖНЫМ:
+ * у композера поле живёт только на первой фазе, и любой вывод «поле сейчас есть»
+ * отвалится на второй, вернув собственный въезд vaul посреди жизни поверхности
+ * (разбор — в шапке `ui/sheetShell`).
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any,
- *   search?: any, full?: boolean, children?: any }} p
+ *   search?: any, full?: boolean, pinned?: boolean, children?: any }} p
  */
-export function PickerSheet({ open, onOpenChange, title, search = null, full = false, children }) {
+export function PickerSheet({ open, onOpenChange, title, search = null, full = false, pinned = false, children }) {
   const boxRef = useRef(/** @type {any} */ (null));
   useEffect(() => {
     if (open) return;
@@ -100,7 +109,8 @@ export function PickerSheet({ open, onOpenChange, title, search = null, full = f
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      className={full ? 'sheet--full' : ''}
+      full={full}
+      pinned={pinned}
       contentRef={boxRef}
     >
       {search}
