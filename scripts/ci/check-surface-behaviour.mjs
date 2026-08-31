@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 /**
- * ПОВЕДЕНЧЕСКАЯ ПРИЁМКА ПИКЕРА — то, чего не видит НИ ОДИН гард репозитория.
+ * ПОВЕДЕНЧЕСКАЯ ПРИЁМКА ПОВЕРХНОСТЕЙ — то, чего не видит НИ ОДИН гард репозитория.
+ *
+ * ★ ИМЯ РАСШИРЕНО ВМЕСТЕ С ПЕРИМЕТРОМ (TRIP-494). Гард звался «пикером», пока
+ * проверял один экран; теперь он проверяет СЕМЬЮ полноростных поверхностей —
+ * шторку пикера и оболочку панелей редактора, — и имя «пикер» врало бы ровно
+ * так же, как врут разъехавшиеся комментарии.
  *
  * ЗАЧЕМ. Все тесты проекта — грепы по исходникам: jsdom и testing-library в
  * зависимостях нет. Они доказывают, что код ВЫГЛЯДИТ как надо. Цена записана:
@@ -37,7 +42,7 @@ const check = (ok, what, detail = '') => {
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-console.log(`check-picker-behaviour: ${BASE}/kit/autocomplete (390x844, touch)\n`);
+console.log(`check-surface-behaviour: ${BASE} (390x844, touch)\n`);
 await page.goto(`${BASE}/kit/autocomplete`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1200);
 
@@ -51,7 +56,7 @@ await page.evaluate(() => {
   window.__f = [];
   const t = performance.now();
   (function tick() {
-    const s = document.querySelector('.sheet--full');
+    const s = document.querySelector('[data-sheet-full]');
     const i = s && s.querySelector('input.input');
     const l = s && s.querySelector('.ss-list');
     if (s) window.__f.push({
@@ -77,16 +82,16 @@ check(span('list') > 100,
   'панель ЕДЕТ (шторка выезжает, а не появляется)', `размах листа ${span('list')}px`);
 
 /* 2. ГЛАВНОЕ: клик по пункту выбирает пункт. Именно это упало в проде. */
-const field = page.locator('.sheet--full input.input');
+const field = page.locator('[data-sheet-full] input.input');
 await field.fill('Мад');
 await page.waitForTimeout(400);
-const rows = await page.locator('.sheet--full .ss-opt').count();
+const rows = await page.locator('[data-sheet-full] .ss-opt').count();
 check(rows > 0, 'лист показал строки по запросу', `строк: ${rows}`);
 
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 140)));
 if (rows > 0) {
-  await page.locator('.sheet--full .ss-opt').first().tap();
+  await page.locator('[data-sheet-full] .ss-opt').first().tap();
   await page.waitForTimeout(600);
   const value = await page.locator('button.input').first().textContent();
   check(/Мадрид/.test(value || ''), 'КЛИК ПО ПУНКТУ ВЫБРАЛ ПУНКТ', `в поле: «${(value || '').trim()}»`);
@@ -99,10 +104,10 @@ if (rows > 0) {
    потерю моделируем: шлём строке только пару pointerdown/pointerup. */
 await trigger.tap();
 await page.waitForTimeout(700);
-await page.locator('.sheet--full input.input').fill('Мад');
+await page.locator('[data-sheet-full] input.input').fill('Мад');
 await page.waitForTimeout(400);
 const pointerOnly = await page.evaluate(() => {
-  const row = document.querySelector('.sheet--full .ss-opt');
+  const row = document.querySelector('[data-sheet-full] .ss-opt');
   if (!row) return 'строки нет';
   const r = row.getBoundingClientRect();
   const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
@@ -125,10 +130,10 @@ check(pointerOnly === null && /Мадрид/.test(pointerValue || ''),
    держит порог смещения. */
 await trigger.tap();
 await page.waitForTimeout(700);
-await page.locator('.sheet--full input.input').fill('Мад');
+await page.locator('[data-sheet-full] input.input').fill('Мад');
 await page.waitForTimeout(400);
 const dragged = await page.evaluate(() => {
-  const row = document.querySelector('.sheet--full .ss-opt');
+  const row = document.querySelector('[data-sheet-full] .ss-opt');
   if (!row) return 'строки нет';
   const r = row.getBoundingClientRect();
   const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
@@ -141,7 +146,7 @@ const dragged = await page.evaluate(() => {
   return null;
 });
 await page.waitForTimeout(500);
-const stillOpen = await page.locator('.sheet--full .ss-opt').count();
+const stillOpen = await page.locator('[data-sheet-full] .ss-opt').count();
 check(dragged === null && stillOpen > 0,
   'ПРОТЯЖКА ПО СПИСКУ НЕ ВЫБИРАЕТ (скролл остался скроллом)',
   dragged || `лист на месте, строк: ${stillOpen}`);
@@ -162,12 +167,70 @@ const blurAt = await page.evaluate(() => window.__blurAt);
 check(blurAt != null && blurAt < 120,
   'закрытие снимает фокус сразу', `focusout на ${blurAt}-й мс (было 500 — клавиатура отставала)`);
 
+/* ── СЕМЬЯ ПОЛНОРОСТНЫХ ПОВЕРХНОСТЕЙ (TRIP-494) ─────────────────────────────
+   Их ДВЕ, и это одна и та же вещь. До сведения они отличались краской (шторка
+   `--surface`, панель `--bg` — в тёмной теме ступень, а не оттенок) и бровью (у
+   панели её не было вовсе). Ни того, ни другого не видел ни один гард: стенда у
+   семьи не существовало, а панель редактора живёт за логином.
+   Здесь обе открываются на витрине и сверяются ДРУГ С ДРУГОМ, а не с числом в
+   коде: разъехаться они могут только между собой. */
+await page.goto(`${BASE}/kit/full-surface`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(900);
+
+const openSurface = async (label) => {
+  await page.locator(`button:has-text("${label}")`).first().tap();
+  await page.waitForTimeout(900);
+  const got = await page.evaluate(() => {
+    const el = document.querySelector('[data-sheet-full]');
+    if (!el) return null;
+    const scroller = el.querySelector('[data-sheet-scroller]');
+    return {
+      paint: getComputedStyle(el, '::before').backgroundColor,
+      // ⚠️ СВЕРКА ДРУГ С ДРУГОМ ЛОВИТ ТОЛЬКО РАЗЪЕЗД. Обе поверхности берут
+      // краску из ОДНОГО правила, поэтому неверное значение они получат ВМЕСТЕ
+      // и «краска одна» останется зелёной. Отсюда второй замер: цвет страницы,
+      // с которым краска обязана совпасть (полноростная поверхность — экран).
+      pageGround: getComputedStyle(document.body).backgroundColor,
+      grip: !!el.querySelector('.sheet-grip'),
+      top: Math.round(el.getBoundingClientRect().top),
+      // скроллер обязан скроллить СЕБЯ, а не уезжать за нижний край экрана
+      scrolls: scroller ? scroller.scrollHeight > scroller.clientHeight : null,
+      inViewport: scroller ? Math.round(scroller.getBoundingClientRect().bottom) <= innerHeight + 1 : null,
+    };
+  });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(700);
+  return got;
+};
+
+const picker = await openSurface('Шторка пикера');
+const panel = await openSurface('Панель редактора');
+check(!!picker && !!panel, 'обе поверхности семьи открылись на витрине',
+  `${picker ? 'шторка ок' : 'шторки нет'} · ${panel ? 'панель ок' : 'панели нет'}`);
+
+if (picker && panel) {
+  check(picker.grip && panel.grip, 'БРОВЬ У ОБЕИХ ПОВЕРХНОСТЕЙ',
+    `шторка ${picker.grip ? 'есть' : 'НЕТ'} · панель ${panel.grip ? 'есть' : 'НЕТ'}`);
+  check(picker.paint === panel.paint, 'КРАСКА У ОБЕИХ ОДНА',
+    `${picker.paint} · ${panel.paint}`);
+  check(picker.paint === picker.pageGround, 'И ЭТО КРАСКА СТРАНИЦЫ, А НЕ КАРТОЧКИ',
+    `поверхность ${picker.paint} · страница ${picker.pageGround}`);
+  check(picker.top === 0 && panel.top === 0, 'обе — экран во весь вьюпорт',
+    `верх: ${picker.top} · ${panel.top}`);
+  check(picker.scrolls === true && picker.inViewport === true,
+    'ДЛИННЫЙ ЛИСТ СКРОЛЛИТ СЕБЯ, А НЕ УЕЗЖАЕТ ЗА ЭКРАН',
+    `скроллится: ${picker.scrolls} · низ в кадре: ${picker.inViewport}`);
+  check(panel.scrolls === true && panel.inViewport === true,
+    'то же у тела панели',
+    `скроллится: ${panel.scrolls} · низ в кадре: ${panel.inViewport}`);
+}
+
 await browser.close();
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} проверок прошло`);
 if (failed.length) {
-  console.log(`::error::check-picker-behaviour: ${failed.length} провал(ов) — ${failed.map((f) => f.what).join('; ')}`);
+  console.log(`::error::check-surface-behaviour: ${failed.length} провал(ов) — ${failed.map((f) => f.what).join('; ')}`);
   process.exit(1);
 }
-console.log('поведение пикера в порядке.');
+console.log('поведение поверхностей в порядке.');

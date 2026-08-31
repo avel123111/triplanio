@@ -23,6 +23,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, IconBtn, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { eventDeleteConfirm } from '@/lib/eventDeleteConfirm';
+import { sheetScroller } from '@/components/ui/sheetShell';
 import {
   useEventViewModel, useEntityDocs, EventViewSections, eventHeader,
 } from '@/components/common/EventViewBody';
@@ -136,7 +137,7 @@ export default function EventModal(props) {
         </div>
 
         {/* Body */}
-        <div className="lp-b scrollbar-thin">
+        <div className="lp-b scrollbar-thin" {...sheetScroller}>
           <EventViewSections
             kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
             accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}

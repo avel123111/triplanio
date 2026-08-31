@@ -12,6 +12,7 @@ import { prepareImage } from '@/lib/prepareImage';
 import { invokeCard, applyCardBg, fetchImageDataUri, MAP_PLACEHOLDER } from './shareCard';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareCardDialog.css';
+import { sheetScroller } from '@/components/ui/sheetShell';
 
 // Заглушки миниатюр, пока едет каталог фонов (как у CoverPicker: ряд должен
 // читаться «сейчас будет ещё», а не прыгать с одной плитки до десятка).
@@ -460,7 +461,7 @@ export default function ShareCardDialog({ trip, open, onOpenChange, visits = [],
               <div className="lp-ti"><div className="lp-tirow"><b className="t-title">{t('share.card_title')}</b></div></div>
               <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
             </div>
-            <div className="lp-b">{body}</div>
+            <div className="lp-b" {...sheetScroller}>{body}</div>
             {!overlayCode && <div className="lp-f"><Row className="grow">{footBtns(true)}</Row></div>}
           </div>
         </LpSheet>

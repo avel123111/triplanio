@@ -32,12 +32,15 @@ import { useT } from '@/lib/i18n/I18nContext';
  *  сфокусированное поле, и снять фокус на закрытии может только тот, кто умеет
  *  отличить своё поле от чужого (`contains`). `SheetSurface` этот проп уже
  *  принимает — здесь он просто не был проброшен.
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, contentRef?: any }} p */
-export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, contentRef }) {
+ *  `full` — РОЛЬ, а не скин: «эта поверхность — экран во весь вьюпорт». Признак
+ *  ставит шов (`ui/sheetShell`), CSS адресует признак; здесь проп только
+ *  проезжает насквозь, чтобы у роли был один способ заявиться (TRIP-494).
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string, full?: boolean, contentRef?: any }} p */
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText, full = false, contentRef }) {
   const t = useT();
   return (
     <SheetRoot open={open} onOpenChange={onOpenChange}>
-      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} contentRef={contentRef} aria-describedby={undefined}>
+      <SheetSurface className={'sheet' + (className ? ' ' + className : '')} full={full} contentRef={contentRef} aria-describedby={undefined}>
         {title ? (
           <div className="sheet-h">
             <SheetTitle asChild><h3>{title}</h3></SheetTitle>

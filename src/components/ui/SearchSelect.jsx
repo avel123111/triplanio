@@ -8,6 +8,7 @@ import { Input } from '@/design/Input';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import { tapPick } from '@/lib/tapGesture';
+import { sheetScroller } from '@/components/ui/sheetShell';
 
 /**
  * C4 · SearchSelect — the canonical searchable picker (currency, language, …).
@@ -152,7 +153,7 @@ export default function SearchSelect({
     /* `scrollbar-thin` — канон ДС (app.css), а не свои правила скролла: лист
        длинный (валюты, языки), и полоса браузера по умолчанию рисуется мимо
        системы. Тот же класс несёт лист автокомплита — хром у них общий. */
-    <div className="ss-list scrollbar-thin" onWheel={(e) => e.stopPropagation()}>
+    <div className="ss-list scrollbar-thin" onWheel={(e) => e.stopPropagation()} {...sheetScroller}>
       {filtered.length === 0 ? (
         <div className="ss-empty">{emptyText}</div>
       ) : (

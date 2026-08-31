@@ -8,6 +8,7 @@ import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import GeoAttribution from '@/components/common/GeoAttribution';
 import { Trunc } from '@/design/Layout';
 import { tapPick } from '@/lib/tapGesture';
+import { sheetScroller } from '@/components/ui/sheetShell';
 
 /**
  * Autocomplete — the single, canonical async search-as-you-type field + dropdown
@@ -297,7 +298,7 @@ export default function Autocomplete({
     </div>
   );
   const listEl = (
-    <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin">
+    <div id={`${uid}-list`} role="listbox" className="ss-list scrollbar-thin" {...sheetScroller}>
       {rows}
       {/* Пусто — только когда искать УЖЕ было что: до порога лист молчит,
           иначе «ничего не найдено» встречало бы человека до первой буквы. */}
@@ -316,10 +317,11 @@ export default function Autocomplete({
      триггеру открывал ВТОРУЮ шторку во весь рост, выбор возвращал в первую — две
      поверхности и лишний тап на одно действие, и то же самое ещё раз на «изменить
      город».
-     Геометрию по-прежнему задаёт скин `.sheet--full` (поле пришпилено, лист
-     скроллит) — он адресует `.ss-search`/`.ss-list` как ПОТОМКОВ тела шторки, а
-     не как содержимое конкретного слота, поэтому обе ветки укладываются одним
-     правилом и второго экземпляра геометрии не появляется. */
+     Геометрию по-прежнему задаёт правило семьи `[data-sheet-full]` (поле
+     пришпилено, лист скроллит) — оно адресует `.ss-search`/`.ss-list` как
+     ПОТОМКОВ тела шторки, а не как содержимое конкретного слота, поэтому обе
+     ветки укладываются одним правилом и второго экземпляра геометрии не
+     появляется. */
   if (embedded) return <>{pinnedField}{listEl}</>;
 
   if (isPhone) {
