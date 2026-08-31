@@ -56,20 +56,38 @@ export function stripCss(src) {
  * @returns {string}
  */
 export function stripHtml(src) {
+  const BLOCK = /<(script|style)\b/i;
   let out = '';
   let i = 0;
   while (i < src.length) {
-    const open = /<(script|style)\b/i.exec(src.slice(i));
-    const blockAt = open ? i + open.index : -1;
-    const chunkEnd = blockAt === -1 ? src.length : blockAt;
-    out += src.slice(i, chunkEnd).replace(/<!--[\s\S]*?-->/g, '');
-    if (blockAt === -1) break;
-    const closeRe = new RegExp(`</${open[1]}\\s*>`, 'i');
-    const rest = src.slice(blockAt);
-    const close = closeRe.exec(rest);
-    const blockEnd = close ? blockAt + close.index + close[0].length : src.length;
-    out += src.slice(blockAt, blockEnd);
-    i = blockEnd;
+    const rest = src.slice(i);
+    const cmtAt = rest.indexOf('<!--');
+    const block = BLOCK.exec(rest);
+    const blockAt = block ? block.index : -1;
+
+    if (cmtAt === -1 && blockAt === -1) { out += rest; break; }
+
+    // ПОРЯДОК ЗДЕСЬ НЕСУЩИЙ: комментарий разбирается ПЕРВЫМ, если он ближе.
+    // Искать блоки в тексте, где комментарии ещё живы, значит принять
+    // `<script>`, НАПИСАННЫЙ ВНУТРИ комментария, за начало настоящего блока —
+    // и вынести наружу всё от него до следующего `</script>`, вместе с самим
+    // комментарием. Ровно это и случилось: комментарий заставки объясняет,
+    // почему она инлайном «а не `<link>`/`<script>`», и из-за этого упоминания
+    // `index.html` возвращался из чистки байт в байт (11 029 → 11 029), а на
+    // странице лежало полтора экрана русского текста.
+    if (blockAt === -1 || (cmtAt !== -1 && cmtAt < blockAt)) {
+      out += rest.slice(0, cmtAt);
+      const end = rest.indexOf('-->', cmtAt + 4);
+      i += end === -1 ? rest.length : end + 3;
+      continue;
+    }
+
+    // Блок ближе — копируем его целиком, внутрь не заходим.
+    out += rest.slice(0, blockAt);
+    const close = new RegExp(`</${block[1]}\\s*>`, 'i').exec(rest.slice(blockAt));
+    const blockEnd = close ? blockAt + close.index + close[0].length : rest.length;
+    out += rest.slice(blockAt, blockEnd);
+    i += blockEnd;
   }
   return collapse(out);
 }
