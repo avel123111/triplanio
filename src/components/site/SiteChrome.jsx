@@ -5,6 +5,7 @@ import { useLightZone } from '@/lib/ThemeContext';
 import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
+import { isZonePage } from '@/lib/routePaths';
 import { useZoneCta, isPlainLeftClick } from './zoneCta';
 import LandingSprite from './LandingSprite';
 
@@ -452,8 +453,17 @@ export function SiteZone({ children }) {
   // указывал бы на превью, то есть превью-деплой начал бы канонизировать сам
   // себя. И ставим ТОЛЬКО на проде — на дев-стенде canonical на прод увёл бы
   // краулера со стенда на живой сайт, что верно по адресу и неверно по смыслу.
+  //
+  // ★ И ТОЛЬКО ТАМ, ГДЕ СТРАНИЦА ЕСТЬ (TRIP-497). Оболочка зоны монтируется и на
+  // адресах, у которых страницы нет: чужой `/d/`-слаг, любой битый адрес у
+  // разлогиненного — оба отдают 404 ВНУТРИ зоны. Безусловный canonical объявлял
+  // такой адрес каноническим, то есть каждая опечатка в чужой ссылке просила
+  // проиндексировать себя как самостоятельную страницу. Сюда же не попадают
+  // `/public/trip/*` и `/join/*`: у них в адресе одноразовый токен, индексация
+  // запрещена заголовком `X-Robots-Tag` из `vercel.json`, и канонизировать то,
+  // что запрещено индексировать, незачем.
   useEffect(() => {
-    if (!isProdHost) return undefined;
+    if (!isProdHost || !isZonePage(pathname)) return undefined;
     const link = document.createElement('link');
     link.rel = 'canonical';
     link.href = CANONICAL_ORIGIN + pathname;
