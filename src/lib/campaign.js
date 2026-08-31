@@ -178,3 +178,39 @@ export function pickSignupMarks(value) {
   }
   return Object.keys(out).length ? out : null;
 }
+
+/**
+ * Which marks the signup being made carries, and whether the OAuth stash is spent.
+ *
+ * WHY THIS IS A PURE FUNCTION (TRIP-316/TRIP-335 follow-up). The marks have to
+ * cross a document replacement, and until now the rule that decides which carrier
+ * wins lived inside `attribution.js` — a module glued to `window`, so it could not
+ * have a test. It broke exactly the way an untested money decision breaks: silently,
+ * and only visible months later as a paid signup filed under "organic". Same move as
+ * `isSafeInternalPath` / `authFlowCode` / `loadStateClassify`: the decision is a pure
+ * function with a gate, the storage read stays a thin shell around it.
+ *
+ * TWO RULES, and the second is the one that bites:
+ *   1. THE ADDRESS WINS. A mark in the URL beat the redirect on its own; the stash
+ *      is the fallback for the border the address could not cross. The address also
+ *      survives a browser that refuses storage (private mode, ITP) — which is the
+ *      failure that lost a real paid signup.
+ *   2. A RESOLVED SIGNUP SPENDS THE STASH, whichever carrier won. Leaving it would
+ *      credit this click to whoever registers next in the same tab. Skipping this
+ *      when the address wins is the regression that makes rule 1 look free.
+ *
+ * @param {Record<string, string>|null} visitMarks  marks on THIS document's address
+ * @param {string|null} stashedRaw  raw JSON the OAuth stash holds, null when empty
+ * @returns {{ marks: Record<string, string>|null, spendStash: boolean }}
+ */
+export function resolveSignupMarks(visitMarks, stashedRaw) {
+  // A stash that exists is spent by this signup even when it lost — see rule 2.
+  const spendStash = Boolean(stashedRaw);
+  if (visitMarks) return { marks: visitMarks, spendStash };
+
+  // The stash is JSON WE wrote, but it comes back out of storage a stranger can
+  // reach, so a malformed payload is data, not a crash.
+  let parsed = null;
+  try { parsed = JSON.parse(stashedRaw || 'null'); } catch { /* junk in storage */ }
+  return { marks: pickSignupMarks(parsed), spendStash };
+}
