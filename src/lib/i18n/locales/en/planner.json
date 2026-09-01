@@ -31,7 +31,7 @@
   "geo_hint": "Allow location access, we'll detect your city automatically. You can decline and enter it manually.",
   "geo_off": "Geolocation is off",
   "geo_off_hint": "Use the search above: type the name of a hub city or the nearest airport",
-  "guest_save_hint": "Sign in or create an account and the route will be saved as your trip. You will pick a cover on this same step.",
+  "guest_save_hint": "Your route lives only in this browser. Create an account and it becomes a trip — with a cover, bookings and access for your travel companions.",
   "guest_save_title": "Your route is ready",
   "home_title": "Where do you set off?",
   "last_city_fallback": "the last city",

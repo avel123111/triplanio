@@ -25,7 +25,7 @@ import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import { SiteHeader } from '@/components/site/SiteChrome';
-import { zoneHome, zoneSignup } from '@/components/site/zoneCta';
+import { zoneHome, zoneLogin, zoneSignup } from '@/components/site/zoneCta';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
@@ -760,12 +760,19 @@ function Stat({ label, value, hint, warn }) {
  *   а имя и так выводится из маршрута (`computeAutoTitle`) и правится после
  *   входа, на этом же экране, рядом с обложкой.
  */
-function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error, guest = false }) {
+function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error, guest = false, onSignUp, onSignIn }) {
   const nav = useNavigate();
   const t = useT();
   const { lang } = useI18n();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = computeAutoTitle(home, cities, t);
+  /* Строка цифр гостевого блока. Те же три величины, что в статбаре ниже, — но
+     ОДНОЙ строкой: в блоке она доказательство работы, а не отчёт. */
+  const summaryLine = [
+    `${cities.length} ${cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}`,
+    `${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`,
+    cities[0]?.startDate ? `${t('planner.from_date_prefix')} ${shortDateLabel(cities[0].startDate, lang)}` : null,
+  ].filter(Boolean).join(' · ');
   const displayTitle = tripTitle || autoTitle;
 
   if (savedOk) {
@@ -797,22 +804,13 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
 
   return (
     <div className="col col--g6 pl-review">
-      {/* ★ У ГОСТЯ ОБЛОЖКИ НЕТ, И ЭТО НЕ УРЕЗАНИЕ ЭКРАНА, А ЕГО ПОРЯДОК. Человек
-          сначала видит, ЧТО он собрал (сводка ниже), и только потом его просят
-          завести аккаунт — а не наоборот. Приглашение стоит на месте обложки
-          именно потому, что обложка и есть единственное, чего без сессии не
-          сделать: остальной обзор считается на клиенте.
+      {/* ★ У ГОСТЯ ОБЛОЖКИ НЕТ — ЭТО ЕДИНСТВЕННОЕ, ЧЕГО БЕЗ СЕССИИ НЕ СДЕЛАТЬ
+          (каталог `getCoverPresets` за дверью auth и своё фото в Storage).
+          Остальной обзор считается на клиенте и показывается как есть, а
+          развилка «войти / завести аккаунт» стоит ПОД сводкой — разбор там.
           Инвариант «0 вызовов к /api/* у гостя» держится по построению: пикер
-          обложек не смонтирован, значит `getCoverPresets` некому позвать. */}
-      {guest ? (
-        /* Своей кнопки у приглашения НЕТ: действие шага живёт в футере, и оно
-           одно на оба вида обзора. Вторая кнопка с той же надписью рядом — это
-           ровно та «вторая дверь в одно действие», которую мы убрали с шага
-           городов. */
-        <Severity level="info" icon="check" align="mid" title={t('planner.guest_save_title')}>
-          <div className="muted t-meta">{t('planner.guest_save_hint')}</div>
-        </Severity>
-      ) : (
+          обложек не смонтирован, значит звать каталог некому. */}
+      {!guest && (
       <>
       {/* Обложка во всю ширину сразу под разделителем прогресса, без радиусов
           (full-bleed из падинга .lp-b, класс .pl-cover перебивает кадр 4:3 ДС на
@@ -839,10 +837,54 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
       </>
       )}
 
+      {/* ★ РАЗВИЛКА ГОСТЯ — ОДИН ОБЪЕКТ: результат, его цифры и действие (TRIP-505).
+          Две редакции до этой промахнулись одинаково, и обе раскладкой, а не
+          словами. Сначала баннер «Маршрут готов» стоял наверху, а кнопка жила в
+          футере: между просьбой и тем, чем её исполняют, лежал весь экран.
+          Потом блок с кнопками уехал ПОД сводку — и на 390 оказался за сгибом,
+          то есть человек видел отчёт о работе и не видел, что с ним делать.
+          Правило «сначала докажи ценность, потом проси» верно ровно до тех пор,
+          пока просьба видна: невидимая просьба ничего не конвертирует.
+          Поэтому доказательство втянуто В блок одной строкой цифр («2 города ·
+          6 ночей · с 1 окт.»), а полный список точек остался ниже — для тех,
+          кто хочет проверить.
+
+          Дверей ДВЕ, потому что людей двое: у пришедшего с рекламы аккаунта нет
+          (регистрация — главная кнопка), у вернувшегося есть (вход — тихая
+          вторая). Обе сперва откладывают маршрут, иначе человек вернулся бы к
+          пустому планировщику.
+
+          Канон блока — тот же `EmptyState`, которым этот шаг уже показывает
+          успех сохранения: экран-результат с действиями в проекте один. */}
+      {guest && (
+        <EmptyState
+          boxed
+          icon="check"
+          kind="success"
+          title={t('planner.guest_save_title')}
+          body={(
+            <>
+              <div className="t-subheading">{summaryLine}</div>
+              <div>{t('planner.guest_save_hint')}</div>
+            </>
+          )}
+          action={(
+            <>
+              <Btn variant="primary" onClick={onSignUp}>{t('auth.create_account')}</Btn>
+              <Btn variant="secondary" onClick={onSignIn}>{t('auth.sign_in')}</Btn>
+            </>
+          )}
+        />
+      )}
+
       {/* Сводка под обложкой — без изменений: статы + маршрут плоскими секциями. */}
       <Card radius="btn" pad="none" className="pl-summary">
         {/* statbar is card-homed (its skin lives on the Card primitive) — kept on the
             Card for the surface-registry guard; flattened to a divided section below. */}
+        {/* Статы у гостя не рисуются: те же три числа он только что прочитал
+            строкой в блоке выше, и повторять их значит растить экран ради
+            повтора. Ниже остаётся то, чего в строке нет: сами точки маршрута. */}
+        {!guest && (
         <Card pad="none" className="statbar">
           <div className="s">
             <Stat
@@ -858,6 +900,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
         </Card>
+        )}
 
         <div className="pl-summary__route">
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (finishCity?.city_name ? 1 : 0) })}</div>
@@ -1310,7 +1353,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     rememberPostLogin(PLANNER_PATH);
   };
 
-  const goSignIn = () => {
+  /* ДВЕ ДВЕРИ, ОДНА ПОДГОТОВКА. Отличаются только видом экрана, на который
+     открывается авторизация: у пришедшего с рекламы аккаунта нет, у
+     вернувшегося есть. Правило «какой вид» живёт в `authEntry.js` — здесь
+     только его применение. */
+  const goSignUp = () => {
     handOffDraft();
     // ЭКРАН РЕГИСТРАЦИИ, А НЕ ФОРМА ВХОДА. Человек только что собрал маршрут без
     // аккаунта — аккаунта у него заведомо нет, и форма входа встретила бы его
@@ -1318,6 +1365,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     // 1 человек из 49. Правило общее с кнопками зоны (`authEntry.js`), здесь
     // только его применение.
     nav(zoneSignup());
+  };
+
+  const goSignIn = () => {
+    handOffDraft();
+    nav(zoneLogin());
   };
 
   // ★ ШАПКА ГОСТЯ — САЙТОВАЯ, А НЕ ШАПКА ПРИЛОЖЕНИЯ (TRIP-505).
@@ -1567,6 +1619,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // identical to the old per-step logic.
   const stepIdx = Math.max(0, visibleSteps.findIndex((s) => s.id === step));
   const isFirstStep = stepIdx === 0;
+  const guest = !user;
   const citiesValid = cities.length > 0 && cities.every((c) => c.city_name && c.latitude != null);
   const hasDraftData = !!home?.city_name || cities.length > 0 || !!finishCity?.city_name;
 
@@ -1627,9 +1680,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
        у гостя оно откладывает маршрут и ведёт на регистрацию, у вошедшего —
        создаёт путешествие. */
     primaryLabel = saving ? t('planner.saving_btn') : t('planner.save_trip');
-    primaryAction = user ? handleSave : goSignIn;
-    primaryDisabled = user ? saving : !citiesValid;
-    if (savedOk) showFooter = false; // the success screen owns its own actions
+    primaryAction = handleSave;
+    primaryDisabled = saving;
+    /* Футера у гостя на этом шаге НЕТ: его действия — «Создать аккаунт» и
+       «Войти» — стоят в самом блоке результата, рядом с просьбой. Кнопка внизу
+       была бы третьей дверью и отвечала бы на вопрос, заданный экраном выше. */
+    if (savedOk || guest) showFooter = false; // экран-результат владеет своими действиями
   }
 
   // ── Main render ───────────────────────────────────────────────────────────
@@ -1672,7 +1728,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             savedOk={savedOk}
             savedTripId={savedTripId}
             error={error}
-            guest={!user}
+            guest={guest}
+            onSignUp={goSignUp}
+            onSignIn={goSignIn}
           />
         )}
 
