@@ -947,9 +947,21 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // смене владельца, а возврат из OAuth — ровно она.
   useEffect(() => {
     const now = Date.now();
-    const saved = takeHandoff(user?.id, method, now) || readDraft(user?.id, method, now);
+    // Переезд состоялся → человек ВЕРНУЛСЯ, дособрав маршрут и зарегистрировавшись.
+    const handed = takeHandoff(user?.id, method, now);
+    const saved = handed || readDraft(user?.id, method, now);
     if (saved) {
-      if (saved.step) setStep(saved.step);
+      /* ★ ВЕРНУВШИЙСЯ ПОПАДАЕТ НА ШАГ СОХРАНЕНИЯ, А НЕ НА ТОТ, С КОТОРОГО УШЁЛ.
+         Он ушёл с последней ступени гостя, нажав «Сохранить трип», — то есть
+         УЖЕ попросил сохранить. Верни мы его на ту же ступень, и он увидел бы
+         пройденный экран с кнопкой «Дальше»: два нажатия после регистрации,
+         первое — по работе, которую он только что закончил. Ровно то «нажмите
+         ещё раз», ради отсутствия которого перехват и поставлен после шага 3.
+         Шаг «Обзор» у него теперь есть (сессия появилась), поэтому идти есть
+         куда; обычное чтение своего черновика по-прежнему возвращает на
+         сохранённую ступень — правило касается ТОЛЬКО переезда. */
+      if (handed) setStep('review');
+      else if (saved.step) setStep(saved.step);
       if (saved.nodes?.length) setNodes(saved.nodes);
       if (saved.tripTitle) setTripTitle(saved.tripTitle);
       if (saved.startDate) setStartDateRaw(saved.startDate);
