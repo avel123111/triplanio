@@ -88,7 +88,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
     { ok: true,  text: t('sub.feat_free_active1') },
     { ok: true,  text: t('sub.feat_free_sections') },
     { ok: false, text: t('sub.feat_unlimited_trips') },
-    { ok: false, text: t('sub.feat_ai_parse') },
+    { ok: false, text: t('sub.feat_ai_recognition') },
   ];
   const proRows = [
     <><b>{t('sub.unlimited_word')}</b> {t('sub.feat_unlimited_active_rest')}</>,

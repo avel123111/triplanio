@@ -7,6 +7,12 @@ metadata:
   originSessionId: 13029f86-ea2d-468e-a4c8-085e977fa968
 ---
 
+★ТЕКУЩЕЕ СОСТОЯНИЕ (замещает историю ниже). Правило «можно ли создать трип» = ОДИН предикат `public.can_create_trip(p_uid)` (миграция TRIP-406, `is_user_pro(uid) OR count_active_owned_trips(uid) < N`). Его зовут ВСЕ пути записи: триггер `enforce_trip_limit`/`trips_enforce_limit` (backstop), шов `mutate.ts` (`trip_quota`, авторитетный гейт), `create_trip_with_route`, `copy_trip`. Клиент читает тот же счёт через edge `getActiveTrips` → хук `useActiveTripsLimit` → предикат `isActiveTripCapReached` из `src/lib/limits.js` (`FREE_ACTIVE_TRIP_LIMIT`). Ни у одного вызывателя своего порога нет — число живёт в ДВУХ рантаймах (SQL-предикат + JS-константа), их сверяет дрифт-гард `src/lib/limits.test.js`. Историю про 4 дублирующих копии и колонку `trips.end_date` ниже читать как археологию — она разобрана refactor'ами TRIP-406/TRIP-416.
+
+★ЛИМИТ ВРЕМЕННО СНЯТ (TRIP-503): `N` поднят 1→**1000** в обоих рантаймах. При 1000 все гейты (баннер `/trips`, блокер планнера, `TripLimitDialog`, гейт копирования, тост `TRIP_LIMIT_REACHED`) гаснут ПО ПОСТРОЕНИЮ — логика не удалена. Возврат = вернуть число в `can_create_trip` (новая миграция) + `limits.js`, снять `ponytail:`-маркер, вернуть «безлимит»-копию на `/pro`/`ProUpsellModal` (чек-лист в TRIP-503). ★Ловушка дрифт-гарда на ОТКАТЕ: он сверяет ТЕКСТ (первое `count_active_owned_trips(...) < N` после `can_create_trip`) — противоречивый числовой литерал в комментарии тела миграции даст ложный зелёный. См. также [[triplanio-pro-model]].
+
+---
+
 ★ИСПРАВЛЕНО 2026-06-19 (prod+dev). Free-лимит = 1 активный трип у владельца. Было 2 РАЗНЫХ определения «активного» в 4 местах:
 
 Источники:
