@@ -34,6 +34,7 @@ import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { APP_ROUTES, isZoneRoute } from '@/lib/routePaths';
+import { initialAuthView } from '@/lib/authEntry';
 import { rememberPostLogin } from '@/lib/postLoginPath';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
@@ -89,9 +90,17 @@ const Login = lazy(() => import('@/pages/Login'));
 // /new-trip|/plan-trip-ai → trip_creation_started) send NOTHING here, so we don't
 // double-bill the free-tier quota. Only screens WITHOUT their own event get one.
 // Returns null → no event for this route.
-function screenOpenEvent(pathname) {
+function screenOpenEvent(pathname, search) {
   if (pathname === '/') return { event: 'landing_viewed' };
-  if (pathname === '/login' || pathname === '/reset-password') return { event: 'login_opened' };
+  // `view` — КАКУЮ ИЗ ФОРМ человек увидел, а не только «дошёл до входа». Экран
+  // входа несёт вход, регистрацию и восстановление, и без этого поля «увидел
+  // форму регистрации» неотличимо от «увидел форму входа»: строка события у них
+  // одна, то есть у самой верхней ступени регистрационной воронки нет числа.
+  // Свойство у существующего события, а не второе событие: квота free-tier
+  // считает события, а не поля.
+  if (pathname === '/login' || pathname === '/reset-password') {
+    return { event: 'login_opened', props: { view: initialAuthView(pathname, search) } };
+  }
   if (pathname === '/trips') return { event: 'home_opened' };
   if (pathname === '/stats') return { event: 'stats_opened' };
   if (pathname === '/settings') return { event: 'account_opened' };
@@ -134,7 +143,11 @@ const AuthenticatedApp = () => {
   // Fire the screen-open event on SPA navigation. Fires before the auth/route
   // branches below (hooks run unconditionally).
   useEffect(() => {
-    const s = screenOpenEvent(location.pathname);
+    // Строка запроса читается из `window`, а НЕ из `location.search`: она не
+    // должна быть зависимостью эффекта. Экран входа чистит адрес от отказа
+    // OAuth через `history.replaceState` — попади `search` в зависимости, эта
+    // чистка стреляла бы вторым `login_opened` на том же открытии экрана.
+    const s = screenOpenEvent(location.pathname, window.location.search);
     if (s) track(s.event, s.props);
   }, [location.pathname]);
 

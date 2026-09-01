@@ -185,23 +185,15 @@ export default function Pro() {
   const yearPerMonth = yearlyAmt ? fmtMoney(yearlyAmt / 12 / 100, currency, { minFraction: 0, maxFraction: 2 }) : null;
   const savePct = (monthlyAmt && yearlyAmt) ? Math.round((1 - yearlyAmt / (monthlyAmt * 12)) * 100) : null;
 
-  // Feature matrix (TRIP-229). Free unlocks only rows 1-2; every Pro plan unlocks all.
-  const freeFeatures = [
-    { text: t('sub.feat_free_active1'), on: true },
-    { text: t('sub.feat_basic'), on: true },
-    { text: t('sub.feat_budget'), on: false },
-    { text: t('sub.feat_ai_recognition'), on: false },
-    { text: t('sub.feat_ai_assistant'), on: false },
-    { text: t('sub.feat_group_chat'), on: false },
-  ];
-  const proFeatures = [
-    { text: t('sub.feat_unlimited_active'), on: true },
-    { text: t('sub.feat_basic'), on: true },
-    { text: t('sub.feat_budget'), on: true },
-    { text: t('sub.feat_ai_recognition'), on: true },
-    { text: t('sub.feat_ai_assistant'), on: true },
-    { text: t('sub.feat_group_chat'), on: true },
-  ];
+  // Feature matrix (TRIP-229). Same six rows in the same order for both columns —
+  // one array of keys removes any risk of the columns drifting apart. Free unlocks
+  // only rows 1-2; every Pro plan unlocks all. Row 1 is trip count: with the Free
+  // active-trip cap lifted (TRIP-503) both columns now truthfully show it as ✓, so
+  // the Free/Pro contrast comes from rows 3-6.
+  const FEATURE_ROWS = ['feat_unlimited_trips', 'feat_basic', 'feat_budget',
+                        'feat_ai_recognition', 'feat_ai_assistant', 'feat_group_chat'];
+  const freeFeatures = FEATURE_ROWS.map((k, i) => ({ text: t(`sub.${k}`), on: i < 2 }));
+  const proFeatures = FEATURE_ROWS.map((k) => ({ text: t(`sub.${k}`), on: true }));
 
   const monthly = renderPrice('account_pro_monthly');
   const yearly = renderPrice('account_pro_yearly');
