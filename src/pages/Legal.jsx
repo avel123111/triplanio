@@ -146,7 +146,7 @@ export default function Legal({ doc = 'terms' }) {
         </section>
       </main>
 
-      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+      <SiteFooter brandHref={SITE} />
     </>
   );
 }

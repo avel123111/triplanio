@@ -162,9 +162,8 @@ function SiteIsland({ children }) {
   return <div className="site">{children}</div>;
 }
 
-export function SiteHeader({ lang, setLang, variant = 'full', themed = false, flow = false, navBase = '', brandHref = '#top', navItems = NAV }) {
+export function SiteHeader({ lang, setLang, variant = 'full', themed = false, flow = false, onSignIn, navBase = '', brandHref = '#top', navItems = NAV }) {
   const t = useT();
-  const nav = useNavigate();
   const location = useLocation();
   // ★ ТРИ ДВЕРИ, А НЕ ШЕСТЬ КНОПОК (TRIP-505). У посетителя зоны ровно три
   // задачи, и каждой отвечает СВОЯ дверь — одна и та же во всех местах зоны:
@@ -251,9 +250,11 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, fl
       {/* `flow` — шапка занимает свою строку, а не висит над кадром. Позиция
           здесь свойство ПОВЕРХНОСТИ, а не шапки: страницы зоны начинаются с
           геро, поверх которого шапка и задумана; экран приложения — колонка на
-          100dvh, где ей полагается первая строка. Тема при этом всегда светлая:
-          подстраиваться не под что, секций с `data-hdr` на экране нет. */}
-      <header className={`site-header ${flow ? 'site-header--flow' : ''} ${showBurger ? 'site-header--menu' : ''} ${scrolled ? 'scrolled' : ''} on-${flow ? 'light' : theme}`} id="siteHeader">
+          100dvh, где ей полагается первая строка. Тема отдельной ветки не
+          требует: `theme` и так `light`, пока страница не попросила `themed`.
+          `--menu` — «двери подхватывает бургер»; по одной лишь ширине правило
+          оставляло гостевой планировщик без единого входа на телефоне. */}
+      <header className={['site-header', flow && 'site-header--flow', showBurger && 'site-header--menu', scrolled && 'scrolled', `on-${theme}`].filter(Boolean).join(' ')} id="siteHeader">
         <div className="wrap">
           <a href={brandHref} className="brand" aria-label={t('nav.aria_home')} onClick={onBrand}>
             <svg className="logo" viewBox="0 0 192 192" aria-hidden="true"><use href="#tl-logo"/></svg>
@@ -273,8 +274,16 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, fl
                 рядом с заливкой CTA два одинаковых по весу элемента спорили бы
                 за внимание. Облик берёт ровно у пунктов `.main-nav a` (те же
                 правила, со-селектором) — своих значений у неё нет. */}
+            {/* `onSignIn` — крючок ПОВЕРХНОСТИ, а не шапки: гостевому
+                планировщику надо отложить маршрут за регистрацию прежде, чем
+                человек уйдёт (иначе дверь уносит его молча, бросив работу).
+                Идёт ДО перехода: сам переход `useZoneCta` делает роутером, и
+                после него страница уже размонтирована. */}
             {showSignin && (
-              <a className="header-signin" {...headerSignin}>{t('auth.sign_in')}</a>
+              <a className="header-signin" {...headerSignin}
+                onClick={(e) => { if (isPlainLeftClick(e)) onSignIn?.(); headerSignin.onClick(e); }}>
+                {t('auth.sign_in')}
+              </a>
             )}
             {showCta && (
               <a className="btn btn-primary btn-sm header-cta" {...headerCta}>
@@ -325,7 +334,10 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, fl
  * and the copyright. Same `navBase` semantics as SiteHeader for the product
  * anchors.
  */
-export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
+// `lang`/`setLang` у подвала больше НЕТ: переключатель языка из него убран
+// (второй экземпляр раскрывал меню вниз у самого низа страницы и растягивал
+// документ на 116px пустоты), а пропсы остались и молча ездили с пяти вызовов.
+export function SiteFooter({ brandHref = '#top' }) {
   const t = useT();
   const onBrand = useBrandNav(brandHref);
   return (
@@ -540,9 +552,17 @@ export function SiteZone({ children, surface = 'site' }) {
 }
 
 /**
- * `cssReady` для страницы. Внутри `<SiteZone>` — из контекста (слой уже держит
- * оболочка). Вне её — страница сама себе владелец: так живут /public/trip,
- * /join и лендинг у залогиненного, они приходят не из зоны.
+ * `cssReady` для страницы. Внутри `<SiteZone>` — из контекста (слой держит
+ * оболочка).
+ *
+ * ★ ВЕТКА «СТРАНИЦА САМА СЕБЕ ВЛАДЕЛЕЦ» СЕГОДНЯ НЕ ДОСТИЖИМА: названные в ней
+ * /public/trip, /join и лендинг у залогиненного давно приходят из `<SiteZone>`
+ * (`App.jsx`). Оставлена как запасной путь, но с TRIP-505 у неё появилась цена,
+ * которой раньше не было: `useSiteCssLink` больше НЕ вешает `html.site` — это
+ * отдельный факт со своим владельцем (`useSiteDocumentLayer`). Оживи эту ветку
+ * для страницы, которую целиком рисует сайтовая ДС, — и та приедет со стилями,
+ * но без документного слоя, то есть с типографикой и фоном приложения. Такой
+ * странице нужна оболочка, а не этот хук.
  */
 export function useSiteCss() {
   // Тема документа тут БОЛЬШЕ НЕ ТРОГАЕТСЯ: её держит `SiteZone` (см. разбор

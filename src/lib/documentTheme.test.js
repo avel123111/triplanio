@@ -43,7 +43,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isZoneRoute, resolveDark } from './documentTheme.js';
+import { seedsLightZone, resolveDark } from './documentTheme.js';
 
 const ZONE = ['/', '/login', '/reset-password', '/terms', '/privacy', '/d/europe-may-2027',
   '/join/abc', '/public/trip/1fd33a2e?t=tok'];
@@ -72,22 +72,22 @@ test('★★ вне зоны тема остаётся выбором польз
 });
 
 test('★★ затравка по адресу: семь страниц зоны — зона, экраны приложения — нет', () => {
-  for (const p of ZONE) assert.equal(isZoneRoute(p), true, `${p} — страница зоны`);
-  for (const p of APP) assert.equal(isZoneRoute(p), false, `${p} — экран приложения, тема его собственная`);
+  for (const p of ZONE) assert.equal(seedsLightZone(p), true, `${p} — страница зоны`);
+  for (const p of APP) assert.equal(seedsLightZone(p), false, `${p} — экран приложения, тема его собственная`);
 });
 
 test('★ префикс — это префикс, а не равенство: у join и публичной поездки в адресе токен', () => {
-  assert.equal(isZoneRoute('/join/'), true);
-  assert.equal(isZoneRoute('/join/very/long/token'), true);
-  assert.equal(isZoneRoute('/public/trip/abc/anything'), true);
-  assert.equal(isZoneRoute('/joinery'), false);
-  assert.equal(isZoneRoute('/publicity'), false);
+  assert.equal(seedsLightZone('/join/'), true);
+  assert.equal(seedsLightZone('/join/very/long/token'), true);
+  assert.equal(seedsLightZone('/public/trip/abc/anything'), true);
+  assert.equal(seedsLightZone('/joinery'), false);
+  assert.equal(seedsLightZone('/publicity'), false);
 });
 
 test('★ хвостовой слэш не меняет ответ — иначе /terms/ дал бы тёмный кадр', () => {
-  assert.equal(isZoneRoute('/terms/'), true);
-  assert.equal(isZoneRoute('/login/'), true);
-  assert.equal(isZoneRoute(''), true);
+  assert.equal(seedsLightZone('/terms/'), true);
+  assert.equal(seedsLightZone('/login/'), true);
+  assert.equal(seedsLightZone(''), true);
 });
 
 const chromeSrc = () => readFileSync(new URL('../components/site/SiteChrome.jsx', import.meta.url), 'utf8');

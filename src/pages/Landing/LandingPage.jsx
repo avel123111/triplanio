@@ -566,9 +566,10 @@ function useFaqCloseOthers(ready) {
    демо») — он и передаётся пропсом, всё прочее общее. */
 function FinalCta() {
   const t = useT();
-  // Единственный CTA зоны, ведущий НЕ в продукт, — отсюда явный адрес. Метку
-  // кампании визита он несёт так же, как остальные, и идёт через роутер, а не
-  // голым <a href>, который её теряет (гард 2ad).
+  // Дверь «что это вообще» — одна из трёх дверей зоны, и адрес ей даёт общий
+  // `zoneDemo()` (её же открывают герой и бургер). Метку кампании визита она
+  // несёт так же, как остальные, и идёт через роутер, а не голым <a href>,
+  // который её теряет (гард 2ad).
   const demo = useZoneCta('final_demo', zoneDemo());
   return (
     <SiteCta
@@ -980,7 +981,7 @@ export default function LandingPage() {
         <Faq />
         <FinalCta />
       </main>
-      <SiteFooter lang={lang} setLang={setLang} />
+      <SiteFooter />
     </>
   );
 }

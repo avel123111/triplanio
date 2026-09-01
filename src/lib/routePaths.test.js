@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { APP_ROUTES, GUEST_PLANNER_PATH, PLANNER_PATH, ZONE_PAGES, isKnownPath, isZonePage, isZoneRoute } from './routePaths.js';
-import { isZoneRoute as isZoneRouteByTheme } from './documentTheme.js';
+import { seedsLightZone } from './documentTheme.js';
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -154,8 +154,8 @@ test('★ первый кадр гостевого планировщика св
   // адреса в затравке человек с тёмной ОС увидел бы тёмный планировщик и
   // светлую сайтовую шапку в нём — ровно тот кадр, из-за которого поверхность и
   // получила свой адрес.
-  assert.equal(isZoneRouteByTheme(GUEST_PLANNER_PATH), true, 'гостевой адрес выпал из затравки светлой темы');
-  assert.equal(isZoneRouteByTheme(PLANNER_PATH), false, 'адрес приложения попал в затравку — вошедший потеряет свою тему');
+  assert.equal(seedsLightZone(GUEST_PLANNER_PATH), true, 'гостевой адрес выпал из затравки светлой темы');
+  assert.equal(seedsLightZone(PLANNER_PATH), false, 'адрес приложения попал в затравку — вошедший потеряет свою тему');
 });
 
 test('гостевой планировщик закрыт от индексации в vercel.json', () => {

@@ -235,3 +235,23 @@ test('передача по методу раздельная', () => withStorag
   assert.equal(takeHandoff('u1', 'ai', NOW), null, 'AI забрал ручной черновик');
   assert.deepEqual(takeHandoff('u1', 'manual', NOW), DRAFT);
 }));
+
+test('★★★ обычная запись НЕ стирает метку передачи — иначе вернувшийся получит пустой планировщик', () => withStorage(() => {
+  // Метку ставит один момент (уход на регистрацию), а пишет черновик эффект
+  // персистенции — на каждое изменение состояния, ТЕМ ЖЕ ключом. Стоит одной
+  // поздней правке доехать между нажатием и уходом со страницы (обновились
+  // города от `resolveCities`, пересчиталась цепочка дат) — и метка снята, а
+  // человек после регистрации не находит своего маршрута. Обе записи валидны
+  // сами по себе: ни гард, ни глаз этого не видят.
+  const now = Date.now();
+  markHandoff('manual', { step: 'cities', nodes: [1] }, now);
+  writeDraft(GUEST_ID, 'manual', { step: 'cities', nodes: [1, 2] }, now);
+  assert.equal(hasPendingHandoff('manual', now), true, 'обычная запись сняла метку передачи');
+  // И метку по-прежнему ТРАТИТ только получатель.
+  assert.deepEqual(takeHandoff('u1', 'manual', now), { step: 'cities', nodes: [1, 2] },
+    'переезд не отдал последнюю версию черновика');
+  assert.equal(hasPendingHandoff('manual', now), false, 'метка осталась после получения');
+  // А своему черновику вошедшего метка не липнет: её там никто не ставил.
+  writeDraft('u1', 'manual', { step: 'review' }, now);
+  assert.equal(takeHandoff('u2', 'manual', now), null);
+}));

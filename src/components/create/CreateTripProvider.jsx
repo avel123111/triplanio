@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useRef } from 'react';
+import { PLANNER_PATH } from '@/lib/routePaths';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { track } from '@/lib/analytics';
@@ -185,7 +186,7 @@ export function CreateTripProvider({ children }) {
     setPending(null);
     if (!p) return;
     if (p.kind === 'copy') { doCopy(p.tripId); return; }
-    nav(p.pick === 'ai' ? '/plan-trip-ai' : '/new-trip');
+    nav(p.pick === 'ai' ? '/plan-trip-ai' : PLANNER_PATH);
   }, [nav, pending, doCopy]);
 
   const value = useMemo(

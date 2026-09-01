@@ -111,6 +111,10 @@ test('★ unscope() снимает скоуп ЦЕЛИКОМ — на нём с�
   assert.deepEqual(scopeTraces(unscope(CSS)), []);
   // И снятие ничего не портит в объявлениях: длина падает ровно на скоупы.
   assert.ok(unscope(CSS).length < CSS.length);
-  assert.equal(unscope('a{content:":where(.site)"}'), 'a{content:":where(.site)"}',
+  // Снимается форма СО ПРОБЕЛОМ (`:where(.site) `), поэтому и проверять надо её:
+  // без пробела строка не изменилась бы в любом случае, и утверждение было бы
+  // слабее собственного комментария.
+  const value = 'a{content:":where(.site) x"}';
+  assert.equal(unscope(value), value,
     'unscope() трогает значение объявления — литерал скоупа обязан встречаться только в селекторе');
 });

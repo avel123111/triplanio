@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react';
-import { isZoneRoute, resolveDark } from '@/lib/documentTheme';
+import { seedsLightZone, resolveDark } from '@/lib/documentTheme';
 
 // ⚠️ ТИП БЕРЁТСЯ С ДЕФОЛТНОГО ЗНАЧЕНИЯ, А НЕ С РЕАЛИЗАЦИИ - `createContext`
 // выводит форму отсюда. Голая заглушка `setTheme: () => {}` объявляла функцию
@@ -51,7 +51,7 @@ export function ThemeProvider({ children }) {
   // пока второй ещё в ней). Понадобится второй — это счётчик удержаний, как у
   // `holdSplash()`, а не второй вызов `useLightZone`.
   const [lightZone, setLightZone] = useState(
-    () => (typeof window !== 'undefined' && isZoneRoute(window.location.pathname)),
+    () => (typeof window !== 'undefined' && seedsLightZone(window.location.pathname)),
   );
 
   useEffect(() => {

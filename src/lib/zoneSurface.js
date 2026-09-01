@@ -32,8 +32,8 @@ const OUTSIDE = 'app';
 
 /**
  * @param {string} pathname `location.pathname`
- * @returns {string} страница зоны: landing · demo · public · legal · auth · join,
- *   либо `app` для любого адреса внутри приложения.
+ * @returns {string} страница зоны: landing · demo · public · legal · auth · join ·
+ *   planner (гостевой планировщик), либо `app` для адреса внутри приложения.
  */
 export function zoneSurface(pathname) {
   if (typeof pathname !== 'string' || !pathname) return OUTSIDE;

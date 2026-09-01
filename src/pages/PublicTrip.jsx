@@ -342,7 +342,7 @@ export default function PublicTrip() {
         <SiteCta />
       </main>
 
-      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+      <SiteFooter brandHref={SITE} />
     </>
   );
 }
@@ -352,7 +352,7 @@ function Shell({ lang, setLang, children }) {
     <>
       <SiteHeader lang={lang} setLang={setLang} variant="full" brandHref={SITE} />
       <main className="pt">{children}</main>
-      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+      <SiteFooter brandHref={SITE} />
     </>
   );
 }

@@ -447,7 +447,7 @@ export default function DemoTrip() {
         <DemoCta />
       </main>
 
-      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+      <SiteFooter brandHref={SITE} />
     </>
   );
 }

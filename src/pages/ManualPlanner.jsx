@@ -9,7 +9,6 @@ import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { readDraft, writeDraft, clearDraft, markHandoff, takeHandoff } from '@/lib/plannerDraft';
 import { rememberPostLogin } from '@/lib/postLoginPath';
-import { withVisitCampaign } from '@/lib/analytics';
 import { PLANNER_PATH } from '@/lib/routePaths';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -26,7 +25,7 @@ import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import { SiteHeader } from '@/components/site/SiteChrome';
-import { zoneHome } from '@/components/site/zoneCta';
+import { zoneHome, zoneLogin } from '@/components/site/zoneCta';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
@@ -1209,11 +1208,34 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
    * Куда ведёт «назад» из шапки вошедшего — в его поездки. У гостя этой стрелки
    * нет вовсе: его шапка сайтовая, и обратно на сайт его ведёт марка.
    *
-   * Функцией, а не двумя литералами в разметке: шапка объявлена дважды
-   * (блокер лимита и сам экран), и адрес, выписанный в каждой, разошёлся бы на
-   * первой же правке — ровно так же, как расходились CTA зоны до `zoneCta`.
+   * Функцией, а не литералом в разметке: адрес зовут двое — стрелка шапки и
+   * плавающая `.map-back` над картой, — и выписанный в каждой он разошёлся бы
+   * на первой же правке, ровно как расходились CTA зоны до `zoneCta`.
    */
   const goBack = () => nav('/trips');
+
+  /**
+   * Отложить маршрут ЗА регистрацию: пометить черновик передаваемым и назвать
+   * адрес возврата.
+   *
+   * ★ ОТДЕЛЬНО ОТ ПЕРЕХОДА, ПОТОМУ ЧТО ДВЕРЕЙ ВО ВХОД У ГОСТЯ ДВЕ, и обе обязаны
+   * это делать: «Сохранить трип» на последней ступени и «Войти» в шапке. Вторая
+   * появилась вместе с сайтовой шапкой, и без пометки она уносила человека в
+   * регистрацию, МОЛЧА БРОСИВ его маршрут: он возвращался к пустому
+   * планировщику. Переход при этом у них разный — у кнопки свой, у шапки его
+   * ведёт `useZoneCta` вместе с меткой кампании, — поэтому общее здесь ровно
+   * то, что общее.
+   */
+  const handOffDraft = () => {
+    track('trip_creation_signup_prompted', { method, city_count: cityNodesOf(nodes).length });
+    markHandoff(method, draftState, Date.now());
+    rememberPostLogin(PLANNER_PATH);
+  };
+
+  const goSignIn = () => {
+    handOffDraft();
+    nav(zoneLogin());
+  };
 
   // ★ ШАПКА ГОСТЯ — САЙТОВАЯ, А НЕ ШАПКА ПРИЛОЖЕНИЯ (TRIP-505).
   //
@@ -1241,13 +1263,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   ) : (
     <SiteHeader lang={lang} setLang={setLang} variant="signin" flow brandHref={zoneHome()} />
   );
-
-  const goSignIn = () => {
-    track('trip_creation_signup_prompted', { method, city_count: cityNodesOf(nodes).length });
-    markHandoff(method, draftState, Date.now());
-    rememberPostLogin(PLANNER_PATH);
-    nav(withVisitCampaign('/login'));
-  };
 
   // ★ ВСЁ, ЧЕМ ПОЛЬЗУЕТСЯ ОСТАЛЬНОЙ ЭКРАН, — ВЫВОД ИЗ СПИСКА, А НЕ СОСТОЯНИЕ.
   // Так «маршрут» остаётся одним объектом: карта, ревью и сохранение читают одни

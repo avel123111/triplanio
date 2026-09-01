@@ -190,8 +190,8 @@
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { unscope } from './zone-scope.mjs';
 import { basename } from 'node:path';
+import { unscope } from './zone-scope.mjs';
 import postcss from 'postcss';
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';

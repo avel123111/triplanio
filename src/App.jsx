@@ -13,7 +13,7 @@ import { lazy, Suspense, useEffect } from 'react'
 // тосты в ДС, и это отдельная работа с апрувом, а не строчка в этом PR.
 /* floor-exempt: dsshare +5 — `<Toaster>` снят с барреля ради лендинга; сам компонент как был в components/ui, так и остался (апрув Pavel в PR) */
 import { Toaster } from "@/components/ui/toaster"
-import { track, withVisitCampaign } from '@/lib/analytics'
+import { track } from '@/lib/analytics'
 import { isProdHost } from '@/lib/analyticsEnv'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
@@ -35,6 +35,7 @@ import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { APP_ROUTES, GUEST_PLANNER_PATH, PLANNER_PATH, isZoneRoute } from '@/lib/routePaths';
 import { rememberPostLogin } from '@/lib/postLoginPath';
+import { zoneLogin } from '@/components/site/zoneCta';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
 
@@ -96,7 +97,8 @@ const GuestPlanner = lazy(() => import('@/pages/ManualPlanner'));
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
 // (/trip/:id → trip_opened, /pro → pricing_viewed, /public/trip → public_trip_viewed,
-// /new-trip|/plan-trip-ai → trip_creation_started) send NOTHING here, so we don't
+// а планировщик — /new-trip, /plan и /plan-trip-ai — шлёт trip_creation_started
+// сам, из экрана, а не по маршруту) send NOTHING here, so we don't
 // double-bill the free-tier quota. Only screens WITHOUT their own event get one.
 // Returns null → no event for this route.
 function screenOpenEvent(pathname) {
@@ -125,15 +127,15 @@ function screenOpenEvent(pathname) {
  * смонтировался и прочитал хранилище, и возврат молча терялся бы. Запись
  * идемпотентна и без уборки, поэтому повтор в StrictMode безвреден.
  *
- * Адрес входа — через `withVisitCampaign`, как у всех переходов зоны в auth
- * (`zoneCta.js`): метка кампании обязана ехать В АДРЕСЕ, иначе она теряется на
- * первой же перезагрузке документа — а вход именно ею и заканчивается, уходя к
- * провайдеру OAuth (TRIP-329/493).
+ * Адрес входа — общая дверь зоны `zoneLogin()`: метка кампании обязана ехать В
+ * АДРЕСЕ, иначе она теряется на первой же перезагрузке документа — а вход
+ * именно ею и заканчивается, уходя к провайдеру OAuth (TRIP-329/493). Дверь
+ * названа один раз в `zoneCta.js`; здесь она была третьей копией одной строки.
  */
 function RedirectToLogin() {
   const { pathname, search } = useLocation();
   rememberPostLogin(pathname + search);
-  return <Navigate to={withVisitCampaign('/login')} replace />;
+  return <Navigate to={zoneLogin()} replace />;
 }
 
 const AuthenticatedApp = () => {

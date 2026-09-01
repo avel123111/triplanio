@@ -1,5 +1,5 @@
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
-import { GUEST_PLANNER_PATH } from './routePaths.js';
+import { GUEST_PLANNER_PATH, ZONE_PAGES } from './routePaths.js';
 
 /**
  * Тема ДОКУМЕНТА — один модуль на оба факта, из которых она складывается:
@@ -38,11 +38,26 @@ export function resolveDark({ stored, systemDark, lightZone }) {
  * снялась, а новая ещё едет — и тема на это время возвращалась к системной
  * (TRIP-475). Оболочка внутри зоны не размонтируется, у неё такого окна нет.
  */
-const EXACT = new Set(['/', '/login', '/reset-password', '/terms', '/privacy', DEMO_PATH, GUEST_PLANNER_PATH]);
+// Страницы зоны + гостевой планировщик. Список ВЫВОДИТСЯ из `ZONE_PAGES`, а не
+// переписывается: это была его дословная копия, и разъехаться они могли молча —
+// новая страница зоны появлялась бы тёмной на первом кадре у человека с тёмной
+// ОС, и не покраснело бы ничего. Планировщик добавлен отдельно: страницей зоны
+// он не является (у него нет canonical и он закрыт от индексации), но
+// поверхность у него светлая — разбор в `routePaths.js`.
+const EXACT = new Set([...ZONE_PAGES, GUEST_PLANNER_PATH]);
 const PREFIX = ['/join/', '/public/trip/'];
 
-/** @param {string} pathname */
-export function isZoneRoute(pathname) {
+/**
+ * ★ ИМЯ ГОВОРИТ «ЗАТРАВКА», И ЭТО НЕ ПРИДИРКА. Рядом живёт `routePaths.isZoneRoute`
+ * — тот же вид, та же сигнатура, и на гостевом планировщике они отвечают
+ * ПРОТИВОПОЛОЖНО: `/plan` рисуется своей веткой, а не таблицей зоны (там
+ * `false`), но поверхность у него светлая (здесь `true`). Под общим именем
+ * импорт не из того модуля дал бы молча неверный ответ ровно на том адресе,
+ * ради которого различие и заведено.
+ *
+ * @param {string} pathname
+ */
+export function seedsLightZone(pathname) {
   const p = (pathname || '/').replace(/\/+$/, '') || '/';
   return EXACT.has(p) || PREFIX.some((x) => (pathname || '').startsWith(x));
 }

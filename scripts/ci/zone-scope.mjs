@@ -56,37 +56,86 @@ export const ZONE_SCOPE_WEIGHTED = ':is(html.site,.site)';
  */
 const DOC_FORMS = [
   [':where(html.site) body', 'body'],
-  [':is(html.site,.site)', 'html.site'],
+  [ZONE_SCOPE_WEIGHTED, 'html.site'],
   ['html:where(.site)', 'html'],
 ];
 
 /**
- * Убрать скоуп зоны из текста стилей.
+ * Разложить текст на куски КОДА и куски, которые трогать нельзя, — комментарии
+ * и содержимое кавычек.
  *
- * Текстом, а не разбором CSS: литерал `:where(.site) ` встречается только в
- * позиции селектора — в значениях объявлений такой строки быть не может, и это
- * пинует тест. Разбор здесь стоил бы второго парсера CSS в репозитории.
+ * Нужно обоим публичным хелперам: они работают текстом, а не разбором CSS
+ * (второй парсер в репозитории — цена выше пользы). Без кавычек замена внутри
+ * `content:":where(.site) x"` испортила бы значение; утверждение «мы трогаем
+ * только селекторы» либо верно, либо его нельзя писать.
+ *
+ * ★ КОММЕНТАРИИ ПРОПУСКАЮТСЯ ПЕРВЫМИ, И ЭТО НЕ ВЕЖЛИВОСТЬ К ПРОЗЕ. Разборы в
+ * этом репозитории написаны по-русски и полны апострофов и кавычек («как
+ * есть», `don't`). Без пропуска комментариев первый же такой апостроф ОТКРЫВАЕТ
+ * мнимую строку, и всё до следующего апострофа — сотни настоящих правил —
+ * считается содержимым кавычек и остаётся нетронутым. Замер: `unscope()`
+ * оставлял скоуп на целом разделе `.pain.scrub`, и заметил это только тест,
+ * требующий снятия ЦЕЛИКОМ.
+ *
+ * @param {string} css
+ * @returns {{ code: boolean, text: string }[]}
+ */
+function segments(css) {
+  const out = [];
+  let buf = '', i = 0;
+  const flush = (text) => { out.push({ code: true, text: buf }); buf = ''; out.push({ code: false, text }); };
+  while (i < css.length) {
+    const c = css[i];
+    if (c === '/' && css[i + 1] === '*') {
+      const e = css.indexOf('*/', i + 2);
+      const j = e < 0 ? css.length : e + 2;
+      flush(css.slice(i, j));
+      i = j;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < css.length && css[j] !== c) j += css[j] === '\\' ? 2 : 1;
+      flush(css.slice(i, Math.min(j + 1, css.length)));
+      i = j + 1;
+      continue;
+    }
+    buf += c;
+    i += 1;
+  }
+  out.push({ code: true, text: buf });
+  return out;
+}
+
+/**
+ * Убрать скоуп зоны из текста стилей — в позициях СЕЛЕКТОРА, то есть везде,
+ * кроме содержимого кавычек.
  *
  * @param {string} css
  * @returns {string}
  */
 export function unscope(css) {
-  let out = css;
-  for (const [from, to] of DOC_FORMS) out = out.split(from).join(to);
-  return out.split(`${ZONE_SCOPE} `).join('');
+  return segments(css).map(({ code, text }) => {
+    if (!code) return text;
+    let out = text;
+    for (const [from, to] of DOC_FORMS) out = out.split(from).join(to);
+    return out.split(`${ZONE_SCOPE} `).join('');
+  }).join('');
 }
 
 /**
  * Осталось ли в тексте хоть что-то от скоупа. Нужен тесту: «сняли всё», а не
  * «сняли то, что вспомнили».
  *
- * Комментарии отброшены: разбор расщепления называет свои литералы прямо в
- * тексте (иначе объяснить его нечем), и это не след скоупа, а его описание.
+ * Комментарии и содержимое кавычек отброшены: разбор расщепления называет свои
+ * литералы прямо в тексте (иначе объяснить его нечем), и это не след скоупа, а
+ * его описание.
  *
  * @param {string} css
  * @returns {string[]} найденные следы (пусто — чисто)
  */
 export function scopeTraces(css) {
-  const code = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const code = segments(css.replace(/\/\*[\s\S]*?\*\//g, ''))
+    .filter((x) => x.code).map((x) => x.text).join('');
   return [ZONE_SCOPE, ...DOC_FORMS.map(([from]) => from)].filter((x) => code.includes(x));
 }

@@ -174,8 +174,10 @@ html.site[data-theme] {
    единственное место, где два хоста расходятся: на `<html>` основа уже приехала
    от `body`, а `font-size` на корне СДВИНУЛ БЫ `rem` для всей страницы, включая
    `app.css` (баннер согласия стоит вне роутера на каждой странице зоны).
-   Правило физически не может совпасть с документным хостом — поэтому страницы
-   зоны от него не меняются ни на пиксель, и это проверено попиксельно. */
+   ★ НА СТРАНИЦАХ ЗОНЫ ЭТО ПРАВИЛО СРАБАТЫВАЕТ ТОЖЕ: обёртку шапки рисует каждая
+   из них. Ничего там не меняется не потому, что правило «не достаёт», а потому,
+   что все восемь значений СОВПАДАЮТ с тем, что даёт `body` (проверено
+   попиксельно). Разведи их — и зона поедет вслед за островом. */
 /* visual-diff-exempt: .site:not(html) font-family — основа текста острова сайтовой ДС на странице приложения: внутри зоны ровно эти значения даёт `body` (TRIP-505) */
 /* visual-diff-exempt: .site:not(html) color — основа текста острова сайтовой ДС на странице приложения: внутри зоны ровно эти значения даёт `body` (TRIP-505) */
 /* visual-diff-exempt: .site:not(html) line-height — основа текста острова сайтовой ДС на странице приложения: внутри зоны ровно эти значения даёт `body` (TRIP-505) */
@@ -522,10 +524,13 @@ html.site main{opacity:0;animation:stepIn .3s var(--ease-out) forwards}
 :where(.site) .site-header.on-light.scrolled,:where(.site) .site-header--flow{background:rgba(255,255,255,.82);box-shadow:0 1px 0 rgba(11,44,84,.08)}
 
 /* Позиция — свойство поверхности. `position:static` возвращает шапку в поток
-   колонки `.flow-page` (100dvh, `overflow:hidden`): она забирает свои 70px
-   первой строкой, а не накрывает карту планировщика. `backdrop-filter` при этом
-   не нужен — под ней ничего не проезжает. */
-:where(.site) .site-header--flow{position:static;flex:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+   колонки `.flow-page` (100dvh, `overflow:hidden`): свои 70px она забирает
+   высотой `.site-header .wrap`, а не накрывает карту планировщика.
+   `backdrop-filter` при этом не нужен — под ней ничего не проезжает.
+   Флекс-элемент колонки — не сама шапка, а её остров `<div class="site">`,
+   поэтому пинить здесь `flex` бессмысленно: у него `min-height:auto`, и он
+   ровно облегает шапку. */
+:where(.site) .site-header--flow{position:static;backdrop-filter:none;-webkit-backdrop-filter:none}
 
 :where(.site) .site-header.on-accent.scrolled{background:rgba(196,74,52,.42);box-shadow:0 1px 0 rgba(255,255,255,.18)}
 
