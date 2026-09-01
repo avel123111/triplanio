@@ -15,7 +15,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  guestEntryPath, initialAuthView, readViewParam,
+  guestEntryPath, initialAuthView,
   LOGIN_PATH, SIGNUP_PATH, RECOVERY_PATH, SIGNUP_VIEW,
 } from './authEntry.js';
 
@@ -52,10 +52,9 @@ test('вид экрана: без метки — вход', () => {
 test('метка вида читается рядом с меткой кампании', () => {
   // Кнопка навешивает метку кампании ПОВЕРХ адреса (`withVisitCampaign` →
   // `appendQuery`), поэтому `mode` приезжает не один и не обязательно первым.
-  assert.equal(readViewParam('?mode=signup&utm_source=google&gclid=abc'), SIGNUP_VIEW);
-  assert.equal(readViewParam('?utm_source=google&mode=signup'), SIGNUP_VIEW);
-  assert.equal(readViewParam(''), null);
-  assert.equal(readViewParam(undefined), null);
+  assert.equal(initialAuthView(LOGIN_PATH, '?mode=signup&utm_source=google&gclid=abc'), SIGNUP_VIEW);
+  assert.equal(initialAuthView(LOGIN_PATH, '?utm_source=google&mode=signup'), SIGNUP_VIEW);
+  assert.equal(initialAuthView(LOGIN_PATH, undefined), 'login');
 });
 
 test('★ отправитель и приёмник читают одну строку', () => {

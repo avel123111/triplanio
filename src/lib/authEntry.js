@@ -30,7 +30,7 @@ export const LOGIN_PATH = '/login';
 export const RECOVERY_PATH = '/reset-password';
 
 /** Ключ и значение метки «открой сразу регистрацию». Пишется здесь ОДИН раз. */
-export const VIEW_PARAM = 'mode';
+const VIEW_PARAM = 'mode';
 export const SIGNUP_VIEW = 'signup';
 
 /** Адрес экрана входа, открытого на форме регистрации. */
@@ -72,18 +72,12 @@ export function initialAuthView(pathname, search) {
 }
 
 /**
- * Значение метки вида из строки запроса. Вынесено из `initialAuthView` отдельно,
- * потому что это РАЗБОР адреса, а не правило вида: метка приезжает не одна и не
- * первой (`withVisitCampaign` дописывает свои поверх), и у разбора своя проверка.
- *
- * Читателей у самой метки двое, и оба приходят сюда через `initialAuthView`:
- * экран (каким видом открыться) и аналитика (`login_opened.view` — без этого
- * поля «открыл регистрацию» и «открыл вход» неразличимы, и у правки, ради
- * которой всё это делается, не было бы замера).
+ * Разбор адреса, отдельно от правила вида: метку кампании `withVisitCampaign`
+ * дописывает ПОВЕРХ, поэтому `mode` приезжает не один и не обязательно первым.
  *
  * @param {string} search `location.search`
  * @returns {string|null}
  */
-export function readViewParam(search) {
+function readViewParam(search) {
   return new URLSearchParams(search || '').get(VIEW_PARAM);
 }
