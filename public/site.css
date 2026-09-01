@@ -1303,10 +1303,28 @@ html.site main{opacity:0;animation:stepIn .3s var(--ease-out) forwards}
   :where(.site) .aw-ready .stat-row{font-size: var(--fs-caption);padding:3px 9px}
 }
 
+/* ★ `.map-cred` УДАЛЁН — подпись под стилизованной картой прототипа, которую
+   разметка не писала НИКОГДА: имени нет ни в одном файле репозитория, ни на
+   `origin/dev`, ни на HEAD. Правило доехало вместе с портом прототипа v5.7 и
+   три месяца держало геометрию элемента, которого нет.
+   Расщепление его не сломало, а ПОКАЗАЛО: гард 2n берёт кандидатов из
+   УДАЛЁННЫХ строк диффа, а перенос селектора удаляет каждую строку файла, — до
+   этого мёртвое имя в кандидаты просто не попадало. Для 2p снятие правила
+   выглядит как снятие одиннадцати значений, поэтому каждое объявлено. */
+/* visual-diff-exempt: .map-cred position — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred right — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred bottom — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred z-index — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred font-size — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred line-height — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred color — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred background — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred padding — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred border-radius — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
+/* visual-diff-exempt: .map-cred pointer-events — правило мёртвое: имени `map-cred` нет ни в одной разметке репозитория (TRIP-505) */
 /* stylized map shared bits */
 :where(.site) .map-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
-:where(.site) .map-cred{position:absolute;right:7px;bottom:5px;z-index:2;font-size: var(--fs-micro);line-height:1;color:rgba(19,50,78,.6);background:rgba(255,255,255,.6);padding:2px 6px;border-radius: var(--r-xs);pointer-events:none}
 
 :where(.site) .npin-t{font-family:var(--font-display);font-size: var(--fs-caption);font-weight:800;fill:var(--brand);text-anchor:middle}
 
