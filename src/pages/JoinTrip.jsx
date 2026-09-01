@@ -9,6 +9,7 @@ import AuthShell from '@/components/site/AuthShell';
 // Ключ ОДИН на пишущего и читающего, и живёт он в своём модуле вместе с
 // проверкой адреса — здесь только вызовы (TRIP-497).
 import { rememberPostLogin, forgetPostLogin } from '@/lib/postLoginPath';
+import { SIGNUP_PATH } from '@/lib/authEntry';
 
 
 // Maps the invite-link edge function's machine `code` to its error i18n key.
@@ -89,13 +90,16 @@ export default function JoinTrip() {
           </div>
           <div className="av-btn-row">
             {/* nav(), не window.location: сохраняет снимок атрибуции в памяти,
-                который Login прочитает при регистрации (TRIP-329). Обе кнопки ведут
-                на /login (единая дверь входа/регистрации), как и раньше. */}
+                который Login прочитает при регистрации (TRIP-329). Дверь по-прежнему
+                ОДНА (`/login`) — но открывается тем видом, который обещает кнопка:
+                «Создать аккаунт» вела на форму ВХОДА, то есть приглашённому, у
+                которого аккаунта заведомо может не быть, показывали экран
+                возвращения, а регистрацию он должен был найти ссылкой под формой. */}
             <button type="button" className="av-btn av-btn-primary av-btn-block" onClick={() => nav('/login')}>
               <span className="av-btn-label"><span>{t('member.join_signin_btn')}</span><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow-r" /></svg></span>
               <span className="av-spin" aria-hidden="true" />
             </button>
-            <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => nav('/login')}>
+            <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => nav(SIGNUP_PATH)}>
               <span className="av-btn-label"><span>{t('member.join_signin_alt')}</span></span>
               <span className="av-spin" aria-hidden="true" />
             </button>

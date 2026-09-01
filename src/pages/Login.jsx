@@ -8,6 +8,7 @@ import { reportAuthError } from '@/lib/reportDataError';
 import { authErrorText, oauthRedirectError, stripOauthError } from '@/lib/authErrorText';
 import { authFlowResult } from '@/lib/authFlowCode';
 import { postLoginPath } from '@/lib/postLoginPath';
+import { initialAuthView, LOGIN_PATH, RECOVERY_PATH } from '@/lib/authEntry';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
@@ -228,13 +229,29 @@ function AuthError({ children }) {
 export default function Login() {
   const { t, lang, setLang } = useI18n();
 
+  // Адрес, по которому экран открыли, — ОДИН снимок на оба решения ниже
+  // (маршрут восстановления и стартовый вид). Ветку «рендер без `window`»
+  // выписываем здесь один раз, а не по разу в каждом из них; заглушка — обычный
+  // вход, то есть ровно то поведение, что было до появления видов в адресе.
+  const entry = typeof window === 'undefined'
+    ? { pathname: LOGIN_PATH, search: '' }
+    : window.location;
+
   // Password-recovery deep link (/reset-password) reuses this same auth shell
   // (left forms + right brand panel) but opens straight on the new-password form
   // and must NOT bounce to /trips even though the recovery token creates a session.
-  const isRecoveryRoute =
-    typeof window !== 'undefined' && window.location.pathname === '/reset-password';
+  const isRecoveryRoute = entry.pathname === RECOVERY_PATH;
 
-  const [view, setView]           = useState(isRecoveryRoute ? 'reset-password' : 'login'); // login | signup | reset | reset-sent | reset-password | reset-done
+  // С КАКОГО ВИДА ОТКРЫВАЕМСЯ — решает АДРЕС, а не всегда «вход». Экран один на
+  // три двери, и раньше он открывался формой ВХОДА для всех, включая
+  // человека, который только что нажал «Начать бесплатно»: заголовок «Продолжим
+  // с того же места» встречал того, кто здесь впервые, а регистрация пряталась
+  // ссылкой под формой. Правило читается из `authEntry` — оттуда же, откуда
+  // кнопки зоны берут адрес, чтобы половины контракта не разъехались.
+  //
+  // Снимок на монтировании, а не подписка на адрес: дальше видом управляет сам
+  // экран (`goto`), и перечитывание адреса откатывало бы выбор человека.
+  const [view, setView]           = useState(() => initialAuthView(entry.pathname, entry.search)); // login | signup | reset | reset-sent | reset-password | reset-done
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [password2, setPassword2] = useState('');
