@@ -190,6 +190,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { unscope } from './zone-scope.mjs';
 import { basename } from 'node:path';
 import postcss from 'postcss';
 
@@ -502,9 +503,26 @@ const listCss = (ref) => {
   return css.filter((p) => loaders.includes(basename(p)));
 };
 
+/**
+ * ★ САЙТОВУЮ ЗОНУ ЧИТАЕМ БЕЗ ЕЁ СКОУПА (TRIP-505).
+ *
+ * `public/site.css` весь описан от `:where(.site)` — компонентный слой сайтовой
+ * ДС обязан находить своего предка и на `<html>` страницы зоны, и на обёртке
+ * шапки посреди экрана приложения. Для ЭТОГО гарда скоуп — чистый шум: он не
+ * добавляет специфичности (`:where()` по построению) и не трогает ни одного
+ * объявления, но меняет ФОРМУ каждого селектора, а форма здесь — ключ единицы
+ * наблюдения. Без снятия расщепление напечатало бы 807 «изменений значения»,
+ * которых нет, и погасило бы гейт сотней маркеров.
+ *
+ * Снимаем на ОБЕИХ сторонах: на базе скоупа ещё нет, там это пустая операция, —
+ * поэтому сравнение остаётся честным и после того, как база догонит HEAD.
+ * Разбор самого скоупа — в `zone-scope.mjs`.
+ */
+const readZone = (p, css) => (p === ZONE_CSS ? unscope(css) : css);
+
 let baseFiles;
 try {
-  baseFiles = listCss(BASE_REF).map((p) => ({ path: p, css: git(['show', `${BASE_REF}:${p}`]) }));
+  baseFiles = listCss(BASE_REF).map((p) => ({ path: p, css: readZone(p, git(['show', `${BASE_REF}:${p}`])) }));
 } catch (e) {
   // Недостижимая база — КРАСНЫЙ, не пропуск: «нечего проверять» и «проверено,
   // чисто» не должны печатать одинаковый вердикт (правило 2o).
@@ -524,7 +542,7 @@ try {
  * и разница честно приезжает в сравнение как «ушло». */
 const headFiles = listCss(null)
   .filter((p) => existsSync(p))
-  .map((p) => ({ path: p, css: readFileSync(p, 'utf8') }));
+  .map((p) => ({ path: p, css: readZone(p, readFileSync(p, 'utf8')) }));
 
 const base = semantics(baseFiles);
 const head = semantics(headFiles);

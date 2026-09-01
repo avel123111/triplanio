@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useZoneCta, zonePlan } from '@/components/site/zoneCta';
+import { useZoneCta, zonePlan, zoneDemo } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
 import { useJsonLd, faqPageLd } from '@/components/site/jsonLd';
-import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import worldMapUrl from './world-map.svg?url';
 import {
@@ -247,7 +246,7 @@ function Hero() {
   // `cta_clicked`, что и финальный CTA `final_demo`: единственное отличие —
   // метка места `hero_demo` (верх воронки против низа).
   const cta = useZoneCta('hero', zonePlan());
-  const demo = useZoneCta('hero_demo', withVisitCampaign(DEMO_PATH));
+  const demo = useZoneCta('hero_demo', zoneDemo());
   return (
     <section className="hero" data-hdr="light" id="top">
       <div className="hero-bg" aria-hidden="true">
@@ -570,7 +569,7 @@ function FinalCta() {
   // Единственный CTA зоны, ведущий НЕ в продукт, — отсюда явный адрес. Метку
   // кампании визита он несёт так же, как остальные, и идёт через роутер, а не
   // голым <a href>, который её теряет (гард 2ad).
-  const demo = useZoneCta('final_demo', withVisitCampaign(DEMO_PATH));
+  const demo = useZoneCta('final_demo', zoneDemo());
   return (
     <SiteCta
       secondary={(

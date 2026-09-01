@@ -22,14 +22,13 @@
 // адреса, поэтому её нельзя ни забыть, ни перепутать.
 
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
 import { GUEST_PLANNER_PATH } from '@/lib/routePaths';
+import { DEMO_PATH } from '@/pages/Demo/demoPath';
 
-/** Куда ведёт CTA гостя и куда — уже вошедшего. Одно место на всю зону. */
+/** Дверь «я уже пользуюсь». Одно место на всю зону. */
 const LOGIN_PATH = '/login';
-const APP_PATH = '/trips';
 
 /**
  * Обычный левый клик — тот, который мы имеем право перехватить.
@@ -82,20 +81,41 @@ export function zonePlan() {
 }
 
 /**
+ * Адрес готового примера поездки — дверь «что это вообще» (TRIP-505).
+ *
+ * Была тремя копиями `withVisitCampaign(DEMO_PATH)` по вызывателям (герой,
+ * финальный блок, а в бургере её не было вовсе — там пункт с подписью про демо
+ * вёл во вход). Теперь адрес называется один раз, как `zonePlan` и `zoneHome`.
+ */
+let demo;
+export function zoneDemo() {
+  demo ??= withVisitCampaign(DEMO_PATH);
+  return demo;
+}
+
+/**
  * @param {string} location МЕСТО кнопки — единственное, чего не знает хук:
  *   `header` · `menu` · `menu_signin` · `hero` · `hero_demo` · `final` ·
  *   `final_demo`. `final` и `final_demo` уже живут в аналитике — не переименовывать.
- * @param {string} [to] Адрес, если кнопка ведёт НЕ в продукт (ссылка на демо в
- *   финальном блоке лендинга). По умолчанию — вход, а для вошедшего «Мои поездки».
+ * @param {string} [to] Адрес двери. По умолчанию — вход: это единственная дверь,
+ *   у которой адрес один для всех, поэтому её и не надо называть.
  * @returns {{href: string, onClick: (e: MouseEvent) => void}} раскрыть на `<a>`.
  */
 export function useZoneCta(location, to) {
   const nav = useNavigate();
   const { pathname } = useLocation();
-  const { isAuthenticated } = useAuth();
   // Метка кампании визита едет НА адрес: gtag читает её из строки запроса
-  // (TRIP-407 PR5). Вошедшему она не нужна — он уже атрибуцирован.
-  const href = to ?? (isAuthenticated ? APP_PATH : withVisitCampaign(LOGIN_PATH));
+  // (TRIP-407 PR5).
+  //
+  // ★ ВЕТКИ ПО АВТОРИЗАЦИИ ЗДЕСЬ БОЛЬШЕ НЕТ (TRIP-505). Она отвечала на вопрос
+  // «вошёл ли он» в компоненте, который рисуется РАНЬШЕ ответа: `isAuthenticated`
+  // стартует ложной, поэтому у вошедшего адрес кнопки на первом кадре был
+  // гостевым и молча подменялся на втором. Пока подпись у обоих состояний была
+  // одна, это никого не задевало; дверь с подписью «Войти» показала бы подмену
+  // глазами. Развилку держит сам `/login`: живой сессии он отдаёт
+  // `postLoginPath()` — то есть вошедший попадает в «Мои поездки» одним
+  // переходом, и делает это ОДНО место, а не каждая кнопка зоны.
+  const href = to ?? withVisitCampaign(LOGIN_PATH);
   const onClick = (e) => {
     if (!isPlainLeftClick(e)) return;
     e.preventDefault();

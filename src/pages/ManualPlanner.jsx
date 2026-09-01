@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { readDraft, writeDraft, clearDraft, markHandoff, takeHandoff } from '@/lib/plannerDraft';
 import { rememberPostLogin } from '@/lib/postLoginPath';
 import { withVisitCampaign } from '@/lib/analytics';
-import { GUEST_PLANNER_PATH } from '@/lib/routePaths';
+import { PLANNER_PATH } from '@/lib/routePaths';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
@@ -25,6 +25,8 @@ import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
+import { SiteHeader } from '@/components/site/SiteChrome';
+import { zoneHome } from '@/components/site/zoneCta';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
@@ -832,7 +834,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const nav = useNavigate();
   const { user } = useAuth();
   const t = useT();
-  const { lang } = useI18n();
+  const { lang, setLang } = useI18n();
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -1204,20 +1206,46 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   };
 
   /**
-   * Куда ведёт «назад» из шапки. У вошедшего — в его поездки; у гостя такого
-   * места нет вовсе (`/trips` под аут-гейтом, он получил бы вход), поэтому —
-   * туда, откуда он пришёл: на лендинг.
+   * Куда ведёт «назад» из шапки вошедшего — в его поездки. У гостя этой стрелки
+   * нет вовсе: его шапка сайтовая, и обратно на сайт его ведёт марка.
    *
    * Функцией, а не двумя литералами в разметке: шапка объявлена дважды
    * (блокер лимита и сам экран), и адрес, выписанный в каждой, разошёлся бы на
    * первой же правке — ровно так же, как расходились CTA зоны до `zoneCta`.
    */
-  const goBack = () => nav(user ? '/trips' : '/');
+  const goBack = () => nav('/trips');
+
+  // ★ ШАПКА ГОСТЯ — САЙТОВАЯ, А НЕ ШАПКА ПРИЛОЖЕНИЯ (TRIP-505).
+  //
+  // Человек пришёл сюда с лендинга и ещё не вошёл — он в неавторизованной зоне,
+  // и лицо у зоны одно на все её поверхности. Шапка приложения ему не подходит
+  // не «по вкусу», а по составу: колокольчик, меню «Профиль · Выйти» и аватар
+  // ссылаются на сессию, которой нет, — аватар рисовал ПРОЧЕРК в самом заметном
+  // углу. Сайтовая шапка несёт ровно то, что гостю нужно: марку (она же выход
+  // обратно на сайт), язык и дверь «Войти».
+  //
+  // Экран при этом остаётся экраном ПРИЛОЖЕНИЯ: `site.css` расщеплён так, что
+  // его компонентный слой достаёт только до острова шапки (`:where(.site)`), а
+  // документный на этой поверхности не включается вовсе — разбор в `SiteZone`.
+  // Поэтому планировщик выглядит здесь ровно так же, как у вошедшего.
+  const chrome = user ? (
+    <AppHeader
+      user={user}
+      isPro={isPro}
+      isDark={isDark}
+      onToggleTheme={toggleTheme}
+      onBack={goBack}
+      backTitle={t('notif.to_collection')}
+      title={isAi ? t('planner.step_home_ai') : t('trips.new')}
+    />
+  ) : (
+    <SiteHeader lang={lang} setLang={setLang} variant="signin" flow brandHref={zoneHome()} />
+  );
 
   const goSignIn = () => {
     track('trip_creation_signup_prompted', { method, city_count: cityNodesOf(nodes).length });
     markHandoff(method, draftState, Date.now());
-    rememberPostLogin(GUEST_PLANNER_PATH);
+    rememberPostLogin(PLANNER_PATH);
     nav(withVisitCampaign('/login'));
   };
 
@@ -1415,14 +1443,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   if (isOverLimit && !savedOk) {
     return (
       <div className="flow-page">
-        <AppHeader
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          onBack={goBack}
-          backTitle={user ? t('notif.to_collection') : t('planner.back_to_site')}
-        />
+        {chrome}
         <div className="grow row row--j-center">
           <EmptyState
             icon="lock"
@@ -1607,15 +1628,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   return (
     <div className="flow-page">
       {/* Header */}
-      <AppHeader
-        user={user}
-        isPro={isPro}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={goBack}
-        backTitle={user ? t('notif.to_collection') : t('planner.back_to_site')}
-        title={isAi ? t('planner.step_home_ai') : t('trips.new')}
-      />
+      {chrome}
 
       {/* Раскладку «карта во всю площадь + панель поверх / шит на телефоне»
           держит примитив <MapShell>: он же считает, сколько места закрыто, и
@@ -1653,15 +1666,21 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           <>
             {/* Floating round back control — shown only on the phone shell (the app
                 header is removed there); the canon `.map-back` position/visibility
-                live in CSS. */}
-            <IconBtn
-              className="map-back"
-              icon="back"
-              round
-              tone="outline"
-              ariaLabel={t('notif.to_collection')}
-              onClick={() => nav('/trips')}
-            />
+                live in CSS.
+                У ГОСТЯ ЕЁ НЕТ (TRIP-505): она заменяет шапку приложения, а у него
+                шапка сайтовая и на телефоне никуда не девается — выход из экрана
+                несёт её марка. Оставь кнопку — и она вела бы в `/trips`, то есть
+                гостя в форму входа, молча бросив его маршрут. */}
+            {user && (
+              <IconBtn
+                className="map-back"
+                icon="back"
+                round
+                tone="outline"
+                ariaLabel={t('notif.to_collection')}
+                onClick={goBack}
+              />
+            )}
             <FlowMap
               view={view}
               colorScheme={isDark ? 'DARK' : 'LIGHT'}

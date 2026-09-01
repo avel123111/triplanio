@@ -33,7 +33,7 @@ import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { APP_ROUTES, GUEST_PLANNER_PATH, isZoneRoute } from '@/lib/routePaths';
+import { APP_ROUTES, GUEST_PLANNER_PATH, PLANNER_PATH, isZoneRoute } from '@/lib/routePaths';
 import { rememberPostLogin } from '@/lib/postLoginPath';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
@@ -287,13 +287,16 @@ const AuthenticatedApp = () => {
   // (`visibleSteps` в самом планировщике), поэтому ни одного вызова, требующего
   // сессии, на его пути нет.
   //
-  // ★★ ВНЕ `<SiteZone>`, И ЭТО НЕ ВКУС, А ЗАМЕР. Оболочка зоны подключает
-  // `public/site.css`, а он пересекается с `src/design/app.css` по 57 именам
-  // классов — среди них `.btn`, `.badge`, `.sheet`, `.err`, `.t-label` — и
-  // выигрывает каскад. Планировщик внутри зоны приехал бы с чужими кнопками,
-  // шторками и типографикой. Здесь на нём действует только `app.css`, то есть
-  // он выглядит ровно так же, как у залогиненного. Человек с лендинга попадает
-  // в облик продукта — это честно: он и правда уже в продукте.
+  // ★★ ЭТО ПОВЕРХНОСТЬ ЗОНЫ, СОБРАННАЯ ПРИЛОЖЕНИЕМ — `<SiteZone surface="app">`.
+  // Человек не выходил из неавторизованной зоны: он пришёл с лендинга и ещё не
+  // вошёл, поэтому всё, чем зона владеет, обязано остаться при нём — светлая
+  // тема (у зоны нет тёмной), `<html lang>`, сброс прокрутки, слой `site.css`
+  // для сайтовой шапки. Не остаётся ровно одно — ДОКУМЕНТНЫЙ слой сайтовой ДС
+  // (`html.site`): страницу рисует ДС приложения, и её типографику с фоном
+  // перебивать нечем. Ровно это различие и называет `surface` (разбор — в
+  // `SiteZone`), а держит его расщепление `site.css` на документный и
+  // компонентный слои: компонентный весь описан от `:where(.site)` и потому
+  // достаёт только до острова шапки, а не до экрана.
   //
   // ★★★ ВЕТКА СТОИТ ПОСЛЕ ГЕЙТА ЗАГРУЗКИ, И ЭТО НЕСУЩЕЕ. `isAuthenticated`
   // ложна не только у гостя, но и у ВОЗВРАЩАЮЩЕГОСЯ из OAuth, пока сессия ещё
@@ -302,13 +305,17 @@ const AuthenticatedApp = () => {
   // разъехался бы сам с собой (ключ хранилища — по `user.id`, см.
   // `lib/plannerDraft.js`).
   //
-  // `Suspense` свой, без `<SiteZone>`: ожидание МОЛЧАЛИВОЕ по той же причине,
-  // что у страниц зоны, — до приезда чанка не мигаем чужим обликом.
-  if (!isAuthenticated && path === GUEST_PLANNER_PATH) {
+  // Вошедшему здесь делать нечего: у планировщика есть адрес приложения, и
+  // поверхность там своя (тема человека, шапка приложения, никакого `noindex`).
+  // Перенос один и `replace` — чтобы «назад» не возвращало в редирект.
+  if (path === GUEST_PLANNER_PATH) {
+    if (isAuthenticated) return <Navigate to={PLANNER_PATH} replace />;
     return (
-      <Suspense fallback={<AppLoading silent />}>
-        <GuestPlanner />
-      </Suspense>
+      <SiteZone surface="app">
+        <Suspense fallback={<AppLoading silent />}>
+          <GuestPlanner />
+        </Suspense>
+      </SiteZone>
     );
   }
 
@@ -332,14 +339,11 @@ const AuthenticatedApp = () => {
       <SiteZone>
         <Suspense fallback={<AppLoading silent />}>
           <Routes>
-            {/* ★ ПЛАНИРОВЩИК ИСКЛЮЧЁН ИЗ РАСКРЫТИЯ (TRIP-505). Он единственный
-                адрес приложения, у которого БЕЗ сессии есть свой экран, а не
-                вход, — его ветка стоит выше и до сюда не доходит. Оставь его в
-                списке — и `<RedirectToLogin>` объявился бы вторым обработчиком
-                того же пути: гость молча уезжал бы во вход. Фильтр здесь, а не
-                вычитание из `APP_ROUTES`: список обязан оставаться полным, по
-                нему `middleware.js` решает, существует ли адрес вообще. */}
-            {APP_ROUTES.filter((pattern) => pattern !== GUEST_PLANNER_PATH).map((pattern) => (
+            {/* Планировщик `/new-trip` остаётся ЗДЕСЬ, среди адресов приложения:
+                без сессии он ведёт во вход с возвратом, как и был. Экран без
+                сессии живёт на своём адресе `/plan` (разбор — `routePaths.js`),
+                и его ветка стоит выше, до сюда не доходя. */}
+            {APP_ROUTES.map((pattern) => (
               <Route key={pattern} path={pattern} element={<RedirectToLogin />} />
             ))}
             <Route path="*" element={<PageNotFound />} />

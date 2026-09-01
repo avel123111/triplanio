@@ -1,4 +1,5 @@
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
+import { GUEST_PLANNER_PATH } from './routePaths.js';
 
 /**
  * Тема ДОКУМЕНТА — один модуль на оба факта, из которых она складывается:
@@ -37,7 +38,7 @@ export function resolveDark({ stored, systemDark, lightZone }) {
  * снялась, а новая ещё едет — и тема на это время возвращалась к системной
  * (TRIP-475). Оболочка внутри зоны не размонтируется, у неё такого окна нет.
  */
-const EXACT = new Set(['/', '/login', '/reset-password', '/terms', '/privacy', DEMO_PATH]);
+const EXACT = new Set(['/', '/login', '/reset-password', '/terms', '/privacy', DEMO_PATH, GUEST_PLANNER_PATH]);
 const PREFIX = ['/join/', '/public/trip/'];
 
 /** @param {string} pathname */

@@ -6,7 +6,7 @@ import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
 import { isZonePage } from '@/lib/routePaths';
-import { useZoneCta, isPlainLeftClick, zonePlan } from './zoneCta';
+import { useZoneCta, isPlainLeftClick, zonePlan, zoneDemo } from './zoneCta';
 import LandingSprite from './LandingSprite';
 
 /* =========================================================
@@ -142,28 +142,62 @@ function useBrandNav(brandHref) {
  */
 
 
-export function SiteHeader({ lang, setLang, variant = 'full', themed = false, navBase = '', brandHref = '#top', navItems = NAV }) {
+/**
+ * ОСТРОВ САЙТОВОЙ ДС (TRIP-505).
+ *
+ * `public/site.css` весь описан от `.site` — у каждого правила компонентного
+ * слоя этот класс стоит ПРЕДКОМ. На странице зоны предок находится сам: класс
+ * висит на `<html>`. На странице ПРИЛОЖЕНИЯ его там нет и быть не должно (иначе
+ * сайтовая ДС перекрасила бы экран приложения — она выигрывает каскад у
+ * `app.css` по 56 общим именам классов), поэтому предка объявляет сама шапка.
+ *
+ * Обёртка ВСЕГДА, а не «когда мы вне зоны»: условная обёртка — это развилка,
+ * которую обязан помнить каждый вызыватель, а забытая она даёт не ошибку, а
+ * молча неоформленную шапку. В зоне лишний `<div>` ничего не стоит: шапка
+ * `position:fixed` (высота обёртки 0), подвал — блок во всю ширину родителя,
+ * ни одного соседского селектора (`+`, `~`, `:first-child`) на них не заведено.
+ * Проверено попиксельно на всех страницах зоны, а не рассуждением.
+ */
+function SiteIsland({ children }) {
+  return <div className="site">{children}</div>;
+}
+
+export function SiteHeader({ lang, setLang, variant = 'full', themed = false, flow = false, navBase = '', brandHref = '#top', navItems = NAV }) {
   const t = useT();
   const nav = useNavigate();
   const location = useLocation();
-  // Три CTA шапки: кнопка справа и два верхних пункта бургера. Адрес, метку
-  // страницы и обработку клика им даёт ОДИН хелпер — здесь остаётся только
-  // МЕСТО каждой кнопки (`zoneCta.js`).
+  // ★ ТРИ ДВЕРИ, А НЕ ШЕСТЬ КНОПОК (TRIP-505). У посетителя зоны ровно три
+  // задачи, и каждой отвечает СВОЯ дверь — одна и та же во всех местах зоны:
+  //   · «хочу попробовать»  → планировщик (`zonePlan`);
+  //   · «что это вообще»    → пример поездки (`zoneDemo`);
+  //   · «я уже пользуюсь»   → вход (адрес по умолчанию у `useZoneCta`).
+  // До этого дверей было две, и обе вели во вход: «Начать бесплатно» ничего не
+  // обещала про то, что произойдёт, а демо в бургере было подписано «Посмотреть
+  // демо» и уводило в форму входа. Кнопки шапки различаются теперь СМЫСЛОМ, а
+  // не местом, поэтому и на десктопе, и в бургере состав один.
   //
-  // ДВЕ КНОПКИ «начать» ВЕДУТ В ПЛАНИРОВЩИК, третья — во вход (TRIP-505).
-  // Различие смысловое, а не техническое: «начать планировать» обещает работу
-  // над поездкой и теперь ведёт прямо к ней, «войти» обещает вход. До этого обе
-  // вели в одно место, потому что другого места не было.
+  // ВХОД БЕЗ ВЕТКИ ПО АВТОРИЗАЦИИ, И ЭТО РЕШЕНИЕ. Вошедшему `/login` сам отдаёт
+  // `postLoginPath()` (`Login.jsx`), то есть он попадает в «Мои поездки» одним
+  // переходом. Ветка прямо здесь означала бы, что подпись кнопки зависит от
+  // ответа про сессию, — а лендинг рисуется ДО этого ответа, и подпись меняла бы
+  // сама себя на глазах. Дверь одна, за ней разберутся.
   const headerCta = useZoneCta('header', zonePlan());
+  const headerSignin = useZoneCta('header_signin');
   const menuCta = useZoneCta('menu', zonePlan());
+  const menuDemo = useZoneCta('menu_demo', zoneDemo());
   const menuSignin = useZoneCta('menu_signin');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState('light'); // on-light is the safe default
   const navHref = (hash) => `${navBase}${hash}`;
 
+  // Состав шапки. `full` — лендинг, демо и публичная поездка; `signin` —
+  // гостевой планировщик (человек уже внутри инструмента, звать его «составить
+  // маршрут» некуда, а дверь входа нужна); `minimal` — юр-страницы.
+  // Вариант `cta` удалён: его не запрашивала ни одна страница.
   const showNav = variant === 'full';
-  const showCta = variant === 'full' || variant === 'cta';
+  const showCta = variant === 'full';
+  const showSignin = variant === 'full' || variant === 'signin';
   // Only the full header collapses its section nav into the mobile menu; the
   // others have nothing to hide behind a burger, so they keep everything inline.
   const showBurger = variant === 'full';
@@ -212,9 +246,14 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   const onBrand = useBrandNav(brandHref);
 
   return (
-    <>
+    <SiteIsland>
       <LandingSprite />
-      <header className={`site-header ${scrolled ? 'scrolled' : ''} on-${theme}`} id="siteHeader">
+      {/* `flow` — шапка занимает свою строку, а не висит над кадром. Позиция
+          здесь свойство ПОВЕРХНОСТИ, а не шапки: страницы зоны начинаются с
+          геро, поверх которого шапка и задумана; экран приложения — колонка на
+          100dvh, где ей полагается первая строка. Тема при этом всегда светлая:
+          подстраиваться не под что, секций с `data-hdr` на экране нет. */}
+      <header className={`site-header ${flow ? 'site-header--flow' : ''} ${showBurger ? 'site-header--menu' : ''} ${scrolled ? 'scrolled' : ''} on-${flow ? 'light' : theme}`} id="siteHeader">
         <div className="wrap">
           <a href={brandHref} className="brand" aria-label={t('nav.aria_home')} onClick={onBrand}>
             <svg className="logo" viewBox="0 0 192 192" aria-hidden="true"><use href="#tl-logo"/></svg>
@@ -230,6 +269,13 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
             {/* Ссылка, а не кнопка: это навигация, и как ссылка она умеет
                 «открыть в новой вкладке» — как остальные пять CTA зоны.
                 Оформление не меняется, элементных правил у `.btn` нет. */}
+            {/* Дверь «я уже пользуюсь» — текстовая ссылка, а не вторая кнопка:
+                рядом с заливкой CTA два одинаковых по весу элемента спорили бы
+                за внимание. Облик берёт ровно у пунктов `.main-nav a` (те же
+                правила, со-селектором) — своих значений у неё нет. */}
+            {showSignin && (
+              <a className="header-signin" {...headerSignin}>{t('auth.sign_in')}</a>
+            )}
             {showCta && (
               <a className="btn btn-primary btn-sm header-cta" {...headerCta}>
                 {t('landing.nav.cta')}
@@ -259,13 +305,17 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
       {showBurger && (
         <nav className="mobile-menu" id="mobileMenu" aria-label={t('nav.aria_primary')}>
           <a {...menuCta} onClick={(e) => { setMobileOpen(false); menuCta.onClick(e); }}>{t('landing.hero.cta1')}</a>
-          <a {...menuSignin} onClick={(e) => { setMobileOpen(false); menuSignin.onClick(e); }}>{t('landing.hero.cta2')}</a>
+          {/* Здесь стоял пункт с подписью «Посмотреть демо», который вёл во ВХОД:
+              подпись осталась от времени, когда обе верхние двери бургера вели в
+              одно место. Теперь их три, и каждая ведёт туда, что написано. */}
+          <a {...menuDemo} onClick={(e) => { setMobileOpen(false); menuDemo.onClick(e); }}>{t('landing.hero.cta2')}</a>
+          <a {...menuSignin} onClick={(e) => { setMobileOpen(false); menuSignin.onClick(e); }}>{t('auth.sign_in')}</a>
           {navItems.map((n) => (
             <a key={n.hash} href={navHref(n.hash)} onClick={() => setMobileOpen(false)}>{t(n.tkey)}</a>
           ))}
         </nav>
       )}
-    </>
+    </SiteIsland>
   );
 }
 
@@ -279,7 +329,8 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
   const t = useT();
   const onBrand = useBrandNav(brandHref);
   return (
-    <footer className="site-footer" data-hdr="light">
+    <SiteIsland>
+      <footer className="site-footer" data-hdr="light">
       <div className="wrap">
         <div className="footer-min">
           <div className="footer-brandcol">
@@ -311,7 +362,8 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
           <span>{t('landing.ft.copy')}</span>
         </div>
       </div>
-    </footer>
+      </footer>
+    </SiteIsland>
   );
 }
 
@@ -399,7 +451,7 @@ const ZoneCssCtx = createContext(null);
  *  canonical обязаны называть одну страницу одним адресом, иначе они спорят. */
 const CANONICAL_ORIGIN = 'https://www.triplanio.com';
 
-export function SiteZone({ children }) {
+export function SiteZone({ children, surface = 'site' }) {
   // ★ СВЕТЛУЮ ТЕМУ ДЕРЖИТ ОБОЛОЧКА, А НЕ СТРАНИЦА (TRIP-475).
   //
   // Правило «зона светлая по построению» жило в `useSiteCss()`, то есть у
@@ -412,6 +464,14 @@ export function SiteZone({ children }) {
   // между страницами у неё нет по построению, а не «оно короткое».
   useLightZone();
   const cssReady = useSiteCssLink(true);
+  // ★ ПОВЕРХНОСТЬ — ЕДИНСТВЕННОЕ, ЧЕМ СТРАНИЦЫ ЗОНЫ ОТЛИЧАЮТСЯ ДРУГ ОТ ДРУГА
+  // (TRIP-505). `site` (по умолчанию) — страницу рисует сайтовая ДС целиком,
+  // документный слой на `<html>`. `app` — страницу рисует ДС приложения, а из
+  // сайтовой на ней только остров шапки: так живёт гостевой планировщик. Всё
+  // остальное у обеих поверхностей общее и живёт здесь: светлая тема, `<link>`,
+  // `<html lang>`, сброс прокрутки, canonical по адресу — то есть человек не
+  // выходит из зоны, просто её страница на этом шаге собрана приложением.
+  useSiteDocumentLayer(surface === 'site');
   const { pathname, hash } = useLocation();
   const { lang } = useI18n();
   useEffect(() => {
@@ -532,7 +592,6 @@ function useSiteCssLink(enabled) {
       if (link.sheet) setCssReady(true);
     }
 
-    document.documentElement.classList.add('site');
     // Мы в зоне — заранее тянем чанки её соседних страниц (см. докблок выше).
     prefetchZoneNeighbours();
 
@@ -543,11 +602,49 @@ function useSiteCssLink(enabled) {
         if (siteCssRefs > 0) return; // an incoming consumer already re-claimed it
         const el = document.getElementById('site-css');
         if (el) el.parentNode.removeChild(el);
-        document.documentElement.classList.remove('site', 'reveal--ready');
       });
     };
   }, [enabled]);
   return cssReady;
+}
+
+let siteDocRefs = 0;
+
+/**
+ * ДОКУМЕНТНЫЙ СЛОЙ сайтовой ДС — класс `site` на `<html>` (TRIP-505).
+ *
+ * ★ ПОЧЕМУ ЭТО ОТДЕЛЬНО ОТ ЗАГРУЗКИ `<link>`, ХОТЯ ЖИЛО ОДНОЙ СТРОКОЙ РЯДОМ.
+ * Это два разных факта, и с гостевым планировщиком они впервые разошлись:
+ *   · «слой стилей зоны нужен на этой странице» — верно и для экрана
+ *     приложения, который несёт шапку сайта;
+ *   · «страницу целиком рисует сайтовая ДС» — там уже неверно.
+ * Пока они были одной строкой, второе приезжало с первым: `html.site` включает
+ * документные правила зоны (`body` — гарнитура, вес, цвет, фон; `html` —
+ * плавная прокрутка и отступ под фикс-шапку; появление `main`), и экран
+ * приложения получал чужую типографику. Сцепку не видно ни глазом на зоне (там
+ * оба факта верны), ни гардом — поэтому она названа явно.
+ *
+ * Свой счётчик, а не общий с `<link>`: при переходе «страница зоны → гостевой
+ * планировщик» держатель слоя остаётся (оболочка не размонтируется, `<link>` на
+ * месте), а документный слой обязан сняться. Общий счётчик в этот момент не
+ * падает до нуля — и класс остался бы висеть.
+ */
+function useSiteDocumentLayer(enabled) {
+  useEffect(() => {
+    if (!enabled) return undefined;
+    siteDocRefs += 1;
+    document.documentElement.classList.add('site');
+    return () => {
+      siteDocRefs = Math.max(0, siteDocRefs - 1);
+      // Отложено ровно по той же причине, что снятие `<link>` выше: React
+      // размонтирует старое дерево ДО монтирования нового, и без микротаска
+      // переход между двумя страницами зоны снимал бы класс на кадр.
+      queueMicrotask(() => {
+        if (siteDocRefs > 0) return;
+        document.documentElement.classList.remove('site', 'reveal--ready');
+      });
+    };
+  }, [enabled]);
 }
 
 /* `useSiteTheme` УДАЛЁН (TRIP-445). Он ставил [data-theme=light] один раз на

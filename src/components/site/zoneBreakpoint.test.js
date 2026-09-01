@@ -28,8 +28,29 @@ test('★★★ CSS зоны переключается на ТОМ ЖЕ чис�
   assert.ok(css.includes(`(max-width:${ZONE_DESKTOP_MIN - 1}px)`),
     `site.css не содержит ${ZONE_BELOW_DESKTOP_MQ} — JS и CSS разъехались`);
   // И у кнопки оглавления граница ровно эта, а не соседняя.
-  const desktopBlock = css.slice(css.indexOf(`(min-width:${ZONE_DESKTOP_MIN}px){\n  .doc-toc{`));
-  assert.match(desktopBlock.slice(0, 600), /\.doc-toc\s*>\s*summary\s*\{\s*display\s*:\s*none/,
+  //
+  // Якорь — по СОДЕРЖИМОМУ блока, а не по его первой строке: селекторы
+  // `site.css` несут скоуп зоны (`:where(.site) …`, TRIP-505), и привязка к
+  // точной форме `\n  .doc-toc{` уже один раз развалилась от правки, которая
+  // ничего не значила для этой проверки. Ищем медиа-блок, внутри которого
+  // вообще встречается `.doc-toc`.
+  const mq = `(min-width:${ZONE_DESKTOP_MIN}px){`;
+  /** Тело медиа-блока целиком — по балансу скобок, а не по числу символов. */
+  const bodyAt = (from) => {
+    let depth = 0;
+    for (let i = from; i < css.length; i += 1) {
+      if (css[i] === '{') depth += 1;
+      else if (css[i] === '}') { depth -= 1; if (depth === 0) return css.slice(from, i); }
+    }
+    return '';
+  };
+  let block = '';
+  for (let i = css.indexOf(mq); i !== -1; i = css.indexOf(mq, i + 1)) {
+    const b = bodyAt(i + mq.length - 1);
+    if (b.includes('.doc-toc')) { block = b; break; }
+  }
+  assert.notEqual(block, '', `в site.css нет блока ${mq} с правилами оглавления`);
+  assert.match(block, /\.doc-toc\s*>\s*summary\s*\{\s*display\s*:\s*none/,
     'на десктопе кнопка оглавления обязана быть спрятана — иначе `open` там не нужен');
 });
 
