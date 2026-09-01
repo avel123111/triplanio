@@ -510,15 +510,27 @@ export default function Login() {
           // silently suppressed (the "почти никогда не появляется" symptom).
           use_fedcm_for_prompt: true,
         });
-        // The notification callback surfaces WHY a prompt didn't display
-        // (dismissed/skipped/cooldown) instead of failing silently — useful
-        // for diagnosing One Tap in the field.
-        window.google?.accounts.id.prompt((n) => {
-          if (n?.isNotDisplayed?.() || n?.isSkippedMoment?.()) {
-            const reason = n.getNotDisplayedReason?.() || n.getSkippedReason?.();
-            if (reason) track('one_tap_suppressed', { reason });
-          }
-        });
+        // БЕЗ КОЛЛБЭКА НАМЕРЕННО. Здесь стоял слушатель, отправлявший
+        // `one_tap_suppressed` с причиной, по которой промпт не показался. Он
+        // читал `getNotDisplayedReason()` / `getSkippedReason()` — ровно те
+        // методы, которые FedCM (включён строкой выше) сворачивает: Google
+        // пишет в консоль каждому посетителю этого экрана предупреждение
+        // «may stop functioning when FedCM becomes mandatory» и предписывает
+        // «remove any code that depends on» них.
+        //
+        // Дело не в будущем, а в настоящем: сигнал УЖЕ наполовину слепой, и это
+        // видно по границе движков. За 90 дней прода все 22 причины из Chromium
+        // (Android/Windows/Mac) — `unknown_reason`, то есть заглушка FedCM; а
+        // настоящие причины (`suppressed_by_user`, `user_cancel`) приходили
+        // только с WebKit, где FedCM не поддерживается и работает старый путь.
+        // Читать половину ответа и принимать её за диагноз хуже, чем не читать:
+        // на этих причинах уже дважды строились неверные выводы.
+        //
+        // Сам вход не затронут — коллбэк опционален и промпт без него
+        // показывается как прежде. Успех One Tap считается не здесь, а в
+        // `handleOneTapCredential`: `user_logged_in` с `surface: 'one_tap'`
+        // (25 входов за 90 дней), и это единственное, что нам от него нужно.
+        window.google?.accounts.id.prompt();
       };
       document.head.appendChild(script);
     };
