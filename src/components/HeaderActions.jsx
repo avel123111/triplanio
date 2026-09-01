@@ -17,8 +17,21 @@ import { displayName } from '@/lib/displayName';
  * The PRO badge sits next to the avatar and is hidden on mobile via CSS
  * (`.app-header__pro`).
  *
+ * ★ БЕЗ СЕССИИ ОСТАЁТСЯ ОДНА КНОПКА — ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ (TRIP-505). Шапка
+ * впервые показывается гостю (ручной планировщик с лендинга), и колокольчик
+ * уведомлений с меню «Профиль · Выйти» у него не значат ничего: уведомлений нет,
+ * профиля нет, выходить неоткуда. Аватар при этом рисовал ПРОЧЕРК — `displayName`
+ * от пустого пользователя, — то есть пустой кружок в самом заметном углу экрана.
+ *
+ * Второй двери во вход здесь СОЗНАТЕЛЬНО нет. Единственный вход из планировщика —
+ * кнопка «Сохранить трип» на последней ступени, и она перед уходом помечает
+ * черновик передаваемым. Кнопка «Войти» в шапке этой пометки не делала бы, а
+ * значит человек, вошедший через неё, вернулся бы БЕЗ своего маршрута — дверь,
+ * которая молча теряет работу. Кому надо войти сначала — «назад» ведёт на сайт,
+ * там вход в шапке есть.
+ *
  * Props:
- *   user          - current user (avatar + label)
+ *   user          - current user (avatar + label); без него кластер сворачивается
  *   isPro         - boolean; renders the PRO badge by the avatar
  *   isDark        - boolean; picks sun/moon icon
  *   onToggleTheme - () => void
@@ -42,10 +55,11 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
         ariaLabel={t('nav.toggle_theme')}
         onClick={onToggleTheme}
       />
-      <NotificationsBell />
+      {user && <NotificationsBell />}
       {/* Клик по профилю → канон-меню (ActionMenu): «Профиль» ведёт на аккаунт-экран
           (тот же адрес, что раньше открывал аватар), «Выйти» — logout из AuthContext
           (прямое действие, без confirm — как кнопка выхода в ScreenAccount). */}
+      {user && (
       <ActionMenu
         align="end"
         title={t('nav.account')}
@@ -65,6 +79,7 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
           { icon: 'logout', label: t('auth.logout'), onSelect: () => logout() },
         ]}
       />
+      )}
     </div>
   );
 }

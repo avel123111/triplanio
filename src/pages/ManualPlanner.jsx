@@ -7,6 +7,10 @@ import { refusalError } from '@/lib/refusalError';
 import { goPro } from '@/lib/goPro';
 import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
+import { readDraft, writeDraft, clearDraft, markHandoff, takeHandoff } from '@/lib/plannerDraft';
+import { rememberPostLogin } from '@/lib/postLoginPath';
+import { withVisitCampaign } from '@/lib/analytics';
+import { GUEST_PLANNER_PATH } from '@/lib/routePaths';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
@@ -60,13 +64,9 @@ const STEPS = [
   { id: 'review', num: 4, labelKey: 'planner.step_review' },
 ];
 
-// Storage key is user- and method-specific so the manual and AI drafts don't
-// leak into each other (the same flow component serves both routes).
-// `-v3-`: форма черновика сменилась снова — три переменные (`home`/`cities`/`end`)
-// стали ОДНИМ списком узлов с видом у каждого (`create/routeModel`, TRIP-484 §4).
-// Ключ поднимается, а не мигрируется: черновик живёт минуты, и мапперу старой
-// формы пришлось бы пережить обе, чтобы обслужить вкладку, открытую в обед.
-const storageKey = (userId, method = 'manual') => `triplanio-planner-v3-${method}-${userId || 'guest'}`;
+// Черновик — `lib/plannerDraft`: ключ, срок жизни и переезд гость → вошедший
+// живут там одной чистой функцией с тестом (TRIP-505). Здесь их больше нет,
+// потому что оба правила ломаются молча, а значит обязаны иметь гейт.
 
 // Same physical city (external directory id / geonameid, else name — тёзки-города в
 // разных странах ≠ один город). Used by StepReturn to decide which return card looks
@@ -908,31 +908,37 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // so follow-up messages refine the draft.
   const [aiMessages, setAiMessages]         = useState(() => (isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []));
 
-  // Restore from sessionStorage on mount - only for the current user
+  // ★ ВОССТАНОВЛЕНИЕ ЧЕРНОВИКА — ОНО ЖЕ ВОЗВРАТ ГОСТЯ ПОСЛЕ РЕГИСТРАЦИИ
+  // (TRIP-505). Второй механизм здесь не нужен и был бы вреден: человек ушёл на
+  // вход с шага возврата, `postLoginPath` вернул его сюда, и шаг лежит В САМОМ
+  // черновике — значит «продолжить с того места» это и есть обычное чтение.
+  //
+  // Порядок несущий: СНАЧАЛА забрать переданный гостевой черновик под свой
+  // ключ, потом читать свой. Наоборот — прочитали бы пустоту (под ключом
+  // вошедшего ещё ничего нет) и записали бы её поверх переезда.
+  //
+  // Зависимость `[user?.id]` была и осталась: эффект перечитывает хранилище при
+  // смене владельца, а возврат из OAuth — ровно она.
   useEffect(() => {
-    try {
-      const key = storageKey(user?.id, method);
-      const raw = sessionStorage.getItem(key);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        if (saved.step) setStep(saved.step);
-        if (saved.nodes?.length) setNodes(saved.nodes);
-        if (saved.tripTitle) setTripTitle(saved.tripTitle);
-        if (saved.startDate) setStartDateRaw(saved.startDate);
-        if (saved.cover) setCover(saved.cover);
-        if (saved.aiState && isAi) setAiState(saved.aiState);
-        if (saved.aiMessages?.length && isAi) setAiMessages(saved.aiMessages);
-      }
-    } catch {}
+    const now = Date.now();
+    const saved = takeHandoff(user?.id, method, now) || readDraft(user?.id, method, now);
+    if (saved) {
+      if (saved.step) setStep(saved.step);
+      if (saved.nodes?.length) setNodes(saved.nodes);
+      if (saved.tripTitle) setTripTitle(saved.tripTitle);
+      if (saved.startDate) setStartDateRaw(saved.startDate);
+      if (saved.cover) setCover(saved.cover);
+      if (saved.aiState && isAi) setAiState(saved.aiState);
+      if (saved.aiMessages?.length && isAi) setAiMessages(saved.aiMessages);
+    }
     setRestored(true);
   }, [user?.id]); // re-run if user changes (e.g. account switch in same tab)
 
-  // Persist to sessionStorage on every change
+  // Запись на каждое изменение. Метку времени ставит сам модуль — ею живёт срок
+  // годности черновика, поэтому она не имеет права быть заботой экрана.
   useEffect(() => {
     if (!restored) return;
-    try {
-      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, nodes, tripTitle, startDate, cover, aiState, aiMessages }));
-    } catch {}
+    writeDraft(user?.id, method, { step, nodes, tripTitle, startDate, cover, aiState, aiMessages }, Date.now());
   }, [step, nodes, tripTitle, startDate, cover, aiState, aiMessages, restored, user?.id]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
@@ -1074,7 +1080,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const full = await applyAiDraft(out.draft || {});
       // The bot's reply = its text + a DISPLAY-ONLY snapshot of the itinerary it
       // proposed (name / country / nights only — not the full resolved city objects
-      // with coords/tz/ids), so a multi-turn transcript in sessionStorage stays small.
+      // with coords/tz/ids), so a multi-turn transcript in the draft stays small.
       const draft = {
         home: full.home ? { city_name: full.home.city_name, country_code: full.home.country_code } : null,
         cities: (full.cities || []).map((c) => ({ id: c.id, city_name: c.city_name, country: c.country, nights: c.nights })),
@@ -1113,7 +1119,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
      Молчаливого финиша не бывает (дефолт «домой» снят), поэтому и пропускать
      шаг у того, кто ничего не выбирал, нечему. */
   const finishDecided = hasExplicitEnd(nodes);
+  /* ★ У ГОСТЯ ШАГА «ОБЗОР» НЕТ ВОВСЕ (TRIP-505), и это ОДНА строка вместо
+     гостевого варианта шага. Дальше всё выводится само: `FlowProgress` рисует
+     три ступени вместо четырёх, `stepAt`/`goNext` дальше маршрута не пускают, а
+     правило «на последней ступени главная кнопка финальная» ниже само делает её
+     кнопкой «Сохранить трип».
+     ЗАЧЕМ ИМЕННО ТАК. Шаг «Обзор» — единственное место планировщика, которому
+     нужна сессия: обложка читает каталог `getCoverPresets` (дверь auth) и пишет
+     своё фото в Storage под `_drafts/<uid>/`. Убрав шаг у гостя, мы не обходим
+     эти двери и не открываем их — на пути гостя их просто нет, поэтому и гейт
+     авторизации в этой задаче не тронут ни строкой. */
   const visibleSteps = STEPS
+    .filter(s => (user ? true : s.id !== 'review'))
     .map(s => ({ ...s, label: s.id === 'home' ? entryLabel : t(s.labelKey) }));
   // Ход перешагивает решённую ступень в ОБЕ стороны — одним правилом, а не двумя.
   const stepAt = (from, dir) => {
@@ -1145,7 +1162,24 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setAiMessages(isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []);
     setAiState(isAi ? 'prompt' : 'draft');
     setSessionId(crypto.randomUUID());
-    try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
+    clearDraft(user?.id, method);
+  };
+
+  /**
+   * Куда ведёт «назад» из шапки. У вошедшего — в его поездки; у гостя такого
+   * места нет вовсе (`/trips` под аут-гейтом, он получил бы вход), поэтому —
+   * туда, откуда он пришёл: на лендинг.
+   *
+   * Функцией, а не двумя литералами в разметке: шапка объявлена дважды
+   * (блокер лимита и сам экран), и адрес, выписанный в каждой, разошёлся бы на
+   * первой же правке — ровно так же, как расходились CTA зоны до `zoneCta`.
+   */
+  const goBack = () => nav(user ? '/trips' : '/');
+
+  const goSignIn = () => {
+    markHandoff(method, { step, nodes, tripTitle, startDate, cover, aiState, aiMessages }, Date.now());
+    rememberPostLogin(GUEST_PLANNER_PATH);
+    nav(withVisitCampaign('/login'));
   };
 
   // ★ ВСЁ, ЧЕМ ПОЛЬЗУЕТСЯ ОСТАЛЬНОЙ ЭКРАН, — ВЫВОД ИЗ СПИСКА, А НЕ СОСТОЯНИЕ.
@@ -1284,7 +1318,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // переезда" affordance. AI now returns a cities-only skeleton (no
       // activities) - both are added later in the trip view / Edit Mode.
 
-      sessionStorage.removeItem(storageKey(user?.id, method));
+      clearDraft(user?.id, method);
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);
@@ -1347,8 +1381,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           isPro={isPro}
           isDark={isDark}
           onToggleTheme={toggleTheme}
-          onBack={() => nav('/trips')}
-          backTitle={t('notif.to_collection')}
+          onBack={goBack}
+          backTitle={user ? t('notif.to_collection') : t('planner.back_to_site')}
         />
         <div className="grow row row--j-center">
           <EmptyState
@@ -1392,6 +1426,23 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     resetToStart();
   };
 
+  /**
+   * Гость дошёл до конца маршрута и просит его сохранить (TRIP-505).
+   *
+   * Три действия, и порядок между ними значения не имеет — важно, что все три
+   * происходят ДО ухода:
+   *   1. черновик помечается ПЕРЕДАВАЕМЫМ. Метка — то, чем `takeHandoff`
+   *      отличает «человек осознанно ушёл дописывать» от «кто-то потыкал
+   *      планировщик и бросил»; без неё вошедшему подставлялся бы чужой
+   *      брошенный маршрут при каждом открытии экрана;
+   *   2. адрес возврата — тот же механизм, которым живут ссылки-приглашения и
+   *      адрес приложения, открытый без сессии (`postLoginPath`, TRIP-497).
+   *      Возврат сюда И ЕСТЬ продолжение: шаг лежит в самом черновике;
+   *   3. переход РОУТЕРОМ и с меткой кампании в адресе. Полная перезагрузка
+   *      выбросила бы снимок кампании вместе с документом — то есть платный
+   *      клик, доведённый до самой регистрации, был бы записан как органика
+   *      (TRIP-329/493, гард 2ad про то же).
+   */
   let primaryLabel = t('planner.next');
   let primaryAction = goNext;
   let primaryDisabled = false;
@@ -1416,6 +1467,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     primaryAction = handleSave;
     primaryDisabled = saving;
     if (savedOk) showFooter = false; // the success screen owns its own actions
+  }
+  /* ★ ПОСЛЕДНЯЯ СТУПЕНЬ ГОСТЯ ВЕДЁТ НА ВХОД (TRIP-505). Стоит ПОСЛЕ развилки по
+     шагам и переписывает её: у гостя последняя ступень — не «Обзор», а любая, на
+     которой кончился маршрут, и предикат обязан быть один — «дальше идти
+     некуда», а не список имён шагов.
+     Надпись — `planner.save_trip`, тот же ключ, что у кнопки сохранения: человеку
+     обещан РЕЗУЛЬТАТ («Сохранить трип»), а не работа («Зарегистрироваться»).
+     Регистрация — то, что случится по дороге, а не то, о чём мы просим. */
+  if (!user && !stepAt(visibleSteps.findIndex(s => s.id === step), +1)) {
+    primaryLabel = t('planner.save_trip');
+    primaryAction = goSignIn;
+    primaryDisabled = !citiesValid || composing;
   }
 
   // ── Main render ───────────────────────────────────────────────────────────
@@ -1510,8 +1573,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         isPro={isPro}
         isDark={isDark}
         onToggleTheme={toggleTheme}
-        onBack={() => nav('/trips')}
-        backTitle={t('notif.to_collection')}
+        onBack={goBack}
+        backTitle={user ? t('notif.to_collection') : t('planner.back_to_site')}
         title={isAi ? t('planner.step_home_ai') : t('trips.new')}
       />
 
