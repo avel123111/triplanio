@@ -6,7 +6,7 @@ import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
 import { isZonePage } from '@/lib/routePaths';
-import { useZoneCta, isPlainLeftClick } from './zoneCta';
+import { useZoneCta, isPlainLeftClick, zonePlan } from './zoneCta';
 import LandingSprite from './LandingSprite';
 
 /* =========================================================
@@ -149,8 +149,13 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   // Три CTA шапки: кнопка справа и два верхних пункта бургера. Адрес, метку
   // страницы и обработку клика им даёт ОДИН хелпер — здесь остаётся только
   // МЕСТО каждой кнопки (`zoneCta.js`).
-  const headerCta = useZoneCta('header');
-  const menuCta = useZoneCta('menu');
+  //
+  // ДВЕ КНОПКИ «начать» ВЕДУТ В ПЛАНИРОВЩИК, третья — во вход (TRIP-505).
+  // Различие смысловое, а не техническое: «начать планировать» обещает работу
+  // над поездкой и теперь ведёт прямо к ней, «войти» обещает вход. До этого обе
+  // вели в одно место, потому что другого места не было.
+  const headerCta = useZoneCta('header', zonePlan());
+  const menuCta = useZoneCta('menu', zonePlan());
   const menuSignin = useZoneCta('menu_signin');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);

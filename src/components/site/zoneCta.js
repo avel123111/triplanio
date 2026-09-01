@@ -25,6 +25,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
+import { GUEST_PLANNER_PATH } from '@/lib/routePaths';
 
 /** Куда ведёт CTA гостя и куда — уже вошедшего. Одно место на всю зону. */
 const LOGIN_PATH = '/login';
@@ -55,6 +56,29 @@ let home;
 export function zoneHome() {
   home ??= withVisitCampaign(`${window.location.origin}/`);
   return home;
+}
+
+/**
+ * Адрес планировщика с меткой кампании этого визита — куда ведёт кнопка
+ * «начать» неавторизованной зоны (TRIP-505).
+ *
+ * ★ БЕЗ ВЕТКИ ПО АВТОРИЗАЦИИ, И ЭТО РЕШЕНИЕ, А НЕ УПРОЩЕНИЕ. «Начать
+ * планировать» и «Войти» — РАЗНЫЕ кнопки с разным смыслом, слитые до этого в
+ * одну развилку `isAuthenticated ? '/trips' : '/login'`. Для кнопки входа
+ * развилка верна и остаётся (`menu_signin`), для кнопки «начать» — нет:
+ * планировщик открыт обоим, и вошедшему он нужен ровно так же. Один адрес на
+ * оба состояния означает, что ссылку можно вести в рекламу НАПРЯМУЮ, минуя
+ * лендинг, и она не сломается ни для кого.
+ *
+ * Ленивая по той же причине, что `zoneHome`: `window` на верхнем уровне закрыл
+ * бы файлу дорогу в не-браузерный контекст. ВНУТРЕННИЙ путь, а не абсолютный
+ * адрес (в отличие от `zoneHome`): его ведёт роутер, а полная перезагрузка
+ * выбросила бы снимок кампании вместе с документом — гард 2ad про это же.
+ */
+let plan;
+export function zonePlan() {
+  plan ??= withVisitCampaign(GUEST_PLANNER_PATH);
+  return plan;
 }
 
 /**

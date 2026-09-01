@@ -33,7 +33,7 @@ import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { APP_ROUTES, isZoneRoute } from '@/lib/routePaths';
+import { APP_ROUTES, GUEST_PLANNER_PATH, isZoneRoute } from '@/lib/routePaths';
 import { rememberPostLogin } from '@/lib/postLoginPath';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
@@ -82,6 +82,16 @@ const AuthenticatedShell = lazy(() => import('./AuthenticatedShell'));
 const PublicTrip = lazy(() => import('@/pages/PublicTrip'));
 const JoinTrip = lazy(() => import('@/pages/JoinTrip'));
 const Login = lazy(() => import('@/pages/Login'));
+
+// ★ РУЧНОЙ ПЛАНИРОВЩИК — ЕДИНСТВЕННЫЙ ЭКРАН ПРИЛОЖЕНИЯ, ОТКРЫТЫЙ БЕЗ СЕССИИ
+// (TRIP-505). Тот же модуль, что грузит `AuthenticatedShell`, — vite отдаёт им
+// ОДИН чанк, поэтому второго объявления `lazy` дубля в бандл не добавляет.
+//
+// `lazy` тут несущий, как у витрины и демо: без него планировщик (карта Mapbox,
+// композер города, справочник) лёг бы в главный чанк, то есть его качал бы
+// каждый, кто открыл лендинг, — ровно та граница, которую поставил TRIP-475.
+// С `lazy` чанк приезжает по клику на CTA и ни секундой раньше.
+const GuestPlanner = lazy(() => import('@/pages/ManualPlanner'));
 
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
@@ -269,6 +279,39 @@ const AuthenticatedApp = () => {
     return <AppLoading />;
   }
 
+  // ★ ГОСТЕВОЙ ПЛАНИРОВЩИК — ОДИН ЭКРАН ПРИЛОЖЕНИЯ БЕЗ СЕССИИ (TRIP-505).
+  //
+  // Маркетинговый вход: с лендинга человек составляет маршрут, и только на
+  // последнем шаге его просят войти. Экран — ТОТ ЖЕ `ManualPlanner`, что у
+  // залогиненного, без единой копии: гостю просто не показывается шаг обложки
+  // (`visibleSteps` в самом планировщике), поэтому ни одного вызова, требующего
+  // сессии, на его пути нет.
+  //
+  // ★★ ВНЕ `<SiteZone>`, И ЭТО НЕ ВКУС, А ЗАМЕР. Оболочка зоны подключает
+  // `public/site.css`, а он пересекается с `src/design/app.css` по 57 именам
+  // классов — среди них `.btn`, `.badge`, `.sheet`, `.err`, `.t-label` — и
+  // выигрывает каскад. Планировщик внутри зоны приехал бы с чужими кнопками,
+  // шторками и типографикой. Здесь на нём действует только `app.css`, то есть
+  // он выглядит ровно так же, как у залогиненного. Человек с лендинга попадает
+  // в облик продукта — это честно: он и правда уже в продукте.
+  //
+  // ★★★ ВЕТКА СТОИТ ПОСЛЕ ГЕЙТА ЗАГРУЗКИ, И ЭТО НЕСУЩЕЕ. `isAuthenticated`
+  // ложна не только у гостя, но и у ВОЗВРАЩАЮЩЕГОСЯ из OAuth, пока сессия ещё
+  // едет. Отрисуй мы гостевой вариант в это окно — планировщик записал бы
+  // черновик под ключ `guest` уже после того, как человек вошёл, и черновик
+  // разъехался бы сам с собой (ключ хранилища — по `user.id`, см.
+  // `lib/plannerDraft.js`).
+  //
+  // `Suspense` свой, без `<SiteZone>`: ожидание МОЛЧАЛИВОЕ по той же причине,
+  // что у страниц зоны, — до приезда чанка не мигаем чужим обликом.
+  if (!isAuthenticated && path === GUEST_PLANNER_PATH) {
+    return (
+      <Suspense fallback={<AppLoading silent />}>
+        <GuestPlanner />
+      </Suspense>
+    );
+  }
+
   // Без сессии и вне зоны. Оболочка и <Suspense> ТЕ ЖЕ, что в ветке зоны выше,
   // и это несущее: React сверяет по типу элемента, поэтому переход «чужой адрес
   // → /terms» не пересоздаёт ни <SiteZone>, ни <Suspense> — слой стилей зоны не
@@ -289,7 +332,14 @@ const AuthenticatedApp = () => {
       <SiteZone>
         <Suspense fallback={<AppLoading silent />}>
           <Routes>
-            {APP_ROUTES.map((pattern) => (
+            {/* ★ ПЛАНИРОВЩИК ИСКЛЮЧЁН ИЗ РАСКРЫТИЯ (TRIP-505). Он единственный
+                адрес приложения, у которого БЕЗ сессии есть свой экран, а не
+                вход, — его ветка стоит выше и до сюда не доходит. Оставь его в
+                списке — и `<RedirectToLogin>` объявился бы вторым обработчиком
+                того же пути: гость молча уезжал бы во вход. Фильтр здесь, а не
+                вычитание из `APP_ROUTES`: список обязан оставаться полным, по
+                нему `middleware.js` решает, существует ли адрес вообще. */}
+            {APP_ROUTES.filter((pattern) => pattern !== GUEST_PLANNER_PATH).map((pattern) => (
               <Route key={pattern} path={pattern} element={<RedirectToLogin />} />
             ))}
             <Route path="*" element={<PageNotFound />} />

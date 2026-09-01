@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useZoneCta } from '@/components/site/zoneCta';
+import { useZoneCta, zonePlan } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
 import { useJsonLd, faqPageLd } from '@/components/site/jsonLd';
@@ -246,7 +246,7 @@ function Hero() {
   // («смотреть демо») — в демо-поездку, тем же путём и с тем же событием
   // `cta_clicked`, что и финальный CTA `final_demo`: единственное отличие —
   // метка места `hero_demo` (верх воронки против низа).
-  const cta = useZoneCta('hero');
+  const cta = useZoneCta('hero', zonePlan());
   const demo = useZoneCta('hero_demo', withVisitCampaign(DEMO_PATH));
   return (
     <section className="hero" data-hdr="light" id="top">
