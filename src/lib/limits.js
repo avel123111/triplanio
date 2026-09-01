@@ -1,18 +1,22 @@
 // @ts-check
 // Free-tier active-trip cap — the single client-side source of the threshold.
 //
-// The VALUE (1) is mirrored server-side in the create_trip RPC
-// (supabase/migrations/0045_active_trips_single_source.sql:
-//  `count_active_owned_trips(uid) >= 1` -> raise TRIP_LIMIT_REACHED), which is the
-// AUTHORITATIVE enforcement. JS and SQL can't share a literal across the language
-// boundary, so if this number ever changes it must be updated in BOTH places.
-// The client copy only drives the upsell UX (list banner / TripLimitDialog /
-// planner blocker); it never grants access on its own.
+// The VALUE is mirrored server-side in the authoritative predicate
+// public.can_create_trip(uuid) (`is_user_pro(uid) OR count_active_owned_trips(uid) <
+// FREE_ACTIVE_TRIP_LIMIT`), which every write path calls (enforce_trip_limit trigger,
+// mutate.ts trip_quota, create_trip_with_route, copy_trip). JS and SQL can't share a
+// literal across the language boundary, so if this number ever changes it must be
+// updated in BOTH places; src/lib/limits.test.js is the drift guard that reds out
+// until they match. The client copy only drives the upsell UX (list banner /
+// TripLimitDialog / planner blocker); it never grants access on its own.
 //
-// NOTE: user-facing copy ("1 активное путешествие" / "1 viaje activo") is hardcoded
-// in the i18n locale strings and is NOT derived from this constant — update those
-// too if the limit ever changes.
-export const FREE_ACTIVE_TRIP_LIMIT = 1;
+// ponytail: 1000 is a TEMPORARY ceiling that effectively lifts the Free active-trip
+// cap without deleting any gating logic — every gate derives from this one predicate,
+// so raising the number switches them all off by construction (TRIP-503). It is NOT a
+// real business limit; to REINSTATE the cap, lower this to the desired N here AND in
+// public.can_create_trip (new migration), and restore the "unlimited" copy on /pro +
+// ProUpsellModal per the TRIP-503 checklist. See that issue for the full revert steps.
+export const FREE_ACTIVE_TRIP_LIMIT = 1000;
 
 /**
  * The single predicate for "free user is at the active-trip cap".

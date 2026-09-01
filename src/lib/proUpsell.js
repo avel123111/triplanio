@@ -47,10 +47,18 @@ export function proUpsellFooter(role) {
   return FOOTER[role] || FOOTER.member;
 }
 
-/** Таблица копии по роли; `named` берётся, когда известно имя функции. */
+/**
+ * Таблица копии по роли; `named` берётся, когда известно имя функции.
+ *
+ * ЗАГОЛОВОК роль-независимый (продуктовое решение TRIP-503): обе роли ведут на
+ * `locked_*`. Строки НЕ схлопнуты в одну намеренно — роль всё ещё жёстко решает
+ * `desc` (владельцу цельный текст `locked`, участнику составной `owner-note` с
+ * именем владельца), и держать её ключом таблицы честнее, чем разводить desc
+ * отдельным тернарником у вызывателя.
+ */
 const COPY = {
   owner: { named: 'sub.locked_feature_named', plain: 'sub.locked_heading', desc: 'locked' },
-  member: { named: 'sub.trip_pro_feature_named', plain: 'sub.trip_pro_heading', desc: 'owner-note' },
+  member: { named: 'sub.locked_feature_named', plain: 'sub.locked_heading', desc: 'owner-note' },
 };
 
 /**
