@@ -235,7 +235,15 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
 
 // ─── Step 1: Home ─────────────────────────────────────────────────────────────
 
-function StepHome({ home, setHome, startDate, setStartDate }) {
+/**
+ * @param {{home:any,setHome:Function,startDate:any,setStartDate:Function,nearby?:boolean}} p
+ *   `nearby` — показывать ли подбор городов рядом. У ГОСТЯ его нет (TRIP-505):
+ *   запрос геолокации — самое дорогое, о чём можно попросить человека, и просить
+ *   это у того, кто пришёл с рекламы минуту назад и ещё не завёл аккаунт, значит
+ *   менять доверие на удобство в момент, когда доверия ещё нет. Поле города он
+ *   вводит руками — оно и так первое на экране и необязательное.
+ */
+function StepHome({ home, setHome, startDate, setStartDate, nearby = true }) {
   const t = useT();
   const { lang } = useI18n();
   const { fmtDistance } = useI18nFormat();
@@ -272,12 +280,16 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
   return (
     <div>
+      {/* Заголовок ОДИН, объяснения нет. `home_desc` («Это твой дом: точка
+          старта и (обычно) возврата…») пересказывал подпись поля, которое стоит
+          строкой ниже, и стоил трёх строк на телефоне — а на 390 первый экран
+          заканчивается сразу за полями. Правило шага: заголовок + поля, текст
+          только там, где решение неочевидно. */}
       <h1>{t('planner.home_title')}</h1>
-      <div className="t-body">
-        {t('planner.home_desc')}
-      </div>
 
-      <h2 className="section-sub">{t('ai_plan.start')}</h2>
+      {/* Заголовка раздела «Старт» здесь тоже нет: он называл ровно то, что уже
+          спросил `h1` («Откуда стартуешь?»), а группа полей на шаге одна — делить
+          нечего. Оба поля подписаны сами. */}
       <div className="field-row field-row--aside">
         <div className="field">
           <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
@@ -289,74 +301,80 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
         </div>
       </div>
 
-      {/* "Рядом" — такой же заголовок раздела, что и «Старт» выше: одна роль на
-          экране = один класс. Раньше он был собран руками из капс-эйбрау и двух
-          полей отступа. */}
-      <h2 className="section-sub">{t('planner.nearby')}</h2>
+      {/* Весь подбор «рядом» — ОДНИМ гейтом, а не по состоянию: гостю не
+          показывается ни приглашение, ни его исходы (разбор — при `nearby`). */}
+      {nearby && (
+        <>
+        {/* "Рядом" — такой же заголовок раздела, что и «Старт» выше: одна роль на
+            экране = один класс. Раньше он был собран руками из капс-эйбрау и двух
+            полей отступа. */}
+        <h2 className="section-sub">{t('planner.nearby')}</h2>
 
-      {geoState === 'ask' && (
-        <Severity
-          level="info"
-          dashed
-          icon="pin"
-          align="mid"
-          title={t('planner.suggest_nearby')}
-          action={<Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>}
-        >
-          <div className="muted t-meta">{t('planner.geo_hint')}</div>
-        </Severity>
-      )}
+        {geoState === 'ask' && (
+          <Severity
+            level="info"
+            dashed
+            icon="pin"
+            align="mid"
+            title={t('planner.suggest_nearby')}
+            action={<Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>}
+          >
+            <div className="muted t-meta">{t('planner.geo_hint')}</div>
+          </Severity>
+        )}
 
-      {geoState === 'loading' && (
-        <Severity level="info" loading align="mid">
-          <span className="t-body muted">{t('planner.detecting')}</span>
-        </Severity>
-      )}
+        {geoState === 'loading' && (
+          <Severity level="info" loading align="mid">
+            <span className="t-body muted">{t('planner.detecting')}</span>
+          </Severity>
+        )}
 
-      {geoState === 'allowed' && candidates.length > 0 && (
-        <div className="col col--g4">
-          {candidates.map((c) => {
-            const selected = home?.external_city_id != null && home.external_city_id === c.external_city_id;
-            const dist = fmtDistance(c.distanceKm);
-            // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
-            const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
-            return (
-              <Card
-                as="button"
-                radius="card"
-                interactive
-                key={c.external_city_id}
-                onClick={() => setHome(c)}
-                className={`choice-card choice-card--sm${selected ? ' choice-card--on' : ''}`}
-              >
-                <div className="tile tile--brand">
-                  <Icon name="plane" size={17} />
-                </div>
-                <div className="grow--fit">
-                  <div className="t-subheading">{c.city_name}</div>
-                  <div className="muted t-meta"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
-                </div>
-                {selected && (
-                  <span className="tile tile--sm tile--solid tile--brand tile--round">
-                    <Icon name="check" size={11} />
-                  </span>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      )}
+        {geoState === 'allowed' && candidates.length > 0 && (
+          <div className="col col--g4">
+            {candidates.map((c) => {
+              const selected = home?.external_city_id != null && home.external_city_id === c.external_city_id;
+              const dist = fmtDistance(c.distanceKm);
+              // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
+              const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
+              return (
+                <Card
+                  as="button"
+                  radius="card"
+                  interactive
+                  key={c.external_city_id}
+                  onClick={() => setHome(c)}
+                  className={`choice-card choice-card--sm${selected ? ' choice-card--on' : ''}`}
+                >
+                  <div className="tile tile--brand">
+                    <Icon name="plane" size={17} />
+                  </div>
+                  <div className="grow--fit">
+                    <div className="t-subheading">{c.city_name}</div>
+                    <div className="muted t-meta"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
+                  </div>
+                  {selected && (
+                    <span className="tile tile--sm tile--solid tile--brand tile--round">
+                      <Icon name="check" size={11} />
+                    </span>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
-      {geoState === 'denied' && (
-        <Severity
-          level="quiet"
-          icon="lock"
-          align="mid"
-          title={t('planner.geo_off')}
-          action={<Btn variant="secondary" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
-        >
-          <div className="muted t-meta">{t('planner.geo_off_hint')}</div>
-        </Severity>
+        {geoState === 'denied' && (
+          <Severity
+            level="quiet"
+            icon="lock"
+            align="mid"
+            title={t('planner.geo_off')}
+            action={<Btn variant="secondary" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
+          >
+            <div className="muted t-meta">{t('planner.geo_off_hint')}</div>
+          </Severity>
+        )}
+        </>
       )}
 
     </div>
@@ -446,10 +464,15 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
 
   return (
     <div>
-      <h1>{t('planner.step_cities')}</h1>
-      <div className="t-body">
-        {t('planner.cities_desc_1')} <b>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
-      </div>
+      {/* ★ ЗАГОЛОВКА ШАГА ЗДЕСЬ НЕТ, И ЭТО НЕ ПРОПУСК. `h1` печатал
+          `planner.step_cities` — ТО ЖЕ СЛОВО «Маршрут», которое рейл над ним уже
+          написал строкой выше. Одно название экрана в двух местах: на 390 это
+          три упоминания подряд («ШАГ 2 из 3 · Маршрут» → «Маршрут» → «Города») и
+          ~250 px до первой кнопки. Название шага живёт в рейле, содержательный
+          заголовок раздела — «Города» ниже.
+
+          Подсказка про перетаскивание — ТОЛЬКО когда тащить есть что. Она
+          висела и на пустом списке, объясняя жест, который негде применить. */}
 
       {/* "Города" header — section sub-heading + the shared start control on the
           right in one row (mirrors the editor's .ts-routehead: title + control). */}
@@ -468,7 +491,17 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
             городов есть всегда, пока он не задан. Вид точки в композере
             предвыбран стартом — это намерение входа, а не запрет: плитку можно
             сменить. */}
-        {!hasStart && (
+        {/* ★ ПЛИТКА СТАРТА — ТОЛЬКО КОГДА ГОРОДА УЖЕ ЕСТЬ (TRIP-505). На ПУСТОМ
+            шаге она стояла рядом с приглашением добавить город, и экран звал
+            дважды в одно действие двумя разными словами: «Добавить город
+            старта» и «Добавить город». Замер на 390: обе двери + заголовки =
+            приглашение уезжало под нижний край, и до кнопки надо было
+            догадаться доскроллить.
+            Пустому маршруту нужен ГОРОД, а не «город старта»: старт задаётся
+            шагом 1, и эта плитка — напоминание о пропущенном шаге, осмысленное
+            ровно тогда, когда маршрут уже начат. Композер у обеих дверей и так
+            один и тот же — меняется только облик триггера. */}
+        {hasCities && !hasStart && (
           <CityAdder
             onAdd={add}
             hasStart={hasStart}
@@ -522,6 +555,14 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
           );
         })}
 
+        {/* Порядок правится перетаскиванием — говорим об этом там и тогда, где
+            жест возможен: под списком, начиная со второго города. */}
+        {cityNodesOf(nodes).length > 1 && (
+          <div className="t-meta muted">
+            {t('planner.cities_desc_1')} · <b>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
+          </div>
+        )}
+
         {/* Композер — ТОТ ЖЕ, что в редакторе маршрута: город, затем вид точки,
             затем подтверждение. Он и решает, что показать на телефоне (шторка) и
             на десктопе (инлайн-карточка) — этому экрану знать про платформу
@@ -544,13 +585,16 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
           hasEnd={hasEnd}
           defaultKind="transit"
           onOpenChange={onComposingChange}
+          /* ★ ПУСТОЕ СОСТОЯНИЕ СВЁРНУТО ДО САМОЙ КНОПКИ. `<EmptyState>` с иконкой,
+             заголовком «Куда поедем?» и подписью «Добавь первый город маршрута»
+             стоил ~190 px и не сообщал ничего, чего не сообщает кнопка: на шаге
+             «Маршрут» с пустым списком другого действия нет. На 390 из-за него
+             кнопка оказывалась ниже сгиба — то есть блок, объясняющий, что
+             делать, сам прятал то, чем это делают.
+             Кнопка — `primary` и во всю ширину: на пустом экране она
+             единственная, приглушать её нечем. */
           renderTrigger={hasCities ? undefined : ({ open }) => (
-            <EmptyState
-              icon="pin"
-              title={t('planner.where_to')}
-              body={t('planner.add_first_city')}
-              action={<Btn variant="primary" icon="plus" onClick={open}>{t('planner.add_city')}</Btn>}
-            />
+            <Btn variant="primary" icon="plus" block onClick={open}>{t('planner.add_city')}</Btn>
           )}
         />
       </div>
@@ -1573,7 +1617,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         {step === 'home' && (isAi ? (
           <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
         ) : (
-          <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
+          <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} nearby={!!user} />
         ))}
         {step === 'cities' && (
           <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={onComposingChange} />
