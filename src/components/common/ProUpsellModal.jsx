@@ -58,10 +58,15 @@ export default function ProUpsellModal({
     } catch { /* clipboard unavailable */ }
   };
 
-  // Shared feat-list — shown in both modes (P4 design)
+  // Shared feat-list — shown in both modes (P4 design). Three of the four rows are
+  // literally the /pro table strings in the same words, so they share those keys
+  // (one fact on two surfaces, not the common.copy anti-pattern). The "unlimited
+  // trips" row is gone — the Free active-trip cap is lifted (TRIP-503). perk_members
+  // stays modal-specific in its own family.
   const proFeatures = [
-    t('sub.perk_unlimited'),
-    t('sub.perk_ai'),
+    t('sub.feat_ai_recognition'),
+    t('sub.feat_budget'),
+    t('sub.feat_ai_assistant'),
     t('sub.perk_members'),
   ];
 

@@ -6,11 +6,12 @@ import { isActiveTripCapReached } from '@/lib/limits';
  * Single client-side source for the free-tier "active owned trip" gate.
  *
  * Wraps the getActiveTrips edge function — which itself wraps the DB
- * active_owned_trips() helper (migration 0045) — so every screen (create dialog,
+ * count_active_owned_trips() helper — so every screen (create dialog,
  * manual/AI planner blocker, copy action, list banner) reads the SAME number and
  * the rule can never drift between client copies.
  *
- * Rule: a free user may have at most 1 ACTIVE owned trip.
+ * Rule: a free user may have at most FREE_ACTIVE_TRIP_LIMIT active owned trips
+ * (mirrors public.can_create_trip; see src/lib/limits.js).
  *
  * @param {string|undefined} userId - skip the fetch until known.
  * @returns {{ activeCount: number, isPro: boolean, isBlocked: boolean, isLoading: boolean, refetch: () => void }}
