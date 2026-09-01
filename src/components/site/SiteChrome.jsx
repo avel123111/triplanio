@@ -266,15 +266,22 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
           сторожит ровно это. */}
       {showBurger && (
         <nav className="mobile-menu" id="mobileMenu" aria-label={t('nav.aria_primary')}>
+          {/* ПОРЯДОК ЗДЕСЬ — ЧАСТЬ СМЫСЛА, а не следствие того, кто в каком PR
+              появился. Две двери в аккаунт стоят ПАРОЙ (завести / войти) — это
+              один вопрос «я новый или я уже ваш», и разорвать его третьей
+              ссылкой значит заставить человека читать все пункты, чтобы понять,
+              что вариантов входа два. Демо — не дверь в аккаунт, а способ
+              посмотреть продукт, ничего не заводя, поэтому стоит ПОСЛЕ пары и
+              перед разделами страницы, к которым оно ближе по смыслу. */}
           <a {...menuCta} onClick={(e) => { setMobileOpen(false); menuCta.onClick(e); }}>{t('landing.hero.cta1')}</a>
-          {!onDemo && (
-            <a {...menuDemo} onClick={(e) => { setMobileOpen(false); menuDemo.onClick(e); }}>{t('landing.hero.cta2')}</a>
-          )}
           {/* Пункт ВХОДА — своей подписью. Он существовал и раньше (`menu_signin`,
               адрес `/login`), но был подписан «Посмотреть демо», поэтому на
               телефоне войти было негде: единственная дверь входа называлась
               чужим именем. Ключ общий с экраном входа — не заводим второй. */}
           <a {...menuSignin} onClick={(e) => { setMobileOpen(false); menuSignin.onClick(e); }}>{t('auth.sign_in')}</a>
+          {!onDemo && (
+            <a {...menuDemo} onClick={(e) => { setMobileOpen(false); menuDemo.onClick(e); }}>{t('landing.hero.cta2')}</a>
+          )}
           {navItems.map((n) => (
             <a key={n.hash} href={navHref(n.hash)} onClick={() => setMobileOpen(false)}>{t(n.tkey)}</a>
           ))}
