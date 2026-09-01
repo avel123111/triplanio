@@ -31,6 +31,8 @@
   "geo_hint": "Permite el acceso a la ubicación, detectaremos tu ciudad automáticamente. Puedes rechazarlo e introducirla manualmente.",
   "geo_off": "La geolocalización está desactivada",
   "geo_off_hint": "Usa el buscador de arriba: escribe el nombre de una ciudad hub o el aeropuerto más cercano",
+  "guest_save_hint": "Inicia sesión o crea una cuenta y la ruta se guardará como tu viaje. Elegirás la portada en este mismo paso.",
+  "guest_save_title": "Tu ruta está lista",
   "home_title": "¿Desde dónde sales?",
   "last_city_fallback": "la última ciudad",
   "limit_desc_post": ". Espera a que termine el actual o pásate a Pro.",

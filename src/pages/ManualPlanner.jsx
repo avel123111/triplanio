@@ -750,7 +750,17 @@ function Stat({ label, value, hint, warn }) {
   );
 }
 
-function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
+/**
+ * @param {any} p `guest` — обзор БЕЗ сессии (TRIP-505). Отличие ровно одно:
+ *   на месте обложки стоит приглашение войти. Обложка — единственная часть
+ *   этого шага, которой нужна сессия (каталог `getCoverPresets` за дверью auth
+ *   и своё фото в Storage под `_drafts/<uid>/`); всё остальное — сводка
+ *   собранного маршрута — считается на клиенте и показывается как есть.
+ *   Название трипа гостю не предлагается: до регистрации ему хватает решений,
+ *   а имя и так выводится из маршрута (`computeAutoTitle`) и правится после
+ *   входа, на этом же экране, рядом с обложкой.
+ */
+function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error, guest = false }) {
   const nav = useNavigate();
   const t = useT();
   const { lang } = useI18n();
@@ -787,6 +797,23 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
 
   return (
     <div className="col col--g6 pl-review">
+      {/* ★ У ГОСТЯ ОБЛОЖКИ НЕТ, И ЭТО НЕ УРЕЗАНИЕ ЭКРАНА, А ЕГО ПОРЯДОК. Человек
+          сначала видит, ЧТО он собрал (сводка ниже), и только потом его просят
+          завести аккаунт — а не наоборот. Приглашение стоит на месте обложки
+          именно потому, что обложка и есть единственное, чего без сессии не
+          сделать: остальной обзор считается на клиенте.
+          Инвариант «0 вызовов к /api/* у гостя» держится по построению: пикер
+          обложек не смонтирован, значит `getCoverPresets` некому позвать. */}
+      {guest ? (
+        /* Своей кнопки у приглашения НЕТ: действие шага живёт в футере, и оно
+           одно на оба вида обзора. Вторая кнопка с той же надписью рядом — это
+           ровно та «вторая дверь в одно действие», которую мы убрали с шага
+           городов. */
+        <Severity level="info" icon="check" align="mid" title={t('planner.guest_save_title')}>
+          <div className="muted t-meta">{t('planner.guest_save_hint')}</div>
+        </Severity>
+      ) : (
+      <>
       {/* Обложка во всю ширину сразу под разделителем прогресса, без радиусов
           (full-bleed из падинга .lp-b, класс .pl-cover перебивает кадр 4:3 ДС на
           полосу 200px). Пикер рисует: фото/пресет/фоллбек, кнопку загрузки в
@@ -809,6 +836,8 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
           />
         )}
       />
+      </>
+      )}
 
       {/* Сводка под обложкой — без изменений: статы + маршрут плоскими секциями. */}
       <Card radius="btn" pad="none" className="pl-summary">
@@ -1212,8 +1241,13 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
      своё фото в Storage под `_drafts/<uid>/`. Убрав шаг у гостя, мы не обходим
      эти двери и не открываем их — на пути гостя их просто нет, поэтому и гейт
      авторизации в этой задаче не тронут ни строкой. */
+  /* ★ ШАГОВ ЧЕТЫРЕ У ВСЕХ (TRIP-505). Гостю «Обзор» РАНЬШЕ ВЫРЕЗАЛСЯ — из-за
+     обложки, которой нужна сессия, — и это была ошибка: вместе с обложкой
+     пропадал единственный экран, где человек видит собранный маршрут, а рейл
+     врал («ШАГ 3 из 3», хотя впереди ещё регистрация и создание). Шаг остался,
+     у него просто два вида: гостевой (сводка + приглашение войти) и полный
+     (обложка + название). Разбор — при `StepReview`. */
   const visibleSteps = STEPS
-    .filter(s => (user ? true : s.id !== 'review'))
     .map(s => ({ ...s, label: s.id === 'home' ? entryLabel : t(s.labelKey) }));
   // Ход перешагивает решённую ступень в ОБЕ стороны — одним правилом, а не двумя.
   const stepAt = (from, dir) => {
@@ -1587,22 +1621,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   } else if (step === 'cities') {
     primaryDisabled = !citiesValid || composing;
   } else if (step === 'review') {
+    /* Надпись одна на оба вида — `planner.save_trip`: человеку обещан РЕЗУЛЬТАТ
+       («Сохранить трип»), а не работа («Зарегистрироваться»). Регистрация — то,
+       что случится по дороге, а не то, о чём мы просим. Различается ДЕЙСТВИЕ:
+       у гостя оно откладывает маршрут и ведёт на регистрацию, у вошедшего —
+       создаёт путешествие. */
     primaryLabel = saving ? t('planner.saving_btn') : t('planner.save_trip');
-    primaryAction = handleSave;
-    primaryDisabled = saving;
+    primaryAction = user ? handleSave : goSignIn;
+    primaryDisabled = user ? saving : !citiesValid;
     if (savedOk) showFooter = false; // the success screen owns its own actions
-  }
-  /* ★ ПОСЛЕДНЯЯ СТУПЕНЬ ГОСТЯ ВЕДЁТ НА ВХОД (TRIP-505). Стоит ПОСЛЕ развилки по
-     шагам и переписывает её: у гостя последняя ступень — не «Обзор», а любая, на
-     которой кончился маршрут, и предикат обязан быть один — «дальше идти
-     некуда», а не список имён шагов.
-     Надпись — `planner.save_trip`, тот же ключ, что у кнопки сохранения: человеку
-     обещан РЕЗУЛЬТАТ («Сохранить трип»), а не работа («Зарегистрироваться»).
-     Регистрация — то, что случится по дороге, а не то, о чём мы просим. */
-  if (!user && !stepAt(visibleSteps.findIndex(s => s.id === step), +1)) {
-    primaryLabel = t('planner.save_trip');
-    primaryAction = goSignIn;
-    primaryDisabled = !citiesValid || composing;
   }
 
   // ── Main render ───────────────────────────────────────────────────────────
@@ -1645,6 +1672,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             savedOk={savedOk}
             savedTripId={savedTripId}
             error={error}
+            guest={!user}
           />
         )}
 
