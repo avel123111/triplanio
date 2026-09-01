@@ -115,8 +115,16 @@ export function CreateTripProvider({ children }) {
 
   // Run the limit gate for a concrete method. TripLimitDialog self-fetches the
   // authoritative count and auto-proceeds when the user is under the cap.
+  // `trip_creation_started` ЗДЕСЬ БОЛЬШЕ НЕ ШЛЁТСЯ (TRIP-505). Он переехал в сам
+  // планировщик, и это чинит два дефекта сразу:
+  //   · событие шло ДО гейта лимита, то есть считало и тех, кого гейт развернул
+  //     («начали создавать» без единого шанса создать);
+  //   · провайдер смонтирован только в оболочке залогиненного, поэтому у гостя
+  //     с лендинга воронка начиналась бы с пустоты.
+  // Начало создания — свойство ЭКРАНА создания, а не кнопки, которая его
+  // открыла; кнопок несколько (главная, «+» в нижней навигации, пустой список),
+  // а экран один.
   const startCreate = useCallback((pick) => {
-    track('trip_creation_started', { method: pick });
     setPending({ kind: 'create', pick });
     setLimitOpen(true);
   }, []);

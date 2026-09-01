@@ -908,6 +908,32 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // so follow-up messages refine the draft.
   const [aiMessages, setAiMessages]         = useState(() => (isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []));
 
+  /* ЧТО ИМЕННО ЛЕЖИТ В ЧЕРНОВИКЕ — ОДНО ОПРЕДЕЛЕНИЕ НА ОБОИХ ПИСАТЕЛЕЙ.
+     Их двое: эффект записи на каждое изменение и передача черновика при уходе
+     на регистрацию. Выписанный дважды состав разъехался бы на первом же новом
+     поле — причём молча и только у гостя: обычная запись поле бы возила, а
+     переезд после регистрации терял. */
+  const draftState = { step, nodes, tripTitle, startDate, cover, aiState, aiMessages };
+
+  /* ★ ВОРОНКА СОЗДАНИЯ НАЧИНАЕТСЯ ЗДЕСЬ (TRIP-505).
+     Раньше `trip_creation_started` слал `CreateTripProvider` по нажатию кнопки —
+     ДО гейта лимита и только из оболочки залогиненного. То есть считались и те,
+     кого гейт развернул, а гость с лендинга не считался вовсе. Начало создания —
+     свойство ЭКРАНА, а не кнопки: кнопок несколько, экран один.
+     `authed` в свойствах, а не отдельным именем события: путь один, различаются
+     только люди на нём, — иначе воронку пришлось бы склеивать из двух. */
+  useEffect(() => {
+    track('trip_creation_started', { method, authed: !!user });
+  }, []);
+
+  /* Ступень пути — ОДНО событие со свойством, а не четыре имени: список шагов
+     уже менялся (из него выпал «Транспорт», у гостя нет «Обзора»), и имена,
+     выписанные по одному, отстали бы от него молча. */
+  useEffect(() => {
+    if (!restored) return;
+    track('trip_creation_step', { step, method, authed: !!user });
+  }, [step, restored]);
+
   // ★ ВОССТАНОВЛЕНИЕ ЧЕРНОВИКА — ОНО ЖЕ ВОЗВРАТ ГОСТЯ ПОСЛЕ РЕГИСТРАЦИИ
   // (TRIP-505). Второй механизм здесь не нужен и был бы вреден: человек ушёл на
   // вход с шага возврата, `postLoginPath` вернул его сюда, и шаг лежит В САМОМ
@@ -938,7 +964,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // годности черновика, поэтому она не имеет права быть заботой экрана.
   useEffect(() => {
     if (!restored) return;
-    writeDraft(user?.id, method, { step, nodes, tripTitle, startDate, cover, aiState, aiMessages }, Date.now());
+    writeDraft(user?.id, method, draftState, Date.now());
   }, [step, nodes, tripTitle, startDate, cover, aiState, aiMessages, restored, user?.id]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
@@ -1177,7 +1203,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const goBack = () => nav(user ? '/trips' : '/');
 
   const goSignIn = () => {
-    markHandoff(method, { step, nodes, tripTitle, startDate, cover, aiState, aiMessages }, Date.now());
+    track('trip_creation_signup_prompted', { method, city_count: cityNodesOf(nodes).length });
+    markHandoff(method, draftState, Date.now());
     rememberPostLogin(GUEST_PLANNER_PATH);
     nav(withVisitCampaign('/login'));
   };

@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import {
   DRAFT_TTL_MS, GUEST_ID,
   draftKey, parseDraft, serializeDraft,
-  readDraft, writeDraft, clearDraft, markHandoff, takeHandoff,
+  readDraft, writeDraft, clearDraft, markHandoff, takeHandoff, hasPendingHandoff,
 } from './plannerDraft.js';
 
 const NOW = Date.UTC(2026, 8, 1, 12, 0, 0);
@@ -200,6 +200,23 @@ test('★ планировщик забирает переданный черн�
     'порядок «сначала забрать переданное, потом читать своё» нарушен — черновик гостя потеряется молча',
   );
 });
+
+test('«маршрут ждёт» видит только ПОМЕЧЕННЫЙ и живой черновик', () => withStorage(() => {
+  // На этом предикате стоит подпись экрана входа («маршрут уже собран — войдите,
+  // и он сохранится»). Соври он — человеку обещают сохранить то, чего нет.
+  assert.equal(hasPendingHandoff('manual', NOW), false, 'пусто → обещать нечего');
+
+  writeDraft(GUEST_ID, 'manual', DRAFT, NOW);
+  assert.equal(hasPendingHandoff('manual', NOW), false, 'черновик без метки — человек не просил его сохранять');
+
+  markHandoff('manual', DRAFT, NOW);
+  assert.equal(hasPendingHandoff('manual', NOW), true);
+  assert.equal(hasPendingHandoff('ai', NOW), false, 'метод чужой');
+  assert.equal(hasPendingHandoff('manual', NOW + DRAFT_TTL_MS + 1), false, 'протухший больше не ждёт');
+
+  // Только смотрит: после проверки черновик на месте и его ещё можно забрать.
+  assert.deepEqual(takeHandoff('u1', 'manual', NOW), DRAFT, 'предикат съел черновик');
+}));
 
 test('передача по методу раздельная', () => withStorage(() => {
   markHandoff('manual', DRAFT, NOW);
