@@ -7,7 +7,7 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import GeoAttribution from '@/components/common/GeoAttribution';
 import { Trunc } from '@/design/Layout';
-import { tapPick } from '@/lib/tapGesture';
+import { tapPick, swallowNextClick } from '@/lib/tapGesture';
 import { sheetScroller } from '@/components/ui/sheetShell';
 
 /**
@@ -248,7 +248,13 @@ export default function Autocomplete({
         tapRef.current = null;
         // `!== null`, а не «истинно»: опцией листа законно бывает 0 или пустая
         // строка, и такую нельзя молча объявить «не выбрано».
-        if (picked !== null) pick(picked);
+        if (picked === null) return;
+        /* ★ ГЛУШИМ `click`, КОТОРЫЙ БРАУЗЕР ПРИШЛЁТ СЛЕДОМ (TRIP-505). Ставим ДО
+           `pick`: он синхронно перерисует лист, и совместимостный click от
+           касания придёт уже по новой разметке — по тому, что легло под палец.
+           Разбор и замер — при `swallowNextClick`. */
+        swallowNextClick(typeof window !== 'undefined' ? window : null);
+        pick(picked);
       }}
       // Остаётся ВХОДОМ ДЛЯ КЛАВИАТУРЫ И ВТ (`el.click()` pointer-событий не
       // шлёт). Двойного выбора нет: `pick` под защёлкой `pickedRef`.
