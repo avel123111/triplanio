@@ -7,6 +7,7 @@ import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
 import { isZonePage } from '@/lib/routePaths';
 import { useZoneCta, isPlainLeftClick, zonePlan, zoneDemo } from './zoneCta';
+import { zoneSurface } from '@/lib/zoneSurface';
 import LandingSprite from './LandingSprite';
 
 /* =========================================================
@@ -170,10 +171,13 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, fl
   //   · «хочу попробовать»  → планировщик (`zonePlan`);
   //   · «что это вообще»    → пример поездки (`zoneDemo`);
   //   · «я уже пользуюсь»   → вход (адрес по умолчанию у `useZoneCta`).
-  // До этого дверей было две, и обе вели во вход: «Начать бесплатно» ничего не
-  // обещала про то, что произойдёт, а демо в бургере было подписано «Посмотреть
-  // демо» и уводило в форму входа. Кнопки шапки различаются теперь СМЫСЛОМ, а
-  // не местом, поэтому и на десктопе, и в бургере состав один.
+  // Кнопка «начать» больше не ведёт в авторизацию вовсе: человек попадает прямо
+  // в работу над поездкой, а регистрацию у него просят на последней ступени.
+  // Это ПРОДОЛЖЕНИЕ замера PR #1130, а не отмена его: там кнопка вела на форму
+  // входа, где 48 из 49 не находили регистрацию, и починка была «вести на
+  // регистрацию»; здесь между обещанием и аккаунтом становится сам продукт.
+  // Правило `guestEntryPath` остаётся в силе для всех, кто в авторизацию всё же
+  // ведёт, — включая гостевой планировщик (`zoneSignup`).
   //
   // ВХОД БЕЗ ВЕТКИ ПО АВТОРИЗАЦИИ, И ЭТО РЕШЕНИЕ. Вошедшему `/login` сам отдаёт
   // `postLoginPath()` (`Login.jsx`), то есть он попадает в «Мои поездки» одним
@@ -200,6 +204,10 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, fl
   // Only the full header collapses its section nav into the mobile menu; the
   // others have nothing to hide behind a burger, so they keep everything inline.
   const showBurger = variant === 'full';
+  // На самой демо-странице пункт «Посмотреть демо» вёл бы человека туда, где он
+  // уже стоит. Страница выводится из адреса тем же предикатом, что и `surface`
+  // в аналитике, — второго источника «где мы» в зоне нет.
+  const onDemo = zoneSurface(location.pathname) === 'demo';
 
   // Scroll state + header theme. `themed` pages sample the section under the
   // header; everyone else is light. Re-runs on route change (location) because
@@ -313,12 +321,22 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, fl
           сторожит ровно это. */}
       {showBurger && (
         <nav className="mobile-menu" id="mobileMenu" aria-label={t('nav.aria_primary')}>
+          {/* ПОРЯДОК ЗДЕСЬ — ЧАСТЬ СМЫСЛА, а не следствие того, кто в каком PR
+              появился. Две двери в аккаунт стоят ПАРОЙ (завести / войти) — это
+              один вопрос «я новый или я уже ваш», и разорвать его третьей
+              ссылкой значит заставить человека читать все пункты, чтобы понять,
+              что вариантов входа два. Демо — не дверь в аккаунт, а способ
+              посмотреть продукт, ничего не заводя, поэтому стоит ПОСЛЕ пары и
+              перед разделами страницы, к которым оно ближе по смыслу. */}
           <a {...menuCta} onClick={(e) => { setMobileOpen(false); menuCta.onClick(e); }}>{t('landing.hero.cta1')}</a>
-          {/* Здесь стоял пункт с подписью «Посмотреть демо», который вёл во ВХОД:
-              подпись осталась от времени, когда обе верхние двери бургера вели в
-              одно место. Теперь их три, и каждая ведёт туда, что написано. */}
-          <a {...menuDemo} onClick={(e) => { setMobileOpen(false); menuDemo.onClick(e); }}>{t('landing.hero.cta2')}</a>
+          {/* Пункт ВХОДА — своей подписью, и сразу за «начать»: обе двери ведут
+              в продукт, и стоять им рядом. Раньше он был подписан «Посмотреть
+              демо», поэтому на телефоне войти было негде: единственная дверь
+              входа называлась чужим именем. Ключ общий с экраном входа. */}
           <a {...menuSignin} onClick={(e) => { setMobileOpen(false); menuSignin.onClick(e); }}>{t('auth.sign_in')}</a>
+          {!onDemo && (
+            <a {...menuDemo} onClick={(e) => { setMobileOpen(false); menuDemo.onClick(e); }}>{t('landing.hero.cta2')}</a>
+          )}
           {navItems.map((n) => (
             <a key={n.hash} href={navHref(n.hash)} onClick={() => setMobileOpen(false)}>{t(n.tkey)}</a>
           ))}

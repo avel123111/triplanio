@@ -246,7 +246,12 @@ export default function PublicTrip() {
 
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref={SITE} />
+      {/* navBase — АБСОЛЮТНЫЙ адрес лендинга: секции `#together`/`#stats`/
+          `#assistant`, которые шапка предлагает по умолчанию, живут ТАМ, а не
+          здесь. Без него три пункта бургера указывали на несуществующие на этой
+          странице якоря — клик не делал ничего. Механизм для этого у `SiteHeader`
+          был с самого начала, его просто никто не передал. */}
+      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref={SITE} navBase={SITE} />
 
       <main className="pt">
         <SiteHero
@@ -350,7 +355,7 @@ export default function PublicTrip() {
 function Shell({ lang, setLang, children }) {
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="full" brandHref={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" brandHref={SITE} navBase={SITE} />
       <main className="pt">{children}</main>
       <SiteFooter brandHref={SITE} />
     </>

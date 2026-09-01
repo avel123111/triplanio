@@ -25,7 +25,7 @@ import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import { SiteHeader } from '@/components/site/SiteChrome';
-import { zoneHome, zoneLogin } from '@/components/site/zoneCta';
+import { zoneHome, zoneSignup } from '@/components/site/zoneCta';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
@@ -1234,7 +1234,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   const goSignIn = () => {
     handOffDraft();
-    nav(zoneLogin());
+    // ЭКРАН РЕГИСТРАЦИИ, А НЕ ФОРМА ВХОДА. Человек только что собрал маршрут без
+    // аккаунта — аккаунта у него заведомо нет, и форма входа встретила бы его
+    // заголовком для вернувшегося. Замер PR #1130: на ней регистрацию нашёл
+    // 1 человек из 49. Правило общее с кнопками зоны (`authEntry.js`), здесь
+    // только его применение.
+    nav(zoneSignup());
   };
 
   // ★ ШАПКА ГОСТЯ — САЙТОВАЯ, А НЕ ШАПКА ПРИЛОЖЕНИЯ (TRIP-505).
