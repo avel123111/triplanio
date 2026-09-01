@@ -25,9 +25,15 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
+import { guestEntryPath } from '@/lib/authEntry';
 
-/** Куда ведёт CTA гостя и куда — уже вошедшего. Одно место на всю зону. */
-const LOGIN_PATH = '/login';
+/** Куда ведёт CTA уже вошедшего. Одно место на всю зону.
+ *
+ * Адрес ГОСТЯ парной константой здесь больше не лежит — его решает
+ * `guestEntryPath` (`src/lib/authEntry.js`): кнопки зоны обещают НАЧАТЬ, и
+ * вести их надо на регистрацию, а не на форму входа. Правило живёт рядом с тем,
+ * кто этот адрес читает (`Login`), — здесь оно было бы половиной контракта, и
+ * вторая половина уехала бы молча. */
 const APP_PATH = '/trips';
 
 /**
@@ -61,8 +67,11 @@ export function zoneHome() {
  * @param {string} location МЕСТО кнопки — единственное, чего не знает хук:
  *   `header` · `menu` · `menu_signin` · `hero` · `hero_demo` · `final` ·
  *   `final_demo`. `final` и `final_demo` уже живут в аналитике — не переименовывать.
+ *   Оно же решает, регистрация это или вход (`guestEntryPath`), поэтому суффикс
+ *   `_signin` у пункта «войти» несёт смысл, а не только метку в аналитике.
  * @param {string} [to] Адрес, если кнопка ведёт НЕ в продукт (ссылка на демо в
- *   финальном блоке лендинга). По умолчанию — вход, а для вошедшего «Мои поездки».
+ *   финальном блоке лендинга). По умолчанию — регистрация, для пункта «войти» —
+ *   форма входа, а для вошедшего «Мои поездки».
  * @returns {{href: string, onClick: (e: MouseEvent) => void}} раскрыть на `<a>`.
  */
 export function useZoneCta(location, to) {
@@ -71,7 +80,7 @@ export function useZoneCta(location, to) {
   const { isAuthenticated } = useAuth();
   // Метка кампании визита едет НА адрес: gtag читает её из строки запроса
   // (TRIP-407 PR5). Вошедшему она не нужна — он уже атрибуцирован.
-  const href = to ?? (isAuthenticated ? APP_PATH : withVisitCampaign(LOGIN_PATH));
+  const href = to ?? (isAuthenticated ? APP_PATH : withVisitCampaign(guestEntryPath(location)));
   const onClick = (e) => {
     if (!isPlainLeftClick(e)) return;
     e.preventDefault();
