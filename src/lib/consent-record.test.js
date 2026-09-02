@@ -85,18 +85,20 @@ test('a foreign GRANT never silences (one-way), whatever this tab is doing', () 
   assert.equal(shouldSilenceOnConsentChange(false, grant), false);
 });
 
-// TRIP-407 P1: identity waits for consent-persistence, not mere readiness. Under B
-// the client is ready (memory) from load, but a logged-in refuser must NOT become
-// a server-side person — identify(uid) creates one.
-test('a refuser / not-yet-answered user (persisting=false) is NOT identified', () => {
-  assert.equal(mayIdentify('u1', false), false);
-});
-
-test('a consented, logged-in user (persisting=true) IS identified', () => {
+// TRIP-502 (revises TRIP-407 P1): identity rides READINESS, not consent. Linking
+// the anon history to the pseudonymous uid (no PII) is allowed without cookie
+// consent, so a logged-in visitor who ignored the banner IS identified — that is
+// what unbreaks the funnel/retention/engagement. The gate only guards against
+// identifying before boot (no client) or after a withdrawal (not ready).
+test('a booted client (ready=true) with a uid IS identified — no consent needed', () => {
   assert.equal(mayIdentify('u1', true), true);
 });
 
-test('no uid is never identified, even when persisting', () => {
+test('before boot / after withdrawal (ready=false) nobody is identified', () => {
+  assert.equal(mayIdentify('u1', false), false);
+});
+
+test('no uid is never identified, even when ready', () => {
   assert.equal(mayIdentify('', true), false);
   assert.equal(mayIdentify(null, true), false);
   assert.equal(mayIdentify(undefined, true), false);

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';
+import { rememberAnalyticsIdForRedirect } from '@/lib/destinations/posthog';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
@@ -419,6 +420,7 @@ export default function Login() {
     // this visit dies here. Every entry that leaves the page needs this line — a
     // fourth provider added without it silently loses campaign attribution.
     rememberAttributionForRedirect();
+    rememberAnalyticsIdForRedirect(); // carry the anon distinct_id across the redirect too (TRIP-502)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -442,6 +444,7 @@ export default function Login() {
     // One Tap does not leave the page, but it finishes with a hard navigation to
     // postLoginPath() — a new document all the same.
     rememberAttributionForRedirect();
+    rememberAnalyticsIdForRedirect(); // carry the anon distinct_id across the hard-nav too (TRIP-502)
     try {
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
@@ -553,6 +556,7 @@ export default function Login() {
     // this visit dies here. Every entry that leaves the page needs this line — a
     // fourth provider added without it silently loses campaign attribution.
     rememberAttributionForRedirect();
+    rememberAnalyticsIdForRedirect(); // carry the anon distinct_id across the redirect too (TRIP-502)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: { redirectTo: postLoginRedirectTo() },

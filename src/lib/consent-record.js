@@ -79,20 +79,27 @@ export function shouldSilenceOnConsentChange(persisting, record) {
 }
 
 /**
- * Whether we may identify a person to analytics (TRIP-407 P1). `identify(uid)` is
- * a network event that CREATES a server-side person under that uid — a "person"
- * operation — so it requires the SAME consent that lets us persist to the device,
- * NOT merely a live (memory-only) client. So: a uid AND a persisting document.
+ * Whether we may identify a person to analytics (TRIP-502, revises TRIP-407 P1).
+ * `identify(uid)` links the anonymous history to a pseudonymous account number
+ * (uid — an opaque UUID, never name/email), which is now allowed WITHOUT cookie
+ * consent on a legitimate-interest basis (product decision, Ilia 02.09.2026). So
+ * the gate is readiness, not persistence: identify the moment the client is booted.
  *
- * The trap: under variant B the client is "ready" from load, so a logged-in
- * visitor who REFUSED cookies (or has not answered) would otherwise be identified
- * anyway — a real person without consent. Anonymous capture rides `isReady()`;
- * identity waits for `isPersisting()`.
+ * Why this changed: TRIP-407 gated identify on `isPersisting()`, which meant a
+ * logged-in visitor who ignored the banner (all of the ad traffic) was NEVER
+ * identified — so their landing/CTA/signup stayed three anonymous strangers and
+ * the acquisition funnel, retention and engagement all broke. In memory mode
+ * identify still writes NOTHING to the device (only a server-side anon→uid link),
+ * so the ePrivacy "zero bytes on device before consent" line is intact; only the
+ * GDPR processing (the link) is what consent no longer gates.
+ *
+ * The `ready` guard remains meaningful: before boot there is no client to identify
+ * onto, and after a withdrawal `isReady()` is false, so identify stops with capture.
  *
  * @param {string|null|undefined} uid
- * @param {boolean} persisting  isPersisting() — this document writes to the device
+ * @param {boolean} ready  isReady() — the client has booted (memory OR localStorage)
  * @returns {boolean}
  */
-export function mayIdentify(uid, persisting) {
-  return !!uid && persisting === true;
+export function mayIdentify(uid, ready) {
+  return !!uid && ready === true;
 }

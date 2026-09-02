@@ -34,6 +34,15 @@ test('реплей стартует только на согласии и глу
     'отзыв согласия обязан явно глушить рекордер');
 });
 
+test('анонимный id переживает редирект: стеш перед уходом, bootstrap на возврате (TRIP-502)', () => {
+  assert.match(SRC, /export function rememberAnalyticsIdForRedirect[\s\S]*?get_distinct_id/,
+    'стеш обязан снимать get_distinct_id ЗДЕСЬ — доступ к SDK одной дверью (гард 2j)');
+  assert.match(SRC, /export function boot[\s\S]*?takeRedirectId\(window\.sessionStorage\)/,
+    'boot обязан поднять застешенный id из sessionStorage');
+  assert.match(SRC, /export function boot[\s\S]*?bootstrap:\s*\{\s*distinctID/,
+    'поднятый id обязан уехать в init через bootstrap.distinctID, иначе воронка рвётся на редиректе');
+});
+
 test('пол приватности записи объявлен в коде, а не только в UI', () => {
   assert.match(SRC, /maskTextSelector:\s*'\*'/, 'текст маскируется целиком');
   assert.match(SRC, /maskAllInputs:\s*true/);

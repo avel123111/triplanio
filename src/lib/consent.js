@@ -99,11 +99,10 @@ export function applyConsent(record, uid) {
   // booted it — so this never inits.
   onConsent(record);
 
-  // The account can already exist when the banner is answered — a confirmation link
-  // opened on a phone that never saw it, or a visitor who ignores the banner and
-  // signs in with Google first. Identify now so the person appears at once carrying
-  // the last-touch campaign (identifyUser owns that). Only on a grant: a refuser has
-  // no persisted profile to attach to.
+  // A logged-in visitor is already identified from load now (TRIP-502: identify
+  // rides readiness, not consent). This grant-time call is the immediate re-sync:
+  // the person just flipped to persisting, so re-run identify + last-touch campaign
+  // (identifyUser owns that) at once rather than waiting for the next profile load.
   if (record.analytics && uid) identifyUser(uid);
 }
 

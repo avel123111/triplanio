@@ -12,6 +12,12 @@
 // via `set_config` — no second init, and no replayed queue: the old `pendingEvents`
 // hold (TRIP-335) is deleted by this rewrite, memory persistence makes it moot.
 //
+// A memory-only id dies with its document, so an OAuth redirect / One Tap hard-nav
+// would otherwise split the funnel (top on the old id, `user_signed_up` on a new
+// one). `rememberAnalyticsIdForRedirect()` stashes it before the nav and `boot()`
+// re-seeds the fresh client via `bootstrap.distinctID` — same carrier and same
+// three doors as the campaign marks (TRIP-502, extends TRIP-493).
+//
 // Two flags, deliberately distinct:
 //   - `phReady`   — init has run (memory OR localStorage). The gate `track()` and
 //                   `identifyUser()` read. TRUE under B even while memory-only.
@@ -53,6 +59,7 @@ import posthog from 'posthog-js/dist/module.slim.js';
 // нашего /ingest по требованию, здесь только контроллер, решающий когда его звать.
 import { SessionReplayExtensions } from 'posthog-js/dist/extension-bundles';
 import { analyticsEnabledHere, isLocalhost, isProdHost } from '@/lib/analyticsEnv';
+import { stashRedirectId, takeRedirectId } from '@/lib/analyticsRedirectId';
 
 const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
 
@@ -75,6 +82,23 @@ export function isPersisting() {
   return persisting;
 }
 
+/**
+ * Stash the current anonymous `distinct_id` before this document is torn down by
+ * an OAuth redirect or a One Tap hard-nav (TRIP-502). Called from Login.jsx beside
+ * `rememberAttributionForRedirect()` at the same three doors — the marks and the
+ * analytics id ride the same `sessionStorage` border. Reading `get_distinct_id()`
+ * lives HERE, never in Login.jsx: the PostHog SDK has one door (guard 2j). No-op
+ * before boot; the pure carrier swallows a storage that refuses.
+ */
+export function rememberAnalyticsIdForRedirect() {
+  if (!phReady) return;
+  try {
+    stashRedirectId(window.sessionStorage, ph.get_distinct_id?.());
+  } catch {
+    /* no storage / no id — the funnel falls back to the DB for this visit */
+  }
+}
+
 // Same-origin proxy on every DEPLOYED host (prod / www / dev / preview) via the
 // vercel.json `/ingest` rewrite → no CORS, no cross-host redirect. Only true local
 // `vite dev` lacks the rewrite, so there we post to PostHog EU directly.
@@ -95,7 +119,16 @@ function apiHost() {
 export function boot(client) {
   if (client) ph = client;
   if (phReady || !POSTHOG_TOKEN || !analyticsEnabledHere) return;
+  // Re-seed the fresh client with the anonymous id stashed before an OAuth
+  // redirect / One Tap hard-nav (TRIP-502). Under B the id lived only in memory
+  // and died with the old document, so without this the funnel's top and its
+  // `user_signed_up` are two different people. `bootstrap.distinctID` only takes
+  // when nothing is stored — after consent the id is already in localStorage and
+  // wins, so this is a no-op there (same id either way). One-shot: `take` clears it.
+  let bootstrapId = null;
+  try { bootstrapId = takeRedirectId(window.sessionStorage); } catch { /* no storage */ }
   ph.init(POSTHOG_TOKEN, {
+    ...(bootstrapId ? { bootstrap: { distinctID: bootstrapId } } : {}),
     api_host: apiHost(),
     defaults: '2026-05-30',
     autocapture: false,

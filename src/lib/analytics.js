@@ -24,7 +24,7 @@ import { appendQuery } from '@/lib/viralLink';
 import { entrySearch } from '@/lib/analyticsEnv';
 import { mayIdentify } from '@/lib/consent-record';
 import { getActiveMarks } from '@/lib/attribution';
-import { isPersisting, isReady } from '@/lib/destinations/posthog';
+import { isReady } from '@/lib/destinations/posthog';
 
 /**
  * Capture a product-analytics event.
@@ -182,14 +182,16 @@ function syncCampaignToPerson() {
  * `users.signup_utm_*` column written server-side. So this is a bare identify plus
  * the last-touch person sync — no `$set_once` payload.
  *
- * Gated on PERSISTING, not merely `isReady()` (TRIP-407 P1). Under variant B the
- * client runs from load, so `isReady()` is true even for someone who REFUSED
- * cookies or has not answered — and `identify(uid)` is a network event that
- * CREATES a server-side person under that uid. Identity is a "person" operation,
- * so it waits for the SAME consent that lets us write to the device.
- * `track()`/`group()`/`setCampaign()` stay on `isReady()`: those ride the accepted
- * anonymous memory hit, this does not. The consumer that fires unconditionally
- * (AuthContext, on every profile load) is exactly why the gate lives HERE.
+ * Gated on `isReady()`, NOT persistence (TRIP-502, revises TRIP-407 P1). Linking
+ * the anonymous history to the pseudonymous account number (uid — no PII) is now
+ * allowed without cookie consent on a legitimate-interest basis (product decision,
+ * Ilia 02.09.2026): under B `isReady()` is true from load, so a logged-in visitor
+ * who ignored the banner IS identified — which is what stitches their landing/CTA/
+ * signup into one person and unbreaks the funnel, retention and engagement. In
+ * memory mode identify still writes nothing to the device (only a server-side
+ * anon→uid link). The old `isPersisting()` gate is why those metrics only ever
+ * counted the minority who accepted cookies. The consumer that fires on every
+ * profile load (AuthContext) is exactly why the gate lives HERE.
  *
  * The last-touch trigger is collected here in one place: identify, then
  * `setCampaign()` (picks up whatever marks AuthContext just recovered for a fresh
@@ -200,7 +202,7 @@ function syncCampaignToPerson() {
  * @param {string} uid  the Supabase user id — no PII ever goes to analytics
  */
 export function identifyUser(uid) {
-  if (!mayIdentify(uid, isPersisting())) return;
+  if (!mayIdentify(uid, isReady())) return;
   // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213). Personal
   // data stays in Supabase; resolve uid → user there when needed.
   posthog?.identify?.(uid);
