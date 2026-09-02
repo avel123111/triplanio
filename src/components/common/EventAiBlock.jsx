@@ -288,7 +288,7 @@ export default function EventAiBlock({
         <div className="ai-blk-ti">
           <b>{t('event.ai_fill_title')}</b>
           <span>{state === 'uploaded'
-            ? `${files.length} ${files.length === 1 ? t('event.ai_file_ready_one') : t('event.ai_file_ready_many')} ${t('event.ai_files_ready_suffix')}`
+            ? `${files.length} ${pluralWord(t, files.length, 'event.ai_file_ready')} ${t('event.ai_files_ready_suffix')}`
             : t('event.ai_available_hint')}</span>
         </div>
         <span className="ai-blk-x" aria-hidden="true"><ChevronUp size={14} /></span>
@@ -366,6 +366,3 @@ export default function EventAiBlock({
     </Card>
   );
 }
-
-
-

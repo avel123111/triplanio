@@ -83,11 +83,21 @@ test('★★ затравка по адресу: семь страниц зон�
 });
 
 test('★ префикс — это префикс, а не равенство: у join и публичной поездки в адресе токен', () => {
-  assert.equal(seedsLightZone('/join/'), true);
+  assert.equal(seedsLightZone('/join/abc'), true);
   assert.equal(seedsLightZone('/join/very/long/token'), true);
   assert.equal(seedsLightZone('/public/trip/abc/anything'), true);
   assert.equal(seedsLightZone('/joinery'), false);
   assert.equal(seedsLightZone('/publicity'), false);
+});
+
+test('★★ голый префикс БЕЗ токена зоной не является — и это согласовано со всеми', () => {
+  // `/join/` и `/public/trip/` без токена — не адреса: край отдаёт по ним честную
+  // 404 (`isKnownPath` false), роутер приложения по ним ничего не рисует. Пока
+  // затравка мерила префиксы по СЫРОМУ пути, а точные адреса по нормализованному,
+  // она отвечала на них «зона» — единственный модуль, который так считал.
+  // Нормализация теперь одна на обе половины и общая с краем (`canonicalPath`).
+  assert.equal(seedsLightZone('/join/'), false);
+  assert.equal(seedsLightZone('/public/trip/'), false);
 });
 
 test('★ хвостовой слэш не меняет ответ — иначе /terms/ дал бы тёмный кадр', () => {

@@ -25,6 +25,11 @@ export function tapPick(down, up, slop = TAP_SLOP) {
   return down.row ?? null;
 }
 
+/** Страховочное окно глушилки: `click` за это время либо придёт, либо не придёт
+ *  уже никогда. Константа стоит ДО докблока ниже — иначе JSDoc функции
+ *  цеплялся бы к числу, а не к `swallowNextClick`. */
+export const CLICK_SWALLOW_MS = 400;
+
 /**
  * ПРОГЛОТИТЬ СИНТЕТИЧЕСКИЙ `click`, который придёт следом за тапом.
  *
@@ -72,8 +77,6 @@ export function tapPick(down, up, slop = TAP_SLOP) {
  * @param {number} [ms] страховочное окно
  * @returns {() => void} снять досрочно (для теста; заказчику держать не нужно)
  */
-export const CLICK_SWALLOW_MS = 400;
-
 export function swallowNextClick(target, ms = CLICK_SWALLOW_MS) {
   if (!target || typeof target.addEventListener !== 'function') return () => {};
   let timer = null;

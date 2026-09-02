@@ -581,7 +581,8 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   };
   const cityNeedsHotel = (c) =>
     c.kind !== 'waypoint' && cityNights(c) >= 1 && !(hotels || []).some(h => hotelCoversCity(h, c));
-  // Та же тернарная плюрализация ночей, что у FlowMap/ManualPlanner (канон-узор).
+  // Слово при числе — общим правилом `lib/plural`, тем же, что у FlowMap и
+  // ManualPlanner: своей копии предиката здесь нет и заводить её нельзя.
   const nightsWord = (n) => pluralWord(t, n, 'view.nights');
 
   // Renders one city's arrival block: the missing-transfer warning, then the
@@ -822,7 +823,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
 // Observer on the .tl3-day anchors), and clicking a city scrolls the timeline to
 // that city's first day.
 function CityRail({ visits = [], scrollRef }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const cities = useMemo(
     () => sortVisits(visits).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint'),
     [visits],

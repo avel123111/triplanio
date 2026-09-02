@@ -19,6 +19,9 @@ import { readFileSync } from 'node:fs';
 import { ZONE_SCOPE, ZONE_SCOPE_WEIGHTED, unscope, scopeTraces } from './zone-scope.mjs';
 
 const CSS = readFileSync('public/site.css', 'utf8');
+/** Тот же файл без комментариев: разбор селекторов не должен спотыкаться о
+ *  прозу, а регулярка снятия одна на всех читателей ниже. */
+const CSS_BARE = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
 
 /**
  * ДОКУМЕНТНЫЙ СЛОЙ — исчерпывающий список. Это правила, которым нужен сам
@@ -124,7 +127,7 @@ test('★★ скоуп НЕ добавляет специфичности — �
   // виджет согласия потерял свою заливку и рамку, и увидел это только
   // попиксельный диф.
   assert.equal(ZONE_SCOPE, ':where(.site)');
-  assert.ok(!/(^|[\s,{])\.site\s+[.:[a-zA-Z]/m.test(CSS.replace(/\/\*[\s\S]*?\*\//g, '')),
+  assert.ok(!/(^|[\s,{])\.site\s+[.:[a-zA-Z]/m.test(CSS_BARE),
     'в site.css появился скоуп `.site ` вместо `:where(.site) ` — он поднимает специфичность всему файлу');
 });
 
@@ -137,10 +140,10 @@ test('★★ ОСТРОВ И `body` ГОВОРЯТ ОДНО И ТО ЖЕ — д�
   // `background`/`overflow-x` в сверку не входят: они про сам документ, острову
   // их брать не с чего и незачем.
   const decls = (sel) => {
-    const src = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
-    const i = src.indexOf(`${sel}{`) >= 0 ? src.indexOf(`${sel}{`) : src.indexOf(`${sel} {`);
+    const tight = CSS_BARE.indexOf(`${sel}{`);
+    const i = tight >= 0 ? tight : CSS_BARE.indexOf(`${sel} {`);
     assert.ok(i >= 0, `в site.css нет блока ${sel} — сверять нечего`);
-    const body = src.slice(src.indexOf('{', i) + 1, src.indexOf('}', i));
+    const body = CSS_BARE.slice(CSS_BARE.indexOf('{', i) + 1, CSS_BARE.indexOf('}', i));
     return new Map(body.split(';').map((d) => d.split(':')).filter((x) => x.length >= 2)
       .map(([k, ...v]) => [k.trim(), v.join(':').trim()]));
   };

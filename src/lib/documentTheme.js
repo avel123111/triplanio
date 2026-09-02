@@ -1,4 +1,4 @@
-import { GUEST_PLANNER_PATH, isZoneRoute } from './routePaths.js';
+import { GUEST_PLANNER_PATH, canonicalPath, isZoneRoute } from './routePaths.js';
 
 /**
  * Тема ДОКУМЕНТА — один модуль на оба факта, из которых она складывается:
@@ -62,6 +62,12 @@ const PREFIX = ['/join/', '/public/trip/'];
  * @param {string} pathname
  */
 export function seedsLightZone(pathname) {
-  const p = (pathname || '/').replace(/\/+$/, '') || '/';
-  return isZoneRoute(p) || p === GUEST_PLANNER_PATH || PREFIX.some((x) => (pathname || '').startsWith(x));
+  // ⚠️ НОРМАЛИЗАЦИЯ ОДНА И ОБЩАЯ С КРАЁМ (`canonicalPath`), И МЕРЯЕТСЯ ПО НЕЙ
+  // ЖЕ — обе половины. Здесь стояла своя (`/\/+$/`, снимала НЕСКОЛЬКО слэшей),
+  // да ещё префиксы сверялись по СЫРОМУ адресу, а точные — по нормализованному:
+  // два правила «тот же ли это адрес» в одном выражении. Разойдись они — и
+  // первый кадр красился бы не так, как страницу решил рисовать роутер, молча
+  // и только на адресе с хвостом.
+  const p = canonicalPath(pathname || '/');
+  return isZoneRoute(p) || p === GUEST_PLANNER_PATH || PREFIX.some((x) => p.startsWith(x));
 }

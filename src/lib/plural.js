@@ -50,5 +50,3 @@ export function pluralForm(n) {
 export function pluralWord(t, n, base) {
   return t(`${base}_${pluralForm(n)}`);
 }
-
-export default pluralWord;

@@ -116,8 +116,6 @@ function useBrandNav(brandHref) {
   };
 }
 
-
-
 /**
  * ОСТРОВ САЙТОВОЙ ДС (TRIP-505).
  *

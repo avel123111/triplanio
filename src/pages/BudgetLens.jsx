@@ -766,7 +766,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     }));
   }, [cats, visitById, fx, overrides, mainCurrency]);
 
-  const expensesPlural = (n) => n === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many');
+  const expensesPlural = (n) => pluralWord(t, n, 'budget.expenses_count');
 
   // Скелетон — ОДИН компонент BudgetSkeleton (см. ниже), тот же и в фазе shell
   // (TripView LoadingBody), и в фазе content — фаза 1 и 2 идентичны, не «прыгают».
