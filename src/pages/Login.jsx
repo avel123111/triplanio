@@ -7,7 +7,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
 import { authErrorText, oauthRedirectError, stripOauthError } from '@/lib/authErrorText';
 import { authFlowResult } from '@/lib/authFlowCode';
-import { postLoginPath } from '@/lib/postLoginPath';
+import { postLoginPath, takePostLoginPath } from '@/lib/postLoginPath';
 import { hasPendingHandoff } from '@/lib/plannerDraft';
 import { initialAuthView, LOGIN_PATH, RECOVERY_PATH } from '@/lib/authEntry';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -38,7 +38,11 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 //     столкнуться с нашей меткой ему нечем.
 // Наша сторона тоже чиста: `safeRedirect` в signupPrecheck и
 // requestPasswordReset смотрит только на хост, query ему безразличен.
-const postLoginHref = () => withVisitCampaign(postLoginPath());
+/* Уход ПО отложенному адресу его же и тратит: намерение одноразовое, а без
+   траты один вход уводил бы туда и все следующие в этой вкладке (разбор — в
+   `takePostLoginPath`). `postLoginRedirectTo` ниже НЕ тратит: он отдаёт адрес
+   Supabase, а переход может не состояться, и письмо ещё переотправляют. */
+const postLoginHref = () => withVisitCampaign(takePostLoginPath());
 const postLoginRedirectTo = () => withVisitCampaign(window.location.origin + postLoginPath());
 
 /* floor-exempt: dsshare +30 — неавторизованная зона живёт на СВОЕЙ ДС (site.css

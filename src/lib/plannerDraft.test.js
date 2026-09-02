@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path';
 
 import {
   DRAFT_TTL_MS, GUEST_ID,
-  draftKey, parseDraft, serializeDraft,
+  draftKey, parseDraft, serializeDraft, HANDOFF_TTL_MS,
   readDraft, writeDraft, clearDraft, markHandoff, takeHandoff, hasPendingHandoff,
 } from './plannerDraft.js';
 
@@ -255,3 +255,40 @@ test('★★★ обычная запись НЕ стирает метку пе�
   writeDraft('u1', 'manual', { step: 'review' }, now);
   assert.equal(takeHandoff('u2', 'manual', now), null);
 }));
+
+
+// ── окно метки передачи ──────────────────────────────────────────────────────
+// Метка описывает ПЕРЕХОД («иду регистрироваться»), а не черновик, поэтому у
+// неё своё окно. Живи она сутки — брошенная регистрация оставляла бы её
+// взведённой на весь день, и следующий вошедший в этом браузере получил бы
+// чужой маршрут ПОВЕРХ своего.
+//
+// ⚠️ МУТАЦИИ, КОТОРЫМИ ЭТИ ТРИ ПРОВЕРЕНЫ КРАСНЫМИ: вернуть `handoff: true` без
+// времени — падает «протухает»; в `writeDraft` передавать `now` вместо
+// сохранённой отметки — падает «правка черновика окно НЕ продлевает».
+
+test('★★★ метка передачи протухает раньше черновика — брошенная регистрация не отдаёт маршрут чужому', () => {
+  withStorage(() => {
+    markHandoff('manual', DRAFT, NOW);
+    assert.equal(hasPendingHandoff('manual', NOW + HANDOFF_TTL_MS), true, 'ровно на границе ещё ждёт');
+    assert.equal(hasPendingHandoff('manual', NOW + HANDOFF_TTL_MS + 1), false, 'на миллисекунду позже — нет');
+    assert.equal(takeHandoff('u1', 'manual', NOW + HANDOFF_TTL_MS + 1), null,
+      'протухшая метка обязана не отдавать черновик');
+  });
+});
+
+test('★★ правка черновика окно метки НЕ продлевает — иначе оно перестаёт быть окном', () => {
+  withStorage(() => {
+    markHandoff('manual', DRAFT, NOW);
+    // Гость вернулся и правит маршрут спустя полчаса: черновик свежеет, метка нет.
+    writeDraft(null, 'manual', { ...DRAFT, tripTitle: 'ещё' }, NOW + HANDOFF_TTL_MS / 2);
+    assert.equal(hasPendingHandoff('manual', NOW + HANDOFF_TTL_MS + 1), false,
+      'отметка метки обязана остаться исходной');
+    assert.equal(readDraft(null, 'manual', NOW + HANDOFF_TTL_MS + 1)?.tripTitle, 'ещё',
+      'сам черновик при этом жив — протухла только метка');
+  });
+});
+
+test('★ старая форма метки (`handoff: true`, без времени) читается как «метки нет»', () => {
+  assert.equal(parseDraft(JSON.stringify({ ...DRAFT, ts: NOW, handoff: true }), NOW)?.handoff, false);
+});

@@ -37,6 +37,22 @@
  */
 export const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Сколько живёт МЕТКА ПЕРЕДАЧИ — и почему не столько же, сколько черновик.
+ *
+ * Метка означает «я прямо сейчас иду регистрироваться», то есть описывает
+ * ПЕРЕХОД, а не черновик. Живи она сутки вместе с ним — брошенная регистрация
+ * оставляла бы её взведённой на весь день: следующий, кто войдёт в этом
+ * браузере и откроет планировщик, молча получил бы ЧУЖОЙ маршрут, да ещё и
+ * поверх своего черновика (переданный побеждает). Ровно тот отказ, ради
+ * которого метка и заведена, только с другой стороны.
+ *
+ * Час — верх нормального перехода: у Google/Apple это секунды, у письма —
+ * минуты. Продление правкой черновика метке не передаётся: у неё своя отметка
+ * времени, и `writeDraft` переносит именно её, а не `now`.
+ */
+export const HANDOFF_TTL_MS = 60 * 60 * 1000;
+
 /** Владелец черновика, пока человек не вошёл. */
 export const GUEST_ID = 'guest';
 
@@ -68,9 +84,15 @@ export function draftKey(userId, method = 'manual') {
  * формы, которой больше нет, и «раз метки нет, значит свежий» — ровно та
  * ошибка, из-за которой протухшее выглядит как новое.
  *
+ * `handoff` хранится ОТМЕТКОЙ ВРЕМЕНИ, а наружу отдаётся булевым: у метки своё
+ * окно (`HANDOFF_TTL_MS`), и вопрос «ждёт ли передача» — это вопрос про сейчас.
+ * Старая форма `handoff: true` (без времени) читается как «метки нет»: она
+ * пришла из контракта, у которого окна не было, и «раз времени нет, значит
+ * свежая» — ровно та ошибка, из-за которой протухшее выглядит как новое.
+ *
  * @param {string|null|undefined} raw
  * @param {number} now Date.now()
- * @returns {{ draft: Record<string, any>, handoff: boolean } | null}
+ * @returns {{ draft: Record<string, any>, handoff: boolean, handoffAt: number|null } | null}
  */
 export function parseDraft(raw, now) {
   if (typeof raw !== 'string' || !raw) return null;
@@ -81,21 +103,28 @@ export function parseDraft(raw, now) {
 
   const { ts, handoff, ...draft } = /** @type {Record<string, any>} */ (parsed);
   if (!Number.isFinite(ts) || now - ts > DRAFT_TTL_MS) return null;
+  const handoffAt = Number.isFinite(handoff) ? Number(handoff) : null;
   // Часы уехали назад (сменили таймзону, поправили время) — черновик из
   // будущего не протух, он просто странный. Отдаём: выбросить работу человека
   // из-за перевода часов хуже, чем показать её.
-  return { draft, handoff: handoff === true };
+  return {
+    draft,
+    handoff: handoffAt !== null && now - handoffAt <= HANDOFF_TTL_MS,
+    handoffAt,
+  };
 }
 
 /**
  * Свернуть черновик в строку для хранилища.
  * @param {Record<string, any>} draft
  * @param {number} now
- * @param {boolean} [handoff] см. `takeHandoff`
+ * @param {number|null} [handoffAt] когда поставлена метка передачи (см. `takeHandoff`)
  * @returns {string}
  */
-export function serializeDraft(draft, now, handoff = false) {
-  return JSON.stringify(handoff ? { ...draft, ts: now, handoff: true } : { ...draft, ts: now });
+export function serializeDraft(draft, now, handoffAt = null) {
+  return JSON.stringify(
+    handoffAt === null ? { ...draft, ts: now } : { ...draft, ts: now, handoff: handoffAt },
+  );
 }
 
 // ─── Оболочка над хранилищем ─────────────────────────────────────────────────
@@ -150,7 +179,11 @@ export function readDraft(userId, method, now) {
  */
 export function writeDraft(userId, method, draft, now) {
   const key = draftKey(userId, method);
-  set(key, serializeDraft(draft, now, parseDraft(get(key), now)?.handoff === true));
+  // Переносится ИМЕННО отметка времени метки, а не факт её наличия: иначе
+  // каждая правка черновика продлевала бы окно передачи, и оно перестало бы
+  // быть окном.
+  const prev = parseDraft(get(key), now);
+  set(key, serializeDraft(draft, now, prev?.handoff ? prev.handoffAt : null));
 }
 
 /**
@@ -165,6 +198,8 @@ export function clearDraft(userId, method) {
  * Пометить гостевой черновик как ПЕРЕДАВАЕМЫЙ: человек нажал «Сохранить трип» и
  * уходит регистрироваться.
  *
+ * Метка живёт своё окно (`HANDOFF_TTL_MS`), а не сутки черновика — разбор там.
+ *
  * ★ ЗАЧЕМ МЕТКА, А НЕ ПРОСТО «ЕСТЬ ГОСТЕВОЙ ЧЕРНОВИК — ЗАБРАТЬ ЕГО». Без неё
  * переезд срабатывал бы при КАЖДОМ открытии планировщика вошедшим, и брошенный
  * кем-то гостевой маршрут (общий компьютер, своя же прошлая сессия) молча
@@ -177,7 +212,7 @@ export function clearDraft(userId, method) {
  * @param {number} now
  */
 export function markHandoff(method, draft, now) {
-  set(draftKey(GUEST_ID, method), serializeDraft(draft, now, true));
+  set(draftKey(GUEST_ID, method), serializeDraft(draft, now, now));
 }
 
 /**

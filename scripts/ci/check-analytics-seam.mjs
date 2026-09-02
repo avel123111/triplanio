@@ -350,12 +350,19 @@ try {
   }
 
   // Rule F — the post-login destination is decided in one named helper, not inline.
-  const POST_LOGIN = /postLoginPath\s*\(/g;
-  const POST_LOGIN_HOME = 'src/lib/postLoginPath.js'; // where it is DEFINED
+  /* И `takePostLoginPath` тоже: он решает ТОТ ЖЕ адрес, просто тратит запись
+     (TRIP-505). Не назови его здесь — и правило «у адреса один автор» обошлось
+     бы переименованием вызова. */
+  const POST_LOGIN = /\b(?:take)?[pP]ostLoginPath\s*\(/g;
+  /* Дом решения и ЕГО ТЕСТ. Тест обязан звать эти функции напрямую и внутри
+     `test(...)`, то есть на глубине > 0: он проверяет самого автора адреса, а
+     не заводит второго. Исключение точечное — по имени файла рядом с домом, а
+     не «все тесты»: в чужом тесте инлайновый вызов остаётся нарушением. */
+  const POST_LOGIN_HOME = new Set(['src/lib/postLoginPath.js', 'src/lib/postLoginPath.test.js']);
   const inlineDestinations = [];
   let postLoginCalls = 0;
   for (const f of browserFiles) {
-    if (f === POST_LOGIN_HOME) continue;
+    if (POST_LOGIN_HOME.has(f)) continue;
     const code = maskCode(readFileSync(f, 'utf8'));
     const depth = depthArray(code);
     for (const m of code.matchAll(POST_LOGIN)) {
