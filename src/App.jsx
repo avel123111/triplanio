@@ -33,7 +33,7 @@ import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { APP_ROUTES, GUEST_PLANNER_PATH, PLANNER_PATH, isZoneRoute } from '@/lib/routePaths';
+import { APP_ROUTES, GUEST_PLANNER_PATH, PLANNER_PATH, canonicalPath, isZoneRoute } from '@/lib/routePaths';
 import { initialAuthView } from '@/lib/authEntry';
 import { rememberPostLogin } from '@/lib/postLoginPath';
 import { zoneLogin } from '@/components/site/zoneCta';
@@ -171,7 +171,11 @@ const AuthenticatedApp = () => {
   // ветками ниже.
   useEffect(() => { hideSplash(); }, []);
 
-  const path = location.pathname;
+  // Хвостовой слэш адреса не меняет: `react-router` терпит его сам, а рукописные
+  // сверки ниже (`=== GUEST_PLANNER_PATH`, `isZoneRoute`) — нет, и `/plan/`
+  // проваливался мимо ВСЕХ веток в 404-тело при статусе 200. Нормализация одна
+  // и общая с краем (`isKnownPath`), иначе они разъедутся молча.
+  const path = canonicalPath(location.pathname);
 
   // Витрина: только вне прода. На проде роута нет вовсе - путь провалится в
   // общую маршрутизацию ниже и отдаст лендинг/404, как любой чужой адрес.

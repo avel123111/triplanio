@@ -139,14 +139,36 @@ export function isAppRoute(pathname) {
 }
 
 /**
+ * АДРЕС В КАНОНИЧЕСКОЙ ФОРМЕ — один дом правила «хвостовой слэш ничего не
+ * значит».
+ *
+ * Правило и так действовало, но НЕ ВЕЗДЕ, и разницы не было видно: `react-router`
+ * терпит хвостовой слэш сам, поэтому все маршруты в таблицах работали, а
+ * рукописные сверки адреса рядом с ними (`path === GUEST_PLANNER_PATH`,
+ * `isZoneRoute(path)`) — нет. Итог: `/plan/` край признавал известным (здесь
+ * слэш снимался), приложение не узнавало ни одной веткой и отдавало 404 ТЕЛОМ
+ * при статусе 200 — то есть ровно ту мягкую четырёхсотку, ради которой
+ * `isKnownPath` и написан.
+ *
+ * @param {string} pathname
+ * @returns {string}
+ */
+export function canonicalPath(pathname) {
+  const p = pathname || '/';
+  return p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p;
+}
+
+/**
  * Существует ли по адресу хоть что-нибудь — страница, экран, статика или чужая
  * ветка маршрутизации. Нужен краю, чтобы ответить 404 честным статусом ДО
  * загрузки приложения (зачем именно — в докблоке `notFound` в `middleware.js`).
  *
- * Хвостовой слэш нормализуется: `/terms/` — тот же адрес, что `/terms`.
+ * Хвостовой слэш нормализуется — тем же `canonicalPath`, которым нормализует
+ * его приложение: разойдись эти две нормализации, и адрес со слэшем стал бы
+ * известен КРАЮ и неизвестен приложению, то есть отдавал бы 200 с телом 404.
  */
 export function isKnownPath(pathname) {
-  const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  const path = canonicalPath(pathname);
   if (isZonePage(path) || isAppRoute(path) || path === GUEST_PLANNER_PATH) return true;
   if (REDIRECT_SOURCES.includes(path) || PASSTHROUGH_EXACT.includes(path)) return true;
   if (PASSTHROUGH_PREFIXES.some((prefix) => path.startsWith(prefix))) return true;

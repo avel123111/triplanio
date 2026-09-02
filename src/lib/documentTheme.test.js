@@ -35,7 +35,9 @@
  * ⚠️ МУТАЦИИ, КОТОРЫМИ ТЕСТЫ ПРОВЕРЕНЫ КРАСНЫМИ (зелёный тест не значит ничего,
  * пока не увидел его красным — [[triplanio-ci-guard-is-code]]):
  *   · снять `if (lightZone) return false` — падает первая таблица;
- *   · убрать `/terms` из `EXACT` — падает список маршрутов;
+ *   · убрать `/terms` из `ZONE_PAGES` — падает список маршрутов;
+ *   · вернуть `seedsLightZone` к рукописной таблице точных адресов — падает
+ *     чужой демо-слаг `/d/opechatka`;
  *   · заменить `startsWith('/join/')` на равенство — падает проверка префикса;
  *   · убрать `useLightZone()` из `SiteZone` — падает связка;
  *   · вернуть `useLightZone()` в `useSiteCss` — падает проверка единственности.
@@ -45,8 +47,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { seedsLightZone, resolveDark } from './documentTheme.js';
 
+// `/plan` — гостевой планировщик: страницей зоны он не является, но поверхность
+// у него светлая. `/d/opechatka` — ЧУЖОЙ демо-слаг: он ведёт в зону (получит её
+// 404 сайтовой ДС), и рукописный список этого не знал — знал только канонический
+// `/d/europe-may-2027`, поэтому оба и стоят здесь.
 const ZONE = ['/', '/login', '/reset-password', '/terms', '/privacy', '/d/europe-may-2027',
-  '/join/abc', '/public/trip/1fd33a2e?t=tok'];
+  '/d/opechatka', '/plan', '/join/abc', '/public/trip/1fd33a2e?t=tok'];
 const APP = ['/trips', '/stats', '/settings', '/inbox', '/new-trip', '/trip/123', '/kit'];
 
 test('★★★ в зоне тема светлая при ЛЮБОМ выборе пользователя и любой ОС', () => {

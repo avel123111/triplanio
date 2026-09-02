@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState } from 'react';
 import { seedsLightZone, resolveDark } from '@/lib/documentTheme';
 
 // ⚠️ ТИП БЕРЁТСЯ С ДЕФОЛТНОГО ЗНАЧЕНИЯ, А НЕ С РЕАЛИЗАЦИИ - `createContext`
@@ -14,8 +14,8 @@ const ThemeContext = createContext({
   setTheme: () => {},
   isDark: false,
   toggle: () => {},
-  /** @type {(on: boolean) => void} */
-  setLightZone: () => {},
+  /** @type {() => (() => void)} */
+  holdLightZone: () => () => {},
 });
 
 export function ThemeProvider({ children }) {
@@ -43,16 +43,33 @@ export function ThemeProvider({ children }) {
      остаётся то, что он выбрал, и на экранах приложения снова действует. */
   // Затравка — ПО АДРЕСУ, до того как что-либо смонтировалось: оболочка зоны
   // приезжает позже, чем этот эффект кладёт тему (см. `documentTheme.js`).
-  // Дальше владельцем становится сама оболочка (`SiteZone` → `useLightZone`),
-  // поэтому ошибка затравки стоит одного кадра, а не неверной темы.
+  // Дальше владельцем становится сама оболочка (`SiteZone` → `useLightZone`).
   //
-  // ★ ВЛАДЕЛЕЦ РОВНО ОДИН, И ЭТО НЕ ПРИДИРКА: удержание — БУЛЕВ ФЛАГ, поэтому
-  // два владельца гасят друг друга (снятие одного объявляет зону законченной,
-  // пока второй ещё в ней). Понадобится второй — это счётчик удержаний, как у
-  // `holdSplash()`, а не второй вызов `useLightZone`.
-  const [lightZone, setLightZone] = useState(
+  // ★★ ЗАТРАВКА ОБЯЗАНА ИСТЕКАТЬ САМА, А НЕ ЖДАТЬ, ПОКА ЕЁ СНИМУТ. Пока она
+  // была тем же состоянием, что и удержание, «ошибка затравки стоит одного
+  // кадра» держалось на допущении, что оболочка зоны ОБЯЗАТЕЛЬНО смонтируется и
+  // однажды снимет флаг. Допущение неверно: вошедшего с `/plan` уводит
+  // `<Navigate to="/new-trip">`, оболочка зоны не монтируется вовсе — и снимать
+  // затравку становится некому. Человек с тёмной темой получал светлым ВЕСЬ
+  // сеанс вкладки, а переключатель темы при этом молчал (`tp-theme` писался,
+  // `resolveDark` его игнорировал). Поэтому затравка живёт РОВНО до конца
+  // первого коммита: layout-эффекты потомков идут раньше пассивного эффекта
+  // провайдера, так что настоящая оболочка успевает взять удержание, а если
+  // её нет — светлость гаснет сама.
+  //
+  // ★ УДЕРЖАНИЕ — СЧЁТЧИК, А НЕ ФЛАГ: у булева два владельца гасят друг друга
+  // (снятие одного объявляет зону законченной, пока второй ещё в ней).
+  const [zoneHolds, setZoneHolds] = useState(0);
+  const [seedsZone, setSeedsZone] = useState(
     () => (typeof window !== 'undefined' && seedsLightZone(window.location.pathname)),
   );
+  useEffect(() => { setSeedsZone(false); }, []);
+  const lightZone = zoneHolds > 0 || seedsZone;
+
+  const holdLightZone = useCallback(() => {
+    setZoneHolds((n) => n + 1);
+    return () => setZoneHolds((n) => n - 1);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -79,7 +96,7 @@ export function ThemeProvider({ children }) {
   const toggle = () => setThemeState(isDark ? 'light' : 'dark');
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: setThemeState, isDark, toggle, setLightZone }}>
+    <ThemeContext.Provider value={{ theme, setTheme: setThemeState, isDark, toggle, holdLightZone }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -96,9 +113,6 @@ export const useTheme = () => useContext(ThemeContext);
  * тему уже зная про зону — тёмного кадра не существует, а не «он короткий».
  */
 export function useLightZone() {
-  const { setLightZone } = useContext(ThemeContext);
-  useLayoutEffect(() => {
-    setLightZone(true);
-    return () => setLightZone(false);
-  }, [setLightZone]);
+  const { holdLightZone } = useContext(ThemeContext);
+  useLayoutEffect(() => holdLightZone(), [holdLightZone]);
 }
