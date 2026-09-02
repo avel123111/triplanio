@@ -46,11 +46,12 @@ import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
 import App from '@/App.jsx'
 import '@/index.css'
 
-// PostHog product analytics (TRIP-213 Phase 0). Boot the client for EVERYONE, here, before the first render — so
-// the first screen of a first-time visitor (landing_viewed, public_trip_viewed) is
-// captured, and on the SAME anonymous id that the signup will carry (TRIP-502: the
-// SDK's own storage crosses the OAuth redirect). setCampaign() primes the
-// last-touch campaign super-properties for the no-login case, before any event.
+// PostHog product analytics (TRIP-213 Phase 0). Boot the client for EVERYONE
+// here, before the first render — so the first screen of a first-time visitor
+// (landing_viewed, public_trip_viewed) is captured, and on the SAME anonymous id
+// that the signup will carry (TRIP-502: the SDK's own storage crosses the OAuth
+// redirect). setCampaign() primes the last-touch campaign super-properties for
+// the no-login case, before any event.
 bootPosthog()
 // The Google Ads adapter shares the boot/onConsent contract; boot() is a no-op
 // (the tag loads on a marketing grant via applyConsent), booted here for symmetry.
@@ -58,11 +59,11 @@ bootAds()
 setCampaign()
 
 // A stored answer is applied (replay + ad tag on a grant). No usable answer covers
-// "never asked", "expired", "our version moved" and "hand-edited" alike — there we
-// only drop what needed the grant, and NOT the analytics id itself: wiping it on
-// every load would kill the very continuity TRIP-502 restored, and the id does not
-// depend on the grant. A REFUSAL is different and still wipes everything — that is
-// the banner's and the cross-tab listener's half.
+// "never asked", "expired", "our version moved" and "hand-edited" alike — there
+// nothing that needs the grant starts, and nothing is wiped: the analytics id does
+// not depend on the grant, and clearing it on every unanswered load would kill the
+// very continuity TRIP-502 restored. A REFUSAL is different and still wipes
+// everything — that is the banner's and the cross-tab listener's half.
 const consent = getConsent()
 if (consent) applyConsent(consent)
 

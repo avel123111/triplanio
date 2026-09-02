@@ -1,9 +1,9 @@
 // Pins the branches that decide whether we may run analytics at all (TRIP-311).
 //
 // Every one of them ends in the same place — `null` means "no answer", so the
-// app wipes PostHog's keys and asks again. They are invisible in the UI and a
-// wrong `true` here is exactly the failure the whole ticket exists to prevent:
-// tracking someone who never agreed.
+// app asks again. They are invisible in the UI and a wrong `true` here is exactly
+// the failure the whole ticket exists to prevent: tracking someone who never
+// agreed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseConsent, buildConsent, shouldSilenceOnConsentChange, CONSENT_VERSION, CONSENT_MAX_AGE_MS } from './consent-record.js';
@@ -63,16 +63,16 @@ test('a truthy value that is not `true` does not become consent', () => {
   assert.equal(parsed.marketing, false);
 });
 
-// Variant B (TRIP-407): a cross-tab consent change silences THIS tab only when it
-// was persisting to the device. The trap Pavel flagged — under B the client runs
-// in every tab from load, so keying on "is analytics ready" would clear/reload a
-// memory-only tab that wrote nothing.
-test('a memory-only tab (not persisting) is NOT silenced on a foreign refusal', () => {
+// A cross-tab consent change silences THIS tab only while analytics is live in it
+// (TRIP-502: every running tab holds the same device storage). A tab already
+// stopped — never booted, or silenced by an earlier refusal — has nothing to
+// silence, and re-running the wipe on it would be work with no subject.
+test('an already-stopped tab (not running) is NOT silenced again on a foreign refusal', () => {
   const refusal = parseConsent(stored(buildConsent(false, NOW)), NOW);
   assert.equal(shouldSilenceOnConsentChange(false, refusal), false);
 });
 
-test('a persisting tab IS silenced when another tab refuses / withdraws', () => {
+test('a running tab IS silenced when another tab refuses / withdraws', () => {
   const refusal = parseConsent(stored(buildConsent(false, NOW)), NOW);
   assert.equal(shouldSilenceOnConsentChange(true, refusal), true);
   // An unusable/expired new value parses to null — still "no longer a grant".

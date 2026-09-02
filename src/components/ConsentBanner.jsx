@@ -42,8 +42,8 @@ export default function ConsentBanner() {
 
     // A refusal is an objection, and it has to bite: the client cannot un-init, so
     // we wipe what it stored and throw the page away. Since TRIP-502 analytics runs
-    // from load for everyone, so this always applies — there is no longer a
-    // memory-only session that wrote nothing.
+    // from load for everyone, this always applies — there is no longer a session
+    // that stored nothing and could be left alone.
     clearAnalyticsStorage();
     window.location.reload();
   };

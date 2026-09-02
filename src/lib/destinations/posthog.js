@@ -82,10 +82,10 @@ function apiHost() {
 }
 
 /**
- * Create the client in memory-only mode. Idempotent, and a no-op where analytics
- * is disabled (dev / preview without the enable flag) or the token is absent — so
- * an absent/failed boot cannot leave `phReady` lying. Called once from main.jsx,
- * BEFORE React mounts, so every `track()` on the first screen sees a live client.
+ * Create the client. Idempotent, and a no-op where analytics is disabled (dev /
+ * preview without the enable flag) or the token is absent — so an absent/failed
+ * boot cannot leave `phReady` lying. Called once from main.jsx, BEFORE React
+ * mounts, so every `track()` on the first screen sees a live client.
  *
  * @param {typeof posthog} [client]  test seam — prod calls `boot()` with no arg
  */
@@ -121,6 +121,7 @@ export function boot(client) {
     // `persistence` is deliberately NOT set: the SDK default is what carries the
     // anonymous id across an OAuth redirect and a new tab (TRIP-502). Pinning it to
     // 'memory' is what broke the funnel — do not bring it back.
+
     // The privacy FLOOR of a replay — same reason as `enable_heatmaps` above
     // (TRIP-328): the project's masking settings only move the DEFAULTS of these
     // three, so a click in the PostHog UI can lower them, an explicit value here
@@ -166,7 +167,7 @@ export function onConsent(record) {
 /**
  * Stop feeding the client. `init()` cannot be undone, so this drops the gate and
  * opts the client out of capturing — the withdrawal path and the cross-tab
- * refusal. No queue to forget any more.
+ * refusal. Wiping what was stored is the caller's half (`clearAnalyticsStorage`).
  */
 export function stopAnalytics() {
   phReady = false;

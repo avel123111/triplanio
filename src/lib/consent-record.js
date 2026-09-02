@@ -13,9 +13,8 @@ export const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 
 /**
  * Read a stored answer, or null when there is no usable one. Null is the single
- * signal callers act on, whatever the reason behind it: wipe the keys and ask
- * again. Treating a stale or half-written record as consent is the failure this
- * prevents.
+ * signal callers act on, whatever the reason behind it: ask again. Treating a
+ * stale or half-written record as consent is the failure this prevents.
  *
  * @param {string|null} raw  the localStorage value
  * @param {number} now       Date.now()

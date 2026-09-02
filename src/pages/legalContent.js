@@ -12,7 +12,8 @@
 
    The prose is the reviewed v1.0 (TRIP-133 audit): operator = sole trader in
    Spain (details on request), contacts info@/support@ only, Spanish law, 16+,
-   the consent wording matches the real TRIP-407 variant-B behaviour, retention
+   the consent wording matches the real behaviour (TRIP-502: analytics runs from
+   load as first-party audience measurement, a refusal stops and wipes it), retention
    figures are verified facts (Supabase Pro backups 7d, Sentry 90d, Spanish
    accounting 6y). Every factual claim is traced to code in the PR description —
    keep the text in sync with behaviour when either changes.
