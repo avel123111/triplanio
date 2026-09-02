@@ -1,9 +1,24 @@
 /* ============ Triplanio — Site styles ============ */
-/* Токены сайтовой ДС живут на html.site, а не на голом :root. Класс вешает
-   useSiteCss() (SiteChrome.jsx) на маркетинговых/публичных React-роутах, а на
-   статических /terms и /privacy — атрибут class="site" прямо в разметке. Без
-   класса токенов нет — так голый :root не может утечь на всё приложение, если
-   site.css однажды затащат в бандл (разбор специфичности — TRIP-446).
+/* ФАЙЛ РАСЩЕПЛЁН НА ДВА СЛОЯ, И ОБА ВИСЯТ НА ОДНОМ ИМЕНИ `.site` (TRIP-505):
+     · документный — `html.site`: сам `html`, `body`, появление `main`, замки
+       прокрутки. Включается только там, где страницу ЦЕЛИКОМ рисует сайтовая ДС;
+     · компонентный — `:where(.site) …`: все классы и элементные правила. Он
+       находит своего предка и на `<html>` (страница зоны), и на ОБЁРТКЕ шапки
+       посреди экрана приложения — так гостевой планировщик носит сайтовую
+       шапку островом, не получая её типографику.
+   Скоуп написан через `:where()` НАМЕРЕННО: он весит ноль, то есть каскад после
+   расщепления в точности прежний. Первая редакция писала `.site ` и подняла
+   специфичность всему файлу — сайтовая ДС начала выигрывать у КОМПОНЕНТОВ
+   ПРИЛОЖЕНИЯ на страницах зоны (виджет согласия потерял заливку). Единственное
+   исключение — заголовки: им вес НУЖЕН, и они несут `:is(html.site,.site)`.
+   Разбор и обратное преобразование для гардов — `scripts/ci/zone-scope.mjs`,
+   инвариант пинится `scripts/ci/zone-scope.test.mjs`.
+
+   Класс на `<html>` вешает оболочка зоны `SiteZone` (`useSiteDocumentLayer`),
+   класс на острове — сам `SiteHeader`/`SiteFooter`; `useSiteCss()` только
+   подключает `<link>` и ничего на документ не вешает. Токены сайтовой ДС живут
+   на `html.site`/`.site`, а не на голом `:root`: так они не могут утечь на всё
+   приложение, если site.css однажды затащат в бандл (TRIP-446).
 
    CSS ниже — прототип v5.7 ЦЕЛИКОМ (TRIP-460, подход "как есть, не пересказ"):
    вырезаны блоки Terms/Privacy (.doc*, → TRIP-465) и публичной поездки
@@ -523,14 +538,39 @@ html.site main{opacity:0;animation:stepIn .3s var(--ease-out) forwards}
    на экране приложения занимает свою строку. */
 :where(.site) .site-header.on-light.scrolled,:where(.site) .site-header--flow{background:rgba(255,255,255,.82);box-shadow:0 1px 0 rgba(11,44,84,.08)}
 
-/* Позиция — свойство поверхности. `position:static` возвращает шапку в поток
-   колонки `.flow-page` (100dvh, `overflow:hidden`): свои 70px она забирает
-   высотой `.site-header .wrap`, а не накрывает карту планировщика.
-   `backdrop-filter` при этом не нужен — под ней ничего не проезжает.
+/* Позиция — свойство поверхности: шапка возвращается в поток колонки
+   `.flow-page` (100dvh, `overflow:hidden`), свои 70px забирает высотой
+   `.site-header .wrap` и не накрывает карту планировщика. `backdrop-filter`
+   при этом не нужен — под ней ничего не проезжает.
+
+   ★ `relative`, А НЕ `static`, И ЭТО НЕ ПРИДИРКА К СЛОВУ. Уровень действует
+   ТОЛЬКО у позиционированного элемента: `static` его молча выключает, шапка
+   перестаёт быть стековым корнем своих слоёв, и выпадающее меню языка
+   (абсолютное, внутри неё) уходит ПОД карту планировщика. Замер: пункт `en` не
+   кликается — `.flow-map__cover` перехватывает нажатие. Ровно тот контракт
+   слоёв, что записан в [[triplanio-stacking-layers-contract]]: слой называет
+   свой уровень, а `position` решает, слышат ли его.
+
+   ★★ УРОВЕНЬ НАЗЫВАЕТСЯ В ЛЕСТНИЦЕ ТОЙ ПОВЕРХНОСТИ, НА КОТОРОЙ СТОИШЬ. Базовое
+   правило даёт шапке сырую `z-index:100` — число из лестницы САЙТА, где выше
+   шапки нет ничего. На экране приложения та же сотня попадает в лестницу
+   `app.css` и встаёт вровень с `--z-overlay` (тосты) и ВЫШЕ `--z-peek: 90` —
+   шторки карты, которая на верхнем детенте занимает весь экран (фокус в поле
+   уводит её туда сам). Шапка накрывала бы её грип и прогресс, и стянуть шторку
+   пальцем было бы нечем. Собственная шапка приложения в этом же шелле стоит на
+   `--z-header: 50` НИЖЕ шторки намеренно — сайтовая обязана вести себя так же,
+   поэтому здесь она берёт ровно тот же уровень. Фолбэк `50` — на случай, если
+   остров окажется вне документа приложения; сама сотня при этом не
+   переопределяется где-то ещё, а именно называется заново.
+
+   `inset:auto` — не косметика: у `relative` четыре стороны перестают быть
+   коробкой и становятся СМЕЩЕНИЕМ, а базовое `inset:0 0 auto 0` от `fixed`
+   осталось бы живым и молча сдвигало шапку, стоит кому-то поменять сторону.
+
    Флекс-элемент колонки — не сама шапка, а её остров `<div class="site">`,
    поэтому пинить здесь `flex` бессмысленно: у него `min-height:auto`, и он
    ровно облегает шапку. */
-:where(.site) .site-header--flow{position:static;backdrop-filter:none;-webkit-backdrop-filter:none}
+:where(.site) .site-header--flow{position:relative;inset:auto;z-index:var(--z-header,50);backdrop-filter:none;-webkit-backdrop-filter:none}
 
 :where(.site) .site-header.on-accent.scrolled{background:rgba(196,74,52,.42);box-shadow:0 1px 0 rgba(255,255,255,.18)}
 
@@ -606,7 +646,7 @@ html.site main{opacity:0;animation:stepIn .3s var(--ease-out) forwards}
   transition:opacity .22s var(--ease-out),transform .22s var(--ease-out),visibility .22s;
 }
 
-:where(.site) .lang.open .lang-menu,:where(.site) .mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto;visibility:visible}
+:where(.site) .lang.open .lang-menu,.mobile-open .mobile-menu{opacity:1;transform:none;pointer-events:auto;visibility:visible}
 
 :where(.site) .lang-menu button{display:flex;align-items:center;min-height:44px;gap:10px;width:100%;padding:9px 12px;border-radius: var(--r-sm);font-size: var(--fs-body-lg);color:var(--ink);transition:background .15s;text-align:left}
 
@@ -687,11 +727,11 @@ html.site main{opacity:0;animation:stepIn .3s var(--ease-out) forwards}
 
 :where(.site) .burger svg .l1,:where(.site) .burger svg .l3{transition:transform .3s var(--ease-out);transform-origin:12px 12px}
 
-:where(.site) .mobile-open .burger .l1{transform:translateY(6px) rotate(45deg)}
+.mobile-open .burger .l1{transform:translateY(6px) rotate(45deg)}
 
-:where(.site) .mobile-open .burger .l3{transform:translateY(-6px) rotate(-45deg)}
+.mobile-open .burger .l3{transform:translateY(-6px) rotate(-45deg)}
 
-:where(.site) .mobile-open .burger .l2{opacity:0}
+.mobile-open .burger .l2{opacity:0}
 
 :where(.site) .mobile-menu{
   position:fixed;inset:70px 0 auto 0;z-index:99;padding:10px 24px 28px;

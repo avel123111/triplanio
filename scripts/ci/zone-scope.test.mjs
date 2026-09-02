@@ -33,6 +33,15 @@ const DOCUMENT_LAYER = new Set([
   'body.pt-open',                                       // замок прокрутки под открытым меню
   'body.pt-open .main-nav',
   'body.pt-open .mobile-menu a[href^="#"]',
+  // Состояние бургера живёт КЛАССОМ НА `<body>` (его вешает `SiteHeader`), а
+  // `<body>` потомком острова `.site` не бывает — на экране приложения остров
+  // лежит ВНУТРИ него. Скоупни эти правила — и на любой поверхности приложения,
+  // попросившей `variant="full"`, бургер открывал бы пустоту, причём молча: с
+  // точки зрения расщепления правило «скоуплено», просто невыполнимо.
+  '.mobile-open .mobile-menu',
+  '.mobile-open .burger .l1',
+  '.mobile-open .burger .l2',
+  '.mobile-open .burger .l3',
   ':is(html.site,.site)',                               // токены — оба хоста
   '.site:not(html)',                                    // основа текста острова
 ]);
@@ -75,22 +84,37 @@ function ruleSelectors(src) {
   return out;
 }
 
+/** Селекторы файла, разобранные на части, в нормальной форме. */
+const PARTS = ruleSelectors(CSS)
+  .flatMap(splitTopLevel)
+  .map((x) => x.trim().replace(/\s+/g, ' '))
+  .filter(Boolean);
+
 test('★★★ каждое правило site.css скоуплено — иначе сайтовая ДС течёт на экран приложения', () => {
-  const loose = [];
-  for (const head of ruleSelectors(CSS)) {
-    for (const part of splitTopLevel(head)) {
-      const sel = part.trim().replace(/\s+/g, ' ');
-      if (!sel) continue;
-      if (sel.startsWith(`${ZONE_SCOPE} `)) continue;               // компонентный слой
-      if (sel.startsWith(`${ZONE_SCOPE_WEIGHTED} `)) continue;      // он же, с весом (заголовки)
-      if (DOCUMENT_LAYER.has(sel)) continue;               // документный слой, назван поимённо
-      loose.push(sel);
-    }
-  }
+  const loose = PARTS.filter((sel) => !(
+    sel.startsWith(`${ZONE_SCOPE} `)                      // компонентный слой
+    || sel.startsWith(`${ZONE_SCOPE_WEIGHTED} `)         // он же, с весом (заголовки)
+    || DOCUMENT_LAYER.has(sel)                           // документный слой, назван поимённо
+  ));
   assert.deepEqual(loose, [],
     `правила site.css без скоупа: ${loose.join(' · ')}\n`
     + '  → компонентное правило пишется как `:where(.site) <селектор>`;\n'
     + '  → документное (ему нужен сам документ) добавляется в DOCUMENT_LAYER здесь, с обоснованием.');
+});
+
+test('★★ ВЕСОМЫЙ скоуп заведён РОВНО под заголовки и никуда больше не расползся', () => {
+  // Калитка предыдущей проверки пропускает `:is(html.site,.site) …` без счёта,
+  // а этот скоуп ТЯЖЁЛЫЙ: он и заведён затем, чтобы выигрывать. Расползись он
+  // дальше заголовков — сайтовая ДС начнёт бить компоненты ПРИЛОЖЕНИЯ на
+  // страницах зоны, то есть вернётся ровно та регрессия, ради которой написан
+  // весь этот файл, и предыдущая проверка её не увидит (она ищет литерал
+  // `.site `, а тяжёлая форма выглядит иначе).
+  const tails = PARTS
+    .filter((sel) => sel.startsWith(`${ZONE_SCOPE_WEIGHTED} `))
+    .map((sel) => sel.slice(ZONE_SCOPE_WEIGHTED.length + 1));
+  assert.deepEqual([...new Set(tails)].sort(), ['h1', 'h2', 'h3', 'h4'],
+    `весомый скоуп ${ZONE_SCOPE_WEIGHTED} применён не только к заголовкам: ${tails.join(' · ')}\n`
+    + '  → нужен вес ради чего-то ещё — это отдельное решение, а не расширение этого списка.');
 });
 
 test('★★ скоуп НЕ добавляет специфичности — иначе зона начнёт выигрывать у приложения', () => {
@@ -102,6 +126,31 @@ test('★★ скоуп НЕ добавляет специфичности — �
   assert.equal(ZONE_SCOPE, ':where(.site)');
   assert.ok(!/(^|[\s,{])\.site\s+[.:[a-zA-Z]/m.test(CSS.replace(/\/\*[\s\S]*?\*\//g, '')),
     'в site.css появился скоуп `.site ` вместо `:where(.site) ` — он поднимает специфичность всему файлу');
+});
+
+test('★★ ОСТРОВ И `body` ГОВОРЯТ ОДНО И ТО ЖЕ — дубль основы текста не разъехался', () => {
+  // На странице зоны основу текста задаёт `body`, на экране приложения — сам
+  // остров `<div class="site">` (`body` там принадлежит приложению и трогать
+  // его нельзя). Это ДУБЛЬ ВОСЬМИ ЛИТЕРАЛОВ, и держится он ровно на том, что
+  // кто-то помнит про вторую копию: разведи их — и шапка планировщика поедет
+  // относительно той же шапки на лендинге, молча и только на одной поверхности.
+  // `background`/`overflow-x` в сверку не входят: они про сам документ, острову
+  // их брать не с чего и незачем.
+  const decls = (sel) => {
+    const src = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+    const i = src.indexOf(`${sel}{`) >= 0 ? src.indexOf(`${sel}{`) : src.indexOf(`${sel} {`);
+    assert.ok(i >= 0, `в site.css нет блока ${sel} — сверять нечего`);
+    const body = src.slice(src.indexOf('{', i) + 1, src.indexOf('}', i));
+    return new Map(body.split(';').map((d) => d.split(':')).filter((x) => x.length >= 2)
+      .map(([k, ...v]) => [k.trim(), v.join(':').trim()]));
+  };
+  const island = decls('.site:not(html)');
+  const page = decls(':where(html.site) body');
+  const shared = [...island.keys()].sort();
+  assert.ok(shared.length >= 8, `остров объявляет ${shared.length} свойств — раньше их было 8`);
+  const drifted = shared.filter((k) => page.get(k) !== island.get(k));
+  assert.deepEqual(drifted, [],
+    `основа текста острова разъехалась с body: ${drifted.map((k) => `${k}: ${island.get(k)} ≠ ${page.get(k)}`).join(' · ')}`);
 });
 
 test('★ unscope() снимает скоуп ЦЕЛИКОМ — на нём стоят 2p и 2ae', () => {

@@ -116,31 +116,6 @@ function useBrandNav(brandHref) {
   };
 }
 
-/**
- * Shared marketing header — ONE element, its composition set by `variant`:
- *   'full'    logo + section nav + language + right CTA + mobile drawer
- *             (landing, and from Ф6 the legal pages).
- *   'cta'     logo + language + right CTA, no landing anchors — there is
- *             nowhere to scroll to off the landing (public trip, demo).
- *   'minimal' logo + language only (auth, join).
- *
- * @param themed   Landing only: re-tint the header against the [data-hdr]
- *                 section beneath it (on-light / on-dark / on-accent). Off →
- *                 the header stays light. The theme is recomputed on scroll,
- *                 AND on mount and on route change — neither fires a scroll,
- *                 so a dark cover would otherwise keep dark text (handoff
- *                 §11.14).
- * @param navBase  '' on the landing (same-page anchors). On other routes pass
- *                 an absolute origin so the section anchors resolve to the
- *                 landing, not the current path.
- * @param brandHref where the logo links (default '#top' for the landing).
- * @param navItems  the section links for `variant="full"`. Defaults to the
- *                  landing's own sections; a page with its own in-page sections
- *                  (the demo) passes its list so ONE header serves every zone
- *                  page — its state, not a second header (TRIP-462). Each item
- *                  is { tkey, hash }; hashes stay relative (no navBase) so the
- *                  same-page anchor rules match (handoff §11.28).
- */
 
 
 /**
@@ -163,7 +138,38 @@ function SiteIsland({ children }) {
   return <div className="site">{children}</div>;
 }
 
-export function SiteHeader({ lang, setLang, variant = 'full', themed = false, flow = false, onSignIn, navBase = '', brandHref = '#top', navItems = NAV }) {
+/**
+ * Shared marketing header — ONE element, its composition set by `variant`:
+ *   'full'    logo + section nav + language + right CTA + mobile drawer
+ *             (landing, demo, public trip).
+ *   'signin'  logo + language + the sign-in door only — the guest planner:
+ *             the visitor is already inside the tool, so there is nothing to
+ *             invite them to, but the door back in still has to be there.
+ *   'minimal' logo + language only (auth, join, legal pages).
+ *
+ * @param themed   Landing only: re-tint the header against the [data-hdr]
+ *                 section beneath it (on-light / on-dark / on-accent). Off →
+ *                 the header stays light. The theme is recomputed on scroll,
+ *                 AND on mount and on route change — neither fires a scroll,
+ *                 so a dark cover would otherwise keep dark text (handoff
+ *                 §11.14).
+ * @param flow    ПОВЕРХНОСТЬ, А НЕ ВНЕШНИЙ ВИД: шапка стоит не над страницей
+ *                 зоны, а первой строкой в колонке экрана приложения
+ *                 (планировщик). Отсюда `position:relative` вместо `fixed` и
+ *                 уровень из лестницы приложения — разбор в `public/site.css`
+ *                 у правила `.site-header--flow`.
+ * @param navBase  '' on the landing (same-page anchors). On other routes pass
+ *                 an absolute origin so the section anchors resolve to the
+ *                 landing, not the current path.
+ * @param brandHref where the logo links (default '#top' for the landing).
+ * @param navItems  the section links for `variant="full"`. Defaults to the
+ *                  landing's own sections; a page with its own in-page sections
+ *                  (the demo) passes its list so ONE header serves every zone
+ *                  page — its state, not a second header (TRIP-462). Each item
+ *                  is { tkey, hash }; hashes stay relative (no navBase) so the
+ *                  same-page anchor rules match (handoff §11.28).
+ */
+export function SiteHeader({ lang, setLang, variant = 'full', themed = false, flow = false, navBase = '', brandHref = '#top', navItems = NAV }) {
   const t = useT();
   const location = useLocation();
   // ★ ТРИ ДВЕРИ, А НЕ ШЕСТЬ КНОПОК (TRIP-505). У посетителя зоны ровно три
@@ -282,16 +288,18 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, fl
                 рядом с заливкой CTA два одинаковых по весу элемента спорили бы
                 за внимание. Облик берёт ровно у пунктов `.main-nav a` (те же
                 правила, со-селектором) — своих значений у неё нет. */}
-            {/* `onSignIn` — крючок ПОВЕРХНОСТИ, а не шапки: гостевому
-                планировщику надо отложить маршрут за регистрацию прежде, чем
-                человек уйдёт (иначе дверь уносит его молча, бросив работу).
-                Идёт ДО перехода: сам переход `useZoneCta` делает роутером, и
-                после него страница уже размонтирована. */}
+            {/* ★ У ЭТОЙ ДВЕРИ НЕТ ПОБОЧНЫХ ДЕЙСТВИЙ, И ЭТО РЕШЕНИЕ. Был крючок
+                `onSignIn`: гостевой планировщик вешал на него откладывание
+                черновика и адрес возврата. Но «Войти» в шапке — дверь «я уже
+                пользуюсь», а не «сохрани мою работу»: ею жмёт человек, который
+                хочет в СВОЙ аккаунт. Побочный эффект превращал её в третью
+                кнопку сохранения — и, что хуже, оставлял в хранилище адрес
+                возврата, который `postLoginPath()` не тратит: один такой клик
+                уводил в планировщик КАЖДЫЙ следующий вход в этой вкладке.
+                Отложить маршрут просят кнопки на шаге «Обзор», где человек
+                прямо об этом и просит. */}
             {showSignin && (
-              <a className="header-signin" {...headerSignin}
-                onClick={(e) => { if (isPlainLeftClick(e)) onSignIn?.(); headerSignin.onClick(e); }}>
-                {t('auth.sign_in')}
-              </a>
+              <a className="header-signin" {...headerSignin}>{t('auth.sign_in')}</a>
             )}
             {showCta && (
               <a className="btn btn-primary btn-sm header-cta" {...headerCta}>
@@ -679,7 +687,7 @@ function useSiteDocumentLayer(enabled) {
       // переход между двумя страницами зоны снимал бы класс на кадр.
       queueMicrotask(() => {
         if (siteDocRefs > 0) return;
-        document.documentElement.classList.remove('site', 'reveal--ready');
+        document.documentElement.classList.remove('site');
       });
     };
   }, [enabled]);
