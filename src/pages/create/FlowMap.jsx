@@ -12,6 +12,7 @@ import { useCityBadge } from '@/lib/map/useCityBadge';
 import { useMapClick } from '@/lib/map/useMapClick';
 import MapControls from '@/lib/map/MapControls';
 import { useT } from '@/lib/i18n/I18nContext';
+import { pluralWord } from '@/lib/plural';
 
 // Build ordered legs (home → cities → finish) - self-contained so the map has
 // no dependency on the planner's save logic. Финиш — узел: есть он, есть и плечо.
@@ -368,9 +369,9 @@ export default function FlowMap({
 
       {totalNights > 0 && (
         <div ref={statRef} className="t-meta flow-map__stat">
-          <span className="flow-map__stat-hl">{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
+          <span className="flow-map__stat-hl">{cities.length}</span> {pluralWord(t, cities.length, 'trip.cities_count')}
           <span className="muted-2">·</span>
-          <span className="flow-map__stat-hl">{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
+          <span className="flow-map__stat-hl">{totalNights}</span> {pluralWord(t, totalNights, 'view.nights')}
         </div>
       )}
 
