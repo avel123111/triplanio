@@ -1,15 +1,16 @@
-// Cookie consent — the single owner of "may we run analytics" (TRIP-311),
-// variant B (TRIP-407).
+// Cookie consent — the single owner of the visitor's answer, and the place that
+// APPLIES it to the destinations. It does not create the PostHog client: main.jsx
+// boots it at load and `posthog.init` lives in `destinations/posthog.js` (CI guard
+// 2j moved with it).
 //
-// This module records the visitor's answer and APPLIES it to the destinations; it
-// no longer creates the PostHog client itself. Under variant B the client is
-// booted (memory-only) at load by main.jsx, and consent's job is to UPGRADE it to
-// device persistence — `applyConsent` → `posthogAdapter.onConsent`. `posthog.init`
-// lives in `destinations/posthog.js` now (CI guard 2j moved with it). The Google
-// consent signal (`updateGoogleConsent`) still rides through here, and TRIP-227
-// hangs GTM / GA4 / ad pixels off `applyConsent`.
+// What the answer switches (TRIP-502): session REPLAY and the Google Ads tag —
+// the two things that need consent under any reading. Product analytics itself
+// runs from load as first-party audience measurement, and a REFUSAL stops it and
+// wipes what was stored (`stopAnalytics` + `clearAnalyticsStorage`), here and in
+// every other open tab. The Google consent signal (`updateGoogleConsent`) rides
+// through here too, and TRIP-227 hangs GTM / GA4 off `applyConsent`.
 import { identifyUser } from '@/lib/analytics';
-import { isPersisting, onConsent, stopAnalytics } from '@/lib/destinations/posthog';
+import { isReady, onConsent, stopAnalytics } from '@/lib/destinations/posthog';
 import { onConsent as adsOnConsent } from '@/lib/destinations/ads';
 import { buildConsent, parseConsent, shouldSilenceOnConsentChange } from '@/lib/consent-record';
 
@@ -37,8 +38,8 @@ export function getConsent() {
 
 /**
  * Record the answer just given and return it. Only writes the record — applying it
- * (upgrading persistence, or reloading on a downgrade) is applyConsent's / the
- * banner's half. Under B there is no held queue to drop on a refusal any more.
+ * (replay + the ad tag on a grant, wipe + reload on a refusal) is applyConsent's /
+ * the banner's half.
  * @param {boolean} accepted
  */
 export function setConsent(accepted) {
@@ -62,14 +63,13 @@ export function subscribeConsentOpen(listener) {
 
 // Another tab changing the answer to "no". We silence + wipe rather than reload —
 // a background tab may hold unsaved work; `storage` fires only in the OTHER tabs.
-// Keyed on `isPersisting()`, NOT readiness: under B a memory-only tab wrote nothing
-// to the device, so a foreign refusal must leave it running (silencing it would
-// throw away captures it was entitled to make). One-way on purpose: a grant
-// elsewhere does not start persistence here.
+// Keyed on readiness: every running tab now holds the same device storage, so a
+// refusal made anywhere must stop this one too. One-way on purpose: a grant
+// elsewhere does not start replay here.
 window.addEventListener('storage', (event) => {
   if (event.key !== STORAGE_KEY) return;
   const record = parseConsent(event.newValue, Date.now());
-  if (!shouldSilenceOnConsentChange(isPersisting(), record)) return;
+  if (!shouldSilenceOnConsentChange(isReady(), record)) return;
   stopAnalytics();
   clearAnalyticsStorage();
 });
@@ -94,22 +94,23 @@ export function applyConsent(record, uid) {
   // today and stays one until the tag id is set in prod.
   adsOnConsent(record);
 
-  // Upgrade the memory-only client to device persistence when analytics is granted
-  // (a no-op otherwise, and idempotent). The client already exists — main.jsx
-  // booted it — so this never inits.
+  // Start session replay on an analytics grant (a no-op otherwise, and idempotent).
+  // The client already exists — main.jsx booted it — so this never inits.
   onConsent(record);
 
-  // The account can already exist when the banner is answered — a confirmation link
-  // opened on a phone that never saw it, or a visitor who ignores the banner and
-  // signs in with Google first. Identify now so the person appears at once carrying
-  // the last-touch campaign (identifyUser owns that). Only on a grant: a refuser has
-  // no persisted profile to attach to.
+  // A signed-in visitor is already identified from load (TRIP-502); this call is the
+  // immediate re-sync of the last-touch campaign onto the person (identifyUser owns
+  // that) rather than waiting for the next profile load. Only on a grant — a refuser
+  // is about to be silenced and wiped.
   if (record.analytics && uid) identifyUser(uid);
 }
 
 /**
- * Remove everything PostHog stored here. Runs on any start without a usable answer
- * (which also clears pre-TRIP-311 keys, no migration needed) and on withdrawal.
+ * Remove everything PostHog stored here (pre-TRIP-311 keys included, so no
+ * migration is needed). Runs on a refusal or a withdrawal — in this tab from the
+ * banner, in the others from the `storage` listener above — and nowhere else: a
+ * start without a usable answer only re-asks, it must not throw away the
+ * analytics id the answer does not gate (TRIP-502).
  */
 export function clearAnalyticsStorage() {
   try {

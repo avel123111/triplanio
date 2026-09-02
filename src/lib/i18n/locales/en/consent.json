@@ -1,6 +1,6 @@
 {
   "accept_all": "Accept all",
-  "body": "We use cookies and similar technologies to understand how you use the service and to measure advertising. Everything works without them.",
+  "body": "Our own product analytics runs from the start — it stores one identifier so a visit stays one visit, and it is shared with nobody. “Necessary only” switches it off and deletes what it stored. “Accept all” also enables advertising measurement and interface playback.",
   "necessary_only": "Necessary only",
   "privacy": "Privacy Policy",
   "settings": "Cookie settings",

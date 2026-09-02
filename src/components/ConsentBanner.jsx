@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Btn } from '@/design/Btn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
-import { isPersisting } from '@/lib/destinations/posthog';
 import {
   applyConsent, clearAnalyticsStorage, getConsent, setConsent, subscribeConsentOpen,
 } from '@/lib/consent';
@@ -41,14 +40,12 @@ export default function ConsentBanner() {
       return;
     }
 
-    // Only a real downgrade needs a reload: the client cannot un-init, but it CAN
-    // be memory-only. Reload solely when this document was PERSISTING to the device
-    // (variant B) — refusing a memory-only session wrote nothing, so throwing the
-    // page away would be gratuitous.
-    if (isPersisting()) {
-      clearAnalyticsStorage();
-      window.location.reload();
-    }
+    // A refusal is an objection, and it has to bite: the client cannot un-init, so
+    // we wipe what it stored and throw the page away. Since TRIP-502 analytics runs
+    // from load for everyone, so this always applies — there is no longer a
+    // memory-only session that wrote nothing.
+    clearAnalyticsStorage();
+    window.location.reload();
   };
 
   return (

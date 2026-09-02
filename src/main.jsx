@@ -37,7 +37,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { initSentry } from '@/lib/sentry'
 import { installChunkReloadGuard } from '@/lib/chunkReload'
-import { applyConsent, clearAnalyticsStorage, getConsent } from '@/lib/consent'
+import { applyConsent, getConsent } from '@/lib/consent'
 import { setCampaign } from '@/lib/analytics'
 import { boot as bootPosthog } from '@/lib/destinations/posthog'
 import { boot as bootAds } from '@/lib/destinations/ads'
@@ -46,26 +46,25 @@ import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
 import App from '@/App.jsx'
 import '@/index.css'
 
-// PostHog product analytics (TRIP-213 Phase 0), variant B (TRIP-407) under consent
-// since TRIP-311. Boot the client into `persistence:'memory'` for EVERYONE, here,
-// before the first render — so the first screen of a first-time visitor
-// (landing_viewed, public_trip_viewed) is captured on an anonymous, device-less
-// profile. Nothing reaches the DEVICE until consent upgrades persistence
-// (applyConsent → the adapter's onConsent). setCampaign() primes the last-touch
-// campaign super-properties for the no-login case, before any event fires.
+// PostHog product analytics (TRIP-213 Phase 0). Boot the client for EVERYONE, here, before the first render — so
+// the first screen of a first-time visitor (landing_viewed, public_trip_viewed) is
+// captured, and on the SAME anonymous id that the signup will carry (TRIP-502: the
+// SDK's own storage crosses the OAuth redirect). setCampaign() primes the
+// last-touch campaign super-properties for the no-login case, before any event.
 bootPosthog()
 // The Google Ads adapter shares the boot/onConsent contract; boot() is a no-op
 // (the tag loads on a marketing grant via applyConsent), booted here for symmetry.
 bootAds()
 setCampaign()
 
-// No usable answer covers "never asked", "expired", "our version moved" and
-// "hand-edited" alike: apply a stored answer (upgrading persistence on a grant),
-// else wipe whatever a prior consented session left on the device and let
-// ConsentBanner ask again. The memory-only client keeps running either way.
+// A stored answer is applied (replay + ad tag on a grant). No usable answer covers
+// "never asked", "expired", "our version moved" and "hand-edited" alike — there we
+// only drop what needed the grant, and NOT the analytics id itself: wiping it on
+// every load would kill the very continuity TRIP-502 restored, and the id does not
+// depend on the grant. A REFUSAL is different and still wipes everything — that is
+// the banner's and the cross-tab listener's half.
 const consent = getConsent()
 if (consent) applyConsent(consent)
-else clearAnalyticsStorage()
 
 // Must run before the first render so early errors are captured.
 initSentry()

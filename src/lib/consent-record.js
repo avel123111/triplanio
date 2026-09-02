@@ -62,37 +62,17 @@ export function buildConsent(accepted, now) {
 
 /**
  * Whether a `storage`-event consent change in ANOTHER tab should make this tab
- * silence + wipe (TRIP-407, variant B). The trap this pins: under B the client
- * runs in every tab from load, so "is analytics live" (readiness) is true even in
- * a tab that never persisted anything — keying on it would clear/reload a
- * memory-only tab on a foreign refusal, throwing away captures it was entitled to.
- * So the decision keys on whether THIS tab was PERSISTING to the device, and fires
- * only when the new answer is not an analytics grant (a refusal, a withdrawal, or
- * an unusable/expired record — all of which parse to a non-`true` `analytics`).
+ * silence + wipe. Every running tab holds the same device storage now (TRIP-502),
+ * so the question is simply "is analytics live here" — and it fires only when the
+ * new answer is not an analytics grant (a refusal, a withdrawal, or an unusable /
+ * expired record — all of which parse to a non-`true` `analytics`). Honouring a
+ * refusal made elsewhere is what keeps the legitimate-interest basis honest: an
+ * objection has to reach every tab, not just the one it was made in.
  *
- * @param {boolean} persisting  does this tab write PostHog keys to the device
+ * @param {boolean} running  is the analytics client live in this tab (`isReady()`)
  * @param {ReturnType<typeof parseConsent>} record  the other tab's new answer
  * @returns {boolean}
  */
-export function shouldSilenceOnConsentChange(persisting, record) {
-  return persisting && record?.analytics !== true;
-}
-
-/**
- * Whether we may identify a person to analytics (TRIP-407 P1). `identify(uid)` is
- * a network event that CREATES a server-side person under that uid — a "person"
- * operation — so it requires the SAME consent that lets us persist to the device,
- * NOT merely a live (memory-only) client. So: a uid AND a persisting document.
- *
- * The trap: under variant B the client is "ready" from load, so a logged-in
- * visitor who REFUSED cookies (or has not answered) would otherwise be identified
- * anyway — a real person without consent. Anonymous capture rides `isReady()`;
- * identity waits for `isPersisting()`.
- *
- * @param {string|null|undefined} uid
- * @param {boolean} persisting  isPersisting() — this document writes to the device
- * @returns {boolean}
- */
-export function mayIdentify(uid, persisting) {
-  return !!uid && persisting === true;
+export function shouldSilenceOnConsentChange(running, record) {
+  return running && record?.analytics !== true;
 }

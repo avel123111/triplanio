@@ -41,3 +41,15 @@ test('пол приватности записи объявлен в коде, �
   assert.match(SRC, /disable_capture_url_hashes:\s*true/,
     'фрагмент адреса несёт токены Supabase после OAuth-редиректа');
 });
+
+test('идентичность на дефолте SDK: persistence не пинится, identify не за согласием (TRIP-502)', () => {
+  const boot = SRC.match(/export function boot[\s\S]*?\n}/)?.[0];
+  assert.ok(boot, 'boot() обязан существовать');
+  assert.doesNotMatch(boot, /persistence\s*:/,
+    'persistence не задаётся: дефолт SDK — то, что переносит анонимный id через OAuth-редирект; '
+    + "пин 'memory' и был причиной схлопнутой воронки");
+  assert.doesNotMatch(SRC, /set_config\(\s*\{\s*persistence/,
+    'апгрейда хранения по согласию больше нет — согласие включает только реплей');
+  assert.doesNotMatch(SRC, /export function isPersisting/,
+    'флага «пишем на устройство» больше нет: он описывал memory-режим');
+});

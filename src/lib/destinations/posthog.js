@@ -1,27 +1,27 @@
-// The PostHog destination (TRIP-407 PR3, variant B) — the ONE place the client is
-// created, configured, and turned from a memory-only recorder into a persisting
-// one. CI guard 2j allows `posthog-js` and `posthog.init` HERE (and in ads.js);
-// nowhere else.
+// The PostHog destination — the ONE place the client is created and configured.
+// CI guard 2j allows `posthog-js` and `posthog.init` HERE (and in ads.js); nowhere
+// else.
 //
-// Variant B: PostHog boots into `persistence:'memory'` on load, for EVERYONE — so
-// the first screen of a first-time visitor (`landing_viewed`, `public_trip_viewed`
-// …, which fire before any button can be clicked) is captured on an anonymous,
-// device-less profile. Nothing is written to the device until consent; the hit
-// itself is a standard cookieless network call — the Consent-Mode shape any
-// analytics-aware app sends. Consent then upgrades the SAME client to localStorage
-// via `set_config` — no second init, and no replayed queue: the old `pendingEvents`
-// hold (TRIP-335) is deleted by this rewrite, memory persistence makes it moot.
+// Identity is the SDK's OWN (TRIP-502). The anonymous `distinct_id` lives in the
+// storage posthog-js manages by default, so it survives an OAuth redirect, a hard
+// navigation and a second tab on its own, and `identifyUser()` at login stitches
+// the anonymous history onto the account. The previous model booted into
+// `persistence:'memory'` and upgraded it on consent (TRIP-407 variant B): that id
+// died with every document, so `landing_viewed` and `user_signed_up` of the SAME
+// visit were two different people — the acquisition funnel, retention and the
+// per-person revenue link all broke (measured on prod: 2.5 identities per
+// logged-in visitor, 33% of signups carrying a landing view, 63 people identified
+// in a month). Carrying the id by hand across each redirect was tried and dropped:
+// the border is the SDK's problem and the SDK already solves it.
 //
-// Two flags, deliberately distinct:
-//   - `phReady`   — init has run (memory OR localStorage). The gate `track()` and
-//                   `identifyUser()` read. TRUE under B even while memory-only.
-//   - `persisting`— this document writes PostHog keys to the DEVICE. Only true
-//                   after consent flips persistence to localStorage. It is the
-//                   replay gate too: session recording starts in `onConsent`.
-// Device-level actions (the cross-tab silencer, the banner's downgrade-reload)
-// MUST key on `persisting`, never `phReady`: under B `phReady` is true for a
-// memory-only tab that wrote nothing, and clearing/reloading it on a foreign
-// refusal would be wrong.
+// Storing that id before the banner is answered is declared in the privacy policy
+// as first-party audience measurement. What makes that basis honest is the other
+// half: a REFUSAL (or a withdrawal) stops capture and wipes what was stored —
+// `stopAnalytics()` + `clearAnalyticsStorage()`.
+//
+// ONE flag, `phReady` — init has run. It gates `track()` and `identifyUser()`, and
+// it drops on withdrawal so both stop together. Consent no longer gates identity;
+// what it still gates is session REPLAY here and the Google Ads tag in `ads.js`.
 // ★ ТОЧКА ВХОДА — `dist/module.slim.js`, А НЕ `posthog-js` (TRIP-475).
 // Обычный вход тянет `dist/module.js` — 231 КБ уже собранного кода ОДНИМ куском,
 // который сборщик разобрать не может. Внутри лежат РЕАЛИЗАЦИИ автозахвата
@@ -34,8 +34,8 @@
 // 260 167 → 230 925 (на прод-сжатии ≈ −36 КБ с критического пути).
 // `module.slim.js` — официальная вторая точка входа ТОГО ЖЕ пакета (113 КБ), где
 // эти реализации не собраны; ключи конфига остаются и безвредно игнорируются.
-// Поведение не меняется ни в одном месте: `persistence:'memory'` до согласия,
-// `set_config` после, `identify`, `camp_*`, `before_send` — всё как в TRIP-407.
+// Поведение не меняется ни в одном месте: хранение, `identify`, `camp_*`,
+// `before_send` — всё как на полном входе.
 // ⚠️ ЧТО СЛИМ НЕ УМЕЕТ: запускать визуальный тулбар PostHog — функции
 // `maybeLoadToolbar` в нём НЕТ вовсе (в полной сборке она есть). Понадобится
 // тулбар — вернуть полный вход придётся ВМЕСТЕ с ленивой загрузкой SDK, иначе
@@ -63,16 +63,13 @@ const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
 let ph = posthog;
 
 let phReady = false;
-let persisting = false;
+// Session replay is the one thing consent still switches on here; the flag keeps
+// `onConsent` idempotent (it runs on every start that has a stored grant).
+let replaying = false;
 
-/** @returns {boolean} init has run (memory OR localStorage) — the `track` gate */
+/** @returns {boolean} init has run — the `track()` / `identifyUser()` gate */
 export function isReady() {
   return phReady;
-}
-
-/** @returns {boolean} this document persists PostHog state to the device */
-export function isPersisting() {
-  return persisting;
 }
 
 // Same-origin proxy on every DEPLOYED host (prod / www / dev / preview) via the
@@ -121,7 +118,9 @@ export function boot(client) {
     // не должна включать сбор мыше-движений без нашего ведома (TRIP-328).
     enable_heatmaps: false,
     person_profiles: 'identified_only',
-    persistence: 'memory', // variant B: nothing on the device until consent
+    // `persistence` is deliberately NOT set: the SDK default is what carries the
+    // anonymous id across an OAuth redirect and a new tab (TRIP-502). Pinning it to
+    // 'memory' is what broke the funnel — do not bring it back.
     // The privacy FLOOR of a replay — same reason as `enable_heatmaps` above
     // (TRIP-328): the project's masking settings only move the DEFAULTS of these
     // three, so a click in the PostHog UI can lower them, an explicit value here
@@ -147,22 +146,21 @@ export function boot(client) {
 }
 
 /**
- * Apply a consent record to the client. Only the analytics grant matters here
- * (the Google side is consent.js). On a grant, flip the SAME client's persistence
- * to the device — no second init. Idempotent: once persisting, a repeat call does
- * nothing.
+ * Apply a consent record to the client. Only the analytics grant matters here (the
+ * Google side is consent.js), and since TRIP-502 it switches exactly one thing on:
+ * session REPLAY. Capture and identity ride `phReady` and need no grant. Idempotent
+ * — this runs on every start that has a stored grant.
  *
  * @param {{analytics?: boolean}|null} record
  */
 export function onConsent(record) {
-  if (!phReady || persisting || !record?.analytics) return;
-  ph.set_config({ persistence: 'localStorage+cookie' });
+  if (!phReady || replaying || !record?.analytics) return;
   // Lift the replay gate. No argument ON PURPOSE: a bare `startSessionRecording()`
   // OBEYS the project's ingestion controls, so this call says "allowed", never
   // "record this one". Passing the override options would drag the recording
   // policy into the bundle and fork it from the settings in PostHog.
   ph.startSessionRecording?.();
-  persisting = true;
+  replaying = true;
 }
 
 /**
@@ -172,7 +170,7 @@ export function onConsent(record) {
  */
 export function stopAnalytics() {
   phReady = false;
-  persisting = false;
+  replaying = false;
   // Stopped explicitly rather than left to opt-out's side effects: a recorder
   // still running after a withdrawal is the one failure here nobody would see.
   ph.stopSessionRecording?.();

@@ -1,5 +1,4 @@
-// Single entry point for product-analytics events (TRIP-213), variant B
-// (TRIP-407).
+// Single entry point for product-analytics events (TRIP-213).
 //
 // Every custom event goes through track() so adding a second destination (GA4 /
 // an ad pixel — TRIP-227) is a one-file change instead of touching every call
@@ -7,11 +6,10 @@
 // (see it for why a second one would cost us the acquisition channel), and the
 // client itself is created and gated by the PostHog destination adapter.
 //
-// Under variant B the client is booted in `persistence:'memory'` on load, so a
-// call here is live from the first screen — `track()` captures immediately, on an
-// anonymous device-less profile, and consent later upgrades the SAME client to
-// localStorage. There is no pre-consent queue any more (the old `pendingEvents`
-// hold, TRIP-335): `isReady()` is the whole gate, and it is true from boot.
+// The client is booted at load for EVERYONE (main.jsx), so a call here is live
+// from the first screen — `isReady()` is the whole gate, and it is true from
+// boot. Consent gates neither capture nor identity (TRIP-502); it gates session
+// replay and the ad tag, and a refusal drops `isReady()` so everything stops.
 //
 // Naming convention: object_action, snake_case; variant info goes in props, never
 // in the event name. No PII in props (uid only, set via identify).
@@ -22,17 +20,16 @@ import posthog from 'posthog-js/dist/module.slim.js';
 import { CAMPAIGN_KEYS, campaignQuery, resolveCampaign } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 import { entrySearch } from '@/lib/analyticsEnv';
-import { mayIdentify } from '@/lib/consent-record';
 import { getActiveMarks } from '@/lib/attribution';
-import { isPersisting, isReady } from '@/lib/destinations/posthog';
+import { isReady } from '@/lib/destinations/posthog';
 
 /**
  * Capture a product-analytics event.
  *
  * Gated on `isReady()`: before boot there is no client, and after a withdrawal
  * (here or in another tab) capturing would re-create the `ph_*` keys the
- * withdrawal just cleared. Under B `isReady()` is true from boot — which runs
- * before React mounts — so a real screen event is never dropped.
+ * withdrawal just cleared. `isReady()` is true from boot — which runs before
+ * React mounts — so a real screen event is never dropped.
  *
  * @param {string} event  snake_case event name (e.g. 'trip_deleted')
  * @param {Record<string, unknown>} [props]  event properties (no PII)
@@ -182,25 +179,25 @@ function syncCampaignToPerson() {
  * `users.signup_utm_*` column written server-side. So this is a bare identify plus
  * the last-touch person sync — no `$set_once` payload.
  *
- * Gated on PERSISTING, not merely `isReady()` (TRIP-407 P1). Under variant B the
- * client runs from load, so `isReady()` is true even for someone who REFUSED
- * cookies or has not answered — and `identify(uid)` is a network event that
- * CREATES a server-side person under that uid. Identity is a "person" operation,
- * so it waits for the SAME consent that lets us write to the device.
- * `track()`/`group()`/`setCampaign()` stay on `isReady()`: those ride the accepted
- * anonymous memory hit, this does not. The consumer that fires unconditionally
- * (AuthContext, on every profile load) is exactly why the gate lives HERE.
+ * Gated on readiness ONLY (TRIP-502, replaces the consent gate of TRIP-407 P1).
+ * Linking the anonymous history to the account number — uid, an opaque UUID, never
+ * name or email — is what makes the funnel, retention and the per-person revenue
+ * link true for everyone instead of only the minority who accept cookies; the old
+ * `isPersisting()` gate is why a month of prod identified 63 people. Withdrawal
+ * still stops it: `stopAnalytics()` drops `phReady`, so identity stops with
+ * capture. Same gate as `track()`/`group()`/`setCampaign()` — one rule for the
+ * whole door, no second one to reason about.
  *
  * The last-touch trigger is collected here in one place: identify, then
  * `setCampaign()` (picks up whatever marks AuthContext just recovered for a fresh
  * signup, via attribution.getActiveMarks()), then `syncCampaignToPerson()` pushes
  * the resulting `camp_*` onto the person. `setCampaign` self-gates on readiness, so
- * calling it from inside this persistence-gated door is safe.
+ * calling it from inside this readiness-gated door is safe.
  *
  * @param {string} uid  the Supabase user id — no PII ever goes to analytics
  */
 export function identifyUser(uid) {
-  if (!mayIdentify(uid, isPersisting())) return;
+  if (!uid || !isReady()) return;
   // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213). Personal
   // data stays in Supabase; resolve uid → user there when needed.
   posthog?.identify?.(uid);
