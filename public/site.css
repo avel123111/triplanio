@@ -715,8 +715,22 @@ section{position:relative}
   backface-visibility:hidden;
 }
 
-.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:auto 88%;background-position:50% 0;
-  -webkit-mask:linear-gradient(180deg,#000 0,#000 58%,transparent 82%);mask:linear-gradient(180deg,#000 0,#000 58%,transparent 82%)}
+/* Мобильный кадр масштабируется по ШИРИНЕ вьюпорта (vw), а не по высоте (было
+   auto 88%). Ширина у Safari и Chrome одинаковая, высота (svh) — нет: пока
+   телефон занимал 88% высоты, его размер и низ ехали от браузера к браузеру, и
+   вслед за ними плыли зазоры «заголовок↔телефон» и «телефон↔текст». На vw телефон
+   встаёт в одно и то же место в обоих браузерах, поэтому зазоры фиксируются в px
+   (TRIP-508). Маска низа тоже переведена с процентов высоты на vw — иначе её
+   сход снова зависел бы от высоты. */
+/* правило .hero-layer.la ключуется гардом 2p под ОБА класса — маркер на каждый */
+/* visual-diff-exempt: .la background-size — размер кадра переведён с высоты (auto 88%) на ширину (292vw), чтобы Safari/Chrome совпадали (TRIP-508) */
+/* visual-diff-exempt: .la -webkit-mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
+/* visual-diff-exempt: .la mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
+/* visual-diff-exempt: .hero-layer background-size — размер кадра переведён с высоты (auto 88%) на ширину (292vw), чтобы Safari/Chrome совпадали (TRIP-508) */
+/* visual-diff-exempt: .hero-layer -webkit-mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
+/* visual-diff-exempt: .hero-layer mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
+.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:292vw auto;background-position:50% 0;
+  -webkit-mask:linear-gradient(180deg,#000 0,#000 129.5vw,transparent 182.8vw);mask:linear-gradient(180deg,#000 0,#000 129.5vw,transparent 182.8vw)}
 
 @media (min-width:981px){
   .hero-layer.la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
@@ -818,10 +832,23 @@ section{position:relative}
   }
   /* сверху только заголовок; телефон с кадра — посередине;
      подпись и кнопка уходят вниз, под телефон */
-  .hero-grid{align-content:normal;align-items:stretch;text-align:center;padding:clamp(82px,8.7vh,110px) 0 clamp(44px,5.2vh,72px)}
-  .hero-copy{max-width:none;margin-inline:auto;display:flex;flex-direction:column;height:100%}
+  /* Верхний отступ — фиксированный px, а не 8.7vh: высота у Safari/Chrome разная,
+     и заголовок вместе с ней съезжал (TRIP-508). */
+  /* visual-diff-exempt: .hero-grid {@media (max-width:980px)} padding — верхний отступ с 8.7vh на фикс 82px ради height-независимости (TRIP-508) */
+  .hero-grid{align-content:normal;align-items:stretch;text-align:center;padding:82px 0 clamp(44px,5.2vh,72px)}
+  /* контент прижат к ВЕРХУ (без height:100% и margin-top:auto): нижняя привязка
+     текста зависела от высоты hero и тоже плыла между браузерами (TRIP-508) */
+  /* visual-diff-exempt: .hero-copy {@media (max-width:980px)} height — снят height:100%, контент прижат к верху (TRIP-508) */
+  .hero-copy{max-width:none;margin-inline:auto;display:flex;flex-direction:column}
+  /* строка заголовка ровно 2 строки (два span display:block); фикс line-height
+     убирает межбраузерную разницу дефолтного «normal» → одинаковая высота h1 */
+  /* visual-diff-exempt: .hero h1 {@media (max-width:980px)} line-height — фикс 1.1 против дефолтного normal ради одинаковой высоты в Safari/Chrome (TRIP-508) */
+  .hero h1{line-height:1.1}
+  /* зазор телефон→текст = 55px: телефон занимает 146.7vw от верха (0.754·292vw·933/1400),
+     заголовок с отступами — 168px, отсюда margin-top = 146.7vw − 168px + 55px (TRIP-508) */
+  /* visual-diff-exempt: .hero-sub {@media (max-width:980px)} margin-top — с auto (нижняя привязка) на фикс calc от ширины ради зазора 55px в обоих браузерах (TRIP-508) */
   .hero-sub{
-    margin-top:auto;margin-bottom:18px;margin-inline:auto;max-width:none;
+    margin-top:calc(146.7vw - 113px);margin-bottom:18px;margin-inline:auto;max-width:none;
     font-size: var(--fs-hero-sub-mobile);line-height:1.5;color:var(--ink);
   }
   .hero-ctas{flex:none;justify-content:center}
