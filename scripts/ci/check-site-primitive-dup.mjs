@@ -60,6 +60,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { SITE_ZONE, assertZonePerimeter } from './zone-perimeter.mjs';
+import { unscope } from './zone-scope.mjs';
 import { join } from 'node:path';
 
 const APP = process.env.APP_CSS_PATH || 'src/design/app.css';
@@ -74,6 +75,14 @@ const BASE_REF = process.env.BASE_REF || 'origin/dev';
 // две настоящие утечки в PublicTrip.jsx, не видные три недели.
 
 const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+/* ★ САЙТОВУЮ ЗОНУ ЧИТАЕМ БЕЗ ЕЁ СКОУПА (TRIP-505). Правила site.css написаны от
+   `:where(.site)`, чтобы компонентный слой доставал и до обёртки шапки на
+   экране приложения. Гард ищет «правило-одиночку» `.btn{…}` — и в скоупленной
+   форме перестал бы её видеть: сказал бы «базы нет, геометрия течёт из
+   app.css», хотя база на месте и по-прежнему выигрывает (`:where()` не даёт
+   специфичности, а site.css грузится позже). Снимаем скоуп и смотрим на файл
+   той моделью, для которой гард написан. Разбор — в `zone-scope.mjs`. */
 
 /** Имена классов, объявленных ПРАВИЛОМ-ОДИНОЧКОЙ (селектор ровно `.name`,
  *  один класс без комбинаторов/псевдо/составных). Селектор-список разбирается
@@ -213,7 +222,7 @@ function main() {
   }
 
   const appNames = singleClassRules(appCss);
-  const siteNames = singleClassRules(siteCss);
+  const siteNames = singleClassRules(unscope(siteCss));
   const collisions = [...siteNames].filter((n) => appNames.has(n)).sort();
 
   // Маркеры читаем из site.css С комментариями. Ключ маркера = имя класса.

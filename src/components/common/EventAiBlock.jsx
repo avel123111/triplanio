@@ -23,6 +23,7 @@ import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
 import { Btn, Card, FileRow, IconBtn, InputGroup, Textarea, Tile } from '@/design/index';
 import { formatBytes } from '@/lib/formatBytes';
+import { pluralWord } from '@/lib/plural';
 import {
   Sparkles, Lock, X,
   ChevronUp, Check,
@@ -247,7 +248,7 @@ export default function EventAiBlock({
         <div className="ai-blk-hd">
           <Tile tone="success" solid size="sm"><Check size={15} /></Tile>
           <div className="ai-blk-ti">
-            <b>{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</b>
+            <b>{t('event.ai_filled', { count: parsedFieldCount, fields: pluralWord(t, parsedFieldCount, 'event.field') })}</b>
             <span>{t('event.ai_highlighted_hint')}</span>
           </div>
           {/* Была сырая разметка с классами системы; значок ехал своим инлайном
@@ -287,7 +288,7 @@ export default function EventAiBlock({
         <div className="ai-blk-ti">
           <b>{t('event.ai_fill_title')}</b>
           <span>{state === 'uploaded'
-            ? `${files.length} ${files.length === 1 ? t('event.ai_file_ready_one') : t('event.ai_file_ready_many')} ${t('event.ai_files_ready_suffix')}`
+            ? `${files.length} ${pluralWord(t, files.length, 'event.ai_file_ready')} ${t('event.ai_files_ready_suffix')}`
             : t('event.ai_available_hint')}</span>
         </div>
         <span className="ai-blk-x" aria-hidden="true"><ChevronUp size={14} /></span>
@@ -365,10 +366,3 @@ export default function EventAiBlock({
     </Card>
   );
 }
-
-function pluralFields(t, n) {
-  if (n % 10 === 1 && n % 100 !== 11) return t('event.field_one');
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return t('event.field_few');
-  return t('event.field_many');
-}
-

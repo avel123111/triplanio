@@ -6,6 +6,7 @@
   "ai_available_hint": "Pega el texto de confirmación o sube un archivo: los campos se rellenan solos",
   "ai_drop_active": "Suelta el archivo aquí…",
   "ai_drop_idle": "o arrastra un archivo aquí",
+  "ai_file_ready_few": "archivos listos",
   "ai_file_ready_many": "archivos listos",
   "ai_file_ready_one": "archivo listo",
   "ai_file_too_big5": "El archivo «{name}» es demasiado grande (máx. 5 MB).",

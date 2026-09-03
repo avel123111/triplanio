@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { forgetPostLoginOnArrival } from '@/lib/postLoginPath';
 import { reportAuthError } from '@/lib/reportDataError';
 import { identifyUser, resetIdentity, track } from '@/lib/analytics';
 import { forgetStashedAttribution, getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
@@ -57,6 +58,14 @@ export const AuthProvider = ({ children }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         clearAuthHashFromAddress();
+        /* ★ ОТЛОЖЕННЫЙ АДРЕС ИСПОЛНЕН — ЕСЛИ ЧЕЛОВЕК ПО НЕМУ И ПРИШЁЛ. Возврат от
+           провайдера своей траты не имеет: `postLoginRedirectTo()` собирает
+           адрес Supabase из этой же записи и не тратит её (переход мог не
+           состояться, письмо переотправляют), поэтому забыть её может только
+           прибытие. Предикат — сверка с адресом документа, а не «есть сессия»:
+           разбор и оба случая, которые это закрывает (письмо восстановления,
+           гонка с `Login`), — в `forgetPostLoginOnArrival`. */
+        forgetPostLoginOnArrival(window.location.pathname);
         loadUserProfile(session.user);
       } else if (!isOAuthCallback) {
         // No session and not an OAuth callback - user is genuinely not logged in
@@ -81,6 +90,9 @@ export const AuthProvider = ({ children }) => {
       if (event === 'SIGNED_IN') {
         // Session confirmed by supabase — safe to drop the `#access_token` now.
         clearAuthHashFromAddress();
+        // Обмен кода PKCE резолвится ПОСЛЕ `getSession()` выше, то есть прибытие
+        // от провайдера видно только здесь. Предикат тот же — сверка с адресом.
+        forgetPostLoginOnArrival(window.location.pathname);
         // Skip when this user's profile is already loaded (the common case on
         // tab refocus) or a load for them is already in flight. Without this,
         // every tab focus reloaded the profile → isLoadingAuth flash → remount.
@@ -93,6 +105,7 @@ export const AuthProvider = ({ children }) => {
         if (session) {
           // Session parsed out of the hash — now the token can leave the address.
           clearAuthHashFromAddress();
+          forgetPostLoginOnArrival(window.location.pathname);
           if (loadedUserIdRef.current !== session.user.id &&
               loadingForRef.current !== session.user.id) {
             loadUserProfile(session.user);

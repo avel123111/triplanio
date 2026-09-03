@@ -89,6 +89,25 @@ test('стрелочная функция с тернарником — НЕ з�
 
 /* ── и при этом гард продолжает ловить то, ради чего он есть ─────────────── */
 
+test('★ операторы сравнения — НЕ текстовый узел (`>=` … `<=` в обычном коде)', (t) => {
+  // Второй случай того же класса, что стрелка: `>` от `>=` и `<` от `<=` дают
+  // регулярке пару «скобок», между которыми лежит код. Живой PR получил
+  // `hardcoded JSX text "= 2 && mod10"` на строке чистой арифметики.
+  const f = fixture(t, {
+    head: {
+      'src/lib/plural.js':
+        'export function form(n) {\n'
+        + '  const mod10 = n % 10;\n'
+        + '  if (mod10 >= 2 && mod10 <= 4) return "few";\n'
+        + '  return "many";\n'
+        + '}\n',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, `сравнение не открывает текстовый узел:\n${r.out}`);
+  assert.ok(!/hardcoded JSX text/.test(r.out), r.out);
+});
+
 test('настоящий текст в JSX всё ещё ловится', (t) => {
   const f = fixture(t, { head: { 'src/components/A.jsx': 'export const A = () => <span>Привет, мир</span>;\n' } });
   const r = run(f);

@@ -7,7 +7,8 @@ import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
 import { authErrorText, oauthRedirectError, stripOauthError } from '@/lib/authErrorText';
 import { authFlowResult } from '@/lib/authFlowCode';
-import { postLoginPath } from '@/lib/postLoginPath';
+import { postLoginPath, takePostLoginPath } from '@/lib/postLoginPath';
+import { hasPendingHandoff } from '@/lib/plannerDraft';
 import { initialAuthView, LOGIN_PATH, RECOVERY_PATH } from '@/lib/authEntry';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useSiteCss } from '@/components/site/SiteChrome';
@@ -37,7 +38,11 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 //     столкнуться с нашей меткой ему нечем.
 // Наша сторона тоже чиста: `safeRedirect` в signupPrecheck и
 // requestPasswordReset смотрит только на хост, query ему безразличен.
-const postLoginHref = () => withVisitCampaign(postLoginPath());
+/* Уход ПО отложенному адресу его же и тратит: намерение одноразовое, а без
+   траты один вход уводил бы туда и все следующие в этой вкладке (разбор — в
+   `takePostLoginPath`). `postLoginRedirectTo` ниже НЕ тратит: он отдаёт адрес
+   Supabase, а переход может не состояться, и письмо ещё переотправляют. */
+const postLoginHref = () => withVisitCampaign(takePostLoginPath());
 const postLoginRedirectTo = () => withVisitCampaign(window.location.origin + postLoginPath());
 
 /* floor-exempt: dsshare +30 — неавторизованная зона живёт на СВОЕЙ ДС (site.css
@@ -730,6 +735,27 @@ export default function Login() {
   // AuthShell по activeScreen, кроссфейдя и анимируя высоту. Скрытые .screen
   // инертны (visibility:hidden + pointer-events:none), а хендлеры/стейт кейнуты
   // на view, так что невидимые формы бездействуют.
+  /**
+   * Человека привёл сюда гостевой планировщик, и его маршрут ждёт (TRIP-505).
+   *
+   * ★ ПРЕДИКАТ — «МАРШРУТ ОТЛОЖЕН», А НЕ «АДРЕС ВОЗВРАТА ТАКОЙ-ТО». Подпись
+   * обещает сохранить МАРШРУТ, поэтому честно её показывать ровно тогда, когда
+   * маршрут действительно есть. Адрес возврата мог остаться и от другого пути
+   * (приглашение, адрес приложения, открытый без сессии) — там это обещание
+   * было бы ложью. Заодно снимается второй читатель `postLoginPath` (гард 2j:
+   * у адреса после входа один автор).
+   *
+   * Меняется ТОЛЬКО подпись под заголовком — на обоих экранах, вход и
+   * регистрация, потому что человек волен выбрать любой. Это ровно то, зачем
+   * подпись существует, поэтому ни новой разметки, ни нового класса: экран
+   * входа — самый чувствительный файл в проекте, и форк его ради одной строки
+   * был бы несоразмерной ценой.
+   *
+   * Читается один раз за монтирование: за жизнь экрана хранилище не меняется, а
+   * `useState` с инициализатором не даёт подписи мигать между экранами.
+   */
+  const [fromPlanner] = useState(() => hasPendingHandoff('manual', Date.now()));
+
   const activeScreen = {
     login: 'signin',
     signup: 'signup',
@@ -750,7 +776,7 @@ export default function Login() {
               <section className="screen" data-screen="signin">
                 <div className="screen-head">
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.login_title') }} />
-                  <p className="av-sub">{t('auth.login_lede')}</p>
+                  <p className="av-sub">{t(fromPlanner ? 'auth.lede_save_trip' : 'auth.login_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="social">
@@ -800,7 +826,7 @@ export default function Login() {
               <section className="screen" data-screen="signup">
                 <div className="screen-head">
                   <h1 dangerouslySetInnerHTML={{ __html: t('auth.signup_title') }} />
-                  <p className="av-sub">{t('auth.signup_lede')}</p>
+                  <p className="av-sub">{t(fromPlanner ? 'auth.lede_save_trip' : 'auth.signup_lede')}</p>
                 </div>
                 {error && <AuthError>{error}</AuthError>}
                 <div className="social">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useT } from '@/lib/i18n/I18nContext';
 import { hashStr } from '@/lib/hash';
-import { useZoneCta } from './zoneCta';
+import { useZoneCta, zonePlan } from './zoneCta';
 import { Icon } from '@/design/icons';
 
 /* =========================================================================
@@ -125,7 +125,9 @@ export function SiteSummary({ stats, peopleTitle, peopleCount, people }) {
  */
 export function SiteCta({ ns = 'landing.fin', secondary = null }) {
   const t = useT();
-  const cta = useZoneCta('final');
+  // Ведёт в планировщик, а не во вход (TRIP-505): блок обещает «начать», и
+  // теперь нажатие начинает, а не просит сперва завести аккаунт.
+  const cta = useZoneCta('final', zonePlan());
   return (
     <section className="final dark sheet-pane section-pad" data-hdr="accent" id="cta">
       <span className="horizon" aria-hidden="true" />

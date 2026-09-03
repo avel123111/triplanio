@@ -1,11 +1,9 @@
 {
   "add_city": "Añadir ciudad",
-  "add_first_city": "Añade la primera ciudad de la ruta",
   "add_more_city": "Añadir otra ciudad",
   "add_start": "Añadir ciudad de salida",
   "allow": "Permitir",
   "back": "Atrás",
-  "cities_desc_1": "Enumera las ciudades en orden de viaje",
   "cities_desc_2": "una tarjeta por el asa de la izquierda, las fechas se recalculan automáticamente desde el inicio del viaje",
   "cities_desc_drag": "Arrastra",
   "cities_heading": "Ciudades",
@@ -32,7 +30,8 @@
   "geo_hint": "Permite el acceso a la ubicación, detectaremos tu ciudad automáticamente. Puedes rechazarlo e introducirla manualmente.",
   "geo_off": "La geolocalización está desactivada",
   "geo_off_hint": "Usa el buscador de arriba: escribe el nombre de una ciudad hub o el aeropuerto más cercano",
-  "home_desc": "Esta es tu casa: el punto de partida y (normalmente) de regreso. Desde aquí Triplanio muestra los transportes y el precio de los billetes.",
+  "guest_save_hint": "Tu ruta solo vive en este navegador. Crea una cuenta y se convertirá en un viaje: con portada, reservas y acceso para tus acompañantes.",
+  "guest_save_title": "Tu ruta está lista",
   "home_title": "¿Desde dónde sales?",
   "last_city_fallback": "la última ciudad",
   "limit_desc_post": ". Espera a que termine el actual o pásate a Pro.",
@@ -48,6 +47,9 @@
   "of": "de",
   "open_trip": "Abrir el viaje",
   "optional": "opcional",
+  "point_few": "puntos",
+  "point_many": "puntos",
+  "point_one": "punto",
   "reset": "Restablecer",
   "reset_confirm_desc": "Se borrarán todas las ciudades y los ajustes que indicaste; la planificación empieza de nuevo.",
   "reset_confirm_title": "¿Restablecer el borrador?",
@@ -62,7 +64,7 @@
   "return_other": "A otra ciudad",
   "return_other_desc": "Si sigues viaje o vas a otro lugar, indica a dónde",
   "return_title_pre": "¿A dónde regresas después de",
-  "route_points": "Ruta · {n} puntos",
+  "route_points": "Ruta · {n} {word}",
   "save_trip": "Guardar el viaje",
   "saving_btn": "Guardando…",
   "saving_msg": "Guardando el viaje, un momento…",
@@ -84,6 +86,5 @@
   "title_edit": "Editar título",
   "title_label": "Nombre del viaje",
   "to_trips": "A los viajes",
-  "trip_start": "Inicio del viaje",
-  "where_to": "¿A dónde vamos?"
+  "trip_start": "Inicio del viaje"
 }

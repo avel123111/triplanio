@@ -35,7 +35,9 @@
  * ⚠️ МУТАЦИИ, КОТОРЫМИ ТЕСТЫ ПРОВЕРЕНЫ КРАСНЫМИ (зелёный тест не значит ничего,
  * пока не увидел его красным — [[triplanio-ci-guard-is-code]]):
  *   · снять `if (lightZone) return false` — падает первая таблица;
- *   · убрать `/terms` из `EXACT` — падает список маршрутов;
+ *   · убрать `/terms` из `ZONE_PAGES` — падает список маршрутов;
+ *   · вернуть `seedsLightZone` к рукописной таблице точных адресов — падает
+ *     чужой демо-слаг `/d/opechatka`;
  *   · заменить `startsWith('/join/')` на равенство — падает проверка префикса;
  *   · убрать `useLightZone()` из `SiteZone` — падает связка;
  *   · вернуть `useLightZone()` в `useSiteCss` — падает проверка единственности.
@@ -43,10 +45,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isZoneRoute, resolveDark } from './documentTheme.js';
+import { seedsLightZone, resolveDark } from './documentTheme.js';
 
+// `/plan` — гостевой планировщик: страницей зоны он не является, но поверхность
+// у него светлая. `/d/opechatka` — ЧУЖОЙ демо-слаг: он ведёт в зону (получит её
+// 404 сайтовой ДС), и рукописный список этого не знал — знал только канонический
+// `/d/europe-may-2027`, поэтому оба и стоят здесь.
 const ZONE = ['/', '/login', '/reset-password', '/terms', '/privacy', '/d/europe-may-2027',
-  '/join/abc', '/public/trip/1fd33a2e?t=tok'];
+  '/d/opechatka', '/plan', '/join/abc', '/public/trip/1fd33a2e?t=tok'];
 const APP = ['/trips', '/stats', '/settings', '/inbox', '/new-trip', '/trip/123', '/kit'];
 
 test('★★★ в зоне тема светлая при ЛЮБОМ выборе пользователя и любой ОС', () => {
@@ -72,22 +78,32 @@ test('★★ вне зоны тема остаётся выбором польз
 });
 
 test('★★ затравка по адресу: семь страниц зоны — зона, экраны приложения — нет', () => {
-  for (const p of ZONE) assert.equal(isZoneRoute(p), true, `${p} — страница зоны`);
-  for (const p of APP) assert.equal(isZoneRoute(p), false, `${p} — экран приложения, тема его собственная`);
+  for (const p of ZONE) assert.equal(seedsLightZone(p), true, `${p} — страница зоны`);
+  for (const p of APP) assert.equal(seedsLightZone(p), false, `${p} — экран приложения, тема его собственная`);
 });
 
 test('★ префикс — это префикс, а не равенство: у join и публичной поездки в адресе токен', () => {
-  assert.equal(isZoneRoute('/join/'), true);
-  assert.equal(isZoneRoute('/join/very/long/token'), true);
-  assert.equal(isZoneRoute('/public/trip/abc/anything'), true);
-  assert.equal(isZoneRoute('/joinery'), false);
-  assert.equal(isZoneRoute('/publicity'), false);
+  assert.equal(seedsLightZone('/join/abc'), true);
+  assert.equal(seedsLightZone('/join/very/long/token'), true);
+  assert.equal(seedsLightZone('/public/trip/abc/anything'), true);
+  assert.equal(seedsLightZone('/joinery'), false);
+  assert.equal(seedsLightZone('/publicity'), false);
+});
+
+test('★★ голый префикс БЕЗ токена зоной не является — и это согласовано со всеми', () => {
+  // `/join/` и `/public/trip/` без токена — не адреса: край отдаёт по ним честную
+  // 404 (`isKnownPath` false), роутер приложения по ним ничего не рисует. Пока
+  // затравка мерила префиксы по СЫРОМУ пути, а точные адреса по нормализованному,
+  // она отвечала на них «зона» — единственный модуль, который так считал.
+  // Нормализация теперь одна на обе половины и общая с краем (`canonicalPath`).
+  assert.equal(seedsLightZone('/join/'), false);
+  assert.equal(seedsLightZone('/public/trip/'), false);
 });
 
 test('★ хвостовой слэш не меняет ответ — иначе /terms/ дал бы тёмный кадр', () => {
-  assert.equal(isZoneRoute('/terms/'), true);
-  assert.equal(isZoneRoute('/login/'), true);
-  assert.equal(isZoneRoute(''), true);
+  assert.equal(seedsLightZone('/terms/'), true);
+  assert.equal(seedsLightZone('/login/'), true);
+  assert.equal(seedsLightZone(''), true);
 });
 
 const chromeSrc = () => readFileSync(new URL('../components/site/SiteChrome.jsx', import.meta.url), 'utf8');

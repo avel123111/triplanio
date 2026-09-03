@@ -49,6 +49,7 @@ import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGr
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
+import { pluralWord } from '@/lib/plural';
 
 // ─── запись бюджета: клиентская половина единой двери (TRIP-394) ──────────────
 //
@@ -765,7 +766,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     }));
   }, [cats, visitById, fx, overrides, mainCurrency]);
 
-  const expensesPlural = (n) => n === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many');
+  const expensesPlural = (n) => pluralWord(t, n, 'budget.expenses_count');
 
   // Скелетон — ОДИН компонент BudgetSkeleton (см. ниже), тот же и в фазе shell
   // (TripView LoadingBody), и в фазе content — фаза 1 и 2 идентичны, не «прыгают».
@@ -832,7 +833,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
           <Stat tone="activity" icon="user" label={t('budget.per_person_label')}
             value={money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}
-            sub={<><b>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')}</b> · {t('budget.split_evenly')}</>} />
+            sub={<><b>{memberCount} {pluralWord(t, memberCount, 'trip.members_count')}</b> · {t('budget.split_evenly')}</>} />
 
           <Stat tone="transfer" icon="arrowSwap" label={t('budget.fx_button')} onClick={readOnly ? undefined : openFxDialog}
             sub={foreignCurrencies.length === 0 ? t('budget.fx_empty') : (

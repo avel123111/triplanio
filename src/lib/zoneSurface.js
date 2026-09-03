@@ -14,19 +14,26 @@
 // перепутать нельзя, и он одинаков для всех кнопок одной страницы по
 // построению.
 //
-// ★ Файл держим ЧИСТЫМ: ни React, ни `window`, ни импортов. Это цена того,
+// ★ Файл держим ЧИСТЫМ: ни React, ни `window`, ни браузерных импортов. Это цена
+// того,
 // чтобы у него был `node --test` (та же конвенция, что у `trip-cities.js` и
 // `errorText.js`) — а тест здесь единственный гейт: перепутанную метку в
 // аналитике глазами не видно, она обнаруживается кварталом позже по кривой
 // воронке.
+
+// Адрес гостевого планировщика приезжает из своего дома, а не переписывается
+// здесь литералом: разъедься копии на букву — и половина воронки уехала бы в
+// «app», не покраснев (импорт относительный и с расширением, чтобы файл
+// открывался голым `node --test`, как `routePaths.js` открывает `demoPath.js`).
+import { GUEST_PLANNER_PATH } from './routePaths.js';
 
 /** Значение поля `surface`, когда адрес не принадлежит зоне. */
 const OUTSIDE = 'app';
 
 /**
  * @param {string} pathname `location.pathname`
- * @returns {string} страница зоны: landing · demo · public · legal · auth · join,
- *   либо `app` для любого адреса внутри приложения.
+ * @returns {string} страница зоны: landing · demo · public · legal · auth · join ·
+ *   planner (гостевой планировщик), либо `app` для адреса внутри приложения.
  */
 export function zoneSurface(pathname) {
   if (typeof pathname !== 'string' || !pathname) return OUTSIDE;
@@ -36,5 +43,9 @@ export function zoneSurface(pathname) {
   if (pathname === '/terms' || pathname === '/privacy') return 'legal';
   if (pathname === '/login' || pathname === '/reset-password') return 'auth';
   if (pathname.startsWith('/join/')) return 'join';
+  // Гостевой планировщик — поверхность приложения, но посетитель на ней ещё в
+  // зоне и её кнопки считаются в ту же воронку. Без своего значения весь низ
+  // воронки («Войти» из планировщика) слился бы с экранами вошедших.
+  if (pathname === GUEST_PLANNER_PATH) return 'planner';
   return OUTSIDE;
 }

@@ -6,10 +6,8 @@ import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
 import { isZonePage } from '@/lib/routePaths';
-import { useZoneCta, isPlainLeftClick } from './zoneCta';
-import { withVisitCampaign } from '@/lib/analytics';
+import { useZoneCta, isPlainLeftClick, zonePlan, zoneDemo } from './zoneCta';
 import { zoneSurface } from '@/lib/zoneSurface';
-import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import LandingSprite from './LandingSprite';
 
 /* =========================================================
@@ -119,12 +117,33 @@ function useBrandNav(brandHref) {
 }
 
 /**
+ * ОСТРОВ САЙТОВОЙ ДС (TRIP-505).
+ *
+ * `public/site.css` весь описан от `.site` — у каждого правила компонентного
+ * слоя этот класс стоит ПРЕДКОМ. На странице зоны предок находится сам: класс
+ * висит на `<html>`. На странице ПРИЛОЖЕНИЯ его там нет и быть не должно (иначе
+ * сайтовая ДС перекрасила бы экран приложения — она выигрывает каскад у
+ * `app.css` по 56 общим именам классов), поэтому предка объявляет сама шапка.
+ *
+ * Обёртка ВСЕГДА, а не «когда мы вне зоны»: условная обёртка — это развилка,
+ * которую обязан помнить каждый вызыватель, а забытая она даёт не ошибку, а
+ * молча неоформленную шапку. В зоне лишний `<div>` ничего не стоит: шапка
+ * `position:fixed` (высота обёртки 0), подвал — блок во всю ширину родителя,
+ * ни одного соседского селектора (`+`, `~`, `:first-child`) на них не заведено.
+ * Проверено попиксельно на всех страницах зоны, а не рассуждением.
+ */
+function SiteIsland({ children }) {
+  return <div className="site">{children}</div>;
+}
+
+/**
  * Shared marketing header — ONE element, its composition set by `variant`:
  *   'full'    logo + section nav + language + right CTA + mobile drawer
- *             (landing, and from Ф6 the legal pages).
- *   'cta'     logo + language + right CTA, no landing anchors — there is
- *             nowhere to scroll to off the landing (public trip, demo).
- *   'minimal' logo + language only (auth, join).
+ *             (landing, demo, public trip).
+ *   'signin'  logo + language + the sign-in door only — the guest planner:
+ *             the visitor is already inside the tool, so there is nothing to
+ *             invite them to, but the door back in still has to be there.
+ *   'minimal' logo + language only (auth, join, legal pages).
  *
  * @param themed   Landing only: re-tint the header against the [data-hdr]
  *                 section beneath it (on-light / on-dark / on-accent). Off →
@@ -132,6 +151,11 @@ function useBrandNav(brandHref) {
  *                 AND on mount and on route change — neither fires a scroll,
  *                 so a dark cover would otherwise keep dark text (handoff
  *                 §11.14).
+ * @param flow    ПОВЕРХНОСТЬ, А НЕ ВНЕШНИЙ ВИД: шапка стоит не над страницей
+ *                 зоны, а первой строкой в колонке экрана приложения
+ *                 (планировщик). Отсюда `position:relative` вместо `fixed` и
+ *                 уровень из лестницы приложения — разбор в `public/site.css`
+ *                 у правила `.site-header--flow`.
  * @param navBase  '' on the landing (same-page anchors). On other routes pass
  *                 an absolute origin so the section anchors resolve to the
  *                 landing, not the current path.
@@ -143,31 +167,44 @@ function useBrandNav(brandHref) {
  *                  is { tkey, hash }; hashes stay relative (no navBase) so the
  *                  same-page anchor rules match (handoff §11.28).
  */
-
-
-export function SiteHeader({ lang, setLang, variant = 'full', themed = false, navBase = '', brandHref = '#top', navItems = NAV }) {
+export function SiteHeader({ lang, setLang, variant = 'full', themed = false, flow = false, navBase = '', brandHref = '#top', navItems = NAV }) {
   const t = useT();
-  const nav = useNavigate();
   const location = useLocation();
-  // Три CTA шапки: кнопка справа и два верхних пункта бургера. Адрес, метку
-  // страницы и обработку клика им даёт ОДИН хелпер — здесь остаётся только
-  // МЕСТО каждой кнопки (`zoneCta.js`).
-  const headerCta = useZoneCta('header');
-  const menuCta = useZoneCta('menu');
-  // Демо в бургере — та же дверь и тот же адрес, что у кнопки «смотреть демо» в
-  // герое и в финальном блоке (`hero_demo` / `final_demo`); отличается только
-  // МЕСТО. До этого пункт с текстом «Посмотреть демо» висел на `menu_signin`,
-  // то есть вёл на `/login`: одна и та же надпись на одной и той же странице
-  // открывала два разных экрана, а демо с мобильного меню было недостижимо.
-  const menuDemo = useZoneCta('menu_demo', withVisitCampaign(DEMO_PATH));
+  // ★ ТРИ ДВЕРИ, А НЕ ШЕСТЬ КНОПОК (TRIP-505). У посетителя зоны ровно три
+  // задачи, и каждой отвечает СВОЯ дверь — одна и та же во всех местах зоны:
+  //   · «хочу попробовать»  → планировщик (`zonePlan`);
+  //   · «что это вообще»    → пример поездки (`zoneDemo`);
+  //   · «я уже пользуюсь»   → вход (адрес по умолчанию у `useZoneCta`).
+  // Кнопка «начать» больше не ведёт в авторизацию вовсе: человек попадает прямо
+  // в работу над поездкой, а регистрацию у него просят на последней ступени.
+  // Это ПРОДОЛЖЕНИЕ замера PR 1130, а не отмена его: там кнопка вела на форму
+  // входа, где 48 из 49 не находили регистрацию, и починка была «вести на
+  // регистрацию»; здесь между обещанием и аккаунтом становится сам продукт.
+  // Правило `guestEntryPath` остаётся в силе для всех, кто в авторизацию всё же
+  // ведёт, — включая гостевой планировщик (`zoneSignup`).
+  //
+  // ВХОД БЕЗ ВЕТКИ ПО АВТОРИЗАЦИИ, И ЭТО РЕШЕНИЕ. Вошедшему `/login` сам отдаёт
+  // `postLoginPath()` (`Login.jsx`), то есть он попадает в «Мои поездки» одним
+  // переходом. Ветка прямо здесь означала бы, что подпись кнопки зависит от
+  // ответа про сессию, — а лендинг рисуется ДО этого ответа, и подпись меняла бы
+  // сама себя на глазах. Дверь одна, за ней разберутся.
+  const headerCta = useZoneCta('header', zonePlan());
+  const headerSignin = useZoneCta('header_signin');
+  const menuCta = useZoneCta('menu', zonePlan());
+  const menuDemo = useZoneCta('menu_demo', zoneDemo());
   const menuSignin = useZoneCta('menu_signin');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState('light'); // on-light is the safe default
   const navHref = (hash) => `${navBase}${hash}`;
 
+  // Состав шапки. `full` — лендинг, демо и публичная поездка; `signin` —
+  // гостевой планировщик (человек уже внутри инструмента, звать его «составить
+  // маршрут» некуда, а дверь входа нужна); `minimal` — юр-страницы.
+  // Вариант `cta` удалён: его не запрашивала ни одна страница.
   const showNav = variant === 'full';
-  const showCta = variant === 'full' || variant === 'cta';
+  const showCta = variant === 'full';
+  const showSignin = variant === 'full' || variant === 'signin';
   // Only the full header collapses its section nav into the mobile menu; the
   // others have nothing to hide behind a burger, so they keep everything inline.
   const showBurger = variant === 'full';
@@ -220,9 +257,16 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   const onBrand = useBrandNav(brandHref);
 
   return (
-    <>
+    <SiteIsland>
       <LandingSprite />
-      <header className={`site-header ${scrolled ? 'scrolled' : ''} on-${theme}`} id="siteHeader">
+      {/* `flow` — шапка занимает свою строку, а не висит над кадром. Позиция
+          здесь свойство ПОВЕРХНОСТИ, а не шапки: страницы зоны начинаются с
+          геро, поверх которого шапка и задумана; экран приложения — колонка на
+          100dvh, где ей полагается первая строка. Тема отдельной ветки не
+          требует: `theme` и так `light`, пока страница не попросила `themed`.
+          `--menu` — «двери подхватывает бургер»; по одной лишь ширине правило
+          оставляло гостевой планировщик без единого входа на телефоне. */}
+      <header className={['site-header', flow && 'site-header--flow', showBurger && 'site-header--menu', scrolled && 'scrolled', `on-${theme}`].filter(Boolean).join(' ')} id="siteHeader">
         <div className="wrap">
           <a href={brandHref} className="brand" aria-label={t('nav.aria_home')} onClick={onBrand}>
             <svg className="logo" viewBox="0 0 192 192" aria-hidden="true"><use href="#tl-logo"/></svg>
@@ -238,6 +282,23 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
             {/* Ссылка, а не кнопка: это навигация, и как ссылка она умеет
                 «открыть в новой вкладке» — как остальные пять CTA зоны.
                 Оформление не меняется, элементных правил у `.btn` нет. */}
+            {/* Дверь «я уже пользуюсь» — текстовая ссылка, а не вторая кнопка:
+                рядом с заливкой CTA два одинаковых по весу элемента спорили бы
+                за внимание. Облик берёт ровно у пунктов `.main-nav a` (те же
+                правила, со-селектором) — своих значений у неё нет. */}
+            {/* ★ У ЭТОЙ ДВЕРИ НЕТ ПОБОЧНЫХ ДЕЙСТВИЙ, И ЭТО РЕШЕНИЕ. Был крючок
+                `onSignIn`: гостевой планировщик вешал на него откладывание
+                черновика и адрес возврата. Но «Войти» в шапке — дверь «я уже
+                пользуюсь», а не «сохрани мою работу»: ею жмёт человек, который
+                хочет в СВОЙ аккаунт. Побочный эффект превращал её в третью
+                кнопку сохранения — и, что хуже, оставлял в хранилище адрес
+                возврата, который `postLoginPath()` не тратит: один такой клик
+                уводил в планировщик КАЖДЫЙ следующий вход в этой вкладке.
+                Отложить маршрут просят кнопки на шаге «Обзор», где человек
+                прямо об этом и просит. */}
+            {showSignin && (
+              <a className="header-signin" {...headerSignin}>{t('auth.sign_in')}</a>
+            )}
             {showCta && (
               <a className="btn btn-primary btn-sm header-cta" {...headerCta}>
                 {t('landing.nav.cta')}
@@ -274,10 +335,10 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
               посмотреть продукт, ничего не заводя, поэтому стоит ПОСЛЕ пары и
               перед разделами страницы, к которым оно ближе по смыслу. */}
           <a {...menuCta} onClick={(e) => { setMobileOpen(false); menuCta.onClick(e); }}>{t('landing.hero.cta1')}</a>
-          {/* Пункт ВХОДА — своей подписью. Он существовал и раньше (`menu_signin`,
-              адрес `/login`), но был подписан «Посмотреть демо», поэтому на
-              телефоне войти было негде: единственная дверь входа называлась
-              чужим именем. Ключ общий с экраном входа — не заводим второй. */}
+          {/* Пункт ВХОДА — своей подписью, и сразу за «начать»: обе двери ведут
+              в продукт, и стоять им рядом. Раньше он был подписан «Посмотреть
+              демо», поэтому на телефоне войти было негде: единственная дверь
+              входа называлась чужим именем. Ключ общий с экраном входа. */}
           <a {...menuSignin} onClick={(e) => { setMobileOpen(false); menuSignin.onClick(e); }}>{t('auth.sign_in')}</a>
           {!onDemo && (
             <a {...menuDemo} onClick={(e) => { setMobileOpen(false); menuDemo.onClick(e); }}>{t('landing.hero.cta2')}</a>
@@ -287,7 +348,7 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
           ))}
         </nav>
       )}
-    </>
+    </SiteIsland>
   );
 }
 
@@ -297,11 +358,15 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
  * and the copyright. Same `navBase` semantics as SiteHeader for the product
  * anchors.
  */
-export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
+// `lang`/`setLang` у подвала больше НЕТ: переключатель языка из него убран
+// (второй экземпляр раскрывал меню вниз у самого низа страницы и растягивал
+// документ на 116px пустоты), а пропсы остались и молча ездили с пяти вызовов.
+export function SiteFooter({ brandHref = '#top' }) {
   const t = useT();
   const onBrand = useBrandNav(brandHref);
   return (
-    <footer className="site-footer" data-hdr="light">
+    <SiteIsland>
+      <footer className="site-footer" data-hdr="light">
       <div className="wrap">
         <div className="footer-min">
           <div className="footer-brandcol">
@@ -333,7 +398,8 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
           <span>{t('landing.ft.copy')}</span>
         </div>
       </div>
-    </footer>
+      </footer>
+    </SiteIsland>
   );
 }
 
@@ -421,7 +487,7 @@ const ZoneCssCtx = createContext(null);
  *  canonical обязаны называть одну страницу одним адресом, иначе они спорят. */
 const CANONICAL_ORIGIN = 'https://www.triplanio.com';
 
-export function SiteZone({ children }) {
+export function SiteZone({ children, surface = 'site' }) {
   // ★ СВЕТЛУЮ ТЕМУ ДЕРЖИТ ОБОЛОЧКА, А НЕ СТРАНИЦА (TRIP-475).
   //
   // Правило «зона светлая по построению» жило в `useSiteCss()`, то есть у
@@ -434,6 +500,14 @@ export function SiteZone({ children }) {
   // между страницами у неё нет по построению, а не «оно короткое».
   useLightZone();
   const cssReady = useSiteCssLink(true);
+  // ★ ПОВЕРХНОСТЬ — ЕДИНСТВЕННОЕ, ЧЕМ СТРАНИЦЫ ЗОНЫ ОТЛИЧАЮТСЯ ДРУГ ОТ ДРУГА
+  // (TRIP-505). `site` (по умолчанию) — страницу рисует сайтовая ДС целиком,
+  // документный слой на `<html>`. `app` — страницу рисует ДС приложения, а из
+  // сайтовой на ней только остров шапки: так живёт гостевой планировщик. Всё
+  // остальное у обеих поверхностей общее и живёт здесь: светлая тема, `<link>`,
+  // `<html lang>`, сброс прокрутки, canonical по адресу — то есть человек не
+  // выходит из зоны, просто её страница на этом шаге собрана приложением.
+  useSiteDocumentLayer(surface === 'site');
   const { pathname, hash } = useLocation();
   const { lang } = useI18n();
   // ★ ПРОКРУТКА К ЯКОРЮ ВЕДЁМ САМИ, А НЕ ОТДАЁМ БРАУЗЕРУ (TRIP-511).
@@ -552,9 +626,17 @@ export function SiteZone({ children }) {
 }
 
 /**
- * `cssReady` для страницы. Внутри `<SiteZone>` — из контекста (слой уже держит
- * оболочка). Вне её — страница сама себе владелец: так живут /public/trip,
- * /join и лендинг у залогиненного, они приходят не из зоны.
+ * `cssReady` для страницы. Внутри `<SiteZone>` — из контекста (слой держит
+ * оболочка).
+ *
+ * ★ ВЕТКА «СТРАНИЦА САМА СЕБЕ ВЛАДЕЛЕЦ» СЕГОДНЯ НЕ ДОСТИЖИМА: названные в ней
+ * /public/trip, /join и лендинг у залогиненного давно приходят из `<SiteZone>`
+ * (`App.jsx`). Оставлена как запасной путь, но с TRIP-505 у неё появилась цена,
+ * которой раньше не было: `useSiteCssLink` больше НЕ вешает `html.site` — это
+ * отдельный факт со своим владельцем (`useSiteDocumentLayer`). Оживи эту ветку
+ * для страницы, которую целиком рисует сайтовая ДС, — и та приедет со стилями,
+ * но без документного слоя, то есть с типографикой и фоном приложения. Такой
+ * странице нужна оболочка, а не этот хук.
  */
 export function useSiteCss() {
   // Тема документа тут БОЛЬШЕ НЕ ТРОГАЕТСЯ: её держит `SiteZone` (см. разбор
@@ -604,7 +686,6 @@ function useSiteCssLink(enabled) {
       if (link.sheet) setCssReady(true);
     }
 
-    document.documentElement.classList.add('site');
     // Мы в зоне — заранее тянем чанки её соседних страниц (см. докблок выше).
     prefetchZoneNeighbours();
 
@@ -615,11 +696,49 @@ function useSiteCssLink(enabled) {
         if (siteCssRefs > 0) return; // an incoming consumer already re-claimed it
         const el = document.getElementById('site-css');
         if (el) el.parentNode.removeChild(el);
-        document.documentElement.classList.remove('site', 'reveal--ready');
       });
     };
   }, [enabled]);
   return cssReady;
+}
+
+let siteDocRefs = 0;
+
+/**
+ * ДОКУМЕНТНЫЙ СЛОЙ сайтовой ДС — класс `site` на `<html>` (TRIP-505).
+ *
+ * ★ ПОЧЕМУ ЭТО ОТДЕЛЬНО ОТ ЗАГРУЗКИ `<link>`, ХОТЯ ЖИЛО ОДНОЙ СТРОКОЙ РЯДОМ.
+ * Это два разных факта, и с гостевым планировщиком они впервые разошлись:
+ *   · «слой стилей зоны нужен на этой странице» — верно и для экрана
+ *     приложения, который несёт шапку сайта;
+ *   · «страницу целиком рисует сайтовая ДС» — там уже неверно.
+ * Пока они были одной строкой, второе приезжало с первым: `html.site` включает
+ * документные правила зоны (`body` — гарнитура, вес, цвет, фон; `html` —
+ * плавная прокрутка и отступ под фикс-шапку; появление `main`), и экран
+ * приложения получал чужую типографику. Сцепку не видно ни глазом на зоне (там
+ * оба факта верны), ни гардом — поэтому она названа явно.
+ *
+ * Свой счётчик, а не общий с `<link>`: при переходе «страница зоны → гостевой
+ * планировщик» держатель слоя остаётся (оболочка не размонтируется, `<link>` на
+ * месте), а документный слой обязан сняться. Общий счётчик в этот момент не
+ * падает до нуля — и класс остался бы висеть.
+ */
+function useSiteDocumentLayer(enabled) {
+  useEffect(() => {
+    if (!enabled) return undefined;
+    siteDocRefs += 1;
+    document.documentElement.classList.add('site');
+    return () => {
+      siteDocRefs = Math.max(0, siteDocRefs - 1);
+      // Отложено ровно по той же причине, что снятие `<link>` выше: React
+      // размонтирует старое дерево ДО монтирования нового, и без микротаска
+      // переход между двумя страницами зоны снимал бы класс на кадр.
+      queueMicrotask(() => {
+        if (siteDocRefs > 0) return;
+        document.documentElement.classList.remove('site');
+      });
+    };
+  }, [enabled]);
 }
 
 /* `useSiteTheme` УДАЛЁН (TRIP-445). Он ставил [data-theme=light] один раз на

@@ -54,6 +54,7 @@ import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { pluralWord } from '@/lib/plural';
 
 // Событие открытия секции (TRIP-213 Ф2c — по одному на секцию, чтобы было видно,
 // что именно открыли) живёт в реестре секций рядом с самой секцией: отдельной
@@ -580,8 +581,9 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   };
   const cityNeedsHotel = (c) =>
     c.kind !== 'waypoint' && cityNights(c) >= 1 && !(hotels || []).some(h => hotelCoversCity(h, c));
-  // Та же тернарная плюрализация ночей, что у FlowMap/ManualPlanner (канон-узор).
-  const nightsWord = (n) => (n === 1 ? t('view.nights_one') : n < 5 ? t('view.nights_few') : t('view.nights_many'));
+  // Слово при числе — общим правилом `lib/plural`, тем же, что у FlowMap и
+  // ManualPlanner: своей копии предиката здесь нет и заводить её нельзя.
+  const nightsWord = (n) => pluralWord(t, n, 'view.nights');
 
   // Renders one city's arrival block: the missing-transfer warning, then the
   // missing-hotel warning. `prev` = the previously-rendered city (or start
@@ -821,7 +823,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
 // Observer on the .tl3-day anchors), and clicking a city scrolls the timeline to
 // that city's first day.
 function CityRail({ visits = [], scrollRef }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const cities = useMemo(
     () => sortVisits(visits).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint'),
     [visits],
@@ -1240,7 +1242,7 @@ export default function TripView() {
   // them with the day-word ("12 days" for a 12-night trip), so it disagreed with
   // Overview/public ("13 days") for the identical trip.
   const tripDays = tripDuration(trip, visits).days;
-  const dayWord = (n) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
+  const dayWord = (n) => pluralWord(t, n, 'tse.day');
   const heroSub = (
     <>
       {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
@@ -1248,7 +1250,7 @@ export default function TripView() {
         <><span>·</span><span>{tripDays} {dayWord(tripDays)}</span></>
       )}
       {cityCount > 0 && (
-        <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}</span></>
+        <><span>·</span><span>{cityCount} {pluralWord(t, cityCount, 'trip.cities_count')}</span></>
       )}
     </>
   );

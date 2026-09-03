@@ -7,7 +7,7 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import GeoAttribution from '@/components/common/GeoAttribution';
 import { Trunc } from '@/design/Layout';
-import { tapPick } from '@/lib/tapGesture';
+import { tapPick, swallowNextClick } from '@/lib/tapGesture';
 import { sheetScroller } from '@/components/ui/sheetShell';
 
 /**
@@ -248,7 +248,22 @@ export default function Autocomplete({
         tapRef.current = null;
         // `!== null`, а не «истинно»: опцией листа законно бывает 0 или пустая
         // строка, и такую нельзя молча объявить «не выбрано».
-        if (picked !== null) pick(picked);
+        if (picked === null) return;
+        /* ★ ГЛУШИМ `click`, КОТОРЫЙ БРАУЗЕР ПРИШЛЁТ СЛЕДОМ ЗА КАСАНИЕМ (TRIP-505).
+           Ставим ДО `pick`: он синхронно перерисует лист, и совместимостный
+           click придёт уже по новой разметке — по тому, что легло под палец.
+           ТОЛЬКО для касания: у мыши `pointerup` и `click` — одно нажатие,
+           глушить там нечего, а вооружённая глушилка съедает следующий
+           НАСТОЯЩИЙ клик (замер и разбор — при `swallowNextClick`).
+           ★★ ССЫЛКУ НА СНЯТИЕ ДЕРЖАТЬ НЕГДЕ: глушилка ОБЯЗАНА ПЕРЕЖИТЬ
+           ЭТОТ КОМПОНЕНТ. Тот самый `pick`, от последствий которого мы
+           защищаемся, в композере СНОСИТ сам пикер (фаза 2 — выбор вида
+           точки), и уборка на размонтировании снимала слушателя ТЕМ ЖЕ КАДРОМ,
+           до прихода click'а — то есть лечение отменяло само себя (замер:
+           слушатель зарегистрирован, click всё равно дошёл до document). Снятие
+           держит сама глушилка: первый же click либо окно. */
+        if (e.pointerType !== 'mouse') swallowNextClick(typeof window !== 'undefined' ? window : null);
+        pick(picked);
       }}
       // Остаётся ВХОДОМ ДЛЯ КЛАВИАТУРЫ И ВТ (`el.click()` pointer-событий не
       // шлёт). Двойного выбора нет: `pick` под защёлкой `pickedRef`.

@@ -6,6 +6,7 @@
   "ai_available_hint": "Paste the confirmation text or upload a file, the fields fill in automatically",
   "ai_drop_active": "Drop the file here…",
   "ai_drop_idle": "or drag a file here",
+  "ai_file_ready_few": "files ready",
   "ai_file_ready_many": "files ready",
   "ai_file_ready_one": "file ready",
   "ai_file_too_big5": "File \"{name}\" is too large (max 5 MB)",

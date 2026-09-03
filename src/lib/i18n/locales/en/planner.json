@@ -1,11 +1,9 @@
 {
   "add_city": "Add city",
-  "add_first_city": "Add the first city of the route",
   "add_more_city": "Add another city",
   "add_start": "Add departure city",
   "allow": "Allow",
   "back": "Back",
-  "cities_desc_1": "List the cities in travel order",
   "cities_desc_2": "a card by the handle on the left, dates recalculate automatically from the trip start",
   "cities_desc_drag": "Drag",
   "cities_heading": "Cities",
@@ -32,7 +30,8 @@
   "geo_hint": "Allow location access, we'll detect your city automatically. You can decline and enter it manually.",
   "geo_off": "Geolocation is off",
   "geo_off_hint": "Use the search above: type the name of a hub city or the nearest airport",
-  "home_desc": "This is your home: the start point and (usually) the return point. From it Triplanio shows transfers and ticket prices.",
+  "guest_save_hint": "Your route lives only in this browser. Create an account and it becomes a trip — with a cover, bookings and access for your travel companions.",
+  "guest_save_title": "Your route is ready",
   "home_title": "Where do you set off?",
   "last_city_fallback": "the last city",
   "limit_desc_post": ". Wait for the current one to end or upgrade to Pro.",
@@ -48,6 +47,9 @@
   "of": "of",
   "open_trip": "Open the trip",
   "optional": "optional",
+  "point_few": "points",
+  "point_many": "points",
+  "point_one": "point",
   "reset": "Reset",
   "reset_confirm_desc": "All the cities and settings you entered will be cleared — planning starts over.",
   "reset_confirm_title": "Reset the draft?",
@@ -62,7 +64,7 @@
   "return_other": "To another city",
   "return_other_desc": "If you're going further or heading to another place, say where",
   "return_title_pre": "Where do you return after",
-  "route_points": "Route · {n} points",
+  "route_points": "Route · {n} {word}",
   "save_trip": "Save the trip",
   "saving_btn": "Saving…",
   "saving_msg": "Saving the trip, one moment…",
@@ -84,6 +86,5 @@
   "title_edit": "Edit title",
   "title_label": "Trip name",
   "to_trips": "To trips",
-  "trip_start": "Trip start",
-  "where_to": "Where to?"
+  "trip_start": "Trip start"
 }

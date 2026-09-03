@@ -13,7 +13,7 @@ import { lazy, Suspense, useEffect } from 'react'
 // тосты в ДС, и это отдельная работа с апрувом, а не строчка в этом PR.
 /* floor-exempt: dsshare +5 — `<Toaster>` снят с барреля ради лендинга; сам компонент как был в components/ui, так и остался (апрув Pavel в PR) */
 import { Toaster } from "@/components/ui/toaster"
-import { track, withVisitCampaign } from '@/lib/analytics'
+import { track } from '@/lib/analytics'
 import { isProdHost } from '@/lib/analyticsEnv'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
@@ -33,9 +33,10 @@ import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { APP_ROUTES, isZoneRoute } from '@/lib/routePaths';
+import { APP_ROUTES, GUEST_PLANNER_PATH, PLANNER_PATH, canonicalPath, isZoneRoute } from '@/lib/routePaths';
 import { initialAuthView } from '@/lib/authEntry';
 import { rememberPostLogin } from '@/lib/postLoginPath';
+import { zoneLogin } from '@/components/site/zoneCta';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
 
@@ -84,10 +85,21 @@ const PublicTrip = lazy(() => import('@/pages/PublicTrip'));
 const JoinTrip = lazy(() => import('@/pages/JoinTrip'));
 const Login = lazy(() => import('@/pages/Login'));
 
+// ★ РУЧНОЙ ПЛАНИРОВЩИК — ЕДИНСТВЕННЫЙ ЭКРАН ПРИЛОЖЕНИЯ, ОТКРЫТЫЙ БЕЗ СЕССИИ
+// (TRIP-505). Тот же модуль, что грузит `AuthenticatedShell`, — vite отдаёт им
+// ОДИН чанк, поэтому второго объявления `lazy` дубля в бандл не добавляет.
+//
+// `lazy` тут несущий, как у витрины и демо: без него планировщик (карта Mapbox,
+// композер города, справочник) лёг бы в главный чанк, то есть его качал бы
+// каждый, кто открыл лендинг, — ровно та граница, которую поставил TRIP-475.
+// С `lazy` чанк приезжает по клику на CTA и ни секундой раньше.
+const GuestPlanner = lazy(() => import('@/pages/ManualPlanner'));
+
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
 // (/trip/:id → trip_opened, /pro → pricing_viewed, /public/trip → public_trip_viewed,
-// /new-trip|/plan-trip-ai → trip_creation_started) send NOTHING here, so we don't
+// а планировщик — /new-trip, /plan и /plan-trip-ai — шлёт trip_creation_started
+// сам, из экрана, а не по маршруту) send NOTHING here, so we don't
 // double-bill the free-tier quota. Only screens WITHOUT their own event get one.
 // Returns null → no event for this route.
 function screenOpenEvent(pathname, search) {
@@ -124,15 +136,15 @@ function screenOpenEvent(pathname, search) {
  * смонтировался и прочитал хранилище, и возврат молча терялся бы. Запись
  * идемпотентна и без уборки, поэтому повтор в StrictMode безвреден.
  *
- * Адрес входа — через `withVisitCampaign`, как у всех переходов зоны в auth
- * (`zoneCta.js`): метка кампании обязана ехать В АДРЕСЕ, иначе она теряется на
- * первой же перезагрузке документа — а вход именно ею и заканчивается, уходя к
- * провайдеру OAuth (TRIP-329/493).
+ * Адрес входа — общая дверь зоны `zoneLogin()`: метка кампании обязана ехать В
+ * АДРЕСЕ, иначе она теряется на первой же перезагрузке документа — а вход
+ * именно ею и заканчивается, уходя к провайдеру OAuth (TRIP-329/493). Дверь
+ * названа один раз в `zoneCta.js`; здесь она была третьей копией одной строки.
  */
 function RedirectToLogin() {
   const { pathname, search } = useLocation();
   rememberPostLogin(pathname + search);
-  return <Navigate to={withVisitCampaign('/login')} replace />;
+  return <Navigate to={zoneLogin()} replace />;
 }
 
 const AuthenticatedApp = () => {
@@ -159,7 +171,11 @@ const AuthenticatedApp = () => {
   // ветками ниже.
   useEffect(() => { hideSplash(); }, []);
 
-  const path = location.pathname;
+  // Хвостовой слэш адреса не меняет: `react-router` терпит его сам, а рукописные
+  // сверки ниже (`=== GUEST_PLANNER_PATH`, `isZoneRoute`) — нет, и `/plan/`
+  // проваливался мимо ВСЕХ веток в 404-тело при статусе 200. Нормализация одна
+  // и общая с краем (`isKnownPath`), иначе они разъедутся молча.
+  const path = canonicalPath(location.pathname);
 
   // Витрина: только вне прода. На проде роута нет вовсе - путь провалится в
   // общую маршрутизацию ниже и отдаст лендинг/404, как любой чужой адрес.
@@ -282,6 +298,46 @@ const AuthenticatedApp = () => {
     return <AppLoading />;
   }
 
+  // ★ ГОСТЕВОЙ ПЛАНИРОВЩИК — ОДИН ЭКРАН ПРИЛОЖЕНИЯ БЕЗ СЕССИИ (TRIP-505).
+  //
+  // Маркетинговый вход: с лендинга человек составляет маршрут, и только на
+  // последнем шаге его просят войти. Экран — ТОТ ЖЕ `ManualPlanner`, что у
+  // залогиненного, без единой копии: гостю просто не показывается шаг обложки
+  // (`visibleSteps` в самом планировщике), поэтому ни одного вызова, требующего
+  // сессии, на его пути нет.
+  //
+  // ★★ ЭТО ПОВЕРХНОСТЬ ЗОНЫ, СОБРАННАЯ ПРИЛОЖЕНИЕМ — `<SiteZone surface="app">`.
+  // Человек не выходил из неавторизованной зоны: он пришёл с лендинга и ещё не
+  // вошёл, поэтому всё, чем зона владеет, обязано остаться при нём — светлая
+  // тема (у зоны нет тёмной), `<html lang>`, сброс прокрутки, слой `site.css`
+  // для сайтовой шапки. Не остаётся ровно одно — ДОКУМЕНТНЫЙ слой сайтовой ДС
+  // (`html.site`): страницу рисует ДС приложения, и её типографику с фоном
+  // перебивать нечем. Ровно это различие и называет `surface` (разбор — в
+  // `SiteZone`), а держит его расщепление `site.css` на документный и
+  // компонентный слои: компонентный весь описан от `:where(.site)` и потому
+  // достаёт только до острова шапки, а не до экрана.
+  //
+  // ★★★ ВЕТКА СТОИТ ПОСЛЕ ГЕЙТА ЗАГРУЗКИ, И ЭТО НЕСУЩЕЕ. `isAuthenticated`
+  // ложна не только у гостя, но и у ВОЗВРАЩАЮЩЕГОСЯ из OAuth, пока сессия ещё
+  // едет. Отрисуй мы гостевой вариант в это окно — планировщик записал бы
+  // черновик под ключ `guest` уже после того, как человек вошёл, и черновик
+  // разъехался бы сам с собой (ключ хранилища — по `user.id`, см.
+  // `lib/plannerDraft.js`).
+  //
+  // Вошедшему здесь делать нечего: у планировщика есть адрес приложения, и
+  // поверхность там своя (тема человека, шапка приложения, никакого `noindex`).
+  // Перенос один и `replace` — чтобы «назад» не возвращало в редирект.
+  if (path === GUEST_PLANNER_PATH) {
+    if (isAuthenticated) return <Navigate to={PLANNER_PATH} replace />;
+    return (
+      <SiteZone surface="app">
+        <Suspense fallback={<AppLoading silent />}>
+          <GuestPlanner />
+        </Suspense>
+      </SiteZone>
+    );
+  }
+
   // Без сессии и вне зоны. Оболочка и <Suspense> ТЕ ЖЕ, что в ветке зоны выше,
   // и это несущее: React сверяет по типу элемента, поэтому переход «чужой адрес
   // → /terms» не пересоздаёт ни <SiteZone>, ни <Suspense> — слой стилей зоны не
@@ -302,6 +358,10 @@ const AuthenticatedApp = () => {
       <SiteZone>
         <Suspense fallback={<AppLoading silent />}>
           <Routes>
+            {/* Планировщик `/new-trip` остаётся ЗДЕСЬ, среди адресов приложения:
+                без сессии он ведёт во вход с возвратом, как и был. Экран без
+                сессии живёт на своём адресе `/plan` (разбор — `routePaths.js`),
+                и его ветка стоит выше, до сюда не доходя. */}
             {APP_ROUTES.map((pattern) => (
               <Route key={pattern} path={pattern} element={<RedirectToLogin />} />
             ))}

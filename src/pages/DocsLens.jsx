@@ -38,6 +38,7 @@ import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/comp
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 import './DocsLens.css';
+import { pluralWord } from '@/lib/plural';
 
 // ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
 
@@ -452,7 +453,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
           <Trunc className="dl-card__title">{doc.title}</Trunc>
           <div className="dl-card__sub">
             {files.length > 0
-              ? `${files.length} ${files.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}`
+              ? `${files.length} ${pluralWord(t, files.length, 'doc.files_count')}`
               : t('doc.card_no_files')}
             {doc.link_url && t('doc.has_link')}
           </div>
@@ -472,7 +473,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
         <Col gap="g3">
           {shown.map((f, i) => <FileChip key={i} file={f} />)}
           {more > 0 && (
-            <span className="dl-filemore">+{more} {t('doc.files_count_few')}</span>
+            <span className="dl-filemore">+{more} {pluralWord(t, more, 'doc.files_count')}</span>
           )}
         </Col>
       )}

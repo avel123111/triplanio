@@ -7,6 +7,9 @@ import { refusalError } from '@/lib/refusalError';
 import { goPro } from '@/lib/goPro';
 import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
+import { readDraft, writeDraft, clearDraft, markHandoff, takeHandoff } from '@/lib/plannerDraft';
+import { rememberPostLogin } from '@/lib/postLoginPath';
+import { PLANNER_PATH } from '@/lib/routePaths';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
@@ -21,6 +24,8 @@ import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
+import { SiteHeader } from '@/components/site/SiteChrome';
+import { zoneHome, zoneLogin, zoneSignup } from '@/components/site/zoneCta';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
@@ -38,6 +43,7 @@ import {
 } from '@/pages/create/routeModel';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { pluralWord } from '@/lib/plural';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
@@ -60,13 +66,9 @@ const STEPS = [
   { id: 'review', num: 4, labelKey: 'planner.step_review' },
 ];
 
-// Storage key is user- and method-specific so the manual and AI drafts don't
-// leak into each other (the same flow component serves both routes).
-// `-v3-`: форма черновика сменилась снова — три переменные (`home`/`cities`/`end`)
-// стали ОДНИМ списком узлов с видом у каждого (`create/routeModel`, TRIP-484 §4).
-// Ключ поднимается, а не мигрируется: черновик живёт минуты, и мапперу старой
-// формы пришлось бы пережить обе, чтобы обслужить вкладку, открытую в обед.
-const storageKey = (userId, method = 'manual') => `triplanio-planner-v3-${method}-${userId || 'guest'}`;
+// Черновик — `lib/plannerDraft`: ключ, срок жизни и переезд гость → вошедший
+// живут там одной чистой функцией с тестом (TRIP-505). Здесь их больше нет,
+// потому что оба правила ломаются молча, а значит обязаны иметь гейт.
 
 // Same physical city (external directory id / geonameid, else name — тёзки-города в
 // разных странах ≠ один город). Used by StepReturn to decide which return card looks
@@ -234,7 +236,15 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
 
 // ─── Step 1: Home ─────────────────────────────────────────────────────────────
 
-function StepHome({ home, setHome, startDate, setStartDate }) {
+/**
+ * @param {{home:any,setHome:Function,startDate:any,setStartDate:Function,nearby?:boolean}} p
+ *   `nearby` — показывать ли подбор городов рядом. У ГОСТЯ его нет (TRIP-505):
+ *   запрос геолокации — самое дорогое, о чём можно попросить человека, и просить
+ *   это у того, кто пришёл с рекламы минуту назад и ещё не завёл аккаунт, значит
+ *   менять доверие на удобство в момент, когда доверия ещё нет. Поле города он
+ *   вводит руками — оно и так первое на экране и необязательное.
+ */
+function StepHome({ home, setHome, startDate, setStartDate, nearby = true }) {
   const t = useT();
   const { lang } = useI18n();
   const { fmtDistance } = useI18nFormat();
@@ -271,12 +281,16 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
   return (
     <div>
+      {/* Заголовок ОДИН, объяснения нет. `home_desc` («Это твой дом: точка
+          старта и (обычно) возврата…») пересказывал подпись поля, которое стоит
+          строкой ниже, и стоил трёх строк на телефоне — а на 390 первый экран
+          заканчивается сразу за полями. Правило шага: заголовок + поля, текст
+          только там, где решение неочевидно. */}
       <h1>{t('planner.home_title')}</h1>
-      <div className="t-body">
-        {t('planner.home_desc')}
-      </div>
 
-      <h2 className="section-sub">{t('ai_plan.start')}</h2>
+      {/* Заголовка раздела «Старт» здесь тоже нет: он называл ровно то, что уже
+          спросил `h1` («Откуда стартуешь?»), а группа полей на шаге одна — делить
+          нечего. Оба поля подписаны сами. */}
       <div className="field-row field-row--aside">
         <div className="field">
           <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
@@ -288,74 +302,80 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
         </div>
       </div>
 
-      {/* "Рядом" — такой же заголовок раздела, что и «Старт» выше: одна роль на
-          экране = один класс. Раньше он был собран руками из капс-эйбрау и двух
-          полей отступа. */}
-      <h2 className="section-sub">{t('planner.nearby')}</h2>
+      {/* Весь подбор «рядом» — ОДНИМ гейтом, а не по состоянию: гостю не
+          показывается ни приглашение, ни его исходы (разбор — при `nearby`). */}
+      {nearby && (
+        <>
+        {/* "Рядом" — такой же заголовок раздела, что и «Старт» выше: одна роль на
+            экране = один класс. Раньше он был собран руками из капс-эйбрау и двух
+            полей отступа. */}
+        <h2 className="section-sub">{t('planner.nearby')}</h2>
 
-      {geoState === 'ask' && (
-        <Severity
-          level="info"
-          dashed
-          icon="pin"
-          align="mid"
-          title={t('planner.suggest_nearby')}
-          action={<Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>}
-        >
-          <div className="muted t-meta">{t('planner.geo_hint')}</div>
-        </Severity>
-      )}
+        {geoState === 'ask' && (
+          <Severity
+            level="info"
+            dashed
+            icon="pin"
+            align="mid"
+            title={t('planner.suggest_nearby')}
+            action={<Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>}
+          >
+            <div className="muted t-meta">{t('planner.geo_hint')}</div>
+          </Severity>
+        )}
 
-      {geoState === 'loading' && (
-        <Severity level="info" loading align="mid">
-          <span className="t-body muted">{t('planner.detecting')}</span>
-        </Severity>
-      )}
+        {geoState === 'loading' && (
+          <Severity level="info" loading align="mid">
+            <span className="t-body muted">{t('planner.detecting')}</span>
+          </Severity>
+        )}
 
-      {geoState === 'allowed' && candidates.length > 0 && (
-        <div className="col col--g4">
-          {candidates.map((c) => {
-            const selected = home?.external_city_id != null && home.external_city_id === c.external_city_id;
-            const dist = fmtDistance(c.distanceKm);
-            // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
-            const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
-            return (
-              <Card
-                as="button"
-                radius="card"
-                interactive
-                key={c.external_city_id}
-                onClick={() => setHome(c)}
-                className={`choice-card choice-card--sm${selected ? ' choice-card--on' : ''}`}
-              >
-                <div className="tile tile--brand">
-                  <Icon name="plane" size={17} />
-                </div>
-                <div className="grow--fit">
-                  <div className="t-subheading">{c.city_name}</div>
-                  <div className="muted t-meta"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
-                </div>
-                {selected && (
-                  <span className="tile tile--sm tile--solid tile--brand tile--round">
-                    <Icon name="check" size={11} />
-                  </span>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      )}
+        {geoState === 'allowed' && candidates.length > 0 && (
+          <div className="col col--g4">
+            {candidates.map((c) => {
+              const selected = home?.external_city_id != null && home.external_city_id === c.external_city_id;
+              const dist = fmtDistance(c.distanceKm);
+              // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
+              const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
+              return (
+                <Card
+                  as="button"
+                  radius="card"
+                  interactive
+                  key={c.external_city_id}
+                  onClick={() => setHome(c)}
+                  className={`choice-card choice-card--sm${selected ? ' choice-card--on' : ''}`}
+                >
+                  <div className="tile tile--brand">
+                    <Icon name="plane" size={17} />
+                  </div>
+                  <div className="grow--fit">
+                    <div className="t-subheading">{c.city_name}</div>
+                    <div className="muted t-meta"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
+                  </div>
+                  {selected && (
+                    <span className="tile tile--sm tile--solid tile--brand tile--round">
+                      <Icon name="check" size={11} />
+                    </span>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
-      {geoState === 'denied' && (
-        <Severity
-          level="quiet"
-          icon="lock"
-          align="mid"
-          title={t('planner.geo_off')}
-          action={<Btn variant="secondary" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
-        >
-          <div className="muted t-meta">{t('planner.geo_off_hint')}</div>
-        </Severity>
+        {geoState === 'denied' && (
+          <Severity
+            level="quiet"
+            icon="lock"
+            align="mid"
+            title={t('planner.geo_off')}
+            action={<Btn variant="secondary" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
+          >
+            <div className="muted t-meta">{t('planner.geo_off_hint')}</div>
+          </Severity>
+        )}
+        </>
       )}
 
     </div>
@@ -445,17 +465,30 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
 
   return (
     <div>
-      <h1>{t('planner.step_cities')}</h1>
-      <div className="t-body">
-        {t('planner.cities_desc_1')} <b>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
-      </div>
+      {/* ★ ЗАГОЛОВКА ШАГА ЗДЕСЬ НЕТ, И ЭТО НЕ ПРОПУСК. `h1` печатал
+          `planner.step_cities` — ТО ЖЕ СЛОВО «Маршрут», которое рейл над ним уже
+          написал строкой выше. Одно название экрана в двух местах: на 390 это
+          три упоминания подряд («ШАГ 2 из 3 · Маршрут» → «Маршрут» → «Города») и
+          ~250 px до первой кнопки. Название шага живёт в рейле, содержательный
+          заголовок раздела — «Города» ниже.
+
+          Подсказка про перетаскивание — ТОЛЬКО когда тащить есть что. Она
+          висела и на пустом списке, объясняя жест, который негде применить. */}
 
       {/* "Города" header — section sub-heading + the shared start control on the
-          right in one row (mirrors the editor's .ts-routehead: title + control). */}
-      <h2 className="section-sub section-sub--row">
+          right in one row (mirrors the editor's .ts-routehead: title + control).
+
+          ★ `h1`, А НЕ `h2`, ХОТЯ ВЫГЛЯДИТ САБ-ЗАГОЛОВКОМ. Со шага сняли своё
+          название («Маршрут» — оно и так стоит в рейле), и вместе с ним ушёл
+          единственный `h1`: экран остался с `h2` без `h1` над ним, то есть с
+          пропущенным уровнем — для скринридера это дыра в структуре документа,
+          а глазами не видно ничего. Уровень задаёт ТЕГ, облик — класс: `.flow-lp-b
+          .section-sub` (0,2,0) тяжелее `.flow-lp-b h1` (0,1,1), поэтому канон
+          Heading и ритм остаются те же до пикселя. */}
+      <h1 className="section-sub section-sub--row">
         <span className="grow">{t('planner.cities_heading')}</span>
         <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} label={t('ai_plan.start')} />
-      </h2>
+      </h1>
 
       {/* ★ ОДИН СПИСОК: старт, города и финиш — РЯДЫ одного и того же перечня,
           как в редакторе маршрута. Прежде старт стоял отдельной плиткой НАД
@@ -467,7 +500,17 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
             городов есть всегда, пока он не задан. Вид точки в композере
             предвыбран стартом — это намерение входа, а не запрет: плитку можно
             сменить. */}
-        {!hasStart && (
+        {/* ★ ПЛИТКА СТАРТА — ТОЛЬКО КОГДА ГОРОДА УЖЕ ЕСТЬ (TRIP-505). На ПУСТОМ
+            шаге она стояла рядом с приглашением добавить город, и экран звал
+            дважды в одно действие двумя разными словами: «Добавить город
+            старта» и «Добавить город». Замер на 390: обе двери + заголовки =
+            приглашение уезжало под нижний край, и до кнопки надо было
+            догадаться доскроллить.
+            Пустому маршруту нужен ГОРОД, а не «город старта»: старт задаётся
+            шагом 1, и эта плитка — напоминание о пропущенном шаге, осмысленное
+            ровно тогда, когда маршрут уже начат. Композер у обеих дверей и так
+            один и тот же — меняется только облик триггера. */}
+        {hasCities && !hasStart && (
           <CityAdder
             onAdd={add}
             hasStart={hasStart}
@@ -521,6 +564,20 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
           );
         })}
 
+        {/* Порядок правится перетаскиванием — говорим об этом там и тогда, где
+            жест возможен: под списком, начиная со второго города. */}
+        {/* Подсказка появляется с ВТОРЫМ городом — раньше её не о чем читать:
+            перетаскивать нечего. По той же причине из неё убрано «перечисли
+            города в порядке поездки» (`cities_desc_1`, ключ удалён): к моменту,
+            когда строка показывается, человек это уже сделал, а инструкция
+            задним числом читается как упрёк. Осталось ровно то, что здесь и
+            сейчас можно сделать руками. */}
+        {cityNodesOf(nodes).length > 1 && (
+          <div className="t-meta muted">
+            <b>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
+          </div>
+        )}
+
         {/* Композер — ТОТ ЖЕ, что в редакторе маршрута: город, затем вид точки,
             затем подтверждение. Он и решает, что показать на телефоне (шторка) и
             на десктопе (инлайн-карточка) — этому экрану знать про платформу
@@ -528,28 +585,29 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
             добавляют город посещения.
 
             ★ ПУСТОЕ СОСТОЯНИЕ — ЭТО И ЕСТЬ ЕГО ТРИГГЕР, а не сосед сверху. Пока
-            они стояли рядом, экран показывал приглашение «Куда едем?» И
-            отдельную кнопку во всю ширину под ним: два зова одного действия, с
-            дырой между ними. Теперь зов один — кнопка живёт В приглашении, как
-            обычная кнопка пустого состояния. Композер при этом ОДИН и тот же:
-            меняется только облик его триггера, а не число композеров (иначе на
-            переключении сбрасывалось бы его состояние).
-            Прятать приглашение на время работы не нужно: на десктопе композер
-            открывается ВМЕСТО триггера (`if (!open) return trigger`), на
-            телефоне лежит под своей шторкой. */}
+            они стояли рядом, экран показывал приглашение и отдельную кнопку во
+            всю ширину под ним: два зова одного действия, с дырой между ними.
+            Теперь зов один. Композер при этом ОДИН и тот же: меняется только
+            облик его триггера, а не число композеров (иначе на переключении
+            сбрасывалось бы его состояние). Прятать триггер на время работы не
+            нужно: на десктопе композер открывается ВМЕСТО него
+            (`if (!open) return trigger`), на телефоне лежит под своей шторкой. */}
         <CityAdder
           onAdd={add}
           hasStart={hasStart}
           hasEnd={hasEnd}
           defaultKind="transit"
           onOpenChange={onComposingChange}
+          /* ★ ПУСТОЕ СОСТОЯНИЕ СВЁРНУТО ДО САМОЙ КНОПКИ. `<EmptyState>` с иконкой,
+             заголовком «Куда поедем?» и подписью «Добавь первый город маршрута»
+             стоил ~190 px и не сообщал ничего, чего не сообщает кнопка: на шаге
+             «Маршрут» с пустым списком другого действия нет. На 390 из-за него
+             кнопка оказывалась ниже сгиба — то есть блок, объясняющий, что
+             делать, сам прятал то, чем это делают.
+             Кнопка — `primary` и во всю ширину: на пустом экране она
+             единственная, приглушать её нечем. */
           renderTrigger={hasCities ? undefined : ({ open }) => (
-            <EmptyState
-              icon="pin"
-              title={t('planner.where_to')}
-              body={t('planner.add_first_city')}
-              action={<Btn variant="primary" icon="plus" onClick={open}>{t('planner.add_city')}</Btn>}
-            />
+            <Btn variant="primary" icon="plus" block onClick={open}>{t('planner.add_city')}</Btn>
           )}
         />
       </div>
@@ -705,13 +763,31 @@ function Stat({ label, value, hint, warn }) {
   );
 }
 
-function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
+/**
+ * @param {any} p `guest` — обзор БЕЗ сессии (TRIP-505). Отличие ровно одно:
+ *   на месте обложки стоит приглашение войти. Обложка — единственная часть
+ *   этого шага, которой нужна сессия (каталог `getCoverPresets` за дверью auth
+ *   и своё фото в Storage под `_drafts/<uid>/`); всё остальное — сводка
+ *   собранного маршрута — считается на клиенте и показывается как есть.
+ *   Название трипа гостю не предлагается: до регистрации ему хватает решений,
+ *   а имя и так выводится из маршрута (`computeAutoTitle`) и правится после
+ *   входа, на этом же экране, рядом с обложкой.
+ */
+function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error, guest = false, onSignUp, onSignIn }) {
   const nav = useNavigate();
   const t = useT();
   const { lang } = useI18n();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = computeAutoTitle(home, cities, t);
+  /* Строка цифр гостевого блока. Те же три величины, что в статбаре ниже, — но
+     ОДНОЙ строкой: в блоке она доказательство работы, а не отчёт. */
+  const summaryLine = [
+    `${cities.length} ${pluralWord(t, cities.length, 'trip.cities_count')}`,
+    `${totalNights} ${pluralWord(t, totalNights, 'view.nights')}`,
+    cities[0]?.startDate ? `${t('planner.from_date_prefix')} ${shortDateLabel(cities[0].startDate, lang)}` : null,
+  ].filter(Boolean).join(' · ');
   const displayTitle = tripTitle || autoTitle;
+  const pointCount = (home ? 1 : 0) + cities.length + (finishCity?.city_name ? 1 : 0);
 
   if (savedOk) {
     return (
@@ -719,7 +795,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
         icon="check"
         kind="success"
         title={t('planner.created_title')}
-        body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
+        body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: pluralWord(t, cities.length, 'trip.cities_count'), nights: totalNights, nightsWord: pluralWord(t, totalNights, 'view.nights') })}
         action={(
           <>
             {/* Экран успеха ведёт в СЕКЦИЮ РЕДАКТОРА, а не на обзор: маршрут только
@@ -742,6 +818,23 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
 
   return (
     <div className="col col--g6 pl-review">
+      {/* ★ ЗАГОЛОВОК ЕСТЬ, НО ЕГО НЕ ВИДНО — И ЭТО НЕ ХИТРОСТЬ, А ЕДИНСТВЕННЫЙ
+          ЧЕСТНЫЙ ВАРИАНТ. На остальных ступенях `h1` виден: там он задаёт вопрос
+          («Куда возвращаешься?»). Здесь вопроса нет — шаг открывается обложкой,
+          и видимый заголовок «Обзор» дословно повторил бы рейл над ним, то есть
+          вернул бы ту самую избыточность, ради снятия которой заголовки с шагов
+          и убирали. Но без него у экрана НЕ БЫЛО `h1` вовсе: скринридер получал
+          страницу без имени, а глазами это не проверяется никак. Класс — общий
+          `.sr-only`, он в проекте уже есть. */}
+      <h1 className="sr-only">{t('planner.step_review')}</h1>
+      {/* ★ У ГОСТЯ ОБЛОЖКИ НЕТ — ЭТО ЕДИНСТВЕННОЕ, ЧЕГО БЕЗ СЕССИИ НЕ СДЕЛАТЬ
+          (каталог `getCoverPresets` за дверью auth и своё фото в Storage).
+          Остальной обзор считается на клиенте и показывается как есть, а
+          развилка «войти / завести аккаунт» стоит ПОД сводкой — разбор там.
+          Инвариант «0 вызовов к /api/* у гостя» держится по построению: пикер
+          обложек не смонтирован, значит звать каталог некому. */}
+      {!guest && (
+      <>
       {/* Обложка во всю ширину сразу под разделителем прогресса, без радиусов
           (full-bleed из падинга .lp-b, класс .pl-cover перебивает кадр 4:3 ДС на
           полосу 200px). Пикер рисует: фото/пресет/фоллбек, кнопку загрузки в
@@ -764,11 +857,57 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
           />
         )}
       />
+      </>
+      )}
+
+      {/* ★ РАЗВИЛКА ГОСТЯ — ОДИН ОБЪЕКТ: результат, его цифры и действие (TRIP-505).
+          Две редакции до этой промахнулись одинаково, и обе раскладкой, а не
+          словами. Сначала баннер «Маршрут готов» стоял наверху, а кнопка жила в
+          футере: между просьбой и тем, чем её исполняют, лежал весь экран.
+          Потом блок с кнопками уехал ПОД сводку — и на 390 оказался за сгибом,
+          то есть человек видел отчёт о работе и не видел, что с ним делать.
+          Правило «сначала докажи ценность, потом проси» верно ровно до тех пор,
+          пока просьба видна: невидимая просьба ничего не конвертирует.
+          Поэтому доказательство втянуто В блок одной строкой цифр («2 города ·
+          6 ночей · с 1 окт.»), а полный список точек остался ниже — для тех,
+          кто хочет проверить.
+
+          Дверей ДВЕ, потому что людей двое: у пришедшего с рекламы аккаунта нет
+          (регистрация — главная кнопка), у вернувшегося есть (вход — тихая
+          вторая). Обе сперва откладывают маршрут, иначе человек вернулся бы к
+          пустому планировщику.
+
+          Канон блока — тот же `EmptyState`, которым этот шаг уже показывает
+          успех сохранения: экран-результат с действиями в проекте один. */}
+      {guest && (
+        <EmptyState
+          boxed
+          icon="check"
+          kind="success"
+          title={t('planner.guest_save_title')}
+          body={(
+            <>
+              <div className="t-subheading">{summaryLine}</div>
+              <div>{t('planner.guest_save_hint')}</div>
+            </>
+          )}
+          action={(
+            <>
+              <Btn variant="primary" onClick={onSignUp}>{t('auth.create_account')}</Btn>
+              <Btn variant="secondary" onClick={onSignIn}>{t('auth.sign_in')}</Btn>
+            </>
+          )}
+        />
+      )}
 
       {/* Сводка под обложкой — без изменений: статы + маршрут плоскими секциями. */}
       <Card radius="btn" pad="none" className="pl-summary">
         {/* statbar is card-homed (its skin lives on the Card primitive) — kept on the
             Card for the surface-registry guard; flattened to a divided section below. */}
+        {/* Статы у гостя не рисуются: те же три числа он только что прочитал
+            строкой в блоке выше, и повторять их значит растить экран ради
+            повтора. Ниже остаётся то, чего в строке нет: сами точки маршрута. */}
+        {!guest && (
         <Card pad="none" className="statbar">
           <div className="s">
             <Stat
@@ -778,15 +917,19 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
             />
           </div>
           <div className="s">
-            <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
+            <Stat label={t('planner.duration')} value={`${totalNights} ${pluralWord(t, totalNights, 'view.nights')}`} />
           </div>
           <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
         </Card>
+        )}
 
         <div className="pl-summary__route">
-          <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (finishCity?.city_name ? 1 : 0) })}</div>
+          {/* Слово при числе — через общее правило, а не вшито в строку: до этого
+              «точек» стояло прямо в переводе, и одна точка читалась как
+              «1 точек». Разбор — `lib/plural.js`. */}
+          <div className="eyebrow">{t('planner.route_points', { n: pointCount, word: pluralWord(t, pointCount, 'planner.point') })}</div>
           <div className="col col--g1">
             {home?.city_name && (
               <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
@@ -803,7 +946,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
                   name={c.city_name}
                   sub={isFin
                     ? `${c.country || '-'} · ${t('planner.sub_finish')}`
-                    : `${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
+                    : `${c.country || '-'} · ${c.nights} ${pluralWord(t, c.nights, 'view.nights')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
                   muted={isFin}
                 />
               );
@@ -832,7 +975,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const nav = useNavigate();
   const { user } = useAuth();
   const t = useT();
-  const { lang } = useI18n();
+  const { lang, setLang } = useI18n();
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -908,31 +1051,81 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // so follow-up messages refine the draft.
   const [aiMessages, setAiMessages]         = useState(() => (isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []));
 
-  // Restore from sessionStorage on mount - only for the current user
+  /* ЧТО ИМЕННО ЛЕЖИТ В ЧЕРНОВИКЕ — ОДНО ОПРЕДЕЛЕНИЕ НА ОБОИХ ПИСАТЕЛЕЙ.
+     Их двое: эффект записи на каждое изменение и передача черновика при уходе
+     на регистрацию. Выписанный дважды состав разъехался бы на первом же новом
+     поле — причём молча и только у гостя: обычная запись поле бы возила, а
+     переезд после регистрации терял. */
+  const draftState = { step, nodes, tripTitle, startDate, cover, aiState, aiMessages };
+
+  /* Ступень пути — ОДНО событие со свойством, а не четыре имени: список шагов
+     уже менялся (из него выпал «Транспорт», у гостя нет «Обзора»), и имена,
+     выписанные по одному, отстали бы от него молча. */
   useEffect(() => {
-    try {
-      const key = storageKey(user?.id, method);
-      const raw = sessionStorage.getItem(key);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        if (saved.step) setStep(saved.step);
-        if (saved.nodes?.length) setNodes(saved.nodes);
-        if (saved.tripTitle) setTripTitle(saved.tripTitle);
-        if (saved.startDate) setStartDateRaw(saved.startDate);
-        if (saved.cover) setCover(saved.cover);
-        if (saved.aiState && isAi) setAiState(saved.aiState);
-        if (saved.aiMessages?.length && isAi) setAiMessages(saved.aiMessages);
-      }
-    } catch {}
+    if (!restored) return;
+    track('trip_creation_step', { step, method, authed: !!user });
+  }, [step, restored]);
+
+  // ★ ВОССТАНОВЛЕНИЕ ЧЕРНОВИКА — ОНО ЖЕ ВОЗВРАТ ГОСТЯ ПОСЛЕ РЕГИСТРАЦИИ
+  // (TRIP-505). Второй механизм здесь не нужен и был бы вреден: человек ушёл на
+  // вход с шага возврата, `postLoginPath` вернул его сюда, и шаг лежит В САМОМ
+  // черновике — значит «продолжить с того места» это и есть обычное чтение.
+  //
+  // Порядок несущий: СНАЧАЛА забрать переданный гостевой черновик под свой
+  // ключ, потом читать свой. Наоборот — прочитали бы пустоту (под ключом
+  // вошедшего ещё ничего нет) и записали бы её поверх переезда.
+  //
+  // Зависимость `[user?.id]` была и осталась: эффект перечитывает хранилище при
+  // смене владельца, а возврат из OAuth — ровно она.
+  useEffect(() => {
+    const now = Date.now();
+    // Переезд состоялся → человек ВЕРНУЛСЯ, дособрав маршрут и зарегистрировавшись.
+    const handed = takeHandoff(user?.id, method, now);
+    const saved = handed || readDraft(user?.id, method, now);
+    if (saved) {
+      /* ★ ВЕРНУВШИЙСЯ ПОПАДАЕТ НА ШАГ СОХРАНЕНИЯ, А НЕ НА ТОТ, С КОТОРОГО УШЁЛ.
+         Он ушёл с последней ступени гостя, нажав «Сохранить трип», — то есть
+         УЖЕ попросил сохранить. Верни мы его на ту же ступень, и он увидел бы
+         пройденный экран с кнопкой «Дальше»: два нажатия после регистрации,
+         первое — по работе, которую он только что закончил. Ровно то «нажмите
+         ещё раз», ради отсутствия которого перехват и поставлен после шага 3.
+         Шаг «Обзор» у него теперь есть (сессия появилась), поэтому идти есть
+         куда; обычное чтение своего черновика по-прежнему возвращает на
+         сохранённую ступень — правило касается ТОЛЬКО переезда. */
+      if (handed) setStep('review');
+      else if (saved.step) setStep(saved.step);
+      if (saved.nodes?.length) setNodes(saved.nodes);
+      if (saved.tripTitle) setTripTitle(saved.tripTitle);
+      if (saved.startDate) setStartDateRaw(saved.startDate);
+      if (saved.cover) setCover(saved.cover);
+      if (saved.aiState && isAi) setAiState(saved.aiState);
+      if (saved.aiMessages?.length && isAi) setAiMessages(saved.aiMessages);
+    }
+    /* ★ ВОРОНКА СОЗДАНИЯ НАЧИНАЕТСЯ ЗДЕСЬ, И «НАЧИНАЕТСЯ» ЗНАЧИТ НОВЫЙ МАРШРУТ,
+       А НЕ НОВОЕ МОНТИРОВАНИЕ (TRIP-505). Раньше `trip_creation_started` слал
+       `CreateTripProvider` по нажатию кнопки — ДО гейта лимита и только из
+       оболочки залогиненного: считались и те, кого гейт развернул, а гость с
+       лендинга не считался вовсе. Начало создания — свойство ЭКРАНА, а не
+       кнопки: кнопок несколько, экран один.
+
+       ★★ НО ТОГДА ПРЕДИКАТОМ НЕ МОЖЕТ БЫТЬ МОНТИРОВАНИЕ. Один человек проходит
+       экран несколько раз за ОДИН маршрут: гость на `/plan`, он же на
+       `/new-trip` после регистрации, он же после «назад» — и знаменатель
+       воронки раздувался в два-три раза, показывая конверсию хуже, чем она есть.
+       Черновик найден ⇒ это продолжение, а не начало; событие шлёт только тот,
+       кто начал с чистого листа. Отсюда же место — внутри восстановления: факт
+       «черновика нет» известен ровно здесь.
+       `authed` свойством, а не отдельным именем события: путь один, различаются
+       только люди на нём, — иначе воронку пришлось бы склеивать из двух. */
+    if (!saved) track('trip_creation_started', { method, authed: !!user });
     setRestored(true);
   }, [user?.id]); // re-run if user changes (e.g. account switch in same tab)
 
-  // Persist to sessionStorage on every change
+  // Запись на каждое изменение. Метку времени ставит сам модуль — ею живёт срок
+  // годности черновика, поэтому она не имеет права быть заботой экрана.
   useEffect(() => {
     if (!restored) return;
-    try {
-      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, nodes, tripTitle, startDate, cover, aiState, aiMessages }));
-    } catch {}
+    writeDraft(user?.id, method, draftState, Date.now());
   }, [step, nodes, tripTitle, startDate, cover, aiState, aiMessages, restored, user?.id]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
@@ -1074,7 +1267,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const full = await applyAiDraft(out.draft || {});
       // The bot's reply = its text + a DISPLAY-ONLY snapshot of the itinerary it
       // proposed (name / country / nights only — not the full resolved city objects
-      // with coords/tz/ids), so a multi-turn transcript in sessionStorage stays small.
+      // with coords/tz/ids), so a multi-turn transcript in the draft stays small.
       const draft = {
         home: full.home ? { city_name: full.home.city_name, country_code: full.home.country_code } : null,
         cities: (full.cities || []).map((c) => ({ id: c.id, city_name: c.city_name, country: c.country, nights: c.nights })),
@@ -1113,6 +1306,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
      Молчаливого финиша не бывает (дефолт «домой» снят), поэтому и пропускать
      шаг у того, кто ничего не выбирал, нечему. */
   const finishDecided = hasExplicitEnd(nodes);
+  /* ★ ШАГОВ ЧЕТЫРЕ У ВСЕХ (TRIP-505). Гостю «Обзор» РАНЬШЕ ВЫРЕЗАЛСЯ — из-за
+     обложки, которой нужна сессия, — и это была ошибка: вместе с обложкой
+     пропадал единственный экран, где человек видит собранный маршрут, а рейл
+     врал («ШАГ 3 из 3», хотя впереди ещё регистрация и создание). Шаг остался,
+     у него просто два вида: гостевой (сводка + приглашение войти) и полный
+     (обложка + название). Разбор — при `StepReview`. */
   const visibleSteps = STEPS
     .map(s => ({ ...s, label: s.id === 'home' ? entryLabel : t(s.labelKey) }));
   // Ход перешагивает решённую ступень в ОБЕ стороны — одним правилом, а не двумя.
@@ -1145,8 +1344,90 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setAiMessages(isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []);
     setAiState(isAi ? 'prompt' : 'draft');
     setSessionId(crypto.randomUUID());
-    try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
+    clearDraft(user?.id, method);
   };
+
+  /**
+   * Куда ведёт «назад» из шапки вошедшего — в его поездки. У гостя этой стрелки
+   * нет вовсе: его шапка сайтовая, и обратно на сайт его ведёт марка.
+   *
+   * Функцией, а не литералом в разметке: адрес зовут двое — стрелка шапки и
+   * плавающая `.map-back` над картой, — и выписанный в каждой он разошёлся бы
+   * на первой же правке, ровно как расходились CTA зоны до `zoneCta`.
+   */
+  const goBack = () => nav('/trips');
+
+  /**
+   * Отложить маршрут ЗА регистрацию: пометить черновик передаваемым и назвать
+   * адрес возврата.
+   *
+   * ★ ОТДЕЛЬНО ОТ ПЕРЕХОДА, ПОТОМУ ЧТО ДВЕРЕЙ ДВЕ, и обе обязаны это делать:
+   * «Создать аккаунт» и «Войти» на последней ступени. Переход у них разный
+   * (регистрация против входа — правило в `authEntry.js`), общее здесь ровно
+   * то, что общее.
+   *
+   * ⚠️ «Войти» В ШАПКЕ ЭТОГО НЕ ДЕЛАЕТ, И ЭТО РЕШЕНИЕ. Дверь шапки одна на всю
+   * зону и побочных действий не имеет (разбор — `SiteChrome`): пометить оттуда
+   * черновик значило бы дать одной и той же кнопке разное поведение в
+   * зависимости от страницы. Человек, уходящий из планировщика шапкой, свой
+   * маршрут не теряет — черновик лежит в хранилище, — он просто не передаётся
+   * ЗА вход; передача заведена на явное «сохранить».
+   */
+  const handOffDraft = () => {
+    track('trip_creation_signup_prompted', { method, city_count: cityNodesOf(nodes).length });
+    markHandoff(method, draftState, Date.now());
+    rememberPostLogin(PLANNER_PATH);
+  };
+
+  /* ДВЕ ДВЕРИ, ОДНА ПОДГОТОВКА. Отличаются только видом экрана, на который
+     открывается авторизация: у пришедшего с рекламы аккаунта нет, у
+     вернувшегося есть. Правило «какой вид» живёт в `authEntry.js` — здесь
+     только его применение.
+     ⚠️ Обе двери уходят РОУТЕРОМ (`nav`), а не сменой `location.href`: полная
+     перезагрузка выбросила бы снимок кампании вместе с документом, и платный
+     клик, доведённый до самой регистрации, записался бы как органика
+     (TRIP-329/493; гард 2ad сторожит то же самое в сайтовой зоне). */
+  const goSignUp = () => {
+    handOffDraft();
+    // ЭКРАН РЕГИСТРАЦИИ, А НЕ ФОРМА ВХОДА. Человек только что собрал маршрут без
+    // аккаунта — аккаунта у него заведомо нет, и форма входа встретила бы его
+    // заголовком для вернувшегося. Замер PR 1130: на ней регистрацию нашёл
+    // 1 человек из 49. Правило общее с кнопками зоны (`authEntry.js`), здесь
+    // только его применение.
+    nav(zoneSignup());
+  };
+
+  const goSignIn = () => {
+    handOffDraft();
+    nav(zoneLogin());
+  };
+
+  // ★ ШАПКА ГОСТЯ — САЙТОВАЯ, А НЕ ШАПКА ПРИЛОЖЕНИЯ (TRIP-505).
+  //
+  // Человек пришёл сюда с лендинга и ещё не вошёл — он в неавторизованной зоне,
+  // и лицо у зоны одно на все её поверхности. Шапка приложения ему не подходит
+  // не «по вкусу», а по составу: колокольчик, меню «Профиль · Выйти» и аватар
+  // ссылаются на сессию, которой нет, — аватар рисовал ПРОЧЕРК в самом заметном
+  // углу. Сайтовая шапка несёт ровно то, что гостю нужно: марку (она же выход
+  // обратно на сайт), язык и дверь «Войти».
+  //
+  // Экран при этом остаётся экраном ПРИЛОЖЕНИЯ: `site.css` расщеплён так, что
+  // его компонентный слой достаёт только до острова шапки (`:where(.site)`), а
+  // документный на этой поверхности не включается вовсе — разбор в `SiteZone`.
+  // Поэтому планировщик выглядит здесь ровно так же, как у вошедшего.
+  const chrome = user ? (
+    <AppHeader
+      user={user}
+      isPro={isPro}
+      isDark={isDark}
+      onToggleTheme={toggleTheme}
+      onBack={goBack}
+      backTitle={t('notif.to_collection')}
+      title={isAi ? t('planner.step_home_ai') : t('trips.new')}
+    />
+  ) : (
+    <SiteHeader lang={lang} setLang={setLang} variant="signin" flow brandHref={zoneHome()} />
+  );
 
   // ★ ВСЁ, ЧЕМ ПОЛЬЗУЕТСЯ ОСТАЛЬНОЙ ЭКРАН, — ВЫВОД ИЗ СПИСКА, А НЕ СОСТОЯНИЕ.
   // Так «маршрут» остаётся одним объектом: карта, ревью и сохранение читают одни
@@ -1284,7 +1565,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // переезда" affordance. AI now returns a cities-only skeleton (no
       // activities) - both are added later in the trip view / Edit Mode.
 
-      sessionStorage.removeItem(storageKey(user?.id, method));
+      clearDraft(user?.id, method);
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);
@@ -1342,14 +1623,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   if (isOverLimit && !savedOk) {
     return (
       <div className="flow-page">
-        <AppHeader
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          onBack={() => nav('/trips')}
-          backTitle={t('notif.to_collection')}
-        />
+        {chrome}
         <div className="grow row row--j-center">
           <EmptyState
             icon="lock"
@@ -1375,6 +1649,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // identical to the old per-step logic.
   const stepIdx = Math.max(0, visibleSteps.findIndex((s) => s.id === step));
   const isFirstStep = stepIdx === 0;
+  const guest = !user;
   const citiesValid = cities.length > 0 && cities.every((c) => c.city_name && c.latitude != null);
   const hasDraftData = !!home?.city_name || cities.length > 0 || !!finishCity?.city_name;
 
@@ -1392,10 +1667,16 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     resetToStart();
   };
 
+  // Описание шага для футера: надпись, действие и запреты. Одно место на все
+  // шаги — иначе правило «когда можно дальше» размазывается по телам шагов.
   let primaryLabel = t('planner.next');
   let primaryAction = goNext;
   let primaryDisabled = false;
   let showFooter = true;
+  // Главная кнопка футера рисуется ОТДЕЛЬНО от самого футера: бывает шаг, где
+  // действие переехало в тело экрана, а навигация («Назад», «Сбросить») никуда
+  // не девалась. Слитые в один флаг, они уносили навигацию вместе с кнопкой.
+  let showPrimary = true;
   // On the AI entry step the primary CTA is the AI gradient button (design A6),
   // not the brand primary — keeps the whole AI screen on the --ai layer.
   let primaryVariant = (step === 'home' && isAi) ? 'ai' : 'primary';
@@ -1412,10 +1693,23 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   } else if (step === 'cities') {
     primaryDisabled = !citiesValid || composing;
   } else if (step === 'review') {
+    /* Надпись одна на оба вида — `planner.save_trip`: человеку обещан РЕЗУЛЬТАТ
+       («Сохранить трип»), а не работа («Зарегистрироваться»). Регистрация — то,
+       что случится по дороге, а не то, о чём мы просим. Различается ДЕЙСТВИЕ:
+       у гостя оно откладывает маршрут и ведёт на регистрацию, у вошедшего —
+       создаёт путешествие. */
     primaryLabel = saving ? t('planner.saving_btn') : t('planner.save_trip');
     primaryAction = handleSave;
     primaryDisabled = saving;
-    if (savedOk) showFooter = false; // the success screen owns its own actions
+    /* ГЛАВНОЙ КНОПКИ у гостя на этом шаге нет: его действия — «Создать аккаунт»
+       и «Войти» — стоят в самом блоке результата, рядом с просьбой; кнопка внизу
+       была бы третьей дверью и отвечала бы на вопрос, заданный экраном выше.
+       ⚠️ А ВОТ НАВИГАЦИЯ ОСТАЁТСЯ. Пока это был один флаг, вместе с кнопкой
+       уезжали «Назад» и «Сбросить», и гость на последней ступени оказывался
+       заперт: ступени рейла — не кнопки, вернуться к маршруту было НЕЧЕМ.
+       Экран успеха — другое дело: там возвращаться уже некуда, поездка создана. */
+    if (savedOk) showFooter = false; // экран-результат владеет своими действиями
+    else if (guest) showPrimary = false;
   }
 
   // ── Main render ───────────────────────────────────────────────────────────
@@ -1430,7 +1724,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         {step === 'home' && (isAi ? (
           <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
         ) : (
-          <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
+          <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} nearby={!!user} />
         ))}
         {step === 'cities' && (
           <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={onComposingChange} />
@@ -1458,6 +1752,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             savedOk={savedOk}
             savedTripId={savedTripId}
             error={error}
+            guest={guest}
+            onSignUp={goSignUp}
+            onSignIn={goSignIn}
           />
         )}
 
@@ -1496,7 +1793,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               already have built a draft to clear. */}
           {(!isFirstStep || (isAi && step === 'home')) && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
           <div className="flow-foot__spacer grow" />
-          <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
+          {showPrimary && <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>}
         </div>
       )}
     </>
@@ -1505,15 +1802,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   return (
     <div className="flow-page">
       {/* Header */}
-      <AppHeader
-        user={user}
-        isPro={isPro}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={() => nav('/trips')}
-        backTitle={t('notif.to_collection')}
-        title={isAi ? t('planner.step_home_ai') : t('trips.new')}
-      />
+      {chrome}
 
       {/* Раскладку «карта во всю площадь + панель поверх / шит на телефоне»
           держит примитив <MapShell>: он же считает, сколько места закрыто, и
@@ -1551,15 +1840,21 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           <>
             {/* Floating round back control — shown only on the phone shell (the app
                 header is removed there); the canon `.map-back` position/visibility
-                live in CSS. */}
-            <IconBtn
-              className="map-back"
-              icon="back"
-              round
-              tone="outline"
-              ariaLabel={t('notif.to_collection')}
-              onClick={() => nav('/trips')}
-            />
+                live in CSS.
+                У ГОСТЯ ЕЁ НЕТ (TRIP-505): она заменяет шапку приложения, а у него
+                шапка сайтовая и на телефоне никуда не девается — выход из экрана
+                несёт её марка. Оставь кнопку — и она вела бы в `/trips`, то есть
+                гостя в форму входа, молча бросив его маршрут. */}
+            {user && (
+              <IconBtn
+                className="map-back"
+                icon="back"
+                round
+                tone="outline"
+                ariaLabel={t('notif.to_collection')}
+                onClick={goBack}
+              />
+            )}
             <FlowMap
               view={view}
               colorScheme={isDark ? 'DARK' : 'LIGHT'}

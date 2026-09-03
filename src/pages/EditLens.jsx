@@ -239,6 +239,7 @@ import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 import TripStartControl from '@/components/trip/TripStartControl';
 import { transferKind } from '@/lib/transport';
+import { pluralWord } from '@/lib/plural';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
@@ -257,7 +258,6 @@ const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(
 // makes recompute idempotent on load: re-deriving dates from (nights, gap)
 // reproduces exactly what's stored, so editor = timeline = DB.
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
-const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 // A city added in the editor but not yet persisted carries a 'tmp-…' id (no real uuid
 // until add_city inserts it). A LIVE transfer write to such a city fails the
@@ -1188,8 +1188,8 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
          секцию трипа. Визард свой ключ сохраняет. */
       title={t('trip.sidebar_route')}
       subtitle={[
-        tripDays > 0 ? `${tripDays} ${dayWord(tripDays, t)}` : null,
-        cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
+        tripDays > 0 ? `${tripDays} ${pluralWord(t, tripDays, 'tse.day')}` : null,
+        cityCount > 0 ? `${cityCount} ${pluralWord(t, cityCount, 'trip.cities_count')}` : null,
         dateRange && dateRange !== '-' ? dateRange : null,
       ].filter(Boolean).join(' · ') || undefined}
       actions={startDateControl}

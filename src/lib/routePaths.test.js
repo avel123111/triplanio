@@ -16,7 +16,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { APP_ROUTES, ZONE_PAGES, isZonePage, isZoneRoute } from './routePaths.js';
+import { APP_ROUTES, GUEST_PLANNER_PATH, PLANNER_PATH, ZONE_PAGES, isKnownPath, isZonePage, isZoneRoute } from './routePaths.js';
+import { seedsLightZone } from './documentTheme.js';
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -87,8 +88,86 @@ test('незалогиненный получает вход по каждому
   // ★ Предикат про СМЫСЛ ветки, а не про её текст: маршруты приложения ведут в
   // <RedirectToLogin>, всё остальное — в 404. Вернись сюда лендинг под `*`, и
   // любая битая ссылка снова станет «страницей» для краулера.
-  assert.match(branch, /APP_ROUTES\.map/, 'ветка перестала раскрывать маршруты приложения');
+  assert.match(branch, /APP_ROUTES[\s\S]{0,120}\.map/, 'ветка перестала раскрывать маршруты приложения');
   assert.match(branch, /element=\{<RedirectToLogin \/>\}/, 'адрес приложения без сессии больше не ведёт во вход');
   assert.match(branch, /path="\*" element=\{<PageNotFound \/>\}/, 'чужой адрес больше не отдаёт 404');
   assert.doesNotMatch(branch, /<LandingPage \/>/, 'лендинг вернулся на чужой адрес');
+
+  // ★ И НИ ОДНОГО ИСКЛЮЧЕНИЯ (TRIP-505). Гостевой планировщик живёт на СВОЁМ
+  // адресе, поэтому вычитать из раскрытия больше нечего: вернись сюда фильтр —
+  // значит две поверхности снова съехались на один адрес, а с ними вернутся и
+  // вопросы «а вошёл ли он», которые здесь задавать некому.
+  assert.doesNotMatch(branch, /\.filter\(/, 'из раскрытия маршрутов приложения снова что-то вычитают');
+});
+
+test('гостевой планировщик: своя поверхность, после гейта загрузки, вошедшему не показывается', () => {
+  const src = read('src/App.jsx');
+
+  // 1. Ветка существует и ведёт на планировщик, а не во вход.
+  const start = src.indexOf('if (path === GUEST_PLANNER_PATH) {');
+  assert.notEqual(start, -1, 'ветка гостевого планировщика исчезла — /plan снова уводит во вход');
+  const branch = src.slice(start, src.indexOf('\n  }', start));
+  assert.match(branch, /<GuestPlanner \/>/, 'ветка перестала рисовать планировщик');
+
+  // 2. ★ ПОВЕРХНОСТЬ ПРИЛОЖЕНИЯ ВНУТРИ ЗОНЫ. Человек ещё не вошёл — светлая
+  //    тема, `<html lang>`, сброс прокрутки и слой `site.css` для сайтовой
+  //    шапки принадлежат зоне и обязаны остаться при нём. Не остаётся ровно
+  //    документный слой сайтовой ДС: страницу рисует ДС приложения. Уберёшь
+  //    `surface` — и `html.site` перекрасит экран чужой типографикой и фоном;
+  //    уберёшь оболочку целиком — планировщик приедет тёмным (TRIP-505).
+  assert.match(branch, /<SiteZone surface="app">/, 'гостевой планировщик потерял оболочку зоны или её поверхность');
+
+  // 3. ★ ПОСЛЕ ГЕЙТА ЗАГРУЗКИ. `isAuthenticated` ложна и у возвращающегося из
+  //    OAuth, пока сессия едет; отрисуй мы гостевой вариант в это окно —
+  //    черновик записался бы под ключ `guest` уже после входа и разъехался бы
+  //    сам с собой. Позиция в файле и есть инвариант.
+  const gate = src.indexOf('if (isLoadingPublicSettings || isLoadingAuth) {');
+  assert.notEqual(gate, -1, 'гейт загрузки исчез — тест надо перечитать, а не чинить');
+  assert.ok(gate < start, 'ветка гостевого планировщика поднялась ВЫШЕ гейта загрузки: возвращающийся из OAuth увидит гостевой вариант');
+
+  // 4. ★ ВОШЕДШЕМУ — АДРЕС ПРИЛОЖЕНИЯ. Иначе он остался бы на гостевой
+  //    поверхности: светлая тема без выбора, сайтовая шапка и `noindex`.
+  assert.match(branch, /isAuthenticated[\s\S]{0,60}<Navigate to=\{PLANNER_PATH\} replace/,
+    'вошедший остаётся на гостевой поверхности');
+});
+
+test('два адреса — две поверхности, и ни одна не пропадает для края', () => {
+  // Адреса РАЗНЫЕ: один экран, но поверхности решают три модуля ДО монтирования
+  // (тема первого кадра, оболочка, noindex), и общий адрес заставил бы каждого
+  // спрашивать про сессию раньше, чем ответ существует.
+  assert.notEqual(GUEST_PLANNER_PATH, PLANNER_PATH);
+  // Экран вошедшего — маршрут приложения, как и был.
+  assert.ok(APP_ROUTES.includes(PLANNER_PATH), 'планировщик выпал из APP_ROUTES');
+  assert.ok(!APP_ROUTES.includes(GUEST_PLANNER_PATH), 'гостевой адрес попал в маршруты приложения — аут-гейт уведёт гостя во вход');
+  // Но край обязан знать ОБА — иначе `middleware.js` отдаст 404 на живом адресе
+  // ещё до загрузки приложения.
+  assert.ok(isKnownPath(GUEST_PLANNER_PATH), 'край ответит 404 на гостевой адрес');
+  assert.ok(isKnownPath(PLANNER_PATH), 'край ответит 404 на адрес планировщика');
+  // Гостевой адрес — не СТРАНИЦА зоны: canonical инструменту без контента не
+  // нужен, а оболочку он получает своей веткой, не таблицей зоны.
+  assert.equal(isZonePage(GUEST_PLANNER_PATH), false);
+  assert.equal(isZoneRoute(GUEST_PLANNER_PATH), false);
+});
+
+test('★ первый кадр гостевого планировщика светлый — затравка знает его адрес', () => {
+  // Тема ложится ДО монтирования чего-либо (`documentTheme`), поэтому без
+  // адреса в затравке человек с тёмной ОС увидел бы тёмный планировщик и
+  // светлую сайтовую шапку в нём — ровно тот кадр, из-за которого поверхность и
+  // получила свой адрес.
+  assert.equal(seedsLightZone(GUEST_PLANNER_PATH), true, 'гостевой адрес выпал из затравки светлой темы');
+  assert.equal(seedsLightZone(PLANNER_PATH), false, 'адрес приложения попал в затравку — вошедший потеряет свою тему');
+});
+
+test('гостевой планировщик закрыт от индексации в vercel.json', () => {
+  // Страница-инструмент без контента вокруг — «тонкая» для краулера, и
+  // canonical ей взять неоткуда: его ставит `SiteZone`, а планировщик вне её.
+  // Значит единственный честный ответ краулеру — noindex.
+  const cfg = JSON.parse(read('vercel.json'));
+  const rule = cfg.headers.find((h) => h.source === GUEST_PLANNER_PATH);
+  assert.ok(rule, `в vercel.json нет заголовков для ${GUEST_PLANNER_PATH}`);
+  assert.deepEqual(
+    rule.headers.find((x) => x.key === 'X-Robots-Tag'),
+    { key: 'X-Robots-Tag', value: 'noindex' },
+    'планировщик открылся краулеру',
+  );
 });
