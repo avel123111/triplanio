@@ -737,8 +737,8 @@ section{position:relative}
 /* visual-diff-exempt: .hero-layer background-position — вертикальная привязка кадра (5vw) (TRIP-510) */
 /* visual-diff-exempt: .hero-layer -webkit-mask — короткий проявляющий переход сверху и короткий уход у нового низа кадра (TRIP-510) */
 /* visual-diff-exempt: .hero-layer mask — короткий проявляющий переход сверху и короткий уход у нового низа кадра (TRIP-510) */
-.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:204vw auto;background-position:50% 5vw;
-  -webkit-mask:linear-gradient(180deg,transparent 0,#000 20vw,#000 176vw,transparent 182vw);mask:linear-gradient(180deg,transparent 0,#000 20vw,#000 176vw,transparent 182vw)}
+.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:204vw auto;background-position:50% calc(5vw + 30px);
+  -webkit-mask:linear-gradient(180deg,transparent 0,#000 calc(20vw + 30px),#000 calc(176vw + 30px),transparent calc(182vw + 30px));mask:linear-gradient(180deg,transparent 0,#000 calc(20vw + 30px),#000 calc(176vw + 30px),transparent calc(182vw + 30px))}
 
 @media (min-width:981px){
   .hero-layer.la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
@@ -834,8 +834,8 @@ section{position:relative}
 
 @media (max-width:980px){
   .hero{
-    /* visual-diff-exempt: .hero {@media (max-width:980px)} min-height — dvh → svh (устранение дёрганья скролла, TRIP-460) + высота −15px, чтобы следующая секция поднялась на 15px (TRIP-510) */
-    min-height:calc(100vh + var(--sheet-r) - 15px);min-height:calc(100svh + var(--sheet-r) - 15px);
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} min-height — dvh → svh (устранение дёрганья скролла, TRIP-460) + высота −42px, чтобы следующая секция поднялась (TRIP-510) */
+    min-height:calc(100vh + var(--sheet-r) - 42px);min-height:calc(100svh + var(--sheet-r) - 42px);
     align-items:stretch;
   }
   /* сверху только заголовок; телефон с кадра — посередине;
@@ -872,7 +872,7 @@ section{position:relative}
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} margin-top — блок кнопок прижат к низу телефона на кадре (TRIP-510) */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} width — кнопки во всю мобильную зону (правило .hero-ctas .btn) (TRIP-510) */
   /* visual-diff-exempt: .btn {@media (max-width:980px)} width — кнопки героя во всю мобильную зону (правило .hero-ctas .btn) (TRIP-510) */
-  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:0;margin-top:calc(146.7vw - 191px)}
+  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:0;margin-top:calc(146.7vw - 218px)}
   .hero-ctas .btn{width:min(320px,100%)}
   /* подпись под «Создать» — светлая (лежит на тёмном дереве внизу фото) */
   .hero-ctas small{margin:4px 0 9px;text-align:center;font-size:var(--fs-caption);line-height:1.4;color:rgba(255,255,255,.88);text-shadow:0 1px 3px rgba(0,0,0,.35)}
