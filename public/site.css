@@ -846,12 +846,12 @@ section{position:relative}
      убирает межбраузерную разницу дефолтного «normal» → одинаковая высота h1 */
   /* visual-diff-exempt: .hero h1 {@media (max-width:980px)} line-height — фикс 1.1 против дефолтного normal ради одинаковой высоты в Safari/Chrome (TRIP-508) */
   .hero h1{line-height:1.1}
-  /* зазор телефон→текст = 35px: низ телефона на 146.7vw−5.13vw от верха
+  /* зазор телефон→текст = 25px: низ телефона на 146.7vw−5.13vw от верха
      (0.754·292vw·933/1400 минус сдвиг кадра), заголовок с отступами — 168px,
-     отсюда margin-top = (146.7−5.13)vw − 168px + 35px ≈ 146.7vw − 153px (TRIP-508) */
-  /* visual-diff-exempt: .hero-sub {@media (max-width:980px)} margin-top — с auto (нижняя привязка) на фикс calc от ширины ради зазора 35px в обоих браузерах (TRIP-508) */
+     отсюда margin-top = (146.7−5.13)vw − 168px + 25px ≈ 146.7vw − 163px (TRIP-508) */
+  /* visual-diff-exempt: .hero-sub {@media (max-width:980px)} margin-top — с auto (нижняя привязка) на фикс calc от ширины ради зазора 25px в обоих браузерах (TRIP-508) */
   .hero-sub{
-    margin-top:calc(146.7vw - 153px);margin-bottom:18px;margin-inline:auto;max-width:none;
+    margin-top:calc(146.7vw - 163px);margin-bottom:18px;margin-inline:auto;max-width:none;
     font-size: var(--fs-hero-sub-mobile);line-height:1.5;color:var(--ink);
   }
   .hero-ctas{flex:none;justify-content:center}
