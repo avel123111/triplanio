@@ -9,7 +9,7 @@ import { toast } from '@/components/ui/use-toast';
 import AppLoading from '@/design/AppLoading';
 import { hasLang, loadLocale } from './dictionary';
 import { ZONE_NAMESPACES } from './zoneNamespaces';
-import { LANGUAGES, LANG_STORAGE_KEY, detectLandingLang, localeTag } from './translations';
+import { LANGUAGES, LANG_STORAGE_KEY, detectLandingLang, clearLangParam, localeTag } from './translations';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
   applyLuxonLocale,
@@ -169,7 +169,13 @@ export function I18nProvider({ children }) {
 
   // Activate the initial locale on mount (detected browser/stored language). A
   // signed-in user whose language differs triggers a follow-up load below.
-  useEffect(() => { activate(detectInitialLang(null), { fast: true }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // `?lang=` уже прочитан и сохранён внутри detectLandingLang — стираем его из
+  // адреса здесь, где язык применён (TRIP-511): иначе ручное переключение +
+  // перезагрузка молча откатывались бы обратно к языку из адреса.
+  useEffect(() => {
+    activate(detectInitialLang(null), { fast: true });
+    clearLangParam();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply Luxon default locale on mount and whenever lang changes,
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.

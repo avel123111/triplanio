@@ -436,10 +436,60 @@ export function SiteZone({ children }) {
   const cssReady = useSiteCssLink(true);
   const { pathname, hash } = useLocation();
   const { lang } = useI18n();
+  // ★ ПРОКРУТКА К ЯКОРЮ ВЕДЁМ САМИ, А НЕ ОТДАЁМ БРАУЗЕРУ (TRIP-511).
+  //
+  // Без хеша — к верху (смену маршрута роутер не прокручивает). С хешем раньше
+  // мы делали `return`, полагаясь на нативный скролл. На ХОЛОДНОМ входе по
+  // прямой ссылке (`triplanio.com/#together` из объявления/новой вкладки) это
+  // промахивалось: секция лендинга ещё не в DOM, когда браузер обрабатывает
+  // хеш, — SPA дорисовывает её кадром позже (ленивый чанк + reveal + шрифты и
+  // картинки ещё сдвигают лейаут). В шапке те же якоря работали, потому что там
+  // клик по `<a href>` идёт уже по отрисованной странице.
+  //
+  // Поэтому ищем элемент по id и держим его у кромки, пока лейаут не устаканится
+  // (несколько кадров без сдвига). Отступ под фикс-шапку берётся даром из
+  // `html{scroll-padding-top:86px}` в site.css — `scrollIntoView` его чтит, так
+  // что поведение совпадает с меню шапки; плавность/мгновенность — из
+  // `scroll-behavior` (reduce-motion уже переключает его на auto).
   useEffect(() => {
-    // Якорь в адресе — прокрутку ведёт он, не мы (`/d/x#budget`, меню лендинга).
-    if (hash) return;
-    window.scrollTo(0, 0);
+    if (!hash) { window.scrollTo(0, 0); return undefined; }
+    const id = decodeURIComponent(hash.slice(1));
+    // Только «имя-якорь». OAuth-редирект кладёт в хеш токены (`#access_token=…`)
+    // — это не наша секция; ведём себя как прежде и прокрутку не трогаем.
+    if (!id || /[=&\s]/.test(id)) return undefined;
+
+    let raf = 0;
+    let settledFrames = 0;
+    let prevTop = NaN;
+    const deadline = performance.now() + 3000;
+    // Посетитель передумал ждать и сам взялся за прокрутку — уступаем ему.
+    let aborted = false;
+    const onUserScroll = () => { aborted = true; };
+    const opts = { passive: true };
+    // Один список — add и remove не могут разъехаться.
+    const userScrollEvents = ['wheel', 'touchmove', 'keydown'];
+    userScrollEvents.forEach((e) => window.addEventListener(e, onUserScroll, opts));
+
+    const step = () => {
+      if (aborted) return;
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView();
+        // «Устаканилось» = позиция секции не меняется несколько кадров подряд
+        // (скролл доехал, картинки над ней догрузились и перестали её двигать).
+        const top = Math.round(el.getBoundingClientRect().top);
+        settledFrames = top === prevTop ? settledFrames + 1 : 0;
+        prevTop = top;
+        if (settledFrames >= 4) return;
+      }
+      if (performance.now() < deadline) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      userScrollEvents.forEach((e) => window.removeEventListener(e, onUserScroll, opts));
+    };
   }, [pathname, hash]);
 
   // ★ <html lang> — третье, что принадлежит ЗОНЕ, а не странице (TRIP-445).
