@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useZoneCta } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
+import { ZONE_BELOW_DESKTOP_MQ, useZoneDesktop } from '@/components/site/zoneBreakpoint';
 import { useJsonLd, faqPageLd } from '@/components/site/jsonLd';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
@@ -243,11 +243,16 @@ function usePainScrub(ready) {
 function Hero() {
   const t = useT();
   // Обе кнопки героя — через общий хелпер зоны. Первая ведёт в продукт, вторая
-  // («смотреть демо») — в демо-поездку, тем же путём и с тем же событием
-  // `cta_clicked`, что и финальный CTA `final_demo`: единственное отличие —
-  // метка места `hero_demo` (верх воронки против низа).
+  // («смотреть демо» / «посмотреть пример») — в демо-поездку, тем же путём и с
+  // тем же событием `cta_clicked`, что и финальный CTA `final_demo`:
+  // единственное отличие — метка места `hero_demo` (верх воронки против низа).
   const cta = useZoneCta('hero');
   const demo = useZoneCta('hero_demo', withVisitCampaign(DEMO_PATH));
+  // Мобильный hero несёт СВОЙ текст и вторую строку CTA (заголовок, подпись,
+  // «Создать путешествие» + «это займёт меньше минуты» + «Посмотреть пример»),
+  // десктопный не трогаем (TRIP-510). Граница — та же 981px, что у CSS-раскладки
+  // героя (`useZoneDesktop`), поэтому копия и вёрстка переключаются на одном шве.
+  const desktop = useZoneDesktop();
   return (
     <section className="hero" data-hdr="light" id="top">
       <div className="hero-bg" aria-hidden="true">
@@ -259,19 +264,40 @@ function Hero() {
       <div className="hero-hot" aria-hidden="true" />
       <div className="wrap hero-grid">
         <div className="hero-copy">
-          <h1>
-            <span className="line hero-anim">{t('landing.hero.h1a')}</span>
-            <span className="line grad hero-anim">{t('landing.hero.h1b')}</span>
-          </h1>
-          <p className="hero-sub hero-anim" dangerouslySetInnerHTML={{ __html: t('landing.hero.sub') }} />
-          <div className="hero-ctas hero-anim">
-            <a className="btn btn-primary" {...cta}>
-              <span>{t('landing.hero.cta1')}</span>
-            </a>
-            <a className="btn btn-ghost" {...demo}>
-              {t('landing.hero.cta2')}
-            </a>
-          </div>
+          {desktop ? (
+            <>
+              <h1>
+                <span className="line hero-anim">{t('landing.hero.h1a')}</span>
+                <span className="line grad hero-anim">{t('landing.hero.h1b')}</span>
+              </h1>
+              <p className="hero-sub hero-anim" dangerouslySetInnerHTML={{ __html: t('landing.hero.sub') }} />
+              <div className="hero-ctas hero-anim">
+                <a className="btn btn-primary" {...cta}>
+                  <span>{t('landing.hero.cta1')}</span>
+                </a>
+                <a className="btn btn-ghost" {...demo}>
+                  {t('landing.hero.cta2')}
+                </a>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1>
+                <span className="line hero-anim">{t('landing.hero.m_h1a')}</span>
+                <span className="line grad hero-anim">{t('landing.hero.m_h1b')}</span>
+              </h1>
+              <p className="hero-sub hero-anim" dangerouslySetInnerHTML={{ __html: t('landing.hero.m_sub') }} />
+              <div className="hero-ctas hero-anim">
+                <a className="btn btn-primary" {...cta}>
+                  <span>{t('landing.hero.m_cta1')}</span>
+                </a>
+                <small>{t('landing.hero.m_note')}</small>
+                <a className="btn btn-ghost" {...demo}>
+                  {t('landing.hero.m_cta2')}
+                </a>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>

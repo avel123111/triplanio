@@ -722,17 +722,23 @@ section{position:relative}
    встаёт в одно и то же место в обоих браузерах, поэтому зазоры фиксируются в px
    (TRIP-508). Маска низа тоже переведена с процентов высоты на vw — иначе её
    сход снова зависел бы от высоты. */
+/* Новый мобильный кадр (TRIP-510): фото с телефоном 2549×2212 (шире прежнего),
+   поэтому масштаб по ширине и вертикальная привязка пересчитаны, чтобы телефон
+   встал на то же место. Маска: короткий проявляющий переход сверху (шов с
+   размытой подложкой) и короткий уход в самом низу — там просвечивает та же
+   размытая копия фото (тёплое дерево), то есть низ читается цветом самой
+   картинки, а не серым. */
 /* правило .hero-layer.la ключуется гардом 2p под ОБА класса — маркер на каждый */
-/* visual-diff-exempt: .la background-size — размер кадра переведён с высоты (auto 88%) на ширину (292vw), чтобы Safari/Chrome совпадали (TRIP-508) */
-/* visual-diff-exempt: .la background-position — кадр сдвинут вверх на 5.13vw, чтобы зазор заголовок↔телефон был 35px (TRIP-508) */
-/* visual-diff-exempt: .la -webkit-mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
-/* visual-diff-exempt: .la mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
-/* visual-diff-exempt: .hero-layer background-size — размер кадра переведён с высоты (auto 88%) на ширину (292vw), чтобы Safari/Chrome совпадали (TRIP-508) */
-/* visual-diff-exempt: .hero-layer background-position — кадр сдвинут вверх на 5.13vw, чтобы зазор заголовок↔телефон был 35px (TRIP-508) */
-/* visual-diff-exempt: .hero-layer -webkit-mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
-/* visual-diff-exempt: .hero-layer mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
-.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:292vw auto;background-position:50% -5.13vw;
-  -webkit-mask:linear-gradient(180deg,#000 0,#000 129.5vw,transparent 182.8vw);mask:linear-gradient(180deg,#000 0,#000 129.5vw,transparent 182.8vw)}
+/* visual-diff-exempt: .la background-size — кадр масштабируется по ширине (240vw) под новое фото TRIP-510, телефон на прежнем месте (TRIP-510) */
+/* visual-diff-exempt: .la background-position — вертикальная привязка нового кадра (5vw) под положение телефона (TRIP-510) */
+/* visual-diff-exempt: .la -webkit-mask — короткий проявляющий переход сверху и короткий уход снизу под новый кадр (TRIP-510) */
+/* visual-diff-exempt: .la mask — короткий проявляющий переход сверху и короткий уход снизу под новый кадр (TRIP-510) */
+/* visual-diff-exempt: .hero-layer background-size — кадр масштабируется по ширине (240vw) под новое фото TRIP-510, телефон на прежнем месте (TRIP-510) */
+/* visual-diff-exempt: .hero-layer background-position — вертикальная привязка нового кадра (5vw) под положение телефона (TRIP-510) */
+/* visual-diff-exempt: .hero-layer -webkit-mask — короткий проявляющий переход сверху и короткий уход снизу под новый кадр (TRIP-510) */
+/* visual-diff-exempt: .hero-layer mask — короткий проявляющий переход сверху и короткий уход снизу под новый кадр (TRIP-510) */
+.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:240vw auto;background-position:50% 5vw;
+  -webkit-mask:linear-gradient(180deg,transparent 0,#000 25vw,#000 208vw,transparent 214vw);mask:linear-gradient(180deg,transparent 0,#000 25vw,#000 208vw,transparent 214vw)}
 
 @media (min-width:981px){
   .hero-layer.la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
@@ -836,8 +842,8 @@ section{position:relative}
      подпись и кнопка уходят вниз, под телефон */
   /* Верхний отступ — фиксированный px, а не 8.7vh: высота у Safari/Chrome разная,
      и заголовок вместе с ней съезжал (TRIP-508). */
-  /* visual-diff-exempt: .hero-grid {@media (max-width:980px)} padding — верхний отступ с 8.7vh на фикс 82px ради height-независимости (TRIP-508) */
-  .hero-grid{align-content:normal;align-items:stretch;text-align:center;padding:82px 0 clamp(44px,5.2vh,72px)}
+  /* visual-diff-exempt: .hero-grid {@media (max-width:980px)} padding — верхний отступ фикс 80px (текст поднят под новый макет TRIP-510) ради height-независимости */
+  .hero-grid{align-content:normal;align-items:stretch;text-align:center;padding:80px 0 clamp(44px,5.2vh,72px)}
   /* контент прижат к ВЕРХУ (без height:100% и margin-top:auto): нижняя привязка
      текста зависела от высоты hero и тоже плыла между браузерами (TRIP-508) */
   /* visual-diff-exempt: .hero-copy {@media (max-width:980px)} height — снят height:100%, контент прижат к верху (TRIP-508) */
@@ -846,20 +852,37 @@ section{position:relative}
      убирает межбраузерную разницу дефолтного «normal» → одинаковая высота h1 */
   /* visual-diff-exempt: .hero h1 {@media (max-width:980px)} line-height — фикс 1.1 против дефолтного normal ради одинаковой высоты в Safari/Chrome (TRIP-508) */
   .hero h1{line-height:1.1}
-  /* зазор телефон→текст = 25px: низ телефона на 146.7vw−5.13vw от верха
-     (0.754·292vw·933/1400 минус сдвиг кадра), заголовок с отступами — 168px,
-     отсюда margin-top = (146.7−5.13)vw − 168px + 25px ≈ 146.7vw − 163px (TRIP-508) */
-  /* visual-diff-exempt: .hero-sub {@media (max-width:980px)} margin-top — с auto (нижняя привязка) на фикс calc от ширины ради зазора 25px в обоих браузерах (TRIP-508) */
+  /* Новый макет TRIP-510: подпись стоит СРАЗУ под заголовком (зазор задаёт
+     нижний margin h1 + этот верхний, ≈22px), а не под телефоном — фото уходит
+     под текст фоном, кнопки прижаты к низу кадра своим margin-top ниже. */
+  /* visual-diff-exempt: .hero-sub {@media (max-width:980px)} margin-top — подпись под заголовком (фикс 2px), фото стало фоном, кнопки прижаты своим margin (TRIP-510) */
   .hero-sub{
-    margin-top:calc(146.7vw - 163px);margin-bottom:18px;margin-inline:auto;max-width:none;
+    margin-top:2px;margin-bottom:18px;margin-inline:auto;max-width:none;
     font-size: var(--fs-hero-sub-mobile);line-height:1.5;color:var(--ink);
   }
-  .hero-ctas{flex:none;justify-content:center}
-  /* вторая кнопка на телефоне не нужна */
+  /* Концовка подписи — жирным и синим как лого (#2173C8, тот же синий, что
+     вторая строка заголовка). Единственный <b> в мобильной подписи. */
+  .hero-sub b{color:#2173C8;font-weight:700}
+  /* Кнопки колонкой во всю мобильную зону (а не только <520px); низ блока
+     прижат к нижней кромке телефона на кадре (то же плечо 146.7vw, что раньше
+     держало подпись). Подпись «это займёт меньше минуты» — между кнопками,
+     ближе к «Создать» (4px сверху / 9px снизу). */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} flex-direction — кнопки колонкой во всю мобильную зону под новый макет (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} gap — интервал кнопок задаётся margin подписи, а не gap (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} margin-top — блок кнопок прижат к низу телефона на кадре (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} width — кнопки во всю мобильную зону (правило .hero-ctas .btn) (TRIP-510) */
+  /* visual-diff-exempt: .btn {@media (max-width:980px)} width — кнопки героя во всю мобильную зону (правило .hero-ctas .btn) (TRIP-510) */
+  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:0;margin-top:calc(146.7vw - 151px)}
+  .hero-ctas .btn{width:min(320px,100%)}
+  /* подпись под «Создать» — светлая (лежит на тёмном дереве внизу фото) */
+  .hero-ctas small{margin:4px 0 9px;text-align:center;font-size:var(--fs-caption);line-height:1.4;color:rgba(255,255,255,.88);text-shadow:0 1px 3px rgba(0,0,0,.35)}
   .hero .btn-ghost{display:inline-flex;background:var(--white);color:var(--ink);border:1px solid rgba(19,50,78,.14)}
+  /* Скрим только сверху (вуаль под текст/шапку); нижнюю растушёвку в белое
+     убрали — она выбеливала тёплое дерево у низа фото в серый (TRIP-510). */
+  /* visual-diff-exempt: .hero-scrim {@media (max-width:980px)} background — снята нижняя растушёвка в белое, низ фото остаётся своим тёплым цветом (TRIP-510) */
   .hero-scrim{
     background:
-      linear-gradient(180deg,rgba(var(--hero-veil),.66) 0%,rgba(var(--hero-veil),.42) 12%,rgba(var(--hero-veil),.1) 20%,rgba(var(--hero-veil),0) 28%,rgba(var(--hero-veil),0) 60%,rgba(var(--hero-veil),.3) 72%,rgba(var(--hero-veil),.72) 84%,rgba(255,255,255,.88) 100%);
+      linear-gradient(180deg,rgba(var(--hero-veil),.66) 0%,rgba(var(--hero-veil),.42) 12%,rgba(var(--hero-veil),.1) 20%,rgba(var(--hero-veil),0) 28%,rgba(var(--hero-veil),0) 100%);
   }
 }
 
