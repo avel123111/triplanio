@@ -872,7 +872,7 @@ section{position:relative}
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} margin-top — блок кнопок прижат к низу телефона на кадре (TRIP-510) */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} width — кнопки во всю мобильную зону (правило .hero-ctas .btn) (TRIP-510) */
   /* visual-diff-exempt: .btn {@media (max-width:980px)} width — кнопки героя во всю мобильную зону (правило .hero-ctas .btn) (TRIP-510) */
-  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:0;margin-top:calc(146.7vw - 166px)}
+  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:0;margin-top:calc(146.7vw - 171px)}
   .hero-ctas .btn{width:min(320px,100%)}
   /* подпись под «Создать» — светлая (лежит на тёмном дереве внизу фото) */
   .hero-ctas small{margin:4px 0 9px;text-align:center;font-size:var(--fs-caption);line-height:1.4;color:rgba(255,255,255,.88);text-shadow:0 1px 3px rgba(0,0,0,.35)}
