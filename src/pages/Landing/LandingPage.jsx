@@ -291,7 +291,6 @@ function Hero() {
                 <a className="btn btn-primary" {...cta}>
                   <span>{t('landing.hero.m_cta1')}</span>
                 </a>
-                <small>{t('landing.hero.m_note')}</small>
                 <a className="btn btn-ghost" {...demo}>
                   {t('landing.hero.m_cta2')}
                 </a>

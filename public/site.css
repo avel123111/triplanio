@@ -834,8 +834,12 @@ section{position:relative}
 
 @media (max-width:980px){
   .hero{
-    /* visual-diff-exempt: .hero {@media (max-width:980px)} min-height — dvh → svh (устранение дёрганья скролла, TRIP-460) + высота −42px, чтобы следующая секция поднялась (TRIP-510) */
-    min-height:calc(100vh + var(--sheet-r) - 42px);min-height:calc(100svh + var(--sheet-r) - 42px);
+    /* Высота = низ кадра (182vw + 30px = где кончается резкое фото): следующая
+       секция встаёт РОВНО под кадром, размытой полосы-подложки между фото и
+       белым листом больше нет (Ilya). Привязка к ширине (vw), а не к svh —
+       иначе высота экрана и ширина кадра расходятся и полоса возвращается. */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} min-height — высота привязана к низу кадра (182vw+30px), чтобы убрать размытую полосу под фото и поднять следующую секцию (TRIP-510) */
+    min-height:calc(182vw + 30px);
     align-items:stretch;
   }
   /* сверху только заголовок; телефон с кадра — посередине;
@@ -878,12 +882,10 @@ section{position:relative}
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} min-height — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} padding — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} font-size — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
-  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:0;margin-top:calc(146.7vw - 233px)}
+  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:10px;margin-top:calc(146.7vw - 233px)}
   /* Кнопки героя на 10% меньше (Ilya): ширина 320→288, высота ~50→45 (паддинг
      13→11, шрифт на шаг ниже --fs-body). */
   .hero-ctas .btn{width:min(288px,100%);min-height:40px;padding:11px 22px;font-size:var(--fs-body)}
-  /* подпись под «Создать» — светлая (лежит на тёмном дереве внизу фото) */
-  .hero-ctas small{margin:4px 0 9px;text-align:center;font-size:var(--fs-caption);line-height:1.4;color:rgba(255,255,255,.88);text-shadow:0 1px 3px rgba(0,0,0,.35)}
   .hero .btn-ghost{display:inline-flex;background:var(--white);color:var(--ink);border:1px solid rgba(19,50,78,.14)}
   /* Скрим только сверху (вуаль под текст/шапку); нижней растушёвки в белое нет.
      Верхняя вуаль ослаблена (.30 вместо .66): при сильной вуали полоса под
