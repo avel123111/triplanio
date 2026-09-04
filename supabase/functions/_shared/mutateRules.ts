@@ -297,7 +297,14 @@ export function parseAction(pathname: string, slug: string): string | null {
  * ресурсов ради одной регулярки — цена холодного старта (TRIP-513). Импортёры
  * шва не тронуты: имя доступно там же, где было.
  */
-export { isUuid } from './uuid.ts';
+// ⚠️ ИМПОРТ + РЕЭКСПОРТ, а не `export … from`. Чистый `export { x } from '…'`
+// делает имя видимым СНАРУЖИ, но НЕ вносит его в область видимости этого модуля,
+// а `typeOk` ниже зовёт `isUuid` у себя. Ошибка не ловится ни `npm run
+// typecheck` (tsc идёт по `jsconfig.json`, то есть по `src/**` — edge-функции в
+// него не входят), ни eslint, ни тестами: её видит только джоба «Deno typecheck
+// (edge functions)», то есть уже в CI (TRIP-513, разбор упавшего деплоя).
+import { isUuid } from './uuid.ts';
+export { isUuid };
 
 function typeOk(spec: FieldSpec, value: unknown): boolean {
   switch (spec.type) {
