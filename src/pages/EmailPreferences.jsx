@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+// @ts-check
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { invokeFn } from '@/lib/invokeFn';
-import { parseEdgeError } from '@/lib/edgeError';
 import { useT } from '@/lib/i18n/I18nContext';
 import { Card, Toggle } from '@/design/index';
 import { Btn } from '@/design/Btn';
@@ -43,11 +43,13 @@ export default function EmailPreferences() {
 
   const load = useCallback(async () => {
     setPhase('loading');
-    const { data, error } = await invokeFn('emailPrefs', { body: { c: contact, action: 'get' } });
+    const { data, error, code } = await invokeFn('emailPrefs', { body: { c: contact, action: 'get' } });
     if (error || !data) {
       // «Ссылка битая» и «сеть отвалилась» — разные ответы человеку: во втором
-      // случае помогает «Повторить», в первом не поможет никогда.
-      const { code } = await parseEdgeError(error, data);
+      // случае помогает «Повторить», в первом не поможет никогда. `code` берём
+      // у `invokeFn`: тело ответа читается РОВНО ОДИН РАЗ (Response), и свой
+      // повторный разбор здесь получил бы уже вычерпанный поток, то есть
+      // молча null вместо кода.
       setPhase(code === 'INVALID_LINK' ? 'invalid' : 'error');
       return;
     }
@@ -61,10 +63,7 @@ export default function EmailPreferences() {
 
   useEffect(() => { if (contact) load(); }, [contact, load]);
 
-  const dirty = useMemo(
-    () => hasChanges(initial, rows, wasUnsub, unsub),
-    [initial, rows, wasUnsub, unsub],
-  );
+  const dirty = hasChanges(initial, rows, wasUnsub, unsub);
 
   // Переключатель не «оптимистичный»: состояние на экране меняется сразу, но
   // сохранение отдельной кнопкой — так человек видит, что именно он поменял,
@@ -91,7 +90,7 @@ export default function EmailPreferences() {
 
   if (phase === 'invalid') {
     return (
-      <Col as="main" className="page-main" gap="g5">
+      <Col as="main" className="page-main">
         <h1 className="t-title">{t('email_prefs.invalid_title')}</h1>
         <p className="muted t-body">{t('email_prefs.invalid_body')}</p>
       </Col>
@@ -107,7 +106,7 @@ export default function EmailPreferences() {
       <Col as="main" className="page-main" gap="g7">
         <Col gap="g2"><Skeleton h={28} w="60%" /><Skeleton h={18} w="80%" /></Col>
         <Card>
-          <Col gap="g5">
+          <Col>
             <Skeleton h={44} /><Skeleton h={44} /><Skeleton h={44} /><Skeleton h={44} />
           </Col>
         </Card>
@@ -133,15 +132,28 @@ export default function EmailPreferences() {
         <>
           <Card>
             <Col gap="g2">
-              {rows.map((r) => (
-                <ListRow
-                  key={r.id}
-                  title={r.i18nKey ? t(r.i18nKey) : r.name}
-                  // Общий выключатель гасит частные: при нём письма не уходят
-                  // независимо от топиков, и живой переключатель здесь врал бы.
-                  trail={<Toggle on={r.on} locked={unsub} busy={saving} label={r.i18nKey ? t(r.i18nKey) : r.name} onChange={(v) => flip(r.id, v)} />}
-                />
-              ))}
+              {rows.map((r) => {
+                // Топик, которого нет в локали (завели новый и ещё не
+                // перевели), показывается под именем из ответа — см. `buildRows`.
+                const label = r.i18nKey ? t(r.i18nKey) : r.name;
+                return (
+                  <ListRow
+                    key={r.id}
+                    title={label}
+                    // Общий выключатель гасит частные: при нём письма не уходят
+                    // независимо от топиков, и живой переключатель здесь врал бы.
+                    trail={(
+                      <Toggle
+                        on={r.on}
+                        locked={unsub}
+                        busy={saving}
+                        label={label}
+                        onChange={(v) => flip(r.id, v)}
+                      />
+                    )}
+                  />
+                );
+              })}
             </Col>
           </Card>
 

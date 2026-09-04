@@ -34,10 +34,11 @@ export function buildRows(topics) {
     const i = ORDER.indexOf(id);
     return i === -1 ? ORDER.length : i;
   };
+  // Сортировка стабильна (ES2019), поэтому незнакомые топики сохраняют порядок
+  // ответа сами — нести с собой исходный индекс не нужно.
   return list
-    .map((t, i) => ({ t, i }))
-    .sort((a, b) => rank(a.t.id) - rank(b.t.id) || a.i - b.i)
-    .map(({ t }) => ({
+    .sort((a, b) => rank(a.id) - rank(b.id))
+    .map((t) => ({
       id: t.id,
       i18nKey: TOPIC_KEYS[t.id] ?? null,
       name: t.name ?? '',

@@ -45,8 +45,12 @@ const SUBSCRIPTION = new Set(['opt_in', 'opt_out']);
 
 type TopicRow = { id: string; name?: string; description?: string; subscription?: string };
 
-/** Один вызов Resend. Бросает на не-2xx — тело ошибки наружу не уходит. */
-async function resend(path: string, init: RequestInit = {}): Promise<unknown> {
+/**
+ * Один вызов Resend. Бросает на не-2xx — тело ошибки наружу не уходит.
+ * Форму ответа называет вызыватель параметром типа: `null` возможен всегда —
+ * тело либо пустое, либо не JSON.
+ */
+async function resend<T = unknown>(path: string, init: RequestInit = {}): Promise<T | null> {
   const res = await fetch(`${RESEND_API}${path}`, {
     ...init,
     headers: {
@@ -56,7 +60,7 @@ async function resend(path: string, init: RequestInit = {}): Promise<unknown> {
     },
   });
   if (!res.ok) throw new Error(`resend ${init.method ?? 'GET'} ${path} → ${res.status}`);
-  return await res.json().catch(() => null);
+  return await res.json().catch(() => null) as T | null;
 }
 
 /**
@@ -116,8 +120,8 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
   // как бы ни стояли топики. Страница, показывающая одни топики, врала бы.
   if (body?.action === 'get') {
     const [contact, topics] = await Promise.all([
-      resend(`/contacts/${id}`) as Promise<{ unsubscribed?: boolean } | null>,
-      resend(`/contacts/${id}/topics`) as Promise<TopicRow[] | null>,
+      resend<{ unsubscribed?: boolean }>(`/contacts/${id}`),
+      resend<TopicRow[]>(`/contacts/${id}/topics`),
     ]);
     return Response.json({
       unsubscribed: !!contact?.unsubscribed,
