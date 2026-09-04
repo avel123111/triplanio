@@ -5,6 +5,7 @@ import { reportAuthError } from '@/lib/reportDataError';
 import { identifyUser, resetIdentity, track } from '@/lib/analytics';
 import { forgetStashedAttribution, getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
 import { conversion } from '@/lib/destinations/ads';
+import { conversion as openaiConversion } from '@/lib/destinations/openaiAds';
 import { hashEmail } from '@/lib/hashEmail';
 import { detectLandingLang } from '@/lib/i18n/translations';
 import { stripAuthHash } from '@/lib/authHash';
@@ -257,6 +258,10 @@ export const AuthProvider = ({ children }) => {
             .then((sha256_email) => conversion('registration', { userData: { sha256_email } }))
             .catch(() => { /* ads conversion is best-effort */ });
         }
+        // OpenAI Ads registration conversion (TRIP-514) — dormant without the pixel
+        // id. No hashed email in Фаза 1 (the pixel needs none for a basic measure);
+        // best-effort, the no-op gate means an absent SDK costs nothing.
+        openaiConversion('registration');
       }
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
