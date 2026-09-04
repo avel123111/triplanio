@@ -11,7 +11,7 @@ import React from 'react';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
-import { Btn, IconBtn, ListRow, Stepper, Tile } from '@/design/index';
+import { AddRow, Btn, IconBtn, ListRow, Stepper, Tile } from '@/design/index';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
@@ -27,23 +27,6 @@ function SectionLabel({ children, color, action }) {
       <span className="sl" style={{ color: color || 'var(--muted)' }}>{children}</span>
       {action}
     </div>
-  );
-}
-// Пунктирный плейсхолдер «добавить» — тот же примитив `<ListRow>`, что и заполненный
-// ряд (variant="add"), поэтому встаёт РОВНО в высоту карточки наличия (TRIP-337).
-// Акцент ховера приходит контекстной переменной `--a` (объявление ТОНА, не оформление).
-function GhostAdd({ icon, label, sub, accent, onClick }) {
-  const a = accent || 'var(--brand)';
-  return (
-    <ListRow
-      variant="add"
-      lead={<Tile tone="quiet" icon={icon || 'plus'} />}
-      title={label}
-      sub={sub}
-      trail={<Icon name="plus" size={16} />}
-      onClick={onClick}
-      style={{ '--a': a }}
-    />
   );
 }
 // Booking row — канон <ListRow variant="raised">: тонированная плитка (тон эвента)
@@ -150,10 +133,10 @@ export default function CityPanel({
         <SectionLabel color="var(--ev-transfer-ink)">{t('tse.section_road')}</SectionLabel>
         {arrival
           ? <FlightLine transfer={arrival} dir="in" warn={arrivalWarn} onClick={() => onOpenTransfer(arrival)} t={t} />
-          : prevCity && <GhostAdd icon="plane" accent="var(--ev-transfer)" label={t('tse.add_arrival')} sub={prevCity} onClick={onAddArrival} />}
+          : prevCity && <AddRow icon="plane" accent="var(--ev-transfer)" title={t('tse.add_arrival')} sub={prevCity} onClick={onAddArrival} />}
         {departure
           ? <FlightLine transfer={departure} dir="out" warn={departureWarn} onClick={() => onOpenTransfer(departure)} t={t} />
-          : nextCity && <GhostAdd icon="plane" accent="var(--ev-transfer)" label={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
+          : nextCity && <AddRow icon="plane" accent="var(--ev-transfer)" title={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
       </div>
 
       {/* hotels — cities only (a 0-night waypoint has no overnight stay). */}
@@ -163,7 +146,7 @@ export default function CityPanel({
           {t('budget.cat_accommodation')}{hotels.length > 0 ? ` · ${hotels.length}` : ''}
         </SectionLabel>
         {hotels.length === 0 ? (
-          <GhostAdd icon="bed" accent="var(--ev-hotel)" label={t('hotel.add')} sub={rangeText(node.start_date, node.end_date)} onClick={onAddHotel} />
+          <AddRow icon="bed" accent="var(--ev-hotel)" title={t('hotel.add')} sub={rangeText(node.start_date, node.end_date)} onClick={onAddHotel} />
         ) : hotels.map((hotel) => (
           <BookRow key={hotel.id} tone="hotel" icon="bed"
             title={hotel.name}
@@ -186,7 +169,7 @@ export default function CityPanel({
             warn={isActWarn ? isActWarn(a) : false}
             onClick={() => onOpenActivity(a.id)} />
         ))}
-        <GhostAdd icon="ticket" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />
+        <AddRow icon="ticket" accent="var(--ev-activity)" title={t('activity.add')} onClick={onAddActivity} />
       </div>
       </div>
       {/* Футер с ОДНОЙ кнопкой — это `lp-f--single`, существующий модификатор

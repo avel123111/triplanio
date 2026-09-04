@@ -46,7 +46,7 @@ import { FieldRequired } from './Input';
 export { Row, Col, Grid, Trunc, Grow } from './Layout';
 export { PageHead } from './PageHead';
 export { Stat, STAT_TONES } from './Stat';
-export { ListRow, LISTROW_VARIANTS } from './ListRow';
+export { ListRow, AddRow, LISTROW_VARIANTS } from './ListRow';
 export { Donut } from './Donut';
 export { Meter } from './Meter';
 // Кнопка-иконка — своим модулем по той же причине: крестик тоста живёт в

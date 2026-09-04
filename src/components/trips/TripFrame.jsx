@@ -25,9 +25,8 @@ import { DateTime } from 'luxon';
 // не имеющий отношения к маршруту. Полосы готовности тоже нет — она про
 // подготовку и живёт в её виджете, рядом со списком, который её объясняет.
 
-// «У узла есть координаты» — ОДИН предикат на оба вопроса кадра: рисовать ли
-// карту вообще и в какой проекции. Двумя чтениями (`v.latitude` на истинность и
-// `v.latitude != null` на наличие) они расходились ровно на нулевой широте.
+// «У узла есть координаты» — читаем НАЛИЧИЕ, а не истинность: `v.latitude`
+// расходится с `!= null` ровно на нулевой широте.
 const hasCoords = (v) => v?.latitude != null && v?.longitude != null;
 
 /** @param {{ trip?: any, visits?: any[], transfers?: any[],
@@ -107,19 +106,6 @@ export default function TripFrame({
   }, [measure, isLoading]);
   const view = useMemo(() => (closed ? { camera: closed, fit: closed } : null), [closed]);
 
-  // Проекция — от РАЗМАХА МАРШРУТА, а не от экрана: на плоскости трансконтинен-
-  // тальный трип вырождается в карту мира с булавками по три пикселя, а трип по
-  // одной стране на глобусе читается хуже. Линзы карты/редактора — глобус всегда.
-  const projection = useMemo(() => {
-    const pts = (visits || []).filter(hasCoords);
-    if (pts.length < 2) return 'mercator';
-    const lngs = pts.map((v) => Number(v.longitude));
-    const lats = pts.map((v) => Number(v.latitude));
-    const dLng = Math.max(...lngs) - Math.min(...lngs);
-    const dLat = Math.max(...lats) - Math.min(...lats);
-    return dLng > 60 || dLat > 40 ? 'globe' : 'mercator';
-  }, [visits]);
-
   if (isLoading) return <TripFrameSkeleton />;
 
   const hasRoute = (visits || []).some(hasCoords);
@@ -148,8 +134,7 @@ export default function TripFrame({
               visits={visits}
               transfers={transfers}
               view={view}
-              initialProjection={projection}
-              colorScheme={isDark ? 'DARK' : 'LIGHT'}
+                colorScheme={isDark ? 'DARK' : 'LIGHT'}
               active={active}
               hoveredVisitId={hoveredId}
               selectedVisitId={selectedId}

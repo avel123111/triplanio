@@ -1,5 +1,7 @@
 // @ts-check
 import React from 'react';
+import { Tile } from './Tile';
+import { Icon } from './icons';
 
 // ----- ListRow ----- (TRIP-413, объект «строка списка»)
 // Строка списка: [лид] заголовок + подпись [трейл]. Лид и трейл — слоты
@@ -81,3 +83,35 @@ ListRow.displayName = "ListRow";
 
 /** @type {readonly ListRowVariant[]} */
 export const LISTROW_VARIANTS = ["raised", "select", "divider", "compact", "add"];
+
+// ----- AddRow ----- «этого ещё нет»
+//
+// ★★ ЭТО НЕ НОВЫЙ ОБЪЕКТ, А СВЕДЕНИЕ ТРЁХ КОПИЙ. Форма «добавить» жила тремя
+// одинаковыми локальными функциями: `CityPanel.GhostAdd`, `ServicesCard.AddRow`
+// и ряд «Подготовки». Все три — `<ListRow variant="add">` + `<Tile tone="quiet">`
+// + плюс + канал тона `--a`, буква в букву. Три копии одной формы разъезжаются
+// при первой правке облика: правишь одну — две остаются прежними.
+//
+// Тон ховера (`--a`) — ОБЪЯВЛЕНИЕ РОЛИ, а не оформление: он приходит от вида
+// того, чего не хватает (отель · переезд · сервис), классом это не выразить.
+// Поэтому единственный стиль примитива живёт здесь, а у вызывателей инлайнов нет.
+export const AddRow = React.forwardRef(
+  /**
+   * @param {{ icon?: string, title?: any, sub?: any, accent?: string,
+   *   onClick?: any, className?: string }} p
+   */
+  ({ icon = "plus", title, sub, accent, onClick, className = "" }, ref) => (
+    <ListRow
+      ref={ref}
+      variant="add"
+      className={className}
+      lead={<Tile tone="quiet" icon={icon} />}
+      title={title}
+      sub={sub || undefined}
+      trail={<Icon name="plus" size={16} />}
+      style={{ "--a": accent || "var(--brand)" }}
+      onClick={onClick}
+    />
+  ),
+);
+AddRow.displayName = "AddRow";

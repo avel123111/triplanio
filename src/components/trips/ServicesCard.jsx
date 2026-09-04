@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, ListRow, Tile } from '@/design/index';
+import { AddRow, Btn, ListRow, Tile } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
@@ -10,25 +10,6 @@ import { SERVICE_KINDS } from '@/lib/serviceKinds';
 // Colours come from the shared SERVICE_KINDS source so the widget matches the
 // service view/edit dialogs (each kind its own colour).
 const SERVICE_KIND_META = SERVICE_KINDS;
-
-// Пунктирный ряд «добавить сервис» — тот же примитив `<ListRow>`, что и заполненный
-// ряд (variant="add"), поэтому плейсхолдер встаёт РОВНО в высоту карточки наличия.
-// ★ Канон отсутствия у проекта ОДИН и живёт в `CityPanel.GhostAdd` — этот ряд
-// его копия; своей формы «нет ещё» здесь заводить нельзя.
-// `--a` объявляет акцент ховера по виду сервиса (рамка/подпись/плюс уезжают в тон).
-function AddRow({ icon, label, hint, color, onClick }) {
-  return (
-    <ListRow
-      variant="add"
-      lead={<Tile tone="quiet" icon={icon} />}
-      title={label}
-      sub={hint}
-      trail={<Icon name="plus" size={16} />}
-      onClick={onClick}
-      style={{ '--a': color }}
-    />
-  );
-}
 
 export default function ServicesCard({ services = [], onAddService, onOpenService }) {
   const { t } = useI18n();
@@ -68,7 +49,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
 
           {/* Not-yet-added eSIM / car rental — the dashed placeholder */}
           {topAddKinds.map((k) => (
-            <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} color={SERVICE_KIND_META[k].color} label={t(SERVICE_KIND_META[k].labelKey)} hint={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
+            <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} accent={SERVICE_KIND_META[k].color} title={t(SERVICE_KIND_META[k].labelKey)} sub={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
           ))}
 
           {/* "Ещё" — insurance + add-more for kinds already present */}
@@ -77,9 +58,9 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
               <AddRow
                 key={`more-${k}`}
                 icon={SERVICE_KIND_META[k].icon}
-                color={SERVICE_KIND_META[k].color}
-                label={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
-                hint={t(SERVICE_KIND_META[k].hintKey)}
+                accent={SERVICE_KIND_META[k].color}
+                title={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
+                sub={t(SERVICE_KIND_META[k].hintKey)}
                 onClick={() => onAddService?.(k)}
               />
             ))

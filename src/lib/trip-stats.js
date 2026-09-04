@@ -83,12 +83,9 @@ export function routeDistanceKm(orderedVisits = []) {
 /**
  * One-call bundle for the Overview stat row.
  *
- * ⚠️ Форма типа объявлена ЦЕЛИКОМ, а не построчными `@param visits`: без типа
- * объекта TS выводит его из ДЕСТРУКТУРИЗАЦИИ и запечатывает набор ключами, у
- * которых есть дефолт, — `trip` и `orderedVisits` из типа выпадали, и вызов
- * `tripStats({ trip })` из файла под `// @ts-check` краснел TS2353 на ровном
- * месте. Та же ловушка «запечатанного набора», что разобрана у примитивов
- * раскладки (`design/Layout.jsx`).
+ * ⚠️ Тип объявлен ЦЕЛЫМ объектом, а не построчными `@param`: иначе TS выводит
+ * его из деструктуризации и запечатывает набор — `tripStats({ trip })` из файла
+ * под `// @ts-check` краснеет TS2353 (ловушка `design/Layout.jsx`).
  *
  * @param {{ visits?: any[], transfers?: any[], trip?: any, orderedVisits?: any[] }} [p]
  *   visits — города (в любом порядке, счётчики от порядка не зависят);

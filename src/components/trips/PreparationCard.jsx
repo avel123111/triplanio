@@ -1,7 +1,7 @@
 // @ts-check
 import React, { useMemo, useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, IconBtn, ListRow, Meter, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
+import { AddRow, Btn, IconBtn, ListRow, Meter, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { buildPreparation } from '@/lib/trip-preparation';
 import { primaryIssues, validateTrip } from '@/lib/validation';
@@ -22,16 +22,14 @@ import { formatNaive, naiveDayKey } from '@/lib/naive-time';
 // проверки дат у виджета нет и быть не должно: это был бы второй источник
 // правды о том, что с бронью не так.
 //
-// ★★ ФОРМЫ НЕ СВОИ — КАНОН ИЗ `CityPanel`, ОДИН НА ПРОЕКТ. Отсутствие =
-// `<ListRow variant="add">` с ПОЛНОЙ плиткой `tone="quiet"` и плюсом (встаёт ровно
-// в высоту карточки наличия); наличие = `variant="raised"` с плиткой в тоне
-// события и шевроном. Вес работе даёт ПОРЯДОК (см. `Section`), а не размер плашки.
+// ★★ ФОРМЫ НЕ СВОИ. Отсутствие — примитив ДС `<AddRow>` (он же в панели города и
+// в сервисах); наличие — `<ListRow variant="raised">` с плиткой в тоне события и
+// шевроном. Вес работе даёт ПОРЯДОК (см. `Section`), а не размер плашки.
 
-// Тон ховера add-строки (канал `--a` у `.lrow--add`) — ОБЪЯВЛЕННЫМИ объектами, а
-// не литералами в JSX: значение приходит из роли события, классом его не
-// выразить, а литерал в разметке — ровно тот инлайн, который считает гард 2l.
-const ADD_TONE_STAY = { '--a': 'var(--ev-hotel-ink)' };
-const ADD_TONE_LEG = { '--a': 'var(--ev-transfer-ink)' };
+// Тон ховера add-строки: роль события, классом не выразить. Сам стиль несёт
+// примитив `<AddRow>` — здесь только значение.
+const ADD_TONE_STAY = 'var(--ev-hotel-ink)';
+const ADD_TONE_LEG = 'var(--ev-transfer-ink)';
 
 // Дата события — ВСЕГДА дневным ключом (`YYYY-MM-DD`). Наивное «дата+время»,
 // прогнанное через форматтер без зоны, читается как локальное и печатается в
@@ -161,18 +159,7 @@ export default function PreparationCard({
   const todoRow = (key, accent, icon, title, sub, add) => ({
     key,
     booked: false,
-    node: (
-      <ListRow
-        key={key}
-        variant="add"
-        lead={<Tile tone="quiet" icon={icon} />}
-        title={title}
-        sub={sub || undefined}
-        trail={<Icon name="plus" size={16} />}
-        style={accent}
-        onClick={add}
-      />
-    ),
+    node: <AddRow key={key} icon={icon} accent={accent} title={title} sub={sub} onClick={add} />,
   });
   const dotted = (...parts) => parts.filter(Boolean).join(' · ');
 
