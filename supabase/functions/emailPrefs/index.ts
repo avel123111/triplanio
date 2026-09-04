@@ -33,27 +33,31 @@
  * ЗАМЕРЕНО НА ЖИВОМ RESEND (04.09.2026) — и первый замер был ЛОЖНЫМ, что и
  * стоило прод-бага. Тогда записали один топик, увидели три соседних нетронутыми
  * и прочли это как «частичный массив не трогает остальные». На деле не изменился
- * НИ ОДИН, включая посланный: `PATCH /contacts/{id}/topics` в этом аккаунте
- * отвечает 2xx и не пишет ничего. Наблюдение подтверждало вывод, потому что
- * ноль изменений выглядит как «изменилось ровно посланное», если посланное
- * совпадало с текущим. ОТСЮДА `writeTopics`: чужому «ок» без сверки не верим.
+ * НИ ОДИН, включая посланный. Ноль изменений выглядит как «изменилось ровно
+ * посланное», если посланное совпадало с текущим, — наблюдение подтверждало
+ * вывод, будучи с ним не связано.
  *
- * Перемер (то же число, вечер), 6 фактов:
- *   • no-op воспроизводится нашей функцией, официальным MCP Resend по id и по
- *     email, на массивах из 1/2/5 топиков, на двух разных контактах и в ОБЕ
- *     стороны (`opt_out` и `opt_in`). Форма тела совпадает с curl из доки.
- *   • чтение при этом ЧЕСТНОЕ: `/contacts/{id}/topics` отдаёт всегда
- *     `default_subscription` самого топика — записи контакта просто нет.
- *   • `PATCH /contacts/{id}` (`unsubscribed`) тем же ключом ПИШЕТ — то есть
- *     ключ и права ни при чём;
- *   • …но отправку `/emails` этот флаг НЕ гейтит: письмо контакту с
- *     `unsubscribed: true` доставлено. Дока не врала — флаг про broadcasts.
- *   • гейт `topic_id` при отправке РАБОТАЕТ: письмо под топиком с
- *     `default_subscription: opt_out` ушло в `failed`. Механизм топиков жив,
- *     мёртва только запись подписки контакта.
+ * ЧТО ИЗВЕСТНО ТОЧНО (перемер, тот же день):
+ *   • `PATCH /contacts/{id}/topics` НАШИМ ключом отвечает 2xx и не применяет
+ *     ничего — ни `opt_out`, ни `opt_in`, на любом числе топиков и на разных
+ *     контактах. Форма тела совпадает с curl из доки.
+ *   • ТОТ ЖЕ вызов сторонним клиентом (OAuth-грант того же аккаунта) применяется
+ *     МГНОВЕННО, и наше чтение видит результат тут же. Значит ни форма тела, ни
+ *     эндпоинт, ни кэш чтения ни при чём — расходятся УЧЁТНЫЕ ДАННЫЕ.
+ *   • `PATCH /contacts/{id}` (`unsubscribed`) нашим же ключом ПИШЕТ. То есть это
+ *     не «ключ только на чтение», а разница по КОНКРЕТНОЙ ручке.
+ *   • `POST /contacts` с полем `topics` подписки пишет — при СОЗДАНИИ контакта.
+ *   • гейт отправки по топику работает: письмо под топиком с
+ *     `default_subscription: opt_out` уходит в `failed`.
  *
- * Следствие для продукта: пока Resend не починит запись, отписка не срабатывает
- * НИ по топикам, ни глобально. Наше дело — не врать об этом (см. `writeTopics`).
+ * Рабочая версия (НЕ доказана): ключ выпущен до появления Topics и на эту ручку
+ * права не несёт, а Resend вместо 403 отвечает 200 — тогда лечится выпуском
+ * нового ключа. Доказать её здесь нечем: причина видна только в ТЕЛЕ ответа,
+ * которое мы прежде выбрасывали. Теперь оно едет в Sentry (`ResendError.body`),
+ * поэтому следующее срабатывание `writeTopics` назовёт причину само.
+ *
+ * Следствие для продукта: пока запись не проходит, отписка по топикам не
+ * срабатывает. Наше дело — не врать об этом (см. `writeTopics`).
  *
  * ⚠️ Неизвестный topic id Resend отбивает `404 Topic not found` — то есть ВЕСЬ
  * PATCH падает, а не только эта строка, и у нас это 500. Практически ловится
@@ -78,13 +82,30 @@ type TopicRow = { id: string; name?: string; description?: string; subscription?
 
 /**
  * Отказ ЧУЖОГО сервиса, отличимый от нашей ошибки. Несёт путь и статус, чтобы
- * событие в Sentry можно было сгруппировать по ним, а не по общему стеку.
+ * событие в Sentry можно было сгруппировать по ним, а не по общему стеку, — и
+ * ТЕЛО ответа, потому что без него отказ Resend неотличим от отказа Resend.
+ *
+ * Тело здесь не роскошь: `PATCH /contacts/{id}/topics` тем же ключом отвечает
+ * 2xx и не применяет ничего, тогда как сторонний клиент на тех же данных пишет
+ * штатно. Причина видна только в теле, а мы его выбрасывали — и разбор упёрся
+ * в стену, на которой снаружи не написано НИЧЕГО. Наружу оно по-прежнему не
+ * уходит: только в Sentry, обрезанное.
  */
 class ResendError extends Error {
-  constructor(readonly method: string, readonly path: string, readonly status: number) {
+  constructor(
+    readonly method: string,
+    readonly path: string,
+    readonly status: number,
+    readonly body?: string,
+  ) {
     super(`resend ${method} ${path} → ${status}`);
     this.name = 'ResendError';
   }
+}
+
+/** Тело ответа для диагностики: текстом и коротко — в Sentry, не пользователю. */
+function peek(text: string): string {
+  return text.slice(0, 500);
 }
 
 /**
@@ -102,8 +123,15 @@ async function resend<T = unknown>(path: string, init: RequestInit = {}, allow40
     },
   });
   if (res.status === 404 && allow404) return null;
-  if (!res.ok) throw new ResendError(init.method ?? 'GET', path, res.status);
-  return await res.json().catch(() => null) as T | null;
+  // Тело читается ОДИН раз и текстом: `Response` — поток, второй `json()` достал
+  // бы уже вычерпанный (та же грабля, что на фронте с `parseEdgeError`).
+  const text = await res.text().catch(() => '');
+  if (!res.ok) throw new ResendError(init.method ?? 'GET', path, res.status, peek(text));
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -228,12 +256,17 @@ async function readTopics(id: string): Promise<TopicRow[]> {
  */
 async function writeTopics(id: string, want: Array<{ id: string; subscription: string }>): Promise<void> {
   if (!want.length) return;
-  await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(want) });
+  const answered = await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(want) });
 
   const have = new Map<string, string | undefined>();
   for (const row of await readTopics(id)) have.set(row.id, row.subscription);
   if (want.some((w) => have.get(w.id) !== w.subscription)) {
-    throw new ResendError('PATCH', '/contacts/{id}/topics [ответил ок, не применил]', 200);
+    throw new ResendError(
+      'PATCH',
+      '/contacts/{id}/topics [ответил ок, не применил]',
+      200,
+      peek(JSON.stringify(answered)),
+    );
   }
 }
 
@@ -286,8 +319,13 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
     return await handle(req, corsHeaders);
   } catch (e) {
     if (!(e instanceof ResendError)) throw e;
-    await captureEdgeError(e, 'emailPrefs', { resend_method: e.method, resend_path: e.path, resend_status: e.status },
-      undefined, ['emailPrefs', 'resend', String(e.status)]);
+    await captureEdgeError(
+      e,
+      'emailPrefs',
+      { resend_method: e.method, resend_path: e.path, resend_status: e.status, resend_body: e.body },
+      undefined,
+      ['emailPrefs', 'resend', String(e.status)],
+    );
     return jsonError(502, 'Email service unavailable', 'INTERNAL', { ...corsHeaders, 'x-sentry-skip': '1' });
   }
 }));
