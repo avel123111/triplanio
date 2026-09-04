@@ -1,30 +1,45 @@
+// @ts-check
 import React from 'react';
-import { Icon } from '@/design/icons';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { tripStats } from '@/lib/trip-stats';
-import { StatBar } from '@/components/stats/widgets';
 
-// Five at-a-glance trip stats rendered as the shared .statbar polosa — the same
-// primitive as the /trips home bar (TRIP-278); the surface skin comes from the
-// canonical role group. Metrics: cities, countries, transfers, route distance
-// (great-circle approximation) and duration. `orderedVisits` (trip order, for the
-// distance sum) is optional — falls back to `visits` inside tripStats.
+// Числа маршрута — ТИХОЙ СТРОКОЙ в подвале кадра поездки.
+//
+// ★ БЫЛА ПОЛОСА ИЗ ПЯТИ ПЛИТОК с цветными квадратами-иконками, 80 px высотой,
+// вторая по громкости вещь на экране после карты. При этом сообщает она самое
+// незначительное: сколько городов и сколько дней. Громкость элемента обязана
+// соответствовать важности того, что он говорит, — здесь было ровно наоборот.
+//
+// ★ Общий примитив `<StatBar>` тут больше не при чём: он остаётся полосой
+// плиток там, где плитки уместны (главная, статистика). Обзору нужна не полоса,
+// а подпись под кадром, и это РАЗНЫЕ объекты, а не два вида одного.
+/** @param {{ visits?: any[], transfers?: any[], trip?: any, orderedVisits?: any[] }} p */
 export default function TripStatRow({ visits = [], transfers = [], trip, orderedVisits }) {
-  const { t, fmtDistance } = useI18nFormat();
+  const { fmtDistance, plural } = useI18nFormat();
   const s = tripStats({ visits, transfers, trip, orderedVisits });
   const dist = fmtDistance(s.distanceKm);
 
-  // DOM order = the wrapped (2-column) reading order, so the narrow layout needs
-  // no re-ordering and the divider rules stay identical to the /trips bar. On a
-  // wide bar CSS pulls `duration` behind `distance` to restore the mockup's
-  // desktop order: cities · countries · transfers · km · days.
-  const items = [
-    { key: 'cities', tone: 'city', value: s.cities, label: t('overview.stat_cities'), icon: <Icon name="buildings" /> },
-    { key: 'countries', value: s.countries, label: t('overview.stat_countries'), icon: <Icon name="globe" /> },
-    { key: 'transfers', tone: 'transfer', value: s.transfers, label: t('overview.stat_transfers'), icon: <Icon name="arrowSwap" /> },
-    { key: 'duration', tone: 'duration', value: s.days, label: t('overview.unit_days'), icon: <Icon name="calendar" /> },
-    { key: 'distance', tone: 'distance', value: dist.value, label: dist.unit, icon: <Icon name="route" /> },
-  ];
+  // Формы множественного числа берутся у СУЩЕСТВУЮЩИХ ключей; свои заведены
+  // только там, где готовой формы не было (переезды). Ключи `trip.cities_count`,
+  // `tse.day` и `overview.n_transfers` — ГОЛЫЕ существительные (число подставляет
+  // вызыватель), `stats.sum_countries` число уже несёт: формы разные, поэтому
+  // строки собираются явно, а не одним циклом, который бы это молча перепутал.
+  const parts = [
+    `${s.cities} ${plural(s.cities, 'trip.cities_count')}`,
+    plural(s.countries, 'stats.sum_countries', { count: s.countries }),
+    `${s.transfers} ${plural(s.transfers, 'overview.n_transfers')}`,
+    dist.value ? `${dist.value} ${dist.unit}` : '',
+    `${s.days} ${plural(s.days, 'tse.day')}`,
+  ].filter(Boolean);
 
-  return <StatBar items={items} />;
+  return (
+    <div className="tframe__nums t-meta muted">
+      {parts.map((x, i) => (
+        <React.Fragment key={x + i}>
+          {i > 0 && <span aria-hidden="true">·</span>}
+          <span>{x}</span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
 }

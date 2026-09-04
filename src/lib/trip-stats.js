@@ -82,10 +82,18 @@ export function routeDistanceKm(orderedVisits = []) {
 
 /**
  * One-call bundle for the Overview stat row.
- * @param visits  city visits (any order — counts are order-independent)
- * @param transfers  transfer rows
- * @param trip  trip record (for dates)
- * @param orderedVisits  visits in trip order, for the distance sum
+ *
+ * ⚠️ Форма типа объявлена ЦЕЛИКОМ, а не построчными `@param visits`: без типа
+ * объекта TS выводит его из ДЕСТРУКТУРИЗАЦИИ и запечатывает набор ключами, у
+ * которых есть дефолт, — `trip` и `orderedVisits` из типа выпадали, и вызов
+ * `tripStats({ trip })` из файла под `// @ts-check` краснел TS2353 на ровном
+ * месте. Та же ловушка «запечатанного набора», что разобрана у примитивов
+ * раскладки (`design/Layout.jsx`).
+ *
+ * @param {{ visits?: any[], transfers?: any[], trip?: any, orderedVisits?: any[] }} [p]
+ *   visits — города (в любом порядке, счётчики от порядка не зависят);
+ *   transfers — переезды; trip — запись трипа (даты);
+ *   orderedVisits — города В ПОРЯДКЕ МАРШРУТА, для суммы расстояния.
  */
 export function tripStats({ visits = [], transfers = [], trip, orderedVisits } = {}) {
   const { days, nights } = tripDuration(trip, visits);

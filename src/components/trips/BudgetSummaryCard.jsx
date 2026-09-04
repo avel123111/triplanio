@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Card, IconBtn, Skeleton } from '@/design/index';
+import { IconBtn, Meter, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
@@ -55,10 +55,9 @@ export default function BudgetSummaryCard({
   const openBudget = () => (budgetEnabled ? onOpen?.() : onLocked?.());
 
   return (
-    <Card radius="lg" pad="none" className="ov-wdg">
-      <div className="wdg-h">
-        <span className="wi"><Icon name="wallet" size={17} /></span>
-        <h4>{t('trip.sidebar_budget')}</h4>
+    <section className="ovsec">
+      <div className="ovsec__h">
+        <h3 className="t-heading">{t('trip.sidebar_budget')}</h3>
         {canManage && (
           <IconBtn
             icon="chev"
@@ -71,7 +70,7 @@ export default function BudgetSummaryCard({
         )}
       </div>
 
-      <div className="wdg-b">
+      <div>
         {isLoading ? (
           <>
             <Skeleton w="55%" h={26} r="var(--r-sm)" />
@@ -93,15 +92,11 @@ export default function BudgetSummaryCard({
 
             {catBreakdown.length > 0 ? (
               <>
-                <div className="bud-bar" role="presentation">
-                  {catBreakdown.map((c) => (
-                    <i
-                      key={c.id}
-                      title={c.name}
-                      style={{ flexGrow: c.spent, minWidth: 4, background: c.color }}
-                    />
-                  ))}
-                </div>
+                <Meter
+                  segments={catBreakdown.map((c) => ({
+                    key: c.id, value: c.spent, color: c.color, title: c.name,
+                  }))}
+                />
                 <div className="bud-legs">
                   {catBreakdown.map((c) => (
                     <div className="bud-leg" key={c.id}>
@@ -120,6 +115,6 @@ export default function BudgetSummaryCard({
           <div className="muted ov-empty-line">{t('trip.budget_none')}</div>
         )}
       </div>
-    </Card>
+    </section>
   );
 }

@@ -34,7 +34,7 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover, CoverPicker,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Meter, Cover, CoverPicker,
   BookingWarning, TimelineEmptyDay,
   CityBar, EventChip,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
@@ -70,7 +70,7 @@ const TX = {
     scale: 'Шкала отступов', type: 'Типографика', tokens: 'Токены :root',
   },
   titles: {
-    'pagehead': 'Шапка экрана', 'stat': 'Плитка-показатель', 'list-row': 'Строка списка', 'donut': 'Диаграмма-кольцо', 'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
+    'pagehead': 'Шапка экрана', 'stat': 'Плитка-показатель', 'list-row': 'Строка списка', 'donut': 'Диаграмма-кольцо', 'meter': 'Полоса-доля', 'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
     'seg': 'Сегмент-контрол', 'stepper': 'Степпер', 'swatch': 'Свотч',
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля', 'autocomplete': 'Поисковый пикер',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
@@ -549,6 +549,22 @@ const RECIPES = {
   ],
   donut: () => [
     { items: [it('segments + center', <Donut total={100} center="₽724,9т" label={TX.donutTotal} segments={[{ id: 'a', color: 'var(--brand)', value: 55 }, { id: 'b', color: 'var(--ev-transfer)', value: 25 }, { id: 'c', color: 'var(--muted-2)', value: 20 }]} />, true)] },
+  ],
+  meter: () => [
+    { items: [it('segments', <Meter segments={[{ key: 'a', value: 55, color: 'var(--brand)' }, { key: 'b', value: 25, color: 'var(--ev-transfer)' }, { key: 'c', value: 20, color: 'var(--muted-2)' }]} />, true)] },
+    { label: 'доля: заполненная часть + прозрачный остаток (дорожка видна насквозь)', items: [it('done / rest', <Meter segments={[{ key: 'done', value: 4, color: 'var(--success)' }, { key: 'rest', value: 3, color: 'transparent' }]} />, true)] },
+    // Вариант показан НА ТОЙ ПОВЕРХНОСТИ, ради которой существует, — иначе
+    // белая дорожка на белой карточке витрины не видна вовсе. Своих имён для
+    // подложки не заводим: берём настоящий кадр состояния поездки.
+    {
+      label: 'invert — полоса на тёмной поверхности (обложка трипа): своя дорожка и свои отступы',
+      items: [it('className="meter--invert"', (
+        <div className="tframe__ph">
+          <Cover fill />
+          <div className="tframe__open"><Meter className="meter--invert" segments={[{ key: 'done', value: 4, color: '#fff' }, { key: 'rest', value: 3, color: 'transparent' }]} /></div>
+        </div>
+      ), true)],
+    },
   ],
   'list-row': () => [
     { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={v === 'add' ? <Tile tone="quiet" icon="plus" /> : <Tile size="xl" icon="bed" />} title={v === 'add' ? TX.chipAdd : TX.rowTitle} sub={TX.rowSub} trail={v === 'add' ? <Icon name="plus" size={16} /> : <span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' || v === 'add' ? () => {} : undefined} />, true)) },

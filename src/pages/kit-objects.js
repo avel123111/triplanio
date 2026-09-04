@@ -60,6 +60,9 @@ export const KIT_OBJECTS = [
   { id: 'stat', family: 'stat', group: 'components', prefix: 'stat', css: true, interactive: true },
   { id: 'list-row', family: 'lrow', group: 'components', prefix: 'lrow', maps: ['LISTROW_VARIANTS'], extras: ['clickable', 'on', 'muted'], interactive: true },
   { id: 'donut', family: 'donut', group: 'components', css: false },
+  // Полоса-доля. Источник вариантов — CSS (`.meter--invert`, полоса на тёмной
+  // поверхности): карты вариантов у примитива нет, ось одна и булева.
+  { id: 'meter', family: 'meter', group: 'components', prefix: 'meter', css: true },
   { id: 'btn', family: 'btn', group: 'components', prefix: 'btn', maps: ['BTN_VARIANTS'], extras: ['sm', 'brand'], interactive: true },
   { id: 'icon-btn', family: 'icon', group: 'components', prefix: 'icon-btn', maps: ['ICON_BTN_TONES', 'ICON_BTN_SIZES'], extras: ['round'], interactive: true },
   { id: 'chip', family: 'fpill', group: 'components', prefix: 'fpill', maps: ['CHIP_VARIANTS'], extras: ['square', 'sm', 'avatars', 'dismiss'], interactive: true },

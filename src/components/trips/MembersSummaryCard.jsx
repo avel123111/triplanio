@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Person, Badge, Btn, Card, IconBtn, RoleBadge, Skeleton } from '@/design/index';
+import { Person, Badge, Btn, IconBtn, RoleBadge, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
@@ -53,10 +53,9 @@ export default function MembersSummaryCard({
   }, [members, trip?.created_by, user?.id, user?.full_name]);
 
   return (
-    <Card radius="lg" pad="none" className="ov-wdg">
-      <div className="wdg-h">
-        <span className="wi wi--activity"><Icon name="users" size={17} /></span>
-        <h4>{t('trip.who_goes')}</h4>
+    <section className="ovsec">
+      <div className="ovsec__h">
+        <h3 className="t-heading">{t('trip.who_goes')}</h3>
         {canManage && (
           <IconBtn
             icon="chev"
@@ -69,7 +68,7 @@ export default function MembersSummaryCard({
         )}
       </div>
 
-      <div className="wdg-b">
+      <div>
         {isLoading ? (
           <div className="col col--g4">
             {[0, 1, 2].map((i) => (
@@ -129,6 +128,6 @@ export default function MembersSummaryCard({
           </Btn>
         )}
       </div>
-    </Card>
+    </section>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, Card, ListRow, Tile } from '@/design/index';
+import { Btn, ListRow, Tile } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
@@ -11,14 +11,16 @@ import { SERVICE_KINDS } from '@/lib/serviceKinds';
 // service view/edit dialogs (each kind its own colour).
 const SERVICE_KIND_META = SERVICE_KINDS;
 
-// Пунктирный ряд «добавить сервис» — тот же примитив `<ListRow>`, что и заполненный
-// ряд (variant="add"), поэтому плейсхолдер встаёт РОВНО в высоту карточки наличия.
+// Ряд «добавить сервис» — тихая компактная строка, ТОЙ ЖЕ формы, что и
+// незабронированное в «Подготовке»: одно и то же по смыслу («этого ещё нет»)
+// обязано выглядеть одинаково на всём экране. Прежний пунктирный бокс совпадал
+// по высоте с карточкой наличия — и ровно поэтому «есть» и «нет» не отличались.
 // `--a` объявляет акцент ховера по виду сервиса (рамка/подпись/плюс уезжают в тон).
 function AddRow({ icon, label, hint, color, onClick }) {
   return (
     <ListRow
-      variant="add"
-      lead={<Tile tone="quiet" icon={icon} />}
+      variant="compact"
+      lead={<Tile tone="quiet" size="sm" icon={icon} />}
       title={label}
       sub={hint}
       trail={<Icon name="plus" size={16} />}
@@ -42,12 +44,11 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
   moreAddKinds.push('insurance');
 
   return (
-    <Card radius="lg" pad="none" className="ov-wdg">
-      <div className="wdg-h">
-        <span className="wi"><Icon name="folder-bookmark" size={17} /></span>
-        <h4>{t('trip.sidebar_services')}</h4>
+    <section className="ovsec">
+      <div className="ovsec__h">
+        <h3 className="t-heading">{t('trip.sidebar_services')}</h3>
       </div>
-      <div className="wdg-b">
+      <div>
         <div className="col col--g4">
           {/* Booked services — канон <ListRow variant="raised"> */}
           {services.map((s) => {
@@ -89,6 +90,6 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
           )}
         </div>
       </div>
-    </Card>
+    </section>
   );
 }
