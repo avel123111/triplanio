@@ -30,14 +30,28 @@
  * ходит с общих egress-адресов, и на всплеске отписок мы заблокировали бы ровно
  * то, что обязаны пропускать всегда.
  *
- * ЗАМЕРЕНО НА ЖИВОМ RESEND (04.09.2026), два факта, на которых стоит эта форма:
- *   • ЧАСТИЧНЫЙ массив топиков не трогает остальные — послали один топик, три
- *     соседних остались как были. Это и позволяет слать ТОЛЬКО тронутое и не
- *     затирать выбор, сделанный с другого устройства.
- *   • Глобальный флаг и топики ОРТОГОНАЛЬНЫ: `unsubscribed: true` не меняет ни
- *     одной подписки. Отсюда два следствия — чтение это два вызова (экран,
- *     показывающий одни топики, о «не писать вовсе» не узнал бы), а «не писать
- *     вовсе» обязано выставлять ОБА (см. `stopEverything`).
+ * ★ ЧТЕНИЕ RESEND ОТСТАЁТ ОТ ЗАПИСИ НА 2–4 СЕКУНДЫ. Замерено (04.09.2026):
+ * `PATCH /contacts/{id}/topics` применяется, но `GET` через 1.3 с отдаёт ещё
+ * СТАРОЕ значение, а через 3.9 с — новое. Пара «записал → сразу прочитал»
+ * поэтому возвращает предыдущее состояние, и это не отказ, а реплика.
+ *
+ * Цена ошибки была в целой фиче: экран сохранял выбор, перечитывал его тут же,
+ * получал вчерашний ответ и рисовал переключатель обратно — «сохранил, зашёл,
+ * а он включён». Разбор дважды свернул не туда, потому что лаг ИМИТИРУЕТ
+ * молчаливый отказ: два подряд замера «послал X — вижу не X» читаются как
+ * «запись не работает», хотя запись работала всегда.
+ *
+ * ОТСЮДА ПРАВИЛО: сразу после записи НЕ ПЕРЕЧИТЫВАТЬ — ни здесь, ни на экране
+ * (`src/pages/EmailPreferences.jsx`). Сверка «применилось ли» этим же способом
+ * невозможна по построению: она читала бы ровно ту реплику, которая отстаёт, и
+ * заворачивала бы КАЖДОЕ успешное сохранение как отказ.
+ *
+ * Что при этом проверено и работает: PATCH уходит и валидируется (несуществующий
+ * topic id честно отбивается 404), права ключа в порядке, гейт отправки по топику
+ * работает (письмо под топиком с `default_subscription: opt_out` уходит в
+ * `failed`). Единственный не гейтящий `/emails` рычаг — глобальный `unsubscribed`:
+ * письмо контакту с `unsubscribed: true` доставлено, дока не врала (он про
+ * broadcasts). Поэтому `stopEverything` выключает ещё и все топики.
  *
  * ⚠️ Неизвестный topic id Resend отбивает `404 Topic not found` — то есть ВЕСЬ
  * PATCH падает, а не только эта строка, и у нас это 500. Практически ловится
@@ -62,13 +76,30 @@ type TopicRow = { id: string; name?: string; description?: string; subscription?
 
 /**
  * Отказ ЧУЖОГО сервиса, отличимый от нашей ошибки. Несёт путь и статус, чтобы
- * событие в Sentry можно было сгруппировать по ним, а не по общему стеку.
+ * событие в Sentry можно было сгруппировать по ним, а не по общему стеку, — и
+ * ТЕЛО ответа, потому что без него отказ Resend неотличим от отказа Resend.
+ *
+ * Тело здесь не роскошь: `PATCH /contacts/{id}/topics` тем же ключом отвечает
+ * 2xx и не применяет ничего, тогда как сторонний клиент на тех же данных пишет
+ * штатно. Причина видна только в теле, а мы его выбрасывали — и разбор упёрся
+ * в стену, на которой снаружи не написано НИЧЕГО. Наружу оно по-прежнему не
+ * уходит: только в Sentry, обрезанное.
  */
 class ResendError extends Error {
-  constructor(readonly method: string, readonly path: string, readonly status: number) {
+  constructor(
+    readonly method: string,
+    readonly path: string,
+    readonly status: number,
+    readonly body?: string,
+  ) {
     super(`resend ${method} ${path} → ${status}`);
     this.name = 'ResendError';
   }
+}
+
+/** Тело ответа для диагностики: текстом и коротко — в Sentry, не пользователю. */
+function peek(text: string): string {
+  return text.slice(0, 500);
 }
 
 /**
@@ -86,8 +117,15 @@ async function resend<T = unknown>(path: string, init: RequestInit = {}, allow40
     },
   });
   if (res.status === 404 && allow404) return null;
-  if (!res.ok) throw new ResendError(init.method ?? 'GET', path, res.status);
-  return await res.json().catch(() => null) as T | null;
+  // Тело читается ОДИН раз и текстом: `Response` — поток, второй `json()` достал
+  // бы уже вычерпанный (та же грабля, что на фронте с `parseEdgeError`).
+  const text = await res.text().catch(() => '');
+  if (!res.ok) throw new ResendError(init.method ?? 'GET', path, res.status, peek(text));
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -187,6 +225,21 @@ async function resolveContact(req: Request, url: URL, body: Record<string, unkno
   return await contactIdByEmail(email);
 }
 
+/** Подписки контакта, как их видит Resend. Один разбор конверта на все три места. */
+async function readTopics(id: string): Promise<TopicRow[]> {
+  return listOf<TopicRow>(await resend(`/contacts/${id}/topics`));
+}
+
+/**
+ * Запись подписок. БЕЗ перечитывания и сверки: чтение отстаёт (см. шапку), и
+ * сверка завернула бы каждое успешное сохранение как отказ. Отказ Resend здесь
+ * приходит статусом — его ловит `resend()`, вместе с телом для Sentry.
+ */
+async function writeTopics(id: string, want: Array<{ id: string; subscription: string }>): Promise<void> {
+  if (!want.length) return;
+  await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(want) });
+}
+
 /**
  * «НЕ ПИСАТЬ ВОВСЕ» — одно правило на оба входа: кнопку почтовика и переключатель
  * на странице. Ставит глобальный флаг И выключает ВСЕ топики.
@@ -209,12 +262,7 @@ async function resolveContact(req: Request, url: URL, body: Record<string, unkno
  * выключенные переключатели и включает те, что хочет.
  */
 async function stopEverything(id: string): Promise<void> {
-  const off = listOf<TopicRow>(await resend(`/contacts/${id}/topics`))
-    .filter((t) => t?.id)
-    .map((t) => ({ id: t.id, subscription: 'opt_out' }));
-  if (off.length) {
-    await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(off) });
-  }
+  await writeTopics(id, (await readTopics(id)).filter((t) => t?.id).map((t) => ({ id: t.id, subscription: 'opt_out' })));
   await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: true }) });
 }
 
@@ -241,8 +289,13 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
     return await handle(req, corsHeaders);
   } catch (e) {
     if (!(e instanceof ResendError)) throw e;
-    await captureEdgeError(e, 'emailPrefs', { resend_method: e.method, resend_path: e.path, resend_status: e.status },
-      undefined, ['emailPrefs', 'resend', String(e.status)]);
+    await captureEdgeError(
+      e,
+      'emailPrefs',
+      { resend_method: e.method, resend_path: e.path, resend_status: e.status, resend_body: e.body },
+      undefined,
+      ['emailPrefs', 'resend', String(e.status)],
+    );
     return jsonError(502, 'Email service unavailable', 'INTERNAL', { ...corsHeaders, 'x-sentry-skip': '1' });
   }
 }));
@@ -287,11 +340,11 @@ async function handle(req: Request, corsHeaders: HeadersInit): Promise<Response>
   if (body?.action === 'get') {
     const [contact, topics] = await Promise.all([
       resend<{ unsubscribed?: boolean }>(`/contacts/${id}`),
-      resend(`/contacts/${id}/topics`),
+      readTopics(id),
     ]);
     return Response.json({
       unsubscribed: !!contact?.unsubscribed,
-      topics: listOf<TopicRow>(topics).map((t) => ({
+      topics: topics.map((t) => ({
         id: t.id,
         name: t.name ?? '',
         subscription: t.subscription === 'opt_out' ? 'opt_out' : 'opt_in',
@@ -310,10 +363,7 @@ async function handle(req: Request, corsHeaders: HeadersInit): Promise<Response>
 
   // Иначе — пишем только присланное: страница шлёт ТРОНУТЫЕ топики, а флаг лишь
   // когда его сняли.
-  const topics = cleanTopics(body?.topics);
-  if (topics.length) {
-    await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(topics) });
-  }
+  await writeTopics(id, cleanTopics(body?.topics));
   if (body?.unsubscribed === false) {
     await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: false }) });
   }
