@@ -26,11 +26,6 @@ import { formatNaive, naiveDayKey } from '@/lib/naive-time';
 // в сервисах); наличие — `<ListRow variant="raised">` с плиткой в тоне события и
 // шевроном. Вес работе даёт ПОРЯДОК (см. `Section`), а не размер плашки.
 
-// Тон ховера add-строки: роль события, классом не выразить. Сам стиль несёт
-// примитив `<AddRow>` — здесь только значение.
-const ADD_TONE_STAY = 'var(--ev-hotel-ink)';
-const ADD_TONE_LEG = 'var(--ev-transfer-ink)';
-
 // Дата события — ВСЕГДА дневным ключом (`YYYY-MM-DD`). Наивное «дата+время»,
 // прогнанное через форматтер без зоны, читается как локальное и печатается в
 // UTC — то есть у половины планеты съезжает на сутки. Дневной ключ этой ветки
@@ -157,6 +152,9 @@ export default function PreparationCard({
       />
     ),
   });
+  // Тон ховера (`accent` → канал `--a`) — ТЕ ЖЕ значения, что в панели города
+  // (`CityPanel`): у одного и того же ряда «добавить бронь» не может быть двух
+  // разных акцентов на двух экранах.
   const todoRow = (key, accent, icon, title, sub, add) => ({
     key,
     booked: false,
@@ -171,7 +169,7 @@ export default function PreparationCard({
       () => onOpenEvent?.({ kind: 'hotel', id: h.id }),
     ))
     : [todoRow(
-      s.key, ADD_TONE_STAY, 'bed', s.visit.city_name,
+      s.key, 'var(--ev-hotel)', 'bed', s.visit.city_name,
       dotted(dayRange(fmtDate, s.visit.start_date, s.visit.end_date), `${s.nights} ${nightsWord(t, s.nights)}`),
       () => onAddHotel?.(s.visit),
     )]));
@@ -191,7 +189,7 @@ export default function PreparationCard({
           () => onOpenEvent?.({ kind: 'transfer', id: tr.id }),
         );
       })
-      : [todoRow(l.key, ADD_TONE_LEG, 'route', pair, day1(fmtDate, l.from.end_date), () => onAddTransfer?.(l.from, l.to))];
+      : [todoRow(l.key, 'var(--ev-transfer)', 'route', pair, day1(fmtDate, l.from.end_date), () => onAddTransfer?.(l.from, l.to))];
   });
 
   return (
@@ -258,14 +256,12 @@ function nightsWord(t, n) {
   return n < 5 ? t('view.nights_few') : t('view.nights_many');
 }
 
-// Скелетон повторяет геометрию виджета: шапка → две колонки строк, у каждой своя
-// подпись секции. Строки счёта и полосы готовности здесь нет ровно потому, что их
-// нет и в живом виджете: доля печатается один раз, в панели состояния поездки.
-// Один источник для обеих фаз загрузки, как у Обзора в целом.
+// Скелетон повторяет геометрию виджета один в один: шапка → строка счёта с
+// полосой готовности → две колонки рядов. Иначе содержимое прыгает в момент,
+// когда данные приехали.
 export function PreparationSkeleton() {
   return (
     <Card className="col col--g6 prep" aria-busy="true">
-      {/* Геометрия один в один с живым виджетом: иначе содержимое прыгает. */}
       <CardHeader title={<Skeleton w={180} h={20} r={6} />} action={<Skeleton w={32} h={32} r="var(--r-btn)" />} />
       <div className="prep-head">
         <Skeleton w={170} h={14} r={5} />
