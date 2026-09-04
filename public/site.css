@@ -730,11 +730,8 @@ section{position:relative}
    поэтому кадр покрывает вьюпорт вплоть до брейкпоинта десктопа 981px без пустот
    по бокам. 245vw держит высоту кадра (`--fw`/1.3829 ≈ 690px@390) той же, что была
    у прежнего кадра, поэтому вертикальная привязка и маска — те же, только выражены
-   через `--fw`. Маска: короткое проявление ровно у верхней кромки кадра, низ БЕЗ
-   ухода — дерево чёткое до конца (Ilya).
-   v2 (Pavel): кадр ОПУЩЕН (привязка 0.202·--fw ≈ 193px@390), чтобы телефон встал
-   ближе к переходу на следующий блок; кнопки при этом подняты под текст (см.
-   @media ≤980), а верх над кадром добран цветом неба (.hero-bg). */
+   через `--fw`. Маска: короткое проявление ровно у верхней кромки кадра (нет шва
+   под шапкой), низ БЕЗ ухода — дерево чёткое до конца (Ilya). */
 /* правило .hero-layer.la ключуется гардом 2p под ОБА класса — маркер на каждый */
 /* visual-diff-exempt: .la background-size — масштаб кадра заморожен через --fw=min(245vw,1000px): телефон не растёт, фото расширяется запасами (TRIP-510) */
 /* visual-diff-exempt: .la background-position — вертикальная привязка кадра через --fw (TRIP-510) */
@@ -744,8 +741,8 @@ section{position:relative}
 /* visual-diff-exempt: .hero-layer background-position — вертикальная привязка кадра через --fw (TRIP-510) */
 /* visual-diff-exempt: .hero-layer -webkit-mask — проявление у верхней кромки кадра через --fw, низ без ухода (TRIP-510) */
 /* visual-diff-exempt: .hero-layer mask — проявление у верхней кромки кадра через --fw, низ без ухода (TRIP-510) */
-.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:var(--fw) auto;background-position:50% calc(var(--fw) * 0.202);
-  -webkit-mask:linear-gradient(180deg,transparent calc(var(--fw) * 0.202),#000 calc(var(--fw) * 0.202 + 60px),#000 100%);mask:linear-gradient(180deg,transparent calc(var(--fw) * 0.202),#000 calc(var(--fw) * 0.202 + 60px),#000 100%)}
+.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:var(--fw) auto;background-position:50% calc(var(--fw) * 0.0518);
+  -webkit-mask:linear-gradient(180deg,transparent calc(var(--fw) * 0.0518),#000 calc(var(--fw) * 0.0518 + 60px),#000 100%);mask:linear-gradient(180deg,transparent calc(var(--fw) * 0.0518),#000 calc(var(--fw) * 0.0518 + 60px),#000 100%)}
 
 @media (min-width:981px){
   .hero-layer.la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
@@ -852,15 +849,6 @@ section{position:relative}
     min-height:calc(var(--fw) * 0.7749);
     align-items:stretch;
   }
-  /* v2 (Pavel): кадр опущен, поэтому верх над ним добираем цветом неба самого
-     фото (#9eb6d4 — верхняя кромка кадра), чтобы шов «сплошное небо → фото» был
-     невидим. Блюр-подложку на мобиле выключаем: замороженный кадр всегда шире
-     вьюпорта (--fw ≥ вьюпорт), боковых полей нет — заполнять нечего, а над кадром
-     она перекрывала бы небо блюром телефона. */
-  /* visual-diff-exempt: .hero-bg {@media (max-width:980px)} background — заглушка цвета неба над опущенным кадром (v2 Pavel) (TRIP-510) */
-  .hero-bg{background:#9eb6d4}
-  /* visual-diff-exempt: .hero-fill {@media (max-width:980px)} display — блюр-подложка не нужна: кадр покрывает всю ширину, над кадром мешала бы небу (v2 Pavel) (TRIP-510) */
-  .hero-fill{display:none}
   /* сверху только заголовок; телефон с кадра — посередине;
      подпись и кнопка уходят вниз, под телефон */
   /* Верхний отступ — фиксированный px, а не 8.7vh: высота у Safari/Chrome разная,
@@ -886,13 +874,13 @@ section{position:relative}
   /* Концовка подписи — жирным и синим как лого (#2173C8, тот же синий, что
      вторая строка заголовка). Единственный <b> в мобильной подписи. */
   .hero-sub b{color:#2173C8;font-weight:700}
-  /* Две кнопки колонкой во всю мобильную зону (а не только <520px). v2 (Pavel):
-     кнопки ПОДНЯТЫ под текст (над телефоном) — фикс 14px под подписью, а кадр
-     опущен ниже (см. .hero-layer.la), поэтому телефон уходит к низу секции.
-     Зазор кнопок — gap:10px. */
+  /* Две кнопки колонкой во всю мобильную зону (а не только <520px); низ блока
+     прижат к нижней кромке телефона на кадре — плечо через --fw (0.5988·--fw),
+     поэтому оно замирает вместе с кадром и телефон не наезжает на кнопки при
+     расширении экрана. Зазор кнопок — gap:10px. */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} flex-direction — кнопки колонкой во всю мобильную зону под новый макет (TRIP-510) */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} gap — зазор между кнопками 10px (TRIP-510) */
-  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} margin-top — кнопки подняты под текст (фикс 14px), кадр опущен (v2 Pavel) (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} margin-top — блок кнопок прижат к низу телефона через --fw (замирает с кадром) (TRIP-510) */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} width — кнопки уменьшены на 10% (min 288px) (правило .hero-ctas .btn) (TRIP-510) */
   /* visual-diff-exempt: .btn {@media (max-width:980px)} width — кнопки героя уменьшены на 10% (min 288px) (правило .hero-ctas .btn) (TRIP-510) */
   /* visual-diff-exempt: .btn {@media (max-width:980px)} min-height — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
@@ -901,7 +889,7 @@ section{position:relative}
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} min-height — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} padding — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
   /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} font-size — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
-  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:10px;margin-top:14px}
+  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:10px;margin-top:calc(var(--fw) * 0.5988 - 233px)}
   /* Кнопки героя на 10% меньше (Ilya): ширина 320→288, высота ~50→45 (паддинг
      13→11, шрифт на шаг ниже --fs-body). */
   .hero-ctas .btn{width:min(288px,100%);min-height:40px;padding:11px 22px;font-size:var(--fs-body)}
