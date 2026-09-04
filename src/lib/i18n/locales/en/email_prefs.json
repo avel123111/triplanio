@@ -1,0 +1,18 @@
+{
+  "invalid_body": "The link looks incomplete. Open it from the latest email we sent you — that one always works.",
+  "invalid_title": "This link doesn't open",
+  "load_error": "Couldn't load your settings. Check your connection and try again.",
+  "marketing": "Deals and offers",
+  "none_sub": "You'll still get account emails: sign-in, password changes, trip invitations.",
+  "none_title": "Stop all emails",
+  "privacy": "Privacy policy",
+  "product_updates": "Triplanio news",
+  "retry": "Try again",
+  "save": "Save",
+  "save_error": "Couldn't save. Try again.",
+  "saved": "Saved",
+  "subtitle": "Choose what we write to you about. Changes take effect right away.",
+  "title": "Email settings",
+  "trip_reminders": "Trip reminders",
+  "trip_updates": "Trip changes"
+}

@@ -414,6 +414,10 @@ export const DOORS = {
   getPublicTrip:         'token',       // tripId + share_token, без аутентификации
   redeemTripInviteLink:  'token',       // залогинен + валидный invite-токен
   stripe_webhook:        'token',       // подпись Stripe в заголовке
+  // Контакт-id Resend из своего письма — он и есть секрет: id генерит Resend, в
+  // приложении он не появляется нигде, поэтому взять его можно только из письма,
+  // адресованного этому человеку. Та же дверь, что у getPublicTrip (TRIP-512).
+  emailPrefs:            'token',
 
   // ── n8n: Bearer N8N_SECRET, сервер-сервер ──
   aiGate:                'n8n',

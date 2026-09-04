@@ -79,11 +79,14 @@ export function isZonePage(pathname) {
 }
 
 /**
- * Не-страницы: статика, rewrite'ы наружу и ветки со своим превью. Их судьбу
- * решает платформа (`vercel.json`), а не мы.
+ * Не-страницы зоны и не экраны приложения: статика, rewrite'ы наружу и ветки,
+ * которые `App.jsx` маршрутизирует САМ, до гейта авторизации (`/join/`,
+ * `/public/trip/`, `/kit`, `/email-preferences`). Судьбу первых решает
+ * платформа (`vercel.json`), вторых — своя ветка в `App.jsx`; общее у них одно
+ * — по адресу что-то есть, и край не имеет права отдать на него 404.
  */
 const PASSTHROUGH_PREFIXES = ['/api/', '/ingest/', '/join/', '/public/trip/', '/assets/', '/kit/'];
-const PASSTHROUGH_EXACT = ['/kit', '/index.html'];
+const PASSTHROUGH_EXACT = ['/kit', '/index.html', '/email-preferences'];
 
 /**
  * Страницы нет, но есть постоянный редирект в `vercel.json`. Оборви её 404-м —

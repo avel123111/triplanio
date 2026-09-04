@@ -60,3 +60,11 @@ verify_jwt = false
 # (smoke-test TG disconnect first) — not an infra side-effect.
 [functions.telegramDisconnect]
 verify_jwt = false
+
+# Настройки почтовых рассылок. Адресуется контакт-id Resend, полученный из
+# собственного письма — иного способа его узнать нет (в приложении он не
+# появляется). Одноклик отписки почтовик шлёт БЕЗ авторизации (RFC 8058), и с
+# verify_jwt=true шлюз ответил бы ему 401: для почтовика это «отписка не
+# работает», то есть удар по репутации домена.
+[functions.emailPrefs]
+verify_jwt = false
