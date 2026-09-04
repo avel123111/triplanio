@@ -292,14 +292,6 @@ function Pain() {
             <span className="brow">{t('landing.pn.eyebrow')}</span>
             <h2>{t('landing.pn.h2')}</h2>
           </div>
-          {/* Подпись-разделитель ЖИВЁТ ВНЕ .pain-stage: сцену ужимают под высоту
-              экрана (transform:scale(--fit)), и подпись съёживалась/раздувалась
-              вместе с ней. Снаружи это обычная подпись фиксированного кегля —
-              как заголовок секции, тем же .rv-раскрытием. */}
-          <div className="pain-divider rv">
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M12 4v15m-6-6 6 6 6-6" /></svg>
-            <span dangerouslySetInnerHTML={{ __html: t('landing.pn.divider') }} />
-          </div>
           <div className="pain-stage" id="painStage">
             <div className="scrap-strip" aria-hidden="true">
               <div className="scrapv3 msg-row p1" style={{ '--i': 0 }}>{/* inline-style-exempt: scrub-driven stagger index (TRIP-460) */}
@@ -337,6 +329,10 @@ function Pain() {
                 <div className="sh-row"><div className="idx">2</div><div>{t('landing.pn.shHotel')}</div><div>480 €</div><div className="err">???</div></div>
                 <div className="sh-row"><div className="idx">3</div><div>{t('landing.pn.shTrain')}</div><div className="err">#REF!</div><div /></div>
               </div>
+            </div>
+            <div className="pain-divider rv">
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M12 4v15m-6-6 6 6 6-6" /></svg>
+              <span dangerouslySetInnerHTML={{ __html: t('landing.pn.divider') }} />
             </div>
             <div className="appwin device">
               <div className="aw-screen device-screen">
