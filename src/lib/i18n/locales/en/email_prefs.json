@@ -3,10 +3,14 @@
   "invalid_title": "This link doesn't open",
   "load_error": "Couldn't load your settings. Check your connection and try again.",
   "marketing": "Deals and offers",
+  "marketing_sub": "Pro discounts and partner offers.",
   "none_sub": "You'll still get account emails: sign-in, password changes, trip invitations.",
   "none_title": "Stop all emails",
+  "onboarding": "Getting started",
+  "onboarding_sub": "How to build your first trip and what Triplanio already does.",
   "privacy": "Privacy policy",
   "product_updates": "Triplanio news",
+  "product_updates_sub": "New features and notable changes in the service.",
   "retry": "Try again",
   "save": "Save",
   "save_error": "Couldn't save. Try again.",
@@ -14,5 +18,7 @@
   "subtitle": "Choose what we write to you about. Changes take effect right away.",
   "title": "Email settings",
   "trip_reminders": "Trip reminders",
-  "trip_updates": "Trip changes"
+  "trip_reminders_sub": "A day before a flight, check-in and other plan events.",
+  "trip_updates": "Trip changes",
+  "trip_updates_sub": "When a travel companion changes the route, bookings or budget."
 }

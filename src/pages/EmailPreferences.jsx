@@ -41,8 +41,10 @@ export default function EmailPreferences() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const load = useCallback(async () => {
-    setPhase('loading');
+  // `silent` — перечитать, не показывая заглушки: после сохранения экран уже
+  // нарисован, и подмена его скелетоном читалась бы как перезагрузка страницы.
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setPhase('loading');
     const { data, error, code } = await invokeFn('emailPrefs', { body: { c: contact, action: 'get' } });
     if (error || !data) {
       // «Ссылка битая» и «сеть отвалилась» — разные ответы человеку: во втором
@@ -81,13 +83,15 @@ export default function EmailPreferences() {
     const body = { c: contact, topics: changedTopics(initial, rows) };
     if (wasUnsub !== unsub) body.unsubscribed = unsub;
     const { error } = await invokeFn('emailPrefs', { body });
+    if (error) { setSaving(false); setPhase('save_error'); return; }
+    // ПЕРЕЧИТЫВАЕМ, а не считаем сохранённое новым состоянием. Сервер применяет
+    // СВОИ правила — «не писать вовсе» выключает заодно все топики — и экран,
+    // отзеркаливший лишь отправленное, показывал бы включённые переключатели у
+    // человека, которому уже ничего не шлётся. Зеркалить правила сервера на
+    // клиенте значит завести им второй дом.
+    await load(true);
     setSaving(false);
-    if (error) { setPhase('save_error'); return; }
-    // Новая база сравнения — иначе кнопка осталась бы активной на сохранённом.
-    setInitial(rows);
-    setWasUnsub(unsub);
     setSaved(true);
-    setPhase('ready');
   };
 
   // ОДНА оболочка на все состояния, а не три похожих `return`, и дело не в
@@ -141,10 +145,15 @@ export default function EmailPreferences() {
                   // Топик, которого нет в локали (завели новый и ещё не
                   // перевели), показывается под именем из ответа — см. `buildRows`.
                   const label = r.i18nKey ? t(r.i18nKey) : r.name;
+                  // Пояснение — только у переведённых топиков. `description` из
+                  // ответа Resend сюда НЕ идёт по той же причине, что и `name`:
+                  // это одна английская строка из дашборда. Пара «ключ +
+                  // ключ_sub» пинится `emailPrefs.test.js`.
                   return (
                     <ListRow
                       key={r.id}
                       title={label}
+                      sub={r.i18nKey ? t(`${r.i18nKey}_sub`) : null}
                       // Общий выключатель гасит частные: при нём письма не уходят
                       // независимо от топиков, и живой переключатель здесь врал бы.
                       trail={(
