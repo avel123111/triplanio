@@ -11,7 +11,7 @@ import { Skeleton } from '@/design/Skeleton';
 import { buildRows, changedTopics, hasChanges } from '@/lib/emailPrefs';
 
 /* =============================================================================
-   EmailPreferences — настройки почтовых рассылок (TRIP-512).
+   EmailPreferences — настройки почтовых рассылок (TRIP-513).
 
    Открывается ССЫЛКОЙ ИЗ ПИСЬМА и работает БЕЗ ВХОДА: человек читает почту с
    чужого устройства и пароля не помнит, а отписка обязана срабатывать всё
@@ -49,8 +49,10 @@ export default function EmailPreferences() {
       // случае помогает «Повторить», в первом не поможет никогда. `code` берём
       // у `invokeFn`: тело ответа читается РОВНО ОДИН РАЗ (Response), и свой
       // повторный разбор здесь получил бы уже вычерпанный поток, то есть
-      // молча null вместо кода.
-      setPhase(code === 'INVALID_LINK' ? 'invalid' : 'error');
+      // молча null вместо кода. `INVALID_INPUT` — единственный 400, который
+      // эта функция шлёт странице, поэтому он однозначен и нового кода в
+      // append-only реестр не требует.
+      setPhase(code === 'INVALID_INPUT' ? 'invalid' : 'error');
       return;
     }
     const built = buildRows(data.topics);
