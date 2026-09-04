@@ -73,7 +73,15 @@ export function routeLegs(visits = []) {
   for (let i = 1; i < ordered.length; i++) {
     const from = ordered[i - 1];
     const to = ordered[i];
-    if (cityIdentity(from) === cityIdentity(to)) continue;
+    // ★ НЕОПОЗНАННЫЙ ГОРОД НЕ РАВЕН НЕОПОЗНАННОМУ. `cityIdentity` отдаёт пустую
+    // строку, когда узел не несёт ни `geonameid`, ни английского имени, ни
+    // внешнего id. Сравнение «в лоб» делало ДВА таких узла одним городом, и
+    // стык между ними исчезал — а на маршруте, где не опознан НИ ОДИН узел,
+    // исчезали все стыки разом: половина виджета («Переезды») просто не
+    // рисовалась, без ошибки и без единого красного гарда. Совпадением
+    // считается только НЕПУСТАЯ равная идентичность.
+    const id = cityIdentity(from);
+    if (id && id === cityIdentity(to)) continue;
     legs.push({ from, to });
   }
   return legs;

@@ -1,5 +1,5 @@
 // @ts-check
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Btn, Card, Meter, Skeleton } from '@/design/index';
 import { Icon } from '@/design/icons';
 import MapView from '@/components/views/MapView';
@@ -27,6 +27,24 @@ import { DateTime } from 'luxon';
 // ★ ПАНЕЛЬ СОСТОЯНИЯ — КАНОН-ПОВЕРХНОСТЬ (`<Card raised>`), положенная поверх
 // карты, а не сшитая с ней встык. Поэтому у неё свои углы, своя тень и свой
 // фон: она читается как предмет НА карте, и никакого шва не возникает.
+//
+// ★ НАД КАРТОЙ ЛЕЖИТ РОВНО ОДИН ПРЕДМЕТ, И ОН НАВЕРХУ. Причин две, и обе
+// вынужденные:
+//   1. НИЗ КАДРА ПРИНАДЛЕЖИТ АТРИБУЦИИ. Логотип mapbox и копирайт стоят по
+//      нижним углам холста, показывать их обязывает лицензия, и снять их
+//      нельзя. Панель, прижатая к левому нижнему углу, ложилась ровно на
+//      логотип — это не «мелкое пересечение», это нарушение условий карты.
+//   2. Кнопка «Открыть» вторым плавающим предметом в правом верхнем углу
+//      разводила один смысл («вот эта поездка, вот что с ней делать») по двум
+//      разным местам кадра. Теперь она — действие ПАНЕЛИ, а кадр держит один
+//      объект вместо двух.
+//
+// ★ ПАНЕЛЬ ОБЪЯВЛЯЕТ СЕБЯ ЗАКРЫТОЙ ПЛОЩАДЬЮ (`view`), а не просто лежит сверху.
+// Иначе `fitToPoints` вписывает маршрут в ВЕСЬ кадр, и первые города честно
+// уезжают под панель. Величина берётся ИЗМЕРЕНИЕМ живой панели, а не вторым
+// экземпляром числа из CSS: у отступов панели есть контейнерный порог, и копия
+// числа здесь разъехалась бы с ним молча. Механика закрытой площади — общая с
+// `<MapShell>` (`lib/map/insets.js`), своей тут нет.
 
 /** @param {{ trip?: any, visits?: any[], hotels?: any[], transfers?: any[],
  *            active?: boolean, isLoading?: boolean, onOpenMap?: any }} p */
@@ -70,6 +88,49 @@ export default function TripFrame({
     [visits, hotels, transfers],
   );
 
+  // Закрытая панелью площадь кадра. Панель либо стоит колонкой слева (широкий
+  // кадр), либо растянута полосой по верху (узкий) — какой из двух случаев
+  // сейчас, решает ЗАМЕР, а не копия порога: панель шире двух третей кадра =
+  // полоса, значит закрыт ВЕРХ; иначе закрыт ЛЕВЫЙ край.
+  const frameRef = useRef(/** @type {any} */ (null));
+  const panelRef = useRef(/** @type {any} */ (null));
+  const [closed, setClosed] = useState(/** @type {any} */ (null));
+  const measure = useCallback(() => {
+    const f = frameRef.current; const p = panelRef.current;
+    if (!f || !p) return;
+    const fr = f.getBoundingClientRect(); const pr = p.getBoundingClientRect();
+    if (!fr.width || !pr.width) return;
+    const box = pr.width > fr.width * 0.66
+      ? { top: Math.round(pr.bottom - fr.top) }
+      : { left: Math.round(pr.right - fr.left) };
+    setClosed((cur) => (cur && cur.top === box.top && cur.left === box.left ? cur : box));
+  }, []);
+  useEffect(() => {
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    if (frameRef.current) ro.observe(frameRef.current);
+    if (panelRef.current) ro.observe(panelRef.current);
+    return () => ro.disconnect();
+  }, [measure]);
+  const view = useMemo(() => (closed ? { camera: closed, fit: closed } : null), [closed]);
+
+  // Проекция — от РАЗМАХА МАРШРУТА, а не от экрана. Плоская меркаторская карта
+  // на трёх городах по Италии читается лучше глобуса; она же на маршруте
+  // Италия→Россия→Япония превращается в карту мира с булавками по три пикселя
+  // и половиной кадра под океаном. Порог — по градусам охвата; линзы карты и
+  // редактора открываются на глобусе всегда (TRIP-337), обзор — только когда
+  // маршруту действительно тесно на плоскости.
+  const projection = useMemo(() => {
+    const pts = (visits || []).filter((v) => v?.latitude != null && v?.longitude != null);
+    if (pts.length < 2) return 'mercator';
+    const lngs = pts.map((v) => Number(v.longitude));
+    const lats = pts.map((v) => Number(v.latitude));
+    const dLng = Math.max(...lngs) - Math.min(...lngs);
+    const dLat = Math.max(...lats) - Math.min(...lats);
+    return dLng > 60 || dLat > 40 ? 'globe' : 'mercator';
+  }, [visits]);
+
   if (isLoading) return <TripFrameSkeleton />;
 
   const hasRoute = (visits || []).some((v) => v?.latitude && v?.longitude);
@@ -89,16 +150,18 @@ export default function TripFrame({
     sub = startKey ? fmtDate(startKey) : '';
   }
 
-  const { done, total, pct } = prep;
+  const { done, total } = prep;
   const complete = total > 0 && done === total;
 
   return (
     <>
-      <div className="tframe">
+      <div className="tframe" ref={frameRef}>
         {hasRoute ? (
           <MapView
             visits={visits}
             transfers={transfers}
+            view={view}
+            initialProjection={projection}
             colorScheme={isDark ? 'DARK' : 'LIGHT'}
             active={active}
             hoveredVisitId={hoveredId}
@@ -115,27 +178,28 @@ export default function TripFrame({
           </div>
         )}
 
-        <Card radius="lg" raised className="tframe__state">
-          <div className="t-title">{headline}</div>
-          {sub && <div className="t-support muted">{sub}</div>}
-          {total > 0 && (
-            <>
-              <div className="t-meta muted">{t('overview.prep_sub', { done, total })}</div>
-              <Meter
-                className="meter--flush"
-                ariaLabel={t('overview.prep_sub', { done, total })}
-                segments={[
-                  { key: 'done', value: done, color: complete ? 'var(--success)' : 'var(--brand)' },
-                  { key: 'rest', value: total - done, color: 'transparent' },
-                ]}
-              />
-            </>
-          )}
-        </Card>
-
-        <Btn variant="secondary" className="tframe__open" iconRight="chev" onClick={onOpenMap}>
-          {t('overview.open')}
-        </Btn>
+        <div className="tframe__state" ref={panelRef}>
+          <Card radius="lg" raised className="col col--g3">
+            <div className="t-title">{headline}</div>
+            {sub && <div className="t-support muted">{sub}</div>}
+            {total > 0 && (
+              <>
+                <div className="t-meta muted">{t('overview.prep_sub', { done, total })}</div>
+                <Meter
+                  className="meter--flush"
+                  ariaLabel={t('overview.prep_sub', { done, total })}
+                  segments={[
+                    { key: 'done', value: done, color: complete ? 'var(--success)' : 'var(--brand)' },
+                    { key: 'rest', value: total - done, color: 'transparent' },
+                  ]}
+                />
+              </>
+            )}
+            <Btn variant="secondary" block iconRight="chev" onClick={onOpenMap}>
+              {t('overview.open')}
+            </Btn>
+          </Card>
+        </div>
       </div>
 
       <TripStatRow visits={visits} transfers={transfers} trip={trip} />

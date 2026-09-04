@@ -553,15 +553,14 @@ const RECIPES = {
   meter: () => [
     { items: [it('segments', <Meter segments={[{ key: 'a', value: 55, color: 'var(--brand)' }, { key: 'b', value: 25, color: 'var(--ev-transfer)' }, { key: 'c', value: 20, color: 'var(--muted-2)' }]} />, true)] },
     { label: 'доля: заполненная часть + прозрачный остаток (дорожка видна насквозь)', items: [it('done / rest', <Meter segments={[{ key: 'done', value: 4, color: 'var(--success)' }, { key: 'rest', value: 3, color: 'transparent' }]} />, true)] },
-    // Вариант показан НА ТОЙ ПОВЕРХНОСТИ, ради которой существует, — иначе
-    // белая дорожка на белой карточке витрины не видна вовсе. Своих имён для
-    // подложки не заводим: берём настоящий кадр состояния поездки.
+    // Вариант виден только рядом с базой: сам по себе «полоса без отступов» на
+    // витрине неотличима от полосы с отступами.
     {
-      label: 'invert — полоса на тёмной поверхности (обложка трипа): своя дорожка и свои отступы',
-      items: [it('className="meter--invert"', (
-        <div className="tframe__ph">
-          <Cover fill />
-          <div className="tframe__open"><Meter className="meter--invert" segments={[{ key: 'done', value: 4, color: '#fff' }, { key: 'rest', value: 3, color: 'transparent' }]} /></div>
+      label: 'flush — без внешних отступов (ритм строк задаёт владелец: панель, карточка)',
+      items: [it('className="meter--flush"', (
+        <div className="col col--g3">
+          <Meter className="meter--flush" segments={[{ key: 'done', value: 4, color: 'var(--brand)' }, { key: 'rest', value: 3, color: 'transparent' }]} />
+          <Meter segments={[{ key: 'done', value: 4, color: 'var(--brand)' }, { key: 'rest', value: 3, color: 'transparent' }]} />
         </div>
       ), true)],
     },

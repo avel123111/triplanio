@@ -128,3 +128,19 @@ test('buildPreparation: пустой маршрут — не «готово», �
   assert.equal(p.total, 0);
   assert.equal(p.pct, 0);
 });
+
+test('★НЕОПОЗНАННЫЙ ГОРОД НЕ РАВЕН НЕОПОЗНАННОМУ: стыки не схлопываются в ноль', () => {
+  // Узлы без `geonameid`/`city_name_en`/`external_city_id`: `cityIdentity`
+  // отдаёт по пустой строке на каждый. Сравнение «в лоб» делало их ОДНИМ
+  // городом, и весь маршрут терял ВСЕ стыки разом — секция «Переезды» просто
+  // не рисовалась, молча и без ошибки.
+  const bare = (id, start, end) => ({ id, city_name: `Город ${id}`, kind: 'transit', start_date: start, end_date: end, position: id });
+  const visits = [bare('a', '2026-05-01', '2026-05-03'), bare('b', '2026-05-03', '2026-05-05'), bare('c', '2026-05-05', '2026-05-07')];
+  assert.equal(routeLegs(visits).length, 2);
+  // При этом РЕАЛЬНОЕ совпадение города (сплит стоянки) стыком по-прежнему не становится.
+  const same = [
+    { id: 'a', geonameid: 5, kind: 'transit', start_date: '2026-05-01', end_date: '2026-05-03', position: 1 },
+    { id: 'b', geonameid: 5, kind: 'transit', start_date: '2026-05-03', end_date: '2026-05-05', position: 2 },
+  ];
+  assert.equal(routeLegs(same).length, 0);
+});

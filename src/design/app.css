@@ -659,12 +659,10 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    visual-diff-move: .bud-bar i -> meter__seg */
 .meter { height: 11px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; display: flex; margin: 12px 0 14px; }
 .meter__seg { height: 100%; transition: flex-grow .3s var(--ease-out); }
-/* Полоса на тёмной поверхности (обложка трипа): своя дорожка и свои отступы —
-   ОТДЕЛЬНЫМ вариантом, а не переопределением базы из чужого блока. База —
-   единственное значение, которое полоса имела у `.bud-bar`, и менять его из
-   соседнего экрана значит менять облик бюджета молча (гард 2p это и поймал).
-   floor-exempt: classes +1 — `.meter--invert` (вариант полосы для тёмной поверхности). Апрув Pavel */
-.meter--invert { background: rgba(255, 255, 255, .28); margin: var(--sp-4) 0 0; }
+/* Варианта `.meter--invert` (полоса на тёмной обложке) больше нет: обложка из
+   героя ушла, полоса лежит на канон-карточке, и у варианта не осталось ни
+   одного вызывателя. Мёртвый вариант в ДС хуже отсутствующего — он выглядит
+   как предложенный выбор. */
 /* Полоса БЕЗ внешних отступов — когда ритм задаёт владелец (панель состояния над
    картой сама расставляет свои строки колонкой с общим зазором). Вариант, а не
    оверрайд `.meter` из чужого блока: база — единственное значение, которое
@@ -7008,13 +7006,13 @@ button.input[data-empty] { color: var(--muted-2); }
    между названием слева и действием справа. Колонка чтения — то, что чинит это
    раньше любой перекраски.
    floor-exempt: layout +1 — `.ovwrap` (колонка экрана). Апрув Pavel */
-.ovwrap { display: flex; flex-direction: column; gap: 26px; container-type: inline-size; max-width: 1160px; margin-inline: auto; }
+.ovwrap { display: flex; flex-direction: column; gap: var(--sp-8); container-type: inline-size; max-width: 1160px; margin-inline: auto; }
 /* Третья полоса — разделы в ряд. Три сводки занимали всю правую колонку по
    вертикали ради трёх чисел; в ряд они читаются одним взглядом и не растят
    экран. Ниже 980 ряд рассыпается в колонку.
    floor-exempt: classes +1 — `.ov-trio` (полоса разделов). Апрув Pavel
    floor-exempt: layout +1 — `.ov-trio` объявляет раскладку по существу (ряд из трёх). Апрув Pavel */
-.ov-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; }
+.ov-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-8); }
 /* Порог — по ширине САМОГО экрана обзора, не вьюпорта: один и тот же порог у
    кадра и у ряда разделов, поэтому экран меняет вид ОДИН раз, а не дважды. */
 @container (max-width: 720px) { .ov-trio { grid-template-columns: 1fr; } }
@@ -7085,7 +7083,11 @@ button.input[data-empty] { color: var(--muted-2); }
 /* ---- budget widget ---- */
 .bud-total { color: var(--ink); }
 /* `.bud-bar` УДАЛЁН — полоса переехала на канон-объект `.meter` (см. его блок выше). */
-.bud-legs { display: flex; flex-direction: column; gap: 1px; }
+/* Отступ легенды от итога объявляет САМА ЛЕГЕНДА, а не полоса над ней: полоса
+   на одной категории не рисуется (сравнивать нечего), и держать ритм её нижним
+   полем значило бы терять ритм ровно в этом случае.
+   visual-diff-exempt: .bud-legs margin-top — легенда получила свой отступ от итога: полоса-доля над ней теперь условна (одна категория — полосы нет) */
+.bud-legs { display: flex; flex-direction: column; gap: 1px; margin-top: var(--sp-3); }
 .bud-leg { display: flex; align-items: center; gap: 9px; padding: 6px; border-radius: var(--r-sm); transition: background .15s; }
 .bud-leg:hover { background: var(--surface-2); }
 .bud-leg .d { width: 10px; height: 10px; border-radius: 4px; flex: none; }
@@ -7122,9 +7124,9 @@ button.input[data-empty] { color: var(--muted-2); }
 .ovsec__h h3 { flex: 1; margin: 0; }
 /* Три сводки внизу разделяются волосяной линией, а не рамками: линия сообщает
    «это соседние разделы одного уровня», рамка — «это три разных предмета». */
-.ov-trio > .ovsec + .ovsec { border-left: 1px solid var(--line); padding-left: 26px; }
+.ov-trio > .ovsec + .ovsec { border-left: 1px solid var(--line); padding-left: var(--sp-8); }
 @container (max-width: 720px) {
-  .ov-trio > .ovsec + .ovsec { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 26px; }
+  .ov-trio > .ovsec + .ovsec { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: var(--sp-8); }
 }
 
 /* ---- preparation widget ---- */
@@ -7145,9 +7147,14 @@ button.input[data-empty] { color: var(--muted-2); }
    floor-exempt: namespaces +2 — две канон-семьи: `meter` (полоса-доля перестала быть приватным элементом бюджета и стала объектом системы) и `prep` (сам виджет). Семья `bud` при этом НЕ умерла — из неё ушёл один класс, остались `bud-total`/`bud-legs`/`bud-leg`, поэтому размена «-1 за +1» тут нет. Апрув Pavel
    floor-exempt: layout +1 — `.meter` и `.prep-cols` ОБЪЯВЛЯЮТ раскладку по существу (полоса — flex-дорожка сегментов, секции — grid): это их работа, а не крючок экрана, приехавший в примитив через `className`. Апрув Pavel */
 .prep { container-type: inline-size; }
-.prep-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
+/* ★ У КОЛОНКИ ЕСТЬ ПОТОЛОК ШИРИНЫ, И ЭТО НЕ ПРИДИРКА. Строка списка держит
+   значок, название и дату слева, а действие — справа. На 460px это ОДНА строка;
+   на 570 между ними образуется 200px пустоты, и глаз перестаёт связывать «Милан»
+   с плюсом напротив. Полосу при этом занимаем целиком: лишнее уходит в РАЗРЫВ
+   между колонками (`space-between`), а не в хвост справа. */
+.prep-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); justify-content: space-between; }
 @container (min-width: 640px) {
-  .prep-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .prep-cols { grid-template-columns: repeat(2, minmax(0, 460px)); }
 }
 
 /* ---- герой экрана трипа: карта + панель состояния ---- */
@@ -7159,7 +7166,7 @@ button.input[data-empty] { color: var(--muted-2); }
    ★ Скругление — на самой карте: карточки-обёртки у неё больше нет, лишний
    контур вокруг главного элемента экрана ничего не добавлял.
    prefix-exempt: tframe — канон-объект «герой экрана трипа», апрув Pavel
-   floor-exempt: classes +4 — `.tframe` (герой) · `.tframe__state` (панель состояния) · `.tframe__open` (вход в линзу) · `.tframe__mapempty` · `.tframe__nums` минус ушедшие `.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/`.ov-openbtn`. Апрув Pavel
+   floor-exempt: classes +3 — `.tframe` (герой) · `.tframe__state` (панель состояния) · `.tframe__mapempty` · `.tframe__nums` минус ушедшие `.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/`.ov-openbtn` и минус `.meter--invert`. Апрув Pavel
    floor-exempt: namespaces +1 — семья `tframe` вместо снесённой карточки превью карты. Апрув Pavel
    floor-exempt: layout +2 — `.tframe` и `.tframe__state` объявляют раскладку по существу (кадр и колонка панели). Апрув Pavel */
 .tframe {
@@ -7168,43 +7175,23 @@ button.input[data-empty] { color: var(--muted-2); }
   background: var(--surface-2); display: flex;
 }
 .tframe__mapempty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
-/* Панель состояния — предмет НА карте: свои углы, своя тень, свой фон. */
+/* Панель состояния — предмет НА карте: свои углы, своя тень, свой фон.
+   ★ ВЕРХ, А НЕ НИЗ. Нижние углы холста занимает атрибуция mapbox (логотип слева,
+   копирайт справа) — её показ обязателен по лицензии и снять её нельзя. Панель
+   у левого нижнего угла ложилась ровно на логотип. Поэтому низ кадра оставлен
+   карте, а панель, вместе с уехавшим в неё входом в линзу, стоит наверху одним
+   предметом. Раскладку строк объявляет сама карточка (`col col--g3`), у обёртки
+   осталось только МЕСТО — это её работа. */
 .tframe__state {
-  position: absolute; z-index: 2; left: 20px; bottom: 20px; width: 300px; max-width: calc(100% - 40px);
-  display: flex; flex-direction: column; gap: var(--sp-3);
+  position: absolute; z-index: 2; top: 20px; left: 20px; width: 300px; max-width: calc(100% - 40px);
 }
-.tframe__open { position: absolute; z-index: 2; top: 20px; right: 20px; }
 /* Числа маршрута — подпись под героем: тихая строка, а не полоса плиток
    (разбор в `TripStatRow`). */
 .tframe__nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3); }
 
 @container (max-width: 720px) {
-  .tframe { height: 340px; }
-  .tframe__state { left: 12px; right: 12px; bottom: 12px; width: auto; max-width: none; }
-  .tframe__open { top: 12px; right: 12px; }
-}
-
-/* ---- preparation widget ---- */
-/* Две секции («Проживание» / «Переезды») встают РЯДОМ, когда карточке хватает
-   ширины, и друг под другом, когда нет. Мерим не вьюпорт, а САМУ КАРТОЧКУ
-   (`container-type` объявляет `.prep`) — потому что ширина карточки на телефоне
-   и на среднем десктопе может совпадать: во вьюпорте 1100px обзор ещё
-   двухколоночный и левая колонка узкая, а во вьюпорте 800px он уже
-   одноколоночный и она ШИРЕ. Медиа-запрос на такой раскладке отвечает не на тот
-   вопрос и переворачивает вид ровно наоборот.
-   ★ Контейнер именно на КАРТОЧКЕ, а не на колонке обзора. У колонки он есть
-   (объявлен ради стат-бара), и запрос сработал бы — но только пока виджет живёт
-   в ЭТОЙ колонке. Перенос его в правую колонку (у неё контейнера нет) молча
-   выключил бы запрос целиком: правило без контейнера-предка просто не
-   применяется, ошибки нет, вид тихо становится одноколоночным навсегда.
-   prefix-exempt: prep — новый канон-объект «виджет подготовки», апрув Pavel (единственное своё имя виджета: остальное — ListRow/Tile/Meter/Row/Col)
-   floor-exempt: classes +3 — `.prep` (карточка = контейнер измерения), `.prep-cols` (две секции) и `.meter` (полоса-доля, собравшая `.bud-bar`); третьего своего имени у виджета нет — строки/значки/полоса взяты у ДС. Апрув Pavel (задача «виджет Подготовка»)
-   floor-exempt: namespaces +2 — две канон-семьи: `meter` (полоса-доля перестала быть приватным элементом бюджета и стала объектом системы) и `prep` (сам виджет). Семья `bud` при этом НЕ умерла — из неё ушёл один класс, остались `bud-total`/`bud-legs`/`bud-leg`, поэтому размена «-1 за +1» тут нет. Апрув Pavel
-   floor-exempt: layout +1 — `.meter` и `.prep-cols` ОБЪЯВЛЯЮТ раскладку по существу (полоса — flex-дорожка сегментов, секции — grid): это их работа, а не крючок экрана, приехавший в примитив через `className`. Апрув Pavel */
-.prep { container-type: inline-size; }
-.prep-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
-@container (min-width: 640px) {
-  .prep-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tframe { height: 400px; }
+  .tframe__state { top: 12px; left: 12px; right: 12px; width: auto; max-width: none; }
 }
 
 /* Карточка превью карты (`.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/
@@ -7233,7 +7220,7 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .ov-maparea {@media (max-width: 880px)} height — то же: узкий порог теперь по ширине кадра (@container), не вьюпорта
    visual-diff-exempt: .ov-mapcard padding — своей шапки `.wdg-h` у кадра нет, карта не носит заголовок-виджет
    visual-diff-exempt: .wdg-h padding — следствие: у `.wdg-h` осталось только базовое значение, приватный оверрайд карточки карты ушёл вместе с ней
-   visual-diff-exempt: .ov-openbtn margin-left — кнопка «Открыть» уехала на карту оверлеем (.tframe__open, absolute), прижимать её к правому краю шапки больше нечем */
+   visual-diff-exempt: .ov-openbtn margin-left — кнопка «Открыть» уехала в панель состояния над картой, прижимать её к правому краю шапки больше нечем */
 
 /* ---- entrance: staggered reveal (decorative) ---- */
 @keyframes ovIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

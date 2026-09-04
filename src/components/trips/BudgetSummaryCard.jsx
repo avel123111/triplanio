@@ -92,11 +92,17 @@ export default function BudgetSummaryCard({
 
             {catBreakdown.length > 0 ? (
               <>
-                <Meter
-                  segments={catBreakdown.map((c) => ({
-                    key: c.id, value: c.spent, color: c.color, title: c.name,
-                  }))}
-                />
+                {/* ПОЛОСА ПОЯВЛЯЕТСЯ, КОГДА ЕСТЬ ЧТО СРАВНИВАТЬ. На одной
+                    категории она заполнена целиком и не сообщает ничего: это
+                    цветная плашка, повторяющая строку легенды под ней. Доля
+                    имеет смысл только против других долей. */}
+                {catBreakdown.length > 1 && (
+                  <Meter
+                    segments={catBreakdown.map((c) => ({
+                      key: c.id, value: c.spent, color: c.color, title: c.name,
+                    }))}
+                  />
+                )}
                 <div className="bud-legs">
                   {catBreakdown.map((c) => (
                     <div className="bud-leg" key={c.id}>

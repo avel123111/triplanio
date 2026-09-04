@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, ListRow, Tile } from '@/design/index';
+import { Btn, ListRow, Row, Tile } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
@@ -84,9 +84,13 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
               />
             ))
           ) : (
-            <Btn variant="soft" block onClick={() => setMoreOpen(true)}>
-              <Icon name="plus" size={15} />{t('service.more')}
-            </Btn>
+            /* «Ещё» — РАСКРЫТИЕ СПИСКА, а не действие. Кнопка-плашка во всю
+               ширину весила больше всего, что над ней, и читалась как главное
+               предложение раздела. Тот же тихий link, что разворачивает секции
+               «Подготовки» соседней полосой: одинаковый жест — одинаковый вид. */
+            <Row>
+              <Btn variant="link" onClick={() => setMoreOpen(true)}>{t('service.more')}</Btn>
+            </Row>
           )}
         </div>
       </div>

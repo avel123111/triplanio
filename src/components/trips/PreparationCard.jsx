@@ -1,7 +1,7 @@
 // @ts-check
 import React, { useMemo, useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, IconBtn, ListRow, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
+import { Btn, ListRow, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { buildPreparation } from '@/lib/trip-preparation';
 import { primaryIssues, validateTrip } from '@/lib/validation';
@@ -129,7 +129,6 @@ export default function PreparationCard({
   onAddHotel,
   onAddTransfer,
   onOpenEvent,
-  onOpenRoute,
 }) {
   const { t, fmtDate } = useI18nFormat();
 
@@ -219,21 +218,14 @@ export default function PreparationCard({
 
   return (
     <section className="ovsec prep">
+      {/* ★ ПЕРЕХОДА В МАРШРУТ ЗДЕСЬ НЕТ, И ЭТО НЕ ПОТЕРЯ. Он ведёт ровно туда же,
+          куда «Открыть» в кадре поездки прямо над этой секцией, — то есть был
+          вторым входом в одну линзу на одном экране. Плюс на полосе во всю
+          ширину такая кнопка висит в тысяче пикселей от заголовка, одна в
+          пустоте: элемент, которому нечего делать, но который нужно чем-то
+          уравновесить. Строки списка ведут каждая в своё, и этого достаточно. */}
       <div className="ovsec__h">
         <h3 className="t-heading">{t('overview.prep_title')}</h3>
-        {/* Тот же примитив действия, что у бюджета и участников (<IconBtn chev>),
-            а не подписанная кнопка: подписанная стояла бы В ДВУХ СОСЕДНИХ шапках
-            подряд и вела бы в ОДНУ линзу — «Маршрут» здесь и «Открыть» на
-            карточке карты прямо под ней. Смысл несёт подсказка, а переход
-            остаётся. */}
-        <IconBtn
-          icon="chev"
-          tone="outline"
-          size="sm"
-          onClick={onOpenRoute}
-          title={t('overview.prep_route')}
-          ariaLabel={t('overview.prep_route')}
-        />
       </div>
 
       <div>
