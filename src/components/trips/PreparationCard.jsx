@@ -1,7 +1,7 @@
 // @ts-check
 import React, { useMemo, useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, ListRow, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
+import { Btn, IconBtn, ListRow, Meter, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { buildPreparation } from '@/lib/trip-preparation';
 import { primaryIssues, validateTrip } from '@/lib/validation';
@@ -12,10 +12,9 @@ import { formatNaive, naiveDayKey } from '@/lib/naive-time';
 // Виджет «Подготовка» — сколько из ТОГО, ЧТО ТРЕБУЕТ МАРШРУТ, уже забронировано,
 // и одним списком: что забронировано, что нет.
 //
-// ★ ДОЛЯ ГОТОВНОСТИ ЖИВЁТ НЕ ЗДЕСЬ. Одно число «насколько готово» печатает блок
-// состояния поездки наверху экрана; у виджета своей полосы нет — иначе одна и та
-// же доля стояла бы на экране дважды. Виджет отвечает на другой вопрос: не
-// «сколько», а «что именно осталось».
+// ★ ДОЛЯ ГОТОВНОСТИ ЖИВЁТ ИМЕННО ЗДЕСЬ — над списками, которые её объясняют.
+// Заход, унёсший её в панель над картой, развёл число и его расшифровку на
+// полэкрана друг от друга.
 //
 // ★ ЗНАМЕНАТЕЛЬ СЧИТАЕТ МАРШРУТ, А НЕ БРОНИ — правило и его следствие
 // («отмершая бронь не учитывается») живут в `lib/trip-preparation.js`, здесь
@@ -137,6 +136,7 @@ export default function PreparationCard({
   onAddHotel,
   onAddTransfer,
   onOpenEvent,
+  onOpenRoute,
 }) {
   const { t, fmtDate } = useI18nFormat();
 
@@ -160,7 +160,7 @@ export default function PreparationCard({
 
   if (isLoading) return <PreparationSkeleton />;
 
-  const { stays, legs, total } = prep;
+  const { stays, legs, total, done } = prep;
 
   const stayRows = stays.flatMap((s) =>
     s.booked
@@ -226,14 +226,19 @@ export default function PreparationCard({
 
   return (
     <section className="ovsec prep">
-      {/* ★ ПЕРЕХОДА В МАРШРУТ ЗДЕСЬ НЕТ, И ЭТО НЕ ПОТЕРЯ. Он ведёт ровно туда же,
-          куда «Открыть» в кадре поездки прямо над этой секцией, — то есть был
-          вторым входом в одну линзу на одном экране. Плюс на полосе во всю
-          ширину такая кнопка висит в тысяче пикселей от заголовка, одна в
-          пустоте: элемент, которому нечего делать, но который нужно чем-то
-          уравновесить. Строки списка ведут каждая в своё, и этого достаточно. */}
+      {/* ★ ВХОД В МАРШРУТ ЖИВЁТ ЗДЕСЬ. Был заход, снёсший его как «второй вход в
+          ту же линзу» — регресс: у виджета не осталось перехода вовсе, а он один
+          из четырёх пунктов задачи. */}
       <div className="ovsec__h">
         <h3 className="t-heading">{t('overview.prep_title')}</h3>
+        <IconBtn
+          icon="chev"
+          tone="outline"
+          size="sm"
+          onClick={onOpenRoute}
+          title={t('overview.prep_route')}
+          ariaLabel={t('overview.prep_route')}
+        />
       </div>
 
       <div>
@@ -241,9 +246,19 @@ export default function PreparationCard({
           <div className="muted ov-empty-line">{t('overview.prep_empty')}</div>
         ) : (
           <>
-            {/* Своей полосы готовности у виджета НЕТ: доля печатается ОДИН раз,
-                в блоке состояния поездки наверху экрана. Здесь — другой вопрос:
-                не «сколько», а «что именно осталось». */}
+            {/* ★ ПОЛОСА ГОТОВНОСТИ СТОИТ ЗДЕСЬ, А НЕ НАД КАРТОЙ. Она считает ровно
+                то, что перечислено под ней; в панели состояния поверх карты она
+                оказывалась в полэкрана от списка, который её объясняет. */}
+            <div className="prep-head">
+              <span className="t-support">{t('overview.prep_sub', { done, total })}</span>
+              <Meter
+                ariaLabel={t('overview.prep_sub', { done, total })}
+                segments={[
+                  { key: 'done', value: done, color: done === total ? 'var(--success)' : 'var(--brand)' },
+                  { key: 'rest', value: total - done, color: 'transparent' },
+                ]}
+              />
+            </div>
             <div className="prep-cols">
               {stays.length > 0 && (
                 <Section

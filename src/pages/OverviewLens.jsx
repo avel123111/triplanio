@@ -80,7 +80,6 @@ export default function OverviewLens({
         <TripFrame
           trip={trip}
           visits={visits}
-          hotels={hotels}
           transfers={transfers}
           active={active}
           isLoading={contentLoading}
@@ -98,6 +97,7 @@ export default function OverviewLens({
           onAddHotel={onAddHotel}
           onAddTransfer={onAddTransfer}
           onOpenEvent={onOpenEvent}
+          onOpenRoute={onOpenMap}
         />
         </div>
 

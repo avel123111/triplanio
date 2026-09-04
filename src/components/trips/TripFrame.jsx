@@ -1,13 +1,12 @@
 // @ts-check
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Btn, Card, Meter, Skeleton } from '@/design/index';
+import { Btn, Card, Skeleton } from '@/design/index';
 import { Icon } from '@/design/icons';
 import MapView from '@/components/views/MapView';
 import TripStatRow from '@/components/trips/TripStatRow';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { computeTripRange, currentCityVisit, formatDateRange, tripPhase, tripProgress } from '@/lib/trip-dates';
-import { buildPreparation } from '@/lib/trip-preparation';
 import { naiveDayKey } from '@/lib/naive-time';
 import { DateTime } from 'luxon';
 
@@ -23,6 +22,10 @@ import { DateTime } from 'luxon';
 // стоковый фоллбек — картинку, не имеющую отношения к этому маршруту, — и
 // занимает под неё треть героя. Случайная картинка хуже, чем её отсутствие.
 // Обложка остаётся там, где опознаёт поездку среди других: на карточках главной.
+//
+// ★ ПОЛОСЫ ГОТОВНОСТИ ЗДЕСЬ НЕТ. Она про ПОДГОТОВКУ и живёт в её виджете, рядом
+// со списком, который объясняет число. Стоя в панели над картой, она оказывалась
+// в полэкрана от того, что считает.
 //
 // ★ ПАНЕЛЬ СОСТОЯНИЯ — КАНОН-ПОВЕРХНОСТЬ (`<Card raised>`), положенная поверх
 // карты, а не сшитая с ней встык. Поэтому у неё свои углы, своя тень и свой
@@ -51,10 +54,10 @@ import { DateTime } from 'luxon';
 // `v.latitude != null` на наличие) они расходились ровно на нулевой широте.
 const hasCoords = (v) => v?.latitude != null && v?.longitude != null;
 
-/** @param {{ trip?: any, visits?: any[], hotels?: any[], transfers?: any[],
+/** @param {{ trip?: any, visits?: any[], transfers?: any[],
  *            active?: boolean, isLoading?: boolean, onOpenMap?: any }} p */
 export default function TripFrame({
-  trip, visits = [], hotels = [], transfers = [], active = true, isLoading = false, onOpenMap,
+  trip, visits = [], transfers = [], active = true, isLoading = false, onOpenMap,
 }) {
   const { t } = useI18n();
   const { fmtDate, plural } = useI18nFormat();
@@ -87,11 +90,6 @@ export default function TripFrame({
         : null,
     };
   }, [visits]);
-
-  const prep = useMemo(
-    () => buildPreparation({ visits, hotels, transfers }),
-    [visits, hotels, transfers],
-  );
 
   // Закрытая панелью площадь кадра. Панель либо стоит колонкой слева (широкий
   // кадр), либо растянута полосой по верху (узкий) — какой из двух случаев
@@ -177,9 +175,6 @@ export default function TripFrame({
     sub = startKey ? fmtDate(startKey) : '';
   }
 
-  const { done, total } = prep;
-  const complete = total > 0 && done === total;
-
   return (
     <>
       <div className="tframe" ref={frameRef}>
@@ -211,36 +206,23 @@ export default function TripFrame({
           <Card radius="lg" raised className="col col--g3">
             <div className="t-title">{headline}</div>
             {sub && <div className="t-support muted">{sub}</div>}
-            {total > 0 && (
-              <>
-                <div className="t-meta muted">{t('overview.prep_sub', { done, total })}</div>
-                <Meter
-                  className="meter--flush"
-                  ariaLabel={t('overview.prep_sub', { done, total })}
-                  segments={[
-                    { key: 'done', value: done, color: complete ? 'var(--success)' : 'var(--brand)' },
-                    { key: 'rest', value: total - done, color: 'transparent' },
-                  ]}
-                />
-              </>
-            )}
             <Btn variant="secondary" block iconRight="chev" onClick={onOpenMap}>
               {t('overview.open')}
             </Btn>
           </Card>
         </div>
-
-        <TripStatRow visits={visits} transfers={transfers} trip={trip} />
       </div>
+
+      <TripStatRow visits={visits} transfers={transfers} trip={trip} />
     </>
   );
 }
 
 export function TripFrameSkeleton() {
   return (
-    <div className="tframe">
-      <div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div>
-      <div className="tframe__nums"><Skeleton w="52%" h={13} r={5} /></div>
-    </div>
+    <>
+      <div className="tframe"><div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div></div>
+      <Skeleton w="100%" h={80} r="var(--r-xl)" />
+    </>
   );
 }

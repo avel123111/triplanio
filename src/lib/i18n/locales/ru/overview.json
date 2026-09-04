@@ -11,6 +11,7 @@
   "prep_less": "Свернуть",
   "prep_more": "Ещё {count}",
   "prep_ready": "Всё забронировано",
+  "prep_route": "Маршрут",
   "prep_stays": "Проживание",
   "prep_sub": "Забронировано {done} из {total}",
   "prep_title": "Подготовка",

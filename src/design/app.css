@@ -7005,10 +7005,7 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .ovwrap grid-template-columns — то же: колонок больше нет
    visual-diff-exempt: .ovwrap align-items — то же
    visual-diff-exempt: .ovwrap {@media (max-width: 880px)} grid-template-columns — то же: схлопывать нечего, полосы одноколоночны всегда */
-/* ★ ШИРИНА ЧТЕНИЯ. Тело экрана трипа не ограничено ничем, и на 1920 обзор
-   растягивался на 1740 px: ряд списка получал 830 px, из которых 600 — пустота
-   между названием слева и действием справа. Колонка чтения — то, что чинит это
-   раньше любой перекраски.
+/* Раскладка экрана.
    floor-exempt: layout +1 — `.ovwrap` (колонка экрана). Апрув Pavel */
 /* ★★ ЭКРАН ОБЗОРА — ЭКРАН, А НЕ ЛЕНТА. Прошлая редакция разложила его тремя
    полосами во всю ширину друг под другом: кадр → подготовка → три сводки. На
@@ -7020,7 +7017,10 @@ button.input[data-empty] { color: var(--muted-2); }
    (подготовка), сводки стопкой справа. Пять блоков помещаются в один экран.
    floor-exempt: classes +2 — `.ov-grid` (сетка «работа | сводки») и `.ov-side` (стопка сводок) минус ушедший `.ov-trio`. Апрув Pavel
    floor-exempt: layout +3 — `.ovwrap` (колонка экрана), `.ov-grid` (сетка) и `.ov-side` (стопка) объявляют раскладку по существу. Апрув Pavel */
-.ovwrap { display: flex; flex-direction: column; gap: var(--sp-8); container-type: inline-size; max-width: 1160px; margin-inline: auto; }
+/* ★ ШИРИНУ НЕ РЕЖЕМ. Колонка чтения 1160 была моей самовольной правкой: на
+   широком мониторе она сжимала экран в узкую полосу посередине и оставляла
+   пустые поля по бокам. Экран трипа занимает тело так же, как остальные. */
+.ovwrap { display: flex; flex-direction: column; gap: var(--sp-8); container-type: inline-size; }
 /* ★ СЕТКА — ОТДЕЛЬНЫМ УЗЛОМ, И ЭТО НЕ ЛИШНЯЯ ОБЁРТКА. `@container` отвечает на
    ширину БЛИЖАЙШЕГО ПРЕДКА-контейнера и НИКОГДА — на ширину элемента, который
    сам объявил `container-type`. Повесь колонки прямо на `.ovwrap` — запрос молча
@@ -7166,10 +7166,12 @@ button.input[data-empty] { color: var(--muted-2); }
    выключил бы запрос целиком: правило без контейнера-предка просто не
    применяется, ошибки нет, вид тихо становится одноколоночным навсегда.
    prefix-exempt: prep — новый канон-объект «виджет подготовки», апрув Pavel (единственное своё имя виджета: остальное — ListRow/Tile/Meter/Row/Col)
-   floor-exempt: classes +3 — `.prep` (карточка = контейнер измерения), `.prep-cols` (две секции) и `.meter` (полоса-доля, собравшая `.bud-bar`); третьего своего имени у виджета нет — строки/значки/полоса взяты у ДС. Апрув Pavel (задача «виджет Подготовка»)
+   floor-exempt: classes +4 — `.prep` (карточка = контейнер измерения), `.prep-head` (строка готовности), `.prep-cols` (две секции) и `.meter` (полоса-доля, собравшая `.bud-bar`); третьего своего имени у виджета нет — строки/значки/полоса взяты у ДС. Апрув Pavel (задача «виджет Подготовка»)
    floor-exempt: namespaces +2 — две канон-семьи: `meter` (полоса-доля перестала быть приватным элементом бюджета и стала объектом системы) и `prep` (сам виджет). Семья `bud` при этом НЕ умерла — из неё ушёл один класс, остались `bud-total`/`bud-legs`/`bud-leg`, поэтому размена «-1 за +1» тут нет. Апрув Pavel
-   floor-exempt: layout +1 — `.meter` и `.prep-cols` ОБЪЯВЛЯЮТ раскладку по существу (полоса — flex-дорожка сегментов, секции — grid): это их работа, а не крючок экрана, приехавший в примитив через `className`. Апрув Pavel */
+   floor-exempt: layout +2 — `.meter`, `.prep-head` и `.prep-cols` ОБЪЯВЛЯЮТ раскладку по существу (полоса — flex-дорожка сегментов, секции — grid): это их работа, а не крючок экрана, приехавший в примитив через `className`. Апрув Pavel */
+/* Строка готовности виджета: число слева, полоса под ним, вплотную к спискам. */
 .prep { container-type: inline-size; }
+.prep-head { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-7); }
 /* ★ У КОЛОНКИ ЕСТЬ ПОТОЛОК ШИРИНЫ, И ЭТО НЕ ПРИДИРКА. Строка списка держит
    значок, название и дату слева, а действие — справа. На 460px это ОДНА строка;
    на 570 между ними образуется 200px пустоты, и глаз перестаёт связывать «Милан»
@@ -7197,7 +7199,7 @@ button.input[data-empty] { color: var(--muted-2); }
    ★ Скругление — на самой карте: карточки-обёртки у неё больше нет, лишний
    контур вокруг главного элемента экрана ничего не добавлял.
    prefix-exempt: tframe — канон-объект «герой экрана трипа», апрув Pavel
-   floor-exempt: classes +4 — `.tframe` (герой) · `.tframe__map` (слой карты) · `.tframe__state` (панель состояния) · `.tframe__mapempty` · `.tframe__nums` минус ушедшие `.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/`.ov-openbtn` и минус `.meter--invert`. Апрув Pavel
+   floor-exempt: classes +4 — `.tframe` (герой) · `.tframe__map` (слой карты) · `.tframe__state` (панель состояния) · `.tframe__mapempty` минус ушедшие `.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/`.ov-openbtn` и минус `.meter--invert`. Апрув Pavel
    floor-exempt: namespaces +1 — семья `tframe` вместо снесённой карточки превью карты. Апрув Pavel
    floor-exempt: layout +2 — `.tframe` и `.tframe__map` объявляют раскладку по существу (кадр и слой карты в нём). У `.tframe__state` осталось чистое ПОЗИЦИОНИРОВАНИЕ: колонку строк объявляет сама карточка (`col col--g3`), а не обёртка. Апрув Pavel */
 /* ★ КАДР — ОДНА ПОВЕРХНОСТЬ, А НЕ КАРТА С ПОДПИСЬЮ РЯДОМ. Числа маршрута стояли
@@ -7230,9 +7232,6 @@ button.input[data-empty] { color: var(--muted-2); }
 .tframe__state {
   position: absolute; z-index: 2; top: 20px; left: 20px; width: 300px; max-width: calc(100% - 40px);
 }
-/* Числа маршрута — подпись под героем: тихая строка, а не полоса плиток
-   (разбор в `TripStatRow`). */
-.tframe__nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3); padding: 14px 18px; }
 
 /* ★★ НА ТЕЛЕФОНЕ ПАНЕЛЬ НЕ ЛЕЖИТ НА КАРТЕ. На узком кадре она растягивается во
    всю ширину и занимает 176 из 400 px — то есть ПОЛОВИНУ карты закрывает другой
@@ -10336,56 +10335,46 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .statbar .cta button width — снят width:100%: два ребёнка в ряду вместо одного (TRIP-302)
 */
 .statbar .cta { display: flex; align-items: center; gap: var(--sp-4); padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
-/* Полоса плиток `.statbar` в Обзоре БОЛЬШЕ НЕ ЖИВЁТ — числа маршрута стали
-   подписью под кадром (`.tframe__nums`, разбор в `TripStatRow`). Все приватные
-   правила Обзора, что ею управляли (контейнерные ступени плитки и перенос в две
-   колонки), удалены вместе с ней. На главной и в статистике полоса остаётся
-   своей: её собственные @media-правила не тронуты.
-   ★ Ключи ниже — КОНТЕЙНЕРНЫЕ; на главной те же свойства приходят из @media, то
-     есть удаление контейнерных правил её не касается по построению.
-   visual-diff-exempt: .c-distance {@container (max-width: 600px)} flex — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .c-duration {@container (max-width: 600px)} order — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .s {@container (600px <= width <= 880px)} gap — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .s {@container (600px <= width <= 880px)} padding-inline — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .s::before:nth-child(odd) {@container (max-width: 600px)} display — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .s::before {@container (max-width: 600px)} inset — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .s {@container (max-width: 600px)} flex — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .s {@container (max-width: 600px)} order — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .s {@container (max-width: 600px)} padding — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} --tile — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} --tile-ic — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} gap — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} padding-inline — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (max-width: 600px)} display — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (max-width: 600px)} flex — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (max-width: 600px)} flex-wrap — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (max-width: 600px)} inset — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (max-width: 600px)} order — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .statbar {@container (max-width: 600px)} padding — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .tile {@container (600px <= width <= 880px)} --tile — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .tile {@container (600px <= width <= 880px)} --tile-ic — контейнерное правило полосы плиток Обзора удалено вместе с полосой
-   visual-diff-exempt: .ov-col .statbar .s — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .ov-col margin-top — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile-ic — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} gap — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} padding-inline — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .ov-col {@container (max-width — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .wi border-radius — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .wi display — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .wi flex — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .wi height — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .wi place-items — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .wi width — приватное правило полосы плиток Обзора удалено вместе с полосой (ключ на классе-предке `.ov-col`, самой колонки тоже больше нет)
-   visual-diff-exempt: .ov-col .statbar .s:nth-child(n + 3) {@container (max-width: 600px)} border-top — то же
-   visual-diff-exempt: .ov-col {@container (max-width: 600px)} display — то же
-   visual-diff-exempt: .ov-col {@container (max-width: 600px)} flex — то же
-   visual-diff-exempt: .ov-col {@container (max-width: 600px)} flex-wrap — то же
-   visual-diff-exempt: .ov-col {@container (max-width: 600px)} inset — то же
-   visual-diff-exempt: .ov-col {@container (max-width: 600px)} order — то же
-   visual-diff-exempt: .ov-col {@container (max-width: 600px)} padding — то же
-   visual-diff-exempt: .statbar margin-top — снят приватный сброс Обзора (`margin-top:0`); на главной полоса свой отступ и раньше брала из `.statbar .k`
- */
+/* ★ ПОЛОСА ПЛИТОК В ОБЗОРЕ ЖИВА. Её адаптив ведёт САМ ОБЗОР: ширина полосы
+   прыгает от раскладки экрана, а не от вьюпорта, и ни один медиа-запрос этого
+   не описывает. Ключ — `.ovwrap` (он объявляет `container-type`), раньше это
+   была снесённая `.ov-col`.
+   600–880: ячейка сжимается (10px поля, 8 gap, плитка 32/17) — пять штук держат
+   строку до 600. Ниже 600 даже сжатая ячейка режет подпись, поэтому строка
+   отдаёт место той же двухколоночной форме, что у полосы на главной.
+   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} width — ступень на --tile:32, база .tile на media=''
+   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} height — то же
+   visual-diff-exempt: .ic {@container (600px <= width <= 880px)} width — то же (ключ на .ic)
+   visual-diff-exempt: .ic {@container (600px <= width <= 880px)} height — то же
+   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} --tile — приобретение ступени в контейнере
+   visual-diff-exempt: .tile {@container (600px <= width <= 880px)} --tile — то же
+   ★ Ключ этих правил переехал со снесённой `.ov-col` на `.ovwrap`: колонка обзора
+     умерла вместе с двухколоночной раскладкой, контейнером стал сам экран.
+     Значения ТЕ ЖЕ, что были у `.ov-col`, — это перенос ключа, а не новый вид.
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} padding-inline — ключ адаптива полосы плиток переехал с .ov-col на .ovwrap, значение то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} gap — то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} --tile — то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} --tile-ic — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} flex-wrap — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} flex — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} padding — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} inset — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} display — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} order — то же
+*/
+@container (600px <= width <= 880px) {
+  .ovwrap .statbar .s { padding-inline: 10px; gap: 8px; }
+  .ovwrap .statbar .tile { --tile: 32px; --tile-ic: 17px; }
+}
+@container (max-width: 600px) {
+  .ovwrap .statbar { flex-wrap: wrap; }
+  .ovwrap .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
+  .ovwrap .statbar .s::before { inset: 13px auto 13px 0; }
+  .ovwrap .statbar .s:nth-child(odd)::before { display: none; }
+  .ovwrap .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .ovwrap .statbar .s.c-duration { order: 0; }
+  .ovwrap .statbar .s.c-distance { flex: 1 0 100%; }
+}
 /* 2-col wrap — one shape for both bars (mockup v01): the vertical hairline stays
    only left of the right-hand column, rows are separated horizontally, and the
    last stat (distance on the trip bar, CTA on /trips) takes a full-width row. */
