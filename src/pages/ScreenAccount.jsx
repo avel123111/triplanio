@@ -349,6 +349,16 @@ function ReminderChannels() {
             />
           )}
 
+          {/* Почта — ЖИВОЙ канал, поэтому стоит среди живых, до «скоро». Настройки
+              не раскрываются здесь: они же открываются по ссылке ИЗ ПИСЬМА, у
+              человека без сессии, и второй реализацией того же экрана мы завели
+              бы ему два дома. Карточка ведёт на тот самый экран. */}
+          <ChannelCard
+            icon="mail" tone="brand" name={t('account.channel_email')}
+            desc={t('account.channel_email_desc')}
+            trailing={<Btn variant="soft" onClick={() => nav('/email-preferences')}>{t('account.channel_email_cta')}</Btn>}
+          />
+
           <ChannelCard
             icon="whatsapp" tone="success" name="WhatsApp"
             desc={t('account.channel_whatsapp_desc')}

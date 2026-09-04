@@ -31,13 +31,16 @@ import { buildRows, changedTopics, hasChanges } from '@/lib/emailPrefs';
 export default function EmailPreferences() {
   const t = useT();
   const [params] = useSearchParams();
+  // `c` есть только у ссылки ИЗ ПИСЬМА. В аккаунте его нет и быть не должно:
+  // залогиненного человека функция узнаёт по его же сессии, и передавать сюда
+  // чей-либо идентификатор фронту не требуется вовсе.
   const contact = params.get('c') || '';
 
   const [rows, setRows] = useState(/** @type {any[]} */([]));
   const [initial, setInitial] = useState(/** @type {any[]} */([]));
   const [unsub, setUnsub] = useState(false);
   const [wasUnsub, setWasUnsub] = useState(false);
-  const [phase, setPhase] = useState(contact ? 'loading' : 'invalid');
+  const [phase, setPhase] = useState('loading');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -45,7 +48,7 @@ export default function EmailPreferences() {
   // нарисован, и подмена его скелетоном читалась бы как перезагрузка страницы.
   const load = useCallback(async (silent = false) => {
     if (!silent) setPhase('loading');
-    const { data, error, code } = await invokeFn('emailPrefs', { body: { c: contact, action: 'get' } });
+    const { data, error, code } = await invokeFn('emailPrefs', { body: { ...(contact ? { c: contact } : {}), action: 'get' } });
     if (error || !data) {
       // «Ссылка битая» и «сеть отвалилась» — разные ответы человеку: во втором
       // случае помогает «Повторить», в первом не поможет никогда. `code` берём
@@ -65,7 +68,7 @@ export default function EmailPreferences() {
     setPhase('ready');
   }, [contact]);
 
-  useEffect(() => { if (contact) load(); }, [contact, load]);
+  useEffect(() => { load(); }, [load]);
 
   const dirty = hasChanges(initial, rows, wasUnsub, unsub);
 
@@ -80,9 +83,15 @@ export default function EmailPreferences() {
   const save = async () => {
     setSaving(true);
     setSaved(false);
-    const body = { c: contact, topics: changedTopics(initial, rows) };
-    if (wasUnsub !== unsub) body.unsubscribed = unsub;
-    const { error } = await invokeFn('emailPrefs', { body });
+    // Собираем одним выражением: глобальный флаг едет ТОЛЬКО когда его трогали,
+    // а дописывание поля после литерала ломает вывод типа (TS2339).
+    const { error } = await invokeFn('emailPrefs', {
+      body: {
+        ...(contact ? { c: contact } : {}),
+        topics: changedTopics(initial, rows),
+        ...(wasUnsub !== unsub ? { unsubscribed: unsub } : {}),
+      },
+    });
     if (error) { setSaving(false); setPhase('save_error'); return; }
     // ПЕРЕЧИТЫВАЕМ, а не считаем сохранённое новым состоянием. Сервер применяет
     // СВОИ правила — «не писать вовсе» выключает заодно все топики — и экран,
