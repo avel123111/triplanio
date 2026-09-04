@@ -21,9 +21,8 @@
  *   • POST + JSON `{topics?,unsubscribed?}` — наша страница пишет;
  *   • POST + form-urlencoded                — ОДНОКЛИК почтовика (RFC 8058): тело
  *     `List-Unsubscribe=One-Click`, человека и браузера нет, ответ — пустой 200.
- *     Ставит ГЛОБАЛЬНЫЙ флаг, а не перебирает текущие топики: топик, заведённый
- *     позже, придёт с дефолтом opt_in и молча возобновил бы письма тому, кто
- *     нажал «Отписаться».
+ *     Делает то же, что переключатель «не писать вовсе» на странице, — одним
+ *     правилом `stopEverything` (см. его докблок).
  *   • GET — человек открыл адрес из заголовка руками: 302 на страницу, ничего
  *     не меняя (GET не мутирует).
  *
@@ -37,8 +36,9 @@
  *     соседних остались как были. Это и позволяет слать ТОЛЬКО тронутое и не
  *     затирать выбор, сделанный с другого устройства.
  *   • Глобальный флаг и топики ОРТОГОНАЛЬНЫ: `unsubscribed: true` не меняет ни
- *     одной подписки. Поэтому чтение — два вызова: экран, показывающий одни
- *     топики, о глобальном «не писать вовсе» не узнал бы.
+ *     одной подписки. Отсюда два следствия — чтение это два вызова (экран,
+ *     показывающий одни топики, о «не писать вовсе» не узнал бы), а «не писать
+ *     вовсе» обязано выставлять ОБА (см. `stopEverything`).
  *
  * ⚠️ Неизвестный topic id Resend отбивает `404 Topic not found` — то есть ВЕСЬ
  * PATCH падает, а не только эта строка, и у нас это 500. Практически ловится
@@ -121,6 +121,37 @@ function cleanTopics(input: unknown): Array<{ id: string; subscription: string }
   return out;
 }
 
+/**
+ * «НЕ ПИСАТЬ ВОВСЕ» — одно правило на оба входа: кнопку почтовика и переключатель
+ * на странице. Ставит глобальный флаг И выключает ВСЕ топики.
+ *
+ * ЗАЧЕМ ОБА, а не только флаг. Дока Resend описывает `unsubscribed` как «отписан
+ * от BROADCASTS» — их массовых рассылок из дашборда. Мы такими не пользуемся: n8n
+ * шлёт обычные письма через `/emails`, и гейтит ли их этот флаг, не сказано
+ * НИГДЕ. Про топики неопределённости нет — дока `/emails` прямо пишет: контакт
+ * отписан от топика → письмо не отправляется и помечается `failed`.
+ *
+ * Значит одного флага мало: человек нажал «Отписаться» в почтовике, мы честно
+ * его поставили, а письма продолжают идти — и следующим нажатием будет «Спам»,
+ * который бьёт по репутации домена, то есть заодно по приглашениям и сбросу
+ * пароля. Выключая ещё и топики, мы опираемся на гарантию, которая ДОКУМЕНТИРОВАНА,
+ * и правильны при любом поведении флага. Цена — один лишний вызов.
+ *
+ * Обратное действие НЕ зеркально: снятие флага топики обратно не включает.
+ * Восстановить прежний набор нечем — он затёрт, а «включить всё» вернуло бы
+ * человеку то, от чего он раньше отписывался сам. Поэтому он просто видит
+ * выключенные переключатели и включает те, что хочет.
+ */
+async function stopEverything(id: string): Promise<void> {
+  const off = listOf<TopicRow>(await resend(`/contacts/${id}/topics`))
+    .filter((t) => t?.id)
+    .map((t) => ({ id: t.id, subscription: 'opt_out' }));
+  if (off.length) {
+    await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(off) });
+  }
+  await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: true }) });
+}
+
 Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
   if (!RESEND_API_KEY) throw new Error('RESEND_API_KEY is not set');
   const url = new URL(req.url);
@@ -148,7 +179,7 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
     // Ответ почтовику всегда 200 с пустым телом (RFC 8058): человеку он не
     // показывает ни ошибку, ни страницу, а не-2xx трактует как «отписка не
     // сработала» и понижает доверие к отправителю.
-    if (id) await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: true }) });
+    if (id) await stopEverything(id);
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
@@ -174,14 +205,23 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
     }, { headers: corsHeaders });
   }
 
-  // ЗАПИСЬ. Пишем только присланное: страница шлёт топики всегда, а глобальный
-  // флаг — лишь когда его трогали.
+  // ЗАПИСЬ. «Не писать вовсе» — то же правило, что у кнопки почтовика: правило
+  // живёт ЗДЕСЬ, а не в двух местах, и страница о нём знать не обязана. Частные
+  // переключатели при нём не применяются — они уже ничего не решают, и применить
+  // их поверх значило бы записать состояние, которого человек не выбирал.
+  if (body?.unsubscribed === true) {
+    await stopEverything(id);
+    return Response.json({ ok: true }, { headers: corsHeaders });
+  }
+
+  // Иначе — пишем только присланное: страница шлёт ТРОНУТЫЕ топики, а флаг лишь
+  // когда его сняли.
   const topics = cleanTopics(body?.topics);
   if (topics.length) {
     await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(topics) });
   }
-  if (typeof body?.unsubscribed === 'boolean') {
-    await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: body.unsubscribed }) });
+  if (body?.unsubscribed === false) {
+    await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: false }) });
   }
   return Response.json({ ok: true }, { headers: corsHeaders });
 }));
