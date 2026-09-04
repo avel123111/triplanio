@@ -181,6 +181,16 @@ export function I18nProvider({ children }) {
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.
   useEffect(() => { applyLuxonLocale(lang); }, [lang]);
 
+  // ★ ЕДИНСТВЕННЫЙ ВЛАДЕЛЕЦ <html lang> (TRIP-515). Атрибут управляет переносами
+  // (app.css ссылается на него), произношением в скринридерах и предложением
+  // перевода в браузере. Раньше его ставил только SiteChrome — и его же очистка
+  // при уходе с лендинга возвращала атрибут на "en", то есть в приложении lang
+  // всегда оставался английским (повод для перевода). Теперь владелец один: слой
+  // i18n ставит атрибут на монтировании и при каждой смене языка. Пре-пейнт
+  // скрипт в index.html выставляет то же значение ещё до кадра, поэтому
+  // неверного-языка-кадра нет.
+  useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
+
   // Sync from user once authenticated
   useEffect(() => {
     if (user) applyLang(detectInitialLang(user));

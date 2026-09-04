@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import AppLoading from '@/design/AppLoading';
+import { SurfaceCrashContext } from '@/components/ui/surfaceCrashGuard';
 
 // ★ ДИАЛОГ ПРИЕЗЖАЕТ ПО ПЕРВОМУ СПРОСУ (TRIP-475).
 //
@@ -75,6 +76,20 @@ export function ConfirmProvider({ children }) {
     if (!next) settle(false); // cancel / ESC / outside click
   }, [settle, busy]);
 
+  // ЖЁСТКАЯ ОТМЕНА ПРИ КРАХЕ ПОВЕРХНОСТИ (TRIP-515). SurfaceCrashGuard в шве
+  // закрывает окно вызовом onOpenChange(false) — но `handleOpenChange` ГЛОТАЕТ
+  // закрытие, пока идёт async-действие (`if (busy) return`), а наш краш случается
+  // именно при busy=true (спиннер вставляется перед подписью). Без обхода
+  // resolverRef не разрешился бы и `await confirm()` завис бы навсегда. Поэтому
+  // краш-закрытие идёт МИМО busy-guard: сбрасываем busy, закрываем, разрешаем
+  // обещание в false. settle идемпотентен (resolverRef обнуляется), поэтому
+  // поздний settle(true) из завершившегося действия — no-op.
+  const hardCancelOnCrash = useCallback(() => {
+    setBusy(false);
+    setOpen(false);
+    settle(false);
+  }, [settle]);
+
   const handleConfirm = useCallback(async () => {
     const action = opts.onConfirm;
     if (typeof action === 'function') {
@@ -99,6 +114,9 @@ export function ConfirmProvider({ children }) {
           `fallback={null}`: пустой fallback невидим экрану запуска, и заставка
           ушла бы в пустой кадр. Правило пинит `splash.test.js`. */}
       {armed && (
+      // Жёсткая отмена течёт СКВОЗЬ портал к границе краха в шве (TRIP-515):
+      // граница дотянется до неё без проброса пропов через дженерик Sheet/Alert.
+      <SurfaceCrashContext.Provider value={hardCancelOnCrash}>
       <Suspense fallback={<AppLoading silent />}>
       <ConfirmDialog
         open={open}
@@ -115,6 +133,7 @@ export function ConfirmProvider({ children }) {
         onConfirm={handleConfirm}
       />
       </Suspense>
+      </SurfaceCrashContext.Provider>
       )}
     </ConfirmContext.Provider>
   );

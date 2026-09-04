@@ -28,8 +28,9 @@
  * `data-force` в ВИТРИННОМ слое (`Kit.css`), не в проде. Своих классов витрина
  * не заводит (пол 2o не растёт): оболочка несёт АТРИБУТЫ `data-kit`/`data-force`.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
@@ -77,6 +78,7 @@ const TX = {
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
     'splash': 'Экран запуска', 'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
     'coverpicker': 'Пикер обложки', 'full-surface': 'Полноростная поверхность',
+    'surface-crash': 'Граница краха окна',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -95,6 +97,7 @@ const TX = {
     'input': 'Декорации поля, которые эмитит сам <Input>: иконка, кольцо, валюта, ряд.',
     'autocomplete': 'Поиск-по-мере-ввода: поле + выпадающий лист на Popover (лист-хром .ss-* общий с SearchSelect). Флип и «клик мимо» — от Popover.',
     'full-surface': 'Экран во весь вьюпорт. Их ТРИ и это одна вещь: шторка пикера, оболочка панелей редактора и окно с полями (<Dialog full>) — общая коробка, краска (--bg), бровь и резерв под клавиатуру у скроллера. Смотреть на 390: правила семьи живут ≤640.',
+    'surface-crash': 'Граница краха в шве (TRIP-515). Краш ВНУТРИ окна закрывает окно, а не убивает приложение; промис confirm() разрешается false даже когда краш случился при busy. Приёмка — check:surfaces.',
     'avatar': 'Инициалы / фото / AI / плейсхолдер / удалён; размеры и стопка.',
     'sev': 'Тон по уровню важности (info/warning/error/success/quiet).',
     'empty-state': 'Каркас с иконкой, текстом и призывом к действию.',
@@ -320,6 +323,64 @@ const KIT_CITIES = [
  * недоказуем: именно это и пропустило дефект, при котором лист переставал
  * скроллиться совсем.
  */
+// ── Стенд ГРАНИЦЫ КРАХА ПОВЕРХНОСТИ (TRIP-515) ───────────────────────────────
+// Грепом недоказуемо: краш ВНУТРИ окна закрывает окно, а не приложение; промис
+// confirm() разрешается false даже в async-ветке, где busy-guard глотает
+// закрытие. Здесь это можно потрогать и снять check:surfaces-ом. Разметка — из
+// ДС (Btn/Badge/Sheet), чтобы стенд не занижал долю ДС; приёмка локерит по тексту.
+// Бросает при рендере, когда взведён — моделирует отцепленный переводчиком узел.
+function BoomWhenArmed({ armed }) {
+  if (armed) throw new Error('kit: surface boom');
+  return <Badge>живое содержимое окна</Badge>;
+}
+// Бросает на ВТОРОМ рендере — моделирует краш при busy=true (перерисовка со
+// спиннером у красной кнопки), а не при открытии окна.
+function BoomOnRerender() {
+  const n = useRef(0);
+  n.current += 1;
+  if (n.current >= 2) throw new Error('kit: busy boom');
+  return <Badge>содержимое (сломается при busy)</Badge>;
+}
+function SurfaceCrashDemo() {
+  const confirm = useConfirm();
+  const [open, setOpen] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [promiseResult, setPromiseResult] = useState('—');
+
+  // async-ветка: красная кнопка ставит busy=true, перерисовка роняет содержимое.
+  // Граница обязана закрыть окно И разрешить промис false (жёсткая отмена мимо
+  // busy-guard). Действие живёт 400 мс — поздний settle(true) обязан быть no-op.
+  const runBusyConfirm = async () => {
+    setPromiseResult('ждём…');
+    const ok = await confirm({
+      title: 'Крах при busy',
+      content: <BoomOnRerender />,
+      variant: 'destructive',
+      confirmLabel: 'Уронить окно',
+      onConfirm: async () => { await new Promise((r) => setTimeout(r, 400)); },
+    });
+    setPromiseResult(ok ? 'true' : 'false');
+  };
+
+  return (
+    <div className="col col--g4">
+      {/* Сосед вне окна: жив после краха = приложение не упало (не крах-экран). */}
+      <Badge>сосед жив</Badge>
+
+      {/* Сценарий 1: краш внутри шита закрывает ШИТ, а не приложение. */}
+      <Btn variant="secondary" onClick={() => { setArmed(false); setOpen(true); }}>Открыть шит</Btn>
+      <Sheet open={open} onOpenChange={setOpen} title="Стенд краха">
+        <Btn variant="danger-solid" onClick={() => setArmed(true)}>Сломать содержимое</Btn>
+        <BoomWhenArmed armed={armed} />
+      </Sheet>
+
+      {/* Сценарий 2: краш при busy — промис confirm() обязан разрешиться false. */}
+      <Btn variant="secondary" onClick={runBusyConfirm}>Confirm с крахом при busy</Btn>
+      <Badge>промис: {promiseResult}</Badge>
+    </div>
+  );
+}
+
 function FullSurfaceDemo() {
   const [picker, setPicker] = useState(false);
   const [q, setQ] = useState('');
@@ -858,6 +919,10 @@ const RECIPES = {
 
   'full-surface': () => [{
     items: [it('три поверхности семьи — открыть и сравнить', <FullSurfaceDemo />, true)],
+  }],
+
+  'surface-crash': () => [{
+    items: [it('краш внутри окна закрывает окно, а не приложение', <SurfaceCrashDemo />, true)],
   }],
 
   autocomplete: () => [{

@@ -5,10 +5,14 @@ import { hideSplash } from '@/lib/splash';
 // Self-contained copy for the crash screen. An error boundary can render when
 // the app (incl. the i18n provider) has failed, so it must NOT depend on the
 // React i18n context. Pick the language from the same storage the app uses.
+// TRIP-515: показываем ТОЛЬКО локализованную строку, техника (`error.message`) —
+// в Sentry, а не пользователю. Раньше сюда падал сырой англоязычный DOMException
+// («Failed to execute 'insertBefore'…») от автоперевода. Кнопка ПЕРЕЗАГРУЖАЕТ
+// текущий маршрут, а не выкидывает на «/».
 const CRASH_COPY = {
-  en: { title: 'Something went wrong', generic: 'Unknown error', home: 'Go home' },
-  ru: { title: 'Что-то пошло не так', generic: 'Неизвестная ошибка', home: 'На главную' },
-  es: { title: 'Algo salió mal', generic: 'Error desconocido', home: 'Ir al inicio' },
+  en: { title: 'Something went wrong', generic: 'The app hit an unexpected error. Reloading usually fixes it.', retry: 'Reload' },
+  ru: { title: 'Что-то пошло не так', generic: 'Приложение столкнулось с непредвиденной ошибкой. Обычно помогает перезагрузка.', retry: 'Перезагрузить' },
+  es: { title: 'Algo salió mal', generic: 'La aplicación tuvo un error inesperado. Recargar suele solucionarlo.', retry: 'Recargar' },
 };
 function crashLang() {
   try {
@@ -58,17 +62,17 @@ export default class AppErrorBoundary extends React.Component {
           }}>⚠️</div>
           <h2 style={{ margin: 0, fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{c.title}</h2>
           <p style={{ margin: 0, color: '#8693a8', fontSize: 'var(--fs-base)', textAlign: 'center', maxWidth: 400 }}>
-            {this.state.error?.message || c.generic}
+            {c.generic}
           </p>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.reload()}
             style={{
               padding: '10px 20px', borderRadius: 'var(--r-sm)', border: 'none',
               background: '#2167e2', color: 'white', fontWeight: 600,
               fontSize: 'var(--fs-base)', cursor: 'pointer',
             }}
           >
-            {c.home}
+            {c.retry}
           </button>
           {import.meta.env.DEV && (
             <pre style={{
