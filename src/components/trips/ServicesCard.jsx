@@ -33,8 +33,8 @@ export default function ServicesCard({ services = [], isLoading = false, onAddSe
       <CardHeader title={t('trip.sidebar_services')} />
       <div>
         <div className="col col--g4">
-          {/* ★ ФАЗА ЗАГРУЗКИ — ТЕ ЖЕ `<AddRow>` и та же кнопка «Ещё», только с
-              заглушками: иначе одна карточка из трёх показывает готовый вид,
+          {/* ★ ФАЗА ЗАГРУЗКИ — ТЕ ЖЕ ряды `AddRow` и та же кнопка «Ещё», только
+              с заглушками: иначе одна карточка из трёх показывает готовый вид,
               пока соседние ещё грузятся. */}
           {isLoading ? (
             <>
