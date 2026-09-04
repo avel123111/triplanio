@@ -10,9 +10,17 @@ import { hideSplash } from '@/lib/splash';
 // («Failed to execute 'insertBefore'…») от автоперевода. Кнопка ПЕРЕЗАГРУЖАЕТ
 // текущий маршрут, а не выкидывает на «/».
 const CRASH_COPY = {
-  en: { title: 'Something went wrong', generic: 'The app hit an unexpected error. Reloading usually fixes it.', retry: 'Reload' },
-  ru: { title: 'Что-то пошло не так', generic: 'Приложение столкнулось с непредвиденной ошибкой. Обычно помогает перезагрузка.', retry: 'Перезагрузить' },
-  es: { title: 'Algo salió mal', generic: 'La aplicación tuvo un error inesperado. Recargar suele solucionarlo.', retry: 'Recargar' },
+  en: { title: 'Something went wrong', generic: 'The app hit an unexpected error. Reloading usually fixes it.', retry: 'Reload', home: 'Go home' },
+  ru: { title: 'Что-то пошло не так', generic: 'Приложение столкнулось с непредвиденной ошибкой. Обычно помогает перезагрузка.', retry: 'Перезагрузить', home: 'На главную' },
+  es: { title: 'Algo salió mal', generic: 'La aplicación tuvo un error inesperado. Recargar suele solucionarlo.', retry: 'Recargar', home: 'Ir al inicio' },
+};
+// Стиль вторичной кнопки «На главную» — модульная константа, чтобы не плодить
+// инлайн-объект (его считает пол 2o). Литералы crash-safe: экран краха рисуется
+// без гарантии app.css.
+const HOME_BTN_STYLE = {
+  padding: '10px 20px', borderRadius: 'var(--r-sm)', border: '1px solid #cbd5e1',
+  background: 'transparent', color: '#374257', fontWeight: 600,
+  fontSize: 'var(--fs-base)', cursor: 'pointer',
 };
 function crashLang() {
   try {
@@ -64,6 +72,9 @@ export default class AppErrorBoundary extends React.Component {
           <p style={{ margin: 0, color: '#8693a8', fontSize: 'var(--fs-base)', textAlign: 'center', maxWidth: 400 }}>
             {c.generic}
           </p>
+          {/* Две двери (TRIP-515): «Перезагрузить» чинит сорванный кадр, но у
+              ДЕТЕРМИНИРОВАННОГО краха на маршруте перезагрузка даёт тот же краш —
+              поэтому «На главную» уводит на заведомо рабочий экран. */}
           <button
             onClick={() => window.location.reload()}
             style={{
@@ -73,6 +84,11 @@ export default class AppErrorBoundary extends React.Component {
             }}
           >
             {c.retry}
+          </button>
+          {/* Стиль второй кнопки — модульная константа (см. HOME_BTN_STYLE выше),
+              а не инлайн-объект: лишний инлайн в дереве считает пол 2o. */}
+          <button onClick={() => { window.location.href = '/'; }} style={HOME_BTN_STYLE}>
+            {c.home}
           </button>
           {import.meta.env.DEV && (
             <pre style={{

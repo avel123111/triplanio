@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';
 import { SHEET_CONTROL_SELECTOR, gestureOwner, nearestDetent, resolveDetents, tapSettles } from '@/lib/sheetDetents';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
@@ -420,9 +421,13 @@ export function PeekSheet({
       >
         <i />
       </div>
-      <div ref={headRef} className="peek-sheet__head" data-peek-head>{header}</div>
-      <div ref={bodyRef} className="peek-sheet__body">{children}</div>
-      {footer && <div ref={footRef} className="peek-sheet__foot">{footer}</div>}
+      {/* Портал на document.body, ВНЕ роутовых границ. Граница краха (TRIP-515)
+          обёрнута вокруг ДИНАМИЧЕСКОГО содержимого, а не ref-узлов (`headRef`/
+          `bodyRef`/`footRef` остаются на месте — их читают эффекты перетаскивания):
+          краш в содержимом гасит содержимое, каркас и жест живут. */}
+      <div ref={headRef} className="peek-sheet__head" data-peek-head><SurfaceCrashGuard>{header}</SurfaceCrashGuard></div>
+      <div ref={bodyRef} className="peek-sheet__body"><SurfaceCrashGuard>{children}</SurfaceCrashGuard></div>
+      {footer && <div ref={footRef} className="peek-sheet__foot"><SurfaceCrashGuard>{footer}</SurfaceCrashGuard></div>}
     </div>,
     document.body,
   );

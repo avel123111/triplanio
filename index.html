@@ -2,7 +2,28 @@
 <html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
+    <!-- Google Consent Mode v2 default (TRIP-311). Runs before anything else can
+         load a tag, and deliberately calls a FUNCTION: dataLayer.push([...]) with
+         an array is silently ignored for consent commands. Everything Google can
+         store stays denied until the visitor answers the banner; consent.js sends
+         the update. Functionality/security are granted — they are the storage the
+         service cannot run without. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { window.dataLayer.push(arguments); }
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'granted',
+        security_storage: 'granted'
+      });
+    </script>
     <!-- ★ <html lang> — ставится СИНХРОННО, ДО первого кадра (TRIP-515).
+         Стоит ПОСЛЕ блока Consent Mode (у того в шапке «runs before anything else
+         can load a tag»): порядок читается глазами, а сам скрипт тегов не грузит —
+         только выставляет атрибут.
          Статический lang="en" врал: язык интерфейса — профиль или язык браузера
          (I18nContext), а SPA при загрузке отдаёт пустой <body>. Chrome/Safari
          читают lang и английские title/meta и РЕШАЮТ «страница английская» ДО
@@ -41,24 +62,6 @@
           document.documentElement.setAttribute('lang', pick);
         } catch (e) { /* остаётся статический lang="en" */ }
       })();
-    </script>
-    <!-- Google Consent Mode v2 default (TRIP-311). Runs before anything else can
-         load a tag, and deliberately calls a FUNCTION: dataLayer.push([...]) with
-         an array is silently ignored for consent commands. Everything Google can
-         store stays denied until the visitor answers the banner; consent.js sends
-         the update. Functionality/security are granted — they are the storage the
-         service cannot run without. -->
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { window.dataLayer.push(arguments); }
-      gtag('consent', 'default', {
-        ad_storage: 'denied',
-        ad_user_data: 'denied',
-        ad_personalization: 'denied',
-        analytics_storage: 'denied',
-        functionality_storage: 'granted',
-        security_storage: 'granted'
-      });
     </script>
     <!-- Favicon: SVG первым — современные браузеры берут его и игнорируют
          остальное. .ico оставлен фолбэком для старых и для ботов/читалок,

@@ -59,8 +59,8 @@ test('сырой импорт Radix вне списка оболочек рон�
 test('тот же импорт ВНУТРИ оболочки из списка проходит', (t) => {
   const r = run(fixture(t, {
     ...CLEAN,
-    // Файл шва обязан нести границу краха (TRIP-515) — иначе валит новый инвариант.
-    'src/components/ui/dialog.jsx': "import * as Dialog from '@radix-ui/react-dialog';\nimport { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';\nexport const D = Dialog.Root; void SurfaceCrashGuard;\n",
+    // Файл шва обязан РЕАЛЬНО ПРИМЕНЯТЬ границу краха (импорт + JSX-тег), TRIP-515.
+    'src/components/ui/dialog.jsx': "import * as Dialog from '@radix-ui/react-dialog';\nimport { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';\nexport const D = (p) => <Dialog.Root><SurfaceCrashGuard open={p.open}>{p.children}</SurfaceCrashGuard></Dialog.Root>;\n",
   }));
   assert.equal(r.status, 0, r.stderr);
 });
@@ -78,15 +78,15 @@ test('импорт vaul вне шва роняет PR (пятая копия ш�
 test('vaul в самом шве проходит', (t) => {
   const r = run(fixture(t, {
     ...CLEAN,
-    // Шов обязан нести границу краха (TRIP-515).
-    [SEAM]: "import { Drawer } from 'vaul';\nimport { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';\nexport const SheetRoot = Drawer.Root; void SurfaceCrashGuard;\n",
+    // Шов обязан РЕАЛЬНО ПРИМЕНЯТЬ границу краха (импорт + JSX-тег), TRIP-515.
+    [SEAM]: "import { Drawer } from 'vaul';\nimport { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';\nexport const SheetRoot = (p) => <Drawer.Root><SurfaceCrashGuard open={p.open}>{p.children}</SurfaceCrashGuard></Drawer.Root>;\n",
   }));
   assert.equal(r.status, 0, r.stderr);
 });
 
 // TRIP-515: файл шва БЕЗ границы краха роняет PR. Без этого п.4 — no-op: краш в
-// окне снова убивал бы приложение. Увидено красным — уберите импорт границы из
-// фикстуры, и status станет 0.
+// окне снова убивал бы приложение. Увидено красным — верните применение границы
+// в фикстуру, и status станет 0.
 test('шов без границы краха (SurfaceCrashGuard) роняет PR', (t) => {
   const r = run(fixture(t, {
     ...CLEAN,
@@ -95,6 +95,19 @@ test('шов без границы краха (SurfaceCrashGuard) роняет P
   assert.equal(r.status, 1);
   assert.match(r.stderr, /sheetShell\.jsx/);
   assert.match(r.stderr, /SurfaceCrashGuard/);
+});
+
+// ★ ПРОВЕРЯЕТСЯ ПРИМЕНЕНИЕ, А НЕ УПОМИНАНИЕ (ревью Pavel PR #1154). Прежний
+// предикат был подстрокой имени и зеленел на файле, где границу СНЯЛИ, оставив
+// комментарий `// SurfaceCrashGuard снят`. Здесь ровно этот случай — импорта и
+// JSX-тега нет, только имя в комментарии — обязан ронять PR.
+test('упоминание границы в КОММЕНТАРИИ без применения роняет PR', (t) => {
+  const r = run(fixture(t, {
+    ...CLEAN,
+    [SEAM]: "import { Drawer } from 'vaul';\n// SurfaceCrashGuard: временно снят, вернём позже\nexport const SheetRoot = Drawer.Root;\n",
+  }));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /sheetShell\.jsx/);
 });
 
 test('<DialogContent> без <DialogTitle> роняет PR (безымянная модалка)', (t) => {

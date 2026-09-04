@@ -21,6 +21,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
+import { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { hideSplash } from '@/lib/splash';
@@ -375,11 +376,21 @@ function App() {
                   <Router>
                     <AuthenticatedApp />
                   </Router>
-                  <Toaster />
+                  {/* Листовые оверлеи стоят ВЫШЕ всех роутовых границ (над
+                      <Router>), поэтому render-краш в них ловит только
+                      AppErrorBoundary — то есть убивает всё приложение. Оборачиваем
+                      каждый своей границей краха (TRIP-515): краш в тосте/баннере
+                      гасит ОДИН оверлей, а не экран. Двери у них нет (нет
+                      onOpenChange), поэтому граница не закрывает и не
+                      переармируется — синглтон после краха гаснет до конца сессии;
+                      это осознанный размен (лучше пустой тост, чем мёртвое
+                      приложение), а сам класс крашей от переводчика уже снят п.3
+                      (domGuard). */}
+                  <SurfaceCrashGuard><Toaster /></SurfaceCrashGuard>
                   {/* Outside <Router> on purpose: the panel must appear on EVERY
                       entry, including the anonymous public-trip and invite links
                       that never reach an authenticated route (TRIP-311). */}
-                  <ConsentBanner />
+                  <SurfaceCrashGuard><ConsentBanner /></SurfaceCrashGuard>
                   {/* Vercel Web Analytics — SPA pageview tracking (auto-tracks
                       react-router navigations via the History API). Cookieless:
                       it writes nothing to the device, so it counts visits for

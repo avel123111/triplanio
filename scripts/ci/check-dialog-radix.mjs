@@ -51,7 +51,14 @@ const TITLE_PRESENT = /<DialogTitle[\s>]/;
 // приложение. Ставить границу «у владельца открытости» НЕЛЬЗЯ — их дюжина
 // (Sheet/PickerSheet/LpSheet/SearchSelect/ActionMenu/ShareCardDialog/…), они не
 // под манифестом, и один молча выпадет; шов заперт и полон по построению.
-const BOUNDARY_MARK = /SurfaceCrashGuard/;
+//
+// ★ ПРОВЕРЯЕМ ПРИМЕНЕНИЕ, А НЕ УПОМИНАНИЕ. Подстрока `SurfaceCrashGuard` совпала
+// бы и с комментарием `// SurfaceCrashGuard временно снят` — правило охраняло бы
+// комментарий, а не границу ([[triplanio-ci-guard-is-code]]: предикат = семантика,
+// не греп). Поэтому требуем И импорт из шва границы, И реальный JSX-тег (как
+// `CONTENT_USE` рядом), а не имя где угодно. Оба обязаны присутствовать.
+const BOUNDARY_IMPORT = /from\s+['"]@\/components\/ui\/surfaceCrashGuard['"]/;
+const BOUNDARY_APPLY = /<SurfaceCrashGuard[\s>]/;
 
 // The ONLY files allowed to import the raw Radix dialog primitives. Each owns the
 // a11y contract for its surface (Title + Description opt-out + keepFocusInDialog).
@@ -93,8 +100,9 @@ try {
     if (!VAUL_ALLOW.has(rel) && VAUL_IMPORT.test(src)) vaulOffenders.push(rel);
     // Any file that renders <DialogContent> must also carry a <DialogTitle>.
     if (CONTENT_USE.test(src) && !TITLE_PRESENT.test(src)) nameless.push(rel);
-    // TRIP-515: каждый файл шва обязан нести границу краха поверхности.
-    if (SEAM_FILES.has(rel) && !BOUNDARY_MARK.test(src)) boundaryless.push(rel);
+    // TRIP-515: каждый файл шва обязан РЕАЛЬНО ПРИМЕНЯТЬ границу краха (импорт +
+    // JSX-тег), а не просто упоминать её имя.
+    if (SEAM_FILES.has(rel) && !(BOUNDARY_IMPORT.test(src) && BOUNDARY_APPLY.test(src))) boundaryless.push(rel);
   }
 
   if (offenders.length) {
