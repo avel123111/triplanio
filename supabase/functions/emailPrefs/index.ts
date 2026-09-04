@@ -6,11 +6,10 @@
  * умерли непрочитанными (миграция 20260802093550). Второй источник правды здесь
  * не заводится — функция только читает и пишет Resend.
  *
- * Адресат — `c`, id контакта Resend. Это UUID, который генерит Resend; в нашем
- * приложении он не появляется НИГДЕ (ни в API-ответах, ни на фронте, ни в БД),
- * поэтому взять его можно только из своего письма — он и есть неподделываемый
- * токен, как у любой ссылки отписки. Подпись поверх него ничего не добавляет.
- * В карте дверей (`scripts/ci/security-tiers.mjs`) это `token`, как getPublicTrip.
+ * АДРЕСАТА функция определяет сама, двумя способами — из письма по `c` или из
+ * сессии залогиненного. Ни в одном фронт не передаёт чужой идентификатор; правило
+ * целиком в `resolveContact`, там же и обоснование. В карте дверей
+ * (`scripts/ci/security-tiers.mjs`) это `token` — по слабейшему из двух входов.
  *
  * ⚠️ `c` обязан быть UUID. Resend адресует контакт как `{id_or_email}`, то есть
  * с адресом в этом параметре ссылка превратилась бы в «отпиши кого угодно, зная
@@ -47,6 +46,7 @@
  * — лечение (перечитать список на ошибке) стирало бы несохранённые переключения.
  */
 import { HttpError, withHandler } from '../_shared/http.ts';
+import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const RESEND_API = 'https://api.resend.com';
@@ -64,7 +64,7 @@ type TopicRow = { id: string; name?: string; description?: string; subscription?
  * Форму ответа называет вызыватель параметром типа: `null` возможен всегда —
  * тело либо пустое, либо не JSON.
  */
-async function resend<T = unknown>(path: string, init: RequestInit = {}): Promise<T | null> {
+async function resend<T = unknown>(path: string, init: RequestInit = {}, allow404 = false): Promise<T | null> {
   const res = await fetch(`${RESEND_API}${path}`, {
     ...init,
     headers: {
@@ -73,6 +73,7 @@ async function resend<T = unknown>(path: string, init: RequestInit = {}): Promis
       ...(init.headers ?? {}),
     },
   });
+  if (res.status === 404 && allow404) return null;
   if (!res.ok) throw new Error(`resend ${init.method ?? 'GET'} ${path} → ${res.status}`);
   return await res.json().catch(() => null) as T | null;
 }
@@ -119,6 +120,59 @@ function cleanTopics(input: unknown): Array<{ id: string; subscription: string }
     if (UUID_RE.test(id) && SUBSCRIPTION.has(subscription)) out.push({ id, subscription });
   }
   return out;
+}
+
+/**
+ * КОНТАКТ ПО АДРЕСУ: найти, а если его нет — завести.
+ *
+ * Заводить обязательно, а не «ошибка, контакта нет»: контакты сегодня рождаются
+ * только в welcome-ветке n8n, то есть у всех, кто зарегистрировался раньше, их
+ * не существует. Без создания экран настроек был бы им недоступен, а разовая
+ * заливка всех адресов — работа, которую эта строка делает сама и по факту
+ * обращения.
+ */
+async function contactIdByEmail(email: string): Promise<string> {
+  const found = await resend<{ id?: string }>(`/contacts/${encodeURIComponent(email)}`, {}, true);
+  if (found?.id) return found.id;
+  const made = await resend<{ id?: string }>('/contacts', { method: 'POST', body: JSON.stringify({ email }) });
+  if (!made?.id) throw new Error('resend: contact create returned no id');
+  return made.id;
+}
+
+/**
+ * КТО ПРИШЁЛ. Два входа на один экран, и НИ В ОДНОМ фронт не передаёт чужой
+ * идентификатор:
+ *
+ *   • ИЗ ПИСЬМА — `c`, id контакта. Он и есть пропуск: id генерит Resend, в
+ *     приложении он не появляется нигде, взять его можно только из письма,
+ *     адресованного этому человеку. Входа без логина требуют почтовики.
+ *
+ *   • ИЗ АККАУНТА — сессия. Личность берётся из ПРОВЕРЕННОГО токена, а НЕ из
+ *     тела запроса. Приняв id пользователя параметром, мы бы отдали чужие
+ *     настройки любому, кто этот id видел, — а он уезжает на фронт в списке
+ *     участников трипа (`src/lib/resolveAuthor.js`). Функция стоит
+ *     `verify_jwt = false` (иначе шлюз отбил бы одноклик почтовика), поэтому
+ *     токен проверяет она сама — так же, как остальные наши self-auth функции.
+ *
+ * Адрес берём из `public.users`, а НЕ из токена: письма шлёт n8n по ЭТОЙ строке
+ * (PG-триггер отдаёт её payload). Разъедься эти два адреса — мы правили бы
+ * подписки контакта, которому ничего не отправляется.
+ */
+async function resolveContact(req: Request, url: URL, body: Record<string, unknown> | null): Promise<string> {
+  const fromLink = contactId(url, body);
+  if (fromLink) return fromLink;
+
+  const user = await getRequestUser(req);
+  if (!user) throw new HttpError(400, 'Invalid unsubscribe link', 'INVALID_INPUT');
+
+  const { data: row, error } = await supabaseAdmin
+    .from('users').select('email').eq('id', user.id).maybeSingle();
+  if (error) throw error;
+  const email = String(row?.email ?? '').trim();
+  // Пусто — аккаунт обезличен (soft-delete, TRIP-78): адреса нет, править нечего.
+  if (!email) throw new HttpError(400, 'Invalid unsubscribe link', 'INVALID_INPUT');
+
+  return await contactIdByEmail(email);
 }
 
 /**
@@ -184,8 +238,7 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
   }
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  const id = contactId(url, body);
-  if (!id) throw new HttpError(400, 'Invalid unsubscribe link', 'INVALID_INPUT');
+  const id = await resolveContact(req, url, body);
 
   // ЧТЕНИЕ. Два вызова, потому что глобальный флаг живёт на контакте, а не в
   // списке топиков — а он главнее: при `unsubscribed: true` не уходит ничего,
