@@ -9,18 +9,16 @@ import { hideSplash } from '@/lib/splash';
 // в Sentry, а не пользователю. Раньше сюда падал сырой англоязычный DOMException
 // («Failed to execute 'insertBefore'…») от автоперевода. Кнопка ПЕРЕЗАГРУЖАЕТ
 // текущий маршрут, а не выкидывает на «/».
+//
+// Одна кнопка (перезагрузка), а НЕ две — осознанно. Сюда доходит только отказ
+// УРОВНЯ ПРОВАЙДЕРОВ (i18n/router/тема): краш ОДНОГО экрана ловит региональная
+// `ErrorBoundary` (retry на месте + сброс по навигации), до этого рубежа он не
+// добирается. На уровне провайдеров «На главную» упёрлось бы в тот же отказ, что
+// и перезагрузка, поэтому второй двери здесь нет.
 const CRASH_COPY = {
-  en: { title: 'Something went wrong', generic: 'The app hit an unexpected error. Reloading usually fixes it.', retry: 'Reload', home: 'Go home' },
-  ru: { title: 'Что-то пошло не так', generic: 'Приложение столкнулось с непредвиденной ошибкой. Обычно помогает перезагрузка.', retry: 'Перезагрузить', home: 'На главную' },
-  es: { title: 'Algo salió mal', generic: 'La aplicación tuvo un error inesperado. Recargar suele solucionarlo.', retry: 'Recargar', home: 'Ir al inicio' },
-};
-// Стиль вторичной кнопки «На главную» — модульная константа, чтобы не плодить
-// инлайн-объект (его считает пол 2o). Литералы crash-safe: экран краха рисуется
-// без гарантии app.css.
-const HOME_BTN_STYLE = {
-  padding: '10px 20px', borderRadius: 'var(--r-sm)', border: '1px solid #cbd5e1',
-  background: 'transparent', color: '#374257', fontWeight: 600,
-  fontSize: 'var(--fs-base)', cursor: 'pointer',
+  en: { title: 'Something went wrong', generic: 'The app hit an unexpected error. Reloading usually fixes it.', retry: 'Reload' },
+  ru: { title: 'Что-то пошло не так', generic: 'Приложение столкнулось с непредвиденной ошибкой. Обычно помогает перезагрузка.', retry: 'Перезагрузить' },
+  es: { title: 'Algo salió mal', generic: 'La aplicación tuvo un error inesperado. Recargar suele solucionarlo.', retry: 'Recargar' },
 };
 function crashLang() {
   try {
@@ -72,9 +70,6 @@ export default class AppErrorBoundary extends React.Component {
           <p style={{ margin: 0, color: '#8693a8', fontSize: 'var(--fs-base)', textAlign: 'center', maxWidth: 400 }}>
             {c.generic}
           </p>
-          {/* Две двери (TRIP-515): «Перезагрузить» чинит сорванный кадр, но у
-              ДЕТЕРМИНИРОВАННОГО краха на маршруте перезагрузка даёт тот же краш —
-              поэтому «На главную» уводит на заведомо рабочий экран. */}
           <button
             onClick={() => window.location.reload()}
             style={{
@@ -84,11 +79,6 @@ export default class AppErrorBoundary extends React.Component {
             }}
           >
             {c.retry}
-          </button>
-          {/* Стиль второй кнопки — модульная константа (см. HOME_BTN_STYLE выше),
-              а не инлайн-объект: лишний инлайн в дереве считает пол 2o. */}
-          <button onClick={() => { window.location.href = '/'; }} style={HOME_BTN_STYLE}>
-            {c.home}
           </button>
           {import.meta.env.DEV && (
             <pre style={{

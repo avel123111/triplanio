@@ -331,7 +331,7 @@ const KIT_CITIES = [
 // Бросает при рендере, когда взведён — моделирует отцепленный переводчиком узел.
 function BoomWhenArmed({ armed }) {
   if (armed) throw new Error('kit: surface boom');
-  return <Badge>живое содержимое окна</Badge>;
+  return <Badge>живое содержимое окна{/* i18n-ignore: витрина /kit, приёмка локерит по тексту */}</Badge>;
 }
 // Бросает на ВТОРОМ рендере — моделирует краш при busy=true (перерисовка со
 // спиннером у красной кнопки), а не при открытии окна.
@@ -339,7 +339,7 @@ function BoomOnRerender() {
   const n = useRef(0);
   n.current += 1;
   if (n.current >= 2) throw new Error('kit: busy boom');
-  return <Badge>содержимое (сломается при busy)</Badge>;
+  return <Badge>содержимое (сломается при busy){/* i18n-ignore: витрина /kit */}</Badge>;
 }
 function SurfaceCrashDemo() {
   const confirm = useConfirm();
@@ -364,18 +364,20 @@ function SurfaceCrashDemo() {
 
   return (
     <div className="col col--g4">
-      {/* Сосед вне окна: жив после краха = приложение не упало (не крах-экран). */}
-      <Badge>сосед жив</Badge>
+      {/* Сосед вне окна: жив после краха = приложение не упало (не крах-экран).
+          Строки стенда — демо-данные витрины, под t() не идут: приёмка
+          check:surfaces локерит стенд ровно по этому тексту (has-text). */}
+      <Badge>сосед жив{/* i18n-ignore: витрина /kit, приёмка локерит по тексту */}</Badge>
 
       {/* Сценарий 1: краш внутри шита закрывает ШИТ, а не приложение. */}
-      <Btn variant="secondary" onClick={() => { setArmed(false); setOpen(true); }}>Открыть шит</Btn>
-      <Sheet open={open} onOpenChange={setOpen} title="Стенд краха">
-        <Btn variant="danger-solid" onClick={() => setArmed(true)}>Сломать содержимое</Btn>
+      <Btn variant="secondary" onClick={() => { setArmed(false); setOpen(true); }}>Открыть шит{/* i18n-ignore: витрина /kit */}</Btn>
+      <Sheet open={open} onOpenChange={setOpen} title="Стенд краха"/* i18n-ignore: витрина /kit */>
+        <Btn variant="danger-solid" onClick={() => setArmed(true)}>Сломать содержимое{/* i18n-ignore: витрина /kit */}</Btn>
         <BoomWhenArmed armed={armed} />
       </Sheet>
 
       {/* Сценарий 2: краш при busy — промис confirm() обязан разрешиться false. */}
-      <Btn variant="secondary" onClick={runBusyConfirm}>Confirm с крахом при busy</Btn>
+      <Btn variant="secondary" onClick={runBusyConfirm}>Confirm с крахом при busy{/* i18n-ignore: витрина /kit */}</Btn>
       <Badge>промис: {promiseResult}</Badge>
     </div>
   );
