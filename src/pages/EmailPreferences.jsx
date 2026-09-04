@@ -88,91 +88,129 @@ export default function EmailPreferences() {
     setPhase('ready');
   };
 
-  if (phase === 'invalid') {
-    return (
-      <Col as="main" className="page-main">
-        <h1 className="t-title">{t('email_prefs.invalid_title')}</h1>
-        <p className="muted t-body">{t('email_prefs.invalid_body')}</p>
-      </Col>
-    );
-  }
+  // ОДНА оболочка на все состояния, а не три похожих `return`, и дело не в
+  // дублировании: марка и подвал обязаны стоять на КАЖДОМ экране, включая
+  // «ссылка недействительна». Человек пришёл из письма — страница без единого
+  // признака отправителя читается как чужая, и «отписаться» на ней страшно
+  // нажимать.
+  const body = (() => {
+    if (phase === 'invalid') {
+      return (
+        <Col gap="g2">
+          <h1 className="t-title">{t('email_prefs.invalid_title')}</h1>
+          <p className="muted t-body">{t('email_prefs.invalid_body')}</p>
+        </Col>
+      );
+    }
 
-  // Пока грузимся — НИ ОДНОЙ переведённой строки на экране, только заглушки.
-  // Причина не косметическая: словарь этого экрана не входит в шесть, которых
-  // ждёт первый кадр (`zoneNamespaces.js`) — он приезжает следующим, фоном.
-  // Заголовок, отрисованный в этот момент, был бы сырым ключом на кадр.
-  if (phase === 'loading') {
+    // Пока грузимся — НИ ОДНОЙ переведённой строки, только заглушки. Причина не
+    // косметическая: словарь этого экрана не входит в шесть, которых ждёт первый
+    // кадр (`zoneNamespaces.js`), — он приезжает следующим, фоном, и заголовок,
+    // отрисованный в этот момент, был бы сырым ключом. Марка исключение: в ней
+    // только имя бренда, переводить нечего.
+    if (phase === 'loading') {
+      return (
+        <>
+          <Col gap="g2"><Skeleton h={28} w="60%" /><Skeleton h={18} w="80%" /></Col>
+          <Card><Col><Skeleton h={44} /><Skeleton h={44} /><Skeleton h={44} /><Skeleton h={44} /></Col></Card>
+        </>
+      );
+    }
+
     return (
-      <Col as="main" className="page-main" gap="g7">
-        <Col gap="g2"><Skeleton h={28} w="60%" /><Skeleton h={18} w="80%" /></Col>
-        <Card>
-          <Col>
-            <Skeleton h={44} /><Skeleton h={44} /><Skeleton h={44} /><Skeleton h={44} />
+      <>
+        <Col gap="g2">
+          <h1 className="t-title">{t('email_prefs.title')}</h1>
+          <p className="muted t-body">{t('email_prefs.subtitle')}</p>
+        </Col>
+
+        {phase === 'error' && (
+          <Col gap="g4">
+            <p className="t-body">{t('email_prefs.load_error')}</p>
+            <Row><Btn variant="secondary" onClick={load}>{t('email_prefs.retry')}</Btn></Row>
           </Col>
-        </Card>
-      </Col>
+        )}
+
+        {(phase === 'ready' || phase === 'save_error') && (
+          <>
+            <Card>
+              <Col gap="g2">
+                {rows.map((r) => {
+                  // Топик, которого нет в локали (завели новый и ещё не
+                  // перевели), показывается под именем из ответа — см. `buildRows`.
+                  const label = r.i18nKey ? t(r.i18nKey) : r.name;
+                  return (
+                    <ListRow
+                      key={r.id}
+                      title={label}
+                      // Общий выключатель гасит частные: при нём письма не уходят
+                      // независимо от топиков, и живой переключатель здесь врал бы.
+                      trail={(
+                        <Toggle
+                          on={r.on}
+                          locked={unsub}
+                          busy={saving}
+                          label={label}
+                          onChange={(v) => flip(r.id, v)}
+                        />
+                      )}
+                    />
+                  );
+                })}
+              </Col>
+            </Card>
+
+            <Card>
+              <ListRow
+                title={t('email_prefs.none_title')}
+                sub={t('email_prefs.none_sub')}
+                trail={(
+                  <Toggle
+                    on={unsub}
+                    busy={saving}
+                    label={t('email_prefs.none_title')}
+                    onChange={(v) => { setSaved(false); setUnsub(v); }}
+                  />
+                )}
+              />
+            </Card>
+
+            <Row gap="g4" wrap>
+              <Btn variant="primary" disabled={!dirty} loading={saving} onClick={save}>
+                {t('email_prefs.save')}
+              </Btn>
+              {saved && <span className="muted t-body">{t('email_prefs.saved')}</span>}
+              {phase === 'save_error' && <span className="t-body">{t('email_prefs.save_error')}</span>}
+            </Row>
+          </>
+        )}
+      </>
     );
-  }
+  })();
 
   return (
-    <Col as="main" className="page-main" gap="g7">
-      <Col gap="g2">
-        <h1 className="t-title">{t('email_prefs.title')}</h1>
-        <p className="muted t-body">{t('email_prefs.subtitle')}</p>
-      </Col>
+    <Col as="main" className="page-main" gap="g8">
+      {/* Марка. Знак — ссылка на главную, слово рядом обычным текстом: у экрана
+          нет ни шапки приложения (человек не вошёл), ни шапки сайта (она несёт
+          свою дизайн-систему), поэтому отправителя называет он сам. Размер знака
+          задан АТРИБУТАМИ, а не стилем: это его собственная величина, а не
+          оформление — инлайн здесь был бы храповиком 2l на ровном месте. */}
+      <Row gap="g3" inline>
+        <a href="/" aria-label="Triplanio">
+          <img src="/triplanio-logo.svg" alt="" width="34" height="34" />
+        </a>
+        <span className="t-subheading">Triplanio</span>{/* i18n-ignore — имя бренда */}
+      </Row>
 
-      {phase === 'error' && (
-        <Col gap="g4">
-          <p className="t-body">{t('email_prefs.load_error')}</p>
-          <Row><Btn variant="secondary" onClick={load}>{t('email_prefs.retry')}</Btn></Row>
-        </Col>
-      )}
+      {body}
 
-      {(phase === 'ready' || phase === 'save_error') && (
-        <>
-          <Card>
-            <Col gap="g2">
-              {rows.map((r) => {
-                // Топик, которого нет в локали (завели новый и ещё не
-                // перевели), показывается под именем из ответа — см. `buildRows`.
-                const label = r.i18nKey ? t(r.i18nKey) : r.name;
-                return (
-                  <ListRow
-                    key={r.id}
-                    title={label}
-                    // Общий выключатель гасит частные: при нём письма не уходят
-                    // независимо от топиков, и живой переключатель здесь врал бы.
-                    trail={(
-                      <Toggle
-                        on={r.on}
-                        locked={unsub}
-                        busy={saving}
-                        label={label}
-                        onChange={(v) => flip(r.id, v)}
-                      />
-                    )}
-                  />
-                );
-              })}
-            </Col>
-          </Card>
-
-          <Card>
-            <ListRow
-              title={t('email_prefs.none_title')}
-              sub={t('email_prefs.none_sub')}
-              trail={<Toggle on={unsub} busy={saving} label={t('email_prefs.none_title')} onChange={(v) => { setSaved(false); setUnsub(v); }} />}
-            />
-          </Card>
-
-          <Row gap="g4" wrap>
-            <Btn variant="primary" disabled={!dirty} loading={saving} onClick={save}>
-              {t('email_prefs.save')}
-            </Btn>
-            {saved && <span className="muted t-body">{t('email_prefs.saved')}</span>}
-            {phase === 'save_error' && <span className="t-body">{t('email_prefs.save_error')}</span>}
-          </Row>
-        </>
+      {/* Подвал не рисуется на загрузке по той же причине, что и заголовок:
+          в нём есть переведённая строка. */}
+      {phase !== 'loading' && (
+        <Row wrap>
+          <a className="t-meta" href="/">triplanio.com</a>{/* i18n-ignore — адрес сайта */}
+          <a className="t-meta" href="/privacy">{t('email_prefs.privacy')}</a>
+        </Row>
       )}
     </Col>
   );
