@@ -74,3 +74,21 @@ test('hasChanges: видит правку одного лишь глобальн
   assert.equal(hasChanges(rows, rows, false, true), true);
   assert.equal(hasChanges(rows, rows, false, false), false);
 });
+
+// Подпись строки собирается как `<ключ>_sub`, то есть неявно: забыть её можно
+// молча, и на экране появится сырой ключ вместо пояснения. Тест читает САМИ
+// файлы локалей и требует обе половины у каждого известного топика — во всех
+// трёх языках, потому что «забыли перевести» это ровно тот же дефект.
+test('★ у каждого топика есть и заголовок, и пояснение во всех локалях', async () => {
+  const { readFileSync } = await import('node:fs');
+  for (const lang of ['ru', 'en', 'es']) {
+    const dict = JSON.parse(
+      readFileSync(new URL(`./i18n/locales/${lang}/email_prefs.json`, import.meta.url), 'utf8'),
+    );
+    for (const key of Object.values(TOPIC_KEYS)) {
+      const bare = key.replace(/^email_prefs\./, '');
+      assert.ok(dict[bare], `${lang}: нет заголовка ${bare}`);
+      assert.ok(dict[`${bare}_sub`], `${lang}: нет пояснения ${bare}_sub`);
+    }
+  }
+});
