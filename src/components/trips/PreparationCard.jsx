@@ -1,13 +1,10 @@
 // @ts-check
 import React, { useMemo, useState } from 'react';
-import { Icon } from '@/design/icons';
-import { AddRow, Btn, Card, CardHeader, IconBtn, ListRow, Meter, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
+import { AddRow, Btn, Card, CardHeader, EmptyState, IconBtn, Meter, Skeleton, Row, Col } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { buildPreparation } from '@/lib/trip-preparation';
-import { primaryIssues, validateTrip } from '@/lib/validation';
-import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
-import { formatNaive, naiveDayKey } from '@/lib/naive-time';
+import { naiveDayKey } from '@/lib/naive-time';
 
 // Виджет «Подготовка» — сколько из ТОГО, ЧТО ТРЕБУЕТ МАРШРУТ, уже забронировано,
 // и одним списком: что забронировано, что нет.
@@ -22,9 +19,15 @@ import { formatNaive, naiveDayKey } from '@/lib/naive-time';
 // проверки дат у виджета нет и быть не должно: это был бы второй источник
 // правды о том, что с бронью не так.
 //
-// ★★ ФОРМЫ НЕ СВОИ. Отсутствие — примитив ДС `<AddRow>` (он же в панели города и
-// в сервисах); наличие — `<ListRow variant="raised">` с плиткой в тоне события и
-// шевроном. Вес работе даёт ПОРЯДОК (см. `Section`), а не размер плашки.
+// ★★ В КОЛОНКАХ ТОЛЬКО РАБОТА — забронированного здесь нет вовсе (решение
+// Pavel). Виджет отвечает на вопрос «что осталось»; закрытое он считает числом
+// в подписи секции и полосой готовности, а списком не повторяет. Отсюда: ряд у
+// виджета ОДИН — примитив ДС `<AddRow>` (он же в панели города и в сервисах).
+//
+// ★ ЗАКРЫТОЕ СОСТОЯНИЕ — не пустое. Секция без работы говорит «всё
+// забронировано» строкой, а закрытый ЦЕЛИКОМ виджет — канон-блоком
+// `<EmptyState kind="success">` вместо полосы и колонок: на 100% полоса и
+// счёт «7 из 7» сообщают одно и то же дважды и ни разу — по-человечески.
 
 // Дата события — ВСЕГДА дневным ключом (`YYYY-MM-DD`). Наивное «дата+время»,
 // прогнанное через форматтер без зоны, читается как локальное и печатается в
@@ -38,47 +41,25 @@ function dayRange(fmt, from, to) {
   return formatDateRange(naiveDayKey(from), naiveDayKey(to), fmt);
 }
 
-/**
- * Трейл строки брони: замечание (если есть) + шеврон.
- *
- * ★ ЗАМЕЧАНИЕ СТОИТ В `trail`, А НЕ В `trailSub` — И ЭТО НЕ КОСМЕТИКА.
- * `trailSub` — объявленная ВТОРОСТЕПЕННАЯ половина трейла: примитив прячет её
- * на ≤600px. Предупреждение о броне на телефоне пропадать не имеет права —
- * именно телефон и есть тот экран, где эту бронь смотрят в дороге.
- */
-function Trail({ issue }) {
-  return (
-    <>
-      {issue && (
-        <Tooltip content={issue}>
-          <span className="wrn" aria-label={issue}><Icon name="warning" size={13} /></span>
-        </Tooltip>
-      )}
-      <Icon name="chev" size={16} className="chev" />
-    </>
-  );
-}
-
-
 // Сколько рядов видно в свёрнутой секции. Одно число на обе колонки — иначе
 // «Ещё N» у ночлегов и у переездов считались бы от разных потолков.
 const CAP = 3;
 
 /**
- * Секция подготовки: подпись со счётом, ряды и свёртка.
+ * Секция подготовки: подпись со счётом, ряды работы и свёртка.
  *
- * ★ ПОРЯДОК: сначала то, чего НЕТ, потом то, что есть (внутри группы — порядок
- * маршрута): виджет отвечает на «что осталось», поэтому работа стоит первой.
- * ★ ВИДНО ПЕРВЫЕ `CAP` РЯДОВ ПО ЭТОМУ ПОРЯДКУ, независимо от статуса; остальное
- * — за «Ещё N». Потолок держит высоту секции постоянной: список длиной с
- * маршрут иначе растит экран без предела.
+ * ★ В СПИСКЕ ТОЛЬКО НЕЗАБРОНИРОВАННОЕ. Закрытое живёт числом в подписи
+ * (`2/5`) и в полосе готовности — списком его никто не ищет.
+ * ★ ВИДНО ПЕРВЫЕ `CAP` РЯДОВ, остальное — за «Ещё N»: потолок держит высоту
+ * секции постоянной, иначе список длиной с маршрут растит экран без предела.
+ * ★ РАБОТЫ НЕТ — секция закрыта, и это НЕ пустое состояние: она говорит об
+ * этом строкой, а не оставляет под подписью пустоту.
  */
 function Section({ label = null, rows = [], done = 0, total = 0, isLoading = false }) {
   const { t } = useI18nFormat();
   const [expanded, setExpanded] = useState(false);
-  const ordered = [...rows.filter((r) => !r.booked), ...rows.filter((r) => r.booked)];
-  const shown = expanded ? ordered : ordered.slice(0, CAP);
-  const hidden = ordered.length - shown.length;
+  const shown = expanded ? rows : rows.slice(0, CAP);
+  const hidden = rows.length - shown.length;
   if (isLoading) return <SectionSkeleton />;
   return (
     <Col gap="g4">
@@ -91,7 +72,14 @@ function Section({ label = null, rows = [], done = 0, total = 0, isLoading = fal
         <span className="t-meta muted">{label}</span>
         <span className="t-meta muted num">{done}/{total}</span>
       </Row>
-      {shown.map((r) => r.node)}
+      {rows.length === 0
+        /* ★ ЗАКРЫТАЯ СЕКЦИЯ — ТОТ ЖЕ КАНОН-БЛОК, что у закрытого целиком виджета,
+           только без текста-пояснения (в узкой колонке он переносится по три
+           слова). Серая строка под подписью тут не годится: колонки одной
+           высоты, и рядом с длинным соседом закрытая секция оставляла двести
+           пикселей пустоты с одной фразой сверху. */
+        ? <EmptyState boxed kind="success" icon="check" title={t('overview.prep_sec_done')} />
+        : shown}
       {(hidden > 0 || expanded) && (
         <Row>
           <Btn variant="link" onClick={() => setExpanded((v) => !v)}>
@@ -144,80 +132,30 @@ export default function PreparationCard({
     [visits, hotels, transfers],
   );
 
-  // Замечание на КОНКРЕТНОЙ броне: `primaryIssues` уже схлопывает пачку до одной
-  // претензии на сущность, поэтому карта id → текст однозначна.
-  const issueByEntity = useMemo(() => {
-    const map = new Map();
-    if (isLoading) return map;
-    for (const i of primaryIssues(validateTrip({ visits, hotels, transfers }))) {
-      if (i.entityId != null && !map.has(i.entityId)) {
-        map.set(i.entityId, t(`validation.${i.code}`, i.values));
-      }
-    }
-    return map;
-  }, [visits, hotels, transfers, isLoading, t]);
-
   if (isLoading) return <PreparationSkeleton />;
 
   const { stays, legs, total, done } = prep;
 
-  // ★ ФОРМА ОБЪЯВЛЕНА ОДИН РАЗ. Четыре ряда виджета (ночлег/переезд × есть/нет)
-  // отличаются только СОДЕРЖИМЫМ; собранные четырьмя копиями `<ListRow>`, они
-  // немедленно разъезжаются при первой же правке облика — это и произошло дважды.
-  const doneRow = (id, tone, icon, title, sub, open) => ({
-    key: `d-${id}`,
-    booked: true,
-    node: (
-      <ListRow
-        key={`d-${id}`}
-        variant="raised"
-        lead={<Tile tone={tone} icon={icon} />}
-        title={title}
-        sub={sub || undefined}
-        trail={<Trail issue={issueByEntity.get(id)} />}
-        onClick={open}
-      />
-    ),
-  });
-  // Тон ховера (`accent` → канал `--a`) — ТЕ ЖЕ значения, что в панели города
-  // (`CityPanel`): у одного и того же ряда «добавить бронь» не может быть двух
-  // разных акцентов на двух экранах.
-  const todoRow = (key, accent, icon, title, sub, add) => ({
-    key,
-    booked: false,
-    node: <AddRow key={key} icon={icon} accent={accent} title={title} sub={sub} onClick={add} />,
-  });
+  // Ряд у виджета ОДИН — «этого ещё нет». Тон ховера (`accent` → канал `--a`) —
+  // ТЕ ЖЕ значения, что в панели города (`CityPanel`): у одного и того же ряда
+  // «добавить бронь» не может быть двух разных акцентов на двух экранах.
+  const todoRow = (key, accent, icon, title, sub, add) => (
+    <AddRow key={key} icon={icon} accent={accent} title={title} sub={sub} onClick={add} />
+  );
   const dotted = (...parts) => parts.filter(Boolean).join(' · ');
 
-  const stayRows = stays.flatMap((s) => (s.booked
-    ? s.bookings.map((h) => doneRow(
-      h.id, 'hotel', 'bed', h.name,
-      dotted(s.visit.city_name, dayRange(fmtDate, h.check_in_datetime, h.check_out_datetime)),
-      () => onOpenEvent?.({ kind: 'hotel', id: h.id }),
-    ))
-    : [todoRow(
-      s.key, 'var(--ev-hotel)', 'bed', s.visit.city_name,
-      dotted(dayRange(fmtDate, s.visit.start_date, s.visit.end_date), `${s.nights} ${nightsWord(t, s.nights)}`),
-      () => onAddHotel?.(s.visit),
-    )]));
+  const stayRows = stays.filter((s) => !s.booked).map((s) => todoRow(
+    s.key, 'var(--ev-hotel)', 'bed', s.visit.city_name,
+    dotted(dayRange(fmtDate, s.visit.start_date, s.visit.end_date), `${s.nights} ${nightsWord(t, s.nights)}`),
+    () => onAddHotel?.(s.visit),
+  ));
 
-  const legRows = legs.flatMap((l) => {
-    const pair = `${l.from.city_name} → ${l.to.city_name}`;
-    return l.booked
-      ? l.bookings.map((tr) => {
-        const kind = transferKind(tr.transport_type);
-        return doneRow(
-          tr.id, 'transfer', kind.icon, pair,
-          dotted(
-            day1(fmtDate, tr.start_datetime || l.from.end_date),
-            tr.start_datetime ? formatNaive(tr.start_datetime, 'HH:mm') : '',
-            t(kind.labelKey),
-          ),
-          () => onOpenEvent?.({ kind: 'transfer', id: tr.id }),
-        );
-      })
-      : [todoRow(l.key, 'var(--ev-transfer)', 'route', pair, day1(fmtDate, l.from.end_date), () => onAddTransfer?.(l.from, l.to))];
-  });
+  const legRows = legs.filter((l) => !l.booked).map((l) => todoRow(
+    l.key, 'var(--ev-transfer)', 'route',
+    `${l.from.city_name} → ${l.to.city_name}`,
+    day1(fmtDate, l.from.end_date),
+    () => onAddTransfer?.(l.from, l.to),
+  ));
 
   return (
     <Card className="col col--g6 prep">
@@ -238,6 +176,18 @@ export default function PreparationCard({
       <div>
         {total === 0 ? (
           <div className="muted ov-empty-line">{t('overview.prep_empty')}</div>
+        ) : done === total ? (
+          /* ★ ВСЁ ЗАБРОНИРОВАНО — СВОЁ СОСТОЯНИЕ, А НЕ ПОЛОСА НА 100%. Полный
+             бар, «7 из 7», «100%» и две колонки под ними сообщают один и тот же
+             факт четыре раза, и ни разу — по-человечески. Здесь канон-блок
+             `EmptyState kind="success"`: один знак, одна фраза, ничего лишнего. */
+          <EmptyState
+            boxed
+            kind="success"
+            icon="check"
+            title={t('overview.prep_done_title')}
+            body={t('overview.prep_done_body')}
+          />
         ) : (
           <>
             {/* Полоса считает ровно то, что перечислено под ней. */}
