@@ -140,66 +140,70 @@ export default function PreparationCard({
 
   const { stays, legs, total, done } = prep;
 
-  const stayRows = stays.flatMap((s) =>
-    s.booked
-      ? s.bookings.map((h) => ({ key: `h-${h.id}`, booked: true, node: (
-        <ListRow
-          key={`h-${h.id}`}
-          variant="raised"
-          lead={<Tile tone="hotel" icon="bed" />}
-          title={h.name}
-          sub={[s.visit.city_name, dayRange(fmtDate, h.check_in_datetime, h.check_out_datetime)]
-            .filter(Boolean).join(' · ')}
-          trail={<Trail issue={issueByEntity.get(h.id)} />}
-          onClick={() => onOpenEvent?.({ kind: 'hotel', id: h.id })}
-        />
-      ) }))
-      : [{ key: s.key, booked: false, node: (
-        <ListRow
-          key={s.key}
-          variant="add"
-          lead={<Tile tone="quiet" icon="bed" />}
-          title={s.visit.city_name}
-          sub={[dayRange(fmtDate, s.visit.start_date, s.visit.end_date),
-            `${s.nights} ${nightsWord(t, s.nights)}`].filter(Boolean).join(' · ')}
-          trail={<Icon name="plus" size={16} />}
-          style={ADD_TONE_STAY}
-          onClick={() => onAddHotel?.(s.visit)}
-        />
-      ) }],
-  );
+  // ★ ФОРМА ОБЪЯВЛЕНА ОДИН РАЗ. Четыре ряда виджета (ночлег/переезд × есть/нет)
+  // отличаются только СОДЕРЖИМЫМ; собранные четырьмя копиями `<ListRow>`, они
+  // немедленно разъезжаются при первой же правке облика — это и произошло дважды.
+  const doneRow = (id, tone, icon, title, sub, open) => ({
+    key: `d-${id}`,
+    booked: true,
+    node: (
+      <ListRow
+        key={`d-${id}`}
+        variant="raised"
+        lead={<Tile tone={tone} icon={icon} />}
+        title={title}
+        sub={sub || undefined}
+        trail={<Trail issue={issueByEntity.get(id)} />}
+        onClick={open}
+      />
+    ),
+  });
+  const todoRow = (key, accent, icon, title, sub, add) => ({
+    key,
+    booked: false,
+    node: (
+      <ListRow
+        key={key}
+        variant="add"
+        lead={<Tile tone="quiet" icon={icon} />}
+        title={title}
+        sub={sub || undefined}
+        trail={<Icon name="plus" size={16} />}
+        style={accent}
+        onClick={add}
+      />
+    ),
+  });
+  const dotted = (...parts) => parts.filter(Boolean).join(' · ');
+
+  const stayRows = stays.flatMap((s) => (s.booked
+    ? s.bookings.map((h) => doneRow(
+      h.id, 'hotel', 'bed', h.name,
+      dotted(s.visit.city_name, dayRange(fmtDate, h.check_in_datetime, h.check_out_datetime)),
+      () => onOpenEvent?.({ kind: 'hotel', id: h.id }),
+    ))
+    : [todoRow(
+      s.key, ADD_TONE_STAY, 'bed', s.visit.city_name,
+      dotted(dayRange(fmtDate, s.visit.start_date, s.visit.end_date), `${s.nights} ${nightsWord(t, s.nights)}`),
+      () => onAddHotel?.(s.visit),
+    )]));
 
   const legRows = legs.flatMap((l) => {
     const pair = `${l.from.city_name} → ${l.to.city_name}`;
     return l.booked
       ? l.bookings.map((tr) => {
         const kind = transferKind(tr.transport_type);
-        const day = day1(fmtDate, tr.start_datetime || l.from.end_date);
-        const time = tr.start_datetime ? formatNaive(tr.start_datetime, 'HH:mm') : '';
-        return { key: `t-${tr.id}`, booked: true, node: (
-          <ListRow
-            key={`t-${tr.id}`}
-            variant="raised"
-            lead={<Tile tone="transfer" icon={kind.icon} />}
-            title={pair}
-            sub={[day, time, t(kind.labelKey)].filter(Boolean).join(' · ')}
-            trail={<Trail issue={issueByEntity.get(tr.id)} />}
-            onClick={() => onOpenEvent?.({ kind: 'transfer', id: tr.id })}
-          />
-        ) };
+        return doneRow(
+          tr.id, 'transfer', kind.icon, pair,
+          dotted(
+            day1(fmtDate, tr.start_datetime || l.from.end_date),
+            tr.start_datetime ? formatNaive(tr.start_datetime, 'HH:mm') : '',
+            t(kind.labelKey),
+          ),
+          () => onOpenEvent?.({ kind: 'transfer', id: tr.id }),
+        );
       })
-      : [{ key: l.key, booked: false, node: (
-        <ListRow
-          key={l.key}
-          variant="add"
-          lead={<Tile tone="quiet" icon="route" />}
-          title={pair}
-          sub={day1(fmtDate, l.from.end_date) || undefined}
-          trail={<Icon name="plus" size={16} />}
-          style={ADD_TONE_LEG}
-          onClick={() => onAddTransfer?.(l.from, l.to)}
-        />
-      ) }];
+      : [todoRow(l.key, ADD_TONE_LEG, 'route', pair, day1(fmtDate, l.from.end_date), () => onAddTransfer?.(l.from, l.to))];
   });
 
   return (
