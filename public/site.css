@@ -722,17 +722,27 @@ section{position:relative}
    встаёт в одно и то же место в обоих браузерах, поэтому зазоры фиксируются в px
    (TRIP-508). Маска низа тоже переведена с процентов высоты на vw — иначе её
    сход снова зависел бы от высоты. */
+/* Мобильный кадр (TRIP-510): фото 3200×2314 (широкое, с большими запасами по
+   бокам). Масштаб заморожен переменной `--fw` (объявлена в @media ≤980 на .hero):
+   `min(245vw, 1000px)` — до ~408px кадр тянется по ширине вьюпорта (245vw, как
+   раньше), ШИРЕ телефон НЕ увеличивается, а замирает на 1000px, и фото раскрывает
+   свои горизонтальные запасы (Ilya: «не увеличивать, а расширять»). 1000px ≥ 980,
+   поэтому кадр покрывает вьюпорт вплоть до брейкпоинта десктопа 981px без пустот
+   по бокам. 245vw держит высоту кадра (`--fw`/1.3829 ≈ 690px@390) той же, что была
+   у прежнего кадра, поэтому вертикальная привязка и маска — те же, только выражены
+   через `--fw`. Маска: короткое проявление ровно у верхней кромки кадра (нет шва
+   под шапкой), низ БЕЗ ухода — дерево чёткое до конца (Ilya). */
 /* правило .hero-layer.la ключуется гардом 2p под ОБА класса — маркер на каждый */
-/* visual-diff-exempt: .la background-size — размер кадра переведён с высоты (auto 88%) на ширину (292vw), чтобы Safari/Chrome совпадали (TRIP-508) */
-/* visual-diff-exempt: .la background-position — кадр сдвинут вверх на 5.13vw, чтобы зазор заголовок↔телефон был 35px (TRIP-508) */
-/* visual-diff-exempt: .la -webkit-mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
-/* visual-diff-exempt: .la mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
-/* visual-diff-exempt: .hero-layer background-size — размер кадра переведён с высоты (auto 88%) на ширину (292vw), чтобы Safari/Chrome совпадали (TRIP-508) */
-/* visual-diff-exempt: .hero-layer background-position — кадр сдвинут вверх на 5.13vw, чтобы зазор заголовок↔телефон был 35px (TRIP-508) */
-/* visual-diff-exempt: .hero-layer -webkit-mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
-/* visual-diff-exempt: .hero-layer mask — сход маски переведён с % высоты на vw ради height-независимости (TRIP-508) */
-.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:292vw auto;background-position:50% -5.13vw;
-  -webkit-mask:linear-gradient(180deg,#000 0,#000 129.5vw,transparent 182.8vw);mask:linear-gradient(180deg,#000 0,#000 129.5vw,transparent 182.8vw)}
+/* visual-diff-exempt: .la background-size — масштаб кадра заморожен через --fw=min(245vw,1000px): телефон не растёт, фото расширяется запасами (TRIP-510) */
+/* visual-diff-exempt: .la background-position — вертикальная привязка кадра через --fw (TRIP-510) */
+/* visual-diff-exempt: .la -webkit-mask — проявление у верхней кромки кадра через --fw, низ без ухода (TRIP-510) */
+/* visual-diff-exempt: .la mask — проявление у верхней кромки кадра через --fw, низ без ухода (TRIP-510) */
+/* visual-diff-exempt: .hero-layer background-size — масштаб кадра заморожен через --fw=min(245vw,1000px): телефон не растёт (TRIP-510) */
+/* visual-diff-exempt: .hero-layer background-position — вертикальная привязка кадра через --fw (TRIP-510) */
+/* visual-diff-exempt: .hero-layer -webkit-mask — проявление у верхней кромки кадра через --fw, низ без ухода (TRIP-510) */
+/* visual-diff-exempt: .hero-layer mask — проявление у верхней кромки кадра через --fw, низ без ухода (TRIP-510) */
+.hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:var(--fw) auto;background-position:50% calc(var(--fw) * var(--frame-y));
+  -webkit-mask:linear-gradient(180deg,transparent calc(var(--fw) * var(--frame-y)),#000 calc(var(--fw) * var(--frame-y) + 60px),#000 100%);mask:linear-gradient(180deg,transparent calc(var(--fw) * var(--frame-y)),#000 calc(var(--fw) * var(--frame-y) + 60px),#000 100%)}
 
 @media (min-width:981px){
   .hero-layer.la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
@@ -828,16 +838,37 @@ section{position:relative}
 
 @media (max-width:980px){
   .hero{
-    /* visual-diff-exempt: .hero {@media (max-width:980px)} min-height — dvh → svh (мобильный @media), устранение дёрганья скролла (TRIP-460) */
-    min-height:calc(100vh + var(--sheet-r));min-height:calc(100svh + var(--sheet-r));
+    /* ГЕОМЕТРИЯ КАДРА = ДАННЫЕ ФОТО, а не магические коэффициенты в calc. Всю
+       раскладку мобильного hero (привязку кадра, маску, высоту секции, плечо
+       кнопок) считаем из этих измеренных величин. Сменишь фото — правишь только
+       их, остальное пересчитается само. */
+    --photo-aspect: 1.3829;   /* ширина/высота hero-mobile.webp (3200/2314) */
+    --phone-bottom: 0.763;    /* низ телефона на фото, доля высоты кадра (замер по пикселям) */
+    --frame-y: 0.0518;        /* вертикальная привязка кадра, доля --fw (воздух над ним) */
+    --copy-h: 237px;          /* высота флоу «шапка+заголовок+подпись» над кнопками */
+    /* --fw — замороженная ШИРИНА кадра на экране: min(245vw,1000px) — до ~408px
+       кадр тянется по ширине, ШИРЕ замирает (телефон не растёт, фото раскрывает
+       боковые запасы; 1000px ≥ 980 → покрытие до брейкпоинта). Читается и в
+       .hero-layer.la, и в .hero-ctas — раскладка не может разъехаться. */
+    --fw: min(245vw, 1000px);
+    --frame-h: calc(var(--fw) / var(--photo-aspect)); /* высота кадра на экране */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} --photo-aspect — параметр геометрии фото (TRIP-510) */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} --phone-bottom — параметр геометрии фото (TRIP-510) */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} --frame-y — параметр привязки кадра (TRIP-510) */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} --copy-h — высота флоу над кнопками (TRIP-510) */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} --fw — замороженная ширина кадра (TRIP-510) */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} --frame-h — высота кадра, производная от --fw и аспекта (TRIP-510) */
+    /* Высота hero = низ кадра (привязка + высота кадра): следующая секция ровно под фото. */
+    /* visual-diff-exempt: .hero {@media (max-width:980px)} min-height — низ кадра из параметров геометрии (было 0.7749·--fw, значение то же) (TRIP-510) */
+    min-height: calc(var(--fw) * var(--frame-y) + var(--frame-h));
     align-items:stretch;
   }
   /* сверху только заголовок; телефон с кадра — посередине;
      подпись и кнопка уходят вниз, под телефон */
   /* Верхний отступ — фиксированный px, а не 8.7vh: высота у Safari/Chrome разная,
      и заголовок вместе с ней съезжал (TRIP-508). */
-  /* visual-diff-exempt: .hero-grid {@media (max-width:980px)} padding — верхний отступ с 8.7vh на фикс 82px ради height-независимости (TRIP-508) */
-  .hero-grid{align-content:normal;align-items:stretch;text-align:center;padding:82px 0 clamp(44px,5.2vh,72px)}
+  /* visual-diff-exempt: .hero-grid {@media (max-width:980px)} padding — верхний отступ фикс 80px (текст поднят под новый макет TRIP-510) ради height-независимости */
+  .hero-grid{align-content:normal;align-items:stretch;text-align:center;padding:80px 0 clamp(44px,5.2vh,72px)}
   /* контент прижат к ВЕРХУ (без height:100% и margin-top:auto): нижняя привязка
      текста зависела от высоты hero и тоже плыла между браузерами (TRIP-508) */
   /* visual-diff-exempt: .hero-copy {@media (max-width:980px)} height — снят height:100%, контент прижат к верху (TRIP-508) */
@@ -846,20 +877,47 @@ section{position:relative}
      убирает межбраузерную разницу дефолтного «normal» → одинаковая высота h1 */
   /* visual-diff-exempt: .hero h1 {@media (max-width:980px)} line-height — фикс 1.1 против дефолтного normal ради одинаковой высоты в Safari/Chrome (TRIP-508) */
   .hero h1{line-height:1.1}
-  /* зазор телефон→текст = 25px: низ телефона на 146.7vw−5.13vw от верха
-     (0.754·292vw·933/1400 минус сдвиг кадра), заголовок с отступами — 168px,
-     отсюда margin-top = (146.7−5.13)vw − 168px + 25px ≈ 146.7vw − 163px (TRIP-508) */
-  /* visual-diff-exempt: .hero-sub {@media (max-width:980px)} margin-top — с auto (нижняя привязка) на фикс calc от ширины ради зазора 25px в обоих браузерах (TRIP-508) */
+  /* Новый макет TRIP-510: подпись стоит СРАЗУ под заголовком (зазор задаёт
+     нижний margin h1 + этот верхний, ≈22px), а не под телефоном — фото уходит
+     под текст фоном, кнопки прижаты к низу кадра своим margin-top ниже. */
+  /* visual-diff-exempt: .hero-sub {@media (max-width:980px)} margin-top — подпись под заголовком (фикс 2px), фото стало фоном, кнопки прижаты своим margin (TRIP-510) */
   .hero-sub{
-    margin-top:calc(146.7vw - 163px);margin-bottom:18px;margin-inline:auto;max-width:none;
+    margin-top:2px;margin-bottom:18px;margin-inline:auto;max-width:none;
     font-size: var(--fs-hero-sub-mobile);line-height:1.5;color:var(--ink);
   }
-  .hero-ctas{flex:none;justify-content:center}
-  /* вторая кнопка на телефоне не нужна */
+  /* Концовка подписи — жирным и синим как лого (#2173C8, тот же синий, что
+     вторая строка заголовка). Единственный <b> в мобильной подписи. */
+  .hero-sub b{color:#2173C8;font-weight:700}
+  /* Две кнопки колонкой во всю мобильную зону (а не только <520px); низ блока
+     прижат к нижней кромке телефона на кадре — плечо считается из геометрии фото
+     (--frame-y/--phone-bottom/--frame-h, см. .hero), поэтому замирает вместе с
+     кадром и телефон не наезжает на кнопки при расширении. Зазор кнопок — gap:10px. */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} flex-direction — кнопки колонкой во всю мобильную зону под новый макет (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} gap — зазор между кнопками 10px (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} margin-top — блок кнопок прижат к низу телефона через --fw (замирает с кадром) (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} width — кнопки уменьшены на 10% (min 288px) (правило .hero-ctas .btn) (TRIP-510) */
+  /* visual-diff-exempt: .btn {@media (max-width:980px)} width — кнопки героя уменьшены на 10% (min 288px) (правило .hero-ctas .btn) (TRIP-510) */
+  /* visual-diff-exempt: .btn {@media (max-width:980px)} min-height — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
+  /* visual-diff-exempt: .btn {@media (max-width:980px)} padding — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
+  /* visual-diff-exempt: .btn {@media (max-width:980px)} font-size — кнопки героя уменьшены на 10% (шаг токена --fs-body) (правило .hero-ctas .btn) (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} min-height — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} padding — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
+  /* visual-diff-exempt: .hero-ctas {@media (max-width:980px)} font-size — кнопки героя уменьшены на 10% (правило .hero-ctas .btn) (TRIP-510) */
+  /* Плечо кнопок = низ телефона на экране минус флоу над ними: кнопки садятся
+     под телефон и замирают вместе с кадром (всё через --fw и геометрию фото). */
+  .hero-ctas{flex:none;justify-content:center;flex-direction:column;gap:10px;margin-top:calc(var(--fw) * var(--frame-y) + var(--phone-bottom) * var(--frame-h) - var(--copy-h))}
+  /* Кнопки героя на 10% меньше (Ilya): ширина 320→288, высота ~50→45 (паддинг
+     13→11, шрифт на шаг ниже --fs-body). */
+  .hero-ctas .btn{width:min(288px,100%);min-height:40px;padding:11px 22px;font-size:var(--fs-body)}
   .hero .btn-ghost{display:inline-flex;background:var(--white);color:var(--ink);border:1px solid rgba(19,50,78,.14)}
+  /* Скрим только сверху (вуаль под текст/шапку); нижней растушёвки в белое нет.
+     Верхняя вуаль ослаблена (.30 вместо .66): при сильной вуали полоса под
+     шапкой выбеливалась и отличалась от неба ниже — виден был шов; текст всё
+     равно тёмный на светлом небе и читается (TRIP-510). */
+  /* visual-diff-exempt: .hero-scrim {@media (max-width:980px)} background — верхняя вуаль ослаблена (.30), чтобы полоса под шапкой не отличалась от неба ниже; нижней растушёвки в белое нет (TRIP-510) */
   .hero-scrim{
     background:
-      linear-gradient(180deg,rgba(var(--hero-veil),.66) 0%,rgba(var(--hero-veil),.42) 12%,rgba(var(--hero-veil),.1) 20%,rgba(var(--hero-veil),0) 28%,rgba(var(--hero-veil),0) 60%,rgba(var(--hero-veil),.3) 72%,rgba(var(--hero-veil),.72) 84%,rgba(255,255,255,.88) 100%);
+      linear-gradient(180deg,rgba(var(--hero-veil),.30) 0%,rgba(var(--hero-veil),.24) 12%,rgba(var(--hero-veil),.08) 20%,rgba(var(--hero-veil),0) 28%,rgba(var(--hero-veil),0) 100%);
   }
 }
 
@@ -963,7 +1021,11 @@ section{position:relative}
 
 .pain-divider{
   display:flex;align-items:center;justify-content:center;gap:12px;
-  max-width:1000px;margin:28px auto 20px;color:var(--muted);font-size: var(--fs-body);font-weight:600;text-align:center;
+  /* Один кегль на десктоп И мобайл (без мобильного оверрайда — та рассинхронизация
+     и была костылём). --fs-lead-lg = 17px, чуть крупнее прежних 14px. Подпись в
+     сцене (появляется из-под карточек), тюнится этим одним числом. */
+  /* visual-diff-exempt: .pain-divider font-size — единый кегль подписи 14→17, без мобильного оверрайда (TRIP-510) */
+  max-width:1000px;margin:28px auto 20px;color:var(--muted);font-size: var(--fs-lead-lg);font-weight:600;text-align:center;
 }
 
 .pain-divider::before,.pain-divider::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(11,44,84,.16))}

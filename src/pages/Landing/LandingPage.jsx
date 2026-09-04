@@ -243,11 +243,14 @@ function usePainScrub(ready) {
 function Hero() {
   const t = useT();
   // Обе кнопки героя — через общий хелпер зоны. Первая ведёт в продукт, вторая
-  // («смотреть демо») — в демо-поездку, тем же путём и с тем же событием
-  // `cta_clicked`, что и финальный CTA `final_demo`: единственное отличие —
-  // метка места `hero_demo` (верх воронки против низа).
+  // («смотреть демо» / «посмотреть пример») — в демо-поездку, тем же путём и с
+  // тем же событием `cta_clicked`, что и финальный CTA `final_demo`:
+  // единственное отличие — метка места `hero_demo` (верх воронки против низа).
   const cta = useZoneCta('hero');
   const demo = useZoneCta('hero_demo', withVisitCampaign(DEMO_PATH));
+  // Один текст героя на обе платформы (TRIP-510): десктоп и телефон делят одни
+  // ключи `landing.hero.*`, различия раскладки живут только в CSS `@media`,
+  // поэтому DOM единый — без ветки по брейкпоинту.
   return (
     <section className="hero" data-hdr="light" id="top">
       <div className="hero-bg" aria-hidden="true">
