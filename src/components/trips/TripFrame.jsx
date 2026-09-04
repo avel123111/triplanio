@@ -221,8 +221,14 @@ export default function TripFrame({
 export function TripFrameSkeleton() {
   return (
     <>
-      <div className="tframe"><div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div></div>
-      <Skeleton w="100%" h={80} r="var(--r-xl)" />
+      {/* Кадр + панель состояния на своём месте: без неё скелетон обещает пустой
+          прямоугольник, а приезжает карта с карточкой в левом верхнем углу. */}
+      <div className="tframe">
+        <div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div>
+        <div className="tframe__state"><Skeleton w="100%" h={132} r="var(--r-lg)" /></div>
+      </div>
+      {/* Полоса чисел — отдельный блок под кадром, ровно её высота. */}
+      <Skeleton w="100%" h={84} r="var(--r-xl)" />
     </>
   );
 }

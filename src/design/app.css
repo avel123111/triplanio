@@ -7089,7 +7089,18 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .wi background — плитка-иконка шапки снята
    visual-diff-exempt: .wi color — то же
    visual-diff-exempt: .wi--activity --hl-soft — то же
-   visual-diff-exempt: .wi--activity --hl-ink — то же */
+   visual-diff-exempt: .wi--activity --hl-ink — то же
+   visual-diff-exempt: .wi display — плитка-иконка шапки виджета снята вместе с классом (её носили только шапки Обзора)
+   visual-diff-exempt: .wi width — то же
+   visual-diff-exempt: .wi height — то же
+   visual-diff-exempt: .wi flex — то же
+   visual-diff-exempt: .wi place-items — то же
+   visual-diff-exempt: .wi border-radius — то же
+   ★ `.ov-col .statbar .k { margin-top: 0 }` снят вместе с колонкой обзора: подпись
+     плитки на Обзоре берёт теперь базовый отступ полосы (6px) — тот же, что на
+     главной и в статистике, то есть полоса перестала иметь свой вид на одном экране.
+   visual-diff-exempt: .ov-col margin-top — правило снято вместе с классом .ov-col
+   visual-diff-exempt: .statbar margin-top — подпись плитки на Обзоре вернулась к базовому отступу полосы (приватного переопределения .ov-col больше нет) */
 
 /* Значок виджета берёт тон из канала --hl* (04 PR3). `.wi--primary` больше нет:
    он ЗАПИСЫВАЛ дефолт канала, и его носили три вызова из четырёх - то есть класс
@@ -7166,12 +7177,15 @@ button.input[data-empty] { color: var(--muted-2); }
    выключил бы запрос целиком: правило без контейнера-предка просто не
    применяется, ошибки нет, вид тихо становится одноколоночным навсегда.
    prefix-exempt: prep — новый канон-объект «виджет подготовки», апрув Pavel (единственное своё имя виджета: остальное — ListRow/Tile/Meter/Row/Col)
-   floor-exempt: classes +4 — `.prep` (карточка = контейнер измерения), `.prep-head` (строка готовности), `.prep-cols` (две секции) и `.meter` (полоса-доля, собравшая `.bud-bar`); третьего своего имени у виджета нет — строки/значки/полоса взяты у ДС. Апрув Pavel (задача «виджет Подготовка»)
+   floor-exempt: classes +5 — `.prep` (карточка = контейнер измерения), `.prep-head` + `.prep-head__pct` (строка готовности и доля числом), `.prep-cols` (две секции) и `.meter` (полоса-доля, собравшая `.bud-bar`); третьего своего имени у виджета нет — строки/значки/полоса взяты у ДС. Апрув Pavel (задача «виджет Подготовка»)
    floor-exempt: namespaces +2 — две канон-семьи: `meter` (полоса-доля перестала быть приватным элементом бюджета и стала объектом системы) и `prep` (сам виджет). Семья `bud` при этом НЕ умерла — из неё ушёл один класс, остались `bud-total`/`bud-legs`/`bud-leg`, поэтому размена «-1 за +1» тут нет. Апрув Pavel
    floor-exempt: layout +2 — `.meter`, `.prep-head` и `.prep-cols` ОБЪЯВЛЯЮТ раскладку по существу (полоса — flex-дорожка сегментов, секции — grid): это их работа, а не крючок экрана, приехавший в примитив через `className`. Апрув Pavel */
 /* Строка готовности виджета: число слева, полоса под ним, вплотную к спискам. */
 .prep { container-type: inline-size; }
-.prep-head { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-7); }
+/* Строка готовности: слова слева, процент справа, полоса под ними во всю ширину. */
+.prep-head { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-3) var(--sp-4); align-items: baseline; margin-bottom: var(--sp-7); }
+.prep-head .meter { grid-column: 1 / -1; }
+.prep-head__pct { color: var(--ink); }
 /* ★ У КОЛОНКИ ЕСТЬ ПОТОЛОК ШИРИНЫ, И ЭТО НЕ ПРИДИРКА. Строка списка держит
    значок, название и дату слева, а действие — справа. На 460px это ОДНА строка;
    на 570 между ними образуется 200px пустоты, и глаз перестаёт связывать «Милан»
@@ -7241,7 +7255,9 @@ button.input[data-empty] { color: var(--muted-2); }
    `overflow` и стековый контекст ничего не ломают. */
 @container (max-width: 720px) {
   .tframe__map { height: 300px; }
-  .tframe__state { position: static; width: auto; max-width: none; margin: var(--sp-6) 12px 0; }
+  /* ★ НИЖНЕЕ ПОЛЕ ОБЯЗАТЕЛЬНО. В потоке панель — последний ребёнок кадра, и без
+     него она упирается в границу поверхности: сверху 12, снизу 0. */
+  .tframe__state { position: static; width: auto; max-width: none; margin: var(--sp-6); }
 }
 
 /* Карточка превью карты (`.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/
@@ -10361,6 +10377,19 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .ovwrap {@container (max-width: 600px)} inset — то же
    visual-diff-exempt: .ovwrap {@container (max-width: 600px)} display — то же
    visual-diff-exempt: .ovwrap {@container (max-width: 600px)} order — то же
+   ★ Обратная сторона того же переезда: прежние правила на `.ov-col` СНЯТЫ вместе
+     с самим классом (колонки обзора больше нет).
+   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} padding-inline — правило переехало на .ovwrap вместе со снесённым классом .ov-col
+   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} gap — то же
+   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile — то же
+   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile-ic — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} flex-wrap — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} flex — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} padding — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} inset — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} display — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} order — то же
+   visual-diff-exempt: .ov-col .statbar .s:nth-child(n + 3) {@container (max-width: 600px)} border-top — то же
 */
 @container (600px <= width <= 880px) {
   .ovwrap .statbar .s { padding-inline: 10px; gap: 8px; }

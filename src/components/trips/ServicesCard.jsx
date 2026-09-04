@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, ListRow, Row, Tile } from '@/design/index';
+import { Btn, ListRow, Tile } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
@@ -11,16 +11,17 @@ import { SERVICE_KINDS } from '@/lib/serviceKinds';
 // service view/edit dialogs (each kind its own colour).
 const SERVICE_KIND_META = SERVICE_KINDS;
 
-// Ряд «добавить сервис» — тихая компактная строка, ТОЙ ЖЕ формы, что и
-// незабронированное в «Подготовке»: одно и то же по смыслу («этого ещё нет»)
-// обязано выглядеть одинаково на всём экране. Прежний пунктирный бокс совпадал
-// по высоте с карточкой наличия — и ровно поэтому «есть» и «нет» не отличались.
+// Пунктирный ряд «добавить сервис» — тот же примитив `<ListRow>`, что и заполненный
+// ряд (variant="add"), поэтому плейсхолдер встаёт РОВНО в высоту карточки наличия.
+// ★ НЕ ТРОГАТЬ. Был заход, переделавший его в компактную строку с половинной
+// плиткой «ради разницы форм»: плашки поехали по размеру, а канон отсутствия у
+// проекта ОДИН и живёт в `CityPanel.GhostAdd` — этот ряд его копия.
 // `--a` объявляет акцент ховера по виду сервиса (рамка/подпись/плюс уезжают в тон).
 function AddRow({ icon, label, hint, color, onClick }) {
   return (
     <ListRow
-      variant="compact"
-      lead={<Tile tone="quiet" size="sm" icon={icon} />}
+      variant="add"
+      lead={<Tile tone="quiet" icon={icon} />}
       title={label}
       sub={hint}
       trail={<Icon name="plus" size={16} />}
@@ -84,13 +85,9 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
               />
             ))
           ) : (
-            /* «Ещё» — РАСКРЫТИЕ СПИСКА, а не действие. Кнопка-плашка во всю
-               ширину весила больше всего, что над ней, и читалась как главное
-               предложение раздела. Тот же тихий link, что разворачивает секции
-               «Подготовки» соседней полосой: одинаковый жест — одинаковый вид. */
-            <Row>
-              <Btn variant="link" onClick={() => setMoreOpen(true)}>{t('service.more')}</Btn>
-            </Row>
+            <Btn variant="soft" block onClick={() => setMoreOpen(true)}>
+              <Icon name="plus" size={15} />{t('service.more')}
+            </Btn>
           )}
         </div>
       </div>

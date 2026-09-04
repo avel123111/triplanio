@@ -7,12 +7,18 @@ import TripFrame, { TripFrameSkeleton } from '@/components/trips/TripFrame';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { Skeleton } from '@/design/index';
 
-// Скелетон Обзора — та же геометрия, что у живого экрана: три полосы (кадр
-// поездки → подготовка → разделы в ряд). Один источник для обеих фаз загрузки.
+// Скелетон Обзора — ТА ЖЕ геометрия, что у живого экрана: кадр → полоса чисел →
+// две колонки (подготовка слева, сводки стопкой справа). Скелетон, живущий по
+// своей раскладке, обещает одно, а показывает другое: содержимое прыгает ровно в
+// тот момент, когда пользователь на него смотрит.
 export function OverviewSkeleton() {
+  // Раздел-сводка: шапка с заголовком и действием + строки его содержимого.
   const sec = (rows) => (
     <section className="ovsec">
-      <div className="ovsec__h"><Skeleton w={150} h={20} r={6} /></div>
+      <div className="ovsec__h">
+        <Skeleton w={130} h={20} r={6} />
+        <Skeleton w={32} h={32} r="var(--r-btn)" />
+      </div>
       {rows.map((h, i) => <Skeleton key={i} w="100%" h={h} r="var(--r-sm)" />)}
     </section>
   );
@@ -22,9 +28,9 @@ export function OverviewSkeleton() {
       <div className="ov-grid">
         <PreparationSkeleton />
         <div className="ov-side">
-          {sec([26, 11, 14])}
-          {sec([34, 34, 42])}
-          {sec([44, 44])}
+          {sec([34, 18])}
+          {sec([40, 44])}
+          {sec([64, 64])}
         </div>
       </div>
     </div>

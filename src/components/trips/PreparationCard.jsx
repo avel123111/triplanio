@@ -26,19 +26,19 @@ import { formatNaive, naiveDayKey } from '@/lib/naive-time';
 // проверки дат у виджета нет и быть не должно: это был бы второй источник
 // правды о том, что с бронью не так.
 //
-// ★★ ФОРМУ ПОЛУЧАЕТ ТО, ЧТО ТРЕБУЕТ ДЕЙСТВИЯ, А НЕ ТО, ЧТО УЖЕ СДЕЛАНО.
-// Незабронированное — плотная карточка (`raised`) с цветной плиткой вида события
-// и плюсом; забронированное — тихая компактная строка с серой плиткой.
+// ★★ ФОРМЫ ЗДЕСЬ НЕ СВОИ — ЭТО КАНОН ИЗ `CityPanel`, И ОН ОДИН НА ПРОЕКТ.
+// Отсутствие = `<ListRow variant="add">` с ПОЛНОЙ плиткой `tone="quiet"` и плюсом:
+// пунктирный плейсхолдер встаёт РОВНО в высоту карточки наличия. Наличие =
+// `<ListRow variant="raised">` с плиткой в тоне события и шевроном.
 //
-// Сначала было наоборот, и на живом трипе это читалось дословно шиворот-навыворот:
-// «Переезды 2/2» (всё закрыто) стояли крупными карточками с цветными значками, а
-// «Ночлеги 0/3» (вся работа) — бледными строчками вдвое ниже. Виджет называется
-// «Подготовка» и отвечает на вопрос «что осталось» — а орал о сделанном и шептал
-// о несделанном. Разница форм нужна, но вес обязан идти РАБОТЕ.
+// Два захода подряд изобретали здесь свои формы — сначала компактную строку для
+// отсутствия, потом её же для наличия «чтобы вес шёл работе». Оба раза плашки
+// поехали по размеру относительно остального приложения. **Вес работе даёт
+// ПОРЯДОК (незабронированное сверху), а не размер плашки.**
 //
-// Значок — `<Tile>` в тоне события, замечание — `.wrn` + `<Tooltip>`. Своих имён у
-// виджета ровно два: `.prep` (карточка объявляет себя единицей измерения ширины)
-// и `.prep-cols` (две колонки секций, когда ширины хватает).
+// Замечание — `.wrn` + `<Tooltip>`. Своих имён у виджета три: `.prep` (карточка
+// объявляет себя единицей измерения ширины), `.prep-head` (строка готовности) и
+// `.prep-cols` (две колонки секций, когда ширины хватает).
 
 // Тон ховера add-строки (канал `--a` у `.lrow--add`) — ОБЪЯВЛЕННЫМИ объектами, а
 // не литералами в JSX: значение приходит из роли события, классом его не
@@ -79,32 +79,32 @@ function Trail({ issue }) {
   );
 }
 
-// Сколько рядов показывает свёрнутая секция.
-//
-// ★★ ПОЧЕМУ ЭТО ЕСТЬ. Виджет проектировался на трёх городах, а на живом трипе из
-// восьми даёт 11 ночлегов и 12 переездов — 23 одинаковых ряда, из которых 21
-// пустой плейсхолдер. Это не список, это стена: то, что надо сделать, тонет в
-// том, что уже сделано, и наоборот. Список без потолка растёт линейно по длине
-// маршрута, то есть чем крупнее поездка, тем бесполезнее виджет.
-const CAP = 5;
 
 /**
  * Секция подготовки: заголовок со счётом, ряды и свёртка.
  *
- * ★ СВЁРНУТАЯ СЕКЦИЯ ПОКАЗЫВАЕТ РАБОТУ, А НЕ НАЧАЛО СПИСКА. Пока есть
- * незабронированное — видно именно его (в порядке маршрута); всё забронировано —
- * видно первые ряды. Иначе на длинном трипе в потолок попадали бы первые пять
- * городов, которые чаще всего уже закрыты, и виджет показывал бы «всё хорошо»
- * ровно там, где работы больше всего.
+ * ★★ СНАЧАЛА ТО, ЧЕГО НЕТ, ПОТОМ ТО, ЧТО ЕСТЬ. Внутри каждой группы — порядок
+ * маршрута. Виджет отвечает на вопрос «что осталось», поэтому работа стоит
+ * первой, а закрытое — под ней. Раньше порядок был чисто маршрутный, и
+ * забронированное вклинивалось между пустыми строками через одну.
  *
- * Развёрнутая секция показывает ВСЁ и в порядке маршрута — забронированное тоже
- * кликается, оно не спрятано, а убрано на один тап.
+ * ★★ «ЕЩЁ» ПРЯЧЕТ ЗАКРЫТОЕ, А НЕ РАБОТУ. Свёрнутая секция показывает ВСЁ
+ * незабронированное — сколько бы его ни было: это ровно то, ради чего экран
+ * открывают, и прятать его под кнопку бессмысленно. Под «Ещё N» уходит
+ * забронированное, поэтому N — это ЧИСЛО ЗАКРЫТЫХ ПОЗИЦИЙ, одно и то же по
+ * смыслу в обеих колонках. Прежний потолок в 5 рядов давал «Ещё 1» у ночлегов и
+ * «Ещё 4» у переездов — два разных числа про разное, из которых читатель не мог
+ * вывести ничего.
+ *
+ * Если работы нет вовсе, показываем закрытое (иначе секция была бы пустой).
  */
 function Section({ label, rows, done, total, t }) {
   const [expanded, setExpanded] = useState(false);
   const pending = rows.filter((r) => !r.booked);
-  const shown = expanded ? rows : (pending.length ? pending : rows).slice(0, CAP);
-  const hidden = rows.length - shown.length;
+  const closed = rows.filter((r) => r.booked);
+  const ordered = [...pending, ...closed];
+  const shown = expanded || !pending.length ? ordered : pending;
+  const hidden = ordered.length - shown.length;
   return (
     <Col gap="g4">
       {/* ★ СЧЁТ СТОИТ У СВОЕЙ ПОДПИСИ. Разнесённые по краям колонки «Проживание»
@@ -167,8 +167,8 @@ export default function PreparationCard({
       ? s.bookings.map((h) => ({ key: `h-${h.id}`, booked: true, node: (
         <ListRow
           key={`h-${h.id}`}
-          variant="compact"
-          lead={<Tile tone="quiet" size="sm" icon="bed" />}
+          variant="raised"
+          lead={<Tile tone="hotel" icon="bed" />}
           title={h.name}
           sub={[s.visit.city_name, dayRange(fmtDate, h.check_in_datetime, h.check_out_datetime)]
             .filter(Boolean).join(' · ')}
@@ -179,8 +179,8 @@ export default function PreparationCard({
       : [{ key: s.key, booked: false, node: (
         <ListRow
           key={s.key}
-          variant="raised"
-          lead={<Tile tone="hotel" icon="bed" />}
+          variant="add"
+          lead={<Tile tone="quiet" icon="bed" />}
           title={s.visit.city_name}
           sub={[dayRange(fmtDate, s.visit.start_date, s.visit.end_date),
             `${s.nights} ${nightsWord(t, s.nights)}`].filter(Boolean).join(' · ')}
@@ -201,8 +201,8 @@ export default function PreparationCard({
         return { key: `t-${tr.id}`, booked: true, node: (
           <ListRow
             key={`t-${tr.id}`}
-            variant="compact"
-            lead={<Tile tone="quiet" size="sm" icon={kind.icon} />}
+            variant="raised"
+            lead={<Tile tone="transfer" icon={kind.icon} />}
             title={pair}
             sub={[day, time, t(kind.labelKey)].filter(Boolean).join(' · ')}
             trail={<Trail issue={issueByEntity.get(tr.id)} />}
@@ -213,8 +213,8 @@ export default function PreparationCard({
       : [{ key: l.key, booked: false, node: (
         <ListRow
           key={l.key}
-          variant="raised"
-          lead={<Tile tone="transfer" icon="route" />}
+          variant="add"
+          lead={<Tile tone="quiet" icon="route" />}
           title={pair}
           sub={day1(fmtDate, l.from.end_date) || undefined}
           trail={<Icon name="plus" size={16} />}
@@ -251,6 +251,9 @@ export default function PreparationCard({
                 оказывалась в полэкрана от списка, который её объясняет. */}
             <div className="prep-head">
               <span className="t-support">{t('overview.prep_sub', { done, total })}</span>
+              {/* Доля числом рядом со словами: полоса показывает её на глаз,
+                  процент называет точно — на 23 позициях «на глаз» не читается. */}
+              <span className="prep-head__pct t-strong num">{Math.round((done / total) * 100)}%</span>
               <Meter
                 ariaLabel={t('overview.prep_sub', { done, total })}
                 segments={[
@@ -299,18 +302,27 @@ function nightsWord(t, n) {
 export function PreparationSkeleton() {
   return (
     <section className="ovsec prep" aria-busy="true">
-      <div className="ovsec__h"><Skeleton w={180} h={20} r={6} /></div>
-      <Col gap="g4">
-        <div className="prep-cols">
-          {[0, 1].map((c) => (
-            <Col gap="g4" key={c}>
-              <Skeleton w="40%" h={11} r={5} />
-              <Skeleton w="100%" h={52} r="var(--r-btn)" />
-              <Skeleton w="100%" h={52} r="var(--r-btn)" />
-            </Col>
-          ))}
-        </div>
-      </Col>
+      {/* Геометрия ОДИН В ОДИН с живым виджетом: шапка с действием → строка
+          готовности (слова · процент · полоса) → две колонки по подписи и три
+          ряда высотой канон-строки. Скелетон, не совпадающий с раскладкой, —
+          это не «примерно», это прыжок содержимого при загрузке. */}
+      <div className="ovsec__h">
+        <Skeleton w={180} h={20} r={6} />
+        <Skeleton w={32} h={32} r="var(--r-btn)" />
+      </div>
+      <div className="prep-head">
+        <Skeleton w={170} h={14} r={5} />
+        <Skeleton w={38} h={14} r={5} />
+        <Skeleton w="100%" h={11} r="var(--r-pill)" />
+      </div>
+      <div className="prep-cols">
+        {[0, 1].map((c) => (
+          <Col gap="g4" key={c}>
+            <Skeleton w="35%" h={12} r={5} />
+            {[0, 1, 2].map((r) => <Skeleton key={r} w="100%" h={64} r="var(--r-btn)" />)}
+          </Col>
+        ))}
+      </div>
     </section>
   );
 }
