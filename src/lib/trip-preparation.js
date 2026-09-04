@@ -22,7 +22,7 @@
 // `trip-cities.js` и `warningDismissals.js`.
 
 import { parseNaive } from './naive-time.js';
-import { sortVisits, cityIdentity } from './validation.js';
+import { sortVisits, sameCity } from './validation.js';
 
 /** Ночей в городе. Отсутствие любой из дат = 0 (нечего бронировать). */
 export function cityNights(visit) {
@@ -65,7 +65,7 @@ export function transfersForLeg(transfers, from, to) {
  * Стыки маршрута — пары СОСЕДНИХ узлов (якорь старта → транзитные города →
  * якорь финиша), у которых города РАЗНЫЕ. Идентичность города, а не id визита:
  * «Мадрид → Мадрид» (сплит стоянки) переездом не является и стыком не считается —
- * то же правило, что у ленты (`cityIdentity`).
+ * то же правило, что у ленты (`sameCity`).
  */
 export function routeLegs(visits = []) {
   const ordered = sortVisits(visits);
@@ -73,15 +73,9 @@ export function routeLegs(visits = []) {
   for (let i = 1; i < ordered.length; i++) {
     const from = ordered[i - 1];
     const to = ordered[i];
-    // ★ НЕОПОЗНАННЫЙ ГОРОД НЕ РАВЕН НЕОПОЗНАННОМУ. `cityIdentity` отдаёт пустую
-    // строку, когда узел не несёт ни `geonameid`, ни английского имени, ни
-    // внешнего id. Сравнение «в лоб» делало ДВА таких узла одним городом, и
-    // стык между ними исчезал — а на маршруте, где не опознан НИ ОДИН узел,
-    // исчезали все стыки разом: половина виджета («Переезды») просто не
-    // рисовалась, без ошибки и без единого красного гарда. Совпадением
-    // считается только НЕПУСТАЯ равная идентичность.
-    const id = cityIdentity(from);
-    if (id && id === cityIdentity(to)) continue;
+    // «Тот же город» — ОДИН предикат на весь репозиторий (`sameCity`), там же и
+    // разобрано, почему неопознанный узел не равен неопознанному.
+    if (sameCity(from, to)) continue;
     legs.push({ from, to });
   }
   return legs;
@@ -94,7 +88,7 @@ export function routeLegs(visits = []) {
  * @returns {{
  *   stays: Array<{ key: string, visit: any, nights: number, bookings: any[], booked: boolean }>,
  *   legs: Array<{ key: string, from: any, to: any, bookings: any[], booked: boolean }>,
- *   done: number, total: number, pct: number,
+ *   done: number, total: number,
  * }}
  */
 export function buildPreparation({ visits = [], hotels = [], transfers = [] } = {}) {
@@ -120,7 +114,10 @@ export function buildPreparation({ visits = [], hotels = [], transfers = [] } = 
 
   const total = stays.length + legs.length;
   const done = stays.filter((s) => s.booked).length + legs.filter((l) => l.booked).length;
-  // Доля — от 0 до 1. Пустой маршрут не «готов на 100%»: бронировать нечего,
-  // и виджет в этом случае показывает пустое состояние, а не полную полосу.
-  return { stays, legs, done, total, pct: total ? done / total : 0 };
+  // Готовой ДОЛИ (`pct`) модуль не отдаёт намеренно: делить `done` на `total`
+  // умеет и вызыватель, а поле, которое никто не читает, живёт ровно до первого
+  // расхождения с двумя числами рядом. Пустой маршрут при этом НЕ «готов на
+  // 100%» — `total === 0` показывает пустое состояние, а не полную полосу, и
+  // это свойство пары чисел, а не третьего.
+  return { stays, legs, done, total };
 }

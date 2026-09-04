@@ -69,7 +69,6 @@ test('buildPreparation: знаменатель = ночлеги + стыки т�
   assert.equal(p.legs.length, 3);
   assert.equal(p.total, 5);
   assert.equal(p.done, 0);
-  assert.equal(p.pct, 0);
 });
 
 test('buildPreparation: покрытые ночлеги и стыки идут в числитель', () => {
@@ -109,7 +108,7 @@ test('★ОТМЕРШАЯ БРОНЬ НЕ УЧИТЫВАЕТСЯ: отель у�
   assert.ok(p.stays.every((s) => !s.booked));
 });
 
-test('buildPreparation: всё забронировано → pct = 1', () => {
+test('buildPreparation: всё забронировано → числитель сошёлся со знаменателем', () => {
   const p = buildPreparation({
     visits: VISITS,
     hotels: [{ id: 'h1', city_visit_id: 'n2' }, { id: 'h2', city_visit_id: 'n3' }],
@@ -120,13 +119,13 @@ test('buildPreparation: всё забронировано → pct = 1', () => {
     ],
   });
   assert.equal(p.done, 5);
-  assert.equal(p.pct, 1);
+  assert.equal(p.total, 5);
 });
 
 test('buildPreparation: пустой маршрут — не «готово», а нечего готовить', () => {
   const p = buildPreparation({ visits: [], hotels: [], transfers: [] });
   assert.equal(p.total, 0);
-  assert.equal(p.pct, 0);
+  assert.equal(p.done, 0);
 });
 
 test('★НЕОПОЗНАННЫЙ ГОРОД НЕ РАВЕН НЕОПОЗНАННОМУ: стыки не схлопываются в ноль', () => {

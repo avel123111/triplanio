@@ -76,6 +76,26 @@ export const cityIdentity = (v) => {
   return v?.external_city_id ? `id:${v.external_city_id}` : '';
 };
 
+/**
+ * ★ ЭТО ОДНО И ТО ЖЕ МЕСТО — ИЛИ НЕТ. Единственный способ сравнить два узла;
+ * `cityIdentity(a) === cityIdentity(b)` напрямую больше нигде не пишем.
+ *
+ * ★★ ПУСТАЯ ИДЕНТИЧНОСТЬ НЕ РАВНА ПУСТОЙ. `cityIdentity` отдаёт `''` у узла,
+ * который не несёт ни `geonameid`, ни английского имени, ни внешнего id, — то
+ * есть у узла, про который мы НЕ ЗНАЕМ, какой это город. Сравнение «в лоб»
+ * делало два таких узла ОДНИМ городом со всеми последствиями: варнинг «Нет
+ * переезда» в ленте не рисовался, а в «Подготовке» пропадали стыки — на
+ * маршруте, где не опознан НИ ОДИН узел, пропадали все разом, вместе с целой
+ * секцией виджета. Молча, без ошибки и без единого красного гарда.
+ *
+ * «Не знаю» — это не «то же самое». Совпадением считается только НЕПУСТАЯ
+ * равная идентичность.
+ */
+export const sameCity = (a, b) => {
+  const id = cityIdentity(a);
+  return !!id && id === cityIdentity(b);
+};
+
 // City visit dates are DATE-ONLY (YYYY-MM-DD) — a calendar date, not an instant.
 // Compare as plain ISO date strings; never run them through setZone (that would
 // shift the boundary a day in non-UTC timezones). Events use the same plain

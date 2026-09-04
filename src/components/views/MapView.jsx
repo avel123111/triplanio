@@ -170,7 +170,11 @@ export default function MapView({
   // умолчанию) = плашки нет. Реестр и порядок кнопок живут в `MapControls`.
   mapControls = [],
   // Начальная проекция: 'mercator' (плоская) | 'globe'. Дефолт плоская; map-lens и
-  // edit-lens открываются на глобусе (запрос Pavel, TRIP-337), overview остаётся плоским.
+  // edit-lens открываются на глобусе всегда (запрос Pavel, TRIP-337), а кадр обзора
+  // решает по РАЗМАХУ МАРШРУТА (`TripFrame`): трип по одной стране остаётся плоским,
+  // трансконтинентальный уходит на глобус — на плоскости он вырождается в карту мира.
+  // Проп СЕЕТ состояние: пересчёт после монтирования игнорируется, и это здесь верно
+  // (кадр монтирует карту, уже имея визиты).
   initialProjection = 'mercator',
   // Basemap variant forwarded to the shared surface (e.g. 'monochrome' for the
   // public shared-trip reader, mirroring the stats map). Defaults to the normal

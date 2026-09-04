@@ -46,6 +46,11 @@ import { DateTime } from 'luxon';
 // числа здесь разъехалась бы с ним молча. Механика закрытой площади — общая с
 // `<MapShell>` (`lib/map/insets.js`), своей тут нет.
 
+// «У узла есть координаты» — ОДИН предикат на оба вопроса кадра: рисовать ли
+// карту вообще и в какой проекции. Двумя чтениями (`v.latitude` на истинность и
+// `v.latitude != null` на наличие) они расходились ровно на нулевой широте.
+const hasCoords = (v) => v?.latitude != null && v?.longitude != null;
+
 /** @param {{ trip?: any, visits?: any[], hotels?: any[], transfers?: any[],
  *            active?: boolean, isLoading?: boolean, onOpenMap?: any }} p */
 export default function TripFrame({
@@ -103,8 +108,21 @@ export default function TripFrame({
     const box = pr.width > fr.width * 0.66
       ? { top: Math.round(pr.bottom - fr.top) }
       : { left: Math.round(pr.right - fr.left) };
+    // Сравнение держится на том, что ОТСУТСТВУЮЩАЯ сторона — `undefined` с обеих
+    // сторон (`undefined === undefined`). Заведёшь третью сторону (`right`/
+    // `bottom`) — сравнение молча перестанет её покрывать: правь и здесь.
     setClosed((cur) => (cur && cur.top === box.top && cur.left === box.left ? cur : box));
   }, []);
+  // ★★ `isLoading` В ДЕПАХ — НЕ ПЕРЕСТРАХОВКА, БЕЗ НЕГО ЗАМЕР НЕ СЛУЧАЕТСЯ ВООБЩЕ.
+  // `measure` стабилен (`useCallback([])`), поэтому эффект с депами `[measure]`
+  // отрабатывал РОВНО ОДИН РАЗ — на монтировании. А монтируется кадр в фазе
+  // загрузки содержимого: скелетон рисует свой `.tframe` БЕЗ ссылок, значит оба
+  // рефа пусты, `measure()` выходит по первому гарду, `observe` не зовётся ни
+  // разу — и эффект больше не переигрывается. Закрытая площадь оставалась
+  // `null` навсегда, то есть на ПЕРВОМ открытии трипа маршрут вписывался во
+  // весь кадр и первые города уезжали под панель — ровно то, что этот блок и
+  // должен был починить. Работало только при возврате на обзор с другой линзы
+  // (там кадр монтируется уже с данными). Ни один гард такого не видит.
   useEffect(() => {
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
@@ -112,7 +130,7 @@ export default function TripFrame({
     if (frameRef.current) ro.observe(frameRef.current);
     if (panelRef.current) ro.observe(panelRef.current);
     return () => ro.disconnect();
-  }, [measure]);
+  }, [measure, isLoading]);
   const view = useMemo(() => (closed ? { camera: closed, fit: closed } : null), [closed]);
 
   // Проекция — от РАЗМАХА МАРШРУТА, а не от экрана. Плоская меркаторская карта
@@ -122,7 +140,7 @@ export default function TripFrame({
   // редактора открываются на глобусе всегда (TRIP-337), обзор — только когда
   // маршруту действительно тесно на плоскости.
   const projection = useMemo(() => {
-    const pts = (visits || []).filter((v) => v?.latitude != null && v?.longitude != null);
+    const pts = (visits || []).filter(hasCoords);
     if (pts.length < 2) return 'mercator';
     const lngs = pts.map((v) => Number(v.longitude));
     const lats = pts.map((v) => Number(v.latitude));
@@ -133,7 +151,7 @@ export default function TripFrame({
 
   if (isLoading) return <TripFrameSkeleton />;
 
-  const hasRoute = (visits || []).some((v) => v?.latitude && v?.longitude);
+  const hasRoute = (visits || []).some(hasCoords);
   const { phase, progress, nowCity, startKey, daysToStart } = when;
   let headline = t('overview.state_undated');
   let sub = '';

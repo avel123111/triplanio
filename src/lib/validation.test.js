@@ -1,7 +1,7 @@
 // Unit tests for the unified validation engine (Ф1). Run: npm test  (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateEntity, validateTrip, primaryIssues, transferAiCityAdvisories, isFieldRequired } from './validation.js';
+import { validateEntity, validateTrip, primaryIssues, transferAiCityAdvisories, isFieldRequired, sameCity } from './validation.js';
 
 const codes = (issues) => issues.map((i) => i.code).sort();
 const has = (issues, code) => issues.some((i) => i.code === code);
@@ -321,4 +321,18 @@ test('primaryIssues: transfer structure beats entity', () => {
   const p = primaryIssues(issues);
   assert.equal(p.length, 1);
   assert.equal(p[0].code, 'TR_NO_CITY');
+});
+
+test('★sameCity: НЕОПОЗНАННЫЙ ГОРОД НЕ РАВЕН НЕОПОЗНАННОМУ', () => {
+  // Узел без geonameid/city_name_en/external_city_id даёт ПУСТУЮ идентичность.
+  // Сравнение «в лоб» делало два таких узла одним городом — и лента переставала
+  // предупреждать «Нет переезда», а «Подготовка» теряла стыки. Молча.
+  const bare = (id) => ({ id, city_name: `Город ${id}` });
+  assert.equal(sameCity(bare('a'), bare('b')), false);
+  // Опознанные сравниваются как раньше — по geonameid, потом по имени+стране.
+  assert.equal(sameCity({ geonameid: 5 }, { geonameid: 5 }), true);
+  assert.equal(sameCity({ geonameid: 5 }, { geonameid: 6 }), false);
+  assert.equal(sameCity({ city_name_en: 'Rome', country_code: 'IT' }, { city_name_en: 'rome', country_code: 'it' }), true);
+  // Опознанный и неопознанный — тем более разные.
+  assert.equal(sameCity({ geonameid: 5 }, bare('b')), false);
 });

@@ -7152,9 +7152,11 @@ button.input[data-empty] { color: var(--muted-2); }
    на 570 между ними образуется 200px пустоты, и глаз перестаёт связывать «Милан»
    с плюсом напротив. Полосу при этом занимаем целиком: лишнее уходит в РАЗРЫВ
    между колонками (`space-between`), а не в хвост справа. */
-.prep-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); justify-content: space-between; }
+.prep-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
 @container (min-width: 640px) {
-  .prep-cols { grid-template-columns: repeat(2, minmax(0, 460px)); }
+  /* `space-between` живёт ЗДЕСЬ, а не в базе: в одноколоночной раскладке трек
+     `1fr` съедает строку целиком, и объявление там мёртвое. */
+  .prep-cols { grid-template-columns: repeat(2, minmax(0, 460px)); justify-content: space-between; }
 }
 
 /* ---- герой экрана трипа: карта + панель состояния ---- */
@@ -7168,7 +7170,7 @@ button.input[data-empty] { color: var(--muted-2); }
    prefix-exempt: tframe — канон-объект «герой экрана трипа», апрув Pavel
    floor-exempt: classes +3 — `.tframe` (герой) · `.tframe__state` (панель состояния) · `.tframe__mapempty` · `.tframe__nums` минус ушедшие `.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/`.ov-openbtn` и минус `.meter--invert`. Апрув Pavel
    floor-exempt: namespaces +1 — семья `tframe` вместо снесённой карточки превью карты. Апрув Pavel
-   floor-exempt: layout +2 — `.tframe` и `.tframe__state` объявляют раскладку по существу (кадр и колонка панели). Апрув Pavel */
+   floor-exempt: layout +1 — `.tframe` объявляет раскладку по существу (кадр). У `.tframe__state` осталось чистое ПОЗИЦИОНИРОВАНИЕ: колонку строк объявляет сама карточка (`col col--g3`), а не обёртка. Апрув Pavel */
 .tframe {
   position: relative; isolation: isolate;
   height: 440px; border-radius: var(--r-xl); overflow: hidden;

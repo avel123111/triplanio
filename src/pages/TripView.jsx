@@ -23,7 +23,7 @@ import { Icon } from '../design/icons';
 import { Btn, Card, Dialog, EmptyState, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, BookingWarning, TimelineEmptyDay, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
-import { sortVisits, cityIdentity } from '@/lib/validation';
+import { sortVisits, sameCity } from '@/lib/validation';
 import { loadDismissed, serializeDismissed, storageKey as dismissedStorageKey, transferWarnKey, hotelWarnKey } from '@/lib/warningDismissals';
 import { cityNeedsHotel, cityNights, hotelCoversCity } from '@/lib/trip-preparation';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -589,7 +589,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
     const out = [];
     if (!showBookingWarnings) return out;
     const tKey = prev ? transferWarnKey(prev.id, city.id) : null;
-    if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)
+    if (prev && !sameCity(prev, city) && !hasTransferBetween(prev, city)
         && !dismissed.has(tKey)) {
       out.push(
         <BookingWarning
@@ -777,7 +777,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   // it, render the transfer card(s); otherwise show the missing-transfer warning.
   const endVisit = ordered[ordered.length - 1];
   if (endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
-      && cityIdentity(prevCity) !== cityIdentity(endVisit)) {
+      && !sameCity(prevCity, endVisit)) {
     // The transfer into the finish anchor renders in its own departure day now;
     // here we only surface the missing-transfer warning when there is none.
     const endKey = transferWarnKey(prevCity.id, endVisit.id);
