@@ -11,6 +11,7 @@
 import { identifyUser } from '@/lib/analytics';
 import { isPersisting, onConsent, stopAnalytics } from '@/lib/destinations/posthog';
 import { onConsent as adsOnConsent } from '@/lib/destinations/ads';
+import { onConsent as openaiAdsOnConsent } from '@/lib/destinations/openaiAds';
 import { buildConsent, parseConsent, shouldSilenceOnConsentChange } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
@@ -93,6 +94,10 @@ export function applyConsent(record, uid) {
   // VITE_GADS_TAG_ID, idempotent, and off any non-prod host — so this is a no-op
   // today and stays one until the tag id is set in prod.
   adsOnConsent(record);
+
+  // Load the OpenAI Ads pixel on the same marketing grant (TRIP-514). Same shape as
+  // the Google adapter: dormant without VITE_OPENAI_PIXEL_ID, idempotent, prod-only.
+  openaiAdsOnConsent(record);
 
   // Upgrade the memory-only client to device persistence when analytics is granted
   // (a no-op otherwise, and idempotent). The client already exists — main.jsx
