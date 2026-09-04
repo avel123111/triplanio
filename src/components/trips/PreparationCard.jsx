@@ -27,16 +27,19 @@ import { formatNaive, naiveDayKey } from '@/lib/naive-time';
 // проверки дат у виджета нет и быть не должно: это был бы второй источник
 // правды о том, что с бронью не так.
 //
-// ★ ЕСТЬ И НЕТ — РАЗНЫЕ ПО ФОРМЕ, А НЕ ПО ЗАЛИВКЕ. Забронированное — плотная
-// карточка (`raised`) с цветной плиткой вида события; незабронированное — тихая
-// компактная строка (`compact`) с серой плиткой вдвое меньше. До этого оба были
-// одной коробкой, отличаясь только пунктиром рамки, и на живом трипе список
-// читался однородной серой стеной, где Рим ничем не отличался от Флоренции.
-// Побочно это вдвое режет высоту незабронированных рядов, которых на длинном
-// маршруте большинство. Значок — `<Tile>` в тоне
-// события, полоса — `<Meter>`, замечание — `.wrn` + `<Tooltip>`. Своих имён у
-// виджета ровно два, и оба про одно: `.prep` (карточка объявляет себя единицей
-// измерения ширины) и `.prep-cols` (две колонки секций, когда ширины хватает).
+// ★★ ФОРМУ ПОЛУЧАЕТ ТО, ЧТО ТРЕБУЕТ ДЕЙСТВИЯ, А НЕ ТО, ЧТО УЖЕ СДЕЛАНО.
+// Незабронированное — плотная карточка (`raised`) с цветной плиткой вида события
+// и плюсом; забронированное — тихая компактная строка с серой плиткой.
+//
+// Сначала было наоборот, и на живом трипе это читалось дословно шиворот-навыворот:
+// «Переезды 2/2» (всё закрыто) стояли крупными карточками с цветными значками, а
+// «Ночлеги 0/3» (вся работа) — бледными строчками вдвое ниже. Виджет называется
+// «Подготовка» и отвечает на вопрос «что осталось» — а орал о сделанном и шептал
+// о несделанном. Разница форм нужна, но вес обязан идти РАБОТЕ.
+//
+// Значок — `<Tile>` в тоне события, замечание — `.wrn` + `<Tooltip>`. Своих имён у
+// виджета ровно два: `.prep` (карточка объявляет себя единицей измерения ширины)
+// и `.prep-cols` (две колонки секций, когда ширины хватает).
 
 // Тон ховера add-строки (канал `--a` у `.lrow--add`) — ОБЪЯВЛЕННЫМИ объектами, а
 // не литералами в JSX: значение приходит из роли события, классом его не
@@ -164,8 +167,8 @@ export default function PreparationCard({
       ? s.bookings.map((h) => ({ key: `h-${h.id}`, booked: true, node: (
         <ListRow
           key={`h-${h.id}`}
-          variant="raised"
-          lead={<Tile tone="hotel" icon="bed" />}
+          variant="compact"
+          lead={<Tile tone="quiet" size="sm" icon="bed" />}
           title={h.name}
           sub={[s.visit.city_name, dayRange(fmtDate, h.check_in_datetime, h.check_out_datetime)]
             .filter(Boolean).join(' · ')}
@@ -176,8 +179,8 @@ export default function PreparationCard({
       : [{ key: s.key, booked: false, node: (
         <ListRow
           key={s.key}
-          variant="compact"
-          lead={<Tile tone="quiet" size="sm" icon="bed" />}
+          variant="raised"
+          lead={<Tile tone="hotel" icon="bed" />}
           title={s.visit.city_name}
           sub={[dayRange(fmtDate, s.visit.start_date, s.visit.end_date),
             `${s.nights} ${nightsWord(t, s.nights)}`].filter(Boolean).join(' · ')}
@@ -198,8 +201,8 @@ export default function PreparationCard({
         return { key: `t-${tr.id}`, booked: true, node: (
           <ListRow
             key={`t-${tr.id}`}
-            variant="raised"
-            lead={<Tile tone="transfer" icon={kind.icon} />}
+            variant="compact"
+            lead={<Tile tone="quiet" size="sm" icon={kind.icon} />}
             title={pair}
             sub={[day, time, t(kind.labelKey)].filter(Boolean).join(' · ')}
             trail={<Trail issue={issueByEntity.get(tr.id)} />}
@@ -210,8 +213,8 @@ export default function PreparationCard({
       : [{ key: l.key, booked: false, node: (
         <ListRow
           key={l.key}
-          variant="compact"
-          lead={<Tile tone="quiet" size="sm" icon="route" />}
+          variant="raised"
+          lead={<Tile tone="transfer" icon="route" />}
           title={pair}
           sub={day1(fmtDate, l.from.end_date) || undefined}
           trail={<Icon name="plus" size={16} />}

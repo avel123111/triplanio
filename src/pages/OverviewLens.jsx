@@ -19,11 +19,13 @@ export function OverviewSkeleton() {
   return (
     <div className="ovwrap" aria-busy="true">
       <TripFrameSkeleton />
-      <PreparationSkeleton />
-      <div className="ov-trio">
-        {sec([26, 11, 14])}
-        {sec([34, 34, 42])}
-        {sec([44, 44])}
+      <div className="ov-grid">
+        <PreparationSkeleton />
+        <div className="ov-side">
+          {sec([26, 11, 14])}
+          {sec([34, 34, 42])}
+          {sec([44, 44])}
+        </div>
       </div>
     </div>
   );
@@ -37,8 +39,9 @@ export function OverviewSkeleton() {
 //      что-нибудь ещё.
 //   2. ПОДГОТОВКА — что осталось сделать: ночлеги и переезды, каждая строка
 //      кликается (забронированное — в просмотр, пустое — в добавление брони).
-//   3. РАЗДЕЛЫ — деньги, люди, сервисы: РЯД из трёх, а не колонка. Три сводки
-//      занимали всю правую колонку по вертикали ради трёх чисел.
+//   3. РАЗДЕЛЫ — деньги, люди, сервисы: СТОПКА в правой колонке, рядом с
+//      подготовкой. Полосой во всю ширину они уходили под сгиб — на ноутбуке три
+//      виджета из пяти приходилось искать прокруткой.
 export default function OverviewLens({
   trip,
   visits = [],
@@ -85,7 +88,8 @@ export default function OverviewLens({
         />
       </div>
 
-      <div className="ov-anim">
+      <div className="ov-grid">
+        <div className="ov-anim">
         <PreparationCard
           visits={visits}
           hotels={hotels}
@@ -95,9 +99,9 @@ export default function OverviewLens({
           onAddTransfer={onAddTransfer}
           onOpenEvent={onOpenEvent}
         />
-      </div>
+        </div>
 
-      <div className="ov-anim ov-trio">
+        <div className="ov-anim ov-side">
         <BudgetSummaryCard
           trip={trip}
           budget={budget}
@@ -119,6 +123,7 @@ export default function OverviewLens({
           onOpenMembers={onOpenMembers}
         />
         <ServicesCard services={services} onAddService={onAddService} onOpenService={onOpenService} />
+        </div>
       </div>
     </div>
   );
