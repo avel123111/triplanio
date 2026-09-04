@@ -16,6 +16,7 @@
 export const TOPIC_KEYS = {
   '1a09227c-00fb-486b-b3bf-7e8e95b2ee1c': 'email_prefs.trip_reminders',
   'ef683f1f-ee74-4f98-a7a4-90d8283c0488': 'email_prefs.trip_updates',
+  '842c9873-2e0f-434f-8eef-76c79e15ead3': 'email_prefs.onboarding',
   '401d88f5-ffc8-484d-a975-540f7a7835ea': 'email_prefs.product_updates',
   '7ab86082-c2ce-4c31-af0a-aa1c75ef0de9': 'email_prefs.marketing',
 };

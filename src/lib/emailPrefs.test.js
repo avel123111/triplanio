@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRows, changedTopics, hasChanges, TOPIC_KEYS } from './emailPrefs.js';
 
-const [REMINDERS, UPDATES, PRODUCT, MARKETING] = Object.keys(TOPIC_KEYS);
+const [REMINDERS, UPDATES, ONBOARDING, PRODUCT, MARKETING] = Object.keys(TOPIC_KEYS);
 
 // Живой ответ Resend приходит в порядке СОЗДАНИЯ топиков (по убыванию даты),
 // то есть в обратном смысловому. Порядок экрана — наш, иначе он меняется от
@@ -11,10 +11,11 @@ test('buildRows: известные топики выстраиваются в �
   const rows = buildRows([
     { id: MARKETING, name: 'Marketing emails', subscription: 'opt_in' },
     { id: PRODUCT, name: 'Product updates', subscription: 'opt_in' },
+    { id: ONBOARDING, name: 'Onboarding', subscription: 'opt_in' },
     { id: UPDATES, name: 'Trip updates', subscription: 'opt_in' },
     { id: REMINDERS, name: 'Trip reminders', subscription: 'opt_in' },
   ]);
-  assert.deepEqual(rows.map((r) => r.id), [REMINDERS, UPDATES, PRODUCT, MARKETING]);
+  assert.deepEqual(rows.map((r) => r.id), [REMINDERS, UPDATES, ONBOARDING, PRODUCT, MARKETING]);
 });
 
 // Топик, заведённый в дашборде и ещё не переведённый, обязан остаться на экране:
