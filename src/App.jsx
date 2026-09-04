@@ -82,6 +82,7 @@ const AuthenticatedShell = lazy(() => import('./AuthenticatedShell'));
 // чанк приехал, карта на месте. Открыл только лендинг → чанк не приехал вовсе.
 const PublicTrip = lazy(() => import('@/pages/PublicTrip'));
 const JoinTrip = lazy(() => import('@/pages/JoinTrip'));
+const EmailPreferences = lazy(() => import('@/pages/EmailPreferences'));
 const Login = lazy(() => import('@/pages/Login'));
 
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
@@ -202,6 +203,31 @@ const AuthenticatedApp = () => {
         <Route
           path="/public/trip/:tripId"
           element={<SiteZone><Suspense fallback={<AppLoading silent />}><PublicTrip /></Suspense></SiteZone>}
+        />
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    );
+  }
+
+  // Настройки почтовых рассылок — до гейта авторизации: адрес приходит ССЫЛКОЙ
+  // ИЗ ПИСЬМА, и отписка обязана работать, когда человек не вошёл (он читает
+  // почту с чужого устройства). Адресат — контакт-id Resend в `?c=`.
+  //
+  // БЕЗ оболочки зоны, в отличие от соседних веток, и это не небрежность: под
+  // site.css у голого `.btn` сайтовая база, а экран собран из app-ДС (Btn,
+  // Toggle) — под зоной кнопка и переключатель приехали бы из двух разных
+  // дизайн-систем. Ровно та же причина, по которой вне зоны оставлен 404.
+  //
+  // ⚠️ Слово-тег оболочки в этом комментарии писать НЕЛЬЗЯ: `zoneSurface.test.js`
+  // ищет блоки зоны голой регуляркой по тексту файла, и упоминание в комментарии
+  // склеивает соседние блоки — маршрут, стоящий между ними, начинает считаться
+  // маршрутом зоны и требовать метку аналитики, которой у него нет.
+  if (path === '/email-preferences') {
+    return (
+      <Routes>
+        <Route
+          path="/email-preferences"
+          element={<Suspense fallback={<AppLoading />}><EmailPreferences /></Suspense>}
         />
         <Route path="*" element={<PageNotFound />} />
       </Routes>

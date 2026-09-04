@@ -288,16 +288,23 @@ export function parseAction(pathname: string, slug: string): string | null {
   return tail.length ? tail.join('/') : null;
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
  * UUID-предикат шва — ОДИН источник паттерна: `typeOk` для `type:'uuid'` и
- * валидатор массива uuid (`tripRoute.uuidArray`) сверяются с ним же, а не с двумя
- * копиями regex.
+ * валидатор массива uuid (`tripRoute.uuidArray`) сверяются с ним же.
+ *
+ * Сам предикат переехал в `_shared/uuid.ts` и реэкспортируется отсюда: он нужен
+ * и функциям, которые в нашу БД не пишут вовсе, а тащить в них весь реестр
+ * ресурсов ради одной регулярки — цена холодного старта (TRIP-513). Импортёры
+ * шва не тронуты: имя доступно там же, где было.
  */
-export function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && UUID_RE.test(value);
-}
+// ⚠️ ИМПОРТ + РЕЭКСПОРТ, а не `export … from`. Чистый `export { x } from '…'`
+// делает имя видимым СНАРУЖИ, но НЕ вносит его в область видимости этого модуля,
+// а `typeOk` ниже зовёт `isUuid` у себя. Ошибка не ловится ни `npm run
+// typecheck` (tsc идёт по `jsconfig.json`, то есть по `src/**` — edge-функции в
+// него не входят), ни eslint, ни тестами: её видит только джоба «Deno typecheck
+// (edge functions)», то есть уже в CI (TRIP-513, разбор упавшего деплоя).
+import { isUuid } from './uuid.ts';
+export { isUuid };
 
 function typeOk(spec: FieldSpec, value: unknown): boolean {
   switch (spec.type) {
