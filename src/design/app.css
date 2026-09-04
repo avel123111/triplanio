@@ -558,6 +558,9 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    рамку (TRIP-337: бывший `.mapfs-close` удалён — выход из фуллскрина в плашке). */
 .cbadge, .ts-startctl, .bk-link,
 .map-legend .c, .map-ctl,
+/* Раздел экрана обзора и кадр поездки — ТА ЖЕ роль поверхности, что у карточки.
+   Своих значений фона и рамки не заводим: «раздел» — не новый вид поверхности. */
+.ovsec, .tframe,
 .chat-bubble--them {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -2060,6 +2063,7 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
 /* .wmini уехал на <Card> (радиус --r-xl теперь от .card, TRIP-337 объект 2). */
 .card,
+.ovsec, .tframe,           /* раздел и кадр обзора — та же ступень, что у карточки */
 .lp {                      /* панель-оболочка (та же ступень, что у модалки) */
   border-radius: var(--r-xl);
 }
@@ -7012,7 +7016,10 @@ button.input[data-empty] { color: var(--muted-2); }
    экран. Ниже 980 ряд рассыпается в колонку.
    floor-exempt: classes +1 — `.ov-trio` (полоса разделов). Апрув Pavel
    floor-exempt: layout +1 — `.ov-trio` объявляет раскладку по существу (ряд из трёх). Апрув Pavel */
-.ov-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-8); }
+/* `stretch` — не украшение: три раздела с разным объёмом содержимого (бюджет в
+   одну строку, участники в три) иначе кончаются на разной высоте, и ряд внизу
+   экрана выглядит обломанным. */
+.ov-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-8); align-items: stretch; }
 /* Порог — по ширине САМОГО экрана обзора, не вьюпорта: один и тот же порог у
    кадра и у ряда разделов, поэтому экран меняет вид ОДИН раз, а не дважды. */
 @container (max-width: 720px) { .ov-trio { grid-template-columns: 1fr; } }
@@ -7108,26 +7115,28 @@ button.input[data-empty] { color: var(--muted-2); }
 .ov-invite { margin-top: 14px; transition: transform .12s var(--ease-out); }
 .ov-invite:active { transform: scale(.985); }
 
-/* ---- секция экрана: заголовок + содержимое, без карточной коробки ---- */
-/* ★ КАРТОЧЕК НА ЭКРАНЕ БОЛЬШЕ НЕТ. Пять коробок с рамками, скруглениями и
-   тенями — по одной на раздел — и были тем «набором склеенного»: каждая
-   объявляла себя отдельным островом, и экран читался как список виджетов, а не
-   как страница поездки. Раздел объявляет себя ЗАГОЛОВКОМ и воздухом; рамки
-   остаются там, где действительно отделяют предмет (строка брони, панель
-   состояния поверх карты).
+/* ---- раздел экрана: ограниченная поверхность с заголовком ---- */
+/* ★★ У РАЗДЕЛА ОБЯЗАНА БЫТЬ ГРАНИЦА. Предыдущая редакция снесла коробки совсем —
+   раздел объявлял себя только заголовком и воздухом. Диагноз был поставлен не
+   тому: экран читался «набором склеенного» не из-за КОРОБОК, а из-за одного
+   повторённого пятью копиями ПАТТЕРНА (коробка + цветная плитка-иконка +
+   заголовок + шеврон). Плитки убраны — и это осталось; коробки убраны — и
+   пропало единственное, что говорило, где раздел начинается и где кончается.
+   Содержимое поплыло: на экране висят подписи и строки, а к чему относится
+   какая — надо догадываться.
+   ★ Волосяная линия между колонками была ХУЖЕ рамки, а не лучше. Колонки разной
+   высоты (в одной три строки, в другой одна), значит и палки между ними разной
+   длины — три случайных вертикальных штриха на пустом месте. Линия работает
+   между блоками ОДИНАКОВОЙ высоты; здесь она была ложным обещанием сетки.
+   ★ Роль поверхности берётся из ОБЩЕГО ко-селектора (фон/рамка ~547, радиус
+   ~2062) — своего вида поверхности «раздел» не существует.
    prefix-exempt: ovsec — канон-объект «секция экрана обзора», апрув Pavel
    floor-exempt: classes +3 — `.ovsec` · `.ovsec__h` · `.ovsec--q`. Апрув Pavel
    floor-exempt: namespaces +1 — семья `ovsec`. Апрув Pavel
    floor-exempt: layout +2 — `.ovsec` и `.ovsec__h` объявляют раскладку по существу (колонка секции и её шапка). Апрув Pavel */
-.ovsec { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.ovsec { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; padding: 18px; }
 .ovsec__h { display: flex; align-items: center; gap: var(--sp-4); min-height: 32px; }
 .ovsec__h h3 { flex: 1; margin: 0; }
-/* Три сводки внизу разделяются волосяной линией, а не рамками: линия сообщает
-   «это соседние разделы одного уровня», рамка — «это три разных предмета». */
-.ov-trio > .ovsec + .ovsec { border-left: 1px solid var(--line); padding-left: var(--sp-8); }
-@container (max-width: 720px) {
-  .ov-trio > .ovsec + .ovsec { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: var(--sp-8); }
-}
 
 /* ---- preparation widget ---- */
 /* Две секции («Проживание» / «Переезды») встают РЯДОМ, когда карточке хватает
@@ -7154,9 +7163,15 @@ button.input[data-empty] { color: var(--muted-2); }
    между колонками (`space-between`), а не в хвост справа. */
 .prep-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
 @container (min-width: 640px) {
-  /* `space-between` живёт ЗДЕСЬ, а не в базе: в одноколоночной раскладке трек
-     `1fr` съедает строку целиком, и объявление там мёртвое. */
-  .prep-cols { grid-template-columns: repeat(2, minmax(0, 460px)); justify-content: space-between; }
+  /* ★ ЛИНИЯ ВМЕСТО РАЗРЫВА. Две секции, разведённые пустотой на 240 px, читались
+     как два не связанных списка, а «+» первой колонки висел посреди ничего — к
+     чему он относится, приходилось угадывать. Здесь линия работает (в отличие от
+     снесённой между тремя сводками): обе колонки — треки ОДНОГО ряда, то есть
+     равной высоты по построению, и штрих идёт от верха до низа, а не обрубком.
+     Разрыва при этом нет вовсе: «+» стоит у линии, то есть у края своей колонки. */
+  .prep-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+  .prep-cols > * + * { border-left: 1px solid var(--line); padding-left: var(--sp-8); }
+  .prep-cols > * { padding-right: var(--sp-8); }
 }
 
 /* ---- герой экрана трипа: карта + панель состояния ---- */
@@ -7168,14 +7183,24 @@ button.input[data-empty] { color: var(--muted-2); }
    ★ Скругление — на самой карте: карточки-обёртки у неё больше нет, лишний
    контур вокруг главного элемента экрана ничего не добавлял.
    prefix-exempt: tframe — канон-объект «герой экрана трипа», апрув Pavel
-   floor-exempt: classes +3 — `.tframe` (герой) · `.tframe__state` (панель состояния) · `.tframe__mapempty` · `.tframe__nums` минус ушедшие `.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/`.ov-openbtn` и минус `.meter--invert`. Апрув Pavel
+   floor-exempt: classes +4 — `.tframe` (герой) · `.tframe__map` (слой карты) · `.tframe__state` (панель состояния) · `.tframe__mapempty` · `.tframe__nums` минус ушедшие `.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/`.ov-openbtn` и минус `.meter--invert`. Апрув Pavel
    floor-exempt: namespaces +1 — семья `tframe` вместо снесённой карточки превью карты. Апрув Pavel
-   floor-exempt: layout +1 — `.tframe` объявляет раскладку по существу (кадр). У `.tframe__state` осталось чистое ПОЗИЦИОНИРОВАНИЕ: колонку строк объявляет сама карточка (`col col--g3`), а не обёртка. Апрув Pavel */
+   floor-exempt: layout +2 — `.tframe` и `.tframe__map` объявляют раскладку по существу (кадр и слой карты в нём). У `.tframe__state` осталось чистое ПОЗИЦИОНИРОВАНИЕ: колонку строк объявляет сама карточка (`col col--g3`), а не обёртка. Апрув Pavel */
+/* ★ КАДР — ОДНА ПОВЕРХНОСТЬ, А НЕ КАРТА С ПОДПИСЬЮ РЯДОМ. Числа маршрута стояли
+   ГОЛОЙ строкой между кадром и «Подготовкой»: ни коробки, ни принадлежности —
+   ровно то «плавает непонятно где», за что экран и ругали. Теперь это ПОДВАЛ
+   кадра, внутри его границы. */
 .tframe {
   position: relative; isolation: isolate;
-  height: 440px; border-radius: var(--r-xl); overflow: hidden;
-  background: var(--surface-2); display: flex;
+  overflow: hidden;
+  display: flex; flex-direction: column;
 }
+/* Слой карты называет свой уровень (контракт TRIP-466): он подложка кадра,
+   панель состояния стоит НАД ним. */
+.tframe__map { position: relative; z-index: 0; height: 440px; display: flex; }
+.tframe__map > * { flex: 1; min-width: 0; }
+/* Пустое состояние заполняет СЛОЙ карты (он `position: relative` в обоих
+   режимах — и оверлейном, и колоночном на телефоне). */
 .tframe__mapempty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
 /* Панель состояния — предмет НА карте: свои углы, своя тень, свой фон.
    ★ ВЕРХ, А НЕ НИЗ. Нижние углы холста занимает атрибуция mapbox (логотип слева,
@@ -7189,11 +7214,17 @@ button.input[data-empty] { color: var(--muted-2); }
 }
 /* Числа маршрута — подпись под героем: тихая строка, а не полоса плиток
    (разбор в `TripStatRow`). */
-.tframe__nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3); }
+.tframe__nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3); padding: 14px 18px; }
 
+/* ★★ НА ТЕЛЕФОНЕ ПАНЕЛЬ НЕ ЛЕЖИТ НА КАРТЕ. На узком кадре она растягивается во
+   всю ширину и занимает 176 из 400 px — то есть ПОЛОВИНУ карты закрывает другой
+   виджет, и от карты остаётся полоска. Поверх — приём для широкого кадра, где
+   панель отъедает угол; на узком кадр становится КОЛОНКОЙ: карта своей высотой,
+   панель под ней в потоке. Слоёв тут не остаётся вовсе, поэтому обрезка
+   `overflow` и стековый контекст ничего не ломают. */
 @container (max-width: 720px) {
-  .tframe { height: 400px; }
-  .tframe__state { top: 12px; left: 12px; right: 12px; width: auto; max-width: none; }
+  .tframe__map { height: 300px; }
+  .tframe__state { position: static; width: auto; max-width: none; margin: var(--sp-6) 12px 0; }
 }
 
 /* Карточка превью карты (`.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/

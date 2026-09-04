@@ -121,8 +121,11 @@ export default function MembersSummaryCard({
         </div>
         )}
 
+        {/* Не залитая плашка: «Пригласить» — не главное предложение экрана, а одно
+            из действий раздела, и в ряду трёх сводок залитый блок был самым
+            тяжёлым пятном нижней половины. */}
         {!isLoading && canManage && (
-          <Btn variant="soft" block className="ov-invite" onClick={onInvite || onOpenMembers}>
+          <Btn variant="secondary" block className="ov-invite" onClick={onInvite || onOpenMembers}>
             <Icon name="plus" size={15} />
             {t('members.invite')}
           </Btn>

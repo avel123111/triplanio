@@ -98,13 +98,22 @@ export default function TripFrame({
   // сейчас, решает ЗАМЕР, а не копия порога: панель шире двух третей кадра =
   // полоса, значит закрыт ВЕРХ; иначе закрыт ЛЕВЫЙ край.
   const frameRef = useRef(/** @type {any} */ (null));
+  const mapRef = useRef(/** @type {any} */ (null));
   const panelRef = useRef(/** @type {any} */ (null));
   const [closed, setClosed] = useState(/** @type {any} */ (null));
   const measure = useCallback(() => {
-    const f = frameRef.current; const p = panelRef.current;
+    const f = mapRef.current; const p = panelRef.current;
     if (!f || !p) return;
     const fr = f.getBoundingClientRect(); const pr = p.getBoundingClientRect();
     if (!fr.width || !pr.width) return;
+    // ★ ЗАКРЫТО ТОЛЬКО ТО, ЧТО ПАНЕЛЬ РЕАЛЬНО ПЕРЕКРЫВАЕТ. Мерим против КАРТЫ, а
+    // не против кадра: на телефоне панель стоит под картой в потоке, пересечения
+    // нет — и закрытой площади нет тоже. Считать её от кадра значило бы объявить
+    // карте, что у неё отрезан весь низ, и загнать маршрут в верхнюю треть.
+    if (pr.bottom <= fr.top + 1 || pr.top >= fr.bottom - 1) {
+      setClosed((cur) => (cur === null ? cur : null));
+      return;
+    }
     const box = pr.width > fr.width * 0.66
       ? { top: Math.round(pr.bottom - fr.top) }
       : { left: Math.round(pr.right - fr.left) };
@@ -127,7 +136,7 @@ export default function TripFrame({
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(measure);
-    if (frameRef.current) ro.observe(frameRef.current);
+    if (mapRef.current) ro.observe(mapRef.current);
     if (panelRef.current) ro.observe(panelRef.current);
     return () => ro.disconnect();
   }, [measure, isLoading]);
@@ -174,27 +183,29 @@ export default function TripFrame({
   return (
     <>
       <div className="tframe" ref={frameRef}>
-        {hasRoute ? (
-          <MapView
-            visits={visits}
-            transfers={transfers}
-            view={view}
-            initialProjection={projection}
-            colorScheme={isDark ? 'DARK' : 'LIGHT'}
-            active={active}
-            hoveredVisitId={hoveredId}
-            selectedVisitId={selectedId}
-            cityBadge={cityBadge}
-            onCityHover={(pts) => setHoveredId(pts ? (pts[0]?.id ?? null) : null)}
-            onCityClick={(pts) => { const v = pts?.[0]; if (v) setSelectedId((cur) => (cur === v.id ? null : v.id)); }}
-            onMapClick={() => setSelectedId(null)}
-          />
-        ) : (
-          <div className="tframe__mapempty muted">
-            <Icon name="map" size={22} />
-            <span>{t('overview.map_empty')}</span>
-          </div>
-        )}
+        <div className="tframe__map" ref={mapRef}>
+          {hasRoute ? (
+            <MapView
+              visits={visits}
+              transfers={transfers}
+              view={view}
+              initialProjection={projection}
+              colorScheme={isDark ? 'DARK' : 'LIGHT'}
+              active={active}
+              hoveredVisitId={hoveredId}
+              selectedVisitId={selectedId}
+              cityBadge={cityBadge}
+              onCityHover={(pts) => setHoveredId(pts ? (pts[0]?.id ?? null) : null)}
+              onCityClick={(pts) => { const v = pts?.[0]; if (v) setSelectedId((cur) => (cur === v.id ? null : v.id)); }}
+              onMapClick={() => setSelectedId(null)}
+            />
+          ) : (
+            <div className="tframe__mapempty muted">
+              <Icon name="map" size={22} />
+              <span>{t('overview.map_empty')}</span>
+            </div>
+          )}
+        </div>
 
         <div className="tframe__state" ref={panelRef}>
           <Card radius="lg" raised className="col col--g3">
@@ -218,18 +229,18 @@ export default function TripFrame({
             </Btn>
           </Card>
         </div>
-      </div>
 
-      <TripStatRow visits={visits} transfers={transfers} trip={trip} />
+        <TripStatRow visits={visits} transfers={transfers} trip={trip} />
+      </div>
     </>
   );
 }
 
 export function TripFrameSkeleton() {
   return (
-    <>
-      <div className="tframe"><Skeleton w="100%" h="100%" r={0} /></div>
+    <div className="tframe">
+      <div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div>
       <div className="tframe__nums"><Skeleton w="52%" h={13} r={5} /></div>
-    </>
+    </div>
   );
 }

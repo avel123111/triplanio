@@ -105,7 +105,12 @@ function Section({ label, rows, done, total, t }) {
   const hidden = rows.length - shown.length;
   return (
     <Col gap="g4">
-      <Row justify="j-between" align="a-baseline">
+      {/* ★ СЧЁТ СТОИТ У СВОЕЙ ПОДПИСИ. Разнесённые по краям колонки «Проживание»
+          и «2/11» оказывались в четырёхстах пикселях друг от друга — на таком
+          расстоянии число перестаёт читаться как счёт ЭТОЙ секции и висит само
+          по себе, тем более что справа от него сразу начинается вторая колонка
+          со своим числом у левого края. */}
+      <Row align="a-baseline" gap="g3">
         <span className="t-meta muted">{label}</span>
         <span className="t-meta muted num">{done}/{total}</span>
       </Row>
