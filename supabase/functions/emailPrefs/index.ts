@@ -1,5 +1,5 @@
 /**
- * emailPrefs — единственная дверь к настройкам почтовых рассылок (TRIP-512).
+ * emailPrefs — единственная дверь к настройкам почтовых рассылок (TRIP-513).
  *
  * Состояние подписки живёт в Resend (глобальный флаг `unsubscribed` на контакте
  * + подписки по топикам), НЕ у нас: колонки `users.notify_email_*` уже были и
@@ -87,6 +87,28 @@ function contactId(url: URL, body: Record<string, unknown> | null): string | nul
   return UUID_RE.test(raw) ? raw : null;
 }
 
+/**
+ * Список из ответа Resend.
+ *
+ * ★ ЗАМЕРЕНО КУРЛОМ ПО ЖИВОЙ ФУНКЦИИ (04.09.2026), и это стоило бага в dev:
+ * коллекционные ручки Resend отдают НЕ голый массив, а конверт
+ * `{ object: "list", has_more, data: [...] }`. Прежний `Array.isArray(x) ? x : []`
+ * поэтому возвращал ПУСТО ВСЕГДА — страница рисовала ноль топиков у контакта,
+ * у которого их четыре, и не падала: пустой список выглядит как «топиков нет».
+ *
+ * Тестами это не ловилось по построению: юнит-тест кормил `buildRows` массивом,
+ * набранным руками, а живую форму я смотрел через инструмент, который печатал её
+ * СПИСКОМ, а не сырым телом. Увидеть можно было только сырым HTTP.
+ *
+ * Одиночные ручки (`GET /contacts/{id}`) конверта НЕ имеют — проверено тем же
+ * запросом: `unsubscribed` пришёл с верхнего уровня и совпал с дашбордом.
+ */
+function listOf<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  const data = (payload as { data?: unknown } | null)?.data;
+  return Array.isArray(data) ? data as T[] : [];
+}
+
 /** Оставить только валидные пары; чужие ключи и статусы отбрасываются. */
 function cleanTopics(input: unknown): Array<{ id: string; subscription: string }> {
   if (!Array.isArray(input)) return [];
@@ -111,7 +133,12 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
     return new Response(null, { status: 302, headers: { ...corsHeaders, Location: to } });
   }
 
-  if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed', 'METHOD');
+  // Кодов НОВЫХ здесь нет намеренно: реестр `_shared/errorCodes.ts` append-only
+  // (код живёт в сторе дольше нашего релиза), и заводить в нём синоним к тому,
+  // что уже есть, дороже, чем переиспользовать. 405 — это `BAD_REQUEST`,
+  // «в `c` не id контакта» — `INVALID_INPUT`; страница ветвится по второму, а
+  // первого от неё не приходит вовсе.
+  if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed', 'BAD_REQUEST');
 
   // ОДНОКЛИК почтовика: RFC 8058 предписывает form-urlencoded тело
   // `List-Unsubscribe=One-Click`. Тела JSON у него не бывает — по типу и
@@ -127,7 +154,7 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const id = contactId(url, body);
-  if (!id) throw new HttpError(400, 'Invalid unsubscribe link', 'INVALID_LINK');
+  if (!id) throw new HttpError(400, 'Invalid unsubscribe link', 'INVALID_INPUT');
 
   // ЧТЕНИЕ. Два вызова, потому что глобальный флаг живёт на контакте, а не в
   // списке топиков — а он главнее: при `unsubscribed: true` не уходит ничего,
@@ -135,11 +162,11 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
   if (body?.action === 'get') {
     const [contact, topics] = await Promise.all([
       resend<{ unsubscribed?: boolean }>(`/contacts/${id}`),
-      resend<TopicRow[]>(`/contacts/${id}/topics`),
+      resend(`/contacts/${id}/topics`),
     ]);
     return Response.json({
       unsubscribed: !!contact?.unsubscribed,
-      topics: (Array.isArray(topics) ? topics : []).map((t) => ({
+      topics: listOf<TopicRow>(topics).map((t) => ({
         id: t.id,
         name: t.name ?? '',
         subscription: t.subscription === 'opt_out' ? 'opt_out' : 'opt_in',
