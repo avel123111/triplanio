@@ -72,12 +72,23 @@ export default function BudgetSummaryCard({
 
       <div>
         {isLoading ? (
+          /* ★ ФАЗА ЗАГРУЗКИ — ТЕ ЖЕ ЭЛЕМЕНТЫ, ЧТО У ЗАПОЛНЕННОЙ КАРТОЧКИ: итог,
+             полоса и три строки легенды. Стопка `<Skeleton>` со своими
+             `marginTop` — вторая геометрия: отступы и высоты она задавала
+             руками и разъехалась с настоящими на 36 px, как только карточка
+             переехала на `<Card>`+`<CardHeader>`. Полоса — настоящий `<Meter>`
+             без сегментов: пустая дорожка и есть «данных пока нет». */
           <>
-            <Skeleton w="55%" h={26} r="var(--r-sm)" />
-            <Skeleton w="100%" h={11} r="var(--r-pill)" style={{ marginTop: 14 }} />
-            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 12 }} />
-            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 8 }} />
-            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 8 }} />
+            <div className="bud-total"><Skeleton w="55%" h={28} r="var(--r-sm)" /></div>
+            <Meter />
+            <div className="bud-legs">
+              {[0, 1, 2].map((i) => (
+                <div className="bud-leg" key={i}>
+                  <Skeleton w={10} h={10} r={4} />
+                  <Skeleton w={i === 0 ? 96 : 72} h={18} r={5} />
+                </div>
+              ))}
+            </div>
           </>
         ) : budget ? (
           <>

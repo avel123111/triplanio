@@ -60,23 +60,26 @@ function Trail({ issue }) {
 }
 
 
+// Сколько рядов видно в свёрнутой секции. Одно число на обе колонки — иначе
+// «Ещё N» у ночлегов и у переездов считались бы от разных потолков.
+const CAP = 3;
+
 /**
  * Секция подготовки: подпись со счётом, ряды и свёртка.
  *
- * ★★ СНАЧАЛА ТО, ЧЕГО НЕТ, ПОТОМ ТО, ЧТО ЕСТЬ (внутри группы — порядок маршрута):
- * виджет отвечает на «что осталось», поэтому работа стоит первой.
- * ★★ «ЕЩЁ N» ПРЯЧЕТ ЗАКРЫТОЕ, А НЕ РАБОТУ — тогда N значит одно и то же в обеих
- * колонках. Потолка по числу рядов нет: он давал «Ещё 1» и «Ещё 4» про разное.
- * Работы нет вовсе — показываем закрытое, иначе секция пуста.
+ * ★ ПОРЯДОК: сначала то, чего НЕТ, потом то, что есть (внутри группы — порядок
+ * маршрута): виджет отвечает на «что осталось», поэтому работа стоит первой.
+ * ★ ВИДНО ПЕРВЫЕ `CAP` РЯДОВ ПО ЭТОМУ ПОРЯДКУ, независимо от статуса; остальное
+ * — за «Ещё N». Потолок держит высоту секции постоянной: список длиной с
+ * маршрут иначе растит экран без предела.
  */
-function Section({ label, rows, done, total }) {
+function Section({ label = null, rows = [], done = 0, total = 0, isLoading = false }) {
   const { t } = useI18nFormat();
   const [expanded, setExpanded] = useState(false);
-  const pending = rows.filter((r) => !r.booked);
-  const closed = rows.filter((r) => r.booked);
-  const ordered = [...pending, ...closed];
-  const shown = expanded || !pending.length ? ordered : pending;
+  const ordered = [...rows.filter((r) => !r.booked), ...rows.filter((r) => r.booked)];
+  const shown = expanded ? ordered : ordered.slice(0, CAP);
   const hidden = ordered.length - shown.length;
+  if (isLoading) return <SectionSkeleton />;
   return (
     <Col gap="g4">
       {/* ★ СЧЁТ СТОИТ У СВОЕЙ ПОДПИСИ. Разнесённые по краям колонки «Проживание»
@@ -96,6 +99,30 @@ function Section({ label, rows, done, total }) {
           </Btn>
         </Row>
       )}
+    </Col>
+  );
+}
+
+/**
+ * Фаза загрузки секции. ★ СОБРАНА ИЗ ТЕХ ЖЕ ЭЛЕМЕНТОВ, что живая: подпись —
+ * тот же `<Row align="a-baseline" gap="g3">`, ряд — тот же `<AddRow>` с
+ * заглушками вместо заголовка и подписи, «Ещё» — та же `<Btn variant="link">`.
+ * Прямоугольники «примерно такого размера» на их месте разъезжались с живой
+ * раскладкой на десятки пикселей (ряд 64 против 66, подпись 12 против 18,
+ * строка «Ещё» отсутствовала вовсе) — и это ровно то, что видно как прыжок
+ * содержимого в момент, когда данные приехали.
+ */
+function SectionSkeleton() {
+  return (
+    <Col gap="g4">
+      <Row align="a-baseline" gap="g3">
+        <Skeleton w={70} h={18} r={5} />
+        <Skeleton w={24} h={18} r={5} />
+      </Row>
+      {Array.from({ length: CAP }, (_, i) => (
+        <AddRow key={i} icon="dot" title={<Skeleton w={140} h={18} r={5} />} sub={<Skeleton w={92} h={18} r={5} />} />
+      ))}
+      <Row><Btn variant="link" disabled><Skeleton w={47} h={18} r={5} /></Btn></Row>
     </Col>
   );
 }
@@ -256,25 +283,28 @@ function nightsWord(t, n) {
   return n < 5 ? t('view.nights_few') : t('view.nights_many');
 }
 
-// Скелетон повторяет геометрию виджета один в один: шапка → строка счёта с
-// полосой готовности → две колонки рядов. Иначе содержимое прыгает в момент,
-// когда данные приехали.
+// Скелетон = ТА ЖЕ карточка, та же шапка, та же строка готовности и те же две
+// секции — только с заглушками вместо чисел и названий. Полоса-доля рисуется
+// НАСТОЯЩИМ `<Meter>` без сегментов: пустая дорожка и есть её состояние
+// «данных пока нет», и она сама занимает обе колонки строки готовности.
 export function PreparationSkeleton() {
+  const { t } = useI18nFormat();
   return (
     <Card className="col col--g6 prep" aria-busy="true">
-      <CardHeader title={<Skeleton w={180} h={20} r={6} />} action={<Skeleton w={32} h={32} r="var(--r-btn)" />} />
-      <div className="prep-head">
-        <Skeleton w={170} h={14} r={5} />
-        <Skeleton w={38} h={14} r={5} />
-        <Skeleton w="100%" h={11} r="var(--r-pill)" />
-      </div>
-      <div className="prep-cols">
-        {[0, 1].map((c) => (
-          <Col gap="g4" key={c}>
-            <Skeleton w="35%" h={12} r={5} />
-            {[0, 1, 2].map((r) => <Skeleton key={r} w="100%" h={64} r="var(--r-btn)" />)}
-          </Col>
-        ))}
+      {/* Заголовок раздела — НАСТОЯЩИЙ: он известен до данных, и три соседние
+          карточки в фазе загрузки показывают свой. Серая полоска на его месте
+          делала «Подготовку» единственной безымянной карточкой на экране. */}
+      <CardHeader title={t('overview.prep_title')} action={<Skeleton w={32} h={32} r="var(--r-btn)" />} />
+      <div>
+        <div className="prep-head">
+          <Skeleton w={190} h={19} r={5} />
+          <Skeleton w={35} h={23} r={6} />
+          <Meter />
+        </div>
+        <div className="prep-cols">
+          <Section isLoading />
+          <Section isLoading />
+        </div>
       </div>
     </Card>
   );

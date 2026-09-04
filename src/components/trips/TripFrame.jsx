@@ -173,12 +173,15 @@ export default function TripFrame({
 export function TripFrameSkeleton() {
   return (
     <>
-      {/* Панель на своём месте: иначе скелетон обещает пустой прямоугольник. */}
+      {/* Тот же `.tframe` с той же панелью на том же месте: иначе скелетон обещает
+          пустой прямоугольник и содержимое прыгает, когда данные приехали. */}
       <div className="tframe">
         <div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div>
         <div className="tframe__state"><Skeleton w="100%" h={132} r="var(--r-lg)" /></div>
       </div>
-      <Skeleton w="100%" h={84} r="var(--r-xl)" />
+      {/* ★ ПОЛОСА ПЛИТОК — НАСТОЯЩАЯ, в фазе загрузки. Прямоугольник на её месте
+          не несёт СВОЙ `margin-top` полосы и прилипал к кадру карты. */}
+      <TripStatRow isLoading />
     </>
   );
 }

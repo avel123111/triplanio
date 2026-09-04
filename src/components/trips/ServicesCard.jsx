@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { AddRow, Btn, Card, CardHeader, ListRow, Tile } from '@/design/index';
+import { AddRow, Btn, Card, CardHeader, ListRow, Skeleton, Tile } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
@@ -11,7 +11,11 @@ import { SERVICE_KINDS } from '@/lib/serviceKinds';
 // service view/edit dialogs (each kind its own colour).
 const SERVICE_KIND_META = SERVICE_KINDS;
 
-export default function ServicesCard({ services = [], onAddService, onOpenService }) {
+/**
+ * @param {{ services?: any[], isLoading?: boolean,
+ *           onAddService?: any, onOpenService?: any }} p
+ */
+export default function ServicesCard({ services = [], isLoading = false, onAddService, onOpenService }) {
   const { t } = useI18n();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -29,6 +33,18 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
       <CardHeader title={t('trip.sidebar_services')} />
       <div>
         <div className="col col--g4">
+          {/* ★ ФАЗА ЗАГРУЗКИ — ТЕ ЖЕ `<AddRow>` и та же кнопка «Ещё», только с
+              заглушками: иначе одна карточка из трёх показывает готовый вид,
+              пока соседние ещё грузятся. */}
+          {isLoading ? (
+            <>
+              {[0, 1].map((i) => (
+                <AddRow key={i} icon="dot" title={<Skeleton w={96} h={18} r={5} />} sub={<Skeleton w={128} h={18} r={5} />} />
+              ))}
+              <Btn variant="soft" block disabled><Skeleton w={72} h={17} r={5} /></Btn>
+            </>
+          ) : (
+          <>
           {/* Booked services — канон <ListRow variant="raised"> */}
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
@@ -66,6 +82,8 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
             <Btn variant="soft" block onClick={() => setMoreOpen(true)}>
               <Icon name="plus" size={15} />{t('service.more')}
             </Btn>
+          )}
+          </>
           )}
         </div>
       </div>

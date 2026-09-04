@@ -7,19 +7,22 @@ import PreparationCard, { PreparationSkeleton } from '@/components/trips/Prepara
 import TripFrame, { TripFrameSkeleton } from '@/components/trips/TripFrame';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 
-// Скелетон Обзора — та же раскладка и ТЕ ЖЕ виджеты, что у живого экрана: каждый
-// умеет рисовать себя в фазе загрузки сам (`isLoading`). Своей геометрии здесь
-// нет намеренно — она была четвёртой копией и расходилась с виджетами молча.
+// Скелетон Обзора — ТОТ ЖЕ ДЕРЕВО, что у живого экрана: те же обёртки, те же
+// виджеты, каждый рисует свою фазу загрузки сам (`isLoading`). Своей геометрии
+// здесь нет намеренно: любое расхождение — прыжок содержимого ровно в тот
+// момент, когда на него смотрят, а обёртки решают отступы не меньше, чем сами
+// блоки (кадр и полоса плиток лежат ВНУТРИ `.ov-anim`, а не отдельными детьми
+// колонки — вынеси их наружу, и зазоры станут другими).
 export function OverviewSkeleton() {
   return (
     <Col gap="g8" className="ovwrap" aria-busy="true">
-      <TripFrameSkeleton />
+      <div className="ov-anim"><TripFrameSkeleton /></div>
       <div className="ov-grid">
-        <PreparationSkeleton />
-        <Col gap="g8">
+        <div className="ov-anim"><PreparationSkeleton /></div>
+        <Col gap="g8" className="ov-anim">
           <BudgetSummaryCard isLoading budget={{}} />
           <MembersSummaryCard isLoading members={[]} />
-          <ServicesCard services={[]} />
+          <ServicesCard isLoading services={[]} />
         </Col>
       </div>
     </Col>
@@ -117,7 +120,7 @@ export default function OverviewLens({
           isLoading={contentLoading}
           onOpenMembers={onOpenMembers}
         />
-        <ServicesCard services={services} onAddService={onAddService} onOpenService={onOpenService} />
+        <ServicesCard services={services} isLoading={contentLoading} onAddService={onAddService} onOpenService={onOpenService} />
         </Col>
       </div>
     </Col>

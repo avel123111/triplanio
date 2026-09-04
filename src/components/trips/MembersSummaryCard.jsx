@@ -15,6 +15,10 @@ import { withOwnerRow } from '@/lib/members';
 // Ordering: owner first, then admins, viewers, offline, pending. The owner is
 // often tracked via trip.created_by rather than a trip_members row, so it's
 // synthesized when missing.
+// `flex: none` аватару — свойство ЗАГЛУШКИ, классом его не выразить; именованной
+// константой, а не литералом в разметке (её считал бы гард инлайнов 2l).
+const AVA = { flex: 'none' };
+
 export default function MembersSummaryCard({
   trip,
   members = [],
@@ -70,14 +74,16 @@ export default function MembersSummaryCard({
 
       <div>
         {isLoading ? (
+          /* ★ ТОТ ЖЕ РЯД, ЧТО РИСУЕТ `<Person>`: `.mrow` → аватар · `.fl1 > .mn`
+             · значок роли. Размеры берутся из ТЕХ ЖЕ классов, а не назначаются
+             руками — прежняя стопка ставила аватар 34 вместо 28 и вторую строку,
+             которой у обычного участника нет, и ряд выходил на 6 px выше. */
           <div className="col col--g4">
             {[0, 1, 2].map((i) => (
               <div className="mrow" key={i}>
-                <Skeleton w={34} h={34} r="50%" style={{ flex: 'none' }} />
-                <div className="fl1">
-                  <Skeleton w="55%" h={13} r={5} />
-                  <Skeleton w="40%" h={11} r={5} style={{ marginTop: 6 }} />
-                </div>
+                <Skeleton w={28} h={28} r="50%" style={AVA} />
+                <div className="fl1"><div className="mn"><Skeleton w={i === 0 ? '55%' : '40%'} h={18} r={5} /></div></div>
+                <Skeleton w={58} h={17} r="var(--r-pill)" />
               </div>
             ))}
           </div>
