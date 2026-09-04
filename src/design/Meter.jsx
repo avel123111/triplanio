@@ -31,15 +31,14 @@ export const Meter = React.forwardRef(
    *   segments?: MeterSegment[],
    *   ariaLabel?: string,
    *   className?: string,
-   * } & Record<string, any>} p
+   * }} p
    */
-  ({ segments = [], ariaLabel, className = '', ...rest }, ref) => (
+  ({ segments = [], ariaLabel, className = '' }, ref) => (
     <div
       ref={ref}
       className={['meter', className].filter(Boolean).join(' ')}
       role={ariaLabel ? 'img' : 'presentation'}
       aria-label={ariaLabel || undefined}
-      {...rest}
     >
       {segments.map((s) => (
         <i key={s.key} className="meter__seg" title={s.title} style={segStyle(s)} />

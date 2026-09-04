@@ -560,7 +560,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .map-legend .c, .map-ctl,
 /* Раздел экрана обзора и кадр поездки — ТА ЖЕ роль поверхности, что у карточки.
    Своих значений фона и рамки не заводим: «раздел» — не новый вид поверхности. */
-.ovsec, .tframe,
+.tframe,
 .chat-bubble--them {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -666,13 +666,6 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    героя ушла, полоса лежит на канон-карточке, и у варианта не осталось ни
    одного вызывателя. Мёртвый вариант в ДС хуже отсутствующего — он выглядит
    как предложенный выбор. */
-/* Полоса БЕЗ внешних отступов — когда ритм задаёт владелец (панель состояния над
-   картой сама расставляет свои строки колонкой с общим зазором). Вариант, а не
-   оверрайд `.meter` из чужого блока: база — единственное значение, которое
-   полоса имела у `.bud-bar`, и менять его из соседнего экрана значит менять
-   облик бюджета молча (гард 2p это уже ловил).
-   floor-exempt: classes +1 — `.meter--flush` (полоса без внешних отступов). Апрув Pavel */
-.meter--flush { margin: 0; }
 
 /* Утопленная поверхность (заметки, адрес, плитки отсчёта) СВЕДЕНА к канону
    `<Card recessed>` (TRIP-343 PR-4, объект 2, закрытие). Прежняя приватная
@@ -2063,7 +2056,7 @@ button.app-side__item:hover { background: var(--nav-hover); color: var(--nav-ink
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
 /* .wmini уехал на <Card> (радиус --r-xl теперь от .card, TRIP-337 объект 2). */
 .card,
-.ovsec, .tframe,           /* раздел и кадр обзора — та же ступень, что у карточки */
+.tframe,           /* раздел и кадр обзора — та же ступень, что у карточки */
 .lp {                      /* панель-оболочка (та же ступень, что у модалки) */
   border-radius: var(--r-xl);
 }
@@ -6992,54 +6985,39 @@ button.input[data-empty] { color: var(--muted-2); }
 
 /* ============================================================
    TRIP OVERVIEW (main screen) — Lumo
-   Two columns (map + stats / budget + members) that collapse to
-   one on mobile. Widgets share the .wdg shell.
+   ★★ ЭКРАН ОБЗОРА — ЭКРАН, А НЕ ЛЕНТА. Кадр поездки во всю ширину сверху, под
+   ним ДВЕ КОЛОНКИ: работа слева (подготовка), сводки стопкой справа. Пять
+   блоков помещаются в один экран — полосами во всю ширину три из пяти лежат под
+   сгибом, и чтобы увидеть бюджет или участников, надо прокрутить два экрана.
+   Ширину при этом НЕ режем: экран трипа занимает тело так же, как остальные.
+   Сводки идут СТОПКОЙ, каждая ровно своей высоты: ряд из трёх, выровненный по
+   высоте, раздувал «Бюджет €0» до размера заполненного раздела — пустота была
+   не убрана, а обведена рамкой.
    ============================================================ */
-/* ЭКРАН ПЕРЕСОБРАН: три ПОЛОСЫ во всю ширину вместо двух колонок карточек.
-   Прежняя раскладка была стопкой из шести равновесных коробок в двух колонках —
-   у неё нет ни главного, ни ритма, и любая новая карточка просто дописывалась в
-   конец колонки. Полосы отвечают на вопросы по порядку: кадр поездки (что это и
-   где) → подготовка (что осталось) → разделы (деньги, люди, сервисы).
-   `.ov-col` УДАЛЁН вместе с колонками — вместе с ним ушли и его правила ниже.
-   visual-diff-exempt: .ovwrap display — экран пересобран в полосы (было grid двух колонок), апрув Pavel
-   visual-diff-exempt: .ovwrap grid-template-columns — то же: колонок больше нет
-   visual-diff-exempt: .ovwrap align-items — то же
-   visual-diff-exempt: .ovwrap {@media (max-width: 880px)} grid-template-columns — то же: схлопывать нечего, полосы одноколоночны всегда */
-/* Раскладка экрана.
-   floor-exempt: layout +1 — `.ovwrap` (колонка экрана). Апрув Pavel */
-/* ★★ ЭКРАН ОБЗОРА — ЭКРАН, А НЕ ЛЕНТА. Прошлая редакция разложила его тремя
-   полосами во всю ширину друг под другом: кадр → подготовка → три сводки. На
-   ноутбуке это значит, что ТРИ ВИДЖЕТА ИЗ ПЯТИ лежат под сгибом, и чтобы
-   увидеть бюджет или участников, надо прокрутить два экрана. Двухколоночная
-   раскладка, которую полосы заменили, при всех своих бедах держала всё в поле
-   зрения — и это было её главным свойством, а не случайностью.
-   Сейчас: кадр во всю ширину сверху, под ним ДВЕ КОЛОНКИ — работа слева
-   (подготовка), сводки стопкой справа. Пять блоков помещаются в один экран.
-   floor-exempt: classes +2 — `.ov-grid` (сетка «работа | сводки») и `.ov-side` (стопка сводок) минус ушедший `.ov-trio`. Апрув Pavel
-   floor-exempt: layout +3 — `.ovwrap` (колонка экрана), `.ov-grid` (сетка) и `.ov-side` (стопка) объявляют раскладку по существу. Апрув Pavel */
-/* ★ ШИРИНУ НЕ РЕЖЕМ. Колонка чтения 1160 была моей самовольной правкой: на
-   широком мониторе она сжимала экран в узкую полосу посередине и оставляла
-   пустые поля по бокам. Экран трипа занимает тело так же, как остальные. */
-.ovwrap { display: flex; flex-direction: column; gap: var(--sp-8); container-type: inline-size; }
+/* `.ov-col` удалён вместе с прежними колонками; его правила ушли следом.
+   visual-diff-exempt: .ovwrap display — раскладку колонки экрана несёт примитив `<Col gap="g8">`, было grid двух колонок. Апрув Pavel
+   visual-diff-exempt: .ovwrap grid-template-columns — сетка переехала на отдельный узел `.ov-grid`
+   visual-diff-exempt: .ovwrap gap — зазор колонки экрана несёт `.col--g8`
+   visual-diff-exempt: .ovwrap align-items — колонок у `.ovwrap` больше нет
+   visual-diff-exempt: .ovwrap {@media (max-width: 880px)} grid-template-columns — то же: схлопывать нечего
+   floor-exempt: classes +1 — `.ov-grid` (сетка «работа | сводки») минус ушедшие `.ov-col`/`.ov-trio`. Апрув Pavel
+   floor-exempt: layout +1 — `.ov-grid`: у сетки свой шаблон колонок, осью примитива раскладки он не выражается. Апрув Pavel */
+/* `.ovwrap` объявляет ТОЛЬКО контейнер измерения — по его ширине перестраивается
+   полоса плиток (правила ниже по файлу). Колонку экрана и стопку сводок несёт
+   `<Col gap="g8">`: своего класса у них нет намеренно, `.ov-side` был побайтовой
+   копией `.col.col--g8`. */
+.ovwrap { container-type: inline-size; }
 /* ★ СЕТКА — ОТДЕЛЬНЫМ УЗЛОМ, И ЭТО НЕ ЛИШНЯЯ ОБЁРТКА. `@container` отвечает на
    ширину БЛИЖАЙШЕГО ПРЕДКА-контейнера и НИКОГДА — на ширину элемента, который
    сам объявил `container-type`. Повесь колонки прямо на `.ovwrap` — запрос молча
    не сработает ни на одной ширине, и раскладка навсегда останется одноколоночной
    (проверено: колонки не включились ни разу, ошибки при этом нет). */
 .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); align-items: start; }
-/* Сводки — СТОПКА, и каждая ровно своей высоты. Ряд из трёх, выровненный по
-   высоте, раздувал «Бюджет €0» до размера заполненного раздела: пустота была не
-   убрана, а обведена рамкой. В колонке раздел кончается там, где кончается его
-   содержимое. */
-.ov-side { display: flex; flex-direction: column; gap: var(--sp-8); min-width: 0; }
 /* Порог — по ширине САМОГО экрана обзора, не вьюпорта: одно и то же число у
    кадра и у сетки, поэтому экран меняет вид ОДИН раз, а не дважды. */
 @container (min-width: 721px) {
   .ov-grid { grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); }
 }
-/* Left column = size container so the stat-bar reflows to its own width, not the
-   viewport (mockup v01 @container): 5-across when the column is wide, 2-col when
-   the 2-column overview squeezes it on mid-width desktops (TRIP-278). */
 
 
 /* ---- widget shell ---- */
@@ -7070,20 +7048,17 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .wdg-h border-radius — то же
    visual-diff-exempt: .wdg-h place-items — то же
    visual-diff-exempt: .wdg-h flex — то же
-   visual-diff-exempt: .wdg-h gap — шапка виджета умерла вместе с карточной формой: разделы объявляют себя заголовком (.ovsec__h), а не шапкой карточки
+   visual-diff-exempt: .wdg-h gap — шапка виджета умерла вместе с карточной формой: шапку рисует канон `<CardHeader>` (.card-h)
    visual-diff-exempt: .wdg-h padding — то же
    visual-diff-exempt: .wdg-h align-items — то же
    visual-diff-exempt: .wdg-h h4 flex — то же
    visual-diff-exempt: .wdg-h h4 margin — то же
    visual-diff-exempt: .wdg-b padding — то же
-   visual-diff-exempt: .ovwrap gap — колонка чтения обзора: ширина и ритм страницы (было растяжение на всю ширину тела)
-   visual-diff-exempt: .ovwrap margin-inline — колонка чтения обзора: ширина и ритм страницы (было растяжение на всю ширину тела)
-   visual-diff-exempt: .ovwrap max-width — колонка чтения обзора: ширина и ритм страницы (было растяжение на всю ширину тела)
-   visual-diff-exempt: .wdg-h h4 font-family — шапка виджета умерла вместе с карточной формой; заголовок раздела — канон `.t-heading` на `.ovsec__h`
-   visual-diff-exempt: .wdg-h h4 font-size — шапка виджета умерла вместе с карточной формой; заголовок раздела — канон `.t-heading` на `.ovsec__h`
-   visual-diff-exempt: .wdg-h h4 font-weight — шапка виджета умерла вместе с карточной формой; заголовок раздела — канон `.t-heading` на `.ovsec__h`
-   visual-diff-exempt: .wdg-h h4 letter-spacing — шапка виджета умерла вместе с карточной формой; заголовок раздела — канон `.t-heading` на `.ovsec__h`
-   visual-diff-exempt: .wdg-h h4 line-height — шапка виджета умерла вместе с карточной формой; заголовок раздела — канон `.t-heading` на `.ovsec__h`
+   visual-diff-exempt: .wdg-h h4 font-family — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h h4 font-size — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h h4 font-weight — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h h4 letter-spacing — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h h4 line-height — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
    visual-diff-exempt: .wdg-h .wi svg width — то же
    visual-diff-exempt: .wdg-h .wi svg height — то же
    visual-diff-exempt: .wi background — плитка-иконка шапки снята
@@ -7140,28 +7115,9 @@ button.input[data-empty] { color: var(--muted-2); }
 .ov-invite { margin-top: 14px; transition: transform .12s var(--ease-out); }
 .ov-invite:active { transform: scale(.985); }
 
-/* ---- раздел экрана: ограниченная поверхность с заголовком ---- */
-/* ★★ У РАЗДЕЛА ОБЯЗАНА БЫТЬ ГРАНИЦА. Предыдущая редакция снесла коробки совсем —
-   раздел объявлял себя только заголовком и воздухом. Диагноз был поставлен не
-   тому: экран читался «набором склеенного» не из-за КОРОБОК, а из-за одного
-   повторённого пятью копиями ПАТТЕРНА (коробка + цветная плитка-иконка +
-   заголовок + шеврон). Плитки убраны — и это осталось; коробки убраны — и
-   пропало единственное, что говорило, где раздел начинается и где кончается.
-   Содержимое поплыло: на экране висят подписи и строки, а к чему относится
-   какая — надо догадываться.
-   ★ Волосяная линия между колонками была ХУЖЕ рамки, а не лучше. Колонки разной
-   высоты (в одной три строки, в другой одна), значит и палки между ними разной
-   длины — три случайных вертикальных штриха на пустом месте. Линия работает
-   между блоками ОДИНАКОВОЙ высоты; здесь она была ложным обещанием сетки.
-   ★ Роль поверхности берётся из ОБЩЕГО ко-селектора (фон/рамка ~547, радиус
-   ~2062) — своего вида поверхности «раздел» не существует.
-   prefix-exempt: ovsec — канон-объект «секция экрана обзора», апрув Pavel
-   floor-exempt: classes +3 — `.ovsec` · `.ovsec__h` · `.ovsec--q`. Апрув Pavel
-   floor-exempt: namespaces +1 — семья `ovsec`. Апрув Pavel
-   floor-exempt: layout +2 — `.ovsec` и `.ovsec__h` объявляют раскладку по существу (колонка секции и её шапка). Апрув Pavel */
-.ovsec { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; padding: 18px; }
-.ovsec__h { display: flex; align-items: center; gap: var(--sp-4); min-height: 32px; }
-.ovsec__h h3 { flex: 1; margin: 0; }
+/* Раздел обзора рисуется канон-парой `<Card>` + `<CardHeader>` — своего имени у
+   него больше нет: `.ovsec`/`.ovsec__h` повторяли `.card`/`.card-h` объявление в
+   объявление, а реестр поверхностей и так был вынужден записать роль как "card". */
 
 /* ---- preparation widget ---- */
 /* Две секции («Проживание» / «Переезды») встают РЯДОМ, когда карточке хватает
@@ -7177,7 +7133,7 @@ button.input[data-empty] { color: var(--muted-2); }
    выключил бы запрос целиком: правило без контейнера-предка просто не
    применяется, ошибки нет, вид тихо становится одноколоночным навсегда.
    prefix-exempt: prep — новый канон-объект «виджет подготовки», апрув Pavel (единственное своё имя виджета: остальное — ListRow/Tile/Meter/Row/Col)
-   floor-exempt: classes +5 — `.prep` (карточка = контейнер измерения), `.prep-head` + `.prep-head__pct` (строка готовности и доля числом), `.prep-cols` (две секции) и `.meter` (полоса-доля, собравшая `.bud-bar`); третьего своего имени у виджета нет — строки/значки/полоса взяты у ДС. Апрув Pavel (задача «виджет Подготовка»)
+   floor-exempt: classes +4 — `.prep` (контейнер измерения), `.prep-head` (строка готовности), `.prep-cols` (две секции) и `.meter` (полоса-доля, собравшая `.bud-bar`). Апрув Pavel
    floor-exempt: namespaces +2 — две канон-семьи: `meter` (полоса-доля перестала быть приватным элементом бюджета и стала объектом системы) и `prep` (сам виджет). Семья `bud` при этом НЕ умерла — из неё ушёл один класс, остались `bud-total`/`bud-legs`/`bud-leg`, поэтому размена «-1 за +1» тут нет. Апрув Pavel
    floor-exempt: layout +2 — `.meter`, `.prep-head` и `.prep-cols` ОБЪЯВЛЯЮТ раскладку по существу (полоса — flex-дорожка сегментов, секции — grid): это их работа, а не крючок экрана, приехавший в примитив через `className`. Апрув Pavel */
 /* Строка готовности виджета: число слева, полоса под ним, вплотную к спискам. */
@@ -7185,7 +7141,6 @@ button.input[data-empty] { color: var(--muted-2); }
 /* Строка готовности: слова слева, процент справа, полоса под ними во всю ширину. */
 .prep-head { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-3) var(--sp-4); align-items: baseline; margin-bottom: var(--sp-7); }
 .prep-head .meter { grid-column: 1 / -1; }
-.prep-head__pct { color: var(--ink); }
 /* ★ У КОЛОНКИ ЕСТЬ ПОТОЛОК ШИРИНЫ, И ЭТО НЕ ПРИДИРКА. Строка списка держит
    значок, название и дату слева, а действие — справа. На 460px это ОДНА строка;
    на 570 между ними образуется 200px пустоты, и глаз перестаёт связывать «Милан»
@@ -7263,23 +7218,26 @@ button.input[data-empty] { color: var(--muted-2); }
 /* Карточка превью карты (`.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/
    `.ov-openbtn`) УДАЛЕНА вместе с компонентом: карта переехала в кадр поездки
    выше и стала главным элементом экрана, а не превью со своей шапкой. Туда же
-   уехали колонки обзора (`.ov-col`) — экран пересобран в полосы.
+   уехали колонки обзора (`.ov-col`): раскладку несут `<Col gap="g8">` и `.ov-grid`.
 
    Что куда переехало:
    visual-diff-move: .ov-map-empty -> tframe__mapempty
 
    Что просто исчезло вместе с объектом (преемника нет):
-   visual-diff-exempt: .ov-col display — колонок больше нет, экран собран полосами
+   visual-diff-exempt: .ov-col display — колонку экрана несёт примитив `<Col>`
    visual-diff-exempt: .ov-col flex-direction — то же
-   visual-diff-exempt: .ov-col gap — то же (ритм полос держит .ovwrap)
+   visual-diff-exempt: .ov-col gap — то же (зазор держит `.col--g8`)
    visual-diff-exempt: .ov-col min-width — то же
    visual-diff-exempt: .ov-col:first-child container-type — контейнер измерения переехал на .tframe и .ovwrap
-   visual-diff-exempt: .ov-col:first-child animation-delay — вход теперь по полосам, а не по колонкам
+   visual-diff-exempt: .ov-col:first-child animation-delay — вход считается по узлам экрана, а не по колонкам
    visual-diff-exempt: .ov-col:last-child animation-delay — то же
    visual-diff-exempt: .ov-anim:nth-child(1) animation-delay — то же
    visual-diff-exempt: .ov-anim:nth-child(2) animation-delay — то же
-   visual-diff-exempt: .ov-anim:nth-child(3) animation-delay — то же: третья полоса появилась
-   visual-diff-exempt: .ovwrap flex-direction — экран пересобран в полосы (был grid двух колонок)
+   ★ Ступень для ТРЕТЬЕГО узла снята: у `.ovwrap` два ребёнка (кадр и сетка), и
+     задержка 110ms не совпадала ни с одним из них — «ступенчатый въезд» не
+     работал вовсе. Вторая ступень переехала на `.ov-grid > .ov-anim:nth-child(2)`.
+   visual-diff-exempt: .ovwrap animation-delay — ступень третьего узла снята: третьего ребёнка у `.ovwrap` нет
+   visual-diff-exempt: .ovwrap flex-direction — раскладку колонки экрана несёт `<Col>`, у `.ovwrap` остался только контейнер измерения
    visual-diff-exempt: .ov-maparea position — превью карты снесено, роль у .tframe__map
    visual-diff-exempt: .ov-maparea background — то же
    visual-diff-exempt: .ov-maparea height — карта перестала быть превью: фиксированные 280 заменены на min-height 340 у .tframe__map
@@ -7291,8 +7249,7 @@ button.input[data-empty] { color: var(--muted-2); }
 /* ---- entrance: staggered reveal (decorative) ---- */
 @keyframes ovIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ov-anim { animation: ovIn .42s var(--ease-out) both; }
-.ovwrap > .ov-anim:nth-child(2) { animation-delay: 60ms; }
-.ovwrap > .ov-anim:nth-child(3) { animation-delay: 110ms; }
+.ov-grid > .ov-anim:nth-child(2) { animation-delay: 60ms; }
 /* Calendar lens: a slightly larger, longer entrance for a more dynamic feel. */
 @keyframes ovInCal { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .ov-anim--cal { animation: ovInCal .5s var(--ease-out) both; }

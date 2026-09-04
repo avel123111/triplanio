@@ -82,15 +82,10 @@ export function routeDistanceKm(orderedVisits = []) {
 
 /**
  * One-call bundle for the Overview stat row.
- *
- * ⚠️ Тип объявлен ЦЕЛЫМ объектом, а не построчными `@param`: иначе TS выводит
- * его из деструктуризации и запечатывает набор — `tripStats({ trip })` из файла
- * под `// @ts-check` краснеет TS2353 (ловушка `design/Layout.jsx`).
- *
- * @param {{ visits?: any[], transfers?: any[], trip?: any, orderedVisits?: any[] }} [p]
- *   visits — города (в любом порядке, счётчики от порядка не зависят);
- *   transfers — переезды; trip — запись трипа (даты);
- *   orderedVisits — города В ПОРЯДКЕ МАРШРУТА, для суммы расстояния.
+ * @param visits  city visits (any order — counts are order-independent)
+ * @param transfers  transfer rows
+ * @param trip  trip record (for dates)
+ * @param orderedVisits  visits in trip order, for the distance sum
  */
 export function tripStats({ visits = [], transfers = [], trip, orderedVisits } = {}) {
   const { days, nights } = tripDuration(trip, visits);

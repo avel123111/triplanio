@@ -1,7 +1,7 @@
 // @ts-check
 import React, { useMemo, useState } from 'react';
 import { Icon } from '@/design/icons';
-import { AddRow, Btn, IconBtn, ListRow, Meter, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
+import { AddRow, Btn, Card, CardHeader, IconBtn, ListRow, Meter, Skeleton, Tile, Tooltip, Row, Col } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { buildPreparation } from '@/lib/trip-preparation';
 import { primaryIssues, validateTrip } from '@/lib/validation';
@@ -74,7 +74,8 @@ function Trail({ issue }) {
  * колонках. Потолка по числу рядов нет: он давал «Ещё 1» и «Ещё 4» про разное.
  * Работы нет вовсе — показываем закрытое, иначе секция пуста.
  */
-function Section({ label, rows, done, total, t }) {
+function Section({ label, rows, done, total }) {
+  const { t } = useI18nFormat();
   const [expanded, setExpanded] = useState(false);
   const pending = rows.filter((r) => !r.booked);
   const closed = rows.filter((r) => r.booked);
@@ -194,18 +195,20 @@ export default function PreparationCard({
   });
 
   return (
-    <section className="ovsec prep">
-      <div className="ovsec__h">
-        <h3 className="t-heading">{t('overview.prep_title')}</h3>
-        <IconBtn
-          icon="chev"
-          tone="outline"
-          size="sm"
-          onClick={onOpenRoute}
-          title={t('overview.prep_route')}
-          ariaLabel={t('overview.prep_route')}
-        />
-      </div>
+    <Card className="col col--g6 prep">
+      <CardHeader
+        title={t('overview.prep_title')}
+        action={(
+          <IconBtn
+            icon="chev"
+            tone="outline"
+            size="sm"
+            onClick={onOpenRoute}
+            title={t('overview.prep_route')}
+            ariaLabel={t('overview.prep_route')}
+          />
+        )}
+      />
 
       <div>
         {total === 0 ? (
@@ -215,7 +218,7 @@ export default function PreparationCard({
             {/* Полоса считает ровно то, что перечислено под ней. */}
             <div className="prep-head">
               <span className="t-support">{t('overview.prep_sub', { done, total })}</span>
-              <span className="prep-head__pct t-strong num">{Math.round((done / total) * 100)}%</span>
+              <span className="t-strong num">{Math.round((done / total) * 100)}%</span>
               <Meter
                 ariaLabel={t('overview.prep_sub', { done, total })}
                 segments={[
@@ -227,7 +230,6 @@ export default function PreparationCard({
             <div className="prep-cols">
               {stays.length > 0 && (
                 <Section
-                  t={t}
                   label={t('overview.prep_stays')}
                   rows={stayRows}
                   done={stays.filter((s) => s.booked).length}
@@ -236,7 +238,6 @@ export default function PreparationCard({
               )}
               {legs.length > 0 && (
                 <Section
-                  t={t}
                   label={t('overview.prep_legs')}
                   rows={legRows}
                   done={legs.filter((l) => l.booked).length}
@@ -247,7 +248,7 @@ export default function PreparationCard({
           </>
         )}
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -263,12 +264,9 @@ function nightsWord(t, n) {
 // Один источник для обеих фаз загрузки, как у Обзора в целом.
 export function PreparationSkeleton() {
   return (
-    <section className="ovsec prep" aria-busy="true">
+    <Card className="col col--g6 prep" aria-busy="true">
       {/* Геометрия один в один с живым виджетом: иначе содержимое прыгает. */}
-      <div className="ovsec__h">
-        <Skeleton w={180} h={20} r={6} />
-        <Skeleton w={32} h={32} r="var(--r-btn)" />
-      </div>
+      <CardHeader title={<Skeleton w={180} h={20} r={6} />} action={<Skeleton w={32} h={32} r="var(--r-btn)" />} />
       <div className="prep-head">
         <Skeleton w={170} h={14} r={5} />
         <Skeleton w={38} h={14} r={5} />
@@ -282,6 +280,6 @@ export function PreparationSkeleton() {
           </Col>
         ))}
       </div>
-    </section>
+    </Card>
   );
 }

@@ -1,53 +1,42 @@
 import React from 'react';
+import { Col } from '@/design/index';
 import BudgetSummaryCard from '@/components/trips/BudgetSummaryCard';
 import MembersSummaryCard from '@/components/trips/MembersSummaryCard';
 import ServicesCard from '@/components/trips/ServicesCard';
 import PreparationCard, { PreparationSkeleton } from '@/components/trips/PreparationCard';
 import TripFrame, { TripFrameSkeleton } from '@/components/trips/TripFrame';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
-import { Skeleton } from '@/design/index';
 
-// Скелетон Обзора — ТА ЖЕ геометрия, что у живого экрана: кадр → полоса чисел →
-// две колонки (подготовка слева, сводки стопкой справа). Скелетон, живущий по
-// своей раскладке, обещает одно, а показывает другое: содержимое прыгает ровно в
-// тот момент, когда пользователь на него смотрит.
+// Скелетон Обзора — та же раскладка и ТЕ ЖЕ виджеты, что у живого экрана: каждый
+// умеет рисовать себя в фазе загрузки сам (`isLoading`). Своей геометрии здесь
+// нет намеренно — она была четвёртой копией и расходилась с виджетами молча.
 export function OverviewSkeleton() {
-  // Раздел-сводка: шапка с заголовком и действием + строки его содержимого.
-  const sec = (rows) => (
-    <section className="ovsec">
-      <div className="ovsec__h">
-        <Skeleton w={130} h={20} r={6} />
-        <Skeleton w={32} h={32} r="var(--r-btn)" />
-      </div>
-      {rows.map((h, i) => <Skeleton key={i} w="100%" h={h} r="var(--r-sm)" />)}
-    </section>
-  );
   return (
-    <div className="ovwrap" aria-busy="true">
+    <Col gap="g8" className="ovwrap" aria-busy="true">
       <TripFrameSkeleton />
       <div className="ov-grid">
         <PreparationSkeleton />
-        <div className="ov-side">
-          {sec([34, 18])}
-          {sec([40, 44])}
-          {sec([64, 64])}
-        </div>
+        <Col gap="g8">
+          <BudgetSummaryCard isLoading budget={{}} />
+          <MembersSummaryCard isLoading members={[]} />
+          <ServicesCard services={[]} />
+        </Col>
       </div>
-    </div>
+    </Col>
   );
 }
 
-// ЭКРАН ПОЕЗДКИ — три полосы во всю ширину, по порядку вопросов:
-//   1. КАДР ПОЕЗДКИ — что это и где: КАРТА во всю ширину полосы, состояние во
-//      времени и готовность — одной панелью поверх неё, числа маршрута тихой
-//      подписью под кадром. Карта здесь главная и видна сразу: до пересборки она
-//      была превью на 280 px и уезжала под сгиб, стоило добавить на экран
-//      что-нибудь ещё.
+// ЭКРАН ПОЕЗДКИ — кадр сверху, под ним две колонки, по порядку вопросов:
+//   1. КАДР ПОЕЗДКИ — что это и где: КАРТА во всю ширину, состояние во времени —
+//      панелью поверх неё, числа маршрута полосой плиток под кадром. Карта здесь
+//      главная и видна сразу: превью на 280 px уезжало под сгиб, стоило добавить
+//      на экран что-нибудь ещё.
 //   2. ПОДГОТОВКА — что осталось сделать: ночлеги и переезды, каждая строка
 //      кликается (забронированное — в просмотр, пустое — в добавление брони).
-//   3. РАЗДЕЛЫ — деньги, люди, сервисы: СТОПКА в правой колонке, рядом с
-//      подготовкой. Полосой во всю ширину они уходили под сгиб — на ноутбуке три
-//      виджета из пяти приходилось искать прокруткой.
+//      Работа занимает ЛЕВУЮ, широкую колонку.
+//   3. РАЗДЕЛЫ — деньги, люди, сервисы: стопка в правой колонке. Полосой во всю
+//      ширину они уходили под сгиб — три виджета из пяти пришлось бы искать
+//      прокруткой.
 export default function OverviewLens({
   trip,
   visits = [],
@@ -81,7 +70,7 @@ export default function OverviewLens({
   if (isLoading) return <OverviewSkeleton />;
 
   return (
-    <div className="ovwrap">
+    <Col gap="g8" className="ovwrap">
       <div className="ov-anim">
         <TripFrame
           trip={trip}
@@ -107,7 +96,7 @@ export default function OverviewLens({
         />
         </div>
 
-        <div className="ov-anim ov-side">
+        <Col gap="g8" className="ov-anim">
         <BudgetSummaryCard
           trip={trip}
           budget={budget}
@@ -129,8 +118,8 @@ export default function OverviewLens({
           onOpenMembers={onOpenMembers}
         />
         <ServicesCard services={services} onAddService={onAddService} onOpenService={onOpenService} />
-        </div>
+        </Col>
       </div>
-    </div>
+    </Col>
   );
 }

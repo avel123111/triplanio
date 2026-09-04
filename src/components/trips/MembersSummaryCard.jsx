@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Person, Badge, Btn, IconBtn, RoleBadge, Skeleton } from '@/design/index';
+import { Person, Badge, Btn, Card, CardHeader, IconBtn, RoleBadge, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
@@ -53,10 +53,10 @@ export default function MembersSummaryCard({
   }, [members, trip?.created_by, user?.id, user?.full_name]);
 
   return (
-    <section className="ovsec">
-      <div className="ovsec__h">
-        <h3 className="t-heading">{t('trip.who_goes')}</h3>
-        {canManage && (
+    <Card className="col col--g6">
+      <CardHeader
+        title={t('trip.who_goes')}
+        action={canManage && (
           <IconBtn
             icon="chev"
             tone="outline"
@@ -66,7 +66,7 @@ export default function MembersSummaryCard({
             ariaLabel={t('trip.open_members')}
           />
         )}
-      </div>
+      />
 
       <div>
         {isLoading ? (
@@ -128,6 +128,6 @@ export default function MembersSummaryCard({
           </Btn>
         )}
       </div>
-    </section>
+    </Card>
   );
 }

@@ -95,6 +95,11 @@ export const LISTROW_VARIANTS = ["raised", "select", "divider", "compact", "add"
 // Тон ховера (`--a`) — ОБЪЯВЛЕНИЕ РОЛИ, а не оформление: он приходит от вида
 // того, чего не хватает (отель · переезд · сервис), классом это не выразить.
 // Поэтому единственный стиль примитива живёт здесь, а у вызывателей инлайнов нет.
+/** Тон приходит ИЗ ДАННЫХ (вид того, чего не хватает) — классом не выразить.
+ *  Именованная функция, а не литерал в JSX: литерал считается инлайном (гард 2l).
+ *  @param {string} [accent] */
+const addTone = (accent) => ({ "--a": accent || "var(--brand)" });
+
 export const AddRow = React.forwardRef(
   /**
    * @param {{ icon?: string, title?: any, sub?: any, accent?: string,
@@ -109,7 +114,7 @@ export const AddRow = React.forwardRef(
       title={title}
       sub={sub || undefined}
       trail={<Icon name="plus" size={16} />}
-      style={{ "--a": accent || "var(--brand)" }}
+      style={addTone(accent)}
       onClick={onClick}
     />
   ),

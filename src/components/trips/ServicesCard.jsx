@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { AddRow, Btn, ListRow, Tile } from '@/design/index';
+import { AddRow, Btn, Card, CardHeader, ListRow, Tile } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
@@ -25,10 +25,8 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
   moreAddKinds.push('insurance');
 
   return (
-    <section className="ovsec">
-      <div className="ovsec__h">
-        <h3 className="t-heading">{t('trip.sidebar_services')}</h3>
-      </div>
+    <Card className="col col--g6">
+      <CardHeader title={t('trip.sidebar_services')} />
       <div>
         <div className="col col--g4">
           {/* Booked services — канон <ListRow variant="raised"> */}
@@ -71,6 +69,6 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
           )}
         </div>
       </div>
-    </section>
+    </Card>
   );
 }

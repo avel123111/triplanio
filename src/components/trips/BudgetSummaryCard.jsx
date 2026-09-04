@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { IconBtn, Meter, Skeleton } from '@/design/index';
+import { Card, CardHeader, IconBtn, Meter, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
@@ -55,10 +55,10 @@ export default function BudgetSummaryCard({
   const openBudget = () => (budgetEnabled ? onOpen?.() : onLocked?.());
 
   return (
-    <section className="ovsec">
-      <div className="ovsec__h">
-        <h3 className="t-heading">{t('trip.sidebar_budget')}</h3>
-        {canManage && (
+    <Card className="col col--g6">
+      <CardHeader
+        title={t('trip.sidebar_budget')}
+        action={canManage && (
           <IconBtn
             icon="chev"
             tone="outline"
@@ -68,7 +68,7 @@ export default function BudgetSummaryCard({
             ariaLabel={budgetEnabled ? t('trip.open_budget') : t('trip.enable_budget_addon')}
           />
         )}
-      </div>
+      />
 
       <div>
         {isLoading ? (
@@ -121,6 +121,6 @@ export default function BudgetSummaryCard({
           <div className="muted ov-empty-line">{t('trip.budget_none')}</div>
         )}
       </div>
-    </section>
+    </Card>
   );
 }

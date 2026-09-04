@@ -553,17 +553,6 @@ const RECIPES = {
   meter: () => [
     { items: [it('segments', <Meter segments={[{ key: 'a', value: 55, color: 'var(--brand)' }, { key: 'b', value: 25, color: 'var(--ev-transfer)' }, { key: 'c', value: 20, color: 'var(--muted-2)' }]} />, true)] },
     { label: 'доля: заполненная часть + прозрачный остаток (дорожка видна насквозь)', items: [it('done / rest', <Meter segments={[{ key: 'done', value: 4, color: 'var(--success)' }, { key: 'rest', value: 3, color: 'transparent' }]} />, true)] },
-    // Вариант виден только рядом с базой: сам по себе «полоса без отступов» на
-    // витрине неотличима от полосы с отступами.
-    {
-      label: 'flush — без внешних отступов (ритм строк задаёт владелец: панель, карточка)',
-      items: [it('className="meter--flush"', (
-        <div className="col col--g3">
-          <Meter className="meter--flush" segments={[{ key: 'done', value: 4, color: 'var(--brand)' }, { key: 'rest', value: 3, color: 'transparent' }]} />
-          <Meter segments={[{ key: 'done', value: 4, color: 'var(--brand)' }, { key: 'rest', value: 3, color: 'transparent' }]} />
-        </div>
-      ), true)],
-    },
   ],
   'list-row': () => [
     { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={v === 'add' ? <Tile tone="quiet" icon="plus" /> : <Tile size="xl" icon="bed" />} title={v === 'add' ? TX.chipAdd : TX.rowTitle} sub={TX.rowSub} trail={v === 'add' ? <Icon name="plus" size={16} /> : <span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' || v === 'add' ? () => {} : undefined} />, true)) },

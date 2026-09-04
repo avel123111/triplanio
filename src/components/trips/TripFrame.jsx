@@ -4,9 +4,10 @@ import { Btn, Card, Skeleton } from '@/design/index';
 import { Icon } from '@/design/icons';
 import MapView from '@/components/views/MapView';
 import TripStatRow from '@/components/trips/TripStatRow';
-import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
+import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { computeTripRange, currentCityVisit, formatDateRange, tripPhase, tripProgress } from '@/lib/trip-dates';
+import { sortVisits } from '@/lib/validation';
 import { naiveDayKey } from '@/lib/naive-time';
 import { DateTime } from 'luxon';
 
@@ -34,8 +35,7 @@ const hasCoords = (v) => v?.latitude != null && v?.longitude != null;
 export default function TripFrame({
   trip, visits = [], transfers = [], active = true, isLoading = false, onOpenMap,
 }) {
-  const { t } = useI18n();
-  const { fmtDate, plural } = useI18nFormat();
+  const { t, fmtDate, plural } = useI18nFormat();
   const { isDark } = useTheme();
 
   const [hoveredId, setHoveredId] = useState(/** @type {any} */ (null));
@@ -44,12 +44,14 @@ export default function TripFrame({
   const cityBadge = useMemo(() => {
     if (badgeId == null) return null;
     const v = (visits || []).find((x) => String(x.id) === String(badgeId));
-    if (!v || v.latitude == null || v.longitude == null) return null;
+    if (!v || !hasCoords(v)) return null;
     return {
       lng: v.longitude, lat: v.latitude, countryCode: v.country_code, name: v.city_name,
       dates: formatDateRange(v.start_date, v.end_date, (iso) => fmtDate(iso)),
     };
   }, [badgeId, visits, fmtDate]);
+
+  const ordered = useMemo(() => sortVisits(visits), [visits]);
 
   const when = useMemo(() => {
     const startKey = naiveDayKey(computeTripRange(visits).start);
@@ -70,7 +72,6 @@ export default function TripFrame({
   // кадр), либо растянута полосой по верху (узкий) — какой из двух случаев
   // сейчас, решает ЗАМЕР, а не копия порога: панель шире двух третей кадра =
   // полоса, значит закрыт ВЕРХ; иначе закрыт ЛЕВЫЙ край.
-  const frameRef = useRef(/** @type {any} */ (null));
   const mapRef = useRef(/** @type {any} */ (null));
   const panelRef = useRef(/** @type {any} */ (null));
   const [closed, setClosed] = useState(/** @type {any} */ (null));
@@ -85,12 +86,11 @@ export default function TripFrame({
       setClosed((cur) => (cur === null ? cur : null));
       return;
     }
-    const box = pr.width > fr.width * 0.66
-      ? { top: Math.round(pr.bottom - fr.top) }
-      : { left: Math.round(pr.right - fr.left) };
-    // Сравнение опирается на `undefined === undefined` у отсутствующей стороны:
-    // заведёшь `right`/`bottom` — правь и здесь, иначе смена молча не заметится.
-    setClosed((cur) => (cur && cur.top === box.top && cur.left === box.left ? cur : box));
+    // Панель всегда стоит в ЛЕВОМ верхнем углу и режет карту по ширине: ветка
+    // «полосой сверху» недостижима — на узком кадре панель уходит в поток и
+    // выход выше по отсутствию пересечения случается раньше.
+    const box = { left: Math.round(pr.right - fr.left) };
+    setClosed((cur) => (cur && cur.left === box.left ? cur : box));
   }, []);
   // ★★ `isLoading` В ДЕПАХ ОБЯЗАТЕЛЕН. `measure` стабилен, поэтому с депами
   // `[measure]` эффект отработал бы РАЗ — на монтировании, а монтируется кадр в
@@ -127,7 +127,7 @@ export default function TripFrame({
 
   return (
     <>
-      <div className="tframe" ref={frameRef}>
+      <div className="tframe">
         <div className="tframe__map" ref={mapRef}>
           {hasRoute ? (
             <MapView
@@ -162,7 +162,10 @@ export default function TripFrame({
         </div>
       </div>
 
-      <TripStatRow visits={visits} transfers={transfers} trip={trip} />
+      {/* `orderedVisits` — ОБЯЗАТЕЛЕН: сумма расстояния идёт по ПОРЯДКУ узлов, а
+          `visits` приходит сырым из ответа API. Без него «Расстояние» считается
+          по порядку выдачи, а не по маршруту. */}
+      <TripStatRow visits={visits} orderedVisits={ordered} transfers={transfers} trip={trip} />
     </>
   );
 }
