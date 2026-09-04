@@ -180,21 +180,30 @@ Reminders daily (Schedule, 10:00)
 → New users 24-48h  (Postgres · Select · users: deleted_at IS NULL,
                      created_at >= {{ $now.minus(48,'hours') }}, < {{ $now.minus(24,'hours') }})
 → User fields       (Set: env, user_id, user_email, user_lang, first_name)
-→ Each user         (Loop Over Items, batchSize 1)
-   → Trip of user   (Postgres · Select · trips: created_by = user_id, sort created_at DESC, limit 1)
-   → Has trip? ─┬ true  → Reminder has_trip data (event + юзер + trip_id/trip_name)
-                └ false → Reminder no_trip data  (event + юзер)
+   ├────────────────────────────────────────────────→ Users + trips (вход 1)
+   └→ Trip of user  (Postgres · Select · trips: created_by = user_id,
+                     sort created_at DESC, limit 1)  → Users + trips (вход 2)
+→ Users + trips     (Merge · combine by fields: user_id ↔ created_by, enrich input 1)
+→ Has trip? ─┬ true  → Reminder has_trip data (event + юзер + trip_id/trip_name)
+             └ false → Reminder no_trip data  (event + юзер)
 ```
 
 **Ни одного `executeQuery` и ни одной Code-ноды — это требование Pavel, не стилистика:** сырой SQL
 и JS в n8n не читаются с холодного старта и не правятся в UI. Всё выражается настройками нод
-(Select с фильтрами, IF, Set) и короткими выражениями. Строка «данные для письма» кончается на
+(Select с фильтрами, Merge, IF, Set) и подстановками полей. Строка «данные для письма» кончается на
 `trip_id`/`trip_name`; даты, страны, дни и участники — забота лейна ОТПРАВКИ, а не выборки.
 
-**Loop Over Items здесь не украшение.** Postgres-нода идёт по каждому item и склеивает результаты в
-один выход: при 3 юзерах, у двоих из которых есть трип, она вернёт 2 строки, и третий юзер исчезнет
-МОЛЧА — ветка «нет трипа» не наступит. `alwaysOutputData` это не лечит (он срабатывает, только когда
-выход пуст ЦЕЛИКОМ). Батч в 1 юзера делает «ноль строк» однозначным.
+**Merge здесь несёт LEFT JOIN, без него развилки НЕ БУДЕТ.** Postgres-нода идёт по каждому item, а
+результаты склеивает в ОДИН выход: замер на проде — 2 юзера на входе (у одного трип есть, у другого
+нет) дают на выходе 1 строку, и второй юзер исчезает МОЛЧА. `alwaysOutputData` это не лечит (он
+срабатывает, только когда выход пуст ЦЕЛИКОМ), а `Loop Over Items` лечит ценой цикла. Дешевле:
+юзеры идут в Merge и первым входом напрямую, и вторым — через запрос трипов, режим
+`enrich input 1` возвращает всех юзеров, у кого трипа нет — без полей трипа. Проверено: 2 items на
+выходе Merge, ветки true/false по одному прогону каждая.
+
+**Ловушка при переделке:** оставшаяся связь `Trip of user → Has trip?` в обход Merge заставляет
+ветку `has_trip` отработать ВТОРОЙ раз — на голой строке трипа, где полей юзера нет (в письмо ушло
+бы `env=null, user_email=null`). Развилка должна кормиться ТОЛЬКО из Merge.
 
 **Окно выборки — свойство ПАРЫ «период крона × ширина окна».** Крон раз в сутки и окно
 `created_at ∈ [now-48h, now-24h)` покрывают каждого ровно один раз; учащение крона без сужения окна
