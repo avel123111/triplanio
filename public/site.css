@@ -1021,7 +1021,10 @@ section{position:relative}
 
 .pain-divider{
   display:flex;align-items:center;justify-content:center;gap:12px;
-  max-width:1000px;margin:28px auto 20px;color:var(--muted);font-size: var(--fs-body);font-weight:600;text-align:center;
+  /* Кегль фиксированный: подпись вынесена из масштабируемой сцены (.pain-stage),
+     поэтому это её реальный размер на ЛЮБОМ экране — не съёживается на телефоне
+     и не может раздуться (нет деления на --fit). visual-diff-exempt: .pain-divider font-size — фикс-кегль 18px вне ужимаемой сцены (TRIP-510) */
+  max-width:1000px;margin:28px auto 20px;color:var(--muted);font-size: var(--fs-h4);font-weight:600;text-align:center;
 }
 
 .pain-divider::before,.pain-divider::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(11,44,84,.16))}
@@ -1199,12 +1202,15 @@ section{position:relative}
     scale(calc(1 - .5 * var(--e)));
 }
 
-/* divider fades in early so the middle of the animation is never empty */
-.pain.scrub .pain-divider{
-  --d:clamp(0, calc((var(--p,0) - .10)/.16), 1);
-  opacity:var(--d);
-  transform:translateY(calc(-8px * (1 - var(--d))));
-}
+/* Подпись-разделитель теперь ВНЕ .pain-stage (не масштабируется сценой) и
+   раскрывается стандартным .rv, как заголовок секции. Прежняя scrub-ветка с
+   привязкой к --p удалена: --p живёт на .pain-stage и в подпись-сиблинг не
+   наследуется, а .rv перебивался этим правилом по специфичности. */
+/* visual-diff-exempt: .pain-divider opacity — снят scrub-fade (--d по --p), раскрытие теперь через .rv вне ужимаемой сцены (TRIP-510) */
+/* visual-diff-exempt: .pain-divider transform — снят scrub-fade translateY, раскрытие через .rv (TRIP-510) */
+/* visual-diff-exempt: .pain-divider --d — снята scrub-переменная fade подписи (вынесена из сцены) (TRIP-510) */
+/* visual-diff-exempt: .pain --d — та же снятая scrub-переменная, ключуется и под .pain (TRIP-510) */
+/* visual-diff-exempt: .scrub --d — та же снятая scrub-переменная, ключуется и под .scrub (TRIP-510) */
 
 /* app window RISES UP from below to meet the collapsing chaos (never pops from nowhere) */
 /* The interface waits BELOW the pile — visible from the first frame, but
