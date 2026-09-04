@@ -30,14 +30,30 @@
  * ходит с общих egress-адресов, и на всплеске отписок мы заблокировали бы ровно
  * то, что обязаны пропускать всегда.
  *
- * ЗАМЕРЕНО НА ЖИВОМ RESEND (04.09.2026), два факта, на которых стоит эта форма:
- *   • ЧАСТИЧНЫЙ массив топиков не трогает остальные — послали один топик, три
- *     соседних остались как были. Это и позволяет слать ТОЛЬКО тронутое и не
- *     затирать выбор, сделанный с другого устройства.
- *   • Глобальный флаг и топики ОРТОГОНАЛЬНЫ: `unsubscribed: true` не меняет ни
- *     одной подписки. Отсюда два следствия — чтение это два вызова (экран,
- *     показывающий одни топики, о «не писать вовсе» не узнал бы), а «не писать
- *     вовсе» обязано выставлять ОБА (см. `stopEverything`).
+ * ЗАМЕРЕНО НА ЖИВОМ RESEND (04.09.2026) — и первый замер был ЛОЖНЫМ, что и
+ * стоило прод-бага. Тогда записали один топик, увидели три соседних нетронутыми
+ * и прочли это как «частичный массив не трогает остальные». На деле не изменился
+ * НИ ОДИН, включая посланный: `PATCH /contacts/{id}/topics` в этом аккаунте
+ * отвечает 2xx и не пишет ничего. Наблюдение подтверждало вывод, потому что
+ * ноль изменений выглядит как «изменилось ровно посланное», если посланное
+ * совпадало с текущим. ОТСЮДА `writeTopics`: чужому «ок» без сверки не верим.
+ *
+ * Перемер (то же число, вечер), 6 фактов:
+ *   • no-op воспроизводится нашей функцией, официальным MCP Resend по id и по
+ *     email, на массивах из 1/2/5 топиков, на двух разных контактах и в ОБЕ
+ *     стороны (`opt_out` и `opt_in`). Форма тела совпадает с curl из доки.
+ *   • чтение при этом ЧЕСТНОЕ: `/contacts/{id}/topics` отдаёт всегда
+ *     `default_subscription` самого топика — записи контакта просто нет.
+ *   • `PATCH /contacts/{id}` (`unsubscribed`) тем же ключом ПИШЕТ — то есть
+ *     ключ и права ни при чём;
+ *   • …но отправку `/emails` этот флаг НЕ гейтит: письмо контакту с
+ *     `unsubscribed: true` доставлено. Дока не врала — флаг про broadcasts.
+ *   • гейт `topic_id` при отправке РАБОТАЕТ: письмо под топиком с
+ *     `default_subscription: opt_out` ушло в `failed`. Механизм топиков жив,
+ *     мёртва только запись подписки контакта.
+ *
+ * Следствие для продукта: пока Resend не починит запись, отписка не срабатывает
+ * НИ по топикам, ни глобально. Наше дело — не врать об этом (см. `writeTopics`).
  *
  * ⚠️ Неизвестный topic id Resend отбивает `404 Topic not found` — то есть ВЕСЬ
  * PATCH падает, а не только эта строка, и у нас это 500. Практически ловится
@@ -187,6 +203,40 @@ async function resolveContact(req: Request, url: URL, body: Record<string, unkno
   return await contactIdByEmail(email);
 }
 
+/** Подписки контакта, как их видит Resend. Один разбор конверта на все три места. */
+async function readTopics(id: string): Promise<TopicRow[]> {
+  return listOf<TopicRow>(await resend(`/contacts/${id}/topics`));
+}
+
+/**
+ * ЗАПИСЬ ПОДПИСОК — И СВЕРКА, ЧТО ОНА СОСТОЯЛАСЬ.
+ *
+ * Перечитывать после записи не «на всякий случай»: ровно этот вызов отвечает
+ * 2xx и НЕ ПРИМЕНЯЕТ НИЧЕГО (замер в шапке файла). Без сверки экран говорил
+ * «Сохранено» человеку, который остался подписан, — на отписке это худший из
+ * возможных обманов: следующим его действием будет «Спам», а он бьёт по
+ * репутации домена, то есть заодно по приглашениям и сбросу пароля.
+ *
+ * Молчаливый отказ мы поэтому приравниваем к отказу ЯВНОМУ и репортим тем же
+ * путём — `ResendError` со статусом 200. Статуса 200 у настоящего отказа не
+ * бывает, поэтому в Sentry этот случай отделён от 4xx/5xx собственным issue
+ * фингерпринтом, а маркер в пути читается прямо в заголовке события.
+ *
+ * Сверяем ТОЛЬКО посланное: остальные подписки нас в этом запросе не касаются,
+ * и требовать от них неизменности значило бы падать на чужой правке, сделанной
+ * с другого устройства между записью и перечитыванием.
+ */
+async function writeTopics(id: string, want: Array<{ id: string; subscription: string }>): Promise<void> {
+  if (!want.length) return;
+  await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(want) });
+
+  const have = new Map<string, string | undefined>();
+  for (const row of await readTopics(id)) have.set(row.id, row.subscription);
+  if (want.some((w) => have.get(w.id) !== w.subscription)) {
+    throw new ResendError('PATCH', '/contacts/{id}/topics [ответил ок, не применил]', 200);
+  }
+}
+
 /**
  * «НЕ ПИСАТЬ ВОВСЕ» — одно правило на оба входа: кнопку почтовика и переключатель
  * на странице. Ставит глобальный флаг И выключает ВСЕ топики.
@@ -209,12 +259,7 @@ async function resolveContact(req: Request, url: URL, body: Record<string, unkno
  * выключенные переключатели и включает те, что хочет.
  */
 async function stopEverything(id: string): Promise<void> {
-  const off = listOf<TopicRow>(await resend(`/contacts/${id}/topics`))
-    .filter((t) => t?.id)
-    .map((t) => ({ id: t.id, subscription: 'opt_out' }));
-  if (off.length) {
-    await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(off) });
-  }
+  await writeTopics(id, (await readTopics(id)).filter((t) => t?.id).map((t) => ({ id: t.id, subscription: 'opt_out' })));
   await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: true }) });
 }
 
@@ -287,11 +332,11 @@ async function handle(req: Request, corsHeaders: HeadersInit): Promise<Response>
   if (body?.action === 'get') {
     const [contact, topics] = await Promise.all([
       resend<{ unsubscribed?: boolean }>(`/contacts/${id}`),
-      resend(`/contacts/${id}/topics`),
+      readTopics(id),
     ]);
     return Response.json({
       unsubscribed: !!contact?.unsubscribed,
-      topics: listOf<TopicRow>(topics).map((t) => ({
+      topics: topics.map((t) => ({
         id: t.id,
         name: t.name ?? '',
         subscription: t.subscription === 'opt_out' ? 'opt_out' : 'opt_in',
@@ -310,10 +355,7 @@ async function handle(req: Request, corsHeaders: HeadersInit): Promise<Response>
 
   // Иначе — пишем только присланное: страница шлёт ТРОНУТЫЕ топики, а флаг лишь
   // когда его сняли.
-  const topics = cleanTopics(body?.topics);
-  if (topics.length) {
-    await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(topics) });
-  }
+  await writeTopics(id, cleanTopics(body?.topics));
   if (body?.unsubscribed === false) {
     await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: false }) });
   }
