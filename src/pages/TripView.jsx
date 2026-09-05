@@ -568,18 +568,12 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   // arrival block, so nothing is excluded from the day stream.
   const inboundEventIds = new Set();
 
-  // «Нет отеля»: город с ночёвкой (≥1 ночь), который не покрывает ни одна бронь.
-  // ★ Предикаты (`cityNeedsHotel`/`hotelCoversCity`/`cityNights`) переехали в
-  // `lib/trip-preparation.js` и питают ОДНОВРЕМЕННО этот варнинг и виджет
-  // «Подготовка» на Обзоре. Копия здесь означала бы, что лента говорит «нет
-  // отеля», а прогресс-бар считает город закрытым (или наоборот) — расхождение
-  // молчаливое, ни один гард его не видит.
+  // «Нет отеля»: город с ночёвкой, который не покрывает ни одна бронь. Предикаты
+  // общие с виджетом «Подготовка» (`lib/trip-preparation.js`).
   const cityMissesHotel = (c) =>
     cityNeedsHotel(c) && !(hotels || []).some(h => hotelCoversCity(h, c));
-  // ★ Плюрализация — через `plural()`, а не ручным тернарником `n < 5`. Тернарник
-  // НЕВЕРЕН на 21/22–24/31…: по-русски «21 ночь», а он даёт «21 ночей». Тот же
-  // тернарник ещё в четырёх местах (FlowMap, ManualPlanner ×3, EventViewBody) —
-  // это долг, тронуть их отдельным PR.
+  // Через `plural()`: ручной тернарник `n < 5` давал «21 ночей». Тот же тернарник
+  // ещё в FlowMap, ManualPlanner ×3, EventViewBody — отдельный PR.
   const nightsWord = (n) => pluralize(t, n, 'view.nights', lang);
 
   // Renders one city's arrival block: the missing-transfer warning, then the
@@ -919,10 +913,7 @@ export default function TripView() {
   const openUpgrade = () => goPro(nav, { tripId });
   // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
 
-  // Открытие панели добавления брони. ОДНА точка на все поверхности: раньше эти
-  // два объекта состояния писались литералами прямо в JSX ленты, и второй
-  // вызыватель (виджет «Подготовка» на Обзоре) завёл бы свою копию — то есть
-  // второй способ сказать «создай отель», который начал бы расходиться с первым.
+  // Открытие панели добавления брони — одна точка на ленту и «Подготовку».
   const openAddHotel = (visit) =>
     setBookingCreate({ open: true, kind: 'hotel', visit, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null });
   const openAddTransfer = (fromVisit, toVisit) =>

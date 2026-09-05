@@ -19,6 +19,8 @@ export default function ServicesCard({ services = [], isLoading = false, onAddSe
   const { t } = useI18n();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  if (isLoading) return <ServicesSkeleton />;
+
   const byKind = { esim: [], car_rental: [], insurance: [] };
   for (const s of services) { if (byKind[s.kind]) byKind[s.kind].push(s); }
 
@@ -33,18 +35,6 @@ export default function ServicesCard({ services = [], isLoading = false, onAddSe
       <CardHeader title={t('trip.sidebar_services')} />
       <div>
         <div className="col col--g4">
-          {/* ★ ФАЗА ЗАГРУЗКИ — ТЕ ЖЕ ряды `AddRow` и та же кнопка «Ещё», только
-              с заглушками: иначе одна карточка из трёх показывает готовый вид,
-              пока соседние ещё грузятся. */}
-          {isLoading ? (
-            <>
-              {[0, 1].map((i) => (
-                <AddRow key={i} icon="dot" title={<Skeleton w={96} h={18} r={5} />} sub={<Skeleton w={128} h={18} r={5} />} />
-              ))}
-              <Btn variant="soft" block disabled><Skeleton w={72} h={17} r={5} /></Btn>
-            </>
-          ) : (
-          <>
           {/* Booked services — канон <ListRow variant="raised"> */}
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
@@ -83,8 +73,24 @@ export default function ServicesCard({ services = [], isLoading = false, onAddSe
               <Icon name="plus" size={15} />{t('service.more')}
             </Btn>
           )}
-          </>
-          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Те же ряды `AddRow` и та же кнопка «Ещё» с заглушками. Без хуков данных.
+export function ServicesSkeleton() {
+  const { t } = useI18n();
+  return (
+    <Card className="col col--g6" aria-busy="true">
+      <CardHeader title={t('trip.sidebar_services')} />
+      <div>
+        <div className="col col--g4">
+          {[0, 1].map((i) => (
+            <AddRow key={i} icon="dot" title={<Skeleton w={96} h={18} r={5} />} sub={<Skeleton w={128} h={18} r={5} />} />
+          ))}
+          <Btn variant="soft" block disabled><Skeleton w={72} h={17} r={5} /></Btn>
         </div>
       </div>
     </Card>

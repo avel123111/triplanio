@@ -10,17 +10,11 @@ import { StatBar } from '@/components/stats/widgets';
 // canonical role group. Metrics: cities, countries, transfers, route distance
 // (great-circle approximation) and duration. `orderedVisits` (trip order, for the
 // distance sum) is optional — falls back to `visits` inside tripStats.
-// ★ ФАЗУ ЗАГРУЗКИ РИСУЕТ САМА ПОЛОСА, а не прямоугольник рядом с ней. У `.statbar`
-// СВОЙ `margin-top: 18px` — placeholder, собранный из `<Skeleton>`, его не несёт и
-// прилипает к кадру карты. Здесь загрузка = ТЕ ЖЕ пять ячеек той же полосы, у
-// которых вместо числа и подписи стоят заглушки: отступ, высота, размеры плиток и
-// все контейнерные правила приходят из одного и того же кода.
+// Фаза загрузки — те же пять ячеек той же полосы с заглушками вместо числа и
+// подписи: отступ полосы от кадра и контейнерные правила остаются её.
 /**
- * ⚠️ ТИП ОБЪЯВЛЕН ЦЕЛЫМ ОБЪЕКТОМ, а не выведен из деструктуризации: иначе
- * «необязательным» оказывается ровно то, у чего есть ДЕФОЛТ, и `<TripStatRow
- * isLoading />` из файла под `// @ts-check` краснеет требованием `trip` и
- * `orderedVisits`, хотя в фазе загрузки данных нет по определению.
- *
+ * Тип объявлен целиком: из деструктуризации `isLoading`-вызов без `trip` и
+ * `orderedVisits` краснел бы под `// @ts-check`.
  * @param {{ visits?: any[], transfers?: any[], trip?: any,
  *           orderedVisits?: any[], isLoading?: boolean }} p
  */
@@ -44,8 +38,7 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
   return <StatBar items={isLoading ? items.map(blank) : items} />;
 }
 
-// Ячейка в фазе загрузки: место числа и подписи занимают заглушки, плитка стоит
-// пустой и без тона (цветной квадрат с иконкой читался бы как готовые данные).
+// Плитка пустая и без тона: цветной квадрат с иконкой читался бы как данные.
 const blank = (it) => ({
   key: it.key,
   icon: null,

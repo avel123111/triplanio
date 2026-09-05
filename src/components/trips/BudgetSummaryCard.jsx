@@ -6,9 +6,9 @@ import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { categoryColor } from '@/lib/budget/category-colors';
 
-// Budget summary widget (Lumo .wdg) — total + per-category segmented bar +
-// legend. Shared by the trip Overview and (previously) the timeline rail, so the
-// per-category breakdown lives here once. Self-contained: owns its fx context.
+// Budget summary widget — total + per-category segmented bar + legend. Shared
+// by the trip Overview and (previously) the timeline rail, so the per-category
+// breakdown lives here once. Self-contained: owns its fx context.
 export default function BudgetSummaryCard({
   trip,
   budget,
@@ -47,6 +47,8 @@ export default function BudgetSummaryCard({
     [budgetCategories, budgetExpenses, fx, overrides],
   );
 
+  if (isLoading) return <BudgetSummarySkeleton />;
+
   const totalSpent = catBreakdown.reduce((s, c) => s + c.spent, 0);
   const hasMissingRate = (budgetExpenses || []).some(
     (e) => e.original_currency && e.original_currency !== mainCurrency && !conv(e).ok,
@@ -71,28 +73,7 @@ export default function BudgetSummaryCard({
       />
 
       <div>
-        {isLoading ? (
-          <>
-            {/* ★ ФАЗА ЗАГРУЗКИ — ТЕ ЖЕ ЭЛЕМЕНТЫ, ЧТО У ЗАПОЛНЕННОЙ КАРТОЧКИ: итог,
-                полоса и три строки легенды. Стопка заглушек со своими `marginTop`
-                была второй геометрией: отступы и высоты она задавала руками и
-                разъехалась с настоящими на 36 px, как только карточка переехала
-                на канон-обёртку. Полоса — настоящий `Meter` без сегментов:
-                пустая дорожка и есть «данных пока нет».
-                ⚠️ Угловых скобок в JSX-комментарии быть не должно: гард i18n
-                читает текст между ними как строку разметки (это и уронило CI). */}
-            <div className="bud-total"><Skeleton w="55%" h={28} r="var(--r-sm)" /></div>
-            <Meter />
-            <div className="bud-legs">
-              {[0, 1, 2].map((i) => (
-                <div className="bud-leg" key={i}>
-                  <Skeleton w={10} h={10} r={4} />
-                  <Skeleton w={i === 0 ? 96 : 72} h={18} r={5} />
-                </div>
-              ))}
-            </div>
-          </>
-        ) : budget ? (
+        {budget ? (
           <>
             <div className="bud-total num">{money(totalSpent)}</div>
 
@@ -105,10 +86,8 @@ export default function BudgetSummaryCard({
 
             {catBreakdown.length > 0 ? (
               <>
-                {/* ПОЛОСА ПОЯВЛЯЕТСЯ, КОГДА ЕСТЬ ЧТО СРАВНИВАТЬ. На одной
-                    категории она заполнена целиком и не сообщает ничего: это
-                    цветная плашка, повторяющая строку легенды под ней. Доля
-                    имеет смысл только против других долей. */}
+                {/* Доля имеет смысл только против других долей: на одной
+                    категории полоса повторяла бы строку легенды. */}
                 {catBreakdown.length > 1 && (
                   <Meter
                     segments={catBreakdown.map((c) => ({
@@ -133,6 +112,30 @@ export default function BudgetSummaryCard({
         ) : (
           <div className="muted ov-empty-line">{t('trip.budget_none')}</div>
         )}
+      </div>
+    </Card>
+  );
+}
+
+// Те же элементы, что у заполненной карточки (итог, полоса, три строки легенды),
+// с заглушками вместо содержимого. Без хуков данных: скелетон Обзора
+// монтируется до того, как известен трип.
+export function BudgetSummarySkeleton() {
+  const { t } = useI18nFormat();
+  return (
+    <Card className="col col--g6" aria-busy="true">
+      <CardHeader title={t('trip.sidebar_budget')} action={<Skeleton w={32} h={32} r="var(--r-btn)" />} />
+      <div>
+        <div className="bud-total"><Skeleton w="55%" h={28} r="var(--r-sm)" /></div>
+        <Meter />
+        <div className="bud-legs">
+          {[0, 1, 2].map((i) => (
+            <div className="bud-leg" key={i}>
+              <Skeleton w={10} h={10} r={4} />
+              <Skeleton w={i === 0 ? 96 : 72} h={18} r={5} />
+            </div>
+          ))}
+        </div>
       </div>
     </Card>
   );

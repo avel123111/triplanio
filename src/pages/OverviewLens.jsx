@@ -1,18 +1,15 @@
 import React from 'react';
 import { Col } from '@/design/index';
-import BudgetSummaryCard from '@/components/trips/BudgetSummaryCard';
-import MembersSummaryCard from '@/components/trips/MembersSummaryCard';
-import ServicesCard from '@/components/trips/ServicesCard';
+import BudgetSummaryCard, { BudgetSummarySkeleton } from '@/components/trips/BudgetSummaryCard';
+import MembersSummaryCard, { MembersSummarySkeleton } from '@/components/trips/MembersSummaryCard';
+import ServicesCard, { ServicesSkeleton } from '@/components/trips/ServicesCard';
 import PreparationCard, { PreparationSkeleton } from '@/components/trips/PreparationCard';
 import TripFrame, { TripFrameSkeleton } from '@/components/trips/TripFrame';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 
-// Скелетон Обзора — ТОТ ЖЕ ДЕРЕВО, что у живого экрана: те же обёртки, те же
-// виджеты, каждый рисует свою фазу загрузки сам (`isLoading`). Своей геометрии
-// здесь нет намеренно: любое расхождение — прыжок содержимого ровно в тот
-// момент, когда на него смотрят, а обёртки решают отступы не меньше, чем сами
-// блоки (кадр и полоса плиток лежат ВНУТРИ `.ov-anim`, а не отдельными детьми
-// колонки — вынеси их наружу, и зазоры станут другими).
+// Скелетон Обзора — то же дерево, что у живого экрана; каждый блок рисует свою
+// фазу загрузки сам. Своей геометрии здесь нет: расхождение — прыжок содержимого
+// в момент, когда данные приехали.
 export function OverviewSkeleton() {
   return (
     <Col gap="g8" className="ovwrap" aria-busy="true">
@@ -20,26 +17,20 @@ export function OverviewSkeleton() {
       <div className="ov-grid">
         <div className="ov-anim"><PreparationSkeleton /></div>
         <Col gap="g8" className="ov-anim">
-          <BudgetSummaryCard isLoading budget={{}} />
-          <MembersSummaryCard isLoading members={[]} />
-          <ServicesCard isLoading services={[]} />
+          <BudgetSummarySkeleton />
+          <MembersSummarySkeleton />
+          <ServicesSkeleton />
         </Col>
       </div>
     </Col>
   );
 }
 
-// ЭКРАН ПОЕЗДКИ — кадр сверху, под ним две колонки, по порядку вопросов:
-//   1. КАДР ПОЕЗДКИ — что это и где: КАРТА во всю ширину, состояние во времени —
-//      панелью поверх неё, числа маршрута полосой плиток под кадром. Карта здесь
-//      главная и видна сразу: превью на 280 px уезжало под сгиб, стоило добавить
-//      на экран что-нибудь ещё.
-//   2. ПОДГОТОВКА — что осталось сделать: ночлеги и переезды, каждая строка
-//      кликается (забронированное — в просмотр, пустое — в добавление брони).
-//      Работа занимает ЛЕВУЮ, широкую колонку.
-//   3. РАЗДЕЛЫ — деньги, люди, сервисы: стопка в правой колонке. Полосой во всю
-//      ширину они уходили под сгиб — три виджета из пяти пришлось бы искать
-//      прокруткой.
+// Экран поездки: кадр (карта + состояние + числа маршрута) во всю ширину, под
+// ним две колонки — «Подготовка» слева, сводки (бюджет · участники · сервисы)
+// стопкой справа. Пороги раскладки — по ширине экрана обзора (`@container`),
+// не вьюпорта: с боковым меню и без него одна и та же ширина окна даёт разную
+// ширину экрана.
 export default function OverviewLens({
   trip,
   visits = [],
@@ -86,39 +77,39 @@ export default function OverviewLens({
 
       <div className="ov-grid">
         <div className="ov-anim">
-        <PreparationCard
-          visits={visits}
-          hotels={hotels}
-          transfers={transfers}
-          isLoading={contentLoading}
-          onAddHotel={onAddHotel}
-          onAddTransfer={onAddTransfer}
-          onOpenRoute={onOpenMap}
-        />
+          <PreparationCard
+            visits={visits}
+            hotels={hotels}
+            transfers={transfers}
+            isLoading={contentLoading}
+            onAddHotel={onAddHotel}
+            onAddTransfer={onAddTransfer}
+            onOpenRoute={onOpenMap}
+          />
         </div>
 
         <Col gap="g8" className="ov-anim">
-        <BudgetSummaryCard
-          trip={trip}
-          budget={budget}
-          budgetExpenses={budgetExpenses}
-          budgetCategories={budgetCategories}
-          canManage={canManage}
-          budgetEnabled={budgetEnabled}
-          isLoading={contentLoading}
-          onOpen={onOpenBudget}
-          onLocked={onBudgetLocked}
-        />
-        <MembersSummaryCard
-          trip={trip}
-          members={members}
-          profiles={memberProfiles}
-          user={user}
-          canManage={canManage}
-          isLoading={contentLoading}
-          onOpenMembers={onOpenMembers}
-        />
-        <ServicesCard services={services} isLoading={contentLoading} onAddService={onAddService} onOpenService={onOpenService} />
+          <BudgetSummaryCard
+            trip={trip}
+            budget={budget}
+            budgetExpenses={budgetExpenses}
+            budgetCategories={budgetCategories}
+            canManage={canManage}
+            budgetEnabled={budgetEnabled}
+            isLoading={contentLoading}
+            onOpen={onOpenBudget}
+            onLocked={onBudgetLocked}
+          />
+          <MembersSummaryCard
+            trip={trip}
+            members={members}
+            profiles={memberProfiles}
+            user={user}
+            canManage={canManage}
+            isLoading={contentLoading}
+            onOpenMembers={onOpenMembers}
+          />
+          <ServicesCard services={services} isLoading={contentLoading} onAddService={onAddService} onOpenService={onOpenService} />
         </Col>
       </div>
     </Col>

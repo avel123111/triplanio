@@ -1,7 +1,6 @@
 // @ts-check
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Btn, Card, Skeleton } from '@/design/index';
-import { Icon } from '@/design/icons';
+import { Btn, Card, EmptyState, Skeleton } from '@/design/index';
 import MapView from '@/components/views/MapView';
 import TripStatRow from '@/components/trips/TripStatRow';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -11,23 +10,15 @@ import { sortVisits } from '@/lib/validation';
 import { naiveDayKey } from '@/lib/naive-time';
 import { DateTime } from 'luxon';
 
-// ГЕРОЙ ЭКРАНА ПОЕЗДКИ — карта во всю ширину, состояние панелью над ней.
+// Кадр поездки на Обзоре: карта во всю ширину, панель состояния в левом верхнем
+// углу (низ кадра занимает атрибуция mapbox), под кадром — полоса чисел маршрута.
 //
-// ★ НИЗ КАДРА ПРИНАДЛЕЖИТ АТРИБУЦИИ mapbox (логотип слева, копирайт справа):
-// показывать её обязывает лицензия, поэтому панель стоит НАВЕРХУ, а вход в
-// линзу — её кнопка, а не второй плавающий предмет в свободном углу.
-//
-// ★ ПАНЕЛЬ ОБЪЯВЛЯЕТ СЕБЯ ЗАКРЫТОЙ ПЛОЩАДЬЮ (`view`), иначе `fitToPoints`
-// вписывает маршрут в ВЕСЬ кадр и первые города уезжают под неё. Величина —
-// ИЗМЕРЕНИЕМ живой панели: у её отступов контейнерный порог, копия числа из CSS
-// разъехалась бы с ним молча. Механика общая с `<MapShell>` (`lib/map/insets.js`).
-//
-// ★ Обложки здесь нет намеренно: у поездки без своего фото подставляется сток,
-// не имеющий отношения к маршруту. Полосы готовности тоже нет — она про
-// подготовку и живёт в её виджете, рядом со списком, который её объясняет.
+// Панель объявляет карте закрытую площадь (`view`, механика `lib/map/insets.js`),
+// иначе автофит вписывает маршрут во весь кадр и первые города уходят под неё.
+// Величина берётся замером живой панели: её раскладка зависит от ширины кадра
+// (контейнерный порог), копия числа из CSS разошлась бы с ним.
 
-// «У узла есть координаты» — читаем НАЛИЧИЕ, а не истинность: `v.latitude`
-// расходится с `!= null` ровно на нулевой широте.
+// Наличие координат, а не истинность: `0` — законная широта.
 const hasCoords = (v) => v?.latitude != null && v?.longitude != null;
 
 /** @param {{ trip?: any, visits?: any[], transfers?: any[],
@@ -60,18 +51,15 @@ export default function TripFrame({
       progress: tripProgress(visits),
       nowCity: currentCityVisit(visits),
       startKey,
-      // Дней до старта — по КАЛЕНДАРНЫМ дням: «через 1 день» обязано смениться
-      // на «стартует сегодня» в полночь, а не через 24 часа.
+      // По календарным дням: «через 1 день» сменяется на «сегодня» в полночь.
       daysToStart: startKey
         ? Math.round(DateTime.fromISO(startKey).diff(DateTime.now().startOf('day'), 'days').days)
         : null,
     };
   }, [visits]);
 
-  // Закрытая панелью площадь кадра. Панель либо стоит колонкой слева (широкий
-  // кадр), либо растянута полосой по верху (узкий) — какой из двух случаев
-  // сейчас, решает ЗАМЕР, а не копия порога: панель шире двух третей кадра =
-  // полоса, значит закрыт ВЕРХ; иначе закрыт ЛЕВЫЙ край.
+  // Закрытая панелью площадь карты. На узком кадре панель уходит в поток под
+  // карту — пересечения нет, закрытой площади тоже.
   const mapRef = useRef(/** @type {any} */ (null));
   const panelRef = useRef(/** @type {any} */ (null));
   const [closed, setClosed] = useState(/** @type {any} */ (null));
@@ -80,22 +68,15 @@ export default function TripFrame({
     if (!f || !p) return;
     const fr = f.getBoundingClientRect(); const pr = p.getBoundingClientRect();
     if (!fr.width || !pr.width) return;
-    // Мерим против КАРТЫ, а не кадра: на телефоне панель стоит под картой в
-    // потоке, пересечения нет — значит нет и закрытой площади.
     if (pr.bottom <= fr.top + 1 || pr.top >= fr.bottom - 1) {
       setClosed((cur) => (cur === null ? cur : null));
       return;
     }
-    // Панель всегда стоит в ЛЕВОМ верхнем углу и режет карту по ширине: ветка
-    // «полосой сверху» недостижима — на узком кадре панель уходит в поток и
-    // выход выше по отсутствию пересечения случается раньше.
     const box = { left: Math.round(pr.right - fr.left) };
     setClosed((cur) => (cur && cur.left === box.left ? cur : box));
   }, []);
-  // ★★ `isLoading` В ДЕПАХ ОБЯЗАТЕЛЕН. `measure` стабилен, поэтому с депами
-  // `[measure]` эффект отработал бы РАЗ — на монтировании, а монтируется кадр в
-  // фазе загрузки и отдаёт скелетон без ссылок: рефы пусты, `observe` не зовётся,
-  // закрытая площадь остаётся `null` навсегда.
+  // `isLoading` в депах обязателен: в фазе загрузки рендерится скелетон без рефов,
+  // и эффект с одним `measure` в депах не подписался бы на живую панель никогда.
   useEffect(() => {
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
@@ -127,14 +108,14 @@ export default function TripFrame({
 
   return (
     <>
-      <div className="tframe">
+      <Card pad="none" radius="lg" className="tframe">
         <div className="tframe__map" ref={mapRef}>
           {hasRoute ? (
             <MapView
               visits={visits}
               transfers={transfers}
               view={view}
-                colorScheme={isDark ? 'DARK' : 'LIGHT'}
+              colorScheme={isDark ? 'DARK' : 'LIGHT'}
               active={active}
               hoveredVisitId={hoveredId}
               selectedVisitId={selectedId}
@@ -144,10 +125,7 @@ export default function TripFrame({
               onMapClick={() => setSelectedId(null)}
             />
           ) : (
-            <div className="tframe__mapempty muted">
-              <Icon name="map" size={22} />
-              <span>{t('overview.map_empty')}</span>
-            </div>
+            <EmptyState icon="map" title={t('overview.map_empty')} />
           )}
         </div>
 
@@ -160,27 +138,24 @@ export default function TripFrame({
             </Btn>
           </Card>
         </div>
-      </div>
+      </Card>
 
-      {/* `orderedVisits` — ОБЯЗАТЕЛЕН: сумма расстояния идёт по ПОРЯДКУ узлов, а
-          `visits` приходит сырым из ответа API. Без него «Расстояние» считается
-          по порядку выдачи, а не по маршруту. */}
+      {/* `orderedVisits` — сумма расстояния идёт по порядку маршрута, `visits`
+          приходит в порядке выдачи API. */}
       <TripStatRow visits={visits} orderedVisits={ordered} transfers={transfers} trip={trip} />
     </>
   );
 }
 
+// Тот же кадр с теми же узлами: панель на своём месте, полоса чисел настоящая
+// (со своим отступом от кадра), заглушки только вместо содержимого.
 export function TripFrameSkeleton() {
   return (
     <>
-      {/* Тот же `.tframe` с той же панелью на том же месте: иначе скелетон обещает
-          пустой прямоугольник и содержимое прыгает, когда данные приехали. */}
-      <div className="tframe">
+      <Card pad="none" radius="lg" className="tframe">
         <div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div>
         <div className="tframe__state"><Skeleton w="100%" h={132} r="var(--r-lg)" /></div>
-      </div>
-      {/* ★ ПОЛОСА ПЛИТОК — НАСТОЯЩАЯ, в фазе загрузки. Прямоугольник на её месте
-          не несёт СВОЙ `margin-top` полосы и прилипал к кадру карты. */}
+      </Card>
       <TripStatRow isLoading />
     </>
   );
