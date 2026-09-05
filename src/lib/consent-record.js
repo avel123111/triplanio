@@ -13,7 +13,7 @@ export const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 
 /**
  * Read a stored answer, or null when there is no usable one. Null is the single
- * signal callers act on, whatever the reason behind it: stay cookieless and ask
+ * signal callers act on, whatever the reason behind it: stay opted out and ask
  * again. Treating a stale or half-written record as consent is the failure this
  * prevents.
  *

@@ -31,9 +31,9 @@ export default function ConsentBanner() {
     // come back null, silently denying analytics to someone who just accepted.
     const record = setConsent(accepted);
     setOpen(false);
-    // Both answers are one SDK switch each (grant → stored, refusal → cookieless,
-    // the SDK wipes what it stored); the uid so an already-signed-in visitor is
-    // (re)identified now, not on the next load.
+    // Both answers are one SDK switch each (grant → capture and storage on,
+    // refusal → opted out, and the SDK wipes what it stored); the uid so an
+    // already-signed-in visitor is (re)identified now, not on the next load.
     applyConsent(record, user?.id);
   };
 

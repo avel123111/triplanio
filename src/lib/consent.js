@@ -65,7 +65,7 @@ export function subscribeConsentOpen(listener) {
  * the adapters are idempotent, and none of them sends an opt-in event.
  *
  * `null` (no usable answer — never asked, expired, our version moved,
- * hand-edited) is a valid input: PostHog is cookieless by config until a grant,
+ * hand-edited) is a valid input: PostHog is opted out by config until a grant,
  * so the adapters only have to undo a grant they still remember.
  *
  * Another tab changing the answer is NOT mirrored live: the SDKs read their

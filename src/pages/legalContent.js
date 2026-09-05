@@ -12,8 +12,9 @@
 
    The prose is the reviewed v1.0 (TRIP-133 audit): operator = sole trader in
    Spain (details on request), contacts info@/support@ only, Spanish law, 16+,
-   the consent wording matches the real TRIP-502 behaviour (SDK cookieless mode
-   before / without a grant, account-linked usage after sign-in), retention
+   the consent wording matches the real TRIP-502 behaviour (the SDK collects
+   nothing before / without a grant; storage and account-linked usage start with
+   «Accept all»), retention
    figures are verified facts (Supabase Pro backups 7d, Sentry 90d, Spanish
    accounting 6y). Every factual claim is traced to code in the PR description —
    keep the text in sync with behaviour when either changes.
@@ -33,12 +34,12 @@ function tocOf(html) {
 }
 
 // Версия и даты двигаются ВМЕСТЕ с содержательной правкой текста, а не с любой.
-// С 1.1 текст менялся дважды по существу: описание безкукового режима и записи
-// под номером аккаунта независимо от баннера (TRIP-502), и момент появления
-// идентификаторов аналитики на устройстве — теперь после входа, а не по кнопке
-// баннера. Оба раза мы стали хранить МЕНЬШЕ, чем обещал прежний текст, поэтому
-// нового согласия правка не требует; но материальная правка при неподвижной
-// дате — первое, за что цепляется проверяющий.
+// В 1.2 текст описывает поведение TRIP-502: до ответа на баннер PostHog не
+// собирает НИЧЕГО (прежний текст обещал безкуковый сбор), а идентификаторы на
+// устройстве и запись под номером аккаунта начинаются с «Принять всё» (прежний
+// обещал их независимо от баннера). И собираем, и храним мы МЕНЬШЕ, чем обещал
+// прежний текст, поэтому нового согласия правка не требует; но материальная
+// правка при неподвижной дате — первое, за что цепляется проверяющий.
 export const LEGAL_META = {
   updated: 'Last updated 5 September 2026',
   version: 'Version 1.2',

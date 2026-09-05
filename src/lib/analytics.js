@@ -104,9 +104,8 @@ export function withVisitCampaign(url) {
  *
  * Triggered from exactly two points: `applyConsent` on every start and answer
  * (the no-login case) and `identifyUser` (the recovered-marks case, right after
- * AuthContext stores them). Storage is per-host,
- * so campaign links MUST point at the same host the app runs on (www vs apex are
- * different jars).
+ * AuthContext stores them). Storage is per-host, so campaign links MUST point at
+ * the same host the app runs on (www vs apex are different jars).
  */
 export function setCampaign() {
   if (!isReady()) return;
@@ -184,10 +183,10 @@ function syncCampaignToPerson() {
  * NOT gated on the banner (TRIP-502). A signed-in person is identified whatever
  * they answered: the account id is a pseudonymous key we already hold under the
  * contract, the banner decides device STORAGE, and the SDK keeps that promise on
- * its own — in cookieless mode `identify()` still writes nothing to the device,
- * PostHog's servers merge the visit's hashed person into the account (measured).
- * Gating identity on the banner is what left one visit as two people and broke
- * the signup funnel (TRIP-407 → TRIP-502).
+ * its own — before a grant the client is opted out by config, so this call
+ * neither sends `$identify` nor writes anything to the device. Gating identity
+ * on the banner is what left one visit as two people and broke the signup funnel
+ * (TRIP-407 → TRIP-502).
  *
  * Identify by uid ONLY — no PII (email / name) ever reaches analytics (TRIP-213);
  * personal data stays in Supabase, resolve uid → user there. A bare identify is
@@ -215,7 +214,8 @@ export function identifyUser(uid) {
  * marker together — and the SDK's own copy of the consent answer, which is why
  * every logout ends in a full document load (`/login`): boot re-applies OUR
  * record (`applyConsent` in main.jsx), and the client is back in the state the
- * visitor chose. Until that load the client runs cookieless, which stores nothing.
+ * visitor chose. Until that load the client is back on its config default —
+ * opted out, so it neither sends nor stores anything.
  */
 export function resetIdentity() {
   posthog?.reset?.();
