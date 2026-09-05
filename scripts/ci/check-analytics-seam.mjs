@@ -128,15 +128,26 @@ const RULES = [
   {
     id: 'C',
     roots: EDGE_ROOTS,
-    // The write key or the ingestion host — either one is enough to post events
-    // from an edge function without going through the shared emitter.
-    pattern: /POSTHOG_PROJECT_KEY|POSTHOG_HOST|\bi\.posthog\.com\b/,
-    allow: ['supabase/functions/_shared/analytics.ts'],
-    title: 'PostHog ingestion reached outside the shared server emitter',
+    // Either credential is enough to reach PostHog from an edge function without
+    // going through the shared module: the write key / ingestion host for SENDING,
+    // the personal API key + project id for the MANAGEMENT API, which deletes a
+    // person and their events (TRIP-518). The second pair is the more expensive
+    // one to leak — the personal key carries `person:write`, i.e. the power to
+    // erase analytics — and it matches none of the ingestion patterns, so it needs
+    // naming here rather than being assumed covered.
+    pattern: /POSTHOG_PROJECT_KEY|POSTHOG_HOST|POSTHOG_PERSONAL_API_KEY|POSTHOG_PROJECT_ID|\bi\.posthog\.com\b|\beu\.posthog\.com\b/,
+    // The seam's own test names the management address on purpose — that literal
+    // IS the assertion (a typo in the URL is the silent failure it exists to
+    // catch). It holds no credential and calls nothing.
+    allow: ['supabase/functions/_shared/analytics.ts', 'supabase/functions/_shared/analytics_test.ts'],
+    title: 'PostHog credentials reached outside the shared server module',
     fix: [
       'Emit server-side events with `captureServer(event, uid, props, groups)` from',
       '../_shared/analytics.ts. It pins `distinct_id` to the uid, which is what makes a',
       'server event (the Stripe purchase) land on the same person as the browser.',
+      'Erase a person with `deletePersonAndEvents(uid)` from the same module: it holds',
+      'the management host and the personal API key, and account deletion is the only',
+      'caller that should ever hold the power to delete analytics data.',
     ],
   },
 ];

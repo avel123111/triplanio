@@ -14,15 +14,20 @@
  *   posthog.identify(uid), so server + client events land on the same person.
  * - Fire-and-forget: analytics must NEVER block or fail the request; every error
  *   is swallowed.
+ *
+ * The module also owns the OTHER direction — erasing a person when their account
+ * is deleted (`deletePersonAndEvents`, TRIP-518). Both live here because CI guard
+ * 2j (rule C) keeps every PostHog key and host in this one file; the deletion side
+ * needs a different host and a different key, which is precisely the kind of thing
+ * that must not be copy-pasted into a function.
  */
 import { envTag } from './envTag.ts';
 
-const TOKEN = Deno.env.get('POSTHOG_PROJECT_KEY');
-const HOST = Deno.env.get('POSTHOG_HOST') || 'https://eu.i.posthog.com';
-const ENV = envTag() === 'development' ? 'dev' : 'prod';
-
 /**
  * Capture a product-analytics event from an edge function.
+ * `Deno.env` is read INSIDE the function (like `envTag`), never at module load —
+ * so this module imports under `deno test` without `--allow-env` and its pure
+ * exports (below) stay testable.
  * @param event       snake_case event name (e.g. 'purchase_completed')
  * @param distinctId  the user's uid (PostHog person). Skipped when null.
  * @param props       event properties (no PII beyond ids)
@@ -34,21 +39,24 @@ export function captureServer(
   props: Record<string, unknown> = {},
   groups?: Record<string, string>,
 ): void {
-  if (!TOKEN || !distinctId) return;
+  const token = Deno.env.get('POSTHOG_PROJECT_KEY');
+  if (!token || !distinctId) return;
+  const host = Deno.env.get('POSTHOG_HOST') || 'https://eu.i.posthog.com';
+  const env = envTag() === 'development' ? 'dev' : 'prod';
   const body = {
-    api_key: TOKEN,
+    api_key: token,
     event,
     distinct_id: distinctId,
     properties: {
       ...props,
-      env: ENV,
+      env,
       $lib: 'edge',
       ...(groups ? { $groups: groups } : {}),
     },
     timestamp: new Date().toISOString(),
   };
   // Fire-and-forget — do not await, never throw into the caller.
-  fetch(`${HOST}/capture/`, {
+  fetch(`${host}/capture/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -56,11 +64,88 @@ export function captureServer(
 }
 
 /**
+ * The address and body of a person deletion — pure, so the shape is pinned by a
+ * test instead of being discovered in production (`analytics_test.ts`).
+ *
+ * TWO HOSTS, and mixing them is the silent failure here: events are ingested on
+ * `eu.i.posthog.com`, but this is the management API, which lives on
+ * `eu.posthog.com`. Auth is a PERSONAL API key (scope `person:write`), never the
+ * public `phc_…` ingestion key that `captureServer` uses.
+ *
+ * `bulk_delete` takes distinct ids, which is what we have: the browser
+ * identifies people by their Supabase uid. `delete_events=true` is the whole
+ * point — see `deletePersonAndEvents` below.
+ */
+export function personDeleteRequest(apiHost: string, projectId: string, distinctId: string) {
+  return {
+    url: `${apiHost.replace(/\/+$/, '')}/api/projects/${projectId}/persons/bulk_delete/?delete_events=true`,
+    body: { distinct_ids: [distinctId] },
+  };
+}
+
+/**
+ * Erase a person from analytics when their account is deleted (TRIP-518).
+ *
+ * WHY EVENTS TOO, and why this is not a `$unset` of the identity properties:
+ * person-on-events is enabled for this project, so `email` / `name` are stamped
+ * onto every event AT INGESTION. Clearing the profile leaves those copies in
+ * place, PostHog has no configurable event retention to age them out, and our
+ * Privacy Policy says deletion erases the email and name. So the person goes
+ * with their events, or the promise is false.
+ *
+ * Deletion is ASYNCHRONOUS on PostHog's side; a 2xx means accepted, not done.
+ * Do not reuse a deleted distinct id — ours are Supabase uids, so this never
+ * comes up.
+ *
+ * Best-effort like everything else here — analytics must never fail account
+ * deletion — but NOT silent: a missing secret or a rejected call is logged, since
+ * "it quietly did nothing" is exactly how this obligation would rot.
+ *
+ * @param distinctId  the user's uid, the same id the browser identifies with
+ */
+export async function deletePersonAndEvents(distinctId: string | null | undefined): Promise<void> {
+  if (!distinctId) return;
+  const key = Deno.env.get('POSTHOG_PERSONAL_API_KEY');
+  const projectId = Deno.env.get('POSTHOG_PROJECT_ID');
+  if (!key || !projectId) {
+    console.error('posthog person delete skipped: POSTHOG_PERSONAL_API_KEY / POSTHOG_PROJECT_ID not set');
+    return;
+  }
+  const apiHost = Deno.env.get('POSTHOG_API_HOST') || 'https://eu.posthog.com';
+  const { url, body } = personDeleteRequest(apiHost, projectId, distinctId);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.error('posthog person delete failed', res.status, await res.text());
+    }
+  } catch (e) {
+    console.error('posthog person delete failed', e);
+  }
+}
+
+/**
+ * North Star boundary — the trip becomes collaborative exactly when active
+ * members WITH an account reach 2. Since TRIP-516 the owner is a real
+ * `trip_members` row present from creation (count 1 at creation, 2 when the
+ * first real member joins), so the threshold is 2, not 1. Pure so it is testable
+ * under `deno test` without env permission (mirrors `resolveEnvTag`).
+ */
+export function reached2FromActiveCount(activeWithAccount: number | null | undefined): boolean {
+  return activeWithAccount === 2;
+}
+
+/**
  * North Star: emit `trip_reached_2_participants` the moment a trip becomes
- * collaborative. Participants = the OWNER (implicit — the creator has no
- * trip_members row) + active members WITH an account; offline placeholders
- * (user_id null) do NOT count. Fires once — when the first real member makes it 2.
- * Call right AFTER a join sets a member to active. Best-effort (swallows errors).
+ * collaborative. Participants = active members WITH an account; offline
+ * placeholders (user_id null) do NOT count. Since TRIP-516 the OWNER is a real
+ * `trip_members` row (role='owner', status='active') present from creation, so
+ * the count is 1 at creation and hits 2 the moment the first real member joins.
+ * Fires once — when that makes it 2. Call right AFTER a join sets a member to
+ * active. Best-effort (swallows errors).
  * @param admin  supabase admin client (injected so this module stays DB-agnostic)
  */
 export async function emitTripReached2(
@@ -74,7 +159,7 @@ export async function emitTripReached2(
     const { count } = await admin.from('trip_members')
       .select('id', { count: 'exact', head: true })
       .eq('trip_id', tripId).eq('status', 'active').not('user_id', 'is', null);
-    if (count === 1) {
+    if (reached2FromActiveCount(count)) {
       captureServer('trip_reached_2_participants', joinerUserId, { trip_id: tripId }, { trip: tripId });
     }
   } catch { /* best-effort */ }

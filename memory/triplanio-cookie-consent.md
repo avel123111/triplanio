@@ -30,13 +30,15 @@ opt_out_capturing_by_default: true
   баннер решает ХРАНЕНИЕ на устройстве, не связь с аккаунтом. Гейт identify на
   согласии — это то, что рвало воронку регистрации (TRIP-502).
 
-Порядок применения ответа — один, `consent.js#applyConsent(record|null, uid)`:
+Порядок применения ответа — один, `consent.js#applyConsent(record|null, user)`:
 Google Consent Mode (`gtag('consent','update')`, только при записи) → пиксели
 (`ads.js`, `openaiAds.js`: грузятся на маркетинговый грант, отзыв уходит в
 родной `oaiq('consent', false)`) → PostHog `onConsent` → `setCampaign()` →
-`identifyUser(uid)`. Вызывается **на каждом старте** (`main.jsx`, с записью или
-`null`) и **на каждом ответе** (баннер, с `user?.id`). Всё идемпотентно, opt-in
-событие не шлётся.
+`identifyUser(user?.id, user)`. Вызывается **на каждом старте** (`main.jsx`, с
+записью или `null`) и **на каждом ответе** (баннер, с профилем вошедшего). Всё
+идемпотентно, opt-in событие не шлётся. Вторым аргументом едет ПРОФИЛЬ целиком,
+а не uid: персона несёт `email`+`name`, и мэппинг живёт только в `identifyUser`
+([[triplanio-analytics-person-identity]]).
 
 Ничего самодельного не осталось: нет `persistence:'memory'` + `set_config`
 (вариант B TRIP-407, см. ниже), нет ручного вайпа `ph_*`-ключей и кук, нет
@@ -60,7 +62,7 @@ Google Consent Mode (`gtag('consent','update')`, только при запис�
   вопрос = TRIP-227 + бамп `CONSENT_VERSION`). **Наша запись — источник истины**,
   а не копии SDK: она переприменяется на каждом старте.
 - `src/components/ConsentBanner.jsx` — оба ответа = `setConsent` +
-  `applyConsent(record, user?.id)`, без ветвлений.
+  `applyConsent(record, user)`, без ветвлений.
 
 ## Ловушки, за которые заплачено
 

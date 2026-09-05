@@ -27,9 +27,16 @@ export const TRIP_MEMBER_SELF: ResourceSpec = {
       table: 'trip_members',
       requires: [],
       loadTarget: true,
-      // Уйти можно только из своей строки членства.
-      guardRow: (row, actor) =>
-        row.user_id === actor.id ? null : forbid(403, 'FORBIDDEN', 'This membership is not yours'),
+      // Уйти можно только из своей строки членства — и НЕ владельцу (TRIP-516).
+      // Владелец теперь обычная строка `trip_members` (role='owner'); её снос
+      // осиротил бы владение и дёрнул teardown (снос личных документов + отвязка
+      // Telegram). Симметрично OWNER_IMMUTABLE на remove/role. FE и так прячет
+      // кнопку «Выйти» у владельца — это серверный бэкстоп; владение живёт на
+      // trips.created_by, членство — отдельная ось.
+      guardRow: (row, actor) => {
+        if (row.role === 'owner') return forbid(400, 'OWNER_IMMUTABLE', 'Cannot leave your own trip');
+        return row.user_id === actor.id ? null : forbid(403, 'FORBIDDEN', 'This membership is not yours');
+      },
     },
 
     // ── Ответить на приглашение (accept/decline) ──────────────────────────────

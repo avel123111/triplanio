@@ -712,7 +712,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   // Summary totals (only convertible expenses are summed).
   const totalSpent = useMemo(() => cats.reduce((s, c) => s + c.spent, 0), [cats]);
-  const memberCount = countTripMembers(members, trip?.created_by) || 1;
+  const memberCount = countTripMembers(members) || 1;
 
   // Donut segments — categories with spend, in category order.
   const donutSegments = useMemo(

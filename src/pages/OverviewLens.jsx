@@ -113,7 +113,6 @@ export default function OverviewLens({
             onLocked={onBudgetLocked}
           />
           <MembersSummaryCard
-            trip={trip}
             members={members}
             profiles={memberProfiles}
             user={user}

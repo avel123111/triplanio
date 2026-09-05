@@ -20,7 +20,7 @@ import { resolveMembers } from '@/lib/resolveAuthor';
 import ChatStream from './ChatStream';
 import ChatComposer from './ChatComposer';
 
-export default function ChatWidget({ tripId, members = [], tripTitle, ownerId, profiles = {} }) {
+export default function ChatWidget({ tripId, members = [], tripTitle, profiles = {} }) {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
@@ -70,7 +70,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId, p
   // ── Thinking state ── server state, same as the lens (see useChatSend).
   const isThinking = isAiThinking(msgs);
 
-  const activeMembers = chatParticipants(members, ownerId);
+  const activeMembers = chatParticipants(members);
 
   // ── Closed: floating button ──
   if (!open) {

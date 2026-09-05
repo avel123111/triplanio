@@ -73,10 +73,13 @@ export function subscribeConsentOpen(listener) {
  * tab may hold unsaved work; it is not reloaded for this.
  *
  * @param {ReturnType<typeof getConsent>} record
- * @param {string} [uid]  pass when a session is already open, so the person is
- *   (re)identified now instead of on the next auth cycle.
+ * @param {{id?: string, email?: string, full_name?: string}} [user]  pass the
+ *   signed-in user's profile when a session is already open, so the person is
+ *   (re)identified now instead of on the next auth cycle. The whole row, not just
+ *   the id: `identifyUser` owns the mapping onto PostHog's person properties
+ *   (TRIP-518), and this path must not grow a second copy of it.
  */
-export function applyConsent(record, uid) {
+export function applyConsent(record, user) {
   // Google first, and for a refusal too: the tag reads its Consent Mode state at
   // load, and once loaded silence is the wrong signal. The `denied` default lives
   // in index.html, so a null record has nothing to update.
@@ -102,7 +105,7 @@ export function applyConsent(record, uid) {
   // link opened on a phone that never saw it, or a visitor who ignored the banner
   // and signed in with Google first. Identify now rather than on the next auth
   // cycle, so this visit's events belong to the account from here on.
-  if (uid) identifyUser(uid);
+  identifyUser(user?.id, user);
 }
 
 /**

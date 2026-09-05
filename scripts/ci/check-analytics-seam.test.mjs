@@ -37,7 +37,16 @@ const GUARD = fileURLToPath(new URL('./check-analytics-seam.mjs', import.meta.ur
 const SEAM = {
   'src/lib/analytics.js': "import posthog from 'posthog-js';\nexport function track(e) { posthog?.capture?.(e); }\n",
   'src/lib/destinations/posthog.js': "import posthog from 'posthog-js';\nexport function boot() { posthog.init('phc_x', {}); }\n",
-  'supabase/functions/_shared/analytics.ts': "const TOKEN = Deno.env.get('POSTHOG_PROJECT_KEY');\nexport function captureServer() { return TOKEN; }\n",
+  'supabase/functions/_shared/analytics.ts':
+    "const TOKEN = Deno.env.get('POSTHOG_PROJECT_KEY');\n" +
+    "const KEY = Deno.env.get('POSTHOG_PERSONAL_API_KEY');\n" +
+    "export function captureServer() { return TOKEN; }\n" +
+    "export function deletePersonAndEvents() { return fetch('https://eu.posthog.com/api/', { headers: { k: KEY } }); }\n",
+  // The seam's own test is allowed to name the management address (the literal is
+  // the assertion), so it has to EXIST in the fixture — rule C's allow-list is
+  // checked for presence, and a missing allowed file is a moved seam (exit 2).
+  'supabase/functions/_shared/analytics_test.ts':
+    "assertEquals(url, 'https://eu.posthog.com/api/projects/1/persons/bulk_delete/?delete_events=true');\n",
   'src/pages/Auth.jsx':
     "import { getSignupMarks } from '@/lib/attribution';\n" +
     "export async function signUpEmail() {\n" +
@@ -329,4 +338,32 @@ test('F: zero call sites is a moved seam, not a clean tree', (t) => {
   const r = run(fixture(t, {}, { seam }));
   assert.equal(r.status, 1);
   assert.match(r.stderr, /destination seam moved/);
+});
+
+// Rule C, the DELETION half (TRIP-518). The personal API key matches none of the
+// ingestion patterns — it is not `POSTHOG_PROJECT_KEY`, and `eu.posthog.com` does
+// not contain `i.posthog.com` — so without these two cases the guard would wave
+// through a copy of the delete call, and that key carries `person:write`: the
+// power to erase analytics, held by whichever function copied it.
+test('C: the personal API key outside the shared module fails', (t) => {
+  const dir = fixture(t, {
+    'supabase/functions/deleteMyAccount/index.ts':
+      "const key = Deno.env.get('POSTHOG_PERSONAL_API_KEY');\n" +
+      "await fetch('/api/persons/bulk_delete/', { headers: { Authorization: key } });\n",
+  });
+  const r = run(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /deleteMyAccount\/index\.ts/);
+  assert.match(r.stderr, /deletePersonAndEvents/);
+});
+
+test('C: the management host outside the shared module fails', (t) => {
+  const dir = fixture(t, {
+    'supabase/functions/adminTool/index.ts':
+      "await fetch('https://eu.posthog.com/api/projects/1/persons/bulk_delete/');\n",
+  });
+  const r = run(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /adminTool\/index\.ts/);
+  assert.match(r.stderr, /deletePersonAndEvents/);
 });

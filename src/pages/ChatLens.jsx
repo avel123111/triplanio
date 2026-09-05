@@ -11,7 +11,6 @@
  *   tripId  - string
  *   members - trip member rows (member list + author resolution)
  *   myRole  - string, used only for the solo-owner fallback row
- *   ownerId - trips.created_by; the owner usually has no trip_members row
  */
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -88,7 +87,7 @@ function ChatSkeleton() {
 
 // ─── ChatLens (main export) ───────────────────────────────────────────────────
 
-export default function ChatLens({ tripId, members = [], myRole, ownerId, profiles = {} }) {
+export default function ChatLens({ tripId, members = [], myRole, profiles = {} }) {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -214,7 +213,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId, profil
   // Chat participants = owner + active admins/viewers (excl. offline/pending).
   // A solo trip can resolve to an empty list (no members rows, owner not loaded
   // yet) — fall back to the viewer so the header never reads "0 people".
-  const participants = chatParticipants(members, ownerId);
+  const participants = chatParticipants(members);
   const activeMembers = (participants.length === 0 && user)
     ? [{ id: 'self', user_full_name: user.full_name || '', user_id: user.id, role: myRole || 'owner', status: 'active' }]
     : participants;

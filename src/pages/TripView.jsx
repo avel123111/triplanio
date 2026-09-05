@@ -48,7 +48,7 @@ import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { tripDuration } from '@/lib/trip-stats';
-import { resolveMyRole } from '@/lib/members';
+import { resolveMyRole, countTripMembers } from '@/lib/members';
 import { clearsStep } from '@/lib/tripStep';
 import { useProfileMap } from '@/lib/useProfileMap';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
@@ -1092,13 +1092,17 @@ export default function TripView() {
   const groupKeyRef = useRef(null);
   useEffect(() => {
     if (!tripId || !trip) return;
-    // Only re-group when the group props actually change — members.length and
+    // Only re-group when the group props actually change — the member count and
     // tripIsPro resolve a beat after mount, and without this guard each resolve
     // fires a redundant PostHog $groupidentify.
-    const groupKey = `${tripId}:${members.length}:${tripIsPro ? 1 : 0}`;
+    // participant_count = real humans on the trip = active/offline members
+    // (owner included — it's a real trip_members row since TRIP-516). Not raw
+    // members.length, which would also count pending/declined invites.
+    const memberCount = countTripMembers(members);
+    const groupKey = `${tripId}:${memberCount}:${tripIsPro ? 1 : 0}`;
     if (groupKeyRef.current !== groupKey) {
       groupKeyRef.current = groupKey;
-      groupTrip(tripId, { participant_count: members.length || undefined, is_pro: !!tripIsPro });
+      groupTrip(tripId, { participant_count: memberCount || undefined, is_pro: !!tripIsPro });
     }
     if (openedTripRef.current !== tripId) {
       openedTripRef.current = tripId;
@@ -1384,7 +1388,7 @@ export default function TripView() {
         "chat widget" display toggle (default ON). The full Chat lens stays
         reachable from the sidebar regardless of this toggle. */}
     {!isPhone && isSectionAvailable('chat', menuAddons, myStep) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
-      <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} ownerId={trip?.created_by} />
+      <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} />
     )}
     </>
   );
@@ -1552,7 +1556,6 @@ export default function TripView() {
               tripId={tripId}
               members={members}
               profiles={memberProfiles}
-              trip={trip}
               user={user}
               isLoading={shellLoading || loadingContent}
             />
@@ -1627,7 +1630,6 @@ export default function TripView() {
               members={members}
               profiles={memberProfiles}
               myRole={myRole}
-              ownerId={trip?.created_by}
             />
           )}
           </ErrorBoundary>
