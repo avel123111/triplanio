@@ -98,6 +98,10 @@ Deno.serve(withHandler('getPublicTrip', async (req, corsHeaders) => {
 
     const memberList = memberRows
       .map((m) => {
+        // TRIP-516: the owner is now a real trip_members row (role='owner'), but
+        // is already returned in the `owner` field above — drop it here so the
+        // creator isn't listed twice in the travellers UI.
+        if (m.user_id && m.user_id === trip.created_by) return null;
         const p = m.user_id ? profileById.get(m.user_id) : undefined;
         // Deleted/anonymized account — never a current public traveller.
         if (p?.is_deleted) return null;
