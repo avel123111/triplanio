@@ -4,6 +4,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
 import { identifyUser, resetIdentity, track } from '@/lib/analytics';
 import { getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
+import { pickSignupMarks } from '@/lib/campaign';
 import { conversion } from '@/lib/destinations/ads';
 import { conversion as openaiConversion } from '@/lib/destinations/openaiAds';
 import { hashEmail } from '@/lib/hashEmail';
@@ -193,10 +194,11 @@ export const AuthProvider = ({ children }) => {
         // arrived marked, ignored the cookie banner and signed in with Google
         // (TRIP-335); doing it only on this branch is what stops a year-old click
         // resurrecting on a later login, since the metadata live on the auth user
-        // forever. The DB-column whitelist lives in the RPC (trust boundary on the
-        // server, TRIP-411): both carriers are param-keyed, the RPC picks the four
-        // `signup_*` columns and nothing else.
-        const signupMarks = authUser.user_metadata?.signup_attribution || getSignupMarks();
+        // forever. The metadata are CLIENT-OWNED input: `pickSignupMarks` whitelists
+        // and caps them here, before they become `camp_*` super-properties on every
+        // event; the RPC whitelists again on its side for the four `signup_*`
+        // columns (trust boundary on the server, TRIP-411).
+        const signupMarks = pickSignupMarks(authUser.user_metadata?.signup_attribution) || getSignupMarks();
         rememberSignupMarks(signupMarks);
 
         // Profile doesn't exist yet — create it за швом, идемпотентно (first login
