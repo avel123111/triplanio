@@ -4,6 +4,7 @@
 // avatar + role ONLY — never user_id/email) for the shared-trip reader UI.
 import { withHandler, jsonError } from '../_shared/http.ts';
 import { fetchTripProfiles } from '../_shared/profiles.ts';
+import { displayName } from '../_shared/displayName.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // AI assistant account — a trip_member for chat, never shown as a human traveler.
@@ -94,8 +95,11 @@ Deno.serve(withHandler('getPublicTrip', async (req, corsHeaders) => {
     const profileById = new Map(profiles.map((p) => [p.id, p]));
 
     const ownerProfile = trip.created_by ? profileById.get(trip.created_by) : undefined;
-    const owner = ownerProfile && !ownerProfile.is_deleted && ownerProfile.full_name
-      ? { display_name: ownerProfile.full_name, avatar_url: ownerProfile.avatar_url }
+    // Name via the shared ladder (real full_name → Title-cased e-mail local-part),
+    // the SAME one every in-app screen uses — an account with no full_name reads as
+    // "Test8", not as nothing. The raw e-mail never leaves (only the derived name).
+    const owner = ownerProfile && !ownerProfile.is_deleted && (ownerProfile.full_name || ownerProfile.email)
+      ? { display_name: displayName(ownerProfile.email, ownerProfile.full_name), avatar_url: ownerProfile.avatar_url }
       : null;
 
     const memberList = memberRows
@@ -107,11 +111,15 @@ Deno.serve(withHandler('getPublicTrip', async (req, corsHeaders) => {
         const p = m.user_id ? profileById.get(m.user_id) : undefined;
         // Deleted/anonymized account — never a current public traveller.
         if (p?.is_deleted) return null;
-        // Live account name first, else the invite snapshot. The snapshot is a
-        // safe fallback here because the deleted case is already dropped above —
-        // so the cache can only ever hold a live member's (or e-mail invitee's)
-        // name, never a scrubbed one.
-        const display_name = (p?.full_name || m.user_full_name || '').trim();
+        // Live account first, through the shared name ladder (full_name →
+        // Title-cased e-mail local-part), so an email-only member reads as "Test8"
+        // instead of being dropped by the empty-name filter below; else the invite
+        // snapshot. `displayName` returns "-" for an empty profile, so only call it
+        // when there IS a live account — otherwise fall through to the snapshot.
+        const display_name = (
+          (p && (p.full_name || p.email) ? displayName(p.email, p.full_name) : '')
+          || m.user_full_name || ''
+        ).trim();
         return {
           display_name,
           avatar_url: p?.avatar_url || '',
