@@ -3,7 +3,8 @@ import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
 import { identifyUser, resetIdentity, track } from '@/lib/analytics';
-import { forgetStashedAttribution, getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
+import { getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
+import { pickSignupMarks } from '@/lib/campaign';
 import { conversion } from '@/lib/destinations/ads';
 import { conversion as openaiConversion } from '@/lib/destinations/openaiAds';
 import { hashEmail } from '@/lib/hashEmail';
@@ -187,21 +188,17 @@ export const AuthProvider = ({ children }) => {
       if (!profile) {
         // The marks this signup arrived with, from whichever carrier crossed the
         // border the visitor took: auth metadata for email (they survive
-        // confirming on another device entirely), the sessionStorage stash for
-        // OAuth. Announcing them is what gives last touch a value for someone who
+        // confirming on another device entirely), the ADDRESS for OAuth / One Tap
+        // (`redirectTo` and the post-login navigation carry them, TRIP-502).
+        // Announcing them is what gives last touch a value for someone who
         // arrived marked, ignored the cookie banner and signed in with Google
         // (TRIP-335); doing it only on this branch is what stops a year-old click
         // resurrecting on a later login, since the metadata live on the auth user
-        // forever. The DB-column whitelist now lives in the RPC (trust boundary on
-        // the server, TRIP-411), so the client no longer filters before sending —
-        // both carriers are already param-keyed, so the campaign super-property is
-        // unchanged; the RPC picks the four `signup_*` columns and nothing else.
-        // Read FIRST and unconditionally, because reading is also what SPENDS the
-        // OAuth stash, and a stash outliving its signup is inherited by whoever
-        // registers next in this tab. Inside a `||` that spending depended on which
-        // carrier won — the metadata path skipped it (TRIP-493). Priority unchanged.
-        const localMarks = getSignupMarks();
-        const signupMarks = authUser.user_metadata?.signup_attribution || localMarks;
+        // forever. The metadata are CLIENT-OWNED input: `pickSignupMarks` whitelists
+        // and caps them here, before they become `camp_*` super-properties on every
+        // event; the RPC whitelists again on its side for the four `signup_*`
+        // columns (trust boundary on the server, TRIP-411).
+        const signupMarks = pickSignupMarks(authUser.user_metadata?.signup_attribution) || getSignupMarks();
         rememberSignupMarks(signupMarks);
 
         // Profile doesn't exist yet — create it за швом, идемпотентно (first login
@@ -216,11 +213,6 @@ export const AuthProvider = ({ children }) => {
         if (error || code) throw error || new Error(code);
         profile = data.profile;
         profileCreated = data.created;
-      } else {
-        // Signing in to an existing account is not a signup, so the marks the
-        // OAuth redirect carried have nothing to attribute. Dropping them here
-        // stops them being inherited by whoever registers next in this tab.
-        forgetStashedAttribution();
       }
 
       // avatar_url is passed through as stored — do NOT re-add a sanitizer here.

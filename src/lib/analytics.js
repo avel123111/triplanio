@@ -78,9 +78,10 @@ export function setRefTripId(refTripId) {
  * stranger who arrived on a marked invite or share link and pressed the very
  * button the link exists for would register unattributed.
  *
- * The address carries the marks rather than the device storing them, and unlike
- * the OAuth stash next to it this survives a host change. The whitelist inside
- * `campaignQuery` is what keeps our own `?t=<share_token>` from riding along.
+ * The address carries the marks rather than the device storing them: it is the
+ * ONE carrier across every document replacement (CTA, `/login`, the OAuth
+ * `redirectTo`), and it survives a browser that refuses storage. The whitelist
+ * inside `campaignQuery` is what keeps our own `?t=<share_token>` from riding along.
  *
  * Pass a bare address — a fragment, if any, is appended by the caller after this
  * (`navBase` + `#anchor` in SiteChrome), which lands it in the right order.

@@ -14,7 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CAMPAIGN_KEYS, CAMPAIGN_TTL_MS, campaignQuery, pickSignupMarks,
-  readMarks, resolveCampaign, resolveSignupMarks,
+  readMarks, resolveCampaign,
 } from './campaign.js';
 
 const NOW = Date.parse('2026-07-30T12:00:00.000Z');
@@ -243,48 +243,4 @@ test('every mark reaches both client projections, agreeing on the vocabulary', (
 
   // The pass-through carries the same set, under the parameter names.
   assert.deepEqual(new URLSearchParams(campaignQuery(ALL)), new URLSearchParams(marks));
-});
-
-// ── Which carrier owns a signup (TRIP-316/TRIP-335 follow-up) ────────────────────
-// The rule that lost a real paid signup: the marks have to cross a document
-// replacement (login → hard navigation to the app), and the ONLY carrier across
-// that border was a sessionStorage stash — which a browser is free to refuse
-// without telling anyone. Below is the decision, on a pure function, so the next
-// break is a red test and not a quarter of ad spend filed under "organic".
-const STASH = JSON.stringify({ utm_source: 'google', utm_campaign: '24192647759', gclid: 'CjwK' });
-
-test('the address wins: a mark in the URL beats the stash it crossed with', () => {
-  const r = resolveSignupMarks(readMarks('?utm_source=instagram&utm_campaign=aug'), STASH);
-  assert.deepEqual(r.marks, { utm_source: 'instagram', utm_campaign: 'aug' });
-});
-
-test('a resolved signup spends the stash even when the ADDRESS won', () => {
-  // The regression this pins: skip it and the stash outlives its signup, so the
-  // NEXT person to register in the same tab inherits this click.
-  const r = resolveSignupMarks(readMarks('?utm_source=instagram'), STASH);
-  assert.equal(r.spendStash, true);
-});
-
-test('the stash carries the signup when the address lost its marks', () => {
-  // Exactly the OAuth/One-Tap border: the app is re-entered on a bare `/trips`.
-  const r = resolveSignupMarks(readMarks(''), STASH);
-  assert.deepEqual(r.marks, { utm_source: 'google', utm_campaign: '24192647759', gclid: 'CjwK' });
-  assert.equal(r.spendStash, true);
-});
-
-test('no address marks and no stash is not a signup to attribute', () => {
-  const r = resolveSignupMarks(readMarks('?ref=friend'), null);
-  assert.equal(r.marks, null);
-  assert.equal(r.spendStash, false); // nothing stored → nothing to drop
-});
-
-test('a malformed stash is data, not a crash', () => {
-  const r = resolveSignupMarks(null, '{not json');
-  assert.equal(r.marks, null);
-  assert.equal(r.spendStash, true); // it existed, so it is still spent
-});
-
-test('a stash cannot smuggle columns the address never could', () => {
-  const r = resolveSignupMarks(null, JSON.stringify({ utm_source: 'google', is_pro_trip: true }));
-  assert.deepEqual(r.marks, { utm_source: 'google' });
 });
