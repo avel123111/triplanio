@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveMyRole, withOwnerRow, countTripMembers } from './members.js';
+import { resolveMyRole, sortMembers, countTripMembers } from './members.js';
 
 const OWNER = 'owner-uuid';
 const trip = { id: 't1', created_by: OWNER };
@@ -32,42 +32,51 @@ test('resolveMyRole: a stranger with no row defaults to viewer', () => {
   assert.equal(resolveMyRole([], trip, { id: 'nobody' }), 'viewer');
 });
 
-// ── withOwnerRow — single owner, stray creator row dropped (TRIP-143) ─────────
+// ── sortMembers — owner → admin → active → offline → pending (TRIP-517) ───────
+// The owner is a real trip_members row now, so this only ORDERS the list.
 
-test('withOwnerRow: drops stray creator row and prepends one owner', () => {
+test('sortMembers: owner first, then admin, then active viewer', () => {
   const members = [
-    { id: 'm1', user_id: OWNER, role: 'viewer', status: 'active' },
-    { id: 'm2', user_id: 'u2', role: 'admin', status: 'active' },
+    { id: 'v', user_id: 'u3', role: 'viewer', status: 'active' },
+    { id: 'a', user_id: 'u2', role: 'admin', status: 'active' },
+    { id: 'o', user_id: OWNER, role: 'owner', status: 'active' },
   ];
-  const out = withOwnerRow(members, OWNER);
-  const owners = out.filter((m) => m.role === 'owner');
-  assert.equal(owners.length, 1, 'exactly one owner row');
-  assert.equal(owners[0].user_id, OWNER);
-  // The creator must NOT also appear as a viewer.
-  assert.ok(!out.some((m) => m.user_id === OWNER && m.role === 'viewer'));
-  // Other members are preserved.
-  assert.ok(out.some((m) => m.id === 'm2' && m.role === 'admin'));
+  assert.deepEqual(sortMembers(members).map((m) => m.id), ['o', 'a', 'v']);
 });
 
-test('withOwnerRow: synthesizes the owner when the creator has no row', () => {
-  const out = withOwnerRow([{ user_id: 'u2', role: 'viewer', status: 'active' }], OWNER);
-  assert.equal(out.filter((m) => m.role === 'owner').length, 1);
-  assert.equal(out[0].user_id, OWNER, 'owner is first');
-});
-
-test('withOwnerRow: no ownerId → list returned unchanged', () => {
-  const members = [{ user_id: 'u2', role: 'viewer', status: 'active' }];
-  assert.deepEqual(withOwnerRow(members, ''), members);
-});
-
-test('countTripMembers: creator with a stray viewer row counts once', () => {
+test('sortMembers: offline before pending, both after active', () => {
   const members = [
-    { user_id: OWNER, role: 'viewer', status: 'active' },
+    { id: 'p', role: 'viewer', status: 'pending' },
+    { id: 'off', role: 'viewer', status: 'offline' },
+    { id: 'act', role: 'viewer', status: 'active' },
+    { id: 'o', role: 'owner', status: 'active' },
+  ];
+  assert.deepEqual(sortMembers(members).map((m) => m.id), ['o', 'act', 'off', 'p']);
+});
+
+test('sortMembers: stable within a rank (keeps input order)', () => {
+  const members = [
+    { id: 'a1', role: 'admin', status: 'active' },
+    { id: 'a2', role: 'admin', status: 'active' },
+  ];
+  assert.deepEqual(sortMembers(members).map((m) => m.id), ['a1', 'a2']);
+});
+
+test('sortMembers: empty / missing input is safe', () => {
+  assert.deepEqual(sortMembers([]), []);
+  assert.deepEqual(sortMembers(), []);
+});
+
+test('countTripMembers: counts owner + active + offline, excludes pending', () => {
+  const members = [
+    { user_id: OWNER, role: 'owner', status: 'active' },
     { user_id: 'u2', role: 'admin', status: 'active' },
+    { user_id: 'u3', role: 'viewer', status: 'offline' },
+    { user_id: 'u4', role: 'viewer', status: 'pending' },
   ];
-  assert.equal(countTripMembers(members, OWNER), 2);
+  assert.equal(countTripMembers(members), 3);
 });
 
-test('countTripMembers: creator with no row is still counted', () => {
-  assert.equal(countTripMembers([{ user_id: 'u2', role: 'viewer', status: 'active' }], OWNER), 2);
+test('countTripMembers: solo trip is just the owner row', () => {
+  assert.equal(countTripMembers([{ user_id: OWNER, role: 'owner', status: 'active' }]), 1);
 });

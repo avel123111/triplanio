@@ -1095,12 +1095,10 @@ export default function TripView() {
     // Only re-group when the group props actually change — the member count and
     // tripIsPro resolve a beat after mount, and without this guard each resolve
     // fires a redundant PostHog $groupidentify.
-    // participant_count = real humans on the trip = owner + active/offline
-    // members, deduped. Since TRIP-516 the owner is a real trip_members row, so
-    // raw members.length would double-count them on the North Star group after
-    // the migration; countTripMembers routes through withOwnerRow and stays
-    // migration-invariant.
-    const memberCount = countTripMembers(members, trip?.created_by);
+    // participant_count = real humans on the trip = active/offline members
+    // (owner included — it's a real trip_members row since TRIP-516). Not raw
+    // members.length, which would also count pending/declined invites.
+    const memberCount = countTripMembers(members);
     const groupKey = `${tripId}:${memberCount}:${tripIsPro ? 1 : 0}`;
     if (groupKeyRef.current !== groupKey) {
       groupKeyRef.current = groupKey;
@@ -1390,7 +1388,7 @@ export default function TripView() {
         "chat widget" display toggle (default ON). The full Chat lens stays
         reachable from the sidebar regardless of this toggle. */}
     {!isPhone && isSectionAvailable('chat', menuAddons, myStep) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
-      <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} ownerId={trip?.created_by} />
+      <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} />
     )}
     </>
   );
@@ -1558,7 +1556,6 @@ export default function TripView() {
               tripId={tripId}
               members={members}
               profiles={memberProfiles}
-              trip={trip}
               user={user}
               isLoading={shellLoading || loadingContent}
             />
@@ -1633,7 +1630,6 @@ export default function TripView() {
               members={members}
               profiles={memberProfiles}
               myRole={myRole}
-              ownerId={trip?.created_by}
             />
           )}
           </ErrorBoundary>

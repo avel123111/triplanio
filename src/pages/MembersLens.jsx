@@ -2,7 +2,7 @@
 /**
  * MembersLens - members tab inside TripView.
  *
- * Props: tripId, members, profiles, trip, user, isLoading
+ * Props: tripId, members, profiles, user, isLoading
  *
  * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
@@ -23,7 +23,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, SearchSelect, Seg, Severity, Skeleton, ActionMenu, Tile, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
-import { withOwnerRow } from '@/lib/members';
+import { sortMembers } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
@@ -302,7 +302,7 @@ export function MembersSkeleton() {
   );
 }
 
-export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, isLoading }) {
+export default function MembersLens({ tripId, members = [], profiles = {}, user, isLoading }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -388,18 +388,10 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
   if (isLoading) return <MembersSkeleton />;
 
-  // Shared owner rule (withOwnerRow): the creator is never a real trip_members
-  // row — ownership lives in trips.created_by. Drop any stray member row for the
-  // creator (e.g. an invited+accepted owner from before the guard) and prepend a
-  // single synthetic owner. Don't seed user_full_name with the email — leave it
-  // empty so the profile resolver (or the auth user's own name when they are the
-  // owner) wins the fallback (TRIP-143).
-  const ownerId = trip?.created_by || '';
-  const isMeOwner = !!user?.id && ownerId === user.id;
-  const allMembers = withOwnerRow(members, ownerId, {
-    trip_id: tripId,
-    user_full_name: isMeOwner ? (user?.full_name || '') : '',
-  });
+  // The owner is a real trip_members row (`role='owner'`, TRIP-516), so the list
+  // is just the payload rows ordered owner-first by the shared rule. Names/avatars
+  // resolve through `resolveAuthor` (profiles + the viewer's own account) below.
+  const allMembers = sortMembers(members);
 
   return (
     <>
