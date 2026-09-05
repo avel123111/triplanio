@@ -255,17 +255,15 @@ export const AuthProvider = ({ children }) => {
         // touch the signup path.
         // The OpenAI Ads conversion (TRIP-514) rides the same digest, plus the
         // account id as its event id (the dedup key for the server-side upload).
-        // Both dormant without their ids; an absent SDK costs nothing.
-        if (authUser.email) {
-          hashEmail(authUser.email)
-            .then((sha256_email) => {
-              conversion('registration', { userData: { sha256_email } });
-              openaiConversion('registration', { eventId: authUser.id, sha256_email });
-            })
-            .catch(() => { /* ads conversion is best-effort */ });
-        } else {
-          openaiConversion('registration', { eventId: authUser.id });
-        }
+        // Both dormant without their ids; an absent SDK costs nothing. A hashing
+        // hiccup only drops the digest, never the conversions themselves.
+        const digest = authUser.email
+          ? hashEmail(authUser.email).catch(() => undefined)
+          : Promise.resolve(undefined);
+        digest.then((sha256_email) => {
+          if (sha256_email) conversion('registration', { userData: { sha256_email } });
+          openaiConversion('registration', { eventId: authUser.id, sha256_email });
+        });
       }
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
