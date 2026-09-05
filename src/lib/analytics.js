@@ -1,5 +1,4 @@
-// Single entry point for product-analytics events (TRIP-213), variant B
-// (TRIP-407).
+// Single entry point for product-analytics events (TRIP-213).
 //
 // Every custom event goes through track() so adding a second destination (GA4 /
 // an ad pixel — TRIP-227) is a one-file change instead of touching every call
@@ -7,11 +6,11 @@
 // (see it for why a second one would cost us the acquisition channel), and the
 // client itself is created and gated by the PostHog destination adapter.
 //
-// Under variant B the client is booted in `persistence:'memory'` on load, so a
-// call here is live from the first screen — `track()` captures immediately, on an
-// anonymous device-less profile, and consent later upgrades the SAME client to
-// localStorage. There is no pre-consent queue any more (the old `pendingEvents`
-// hold, TRIP-335): `isReady()` is the whole gate, and it is true from boot.
+// The client is booted at load (main.jsx, before React mounts), so a call here is
+// live from the first screen. Consent is the SDK's own business — cookieless
+// before / without a grant, stored after one (see `destinations/posthog.js`) —
+// so there is no pre-consent queue (the old `pendingEvents` hold, TRIP-335) and
+// no consent check here: `isReady()` is the whole gate.
 //
 // Naming convention: object_action, snake_case; variant info goes in props, never
 // in the event name. No PII in props (uid only, set via identify).
@@ -22,17 +21,14 @@ import posthog from 'posthog-js/dist/module.slim.js';
 import { CAMPAIGN_KEYS, campaignQuery, resolveCampaign } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 import { entrySearch } from '@/lib/analyticsEnv';
-import { mayIdentify } from '@/lib/consent-record';
 import { getActiveMarks } from '@/lib/attribution';
-import { isPersisting, isReady } from '@/lib/destinations/posthog';
+import { isReady } from '@/lib/destinations/posthog';
 
 /**
  * Capture a product-analytics event.
  *
- * Gated on `isReady()`: before boot there is no client, and after a withdrawal
- * (here or in another tab) capturing would re-create the `ph_*` keys the
- * withdrawal just cleared. Under B `isReady()` is true from boot — which runs
- * before React mounts — so a real screen event is never dropped.
+ * Gated on `isReady()` only: on hosts where analytics is disabled there is no
+ * client. Boot runs before React mounts, so a real screen event is never dropped.
  *
  * @param {string} event  snake_case event name (e.g. 'trip_deleted')
  * @param {Record<string, unknown>} [props]  event properties (no PII)
@@ -104,10 +100,12 @@ export function withVisitCampaign(url) {
  * arrived marked, ignored the banner and signed in with Google is still covered
  * (TRIP-335).
  *
- * Triggered from exactly two points: `main.jsx` right after boot (the no-login
- * case) and `identifyUser` (the recovered-marks case, right after AuthContext
- * stores them). Storage is per-host, so campaign links MUST point at the same host
- * the app runs on (www vs apex are different jars).
+ * Triggered from exactly two points: `applyConsent` on every start and answer
+ * (the no-login case — after the SDK's consent switch, because leaving cookieless
+ * mode resets the client and wipes super-properties) and `identifyUser` (the
+ * recovered-marks case, right after AuthContext stores them). Storage is per-host,
+ * so campaign links MUST point at the same host the app runs on (www vs apex are
+ * different jars).
  */
 export function setCampaign() {
   if (!isReady()) return;
@@ -182,25 +180,23 @@ function syncCampaignToPerson() {
  * `users.signup_utm_*` column written server-side. So this is a bare identify plus
  * the last-touch person sync — no `$set_once` payload.
  *
- * Gated on PERSISTING, not merely `isReady()` (TRIP-407 P1). Under variant B the
- * client runs from load, so `isReady()` is true even for someone who REFUSED
- * cookies or has not answered — and `identify(uid)` is a network event that
- * CREATES a server-side person under that uid. Identity is a "person" operation,
- * so it waits for the SAME consent that lets us write to the device.
- * `track()`/`group()`/`setCampaign()` stay on `isReady()`: those ride the accepted
- * anonymous memory hit, this does not. The consumer that fires unconditionally
- * (AuthContext, on every profile load) is exactly why the gate lives HERE.
+ * NOT gated on the banner (TRIP-502). A signed-in person is identified whatever
+ * they answered: the account id is a pseudonymous key we already hold under the
+ * contract, the banner decides device STORAGE, and the SDK keeps that promise on
+ * its own — in cookieless mode `identify()` still writes nothing to the device,
+ * PostHog's servers merge the visit's hashed person into the account (measured).
+ * Gating identity on the banner is what left one visit as two people and broke
+ * the signup funnel (TRIP-407 → TRIP-502).
  *
  * The last-touch trigger is collected here in one place: identify, then
  * `setCampaign()` (picks up whatever marks AuthContext just recovered for a fresh
  * signup, via attribution.getActiveMarks()), then `syncCampaignToPerson()` pushes
- * the resulting `camp_*` onto the person. `setCampaign` self-gates on readiness, so
- * calling it from inside this persistence-gated door is safe.
+ * the resulting `camp_*` onto the person.
  *
  * @param {string} uid  the Supabase user id — no PII ever goes to analytics
  */
 export function identifyUser(uid) {
-  if (!mayIdentify(uid, isPersisting())) return;
+  if (!uid || !isReady()) return;
   // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213). Personal
   // data stays in Supabase; resolve uid → user there when needed.
   posthog?.identify?.(uid);
@@ -211,7 +207,10 @@ export function identifyUser(uid) {
 /**
  * Forget who this was. On logout, so the next person on this device is a new
  * person: `reset()` drops the distinct id, the campaign mark and the first-touch
- * marker together.
+ * marker together — and the SDK's own copy of the consent answer, which is why
+ * every logout ends in a full document load (`/login`): boot re-applies OUR
+ * record (`applyConsent` in main.jsx), and the client is back in the state the
+ * visitor chose. Until that load the client runs cookieless, which stores nothing.
  */
 export function resetIdentity() {
   posthog?.reset?.();

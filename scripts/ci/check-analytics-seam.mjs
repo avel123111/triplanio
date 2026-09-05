@@ -23,10 +23,10 @@
  *      behind their own gates.
  *
  *   B. `posthog.init()` is called only from `src/lib/destinations/posthog.js`
- *      (TRIP-311, TRIP-407). The client is created in exactly one place — the
- *      PostHog destination adapter, which boots it memory-only and upgrades it to
- *      device persistence on consent. A second init would start a rogue client,
- *      out of step with the consent state the adapter holds.
+ *      (TRIP-311, TRIP-502). The client is created in exactly one place — the
+ *      PostHog destination adapter, which boots it in the SDK's cookieless mode
+ *      and hands it the visitor's answer through the SDK's own opt-in/opt-out.
+ *      A second init would start a rogue client, out of step with that answer.
  *
  *   C. The PostHog ingestion key / host appear only in
  *      `supabase/functions/_shared/analytics.ts` (TRIP-213 Ф2).
@@ -129,7 +129,7 @@ const RULES = [
     fix: [
       'The client is created in one place: boot() in @/lib/destinations/posthog.js.',
       'An init anywhere else is a rogue client, out of step with the consent state the',
-      'adapter holds (memory-only until consent, TRIP-311/TRIP-407). Add new analytics',
+      'adapter holds (cookieless until consent, TRIP-311/TRIP-502). Add new analytics',
       'destinations under src/lib/destinations and wire them through applyConsent().',
     ],
   },

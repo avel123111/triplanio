@@ -30,8 +30,26 @@ test('реплей стартует только на согласии и глу
   assert.match(SRC, /disable_session_recording:\s*true/, 'до согласия запись обязана быть выключена в init');
   assert.match(SRC, /export function onConsent[\s\S]*?startSessionRecording/,
     'старт записи живёт в onConsent, иначе гейт согласия обходится');
-  assert.match(SRC, /export function stopAnalytics[\s\S]*?stopSessionRecording/,
-    'отзыв согласия обязан явно глушить рекордер');
+  // Отзыв = `opt_out_capturing()` SDK: он сам останавливает рекордер, сбрасывает
+  // клиент и стирает записанное на устройстве. Своя остановка рядом = второй путь.
+  assert.match(SRC, /export function onConsent[\s\S]*?opt_out_capturing\(\)/,
+    'отзыв согласия — родной opt_out_capturing(), не свой стоп');
+});
+
+// Согласие и идентичность — механика SDK, а не наша (TRIP-502). `persistence:'memory'`
+// + `set_config` на согласии — режим, которого у PostHog НЕТ: id умирал с каждым
+// документом, одна сессия рождала 2–4 персоны и воронка регистрации рвалась
+// (замер прода: склеено 11 из 32). Пиним конфиг, потому что откат — две строки,
+// которые ничего не роняют.
+test('согласие — родной cookieless-режим SDK, не память + переключение', () => {
+  assert.match(SRC, /cookieless_mode:\s*'on_reject'/, 'без ответа и на отказе SDK сам cookieless');
+  assert.match(SRC, /opt_out_capturing_by_default:\s*true/, 'до ответа = не согласен, иначе SDK пишет на устройство сразу');
+  // Код, не комментарии: докблок называет старый режим по имени, чтобы его не вернули.
+  const code = SRC.replace(/^\s*\/\/.*$/gm, '');
+  assert.doesNotMatch(code, /\bpersistence\s*:/, "`persistence:'memory'` — тот самый режим, что рвал персону");
+  assert.doesNotMatch(code, /set_config\s*\(/, 'переключение согласия — opt_in/opt_out SDK, не set_config');
+  assert.match(SRC, /export function onConsent[\s\S]*?opt_in_capturing\(\{\s*captureEventName:\s*false\s*\}\)/,
+    'грант — родной opt_in_capturing без события $opt_in');
 });
 
 test('пол приватности записи объявлен в коде, а не только в UI', () => {

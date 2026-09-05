@@ -10,10 +10,11 @@
 //
 // Why not the raw <head> snippet OpenAI ships: the pixel must not load — and must
 // send no pings — before the visitor accepts the cookie banner. So instead of an
-// inline script, the SDK is injected HERE, only on a marketing grant. That is
-// STRICTER than OpenAI's own consent control (`oaiq("consent", …)`, which defaults
-// to `true` and merely suppresses pings after the SDK is already present): nothing
-// of OpenAI exists in the page until the grant, so there is no consent dance to run.
+// inline script, the SDK is injected HERE, only on a marketing grant: nothing of
+// OpenAI exists in the page until the grant. OpenAI's own consent control
+// (`oaiq("consent", …)`, default `true`) is used for what it is for — a withdrawal
+// AFTER the SDK is present, in the same document (the pixel stores its own copy
+// of the answer, so it also holds on its next load).
 //
 // No `posthog-js` and no ingestion key live here, so CI guard 2j does not apply
 // (same as ads.js).
@@ -38,7 +39,8 @@ export function boot() {}
 
 /**
  * Load the OpenAI pixel when MARKETING consent is granted — and only in production
- * with a configured pixel id. Idempotent (loads at most once).
+ * with a configured pixel id. Idempotent (loads at most once); once loaded, a
+ * changed answer is passed to the pixel's own consent switch.
  *
  * The bootstrap below is OpenAI's official loader: it defines the `window.oaiq`
  * command queue and injects `oaiq.min.js`. We run it on the grant instead of inline
@@ -47,7 +49,12 @@ export function boot() {}
  * @param {{marketing?: boolean}|null} record
  */
 export function onConsent(record) {
-  if (loaded || !record?.marketing || !isProdHost || !PIXEL_ID) return;
+  if (!isProdHost || !PIXEL_ID) return;
+  if (loaded) {
+    window.oaiq('consent', record?.marketing === true);
+    return;
+  }
+  if (!record?.marketing) return;
   loaded = true;
 
   if (!window.oaiq) {

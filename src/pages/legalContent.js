@@ -12,7 +12,8 @@
 
    The prose is the reviewed v1.0 (TRIP-133 audit): operator = sole trader in
    Spain (details on request), contacts info@/support@ only, Spanish law, 16+,
-   the consent wording matches the real TRIP-407 variant-B behaviour, retention
+   the consent wording matches the real TRIP-502 behaviour (SDK cookieless mode
+   before / without a grant, account-linked usage after sign-in), retention
    figures are verified facts (Supabase Pro backups 7d, Sentry 90d, Spanish
    accounting 6y). Every factual claim is traced to code in the PR description —
    keep the text in sync with behaviour when either changes.
