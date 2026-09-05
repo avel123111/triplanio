@@ -28,7 +28,7 @@
  * `data-force` в ВИТРИННОМ слое (`Kit.css`), не в проде. Своих классов витрина
  * не заводит (пол 2o не растёт): оболочка несёт АТРИБУТЫ `data-kit`/`data-force`.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import catalog from '@/design/catalog.json';
@@ -333,13 +333,25 @@ function BoomWhenArmed({ armed }) {
   if (armed) throw new Error('kit: surface boom');
   return <Badge>живое содержимое окна{/* i18n-ignore: витрина /kit, приёмка локерит по тексту */}</Badge>;
 }
-// Бросает на ВТОРОМ рендере — моделирует краш при busy=true (перерисовка со
-// спиннером у красной кнопки), а не при открытии окна.
-function BoomOnRerender() {
-  const n = useRef(0);
-  n.current += 1;
-  if (n.current >= 2) throw new Error('kit: busy boom');
-  return <Badge>содержимое (сломается при busy){/* i18n-ignore: витрина /kit */}</Badge>;
+// ★ КРАХ ПРИ busy ЧЕРЕЗ ВНЕШНИЙ СТОР, А НЕ «ВТОРОЙ РЕНДЕР» (ревью Pavel).
+// `content` кладётся в состояние ConfirmProvider ОДИН раз; при setBusy(true)
+// React видит тот же объект элемента → bail-out по ссылке, поддерево content НЕ
+// перерисовывается, и «упасть на втором рендере» не наступает НИКОГДА (промис
+// приходил true — штатное завершение, а не отмена). useSyncExternalStore
+// перерисовывает подписчика МИМО bail-out: `arm(true)` из onConfirm роняет узел
+// именно во время busy — тогда onOpenChange глотается busy-guard'ом и работает
+// ТОЛЬКО жёсткая отмена через SurfaceCrashContext. Это и есть инвариант п.4.
+let boomBusy = false;
+const boomSubs = new Set();
+const boomStore = {
+  arm(v) { boomBusy = v; boomSubs.forEach((fn) => fn()); },
+  subscribe(fn) { boomSubs.add(fn); return () => boomSubs.delete(fn); },
+  get() { return boomBusy; },
+};
+function BoomOnBusy() {
+  const busy = useSyncExternalStore(boomStore.subscribe, boomStore.get);
+  if (busy) throw new Error('kit: busy boom');
+  return <Badge>содержимое (упадёт при busy){/* i18n-ignore: витрина /kit */}</Badge>;
 }
 function SurfaceCrashDemo() {
   const confirm = useConfirm();
@@ -347,19 +359,22 @@ function SurfaceCrashDemo() {
   const [armed, setArmed] = useState(false);
   const [promiseResult, setPromiseResult] = useState('—');
 
-  // async-ветка: красная кнопка ставит busy=true, перерисовка роняет содержимое.
-  // Граница обязана закрыть окно И разрешить промис false (жёсткая отмена мимо
-  // busy-guard). Действие живёт 400 мс — поздний settle(true) обязан быть no-op.
+  // async-ветка: красная кнопка ставит busy=true, onConfirm арм-ит внешний стор →
+  // содержимое роняется ВО ВРЕМЯ busy. Граница обязана закрыть окно И разрешить
+  // промис false (жёсткая отмена мимо busy-guard). Действие живёт 400 мс — поздний
+  // settle(true) обязан быть no-op.
   const runBusyConfirm = async () => {
+    boomStore.arm(false);
     setPromiseResult('ждём…');
     const ok = await confirm({
       title: 'Крах при busy',
-      content: <BoomOnRerender />,
+      content: <BoomOnBusy />,
       variant: 'destructive',
       confirmLabel: 'Уронить окно',
-      onConfirm: async () => { await new Promise((r) => setTimeout(r, 400)); },
+      onConfirm: async () => { boomStore.arm(true); await new Promise((r) => setTimeout(r, 400)); },
     });
     setPromiseResult(ok ? 'true' : 'false');
+    boomStore.arm(false);
   };
 
   return (

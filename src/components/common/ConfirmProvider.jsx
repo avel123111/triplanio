@@ -50,9 +50,15 @@ export function ConfirmProvider({ children }) {
   const [busy, setBusy] = useState(false);
   const [armed, setArmed] = useState(false);
   const resolverRef = useRef(null);
+  // Элемент-инициатор (что было в фокусе на вызове confirm) — чтобы вернуть ему
+  // фокус при КРАХЕ (TRIP-515, ревью Pavel). На штатном закрытии фокус возвращает
+  // сам vaul/Radix; но при крахе граница снимает поддерево РАНЬШЕ, чем они успеют,
+  // и фокус падает на <body> — для клавиатуры и скринридера контекст теряется.
+  const initiatorRef = useRef(null);
 
   const confirm = useCallback((options = {}) => {
     setArmed(true); // первый вызов заказывает чанк диалога
+    try { initiatorRef.current = (typeof document !== 'undefined') ? document.activeElement : null; } catch { initiatorRef.current = null; }
     return new Promise((resolve) => {
       // If a previous prompt is somehow still pending, dismiss it as cancelled.
       if (resolverRef.current) resolverRef.current(false);
@@ -88,6 +94,13 @@ export function ConfirmProvider({ children }) {
     setBusy(false);
     setOpen(false);
     settle(false);
+    // Вернуть фокус инициатору ПОСЛЕ закрытия (rAF: после того как поддерево окна
+    // снято и vaul/Radix отработали свой — иначе они перебьют наш вызов). Без
+    // этого фокус остаётся на <body>.
+    const el = initiatorRef.current;
+    if (el && typeof el.focus === 'function') {
+      try { requestAnimationFrame(() => { try { el.focus(); } catch { /* элемент исчез */ } }); } catch { /* нет rAF */ }
+    }
   }, [settle]);
 
   const handleConfirm = useCallback(async () => {

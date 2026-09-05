@@ -331,12 +331,16 @@ await page.locator('button:has-text("Сломать содержимое")').fir
 await page.waitForTimeout(900);
 const sheetGone = await page.locator('button:has-text("Сломать содержимое")').count();
 const retryBlocks = await page.locator('[role="alert"]').count();
-const focusAfterSheet = await activeText();
 check(sheetOpened > 0, 'шит открылся', `кнопка краха: ${sheetOpened}`);
 check(sheetGone === 0, 'содержимое крашнувшегося шита снято', `осталось кнопок краха: ${sheetGone}`);
 check(await neighborAlive() > 0, 'ПРИЛОЖЕНИЕ ЖИВО ПОСЛЕ КРАХА (сосед на месте, не крах-экран)');
 check(retryBlocks === 0, 'ФОЛБЭК ПУСТОЙ, А НЕ RETRY-БЛОК (нет role=alert)', `role=alert: ${retryBlocks}`);
-check(/Открыть шит/.test(focusAfterSheet), 'ФОКУС ВЕРНУЛСЯ НА ИНИЦИАТОРА', `активен: «${focusAfterSheet}»`);
+// ★ Возврат фокуса на ЭТОМ (обычном шите) НЕ проверяется намеренно (ревью Pavel).
+// Граница краха дженерик: инициатора она не знает, а vaul/Radix не успевают вернуть
+// фокус, когда поддерево снято раньше — фокус падает на <body>. Восстановление —
+// работа ВЛАДЕЛЦА, который знает инициатора: его делает ConfirmProvider (см.
+// сценарий 2), где живёт реальный прод-баг. Для произвольного владельца это вне
+// объёма: после краха приложение живо, клавиатурник доходит табом.
 // Повторное открытие: содержимое обязано вернуться → поверхность была ЗАКРЫТА
 // (open сброшен), а не просто погашена.
 await page.locator('button:has-text("Открыть шит")').first().tap();
