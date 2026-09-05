@@ -20,6 +20,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { collectPrivateDocFiles, purgeCollectedDocFiles } from '../_shared/personalDocsTeardown.ts';
+import { deletePersonAndEvents } from '../_shared/analytics.ts';
 
 Deno.serve(withHandler('deleteMyAccount', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -81,6 +82,13 @@ Deno.serve(withHandler('deleteMyAccount', async (req, corsHeaders) => {
     } catch (e) {
       console.error('deleteMyAccount: purge avatar files failed', e);
     }
+
+    // Scrubbing our own database is only half of the deletion since TRIP-518:
+    // the analytics person carries the email and name too. Why it deletes the
+    // EVENTS as well lives in the seam. No try/catch here — unlike the Storage
+    // calls above, this one swallows and logs its own failures by contract, and
+    // a second net would only hide which call actually broke.
+    await deletePersonAndEvents(user.id);
 
     return Response.json({ code: 'ok' }, { headers: corsHeaders });
 

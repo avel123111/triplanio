@@ -14,6 +14,12 @@
  *   posthog.identify(uid), so server + client events land on the same person.
  * - Fire-and-forget: analytics must NEVER block or fail the request; every error
  *   is swallowed.
+ *
+ * The module also owns the OTHER direction — erasing a person when their account
+ * is deleted (`deletePersonAndEvents`, TRIP-518). Both live here because CI guard
+ * 2j (rule C) keeps every PostHog key and host in this one file; the deletion side
+ * needs a different host and a different key, which is precisely the kind of thing
+ * that must not be copy-pasted into a function.
  */
 import { envTag } from './envTag.ts';
 
@@ -55,6 +61,70 @@ export function captureServer(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }).catch(() => { /* analytics is best-effort */ });
+}
+
+/**
+ * The address and body of a person deletion — pure, so the shape is pinned by a
+ * test instead of being discovered in production (`analytics_test.ts`).
+ *
+ * TWO HOSTS, and mixing them is the silent failure here: events are ingested on
+ * `eu.i.posthog.com`, but this is the management API, which lives on
+ * `eu.posthog.com`. Auth is a PERSONAL API key (scope `person:write`), never the
+ * public `phc_…` ingestion key that `captureServer` uses.
+ *
+ * `bulk_delete` takes distinct ids, which is what we have: the browser
+ * identifies people by their Supabase uid. `delete_events=true` is the whole
+ * point — see `deletePersonAndEvents` below.
+ */
+export function personDeleteRequest(apiHost: string, projectId: string, distinctId: string) {
+  return {
+    url: `${apiHost.replace(/\/+$/, '')}/api/projects/${projectId}/persons/bulk_delete/?delete_events=true`,
+    body: { distinct_ids: [distinctId] },
+  };
+}
+
+/**
+ * Erase a person from analytics when their account is deleted (TRIP-518).
+ *
+ * WHY EVENTS TOO, and why this is not a `$unset` of the identity properties:
+ * person-on-events is enabled for this project, so `email` / `name` are stamped
+ * onto every event AT INGESTION. Clearing the profile leaves those copies in
+ * place, PostHog has no configurable event retention to age them out, and our
+ * Privacy Policy says deletion erases the email and name. So the person goes
+ * with their events, or the promise is false.
+ *
+ * Deletion is ASYNCHRONOUS on PostHog's side; a 2xx means accepted, not done.
+ * Do not reuse a deleted distinct id — ours are Supabase uids, so this never
+ * comes up.
+ *
+ * Best-effort like everything else here — analytics must never fail account
+ * deletion — but NOT silent: a missing secret or a rejected call is logged, since
+ * "it quietly did nothing" is exactly how this obligation would rot.
+ *
+ * @param distinctId  the user's uid, the same id the browser identifies with
+ */
+export async function deletePersonAndEvents(distinctId: string | null | undefined): Promise<void> {
+  if (!distinctId) return;
+  const key = Deno.env.get('POSTHOG_PERSONAL_API_KEY');
+  const projectId = Deno.env.get('POSTHOG_PROJECT_ID');
+  if (!key || !projectId) {
+    console.error('posthog person delete skipped: POSTHOG_PERSONAL_API_KEY / POSTHOG_PROJECT_ID not set');
+    return;
+  }
+  const apiHost = Deno.env.get('POSTHOG_API_HOST') || 'https://eu.posthog.com';
+  const { url, body } = personDeleteRequest(apiHost, projectId, distinctId);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.error('posthog person delete failed', res.status, await res.text());
+    }
+  } catch (e) {
+    console.error('posthog person delete failed', e);
+  }
 }
 
 /**
