@@ -46,6 +46,9 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  *   />
  */
 
+/** Воздух между атрибуцией mapbox и кромкой шита (px). */
+const ATTRIB_AIR = 10;
+
 /**
  * `map` — узел ИЛИ функция `(view) => node`, где `view` = `{ camera, fit }`.
  * ДВЕ коробки, по одной на роль: `camera` — чем сдвигаем камеру, `fit` — во что
@@ -73,9 +76,6 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  *   children?: any,
  * }} p
  */
-/** Воздух между атрибуцией mapbox и кромкой шита (px). */
-const ATTRIB_AIR = 10;
-
 export function MapShell({
   map,
   panel,
@@ -139,8 +139,8 @@ export function MapShell({
   const beforeRise = useRef(/** @type {number | null} */ (null));
   useEffect(() => {
     if (!isPhone || !onDetentChange) return;
-    const top = Math.max(0, detents.length - 1);
     if (screenAsked) {
+      const top = Math.max(0, detents.length - 1);
       if (beforeRise.current == null) beforeRise.current = detent;
       if (detent !== top) onDetentChange(top);
       return;
@@ -245,6 +245,10 @@ export function MapShell({
     '--surface-ease': SURFACE_EASE_CSS,
   }), [box]);
 
+  // Воздух вокруг шапки — геометрия ШЕЛЛА, и узел у неё один на обе раскладки:
+  // второй такой же в соседней ветке разъехался бы с этой на первой же правке.
+  const headEl = panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null;
+
   return (
     <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={rootStyle}>
       <div className="mapshell__map">{typeof map === 'function' ? map(view) : map}</div>
@@ -259,7 +263,7 @@ export function MapShell({
           /* Слой несёт СВОЮ шапку и свой футер (`.lp-h` / `.lp-f`), поэтому
              шапка и действия маршрута на это время уходят: две шапки подряд —
              это не «богато», это непонятно, чей заголовок читаешь. */
-          header={layerOpen ? null : (panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null)}
+          header={layerOpen ? null : headEl}
           footer={layerOpen ? null : panelFooter}
           label={panelLabel}
           layer={layerOpen}
@@ -288,7 +292,7 @@ export function MapShell({
                 роль играет поверхность шита (фон + скругление + тень). Экран
                 отдаёт содержимое, а не рисует себе карточку заново. */}
             <Card pad="none" radius="btn" raised className="mapshell__card">
-              {panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
+              {headEl}
               <div className="mapshell__body scrollbar-thin">{panel}</div>
               {panelFooter}
             </Card>
