@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
     <!-- Google Consent Mode v2 default (TRIP-311). Runs before anything else can
@@ -19,6 +19,49 @@
         functionality_storage: 'granted',
         security_storage: 'granted'
       });
+    </script>
+    <!-- ★ <html lang> — ставится СИНХРОННО, ДО первого кадра (TRIP-515).
+         Стоит ПОСЛЕ блока Consent Mode (у того в шапке «runs before anything else
+         can load a tag»): порядок читается глазами, а сам скрипт тегов не грузит —
+         только выставляет атрибут.
+         Статический lang="en" врал: язык интерфейса — профиль или язык браузера
+         (I18nContext), а SPA при загрузке отдаёт пустой <body>. Chrome/Safari
+         читают lang и английские title/meta и РЕШАЮТ «страница английская» ДО
+         того, как React выставит настоящий язык, — и встроенный переводчик
+         предлагает перевод. Дальше он удаляет наши текстовые узлы и вставляет
+         свои внутри <font>; React продолжает считать удалённый узел своим →
+         insertBefore бросает (краш всего приложения) и nodeValue уходит в никуда
+         (залипший текст). translate="no" выше глушит встроенные переводчики; этот
+         скрипт снимает саму ПРИЧИНУ перевода — ставит верный lang до кадра.
+         Это РУЧНАЯ КОПИЯ detectLandingLang() (src/lib/i18n/translations.js) —
+         пре-пейнт <script> модуль импортировать не может. Три литерала ниже (коды,
+         ключ хранилища, имя параметра) сверяются с экспортами того модуля тестом
+         src/lib/i18n/htmlLang.test.js, поэтому молча разъехаться не могут. Дальше
+         владелец атрибута — слой i18n (I18nContext). -->
+    <script>
+      (function () {
+        try {
+          var CODES = ['ru', 'en', 'es'];
+          var KEY = 'travel-planner-lang';
+          var PARAM = 'lang';
+          var pick = null;
+          try {
+            var q = new URLSearchParams(window.location.search).get(PARAM);
+            if (q && CODES.indexOf(q) >= 0) pick = q;
+          } catch (e) { /* приватный режим/SSR */ }
+          if (!pick) {
+            try {
+              var s = localStorage.getItem(KEY);
+              if (s && CODES.indexOf(s) >= 0) pick = s;
+            } catch (e) { /* приватный режим */ }
+          }
+          if (!pick) {
+            var b = (navigator.language || 'en').slice(0, 2);
+            pick = CODES.indexOf(b) >= 0 ? b : 'en';
+          }
+          document.documentElement.setAttribute('lang', pick);
+        } catch (e) { /* остаётся статический lang="en" */ }
+      })();
     </script>
     <!-- Favicon: SVG первым — современные браузеры берут его и игнорируют
          остальное. .ico оставлен фолбэком для старых и для ботов/читалок,

@@ -6,11 +6,10 @@
  * умерли непрочитанными (миграция 20260802093550). Второй источник правды здесь
  * не заводится — функция только читает и пишет Resend.
  *
- * Адресат — `c`, id контакта Resend. Это UUID, который генерит Resend; в нашем
- * приложении он не появляется НИГДЕ (ни в API-ответах, ни на фронте, ни в БД),
- * поэтому взять его можно только из своего письма — он и есть неподделываемый
- * токен, как у любой ссылки отписки. Подпись поверх него ничего не добавляет.
- * В карте дверей (`scripts/ci/security-tiers.mjs`) это `token`, как getPublicTrip.
+ * АДРЕСАТА функция определяет сама, двумя способами — из письма по `c` или из
+ * сессии залогиненного. Ни в одном фронт не передаёт чужой идентификатор; правило
+ * целиком в `resolveContact`, там же и обоснование. В карте дверей
+ * (`scripts/ci/security-tiers.mjs`) это `token` — по слабейшему из двух входов.
  *
  * ⚠️ `c` обязан быть UUID. Resend адресует контакт как `{id_or_email}`, то есть
  * с адресом в этом параметре ссылка превратилась бы в «отпиши кого угодно, зная
@@ -31,14 +30,28 @@
  * ходит с общих egress-адресов, и на всплеске отписок мы заблокировали бы ровно
  * то, что обязаны пропускать всегда.
  *
- * ЗАМЕРЕНО НА ЖИВОМ RESEND (04.09.2026), два факта, на которых стоит эта форма:
- *   • ЧАСТИЧНЫЙ массив топиков не трогает остальные — послали один топик, три
- *     соседних остались как были. Это и позволяет слать ТОЛЬКО тронутое и не
- *     затирать выбор, сделанный с другого устройства.
- *   • Глобальный флаг и топики ОРТОГОНАЛЬНЫ: `unsubscribed: true` не меняет ни
- *     одной подписки. Отсюда два следствия — чтение это два вызова (экран,
- *     показывающий одни топики, о «не писать вовсе» не узнал бы), а «не писать
- *     вовсе» обязано выставлять ОБА (см. `stopEverything`).
+ * ★ ЧТЕНИЕ RESEND ОТСТАЁТ ОТ ЗАПИСИ НА 2–4 СЕКУНДЫ. Замерено (04.09.2026):
+ * `PATCH /contacts/{id}/topics` применяется, но `GET` через 1.3 с отдаёт ещё
+ * СТАРОЕ значение, а через 3.9 с — новое. Пара «записал → сразу прочитал»
+ * поэтому возвращает предыдущее состояние, и это не отказ, а реплика.
+ *
+ * Цена ошибки была в целой фиче: экран сохранял выбор, перечитывал его тут же,
+ * получал вчерашний ответ и рисовал переключатель обратно — «сохранил, зашёл,
+ * а он включён». Разбор дважды свернул не туда, потому что лаг ИМИТИРУЕТ
+ * молчаливый отказ: два подряд замера «послал X — вижу не X» читаются как
+ * «запись не работает», хотя запись работала всегда.
+ *
+ * ОТСЮДА ПРАВИЛО: сразу после записи НЕ ПЕРЕЧИТЫВАТЬ — ни здесь, ни на экране
+ * (`src/pages/EmailPreferences.jsx`). Сверка «применилось ли» этим же способом
+ * невозможна по построению: она читала бы ровно ту реплику, которая отстаёт, и
+ * заворачивала бы КАЖДОЕ успешное сохранение как отказ.
+ *
+ * Что при этом проверено и работает: PATCH уходит и валидируется (несуществующий
+ * topic id честно отбивается 404), права ключа в порядке, гейт отправки по топику
+ * работает (письмо под топиком с `default_subscription: opt_out` уходит в
+ * `failed`). Единственный не гейтящий `/emails` рычаг — глобальный `unsubscribed`:
+ * письмо контакту с `unsubscribed: true` доставлено, дока не врала (он про
+ * broadcasts). Поэтому `stopEverything` выключает ещё и все топики.
  *
  * ⚠️ Неизвестный topic id Resend отбивает `404 Topic not found` — то есть ВЕСЬ
  * PATCH падает, а не только эта строка, и у нас это 500. Практически ловится
@@ -46,7 +59,10 @@
  * заново загруженный экран мёртвого id уже не пришлёт. Кода на это нет намеренно
  * — лечение (перечитать список на ошибке) стирало бы несохранённые переключения.
  */
-import { HttpError, withHandler } from '../_shared/http.ts';
+import { HttpError, jsonError, withHandler } from '../_shared/http.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
+import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { isUuid } from '../_shared/uuid.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const RESEND_API = 'https://api.resend.com';
@@ -54,17 +70,44 @@ const RESEND_API = 'https://api.resend.com';
 /** Куда отправить человека, открывшего адрес из заголовка письма браузером. */
 const PREFS_PAGE = 'https://triplanio.com/email-preferences';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SUBSCRIPTION = new Set(['opt_in', 'opt_out']);
 
 type TopicRow = { id: string; name?: string; description?: string; subscription?: string };
+
+/**
+ * Отказ ЧУЖОГО сервиса, отличимый от нашей ошибки. Несёт путь и статус, чтобы
+ * событие в Sentry можно было сгруппировать по ним, а не по общему стеку, — и
+ * ТЕЛО ответа, потому что без него отказ Resend неотличим от отказа Resend.
+ *
+ * Тело здесь не роскошь: `PATCH /contacts/{id}/topics` тем же ключом отвечает
+ * 2xx и не применяет ничего, тогда как сторонний клиент на тех же данных пишет
+ * штатно. Причина видна только в теле, а мы его выбрасывали — и разбор упёрся
+ * в стену, на которой снаружи не написано НИЧЕГО. Наружу оно по-прежнему не
+ * уходит: только в Sentry, обрезанное.
+ */
+class ResendError extends Error {
+  constructor(
+    readonly method: string,
+    readonly path: string,
+    readonly status: number,
+    readonly body?: string,
+  ) {
+    super(`resend ${method} ${path} → ${status}`);
+    this.name = 'ResendError';
+  }
+}
+
+/** Тело ответа для диагностики: текстом и коротко — в Sentry, не пользователю. */
+function peek(text: string): string {
+  return text.slice(0, 500);
+}
 
 /**
  * Один вызов Resend. Бросает на не-2xx — тело ошибки наружу не уходит.
  * Форму ответа называет вызыватель параметром типа: `null` возможен всегда —
  * тело либо пустое, либо не JSON.
  */
-async function resend<T = unknown>(path: string, init: RequestInit = {}): Promise<T | null> {
+async function resend<T = unknown>(path: string, init: RequestInit = {}, allow404 = false): Promise<T | null> {
   const res = await fetch(`${RESEND_API}${path}`, {
     ...init,
     headers: {
@@ -73,8 +116,16 @@ async function resend<T = unknown>(path: string, init: RequestInit = {}): Promis
       ...(init.headers ?? {}),
     },
   });
-  if (!res.ok) throw new Error(`resend ${init.method ?? 'GET'} ${path} → ${res.status}`);
-  return await res.json().catch(() => null) as T | null;
+  if (res.status === 404 && allow404) return null;
+  // Тело читается ОДИН раз и текстом: `Response` — поток, второй `json()` достал
+  // бы уже вычерпанный (та же грабля, что на фронте с `parseEdgeError`).
+  const text = await res.text().catch(() => '');
+  if (!res.ok) throw new ResendError(init.method ?? 'GET', path, res.status, peek(text));
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -84,7 +135,7 @@ async function resend<T = unknown>(path: string, init: RequestInit = {}): Promis
  */
 function contactId(url: URL, body: Record<string, unknown> | null): string | null {
   const raw = String(body?.c ?? url.searchParams.get('c') ?? '').trim();
-  return UUID_RE.test(raw) ? raw : null;
+  return isUuid(raw) ? raw : null;
 }
 
 /**
@@ -116,9 +167,77 @@ function cleanTopics(input: unknown): Array<{ id: string; subscription: string }
   for (const row of input) {
     const id = String((row as TopicRow)?.id ?? '');
     const subscription = String((row as TopicRow)?.subscription ?? '');
-    if (UUID_RE.test(id) && SUBSCRIPTION.has(subscription)) out.push({ id, subscription });
+    if (isUuid(id) && SUBSCRIPTION.has(subscription)) out.push({ id, subscription });
   }
   return out;
+}
+
+/**
+ * КОНТАКТ ПО АДРЕСУ: найти, а если его нет — завести.
+ *
+ * Заводить обязательно, а не «ошибка, контакта нет»: контакты сегодня рождаются
+ * только в welcome-ветке n8n, то есть у всех, кто зарегистрировался раньше, их
+ * не существует. Без создания экран настроек был бы им недоступен, а разовая
+ * заливка всех адресов — работа, которую эта строка делает сама и по факту
+ * обращения.
+ */
+async function contactIdByEmail(email: string): Promise<string> {
+  const found = await resend<{ id?: string }>(`/contacts/${encodeURIComponent(email)}`, {}, true);
+  if (found?.id) return found.id;
+  const made = await resend<{ id?: string }>('/contacts', { method: 'POST', body: JSON.stringify({ email }) });
+  if (!made?.id) throw new Error('resend: contact create returned no id');
+  return made.id;
+}
+
+/**
+ * КТО ПРИШЁЛ. Два входа на один экран, и НИ В ОДНОМ фронт не передаёт чужой
+ * идентификатор:
+ *
+ *   • ИЗ ПИСЬМА — `c`, id контакта. Он и есть пропуск: id генерит Resend, в
+ *     приложении он не появляется нигде, взять его можно только из письма,
+ *     адресованного этому человеку. Входа без логина требуют почтовики.
+ *
+ *   • ИЗ АККАУНТА — сессия. Личность берётся из ПРОВЕРЕННОГО токена, а НЕ из
+ *     тела запроса. Приняв id пользователя параметром, мы бы отдали чужие
+ *     настройки любому, кто этот id видел, — а он уезжает на фронт в списке
+ *     участников трипа (`src/lib/resolveAuthor.js`). Функция стоит
+ *     `verify_jwt = false` (иначе шлюз отбил бы одноклик почтовика), поэтому
+ *     токен проверяет она сама — так же, как остальные наши self-auth функции.
+ *
+ * Адрес берём из `public.users`, а НЕ из токена: письма шлёт n8n по ЭТОЙ строке
+ * (PG-триггер отдаёт её payload). Разъедься эти два адреса — мы правили бы
+ * подписки контакта, которому ничего не отправляется.
+ */
+async function resolveContact(req: Request, url: URL, body: Record<string, unknown> | null): Promise<string> {
+  const fromLink = contactId(url, body);
+  if (fromLink) return fromLink;
+
+  const user = await getRequestUser(req);
+  if (!user) throw new HttpError(400, 'Invalid unsubscribe link', 'INVALID_INPUT');
+
+  const { data: row, error } = await supabaseAdmin
+    .from('users').select('email').eq('id', user.id).maybeSingle();
+  if (error) throw error;
+  const email = String(row?.email ?? '').trim();
+  // Пусто — аккаунт обезличен (soft-delete, TRIP-78): адреса нет, править нечего.
+  if (!email) throw new HttpError(400, 'Invalid unsubscribe link', 'INVALID_INPUT');
+
+  return await contactIdByEmail(email);
+}
+
+/** Подписки контакта, как их видит Resend. Один разбор конверта на все три места. */
+async function readTopics(id: string): Promise<TopicRow[]> {
+  return listOf<TopicRow>(await resend(`/contacts/${id}/topics`));
+}
+
+/**
+ * Запись подписок. БЕЗ перечитывания и сверки: чтение отстаёт (см. шапку), и
+ * сверка завернула бы каждое успешное сохранение как отказ. Отказ Resend здесь
+ * приходит статусом — его ловит `resend()`, вместе с телом для Sentry.
+ */
+async function writeTopics(id: string, want: Array<{ id: string; subscription: string }>): Promise<void> {
+  if (!want.length) return;
+  await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(want) });
 }
 
 /**
@@ -143,16 +262,45 @@ function cleanTopics(input: unknown): Array<{ id: string; subscription: string }
  * выключенные переключатели и включает те, что хочет.
  */
 async function stopEverything(id: string): Promise<void> {
-  const off = listOf<TopicRow>(await resend(`/contacts/${id}/topics`))
-    .filter((t) => t?.id)
-    .map((t) => ({ id: t.id, subscription: 'opt_out' }));
-  if (off.length) {
-    await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(off) });
-  }
+  await writeTopics(id, (await readTopics(id)).filter((t) => t?.id).map((t) => ({ id: t.id, subscription: 'opt_out' })));
   await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: true }) });
 }
 
+/**
+ * Отказ Resend — ЧУЖОЙ сбой, и отчитывается он по образцу `geoLocationiq`, а не
+ * общим 500 `INTERNAL`:
+ *
+ *   • свой `captureEdgeError` с путём и статусом — без них все отказы Resend
+ *     (404, 429, 5xx, любая ручка) склеиваются в ОДИН issue: `throw` у них
+ *     общий, а Sentry группирует по стеку. Ровно та же беда, что уже лечили
+ *     фингерпринтом в TRIP-441;
+ *   • `fingerprint` = fn + `resend` + статус — разводит их по разным issue;
+ *   • ответ 502, а не 500: сломались не мы, и человеку «повторить» ПОМОЖЕТ
+ *     (страница на любую не-INVALID_INPUT ошибку показывает кнопку повтора);
+ *   • `x-sentry-skip` — событие уже отправлено здесь, с контекстом; без него
+ *     `withHandler` отрепортил бы его вторым, беднее.
+ *
+ * Почтовику 502 отдаётся осознанно: если Resend лежит, отписка ДЕЙСТВИТЕЛЬНО не
+ * состоялась, и ответить ему 200 значило бы соврать — человек остался бы
+ * подписан, считая, что отписался.
+ */
 Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
+  try {
+    return await handle(req, corsHeaders);
+  } catch (e) {
+    if (!(e instanceof ResendError)) throw e;
+    await captureEdgeError(
+      e,
+      'emailPrefs',
+      { resend_method: e.method, resend_path: e.path, resend_status: e.status, resend_body: e.body },
+      undefined,
+      ['emailPrefs', 'resend', String(e.status)],
+    );
+    return jsonError(502, 'Email service unavailable', 'INTERNAL', { ...corsHeaders, 'x-sentry-skip': '1' });
+  }
+}));
+
+async function handle(req: Request, corsHeaders: HeadersInit): Promise<Response> {
   if (!RESEND_API_KEY) throw new Error('RESEND_API_KEY is not set');
   const url = new URL(req.url);
 
@@ -184,8 +332,7 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
   }
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  const id = contactId(url, body);
-  if (!id) throw new HttpError(400, 'Invalid unsubscribe link', 'INVALID_INPUT');
+  const id = await resolveContact(req, url, body);
 
   // ЧТЕНИЕ. Два вызова, потому что глобальный флаг живёт на контакте, а не в
   // списке топиков — а он главнее: при `unsubscribed: true` не уходит ничего,
@@ -193,11 +340,11 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
   if (body?.action === 'get') {
     const [contact, topics] = await Promise.all([
       resend<{ unsubscribed?: boolean }>(`/contacts/${id}`),
-      resend(`/contacts/${id}/topics`),
+      readTopics(id),
     ]);
     return Response.json({
       unsubscribed: !!contact?.unsubscribed,
-      topics: listOf<TopicRow>(topics).map((t) => ({
+      topics: topics.map((t) => ({
         id: t.id,
         name: t.name ?? '',
         subscription: t.subscription === 'opt_out' ? 'opt_out' : 'opt_in',
@@ -216,12 +363,9 @@ Deno.serve(withHandler('emailPrefs', async (req, corsHeaders) => {
 
   // Иначе — пишем только присланное: страница шлёт ТРОНУТЫЕ топики, а флаг лишь
   // когда его сняли.
-  const topics = cleanTopics(body?.topics);
-  if (topics.length) {
-    await resend(`/contacts/${id}/topics`, { method: 'PATCH', body: JSON.stringify(topics) });
-  }
+  await writeTopics(id, cleanTopics(body?.topics));
   if (body?.unsubscribed === false) {
     await resend(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ unsubscribed: false }) });
   }
   return Response.json({ ok: true }, { headers: corsHeaders });
-}));
+}

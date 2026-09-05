@@ -31,21 +31,22 @@ import { buildRows, changedTopics, hasChanges } from '@/lib/emailPrefs';
 export default function EmailPreferences() {
   const t = useT();
   const [params] = useSearchParams();
+  // `c` есть только у ссылки ИЗ ПИСЬМА. В аккаунте его нет и быть не должно:
+  // залогиненного человека функция узнаёт по его же сессии, и передавать сюда
+  // чей-либо идентификатор фронту не требуется вовсе.
   const contact = params.get('c') || '';
 
   const [rows, setRows] = useState(/** @type {any[]} */([]));
   const [initial, setInitial] = useState(/** @type {any[]} */([]));
   const [unsub, setUnsub] = useState(false);
   const [wasUnsub, setWasUnsub] = useState(false);
-  const [phase, setPhase] = useState(contact ? 'loading' : 'invalid');
+  const [phase, setPhase] = useState('loading');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // `silent` — перечитать, не показывая заглушки: после сохранения экран уже
-  // нарисован, и подмена его скелетоном читалась бы как перезагрузка страницы.
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setPhase('loading');
-    const { data, error, code } = await invokeFn('emailPrefs', { body: { c: contact, action: 'get' } });
+  const load = useCallback(async () => {
+    setPhase('loading');
+    const { data, error, code } = await invokeFn('emailPrefs', { body: { ...(contact ? { c: contact } : {}), action: 'get' } });
     if (error || !data) {
       // «Ссылка битая» и «сеть отвалилась» — разные ответы человеку: во втором
       // случае помогает «Повторить», в первом не поможет никогда. `code` берём
@@ -65,7 +66,7 @@ export default function EmailPreferences() {
     setPhase('ready');
   }, [contact]);
 
-  useEffect(() => { if (contact) load(); }, [contact, load]);
+  useEffect(() => { load(); }, [load]);
 
   const dirty = hasChanges(initial, rows, wasUnsub, unsub);
 
@@ -80,16 +81,33 @@ export default function EmailPreferences() {
   const save = async () => {
     setSaving(true);
     setSaved(false);
-    const body = { c: contact, topics: changedTopics(initial, rows) };
-    if (wasUnsub !== unsub) body.unsubscribed = unsub;
-    const { error } = await invokeFn('emailPrefs', { body });
+    // Собираем одним выражением: глобальный флаг едет ТОЛЬКО когда его трогали,
+    // а дописывание поля после литерала ломает вывод типа (TS2339).
+    const { error } = await invokeFn('emailPrefs', {
+      body: {
+        ...(contact ? { c: contact } : {}),
+        topics: changedTopics(initial, rows),
+        ...(wasUnsub !== unsub ? { unsubscribed: unsub } : {}),
+      },
+    });
     if (error) { setSaving(false); setPhase('save_error'); return; }
-    // ПЕРЕЧИТЫВАЕМ, а не считаем сохранённое новым состоянием. Сервер применяет
-    // СВОИ правила — «не писать вовсе» выключает заодно все топики — и экран,
-    // отзеркаливший лишь отправленное, показывал бы включённые переключатели у
-    // человека, которому уже ничего не шлётся. Зеркалить правила сервера на
-    // клиенте значит завести им второй дом.
-    await load(true);
+    // ПЕРЕЧИТЫВАТЬ ЗДЕСЬ НЕЛЬЗЯ, и это не оптимизация — это и был баг «выключил,
+    // зашёл, а он включён». Чтение Resend отстаёт от записи на 2–4 секунды
+    // (замер в шапке `supabase/functions/emailPrefs/index.ts`), поэтому ответ,
+    // полученный сразу после сохранения, — ПРЕДЫДУЩЕЕ состояние. Мы им затирали
+    // ровно то, что человек только что выбрал, и показывали переключатель
+    // вернувшимся. Отказ мы уже знаем из ответа выше; больше сервер сообщить
+    // нечего, а ждать три секунды ради того же ответа — платить за него дважды.
+    //
+    // Единственное правило сервера, которое экран обязан отразить, — «не писать
+    // вовсе» гасит и все топики. Это не «второй дом правилу»: тот же экран уже
+    // держит его в `locked={unsub}` у каждого переключателя, здесь оно лишь
+    // доводится до состояния, чтобы снятие общего флага не открыло топики,
+    // которых на сервере больше нет.
+    const applied = unsub ? rows.map((r) => ({ ...r, on: false })) : rows;
+    setRows(applied);
+    setInitial(applied);
+    setWasUnsub(unsub);
     setSaving(false);
     setSaved(true);
   };

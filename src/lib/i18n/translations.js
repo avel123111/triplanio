@@ -28,7 +28,7 @@ const LANG_CODES = LANGUAGES.map((l) => l.code);
 // Имя query-параметра, которым рекламная ссылка форсит язык кампании. Один
 // источник, чтобы читатель (detectLandingLang) и чистильщик адреса
 // (clearLangParam) называли его одинаково.
-const LANG_PARAM = 'lang';
+export const LANG_PARAM = 'lang';
 
 /**
  * Язык из адреса (`?lang=es`) — верхний источник для рекламных ссылок: sitelinks

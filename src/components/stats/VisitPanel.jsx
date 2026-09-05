@@ -1,5 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { SheetRoot, SheetSurface } from '@/components/ui/sheetShell';
+import { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';
 import { pointType, TONE } from '@/lib/travel-stats';
 import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -204,18 +205,23 @@ export default function VisitPanel({
     );
   }
 
+  // Десктоп: свой корень Radix (мимо Sheet/Dialog), поэтому граница краха стоит
+  // здесь (TRIP-515). Мобильная ветка выше идёт через SheetRoot — он уже с
+  // границей. Краш внутри панели закрывает панель, а не убивает приложение.
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="vscrim" />
-        <Dialog.Content
-          className="vpanel"
-          aria-describedby={undefined}
-          onOpenAutoFocus={keepFocusInDialog}
-        >
-          {body}
-        </Dialog.Content>
-      </Dialog.Portal>
+      <SurfaceCrashGuard open={open} onClose={() => onOpenChange?.(false)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="vscrim" />
+          <Dialog.Content
+            className="vpanel"
+            aria-describedby={undefined}
+            onOpenAutoFocus={keepFocusInDialog}
+          >
+            {body}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </SurfaceCrashGuard>
     </Dialog.Root>
   );
 }

@@ -349,6 +349,31 @@ function ReminderChannels() {
             />
           )}
 
+          {/* Почта — ЖИВОЙ канал, поэтому стоит среди живых, до «скоро». Настройки
+              не раскрываются здесь: они же открываются по ссылке ИЗ ПИСЬМА, у
+              человека без сессии, и второй реализацией того же экрана мы завели
+              бы ему два дома.
+
+              ОТКРЫВАЕТСЯ НОВОЙ ВКЛАДКОЙ, а не переходом. Тот экран — публичный
+              и живёт ВНЕ оболочки приложения: у него нет ни шапки, ни меню, а
+              марка ведёт на лендинг (она там для человека, пришедшего из письма,
+              который приложения может и не знать). Переходом мы завели бы
+              залогиненного в тупик — вернуться в аккаунт было бы нечем, кроме
+              кнопки «назад» браузера. Новая вкладка возвращает закрытием.
+
+              `window.open(..., '_blank', 'noopener')` + `icon="external"` — не
+              выбор, а конвенция ЭТОГО экрана: так же открыт биллинг-портал
+              (`portalBtn`, строка 136) и повторное окно Telegram в SettingsLens. */}
+          <ChannelCard
+            icon="mail" tone="brand" name={t('account.channel_email')}
+            desc={t('account.channel_email_desc')}
+            trailing={(
+              <Btn variant="soft" icon="external" onClick={() => window.open('/email-preferences', '_blank', 'noopener')}>
+                {t('account.channel_email_cta')}
+              </Btn>
+            )}
+          />
+
           <ChannelCard
             icon="whatsapp" tone="success" name="WhatsApp"
             desc={t('account.channel_whatsapp_desc')}
