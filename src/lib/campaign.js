@@ -22,7 +22,23 @@
  * - `param`  — what the URL calls it. Also the key of the MARKS currency.
  * - `column` — the `users` column that survives a cookie refusal, or null when
  *   there is none. `utm_content` deliberately has no column: it says WHICH
- *   creative, which is an ad-reporting detail, not account data.
+ *   creative, which is an ad-reporting detail, not account data. The click ids
+ *   below `gclid` have none YET: the server-side conversion upload that needs
+ *   them stored is a later phase (TRIP-514), and a column is a migration plus the
+ *   RPC whitelist, not a row here.
+ *
+ * CLICK IDS RIDE THE ADDRESS, THAT IS THE WHOLE FIX (TRIP-514). An ad network
+ * attributes a conversion to its click ONLY by its own id: `gclid` / `gbraid` /
+ * `wbraid` for Google (the last two are what iOS sends instead of `gclid`),
+ * `oppref` for OpenAI. Each network's tag reads that id from the URL of the page
+ * it is initialised on, by itself — and the tag is initialised on the page
+ * where the visitor accepted the banner or signed up, never the landing page it
+ * was clicked to. A row here is what carries the id there: every address the
+ * visit leaves through (`withVisitCampaign` → CTA, `/login`, the OAuth
+ * `redirectTo`, the confirmation email) is built from this table. Measured on
+ * prod before the rows existed: 39 visits arrived with `oppref`, 0 registrations
+ * carried it — the id was gone from the address by the time the pixel fired.
+ * Values are capped at MAX_VALUE_LEN; an `oppref` is 120 characters.
  *
  * Own `camp_*` names for the super-properties, never `utm_*`: PostHog already
  * collects `utm_*` by itself on the hit that carries them, and a PERSISTED
@@ -35,6 +51,9 @@ const MARKS = [
   { param: 'utm_campaign', column: 'signup_utm_campaign' },
   { param: 'utm_content', column: null },
   { param: 'gclid', column: 'signup_gclid' },
+  { param: 'gbraid', column: null },
+  { param: 'wbraid', column: null },
+  { param: 'oppref', column: null },
 ];
 
 /** Query parameter → the persisted super-property. `utm_` is dropped, nothing else. */
@@ -60,8 +79,9 @@ for (const { param, column } of MARKS) {
 }
 
 // A campaign needs one of these to exist at all. Requiring `utm_campaign` would
-// drop exactly the paid clicks we need: Google auto-tagging sends `gclid` alone.
-const CAMPAIGN_TRIGGERS = ['utm_source', 'utm_campaign', 'gclid'];
+// drop exactly the paid clicks we need: Google auto-tagging sends `gclid` alone,
+// and a click id from any network is a paid click by definition.
+const CAMPAIGN_TRIGGERS = ['utm_source', 'utm_campaign', 'gclid', 'gbraid', 'wbraid', 'oppref'];
 
 // Last-touch window. Past it the mark is dropped — otherwise a single click
 // keeps claiming conversions half a year later.

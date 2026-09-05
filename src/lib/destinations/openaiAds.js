@@ -24,8 +24,8 @@ const PIXEL_ID = import.meta.env.VITE_OPENAI_PIXEL_ID;
 
 // Our internal action name → the OpenAI standard event name. One row per action,
 // mirroring the label map in ads.js. `payment` is intentionally absent for now:
-// Фаза 1 measures registration only (per TRIP-514), payment/Conversions API is a
-// separate task.
+// registration only (per TRIP-514); payment and the server-side Conversions API
+// are a separate task.
 const EVENT_NAMES = {
   registration: 'registration_completed',
 };
@@ -77,15 +77,35 @@ export function onConsent(record) {
  * is safe to call unconditionally from the registration point.
  *
  * The `customer_action` shape is OpenAI's standard type for lead / registration /
- * appointment events. Enhanced matching (a hashed email in `init`'s `user`) and the
- * server-side Conversions API are deliberately out of scope for Фаза 1.
+ * appointment events. Two optional matching keys, both mirroring the Google
+ * adapter's `conversion()`:
+ *
+ * - `sha256_email` — enhanced matching. Handed to the pixel through a second
+ *   `init` on the same pixel id, which is the SDK's own way to set `user` after
+ *   the fact (measured on oaiq 0.1.41: a repeat `init` updates the user config,
+ *   re-reads the click id from the address, and does not create a second pixel).
+ *   The digest is the one hashEmail.js computes for Google — the RAW email never
+ *   comes here. The pixel then attributes a registration to the ChatGPT account
+ *   that clicked even when the click id did not survive the journey.
+ * - `eventId` — the pixel's `event_id`. A stable id (the account id) is what
+ *   lets the server-side Conversions API, when it ships, send the same event
+ *   without OpenAI counting it twice: dedup is by this id.
  *
  * @param {'registration'} kind
+ * @param {{ eventId?: string, sha256_email?: string }} [opts]
  */
-export function conversion(kind) {
+export function conversion(kind, { eventId, sha256_email } = {}) {
   if (!loaded || !PIXEL_ID) return;
   const eventName = EVENT_NAMES[kind];
   if (!eventName) return;
 
-  window.oaiq('measure', eventName, { type: 'customer_action' });
+  if (sha256_email) {
+    window.oaiq('init', { pixelId: PIXEL_ID, user: { email_sha256: sha256_email } });
+  }
+  window.oaiq(
+    'measure',
+    eventName,
+    { type: 'customer_action' },
+    eventId ? { event_id: eventId } : undefined,
+  );
 }

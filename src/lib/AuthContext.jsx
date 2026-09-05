@@ -253,15 +253,19 @@ export const AuthProvider = ({ children }) => {
         // tag. Enhanced conversions ride the SHA-256 of the email; the raw email
         // never leaves hashEmail. Best-effort: a hashing / gtag hiccup must not
         // touch the signup path.
+        // The OpenAI Ads conversion (TRIP-514) rides the same digest, plus the
+        // account id as its event id (the dedup key for the server-side upload).
+        // Both dormant without their ids; an absent SDK costs nothing.
         if (authUser.email) {
           hashEmail(authUser.email)
-            .then((sha256_email) => conversion('registration', { userData: { sha256_email } }))
+            .then((sha256_email) => {
+              conversion('registration', { userData: { sha256_email } });
+              openaiConversion('registration', { eventId: authUser.id, sha256_email });
+            })
             .catch(() => { /* ads conversion is best-effort */ });
+        } else {
+          openaiConversion('registration', { eventId: authUser.id });
         }
-        // OpenAI Ads registration conversion (TRIP-514) — dormant without the pixel
-        // id. No hashed email in Фаза 1 (the pixel needs none for a basic measure);
-        // best-effort, the no-op gate means an absent SDK costs nothing.
-        openaiConversion('registration');
       }
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
