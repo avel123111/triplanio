@@ -2,7 +2,7 @@
 //
 // This module records the answer and hands it to the destinations; each
 // destination keeps its own promise with its own native switch (TRIP-502):
-// PostHog's `opt_in_capturing` / `opt_out_capturing` (cookieless by config until a
+// PostHog's `opt_in_capturing` / `opt_out_capturing` (silent by config until a
 // grant), Google's Consent Mode (`gtag('consent','update')`), OpenAI's
 // `oaiq('consent', …)`. Nothing is wiped, stashed, silenced or reloaded here — a
 // withdrawal is an SDK call, and the SDK clears what it stored. The client itself
@@ -88,23 +88,20 @@ export function applyConsent(record, uid) {
   adsOnConsent(record);
   openaiAdsOnConsent(record);
 
-  // PostHog: a refusal is applied now, a grant is REMEMBERED and applied at the
-  // next identify — turning storage on resets the client, so it waits until the
-  // visit has an account to belong to (see destinations/posthog.js). The client
-  // already exists: main.jsx booted it, cookieless.
+  // PostHog: two native calls and nothing else — `opt_in_capturing()` on a grant
+  // (which also makes the SDK send the initial `$pageview` it withheld at load),
+  // `opt_out_capturing()` on a refusal (which wipes what was stored). The client
+  // already exists: main.jsx booted it, silent.
   onConsent(record);
 
-  // Campaign marks on this visit's events, for the visitor who has no account
-  // yet. After a refusal the switch above reset the client, and this puts them
-  // back; `identifyUser` re-runs it on its own side of the storage switch.
+  // Campaign marks on this visit's events, for the visitor who has no account yet.
+  // After the switch above, because a grant is the moment capture starts at all.
   setCampaign();
 
   // The account can already exist when the banner is answered — a confirmation
   // link opened on a phone that never saw it, or a visitor who ignored the banner
-  // and signed in with Google first. Then there is nothing to wait for: identify
-  // now, which is also what starts storage for someone who just accepted.
-  // Identify whatever the answer — in cookieless mode it stores nothing on the
-  // device, it only tells PostHog which account this visit's hashed person is.
+  // and signed in with Google first. Identify now rather than on the next auth
+  // cycle, so this visit's events belong to the account from here on.
   if (uid) identifyUser(uid);
 }
 

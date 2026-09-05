@@ -7,10 +7,11 @@
 // client itself is created and gated by the PostHog destination adapter.
 //
 // The client is booted at load (main.jsx, before React mounts), so a call here is
-// live from the first screen. Consent is the SDK's own business — cookieless
-// before / without a grant, stored after one (see `destinations/posthog.js`) —
-// so there is no pre-consent queue (the old `pendingEvents` hold, TRIP-335) and
-// no consent check here: `isReady()` is the whole gate.
+// live from the first screen. Consent is the SDK's own business — it boots opted
+// out and `opt_in_capturing()` turns it on (see `destinations/posthog.js`), so a
+// call made before the answer is dropped BY THE SDK. That is why there is no
+// pre-consent queue of ours (the old `pendingEvents` hold, TRIP-335) and no
+// consent check here: `isReady()` is the whole gate.
 //
 // Naming convention: object_action, snake_case; variant info goes in props, never
 // in the event name. No PII in props (uid only, set via identify).
@@ -22,7 +23,7 @@ import { CAMPAIGN_KEYS, campaignQuery, resolveCampaign } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 import { entrySearch } from '@/lib/analyticsEnv';
 import { getActiveMarks } from '@/lib/attribution';
-import { isReady, onIdentified } from '@/lib/destinations/posthog';
+import { isReady } from '@/lib/destinations/posthog';
 
 /**
  * Capture a product-analytics event.
@@ -102,10 +103,8 @@ export function withVisitCampaign(url) {
  * (TRIP-335).
  *
  * Triggered from exactly two points: `applyConsent` on every start and answer
- * (the no-login case — after the SDK's consent switch, because a refusal resets
- * the client and wipes super-properties) and `identifyUser` (the recovered-marks
- * case, right after AuthContext stores them — and the far side of the storage
- * switch, where a grant has just reset the client). Storage is per-host,
+ * (the no-login case) and `identifyUser` (the recovered-marks case, right after
+ * AuthContext stores them). Storage is per-host,
  * so campaign links MUST point at the same host the app runs on (www vs apex are
  * different jars).
  */
@@ -190,23 +189,22 @@ function syncCampaignToPerson() {
  * Gating identity on the banner is what left one visit as two people and broke
  * the signup funnel (TRIP-407 → TRIP-502).
  *
- * THIS IS ALSO WHEN DEVICE STORAGE STARTS, for whoever allowed it. The switch
- * resets the client, so it has to come AFTER the visit is glued to the account —
- * the sequence lives in `consentSwitch.js` and is proven there against a fake
- * SDK. Identify by uid ONLY — no PII (email / name) ever reaches analytics
- * (TRIP-213); personal data stays in Supabase, resolve uid → user there.
+ * Identify by uid ONLY — no PII (email / name) ever reaches analytics (TRIP-213);
+ * personal data stays in Supabase, resolve uid → user there. A bare identify is
+ * all this needs: the client never changes storage mode here, so there is nothing
+ * to sequence around — consent is applied once, by `consent.applyConsent`, through
+ * the SDK's own opt-in/opt-out.
  *
  * The last-touch trigger is collected here in one place: identify, then
  * `setCampaign()` (picks up whatever marks AuthContext just recovered for a fresh
- * signup, via attribution.getActiveMarks(), and re-registers them if the storage
- * switch above reset the client), then `syncCampaignToPerson()` pushes the
- * resulting `camp_*` onto the person.
+ * signup, via attribution.getActiveMarks()), then `syncCampaignToPerson()` pushes
+ * the resulting `camp_*` onto the person.
  *
  * @param {string} uid  the Supabase user id — no PII ever goes to analytics
  */
 export function identifyUser(uid) {
   if (!uid || !isReady()) return;
-  onIdentified(uid);
+  posthog?.identify?.(uid);
   setCampaign();
   syncCampaignToPerson();
 }
