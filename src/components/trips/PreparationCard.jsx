@@ -1,6 +1,6 @@
 // @ts-check
 import React, { useMemo, useState } from 'react';
-import { AddRow, Btn, Card, CardHeader, EmptyState, IconBtn, Meter, Skeleton, Row, Col } from '@/design/index';
+import { AddRow, Btn, Card, CardHeader, IconBtn, ListRow, Meter, Skeleton, Tile, Row, Col } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { buildPreparation } from '@/lib/trip-preparation';
 import { formatDateRange } from '@/lib/trip-dates';
@@ -41,6 +41,31 @@ function dayRange(fmt, from, to) {
   return formatDateRange(naiveDayKey(from), naiveDayKey(to), fmt);
 }
 
+/**
+ * Итог «закрыто» — ОДИН ряд той же формы, что все прочие строки виджета.
+ *
+ * ★★ ФОРМА У «ГОТОВО» ОДНА НА ОБА МАСШТАБА: закрытая секция и закрытый целиком
+ * виджет — это один и тот же предмет, только с разной подписью. Две разные
+ * выдумки на один смысл — ровно тот шаблонный зоопарк, из-за которого экран и
+ * пересобирали.
+ *
+ * ★★ ПОЧЕМУ НЕ `EmptyState`. Он канон ПУСТОТЫ, а не успеха, и оба его вида тут
+ * проваливаются: `boxed` рисует серую плиту ВНУТРИ белой карточки (коробка в
+ * коробке, читается как выключенная заглушка), а без `boxed` — 48 px полей
+ * сверху и снизу, то есть карточка на 340 px ради одной фразы. Ряд занимает 66
+ * и стоит в списке как равный соседям.
+ */
+function DoneRow({ title, sub = undefined }) {
+  return (
+    <ListRow
+      variant="raised"
+      lead={<Tile tone="success" icon="check" />}
+      title={title}
+      sub={sub}
+    />
+  );
+}
+
 // Сколько рядов видно в свёрнутой секции. Одно число на обе колонки — иначе
 // «Ещё N» у ночлегов и у переездов считались бы от разных потолков.
 const CAP = 3;
@@ -72,14 +97,9 @@ function Section({ label = null, rows = [], done = 0, total = 0, isLoading = fal
         <span className="t-meta muted">{label}</span>
         <span className="t-meta muted num">{done}/{total}</span>
       </Row>
-      {rows.length === 0
-        /* ★ ЗАКРЫТАЯ СЕКЦИЯ — ТОТ ЖЕ КАНОН-БЛОК, что у закрытого целиком виджета,
-           только без текста-пояснения (в узкой колонке он переносится по три
-           слова). Серая строка под подписью тут не годится: колонки одной
-           высоты, и рядом с длинным соседом закрытая секция оставляла двести
-           пикселей пустоты с одной фразой сверху. */
-        ? <EmptyState boxed kind="success" icon="check" title={t('overview.prep_sec_done')} />
-        : shown}
+      {/* Подписи у ряда секции нет намеренно: число стоит строкой выше (`3/3`),
+          и повторять его под заголовком значит сказать одно дважды. */}
+      {rows.length === 0 ? <DoneRow title={t('overview.prep_sec_done')} /> : shown}
       {(hidden > 0 || expanded) && (
         <Row>
           <Btn variant="link" onClick={() => setExpanded((v) => !v)}>
@@ -177,16 +197,13 @@ export default function PreparationCard({
         {total === 0 ? (
           <div className="muted ov-empty-line">{t('overview.prep_empty')}</div>
         ) : done === total ? (
-          /* ★ ВСЁ ЗАБРОНИРОВАНО — СВОЁ СОСТОЯНИЕ, А НЕ ПОЛОСА НА 100%. Полный
-             бар, «7 из 7», «100%» и две колонки под ними сообщают один и тот же
-             факт четыре раза, и ни разу — по-человечески. Здесь канон-блок
-             `EmptyState kind="success"`: один знак, одна фраза, ничего лишнего. */
-          <EmptyState
-            boxed
-            kind="success"
-            icon="check"
+          /* ★ ВСЁ ЗАБРОНИРОВАНО — СВОЁ СОСТОЯНИЕ, А НЕ ПОЛОСА НА 100%: полный
+             бар, «5 из 5», «100%» и две колонки под ними сообщают один и тот же
+             факт четыре раза и ни разу — по-человечески. Счёт при этом не
+             теряется: он ушёл в подпись ряда. */
+          <DoneRow
             title={t('overview.prep_done_title')}
-            body={t('overview.prep_done_body')}
+            sub={t('overview.prep_sub', { done, total })}
           />
         ) : (
           <>
