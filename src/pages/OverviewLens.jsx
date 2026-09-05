@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Col } from '@/design/index';
+import { sortVisits } from '@/lib/validation';
 import BudgetSummaryCard, { BudgetSummarySkeleton } from '@/components/trips/BudgetSummaryCard';
 import MembersSummaryCard, { MembersSummarySkeleton } from '@/components/trips/MembersSummaryCard';
 import ServicesCard, { ServicesSkeleton } from '@/components/trips/ServicesCard';
 import PreparationCard, { PreparationSkeleton } from '@/components/trips/PreparationCard';
 import TripFrame, { TripFrameSkeleton } from '@/components/trips/TripFrame';
+import TripStatRow from '@/components/trips/TripStatRow';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // Скелетон Обзора — то же дерево, что у живого экрана; каждый блок рисует свою
@@ -15,7 +17,10 @@ export function OverviewSkeleton() {
     <Col gap="g8" className="ovwrap" aria-busy="true">
       <div className="ov-anim"><TripFrameSkeleton /></div>
       <div className="ov-grid">
-        <div className="ov-anim"><PreparationSkeleton /></div>
+        <Col gap="g8" className="ov-anim">
+          <TripStatRow isLoading />
+          <PreparationSkeleton />
+        </Col>
         <Col gap="g8" className="ov-anim">
           <BudgetSummarySkeleton />
           <MembersSummarySkeleton />
@@ -26,11 +31,10 @@ export function OverviewSkeleton() {
   );
 }
 
-// Экран поездки: кадр (карта + состояние + числа маршрута) во всю ширину, под
-// ним две колонки — «Подготовка» слева, сводки (бюджет · участники · сервисы)
-// стопкой справа. Пороги раскладки — по ширине экрана обзора (`@container`),
-// не вьюпорта: с боковым меню и без него одна и та же ширина окна даёт разную
-// ширину экрана.
+// Экран поездки: кадр (карта + состояние) во всю ширину, под ним две колонки.
+// Слева — маршрут: числа маршрута и «Подготовка»; справа — сводки (бюджет ·
+// участники · сервисы) стопкой. Пороги раскладки — по ширине экрана обзора
+// (`@container`), полоса чисел сжимается по ширине своей колонки.
 export default function OverviewLens({
   trip,
   visits = [],
@@ -59,6 +63,8 @@ export default function OverviewLens({
   // Право управления (editor) — из единого контекста доступа (TRIP-274 Ф2.2),
   // раздаётся подкартам (бюджет/участники) как булев проп.
   const { canEdit: canManage } = useTripAccess();
+  // Сумма расстояния идёт по порядку маршрута; `visits` приходит в порядке API.
+  const orderedVisits = useMemo(() => sortVisits(visits), [visits]);
 
   if (isLoading) return <OverviewSkeleton />;
 
@@ -66,7 +72,6 @@ export default function OverviewLens({
     <Col gap="g8" className="ovwrap">
       <div className="ov-anim">
         <TripFrame
-          trip={trip}
           visits={visits}
           transfers={transfers}
           active={active}
@@ -76,7 +81,14 @@ export default function OverviewLens({
       </div>
 
       <div className="ov-grid">
-        <div className="ov-anim">
+        <Col gap="g8" className="ov-anim">
+          <TripStatRow
+            visits={visits}
+            orderedVisits={orderedVisits}
+            transfers={transfers}
+            trip={trip}
+            isLoading={contentLoading}
+          />
           <PreparationCard
             visits={visits}
             hotels={hotels}
@@ -86,7 +98,7 @@ export default function OverviewLens({
             onAddTransfer={onAddTransfer}
             onOpenRoute={onOpenMap}
           />
-        </div>
+        </Col>
 
         <Col gap="g8" className="ov-anim">
           <BudgetSummaryCard

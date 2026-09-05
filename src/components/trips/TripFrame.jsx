@@ -2,16 +2,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Btn, Card, EmptyState, Skeleton } from '@/design/index';
 import MapView from '@/components/views/MapView';
-import TripStatRow from '@/components/trips/TripStatRow';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { computeTripRange, currentCityVisit, formatDateRange, tripPhase, tripProgress } from '@/lib/trip-dates';
-import { sortVisits } from '@/lib/validation';
 import { naiveDayKey } from '@/lib/naive-time';
 import { DateTime } from 'luxon';
 
 // Кадр поездки на Обзоре: карта во всю ширину, панель состояния в левом верхнем
-// углу (низ кадра занимает атрибуция mapbox), под кадром — полоса чисел маршрута.
+// углу (низ кадра занимает атрибуция mapbox).
 //
 // Панель объявляет карте закрытую площадь (`view`, механика `lib/map/insets.js`),
 // иначе автофит вписывает маршрут во весь кадр и первые города уходят под неё.
@@ -21,10 +19,10 @@ import { DateTime } from 'luxon';
 // Наличие координат, а не истинность: `0` — законная широта.
 const hasCoords = (v) => v?.latitude != null && v?.longitude != null;
 
-/** @param {{ trip?: any, visits?: any[], transfers?: any[],
+/** @param {{ visits?: any[], transfers?: any[],
  *            active?: boolean, isLoading?: boolean, onOpenMap?: any }} p */
 export default function TripFrame({
-  trip, visits = [], transfers = [], active = true, isLoading = false, onOpenMap,
+  visits = [], transfers = [], active = true, isLoading = false, onOpenMap,
 }) {
   const { t, fmtDate, plural } = useI18nFormat();
   const { isDark } = useTheme();
@@ -41,8 +39,6 @@ export default function TripFrame({
       dates: formatDateRange(v.start_date, v.end_date, (iso) => fmtDate(iso)),
     };
   }, [badgeId, visits, fmtDate]);
-
-  const ordered = useMemo(() => sortVisits(visits), [visits]);
 
   const when = useMemo(() => {
     const startKey = naiveDayKey(computeTripRange(visits).start);
@@ -107,56 +103,46 @@ export default function TripFrame({
   }
 
   return (
-    <>
-      <Card pad="none" radius="lg" className="tframe">
-        <div className="tframe__map" ref={mapRef}>
-          {hasRoute ? (
-            <MapView
-              visits={visits}
-              transfers={transfers}
-              view={view}
-              colorScheme={isDark ? 'DARK' : 'LIGHT'}
-              active={active}
-              hoveredVisitId={hoveredId}
-              selectedVisitId={selectedId}
-              cityBadge={cityBadge}
-              onCityHover={(pts) => setHoveredId(pts ? (pts[0]?.id ?? null) : null)}
-              onCityClick={(pts) => { const v = pts?.[0]; if (v) setSelectedId((cur) => (cur === v.id ? null : v.id)); }}
-              onMapClick={() => setSelectedId(null)}
-            />
-          ) : (
-            <EmptyState icon="map" title={t('overview.map_empty')} />
-          )}
-        </div>
+    <Card pad="none" radius="lg" className="tframe">
+      <div className="tframe__map" ref={mapRef}>
+        {hasRoute ? (
+          <MapView
+            visits={visits}
+            transfers={transfers}
+            view={view}
+            colorScheme={isDark ? 'DARK' : 'LIGHT'}
+            active={active}
+            hoveredVisitId={hoveredId}
+            selectedVisitId={selectedId}
+            cityBadge={cityBadge}
+            onCityHover={(pts) => setHoveredId(pts ? (pts[0]?.id ?? null) : null)}
+            onCityClick={(pts) => { const v = pts?.[0]; if (v) setSelectedId((cur) => (cur === v.id ? null : v.id)); }}
+            onMapClick={() => setSelectedId(null)}
+          />
+        ) : (
+          <EmptyState icon="map" title={t('overview.map_empty')} />
+        )}
+      </div>
 
-        <div className="tframe__state" ref={panelRef}>
-          <Card radius="lg" raised className="col col--g3">
-            <div className="t-title">{headline}</div>
-            {sub && <div className="t-support muted">{sub}</div>}
-            <Btn variant="secondary" block iconRight="chev" onClick={onOpenMap}>
-              {t('overview.open')}
-            </Btn>
-          </Card>
-        </div>
-      </Card>
-
-      {/* `orderedVisits` — сумма расстояния идёт по порядку маршрута, `visits`
-          приходит в порядке выдачи API. */}
-      <TripStatRow visits={visits} orderedVisits={ordered} transfers={transfers} trip={trip} />
-    </>
+      <div className="tframe__state" ref={panelRef}>
+        <Card radius="lg" raised className="col col--g3">
+          <div className="t-title">{headline}</div>
+          {sub && <div className="t-support muted">{sub}</div>}
+          <Btn variant="secondary" block iconRight="chev" onClick={onOpenMap}>
+            {t('overview.open')}
+          </Btn>
+        </Card>
+      </div>
+    </Card>
   );
 }
 
-// Тот же кадр с теми же узлами: панель на своём месте, полоса чисел настоящая
-// (со своим отступом от кадра), заглушки только вместо содержимого.
+// Тот же кадр с теми же узлами: панель на своём месте, заглушки вместо содержимого.
 export function TripFrameSkeleton() {
   return (
-    <>
-      <Card pad="none" radius="lg" className="tframe">
-        <div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div>
-        <div className="tframe__state"><Skeleton w="100%" h={132} r="var(--r-lg)" /></div>
-      </Card>
-      <TripStatRow isLoading />
-    </>
+    <Card pad="none" radius="lg" className="tframe">
+      <div className="tframe__map"><Skeleton w="100%" h="100%" r={0} /></div>
+      <div className="tframe__state"><Skeleton w="100%" h={132} r="var(--r-lg)" /></div>
+    </Card>
   );
 }

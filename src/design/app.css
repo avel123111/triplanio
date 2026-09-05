@@ -5077,7 +5077,7 @@ button.input[data-empty] { color: var(--muted-2); }
    `margin-top:18px` (separation from content above in other layouts) becomes an
    empty strip here, where the cover band already abuts it — drop it so the band
    meets the numbers flush at the divider (TRIP-337, Pavel). */
-.pl-summary > .statbar { border: 0; border-top: 1px solid var(--line); border-radius: 0; margin-top: 0; }
+.pl-summary > .statbar { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
 .pl-summary__route { padding: var(--sp-6) var(--sp-7); border-top: 1px solid var(--line); }
 
 /* ─── Планировщик: превью трипа на шаге «Обзор» (TRIP-321 Ф14.13/14.15) ──────
@@ -6974,8 +6974,9 @@ button.input[data-empty] { color: var(--muted-2); }
 
 /* ============================================================
    TRIP OVERVIEW (main screen) — Lumo
-   Кадр поездки во всю ширину сверху, под ним две колонки: «Подготовка» слева,
-   сводки стопкой справа. Колонку экрана и стопку несёт `<Col gap="g8">`;
+   Кадр поездки во всю ширину сверху, под ним две колонки: числа маршрута и
+   «Подготовка» слева, сводки стопкой справа. Колонку экрана и обе колонки
+   сетки несёт `<Col gap="g8">`;
    свои классы только у того, что осью примитива не выражается: `.ovwrap`
    (контейнер измерения) и `.ov-grid` (сетка с неравными колонками).
    ============================================================ */
@@ -6990,6 +6991,10 @@ button.input[data-empty] { color: var(--muted-2); }
    и никогда по элементу, который сам объявил `container-type`. Порог 721 — по
    ширине экрана обзора, тот же, что у кадра ниже. */
 .ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); align-items: start; }
+/* Каждая колонка — контейнер измерения для своего содержимого: полоса чисел
+   сжимается по ширине ЛЕВОЙ колонки (правила у `.statbar` ниже по файлу), а не
+   экрана. Порог сетки при этом читает `.ovwrap`: сетка — потомок, не колонка. */
+.ov-grid > * { container-type: inline-size; }
 @container (min-width: 721px) {
   .ov-grid { grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); }
 }
@@ -7042,8 +7047,7 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .wi border-radius — то же
    `.ov-col .statbar .k { margin-top: 0 }` снят вместе с колонкой обзора: подпись
    плитки на Обзоре берёт базовый отступ полосы (6px), как на главной и в статистике.
-   visual-diff-exempt: .ov-col margin-top — правило снято вместе с классом .ov-col
-   visual-diff-exempt: .statbar margin-top — подпись плитки на Обзоре вернулась к базовому отступу полосы (приватного переопределения .ov-col больше нет) */
+   visual-diff-exempt: .ov-col margin-top — правило снято вместе с классом .ov-col */
 /* `.wdg-act` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="outline"
    size="sm">. Обе точки вызова (BudgetSummaryCard, MembersSummaryCard)
    пересажены в этом же PR. Вместе с классом ушёл и его ко-селектор ховера
@@ -7135,7 +7139,7 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .ov-col flex-direction — то же
    visual-diff-exempt: .ov-col gap — то же (зазор держит `.col--g8`)
    visual-diff-exempt: .ov-col min-width — то же
-   visual-diff-exempt: .ov-col:first-child container-type — контейнер измерения переехал на .ovwrap
+   visual-diff-exempt: .ov-col:first-child container-type — контейнер измерения — колонка сетки (`.ov-grid > *`)
    visual-diff-exempt: .ov-col:first-child animation-delay — вход считается по узлам экрана, а не по колонкам
    visual-diff-exempt: .ov-col:last-child animation-delay — то же
    visual-diff-exempt: .ov-anim:nth-child(1) animation-delay — то же
@@ -10158,7 +10162,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    паддинг 18/20). Overflow → .card--flush. Статичная. Вариант `--inset` (граница
    снизу + плотный .s) остаётся своим правилом.
    visual-diff-move: statbar -> card card--r-lg card--flush */
-.statbar { display: flex; align-items: stretch; margin-top: 18px; position: relative; z-index: 1; }
+/* Внешнего отступа у полосы нет: ритм задаёт контейнер (колонка Обзора — `<Col>`,
+   главная — подпись над полосой, планировщик — карточка сводки). Раньше `margin-top`
+   лежал на примитиве, и два вызывателя из трёх его гасили.
+   visual-diff-exempt: .statbar margin-top — внешний отступ снят с примитива, ритм задают контейнеры (Col обзора, подпись /trips)
+   visual-diff-exempt: .pl-summary margin-top — гашение отступа полосы в сводке планировщика больше не нужно: у примитива его нет */
+.statbar { display: flex; align-items: stretch; position: relative; z-index: 1; }
 .statbar .s { position: relative; flex: 1; min-width: 0; padding: 18px 20px; display: flex; align-items: center; gap: 13px; }
 /* inset hairline divider (mockup v01): slim, padded top & bottom, not full-height */
 .statbar .s::before { content: ""; position: absolute; inset: 16px auto 16px 0; width: 1px; background: var(--line); }
@@ -10212,26 +10221,38 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .statbar .cta button width — снят width:100%: два ребёнка в ряду вместо одного (TRIP-302)
 */
 .statbar .cta { display: flex; align-items: center; gap: var(--sp-4); padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
-/* Полоса плиток на Обзоре сжимается по ширине ЭКРАНА ОБЗОРА (контейнер `.ovwrap`),
-   не вьюпорта. 600–880: ячейка сжимается (10px поля, 8 gap, плитка 32/17), пять
-   держат строку до 600; ниже — та же двухколоночная форма, что у полосы на
-   главной. Ключ переехал со снесённой `.ov-col`, значения те же.
+/* Полоса плиток на Обзоре сжимается по ширине СВОЕЙ КОЛОНКИ (контейнер —
+   ячейка `.ov-grid`), не вьюпорта: на 1280 с меню колонка ≈607, на 1440 ≈705.
+   600–880: ячейка сжимается (10px поля, 8 gap, плитка 32/17), пять держат строку
+   до 600; ниже — та же двухколоночная форма, что у полосы на главной (TRIP-278).
+   Ключ переехал с `.ovwrap` (экран) на `.ov-grid` (колонка), значения те же.
+   visual-diff-exempt: .ov-grid {@container (600px <= width <= 880px)} --tile — ключ адаптива полосы переехал с .ovwrap на колонку .ov-grid, значение то же
+   visual-diff-exempt: .ov-grid {@container (600px <= width <= 880px)} --tile-ic — то же
+   visual-diff-exempt: .ov-grid {@container (600px <= width <= 880px)} gap — то же
+   visual-diff-exempt: .ov-grid {@container (600px <= width <= 880px)} padding-inline — то же
+   visual-diff-exempt: .ov-grid {@container (max-width: 600px)} display — то же
+   visual-diff-exempt: .ov-grid {@container (max-width: 600px)} flex — то же
+   visual-diff-exempt: .ov-grid {@container (max-width: 600px)} flex-wrap — то же
+   visual-diff-exempt: .ov-grid {@container (max-width: 600px)} inset — то же
+   visual-diff-exempt: .ov-grid {@container (max-width: 600px)} order — то же
+   visual-diff-exempt: .ov-grid {@container (max-width: 600px)} padding — то же
+   visual-diff-exempt: .ovwrap .statbar .s:nth-child(n + 3) {@container (max-width: 600px)} border-top — правило переехало на колонку .ov-grid
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} --tile — то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} --tile-ic — то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} gap — то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} padding-inline — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} display — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} flex — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} flex-wrap — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} inset — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} order — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} padding — то же
    visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} width — ступень на --tile:32, база .tile на media=''
    visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} height — то же
    visual-diff-exempt: .ic {@container (600px <= width <= 880px)} width — то же (ключ на .ic)
    visual-diff-exempt: .ic {@container (600px <= width <= 880px)} height — то же
    visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} --tile — приобретение ступени в контейнере
    visual-diff-exempt: .tile {@container (600px <= width <= 880px)} --tile — то же
-   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} padding-inline — ключ адаптива полосы плиток переехал с .ov-col на .ovwrap, значение то же
-   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} gap — то же
-   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} --tile — то же
-   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} --tile-ic — то же
-   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} flex-wrap — то же
-   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} flex — то же
-   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} padding — то же
-   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} inset — то же
-   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} display — то же
-   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} order — то же
    visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} padding-inline — правило переехало на .ovwrap вместе со снесённым классом .ov-col
    visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} gap — то же
    visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile — то же
@@ -10245,17 +10266,17 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .ov-col .statbar .s:nth-child(n + 3) {@container (max-width: 600px)} border-top — то же
 */
 @container (600px <= width <= 880px) {
-  .ovwrap .statbar .s { padding-inline: 10px; gap: 8px; }
-  .ovwrap .statbar .tile { --tile: 32px; --tile-ic: 17px; }
+  .ov-grid .statbar .s { padding-inline: 10px; gap: 8px; }
+  .ov-grid .statbar .tile { --tile: 32px; --tile-ic: 17px; }
 }
 @container (max-width: 600px) {
-  .ovwrap .statbar { flex-wrap: wrap; }
-  .ovwrap .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
-  .ovwrap .statbar .s::before { inset: 13px auto 13px 0; }
-  .ovwrap .statbar .s:nth-child(odd)::before { display: none; }
-  .ovwrap .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
-  .ovwrap .statbar .s.c-duration { order: 0; }
-  .ovwrap .statbar .s.c-distance { flex: 1 0 100%; }
+  .ov-grid .statbar { flex-wrap: wrap; }
+  .ov-grid .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
+  .ov-grid .statbar .s::before { inset: 13px auto 13px 0; }
+  .ov-grid .statbar .s:nth-child(odd)::before { display: none; }
+  .ov-grid .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .ov-grid .statbar .s.c-duration { order: 0; }
+  .ov-grid .statbar .s.c-distance { flex: 1 0 100%; }
 }
 /* 2-col wrap — one shape for both bars (mockup v01): the vertical hairline stays
    only left of the right-hand column, rows are separated horizontally, and the
