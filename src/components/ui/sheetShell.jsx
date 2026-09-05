@@ -181,11 +181,11 @@ const ScreenRiseClaim = createContext(/** @type {null | (() => () => void)} */ (
  *  вызыватель объявляет рост один раз пропом и о содержимом ничего не знает. */
 function useScreenRiseHost() {
   const [claims, setClaims] = useState(0);
-  const claim = useCallback(() => {
+  const claimScreen = useCallback(() => {
     setClaims((n) => n + 1);
     return () => setClaims((n) => n - 1);
   }, []);
-  return /** @type {[boolean, () => () => void]} */ ([claims > 0, claim]);
+  return { screenAsked: claims > 0, claimScreen };
 }
 
 /**
@@ -250,7 +250,7 @@ export function SheetSurface({
   // Рост, о котором просит содержимое, перебивает объявленный: форма занимает
   // экран, пока она здесь. Поверхность без заявок (пикер, окно) этого не
   // замечает — она и так `screen`.
-  const [screenAsked, claimScreen] = useScreenRiseHost();
+  const { screenAsked, claimScreen } = useScreenRiseHost();
   // ★★ ВТОРАЯ ЗАЯВКА — САМА КЛАВИАТУРА, И ОНА НЕ ДУБЛЬ ПЕРВОЙ. Форма просит
   // экран ЗАРАНЕЕ (иначе она открылась бы ростом сцены и прыгала на первом тапе
   // в поле); клавиатура — страховка для полей, живущих где угодно ещё: фильтр

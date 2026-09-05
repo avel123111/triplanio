@@ -195,12 +195,12 @@ test('★★ РОСТ поверхности живёт в правиле РОЛ
   const css = readFileSync(join(SRC, 'design/app.css'), 'utf8');
   const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const rules = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-    .map(([, sel, body]) => ({ sel: sel.trim(), body }))
-    .filter((r) => /--sheet-cut\s*:/.test(r.body));
-  assert.equal(rules.length, 1,
-    `вырез объявляет ровно одно правило — роль «сцена»; найдено ${rules.length}: ${rules.map((r) => r.sel).join(' | ')}`);
+    .map(([, sel, body]) => ({ sel: sel.trim(), body }));
+  const cut = rules.filter((r) => /--sheet-cut\s*:/.test(r.body));
+  assert.equal(cut.length, 1,
+    `вырез объявляет ровно одно правило — роль «сцена»; найдено ${cut.length}: ${cut.map((r) => r.sel).join(' | ')}`);
 
-  const [scene] = rules;
+  const [scene] = cut;
   assert.match(scene.sel, /\[data-sheet-rise=['"]scene['"]\]/,
     'рост адресуется признаком роли, который ставит шов, — как и сама роль «я экран»');
   assert.match(scene.body, /var\(--scene-rise/,
@@ -210,8 +210,7 @@ test('★★ РОСТ поверхности живёт в правиле РОЛ
   assert.match(scene.body, /height:\s*calc\(100dvh\s*-\s*var\(--sheet-cut\)\)/,
     'высота — тот же вырез: значения обязаны приезжать из ОДНОЙ величины');
 
-  const family = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-    .map(([, sel, body]) => ({ sel: sel.trim(), body }))
+  const family = rules
     .filter((r) => /transition\s*:/.test(r.body) && r.sel.includes('[data-sheet-full]'));
   assert.equal(family.length, 1, 'переход между ростами объявлен один раз и на СЕМЬЕ');
   assert.match(family[0].body, /transition:[^;]*\btop\b[^;]*\bheight\b/,

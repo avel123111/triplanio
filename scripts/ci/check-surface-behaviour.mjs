@@ -40,9 +40,13 @@ const check = (ok, what, detail = '') => {
 };
 
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
-const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+// Кадр стенда — одно число на весь файл: проверки роста сверяются С НИМ, а не с
+// переписанным рядом литералом (разъезд выглядел бы как красный гард на верной вёрстке).
+const VW = 390;
+const VH = 844;
+const page = await browser.newPage({ viewport: { width: VW, height: VH }, hasTouch: true, isMobile: true });
 
-console.log(`check-surface-behaviour: ${BASE} (390x844, touch)\n`);
+console.log(`check-surface-behaviour: ${BASE} (${VW}x${VH}, touch)\n`);
 await page.goto(`${BASE}/kit/autocomplete`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1200);
 
@@ -295,7 +299,7 @@ if (picker && panel) {
      того, на что смотрят, и встаёт ростом СЦЕНЫ. На витрине сцены со шитом нет,
      поэтому рост вырождается в рабочий — его и меряем ниже отдельным блоком. */
   check(picker.top === 0, 'шторка пикера — экран во весь вьюпорт', `верх: ${picker.top}`);
-  check(panel.top > 0 && panel.bottom === 844,
+  check(panel.top > 0 && panel.bottom === VH,
     'панель встаёт НЕ во весь экран, но прижата к низу',
     `верх: ${panel.top} · низ: ${panel.bottom}`);
   check(picker.scrolls === true && picker.inViewport === true,
@@ -323,7 +327,10 @@ const riseAt = async (value) => {
   await page.locator('button:has-text("Панель редактора")').first().tap();
   await page.waitForTimeout(900);
   const got = await page.evaluate(() => {
-    const el = document.querySelector('.lp-sheet');
+    // Адресуем СЕМЬЮ, а не скин: рост — свойство роли, и мерить его по имени
+    // одного носителя значит вернуть ровно ту форму, из которой поверхности
+    // разъезжались (TRIP-494).
+    const el = document.querySelector('[data-sheet-full]');
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return { top: Math.round(r.top), height: Math.round(r.height) };
@@ -338,15 +345,15 @@ check(!!riseMid && riseMid.height === 500,
   'ПАНЕЛЬ ВСТАЁТ РОСТОМ СЦЕНЫ (шит на середине → и панель на середине)',
   riseMid ? `рост сцены 500 → высота ${riseMid.height}, верх ${riseMid.top}` : 'панель не открылась');
 
-const riseFull = await riseAt('844px');
-check(!!riseFull && riseFull.top === 0 && riseFull.height === 844,
+const riseFull = await riseAt(`${VH}px`);
+check(!!riseFull && riseFull.top === 0 && riseFull.height === VH,
   'сцена во весь экран → и панель во весь экран (без второго правила и без порога)',
   riseFull ? `верх ${riseFull.top} · высота ${riseFull.height}` : 'панель не открылась');
 
 const riseNone = await riseAt(null);
-check(!!riseNone && riseNone.height > 0 && riseNone.height < 844,
+check(!!riseNone && riseNone.height > 0 && riseNone.height < VH,
   'СЦЕНА БЕЗ ШИТА → рабочий рост, а не экран целиком (таймлайн, календарь, бюджет)',
-  riseNone ? `высота ${riseNone.height} из 844` : 'панель не открылась');
+  riseNone ? `высота ${riseNone.height} из ${VH}` : 'панель не открылась');
 
 /* ── ГРАНИЦА КРАХА ПОВЕРХНОСТИ (TRIP-515) ────────────────────────────────────
    Грепом недоказуемо, и грепом же не проверить: краш ВНУТРИ окна обязан закрыть
