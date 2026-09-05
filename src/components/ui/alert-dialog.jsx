@@ -1,8 +1,25 @@
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
+import { SurfaceCrashGuard } from "@/components/ui/surfaceCrashGuard"
 import { cn } from "@/lib/utils"
 
-const AlertDialog = AlertDialogPrimitive.Root
+// ★ AlertDialog — СОВМЕЩЁННЫЙ ВЛАДЕЛЕЦ, а не голый re-export Root (TRIP-515).
+// Раньше отсюда наружу уходил `AlertDialogPrimitive.Root`, а вызыватель
+// (ConfirmDialog) собирал `<AlertDialog open onOpenChange>` + Content сам — то
+// есть у окна подтверждения не было корневого композера, где можно было бы
+// поставить границу краха. Теперь он есть: тот же контракт open/onOpenChange
+// (пропы уезжают в Root как прежде), плюс SurfaceCrashGuard вокруг содержимого —
+// краш внутри подтверждения закрывает окно, а не убивает приложение. Это тот же
+// «одна дверь», что у Sheet.jsx.
+function AlertDialog({ children, ...props }) {
+  return (
+    <AlertDialogPrimitive.Root {...props}>
+      <SurfaceCrashGuard open={props.open} onClose={() => props.onOpenChange?.(false)}>
+        {children}
+      </SurfaceCrashGuard>
+    </AlertDialogPrimitive.Root>
+  )
+}
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 const AlertDialogPortal = AlertDialogPrimitive.Portal
 

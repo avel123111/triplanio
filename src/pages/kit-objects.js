@@ -125,6 +125,9 @@ export const KIT_OBJECTS = [
      поэтому скролл композера и разъехавшиеся краска с бровью доезжали до
      человека. `css: false`: класса своего у роли нет, она признак семьи. */
   { id: 'full-surface', family: null, group: 'components', css: false, interactive: true },
+  // Стенд границы краха поверхности (TRIP-515): краш внутри окна закрывает окно,
+  // а не приложение. Своего CSS-класса нет — стенд поведенческий (check:surfaces).
+  { id: 'surface-crash', family: null, group: 'components', css: false, interactive: true },
   { id: 'ai-blk', family: 'ai', group: 'components', css: true },
   { id: 'time', family: 'time', group: 'components', css: true },
   // ── Примитивы раскладки ─────────────────────────────────────────────────

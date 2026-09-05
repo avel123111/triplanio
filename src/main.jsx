@@ -35,8 +35,9 @@
 import '@/design/app.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { initSentry } from '@/lib/sentry'
+import { initSentry, Sentry } from '@/lib/sentry'
 import { installChunkReloadGuard } from '@/lib/chunkReload'
+import { installDomGuard } from '@/lib/domGuard'
 import { applyConsent, clearAnalyticsStorage, getConsent } from '@/lib/consent'
 import { setCampaign } from '@/lib/analytics'
 import { boot as bootPosthog } from '@/lib/destinations/posthog'
@@ -72,6 +73,17 @@ initSentry()
 
 // Reload once on a stale-chunk import failure after a deploy (TRIP-284, 1f).
 installChunkReloadGuard()
+
+// Keep DOM mutations non-throwing when a browser translator/extension reparents
+// our text nodes (TRIP-515). Extensions ignore translate="no", so this is the
+// belt for them: a skipped op is reported to Sentry once per session per op, so
+// we get a count of mutating-DOM sessions without a flood. Before the first render.
+installDomGuard((op) => {
+  Sentry.captureException(
+    new Error(`domGuard: пропущен ${op} на переусыновлённом узле (переводчик/расширение)`),
+    { level: 'warning', tags: { surface: 'frontend', region: 'dom-guard', op } },
+  );
+})
 
 // Typography canon inspector (TRIP-165) — a dev/staging-only browser tool.
 // It must run on the DEPLOYED dev site (dev.triplanio.com), which Vercel builds
