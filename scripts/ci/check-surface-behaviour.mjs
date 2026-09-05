@@ -292,16 +292,8 @@ if (picker && panel) {
     `${picker.paint} · ${panel.paint}`);
   check(picker.paint === picker.pageGround, 'И ЭТО КРАСКА СТРАНИЦЫ, А НЕ КАРТОЧКИ',
     `поверхность ${picker.paint} · страница ${picker.pageGround}`);
-  /* ⚠️ «ОБЕ ВО ВЕСЬ ВЬЮПОРТ» БОЛЬШЕ НЕ ВЕРНО, И ЭТО НЕ ПОСЛАБЛЕНИЕ. Роль «я
-     экран» у обеих осталась прежней (коробка от раскладки, краска, бровь,
-     резерв под клавиатуру — всё выше сверено), а вот РОСТ — второе свойство:
-     шторка пикера просит ввод и занимает экран, панель показывает подробность
-     того, на что смотрят, и встаёт ростом СЦЕНЫ. На витрине сцены со шитом нет,
-     поэтому рост вырождается в рабочий — его и меряем ниже отдельным блоком. */
-  check(picker.top === 0, 'шторка пикера — экран во весь вьюпорт', `верх: ${picker.top}`);
-  check(panel.top > 0 && panel.bottom === VH,
-    'панель встаёт НЕ во весь экран, но прижата к низу',
-    `верх: ${panel.top} · низ: ${panel.bottom}`);
+  check(picker.top === 0 && panel.top === 0, 'обе — экран во весь вьюпорт',
+    `верх: ${picker.top} · ${panel.top}`);
   check(picker.scrolls === true && picker.inViewport === true,
     'ДЛИННЫЙ ЛИСТ СКРОЛЛИТ СЕБЯ, А НЕ УЕЗЖАЕТ ЗА ЭКРАН',
     `скроллится: ${picker.scrolls} · низ в кадре: ${picker.inViewport}`);
@@ -310,50 +302,88 @@ if (picker && panel) {
     `скроллится: ${panel.scrolls} · низ в кадре: ${panel.inViewport}`);
 }
 
-/* ── РОСТ ПОВЕРХНОСТИ = РОСТ СЦЕНЫ ──────────────────────────────────────────
-   Панель, открытая поверх шита маршрута, обязана встать ТОЙ ЖЕ высотой: тап по
-   городу раскрывает подробность, а не подменяет экран. Читателем факта служит
-   CSS, публикует его шит сцены (`--scene-rise`) — здесь публикуем сами, потому
-   что проверяется ЧИТАТЕЛЬ, а не издатель (издателя пиннит `pickerSurface.test`).
-   Скриншота у этого правила нет: панель во весь экран выглядит как работающий
-   экран, просто не тот. */
-const riseAt = async (value) => {
-  await page.goto(`${BASE}/kit/full-surface`, { waitUntil: 'networkidle' });
+/* ── ПАНЕЛЬ — СЛОЙ ТОГО ЖЕ ШИТА (телефонная раскладка экрана с картой) ───────
+   Панель города/события была ВТОРОЙ поверхностью поверх шита сцены, и платила за
+   это всем сразу: рост не совпадал с шитом, поднять её жестом было нечем, скрим
+   гасил живую карту, а её собственная анимация высоты выбивалась инлайн-стилями
+   vaul после первого же касания пальцем.
+   Теперь у экрана ОДИН шит, а панель — его слой, и проверяется ровно то, что из
+   этого следует. Ни одного скриншота у этих правил нет: «панель открылась»
+   выглядит одинаково и когда всё верно, и когда сломано. Стенд — `/kit/scene-sheet`.
+   Жесты идут через CDP: PeekSheet слушает `touch*`, а нативный скролл рождается
+   только настоящим касанием — синтетическое событие его не двигает. */
+const cdp = await page.context().newCDPSession(page);
+const swipe = async (x, y0, y1, steps = 12) => {
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: y0 }] });
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: Math.round(y0 + ((y1 - y0) * i) / steps) }] });
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await page.waitForTimeout(700);
-  await page.evaluate((v) => {
-    if (v === null) document.documentElement.style.removeProperty('--scene-rise');
-    else document.documentElement.style.setProperty('--scene-rise', v);
-  }, value);
-  await page.locator('button:has-text("Панель редактора")').first().tap();
-  await page.waitForTimeout(900);
-  const got = await page.evaluate(() => {
-    // Адресуем СЕМЬЮ, а не скин: рост — свойство роли, и мерить его по имени
-    // одного носителя значит вернуть ровно ту форму, из которой поверхности
-    // разъезжались (TRIP-494).
-    const el = document.querySelector('[data-sheet-full]');
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { top: Math.round(r.top), height: Math.round(r.height) };
-  });
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(700);
-  return got;
 };
+const sheetGeo = () => page.evaluate(() => {
+  const sh = document.querySelector('.peek-sheet');
+  if (!sh) return null;
+  const r = sh.getBoundingClientRect();
+  const sc = sh.querySelector('[data-sheet-scroller]');
+  const grip = sh.querySelector('[data-peek-grip]').getBoundingClientRect();
+  const body = sc && sc.getBoundingClientRect();
+  return {
+    detent: sh.dataset.detent, top: Math.round(r.top), layer: sh.hasAttribute('data-layer'),
+    scrollTop: sc ? sc.scrollTop : null, scrollable: sc ? sc.scrollHeight > sc.clientHeight : null,
+    gripY: Math.round(grip.y + grip.height / 2),
+    bodyMid: body ? Math.round(body.y + body.height / 2) : null,
+    scrim: !!document.querySelector('[data-vaul-overlay], .sheet-backdrop'),
+  };
+});
 
-const riseMid = await riseAt('500px');
-check(!!riseMid && riseMid.height === 500,
-  'ПАНЕЛЬ ВСТАЁТ РОСТОМ СЦЕНЫ (шит на середине → и панель на середине)',
-  riseMid ? `рост сцены 500 → высота ${riseMid.height}, верх ${riseMid.top}` : 'панель не открылась');
+await page.goto(`${BASE}/kit/scene-sheet`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(1000);
+const beforePanel = await sheetGeo();
+await page.locator('button:has-text("Открыть панель города")').first().tap();
+await page.waitForTimeout(800);
+const withPanel = await sheetGeo();
+check(!!withPanel && withPanel.layer === true && withPanel.top === beforePanel.top,
+  'ПАНЕЛЬ ОТКРЫВАЕТСЯ РОСТОМ ШИТА (детент не меняется — панель не подменяет экран)',
+  withPanel ? `верх ${beforePanel.top} → ${withPanel.top} · слой: ${withPanel.layer}` : 'панель не открылась');
+check(!!withPanel && withPanel.scrim === false,
+  'КАРТА НЕ ГАСНЕТ: у слоя нет ни скрима, ни модальной подложки',
+  withPanel ? `подложка: ${withPanel.scrim}` : '');
 
-const riseFull = await riseAt(`${VH}px`);
-check(!!riseFull && riseFull.top === 0 && riseFull.height === VH,
-  'сцена во весь экран → и панель во весь экран (без второго правила и без порога)',
-  riseFull ? `верх ${riseFull.top} · высота ${riseFull.height}` : 'панель не открылась');
+await swipe(195, withPanel.bodyMid, withPanel.bodyMid - 200);
+const afterScroll = await sheetGeo();
+check(afterScroll.scrollTop > 0 && afterScroll.top === withPanel.top,
+  'СКРОЛЛ ВНУТРИ ПАНЕЛИ ЖИВОЙ, а шит при этом стоит',
+  `прокручено ${afterScroll.scrollTop}px · верх шита ${afterScroll.top}`);
 
-const riseNone = await riseAt(null);
-check(!!riseNone && riseNone.height > 0 && riseNone.height < VH,
-  'СЦЕНА БЕЗ ШИТА → рабочий рост, а не экран целиком (таймлайн, календарь, бюджет)',
-  riseNone ? `высота ${riseNone.height} из ${VH}` : 'панель не открылась');
+await swipe(195, afterScroll.gripY, afterScroll.gripY - 300);
+const afterUp = await sheetGeo();
+check(afterUp.top === 0,
+  'ПАНЕЛЬ ПОДНИМАЕТСЯ ЖЕСТОМ ДО ЭКРАНА (детент, а не вторая поверхность)',
+  `верх ${afterScroll.top} → ${afterUp.top}, детент ${afterUp.detent}`);
+await swipe(195, afterUp.gripY, afterUp.gripY + 300);
+const afterDown = await sheetGeo();
+check(afterDown.top > 0, 'и опускается обратно тем же жестом', `верх ${afterDown.top}`);
+
+/* ★ ПОДЪЁМ ПО ЗАЯВКЕ — ПОСЛЕ КАСАНИЯ ПАЛЬЦЕМ, И ЭТО ЧАСТЬ ПРОВЕРКИ. Прежняя
+   редакция (панель отдельной шторкой) играла переход ровно до первого касания:
+   vaul ставил инлайн `transition: transform`, и объявленный в CSS переход высоты
+   переставал существовать. Снаружи это выглядело как «иногда плавно, иногда
+   рывком», то есть как случайность. */
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 300 }] });
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+await page.waitForTimeout(300);
+const rise = await page.evaluate(async () => {
+  const sh = document.querySelector('.peek-sheet');
+  const t0 = performance.now(); const f = [];
+  document.evaluate("//button[contains(., 'Открыть форму')]", document, null, 9, null).singleNodeValue.click();
+  await new Promise((r) => { (function tick() { f.push(Math.round(sh.getBoundingClientRect().top)); if (performance.now() - t0 < 500) requestAnimationFrame(tick); else r(); })(); });
+  return { first: f[0], mid: f[Math.floor(f.length / 2)], last: f[f.length - 1] };
+});
+check(rise.last === 0 && rise.mid > 0 && rise.mid < rise.first,
+  'ФОРМА ПОДНИМАЕТ ШИТ ДО ЭКРАНА ПЛАВНО — И ПОСЛЕ КАСАНИЯ ПАЛЬЦЕМ ТОЖЕ',
+  `кадры: ${rise.first} → ${rise.mid} → ${rise.last}`);
 
 /* ── ГРАНИЦА КРАХА ПОВЕРХНОСТИ (TRIP-515) ────────────────────────────────────
    Грепом недоказуемо, и грепом же не проверить: краш ВНУТРИ окна обязан закрыть

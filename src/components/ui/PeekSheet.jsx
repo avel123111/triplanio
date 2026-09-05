@@ -4,6 +4,7 @@ import { SHEET_CONTROL_SELECTOR, gestureOwner, nearestDetent, resolveDetents, ta
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
 import { focusInside, useKeyboardMine } from '@/lib/keyboardOpen';
+import { SHEET_SCROLLER_SEL } from '@/components/ui/sheetShell';
 
 /**
  * PeekSheet — НЕМОДАЛЬНЫЙ постоянный боттом-шит с ДЕТЕНТАМИ: он всегда на
@@ -102,6 +103,7 @@ function viewportTop() {
  *   onHeightLive?: (px: number, phase: 'move' | 'end', capPx: number) => void,
  *   label: string,
  *   className?: string,
+ *   layer?: boolean,
  * }} p
  */
 export function PeekSheet({
@@ -121,6 +123,14 @@ export function PeekSheet({
   onHeightLive,
   label,
   className = '',
+  // ★ ВНУТРИ ЛЕЖИТ СЛОЙ, КОТОРЫЙ СКРОЛЛИТ СЕБЯ САМ (панель города/события у
+  // редактора). Тогда тело шита — коробка, а не скроллер: два вложенных
+  // скроллера дают жест, который «залипает» между ними, и футер панели уезжает
+  // в прокрутку вместе с содержимым. Факт объявляет ВЛАДЕЛЕЦ шита признаком, а
+  // не CSS-запрос по содержимому (`:has`): содержимое здесь сменяется на живом
+  // экране — маршрут ↔ панель, — и вывод из него отвалился бы ровно в момент
+  // смены (та же грабля, что стоила перезапуска въезда шторки).
+  layer = false,
 }) {
   const sheetRef = useRef(null);
   const headRef = useRef(null);
@@ -252,6 +262,14 @@ export function PeekSheet({
         // `tapSettles` — разбор там же.
         onControl: !!(e.target.closest && e.target.closest(SHEET_CONTROL_SELECTOR)
           && !e.target.closest('[data-peek-grip]')),
+        // ★ СКРОЛЛЕР — ТОТ, НА КОТОРОМ ПАЛЕЦ, А НЕ «ТЕЛО ШИТА». Пока содержимым
+        // шита был только список маршрута, это совпадало. Слой панели приносит
+        // СВОЙ скроллер (`.lp-b`), и правило, спрашивающее тело, отвечало бы про
+        // чужую коробку: тело не скроллится — значит «жест наш» — значит список
+        // внутри панели не скроллится ВООБЩЕ. Скроллер называет себя признаком
+        // (`data-sheet-scroller`, шов `ui/sheetShell`), поэтому спрашивать его
+        // умеет и шит, и полноростная поверхность — одним способом.
+        scroller: (e.target.closest && e.target.closest(SHEET_SCROLLER_SEL)) || bodyRef.current,
         mode: 'idle',
       };
     };
@@ -265,7 +283,7 @@ export function PeekSheet({
         // Кому жест — решает чистое правило (закрыто тестами): грип и шапка
         // всегда двигают шит, тело скроллится на ЛЮБОМ детенте, а тяга вниз от
         // самого верха тела опускает шит.
-        const body = bodyRef.current;
+        const body = d.scroller || bodyRef.current;
         d.mode = gestureOwner({
           onHandle: d.onHandle,
           // В содержимом уже тащат карточку (перестановка городов) — жест не наш.
@@ -349,29 +367,6 @@ export function PeekSheet({
 
   useEffect(() => { onHeightChange && onHeightChange(sheetH, capPx); }, [sheetH, capPx, onHeightChange]);
 
-  // ★★ РОСТ СЦЕНЫ ПУБЛИКУЕТ ЕЁ ШИТ — НА КОРНЕ ДОКУМЕНТА, А НЕ ПРОПОМ.
-  // Модальная поверхность, открывающаяся ПОВЕРХ шита (панель города/события),
-  // обязана встать той же высотой: тап по городу раскрывает подробность, а не
-  // подменяет экран. Спросить у шита она не может — живёт в портале
-  // `document.body` и открывается в том числе на сценах, где шита нет вовсе.
-  // Поэтому факт объявляется тем же приёмом, каким нав объявляет свою полосу
-  // (`--nav-dock-h`), а клавиатура — закрытое ею место (`--kb-h`).
-  //
-  // ★ НЕ НИЖЕ РАБОЧЕГО ДЕТЕНТА, И ЭТО ЧАСТЬ ПРАВИЛА. Нижний детент — подсказка
-  // (полоска с заголовком над картой); панель ростом с неё была бы не
-  // «маленькой», а нечитаемой — шапка и первый ряд не помещаются. Рабочий рост
-  // — тот же второй сверху детент, которым шит уже меряет свободное окно карты
-  // (`capPx`): второго представления о «рабочей высоте» в проекте не заводится.
-  //
-  // ⚠️ УБОРКА ОБЯЗАТЕЛЬНА. Ушли с линзы маршрута — сцены с шитом больше нет, и
-  // застрявшее значение открыло бы панель на таймлайне листом в 68% экрана.
-  // Значение по умолчанию (сцена без шита) объявляет читатель в CSS — здесь
-  // публикуется ТОЛЬКО факт живого шита.
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--scene-rise', `${Math.max(sheetH, capPx)}px`);
-    return () => root.style.removeProperty('--scene-rise');
-  }, [sheetH, capPx]);
 
   const style = {
     '--sheet-y': (dragY ?? restY) + 'px',
@@ -403,6 +398,7 @@ export function PeekSheet({
       style={style}
       data-detent={index}
       data-detent-max={stops.length - 1}
+      data-layer={layer || undefined}
     >
       {/* Скин «брови» — канон `.sheet-grip`; свой класс несёт только то, чем
           ЭТОТ грип отличается: он функциональный (слайдер по детентам), а не

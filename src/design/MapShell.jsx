@@ -4,6 +4,7 @@ import { Card } from './index.jsx';
 import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
+import { ScreenRiseProvider, useScreenRiseHost } from '@/components/ui/sheetShell';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { mapShellInsets } from '@/lib/mapShellInsets';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
@@ -94,6 +95,18 @@ export function MapShell({
   // Живёт здесь, а не в `children`: `children` лежат поверх ВСЕГО шелла (карты
   // в том числе), а ящик обязан закрывать ровно панель и не трогать карту —
   // по ней в этот момент продолжают кликать.
+  //
+  // ★★ НА ТЕЛЕФОНЕ ЭТОТ СЛОЙ — СОДЕРЖИМОЕ ТОГО ЖЕ ШИТА, А НЕ ВТОРАЯ ПОВЕРХНОСТЬ
+  // ПОВЕРХ НЕГО. Панель города/события открывается ПОДРОБНОСТЬЮ того, на что
+  // смотрят, поэтому у экрана остаётся ОДИН шит, а панель — его слой: рост берётся
+  // сам собой (тот же детент), поднять её до полного экрана можно тем же жестом,
+  // карта под ней остаётся живой (шит немодален), а скролл идёт по тому же
+  // правилу, что и у списка маршрута.
+  // ⚠️ ВТОРАЯ ПОВЕРХНОСТЬ ЗДЕСЬ УЖЕ БЫЛА, И ОНА ПРОИГРЫВАЕТ ПО ПОСТРОЕНИЮ:
+  // модальная шторка vaul гасит карту скримом, лочит страницу, не умеет
+  // детентов — и не отдаёт свою коробку: после любого касания она ставит инлайн
+  // `transition: transform`, так что любая наша анимация её высоты играет ровно
+  // до первого касания пальцем.
   panelOverlay = null,
   // ЛОГИЧЕСКОЕ «слой открыт» для КАМЕРЫ — отдельно от `panelOverlay` (рендера).
   // Рендер живёт дольше: уходящий слой доигрывает анимацию ещё ~240 мс, и если бы
@@ -112,6 +125,34 @@ export function MapShell({
   children,
 }) {
   const isPhone = useIsPhone();
+  // Слой открыт — факт от экрана (`overlayActive`), а не «отрисован ли узел»:
+  // рендер живёт дольше (уходящий слой доигрывает анимацию), и шит на телефоне
+  // менял бы состав на 240 мс позже закрытия.
+  const layerOpen = isPhone && overlayActive && !!panelOverlay;
+
+  // ★★ «МНЕ НУЖЕН ВЕСЬ ЭКРАН» ИСПОЛНЯЕТ ТОТ, КТО ВЛАДЕЕТ ВЫСОТОЙ. Форма внутри
+  // панели (`EventEditDialog` → `useScreenRise`) заявляет потребность; для шита
+  // «весь экран» — это верхний детент, то есть его штатное движение, тем же
+  // темпом и той же кривой, что и любое другое. Закрылась форма — шит вернулся
+  // туда, где стоял: детент экрана принадлежит человеку, а не панели.
+  const { screenAsked, claimScreen } = useScreenRiseHost();
+  const beforeRise = useRef(/** @type {number | null} */ (null));
+  useEffect(() => {
+    if (!isPhone || !onDetentChange) return;
+    const top = Math.max(0, detents.length - 1);
+    if (screenAsked) {
+      if (beforeRise.current == null) beforeRise.current = detent;
+      if (detent !== top) onDetentChange(top);
+      return;
+    }
+    const back = beforeRise.current;
+    beforeRise.current = null;
+    if (back != null && back !== detent) onDetentChange(back);
+    // Зависимость намеренно ОДНА: реагируем на смену ЗАЯВКИ, а не на каждое
+    // движение шита. Иначе человек, опустивший шит при открытой форме, тут же
+    // получал бы его обратно наверх — то есть жест переставал бы работать.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenAsked, isPhone]);
   const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
@@ -215,11 +256,17 @@ export function MapShell({
           onDetentChange={onDetentChange}
           onHeightChange={applySheetPx}
           onHeightLive={onSheetLive}
-          header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
-          footer={panelFooter}
+          /* Слой несёт СВОЮ шапку и свой футер (`.lp-h` / `.lp-f`), поэтому
+             шапка и действия маршрута на это время уходят: две шапки подряд —
+             это не «богато», это непонятно, чей заголовок читаешь. */
+          header={layerOpen ? null : (panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null)}
+          footer={layerOpen ? null : panelFooter}
           label={panelLabel}
+          layer={layerOpen}
         >
-          {panel}
+          <ScreenRiseProvider claim={claimScreen}>
+            {layerOpen ? panelOverlay : panel}
+          </ScreenRiseProvider>
         </PeekSheet>
       ) : (
         <>

@@ -128,6 +128,11 @@ export const KIT_OBJECTS = [
   // Стенд границы краха поверхности (TRIP-515): краш внутри окна закрывает окно,
   // а не приложение. Своего CSS-класса нет — стенд поведенческий (check:surfaces).
   { id: 'surface-crash', family: null, group: 'components', css: false, interactive: true },
+  // Шит сцены со СЛОЕМ панели внутри (телефонная раскладка редактора маршрута):
+  // рост панели = детент шита, карта под ним живая, скроллит панель, «весь
+  // экран» = верхний детент. Всё это — поведение, у которого нет скриншота,
+  // поэтому у объекта есть стенд и приёмка (`check:surfaces`).
+  { id: 'scene-sheet', family: null, group: 'components', css: false, interactive: true },
   { id: 'ai-blk', family: 'ai', group: 'components', css: true },
   { id: 'time', family: 'time', group: 'components', css: true },
   // ── Примитивы раскладки ─────────────────────────────────────────────────

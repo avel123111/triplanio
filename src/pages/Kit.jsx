@@ -36,7 +36,7 @@ import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover, CoverPicker,
-  BookingWarning, TimelineEmptyDay,
+  BookingWarning, TimelineEmptyDay, MapShell,
   CityBar, EventChip,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, EVENTCHIP_VARIANTS, toast,
@@ -46,7 +46,7 @@ import Accordion from '@/components/common/Accordion';
 import Autocomplete from '@/components/common/Autocomplete';
 import { PickerSheet } from '@/components/ui/PickerSheet';
 import LpSheet from '@/components/ui/LpSheet';
-import { sheetScroller } from '@/components/ui/sheetShell';
+import { sheetScroller, useScreenRise } from '@/components/ui/sheetShell';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Экран запуска (TRIP-478) — ровно те файлы, что подставляются в документ на
 // сборке (плагин `inline-splash`). Витрина не пересобирает заставку по образу и
@@ -78,7 +78,7 @@ const TX = {
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
     'splash': 'Экран запуска', 'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
     'coverpicker': 'Пикер обложки', 'full-surface': 'Полноростная поверхность',
-    'surface-crash': 'Граница краха окна',
+    'surface-crash': 'Граница краха окна', 'scene-sheet': 'Шит сцены со слоем панели',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -97,6 +97,7 @@ const TX = {
     'input': 'Декорации поля, которые эмитит сам <Input>: иконка, кольцо, валюта, ряд.',
     'autocomplete': 'Поиск-по-мере-ввода: поле + выпадающий лист на Popover (лист-хром .ss-* общий с SearchSelect). Флип и «клик мимо» — от Popover.',
     'full-surface': 'Экран во весь вьюпорт. Их ТРИ и это одна вещь: шторка пикера, оболочка панелей редактора и окно с полями (<Dialog full>) — общая коробка, краска (--bg), бровь и резерв под клавиатуру у скроллера. Смотреть на 390: правила семьи живут ≤640.',
+    'scene-sheet': 'Телефонная раскладка экрана с картой: у экрана ОДИН шит, а панель города/события — его СЛОЙ. Рост панели = текущий детент, поднять до экрана можно тем же жестом, карта под шитом живая (шит немодален), скроллит сама панель. Смотреть на 390.',
     'surface-crash': 'Граница краха в шве (TRIP-515). Краш ВНУТРИ окна закрывает окно, а не убивает приложение; промис confirm() разрешается false даже когда краш случился при busy. Приёмка — check:surfaces.',
     'avatar': 'Инициалы / фото / AI / плейсхолдер / удалён; размеры и стопка.',
     'sev': 'Тон по уровню важности (info/warning/error/success/quiet).',
@@ -146,6 +147,10 @@ const TX = {
   roleOwner: 'Владелец', roleAdmin: 'Админ', roleViewer: 'Наблюдатель', rolePending: 'Ожидает',
   overnight: 'Ночной переезд', acSearchPh: 'Начните вводить город…',
   fsPicker: 'Шторка пикера', fsPanel: 'Панель редактора', fsDialog: 'Окно с полями',
+  ssLabel: 'Маршрут', ssRoute: 'Маршрут', ssOpenPanel: 'Открыть панель города',
+  ssPanelTitle: 'Панель города', ssForm: 'Форма события', ssOpenForm: 'Открыть форму',
+  ssBackToView: 'Назад к просмотру', ssMapTaps: 'Нажатий по карте',
+  ssFormBody: 'У формы поля, поэтому она заявляет «нужен весь экран»: шит поднимается на верхний детент своим движением.',
   fsPickerTitle: 'Полноростная шторка', fsPanelTitle: 'Полноростная панель',
   fsDialogTitle: 'Полноростное окно', fsDialogField: 'Что случилось',
   fsDialogHint: 'То же окно без `full` — шторка по содержимому: сравнить переключателем.',
@@ -381,6 +386,77 @@ function SurfaceCrashDemo() {
       <Badge>промис: {promiseResult}</Badge>
     </div>
   );
+}
+
+/**
+ * ШИТ СЦЕНЫ СО СЛОЕМ ПАНЕЛИ — телефонная раскладка экрана с картой (редактор
+ * маршрута). Стенд держит ровно то, что ломалось, когда панель была ВТОРОЙ
+ * поверхностью поверх шита: рост не совпадал с шитом, поднять её жестом было
+ * нечем, карта гасла скримом, а список внутри переставал скроллиться.
+ *
+ * ★ КАРТА ЗДЕСЬ — КНОПКА, И ЭТО НЕ ЛЕНЬ. Проверяемое — «карта под шитом
+ * принимает нажатие»; живой mapbox для этого не нужен (и не может быть на
+ * витрине: инстанс один на приложение), а счётчик нажатий делает факт видимым и
+ * глазу, и приёмке.
+ *
+ * ⚠️ ДОЛЯ ДС ПАДАЕТ РОВНО НА ЭТОТ СТЕНД, и подменить его композицией из системы
+ * нельзя: он обязан повторять НАСТОЯЩУЮ разметку панели (`.lp` + `.lp-h` +
+ * скроллер + `.lp-f`) — у неё нет компонента ДС, и именно её поведение
+ * проверяется. Витрина, собранная «из чего-нибудь другого», доказывала бы
+ * свойства другой коробки.
+ * floor-exempt: dsshare +9 — стенд повторяет разметку панели, у которой нет компонента ДС; без него рост/жест/скролл слоя непроверяемы (постановка Pavel: «поведение нестабильное, унифицируй»)
+ * floor-exempt: inline +2 — коробка витрины и заглушка карты: в приложении шелл во весь экран, на витрине его надо во что-то посадить (те же два инлайна объявлены построчно для 2l)
+ */
+function SceneSheetDemo() {
+  const [detent, setDetent] = useState(1);
+  const [panel, setPanel] = useState(false);
+  const [form, setForm] = useState(false);
+  const [taps, setTaps] = useState(0);
+  return (
+    <div className="grow" style={{ height: 420, position: 'relative', overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>{/* inline-style-exempt: стенд держит шелл в коробке витрины, в приложении он во весь экран */}
+      <MapShell
+        panelLabel={TX.ssLabel}
+        detent={detent}
+        onDetentChange={setDetent}
+        overlayActive={panel}
+        map={<button type="button" className="grow" style={{ width: '100%', height: '100%', border: 0, background: 'var(--wash)' }} onClick={() => setTaps((n) => n + 1)}>{/* inline-style-exempt: заглушка карты на витрине — живой инстанс один на приложение */}
+          {TX.ssMapTaps}: {taps}
+        </button>}
+        panelHeader={<div className="t-title">{TX.ssRoute}</div>}
+        panel={(
+          <div className="col col--g3">
+            <Btn variant="secondary" onClick={() => { setPanel(true); setForm(false); }}>{TX.ssOpenPanel}</Btn>
+            {KIT_CITIES.map((c) => (
+              <Card key={c.id} recessed radius="md"><div className="t-strong">{c.name}</div><div className="t-meta muted">{c.sub}</div></Card>
+            ))}
+          </div>
+        )}
+        panelOverlay={panel ? (
+          <div className="lp">
+            <div className="lp-h">
+              <IconBtn icon="chevL" tone="soft" round ariaLabel={TX.fsBack} onClick={() => (form ? setForm(false) : setPanel(false))} />
+              <div className="lp-ti"><b>{form ? TX.ssForm : TX.ssPanelTitle}</b></div>
+            </div>
+            <div className="lp-b scrollbar-thin" {...sheetScroller}>
+              {form ? <ScreenRiseClaimant /> : KIT_CITIES.concat(KIT_CITIES).map((c, i) => (
+                <Card key={i} recessed radius="md"><div className="t-strong">{c.name}</div><div className="t-meta muted">{c.sub}</div></Card>
+              ))}
+            </div>
+            <div className="lp-f">
+              <Btn variant="secondary" onClick={() => setForm((v) => !v)}>{form ? TX.ssBackToView : TX.ssOpenForm}</Btn>
+            </div>
+          </div>
+        ) : null}
+      />
+    </div>
+  );
+}
+
+/** Форма внутри панели: ей нужен весь экран, и она об этом ЗАЯВЛЯЕТ — рост
+ *  исполняет владелец высоты (шит), а не она сама. */
+function ScreenRiseClaimant() {
+  useScreenRise();
+  return <p className="t-body">{TX.ssFormBody}</p>;
 }
 
 function FullSurfaceDemo() {
@@ -921,6 +997,10 @@ const RECIPES = {
 
   'full-surface': () => [{
     items: [it('три поверхности семьи — открыть и сравнить', <FullSurfaceDemo />, true)],
+  }],
+
+  'scene-sheet': () => [{
+    items: [it('панель — слой того же шита: рост, жест, карта и скролл общие', <SceneSheetDemo />, true)],
   }],
 
   'surface-crash': () => [{

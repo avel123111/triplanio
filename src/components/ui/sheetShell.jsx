@@ -1,7 +1,6 @@
 // @ts-check
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Drawer } from 'vaul';
-import { useKeyboardMine } from '@/lib/keyboardOpen';
 import { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';
 
 /**
@@ -113,6 +112,12 @@ export const SHEET_FULL_ATTR = 'data-sheet-full';
  */
 export const sheetScroller = { 'data-sheet-scroller': '' };
 
+/** Тот же признак СЕЛЕКТОРОМ — для того, кто ищет скроллер под пальцем (шит
+ *  сцены: жест принадлежит тому скроллеру, на котором палец, а не «телу шита»).
+ *  Имя живёт в шве и здесь: копия литерала у читателя — второй способ назваться
+ *  скроллером, то есть ровно то, против чего заведён сам признак. */
+export const SHEET_SCROLLER_SEL = '[data-sheet-scroller]';
+
 /**
  * ПОЛЕ ПРИШПИЛЕНО — СВОЙСТВО ПОВЕРХНОСТИ, И ОНО ОБЯЗАНО БЫТЬ НЕПОДВИЖНЫМ.
  *
@@ -134,34 +139,6 @@ export const sheetScroller = { 'data-sheet-scroller': '' };
 export const SHEET_PINNED_ATTR = 'data-sheet-pinned';
 
 /**
- * ★★ РОСТ ПОЛНОРОСТНОЙ ПОВЕРХНОСТИ — ЭТО ВТОРОЕ ЕЁ СВОЙСТВО, И ОНО НЕ БУЛЕВО.
- *
- * `full` отвечает на вопрос «я экран или карточка над экраном»: коробка от
- * раскладки, краска страницы, резерв под клавиатуру. Это ОДНА роль, и она
- * осталась прежней. Вопрос «на какой рост поверхность встаёт при открытии» —
- * ДРУГОЙ, и до сих пор ответа у него не было вовсе: любая полноростная
- * поверхность занимала экран целиком.
- *
- * Значений два:
- *   `screen` (умолчание) — экран целиком. Шторка пикера и окно с полями: обе
- *      просят у человека ввод, а ввод занимает экран.
- *   `scene`  — рост СЦЕНЫ, на которой поверхность открылась (`--scene-rise`,
- *      публикует шит сцены, см. `ui/PeekSheet`). Панель города/события,
- *      открытая поверх шита маршрута, встаёт ТОЙ ЖЕ высотой: тап по городу
- *      раскрывает подробность, а не подменяет экран.
- *
- * ★ ПОЧЕМУ ПРИЗНАК, А НЕ КЛАСС, — по той же причине, что и у `full`: это роль
- * поверхности, а не её скин, и объявляет её ВЛАДЕЛЕЦ поверхности один раз.
- * Выводить рост из содержимого (какая панель сейчас внутри) нельзя — на этом
- * уже ломался способ въезда: свойство, выведенное из содержимого, отваливается
- * ровно тогда, когда содержимое сменилось.
- */
-/* Признак ставится, только когда рост ОТЛИЧАЕТСЯ от экрана: атрибут со
-   значением по умолчанию на каждой поверхности — шум, который следующий
-   читатель примет за принятое решение. */
-export const SHEET_RISE_ATTR = 'data-sheet-rise';
-
-/**
  * ★★ «МНЕ НУЖЕН ВЕСЬ ЭКРАН» — ЗАЯВКА СОДЕРЖИМОГО, А НЕ ЗАПРОС ПОВЕРХНОСТИ О НЁМ.
  *
  * Форма правки/создания обязана занимать экран целиком: у неё поля, а под полем
@@ -171,21 +148,37 @@ export const SHEET_RISE_ATTR = 'data-sheet-rise';
  * содержимому — ровно тот дефект, что уже стоил перезапуска въезда шторки.
  *
  * Поэтому направление обратное: содержимое ЗАЯВЛЯЕТ потребность (`useScreenRise`),
- * поверхность её исполняет. Заявка живёт, пока смонтирован заявитель, — ушла
- * форма, поверхность вернулась на рост сцены. Счётчик, а не флаг: две формы в
- * стопке не должны гасить друг друга, снимая заявку соседа.
+ * а ИСПОЛНЯЕТ её тот, кто владеет высотой поверхности. Сегодня это шит сцены
+ * (`design/MapShell`): панель на экране с картой живёт слоем ВНУТРИ него, и
+ * «весь экран» для неё — верхний детент, то есть штатное движение шита, а не
+ * вторая анимация поверх чужой.
+ * ⚠️ ИСПОЛНИТЕЛЕМ НЕ МОЖЕТ БЫТЬ vaul-ШТОРКА, И ЭТО ЗАМЕРЕНО. Её коробкой владеет
+ * сам vaul: после ЛЮБОГО касания он ставит инлайн `transition: transform .5s`,
+ * и переход `top`/`height`, объявленный в CSS, выбивается молча — снаружи
+ * «сначала плавно, потом рывком». Инлайн перебивается только `!important`, а он
+ * навсегда лишил бы vaul его же `transition: none` на время жеста, то есть
+ * шторка перестала бы идти за пальцем 1:1.
+ *
+ * Заявка живёт, пока смонтирован заявитель, — ушла форма, поверхность вернулась
+ * туда, где была. Счётчик, а не флаг: две формы в стопке не должны гасить друг
+ * друга, снимая заявку соседа.
  */
 const ScreenRiseClaim = createContext(/** @type {null | (() => () => void)} */ (null));
 
-/** Заявки принимает САМА поверхность (`SheetSurface`), а не её вызыватель:
- *  вызыватель объявляет рост один раз пропом и о содержимом ничего не знает. */
-function useScreenRiseHost() {
+/** Заявки принимает тот, кто владеет высотой поверхности: сегодня это шит сцены
+ *  (`design/MapShell`). Хук отдаёт ему сам факт заявки и приёмник для содержимого. */
+export function useScreenRiseHost() {
   const [claims, setClaims] = useState(0);
   const claimScreen = useCallback(() => {
     setClaims((n) => n + 1);
     return () => setClaims((n) => n - 1);
   }, []);
   return { screenAsked: claims > 0, claimScreen };
+}
+
+/** @param {{ claim: () => () => void, children?: any }} p */
+export function ScreenRiseProvider({ claim, children }) {
+  return <ScreenRiseClaim.Provider value={claim}>{children}</ScreenRiseClaim.Provider>;
 }
 
 /**
@@ -233,44 +226,18 @@ export function SheetGrip() {
  */
 /**
  * @param {{ className?: string, backdropClassName?: string, grip?: boolean,
- *   full?: boolean, rise?: 'screen' | 'scene', pinned?: boolean,
- *   contentRef?: any, children?: any }} p
+ *   full?: boolean, pinned?: boolean, contentRef?: any, children?: any }} p
  */
 export function SheetSurface({
   className,
   backdropClassName = 'sheet-backdrop',
   grip = true,
   full = false,
-  rise = 'screen',
   pinned = false,
   contentRef,
   children,
   ...rest
 }) {
-  // Рост, о котором просит содержимое, перебивает объявленный: форма занимает
-  // экран, пока она здесь. Поверхность без заявок (пикер, окно) этого не
-  // замечает — она и так `screen`.
-  const { screenAsked, claimScreen } = useScreenRiseHost();
-  // ★★ ВТОРАЯ ЗАЯВКА — САМА КЛАВИАТУРА, И ОНА НЕ ДУБЛЬ ПЕРВОЙ. Форма просит
-  // экран ЗАРАНЕЕ (иначе она открылась бы ростом сцены и прыгала на первом тапе
-  // в поле); клавиатура — страховка для полей, живущих где угодно ещё: фильтр
-  // цены в витрине отелей, поиск в списке. Без неё поверхность ростом в
-  // две трети экрана оставляет поле под клавиатурой, и сделать с этим изнутри
-  // нечего — резерв у скроллера места не добавляет, он его только отдаёт.
-  // ⚠️ «МОЯ» здесь так же несуще, как у шита: клавиатуру часто поднимает шторка,
-  // легшая ПОВЕРХ, и на глобальный флаг эта поверхность прыгала бы под ней.
-  const surfaceRef = useRef(/** @type {any} */ (null));
-  const typingHere = useKeyboardMine(surfaceRef);
-  // Ref СТАБИЛЕН (`useCallback`): новая функция на каждый рендер заставляла бы
-  // React отцеплять и прицеплять узел заново — а узел здесь чужой (`Drawer.Content`).
-  // Ref вызывателя при этом не теряется: шов ведёт свой и передаёт тот же узел
-  // дальше, в обеих формах (функция и объект).
-  const setSurface = useCallback((node) => {
-    surfaceRef.current = node;
-    if (typeof contentRef === 'function') contentRef(node);
-    else if (contentRef) contentRef.current = node;
-  }, [contentRef]);
-  const effectiveRise = screenAsked || typingHere ? 'screen' : rise;
   return (
     <Drawer.Portal>
       <Drawer.Overlay className={backdropClassName} />
@@ -283,15 +250,14 @@ export function SheetSurface({
           фокус ставит каретку, но не поднимает клавиатуру (разбор — в шапке
           `ui/PickerSheet`). */}
       <Drawer.Content
-        ref={setSurface}
+        ref={contentRef}
         className={className}
         {...(full ? { [SHEET_FULL_ATTR]: '' } : null)}
-        {...(full && effectiveRise !== 'screen' ? { [SHEET_RISE_ATTR]: effectiveRise } : null)}
         {...(pinned ? { [SHEET_PINNED_ATTR]: '' } : null)}
         {...rest}
       >
         {grip ? <SheetGrip /> : null}
-        <ScreenRiseClaim.Provider value={claimScreen}>{children}</ScreenRiseClaim.Provider>
+        {children}
       </Drawer.Content>
     </Drawer.Portal>
   );
