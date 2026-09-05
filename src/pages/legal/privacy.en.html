@@ -45,11 +45,11 @@
 <section id="analytics">
 <h2>Analytics and advertising — what actually happens</h2>
 <p>We want this to be precise, because it is often written vaguely:</p>
-<p><strong>Before you answer the cookie banner</strong> (and if you choose “Necessary only”), our product analytics (PostHog) collects nothing at all: no events are sent and nothing is stored on your device. Error monitoring (Sentry) and privacy-friendly aggregate visit counting (Vercel Web Analytics) run without storing anything on your device.</p>
+<p><strong>Before you answer the cookie banner</strong> (and if you choose “Necessary only”), our product analytics (PostHog) collects nothing from your browser: no events are sent from your device and nothing is stored on it. Independently of your choice, our servers record a small number of account events (a completed purchase, a trip gaining a second participant, connecting the Telegram assistant) against your account ID, without cookies, on the basis of our legitimate interest. Error monitoring (Sentry) and privacy-friendly aggregate visit counting (Vercel Web Analytics) run without storing anything on your device.</p>
 <p><strong>If you choose “Accept all”</strong>, analytics starts and stores identifiers on your device (see the next section), so we can recognise the same browser across days. With the same choice, we load advertising measurement from <strong>Google Ads</strong> and <strong>OpenAI Ads (ChatGPT Ads)</strong>, which store advertising identifiers on your device to attribute sign-ups to ad clicks. To improve conversion matching we send Google and OpenAI a <strong>SHA-256 hash</strong> of your email address — never the raw address.</p>
 <p><strong>Interface playback.</strong> With the same choice, some sessions are also kept as a playback (also called a <strong>session replay</strong>) of how the interface behaved as you moved through it, which we use to find where the product is confusing or broken. <strong>All text and all input fields are masked, and profile photos are blocked, before anything leaves your browser</strong>: we see layout, clicks and navigation, never what you or anyone else wrote. Nothing is recorded before you accept, only sessions matching rules we configure are kept (for example, a session in which a purchase was started), and replays are deleted after 30 days.</p>
 <p><strong>You can change your choice at any time</strong> via “Cookie settings” in the footer or in your account. Withdrawing consent stops analytics storage and advertising measurement; identifiers already stored are removed, and any remaining Google cookies can be deleted in your browser settings.</p>
-<p><strong>Once you have accepted and are signed in</strong>, what you do in the product is recorded under your account, so that we can understand how the product is used. The analytics profile carries your account number, your email address and your name — the same details you gave us when you signed up, used here only to tell one account from another when we look at how a feature performed. Your profile photo, your messages and the content of your trips are not sent to analytics: the records say which features were used and when, and which trip they happened in. This is based on our legitimate interest, and you can object at any time via <a href="mailto:support@triplanio.com">support@triplanio.com</a>. If you delete your account, the analytics profile and its records are deleted with it.</p>
+<p><strong>Once you have accepted and are signed in</strong>, product usage is recorded against your account. The analytics profile holds your account ID, email address and name; trip content, messages and profile photos are not sent to analytics. Legal basis: legitimate interest — you can object at any time via <a href="mailto:support@triplanio.com">support@triplanio.com</a>. Deleting your account deletes the analytics profile and its records.</p>
 <p>Independent of the banner, when a new account is created we record the campaign tags of the visit that led to the sign-up (for example <code>utm_source</code> or an ad-click ID) as part of the account record — this is a one-time note about how you found us, not ongoing tracking.</p>
 </section>
 <section id="cookies">
@@ -79,7 +79,7 @@
 <dt>Stripe</dt>
 <dd>processes payments. Receives your email address and account ID; card details stay with Stripe</dd>
 <dt>PostHog (EU)</dt>
-<dd>product analytics and masked interface playbacks, as described above. Receives your account number, email address and name, and what you do in the product</dd>
+<dd>product analytics and masked interface playbacks, as described above. Receives your account ID, email address, name and product usage</dd>
 <dt>Sentry (EU)</dt>
 <dd>error monitoring. Reports are scrubbed of personal details; session replays are captured only when an error occurs and mask all text and inputs</dd>
 <dt>Google</dt>
@@ -127,7 +127,7 @@
 <dt>Interface playbacks</dt>
 <dd>30 days</dd>
 <dt>Product analytics records</dt>
-<dd>for as long as your account exists — deleting your account deletes the analytics profile and the records attached to it</dd>
+<dd>for as long as your account exists; deleted with the account</dd>
 <dt>Database backups</dt>
 <dd>data you delete disappears from live systems immediately, but may persist in our backups for up to 7 days before they are overwritten</dd>
 <dt>Support requests</dt>
@@ -148,7 +148,7 @@
 <ul>
 <li><strong>access</strong> a copy of your data;</li>
 <li><strong>correct</strong> anything inaccurate — most account details can be edited in the app;</li>
-<li><strong>delete</strong> your account and data — directly in the account settings. Deletion erases or anonymises your personal details (email, name, avatar), deletes your private documents, notifications, personal integrations and your analytics profile together with its records, and signs you out everywhere. An active subscription must be cancelled first. Shared trip content and legally required payment records remain, without your identity attached;</li>
+<li><strong>delete</strong> your account and data — directly in the account settings. Deletion erases or anonymises your personal details (email, name, avatar), deletes your private documents, notifications, personal integrations and your analytics profile with its records, and signs you out everywhere. An active subscription must be cancelled first. Shared trip content and legally required payment records remain, without your identity attached;</li>
 <li><strong>restrict or object</strong> to processing based on legitimate interests;</li>
 <li><strong>receive your data</strong> in a machine-readable format;</li>
 <li><strong>withdraw consent</strong> at any time — for analytics and advertising via “Cookie settings” — without affecting what happened before.</li>
@@ -165,7 +165,7 @@
 </section>
 <section id="pchanges">
 <h2>Changes to this Policy</h2>
-<p>We update this Policy when the Service or the law changes. The current version is always on this page, with the date of the last update at the top. When a change materially affects you, we tell you about it in advance — by email or in the Service — with enough notice to consider it.</p>
+<p>We update this Policy when the Service or the law changes. The current version is always on this page, with the date of the last update at the top. When a change materially affects you, we tell you in advance, by email or in the Service.</p>
 </section>
 <section id="pcontact">
 <h2>Contact</h2>
