@@ -34,7 +34,7 @@ function DoneLine({ text }) {
 
 // Рядов в свёрнутой секции. Одно число на обе колонки, иначе «Ещё N» у ночлегов
 // и переездов считались бы от разных потолков.
-const CAP = 5;
+const CAP = 3;
 
 function SectionHead({ children }) {
   return <Row align="a-baseline" gap="g3">{children}</Row>;
