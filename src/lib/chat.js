@@ -15,7 +15,6 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
 import { pluralCategory } from '@/lib/i18n/format';
-import { withOwnerRow } from '@/lib/members';
 import { mergeIncomingMessage } from '@/lib/chat-merge';
 
 // Keyed by chat_id (not tripId): the chat widget and the chat lens are never
@@ -54,15 +53,13 @@ export function useChatId(tripId, { enabled = true } = {}) {
 
 // ── Participant helpers ───────────────────────────────────────────────────────
 //
-// Chat participants = trip owner + every *active* member (admins + viewers),
-// excluding offline / pending / declined rows. The owner often isn't a
-// trip_members row (it's tracked on trips.created_by), so synthesize it when
-// missing. The AI assistant is shown separately and is NOT counted here.
+// Chat participants = every *active* member (owner + admins + viewers),
+// excluding offline / pending / declined rows. The owner is a real active
+// trip_members row (TRIP-517), so it arrives in the list like anyone else. The
+// AI assistant is shown separately and is NOT counted here.
 
-export function chatParticipants(members = [], ownerId = '') {
-  // withOwnerRow drops any stray creator row and prepends a single owner, so the
-  // creator is never listed as a viewer in chat (TRIP-143).
-  return withOwnerRow((members || []).filter((m) => m.status === 'active'), ownerId);
+export function chatParticipants(members = []) {
+  return (members || []).filter((m) => m.status === 'active');
 }
 
 // Locale-aware "N people" (ru few/many via Intl.PluralRules; en/es collapse to one/many).

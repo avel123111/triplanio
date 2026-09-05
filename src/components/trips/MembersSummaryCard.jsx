@@ -3,7 +3,7 @@ import { Icon } from '@/design/icons';
 import { Person, Badge, Btn, Card, CardHeader, IconBtn, RoleBadge, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
-import { withOwnerRow } from '@/lib/members';
+import { sortMembers } from '@/lib/members';
 
 // "Who's going" widget on the trip Overview (Lumo .wdg + .mrow). Owns the
 // member ordering.
@@ -13,10 +13,9 @@ import { withOwnerRow } from '@/lib/members';
 // rows instead of trickling in (TRIP-230, see getTripDetails).
 //
 // Ordering: owner first, then admins, viewers, offline, pending. The owner is
-// often tracked via trip.created_by rather than a trip_members row, so it's
-// synthesized when missing.
+// a real trip_members row (`role='owner'`, TRIP-516/517), so it arrives in the
+// list like anyone else and is only ordered here (see sortMembers).
 export default function MembersSummaryCard({
-  trip,
   members = [],
   profiles = {},
   user,
@@ -27,30 +26,12 @@ export default function MembersSummaryCard({
 }) {
   const { t } = useI18n();
 
-  const orderedMembers = useMemo(() => {
-    const ownerId = trip?.created_by || user?.id || '';
-    const isMeOwner = !!user?.id && ownerId === user.id;
-    // Shared owner rule: drop any stray creator row and prepend one owner so the
-    // creator is never shown as a viewer in this widget (TRIP-143).
-    const all = withOwnerRow(
-      members.filter((m) => m.status !== 'declined'),
-      ownerId,
-      { user_full_name: isMeOwner ? user?.full_name || '' : '' },
-    );
-    const rank = (m) => {
-      if (m.role === 'owner') return 0;
-      // 'invited' is not a status: trip_members_status_check allows exactly
-      // pending / active / declined / offline.
-      if (m.status === 'pending') return 4;
-      if (m.status === 'offline') return 3;
-      if (m.role === 'admin') return 1;
-      return 2; // viewer / editor
-    };
-    return all
-      .map((m, i) => ({ m, i }))
-      .sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i)
-      .map((x) => x.m);
-  }, [members, trip?.created_by, user?.id, user?.full_name]);
+  // Owner is a real trip_members row (TRIP-517); order via the shared rule
+  // (owner → admin → active → offline → pending), dropping declined invites.
+  const orderedMembers = useMemo(
+    () => sortMembers(members.filter((m) => m.status !== 'declined')),
+    [members],
+  );
 
   if (isLoading) return <MembersSummarySkeleton />;
 

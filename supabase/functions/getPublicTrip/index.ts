@@ -88,7 +88,9 @@ Deno.serve(withHandler('getPublicTrip', async (req, corsHeaders) => {
     // previous code fell back to it and would leak a deleted person's name on a
     // public link. Here a deleted account is DROPPED from the travellers list,
     // exactly as the app renders it as "Удалённый аккаунт" instead of the cache.
-    const profiles = await fetchTripProfiles(admin, { members: memberRows, ownerId: trip.created_by });
+    // The owner is a real member row now (TRIP-516/517), so its user_id is already
+    // in memberRows — no separate ownerId injection needed to resolve its profile.
+    const profiles = await fetchTripProfiles(admin, { members: memberRows });
     const profileById = new Map(profiles.map((p) => [p.id, p]));
 
     const ownerProfile = trip.created_by ? profileById.get(trip.created_by) : undefined;
@@ -98,10 +100,10 @@ Deno.serve(withHandler('getPublicTrip', async (req, corsHeaders) => {
 
     const memberList = memberRows
       .map((m) => {
-        // TRIP-516: the owner is now a real trip_members row (role='owner'), but
-        // is already returned in the `owner` field above — drop it here so the
-        // creator isn't listed twice in the travellers UI.
-        if (m.user_id && m.user_id === trip.created_by) return null;
+        // The owner is a real trip_members row (role='owner') but is already
+        // returned in the `owner` field above — drop it from the travellers list
+        // by its role (trip_members), not by a created_by comparison (TRIP-517).
+        if (m.role === 'owner') return null;
         const p = m.user_id ? profileById.get(m.user_id) : undefined;
         // Deleted/anonymized account — never a current public traveller.
         if (p?.is_deleted) return null;
