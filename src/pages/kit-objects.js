@@ -60,6 +60,8 @@ export const KIT_OBJECTS = [
   { id: 'stat', family: 'stat', group: 'components', prefix: 'stat', css: true, interactive: true },
   { id: 'list-row', family: 'lrow', group: 'components', prefix: 'lrow', maps: ['LISTROW_VARIANTS'], extras: ['clickable', 'on', 'muted'], interactive: true },
   { id: 'donut', family: 'donut', group: 'components', css: false },
+  // Полоса-доля: осей у примитива нет, форма одна.
+  { id: 'meter', family: 'meter', group: 'components', prefix: 'meter', css: false },
   { id: 'btn', family: 'btn', group: 'components', prefix: 'btn', maps: ['BTN_VARIANTS'], extras: ['sm', 'brand'], interactive: true },
   { id: 'icon-btn', family: 'icon', group: 'components', prefix: 'icon-btn', maps: ['ICON_BTN_TONES', 'ICON_BTN_SIZES'], extras: ['round'], interactive: true },
   { id: 'chip', family: 'fpill', group: 'components', prefix: 'fpill', maps: ['CHIP_VARIANTS'], extras: ['square', 'sm', 'avatars', 'dismiss'], interactive: true },
@@ -125,6 +127,9 @@ export const KIT_OBJECTS = [
      поэтому скролл композера и разъехавшиеся краска с бровью доезжали до
      человека. `css: false`: класса своего у роли нет, она признак семьи. */
   { id: 'full-surface', family: null, group: 'components', css: false, interactive: true },
+  // Стенд границы краха поверхности (TRIP-515): краш внутри окна закрывает окно,
+  // а не приложение. Своего CSS-класса нет — стенд поведенческий (check:surfaces).
+  { id: 'surface-crash', family: null, group: 'components', css: false, interactive: true },
   { id: 'ai-blk', family: 'ai', group: 'components', css: true },
   { id: 'time', family: 'time', group: 'components', css: true },
   // ── Примитивы раскладки ─────────────────────────────────────────────────

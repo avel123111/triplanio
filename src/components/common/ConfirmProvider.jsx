@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import AppLoading from '@/design/AppLoading';
+import { SurfaceCrashContext } from '@/components/ui/surfaceCrashGuard';
 
 // ★ ДИАЛОГ ПРИЕЗЖАЕТ ПО ПЕРВОМУ СПРОСУ (TRIP-475).
 //
@@ -49,9 +50,15 @@ export function ConfirmProvider({ children }) {
   const [busy, setBusy] = useState(false);
   const [armed, setArmed] = useState(false);
   const resolverRef = useRef(null);
+  // Элемент-инициатор (что было в фокусе на вызове confirm) — чтобы вернуть ему
+  // фокус при КРАХЕ (TRIP-515, ревью Pavel). На штатном закрытии фокус возвращает
+  // сам vaul/Radix; но при крахе граница снимает поддерево РАНЬШЕ, чем они успеют,
+  // и фокус падает на <body> — для клавиатуры и скринридера контекст теряется.
+  const initiatorRef = useRef(null);
 
   const confirm = useCallback((options = {}) => {
     setArmed(true); // первый вызов заказывает чанк диалога
+    try { initiatorRef.current = (typeof document !== 'undefined') ? document.activeElement : null; } catch { initiatorRef.current = null; }
     return new Promise((resolve) => {
       // If a previous prompt is somehow still pending, dismiss it as cancelled.
       if (resolverRef.current) resolverRef.current(false);
@@ -74,6 +81,27 @@ export function ConfirmProvider({ children }) {
     setOpen(next);
     if (!next) settle(false); // cancel / ESC / outside click
   }, [settle, busy]);
+
+  // ЖЁСТКАЯ ОТМЕНА ПРИ КРАХЕ ПОВЕРХНОСТИ (TRIP-515). SurfaceCrashGuard в шве
+  // закрывает окно вызовом onOpenChange(false) — но `handleOpenChange` ГЛОТАЕТ
+  // закрытие, пока идёт async-действие (`if (busy) return`), а наш краш случается
+  // именно при busy=true (спиннер вставляется перед подписью). Без обхода
+  // resolverRef не разрешился бы и `await confirm()` завис бы навсегда. Поэтому
+  // краш-закрытие идёт МИМО busy-guard: сбрасываем busy, закрываем, разрешаем
+  // обещание в false. settle идемпотентен (resolverRef обнуляется), поэтому
+  // поздний settle(true) из завершившегося действия — no-op.
+  const hardCancelOnCrash = useCallback(() => {
+    setBusy(false);
+    setOpen(false);
+    settle(false);
+    // Вернуть фокус инициатору ПОСЛЕ закрытия (rAF: после того как поддерево окна
+    // снято и vaul/Radix отработали свой — иначе они перебьют наш вызов). Без
+    // этого фокус остаётся на <body>.
+    const el = initiatorRef.current;
+    if (el && typeof el.focus === 'function') {
+      try { requestAnimationFrame(() => { try { el.focus(); } catch { /* элемент исчез */ } }); } catch { /* нет rAF */ }
+    }
+  }, [settle]);
 
   const handleConfirm = useCallback(async () => {
     const action = opts.onConfirm;
@@ -99,6 +127,9 @@ export function ConfirmProvider({ children }) {
           `fallback={null}`: пустой fallback невидим экрану запуска, и заставка
           ушла бы в пустой кадр. Правило пинит `splash.test.js`. */}
       {armed && (
+      // Жёсткая отмена течёт СКВОЗЬ портал к границе краха в шве (TRIP-515):
+      // граница дотянется до неё без проброса пропов через дженерик Sheet/Alert.
+      <SurfaceCrashContext.Provider value={hardCancelOnCrash}>
       <Suspense fallback={<AppLoading silent />}>
       <ConfirmDialog
         open={open}
@@ -115,6 +146,7 @@ export function ConfirmProvider({ children }) {
         onConfirm={handleConfirm}
       />
       </Suspense>
+      </SurfaceCrashContext.Provider>
       )}
     </ConfirmContext.Provider>
   );

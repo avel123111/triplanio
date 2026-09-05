@@ -1,27 +1,26 @@
-// Cookie consent — the single owner of "may we run analytics" (TRIP-311),
-// variant B (TRIP-407).
+// Cookie consent — the single owner of "what did the visitor answer" (TRIP-311).
 //
-// This module records the visitor's answer and APPLIES it to the destinations; it
-// no longer creates the PostHog client itself. Under variant B the client is
-// booted (memory-only) at load by main.jsx, and consent's job is to UPGRADE it to
-// device persistence — `applyConsent` → `posthogAdapter.onConsent`. `posthog.init`
-// lives in `destinations/posthog.js` now (CI guard 2j moved with it). The Google
-// consent signal (`updateGoogleConsent`) still rides through here, and TRIP-227
-// hangs GTM / GA4 / ad pixels off `applyConsent`.
-import { identifyUser } from '@/lib/analytics';
-import { isPersisting, onConsent, stopAnalytics } from '@/lib/destinations/posthog';
+// This module records the answer and hands it to the destinations; each
+// destination keeps its own promise with its own native switch (TRIP-502):
+// PostHog's `opt_in_capturing` / `opt_out_capturing` (silent by config until a
+// grant), Google's Consent Mode (`gtag('consent','update')`), OpenAI's
+// `oaiq('consent', …)`. Nothing is wiped, stashed, silenced or reloaded here — a
+// withdrawal is an SDK call, and the SDK clears what it stored. The client itself
+// is created at load by `destinations/posthog.js` (CI guard 2j lives there).
+//
+// The record is ours (`tp-consent`), not the SDKs' own copies: it is applied on
+// every start, so a copy an SDK lost (logout resets PostHog, and its reset
+// forgets consent too) is put back from the one answer the visitor actually gave.
+import { identifyUser, setCampaign } from '@/lib/analytics';
+import { onConsent } from '@/lib/destinations/posthog';
 import { onConsent as adsOnConsent } from '@/lib/destinations/ads';
 import { onConsent as openaiAdsOnConsent } from '@/lib/destinations/openaiAds';
-import { buildConsent, parseConsent, shouldSilenceOnConsentChange } from '@/lib/consent-record';
+import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
 
 // "Cookie settings" listeners. An emitter, not a context: one subscriber.
 const openListeners = new Set();
-
-// All three masks matter: `__ph_opt_in_out_*` has two underscores so it misses
-// the `ph_` mask, and `dmn_chk_*` is the cross-subdomain probe.
-const POSTHOG_KEY = /^(ph_|__ph_opt_in_out_|dmn_chk_)/;
 
 /**
  * The visitor's current answer, or null when there isn't a usable one.
@@ -37,9 +36,8 @@ export function getConsent() {
 }
 
 /**
- * Record the answer just given and return it. Only writes the record — applying it
- * (upgrading persistence, or reloading on a downgrade) is applyConsent's / the
- * banner's half. Under B there is no held queue to drop on a refusal any more.
+ * Record the answer just given and return it. Only writes the record — applying
+ * it is `applyConsent`.
  * @param {boolean} accepted
  */
 export function setConsent(accepted) {
@@ -61,84 +59,50 @@ export function subscribeConsentOpen(listener) {
   return () => openListeners.delete(listener);
 }
 
-// Another tab changing the answer to "no". We silence + wipe rather than reload —
-// a background tab may hold unsaved work; `storage` fires only in the OTHER tabs.
-// Keyed on `isPersisting()`, NOT readiness: under B a memory-only tab wrote nothing
-// to the device, so a foreign refusal must leave it running (silencing it would
-// throw away captures it was entitled to make). One-way on purpose: a grant
-// elsewhere does not start persistence here.
-window.addEventListener('storage', (event) => {
-  if (event.key !== STORAGE_KEY) return;
-  const record = parseConsent(event.newValue, Date.now());
-  if (!shouldSilenceOnConsentChange(isPersisting(), record)) return;
-  stopAnalytics();
-  clearAnalyticsStorage();
-});
-
 /**
- * Put the destinations in the state the record describes. Safe to call on every
- * start: the adapters are idempotent and send no opt-in event.
+ * Put every destination in the state the record describes. Called on every start
+ * (main.jsx, right after boot) and on every answer (the banner). Safe to repeat:
+ * the adapters are idempotent, and none of them sends an opt-in event.
+ *
+ * `null` (no usable answer — never asked, expired, our version moved,
+ * hand-edited) is a valid input: PostHog is opted out by config until a grant,
+ * so the adapters only have to undo a grant they still remember.
+ *
+ * Another tab changing the answer is NOT mirrored live: the SDKs read their
+ * state on load, so the other tab follows on its next navigation. A background
+ * tab may hold unsaved work; it is not reloaded for this.
  *
  * @param {ReturnType<typeof getConsent>} record
- * @param {string} [uid]  pass when a session is already open, so the person appears
- *   immediately instead of waiting for the next auth cycle.
+ * @param {string} [uid]  pass when a session is already open, so the person is
+ *   (re)identified now instead of on the next auth cycle.
  */
 export function applyConsent(record, uid) {
-  if (!record) return;
+  // Google first, and for a refusal too: the tag reads its Consent Mode state at
+  // load, and once loaded silence is the wrong signal. The `denied` default lives
+  // in index.html, so a null record has nothing to update.
+  if (record) updateGoogleConsent(record);
 
-  // Sent for a refusal too: once TRIP-227 loads tags, silence is the wrong signal.
-  // MUST precede adsOnConsent — the tag reads its Consent Mode state at load.
-  updateGoogleConsent(record);
-
-  // Load the Google Ads tag on a marketing grant (TRIP-407 PR5). Dormant without
-  // VITE_GADS_TAG_ID, idempotent, and off any non-prod host — so this is a no-op
-  // today and stays one until the tag id is set in prod.
+  // The ad pixels load on a marketing grant. Dormant without their ids,
+  // idempotent, prod-only. A withdrawal reaches Google through Consent Mode
+  // above and OpenAI through the pixel's own `oaiq('consent', false)`.
   adsOnConsent(record);
-
-  // Load the OpenAI Ads pixel on the same marketing grant (TRIP-514). Same shape as
-  // the Google adapter: dormant without VITE_OPENAI_PIXEL_ID, idempotent, prod-only.
   openaiAdsOnConsent(record);
 
-  // Upgrade the memory-only client to device persistence when analytics is granted
-  // (a no-op otherwise, and idempotent). The client already exists — main.jsx
-  // booted it — so this never inits.
+  // PostHog: two native calls and nothing else — `opt_in_capturing()` on a grant
+  // (which also makes the SDK send the initial `$pageview` it withheld at load),
+  // `opt_out_capturing()` on a refusal (which wipes what was stored). The client
+  // already exists: main.jsx booted it, silent.
   onConsent(record);
 
-  // The account can already exist when the banner is answered — a confirmation link
-  // opened on a phone that never saw it, or a visitor who ignores the banner and
-  // signs in with Google first. Identify now so the person appears at once carrying
-  // the last-touch campaign (identifyUser owns that). Only on a grant: a refuser has
-  // no persisted profile to attach to.
-  if (record.analytics && uid) identifyUser(uid);
-}
+  // Campaign marks on this visit's events, for the visitor who has no account yet.
+  // After the switch above, because a grant is the moment capture starts at all.
+  setCampaign();
 
-/**
- * Remove everything PostHog stored here. Runs on any start without a usable answer
- * (which also clears pre-TRIP-311 keys, no migration needed) and on withdrawal.
- */
-export function clearAnalyticsStorage() {
-  try {
-    Object.keys(localStorage)
-      .filter((key) => POSTHOG_KEY.test(key))
-      .forEach((key) => localStorage.removeItem(key));
-  } catch { /* storage disabled — nothing was written either */ }
-
-  for (const pair of document.cookie.split(';')) {
-    const name = pair.split('=')[0].trim();
-    if (!POSTHOG_KEY.test(name)) continue;
-    for (const domainAttr of cookieDomainAttrs()) {
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${domainAttr}`;
-    }
-  }
-}
-
-/**
- * A delete without a matching `domain` silently does nothing, and previews
- * (`*.vercel.app`) get no attribute at all — try both spellings.
- */
-function cookieDomainAttrs() {
-  const parts = window.location.hostname.split('.');
-  return parts.length >= 2 ? ['', `; domain=.${parts.slice(-2).join('.')}`] : [''];
+  // The account can already exist when the banner is answered — a confirmation
+  // link opened on a phone that never saw it, or a visitor who ignored the banner
+  // and signed in with Google first. Identify now rather than on the next auth
+  // cycle, so this visit's events belong to the account from here on.
+  if (uid) identifyUser(uid);
 }
 
 /**

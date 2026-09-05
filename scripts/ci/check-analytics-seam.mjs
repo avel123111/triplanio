@@ -23,10 +23,10 @@
  *      behind their own gates.
  *
  *   B. `posthog.init()` is called only from `src/lib/destinations/posthog.js`
- *      (TRIP-311, TRIP-407). The client is created in exactly one place — the
- *      PostHog destination adapter, which boots it memory-only and upgrades it to
- *      device persistence on consent. A second init would start a rogue client,
- *      out of step with the consent state the adapter holds.
+ *      (TRIP-311, TRIP-502). The client is created in exactly one place — the
+ *      PostHog destination adapter, which boots it opted out by config and hands
+ *      it the visitor's answer through the SDK's own opt-in/opt-out.
+ *      A second init would start a rogue client, out of step with that answer.
  *
  *   C. The PostHog ingestion key / host appear only in
  *      `supabase/functions/_shared/analytics.ts` (TRIP-213 Ф2).
@@ -36,11 +36,13 @@
  *      distinct_id, and revenue filed against the wrong person is worse than
  *      revenue not filed at all.
  *
- * Rules A–C are a banned import per file. D and E (TRIP-456) instead read WHERE
- * a call sits — the attribution CALL SITES the unauthenticated-zone port (Ф6)
- * rewrites Login.jsx around. Both are green today and guarded only by prose in
- * the comments beside them; this turns that prose into a machine BEFORE the
- * rewrite, since a rewrite is exactly when prose stops being read.
+ * Rules A–C are a banned import per file. D and F (TRIP-456, TRIP-493) instead
+ * read WHERE a call sits — the attribution CALL SITES the unauthenticated-zone
+ * port (Ф6) rewrites Login.jsx around. Guarded only by prose before; this turns
+ * that prose into a machine, since a rewrite is exactly when prose stops being
+ * read. (A rule E — "every provider sign-in stashes the marks in sessionStorage
+ * first" — existed until TRIP-502: the address is the carrier across the OAuth
+ * border now, so the stash and its rule are gone.)
  *
  *   D. The ONE `supabase.auth.signUp` call carries `signup_attribution`
  *      (TRIP-335). It is the single carrier of campaign marks across the
@@ -51,16 +53,6 @@
  *      second birthplace of an account, i.e. two different attribution stories,
  *      so it fails on its own message. Zero means the carrier vanished (or the
  *      seam moved) — an empty room, not "clean" (TRIP-282).
- *
- *   E. Every `signInWithOAuth` / `signInWithIdToken` is preceded, in the SAME
- *      function, by `rememberAttributionForRedirect()` (TRIP-329/TRIP-335).
- *      Each of these hands the whole document to a provider (or ends in a hard
- *      navigation), so the in-memory snapshot dies; the stash is the carrier for
- *      that border. A fourth provider added without the line silently loses
- *      campaign attribution — the comment beside the three of them says exactly
- *      that. `signInWithPassword` is deliberately NOT covered: it keeps the
- *      document, and the hard nav after it happens once the session exists, when
- *      there is nothing left to lose.
  *
  *   F. `postLoginPath()` is called only at MODULE SCOPE (TRIP-493). Where a
  *      person lands after signing in is decided in ONE named helper per kind of
@@ -129,7 +121,7 @@ const RULES = [
     fix: [
       'The client is created in one place: boot() in @/lib/destinations/posthog.js.',
       'An init anywhere else is a rogue client, out of step with the consent state the',
-      'adapter holds (memory-only until consent, TRIP-311/TRIP-407). Add new analytics',
+      'adapter holds (opted out until consent, TRIP-311/TRIP-502). Add new analytics',
       'destinations under src/lib/destinations and wire them through applyConsent().',
     ],
   },
@@ -171,7 +163,7 @@ function walk(dir, out = []) {
 const rel = (file) => file.split('\\').join('/');
 
 /**
- * Structural view for the call-site rules (D/E): blank comment and string
+ * Structural view for the call-site rules (D/F): blank comment and string
  * BODIES, length- and newline-preserving, so a brace inside a string can't skew
  * depth and a call named in a comment can't be read as a call. Fuller than
  * stripComments (which only kills comments): handles ' " ` and // as well.
@@ -233,12 +225,6 @@ function depthArray(s) {
   }
   return d;
 }
-
-const minInRange = (arr, a, b) => {
-  let m = Infinity;
-  for (let i = a; i <= b; i++) if (arr[i] < m) m = arr[i];
-  return m;
-};
 
 const lineOf = (s, idx) => s.slice(0, idx).split('\n').length;
 
@@ -315,36 +301,6 @@ try {
         'Add `signup_attribution: getSignupMarks() || undefined` to the signUp `data` — it is',
         'the ONLY carrier of campaign marks across the confirmation-email border, read back in',
         'AuthContext to fill users.signup_utm_* (TRIP-335). Without it email attribution dies.',
-      ],
-    });
-  }
-
-  // Rule E — every provider redirect stashes the marks first, in the same function.
-  const PROVIDER = /\.auth\s*\.\s*signInWith(?:OAuth|IdToken)\s*\(/g;
-  const REMEMBER = /rememberAttributionForRedirect\s*\(/g;
-  const uncovered = [];
-  for (const f of browserFiles) {
-    const code = maskCode(readFileSync(f, 'utf8'));
-    const depth = depthArray(code);
-    const remembers = [...code.matchAll(REMEMBER)].map((m) => m.index);
-    for (const m of code.matchAll(PROVIDER)) {
-      const at = m.index;
-      // Covered iff a rememberAttributionForRedirect() sits before this call
-      // without the brace depth ever dropping below its own level in between —
-      // i.e. they share an enclosing function (a closed `}` would drop it).
-      const covered = remembers.some((j) => j < at && minInRange(depth, j, at) >= depth[j]);
-      if (!covered) uncovered.push(`  ✗ ${f}:${lineOf(code, at)} — ${m[0].trim()}…`);
-    }
-  }
-  if (uncovered.length) {
-    callSiteFailures.push({
-      id: 'E',
-      title: 'provider sign-in without rememberAttributionForRedirect() in the same function',
-      lines: [
-        ...uncovered,
-        'Each entry that leaves the document (or ends in a hard nav) must stash the visit marks',
-        'first: call rememberAttributionForRedirect() in the same handler, BEFORE the provider',
-        'call. A fourth provider added without it silently loses campaign attribution (TRIP-329).',
       ],
     });
   }

@@ -35,10 +35,10 @@
 import '@/design/app.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { initSentry } from '@/lib/sentry'
+import { initSentry, Sentry } from '@/lib/sentry'
 import { installChunkReloadGuard } from '@/lib/chunkReload'
-import { applyConsent, clearAnalyticsStorage, getConsent } from '@/lib/consent'
-import { setCampaign } from '@/lib/analytics'
+import { installDomGuard } from '@/lib/domGuard'
+import { applyConsent, getConsent } from '@/lib/consent'
 import { boot as bootPosthog } from '@/lib/destinations/posthog'
 import { boot as bootAds } from '@/lib/destinations/ads'
 import { isProdHost } from '@/lib/analyticsEnv'
@@ -46,32 +46,37 @@ import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
 import App from '@/App.jsx'
 import '@/index.css'
 
-// PostHog product analytics (TRIP-213 Phase 0), variant B (TRIP-407) under consent
-// since TRIP-311. Boot the client into `persistence:'memory'` for EVERYONE, here,
-// before the first render — so the first screen of a first-time visitor
-// (landing_viewed, public_trip_viewed) is captured on an anonymous, device-less
-// profile. Nothing reaches the DEVICE until consent upgrades persistence
-// (applyConsent → the adapter's onConsent). setCampaign() primes the last-touch
-// campaign super-properties for the no-login case, before any event fires.
+// PostHog product analytics (TRIP-213) under consent (TRIP-311, TRIP-502). Boot
+// the client for EVERYONE, here, before the first render — so a `track()` on the
+// first screen reaches a live client and needs no queue of ours. Whether it goes
+// anywhere is the SDK's own business: it boots opted out (nothing sent, nothing
+// written to the device) until a stored grant is applied.
 bootPosthog()
 // The Google Ads adapter shares the boot/onConsent contract; boot() is a no-op
 // (the tag loads on a marketing grant via applyConsent), booted here for symmetry.
 bootAds()
-setCampaign()
 
-// No usable answer covers "never asked", "expired", "our version moved" and
-// "hand-edited" alike: apply a stored answer (upgrading persistence on a grant),
-// else wipe whatever a prior consented session left on the device and let
-// ConsentBanner ask again. The memory-only client keeps running either way.
-const consent = getConsent()
-if (consent) applyConsent(consent)
-else clearAnalyticsStorage()
+// Apply the stored answer — or null, which covers "never asked", "expired", "our
+// version moved" and "hand-edited" alike: the SDKs stay (or go back to) opted out
+// and ConsentBanner asks again. This also primes the campaign super-properties.
+applyConsent(getConsent())
 
 // Must run before the first render so early errors are captured.
 initSentry()
 
 // Reload once on a stale-chunk import failure after a deploy (TRIP-284, 1f).
 installChunkReloadGuard()
+
+// Keep DOM mutations non-throwing when a browser translator/extension reparents
+// our text nodes (TRIP-515). Extensions ignore translate="no", so this is the
+// belt for them: a skipped op is reported to Sentry once per session per op, so
+// we get a count of mutating-DOM sessions without a flood. Before the first render.
+installDomGuard((op) => {
+  Sentry.captureException(
+    new Error(`domGuard: пропущен ${op} на переусыновлённом узле (переводчик/расширение)`),
+    { level: 'warning', tags: { surface: 'frontend', region: 'dom-guard', op } },
+  );
+})
 
 // Typography canon inspector (TRIP-165) — a dev/staging-only browser tool.
 // It must run on the DEPLOYED dev site (dev.triplanio.com), which Vercel builds

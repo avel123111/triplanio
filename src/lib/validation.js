@@ -76,6 +76,16 @@ export const cityIdentity = (v) => {
   return v?.external_city_id ? `id:${v.external_city_id}` : '';
 };
 
+/**
+ * «Это один и тот же город». Пустая идентичность (`''` = город не опознан) не
+ * равна пустой: сравнение в лоб делало два неопознанных узла одним и гасило
+ * варнинг «Нет переезда» в ленте и стыки в «Подготовке».
+ */
+export const sameCity = (a, b) => {
+  const id = cityIdentity(a);
+  return !!id && id === cityIdentity(b);
+};
+
 // City visit dates are DATE-ONLY (YYYY-MM-DD) — a calendar date, not an instant.
 // Compare as plain ISO date strings; never run them through setZone (that would
 // shift the boundary a day in non-UTC timezones). Events use the same plain

@@ -28,13 +28,14 @@
  * `data-force` в ВИТРИННОМ слое (`Kit.css`), не в проде. Своих классов витрина
  * не заводит (пол 2o не растёт): оболочка несёт АТРИБУТЫ `data-kit`/`data-force`.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover, CoverPicker,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Meter, Cover, CoverPicker,
   BookingWarning, TimelineEmptyDay,
   CityBar, EventChip,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
@@ -70,13 +71,14 @@ const TX = {
     scale: 'Шкала отступов', type: 'Типографика', tokens: 'Токены :root',
   },
   titles: {
-    'pagehead': 'Шапка экрана', 'stat': 'Плитка-показатель', 'list-row': 'Строка списка', 'donut': 'Диаграмма-кольцо', 'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
+    'pagehead': 'Шапка экрана', 'stat': 'Плитка-показатель', 'list-row': 'Строка списка', 'donut': 'Диаграмма-кольцо', 'meter': 'Полоса-доля', 'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
     'seg': 'Сегмент-контрол', 'stepper': 'Степпер', 'swatch': 'Свотч',
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля', 'autocomplete': 'Поисковый пикер',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
     'splash': 'Экран запуска', 'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
     'coverpicker': 'Пикер обложки', 'full-surface': 'Полноростная поверхность',
+    'surface-crash': 'Граница краха окна',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -95,6 +97,7 @@ const TX = {
     'input': 'Декорации поля, которые эмитит сам <Input>: иконка, кольцо, валюта, ряд.',
     'autocomplete': 'Поиск-по-мере-ввода: поле + выпадающий лист на Popover (лист-хром .ss-* общий с SearchSelect). Флип и «клик мимо» — от Popover.',
     'full-surface': 'Экран во весь вьюпорт. Их ТРИ и это одна вещь: шторка пикера, оболочка панелей редактора и окно с полями (<Dialog full>) — общая коробка, краска (--bg), бровь и резерв под клавиатуру у скроллера. Смотреть на 390: правила семьи живут ≤640.',
+    'surface-crash': 'Граница краха в шве (TRIP-515). Краш ВНУТРИ окна закрывает окно, а не убивает приложение; промис confirm() разрешается false даже когда краш случился при busy. Приёмка — check:surfaces.',
     'avatar': 'Инициалы / фото / AI / плейсхолдер / удалён; размеры и стопка.',
     'sev': 'Тон по уровню важности (info/warning/error/success/quiet).',
     'empty-state': 'Каркас с иконкой, текстом и призывом к действию.',
@@ -320,6 +323,81 @@ const KIT_CITIES = [
  * недоказуем: именно это и пропустило дефект, при котором лист переставал
  * скроллиться совсем.
  */
+// ── Стенд ГРАНИЦЫ КРАХА ПОВЕРХНОСТИ (TRIP-515) ───────────────────────────────
+// Грепом недоказуемо: краш ВНУТРИ окна закрывает окно, а не приложение; промис
+// confirm() разрешается false даже в async-ветке, где busy-guard глотает
+// закрытие. Здесь это можно потрогать и снять check:surfaces-ом. Разметка — из
+// ДС (Btn/Badge/Sheet), чтобы стенд не занижал долю ДС; приёмка локерит по тексту.
+// Бросает при рендере, когда взведён — моделирует отцепленный переводчиком узел.
+function BoomWhenArmed({ armed }) {
+  if (armed) throw new Error('kit: surface boom');
+  return <Badge>живое содержимое окна{/* i18n-ignore: витрина /kit, приёмка локерит по тексту */}</Badge>;
+}
+// ★ КРАХ ПРИ busy ЧЕРЕЗ ВНЕШНИЙ СТОР, А НЕ «ВТОРОЙ РЕНДЕР» (ревью Pavel).
+// `content` кладётся в состояние ConfirmProvider ОДИН раз; при setBusy(true)
+// React видит тот же объект элемента → bail-out по ссылке, поддерево content НЕ
+// перерисовывается, и «упасть на втором рендере» не наступает НИКОГДА (промис
+// приходил true — штатное завершение, а не отмена). useSyncExternalStore
+// перерисовывает подписчика МИМО bail-out: `arm(true)` из onConfirm роняет узел
+// именно во время busy — тогда onOpenChange глотается busy-guard'ом и работает
+// ТОЛЬКО жёсткая отмена через SurfaceCrashContext. Это и есть инвариант п.4.
+let boomBusy = false;
+const boomSubs = new Set();
+const boomStore = {
+  arm(v) { boomBusy = v; boomSubs.forEach((fn) => fn()); },
+  subscribe(fn) { boomSubs.add(fn); return () => boomSubs.delete(fn); },
+  get() { return boomBusy; },
+};
+function BoomOnBusy() {
+  const busy = useSyncExternalStore(boomStore.subscribe, boomStore.get);
+  if (busy) throw new Error('kit: busy boom');
+  return <Badge>содержимое (упадёт при busy){/* i18n-ignore: витрина /kit */}</Badge>;
+}
+function SurfaceCrashDemo() {
+  const confirm = useConfirm();
+  const [open, setOpen] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [promiseResult, setPromiseResult] = useState('—');
+
+  // async-ветка: красная кнопка ставит busy=true, onConfirm арм-ит внешний стор →
+  // содержимое роняется ВО ВРЕМЯ busy. Граница обязана закрыть окно И разрешить
+  // промис false (жёсткая отмена мимо busy-guard). Действие живёт 400 мс — поздний
+  // settle(true) обязан быть no-op.
+  const runBusyConfirm = async () => {
+    boomStore.arm(false);
+    setPromiseResult('ждём…');
+    const ok = await confirm({
+      title: 'Крах при busy',
+      content: <BoomOnBusy />,
+      variant: 'destructive',
+      confirmLabel: 'Уронить окно',
+      onConfirm: async () => { boomStore.arm(true); await new Promise((r) => setTimeout(r, 400)); },
+    });
+    setPromiseResult(ok ? 'true' : 'false');
+    boomStore.arm(false);
+  };
+
+  return (
+    <div className="col col--g4">
+      {/* Сосед вне окна: жив после краха = приложение не упало (не крах-экран).
+          Строки стенда — демо-данные витрины, под t() не идут: приёмка
+          check:surfaces локерит стенд ровно по этому тексту (has-text). */}
+      <Badge>сосед жив{/* i18n-ignore: витрина /kit, приёмка локерит по тексту */}</Badge>
+
+      {/* Сценарий 1: краш внутри шита закрывает ШИТ, а не приложение. */}
+      <Btn variant="secondary" onClick={() => { setArmed(false); setOpen(true); }}>Открыть шит{/* i18n-ignore: витрина /kit */}</Btn>
+      <Sheet open={open} onOpenChange={setOpen} title="Стенд краха"/* i18n-ignore: витрина /kit */>
+        <Btn variant="danger-solid" onClick={() => setArmed(true)}>Сломать содержимое{/* i18n-ignore: витрина /kit */}</Btn>
+        <BoomWhenArmed armed={armed} />
+      </Sheet>
+
+      {/* Сценарий 2: краш при busy — промис confirm() обязан разрешиться false. */}
+      <Btn variant="secondary" onClick={runBusyConfirm}>Confirm с крахом при busy{/* i18n-ignore: витрина /kit */}</Btn>
+      <Badge>промис: {promiseResult}</Badge>
+    </div>
+  );
+}
+
 function FullSurfaceDemo() {
   const [picker, setPicker] = useState(false);
   const [q, setQ] = useState('');
@@ -549,6 +627,10 @@ const RECIPES = {
   ],
   donut: () => [
     { items: [it('segments + center', <Donut total={100} center="₽724,9т" label={TX.donutTotal} segments={[{ id: 'a', color: 'var(--brand)', value: 55 }, { id: 'b', color: 'var(--ev-transfer)', value: 25 }, { id: 'c', color: 'var(--muted-2)', value: 20 }]} />, true)] },
+  ],
+  meter: () => [
+    { items: [it('segments', <Meter segments={[{ key: 'a', value: 55, color: 'var(--brand)' }, { key: 'b', value: 25, color: 'var(--ev-transfer)' }, { key: 'c', value: 20, color: 'var(--muted-2)' }]} />, true)] },
+    { label: 'доля: заполненная часть + прозрачный остаток (дорожка видна насквозь)', items: [it('done / rest', <Meter segments={[{ key: 'done', value: 4, color: 'var(--success)' }, { key: 'rest', value: 3, color: 'transparent' }]} />, true)] },
   ],
   'list-row': () => [
     { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={v === 'add' ? <Tile tone="quiet" icon="plus" /> : <Tile size="xl" icon="bed" />} title={v === 'add' ? TX.chipAdd : TX.rowTitle} sub={TX.rowSub} trail={v === 'add' ? <Icon name="plus" size={16} /> : <span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' || v === 'add' ? () => {} : undefined} />, true)) },
@@ -858,6 +940,10 @@ const RECIPES = {
 
   'full-surface': () => [{
     items: [it('три поверхности семьи — открыть и сравнить', <FullSurfaceDemo />, true)],
+  }],
+
+  'surface-crash': () => [{
+    items: [it('краш внутри окна закрывает окно, а не приложение', <SurfaceCrashDemo />, true)],
   }],
 
   autocomplete: () => [{

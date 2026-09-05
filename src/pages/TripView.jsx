@@ -23,8 +23,9 @@ import { Icon } from '../design/icons';
 import { Btn, Card, Dialog, EmptyState, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, BookingWarning, TimelineEmptyDay, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
-import { sortVisits, cityIdentity } from '@/lib/validation';
+import { sortVisits, sameCity } from '@/lib/validation';
 import { loadDismissed, serializeDismissed, storageKey as dismissedStorageKey, transferWarnKey, hotelWarnKey } from '@/lib/warningDismissals';
+import { cityNeedsHotel, cityNights, hotelCoversCity } from '@/lib/trip-preparation';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -54,6 +55,7 @@ import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { pluralize } from '@/lib/i18n/format';
 
 // Событие открытия секции (TRIP-213 Ф2c — по одному на секцию, чтобы было видно,
 // что именно открыли) живёт в реестре секций рядом с самой секцией: отдельной
@@ -566,22 +568,13 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   // arrival block, so nothing is excluded from the day stream.
   const inboundEventIds = new Set();
 
-  // «Нет отеля»: город с ночёвкой (≥1 ночь), который не покрывает ни одна
-  // бронь. Привязка прежде всего по city_visit_id; отель без привязки судится
-  // перекрытием дат (той же эвристикой, что исторически жила в ленте).
-  const hotelCoversCity = (h, c) =>
-    h.city_visit_id === c.id ||
-    (!h.city_visit_id && h.check_in_datetime && h.check_out_datetime &&
-      naiveDayKey(h.check_in_datetime) < naiveDayKey(c.end_date) &&
-      naiveDayKey(h.check_out_datetime) > naiveDayKey(c.start_date));
-  const cityNights = (c) => {
-    const s = parseNaive(c.start_date), e = parseNaive(c.end_date);
-    return s && e ? Math.max(0, Math.round(e.diff(s, 'days').days)) : 0;
-  };
-  const cityNeedsHotel = (c) =>
-    c.kind !== 'waypoint' && cityNights(c) >= 1 && !(hotels || []).some(h => hotelCoversCity(h, c));
-  // Та же тернарная плюрализация ночей, что у FlowMap/ManualPlanner (канон-узор).
-  const nightsWord = (n) => (n === 1 ? t('view.nights_one') : n < 5 ? t('view.nights_few') : t('view.nights_many'));
+  // «Нет отеля»: город с ночёвкой, который не покрывает ни одна бронь. Предикаты
+  // общие с виджетом «Подготовка» (`lib/trip-preparation.js`).
+  const cityMissesHotel = (c) =>
+    cityNeedsHotel(c) && !(hotels || []).some(h => hotelCoversCity(h, c));
+  // Через `plural()`: ручной тернарник `n < 5` давал «21 ночей». Тот же тернарник
+  // ещё в FlowMap, ManualPlanner ×3, EventViewBody — отдельный PR.
+  const nightsWord = (n) => pluralize(t, n, 'view.nights', lang);
 
   // Renders one city's arrival block: the missing-transfer warning, then the
   // missing-hotel warning. `prev` = the previously-rendered city (or start
@@ -594,7 +587,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
     const out = [];
     if (!showBookingWarnings) return out;
     const tKey = prev ? transferWarnKey(prev.id, city.id) : null;
-    if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)
+    if (prev && !sameCity(prev, city) && !hasTransferBetween(prev, city)
         && !dismissed.has(tKey)) {
       out.push(
         <BookingWarning
@@ -608,7 +601,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
     // Отель — ОДИН варнинг на город, в его первый день, ниже переезда
     // (порядок «сначала переезд, потом отель» — решение Pavel 2026-08-26).
     const hKey = hotelWarnKey(city.id);
-    if (cityNeedsHotel(city) && !dismissed.has(hKey)) {
+    if (cityMissesHotel(city) && !dismissed.has(hKey)) {
       const nights = cityNights(city);
       out.push(
         <BookingWarning
@@ -782,7 +775,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   // it, render the transfer card(s); otherwise show the missing-transfer warning.
   const endVisit = ordered[ordered.length - 1];
   if (endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
-      && cityIdentity(prevCity) !== cityIdentity(endVisit)) {
+      && !sameCity(prevCity, endVisit)) {
     // The transfer into the finish anchor renders in its own departure day now;
     // here we only surface the missing-transfer warning when there is none.
     const endKey = transferWarnKey(prevCity.id, endVisit.id);
@@ -919,6 +912,12 @@ export default function TripView() {
   const closeCityDrawer = () => setCityDrawerId(null);
   const openUpgrade = () => goPro(nav, { tripId });
   // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
+
+  // Открытие панели добавления брони — одна точка на ленту и «Подготовку».
+  const openAddHotel = (visit) =>
+    setBookingCreate({ open: true, kind: 'hotel', visit, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null });
+  const openAddTransfer = (fromVisit, toVisit) =>
+    setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null });
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
@@ -1480,6 +1479,7 @@ export default function TripView() {
               trip={trip}
               visits={visits ?? []}
               transfers={transfers ?? []}
+              hotels={hotels ?? []}
               budget={budget}
               budgetExpenses={budgetExpenses}
               budgetCategories={budgetCategories}
@@ -1496,6 +1496,8 @@ export default function TripView() {
               onAddService={openServiceChoice}
               onOpenService={(s) => setEventView({ open: true, kind: 'service', id: s.id })}
               onBudgetLocked={() => setBudgetAddonOff(true)}
+              onAddHotel={openAddHotel}
+              onAddTransfer={openAddTransfer}
             />
           )}
           {shownLens === 'timeline' && (
@@ -1508,12 +1510,8 @@ export default function TripView() {
                   hotels={hotels}
                   trip={trip}
                   isLoading={shellLoading || loadingContent}
-                  onAddTransfer={(fromVisit, toVisit) =>
-                    setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })
-                  }
-                  onAddHotel={(visit) =>
-                    setBookingCreate({ open: true, kind: 'hotel', visit, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null })
-                  }
+                  onAddTransfer={openAddTransfer}
+                  onAddHotel={openAddHotel}
                   onOpenEvent={openEventView}
                   onAddActivityForDay={(dayKey) => {
                     const dayVisit = visits.find(v =>

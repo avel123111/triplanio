@@ -1,27 +1,36 @@
-// The PostHog destination (TRIP-407 PR3, variant B) — the ONE place the client is
-// created, configured, and turned from a memory-only recorder into a persisting
-// one. CI guard 2j allows `posthog-js` and `posthog.init` HERE (and in ads.js);
-// nowhere else.
+// The PostHog destination — the ONE place the client is created and configured.
+// CI guard 2j allows `posthog-js` and `posthog.init` HERE (and in analytics.js
+// for capture/identify); nowhere else.
 //
-// Variant B: PostHog boots into `persistence:'memory'` on load, for EVERYONE — so
-// the first screen of a first-time visitor (`landing_viewed`, `public_trip_viewed`
-// …, which fire before any button can be clicked) is captured on an anonymous,
-// device-less profile. Nothing is written to the device until consent; the hit
-// itself is a standard cookieless network call — the Consent-Mode shape any
-// analytics-aware app sends. Consent then upgrades the SAME client to localStorage
-// via `set_config` — no second init, and no replayed queue: the old `pendingEvents`
-// hold (TRIP-335) is deleted by this rewrite, memory persistence makes it moot.
+// СОГЛАСИЕ И ЛИЧНОСТЬ — РОДНЫЕ МЕХАНИЗМЫ SDK (TRIP-502). Своего кода вокруг них
+// нет ни строчки: политику целиком объявляют две строки конфига, а переключают
+// её два родных вызова.
 //
-// Two flags, deliberately distinct:
-//   - `phReady`   — init has run (memory OR localStorage). The gate `track()` and
-//                   `identifyUser()` read. TRUE under B even while memory-only.
-//   - `persisting`— this document writes PostHog keys to the DEVICE. Only true
-//                   after consent flips persistence to localStorage. It is the
-//                   replay gate too: session recording starts in `onConsent`.
-// Device-level actions (the cross-tab silencer, the banner's downgrade-reload)
-// MUST key on `persisting`, never `phReady`: under B `phReady` is true for a
-// memory-only tab that wrote nothing, and clearing/reloading it on a foreign
-// refusal would be wrong.
+//   opt_out_capturing_by_default  — до ответа не собираем
+//   opt_out_persistence_by_default — до ответа не пишем на устройство, а отказ
+//                                    стирает записанное (SDK сам зовёт remove())
+//
+// «Принять всё» → `opt_in_capturing()`: сбор и хранение включаются, и SDK САМ
+// досылает начальный `$pageview` — при загрузке он его придержал. Отказ и отзыв
+// → `opt_out_capturing()`. Ни один из двух вызовов НЕ сбрасывает клиент: сброс у
+// SDK случается только при выходе из безкукового режима, а этот клиент в него не
+// входит. Отсюда главное свойство: идентификатор у человека ровно один —
+// анонимный, заведённый на согласии, — и `identify(uid)` сшивает его с аккаунтом.
+//
+// ЧТО ЗДЕСЬ УЖЕ ПРОБОВАЛИ И ПОЧЕМУ НЕ НАДО ВОЗВРАЩАТЬ.
+// `persistence:'memory'` + `set_config` (TRIP-407): память умирает вместе с
+// документом, поэтому OAuth-редирект рвал личность — приход и регистрация одного
+// визита становились двумя людьми (замер прода: склеено 14 регистраций из 36).
+// `cookieless_mode:'on_reject'` (TRIP-502, первая попытка): выход из безкукового
+// режима SDK сопровождает `reset(true)`, поэтому «Принять всё» рождало лишний
+// идентификатор; и главное — безкуковая персона у PostHog ВЫВОДИТСЯ сервером из
+// хеша, у неё нет строки в `person_distinct_ids`, поэтому `identify` её ни с чем
+// не сшивает (замер превью 05.09: клиент отправил корректный `$identify` с
+// `$anon_distinct_id = cookieless_…`, персоны остались раздельными). Безкуковый
+// режим сделан для анонимного счёта аудитории, а не для пути человека — так и
+// написано в доке PostHog: «не следует идентифицировать пользователей в этом
+// режиме».
+//
 // ★ ТОЧКА ВХОДА — `dist/module.slim.js`, А НЕ `posthog-js` (TRIP-475).
 // Обычный вход тянет `dist/module.js` — 231 КБ уже собранного кода ОДНИМ куском,
 // который сборщик разобрать не может. Внутри лежат РЕАЛИЗАЦИИ автозахвата
@@ -34,8 +43,6 @@
 // 260 167 → 230 925 (на прод-сжатии ≈ −36 КБ с критического пути).
 // `module.slim.js` — официальная вторая точка входа ТОГО ЖЕ пакета (113 КБ), где
 // эти реализации не собраны; ключи конфига остаются и безвредно игнорируются.
-// Поведение не меняется ни в одном месте: `persistence:'memory'` до согласия,
-// `set_config` после, `identify`, `camp_*`, `before_send` — всё как в TRIP-407.
 // ⚠️ ЧТО СЛИМ НЕ УМЕЕТ: запускать визуальный тулбар PostHog — функции
 // `maybeLoadToolbar` в нём НЕТ вовсе (в полной сборке она есть). Понадобится
 // тулбар — вернуть полный вход придётся ВМЕСТЕ с ленивой загрузкой SDK, иначе
@@ -62,17 +69,15 @@ const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
 // analytics.js captures through.
 let ph = posthog;
 
-let phReady = false;
-let persisting = false;
-
-/** @returns {boolean} init has run (memory OR localStorage) — the `track` gate */
+/**
+ * Has `init` run — the SDK's own `__loaded`, not a flag of ours. False on every
+ * host where analytics is disabled (dev / preview without the enable flag), and
+ * the gate `track()` / `identifyUser()` read so those calls stay silent there
+ * instead of logging the SDK's "not initialized" warning on every screen.
+ * @returns {boolean}
+ */
 export function isReady() {
-  return phReady;
-}
-
-/** @returns {boolean} this document persists PostHog state to the device */
-export function isPersisting() {
-  return persisting;
+  return ph.__loaded === true;
 }
 
 // Same-origin proxy on every DEPLOYED host (prod / www / dev / preview) via the
@@ -84,22 +89,43 @@ function apiHost() {
     : `${window.location.origin}/ingest`;
 }
 
+// `env` super-property tags every event → prod dashboards filter env=prod.
+// Registered once, right after init, and that is enough: neither consent call
+// resets the client (the SDK only resets when it crosses the cookieless border,
+// and this client never enters it), so the super-properties are never wiped.
+// While the visitor has not answered, persistence is off and `register` keeps the
+// value in memory only — this never touches the device before consent.
+function tagEnv() {
+  ph.register({ env: isProdHost ? 'prod' : 'dev' });
+}
+
 /**
- * Create the client in memory-only mode. Idempotent, and a no-op where analytics
- * is disabled (dev / preview without the enable flag) or the token is absent — so
- * an absent/failed boot cannot leave `phReady` lying. Called once from main.jsx,
- * BEFORE React mounts, so every `track()` on the first screen sees a live client.
+ * Create the client. Idempotent, and a no-op where analytics is disabled (dev /
+ * preview without the enable flag) or the token is absent. Called once from
+ * main.jsx, BEFORE React mounts, so every `track()` on the first screen sees a
+ * live client — silent until the stored answer turns capture on.
  *
  * @param {typeof posthog} [client]  test seam — prod calls `boot()` with no arg
  */
 export function boot(client) {
   if (client) ph = client;
-  if (phReady || !POSTHOG_TOKEN || !analyticsEnabledHere) return;
+  if (isReady() || !POSTHOG_TOKEN || !analyticsEnabledHere) return;
   ph.init(POSTHOG_TOKEN, {
     api_host: apiHost(),
     defaults: '2026-05-30',
     autocapture: false,
-    capture_pageview: false, // our own page_view via track() replaces it (no dupe)
+    // `$pageview` — РОДНОЙ и включён (значение по умолчанию для нашего набора
+    // `defaults` — `'history_change'`, то есть переходы внутри приложения ловятся
+    // сами). Он был выключен явной строкой, а верх воронки собирался из своих
+    // `landing_viewed` / `*_opened` — из-за чего в проекте пустовали ВСЕ отчёты,
+    // которым нужен `$pageview`: источники трафика, страницы входа, отказы,
+    // длительность сессии. До согласия он не уходит (сбор выключен), но и не
+    // теряется: `opt_in_capturing()` в конце своей работы шлёт начальный
+    // просмотр сам, потому что при загрузке флаг «уже слал» не взводился. Значит
+    // у принявшего приход в воронке ЕСТЬ, и первая ступень воронки — именно
+    // `$pageview`: наши события, выстрелившие до нажатия, отброшены безвозвратно.
+    // `capture_pageleave` включается сам (`'if_capture_pageview'`) — без него нет
+    // отказов.
     capture_performance: false,
     // Адрес уезжает в событие БЕЗ фрагмента. После OAuth-редиректа Supabase
     // кладёт в `#` пару access/refresh-токенов, и `$current_url` +
@@ -109,19 +135,29 @@ export function boot(client) {
     // поднимать весь набор ради одного пункта значит менять заодно запись
     // canvas и тела запросов.
     disable_capture_url_hashes: true,
+    // ВСЯ ПОЛИТИКА СОГЛАСИЯ — ЭТИ ДВЕ СТРОКИ (TRIP-502).
+    // Первая: до ответа на баннер клиент считается отказавшимся, поэтому
+    // `capture()` ничего не шлёт и никуда не копит — ноль хитов в сеть.
+    opt_out_capturing_by_default: true,
+    // Вторая обязательна, и её дефолт ОПАСЕН (`false`). Отключение хранилища SDK
+    // считает как `disable_persistence || (отказался && opt_out_persistence_by_default)`,
+    // то есть без этой строки persistence остаётся ВКЛЮЧЁННОЙ, пока человек не
+    // ответил, и SDK пишет в localStorage ДО согласия. Она же делает отзыв
+    // настоящим: отключение persistence внутри вызывает `remove()`, то есть SDK
+    // сам стирает записанное.
+    opt_out_persistence_by_default: true,
     // Replay is CONSENT-GATED, not off. The client boots before the banner is
     // answered, and a recording of the screen is the one thing that must never
-    // happen on an unanswered visit; `onConsent` lifts this. WHICH sessions are
-    // then recorded is NOT decided here — that is the project's own ingestion
-    // config (trigger groups, sampling), which lives in PostHog and changes
-    // without a deploy.
+    // happen on an unanswered visit; `onConsent` lifts it on a grant. WHICH
+    // sessions are then recorded is NOT
+    // decided here — that is the project's own ingestion config (trigger groups,
+    // sampling), which lives in PostHog and changes without a deploy.
     disable_session_recording: true,
     disable_surveys: true, // опросами не пользуемся — иначе SDK тянет ~33 КБ с их CDN (TRIP-475)
     // Код — единственный замок на сбор: настройка проекта (heatmaps_opt_in)
     // не должна включать сбор мыше-движений без нашего ведома (TRIP-328).
     enable_heatmaps: false,
     person_profiles: 'identified_only',
-    persistence: 'memory', // variant B: nothing on the device until consent
     // The privacy FLOOR of a replay — same reason as `enable_heatmaps` above
     // (TRIP-328): the project's masking settings only move the DEFAULTS of these
     // three, so a click in the PostHog UI can lower them, an explicit value here
@@ -141,40 +177,36 @@ export function boot(client) {
     },
     __extensionClasses: { ...SessionReplayExtensions },
   });
-  // `env` super-property tags every event → prod dashboards filter env=prod.
-  ph.register({ env: isProdHost ? 'prod' : 'dev' });
-  phReady = true;
+  tagEnv();
 }
 
 /**
- * Apply a consent record to the client. Only the analytics grant matters here
- * (the Google side is consent.js). On a grant, flip the SAME client's persistence
- * to the device — no second init. Idempotent: once persisting, a repeat call does
- * nothing.
+ * Hand the visitor's answer to the SDK — two native calls, nothing else.
+ *
+ * A grant turns capture and storage on, a refusal turns them off AND wipes what
+ * was stored: both outcomes fall out of the two config lines in `boot` above,
+ * where the mechanics are spelled out.
+ *
+ * A `null` record (never asked, expired, version moved) leaves the client alone —
+ * it is already opted out by config, and there is nothing stored to undo.
+ *
+ * Only the analytics grant matters here — the Google and OpenAI sides are consent.js.
  *
  * @param {{analytics?: boolean}|null} record
  */
 export function onConsent(record) {
-  if (!phReady || persisting || !record?.analytics) return;
-  ph.set_config({ persistence: 'localStorage+cookie' });
-  // Lift the replay gate. No argument ON PURPOSE: a bare `startSessionRecording()`
-  // OBEYS the project's ingestion controls, so this call says "allowed", never
-  // "record this one". Passing the override options would drag the recording
-  // policy into the bundle and fork it from the settings in PostHog.
-  ph.startSessionRecording?.();
-  persisting = true;
-}
+  if (!isReady() || !record) return;
 
-/**
- * Stop feeding the client. `init()` cannot be undone, so this drops the gate and
- * opts the client out of capturing — the withdrawal path and the cross-tab
- * refusal. No queue to forget any more.
- */
-export function stopAnalytics() {
-  phReady = false;
-  persisting = false;
-  // Stopped explicitly rather than left to opt-out's side effects: a recorder
-  // still running after a withdrawal is the one failure here nobody would see.
-  ph.stopSessionRecording?.();
-  ph.opt_out_capturing?.();
+  if (record.analytics) {
+    // No `$opt_in` event: consent is a state of the client, not an act worth a
+    // step in the funnel. The SDK sends the initial `$pageview` here by itself —
+    // it withheld it at load, so the arrival is not lost for whoever accepts.
+    ph.opt_in_capturing({ captureEventName: false });
+    // Lift the replay gate. No argument ON PURPOSE: a bare `startSessionRecording()`
+    // OBEYS the project's ingestion controls, so this call says "allowed", never
+    // "record this one".
+    ph.startSessionRecording?.();
+  } else {
+    ph.opt_out_capturing();
+  }
 }

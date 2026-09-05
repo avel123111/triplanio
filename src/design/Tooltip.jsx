@@ -1,6 +1,7 @@
 // @ts-check
 import React, { useState, useRef, useId, useCallback, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';
 
 // ----- Tooltip ----- (TRIP-274 Ф2.2 — глобальный текст-хинт на ховере/фокусе)
 // Обёртка вокруг триггера: показывает короткий текст при наведении/фокусе.
@@ -156,7 +157,10 @@ export const Tooltip = ({ content, side = 'top', block = false, children, classN
           className={`tt__b tt__b--${pos.side}`}
           style={{ top: pos.top, left: pos.left }}
         >
-          {content}
+          {/* Портал стоит на document.body, ВНЕ роутовых границ — краш в content
+              ловил бы только AppErrorBoundary. Граница краха (TRIP-515) гасит
+              пузырь, а не приложение. */}
+          <SurfaceCrashGuard>{content}</SurfaceCrashGuard>
         </span>,
         document.body,
       )}

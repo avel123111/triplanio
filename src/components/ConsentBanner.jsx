@@ -4,10 +4,7 @@ import { useEffect, useState } from 'react';
 import { Btn } from '@/design/Btn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
-import { isPersisting } from '@/lib/destinations/posthog';
-import {
-  applyConsent, clearAnalyticsStorage, getConsent, setConsent, subscribeConsentOpen,
-} from '@/lib/consent';
+import { applyConsent, getConsent, setConsent, subscribeConsentOpen } from '@/lib/consent';
 
 /**
  * Cookie-consent panel (TRIP-311). Mounted OUTSIDE <Router> so it also shows on
@@ -34,21 +31,10 @@ export default function ConsentBanner() {
     // come back null, silently denying analytics to someone who just accepted.
     const record = setConsent(accepted);
     setOpen(false);
-
-    if (accepted) {
-      // uid so an already-signed-in visitor becomes a person now, not next load.
-      applyConsent(record, user?.id);
-      return;
-    }
-
-    // Only a real downgrade needs a reload: the client cannot un-init, but it CAN
-    // be memory-only. Reload solely when this document was PERSISTING to the device
-    // (variant B) — refusing a memory-only session wrote nothing, so throwing the
-    // page away would be gratuitous.
-    if (isPersisting()) {
-      clearAnalyticsStorage();
-      window.location.reload();
-    }
+    // Both answers are one SDK switch each (grant → capture and storage on,
+    // refusal → opted out, and the SDK wipes what it stored); the uid so an
+    // already-signed-in visitor is (re)identified now, not on the next load.
+    applyConsent(record, user?.id);
   };
 
   return (

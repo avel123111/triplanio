@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT } from '@/lib/i18n/I18nContext';
 import { useLightZone } from '@/lib/ThemeContext';
 import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
@@ -435,7 +435,6 @@ export function SiteZone({ children }) {
   useLightZone();
   const cssReady = useSiteCssLink(true);
   const { pathname, hash } = useLocation();
-  const { lang } = useI18n();
   // ★ ПРОКРУТКА К ЯКОРЮ ВЕДЁМ САМИ, А НЕ ОТДАЁМ БРАУЗЕРУ (TRIP-511).
   //
   // Без хеша — к верху (смену маршрута роутер не прокручивает). С хешем раньше
@@ -492,25 +491,12 @@ export function SiteZone({ children }) {
     };
   }, [pathname, hash]);
 
-  // ★ <html lang> — третье, что принадлежит ЗОНЕ, а не странице (TRIP-445).
-  // Переключатель языка стоит в шапке КАЖДОЙ страницы зоны, а атрибут ставил
-  // только лендинг у себя в файле — замерено: на /d/…, /terms, /login и /join
-  // текст уезжал в русский, а lang оставался "en". Это ломает произношение
-  // скринридера, предложение перевода в браузере и переносы. Тот же класс, что
-  // <link> и прокрутка: механизм жил в странице, хотя владеет им оболочка.
-  // Снимок берём один раз, возвращаем на выходе из зоны — внутри зоны SiteZone
-  // не размонтируется, поэтому владелец ровно один и гонки «кто последний
-  // записал» здесь быть не может. Локальная `prev` в mount-once эффекте, без
-  // ref: ref пережил бы перерисовку, а нам нужно ровно значение на входе.
-  useEffect(() => {
-    const r = document.documentElement;
-    const prev = r.getAttribute('lang');
-    return () => {
-      if (prev != null) r.setAttribute('lang', prev);
-      else r.removeAttribute('lang');
-    };
-  }, []);
-  useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
+  // ★ <html lang> ЗДЕСЬ БОЛЬШЕ НЕ ЖИВЁТ (TRIP-515). Владелец атрибута — слой i18n
+  // (I18nContext), один на всё приложение и зону. Локальная копия здесь была
+  // дефектной: её очистка при уходе с лендинга возвращала атрибут на "en", и в
+  // приложении lang всегда оставался английским — повод для автоперевода, который
+  // ломал DOM. i18n читает тот же язык, что читала эта копия, поэтому перенос
+  // владения атрибут в зоне не меняет (потому же снят импорт useI18n отсюда).
 
   // ★ CANONICAL — ВЫВОДИТСЯ ИЗ АДРЕСА, а не передаётся страницей (TRIP-445).
   //

@@ -14,7 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CAMPAIGN_KEYS, CAMPAIGN_TTL_MS, campaignQuery, pickSignupMarks,
-  readMarks, resolveCampaign, resolveSignupMarks,
+  readMarks, resolveCampaign,
 } from './campaign.js';
 
 const NOW = Date.parse('2026-07-30T12:00:00.000Z');
@@ -26,9 +26,10 @@ const campaignFor = (search, stored, now) => resolveCampaign(readMarks(search), 
 // the common case in these tests: nothing stored but the clock.
 const at = (ts) => ({ camp_ts: ts });
 
-test('a campaign link is captured with all five marks plus a timestamp', () => {
+test('a campaign link is captured with all eight marks plus a timestamp', () => {
   const r = campaignFor(
-    '?utm_source=instagram&utm_medium=influencer&utm_campaign=travel_ru_aug&utm_content=stories_1&gclid=abc123',
+    '?utm_source=instagram&utm_medium=influencer&utm_campaign=travel_ru_aug&utm_content=stories_1'
+      + '&gclid=abc123&gbraid=gb1&wbraid=wb1&oppref=gAAAA',
     null,
     NOW,
   );
@@ -40,6 +41,9 @@ test('a campaign link is captured with all five marks plus a timestamp', () => {
       camp_campaign: 'travel_ru_aug',
       camp_content: 'stories_1',
       camp_gclid: 'abc123',
+      camp_gbraid: 'gb1',
+      camp_wbraid: 'wb1',
+      camp_oppref: 'gAAAA',
     },
   });
 });
@@ -48,6 +52,18 @@ test('a gclid alone is a campaign: Google auto-tagging sends no utm at all', () 
   const r = campaignFor('?gclid=Cj0KCQ', null, NOW);
   assert.equal(r.set.camp_gclid, 'Cj0KCQ');
   assert.equal(r.set.camp_source, undefined);
+});
+
+// TRIP-514: a network's click id is the ONLY thing its tag attributes by, and the
+// tag reads it from the address of the page it is initialised on — not the landing
+// page. So every click id is a mark that rides the address, and a paid click by
+// itself, whatever else the URL carries.
+test('a click id alone is a campaign, and rides the address on (gbraid / wbraid / oppref)', () => {
+  for (const param of ['gbraid', 'wbraid', 'oppref']) {
+    const r = campaignFor(`?${param}=x1`, null, NOW);
+    assert.equal(r.set[`camp_${param}`], 'x1', param);
+    assert.equal(campaignQuery(`?t=share_token&${param}=x1`), `${param}=x1`, param);
+  }
 });
 
 test('last touch wins: a newer campaign replaces the one already stored', () => {
@@ -216,7 +232,8 @@ test('a mark passed on to the next document keeps the marks and nothing else', (
 // columns are written server-side (RPC create_user_profile) and first-touch is
 // PostHog's own native block — both off the client, so neither is derived here.
 test('every mark reaches both client projections, agreeing on the vocabulary', () => {
-  const marks = readMarks('?utm_source=a&utm_medium=b&utm_campaign=c&utm_content=d&gclid=e');
+  const ALL = '?utm_source=a&utm_medium=b&utm_campaign=c&utm_content=d&gclid=e&gbraid=f&wbraid=g&oppref=h';
+  const marks = readMarks(ALL);
   const params = Object.keys(marks);
 
   // Super-properties: one per mark, plus the timestamp that drives the window.
@@ -225,52 +242,5 @@ test('every mark reaches both client projections, agreeing on the vocabulary', (
   assert.equal(Object.keys(camp).length, params.length + 1);
 
   // The pass-through carries the same set, under the parameter names.
-  assert.deepEqual(
-    new URLSearchParams(campaignQuery('?utm_source=a&utm_medium=b&utm_campaign=c&utm_content=d&gclid=e')),
-    new URLSearchParams(marks),
-  );
-});
-
-// ── Which carrier owns a signup (TRIP-316/TRIP-335 follow-up) ────────────────────
-// The rule that lost a real paid signup: the marks have to cross a document
-// replacement (login → hard navigation to the app), and the ONLY carrier across
-// that border was a sessionStorage stash — which a browser is free to refuse
-// without telling anyone. Below is the decision, on a pure function, so the next
-// break is a red test and not a quarter of ad spend filed under "organic".
-const STASH = JSON.stringify({ utm_source: 'google', utm_campaign: '24192647759', gclid: 'CjwK' });
-
-test('the address wins: a mark in the URL beats the stash it crossed with', () => {
-  const r = resolveSignupMarks(readMarks('?utm_source=instagram&utm_campaign=aug'), STASH);
-  assert.deepEqual(r.marks, { utm_source: 'instagram', utm_campaign: 'aug' });
-});
-
-test('a resolved signup spends the stash even when the ADDRESS won', () => {
-  // The regression this pins: skip it and the stash outlives its signup, so the
-  // NEXT person to register in the same tab inherits this click.
-  const r = resolveSignupMarks(readMarks('?utm_source=instagram'), STASH);
-  assert.equal(r.spendStash, true);
-});
-
-test('the stash carries the signup when the address lost its marks', () => {
-  // Exactly the OAuth/One-Tap border: the app is re-entered on a bare `/trips`.
-  const r = resolveSignupMarks(readMarks(''), STASH);
-  assert.deepEqual(r.marks, { utm_source: 'google', utm_campaign: '24192647759', gclid: 'CjwK' });
-  assert.equal(r.spendStash, true);
-});
-
-test('no address marks and no stash is not a signup to attribute', () => {
-  const r = resolveSignupMarks(readMarks('?ref=friend'), null);
-  assert.equal(r.marks, null);
-  assert.equal(r.spendStash, false); // nothing stored → nothing to drop
-});
-
-test('a malformed stash is data, not a crash', () => {
-  const r = resolveSignupMarks(null, '{not json');
-  assert.equal(r.marks, null);
-  assert.equal(r.spendStash, true); // it existed, so it is still spent
-});
-
-test('a stash cannot smuggle columns the address never could', () => {
-  const r = resolveSignupMarks(null, JSON.stringify({ utm_source: 'google', is_pro_trip: true }));
-  assert.deepEqual(r.marks, { utm_source: 'google' });
+  assert.deepEqual(new URLSearchParams(campaignQuery(ALL)), new URLSearchParams(marks));
 });

@@ -3,6 +3,7 @@
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { SheetGrip, SheetRoot, SheetSurface } from "@/components/ui/sheetShell"
+import { SurfaceCrashGuard } from "@/components/ui/surfaceCrashGuard"
 import { cn } from "@/lib/utils"
 import { keepFocusInDialog } from "@/lib/dialogFocus"
 import { useIsPhone } from "@/hooks/use-mobile"
@@ -28,15 +29,23 @@ const ResponsiveSheetCtx = React.createContext(false)
 const Dialog = ({ children, ...props }) => {
   const isSheet = useIsPhone()
   if (isSheet) {
+    // Телефон: SheetRoot уже несёт SurfaceCrashGuard (шов шита) — второй здесь был
+    // бы дублем.
     return (
       <ResponsiveSheetCtx.Provider value={true}>
         <SheetRoot {...props}>{children}</SheetRoot>
       </ResponsiveSheetCtx.Provider>
     )
   }
+  // Десктоп: свой корень Radix, поэтому граница краха — здесь (TRIP-515). Краш
+  // внутри окна закрывает окно (onOpenChange(false)), а не убивает приложение.
   return (
     <ResponsiveSheetCtx.Provider value={false}>
-      <DialogPrimitive.Root {...props}>{children}</DialogPrimitive.Root>
+      <DialogPrimitive.Root {...props}>
+        <SurfaceCrashGuard open={props.open} onClose={() => props.onOpenChange?.(false)}>
+          {children}
+        </SurfaceCrashGuard>
+      </DialogPrimitive.Root>
     </ResponsiveSheetCtx.Provider>
   )
 }

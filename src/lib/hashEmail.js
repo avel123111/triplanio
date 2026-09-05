@@ -1,4 +1,5 @@
-// SHA-256 of an email address, for Google Ads enhanced conversions (TRIP-407 PR6).
+// SHA-256 of an email address, for Google Ads enhanced conversions (TRIP-407 PR6)
+// and OpenAI Ads enhanced matching (TRIP-514) — one digest, both networks.
 //
 // THE INVARIANT: the raw email never leaves this function — the caller passes an
 // address in and gets a hex digest out, and only the digest is handed to gtag.
@@ -10,7 +11,7 @@
 
 /**
  * The lowercase hex SHA-256 of an email, normalised (trim + lowercase) the way
- * Google expects for enhanced-conversion matching.
+ * Google (and OpenAI) expect for enhanced-conversion matching.
  *
  * @param {string} email
  * @returns {Promise<string>}  64-char lowercase hex digest

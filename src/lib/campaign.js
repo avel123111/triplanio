@@ -22,7 +22,23 @@
  * - `param`  — what the URL calls it. Also the key of the MARKS currency.
  * - `column` — the `users` column that survives a cookie refusal, or null when
  *   there is none. `utm_content` deliberately has no column: it says WHICH
- *   creative, which is an ad-reporting detail, not account data.
+ *   creative, which is an ad-reporting detail, not account data. The click ids
+ *   below `gclid` have none YET: the server-side conversion upload that needs
+ *   them stored is a later phase (TRIP-514), and a column is a migration plus the
+ *   RPC whitelist, not a row here.
+ *
+ * CLICK IDS RIDE THE ADDRESS, THAT IS THE WHOLE FIX (TRIP-514). An ad network
+ * attributes a conversion to its click ONLY by its own id: `gclid` / `gbraid` /
+ * `wbraid` for Google (the last two are what iOS sends instead of `gclid`),
+ * `oppref` for OpenAI. Each network's tag reads that id from the URL of the page
+ * it is initialised on, by itself — and the tag is initialised on the page
+ * where the visitor accepted the banner or signed up, never the landing page it
+ * was clicked to. A row here is what carries the id there: every address the
+ * visit leaves through (`withVisitCampaign` → CTA, `/login`, the OAuth
+ * `redirectTo`, the confirmation email) is built from this table. Measured on
+ * prod before the rows existed: 39 visits arrived with `oppref`, 0 registrations
+ * carried it — the id was gone from the address by the time the pixel fired.
+ * Values are capped at MAX_VALUE_LEN; an `oppref` is 120 characters.
  *
  * Own `camp_*` names for the super-properties, never `utm_*`: PostHog already
  * collects `utm_*` by itself on the hit that carries them, and a PERSISTED
@@ -35,6 +51,9 @@ const MARKS = [
   { param: 'utm_campaign', column: 'signup_utm_campaign' },
   { param: 'utm_content', column: null },
   { param: 'gclid', column: 'signup_gclid' },
+  { param: 'gbraid', column: null },
+  { param: 'wbraid', column: null },
+  { param: 'oppref', column: null },
 ];
 
 /** Query parameter → the persisted super-property. `utm_` is dropped, nothing else. */
@@ -60,8 +79,9 @@ for (const { param, column } of MARKS) {
 }
 
 // A campaign needs one of these to exist at all. Requiring `utm_campaign` would
-// drop exactly the paid clicks we need: Google auto-tagging sends `gclid` alone.
-const CAMPAIGN_TRIGGERS = ['utm_source', 'utm_campaign', 'gclid'];
+// drop exactly the paid clicks we need: Google auto-tagging sends `gclid` alone,
+// and a click id from any network is a paid click by definition.
+const CAMPAIGN_TRIGGERS = ['utm_source', 'utm_campaign', 'gclid', 'gbraid', 'wbraid', 'oppref'];
 
 // Last-touch window. Past it the mark is dropped — otherwise a single click
 // keeps claiming conversions half a year later.
@@ -206,40 +226,4 @@ export function pickSignupMarks(value) {
     if (cleaned) out[param] = cleaned;
   }
   return Object.keys(out).length ? out : null;
-}
-
-/**
- * Which marks the signup being made carries, and whether the OAuth stash is spent.
- *
- * WHY THIS IS A PURE FUNCTION (TRIP-316/TRIP-335 follow-up). The marks have to
- * cross a document replacement, and until now the rule that decides which carrier
- * wins lived inside `attribution.js` — a module glued to `window`, so it could not
- * have a test. It broke exactly the way an untested money decision breaks: silently,
- * and only visible months later as a paid signup filed under "organic". Same move as
- * `isSafeInternalPath` / `authFlowCode` / `loadStateClassify`: the decision is a pure
- * function with a gate, the storage read stays a thin shell around it.
- *
- * TWO RULES, and the second is the one that bites:
- *   1. THE ADDRESS WINS. A mark in the URL beat the redirect on its own; the stash
- *      is the fallback for the border the address could not cross. The address also
- *      survives a browser that refuses storage (private mode, ITP) — which is the
- *      failure that lost a real paid signup.
- *   2. A RESOLVED SIGNUP SPENDS THE STASH, whichever carrier won. Leaving it would
- *      credit this click to whoever registers next in the same tab. Skipping this
- *      when the address wins is the regression that makes rule 1 look free.
- *
- * @param {Record<string, string>|null} visitMarks  marks on THIS document's address
- * @param {string|null} stashedRaw  raw JSON the OAuth stash holds, null when empty
- * @returns {{ marks: Record<string, string>|null, spendStash: boolean }}
- */
-export function resolveSignupMarks(visitMarks, stashedRaw) {
-  // A stash that exists is spent by this signup even when it lost — see rule 2.
-  const spendStash = Boolean(stashedRaw);
-  if (visitMarks) return { marks: visitMarks, spendStash };
-
-  // The stash is JSON WE wrote, but it comes back out of storage a stranger can
-  // reach, so a malformed payload is data, not a crash.
-  let parsed = null;
-  try { parsed = JSON.parse(stashedRaw || 'null'); } catch { /* junk in storage */ }
-  return { marks: pickSignupMarks(parsed), spendStash };
 }

@@ -1,14 +1,14 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Card, IconBtn, Skeleton } from '@/design/index';
+import { Card, CardHeader, IconBtn, Meter, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { categoryColor } from '@/lib/budget/category-colors';
 
-// Budget summary widget (Lumo .wdg) — total + per-category segmented bar +
-// legend. Shared by the trip Overview and (previously) the timeline rail, so the
-// per-category breakdown lives here once. Self-contained: owns its fx context.
+// Budget summary widget — total + per-category segmented bar + legend. Shared
+// by the trip Overview and (previously) the timeline rail, so the per-category
+// breakdown lives here once. Self-contained: owns its fx context.
 export default function BudgetSummaryCard({
   trip,
   budget,
@@ -47,6 +47,8 @@ export default function BudgetSummaryCard({
     [budgetCategories, budgetExpenses, fx, overrides],
   );
 
+  if (isLoading) return <BudgetSummarySkeleton />;
+
   const totalSpent = catBreakdown.reduce((s, c) => s + c.spent, 0);
   const hasMissingRate = (budgetExpenses || []).some(
     (e) => e.original_currency && e.original_currency !== mainCurrency && !conv(e).ok,
@@ -55,11 +57,10 @@ export default function BudgetSummaryCard({
   const openBudget = () => (budgetEnabled ? onOpen?.() : onLocked?.());
 
   return (
-    <Card radius="lg" pad="none" className="ov-wdg">
-      <div className="wdg-h">
-        <span className="wi"><Icon name="wallet" size={17} /></span>
-        <h4>{t('trip.sidebar_budget')}</h4>
-        {canManage && (
+    <Card className="col col--g6">
+      <CardHeader
+        title={t('trip.sidebar_budget')}
+        action={canManage && (
           <IconBtn
             icon="chev"
             tone="outline"
@@ -69,18 +70,10 @@ export default function BudgetSummaryCard({
             ariaLabel={budgetEnabled ? t('trip.open_budget') : t('trip.enable_budget_addon')}
           />
         )}
-      </div>
+      />
 
-      <div className="wdg-b">
-        {isLoading ? (
-          <>
-            <Skeleton w="55%" h={26} r="var(--r-sm)" />
-            <Skeleton w="100%" h={11} r="var(--r-pill)" style={{ marginTop: 14 }} />
-            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 12 }} />
-            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 8 }} />
-            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 8 }} />
-          </>
-        ) : budget ? (
+      <div>
+        {budget ? (
           <>
             <div className="bud-total num">{money(totalSpent)}</div>
 
@@ -93,15 +86,15 @@ export default function BudgetSummaryCard({
 
             {catBreakdown.length > 0 ? (
               <>
-                <div className="bud-bar" role="presentation">
-                  {catBreakdown.map((c) => (
-                    <i
-                      key={c.id}
-                      title={c.name}
-                      style={{ flexGrow: c.spent, minWidth: 4, background: c.color }}
-                    />
-                  ))}
-                </div>
+                {/* Доля имеет смысл только против других долей: на одной
+                    категории полоса повторяла бы строку легенды. */}
+                {catBreakdown.length > 1 && (
+                  <Meter
+                    segments={catBreakdown.map((c) => ({
+                      key: c.id, value: c.spent, color: c.color, title: c.name,
+                    }))}
+                  />
+                )}
                 <div className="bud-legs">
                   {catBreakdown.map((c) => (
                     <div className="bud-leg" key={c.id}>
@@ -119,6 +112,30 @@ export default function BudgetSummaryCard({
         ) : (
           <div className="muted ov-empty-line">{t('trip.budget_none')}</div>
         )}
+      </div>
+    </Card>
+  );
+}
+
+// Те же элементы, что у заполненной карточки (итог, полоса, три строки легенды),
+// с заглушками вместо содержимого. Без хуков данных: скелетон Обзора
+// монтируется до того, как известен трип.
+export function BudgetSummarySkeleton() {
+  const { t } = useI18nFormat();
+  return (
+    <Card className="col col--g6" aria-busy="true">
+      <CardHeader title={t('trip.sidebar_budget')} action={<Skeleton w={32} h={32} r="var(--r-btn)" />} />
+      <div>
+        <div className="bud-total"><Skeleton w="55%" h={28} r="var(--r-sm)" /></div>
+        <Meter />
+        <div className="bud-legs">
+          {[0, 1, 2].map((i) => (
+            <div className="bud-leg" key={i}>
+              <Skeleton w={10} h={10} r={4} />
+              <Skeleton w={i === 0 ? 96 : 72} h={18} r={5} />
+            </div>
+          ))}
+        </div>
       </div>
     </Card>
   );

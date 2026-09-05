@@ -12,7 +12,9 @@
 
    The prose is the reviewed v1.0 (TRIP-133 audit): operator = sole trader in
    Spain (details on request), contacts info@/support@ only, Spanish law, 16+,
-   the consent wording matches the real TRIP-407 variant-B behaviour, retention
+   the consent wording matches the real TRIP-502 behaviour (the SDK collects
+   nothing before / without a grant; storage and account-linked usage start with
+   «Accept all»), retention
    figures are verified facts (Supabase Pro backups 7d, Sentry 90d, Spanish
    accounting 6y). Every factual claim is traced to code in the PR description —
    keep the text in sync with behaviour when either changes.
@@ -31,10 +33,17 @@ function tocOf(html) {
     .map((m) => ({ id: m[1], title: m[2].replace(/<[^>]+>/g, '').trim() }));
 }
 
+// Версия и даты двигаются ВМЕСТЕ с содержательной правкой текста, а не с любой.
+// В 1.2 текст описывает поведение TRIP-502: до ответа на баннер PostHog не
+// собирает НИЧЕГО (прежний текст обещал безкуковый сбор), а идентификаторы на
+// устройстве и запись под номером аккаунта начинаются с «Принять всё» (прежний
+// обещал их независимо от баннера). И собираем, и храним мы МЕНЬШЕ, чем обещал
+// прежний текст, поэтому нового согласия правка не требует; но материальная
+// правка при неподвижной дате — первое, за что цепляется проверяющий.
 export const LEGAL_META = {
-  updated: 'Last updated 31 August 2026',
-  version: 'Version 1.1',
-  effective: 'Effective 26 August 2026',
+  updated: 'Last updated 5 September 2026',
+  version: 'Version 1.2',
+  effective: 'Effective 5 September 2026',
 };
 
 // Chrome labels of the viewer. English like the rest of the legal surface (not
