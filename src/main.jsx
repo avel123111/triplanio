@@ -47,16 +47,17 @@ import App from '@/App.jsx'
 import '@/index.css'
 
 // PostHog product analytics (TRIP-213) under consent (TRIP-311, TRIP-502). Boot
-// the client for EVERYONE, here, before the first render — so the first screen of
-// a first-time visitor (landing_viewed, public_trip_viewed) is captured; the SDK
-// itself runs cookieless (nothing on the device) until a stored grant is applied.
+// the client for EVERYONE, here, before the first render — so a `track()` on the
+// first screen reaches a live client and needs no queue of ours. Whether it goes
+// anywhere is the SDK's own business: it boots opted out (nothing sent, nothing
+// written to the device) until a stored grant is applied.
 bootPosthog()
 // The Google Ads adapter shares the boot/onConsent contract; boot() is a no-op
 // (the tag loads on a marketing grant via applyConsent), booted here for symmetry.
 bootAds()
 
 // Apply the stored answer — or null, which covers "never asked", "expired", "our
-// version moved" and "hand-edited" alike: the SDKs stay (or go back to) cookieless
+// version moved" and "hand-edited" alike: the SDKs stay (or go back to) opted out
 // and ConsentBanner asks again. This also primes the campaign super-properties.
 applyConsent(getConsent())
 

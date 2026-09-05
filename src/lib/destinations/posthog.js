@@ -2,30 +2,34 @@
 // CI guard 2j allows `posthog-js` and `posthog.init` HERE (and in analytics.js
 // for capture/identify); nowhere else.
 //
-// CONSENT AND IDENTITY ARE THE SDK'S OWN (TRIP-502). Two config lines say the
-// whole policy, and the SDK carries it across documents by itself:
+// СОГЛАСИЕ И ЛИЧНОСТЬ — РОДНЫЕ МЕХАНИЗМЫ SDK (TRIP-502). Своего кода вокруг них
+// нет ни строчки: политику целиком объявляют две строки конфига, а переключают
+// её два родных вызова.
 //
-//   cookieless_mode: 'on_reject'      + opt_out_capturing_by_default: true
+//   opt_out_capturing_by_default  — до ответа не собираем
+//   opt_out_persistence_by_default — до ответа не пишем на устройство, а отказ
+//                                    стирает записанное (SDK сам зовёт remove())
 //
-// Before the banner is answered, and after "Necessary only", the client runs in
-// PostHog's cookieless mode: nothing is written to the device, the event goes
-// out under the `$posthog_cookieless` sentinel, and PostHog's servers derive the
-// person from a daily-salted hash of ip + user agent + host (the project runs
-// the *stateful* server hash mode, which is what lets `identify()` merge that
-// hashed person into the account — measured: landing, OAuth redirect, signup
-// and identify land on ONE person). After "Accept all", `opt_in_capturing()`
-// switches the SAME client to the SDK's default storage (localStorage+cookie),
-// so the id survives redirects, tabs and reloads on its own; a later refusal is
-// `opt_out_capturing()`, which resets and wipes what was stored and goes back
-// to cookieless. Session replay is the one thing consent still switches on here.
+// «Принять всё» → `opt_in_capturing()`: сбор и хранение включаются, и SDK САМ
+// досылает начальный `$pageview` — при загрузке он его придержал. Отказ и отзыв
+// → `opt_out_capturing()`. Ни один из двух вызовов НЕ сбрасывает клиент: сброс у
+// SDK случается только при выходе из безкукового режима, а этот клиент в него не
+// входит. Отсюда главное свойство: идентификатор у человека ровно один —
+// анонимный, заведённый на согласии, — и `identify(uid)` сшивает его с аккаунтом.
 //
-// What this replaced, so nobody brings it back: TRIP-407 booted the client into
-// `persistence:'memory'` and flipped it with `set_config` on consent — a mode
-// PostHog does not have. That id died with every document, so `landing_viewed`
-// and `user_signed_up` of ONE visit were two people (measured on prod: 11 of 32
-// signups stitched, 2.3 identities per logged-in visitor), and a whole layer of
-// our own flags, stashes, wipes and reloads grew around it. The SDK's own consent
-// API needs none of that.
+// ЧТО ЗДЕСЬ УЖЕ ПРОБОВАЛИ И ПОЧЕМУ НЕ НАДО ВОЗВРАЩАТЬ.
+// `persistence:'memory'` + `set_config` (TRIP-407): память умирает вместе с
+// документом, поэтому OAuth-редирект рвал личность — приход и регистрация одного
+// визита становились двумя людьми (замер прода: склеено 14 регистраций из 36).
+// `cookieless_mode:'on_reject'` (TRIP-502, первая попытка): выход из безкукового
+// режима SDK сопровождает `reset(true)`, поэтому «Принять всё» рождало лишний
+// идентификатор; и главное — безкуковая персона у PostHog ВЫВОДИТСЯ сервером из
+// хеша, у неё нет строки в `person_distinct_ids`, поэтому `identify` её ни с чем
+// не сшивает (замер превью 05.09: клиент отправил корректный `$identify` с
+// `$anon_distinct_id = cookieless_…`, персоны остались раздельными). Безкуковый
+// режим сделан для анонимного счёта аудитории, а не для пути человека — так и
+// написано в доке PostHog: «не следует идентифицировать пользователей в этом
+// режиме».
 //
 // ★ ТОЧКА ВХОДА — `dist/module.slim.js`, А НЕ `posthog-js` (TRIP-475).
 // Обычный вход тянет `dist/module.js` — 231 КБ уже собранного кода ОДНИМ куском,
@@ -86,10 +90,11 @@ function apiHost() {
 }
 
 // `env` super-property tags every event → prod dashboards filter env=prod.
-// Registered after init AND after every consent switch: crossing the cookieless
-// ↔ stored border resets the client, and a reset wipes the super-properties.
-// In cookieless mode `register` keeps the value in memory only (the SDK skips
-// load/save while persistence is disabled), so this never touches the device.
+// Registered once, right after init, and that is enough: neither consent call
+// resets the client (the SDK only resets when it crosses the cookieless border,
+// and this client never enters it), so the super-properties are never wiped.
+// While the visitor has not answered, persistence is off and `register` keeps the
+// value in memory only — this never touches the device before consent.
 function tagEnv() {
   ph.register({ env: isProdHost ? 'prod' : 'dev' });
 }
@@ -98,7 +103,7 @@ function tagEnv() {
  * Create the client. Idempotent, and a no-op where analytics is disabled (dev /
  * preview without the enable flag) or the token is absent. Called once from
  * main.jsx, BEFORE React mounts, so every `track()` on the first screen sees a
- * live client — in cookieless mode until the stored answer is applied.
+ * live client — silent until the stored answer turns capture on.
  *
  * @param {typeof posthog} [client]  test seam — prod calls `boot()` with no arg
  */
@@ -109,7 +114,18 @@ export function boot(client) {
     api_host: apiHost(),
     defaults: '2026-05-30',
     autocapture: false,
-    capture_pageview: false, // our own page_view via track() replaces it (no dupe)
+    // `$pageview` — РОДНОЙ и включён (значение по умолчанию для нашего набора
+    // `defaults` — `'history_change'`, то есть переходы внутри приложения ловятся
+    // сами). Он был выключен явной строкой, а верх воронки собирался из своих
+    // `landing_viewed` / `*_opened` — из-за чего в проекте пустовали ВСЕ отчёты,
+    // которым нужен `$pageview`: источники трафика, страницы входа, отказы,
+    // длительность сессии. До согласия он не уходит (сбор выключен), но и не
+    // теряется: `opt_in_capturing()` в конце своей работы шлёт начальный
+    // просмотр сам, потому что при загрузке флаг «уже слал» не взводился. Значит
+    // у принявшего приход в воронке ЕСТЬ, и первая ступень воронки — именно
+    // `$pageview`: наши события, выстрелившие до нажатия, отброшены безвозвратно.
+    // `capture_pageleave` включается сам (`'if_capture_pageview'`) — без него нет
+    // отказов.
     capture_performance: false,
     // Адрес уезжает в событие БЕЗ фрагмента. После OAuth-редиректа Supabase
     // кладёт в `#` пару access/refresh-токенов, и `$current_url` +
@@ -119,19 +135,23 @@ export function boot(client) {
     // поднимать весь набор ради одного пункта значит менять заодно запись
     // canvas и тела запросов.
     disable_capture_url_hashes: true,
-    // The consent policy, in the SDK's own terms (see the module docblock):
-    // no answer = cookieless from the first event, "Accept all" = the SDK's
-    // default storage, "Necessary only" = cookieless again. Pinned by
-    // posthog.test.js — `persistence:'memory'` + `set_config` is what broke the
-    // funnel (TRIP-502), do not bring it back.
-    cookieless_mode: 'on_reject',
+    // ВСЯ ПОЛИТИКА СОГЛАСИЯ — ЭТИ ДВЕ СТРОКИ (TRIP-502).
+    // Первая: до ответа на баннер клиент считается отказавшимся, поэтому
+    // `capture()` ничего не шлёт и никуда не копит — ноль хитов в сеть.
     opt_out_capturing_by_default: true,
+    // Вторая обязательна, и её дефолт ОПАСЕН (`false`). Отключение хранилища SDK
+    // считает как `disable_persistence || (отказался && opt_out_persistence_by_default)`,
+    // то есть без этой строки persistence остаётся ВКЛЮЧЁННОЙ, пока человек не
+    // ответил, и SDK пишет в localStorage ДО согласия. Она же делает отзыв
+    // настоящим: отключение persistence внутри вызывает `remove()`, то есть SDK
+    // сам стирает записанное.
+    opt_out_persistence_by_default: true,
     // Replay is CONSENT-GATED, not off. The client boots before the banner is
     // answered, and a recording of the screen is the one thing that must never
-    // happen on an unanswered visit; `onConsent` lifts this. WHICH sessions are
-    // then recorded is NOT decided here — that is the project's own ingestion
-    // config (trigger groups, sampling), which lives in PostHog and changes
-    // without a deploy.
+    // happen on an unanswered visit; `onConsent` lifts it on a grant. WHICH
+    // sessions are then recorded is NOT
+    // decided here — that is the project's own ingestion config (trigger groups,
+    // sampling), which lives in PostHog and changes without a deploy.
     disable_session_recording: true,
     disable_surveys: true, // опросами не пользуемся — иначе SDK тянет ~33 КБ с их CDN (TRIP-475)
     // Код — единственный замок на сбор: настройка проекта (heatmaps_opt_in)
@@ -161,35 +181,32 @@ export function boot(client) {
 }
 
 /**
- * Hand the visitor's answer to the SDK. Safe on every start and idempotent:
- * both SDK calls are no-ops when the client is already in that state, and the
- * client only resets when it actually crosses the cookieless ↔ stored border.
+ * Hand the visitor's answer to the SDK — two native calls, nothing else.
  *
- * - grant   → `opt_in_capturing()` (the SDK's default storage takes over; coming
- *             out of cookieless mode the SDK resets) + session replay allowed.
- * - refusal → `opt_out_capturing()` (SDK resets + wipes what it stored, stops the
- *             recorder, goes cookieless — in every tab on its next load).
- * - null    → no usable answer. The SDK is already cookieless by config; the only
- *             thing to do is undo a grant the SDK still remembers from an answer
- *             that has since expired or moved version.
+ * A grant turns capture and storage on, a refusal turns them off AND wipes what
+ * was stored: both outcomes fall out of the two config lines in `boot` above,
+ * where the mechanics are spelled out.
  *
- * Only the analytics grant matters here — the Google side is consent.js.
+ * A `null` record (never asked, expired, version moved) leaves the client alone —
+ * it is already opted out by config, and there is nothing stored to undo.
+ *
+ * Only the analytics grant matters here — the Google and OpenAI sides are consent.js.
  *
  * @param {{analytics?: boolean}|null} record
  */
 export function onConsent(record) {
-  if (!isReady()) return;
-  if (record?.analytics) {
+  if (!isReady() || !record) return;
+
+  if (record.analytics) {
+    // No `$opt_in` event: consent is a state of the client, not an act worth a
+    // step in the funnel. The SDK sends the initial `$pageview` here by itself —
+    // it withheld it at load, so the arrival is not lost for whoever accepts.
     ph.opt_in_capturing({ captureEventName: false });
     // Lift the replay gate. No argument ON PURPOSE: a bare `startSessionRecording()`
     // OBEYS the project's ingestion controls, so this call says "allowed", never
-    // "record this one". Passing the override options would drag the recording
-    // policy into the bundle and fork it from the settings in PostHog.
+    // "record this one".
     ph.startSessionRecording?.();
-  } else if (record || ph.has_opted_in_capturing()) {
+  } else {
     ph.opt_out_capturing();
   }
-  // Either switch resets the client when it crosses the cookieless ↔ stored
-  // border, and a reset wipes the super-properties — put the env tag back.
-  tagEnv();
 }

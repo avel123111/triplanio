@@ -7,10 +7,11 @@
 // client itself is created and gated by the PostHog destination adapter.
 //
 // The client is booted at load (main.jsx, before React mounts), so a call here is
-// live from the first screen. Consent is the SDK's own business — cookieless
-// before / without a grant, stored after one (see `destinations/posthog.js`) —
-// so there is no pre-consent queue (the old `pendingEvents` hold, TRIP-335) and
-// no consent check here: `isReady()` is the whole gate.
+// live from the first screen. Consent is the SDK's own business — it boots opted
+// out and `opt_in_capturing()` turns it on (see `destinations/posthog.js`), so a
+// call made before the answer is dropped BY THE SDK. That is why there is no
+// pre-consent queue of ours (the old `pendingEvents` hold, TRIP-335) and no
+// consent check here: `isReady()` is the whole gate.
 //
 // Naming convention: object_action, snake_case; variant info goes in props, never
 // in the event name. No PII in props (uid only, set via identify).
@@ -102,11 +103,9 @@ export function withVisitCampaign(url) {
  * (TRIP-335).
  *
  * Triggered from exactly two points: `applyConsent` on every start and answer
- * (the no-login case — after the SDK's consent switch, because leaving cookieless
- * mode resets the client and wipes super-properties) and `identifyUser` (the
- * recovered-marks case, right after AuthContext stores them). Storage is per-host,
- * so campaign links MUST point at the same host the app runs on (www vs apex are
- * different jars).
+ * (the no-login case) and `identifyUser` (the recovered-marks case, right after
+ * AuthContext stores them). Storage is per-host, so campaign links MUST point at
+ * the same host the app runs on (www vs apex are different jars).
  */
 export function setCampaign() {
   if (!isReady()) return;
@@ -184,10 +183,16 @@ function syncCampaignToPerson() {
  * NOT gated on the banner (TRIP-502). A signed-in person is identified whatever
  * they answered: the account id is a pseudonymous key we already hold under the
  * contract, the banner decides device STORAGE, and the SDK keeps that promise on
- * its own — in cookieless mode `identify()` still writes nothing to the device,
- * PostHog's servers merge the visit's hashed person into the account (measured).
- * Gating identity on the banner is what left one visit as two people and broke
- * the signup funnel (TRIP-407 → TRIP-502).
+ * its own — before a grant the client is opted out by config, so this call
+ * neither sends `$identify` nor writes anything to the device. Gating identity
+ * on the banner is what left one visit as two people and broke the signup funnel
+ * (TRIP-407 → TRIP-502).
+ *
+ * Identify by uid ONLY — no PII (email / name) ever reaches analytics (TRIP-213);
+ * personal data stays in Supabase, resolve uid → user there. A bare identify is
+ * all this needs: the client never changes storage mode here, so there is nothing
+ * to sequence around — consent is applied once, by `consent.applyConsent`, through
+ * the SDK's own opt-in/opt-out.
  *
  * The last-touch trigger is collected here in one place: identify, then
  * `setCampaign()` (picks up whatever marks AuthContext just recovered for a fresh
@@ -198,8 +203,6 @@ function syncCampaignToPerson() {
  */
 export function identifyUser(uid) {
   if (!uid || !isReady()) return;
-  // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213). Personal
-  // data stays in Supabase; resolve uid → user there when needed.
   posthog?.identify?.(uid);
   setCampaign();
   syncCampaignToPerson();
@@ -211,7 +214,8 @@ export function identifyUser(uid) {
  * marker together — and the SDK's own copy of the consent answer, which is why
  * every logout ends in a full document load (`/login`): boot re-applies OUR
  * record (`applyConsent` in main.jsx), and the client is back in the state the
- * visitor chose. Until that load the client runs cookieless, which stores nothing.
+ * visitor chose. Until that load the client is back on its config default —
+ * opted out, so it neither sends nor stores anything.
  */
 export function resetIdentity() {
   posthog?.reset?.();

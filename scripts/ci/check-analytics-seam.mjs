@@ -24,8 +24,8 @@
  *
  *   B. `posthog.init()` is called only from `src/lib/destinations/posthog.js`
  *      (TRIP-311, TRIP-502). The client is created in exactly one place — the
- *      PostHog destination adapter, which boots it in the SDK's cookieless mode
- *      and hands it the visitor's answer through the SDK's own opt-in/opt-out.
+ *      PostHog destination adapter, which boots it opted out by config and hands
+ *      it the visitor's answer through the SDK's own opt-in/opt-out.
  *      A second init would start a rogue client, out of step with that answer.
  *
  *   C. The PostHog ingestion key / host appear only in
@@ -121,7 +121,7 @@ const RULES = [
     fix: [
       'The client is created in one place: boot() in @/lib/destinations/posthog.js.',
       'An init anywhere else is a rogue client, out of step with the consent state the',
-      'adapter holds (cookieless until consent, TRIP-311/TRIP-502). Add new analytics',
+      'adapter holds (opted out until consent, TRIP-311/TRIP-502). Add new analytics',
       'destinations under src/lib/destinations and wire them through applyConsent().',
     ],
   },

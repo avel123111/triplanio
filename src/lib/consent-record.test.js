@@ -1,7 +1,7 @@
 // Pins the branches that decide whether we may run analytics at all (TRIP-311).
 //
 // Every one of them ends in the same place — `null` means "no answer", so the
-// SDKs stay cookieless and the app asks again. They are invisible in the UI and a
+// SDKs stay opted out and the app asks again. They are invisible in the UI and a
 // wrong `true` here is exactly the failure the whole ticket exists to prevent:
 // tracking someone who never agreed.
 import { test } from 'node:test';
