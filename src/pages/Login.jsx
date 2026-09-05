@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { track, withVisitCampaign } from '@/lib/analytics';
-import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';
+import { getSignupMarks } from '@/lib/attribution';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
@@ -415,10 +415,8 @@ export default function Login() {
   const handleGoogle = async () => {
     setIsLoading(true); setError(null);
     trackAuthIntent('google');
-    // The whole document is handed to the provider, so the in-memory snapshot of
-    // this visit dies here. Every entry that leaves the page needs this line — a
-    // fourth provider added without it silently loses campaign attribution.
-    rememberAttributionForRedirect();
+    // The whole document is handed to the provider; the campaign marks cross that
+    // border in the ADDRESS — `postLoginRedirectTo()` below carries them.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -440,8 +438,7 @@ export default function Login() {
     setIsLoading(true);
     setError(null);
     // One Tap does not leave the page, but it finishes with a hard navigation to
-    // postLoginPath() — a new document all the same.
-    rememberAttributionForRedirect();
+    // postLoginHref() — a new document, and the marks ride its address.
     try {
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
@@ -549,10 +546,8 @@ export default function Login() {
   const handleApple = async () => {
     setIsLoading(true); setError(null);
     trackAuthIntent('apple');
-    // The whole document is handed to the provider, so the in-memory snapshot of
-    // this visit dies here. Every entry that leaves the page needs this line — a
-    // fourth provider added without it silently loses campaign attribution.
-    rememberAttributionForRedirect();
+    // The whole document is handed to the provider; the campaign marks cross that
+    // border in the ADDRESS — `postLoginRedirectTo()` below carries them.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: { redirectTo: postLoginRedirectTo() },
