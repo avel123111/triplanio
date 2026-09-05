@@ -14,7 +14,8 @@
 // consent check here: `isReady()` is the whole gate.
 //
 // Naming convention: object_action, snake_case; variant info goes in props, never
-// in the event name. No PII in props (uid only, set via identify).
+// in the event name. Events carry no personal data: identity lives on the PERSON
+// (`email` / `name`, set by identifyUser — TRIP-518), never in event props.
 // Точка входа — slim-сборка пакета; почему именно она и что она не умеет,
 // см. докблок в `destinations/posthog.js` (TRIP-475). Обе двери обязаны
 // импортировать ОДИН вход, иначе в бандл приедут ДВЕ копии SDK.
@@ -177,8 +178,9 @@ function syncCampaignToPerson() {
  * THE ONLY place the app identifies anyone (CI guard 2j). First-touch
  * (`$initial_utm_*`) is now left to PostHog's own native block — we no longer feed
  * it (TRIP-407, decision 2): the authoritative "source of signup" is the
- * `users.signup_utm_*` column written server-side. So this is a bare identify plus
- * the last-touch person sync — no `$set_once` payload.
+ * `users.signup_utm_*` column written server-side. So there is no `$set_once`
+ * payload — the identify carries only the `$set` identity described below, plus
+ * the last-touch person sync.
  *
  * NOT gated on the banner (TRIP-502). A signed-in person is identified whatever
  * they answered: the account id is a pseudonymous key we already hold under the
@@ -188,24 +190,77 @@ function syncCampaignToPerson() {
  * on the banner is what left one visit as two people and broke the signup funnel
  * (TRIP-407 → TRIP-502).
  *
- * Identify by uid ONLY — no PII (email / name) ever reaches analytics (TRIP-213);
- * personal data stays in Supabase, resolve uid → user there. A bare identify is
- * all this needs: the client never changes storage mode here, so there is nothing
- * to sequence around — consent is applied once, by `consent.applyConsent`, through
- * the SDK's own opt-in/opt-out.
+ * The person carries `email` and `name` (TRIP-518) — the two properties PostHog
+ * shows instead of the distinct id, so a person is recognisable at a glance
+ * rather than being a uuid among 200 identical uuids. They ride the identify
+ * call itself (`$set`), so the write and the identity are one event.
+ *
+ * NOT the avatar, deliberately: person-on-events is enabled for this project, so
+ * every person property is STAMPED onto each event at ingestion. Whatever lands
+ * here is copied into the event history and `$unset` never takes it back — an
+ * avatar URL would be a public bucket link frozen into thousands of rows, and it
+ * adds no recognition the email does not already give. Same reason the second
+ * half of this contract is `deletePersonAndEvents` in
+ * `supabase/functions/_shared/analytics.ts`: deleting an account has to delete
+ * the person WITH their events, or the email we put here outlives the account.
+ * Anything added to `personIdentity` below inherits both properties — think
+ * about the history and the deletion before adding a field.
  *
  * The last-touch trigger is collected here in one place: identify, then
  * `setCampaign()` (picks up whatever marks AuthContext just recovered for a fresh
  * signup, via attribution.getActiveMarks()), then `syncCampaignToPerson()` pushes
  * the resulting `camp_*` onto the person.
  *
- * @param {string} uid  the Supabase user id — no PII ever goes to analytics
+ * @param {string} uid  the Supabase user id
+ * @param {{email?: string, full_name?: string, deleted_at?: string|null}} [profile]  the user row — this
+ *   door owns the mapping from our profile shape to PostHog's person properties,
+ *   so callers hand over the profile they already hold and nothing else
  */
-export function identifyUser(uid) {
+export function identifyUser(uid, profile) {
   if (!uid || !isReady()) return;
-  posthog?.identify?.(uid);
+  posthog?.identify?.(uid, personIdentity(profile));
   setCampaign();
   syncCampaignToPerson();
+}
+
+/**
+ * The person properties we set, or `undefined` when there is nothing to set —
+ * an empty object would still cost a `$set` on every load. Blank strings are
+ * dropped rather than written: an empty `name` would overwrite a good one with
+ * nothing.
+ *
+ * An anonymised row writes nothing at all: `anonymize_my_account` leaves a
+ * `deleted+…@deleted.invalid` address behind, and pushing that onto a person
+ * would resurrect the very profile the deletion just erased. Recognised by
+ * `deleted_at` — the one predicate the whole repo uses for "this account is
+ * gone" (`_shared/profiles.ts`, `AuthContext`, every `anonymize_*` migration) —
+ * not by the placeholder's spelling, which belongs to SQL. Defence in depth:
+ * both live doors drop an anonymised session before they get here.
+ *
+ * Not `displayName()`: that helper DERIVES a name from the email when there is
+ * none, and a derived string would be stamped onto the event history by
+ * person-on-events. What is not filled in stays empty — PostHog falls back to
+ * the email on its own.
+ *
+ * `email` / `name` are PostHog's own property names (its person display name
+ * reads them), not ours — do not rename them into our column names.
+ *
+ * ponytail: sent on every identify, i.e. once per app load, without diffing
+ * against what the person already has. That is one small `$set` per session at
+ * our volume; if it ever shows up in the event bill, diff it the way
+ * `syncCampaignToPerson` diffs `camp_synced_ts`.
+ *
+ * @param {{email?: string, full_name?: string, deleted_at?: string|null}} [profile]
+ * @returns {{email?: string, name?: string} | undefined}
+ */
+function personIdentity(profile) {
+  if (!profile || profile.deleted_at) return undefined;
+  const email = profile.email?.trim();
+  const name = profile.full_name?.trim();
+  const props = {};
+  if (email) props.email = email;
+  if (name) props.name = name;
+  return Object.keys(props).length ? props : undefined;
 }
 
 /**
