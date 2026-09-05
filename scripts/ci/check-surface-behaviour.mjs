@@ -297,6 +297,74 @@ if (picker && panel) {
     `скроллится: ${panel.scrolls} · низ в кадре: ${panel.inViewport}`);
 }
 
+/* ── ГРАНИЦА КРАХА ПОВЕРХНОСТИ (TRIP-515) ────────────────────────────────────
+   Грепом недоказуемо, и грепом же не проверить: краш ВНУТРИ окна обязан закрыть
+   окно, а не приложение, а промис confirm() — разрешиться false ДАЖЕ когда краш
+   случился при busy (там busy-guard глотает обычное закрытие). Стенд —
+   /kit/surface-crash. Оба сценария роняют поддерево окна намеренно.
+   ⚠️ Прод-сборка глушит оверлей ошибок Vite; на dev-сервере он бы перехватывал
+   краш — поэтому стенд смотрят под `vite preview`, как и остальную приёмку. */
+await page.goto(`${BASE}/kit/surface-crash`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(900);
+
+const escaped = [];
+page.on('pageerror', (e) => escaped.push(String(e).slice(0, 140)));
+// Сосед — Badge вне окна: жив = приложение не упало (крах-экран накрыл бы его).
+const neighborAlive = () => page.locator('text=сосед жив').count();
+
+check(await neighborAlive() > 0, 'стенд краха отрисован (сосед на месте)');
+
+// Метка элемента-инициатора: тап по кнопке фокусирует её. Возврат фокуса (п.3
+// контракта) сверяем по ТЕКСТУ активного элемента до и после краха.
+const activeText = () => page.evaluate(() => (document.activeElement?.textContent || '').trim().slice(0, 40));
+
+/* Сценарий 1: краш внутри шита. Открыть → сломать содержимое → шит ЗАКРЫТ (а не
+   погашен), сосед жив, крах-экрана нет.
+   ★★ БЛОКЕР ИЗ РЕВЬЮ: `sheetGone===0` сам по себе зелен и на реализации, которая
+   лишь рисует null и НЕ закрывает поверхность (кнопка исчезает всё равно — она
+   под границей). Поэтому решает ПОВТОРНОЕ ОТКРЫТИЕ: при застрявшем open=true
+   `setOpen(true)` — no-op, содержимое не вернётся. */
+await page.locator('button:has-text("Открыть шит")').first().tap();
+await page.waitForTimeout(700);
+const sheetOpened = await page.locator('button:has-text("Сломать содержимое")').count();
+await page.locator('button:has-text("Сломать содержимое")').first().tap();
+await page.waitForTimeout(900);
+const sheetGone = await page.locator('button:has-text("Сломать содержимое")').count();
+const retryBlocks = await page.locator('[role="alert"]').count();
+const focusAfterSheet = await activeText();
+check(sheetOpened > 0, 'шит открылся', `кнопка краха: ${sheetOpened}`);
+check(sheetGone === 0, 'содержимое крашнувшегося шита снято', `осталось кнопок краха: ${sheetGone}`);
+check(await neighborAlive() > 0, 'ПРИЛОЖЕНИЕ ЖИВО ПОСЛЕ КРАХА (сосед на месте, не крах-экран)');
+check(retryBlocks === 0, 'ФОЛБЭК ПУСТОЙ, А НЕ RETRY-БЛОК (нет role=alert)', `role=alert: ${retryBlocks}`);
+check(/Открыть шит/.test(focusAfterSheet), 'ФОКУС ВЕРНУЛСЯ НА ИНИЦИАТОРА', `активен: «${focusAfterSheet}»`);
+// Повторное открытие: содержимое обязано вернуться → поверхность была ЗАКРЫТА
+// (open сброшен), а не просто погашена.
+await page.locator('button:has-text("Открыть шит")').first().tap();
+await page.waitForTimeout(700);
+const reopened = await page.locator('button:has-text("Сломать содержимое")').count();
+check(reopened > 0, 'ПОВЕРХНОСТЬ БЫЛА ЗАКРЫТА, А НЕ ПОГАШЕНА (переоткрытие вернуло содержимое)',
+  `кнопка краха после переоткрытия: ${reopened}`);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(500);
+
+/* Сценарий 2: краш при busy. Открыть confirm → красная кнопка ставит busy=true,
+   перерисовка роняет содержимое. Промис обязан разрешиться false (жёсткая
+   отмена мимо busy-guard), а не зависнуть; фокус вернуться на инициатора. */
+await page.locator('button:has-text("Confirm с крахом при busy")').first().tap();
+await page.waitForTimeout(800);
+const confirmOpened = await page.locator('button:has-text("Уронить окно")').count();
+await page.locator('button:has-text("Уронить окно")').first().tap();
+await page.waitForTimeout(1000);
+const promiseValue = (await page.locator('text=/промис:/').first().textContent() || '').trim();
+const focusAfterConfirm = await activeText();
+check(confirmOpened > 0, 'confirm с крахом открылся', `красных кнопок: ${confirmOpened}`);
+check(/false/.test(promiseValue),
+  'ПРОМИС confirm() РАЗРЕШЁН false ПРИ КРАХЕ В BUSY (не завис)',
+  `бейдж промиса: «${promiseValue}»`);
+check(/Confirm с крахом/.test(focusAfterConfirm), 'ФОКУС ВЕРНУЛСЯ НА ИНИЦИАТОРА confirm', `активен: «${focusAfterConfirm}»`);
+check(await neighborAlive() > 0, 'приложение живо после краха confirm');
+check(escaped.length === 0, 'краш не улетел неперехваченным', escaped.join(' | ') || 'ошибок нет');
+
 await browser.close();
 
 const failed = results.filter((r) => !r.ok);

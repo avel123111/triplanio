@@ -43,6 +43,23 @@ const VAUL_IMPORT = /from\s+['"]vaul['"]/;
 const CONTENT_USE = /<DialogContent[\s>/]/;
 const TITLE_PRESENT = /<DialogTitle[\s>]/;
 
+// TRIP-515: КАЖДЫЙ файл шва (ALLOW ∪ VAUL_ALLOW) обязан нести границу краха
+// поверхности. Манифест границ == манифест 2f один-к-одному: 2f гарантирует, что
+// все модалки/шиты текут через эти корневые композеры, поэтому граница в них
+// накрывает все поверхности приложения, включая ненаписанные. Краш внутри окна
+// должен закрывать окно (SurfaceCrashGuard → onOpenChange(false)), а не убивать
+// приложение. Ставить границу «у владельца открытости» НЕЛЬЗЯ — их дюжина
+// (Sheet/PickerSheet/LpSheet/SearchSelect/ActionMenu/ShareCardDialog/…), они не
+// под манифестом, и один молча выпадет; шов заперт и полон по построению.
+//
+// ★ ПРОВЕРЯЕМ ПРИМЕНЕНИЕ, А НЕ УПОМИНАНИЕ. Подстрока `SurfaceCrashGuard` совпала
+// бы и с комментарием `// SurfaceCrashGuard временно снят` — правило охраняло бы
+// комментарий, а не границу ([[triplanio-ci-guard-is-code]]: предикат = семантика,
+// не греп). Поэтому требуем И импорт из шва границы, И реальный JSX-тег (как
+// `CONTENT_USE` рядом), а не имя где угодно. Оба обязаны присутствовать.
+const BOUNDARY_IMPORT = /from\s+['"]@\/components\/ui\/surfaceCrashGuard['"]/;
+const BOUNDARY_APPLY = /<SurfaceCrashGuard[\s>]/;
+
 // The ONLY files allowed to import the raw Radix dialog primitives. Each owns the
 // a11y contract for its surface (Title + Description opt-out + keepFocusInDialog).
 const ALLOW = new Set([
@@ -68,10 +85,14 @@ function walk(dir, out = []) {
   return out;
 }
 
+// Манифест границ краха = все файлы швов (Radix-шеллы + vaul-шов).
+const SEAM_FILES = new Set([...ALLOW, ...VAUL_ALLOW]);
+
 try {
   const offenders = [];
   const nameless = [];
   const vaulOffenders = [];
+  const boundaryless = [];
   for (const file of walk(ROOT)) {
     const rel = file.split('\\').join('/');
     const src = readFileSync(file, 'utf8');
@@ -79,6 +100,9 @@ try {
     if (!VAUL_ALLOW.has(rel) && VAUL_IMPORT.test(src)) vaulOffenders.push(rel);
     // Any file that renders <DialogContent> must also carry a <DialogTitle>.
     if (CONTENT_USE.test(src) && !TITLE_PRESENT.test(src)) nameless.push(rel);
+    // TRIP-515: каждый файл шва обязан РЕАЛЬНО ПРИМЕНЯТЬ границу краха (импорт +
+    // JSX-тег), а не просто упоминать её имя.
+    if (SEAM_FILES.has(rel) && !(BOUNDARY_IMPORT.test(src) && BOUNDARY_APPLY.test(src))) boundaryless.push(rel);
   }
 
   if (offenders.length) {
@@ -102,6 +126,16 @@ try {
     process.exit(1);
   }
 
+  if (boundaryless.length) {
+    console.error('✗ 2f dialog-radix guard: файл шва без границы краха поверхности (SurfaceCrashGuard):');
+    for (const f of boundaryless) console.error(`    ${f}`);
+    console.error('\nTRIP-515: каждый корневой композер шва (SheetRoot / Dialog / AlertDialog / VisitPanel)');
+    console.error('обязан обернуть поверхность в <SurfaceCrashGuard open onClose>. Тогда краш внутри окна');
+    console.error('ЗАКРЫВАЕТ окно (onOpenChange(false)), а не убивает приложение. Граница живёт в шве, а НЕ');
+    console.error('«у владельца открытости» — тех дюжина, они не под манифестом, и один молча выпадет.');
+    process.exit(1);
+  }
+
   if (nameless.length) {
     console.error('✗ 2f dialog-radix guard: <DialogContent> without a <DialogTitle> (no accessible name):');
     for (const f of nameless) console.error(`    ${f}`);
@@ -112,7 +146,7 @@ try {
     process.exit(1);
   }
 
-  console.log(`✓ 2f dialog-radix guard: raw Radix import confined to ${ALLOW.size} shells, vaul to ${VAUL_ALLOW.size} seam; every DialogContent is named`);
+  console.log(`✓ 2f dialog-radix guard: raw Radix import confined to ${ALLOW.size} shells, vaul to ${VAUL_ALLOW.size} seam; every DialogContent is named; every seam (${SEAM_FILES.size}) carries a crash boundary`);
   process.exit(0);
 } catch (e) {
   console.error('2f dialog-radix guard: internal error', e);

@@ -1,6 +1,7 @@
 // @ts-check
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Drawer } from 'vaul';
+import { SurfaceCrashGuard } from '@/components/ui/surfaceCrashGuard';
 
 /**
  * sheetShell — ЕДИНСТВЕННЫЙ ДОМ vaul В ПРИЛОЖЕНИИ.
@@ -62,7 +63,14 @@ export function SheetRoot({ children, ...props }) {
   const Root = depth > 0 ? Drawer.NestedRoot : Drawer.Root;
   return (
     <SheetDepth.Provider value={depth + 1}>
-      <Root repositionInputs={false} {...props}>{children}</Root>
+      {/* Граница краха поверхности (TRIP-515): краш внутри шита закрывает шит
+          (onOpenChange(false)), а не убивает приложение. Стоит здесь, в КОРНЕ шва
+          — у него в руках onOpenChange; SheetSurface/Content его не видят. */}
+      <Root repositionInputs={false} {...props}>
+        <SurfaceCrashGuard open={props.open} onClose={() => props.onOpenChange?.(false)}>
+          {children}
+        </SurfaceCrashGuard>
+      </Root>
     </SheetDepth.Provider>
   );
 }

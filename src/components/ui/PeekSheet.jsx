@@ -444,6 +444,13 @@ export function PeekSheet({
       >
         <i />
       </div>
+      {/* Своей границы краха тут НЕТ намеренно (TRIP-515): PeekSheet живёт ТОЛЬКО
+          внутри маршрута (MapShell на экранах карты), то есть под роутовой/линзовой
+          `ErrorBoundary` — она уже изолирует краш этим экраном И восстанавливается
+          (retry + сброс по навигации `key={path}`). Синглтон-граница без двери
+          здесь только УХУДШИЛА бы восстановление (содержимое гасло бы до ухода с
+          экрана). Листовые оверлеи выше маршрута (Toaster/ConsentBanner/Tooltip)
+          такой границы не имеют — их и оборачиваем. */}
       <div ref={headRef} className="peek-sheet__head" data-peek-head>{header}</div>
       <div ref={bodyRef} className="peek-sheet__body">{children}</div>
       {footer && <div ref={footRef} className="peek-sheet__foot">{footer}</div>}
