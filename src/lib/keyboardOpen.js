@@ -33,7 +33,7 @@
 // ponytail: a minimal DOM-level watcher (no lib) — the one honest signal for a
 // keyboard that resizes content is the resize itself. Upgrade path: the
 // VirtualKeyboard API (`navigator.virtualKeyboard`) once broadly supported.
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 // A drop bigger than this (px) counts as "keyboard is up". Keeps the URL-bar
 // show/hide (~60–100px) from flipping it; a soft keyboard is ~260–320px.
@@ -79,6 +79,48 @@ const notify = () => subscribers.forEach((cb) => cb());
  *  into from CSS. */
 export function useKeyboardOpen() {
   return useSyncExternalStore(subscribe, getSnapshot, () => false);
+}
+
+/**
+ * ★★ «ЧЬЯ КЛАВИАТУРА» — ВОПРОС О ТОМ, ЧЕЙ УЗЕЛ ДЕРЖИТ ФОКУС. Клавиатуру
+ * физически поднимает СФОКУСИРОВАННОЕ поле, поэтому предикат — владение
+ * фокусом, а не флаг вызывателя. Поверхности, лежащие ПОВЕРХ (шторка пикера),
+ * живут в портале `document.body`, и `contains` честно отвечает «не моё».
+ *
+ * ⚠️ Глобальный флаг здесь врёт, и это уже стоило дефекта: поле уехало в шторку,
+ * которая ложится поверх шита, — клавиатуру поднимала ЧУЖАЯ поверхность, а
+ * прыгал шит под ней («экран позади шторки раздёргивается»).
+ * @param {Node | null | undefined} node
+ */
+export function focusInside(node) {
+  if (!node || typeof document === 'undefined') return false;
+  const el = document.activeElement;
+  return !!el && el !== document.body && node.contains(el);
+}
+
+/**
+ * «Клавиатура открыта, и она МОЯ» — для поверхности, которая обязана на неё
+ * реагировать (шит поднимается на верхний детент, панель дорастает до экрана).
+ *
+ * ⚠️ ВЛАДЕНИЕ ФОКУСОМ — ПОДПИСКА, А НЕ ЧТЕНИЕ В РЕНДЕРЕ. Чтение в теле
+ * компонента работает ровно до тех пор, пока перерисовку приносит сам флаг
+ * клавиатуры, и врёт, как только фокус переезжает БЕЗ его смены (из поля шторки
+ * в поле шита клавиатура не опускается). Хватает `focusin`: он приходит на
+ * КАЖДОЕ получение фокуса; уход фокуса в никуда закрывает клавиатуру, и
+ * перерисовку приносит флаг. (`focusout` приходит РАНЬШЕ, чем встал новый фокус,
+ * и `activeElement` в этот момент — `body`.)
+ * @param {{ current: Node | null }} ref
+ */
+export function useKeyboardMine(ref) {
+  const open = useKeyboardOpen();
+  const [inside, setInside] = useState(false);
+  useEffect(() => {
+    const sync = () => setInside(focusInside(ref.current));
+    sync();
+    document.addEventListener('focusin', sync);
+    return () => document.removeEventListener('focusin', sync);
+  }, [ref]);
+  return open && inside;
 }
 
 let started = false;

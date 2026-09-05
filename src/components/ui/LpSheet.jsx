@@ -1,4 +1,4 @@
-import { ScreenRiseProvider, SheetRoot, SheetSurface, SheetTitle, useScreenRiseHost } from '@/components/ui/sheetShell';
+import { SheetRoot, SheetSurface, SheetTitle } from '@/components/ui/sheetShell';
 
 /**
  * LpSheet — the shared mobile shell for the in-place editor panels (the `.lp-sheet`
@@ -39,8 +39,9 @@ import { ScreenRiseProvider, SheetRoot, SheetSurface, SheetTitle, useScreenRiseH
  *
  * ★ ФОРМА ПОДНИМАЕТ ПОВЕРХНОСТЬ ДО ЭКРАНА САМА (`useScreenRise` в
  * `EventEditDialog`): у неё поля, под полем встаёт клавиатура. Заявку принимает
- * ЭТА поверхность (`useScreenRiseHost` + `ScreenRiseProvider`), и держит ровно
- * пока форма смонтирована — вернулся просмотр, вернулся и рост сцены. Перечня
+ * САМА поверхность (`ui/sheetShell`) и держит ровно пока форма смонтирована —
+ * вернулся просмотр, вернулся и рост сцены. Здесь про это ни строки кода: рост
+ * объявлен ОДИН раз пропом, а кто и когда его поднимает — дело шва. Перечня
  * «какие панели полноэкранные» здесь нет намеренно: он разъехался бы с панелями
  * на первой же правке, а к тому же одна и та же форма приезжает тремя разными
  * путями (правка события, вкладка «у меня есть бронь», создание вручную).
@@ -49,14 +50,13 @@ import { ScreenRiseProvider, SheetRoot, SheetSurface, SheetTitle, useScreenRiseH
  * this is only the mobile shell.
  */
 export default function LpSheet({ open, onClose, title = '', children }) {
-  const [screenAsked, claimScreen] = useScreenRiseHost();
   return (
     <SheetRoot open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
       {/* vaul wraps Radix Dialog, which requires a Title for a11y — kept sr-only
           since the hosted panel renders its own visible heading. */}
-      <SheetSurface className="lp-sheet" full rise={screenAsked ? 'screen' : 'scene'} aria-describedby={undefined}>
+      <SheetSurface className="lp-sheet" full rise="scene" aria-describedby={undefined}>
         <SheetTitle className="sr-only">{title}</SheetTitle>
-        <ScreenRiseProvider claim={claimScreen}>{children}</ScreenRiseProvider>
+        {children}
       </SheetSurface>
     </SheetRoot>
   );

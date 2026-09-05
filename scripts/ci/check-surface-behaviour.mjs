@@ -193,6 +193,7 @@ const openSurface = async (label) => {
       pageGround: getComputedStyle(document.body).backgroundColor,
       grip: !!el.querySelector('.sheet-grip'),
       top: Math.round(el.getBoundingClientRect().top),
+      bottom: Math.round(el.getBoundingClientRect().bottom),
       // скроллер обязан скроллить СЕБЯ, а не уезжать за нижний край экрана
       scrolls: scroller ? scroller.scrollHeight > scroller.clientHeight : null,
       inViewport: scroller ? Math.round(scroller.getBoundingClientRect().bottom) <= innerHeight + 1 : null,
@@ -287,8 +288,16 @@ if (picker && panel) {
     `${picker.paint} · ${panel.paint}`);
   check(picker.paint === picker.pageGround, 'И ЭТО КРАСКА СТРАНИЦЫ, А НЕ КАРТОЧКИ',
     `поверхность ${picker.paint} · страница ${picker.pageGround}`);
-  check(picker.top === 0 && panel.top === 0, 'обе — экран во весь вьюпорт',
-    `верх: ${picker.top} · ${panel.top}`);
+  /* ⚠️ «ОБЕ ВО ВЕСЬ ВЬЮПОРТ» БОЛЬШЕ НЕ ВЕРНО, И ЭТО НЕ ПОСЛАБЛЕНИЕ. Роль «я
+     экран» у обеих осталась прежней (коробка от раскладки, краска, бровь,
+     резерв под клавиатуру — всё выше сверено), а вот РОСТ — второе свойство:
+     шторка пикера просит ввод и занимает экран, панель показывает подробность
+     того, на что смотрят, и встаёт ростом СЦЕНЫ. На витрине сцены со шитом нет,
+     поэтому рост вырождается в рабочий — его и меряем ниже отдельным блоком. */
+  check(picker.top === 0, 'шторка пикера — экран во весь вьюпорт', `верх: ${picker.top}`);
+  check(panel.top > 0 && panel.bottom === 844,
+    'панель встаёт НЕ во весь экран, но прижата к низу',
+    `верх: ${panel.top} · низ: ${panel.bottom}`);
   check(picker.scrolls === true && picker.inViewport === true,
     'ДЛИННЫЙ ЛИСТ СКРОЛЛИТ СЕБЯ, А НЕ УЕЗЖАЕТ ЗА ЭКРАН',
     `скроллится: ${picker.scrolls} · низ в кадре: ${picker.inViewport}`);
@@ -296,6 +305,48 @@ if (picker && panel) {
     'то же у тела панели',
     `скроллится: ${panel.scrolls} · низ в кадре: ${panel.inViewport}`);
 }
+
+/* ── РОСТ ПОВЕРХНОСТИ = РОСТ СЦЕНЫ ──────────────────────────────────────────
+   Панель, открытая поверх шита маршрута, обязана встать ТОЙ ЖЕ высотой: тап по
+   городу раскрывает подробность, а не подменяет экран. Читателем факта служит
+   CSS, публикует его шит сцены (`--scene-rise`) — здесь публикуем сами, потому
+   что проверяется ЧИТАТЕЛЬ, а не издатель (издателя пиннит `pickerSurface.test`).
+   Скриншота у этого правила нет: панель во весь экран выглядит как работающий
+   экран, просто не тот. */
+const riseAt = async (value) => {
+  await page.goto(`${BASE}/kit/full-surface`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(700);
+  await page.evaluate((v) => {
+    if (v === null) document.documentElement.style.removeProperty('--scene-rise');
+    else document.documentElement.style.setProperty('--scene-rise', v);
+  }, value);
+  await page.locator('button:has-text("Панель редактора")').first().tap();
+  await page.waitForTimeout(900);
+  const got = await page.evaluate(() => {
+    const el = document.querySelector('.lp-sheet');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { top: Math.round(r.top), height: Math.round(r.height) };
+  });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(700);
+  return got;
+};
+
+const riseMid = await riseAt('500px');
+check(!!riseMid && riseMid.height === 500,
+  'ПАНЕЛЬ ВСТАЁТ РОСТОМ СЦЕНЫ (шит на середине → и панель на середине)',
+  riseMid ? `рост сцены 500 → высота ${riseMid.height}, верх ${riseMid.top}` : 'панель не открылась');
+
+const riseFull = await riseAt('844px');
+check(!!riseFull && riseFull.top === 0 && riseFull.height === 844,
+  'сцена во весь экран → и панель во весь экран (без второго правила и без порога)',
+  riseFull ? `верх ${riseFull.top} · высота ${riseFull.height}` : 'панель не открылась');
+
+const riseNone = await riseAt(null);
+check(!!riseNone && riseNone.height > 0 && riseNone.height < 844,
+  'СЦЕНА БЕЗ ШИТА → рабочий рост, а не экран целиком (таймлайн, календарь, бюджет)',
+  riseNone ? `высота ${riseNone.height} из 844` : 'панель не открылась');
 
 /* ── ГРАНИЦА КРАХА ПОВЕРХНОСТИ (TRIP-515) ────────────────────────────────────
    Грепом недоказуемо, и грепом же не проверить: краш ВНУТРИ окна обязан закрыть

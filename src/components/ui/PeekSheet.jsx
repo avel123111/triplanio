@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { SHEET_CONTROL_SELECTOR, gestureOwner, nearestDetent, resolveDetents, tapSettles } from '@/lib/sheetDetents';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
-import { useKeyboardOpen } from '@/lib/keyboardOpen';
+import { focusInside, useKeyboardMine } from '@/lib/keyboardOpen';
 
 /**
  * PeekSheet — НЕМОДАЛЬНЫЙ постоянный боттом-шит с ДЕТЕНТАМИ: он всегда на
@@ -80,14 +80,9 @@ function viewportTop() {
   return Math.round(window.visualViewport?.offsetTop || 0);
 }
 
-/** Клавиатуру поднимает СФОКУСИРОВАННОЕ поле — значит «чья клавиатура» это
- *  вопрос о том, чей это узел. Поверхности, лежащие поверх (шторка пикера), живут
- *  в портале `document.body`, и `contains` честно отвечает «не моё». */
-function isMine(node) {
-  if (!node || typeof document === 'undefined') return false;
-  const el = document.activeElement;
-  return !!el && el !== document.body && node.contains(el);
-}
+/* «Чья клавиатура» живёт в доме клавиатуры (`lib/keyboardOpen`): тот же вопрос
+   решает и полноростная поверхность, дорастая до экрана, — а два предиката
+   «мой ли это фокус» разъехались бы на первой же правке. */
 
 /**
  * `header` — то, что видно на САМОМ НИЖНЕМ детенте (и зона перетаскивания):
@@ -172,30 +167,11 @@ export function PeekSheet({
   // это выглядит как «экран позади шторки раздёргивается и поднимается», причём
   // сама шторка ни при чём и её правки этого не лечат (проверено четырьмя
   // заходами, TRIP-484 §4).
-  // Предикат — владение фокусом: клавиатуру физически поднимает сфокусированное
-  // поле, и вопрос «моё ли оно» решается принадлежностью узла, а не флагом
-  // вызывателя. Портал шторки живёт в `document.body`, поэтому `contains` для неё
-  // честно даёт `false`.
-  // ⚠️ ВЛАДЕНИЕ ФОКУСОМ — ПОДПИСКА, А НЕ ЧТЕНИЕ В РЕНДЕРЕ. Первая редакция звала
-  // `isMine()` прямо в теле компонента. Это работало на разобранном сценарии —
-  // перерисовку приносил сам флаг клавиатуры, и `activeElement` к тому моменту был
-  // уже верным, — но врало бы, как только фокус переезжает БЕЗ смены флага: из
-  // поля шторки в поле этого шита клавиатура не опускается, перерисовки нет, и
-  // признак остался бы прежним. Чтение живого DOM в рендере вдобавок делает его
-  // нечистым.
-  // Хватает `focusin`: он приходит на КАЖДОЕ получение фокуса. Уход фокуса в
-  // никуда отдельно слушать не нужно — тогда клавиатура закрывается, и
-  // перерисовку приносит сам флаг. (`focusout` к тому же приходит РАНЬШЕ, чем
-  // новый фокус встал, и в этот момент `activeElement` — это `body`.)
-  const keyboardOpen = useKeyboardOpen();
-  const [focusInside, setFocusInside] = useState(false);
-  useEffect(() => {
-    const sync = () => setFocusInside(isMine(sheetRef.current));
-    sync();
-    document.addEventListener('focusin', sync);
-    return () => document.removeEventListener('focusin', sync);
-  }, []);
-  const keyboardMine = keyboardOpen && focusInside;
+  // Сам предикат (владение фокусом + подписка на `focusin`, а не чтение DOM в
+  // рендере) живёт в доме клавиатуры — `lib/keyboardOpen`: тот же вопрос решает
+  // полноростная поверхность, дорастая до экрана под ввод, и двух ответов на
+  // него быть не должно.
+  const keyboardMine = useKeyboardMine(sheetRef);
   const index = keyboardMine ? stops.length - 1 : Math.max(0, Math.min(stops.length - 1, detent));
   const sheetH = stops[index] ?? 0;
   const restY = Math.max(0, vh - sheetH) + vTop;
@@ -226,7 +202,7 @@ export function PeekSheet({
     // стоять там, где стоял: держим последние ЕГО значения.
     // Читаем DOM, а не состояние: `measure` навешан один раз и реактивных
     // значений не видит, а обе величины тут — свойства живого документа.
-    if (!(document.documentElement.hasAttribute('data-keyboard') && !isMine(sheetRef.current))) {
+    if (!(document.documentElement.hasAttribute('data-keyboard') && !focusInside(sheetRef.current))) {
       setVh(viewportH());
       setVTop(viewportTop());
     }
