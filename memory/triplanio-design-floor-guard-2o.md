@@ -126,3 +126,14 @@ PR #689 в dev, 2026-08-06. Ф0 эпика TRIP-337. Кода дизайн-си�
 
 Связано: [[triplanio-ci-guard-is-code]] · [[triplanio-design-unification-trip321]] ·
 [[triplanio-design-system-work-rules]]
+
+## Статус семьи в `catalog.json` не назначается по вкусу (TRIP-511)
+
+`canon` = семью эмитит САМА ДС (`className` в `src/design/**` + `src/components/ui/**`).
+Семья, которую эмитит экран (`src/components/trips/**`), — `triage`, и точка.
+Сверять черновиком `node scripts/ci/audit-design.mjs --catalog-draft`, а не решать
+самому: пометка `canon` у своей новой семьи ВЫВОДИТ её классы из счёта «классов
+на разборе», который храповит 2o, — то есть это обход гейта, а не описка.
+Замер: `prep` и `tframe` стояли `canon`, 7 классов не попадали в счёт; честная
+пометка оказалась бесплатной (877 → 875).
+
