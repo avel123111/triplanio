@@ -17,12 +17,11 @@
  */
 import { envTag } from './envTag.ts';
 
-const TOKEN = Deno.env.get('POSTHOG_PROJECT_KEY');
-const HOST = Deno.env.get('POSTHOG_HOST') || 'https://eu.i.posthog.com';
-const ENV = envTag() === 'development' ? 'dev' : 'prod';
-
 /**
  * Capture a product-analytics event from an edge function.
+ * `Deno.env` is read INSIDE the function (like `envTag`), never at module load —
+ * so this module imports under `deno test` without `--allow-env` and its pure
+ * exports (below) stay testable.
  * @param event       snake_case event name (e.g. 'purchase_completed')
  * @param distinctId  the user's uid (PostHog person). Skipped when null.
  * @param props       event properties (no PII beyond ids)
@@ -34,21 +33,24 @@ export function captureServer(
   props: Record<string, unknown> = {},
   groups?: Record<string, string>,
 ): void {
-  if (!TOKEN || !distinctId) return;
+  const token = Deno.env.get('POSTHOG_PROJECT_KEY');
+  if (!token || !distinctId) return;
+  const host = Deno.env.get('POSTHOG_HOST') || 'https://eu.i.posthog.com';
+  const env = envTag() === 'development' ? 'dev' : 'prod';
   const body = {
-    api_key: TOKEN,
+    api_key: token,
     event,
     distinct_id: distinctId,
     properties: {
       ...props,
-      env: ENV,
+      env,
       $lib: 'edge',
       ...(groups ? { $groups: groups } : {}),
     },
     timestamp: new Date().toISOString(),
   };
   // Fire-and-forget — do not await, never throw into the caller.
-  fetch(`${HOST}/capture/`, {
+  fetch(`${host}/capture/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -56,11 +58,24 @@ export function captureServer(
 }
 
 /**
+ * North Star boundary — the trip becomes collaborative exactly when active
+ * members WITH an account reach 2. Since TRIP-516 the owner is a real
+ * `trip_members` row present from creation (count 1 at creation, 2 when the
+ * first real member joins), so the threshold is 2, not 1. Pure so it is testable
+ * under `deno test` without env permission (mirrors `resolveEnvTag`).
+ */
+export function reached2FromActiveCount(activeWithAccount: number | null | undefined): boolean {
+  return activeWithAccount === 2;
+}
+
+/**
  * North Star: emit `trip_reached_2_participants` the moment a trip becomes
- * collaborative. Participants = the OWNER (implicit — the creator has no
- * trip_members row) + active members WITH an account; offline placeholders
- * (user_id null) do NOT count. Fires once — when the first real member makes it 2.
- * Call right AFTER a join sets a member to active. Best-effort (swallows errors).
+ * collaborative. Participants = active members WITH an account; offline
+ * placeholders (user_id null) do NOT count. Since TRIP-516 the OWNER is a real
+ * `trip_members` row (role='owner', status='active') present from creation, so
+ * the count is 1 at creation and hits 2 the moment the first real member joins.
+ * Fires once — when that makes it 2. Call right AFTER a join sets a member to
+ * active. Best-effort (swallows errors).
  * @param admin  supabase admin client (injected so this module stays DB-agnostic)
  */
 export async function emitTripReached2(
@@ -74,7 +89,7 @@ export async function emitTripReached2(
     const { count } = await admin.from('trip_members')
       .select('id', { count: 'exact', head: true })
       .eq('trip_id', tripId).eq('status', 'active').not('user_id', 'is', null);
-    if (count === 1) {
+    if (reached2FromActiveCount(count)) {
       captureServer('trip_reached_2_participants', joinerUserId, { trip_id: tripId }, { trip: tripId });
     }
   } catch { /* best-effort */ }

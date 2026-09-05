@@ -48,7 +48,7 @@ import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { tripDuration } from '@/lib/trip-stats';
-import { resolveMyRole } from '@/lib/members';
+import { resolveMyRole, countTripMembers } from '@/lib/members';
 import { clearsStep } from '@/lib/tripStep';
 import { useProfileMap } from '@/lib/useProfileMap';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
@@ -1092,13 +1092,19 @@ export default function TripView() {
   const groupKeyRef = useRef(null);
   useEffect(() => {
     if (!tripId || !trip) return;
-    // Only re-group when the group props actually change — members.length and
+    // Only re-group when the group props actually change — the member count and
     // tripIsPro resolve a beat after mount, and without this guard each resolve
     // fires a redundant PostHog $groupidentify.
-    const groupKey = `${tripId}:${members.length}:${tripIsPro ? 1 : 0}`;
+    // participant_count = real humans on the trip = owner + active/offline
+    // members, deduped. Since TRIP-516 the owner is a real trip_members row, so
+    // raw members.length would double-count them on the North Star group after
+    // the migration; countTripMembers routes through withOwnerRow and stays
+    // migration-invariant.
+    const memberCount = countTripMembers(members, trip?.created_by);
+    const groupKey = `${tripId}:${memberCount}:${tripIsPro ? 1 : 0}`;
     if (groupKeyRef.current !== groupKey) {
       groupKeyRef.current = groupKey;
-      groupTrip(tripId, { participant_count: members.length || undefined, is_pro: !!tripIsPro });
+      groupTrip(tripId, { participant_count: memberCount || undefined, is_pro: !!tripIsPro });
     }
     if (openedTripRef.current !== tripId) {
       openedTripRef.current = tripId;

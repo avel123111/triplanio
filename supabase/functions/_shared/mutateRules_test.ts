@@ -1037,6 +1037,17 @@ Deno.test('★ leave: guardRow row-self (только своя строка чл
   assert(r && r.status === 403);
 });
 
+// TRIP-516: владелец теперь обычная строка `trip_members` (role='owner'). Из
+// СВОЕЙ поездки выйти нельзя — снос строки владельца осиротил бы владение и
+// дёрнул teardown. Бэкстоп симметричен OWNER_IMMUTABLE на remove/role.
+Deno.test('★ leave: владелец не может выйти из своей поездки (OWNER_IMMUTABLE)', () => {
+  const leave = REGISTRY['trip-member-self'].actions.leave;
+  const r = leave.guardRow!({ role: 'owner', user_id: M_ACTOR.id }, M_ACTOR);
+  assert(r && r.status === 400 && r.code === 'OWNER_IMMUTABLE');
+  // Обычный участник по-прежнему выходит из своей строки.
+  assertEquals(leave.guardRow!({ role: 'viewer', user_id: M_ACTOR.id }, M_ACTOR), null);
+});
+
 Deno.test('★ respond: guardRow row-self по user_id ЛИБО по email (actor.email)', () => {
   const respond = REGISTRY['trip-member-self'].actions.respond;
   // Владение по user_id:
