@@ -38,8 +38,7 @@ import ReactDOM from 'react-dom/client'
 import { initSentry, Sentry } from '@/lib/sentry'
 import { installChunkReloadGuard } from '@/lib/chunkReload'
 import { installDomGuard } from '@/lib/domGuard'
-import { applyConsent, clearAnalyticsStorage, getConsent } from '@/lib/consent'
-import { setCampaign } from '@/lib/analytics'
+import { applyConsent, getConsent } from '@/lib/consent'
 import { boot as bootPosthog } from '@/lib/destinations/posthog'
 import { boot as bootAds } from '@/lib/destinations/ads'
 import { isProdHost } from '@/lib/analyticsEnv'
@@ -47,26 +46,19 @@ import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
 import App from '@/App.jsx'
 import '@/index.css'
 
-// PostHog product analytics (TRIP-213 Phase 0), variant B (TRIP-407) under consent
-// since TRIP-311. Boot the client into `persistence:'memory'` for EVERYONE, here,
-// before the first render — so the first screen of a first-time visitor
-// (landing_viewed, public_trip_viewed) is captured on an anonymous, device-less
-// profile. Nothing reaches the DEVICE until consent upgrades persistence
-// (applyConsent → the adapter's onConsent). setCampaign() primes the last-touch
-// campaign super-properties for the no-login case, before any event fires.
+// PostHog product analytics (TRIP-213) under consent (TRIP-311, TRIP-502). Boot
+// the client for EVERYONE, here, before the first render — so the first screen of
+// a first-time visitor (landing_viewed, public_trip_viewed) is captured; the SDK
+// itself runs cookieless (nothing on the device) until a stored grant is applied.
 bootPosthog()
 // The Google Ads adapter shares the boot/onConsent contract; boot() is a no-op
 // (the tag loads on a marketing grant via applyConsent), booted here for symmetry.
 bootAds()
-setCampaign()
 
-// No usable answer covers "never asked", "expired", "our version moved" and
-// "hand-edited" alike: apply a stored answer (upgrading persistence on a grant),
-// else wipe whatever a prior consented session left on the device and let
-// ConsentBanner ask again. The memory-only client keeps running either way.
-const consent = getConsent()
-if (consent) applyConsent(consent)
-else clearAnalyticsStorage()
+// Apply the stored answer — or null, which covers "never asked", "expired", "our
+// version moved" and "hand-edited" alike: the SDKs stay (or go back to) cookieless
+// and ConsentBanner asks again. This also primes the campaign super-properties.
+applyConsent(getConsent())
 
 // Must run before the first render so early errors are captured.
 initSentry()
