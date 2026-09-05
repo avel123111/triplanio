@@ -313,10 +313,13 @@ if (picker && panel) {
    Жесты идут через CDP: PeekSheet слушает `touch*`, а нативный скролл рождается
    только настоящим касанием — синтетическое событие его не двигает. */
 const cdp = await page.context().newCDPSession(page);
-const swipe = async (x, y0, y1, steps = 12) => {
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: y0 }] });
+// Палец идёт по средней линии — единственная колонка, где под ним заведомо и
+// грип, и тело: у жеста разъезжаться по горизонтали не с чем.
+const MID_X = Math.round(VW / 2);
+const swipe = async (y0, y1, steps = 12) => {
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: MID_X, y: y0 }] });
   for (let i = 1; i <= steps; i++) {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: Math.round(y0 + ((y1 - y0) * i) / steps) }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: MID_X, y: Math.round(y0 + ((y1 - y0) * i) / steps) }] });
     await new Promise((r) => setTimeout(r, 16));
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -331,7 +334,7 @@ const sheetGeo = () => page.evaluate(() => {
   const body = sc && sc.getBoundingClientRect();
   return {
     detent: sh.dataset.detent, top: Math.round(r.top), layer: sh.hasAttribute('data-layer'),
-    scrollTop: sc ? sc.scrollTop : null, scrollable: sc ? sc.scrollHeight > sc.clientHeight : null,
+    scrollTop: sc ? sc.scrollTop : null,
     gripY: Math.round(grip.y + grip.height / 2),
     bodyMid: body ? Math.round(body.y + body.height / 2) : null,
     scrim: !!document.querySelector('[data-vaul-overlay], .sheet-backdrop'),
@@ -351,18 +354,18 @@ check(!!withPanel && withPanel.scrim === false,
   'КАРТА НЕ ГАСНЕТ: у слоя нет ни скрима, ни модальной подложки',
   withPanel ? `подложка: ${withPanel.scrim}` : '');
 
-await swipe(195, withPanel.bodyMid, withPanel.bodyMid - 200);
+await swipe(withPanel.bodyMid, withPanel.bodyMid - 200);
 const afterScroll = await sheetGeo();
 check(afterScroll.scrollTop > 0 && afterScroll.top === withPanel.top,
   'СКРОЛЛ ВНУТРИ ПАНЕЛИ ЖИВОЙ, а шит при этом стоит',
   `прокручено ${afterScroll.scrollTop}px · верх шита ${afterScroll.top}`);
 
-await swipe(195, afterScroll.gripY, afterScroll.gripY - 300);
+await swipe(afterScroll.gripY, afterScroll.gripY - 300);
 const afterUp = await sheetGeo();
 check(afterUp.top === 0,
   'ПАНЕЛЬ ПОДНИМАЕТСЯ ЖЕСТОМ ДО ЭКРАНА (детент, а не вторая поверхность)',
   `верх ${afterScroll.top} → ${afterUp.top}, детент ${afterUp.detent}`);
-await swipe(195, afterUp.gripY, afterUp.gripY + 300);
+await swipe(afterUp.gripY, afterUp.gripY + 300);
 const afterDown = await sheetGeo();
 check(afterDown.top > 0, 'и опускается обратно тем же жестом', `верх ${afterDown.top}`);
 
@@ -371,7 +374,7 @@ check(afterDown.top > 0, 'и опускается обратно тем же ж�
    vaul ставил инлайн `transition: transform`, и объявленный в CSS переход высоты
    переставал существовать. Снаружи это выглядело как «иногда плавно, иногда
    рывком», то есть как случайность. */
-await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 300 }] });
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: MID_X, y: 300 }] });
 await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 await page.waitForTimeout(300);
 const rise = await page.evaluate(async () => {

@@ -220,13 +220,9 @@ export function SheetGrip() {
  * Radix, — и законный вызов краснел. Тот же виток ошибки разобран в
  * `design/props.test.js`; здесь он повторился шестым.
  *
- * @param {{ className: string, backdropClassName?: string, grip?: boolean,
- *   contentRef?: any, children?: any }
- *   & import('react').ComponentPropsWithoutRef<typeof Drawer.Content>} p
- */
-/**
  * @param {{ className?: string, backdropClassName?: string, grip?: boolean,
- *   full?: boolean, pinned?: boolean, contentRef?: any, children?: any }} p
+ *   full?: boolean, pinned?: boolean, contentRef?: any, children?: any }
+ *   & import('react').ComponentPropsWithoutRef<typeof Drawer.Content>} p
  */
 export function SheetSurface({
   className,

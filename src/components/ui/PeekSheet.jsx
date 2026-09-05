@@ -269,7 +269,7 @@ export function PeekSheet({
         // внутри панели не скроллится ВООБЩЕ. Скроллер называет себя признаком
         // (`data-sheet-scroller`, шов `ui/sheetShell`), поэтому спрашивать его
         // умеет и шит, и полноростная поверхность — одним способом.
-        scroller: (e.target.closest && e.target.closest(SHEET_SCROLLER_SEL)) || bodyRef.current,
+        scroller: e.target.closest && e.target.closest(SHEET_SCROLLER_SEL),
         mode: 'idle',
       };
     };
@@ -283,6 +283,7 @@ export function PeekSheet({
         // Кому жест — решает чистое правило (закрыто тестами): грип и шапка
         // всегда двигают шит, тело скроллится на ЛЮБОМ детенте, а тяга вниз от
         // самого верха тела опускает шит.
+        // Нет своего скроллера под пальцем — скроллит тело шита (список маршрута).
         const body = d.scroller || bodyRef.current;
         d.mode = gestureOwner({
           onHandle: d.onHandle,
@@ -366,7 +367,6 @@ export function PeekSheet({
   // каждом кадре жеста.
 
   useEffect(() => { onHeightChange && onHeightChange(sheetH, capPx); }, [sheetH, capPx, onHeightChange]);
-
 
   const style = {
     '--sheet-y': (dragY ?? restY) + 'px',

@@ -8208,10 +8208,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .peek-sheet[data-layer] overflow — то же со стороны носителя признака
    visual-diff-exempt: .lp height — панель заполняет тело шита, иначе её футер не прижат к низу
    visual-diff-exempt: .peek-sheet[data-layer] height — то же со стороны носителя признака
-   visual-diff-exempt: .lp border-radius — внутри шита панель не карточка, а сама поверхность: скругление держит шит
-   visual-diff-exempt: .peek-sheet[data-layer] border-radius — то же со стороны носителя признака
-   visual-diff-exempt: .lp box-shadow — тень карточки внутри той же карточки рисует вторую кромку
-   visual-diff-exempt: .peek-sheet[data-layer] box-shadow — то же со стороны носителя признака */
+   visual-diff-exempt: .peek-sheet[data-layer] border-radius — внутри шита панель не карточка, а сама поверхность: скругление держит шит
+   visual-diff-exempt: .peek-sheet[data-layer] box-shadow — тень карточки внутри той же карточки рисует вторую кромку */
 .peek-sheet[data-layer] > .peek-sheet__body { overflow: hidden; }
 .peek-sheet[data-layer] .lp { height: 100%; border-radius: 0; box-shadow: none; }
 

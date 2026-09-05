@@ -1087,7 +1087,6 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // вместо колонки» — то есть был третьей раскладкой у экрана, у которого их и
   // так две. Теперь их ровно две, и границу проводит шелл: десктоп — виджет,
   // телефон — шит.
-  const isDrawerPanel = !!leftPanel;
   // ★★ ПАНЕЛЬ ОТКРЫВАЕТСЯ В ОДНОМ И ТОМ ЖЕ СЛОТЕ НА ОБЕИХ РАСКЛАДКАХ (слой над
   // панелью у шелла). Раньше телефон уводил её во ВТОРУЮ поверхность —
   // модальную шторку поверх шита, — и платил за это всем сразу: скрим гасил
@@ -1095,7 +1094,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // панель жестом было нечем, а её собственная анимация проигрывала vaul.
   // Теперь слот один, а куда его положить, решает шелл: десктоп — виджет над
   // панелью, телефон — слой ВНУТРИ шита.
-  const useDrawer = isDrawerPanel && !!leftPanelEl;
+  const useDrawer = !!leftPanel && !!leftPanelEl;
   const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
   // Обнаружение смены верхней панели — СИНХРОННО в рендере (не в эффекте): иначе
   // между «старый ключ убрали» и «вернули уходящим» был бы кадр без узла = ремонт,
@@ -1321,9 +1320,49 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   );
 
   // Встроенный режим: рендерим ТОЛЬКО панель (город/бронь/переезд) как есть — её
-  // `.lp` заполняет ящик хоста (EventDrawerHost на линзах без карты), который сам даёт хром, фокус и
-  // Esc. Без карты и рельса маршрута; вся машинерия панели — та же.
+  // `.lp` заполняет ящик хоста (EventDrawerHost — он держит эти панели на линзах
+  // без карты), который сам даёт хром, фокус и Esc. Без карты и рельса маршрута;
+  // вся машинерия панели — та же.
   if (embedded) return leftPanelEl || null;
+
+  // Слой над панелью — ОДИН слот на обе раскладки, но кладут в него разное.
+  // Телефон: слой уезжает СОДЕРЖИМЫМ шита (см. MapShell), и стопки там нет —
+  // уход слоя играть некому, а «на шаг назад» снимает кнопка самой панели.
+  // Десктоп: ящик над панелью, где уходящий слой доигрывает уход рядом с новым.
+  let panelLayers = null;
+  if (isSheet) {
+    panelLayers = useDrawer ? leftPanelEl : null;
+  } else if (useDrawer || closingLayers.length) {
+    panelLayers = (
+      /* Стопка панелей. Уходящие слои (`closingLayers`) рендерятся под СВОИМИ
+         ключами — теми же, что были у верхней панели, — поэтому React СОХРАНЯЕТ
+         их DOM-узлы (не ремонтит) и уход играет на уже смонтированном узле:
+         плавно, без пересборки тяжёлой панели. Текущая вершина — последней в
+         массиве (в DOM ниже) → лежит ПОВЕРХ уходящих: новая наезжает, старая
+         уезжает под ней. Все слои абсолютом заполняют коробку
+         (`.mapshell__overlay > .ts-pdrawer`). Ключ уходящего = ключ текущей
+         исключаются друг из друга (фильтр), чтобы не столкнуться при
+         переоткрытии панели во время её ухода. */
+      [
+        ...closingLayers.filter((l) => l.key !== overlayKey).map((l) => ({ k: l.key, el: l.el, closing: true, top: false })),
+        useDrawer && { k: panelKey, el: leftPanelEl, closing: false, top: true },
+      ].filter(Boolean).map((L) => (
+        <div
+          key={L.k}
+          ref={L.top ? leftPaneRef : undefined}
+          tabIndex={L.top ? -1 : undefined}
+          onKeyDown={L.top ? onPanelEsc : undefined}
+          className="ts-pdrawer"
+          data-closing={L.closing || undefined}
+          aria-hidden={L.closing || undefined}
+        >
+          {/* У уходящего слоя гасим побочный эффект, дотягивающийся до карты:
+              превью-нога переезда мигнула бы на время ухода. */}
+          {L.closing ? React.cloneElement(L.el, { onPreviewTransfer: NOOP }) : L.el}
+        </div>
+      ))
+    );
+  }
 
   return (
     <MapShell
@@ -1370,35 +1409,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
          `panelOverlay` живёт лишние ~240 мс на анимации ухода, и отступ бы менялся
          с этой задержкой, обрывая летящий focus (см. MapShell `overlayActive`). */
       overlayActive={useDrawer}
-      panelOverlay={isSheet ? (useDrawer ? leftPanelEl : null) : (useDrawer || closingLayers.length) ? (
-        /* Стопка панелей. Уходящие слои (`closingLayers`) рендерятся под СВОИМИ
-           ключами — теми же, что были у верхней панели, — поэтому React СОХРАНЯЕТ
-           их DOM-узлы (не ремонтит) и уход играет на уже смонтированном узле:
-           плавно, без пересборки тяжёлой панели. Текущая вершина — последней в
-           массиве (в DOM ниже) → лежит ПОВЕРХ уходящих: новая наезжает, старая
-           уезжает под ней. Все слои абсолютом заполняют коробку
-           (`.mapshell__overlay > .ts-pdrawer`). Ключ уходящего = ключ текущей
-           исключаются друг из друга (фильтр), чтобы не столкнуться при
-           переоткрытии панели во время её ухода. */
-        [
-          ...closingLayers.filter((l) => l.key !== overlayKey).map((l) => ({ k: l.key, el: l.el, closing: true, top: false })),
-          useDrawer && { k: panelKey, el: leftPanelEl, closing: false, top: true },
-        ].filter(Boolean).map((L) => (
-          <div
-            key={L.k}
-            ref={L.top ? leftPaneRef : undefined}
-            tabIndex={L.top ? -1 : undefined}
-            onKeyDown={L.top ? onPanelEsc : undefined}
-            className="ts-pdrawer"
-            data-closing={L.closing || undefined}
-            aria-hidden={L.closing || undefined}
-          >
-            {/* У уходящего слоя гасим побочный эффект, дотягивающийся до карты:
-                превью-нога переезда мигнула бы на время ухода. */}
-            {L.closing ? React.cloneElement(L.el, { onPreviewTransfer: NOOP }) : L.el}
-          </div>
-        ))
-      ) : null}
+      panelOverlay={panelLayers}
     >
       {/* ★ ВИДЖЕТА ПРОБЛЕМ ЗДЕСЬ БОЛЬШЕ НЕТ (решение Pavel). Круглый FAB со
           счётчиком и выпадающий `<ConflictsPanel>` сняты целиком — визуал
