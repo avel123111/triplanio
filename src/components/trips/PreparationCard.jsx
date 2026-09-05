@@ -6,28 +6,21 @@ import { buildPreparation } from '@/lib/trip-preparation';
 import { formatDateRange } from '@/lib/trip-dates';
 import { naiveDayKey } from '@/lib/naive-time';
 
-// Виджет «Подготовка» — сколько из ТОГО, ЧТО ТРЕБУЕТ МАРШРУТ, уже забронировано,
-// и одним списком: что забронировано, что нет.
+// Виджет «Подготовка» — что из ТРЕБУЕМОГО МАРШРУТОМ ещё не забронировано.
 //
 // ★ ЗНАМЕНАТЕЛЬ СЧИТАЕТ МАРШРУТ, А НЕ БРОНИ — правило и его следствие
 // («отмершая бронь не учитывается») живут в `lib/trip-preparation.js`, здесь
 // только показ. Те же предикаты питают варнинги ленты, поэтому «нет отеля» в
 // ленте и «не забронировано» здесь не могут разъехаться.
 //
-// ★ ЗАМЕЧАНИЯ К БРОНЯМ БЕРУТСЯ У ЕДИНОГО ДВИЖКА (`validateTrip` +
-// `primaryIssues`) — того же, что рисует конфликты в редакторе маршрута. Своей
-// проверки дат у виджета нет и быть не должно: это был бы второй источник
-// правды о том, что с бронью не так.
-//
 // ★★ В КОЛОНКАХ ТОЛЬКО РАБОТА — забронированного здесь нет вовсе (решение
-// Pavel). Виджет отвечает на вопрос «что осталось»; закрытое он считает числом
-// в подписи секции и полосой готовности, а списком не повторяет. Отсюда: ряд у
-// виджета ОДИН — примитив ДС `<AddRow>` (он же в панели города и в сервисах).
+// Pavel). Закрытое считается числом в подписи секции и полосой готовности,
+// списком не повторяется. Отсюда ряд у виджета ОДИН — примитив ДС `<AddRow>`
+// (он же в панели города и в сервисах). Вместе с рядами броней у виджета нет и
+// замечаний к ним: их показывают лента и маршрут, где эти брони и лежат.
 //
-// ★ ЗАКРЫТОЕ СОСТОЯНИЕ — не пустое. Секция без работы говорит «всё
-// забронировано» строкой, а закрытый ЦЕЛИКОМ виджет — канон-блоком
-// `<EmptyState kind="success">` вместо полосы и колонок: на 100% полоса и
-// счёт «7 из 7» сообщают одно и то же дважды и ни разу — по-человечески.
+// ★ ЗАКРЫТОЕ СОСТОЯНИЕ — не пустое: и секция, и виджет целиком говорят об этом
+// строкой `DoneLine`. Полоса готовности при этом остаётся — см. её комментарий.
 
 // Дата события — ВСЕГДА дневным ключом (`YYYY-MM-DD`). Наивное «дата+время»,
 // прогнанное через форматтер без зоны, читается как локальное и печатается в
@@ -79,12 +72,11 @@ const CAP = 3;
  * ★ РАБОТЫ НЕТ — секция закрыта, и это НЕ пустое состояние: она говорит об
  * этом строкой, а не оставляет под подписью пустоту.
  */
-function Section({ label = null, rows = [], done = 0, total = 0, isLoading = false }) {
+function Section({ label, rows, done, total }) {
   const { t } = useI18nFormat();
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? rows : rows.slice(0, CAP);
   const hidden = rows.length - shown.length;
-  if (isLoading) return <SectionSkeleton />;
   return (
     <Col gap="g4">
       {/* ★ СЧЁТ СТОИТ У СВОЕЙ ПОДПИСИ. Разнесённые по краям колонки «Проживание»
@@ -139,10 +131,9 @@ export default function PreparationCard({
   isLoading = false,
   onAddHotel,
   onAddTransfer,
-  onOpenEvent,
   onOpenRoute,
 }) {
-  const { t, fmtDate } = useI18nFormat();
+  const { t, fmtDate, plural } = useI18nFormat();
 
   const prep = useMemo(
     () => buildPreparation({ visits, hotels, transfers }),
@@ -153,25 +144,31 @@ export default function PreparationCard({
 
   const { stays, legs, total, done } = prep;
 
-  // Ряд у виджета ОДИН — «этого ещё нет». Тон ховера (`accent` → канал `--a`) —
-  // ТЕ ЖЕ значения, что в панели города (`CityPanel`): у одного и того же ряда
-  // «добавить бронь» не может быть двух разных акцентов на двух экранах.
-  const todoRow = (key, accent, icon, title, sub, add) => (
-    <AddRow key={key} icon={icon} accent={accent} title={title} sub={sub} onClick={add} />
-  );
+  // Ряд у виджета ОДИН — примитив `<AddRow>` напрямую. Обёртка над ним была
+  // остатком от времён, когда рядов было два: с одним она превратилась в шесть
+  // позиционных аргументов, то есть читалась хуже самого примитива.
+  //
+  // Тон (`accent` → канал `--a`) — ТЕ ЖЕ значения, что в панели города
+  // (`CityPanel`): у одного и того же ряда «добавить бронь» не может быть двух
+  // разных акцентов на двух экранах.
   const dotted = (...parts) => parts.filter(Boolean).join(' · ');
 
-  const stayRows = stays.filter((s) => !s.booked).map((s) => todoRow(
-    s.key, 'var(--ev-hotel)', 'bed', s.visit.city_name,
-    dotted(dayRange(fmtDate, s.visit.start_date, s.visit.end_date), `${s.nights} ${nightsWord(t, s.nights)}`),
-    () => onAddHotel?.(s.visit),
+  const stayRows = stays.filter((s) => !s.booked).map((s) => (
+    <AddRow
+      key={s.key} icon="bed" accent="var(--ev-hotel)"
+      title={s.visit.city_name}
+      sub={dotted(dayRange(fmtDate, s.visit.start_date, s.visit.end_date), `${s.nights} ${plural(s.nights, 'view.nights')}`)}
+      onClick={() => onAddHotel?.(s.visit)}
+    />
   ));
 
-  const legRows = legs.filter((l) => !l.booked).map((l) => todoRow(
-    l.key, 'var(--ev-transfer)', 'route',
-    `${l.from.city_name} → ${l.to.city_name}`,
-    day1(fmtDate, l.from.end_date),
-    () => onAddTransfer?.(l.from, l.to),
+  const legRows = legs.filter((l) => !l.booked).map((l) => (
+    <AddRow
+      key={l.key} icon="route" accent="var(--ev-transfer)"
+      title={`${l.from.city_name} → ${l.to.city_name}`}
+      sub={day1(fmtDate, l.from.end_date)}
+      onClick={() => onAddTransfer?.(l.from, l.to)}
+    />
   ));
 
   return (
@@ -237,11 +234,6 @@ export default function PreparationCard({
   );
 }
 
-// Та же тернарная плюрализация ночей, что у ленты/FlowMap/ManualPlanner.
-function nightsWord(t, n) {
-  if (n === 1) return t('view.nights_one');
-  return n < 5 ? t('view.nights_few') : t('view.nights_many');
-}
 
 // Скелетон = ТА ЖЕ карточка, та же шапка, та же строка готовности и те же две
 // секции — только с заглушками вместо чисел и названий. Полоса-доля рисуется
@@ -262,8 +254,8 @@ export function PreparationSkeleton() {
           <Meter />
         </div>
         <div className="prep-cols">
-          <Section isLoading />
-          <Section isLoading />
+          <SectionSkeleton />
+          <SectionSkeleton />
         </div>
       </div>
     </Card>

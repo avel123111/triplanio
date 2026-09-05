@@ -64,7 +64,6 @@ export default function OverviewLens({
   onBudgetLocked,
   onAddHotel,
   onAddTransfer,
-  onOpenEvent,
 }) {
   // Право управления (editor) — из единого контекста доступа (TRIP-274 Ф2.2),
   // раздаётся подкартам (бюджет/участники) как булев проп.
@@ -94,7 +93,6 @@ export default function OverviewLens({
           isLoading={contentLoading}
           onAddHotel={onAddHotel}
           onAddTransfer={onAddTransfer}
-          onOpenEvent={onOpenEvent}
           onOpenRoute={onOpenMap}
         />
         </div>

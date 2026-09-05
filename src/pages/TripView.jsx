@@ -55,6 +55,7 @@ import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { pluralize } from '@/lib/i18n/format';
 
 // Событие открытия секции (TRIP-213 Ф2c — по одному на секцию, чтобы было видно,
 // что именно открыли) живёт в реестре секций рядом с самой секцией: отдельной
@@ -575,8 +576,11 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   // молчаливое, ни один гард его не видит.
   const cityMissesHotel = (c) =>
     cityNeedsHotel(c) && !(hotels || []).some(h => hotelCoversCity(h, c));
-  // Та же тернарная плюрализация ночей, что у FlowMap/ManualPlanner (канон-узор).
-  const nightsWord = (n) => (n === 1 ? t('view.nights_one') : n < 5 ? t('view.nights_few') : t('view.nights_many'));
+  // ★ Плюрализация — через `plural()`, а не ручным тернарником `n < 5`. Тернарник
+  // НЕВЕРЕН на 21/22–24/31…: по-русски «21 ночь», а он даёт «21 ночей». Тот же
+  // тернарник ещё в четырёх местах (FlowMap, ManualPlanner ×3, EventViewBody) —
+  // это долг, тронуть их отдельным PR.
+  const nightsWord = (n) => pluralize(t, n, 'view.nights', lang);
 
   // Renders one city's arrival block: the missing-transfer warning, then the
   // missing-hotel warning. `prev` = the previously-rendered city (or start
@@ -1503,7 +1507,6 @@ export default function TripView() {
               onBudgetLocked={() => setBudgetAddonOff(true)}
               onAddHotel={openAddHotel}
               onAddTransfer={openAddTransfer}
-              onOpenEvent={({ kind, id }) => setEventView({ open: true, kind, id, warning: null })}
             />
           )}
           {shownLens === 'timeline' && (
