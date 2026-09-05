@@ -22,7 +22,7 @@ import { CAMPAIGN_KEYS, campaignQuery, resolveCampaign } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 import { entrySearch } from '@/lib/analyticsEnv';
 import { getActiveMarks } from '@/lib/attribution';
-import { isReady } from '@/lib/destinations/posthog';
+import { isReady, onIdentified } from '@/lib/destinations/posthog';
 
 /**
  * Capture a product-analytics event.
@@ -189,18 +189,23 @@ function syncCampaignToPerson() {
  * Gating identity on the banner is what left one visit as two people and broke
  * the signup funnel (TRIP-407 → TRIP-502).
  *
+ * THIS IS ALSO WHEN DEVICE STORAGE STARTS, for whoever allowed it. The switch
+ * resets the client, so it has to come AFTER the visit is glued to the account —
+ * the sequence lives in `consentSwitch.js` and is proven there against a fake
+ * SDK. Identify by uid ONLY — no PII (email / name) ever reaches analytics
+ * (TRIP-213); personal data stays in Supabase, resolve uid → user there.
+ *
  * The last-touch trigger is collected here in one place: identify, then
  * `setCampaign()` (picks up whatever marks AuthContext just recovered for a fresh
- * signup, via attribution.getActiveMarks()), then `syncCampaignToPerson()` pushes
- * the resulting `camp_*` onto the person.
+ * signup, via attribution.getActiveMarks(), and re-registers them if the storage
+ * switch above reset the client), then `syncCampaignToPerson()` pushes the
+ * resulting `camp_*` onto the person.
  *
  * @param {string} uid  the Supabase user id — no PII ever goes to analytics
  */
 export function identifyUser(uid) {
   if (!uid || !isReady()) return;
-  // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213). Personal
-  // data stays in Supabase; resolve uid → user there when needed.
-  posthog?.identify?.(uid);
+  onIdentified(uid);
   setCampaign();
   syncCampaignToPerson();
 }

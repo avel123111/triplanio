@@ -253,7 +253,13 @@ export const AuthProvider = ({ children }) => {
           ? hashEmail(authUser.email).catch(() => undefined)
           : Promise.resolve(undefined);
         digest.then((sha256_email) => {
-          if (sha256_email) conversion('registration', { userData: { sha256_email } });
+          // Хеш — УЛУЧШЕНИЕ сопоставления, а не условие конверсии: обе сети
+          // умеют привязать её по своему click-id из адреса. Гейт `if (digest)`
+          // стоял только у Google и молча ронял ВСЮ конверсию регистрации, когда
+          // почты нет (Apple private relay) или `crypto.subtle` недоступен
+          // (не-secure origin) — то есть ровно то, что комментарий выше обещает
+          // не делать.
+          conversion('registration', sha256_email ? { userData: { sha256_email } } : {});
           openaiConversion('registration', { eventId: authUser.id, sha256_email });
         });
       }

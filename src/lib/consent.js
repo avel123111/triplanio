@@ -88,20 +88,23 @@ export function applyConsent(record, uid) {
   adsOnConsent(record);
   openaiAdsOnConsent(record);
 
-  // The SDK's own consent switch: stored persistence on a grant, cookieless on
-  // anything else. The client already exists — main.jsx booted it.
+  // PostHog: a refusal is applied now, a grant is REMEMBERED and applied at the
+  // next identify — turning storage on resets the client, so it waits until the
+  // visit has an account to belong to (see destinations/posthog.js). The client
+  // already exists: main.jsx booted it, cookieless.
   onConsent(record);
 
-  // Leaving cookieless mode resets the client and wipes its super-properties, so
-  // the campaign marks are (re)registered AFTER the switch, never before.
+  // Campaign marks on this visit's events, for the visitor who has no account
+  // yet. After a refusal the switch above reset the client, and this puts them
+  // back; `identifyUser` re-runs it on its own side of the storage switch.
   setCampaign();
 
   // The account can already exist when the banner is answered — a confirmation
   // link opened on a phone that never saw it, or a visitor who ignored the banner
-  // and signed in with Google first — and the SDK's switch above reset the
-  // client either way. Identify whatever the answer: in cookieless mode identify
-  // stores nothing on the device, it only tells PostHog which account this
-  // visit's hashed person belongs to.
+  // and signed in with Google first. Then there is nothing to wait for: identify
+  // now, which is also what starts storage for someone who just accepted.
+  // Identify whatever the answer — in cookieless mode it stores nothing on the
+  // device, it only tells PostHog which account this visit's hashed person is.
   if (uid) identifyUser(uid);
 }
 
