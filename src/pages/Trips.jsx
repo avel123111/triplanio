@@ -226,7 +226,7 @@ function StatHero({ points, home, world, showMap, scheme, hero, onAllStats, onYe
   ];
   return (
     <>
-      <div className="t-label tp-caption" style={{ margin: '36px 0 12px' }}>{t('stats.trips_summary')}</div>
+      <div className="t-label tp-caption" style={{ margin: '36px 0 18px' }}>{t('stats.trips_summary')}</div>
       <StatBar
         items={items}
         cta={<>
@@ -401,7 +401,7 @@ function HomeSkeleton() {
         </div>
       </div>
       {/* 2. «TRAVEL SUMMARY» — label с теми же отступами, что реальный (36/12) */}
-      <Skeleton w={140} h={13} r={5} style={{ margin: '36px 0 12px' }} />
+      <Skeleton w={140} h={13} r={5} style={{ margin: '36px 0 18px' }} />
       {/* 3. Стат-бар (.statbar-карточка ≈76px) */}
       <Skeleton w="100%" h={76} r={'var(--r-lg)'} />
       {/* 4. dash-hero: карта | рейл (World Explored ≈150 + Next Trip ≈200) */}
