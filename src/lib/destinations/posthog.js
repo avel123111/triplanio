@@ -183,13 +183,9 @@ export function boot(client) {
 /**
  * Hand the visitor's answer to the SDK — two native calls, nothing else.
  *
- * The client boots opted out (`opt_out_capturing_by_default`), so before an
- * answer there is no capture and no storage. A grant turns both on; a refusal
- * turns them off AND wipes what was stored, because `opt_out_persistence_by_default`
- * makes the SDK disable persistence on opt-out, and disabling it calls `remove()`.
- *
- * Neither call resets the client: the SDK only resets when it crosses the
- * cookieless border, and this client never enters cookieless mode.
+ * A grant turns capture and storage on, a refusal turns them off AND wipes what
+ * was stored: both outcomes fall out of the two config lines in `boot` above,
+ * where the mechanics are spelled out.
  *
  * A `null` record (never asked, expired, version moved) leaves the client alone —
  * it is already opted out by config, and there is nothing stored to undo.
