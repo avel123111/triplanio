@@ -14,6 +14,7 @@ import { report } from '@/lib/reportDataError';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
+import { sortMembers } from '@/lib/members';
 import { pluralCategory } from '@/lib/i18n/format';
 import { mergeIncomingMessage } from '@/lib/chat-merge';
 
@@ -55,11 +56,13 @@ export function useChatId(tripId, { enabled = true } = {}) {
 //
 // Chat participants = every *active* member (owner + admins + viewers),
 // excluding offline / pending / declined rows. The owner is a real active
-// trip_members row (TRIP-517), so it arrives in the list like anyone else. The
-// AI assistant is shown separately and is NOT counted here.
+// trip_members row (TRIP-517), ordered owner-first by the shared rule (the
+// payload has no server ORDER BY, so without this the owner — backfilled last —
+// would trail and could collapse under "+N" in the avatar stack). The AI
+// assistant is shown separately and is NOT counted here.
 
 export function chatParticipants(members = []) {
-  return (members || []).filter((m) => m.status === 'active');
+  return sortMembers((members || []).filter((m) => m.status === 'active'));
 }
 
 // Locale-aware "N people" (ru few/many via Intl.PluralRules; en/es collapse to one/many).
