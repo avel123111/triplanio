@@ -108,8 +108,9 @@ function apiHost() {
 }
 
 // `env` super-property tags every event → prod dashboards filter env=prod.
-// Registered after init AND after every consent switch: crossing the cookieless
-// ↔ stored border resets the client, and a reset wipes the super-properties.
+// Registered once, after init: crossing the cookieless ↔ stored border resets the
+// client and wipes the super-properties, but `env` rides that crossing inside
+// OWNED_SUPER_PROPS like the rest of them, so there is nothing to re-tag later.
 // In cookieless mode `register` keeps the value in memory only (the SDK skips
 // load/save while persistence is disabled), so this never touches the device.
 function tagEnv() {
@@ -158,10 +159,10 @@ export function boot(client) {
     opt_out_capturing_by_default: true,
     // Replay is CONSENT-GATED, not off. The client boots before the banner is
     // answered, and a recording of the screen is the one thing that must never
-    // happen on an unanswered visit; `onConsent` lifts this. WHICH sessions are
-    // then recorded is NOT decided here — that is the project's own ingestion
-    // config (trigger groups, sampling), which lives in PostHog and changes
-    // without a deploy.
+    // happen on an unanswered visit; the crossing into storage lifts it
+    // (`consentSwitch.js`, at identify). WHICH sessions are then recorded is NOT
+    // decided here — that is the project's own ingestion config (trigger groups,
+    // sampling), which lives in PostHog and changes without a deploy.
     disable_session_recording: true,
     disable_surveys: true, // опросами не пользуемся — иначе SDK тянет ~33 КБ с их CDN (TRIP-475)
     // Код — единственный замок на сбор: настройка проекта (heatmaps_opt_in)

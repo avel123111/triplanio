@@ -102,9 +102,10 @@ export function withVisitCampaign(url) {
  * (TRIP-335).
  *
  * Triggered from exactly two points: `applyConsent` on every start and answer
- * (the no-login case — after the SDK's consent switch, because leaving cookieless
- * mode resets the client and wipes super-properties) and `identifyUser` (the
- * recovered-marks case, right after AuthContext stores them). Storage is per-host,
+ * (the no-login case — after the SDK's consent switch, because a refusal resets
+ * the client and wipes super-properties) and `identifyUser` (the recovered-marks
+ * case, right after AuthContext stores them — and the far side of the storage
+ * switch, where a grant has just reset the client). Storage is per-host,
  * so campaign links MUST point at the same host the app runs on (www vs apex are
  * different jars).
  */

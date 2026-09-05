@@ -258,8 +258,9 @@ export const AuthProvider = ({ children }) => {
           // стоял только у Google и молча ронял ВСЮ конверсию регистрации, когда
           // почты нет (Apple private relay) или `crypto.subtle` недоступен
           // (не-secure origin) — то есть ровно то, что комментарий выше обещает
-          // не делать.
-          conversion('registration', sha256_email ? { userData: { sha256_email } } : {});
+          // не делать. Пустой дайджест обе двери отсеивают сами (`if (sha256_email)`
+          // внутри каждой), поэтому обе строки ниже читаются одинаково.
+          conversion('registration', { userData: { sha256_email } });
           openaiConversion('registration', { eventId: authUser.id, sha256_email });
         });
       }
