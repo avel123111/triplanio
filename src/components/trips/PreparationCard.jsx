@@ -1,6 +1,6 @@
 // @ts-check
 import React, { useMemo, useState } from 'react';
-import { AddRow, Btn, Card, CardHeader, IconBtn, ListRow, Meter, Skeleton, Tile, Row, Col } from '@/design/index';
+import { AddRow, Btn, Card, CardHeader, IconBtn, Meter, Skeleton, Tile, Row, Col } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { buildPreparation } from '@/lib/trip-preparation';
 import { formatDateRange } from '@/lib/trip-dates';
@@ -42,27 +42,26 @@ function dayRange(fmt, from, to) {
 }
 
 /**
- * Итог «закрыто» — ОДИН ряд той же формы, что все прочие строки виджета.
+ * Итог «закрыто» — СТРОКА ПО СОДЕРЖИМОМУ, а не коробка во всю ширину.
  *
- * ★★ ФОРМА У «ГОТОВО» ОДНА НА ОБА МАСШТАБА: закрытая секция и закрытый целиком
- * виджет — это один и тот же предмет, только с разной подписью. Две разные
- * выдумки на один смысл — ровно тот шаблонный зоопарк, из-за которого экран и
- * пересобирали.
+ * ★★ ПУСТАЯ КОРОБКА ХУЖЕ ПУСТОГО МЕСТА. Пройдено три вида, все забракованы на
+ * живом экране: `EmptyState boxed` — серая плита ВНУТРИ белой карточки (коробка
+ * в коробке, читается как выключенная заглушка); `EmptyState` без `boxed` — 48
+ * px полей, карточка на 340 px ради одной фразы; `ListRow raised` — ящик во всю
+ * ширину с двумя словами внутри, то есть ровно «недоделка». Общее у всех трёх:
+ * ЁМКОСТЬ БОЛЬШЕ СОДЕРЖИМОГО.
  *
- * ★★ ПОЧЕМУ НЕ `EmptyState`. Он канон ПУСТОТЫ, а не успеха, и оба его вида тут
- * проваливаются: `boxed` рисует серую плиту ВНУТРИ белой карточки (коробка в
- * коробке, читается как выключенная заглушка), а без `boxed` — 48 px полей
- * сверху и снизу, то есть карточка на 340 px ради одной фразы. Ряд занимает 66
- * и стоит в списке как равный соседям.
+ * Здесь ёмкости нет вовсе: значок плюс фраза, ширина по тексту. Пустота вокруг
+ * тогда читается как «здесь больше нечего делать», а не как незаполненное поле.
+ * Текст — `t-label` цветом `--ink`, а не приглушённый: это утверждение, а не
+ * отсутствие.
  */
-function DoneRow({ title, sub = undefined }) {
+function DoneLine({ text }) {
   return (
-    <ListRow
-      variant="raised"
-      lead={<Tile tone="success" icon="check" />}
-      title={title}
-      sub={sub}
-    />
+    <Row gap="g3">
+      <Tile as="span" tone="success" size="sm" icon="check" />
+      <span className="t-label">{text}</span>
+    </Row>
   );
 }
 
@@ -97,9 +96,7 @@ function Section({ label = null, rows = [], done = 0, total = 0, isLoading = fal
         <span className="t-meta muted">{label}</span>
         <span className="t-meta muted num">{done}/{total}</span>
       </Row>
-      {/* Подписи у ряда секции нет намеренно: число стоит строкой выше (`3/3`),
-          и повторять его под заголовком значит сказать одно дважды. */}
-      {rows.length === 0 ? <DoneRow title={t('overview.prep_sec_done')} /> : shown}
+      {rows.length === 0 ? <DoneLine text={t('overview.prep_sec_done')} /> : shown}
       {(hidden > 0 || expanded) && (
         <Row>
           <Btn variant="link" onClick={() => setExpanded((v) => !v)}>
@@ -196,18 +193,12 @@ export default function PreparationCard({
       <div>
         {total === 0 ? (
           <div className="muted ov-empty-line">{t('overview.prep_empty')}</div>
-        ) : done === total ? (
-          /* ★ ВСЁ ЗАБРОНИРОВАНО — СВОЁ СОСТОЯНИЕ, А НЕ ПОЛОСА НА 100%: полный
-             бар, «5 из 5», «100%» и две колонки под ними сообщают один и тот же
-             факт четыре раза и ни разу — по-человечески. Счёт при этом не
-             теряется: он ушёл в подпись ряда. */
-          <DoneRow
-            title={t('overview.prep_done_title')}
-            sub={t('overview.prep_sub', { done, total })}
-          />
         ) : (
           <>
-            {/* Полоса считает ровно то, что перечислено под ней. */}
+            {/* Полоса считает ровно то, что перечислено под ней, и стоит во ВСЕХ
+                состояниях: на 100% зелёная полоса — это и есть добытый результат,
+                она даёт карточке тело и повод существовать. Ветвится только тело
+                под ней: список работы либо строка «всё закрыто». */}
             <div className="prep-head">
               <span className="t-support">{t('overview.prep_sub', { done, total })}</span>
               <span className="t-strong num">{Math.round((done / total) * 100)}%</span>
@@ -219,6 +210,7 @@ export default function PreparationCard({
                 ]}
               />
             </div>
+            {done === total ? <DoneLine text={t('overview.prep_done_title')} /> : (
             <div className="prep-cols">
               {stays.length > 0 && (
                 <Section
@@ -237,6 +229,7 @@ export default function PreparationCard({
                 />
               )}
             </div>
+            )}
           </>
         )}
       </div>
