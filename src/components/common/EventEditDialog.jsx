@@ -19,6 +19,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useScreenRise } from '@/components/ui/sheetShell';
 import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Badge, Toggle, Btn, Card, IconBtn, Tile, Seg, useToast } from '@/design/index';
 import {
   Trash2, ArrowRight, Repeat,
@@ -519,6 +520,18 @@ export default function EventEditDialog({
   const { toast } = useToast();
   const qc = useQueryClient();
   const nav = useNavigate();
+
+  // ★★ ФОРМА ЗАЯВЛЯЕТ, ЧТО ЕЙ НУЖЕН ВЕСЬ ЭКРАН. Панель, в которой она живёт,
+  // открывается ростом со СЦЕНОЙ (шит маршрута на середине → и панель на
+  // середине); форме этого мало: у неё поля, а под полем встаёт клавиатура.
+  // Заявку принимает сама поверхность (`ui/sheetShell`) и держит её, пока форма
+  // смонтирована, — закрыл правку, поверхность вернулась на рост сцены.
+  // Объявление ОДНО, а путей у формы три: правка события (режим внутри
+  // просмотра), вкладка «у меня есть бронь» и создание вручную. Перечень этих
+  // путей на стороне экрана разъехался бы с ними на первой же правке — здесь
+  // разъезжаться нечему, потому что о себе заявляет сама форма.
+  // Вне поверхности, умеющей расти (десктоп, модалка), заявка ничего не делает.
+  useScreenRise(variant === 'panel' || embedded);
 
   // currentKind defaults to the prop in create mode, or to the prop in edit mode
   // too (the parent always tells us the right kind for the entity it passed).

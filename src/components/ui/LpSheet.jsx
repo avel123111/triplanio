@@ -1,4 +1,4 @@
-import { SheetRoot, SheetSurface, SheetTitle } from '@/components/ui/sheetShell';
+import { ScreenRiseProvider, SheetRoot, SheetSurface, SheetTitle, useScreenRiseHost } from '@/components/ui/sheetShell';
 
 /**
  * LpSheet — the shared mobile shell for the in-place editor panels (the `.lp-sheet`
@@ -27,17 +27,36 @@ import { SheetRoot, SheetSurface, SheetTitle } from '@/components/ui/sheetShell'
  * бровь — четвёртая подсказка, общая с остальными шторками приложения
  * (единственная разметка грипа — `SheetGrip`, решение Pavel 31.08.2026).
  *
+ * ★★ ЭТА ПОВЕРХНОСТЬ ВСТАЁТ РОСТОМ СО СВОЕЙ СЦЕНОЙ (`rise="scene"`), А НЕ ВО
+ * ВЕСЬ ЭКРАН. Панель города и панель события — это ПОДРОБНОСТЬ того, на что
+ * смотрят: тап по городу в шите маршрута обязан раскрыть город на той же
+ * высоте, где стоял шит, а не подменить экран целиком (карта под ним остаётся
+ * видна, и возврат читается как «закрыл подробность», а не «вернулся с другого
+ * экрана»). Рост сцены публикует шит сцены (`--scene-rise`, см. `ui/PeekSheet`);
+ * там, где шита нет вовсе (таймлайн, календарь, бюджет), сцена вырождается в
+ * рабочий рост — правило одно на все линзы, и это то, ради чего рост объявлен
+ * фактом СЦЕНЫ, а не пропом каждого экрана.
+ *
+ * ★ ФОРМА ПОДНИМАЕТ ПОВЕРХНОСТЬ ДО ЭКРАНА САМА (`useScreenRise` в
+ * `EventEditDialog`): у неё поля, под полем встаёт клавиатура. Заявку принимает
+ * ЭТА поверхность (`useScreenRiseHost` + `ScreenRiseProvider`), и держит ровно
+ * пока форма смонтирована — вернулся просмотр, вернулся и рост сцены. Перечня
+ * «какие панели полноэкранные» здесь нет намеренно: он разъехался бы с панелями
+ * на первой же правке, а к тому же одна и та же форма приезжает тремя разными
+ * путями (правка события, вкладка «у меня есть бронь», создание вручную).
+ *
  * The breakpoint (sheet vs each host's own desktop layout) stays in the caller —
  * this is only the mobile shell.
  */
 export default function LpSheet({ open, onClose, title = '', children }) {
+  const [screenAsked, claimScreen] = useScreenRiseHost();
   return (
     <SheetRoot open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
       {/* vaul wraps Radix Dialog, which requires a Title for a11y — kept sr-only
           since the hosted panel renders its own visible heading. */}
-      <SheetSurface className="lp-sheet" full aria-describedby={undefined}>
+      <SheetSurface className="lp-sheet" full rise={screenAsked ? 'screen' : 'scene'} aria-describedby={undefined}>
         <SheetTitle className="sr-only">{title}</SheetTitle>
-        {children}
+        <ScreenRiseProvider claim={claimScreen}>{children}</ScreenRiseProvider>
       </SheetSurface>
     </SheetRoot>
   );

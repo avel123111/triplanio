@@ -8278,7 +8278,46 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} bottom — там же
    visual-diff-exempt: .lp-sheet {@media (max-width: 640px)} height — там же */
 @media (max-width: 640px) {
-  [data-sheet-full] { top: 0; height: 100dvh; bottom: auto; }
+  /* ★★ РОСТ ПОВЕРХНОСТИ — ОДНО ЧИСЛО (`--sheet-cut`: сколько экрана сверху НЕ
+     занято), и роль лишь выбирает его значение. Коробка при этом остаётся тем,
+     чем была: она НЕ ЗАВИСИТ ОТ КЛАВИАТУРЫ (закрытое ею место уходит отступом
+     скроллера ниже), и потому въезд vaul по-прежнему считается от неподвижной
+     высоты — ровно тот инвариант, ради которого коробку и прибили к вьюпорту
+     раскладки.
+     `screen` (умолчание, `--sheet-cut: 0`) — прежние `top: 0; height: 100dvh`
+     байт-в-байт. `scene` — рост сцены: панель, открытая поверх шита маршрута,
+     встаёт той же высотой, что шит (`--scene-rise`, публикует `ui/PeekSheet`).
+     Сцена без шита (таймлайн, календарь, бюджет) шита не публикует, и рост
+     вырождается в РАБОЧИЙ — 68dvh; фолбэк живёт здесь, у единственного
+     читателя, а не отдельным токеном в `:root`: второго читателя у него нет, а
+     токен без второго читателя — имя, которое надо сопровождать.
+     ★ ПЕРЕХОД МЕЖДУ РОСТАМИ — ТОТ ЖЕ ОДИН TRANSITION. Форма внутри панели
+     заявляет «мне нужен экран» (`useScreenRise`), признак снимается, и
+     поверхность доезжает до полного роста тем же темпом, каким едут шит и
+     карта (`--surface-settle`/`--surface-ease`, фолбэк — как у `.peek-sheet`,
+     который живёт в том же портале и по той же причине их дублирует).
+     Объявлен он на СЕМЬЕ, а не на роли: снятие признака `scene` унесло бы с
+     собой и правило перехода — то есть подъём играл бы только в одну сторону.
+     visual-diff-exempt: [data-sheet-full] {@media (max-width: 640px)} top — коробка получила рост одним числом; у роли `screen` значение прежнее (0)
+     visual-diff-exempt: [data-sheet-full] {@media (max-width: 640px)} height — там же: у роли `screen` прежние 100dvh
+     visual-diff-exempt: [data-sheet-full] {@media (max-width: 640px)} --sheet-cut — само число роста: сколько экрана сверху не занято
+     visual-diff-exempt: [data-sheet-full] {@media (max-width: 640px)} transition — переход между ростами тем же темпом, каким едут шит и карта */
+  [data-sheet-full] {
+    --sheet-cut: 0px;
+    top: var(--sheet-cut); height: calc(100dvh - var(--sheet-cut)); bottom: auto;
+    transition: top var(--surface-settle, .32s) var(--surface-ease, cubic-bezier(.22, 1, .36, 1)),
+                height var(--surface-settle, .32s) var(--surface-ease, cubic-bezier(.22, 1, .36, 1));
+  }
+  /* Рост сцены + её же кромка: лист, вставший НЕ во весь экран, — это лист над
+     содержимым, и верх у него скруглён тем же радиусом, что у шита сцены
+     (`--r-xl`, `.peek-sheet`). Краску держит слой `::before`, поэтому кромку
+     наследует он, а не коробка: `overflow: hidden` на коробке обрезал бы заодно
+     и то, чему выступать положено. */
+  [data-sheet-full][data-sheet-rise='scene'] {
+    --sheet-cut: max(0px, 100dvh - var(--scene-rise, 68dvh));
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+  }
+  [data-sheet-full][data-sheet-rise='scene'][data-vaul-drawer]::before { border-radius: inherit; }
   /* Клавиатура ест снизу у ТОГО, ЧТО СКРОЛЛИТСЯ, а не у коробки. Поле поиска
      пришпилено сверху и её не касается; `.lp` со своим safe-area-отступом не
      тронут: инсет идёт ТЕЛУ, а не карточке.

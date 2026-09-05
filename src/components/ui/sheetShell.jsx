@@ -1,5 +1,5 @@
 // @ts-check
-import { createContext, useContext } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Drawer } from 'vaul';
 
 /**
@@ -125,6 +125,79 @@ export const sheetScroller = { 'data-sheet-scroller': '' };
 export const SHEET_PINNED_ATTR = 'data-sheet-pinned';
 
 /**
+ * ★★ РОСТ ПОЛНОРОСТНОЙ ПОВЕРХНОСТИ — ЭТО ВТОРОЕ ЕЁ СВОЙСТВО, И ОНО НЕ БУЛЕВО.
+ *
+ * `full` отвечает на вопрос «я экран или карточка над экраном»: коробка от
+ * раскладки, краска страницы, резерв под клавиатуру. Это ОДНА роль, и она
+ * осталась прежней. Вопрос «на какой рост поверхность встаёт при открытии» —
+ * ДРУГОЙ, и до сих пор ответа у него не было вовсе: любая полноростная
+ * поверхность занимала экран целиком.
+ *
+ * Значений два:
+ *   `screen` (умолчание) — экран целиком. Шторка пикера и окно с полями: обе
+ *      просят у человека ввод, а ввод занимает экран.
+ *   `scene`  — рост СЦЕНЫ, на которой поверхность открылась (`--scene-rise`,
+ *      публикует шит сцены, см. `ui/PeekSheet`). Панель города/события,
+ *      открытая поверх шита маршрута, встаёт ТОЙ ЖЕ высотой: тап по городу
+ *      раскрывает подробность, а не подменяет экран.
+ *
+ * ★ ПОЧЕМУ ПРИЗНАК, А НЕ КЛАСС, — по той же причине, что и у `full`: это роль
+ * поверхности, а не её скин, и объявляет её ВЛАДЕЛЕЦ поверхности один раз.
+ * Выводить рост из содержимого (какая панель сейчас внутри) нельзя — на этом
+ * уже ломался способ въезда: свойство, выведенное из содержимого, отваливается
+ * ровно тогда, когда содержимое сменилось.
+ */
+/* Признак ставится, только когда рост ОТЛИЧАЕТСЯ от экрана: атрибут со
+   значением по умолчанию на каждой поверхности — шум, который следующий
+   читатель примет за принятое решение. */
+export const SHEET_RISE_ATTR = 'data-sheet-rise';
+
+/**
+ * ★★ «МНЕ НУЖЕН ВЕСЬ ЭКРАН» — ЗАЯВКА СОДЕРЖИМОГО, А НЕ ЗАПРОС ПОВЕРХНОСТИ О НЁМ.
+ *
+ * Форма правки/создания обязана занимать экран целиком: у неё поля, а под полем
+ * встаёт клавиатура. Но живёт форма ГЛУБОКО внутри панели (`EventEditDialog`
+ * приезжает и как режим правки просмотра, и как вкладка «у меня есть бронь»), и
+ * поверхность про неё не знает. Знать и не должна: `:has()`-запрос по
+ * содержимому — ровно тот дефект, что уже стоил перезапуска въезда шторки.
+ *
+ * Поэтому направление обратное: содержимое ЗАЯВЛЯЕТ потребность (`useScreenRise`),
+ * поверхность её исполняет. Заявка живёт, пока смонтирован заявитель, — ушла
+ * форма, поверхность вернулась на рост сцены. Счётчик, а не флаг: две формы в
+ * стопке не должны гасить друг друга, снимая заявку соседа.
+ */
+const ScreenRiseClaim = createContext(/** @type {null | (() => () => void)} */ (null));
+
+/** Поверхность, чей рост может подниматься по заявке содержимого. */
+export function useScreenRiseHost() {
+  const [claims, setClaims] = useState(0);
+  const claim = useCallback(() => {
+    setClaims((n) => n + 1);
+    return () => setClaims((n) => n - 1);
+  }, []);
+  return /** @type {[boolean, () => () => void]} */ ([claims > 0, claim]);
+}
+
+/** @param {{ claim: () => () => void, children?: any }} p */
+export function ScreenRiseProvider({ claim, children }) {
+  return <ScreenRiseClaim.Provider value={claim}>{children}</ScreenRiseClaim.Provider>;
+}
+
+/**
+ * Содержимое объявляет: пока я здесь, поверхности нужен весь экран. Вне
+ * поверхности с заявками (десктоп, модалка) — тишина, а не ошибка: потребность
+ * та же, исполнять её просто некому.
+ * @param {boolean} [active]
+ */
+export function useScreenRise(active = true) {
+  const claim = useContext(ScreenRiseClaim);
+  useEffect(() => {
+    if (!active || !claim) return undefined;
+    return claim();
+  }, [active, claim]);
+}
+
+/**
  * Грип — «бровь» шторки: affordance и ничего больше (тянется вся поверхность,
  * это делает vaul), поэтому обработчиков на нём нет. Единственная разметка
  * грипа в приложении; функциональный грип `PeekSheet` — не отсюда.
@@ -155,13 +228,15 @@ export function SheetGrip() {
  */
 /**
  * @param {{ className?: string, backdropClassName?: string, grip?: boolean,
- *   full?: boolean, pinned?: boolean, contentRef?: any, children?: any }} p
+ *   full?: boolean, rise?: 'screen' | 'scene', pinned?: boolean,
+ *   contentRef?: any, children?: any }} p
  */
 export function SheetSurface({
   className,
   backdropClassName = 'sheet-backdrop',
   grip = true,
   full = false,
+  rise = 'screen',
   pinned = false,
   contentRef,
   children,
@@ -182,6 +257,7 @@ export function SheetSurface({
         ref={contentRef}
         className={className}
         {...(full ? { [SHEET_FULL_ATTR]: '' } : null)}
+        {...(full && rise !== 'screen' ? { [SHEET_RISE_ATTR]: rise } : null)}
         {...(pinned ? { [SHEET_PINNED_ATTR]: '' } : null)}
         {...rest}
       >
