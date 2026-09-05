@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, Card, ListRow, Tile } from '@/design/index';
+import { AddRow, Btn, Card, CardHeader, ListRow, Skeleton, Tile } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
@@ -11,26 +11,15 @@ import { SERVICE_KINDS } from '@/lib/serviceKinds';
 // service view/edit dialogs (each kind its own colour).
 const SERVICE_KIND_META = SERVICE_KINDS;
 
-// Пунктирный ряд «добавить сервис» — тот же примитив `<ListRow>`, что и заполненный
-// ряд (variant="add"), поэтому плейсхолдер встаёт РОВНО в высоту карточки наличия.
-// `--a` объявляет акцент ховера по виду сервиса (рамка/подпись/плюс уезжают в тон).
-function AddRow({ icon, label, hint, color, onClick }) {
-  return (
-    <ListRow
-      variant="add"
-      lead={<Tile tone="quiet" icon={icon} />}
-      title={label}
-      sub={hint}
-      trail={<Icon name="plus" size={16} />}
-      onClick={onClick}
-      style={{ '--a': color }}
-    />
-  );
-}
-
-export default function ServicesCard({ services = [], onAddService, onOpenService }) {
+/**
+ * @param {{ services?: any[], isLoading?: boolean,
+ *           onAddService?: any, onOpenService?: any }} p
+ */
+export default function ServicesCard({ services = [], isLoading = false, onAddService, onOpenService }) {
   const { t } = useI18n();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  if (isLoading) return <ServicesSkeleton />;
 
   const byKind = { esim: [], car_rental: [], insurance: [] };
   for (const s of services) { if (byKind[s.kind]) byKind[s.kind].push(s); }
@@ -42,12 +31,9 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
   moreAddKinds.push('insurance');
 
   return (
-    <Card radius="lg" pad="none" className="ov-wdg">
-      <div className="wdg-h">
-        <span className="wi"><Icon name="folder-bookmark" size={17} /></span>
-        <h4>{t('trip.sidebar_services')}</h4>
-      </div>
-      <div className="wdg-b">
+    <Card className="col col--g6">
+      <CardHeader title={t('trip.sidebar_services')} />
+      <div>
         <div className="col col--g4">
           {/* Booked services — канон <ListRow variant="raised"> */}
           {services.map((s) => {
@@ -67,7 +53,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
 
           {/* Not-yet-added eSIM / car rental — the dashed placeholder */}
           {topAddKinds.map((k) => (
-            <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} color={SERVICE_KIND_META[k].color} label={t(SERVICE_KIND_META[k].labelKey)} hint={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
+            <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} accent={SERVICE_KIND_META[k].color} title={t(SERVICE_KIND_META[k].labelKey)} sub={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
           ))}
 
           {/* "Ещё" — insurance + add-more for kinds already present */}
@@ -76,9 +62,9 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
               <AddRow
                 key={`more-${k}`}
                 icon={SERVICE_KIND_META[k].icon}
-                color={SERVICE_KIND_META[k].color}
-                label={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
-                hint={t(SERVICE_KIND_META[k].hintKey)}
+                accent={SERVICE_KIND_META[k].color}
+                title={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
+                sub={t(SERVICE_KIND_META[k].hintKey)}
                 onClick={() => onAddService?.(k)}
               />
             ))
@@ -87,6 +73,24 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
               <Icon name="plus" size={15} />{t('service.more')}
             </Btn>
           )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Те же ряды `AddRow` и та же кнопка «Ещё» с заглушками. Без хуков данных.
+export function ServicesSkeleton() {
+  const { t } = useI18n();
+  return (
+    <Card className="col col--g6" aria-busy="true">
+      <CardHeader title={t('trip.sidebar_services')} />
+      <div>
+        <div className="col col--g4">
+          {[0, 1].map((i) => (
+            <AddRow key={i} icon="dot" title={<Skeleton w={96} h={18} r={5} />} sub={<Skeleton w={128} h={18} r={5} />} />
+          ))}
+          <Btn variant="soft" block disabled><Skeleton w={72} h={17} r={5} /></Btn>
         </div>
       </div>
     </Card>

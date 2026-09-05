@@ -649,6 +649,15 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .donut__seg[data-dim="true"] { opacity: .4; }
 .donut__c { position: absolute; inset: 24%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--sp-1); }
 
+/* ── Meter: полоса-доля — дорожка + сегменты, растянутые `flex-grow`. Бывший
+   `.bud-bar` виджета бюджета, объявления перенесены как есть; второй читатель —
+   виджет «Подготовка».
+   prefix-exempt: meter — канон-объект «полоса-доля», собравший `.bud-bar`; апрув Pavel (TRIP-OVW «Подготовка»)
+   visual-diff-move: .bud-bar -> .meter
+   visual-diff-move: .bud-bar i -> meter__seg */
+.meter { height: 11px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; display: flex; margin: 12px 0 14px; }
+.meter__seg { height: 100%; transition: flex-grow .3s var(--ease-out); }
+
 /* Утопленная поверхность (заметки, адрес, плитки отсчёта) СВЕДЕНА к канону
    `<Card recessed>` (TRIP-343 PR-4, объект 2, закрытие). Прежняя приватная
    скин-группа `.addr,.notes,.notes-block,.cdu { --surface-3 + рамка }` снята
@@ -837,7 +846,6 @@ h3,
 .trip-head__title,
 .step h3,
 .drawer li a,
-.wdg-h h4,         /* TRIP-175 инсп.: Label→Subheading (заголовки виджетов обзора) */
 .tl3-card--tr .rv-end b, /* TRIP-175 инсп.: UI→Subheading (город назначения переезда) */
 .mbrow__name,      /* TRIP-175 инсп.: UI→Subheading (имя участника) */
 .vrow .nm,         /* TRIP-175 инсп.: UI→Subheading (страна/город в списке) */
@@ -1047,7 +1055,6 @@ h4,
 .ov-warn,
 .ov-empty-line,
 .mrow .me,
-.ov-map-empty,
 .tl3-dh .daycity,
 .tl3-card .body .sb,
 .tl3-card--tr .rv-end span,
@@ -6967,20 +6974,25 @@ button.input[data-empty] { color: var(--muted-2); }
 
 /* ============================================================
    TRIP OVERVIEW (main screen) — Lumo
-   Two columns (map + stats / budget + members) that collapse to
-   one on mobile. Widgets share the .wdg shell.
+   Кадр поездки во всю ширину сверху, под ним две колонки: «Подготовка» слева,
+   сводки стопкой справа. Колонку экрана и стопку несёт `<Col gap="g8">`;
+   свои классы только у того, что осью примитива не выражается: `.ovwrap`
+   (контейнер измерения) и `.ov-grid` (сетка с неравными колонками).
    ============================================================ */
-.ovwrap {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
+/* `.ov-col` удалён вместе с прежними колонками.
+   visual-diff-exempt: .ovwrap display — раскладку колонки экрана несёт примитив `<Col gap="g8">`, было grid двух колонок. Апрув Pavel
+   visual-diff-exempt: .ovwrap grid-template-columns — сетка переехала на отдельный узел `.ov-grid`
+   visual-diff-exempt: .ovwrap gap — зазор колонки экрана несёт `.col--g8`
+   visual-diff-exempt: .ovwrap align-items — колонок у `.ovwrap` больше нет
+   visual-diff-exempt: .ovwrap {@media (max-width: 880px)} grid-template-columns — то же: схлопывать нечего */
+.ovwrap { container-type: inline-size; }
+/* Сетка — отдельным узлом: `@container` резолвится по ближайшему ПРЕДКУ-контейнеру
+   и никогда по элементу, который сам объявил `container-type`. Порог 721 — по
+   ширине экрана обзора, тот же, что у кадра ниже. */
+.ov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); align-items: start; }
+@container (min-width: 721px) {
+  .ov-grid { grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); }
 }
-.ov-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-/* Left column = size container so the stat-bar reflows to its own width, not the
-   viewport (mockup v01 @container): 5-across when the column is wide, 2-col when
-   the 2-column overview squeezes it on mid-width desktops (TRIP-278). */
-.ovwrap .ov-col:first-child { container-type: inline-size; }
 
 /* ---- widget shell ---- */
 /* TRIP-343 объект 2: `.wdg` был FLUSH-поверхностью (свой padding:0 + overflow,
@@ -6995,29 +7007,55 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .wdg overflow — переехал на .card--flush (pad="none")
    visual-diff-exempt: .wdg transition — снят вместе с ховер-лифтом (канон без движения)
    visual-diff-exempt: .wdg:hover transform — ховер-лифт снят (канон без лифта, апрув /kit)
-   visual-diff-exempt: .wdg:hover box-shadow — ховер-лифт снят (канон без лифта, апрув /kit) */
-.wdg-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px 12px; }
-.wdg-h .wi { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.wdg-h .wi svg { width: 17px; height: 17px; }
-/* Значок виджета берёт тон из канала --hl* (04 PR3). `.wi--primary` больше нет:
-   он ЗАПИСЫВАЛ дефолт канала, и его носили три вызова из четырёх - то есть класс
-   существовал ради значения, которое уже приходит из :root. Четвёртый вызов
-   (участники) остаётся вариантом, но теперь он ПОДСТАВЛЯЕТ ЗНАЧЕНИЕ в канал, а
-   не объявляет свою пару фон+текст. */
-.wi { background: var(--hl-soft); color: var(--hl-ink); }
-.wi--activity { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
-.wdg-h h4 { flex: 1; margin: 0; }
-.wdg-b { padding: 4px 18px 18px; }
+   visual-diff-exempt: .wdg:hover box-shadow — ховер-лифт снят (канон без лифта, апрув /kit)
+   `.wdg-h`/`.wdg-b`/`.wi` (шапка виджета с цветной плиткой-иконкой) сняты вместе
+   с карточной формой: шапку рисует канон `<CardHeader>`, носили их только
+   виджеты Обзора.
+   visual-diff-exempt: .wdg-h display — плитка-иконка снята: `.wdg-h .wi{display:grid}` ушла, у самой шапки остаётся flex
+   visual-diff-exempt: .wdg-h width — то же
+   visual-diff-exempt: .wdg-h height — то же
+   visual-diff-exempt: .wdg-h border-radius — то же
+   visual-diff-exempt: .wdg-h place-items — то же
+   visual-diff-exempt: .wdg-h flex — то же
+   visual-diff-exempt: .wdg-h gap — шапка виджета умерла вместе с карточной формой: шапку рисует канон `<CardHeader>` (.card-h)
+   visual-diff-exempt: .wdg-h padding — то же
+   visual-diff-exempt: .wdg-h align-items — то же
+   visual-diff-exempt: .wdg-h h4 flex — то же
+   visual-diff-exempt: .wdg-h h4 margin — то же
+   visual-diff-exempt: .wdg-b padding — то же
+   visual-diff-exempt: .wdg-h h4 font-family — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h h4 font-size — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h h4 font-weight — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h h4 letter-spacing — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h h4 line-height — шапка виджета умерла вместе с карточной формой; шапку рисует канон `<CardHeader>` (.card-h h3)
+   visual-diff-exempt: .wdg-h .wi svg width — то же
+   visual-diff-exempt: .wdg-h .wi svg height — то же
+   visual-diff-exempt: .wi background — плитка-иконка шапки снята
+   visual-diff-exempt: .wi color — то же
+   visual-diff-exempt: .wi--activity --hl-soft — то же
+   visual-diff-exempt: .wi--activity --hl-ink — то же
+   visual-diff-exempt: .wi display — плитка-иконка шапки виджета снята вместе с классом (её носили только шапки Обзора)
+   visual-diff-exempt: .wi width — то же
+   visual-diff-exempt: .wi height — то же
+   visual-diff-exempt: .wi flex — то же
+   visual-diff-exempt: .wi place-items — то же
+   visual-diff-exempt: .wi border-radius — то же
+   `.ov-col .statbar .k { margin-top: 0 }` снят вместе с колонкой обзора: подпись
+   плитки на Обзоре берёт базовый отступ полосы (6px), как на главной и в статистике.
+   visual-diff-exempt: .ov-col margin-top — правило снято вместе с классом .ov-col
+   visual-diff-exempt: .statbar margin-top — подпись плитки на Обзоре вернулась к базовому отступу полосы (приватного переопределения .ov-col больше нет) */
 /* `.wdg-act` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="outline"
    size="sm">. Обе точки вызова (BudgetSummaryCard, MembersSummaryCard)
    пересажены в этом же PR. Вместе с классом ушёл и его ко-селектор ховера
-   в канале --hl* ниже по файлу: у канон-класса свой ховер. */
+   (`.wdg-act:hover`) — ховер теперь от `.icon-btn--outline:hover`. */
 
 /* ---- budget widget ---- */
 .bud-total { color: var(--ink); }
-.bud-bar { height: 11px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; display: flex; margin: 12px 0 14px; }
-.bud-bar i { height: 100%; transition: flex-grow .3s var(--ease-out); }
-.bud-legs { display: flex; flex-direction: column; gap: 1px; }
+/* `.bud-bar` УДАЛЁН — полоса переехала на канон-объект `.meter` (см. его блок выше). */
+/* Отступ легенды от итога объявляет сама легенда: полоса над ней условна (на
+   одной категории её нет), а её нижнее поле с этим отступом схлопывается.
+   visual-diff-exempt: .bud-legs margin-top — легенда получила свой отступ от итога: полоса-доля над ней теперь условна (одна категория — полосы нет) */
+.bud-legs { display: flex; flex-direction: column; gap: 1px; margin-top: var(--sp-3); }
 .bud-leg { display: flex; align-items: center; gap: 9px; padding: 6px; border-radius: var(--r-sm); transition: background .15s; }
 .bud-leg:hover { background: var(--surface-2); }
 .bud-leg .d { width: 10px; height: 10px; border-radius: 4px; flex: none; }
@@ -7038,40 +7076,84 @@ button.input[data-empty] { color: var(--muted-2); }
 .ov-invite { margin-top: 14px; transition: transform .12s var(--ease-out); }
 .ov-invite:active { transform: scale(.985); }
 
-/* ---- route-map card ---- */
-/* TRIP-343 объект 2 (канал 4 — клиппинг): клип принадлежит Card. `padding`/
-   `overflow` — приватные оверрайды `.card--flush` (`pad="none"` → `padding:0` +
-   `overflow:hidden`, :1637) — сняты; из-за `overflow:visible` углы карты были
-   квадратными (`.ov-maparea` скруглял только низ). Теперь скругление всех углов
-   несёт `.card--flush`, приватная копия клипа мертва. Тень остаётся приватной
-   (высота, не клип). `padding:0` снят как дубль `.card--flush` — итог тот же
-   (каскад отдаёт padding:0 из flush), поэтому 2p его не видит.
-   visual-diff-exempt: .ov-mapcard overflow — клип возвращён канону .card--flush (overflow:hidden); было visible → углы карты квадратные — объект 2, канал 4 */
-.ov-mapcard .wdg-h { padding: 15px 18px 11px; }
-/* ★TRIP-344: подпрыгивание снято и ЗДЕСЬ. Этот класс висит на `<Btn>` (карточка
-   маршрута в Обзоре), и после снятия анимации у примитива он остался бы
-   ЕДИНСТВЕННОЙ кнопкой приложения, которая ещё сжимается при нажатии — то есть
-   ровно тот случай, ради которого правка делалась системно: экранный класс
-   молча возвращает язык, снятый у канона. За классом остаётся только его
-   раскладочная роль — прижать кнопку к правому краю шапки виджета. */
-.ov-openbtn { margin-left: auto; }
-/* TRIP-343 объект 2: собственный клип области карты снят — все углы скругляет
-   несущий `.card--flush` (канал 4). Прежде область скругляла ТОЛЬКО низ
-   (`0 0 --r-xl --r-xl`) поверх `overflow:visible` карты → верхние углы квадратные.
-   visual-diff-exempt: .ov-maparea overflow — клип поднят на несущий .card--flush (overflow:hidden) — объект 2, канал 4
-   visual-diff-exempt: .ov-maparea border-radius — все углы скругляет .card--flush (был только низ 0 0 --r-xl --r-xl → квадратный верх) — объект 2, канал 4 */
-.ov-maparea { position: relative; height: 280px; background: var(--surface-2); }
-.ov-map-empty {
- position: absolute; inset: 0; display: flex; flex-direction: column;
- align-items: center; justify-content: center; gap: 8px;
+/* ---- preparation widget ---- */
+/* Две секции («Проживание» / «Переезды») рядом, когда карточке хватает ширины,
+   иначе друг под другом. Контейнер измерения — сама карточка (`.prep`): ширина
+   карточки не следует ни за вьюпортом, ни за шириной экрана обзора (при
+   двухколоночном обзоре она уже, при одноколоночном шире).
+   prefix-exempt: prep — новый канон-объект «виджет подготовки», апрув Pavel (единственное своё имя виджета: остальное — ListRow/Tile/Meter/Row/Col)
+   Нетто PR по числам пола: классы −2, namespaces +1 (`meter`/`prep`/`tframe`
+   пришли, `wi` и виджет-шелл ушли), приватная раскладка 0.
+   floor-exempt: namespaces +1 — нетто по семьям: пришли `meter` (полоса-доля перестала быть приватным элементом бюджета и стала объектом системы), `prep` и `tframe`, ушли снесённые вместе с превью карты и виджет-шеллом. Апрув Pavel */
+.prep { container-type: inline-size; }
+/* Колонки равной ширины с линией между ними; поля симметричны относительно линии. */
+.prep-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
+@container (min-width: 640px) {
+  .prep-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+  .prep-cols > :first-child { padding-right: var(--sp-8); }
+  .prep-cols > * + * { border-left: 1px solid var(--line); padding-left: var(--sp-8); }
 }
+
+/* ---- кадр поездки: карта + панель состояния ---- */
+/* Кадр — канон-карточка (`<Card pad="none" radius="lg">`), класс несёт только
+   стековый корень слоёв (контракт TRIP-466). Слой карты называет свой уровень,
+   панель состояния стоит над ним.
+   prefix-exempt: tframe — канон-объект «кадр поездки», апрув Pavel */
+.tframe { position: relative; isolation: isolate; }
+/* Высота 280: панель состояния (~140) не выглядит распёртой, а на 1440×820 в поле
+   зрения помещаются все пять блоков. `grid` растягивает единственного ребёнка
+   (карту либо пустое состояние) на весь слой. */
+.tframe__map { position: relative; z-index: 0; height: 280px; display: grid; }
+/* Панель наверху: низ кадра занимает атрибуция mapbox, показ которой обязателен. */
+.tframe__state {
+  position: absolute; z-index: 2; top: 20px; left: 20px; width: 300px; max-width: calc(100% - 40px);
+}
+/* Узкий кадр: панель во всю ширину закрывала бы половину карты, поэтому уходит
+   в поток под неё. Слоёв не остаётся, обрезка и стековый контекст ничего не ломают. */
+@container (max-width: 720px) {
+  .tframe__map { height: 300px; }
+  .tframe__state { position: static; width: auto; max-width: none; margin: var(--sp-6); }
+}
+
+/* Карточка превью карты (`.ov-mapcard`/`.ov-maparea`/`.ov-map-empty`/`.ov-openbtn`)
+   удалена вместе с компонентом `RouteMapCard`; колонки обзора (`.ov-col`) —
+   вместе с прежней раскладкой. Пустое состояние карты — канон `<EmptyState>`.
+   visual-diff-exempt: .ov-map-empty position — пустое состояние карты рисует канон `<EmptyState>` внутри слоя карты
+   visual-diff-exempt: .ov-map-empty inset — то же
+   visual-diff-exempt: .ov-map-empty display — то же
+   visual-diff-exempt: .ov-map-empty flex-direction — то же
+   visual-diff-exempt: .ov-map-empty align-items — то же
+   visual-diff-exempt: .ov-map-empty justify-content — то же
+   visual-diff-exempt: .ov-map-empty gap — то же
+   visual-diff-exempt: .ov-map-empty font-family — то же (текст пустого состояния — типографика `<EmptyState>`)
+   visual-diff-exempt: .ov-map-empty font-size — то же
+   visual-diff-exempt: .ov-map-empty font-variant-numeric — то же
+   visual-diff-exempt: .ov-map-empty font-weight — то же
+   visual-diff-exempt: .ov-map-empty letter-spacing — то же
+   visual-diff-exempt: .ov-map-empty line-height — то же
+   visual-diff-exempt: .ov-col display — колонку экрана несёт примитив `<Col>`
+   visual-diff-exempt: .ov-col flex-direction — то же
+   visual-diff-exempt: .ov-col gap — то же (зазор держит `.col--g8`)
+   visual-diff-exempt: .ov-col min-width — то же
+   visual-diff-exempt: .ov-col:first-child container-type — контейнер измерения переехал на .ovwrap
+   visual-diff-exempt: .ov-col:first-child animation-delay — вход считается по узлам экрана, а не по колонкам
+   visual-diff-exempt: .ov-col:last-child animation-delay — то же
+   visual-diff-exempt: .ov-anim:nth-child(1) animation-delay — то же
+   visual-diff-exempt: .ov-anim:nth-child(2) animation-delay — то же
+   visual-diff-exempt: .ovwrap animation-delay — ступень третьего узла снята: третьего ребёнка у `.ovwrap` нет
+   visual-diff-exempt: .ovwrap flex-direction — раскладку колонки экрана несёт `<Col>`, у `.ovwrap` остался только контейнер измерения
+   visual-diff-exempt: .ov-maparea position — превью карты снесено, роль у .tframe__map
+   visual-diff-exempt: .ov-maparea background — то же
+   visual-diff-exempt: .ov-maparea height — превью 280 заменено кадром: `.tframe__map` 280, на узком кадре 300
+   visual-diff-exempt: .ov-maparea {@media (max-width: 880px)} height — то же: узкий порог теперь по ширине кадра (@container), не вьюпорта
+   visual-diff-exempt: .ov-mapcard padding — своей шапки `.wdg-h` у кадра нет, карта не носит заголовок-виджет
+   visual-diff-exempt: .wdg-h padding — следствие: у `.wdg-h` осталось только базовое значение, приватный оверрайд карточки карты ушёл вместе с ней
+   visual-diff-exempt: .ov-openbtn margin-left — кнопка «Открыть» уехала в панель состояния над картой, прижимать её к правому краю шапки больше нечем */
 
 /* ---- entrance: staggered reveal (decorative) ---- */
 @keyframes ovIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ov-anim { animation: ovIn .42s var(--ease-out) both; }
-.ovwrap .ov-col:first-child .ov-anim:nth-child(2) { animation-delay: 60ms; }
-.ovwrap .ov-col:last-child .ov-anim:nth-child(1) { animation-delay: 50ms; }
-.ovwrap .ov-col:last-child .ov-anim:nth-child(2) { animation-delay: 110ms; }
+.ov-grid > .ov-anim:nth-child(2) { animation-delay: 60ms; }
 /* Calendar lens: a slightly larger, longer entrance for a more dynamic feel. */
 @keyframes ovInCal { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .ov-anim--cal { animation: ovInCal .5s var(--ease-out) both; }
@@ -7093,10 +7175,7 @@ button.input[data-empty] { color: var(--muted-2); }
   .wdg:hover { transform: none; }
 }
 
-@media (max-width: 880px) {
-  .ovwrap { grid-template-columns: 1fr; }
-  .ov-maparea { height: 220px; }
-}
+
 
 /* ============================================================
    TIMELINE — Lumo "Таймлайн поездки" (.tl3-*) + city scroll-rail
@@ -10133,8 +10212,51 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .statbar .cta button width — снят width:100%: два ребёнка в ряду вместо одного (TRIP-302)
 */
 .statbar .cta { display: flex; align-items: center; gap: var(--sp-4); padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
-/* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */
-.ov-col .statbar { margin-top: 0; }
+/* Полоса плиток на Обзоре сжимается по ширине ЭКРАНА ОБЗОРА (контейнер `.ovwrap`),
+   не вьюпорта. 600–880: ячейка сжимается (10px поля, 8 gap, плитка 32/17), пять
+   держат строку до 600; ниже — та же двухколоночная форма, что у полосы на
+   главной. Ключ переехал со снесённой `.ov-col`, значения те же.
+   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} width — ступень на --tile:32, база .tile на media=''
+   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} height — то же
+   visual-diff-exempt: .ic {@container (600px <= width <= 880px)} width — то же (ключ на .ic)
+   visual-diff-exempt: .ic {@container (600px <= width <= 880px)} height — то же
+   visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} --tile — приобретение ступени в контейнере
+   visual-diff-exempt: .tile {@container (600px <= width <= 880px)} --tile — то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} padding-inline — ключ адаптива полосы плиток переехал с .ov-col на .ovwrap, значение то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} gap — то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} --tile — то же
+   visual-diff-exempt: .ovwrap {@container (600px <= width <= 880px)} --tile-ic — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} flex-wrap — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} flex — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} padding — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} inset — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} display — то же
+   visual-diff-exempt: .ovwrap {@container (max-width: 600px)} order — то же
+   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} padding-inline — правило переехало на .ovwrap вместе со снесённым классом .ov-col
+   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} gap — то же
+   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile — то же
+   visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile-ic — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} flex-wrap — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} flex — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} padding — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} inset — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} display — то же
+   visual-diff-exempt: .ov-col {@container (max-width: 600px)} order — то же
+   visual-diff-exempt: .ov-col .statbar .s:nth-child(n + 3) {@container (max-width: 600px)} border-top — то же
+*/
+@container (600px <= width <= 880px) {
+  .ovwrap .statbar .s { padding-inline: 10px; gap: 8px; }
+  .ovwrap .statbar .tile { --tile: 32px; --tile-ic: 17px; }
+}
+@container (max-width: 600px) {
+  .ovwrap .statbar { flex-wrap: wrap; }
+  .ovwrap .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
+  .ovwrap .statbar .s::before { inset: 13px auto 13px 0; }
+  .ovwrap .statbar .s:nth-child(odd)::before { display: none; }
+  .ovwrap .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .ovwrap .statbar .s.c-duration { order: 0; }
+  .ovwrap .statbar .s.c-distance { flex: 1 0 100%; }
+}
 /* 2-col wrap — one shape for both bars (mockup v01): the vertical hairline stays
    only left of the right-hand column, rows are separated horizontally, and the
    last stat (distance on the trip bar, CTA on /trips) takes a full-width row. */
@@ -10154,46 +10276,6 @@ a.doc-row__n:hover{ color: var(--brand); }
      visual-diff-exempt: .statbar {@media (max-width: 640px)} align-items — то же, приписано .statbar по правилу .statbar .cta (TRIP-302)
   */
   .statbar .cta { flex: 1 0 100%; flex-direction: column; align-items: stretch; border-left: 0; border-top: 1px solid var(--line); padding: 12px; }
-}
-/* The overview bar sizes on its own (column) width, not the viewport — at 880 the
-   sidebar goes off-canvas AND .ovwrap collapses to one column, so the available
-   width jumps instead of shrinking and no viewport query describes it. The column
-   is ~607px at a 1280px viewport and ~705px at 1440px, where the roomy cell
-   (2×20 padding + 42 chip + 13 gap + label) no longer fits five across.
-   Compressing the cell keeps the row intact instead of breaking it up: measured
-   against en/es/ru the compressed cell needs ~120px, so five hold down to 600px.
-   Range-bounded on purpose — below 600 the wrap block owns the cell, and nothing
-   here needs undoing. 32/17 chip, 8 gap and 10 padding are all sizes the system
-   already uses (.wdg-h .wi). */
-@container (600px <= width <= 880px) {
-  .ov-col .statbar .s { padding-inline: 10px; gap: 8px; }
-  /* Ступень контейнера на <Tile>. Переносом НЕ объявляется: @container-размер
-     двинуть на базовое .tile (media='') 2p не может структурно — поэтому точечные
-     exempt ниже (значение то же, проверено рендером ov-col в контейнере 600-880).
-     visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} width — ступень на --tile:32, база .tile на media=''
-     visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} height — то же
-     visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} width — то же (ключ на классе-предке)
-     visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} height — то же
-     visual-diff-exempt: .ic {@container (600px <= width <= 880px)} width — то же (ключ на .ic)
-     visual-diff-exempt: .ic {@container (600px <= width <= 880px)} height — то же
-     visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile — приобретение ступени в контейнере
-     visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} --tile — то же
-     visual-diff-exempt: .tile {@container (600px <= width <= 880px)} --tile — то же */
-  .ov-col .statbar .tile { --tile: 32px; --tile-ic: 17px; }
-}
-/* Below 600px even the compressed cell clips a label, so the row gives way to the
-   same 2-col shape the /trips bar takes — mirrors the @media block above, keep the
-   two in step. NB 600 is NOT on the 640/880 scale: 640 would wrap the 607px column
-   of a 1280px desktop, which is exactly the case this keeps on one row — approved
-   by Pavel on TRIP-278 (five compressed cells measure 120px each). */
-@container (max-width: 600px) {
-  .ov-col .statbar { flex-wrap: wrap; }
-  .ov-col .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
-  .ov-col .statbar .s::before { inset: 13px auto 13px 0; }
-  .ov-col .statbar .s:nth-child(odd)::before { display: none; }   /* left column starts a row */
-  .ov-col .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
-  .ov-col .statbar .s.c-duration { order: 0; }
-  .ov-col .statbar .s.c-distance { flex: 1 0 100%; }
 }
 
 .dash-hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-top: 18px; }

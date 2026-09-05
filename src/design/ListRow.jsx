@@ -1,5 +1,7 @@
 // @ts-check
 import React from 'react';
+import { Tile } from './Tile';
+import { Icon } from './icons';
 
 // ----- ListRow ----- (TRIP-413, объект «строка списка»)
 // Строка списка: [лид] заголовок + подпись [трейл]. Лид и трейл — слоты
@@ -81,3 +83,31 @@ ListRow.displayName = "ListRow";
 
 /** @type {readonly ListRowVariant[]} */
 export const LISTROW_VARIANTS = ["raised", "select", "divider", "compact", "add"];
+
+// ----- AddRow ----- «этого ещё нет»
+// Сведение трёх одинаковых локальных обёрток над `<ListRow variant="add">`
+// (панель города, сервисы, «Подготовка»). Тон ховера `--a` приходит из данных
+// (вид того, чего не хватает: отель · переезд · сервис), поэтому стиль — функцией.
+/** @param {string} [accent] */
+const addTone = (accent) => ({ "--a": accent || "var(--brand)" });
+
+export const AddRow = React.forwardRef(
+  /**
+   * @param {{ icon?: string, title?: any, sub?: any, accent?: string,
+   *   onClick?: any, className?: string }} p
+   */
+  ({ icon = "plus", title, sub, accent, onClick, className = "" }, ref) => (
+    <ListRow
+      ref={ref}
+      variant="add"
+      className={className}
+      lead={<Tile tone="quiet" icon={icon} />}
+      title={title}
+      sub={sub || undefined}
+      trail={<Icon name="plus" size={16} />}
+      style={addTone(accent)}
+      onClick={onClick}
+    />
+  ),
+);
+AddRow.displayName = "AddRow";

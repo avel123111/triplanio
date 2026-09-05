@@ -1,74 +1,41 @@
-import React, { useMemo } from 'react';
-import { sortVisits } from '@/lib/validation';
-import { Card, Skeleton } from '@/design/index';
-import RouteMapCard from '@/components/trips/RouteMapCard';
-import TripStatRow from '@/components/trips/TripStatRow';
-import BudgetSummaryCard from '@/components/trips/BudgetSummaryCard';
-import MembersSummaryCard from '@/components/trips/MembersSummaryCard';
-import ServicesCard from '@/components/trips/ServicesCard';
+import React from 'react';
+import { Col } from '@/design/index';
+import BudgetSummaryCard, { BudgetSummarySkeleton } from '@/components/trips/BudgetSummaryCard';
+import MembersSummaryCard, { MembersSummarySkeleton } from '@/components/trips/MembersSummaryCard';
+import ServicesCard, { ServicesSkeleton } from '@/components/trips/ServicesCard';
+import PreparationCard, { PreparationSkeleton } from '@/components/trips/PreparationCard';
+import TripFrame, { TripFrameSkeleton } from '@/components/trips/TripFrame';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 
-// Скелетон Обзора — PURE, канон <Skeleton>, геометрия повторяет реальный layout
-// (карта + статбар · бюджет + участники). Один источник для обеих фаз загрузки
-// (shell в TripView.LoadingBody и content). TRIP-337 visual-fixes.
+// Скелетон Обзора — то же дерево, что у живого экрана; каждый блок рисует свою
+// фазу загрузки сам. Своей геометрии здесь нет: расхождение — прыжок содержимого
+// в момент, когда данные приехали.
 export function OverviewSkeleton() {
-  const bar = (w, h, r = 8, mt = 0) => (
-    <Skeleton w={w} h={h} r={r} style={mt ? { marginTop: mt } : undefined} />
-  );
-  const dot = <Skeleton w={32} h={32} r="var(--r-sm)" style={{ flex: 'none' }} />;
   return (
-    <div className="ovwrap" aria-busy="true">
-      <div className="ov-col">
-        <Card radius="lg" pad="none" raised className="ov-mapcard">
-          <div className="wdg-h">{dot}{bar('38%', 16, 6)}</div>
-          <Skeleton w="100%" h={280} r={0} />
-        </Card>
-        <Card radius="lg" pad="none" className="statbar">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div className="s" key={i}>
-              <Skeleton w={34} h={34} r="var(--r-sm)" style={{ flex: 'none' }} />
-              <div className="grow">{bar('55%', 22, 6)}{bar('80%', 10, 5, 7)}</div>
-            </div>
-          ))}
-        </Card>
+    <Col gap="g8" className="ovwrap" aria-busy="true">
+      <div className="ov-anim"><TripFrameSkeleton /></div>
+      <div className="ov-grid">
+        <div className="ov-anim"><PreparationSkeleton /></div>
+        <Col gap="g8" className="ov-anim">
+          <BudgetSummarySkeleton />
+          <MembersSummarySkeleton />
+          <ServicesSkeleton />
+        </Col>
       </div>
-      <div className="ov-col">
-        <Card radius="lg" pad="none">
-          <div className="wdg-h">{dot}{bar('45%', 16, 6)}</div>
-          <div className="wdg-b">
-            {bar('55%', 26, 'var(--r-sm)')}
-            {bar('100%', 11, 'var(--r-pill)', 14)}
-            {bar('100%', 14, 'var(--r-sm)', 12)}
-            {bar('100%', 14, 'var(--r-sm)', 8)}
-            {bar('100%', 14, 'var(--r-sm)', 8)}
-          </div>
-        </Card>
-        <Card radius="lg" pad="none">
-          <div className="wdg-h">{dot}{bar('45%', 16, 6)}</div>
-          <div className="wdg-b">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="mrow">
-                <Skeleton w={34} h={34} r="50%" style={{ flex: 'none' }} />
-                <div className="fl1">{bar('60%', 13, 5)}{bar('40%', 11, 5, 6)}</div>
-              </div>
-            ))}
-            {bar('100%', 42, 'var(--r-sm)', 14)}
-          </div>
-        </Card>
-      </div>
-    </div>
+    </Col>
   );
 }
 
-// Trip Overview — the trip's main screen. Lives inside the TripView shell
-// (header + hero + sidebar). Two columns that collapse to one on mobile:
-//   left  → route-map preview + 5 trip stats
-//   right → budget summary + members summary
-// All four widgets are reusable cards; this lens only composes + wires nav.
+// Экран поездки: кадр (карта + состояние + числа маршрута) во всю ширину, под
+// ним две колонки — «Подготовка» слева, сводки (бюджет · участники · сервисы)
+// стопкой справа. Пороги раскладки — по ширине экрана обзора (`@container`),
+// не вьюпорта: с боковым меню и без него одна и та же ширина окна даёт разную
+// ширину экрана.
 export default function OverviewLens({
   trip,
   visits = [],
   transfers = [],
+  hotels = [],
   budget,
   budgetExpenses = [],
   budgetCategories = [],
@@ -86,32 +53,42 @@ export default function OverviewLens({
   onAddService,
   onOpenService,
   onBudgetLocked,
+  onAddHotel,
+  onAddTransfer,
 }) {
   // Право управления (editor) — из единого контекста доступа (TRIP-274 Ф2.2),
   // раздаётся подкартам (бюджет/участники) как булев проп.
   const { canEdit: canManage } = useTripAccess();
-  const orderedVisits = useMemo(() => sortVisits(visits), [visits]);
 
   if (isLoading) return <OverviewSkeleton />;
 
   return (
-    <div className="ovwrap">
-      <div className="ov-col">
-        <div className="ov-anim">
-          <RouteMapCard
-            visits={visits}
-            transfers={transfers}
-            active={active}
-            onOpen={onOpenMap}
-          />
-        </div>
-        <div className="ov-anim">
-          <TripStatRow visits={visits} transfers={transfers} trip={trip} orderedVisits={orderedVisits} />
-        </div>
+    <Col gap="g8" className="ovwrap">
+      <div className="ov-anim">
+        <TripFrame
+          trip={trip}
+          visits={visits}
+          transfers={transfers}
+          active={active}
+          isLoading={contentLoading}
+          onOpenMap={onOpenMap}
+        />
       </div>
 
-      <div className="ov-col">
+      <div className="ov-grid">
         <div className="ov-anim">
+          <PreparationCard
+            visits={visits}
+            hotels={hotels}
+            transfers={transfers}
+            isLoading={contentLoading}
+            onAddHotel={onAddHotel}
+            onAddTransfer={onAddTransfer}
+            onOpenRoute={onOpenMap}
+          />
+        </div>
+
+        <Col gap="g8" className="ov-anim">
           <BudgetSummaryCard
             trip={trip}
             budget={budget}
@@ -123,8 +100,6 @@ export default function OverviewLens({
             onOpen={onOpenBudget}
             onLocked={onBudgetLocked}
           />
-        </div>
-        <div className="ov-anim">
           <MembersSummaryCard
             trip={trip}
             members={members}
@@ -134,11 +109,9 @@ export default function OverviewLens({
             isLoading={contentLoading}
             onOpenMembers={onOpenMembers}
           />
-        </div>
-        <div className="ov-anim">
-          <ServicesCard services={services} onAddService={onAddService} onOpenService={onOpenService} />
-        </div>
+          <ServicesCard services={services} isLoading={contentLoading} onAddService={onAddService} onOpenService={onOpenService} />
+        </Col>
       </div>
-    </div>
+    </Col>
   );
 }
