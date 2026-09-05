@@ -32,10 +32,17 @@ function tocOf(html) {
     .map((m) => ({ id: m[1], title: m[2].replace(/<[^>]+>/g, '').trim() }));
 }
 
+// Версия и даты двигаются ВМЕСТЕ с содержательной правкой текста, а не с любой.
+// С 1.1 текст менялся дважды по существу: описание безкукового режима и записи
+// под номером аккаунта независимо от баннера (TRIP-502), и момент появления
+// идентификаторов аналитики на устройстве — теперь после входа, а не по кнопке
+// баннера. Оба раза мы стали хранить МЕНЬШЕ, чем обещал прежний текст, поэтому
+// нового согласия правка не требует; но материальная правка при неподвижной
+// дате — первое, за что цепляется проверяющий.
 export const LEGAL_META = {
-  updated: 'Last updated 31 August 2026',
-  version: 'Version 1.1',
-  effective: 'Effective 26 August 2026',
+  updated: 'Last updated 5 September 2026',
+  version: 'Version 1.2',
+  effective: 'Effective 5 September 2026',
 };
 
 // Chrome labels of the viewer. English like the rest of the legal surface (not
