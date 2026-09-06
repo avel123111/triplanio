@@ -24,7 +24,7 @@ import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
-import { normalizeStep, stepEntryFrom } from '@/pages/create/stepUrl';
+import { normalizeStep, stepEntryFrom, resolveBack } from '@/pages/create/stepUrl';
 import FlowMap from '@/pages/create/FlowMap';
 import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
@@ -908,12 +908,17 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // свайп-назад сами ходят по шагам. Писатель ОДИН (`setStep`), как `?lens=` на
   // экране трипа. Дефолтный `home` в адрес не пишется.
   const [sp, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const step = normalizeStep(sp.get('step'), { citiesValid });
   const setStep = (id, intent) => {
     const next = new URLSearchParams(sp);
     if (id === 'home') next.delete('step'); else next.set('step', id);
     // `state.from` — намерение писателя для аналитики; на POP его не читаем.
-    setSearchParams(next, { replace: false, state: { from: intent } });
+    // `state.depth` — сколько шагов протолкнуто над входом во флоу: свойство
+    // ЗАПИСИ истории, поэтому «назад» отличает шаг от выхода даром (`resolveBack`),
+    // даже когда прыжок по рейлу вернул адрес на `home` (см. `requestBack`).
+    const depth = (location.state?.depth ?? 0) + 1;
+    setSearchParams(next, { replace: false, state: { from: intent, depth } });
   };
 
   // Restore from sessionStorage on mount - only for the current user
@@ -923,7 +928,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const raw = sessionStorage.getItem(key);
       if (raw) {
         const saved = JSON.parse(raw);
-        setResumed(true);
+        // «Возврат к черновику» = у записи есть СОДЕРЖИМОЕ. Планировщик пишет в
+        // хранилище на каждый заход (даже пустой `{step:'home',nodes:[]}`), так
+        // что сам факт записи почти всегда true и метрику бы обнулил.
+        setResumed(saved.nodes?.length > 0 || (isAi && saved.aiMessages?.length > 1));
         // Адрес главнее хранилища: сохранённый шаг въезжает в URL только если в
         // адресе шага ещё нет, и через replace (это восстановление, не переход).
         if (saved.step && saved.step !== 'home' && !sp.get('step')) {
@@ -954,7 +962,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // Вход в мастер живёт ЗДЕСЬ, а не на клике по карточке метода: там фри-юзер на
   // кэпе давал событие, а планировщик не открывался, и со второй двери (ссылка,
   // история, возврат к черновику) событие не рождалось вовсе.
-  const location = useLocation();
   const navType = useNavigationType();
   // Признак «вошли в мастер PUSH-ом» — тип навигации НА МОНТИРОВАНИИ (useRef берёт
   // значение первого рендера). Нужен `requestBack` ниже; объявлен здесь, до любых
@@ -962,20 +969,26 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // подошёл бы: на первом шаге он дал бы nav('/trips') PUSH-ом, и следующий
   // аппаратный «назад» вернул бы человека обратно во флоу.
   const enteredByPush = useRef(navType === 'PUSH').current;
+  // Флоу действительно ОТКРЫТ только когда лимит-гейт пропустил: у фри-юзера на
+  // кэпе прямой заход на /new-trip рисует апселл, а не мастер — события входа и
+  // шага там были бы фантомом (item 9 ревью). Pro лимит-гейт не проходит вовсе
+  // (запрос выключен), поэтому для него флоу открыт сразу — тот же `!isPro`, что
+  // гейтит спиннер лимита ниже.
+  const flowOpen = restored && (isPro || (!checkingLimit && !isOverLimit));
   const startedRef = useRef(false);
   useEffect(() => {
-    if (!restored || startedRef.current) return;
+    if (!flowOpen || startedRef.current) return;
     startedRef.current = true;
     track('trip_creation_started', { method, resumed });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restored]);
+  }, [flowOpen]);
 
   // Открытие шага — ОДНА дверь (смена адреса): без Ф1 писателей было бы четыре и
   // четвёртого забыли бы. Гард от двойного огня на восстановлении — пара
-  // `step + location.key`; шлём только после `restored` и на НОРМАЛИЗОВАННОМ шаге.
+  // `step + location.key`; шлём только когда флоу открыт и на НОРМАЛИЗОВАННОМ шаге.
   const stepSeenRef = useRef({ key: null, fired: false });
   useEffect(() => {
-    if (!restored) return;
+    if (!flowOpen) return;
     const evKey = `${step}|${location.key}`;
     if (stepSeenRef.current.key === evKey) return;
     const isFirst = !stepSeenRef.current.fired;
@@ -985,7 +998,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       from: stepEntryFrom({ isFirst, navType, intent: location.state?.from }),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, restored, location.key]);
+  }, [step, flowOpen, location.key]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
   // Empty/invalid values are IGNORED - the trip start is required and can't be
@@ -1497,13 +1510,20 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     description: t('planner.leave_confirm_desc'),
     variant: 'destructive',
   });
-  // Кнопки «назад» (шапка/футер/круглая на телефоне) идут сюда. Шаг назад отдан
-  // истории; на выходе из флоу — конфирм (если есть что терять).
+  // Глубина текущей записи истории решает, «назад» это шаг или выход (а не
+  // `isFirstStep`: он врёт после прыжка по рейлу на home и на прямом заходе по
+  // `?step=`). savedOk сюда не попадает — экран успеха отрисован ранним return
+  // выше, у него своя «назад» на `/trips`.
+  const backDepth = location.state?.depth ?? 0;
+  // Тултип/aria стрелки честны к тому, что она делает: на дне флоу — выход «К
+  // коллекции», глубже — «Назад» (шаг). Иначе скринридер объявлял бы «К
+  // коллекции» для кнопки, делающей шаг назад (item 5 ревью).
+  const backLabel = backDepth > 0 ? t('planner.back') : t('notif.to_collection');
   const requestBack = async () => {
-    if (savedOk) return nav('/trips');
-    if (!isFirstStep) return nav(-1);
-    if (!(await confirmLeave())) return;
-    return enteredByPush ? nav(-1) : nav('/trips');
+    const action = resolveBack({ depth: backDepth, enteredByPush });
+    if (action === 'step') return nav(-1);          // шаг назад внутри флоу, без конфирма
+    if (!(await confirmLeave())) return;             // выход — спрашиваем, если есть что терять
+    return action === 'exit-history' ? nav(-1) : nav('/trips');
   };
 
   let primaryLabel = t('planner.next');
@@ -1623,7 +1643,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         isDark={isDark}
         onToggleTheme={toggleTheme}
         onBack={requestBack}
-        backTitle={t('notif.to_collection')}
+        backTitle={backLabel}
         title={isAi ? t('planner.step_home_ai') : t('trips.new')}
         confirmLeave={confirmLeave}
       />
@@ -1670,7 +1690,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               icon="back"
               round
               tone="outline"
-              ariaLabel={t('notif.to_collection')}
+              ariaLabel={backLabel}
               onClick={requestBack}
             />
             <FlowMap

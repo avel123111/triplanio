@@ -12,11 +12,14 @@
  *   · `normalizeStep`: гейтить и `return` тоже → падает «return проходит без городов»;
  *   · `stepEntryFrom`: убрать ранний `isFirst` → падает «первый рендер = direct даже на POP»;
  *   · `stepEntryFrom`: поставить чтение `intent` ВЫШЕ ветки POP → падает «POP игнорирует state»;
- *   · `stepEntryFrom`: вернуть `intent` без белого списка → падает «мусорное намерение → direct».
+ *   · `stepEntryFrom`: вернуть `intent` без белого списка → падает «мусорное намерение → direct»;
+ *   · `normalizeStep`: снять `return` из гейта городов → падает «return без городов → cities»;
+ *   · `resolveBack`: заменить `depth > 0` на `depth >= 0` → падает «на дне флоу это выход»;
+ *   · `resolveBack`: игнорировать `enteredByPush` → падает «прямой заход уходит на /trips».
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeStep, stepEntryFrom } from './stepUrl.js';
+import { normalizeStep, stepEntryFrom, resolveBack } from './stepUrl.js';
 
 // ─── normalizeStep ───────────────────────────────────────────────────────────
 test('normalizeStep: канонические шаги проходят как есть', () => {
@@ -39,8 +42,14 @@ test('normalizeStep: review при невалидных городах отка�
   assert.equal(normalizeStep('review'), 'cities'); // дефолт citiesValid=false
 });
 
-test('normalizeStep: невалидные города НЕ трогают остальные шаги', () => {
-  assert.equal(normalizeStep('return', { citiesValid: false }), 'return');
+test('normalizeStep: return при невалидных городах тоже откатывается на cities', () => {
+  // Осиротевшая после сброса запись `?step=return` или прямая ссылка не должны
+  // открывать выбор финиша над пустым маршрутом.
+  assert.equal(normalizeStep('return', { citiesValid: false }), 'cities');
+  assert.equal(normalizeStep('return', { citiesValid: true }), 'return');
+});
+
+test('normalizeStep: невалидные города НЕ трогают home/cities', () => {
   assert.equal(normalizeStep('cities', { citiesValid: false }), 'cities');
   assert.equal(normalizeStep('home', { citiesValid: false }), 'home');
 });
@@ -70,4 +79,20 @@ test('stepEntryFrom: PUSH берёт намерение писателя из б
 test('stepEntryFrom: PUSH без намерения / с мусорным намерением → direct', () => {
   assert.equal(stepEntryFrom({ navType: 'PUSH' }), 'direct');
   assert.equal(stepEntryFrom({ navType: 'PUSH', intent: 'garbage' }), 'direct');
+});
+
+// ─── resolveBack ─────────────────────────────────────────────────────────────
+test('resolveBack: глубже дна флоу → шаг назад историей, без выхода', () => {
+  // depth>0 значит запись флоу лежит НИЖЕ (в т.ч. после прыжка по рейлу на home,
+  // где step==='home', но истории под нами полно) — «назад» это шаг, не выход.
+  assert.equal(resolveBack({ depth: 1, enteredByPush: true }), 'step');
+  assert.equal(resolveBack({ depth: 3, enteredByPush: false }), 'step');
+});
+
+test('resolveBack: на дне флоу — выход, направление по способу входа', () => {
+  // Вошли push-ом (под нами свой маршрут) → возврат историей; прямой заход /
+  // новая вкладка (истории нет) → на /trips, а не в пустоту.
+  assert.equal(resolveBack({ depth: 0, enteredByPush: true }), 'exit-history');
+  assert.equal(resolveBack({ depth: 0, enteredByPush: false }), 'exit-trips');
+  assert.equal(resolveBack({}), 'exit-trips'); // дефолты: дно, не push
 });

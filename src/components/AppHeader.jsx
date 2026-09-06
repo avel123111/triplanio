@@ -4,6 +4,7 @@ import { Icon } from '@/design/icons';
 import HeaderActions from '@/components/HeaderActions';
 import { Tooltip } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
+import { withLeaveGuard } from '@/lib/withLeaveGuard';
 
 /**
  * Бренд-СЛОТ — бокс `--rail-w × --header-h` в левом верхнем углу экрана.
@@ -113,8 +114,7 @@ export default function AppHeader({
   const t = useT();
   // TRIP-520: с `confirmLeave` знак бренда сначала спрашивает (гейт сам решает,
   // есть ли что терять), затем уходит. Без пропа — прямой уход, как раньше.
-  const rawBrand = onBrand || (() => nav('/trips'));
-  const goBrand = confirmLeave ? async () => { if (await confirmLeave()) rawBrand(); } : rawBrand;
+  const goBrand = withLeaveGuard(confirmLeave, onBrand || (() => nav('/trips')));
   const hasTrip = title != null || meta != null;
 
   return (

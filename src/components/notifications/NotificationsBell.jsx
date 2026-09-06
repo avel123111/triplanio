@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Badge, Btn, EmptyState, IconBtn, NotifRow, Popover, PopoverContent, PopoverTrigger, UnreadBadge } from '@/design/index';
 import { buildNotifView } from '@/components/notifications/notifView';
+import { withLeaveGuard } from '@/lib/withLeaveGuard';
 
 // ★TRIP-344: проп `triggerClassName` удалён. Его единственный вызыватель
 // передавал `"icon-btn"` — то есть РОВНО дефолт, — а сам класс теперь несёт
@@ -23,8 +24,6 @@ export default function NotificationsBell({ confirmLeave } = {}) {
   const { user } = useAuth();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
-  // Обернуть переход гейтом ухода, если он передан.
-  const guard = (fn) => (confirmLeave ? async () => { if (await confirmLeave()) fn(); } : fn);
 
   // Shared seam (src/lib/useNotifications.js): closed bell costs one number,
   // and the popover renders the head of the same list the Inbox page shows.
@@ -90,7 +89,7 @@ export default function NotificationsBell({ confirmLeave } = {}) {
           {/* «Открыть все» и «Прочитать все» были двумя частными кнопками
               (пилюля с брендовой заливкой и полоса во всю ширину) — обе стали
               текстовой кнопкой системы: тон брендовый, подчёркивание на ховере. */}
-          <Btn variant="link" block onClick={guard(() => { setOpen(false); nav('/inbox'); })}>
+          <Btn variant="link" block onClick={withLeaveGuard(confirmLeave, () => { setOpen(false); nav('/inbox'); })}>
             {t('notif.open_full_inbox')}
           </Btn>
         </div>
@@ -102,7 +101,6 @@ export default function NotificationsBell({ confirmLeave } = {}) {
 // Поповер-строка = канон `<NotifRow compact>` + слоты действий. Резолв (глиф из
 // sender, живое имя, i18n-текст) — общий `buildNotifView`, тот же, что у экрана.
 function PopoverRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRead, onOpenTrip, confirmLeave }) {
-  const guard = (fn) => (confirmLeave ? async () => { if (await confirmLeave()) fn(); } : fn);
   // Invite status rides the row now (getInbox joins trip_members) — no per-row
   // `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
@@ -122,7 +120,7 @@ function PopoverRow({ n, t, nav, fmtRelative, pendingAction, onRespond, onMarkRe
         <Badge variant="success" icon="check">{t('notif.accepted')}</Badge>
       )}
       {showLink && (
-        <Btn variant="link" icon="pin" onClick={guard(() => { onOpenTrip?.(); nav(`/trip/${n.trip_id}`); })}>{t('notif.view_trip')}</Btn>
+        <Btn variant="link" icon="pin" onClick={withLeaveGuard(confirmLeave, () => { onOpenTrip?.(); nav(`/trip/${n.trip_id}`); })}>{t('notif.view_trip')}</Btn>
       )}
     </>
   ) : null;

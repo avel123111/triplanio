@@ -7,6 +7,7 @@ import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
+import { withLeaveGuard } from '@/lib/withLeaveGuard';
 
 /**
  * Right-hand utility cluster of the unified <AppHeader>: theme toggle ·
@@ -32,8 +33,6 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme, conf
   const t = useT();
   const nav = useNavigate();
   const { logout } = useAuth();
-  // Обернуть действие гейтом ухода, если он передан (иначе — само действие).
-  const guard = (fn) => (confirmLeave ? async () => { if (await confirmLeave()) fn(); } : fn);
   return (
     <div className="row row--g4">
       {/* ★TRIP-344: сторону этим двум кнопкам задаёт не ступень, а контекстное
@@ -69,8 +68,8 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme, conf
           </button>
         )}
         items={[
-          { icon: 'user', label: t('nav.profile'), onSelect: guard(() => nav('/settings')) },
-          { icon: 'logout', label: t('auth.logout'), onSelect: guard(() => logout()) },
+          { icon: 'user', label: t('nav.profile'), onSelect: withLeaveGuard(confirmLeave, () => nav('/settings')) },
+          { icon: 'logout', label: t('auth.logout'), onSelect: withLeaveGuard(confirmLeave, () => logout()) },
         ]}
       />
     </div>
