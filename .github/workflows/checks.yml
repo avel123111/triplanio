@@ -68,6 +68,14 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder-anon-key
         run: npm run build
+      # ★ ПРИЁМКА ВЫПЕЧКИ — ЗДЕСЬ, А НЕ «КОГДА-НИБУДЬ РУКАМИ» (TRIP-520).
+      # Сама сборка валит выпечку только на пустом заголовке, а он в шаблоне
+      # непустой всегда: восемь файлов с одним общим заголовком и без canonical
+      # прошли бы зелёными. Гард сверяет собранные файлы (свой заголовок,
+      # canonical на себя, язык, список языковых версий, текст в документе,
+      # оболочка на адресах приложения) — 77 проверок, браузер не нужен, 0.3 с.
+      - name: Prerender output
+        run: npm run check:prerender
       # TRIP-321 Ф10: REPORTER, not a gate — it always exits 0. Prints the numbers
       # every TRIP-321 PR must quote (families / classes / inline styles /
       # re-declared shapes) so "was → now" is a measurement in the CI log instead

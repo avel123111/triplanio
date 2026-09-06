@@ -26,10 +26,7 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
  * @param {string} tag имя тега
  * @returns {string}
  */
-function cutElement(html, openRe, tag) {
-  const m = html.match(openRe);
-  if (!m) return html;
-  const start = m.index;
+function cutFrom(html, start, tag) {
   const scan = new RegExp(`<${tag}\\b|</${tag}>`, 'g');
   scan.lastIndex = start;
   let depth = 0;
@@ -39,6 +36,45 @@ function cutElement(html, openRe, tag) {
     if (depth === 0) return html.slice(0, start) + html.slice(hit.index + hit[0].length);
   }
   throw new Error(`compose: у элемента ${tag} нет закрывающего тега — разметку надо перечитать`);
+}
+
+function cutElement(html, openRe, tag) {
+  const m = html.match(openRe);
+  return m ? cutFrom(html, m.index, tag) : html;
+}
+
+/**
+ * ★★ КОНТРАКТ ГОТОВОГО ФАЙЛА: В НЁМ ТОЛЬКО ТО, ЧТО ВЕРНО ДЛЯ ЛЮБОГО ПОСЕТИТЕЛЯ.
+ *
+ * Файл ОДИН и достаётся всем, а снимается он с настоящей страницы в настоящем
+ * браузере — то есть в файл попадает всё, что код решил, исходя из свойств
+ * СБОРОЧНОЙ МАШИНЫ. Часть таких решений лечится каскадом: ширина экрана — это
+ * медиазапрос, и десктопные числа на телефоне просто не читаются (так сделана
+ * геометрия кадра героя). Но есть решения, у которых CSS нет вовсе, потому что
+ * зависят они не от устройства, а от ПРОШЛОГО этого посетителя.
+ *
+ * Ровно такой случай — баннер согласия на куки. Он смотрит в хранилище браузера,
+ * а на сборке хранилище пустое: баннер честно показывался и уезжал во все восемь
+ * файлов. Дальше его видел КАЖДЫЙ, включая тех, кто согласие давно дал, — до тех
+ * пор, пока не догрузится бандл; а его текст попадал в текст страницы, который
+ * читают поисковые роботы.
+ *
+ * Такой узел объявляет о себе САМ, признаком `data-no-prerender` в разметке
+ * (имя из общей практики — так же помечает узлы `react-snap`). Владелец решения
+ * — компонент, а не выпечка: список селекторов, лежащий в чужом файле, разошёлся
+ * бы с разметкой на первой же правке, причём молча.
+ *
+ * Из файла узел уходит целиком — вместе с потомками, со счётом вложенности, а не
+ * до первого закрывающего тега. Человек его увидит, когда приложение оживёт:
+ * приложение рисует `#root` заново в любом случае.
+ */
+function dropVisitorNodes(html) {
+  const mark = /<([a-z][\w-]*)\b[^>]*\sdata-no-prerender\b/i;
+  let out = html;
+  for (let m = mark.exec(out); m; m = mark.exec(out)) {
+    out = cutFrom(out, m.index, m[1]);
+  }
+  return out;
 }
 
 /**
@@ -94,5 +130,8 @@ export function compose(template, snap) {
     throw new Error('prerender: заставку снять не удалось — разметка изменилась, снятие надо перечитать');
   }
 
-  return html.replace(/(<div id="root">)(<\/div>)/, (m, open, close) => open + snap.root + close);
+  return html.replace(
+    /(<div id="root">)(<\/div>)/,
+    (m, open, close) => open + dropVisitorNodes(snap.root) + close,
+  );
 }

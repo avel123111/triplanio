@@ -17,10 +17,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  APP_ROUTES, ZONE_PAGES, PRERENDERED_PAGES, LOCALISED_PAGES, PREFIXED_LANGS,
-  isZonePage, isZoneRoute, splitLangPath, withLangPath, prerenderedUrls,
+  APP_ROUTES, ZONE_PAGES, PRERENDERED_PAGES, LOCALISED_PAGES, PREFIXED_LANGS, DEFAULT_LANG,
+  isZonePage, isZoneRoute, splitLangPath, withLangPath, prerenderedUrls, localeOf,
 } from './routePaths.js';
-import { LANGUAGES } from './i18n/translations.js';
+import { LANGUAGES, FALLBACK_LANG } from './i18n/translations.js';
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -78,6 +78,32 @@ test('PREFIXED_LANGS не разошёлся с настоящим списко�
   // существует вовсе, а переключатель молча ведёт в 404.
   for (const code of codes) {
     if (code !== 'en') assert.ok(PREFIXED_LANGS.includes(code), `язык ${code} есть в LANGUAGES, но адреса у него нет`);
+  }
+});
+
+test('DEFAULT_LANG не разошёлся с фолбэком языка', () => {
+  // Литерал здесь стоит, чтобы `routePaths.js` не импортировал `translations.js`
+  // (обратный импорт замкнул бы цикл и закрыл модулю дорогу в edge-middleware).
+  // Цена литерала — эта строка: два «английского по умолчанию» обязаны совпасть.
+  assert.equal(DEFAULT_LANG, FALLBACK_LANG);
+});
+
+test('★★ локаль адреса есть ровно у ПЕРЕВЕДЁННЫХ страниц, а не у испечённых', () => {
+  // Несущее различие: «испечена» и «переведена» — разные списки. У `/terms`
+  // готовый файл есть, а языкового адреса нет, и обещать язык нельзя: обвязка
+  // этих страниц переведена, и переутверждение с адреса откатывало бы выбор
+  // человека на каждом переходе между вкладками документов.
+  for (const page of LOCALISED_PAGES) {
+    assert.equal(localeOf(page), DEFAULT_LANG, `${page}: беспрефиксный адрес — язык по умолчанию`);
+    for (const code of PREFIXED_LANGS) {
+      assert.equal(localeOf(withLangPath(code, page)), code, `${withLangPath(code, page)}`);
+    }
+  }
+  for (const page of PRERENDERED_PAGES.filter((p) => !LOCALISED_PAGES.includes(p))) {
+    assert.equal(localeOf(page), null, `${page}: языковых версий нет — адрес про язык обязан молчать`);
+  }
+  for (const page of ['/login', '/join/abc', '/public/trip/1', '/trips', '/de']) {
+    assert.equal(localeOf(page), null, `${page}: адрес про язык обязан молчать`);
   }
 });
 

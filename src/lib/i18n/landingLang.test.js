@@ -1,24 +1,29 @@
 // Гейт для правила «откуда берётся язык страницы» (TRIP-520).
 //
-// ЗАЧЕМ ИМЕННО ТЕСТ. Правило пятиступенчатое, и три верхние ступени появились
-// вместе с выпечкой готовых страниц. Ошибка в них не роняет ни сборку, ни
-// экран — она даёт РАСХОЖДЕНИЕ ФАЙЛА И ЭКРАНА: приехал английский файл, а
-// приложение перерисовало его по-русски. Полторы секунды человек читает один
-// текст, потом весь текст меняется. Ни один гард такого не видит, глазами это
-// ловится только если специально открыть с неанглийским браузером.
+// ЗАЧЕМ ИМЕННО ТЕСТ. Правило трёхслойное, и верхний слой появился вместе с
+// языковыми адресами. Ошибка в нём не роняет ни сборку, ни экран — она даёт
+// РАСХОЖДЕНИЕ ФАЙЛА И ЭКРАНА («приехал английский файл, приложение перерисовало
+// его по-русски») либо, наоборот, УТЕЧКУ («открыл английский лендинг — всё
+// приложение стало английским»). Ни один гард такого не видит, глазами это
+// ловится только если специально войти под неанглийским профилем.
 //
-// Функция читает `window.location` и `localStorage`, поэтому оба подменяются
+// Функции читают `window.location` и `localStorage`, поэтому оба подменяются
 // здесь заглушками: тест обязан открываться голым `node --test`.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { detectLandingLang, langFromAddress, LANG_STORAGE_KEY, FALLBACK_LANG } from './translations.js';
-import { PRERENDERED_PAGES, PREFIXED_LANGS, withLangPath } from '../routePaths.js';
+import {
+  visitorLang, initialLang, rememberLang, currentLang, publishLang,
+  LANG_STORAGE_KEY, FALLBACK_LANG,
+} from './translations.js';
+import {
+  localeOf, DEFAULT_LANG, PREFIXED_LANGS, PRERENDERED_PAGES, LOCALISED_PAGES, withLangPath,
+} from '../routePaths.js';
 
 /** Подменить окружение браузера: адрес, хранилище и язык браузера. */
-function browser({ search = '', stored = null, navLang = 'ru-RU' } = {}) {
+function browser({ path = '/', search = '', stored = null, navLang = 'ru-RU' } = {}) {
   const store = new Map(stored ? [[LANG_STORAGE_KEY, stored]] : []);
-  globalThis.window = { location: { pathname: '/', search } };
+  globalThis.window = { location: { pathname: path, search } };
   globalThis.localStorage = {
     getItem: (k) => (store.has(k) ? store.get(k) : null),
     setItem: (k, v) => store.set(k, v),
@@ -32,108 +37,117 @@ function setNavigator(value) {
   Object.defineProperty(globalThis, 'navigator', { value, configurable: true, writable: true });
 }
 
-beforeEach(() => { browser(); });
+beforeEach(() => { browser(); publishLang(null); });
 
-test('язык назван префиксом — он и побеждает, что бы ни было у посетителя', () => {
-  browser({ stored: 'en', navLang: 'en-US', search: '?lang=en' });
-  for (const lang of PREFIXED_LANGS) {
-    for (const path of PRERENDERED_PAGES) {
-      const url = withLangPath(lang, path);
-      assert.equal(detectLandingLang(url), lang, `${url} обязан быть на ${lang}`);
+/* ── Слой 1: что обещает адрес ───────────────────────────────────────────── */
+
+test('★★ префикс адреса — прямое утверждение о языке', () => {
+  for (const code of PREFIXED_LANGS) {
+    for (const page of LOCALISED_PAGES) {
+      assert.equal(localeOf(withLangPath(code, page)), code, `${withLangPath(code, page)}`);
     }
   }
 });
 
-test('★ бесперфиксная испечённая страница — АНГЛИЙСКАЯ, и ни браузер, ни хранилище её не переубеждают', () => {
-  // Это и есть решение «как у Wanderlog»: у корня один язык, потому что у него
-  // один файл. Верни сюда язык браузера — и русский посетитель получит
-  // английский ФАЙЛ, который через секунду перерисуется в русский ЭКРАН.
-  browser({ stored: 'ru', navLang: 'ru-RU' });
-  for (const path of PRERENDERED_PAGES) {
-    assert.equal(detectLandingLang(path), FALLBACK_LANG, `${path} обязан остаться английским`);
-  }
-  browser({ stored: 'es', navLang: 'es-ES' });
-  for (const path of PRERENDERED_PAGES) {
-    assert.equal(detectLandingLang(path), FALLBACK_LANG, `${path} обязан остаться английским`);
+test('★★ беспрефиксный адрес ПЕРЕВЕДЁННОЙ страницы — это «английский»', () => {
+  // Обычная роль `defaultLocale`: у страницы есть адрес на каждый язык, и
+  // беспрефиксный из них — английский. Под ним и лежит английский файл.
+  for (const page of LOCALISED_PAGES) {
+    assert.equal(localeOf(page), DEFAULT_LANG, `${page}: под этим адресом лежит английский файл`);
   }
 });
 
-test('у страниц БЕЗ готового файла язык по-прежнему решает посетитель', () => {
-  // Вход, восстановление, приглашение, публичная поездка: содержимое зависит от
-  // того, кто открыл, файла на язык у них нет — значит и адрес язык не называет.
-  // Прежнее поведение здесь обязано сохраниться целиком.
-  for (const path of ['/login', '/reset-password', '/join/tok', '/public/trip/abc']) {
-    browser({ navLang: 'ru-RU' });
-    assert.equal(detectLandingLang(path), 'ru', `${path}: язык браузера перестал работать`);
-    browser({ stored: 'es', navLang: 'ru-RU' });
-    assert.equal(detectLandingLang(path), 'es', `${path}: сохранённый выбор перестал побеждать браузер`);
-    browser({ search: '?lang=en', stored: 'es', navLang: 'ru-RU' });
-    assert.equal(detectLandingLang(path), 'en', `${path}: рекламная ссылка перестала побеждать`);
+test('★★★ у страницы БЕЗ языковых версий адрес про язык МОЛЧИТ', () => {
+  // Несущее различие всего PR: «испечена» и «переведена» — РАЗНЫЕ списки.
+  // `/terms` и `/privacy` печём (готовый HTML нужен роботам), но языкового
+  // адреса у них нет — документ английский по решению TRIP-465 §7, а ОБВЯЗКА
+  // переведена, и переключатель языка на них стоит.
+  //
+  // Пока предикат отвечал по списку испечённых, он обещал английский там, где
+  // английского адреса не существует: человек переключал язык на `/terms`,
+  // нажимал вкладку «Privacy» — и обвязка молча возвращалась в английскую.
+  for (const page of ['/terms', '/privacy']) {
+    assert.equal(PRERENDERED_PAGES.includes(page), true, `${page} обязан печься — иначе тест не про то`);
+    assert.equal(localeOf(page), null, `${page}: языковых версий нет, обещать язык нельзя`);
+  }
+  for (const page of ['/login', '/reset-password', '/join/abc', '/public/trip/1', '/trips']) {
+    assert.equal(localeOf(page), null, `${page}: адрес не называет язык`);
   }
 });
 
-test('язык из адреса запоминается — вход после языковой страницы остаётся на нём', () => {
-  const store = browser({ navLang: 'en-US' });
-  detectLandingLang('/es/terms');
-  assert.equal(store.get(LANG_STORAGE_KEY), 'es', 'язык из префикса не запомнился');
-  // Тот же визит уходит на страницу без готового файла — язык обязан доехать.
-  assert.equal(detectLandingLang('/login'), 'es');
+test('неизвестный префикс языком не притворяется', () => {
+  assert.equal(localeOf('/de'), null);
+  assert.equal(localeOf('/de/terms'), null);
 });
 
-test('неизвестный язык в адресе или параметре не переключает ничего', () => {
-  browser({ navLang: 'en-US' });
-  assert.equal(detectLandingLang('/de/terms'), FALLBACK_LANG, '/de/ не язык — и не должен им притворяться');
+/* ── Слой 3: что известно о посетителе ───────────────────────────────────── */
+
+test('язык посетителя: рекламная ссылка → сохранённый выбор → браузер', () => {
+  browser({ search: '?lang=en', stored: 'es', navLang: 'ru-RU' });
+  assert.equal(visitorLang(), 'en', 'рекламная ссылка перестала побеждать');
+  browser({ stored: 'es', navLang: 'ru-RU' });
+  assert.equal(visitorLang(), 'es', 'сохранённый выбор перестал побеждать браузер');
+  browser({ navLang: 'ru-RU' });
+  assert.equal(visitorLang(), 'ru', 'язык браузера перестал работать');
+});
+
+test('мусор в параметре и отсутствие всего не переключают язык', () => {
   browser({ search: '?lang=de', navLang: 'en-US' });
-  assert.equal(detectLandingLang('/login'), 'en', 'мусор в параметре переключил язык');
-});
-
-test('без хранилища и без браузера ответ всё равно есть', () => {
+  assert.equal(visitorLang(), 'en');
   globalThis.window = { location: { pathname: '/login', search: '' } };
   globalThis.localStorage = { getItem: () => { throw new Error('приватный режим'); }, setItem: () => {} };
   setNavigator(undefined);
-  assert.equal(detectLandingLang('/login'), FALLBACK_LANG);
+  assert.equal(visitorLang(), FALLBACK_LANG, 'без хранилища и без браузера ответа не стало');
 });
 
-// ── Адрес против всего остального (прод-баг, замечен Pavel) ─────────────────
-//
-// Язык вошедшего берётся из профиля, и `I18nContext` переутверждал его при
-// каждом приезде сессии — через секунду после загрузки. Пока языкового адреса
-// не существовало, спорить было не с чем; с ним получилось так: открываешь
-// `/ru`, русский файл рисуется, приходит профиль `es` — и текст молча
-// становится испанским под русским адресом, русским `<html lang>`, русским
-// canonical и русским hreflang. Предикат ниже — та самая развилка, поэтому он
-// пинится отдельно от пятиступенчатого правила.
-
-test('★★ префикс адреса — прямое утверждение о языке', () => {
-  browser({ navLang: 'ru-RU', stored: 'es' });
-  for (const code of PREFIXED_LANGS) {
-    assert.equal(langFromAddress(withLangPath(code, '/')), code);
-    assert.equal(langFromAddress(withLangPath(code, '/d/europe-may-2027')), code);
-  }
+test('★ язык посетителя НЕ смотрит на адрес', () => {
+  // Это и есть развязка слоёв. Смешай их — и вернулась бы утечка: голый `/`
+  // отвечал бы «английский» ещё и там, где спрашивают про ПОСЕТИТЕЛЯ, то есть
+  // при регистрации и на входе.
+  browser({ path: '/', stored: 'ru', navLang: 'ru-RU' });
+  assert.equal(visitorLang(), 'ru', 'адрес просочился в слой посетителя');
 });
 
-test('★★ голый адрес испечённой страницы — это «английский»', () => {
-  browser({ navLang: 'ru-RU', stored: 'ru' });
-  for (const page of PRERENDERED_PAGES) {
-    assert.equal(langFromAddress(page), FALLBACK_LANG,
-      `${page}: под этим адресом лежит английский файл — экран обязан совпасть с ним`);
-  }
-});
+/* ── Первый кадр: адрес, иначе посетитель ────────────────────────────────── */
 
-test('★★ где готового файла нет, адрес про язык МОЛЧИТ', () => {
-  browser({ navLang: 'ru-RU', stored: 'es' });
-  // null здесь несущий: он и есть разрешение спросить профиль, хранилище и
-  // браузер. Верни функция 'en' — вход, приглашение и публичная поездка стали
-  // бы английскими для всех, а выбор посетителя перестал бы что-либо значить.
-  for (const page of ['/login', '/reset-password', '/join/abc', '/public/trip/1', '/trips']) {
-    assert.equal(langFromAddress(page), null, `${page}: адрес не называет язык`);
-  }
+test('★ первый кадр: локаль адреса сильнее посетителя, иначе решает посетитель', () => {
+  browser({ path: '/ru', stored: 'es', navLang: 'es-ES' });
+  assert.equal(initialLang('/ru'), 'ru', 'префикс проиграл сохранённому выбору');
+  browser({ path: '/', stored: 'ru', navLang: 'ru-RU' });
+  assert.equal(initialLang('/'), DEFAULT_LANG, 'беспрефиксный лендинг обязан быть английским');
+  browser({ path: '/login', stored: 'ru', navLang: 'en-US' });
+  assert.equal(initialLang('/login'), 'ru', 'у входа язык решает посетитель');
+  browser({ path: '/terms', stored: 'ru', navLang: 'en-US' });
+  assert.equal(initialLang('/terms'), 'ru', 'у юр-страниц языковых версий нет — решает посетитель');
 });
 
 test('★ голый адрес НЕ запоминается как выбор человека', () => {
   // Иначе один заход на `triplanio.com` затирал бы русский язык аккаунта
   // английским — молча и навсегда.
-  const store = browser({ navLang: 'ru-RU', stored: 'ru' });
-  assert.equal(detectLandingLang('/'), FALLBACK_LANG, 'страница обязана быть английской');
+  const store = browser({ path: '/', stored: 'ru', navLang: 'ru-RU' });
+  assert.equal(initialLang('/'), DEFAULT_LANG, 'страница обязана быть английской');
   assert.equal(store.get(LANG_STORAGE_KEY), 'ru', 'выбор посетителя затёрт голым адресом');
+});
+
+test('язык из ПРЕФИКСА запоминается — вход после языковой страницы остаётся на нём', () => {
+  const store = browser({ navLang: 'en-US' });
+  rememberLang('es'); // ровно это делает провайдер, увидев префикс в адресе
+  assert.equal(store.get(LANG_STORAGE_KEY), 'es', 'язык из префикса не запомнился');
+  assert.equal(visitorLang(), 'es', 'запомненный язык не доехал до страницы без языкового адреса');
+});
+
+/* ── Язык на экране — один на всех читателей ─────────────────────────────── */
+
+test('★ язык регистрации берётся с ЭКРАНА, а не считается заново', () => {
+  // `AuthContext` живёт вне дерева React и раньше считал язык своей копией
+  // лестницы. Со слоем маршрута копия разошлась бы с оригиналом: на `/ru`
+  // человек видит русский, а копия ответила бы «сохранённый выбор».
+  browser({ path: '/ru', stored: 'es', navLang: 'es-ES' });
+  publishLang('ru');
+  assert.equal(currentLang(), 'ru');
+});
+
+test('до первого кадра язык на экране = язык первого кадра', () => {
+  browser({ path: '/ru', stored: 'es' });
+  assert.equal(currentLang(), initialLang('/ru'));
 });

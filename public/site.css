@@ -460,16 +460,34 @@ section{position:relative}
 .dark .accent{color:var(--sky)}
 
 
-/* reveal (bidirectional) */
-.rv{opacity:0;transform:translateY(30px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+/* reveal — появление блоков по мере прокрутки.
 
-.rv.in{opacity:1;transform:none}
+   ★★ ПРЯЧЕМ ТОЛЬКО ТОГДА, КОГДА ЕСТЬ КОМУ ПОКАЗАТЬ (TRIP-520).
+   Признак `data-reveal` ставит `useReveal.js` — тот самый хук, который блоки
+   потом и открывает. Нет JavaScript (или он ещё не догрузился) — нет признака —
+   видно всё.
+   Безусловное `opacity:0` здесь стоило дефекта: с приходом готовых файлов текст
+   лендинга приезжает вместе с документом, но всё ниже первого экрана лежало
+   невидимым до бандла (замер: 9.6 с на мобильном троттлинге), а читатель без
+   JavaScript видел герой и пустоту.
+   visual-diff-exempt: .rv opacity — прятать блок теперь вправе только включённый наблюдатель (data-reveal), иначе готовая страница лежит невидимой до бандла, TRIP-520
+   visual-diff-exempt: .rv transform — то же условие у смещения
+   visual-diff-exempt: .rv transition — то же условие
+   visual-diff-exempt: .rv-l opacity — то же для бокового заезда
+   visual-diff-exempt: .rv-l transform — то же
+   visual-diff-exempt: .rv-l transition — то же
+   visual-diff-exempt: .rv-r opacity — то же
+   visual-diff-exempt: .rv-r transform — то же
+   visual-diff-exempt: .rv-r transition — то же */
+html[data-reveal] .rv{opacity:0;transform:translateY(30px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
 
-.rv-l{opacity:0;transform:translateX(-36px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+html[data-reveal] .rv.in{opacity:1;transform:none}
 
-.rv-r{opacity:0;transform:translateX(36px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+html[data-reveal] .rv-l{opacity:0;transform:translateX(-36px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
 
-.rv-l.in,.rv-r.in{opacity:1;transform:none}
+html[data-reveal] .rv-r{opacity:0;transform:translateX(36px);transition:opacity var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+
+html[data-reveal] .rv-l.in,html[data-reveal] .rv-r.in{opacity:1;transform:none}
 
 /* На мобиле боковой заезд заменяем вертикальным: до-reveal translateX(±36px)
    выносит колонку за узкий вьюпорт (при боковом зазоре < 36px — а он 20–24px),
@@ -477,7 +495,7 @@ section{position:relative}
    срезан справа, пока reveal не сработал (ревью TRIP-460 V1). Заезд сохранён —
    просто по Y, как у .rv, без горизонтального переполнения. */
 @media (max-width:760px){
-  .rv-l,.rv-r{transform:translateY(30px)}
+  html[data-reveal] .rv-l,html[data-reveal] .rv-r{transform:translateY(30px)}
 }
 
 [data-stagger]>*{transition-delay:calc(var(--i,0)*70ms)}
@@ -485,7 +503,7 @@ section{position:relative}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.001s!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001s!important;transition-delay:0s!important}
-  .rv,.rv-l,.rv-r{opacity:1;transform:none}
+  html[data-reveal] .rv,html[data-reveal] .rv-l,html[data-reveal] .rv-r{opacity:1;transform:none}
 }
 
 
@@ -763,8 +781,32 @@ section{position:relative}
 .hero-layer.la{opacity:1;background-image:var(--hero-m);background-size:var(--fw) auto;background-position:50% calc(var(--fw) * var(--frame-y));
   -webkit-mask:linear-gradient(180deg,transparent calc(var(--fw) * var(--frame-y)),#000 calc(var(--fw) * var(--frame-y) + 60px),#000 100%);mask:linear-gradient(180deg,transparent calc(var(--fw) * var(--frame-y)),#000 calc(var(--fw) * var(--frame-y) + 60px),#000 100%)}
 
+/* ★★ ДЕСКТОПНЫЙ КАДР: ЧИСЛА ОТ JS, РЕШЕНИЕ ЗДЕСЬ (TRIP-520).
+   `useHeroFrame` считает геометрию кадра и кладёт её в переменные на `.hero`, а
+   ОБЪЯВЛЕНИЯ живут в этом медиазапросе. Раньше JS писал те же величины
+   инлайновыми стилями прямо на слои — а инлайн сильнее любого правила, и
+   телефон честно рисовал десктопные пиксели, попавшие в готовый файл с
+   выпечки (она снимает страницу в десктопном окне, другого на сервере нет).
+   Теперь мобильный экран эти переменные просто не читает: решает каскад.
+   Фолбэки (`cover` / `center` / `none`) — то, что было в этом правиле до JS.
+   visual-diff-exempt: .hero-layer {@media (min-width:981px)} background-size — величина переехала из инлайна в переменную, рисуемое значение то же (TRIP-520)
+   visual-diff-exempt: .hero-layer {@media (min-width:981px)} background-position — то же
+   visual-diff-exempt: .hero-layer {@media (min-width:981px)} -webkit-mask — то же
+   visual-diff-exempt: .hero-layer {@media (min-width:981px)} mask — то же
+   visual-diff-exempt: .la {@media (min-width:981px)} background-size — то же
+   visual-diff-exempt: .la {@media (min-width:981px)} background-position — то же
+   visual-diff-exempt: .la {@media (min-width:981px)} -webkit-mask — то же
+   visual-diff-exempt: .la {@media (min-width:981px)} mask — то же
+   visual-diff-exempt: .lb {@media (min-width:981px)} background-size — слой наведения получал ту же геометрию инлайном, теперь правилом (TRIP-520)
+   visual-diff-exempt: .lb {@media (min-width:981px)} background-position — то же
+   visual-diff-exempt: .lb {@media (min-width:981px)} -webkit-mask — то же
+   visual-diff-exempt: .lb {@media (min-width:981px)} mask — то же */
 @media (min-width:981px){
-  .hero-layer.la{background-image:var(--hero-a);background-size:cover;background-position:center;-webkit-mask:none;mask:none}
+  .hero-layer.la{background-image:var(--hero-a)}
+  .hero-layer.la,.hero-layer.lb{
+    background-size:var(--hero-frame-size,cover);
+    background-position:var(--hero-frame-pos,center);
+    -webkit-mask:var(--hero-frame-mask,none);mask:var(--hero-frame-mask,none)}
 }
 
 .hero-layer.lb{opacity:0;transition:opacity .5s var(--ease-out);will-change:opacity}
@@ -793,8 +835,21 @@ section{position:relative}
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* невидимая зона наведения ровно по телефону на фотографии (координаты считает JS) */
+/* невидимая зона наведения ровно по телефону на фотографии. Числа считает JS и
+   кладёт в переменные на `.hero` (см. разбор у десктопного кадра выше); показана
+   она только на десктопе, и это решает медиазапрос, а не `display` из JS.
+   visual-diff-exempt: .hero-hot {@media (min-width:981px)} display — показ зоны решает медиазапрос, а не запись из JS (TRIP-520)
+   visual-diff-exempt: .hero-hot {@media (min-width:981px)} left — координата переехала из инлайна в переменную (TRIP-520)
+   visual-diff-exempt: .hero-hot {@media (min-width:981px)} top — то же
+   visual-diff-exempt: .hero-hot {@media (min-width:981px)} width — то же
+   visual-diff-exempt: .hero-hot {@media (min-width:981px)} height — то же */
 .hero-hot{position:absolute;z-index:2;display:none}
+
+@media (min-width:981px){
+  .hero-hot{display:block;
+    left:var(--hero-hot-x,0);top:var(--hero-hot-y,0);
+    width:var(--hero-hot-w,0);height:var(--hero-hot-h,0)}
+}
 
 
 .hero-grid{

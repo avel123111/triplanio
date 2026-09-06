@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { zoneHome } from '@/components/site/zoneCta';
+import { useZoneHome } from '@/components/site/zoneCta';
 import { useZoneDesktop } from '@/components/site/zoneBreakpoint';
 import {
   SiteHeader, SiteFooter, useSiteCss, useDocumentMeta, useZoneLang,
@@ -27,11 +27,11 @@ import { LEGAL, LEGAL_META, LEGAL_FOOT, LEGAL_UI } from './legalContent';
    ============================================================================= */
 
 // Адрес главной с меткой кампании визита — общий на всю зону (`zoneCta.js`).
-const SITE = zoneHome();
 const DOCS = ['terms', 'privacy'];
 
 export default function Legal({ doc = 'terms' }) {
   const { lang, setLang } = useZoneLang();
+  const site = useZoneHome();
   const cssReady = useSiteCss();
 
   const active = LEGAL[doc] ? doc : 'terms';
@@ -77,7 +77,7 @@ export default function Legal({ doc = 'terms' }) {
 
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="minimal" brandHref={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="minimal" brandHref={site} />
 
       <main>
         <section className="doc" id="doc" data-hdr="light">
@@ -145,7 +145,7 @@ export default function Legal({ doc = 'terms' }) {
         </section>
       </main>
 
-      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+      <SiteFooter lang={lang} setLang={setLang} brandHref={site} />
     </>
   );
 }

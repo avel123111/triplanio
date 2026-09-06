@@ -42,7 +42,7 @@ import { serveDist } from './_serve.mjs';
 import { SHELL_FILE, fileFor } from './prerenderPaths.mjs';
 import { platformServedPrefixes } from './platformPaths.mjs';
 import { compose } from './composePage.mjs';
-import { prerenderedUrls } from '../../src/lib/routePaths.js';
+import { prerenderedUrls, DEFAULT_LANG } from '../../src/lib/routePaths.js';
 
 /** Имя, под которым печём: от него зависит и canonical, и отсутствие дев-кода. */
 const PROD_HOST = 'www.triplanio.com';
@@ -142,7 +142,6 @@ export async function prerender(outDir) {
   });
   const started = Date.now();
   try {
-    const ctx = await browser.newContext();
     // Всё, что не наш origin, обрывается: карта, база, аналитика на сборке не
     // нужны, а без этого демо печётся 15 секунд вместо трёх и зависит от сети.
     //
@@ -160,14 +159,33 @@ export async function prerender(outDir) {
     // переписывания и объявлены. Второй перечень разошёлся бы с первым на первом
     // же новом внешнем сервисе — и снова красной сборкой.
     const platformPaths = platformServedPrefixes();
-    await ctx.route('**/*', (route) => {
-      const url = new URL(route.request().url());
-      const ours = url.host === PROD_HOST
-        && !platformPaths.some((prefix) => url.pathname.startsWith(prefix));
-      return ours ? route.continue() : route.abort();
-    });
 
     for (const url of prerenderedUrls()) {
+      // ★★ КАЖДАЯ СТРАНИЦА ПЕЧЁТСЯ КАК ПЕРВЫЙ В ЖИЗНИ ВИЗИТ (TRIP-520).
+      //
+      // Свой контекст на страницу — то есть чистое хранилище и заданная локаль.
+      // Оба свойства несущие, и оба выяснились замером:
+      //
+      // · ХРАНИЛИЩЕ. Один контекст на все восемь адресов делал выпечку зависимой
+      //   от ПОРЯДКА: `/ru` запоминает свой язык на устройстве (это верно —
+      //   языковой адрес обязан доехать до входа), и следующий за ним `/terms`,
+      //   у которого языковых версий нет, читал это «устройство» и получал
+      //   `lang="ru"` на английском юридическом документе. Файл, который
+      //   достаётся всем, уносил след другой страницы.
+      //
+      // · ЛОКАЛЬ. Последняя ступень «языка посетителя» — язык браузера, а в
+      //   браузере выпечки он какой угодно. Пинуем язык по умолчанию: под
+      //   беспрефиксным адресом лежит именно он.
+      //
+      // Это та же линия, что и обрыв сети наружу и заданное имя хоста: результат
+      // обязан зависеть только от кода, а сборочная машина — не посетитель.
+      const ctx = await browser.newContext({ locale: DEFAULT_LANG });
+      await ctx.route('**/*', (route) => {
+        const req = new URL(route.request().url());
+        const ours = req.host === PROD_HOST
+          && !platformPaths.some((prefix) => req.pathname.startsWith(prefix));
+        return ours ? route.continue() : route.abort();
+      });
       const page = await ctx.newPage();
       const errors = [];
       page.on('pageerror', (e) => errors.push(String(e)));
@@ -185,7 +203,7 @@ export async function prerender(outDir) {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, compose(template, snap));
       console.log(`  ${url.padEnd(28)} ${String(snap.text.length).padStart(6)} знаков  lang=${snap.lang}`);
-      await page.close();
+      await ctx.close();
     }
   } finally {
     await browser.close();

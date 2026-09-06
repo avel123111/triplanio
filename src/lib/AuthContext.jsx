@@ -8,7 +8,7 @@ import { pickSignupMarks } from '@/lib/campaign';
 import { conversion } from '@/lib/destinations/ads';
 import { conversion as openaiConversion } from '@/lib/destinations/openaiAds';
 import { hashEmail } from '@/lib/hashEmail';
-import { detectLandingLang } from '@/lib/i18n/translations';
+import { currentLang } from '@/lib/i18n/translations';
 import { stripAuthHash } from '@/lib/authHash';
 
 const AuthContext = createContext();
@@ -208,7 +208,10 @@ export const AuthProvider = ({ children }) => {
         // success flag (both outcomes succeed): it, and only it, decides whether
         // this counts as a signup for `user_signed_up` below.
         const { data, error, code } = await invokeFn('account/register', {
-          body: { language: detectLandingLang(), marks: signupMarks || null },
+          // Язык — ТОТ, ЧТО ЧЕЛОВЕК ВИДЕЛ НА ЭКРАНЕ, а не пересчитанный здесь
+          // заново: у языка три слоя (адрес → профиль → посетитель), и вторая
+          // копия лестницы разошлась бы с первой на языковых адресах.
+          body: { language: currentLang(), marks: signupMarks || null },
         });
         if (error || code) throw error || new Error(code);
         profile = data.profile;

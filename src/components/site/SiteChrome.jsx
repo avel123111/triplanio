@@ -6,8 +6,7 @@ import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
 import { isZonePage, splitLangPath, withLangPath, PREFIXED_LANGS, LOCALISED_PAGES } from '@/lib/routePaths';
-import { langFromAddress } from '@/lib/i18n/translations';
-import { useZoneCta, isPlainLeftClick, zonePath } from './zoneCta';
+import { useZoneCta, isPlainLeftClick, useZonePath } from './zoneCta';
 import { withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
@@ -216,7 +215,7 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   // страницу, то есть язык терялся на первом же переходе внутри зоны. Ловится
   // тестом `zoneLangLinks.test.js`: адрес переведённой страницы внутри зоны
   // обязан строиться `zonePath`, а не литералом.
-  const menuDemo = useZoneCta('menu_demo', withVisitCampaign(zonePath(DEMO_PATH)));
+  const menuDemo = useZoneCta('menu_demo', withVisitCampaign(useZonePath(DEMO_PATH)));
   const menuSignin = useZoneCta('menu_signin');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -492,31 +491,14 @@ export function SiteZone({ children }) {
   useLightZone();
   const cssReady = useSiteCssLink(true);
   const { pathname, hash } = useLocation();
-  const { applyLang } = useI18n();
   // Путь БЕЗ языкового префикса: им опознаётся «та же страница на другом языке».
   const { path: barePath } = splitLangPath(pathname);
 
-  // ★★ АДРЕС — ИСТОЧНИК ПРАВДЫ О ЯЗЫКЕ ЗОНЫ, И ПЕРЕУТВЕРЖДАЕТСЯ ОН ЗДЕСЬ.
-  //
-  // `detectInitialLang` спрашивает адрес на СТАРТЕ и при приезде сессии, но
-  // внутри зоны адрес меняется и БЕЗ перезагрузки: переключатель языка,
-  // «Назад»/«Вперёд» браузера, любая внутренняя ссылка с префиксом. Без этого
-  // эффекта после «Назад» с `/es` на `/ru` адрес был бы русским, а текст
-  // остался бы испанским — тот же рассинхрон, только приехавший другим путём.
-  //
-  // Владелец ОДИН и стоит в оболочке зоны, а не на страницах: страницу можно
-  // забыть добавить, оболочку — нет, она общая для всех маршрутов зоны.
-  // Молчащий адрес (вход, приглашение) не трогаем: `langFromAddress` вернёт null.
-  // ★ ПРИМЕНЯЕМ, А НЕ ЗАПОМИНАЕМ. `applyLang` только переключает экран; `setLang`
-  // ещё и пишет выбор в хранилище и в профиль вошедшего. Позови мы здесь второе —
-  // получили бы edge-запись профиля на КАЖДЫЙ переход внутри зоны, а голый
-  // `triplanio.com` (английский по построению) молча затирал бы русский язык
-  // аккаунта. Запоминает только явный выбор: переключатель языка (`useZoneLang`)
-  // и первый заход по префиксному адресу (`detectLandingLang`).
-  useEffect(() => {
-    const want = langFromAddress(pathname);
-    if (want) applyLang(want);
-  }, [pathname, applyLang]);
+  // ★ ЯЗЫК ЗОНЫ ЗДЕСЬ БОЛЬШЕ НЕ ПЕРЕУТВЕРЖДАЕТСЯ (TRIP-520). Раньше на этом
+  // месте стоял эффект, применявший язык с адреса на каждой навигации, — один
+  // из трёх писателей одного состояния. Теперь язык ВЫЧИСЛЯЕТСЯ слоями
+  // (`I18nContext`), а факт о маршруте приезжает в слой одной дверью из корня
+  // роутера (`useRouteLocale`, App.jsx). Оболочке зоны про язык знать нечего.
 
   // ★ ПРОКРУТКА К ЯКОРЮ ВЕДЁМ САМИ, А НЕ ОТДАЁМ БРАУЗЕРУ (TRIP-511).
   //

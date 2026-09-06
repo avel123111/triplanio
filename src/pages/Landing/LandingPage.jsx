@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useZoneCta, zonePath } from '@/components/site/zoneCta';
+import { useZoneCta, useZonePath } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
 import { useJsonLd, faqPageLd, softwareAppLd } from '@/components/site/jsonLd';
@@ -48,52 +48,59 @@ function useHeroFrame(ready) {
     const TX = 0.68, TY = 0.452; // where the phone centre lands inside the viewport
     const mq = window.matchMedia(ZONE_BELOW_DESKTOP_MQ);
 
-    const apply = (el, w, h, l, t) => {
-      el.style.backgroundSize = `${w.toFixed(1)}px ${h.toFixed(1)}px`;
-      el.style.backgroundPosition = `${l.toFixed(1)}px ${t.toFixed(1)}px`;
-      let m = '';
-      if (t > 2) {
-        const fv = Math.min(200, Math.max(110, t));
-        m = `linear-gradient(180deg,rgba(0,0,0,0) ${t.toFixed(0)}px,rgba(0,0,0,1) ${(t + fv).toFixed(0)}px)`;
-      } else if (l > 2) {
-        const fh = Math.min(220, Math.max(90, l));
-        m = `linear-gradient(90deg,rgba(0,0,0,0) ${l.toFixed(0)}px,rgba(0,0,0,1) ${(l + fh).toFixed(0)}px)`;
-      }
-      el.style.webkitMaskImage = m;
-      el.style.maskImage = m;
-    };
+    // ★★ JS ПОСТАВЛЯЕТ ЧИСЛА, РЕШАЕТ CSS (TRIP-520).
+    //
+    // Раньше эти же величины писались инлайновыми стилями прямо на слои кадра, и
+    // инлайн сильнее любого правила. Пока страницу рисовал только браузер
+    // человека, это было безобидно. С приходом готовых файлов стало дефектом:
+    // выпечка снимает страницу в ДЕСКТОПНОМ окне (другого на сервере нет), и
+    // десктопные пиксели уезжали в файл, который достаётся всем. Телефон рисовал
+    // кадр героя по десктопным координатам, пока не догрузится бандл и не сотрёт
+    // их (замер: около 9.6 с на мобильном троттлинге).
+    //
+    // Теперь величины едут в CSS-переменных на `.hero`, а объявления живут в
+    // `site.css` ВНУТРИ десктопного медиазапроса. Телефон эти переменные просто
+    // не читает — каскад решает сам, и решать правильно ему ничто не мешает.
+    // Вырезать что-либо из готового файла для этого не нужно.
+    const setVars = (vars) => Object.entries(vars).forEach(([k, v]) => (
+      v === null ? hero.style.removeProperty(k) : hero.style.setProperty(k, v)
+    ));
+    const FRAME_VARS = ['--hero-frame-size', '--hero-frame-pos', '--hero-frame-mask',
+      '--hero-hot-x', '--hero-hot-y', '--hero-hot-w', '--hero-hot-h'];
 
     const place = () => {
       const mob = mq.matches;
       hero.classList.toggle('is-mob', mob);
       if (mob) {
-        [la, lb].forEach((el) => {
-          el.style.backgroundSize = '';
-          el.style.backgroundPosition = '';
-          el.style.webkitMaskImage = '';
-          el.style.maskImage = '';
-        });
-        hot.style.display = 'none';
+        // Мобильный кадр целиком в CSS — снимаем величины, чтобы в разметке не
+        // оставалось чисел, которые на этом экране ничего не значат.
+        setVars(Object.fromEntries(FRAME_VARS.map((k) => [k, null])));
         hero.classList.remove('is-zoom');
         return;
       }
       const cw = bg.clientWidth, ch = bg.clientHeight;
       if (!cw || !ch) return;
-      const fit = (el, c) => {
-        const h = ch * c.zoom, w = h * c.ar;
-        const l = cw * TX - w * c.cx;
-        const t = ch * TY - h * c.cy;
-        apply(el, w, h, l, t);
-        return { w, h, l, t };
-      };
-      const g = fit(la, A);
-      fit(lb, B);
-      const b = A.box;
-      hot.style.display = 'block';
-      hot.style.left = `${(g.l + g.w * b[0]).toFixed(1)}px`;
-      hot.style.top = `${(g.t + g.h * b[1]).toFixed(1)}px`;
-      hot.style.width = `${(g.w * (b[2] - b[0])).toFixed(1)}px`;
-      hot.style.height = `${(g.h * (b[3] - b[1])).toFixed(1)}px`;
+      const h = ch * A.zoom, w = h * A.ar;
+      const l = cw * TX - w * A.cx;
+      const t = ch * TY - h * A.cy;
+      let mask = 'none';
+      if (t > 2) {
+        const fv = Math.min(200, Math.max(110, t));
+        mask = `linear-gradient(180deg,rgba(0,0,0,0) ${t.toFixed(0)}px,rgba(0,0,0,1) ${(t + fv).toFixed(0)}px)`;
+      } else if (l > 2) {
+        const fh = Math.min(220, Math.max(90, l));
+        mask = `linear-gradient(90deg,rgba(0,0,0,0) ${l.toFixed(0)}px,rgba(0,0,0,1) ${(l + fh).toFixed(0)}px)`;
+      }
+      const b = B.box;
+      setVars({
+        '--hero-frame-size': `${w.toFixed(1)}px ${h.toFixed(1)}px`,
+        '--hero-frame-pos': `${l.toFixed(1)}px ${t.toFixed(1)}px`,
+        '--hero-frame-mask': mask,
+        '--hero-hot-x': `${(l + w * b[0]).toFixed(1)}px`,
+        '--hero-hot-y': `${(t + h * b[1]).toFixed(1)}px`,
+        '--hero-hot-w': `${(w * (b[2] - b[0])).toFixed(1)}px`,
+        '--hero-hot-h': `${(h * (b[3] - b[1])).toFixed(1)}px`,
+      });
     };
 
     const onEnter = () => { if (!mq.matches) hero.classList.add('is-zoom'); };
@@ -247,7 +254,7 @@ function Hero() {
   // тем же событием `cta_clicked`, что и финальный CTA `final_demo`:
   // единственное отличие — метка места `hero_demo` (верх воронки против низа).
   const cta = useZoneCta('hero');
-  const demo = useZoneCta('hero_demo', withVisitCampaign(zonePath(DEMO_PATH)));
+  const demo = useZoneCta('hero_demo', withVisitCampaign(useZonePath(DEMO_PATH)));
   // Один текст героя на обе платформы (TRIP-510): десктоп и телефон делят одни
   // ключи `landing.hero.*`, различия раскладки живут только в CSS `@media`,
   // поэтому DOM единый — без ветки по брейкпоинту.
@@ -573,7 +580,7 @@ function FinalCta() {
   // Единственный CTA зоны, ведущий НЕ в продукт, — отсюда явный адрес. Метку
   // кампании визита он несёт так же, как остальные, и идёт через роутер, а не
   // голым <a href>, который её теряет (гард 2ad).
-  const demo = useZoneCta('final_demo', withVisitCampaign(zonePath(DEMO_PATH)));
+  const demo = useZoneCta('final_demo', withVisitCampaign(useZonePath(DEMO_PATH)));
   return (
     <SiteCta
       secondary={(

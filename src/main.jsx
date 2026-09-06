@@ -114,12 +114,14 @@ startKeyboardOpenWatch()
  */
 async function warmZoneDictionary() {
   if (!document.documentElement.hasAttribute('data-prerendered')) return;
-  const [{ detectLandingLang, FALLBACK_LANG }, { loadLocale }, { ZONE_NAMESPACES }] = await Promise.all([
+  const [{ initialLang, FALLBACK_LANG }, { loadLocale }, { ZONE_NAMESPACES }] = await Promise.all([
     import('@/lib/i18n/translations'),
     import('@/lib/i18n/dictionary'),
     import('@/lib/i18n/zoneNamespaces'),
   ]);
-  const lang = detectLandingLang();
+  // Та же функция, что даёт первый кадр провайдеру: разойдись они, словарь
+  // грелся бы под один язык, а рисовался бы другой — то есть ожиданием.
+  const lang = initialLang();
   const langs = lang === FALLBACK_LANG ? [lang] : [lang, FALLBACK_LANG];
   await Promise.all(langs.map((l) => loadLocale(l, ZONE_NAMESPACES)));
 }

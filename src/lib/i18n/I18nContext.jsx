@@ -9,7 +9,11 @@ import { toast } from '@/components/ui/use-toast';
 import AppLoading from '@/design/AppLoading';
 import { hasLang, loadLocale, loadedLocale, zoneLoaded } from './dictionary';
 import { ZONE_NAMESPACES } from './zoneNamespaces';
-import { LANGUAGES, LANG_STORAGE_KEY, FALLBACK_LANG, detectLandingLang, langFromAddress, clearLangParam, localeTag } from './translations';
+import {
+  LANGUAGES, FALLBACK_LANG, visitorLang, initialLang, rememberLang,
+  publishLang, clearLangParam, localeTag,
+} from './translations';
+import { localeOf, splitLangPath } from '@/lib/routePaths';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
   applyLuxonLocale,
@@ -26,6 +30,10 @@ const I18nContext = createContext({
   lang: 'en',
   /** @type {(next: string) => void} */
   setLang: () => {},
+  /** @type {(pathname: string) => void} */
+  applyRoute: () => {},
+  /** @type {'en'|'es'|'ru'|null} */
+  routeLocale: null,
   units: 'metric',
   // ⚠️ Тот же случай, что у `t` ниже, и он ПОВТОРИЛСЯ в этом же объекте: голая
   // заглушка объявляла функцию без параметров, а живой `setUnits('metric')`
@@ -78,27 +86,6 @@ function lookup(nsDict, key) {
 const UNITS_STORAGE_KEY = 'travel-planner-units';
 const UNIT_SYSTEMS = ['metric', 'imperial'];
 
-function detectInitialLang(user) {
-  // ★★ АДРЕС СИЛЬНЕЕ ПРОФИЛЯ — И ЭТО НЕ ПРЕДПОЧТЕНИЕ, А ИНВАРИАНТ (TRIP-520).
-  //
-  // У четырёх публичных страниц язык назван АДРЕСОМ, и по каждому адресу лежит
-  // свой готовый файл. Профиль, победив адрес, разводит их молча: `/ru` рисуется
-  // русским файлом, через секунду приезжает сессия с профилем `es` — и текст
-  // становится испанским под русским адресом, русским `<html lang>`, русским
-  // canonical и русским hreflang. Поделиться увиденным после этого нельзя: по
-  // той же ссылке другой человек получит русский.
-  //
-  // Поэтому спрашиваем сначала адрес и только потом профиль. Там, где адрес про
-  // язык молчит (вход, приглашение, публичная поездка, экраны приложения),
-  // `langFromAddress` отдаёт null и всё остаётся ровно как было.
-  const fromAddress = langFromAddress();
-  if (fromAddress) return fromAddress;
-  // A signed-in user's saved language wins; otherwise the landing language
-  // (stored choice → browser → 'en'), shared with AuthContext via translations.js.
-  if (user?.language && hasLang(user.language)) return user.language;
-  return detectLandingLang();
-}
-
 // Distance unit system. Authoritative source = users.unit_system once signed in,
 // else localStorage, else 'metric'. Anonymous public-trip viewers fall back to
 // their own localStorage / default — never the trip owner's setting.
@@ -113,7 +100,31 @@ function detectInitialUnits(user) {
 
 export function I18nProvider({ children }) {
   const { user } = useAuth();
-  const [lang, setLangState] = useState(() => detectInitialLang(null));
+
+  // ★★ ЯЗЫК СКЛАДЫВАЕТСЯ ИЗ ТРЁХ СЛОЁВ, А НЕ ПЕРЕУТВЕРЖДАЕТСЯ ЭФФЕКТАМИ
+  // (TRIP-520). Разбор слоёв — в шапке `visitorLang` (translations.js):
+  //
+  //     цель = локаль маршрута ?? язык профиля ?? язык посетителя
+  //
+  // Это ВЫЧИСЛЕНИЕ, а не последовательность записей, и именно поэтому у языка
+  // больше нет утечек. Прежняя редакция вместо этого держала одно состояние и
+  // переписывала его отовсюду — с адреса при монтировании, с адреса на каждой
+  // навигации в зоне, с профиля при приезде сессии. Побеждал тот, кто написал
+  // последним, а «вернуть как было» не умел никто: вошедший с русским профилем
+  // открывал английский лендинг и уходил в приложение НАВСЕГДА английским.
+  // Со слоями возврат происходит сам: ушёл с адреса, у которого есть локаль, —
+  // слой перестал действовать, и ответ снова даёт профиль.
+  const [routeLocale, setRouteLocale] = useState(() => localeOf(
+    typeof window !== 'undefined' ? window.location.pathname : '/',
+  ));
+  const [visitor, setVisitor] = useState(() => visitorLang());
+  const profileLang = user?.language && hasLang(user.language) ? user.language : null;
+  const target = routeLocale ?? profileLang ?? visitor;
+
+  // `lang` — язык, КОТОРЫЙ УЖЕ МОЖНО РИСОВАТЬ: он догоняет `target` только после
+  // того, как приехал словарь. Без этого разрыва смена языка показывала бы кадр
+  // из сырых ключей.
+  const [lang, setLangState] = useState(() => initialLang());
   const [units, setUnitsState] = useState(() => detectInitialUnits(null));
 
   // Our baked dictionaries are the authoritative reader for NORMAL users:
@@ -126,15 +137,13 @@ export function I18nProvider({ children }) {
   // и без этой строки первый кадр всё равно был бы ожиданием: готовый текст
   // сменялся спиннером на 156 мс и возвращался.
   const [ready, setReady] = useState(() => {
-    const initial = detectInitialLang(null);
+    const initial = initialLang();
     const needed = initial === FALLBACK_LANG ? [initial] : [initial, FALLBACK_LANG];
     return new Set(needed.every(zoneLoaded) ? [initial] : []);
   });
   // Языки, у которых загружены ВСЕ словари. `ready` — «можно рисовать зону»,
   // `full` — «можно рисовать приложение»; это два разных вопроса.
   const [full, setFull] = useState(() => new Set());
-  // Тот же кэш — источник самого словаря: иначе `ready` сказал бы «готово», а
-  // читать было бы нечего, и первый кадр вышел бы из сырых ключей.
   // Тот же кэш — источник самого словаря: иначе `ready` сказал бы «готово», а
   // читать было бы нечего, и первый кадр вышел бы из сырых ключей.
   const dictsRef = useRef(Object.fromEntries(
@@ -188,33 +197,42 @@ export function I18nProvider({ children }) {
     await rest.then(() => setFull((prev) => (prev.has(target) ? prev : new Set(prev).add(target))));
   }, [ensureLoaded]);
 
-  // Load+activate the active locale, then make it visible — a language switch
-  // keeps the old language on screen until the new one is fully loaded.
-  // ★★ «ПРИМЕНИТЬ ЯЗЫК» ≠ «ЧЕЛОВЕК ВЫБРАЛ ЯЗЫК» (TRIP-520). Здесь только первое:
-  // экран переключается, и всё. `setLang` ниже — второе: он ещё и ЗАПОМИНАЕТ
-  // выбор (localStorage) и пишет его В ПРОФИЛЬ вошедшего (edge-запрос).
+  // ★ ЦЕЛЬ МЕНЯЕТСЯ — ГРУЗИМ СЛОВАРЬ И ТОЛЬКО ПОТОМ ПОКАЗЫВАЕМ.
   //
-  // Разделение несущее, а не косметическое. Язык страницы зоны переутверждается
-  // с адреса на КАЖДОЙ навигации внутри зоны (`SiteZone`), и позови мы там
-  // `setLang` — вышло бы две беды разом: запись профиля на каждый переход по
-  // ссылке и затёртый выбор посетителя. Человек выставил в приложении русский,
-  // открыл голый `triplanio.com` (он английский по построению) — и его русский
-  // молча заменился бы английским во всём аккаунте.
-  const applyLang = useCallback(async (newLang) => {
-    if (!hasLang(newLang)) return;
-    await activate(newLang);
-    setLangState(newLang);
-  }, [activate]);
-
-  // Activate the initial locale on mount (detected browser/stored language). A
-  // signed-in user whose language differs triggers a follow-up load below.
-  // `?lang=` уже прочитан и сохранён внутри detectLandingLang — стираем его из
-  // адреса здесь, где язык применён (TRIP-511): иначе ручное переключение +
-  // перезагрузка молча откатывались бы обратно к языку из адреса.
+  // Единственное место, где `lang` вообще меняется. Пока новый словарь едет, на
+  // экране остаётся прежний язык — смена языка не показывает кадра из сырых
+  // ключей. `fast` только на первом заходе: там ждём шесть словарей зоны, а
+  // остальные догружаем фоном; последующие смены идут полным путём, потому что
+  // случаются и на экранах приложения.
+  //
+  // `?lang=` стирается из адреса здесь же, где язык применён (TRIP-511): иначе
+  // ручное переключение + перезагрузка молча откатывались бы к языку из адреса.
+  const firstRun = useRef(true);
   useEffect(() => {
-    activate(detectInitialLang(null), { fast: true });
-    clearLangParam();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    let alive = true;
+    const fast = firstRun.current;
+    firstRun.current = false;
+    activate(target, { fast }).then(() => { if (alive) setLangState(target); });
+    if (fast) clearLangParam();
+    return () => { alive = false; };
+  }, [target, activate]);
+
+  // ★ ЧТО СКАЗАЛ МАРШРУТ — ЕДИНСТВЕННАЯ ДВЕРЬ ДЛЯ ВЕРХНЕГО СЛОЯ.
+  //
+  // Зовёт её один вызыватель — `useRouteLocale` ниже, из корня роутера. Провайдер
+  // стоит ВЫШЕ роутера (он нужен и до него), поэтому сам маршрут прочитать не
+  // может: факт приезжает сюда, а не вычитывается отсюда.
+  //
+  // Языковой ПРЕФИКС здесь ещё и запоминается на устройстве — как выбор
+  // человека: `/ru` это такое же прямое утверждение о языке, как клик по
+  // переключателю, и оно обязано доехать до входа, у которого языкового адреса
+  // нет. Беспрефиксный `/` не запоминается: он английский по построению файла, а
+  // не по выбору, и записью стёр бы настоящий выбор посетителя.
+  const applyRoute = useCallback((pathname) => {
+    setRouteLocale(localeOf(pathname));
+    const explicit = splitLangPath(pathname).lang;
+    if (explicit) setVisitor(rememberLang(explicit));
+  }, []);
 
   // Apply Luxon default locale on mount and whenever lang changes,
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.
@@ -230,10 +248,9 @@ export function I18nProvider({ children }) {
   // неверного-языка-кадра нет.
   useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
 
-  // Sync from user once authenticated
-  useEffect(() => {
-    if (user) applyLang(detectInitialLang(user));
-  }, [user?.language]); // eslint-disable-line
+  // Тот же язык — читателям ВНЕ дерева React (язык регистрации в AuthContext).
+  // Публикует один писатель, поэтому второй копии лестницы больше нет.
+  useEffect(() => { publishLang(lang); }, [lang]);
 
   useEffect(() => {
     if (user) setUnitsState(detectInitialUnits(user));
@@ -281,13 +298,20 @@ export function I18nProvider({ children }) {
     if (error || code) toast({ description: errorText(t, code), variant: 'destructive' });
   }, [user, t]);
 
+  // ★ «ЧЕЛОВЕК ВЫБРАЛ ЯЗЫК» — ЭТО ЗАПИСЬ В ДВА НИЖНИХ СЛОЯ, И БОЛЬШЕ НИЧЕГО.
+  //
+  // Экран переключится сам: слои пересчитаются, эффект выше догрузит словарь и
+  // покажет. Отдельного «применить язык» больше не существует — оно и было тем
+  // вторым способом менять язык, через который он утекал.
+  //
+  // На лендинге и демо у выбора есть ЕЩЁ и адрес (`useZoneLang` уводит на
+  // `/es`, `/ru`) — верхний слой; здесь мы про него ничего не знаем и знать не
+  // должны.
   const setLang = useCallback(async (newLang) => {
     if (!hasLang(newLang)) return;
-    await activate(newLang);
-    setLangState(newLang);
-    try { localStorage.setItem(LANG_STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
+    setVisitor(rememberLang(newLang));
     await persistProfile({ language: newLang });
-  }, [activate, persistProfile]);
+  }, [persistProfile]);
 
   const setUnits = useCallback(async (newUnits) => {
     if (!UNIT_SYSTEMS.includes(newUnits)) return;
@@ -306,14 +330,26 @@ export function I18nProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
-    applyLang,
+    applyRoute,
+    // ★ Локаль маршрута отдаётся наружу — из неё строятся ссылки внутри зоны.
+    //
+    // Своего источника у них быть не может: страницы зоны рисуются под
+    // ПОДМЕНЁННОЙ локацией (`<Routes location>` в App.jsx снимает языковой
+    // префикс, чтобы таблица маршрутов была одна), поэтому `useLocation()`
+    // внутри них префикса уже не видит. Прежний код обходил это чтением
+    // `window.location` — вторым, нереактивным ответом на тот же вопрос, и
+    // именно оно позволило закэшировать адрес главной на весь документ.
+    //
+    // Владелец факта один: сюда его кладёт `useRouteLocale` из корня роутера,
+    // где путь ещё настоящий.
+    routeLocale,
     units,
     setUnits,
     t,
     languages: LANGUAGES,
     locale: localeTag(lang),
     dictFull,
-  }), [lang, setLang, applyLang, units, setUnits, t, dictFull]);
+  }), [lang, setLang, applyRoute, routeLocale, units, setUnits, t, dictFull]);
 
   // Gate the first paint until the active locale is ready. «Готов» теперь значит
   // «загружены словари ЗОНЫ» — шесть из 48 (`zoneNamespaces.js`): маркетинговой
@@ -330,6 +366,24 @@ export function I18nProvider({ children }) {
 
 export function useI18n() {
   return useContext(I18nContext);
+}
+
+/**
+ * ★★ МОСТ «МАРШРУТ → ЯЗЫК». Один вызыватель, в корне роутера (`App.jsx`).
+ *
+ * Провайдер стоит ВЫШЕ роутера — он нужен и до него (экран загрузки, тосты), —
+ * поэтому сам прочитать маршрут не может. Факт о маршруте приезжает сюда одной
+ * дверью, а не выуживается из `window.location` теми, кому он понадобился.
+ *
+ * Владелец ОДИН и стоит в корне, а не на страницах: страницу можно забыть
+ * добавить, корень — нет. Адреса без локали (вход, приглашение, юр-документы,
+ * экраны приложения) отдают `null` — верхний слой на них просто не действует.
+ *
+ * @param {string} pathname текущий путь из роутера
+ */
+export function useRouteLocale(pathname) {
+  const { applyRoute } = useI18n();
+  useEffect(() => { applyRoute(pathname); }, [pathname, applyRoute]);
 }
 
 export function useT() {
