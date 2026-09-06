@@ -200,6 +200,8 @@ import AddressAutocomplete from '@/components/common/AddressAutocomplete';
 import CityPicker from '@/components/cities/CityPicker';
 import { resolveCity } from '@/components/cities/resolveCity';
 import EventAiBlock from '@/components/common/EventAiBlock';
+import FlowProgress from '@/pages/create/FlowProgress';
+import { eventSteps, stepOwnsField, stepOwnsTimeKey, isStepEmpty, supportsBooked, supportsWizard } from '@/components/common/eventSteps';
 import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
@@ -628,6 +630,28 @@ export default function EventEditDialog({
     setTouched((prev) => (prev.has(token) ? prev : new Set(prev).add(token)));
   };
 
+  // ── Ход мастера создания ────────────────────────────────────────────────
+  // Пошагово идёт ТОЛЬКО создание отеля / переезда / активности. Правка
+  // остаётся полотном (туда приходят за одним полем, и мастер там мешает),
+  // услуги — тоже. Ступени описаны отдельным чистым модулем `eventSteps`,
+  // здесь только ход по ним.
+  const wizard = !isEdit && supportsWizard(currentKind);
+  // «Уже забронировано» — состояние ФОРМЫ создания, а не поле события: оно
+  // никуда не сохраняется и в правке его нет. Выключено — ступени брони не
+  // существует, и парсер подтверждения не предлагается: парсить нечего, пока
+  // брони нет.
+  const [booked, setBooked] = useState(false);
+  const [stepIdx, setStepIdx] = useState(0);
+  const steps = useMemo(
+    () => (wizard ? eventSteps(currentKind, { booked, hasLayovers: !!form.hasLayovers }) : []),
+    [wizard, currentKind, booked, form.hasLayovers],
+  );
+  // Индекс КЛАМПИТСЯ, а не сбрасывается: тумблер выключают, стоя на ступени
+  // брони, и сброс в начало отбросил бы уже введённые имя и даты.
+  const stepAt = Math.min(stepIdx, Math.max(0, steps.length - 1));
+  const step = wizard ? steps[stepAt] : null;
+  const isLastStep = !wizard || stepAt >= steps.length - 1;
+
   // Re-hydrate form whenever the dialog opens or the entity prop changes.
   useEffect(() => {
     if (!open) return;
@@ -637,6 +661,7 @@ export default function EventEditDialog({
     setAiFields(new Set());    setAiSegFields(new Set()); setAiAdvisories([]); preAiForm.current = null;
     setTimeMissing({});
     setTouched(new Set()); setSubmitted(false);
+    setBooked(false); setStepIdx(0);
     setAiState('checking'); // re-gate the parser on every open until Pro is re-checked
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -689,19 +714,6 @@ export default function EventEditDialog({
 
   const setTime = (key, missing) => {
     setTimeMissing((prev) => (prev[key] === missing ? prev : { ...prev, [key]: missing }));
-  };
-
-  // Type switcher - only enabled in create mode.
-  const switchKind = (k) => {
-    if (isEdit) return;
-    setCurrentKind(k);
-    setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
-    // Drop the snapshot too: switching kind rebuilds the form but leaves aiState
-    // at 'parsed', so the block still offers "Reset" — without this it would
-    // restore a hotel-shaped snapshot into a transfer form.
-    setAiFields(new Set());    setAiSegFields(new Set()); setAiAdvisories([]); preAiForm.current = null;
-    setTimeMissing({});
-    setTouched(new Set()); setSubmitted(false);
   };
 
   const openUpgrade = () => {
@@ -828,6 +840,31 @@ export default function EventEditDialog({
     () => issuesToShow(issues, { isEdit, submitted, aiParsed }),
     [issues, isEdit, submitted, aiParsed],
   );
+  // Гейт «Дальше» — ТОТ ЖЕ предикат, что держит «Создать» (`canSave`), сужённый
+  // до полей ступени: блокируют только коды порядка дат и «дата без времени».
+  // Иначе у формы стало бы два разных ответа на вопрос «что мешает сохранить».
+  const stepBlocked = useMemo(() => {
+    if (!step) return false;
+    if (issues.some((i) => i.level === 'error' && stepOwnsField(step, i.field))) return true;
+    return Object.entries(timeMissing).some(([k, v]) => v && stepOwnsTimeKey(step, k));
+  }, [step, issues, timeMissing]);
+
+  const goNext = () => {
+    // Уходя со ступени, помечаем её поля тронутыми: непустое имя ступень
+    // пропускает (пустое название — совет, а не запрет, и это политика всей
+    // формы), но вернувшись на неё, человек должен увидеть совет, а не пустоту.
+    step.fields.forEach(markTouched);
+    if (stepBlocked) {
+      // Показываем претензии ЭТОЙ ступени, а не общий `submitted`: тот раскрыл
+      // бы советы и по ступеням, до которых ещё не дошли.
+      const f = issues.find((i) => i.level === 'error' && stepOwnsField(step, i.field))?.field;
+      if (f) document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
+    setStepIdx(stepAt + 1);
+  };
+  const goPrev = () => setStepIdx(Math.max(0, stepAt - 1));
+
   const OPT_CACHE = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
 
   const handleSaveClick = () => {
@@ -1218,6 +1255,43 @@ export default function EventEditDialog({
     : eventHeader({ kind: currentKind, visit, fromVisit, toVisit, entity, t, lang });
   const title = hdr.title;
 
+  // AI-блок объявлен ОДИН раз: полотно правки ставит его над формой, мастер —
+  // на первой ступени под тумблером «уже забронировано».
+  const aiBlockEl = (currentKind === 'hotel' || currentKind === 'transfer') ? (
+    <EventAiBlock
+      kind={currentKind}
+      tripId={tripId}
+      state={aiState}
+      setState={setAiState}
+      onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
+      onUpgrade={openUpgrade}
+      parsedFieldCount={aiFields.size + aiSegFields.size}
+      onReset={() => {
+        // Undo the parse itself, not just its highlight. Restoring the
+        // pre-parse snapshot empties the form in create mode (nothing
+        // was there before) and puts the saved values back in edit mode,
+        // instead of blanking data the parse merely overwrote.
+        // Documents parsed in are unlinked here too; the uploaded files
+        // themselves stay in Storage - removing them is a separate call.
+        if (preAiForm.current) setForm(preAiForm.current);
+        preAiForm.current = null;
+        setAiFields(new Set());
+        setAiSegFields(new Set());
+        setAiAdvisories([]);
+      }}
+    />
+  ) : null;
+
+  // Пропы полей собраны в объект: они одни и те же у полотна и у ступени, а
+  // разложенные по двум спискам разъезжаются ровно на следующей правке.
+  const fieldProps = {
+    form, setField, setForm, aiFields, tz, setTime,
+    issues: displayIssues, onTouch: markTouched, setUploading, tripId,
+  };
+  const transferProps = {
+    ...fieldProps, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, isEdit,
+  };
+
   const inner = (
     <>
           {/* Header — hidden when embedded (AddBookingPanel owns the shared header).
@@ -1247,31 +1321,8 @@ export default function EventEditDialog({
 
           {/* Body */}
           <div className={bodyCls}>
-            {/* AI block - only for hotel & transfer (the kinds with parsers). */}
-            {(currentKind === 'hotel' || currentKind === 'transfer') && (
-              <EventAiBlock
-                kind={currentKind}
-                tripId={tripId}
-                state={aiState}
-                setState={setAiState}
-                onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
-                onUpgrade={openUpgrade}
-                parsedFieldCount={aiFields.size + aiSegFields.size}
-                onReset={() => {
-                  // Undo the parse itself, not just its highlight. Restoring the
-                  // pre-parse snapshot empties the form in create mode (nothing
-                  // was there before) and puts the saved values back in edit mode,
-                  // instead of blanking data the parse merely overwrote.
-                  // Documents parsed in are unlinked here too; the uploaded files
-                  // themselves stay in Storage - removing them is a separate call.
-                  if (preAiForm.current) setForm(preAiForm.current);
-                  preAiForm.current = null;
-                  setAiFields(new Set());
-                  setAiSegFields(new Set());
-                  setAiAdvisories([]);
-                }}
-              />
-            )}
+            {/* Полотно правки: разбор подтверждения над формой, как и было. */}
+            {!wizard && aiBlockEl}
 
             <RequiredFieldsCtx.Provider value={askRequired}>
             <DateAnchorCtx.Provider value={dateAnchor}>
@@ -1283,52 +1334,45 @@ export default function EventEditDialog({
                 ...(aiState === 'parsing' ? { opacity: 0.5, pointerEvents: 'none', userSelect: 'none' } : {}),
               }}
             >
-              {currentKind === 'hotel' && (
-                <HotelFields
-                  form={form}
-                  setField={setField}
-                  aiFields={aiFields}
-                  tz={tz}
-                  setTime={setTime}
-                  issues={displayIssues}
-                  onTouch={markTouched}
-                  setUploading={setUploading}
-                  tripId={tripId}
+              {/* Рейл ступеней — ТОТ ЖЕ `FlowProgress`, что у визарда создания
+                  трипа (счётчик, подпись следующей ступени, прыжок на пройденные).
+                  Стоит первым ребёнком тела: ритм ему даёт `gap` формы, своего
+                  отступа он не заводит. */}
+              {wizard && (
+                <FlowProgress
+                  steps={steps.map((s) => ({ label: t(s.labelKey) }))}
+                  current={stepAt}
+                  accent={meta.color}
+                  onJump={setStepIdx}
                 />
               )}
-              {currentKind === 'transfer' && (
-                <TransferFields
-                  form={form}
-                  setField={setField}
-                  setForm={setForm}
-                  aiFields={aiFields}
-                  aiSegFields={aiSegFields}
-                  setAiSegFields={setAiSegFields}
-                  fromVisit={fromVisit}
-                  toVisit={toVisit}
-                  startTz={startTz}
-                  endTz={endTz}
-                  setTime={setTime}
-                  issues={displayIssues}
-                  onTouch={markTouched}
-                  isEdit={isEdit}
-                  setUploading={setUploading}
-                  tripId={tripId}
-                />
+
+              {/* Тумблер брони — на первой ступени и только у видов, у которых
+                  есть что показать (у активности полей брони нет ни одного).
+                  Включённый он и открывает разбор подтверждения. */}
+              {wizard && step.id === 'main' && supportsBooked(currentKind) && (
+                <>
+                  <SwitchRow
+                    on={booked}
+                    onChange={setBooked}
+                    title={t('event.booked_toggle')}
+                    hint={t('event.booked_hint')}
+                  />
+                  {booked && aiBlockEl}
+                </>
               )}
-              {currentKind === 'activity' && (
-                <ActivityFields
-                  form={form}
-                  setField={setField}
-                  setForm={setForm}
-                  aiFields={aiFields}
-                  tz={tz}
-                  setTime={setTime}
-                  issues={displayIssues}
-                  onTouch={markTouched}
-                  setUploading={setUploading}
-                  tripId={tripId}
-                />
+
+              {currentKind === 'hotel' && (wizard
+                ? <HotelStep blocks={step.blocks} {...fieldProps} />
+                : <HotelFields {...fieldProps} />
+              )}
+              {currentKind === 'transfer' && (wizard
+                ? <TransferStep blocks={step.blocks} {...transferProps} />
+                : <TransferFields {...transferProps} />
+              )}
+              {currentKind === 'activity' && (wizard
+                ? <ActivityStep blocks={step.blocks} {...fieldProps} />
+                : <ActivityFields {...fieldProps} />
               )}
               {currentKind === 'service' && (
                 <ServiceFields
@@ -1345,8 +1389,10 @@ export default function EventEditDialog({
                 />
               )}
 
-              {/* Summary panel: revealed on edit-open, save attempt or AI parse. Click row -> field. */}
-              <IssuesPanel issues={[...panelIssues, ...aiAdvisories]} style={{ marginTop: 12 }} />
+              {/* Summary panel: revealed on edit-open, save attempt or AI parse. Click row -> field.
+                  В мастере сводка стоит на последней ступени: на промежуточной она
+                  говорила бы о полях, до которых ещё не дошли. */}
+              {isLastStep && <IssuesPanel issues={[...panelIssues, ...aiAdvisories]} style={{ marginTop: 12 }} />}
             </fieldset>
             </DateAnchorCtx.Provider>
             </RequiredFieldsCtx.Provider>
@@ -1358,9 +1404,16 @@ export default function EventEditDialog({
               режима, своим у диалога остался только прилипший низ, и тот не нужен
               модалке — она и так не прокручивает футер. */}
           <div
-            className="lp-f"
+            className={wizard ? 'lp-f flow-foot' : 'lp-f'}
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
+            {/* Ход мастера: «Назад» слева, распорка, primary справа — та же
+                раскладка ряда действий, что у визарда создания трипа
+                (`.flow-foot` + `.flow-foot__spacer`), без второй копии. */}
+            {wizard && stepAt > 0 && (
+              <Btn variant="secondary" onClick={goPrev}>{t('common.back')}</Btn>
+            )}
+            {wizard && <div className="flow-foot__spacer grow" />}
             {isEdit && (
                   <Btn
                     variant="danger"
@@ -1375,18 +1428,34 @@ export default function EventEditDialog({
                     {t('common.delete')}
                   </Btn>
                 )}
-                <Btn
-                  variant="primary"
-                  icon={isEdit ? 'check' : 'plus'}
-                  onClick={handleSaveClick}
-                  loading={saveMut.isPending}
-                  disabled={uploading || saveMut.isPending}
-                  ariaDisabled={!canSave}
-                  locked={!canEdit}
-                  lockedHint={t('trip.viewer_locked')}
-                >
-                  {isEdit ? t('common.save') : t('event.create')}
-            </Btn>
+                {isLastStep ? (
+                  <Btn
+                    variant="primary"
+                    icon={isEdit ? 'check' : 'plus'}
+                    onClick={handleSaveClick}
+                    loading={saveMut.isPending}
+                    disabled={uploading || saveMut.isPending}
+                    ariaDisabled={!canSave}
+                    locked={!canEdit}
+                    lockedHint={t('trip.viewer_locked')}
+                  >
+                    {isEdit ? t('common.save') : t('event.create')}
+                  </Btn>
+                ) : (
+                  /* Не `disabled`, а `ariaDisabled` — как у «Создать»: клик по
+                     запертой ступени ДОЛЖЕН показать, что именно её держит,
+                     а мёртвая кнопка не показывает ничего. Пустую необязательную
+                     ступень primary честно называет пропуском. */
+                  <Btn
+                    variant="primary"
+                    onClick={goNext}
+                    ariaDisabled={stepBlocked}
+                    locked={!canEdit}
+                    lockedHint={t('trip.viewer_locked')}
+                  >
+                    {step.optional && isStepEmpty(step, form) ? t('planner.skip') : t('common.next')}
+                  </Btn>
+                )}
           </div>
     </>
   );
@@ -1675,157 +1744,222 @@ function SectionHeader({ children }) {
 //  Field groups per kind
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
+// ── Отель: блоки полей ──────────────────────────────────────────────────────
+// Полотно правки собирается из НИХ ЖЕ (`HotelFields` ниже), мастер создания —
+// из подмножества (`HotelStep`). Один дом у каждого поля, две раскладки.
+function HotelIdentity({ form, setField, aiFields, issues, onTouch }) {
+  const { t } = useI18nFormat();
+  const st = (f) => fieldState(issues, f);
+  return (
+    <div className="col col--g6">
+      <div data-vfield="name">
+        <Label field="name">{t('event.name')}</Label>
+        <AiField active={aiFields.has('name')}>
+          <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_hotel_example')} />
+        </AiField>
+        <FieldError issues={issues} field="name" />
+      </div>
+      <div>
+        <Label>{t('event.address')}</Label>
+        <AiField active={aiFields.has('address')}>
+          <AddressAutocomplete
+            value={form.address}
+            onChange={(v) => setField('address', v)}
+            onPlaceSelected={(p) => {
+              setField('address', p.formatted_address || p.description || form.address);
+              if (p.latitude != null) setField('latitude', p.latitude);
+              if (p.longitude != null) setField('longitude', p.longitude);
+            }}
+            placeholder="Travessa das Merceeiras 27, Lisboa"
+          />
+        </AiField>
+      </div>
+    </div>
+  );
+}
+
+function HotelDates({ form, setField, aiFields, tz, setTime, issues }) {
+  const { t } = useI18nFormat();
+  const ci = DateTime.fromISO(form.checkInLocal), co = DateTime.fromISO(form.checkOutLocal);
+  const n = (ci.isValid && co.isValid) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : 0;
+  return (
+    <DateRangeBlock
+      label={t('event.stay_dates')} accent={TYPE_META.hotel.color} issues={issues}
+      startLabel={t('event.checkin')} startValue={form.checkInLocal} onStart={(v) => setField('checkInLocal', v)} onStartMissing={(v) => setTime('checkIn', v)} startVField="checkIn" startTz={tz} startAi={aiFields.has('checkInLocal')}
+      endLabel={t('event.checkout')} endValue={form.checkOutLocal} onEnd={(v) => setField('checkOutLocal', v)} onEndMissing={(v) => setTime('checkOut', v)} endVField="checkOut" endTz={tz} endAi={aiFields.has('checkOutLocal')}
+      midText={n > 0 ? t('fork.stay22_nights', { count: n }) : null}
+    />
+  );
+}
+
+/* Price + currency + payment pills (design: "Стоимость за всё") */
+function HotelMoney({ form, setField, aiFields }) {
+  const { t } = useI18nFormat();
+  return (
+    <div className="eed-finance">
+      <div className="hv-lbl">{t('event.price_total')}</div>
+      <div className="grid grid--g4 eed-pricerow">
+        <AiField active={aiFields.has('price')}>
+          <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0" />
+        </AiField>
+        <AiField active={aiFields.has('currency')}>
+          <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
+        </AiField>
+      </div>
+      <AiField active={aiFields.has('payment_status')}>
+        <Seg
+          variant="fill"
+          ariaLabel={t('event.payment_status')}
+          value={form.payment_status}
+          onChange={(v) => setField('payment_status', form.payment_status === v ? '' : v)}
+          options={[
+            { value: 'paid', label: t('event.paid') },
+            { value: 'partial', label: t('event.partial') },
+            { value: 'pay_on_arrival', label: t('event.on_arrival') },
+          ]}
+        />
+      </AiField>
+    </div>
+  );
+}
+
+function HotelCancel({ form, setField, aiFields, tz, setTime }) {
   const dateAnchor = useDateAnchor();
   const { t } = useI18nFormat();
-  const color = TYPE_META.hotel.color;
-  const st = (f) => fieldState(issues, f);
-  // Filled-field counts drive the accordion badges (how many booking details /
-  // documents are set without expanding the group).
-  const bookingFilled = [form.booking_url, form.booking_reference, form.phone, form.email].filter(Boolean).length;
-  const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
+    <AiField active={aiFields.has('free_cancellation')}>
+      <SwitchRow
+        on={!!form.free_cancellation}
+        onChange={(v) => setField('free_cancellation', !!v)}
+        title={t('event.free_cancel_have')}
+        hint={t('event.free_cancel_hint')}
+      >
+        {form.free_cancellation && (
+          <div className="eed-fcdate">
+            <AiField active={aiFields.has('free_cancellation_until_local')}>
+              <DateTimeInput
+                value={form.free_cancellation_until_local}
+                onChange={(v) => setField('free_cancellation_until_local', v)}
+                onTimeMissingChange={(v) => setTime('freeCancel', !!form.free_cancellation && v)}
+                anchor={form.checkInLocal || dateAnchor}
+              />
+            </AiField>
+            <TimezoneHint tz={tz} />
+          </div>
+        )}
+      </SwitchRow>
+    </AiField>
+  );
+}
+
+// `bare` - мастер: ступень САМА и есть раскрывашка, второго способа прятать те
+// же поля (аккордеон) на ней быть не должно.
+function HotelBooking({ form, setField, aiFields, bare = false }) {
+  const { t } = useI18nFormat();
+  const filled = [form.booking_url, form.booking_reference, form.phone, form.email].filter(Boolean).length;
+  const body = (
     <>
-      <div className="col col--g6">
-        <div data-vfield="name">
-          <Label field="name">{t('event.name')}</Label>
-          <AiField active={aiFields.has('name')}>
-            <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_hotel_example')} />
+      <div className="fld-grid grid grid--2">
+        <BookingUrlField
+          value={form.booking_url}
+          onChange={(e) => setField('booking_url', e.target.value)}
+          aiActive={aiFields.has('booking_url')}
+          t={t}
+        />
+        <div>
+          <Label>{t('event.booking_ref')}</Label>
+          <AiField active={aiFields.has('booking_reference')}>
+            <Input value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
-          <FieldError issues={issues} field="name" />
+        </div>
+      </div>
+      <div className="fld-grid eed-accrow grid grid--2">
+        <div>
+          <Label>{t('event.phone')}</Label>
+          <AiField active={aiFields.has('phone')}>
+            <Input value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+351 …" />
+          </AiField>
         </div>
         <div>
-          <Label>{t('event.address')}</Label>
-          <AiField active={aiFields.has('address')}>
-            <AddressAutocomplete
-              value={form.address}
-              onChange={(v) => setField('address', v)}
-              onPlaceSelected={(p) => {
-                setField('address', p.formatted_address || p.description || form.address);
-                if (p.latitude != null) setField('latitude', p.latitude);
-                if (p.longitude != null) setField('longitude', p.longitude);
-              }}
-              placeholder="Travessa das Merceeiras 27, Lisboa"
-            />
+          <Label>E-mail</Label>
+          <AiField active={aiFields.has('email')}>
+            <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="-" />
           </AiField>
         </div>
       </div>
+    </>
+  );
+  if (bare) return body;
+  return (
+    <Accordion title={t('event.booking_details')} subtitle={t('event.booking_details_hint')} badge={filled}>
+      {body}
+    </Accordion>
+  );
+}
 
-      {(() => {
-        const ci = DateTime.fromISO(form.checkInLocal), co = DateTime.fromISO(form.checkOutLocal);
-        const n = (ci.isValid && co.isValid) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : 0;
-        return (
-          <DateRangeBlock
-            label={t('event.stay_dates')} accent={color} issues={issues}
-            startLabel={t('event.checkin')} startValue={form.checkInLocal} onStart={(v) => setField('checkInLocal', v)} onStartMissing={(v) => setTime('checkIn', v)} startVField="checkIn" startTz={tz} startAi={aiFields.has('checkInLocal')}
-            endLabel={t('event.checkout')} endValue={form.checkOutLocal} onEnd={(v) => setField('checkOutLocal', v)} onEndMissing={(v) => setTime('checkOut', v)} endVField="checkOut" endTz={tz} endAi={aiFields.has('checkOutLocal')}
-            midText={n > 0 ? t('fork.stay22_nights', { count: n }) : null}
-          />
-        );
-      })()}
-
-      {/* Price + currency + payment pills (design: "Стоимость за всё") */}
-      <div className="eed-finance">
-        <div className="hv-lbl">{t('event.price_total')}</div>
-        <div className="grid grid--g4 eed-pricerow">
-          <AiField active={aiFields.has('price')}>
-            <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0" />
-          </AiField>
-          <AiField active={aiFields.has('currency')}>
-            <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
-          </AiField>
-        </div>
-        <AiField active={aiFields.has('payment_status')}>
-          <Seg
-            variant="fill"
-            ariaLabel={t('event.payment_status')}
-            value={form.payment_status}
-            onChange={(v) => setField('payment_status', form.payment_status === v ? '' : v)}
-            options={[
-              { value: 'paid', label: t('event.paid') },
-              { value: 'partial', label: t('event.partial') },
-              { value: 'pay_on_arrival', label: t('event.on_arrival') },
-            ]}
-          />
-        </AiField>
+// Файлы и заметка - один блок на все виды: поля у них одни и те же, и разошлись
+// бы они ровно в тот день, когда правку внесут в одну из копий.
+function DocsNotesBlock({ form, setField, aiFields, setUploading, tripId, bare = false }) {
+  const { t } = useI18nFormat();
+  const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
+  const docs = (
+    <DocumentsField
+      value={form.documents}
+      onChange={(d) => setField('documents', d)}
+      onUploadingChange={setUploading}
+      tripId={tripId}
+      bare
+    />
+  );
+  const body = (
+    <>
+      {aiFields ? <AiField active={aiFields.has('documents')}>{docs}</AiField> : docs}
+      <div className="eed-accrow">
+        <Label>{t('event.notes')}</Label>
+        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
       </div>
-      <AiField active={aiFields.has('free_cancellation')}>
-        <SwitchRow
-          on={!!form.free_cancellation}
-          onChange={(v) => setField('free_cancellation', !!v)}
-          title={t('event.free_cancel_have')}
-          hint={t('event.free_cancel_hint')}
-        >
-          {form.free_cancellation && (
-            <div className="eed-fcdate">
-              <AiField active={aiFields.has('free_cancellation_until_local')}>
-                <DateTimeInput
-                  value={form.free_cancellation_until_local}
-                  onChange={(v) => setField('free_cancellation_until_local', v)}
-                  onTimeMissingChange={(v) => setTime('freeCancel', !!form.free_cancellation && v)}
-                  anchor={form.checkInLocal || dateAnchor}
-                />
-              </AiField>
-              <TimezoneHint tz={tz} />
-            </div>
-          )}
-        </SwitchRow>
-      </AiField>
+    </>
+  );
+  // Без аккордеона (ступень мастера) секцию всё равно надо назвать: иначе
+  // дропзона висит сразу за ценой и читается как её продолжение.
+  if (bare) return <><SectionHeader>{t('event.docs_notes')}</SectionHeader>{body}</>;
+  return <Accordion title={t('event.docs_notes')} badge={docCount}>{body}</Accordion>;
+}
 
-      <Accordion title={t('event.booking_details')} subtitle={t('event.booking_details_hint')} badge={bookingFilled}>
-        <div className="fld-grid grid grid--2">
-          <BookingUrlField
-            value={form.booking_url}
-            onChange={(e) => setField('booking_url', e.target.value)}
-            aiActive={aiFields.has('booking_url')}
-            t={t}
-          />
-          <div>
-            <Label>{t('event.booking_ref')}</Label>
-            <AiField active={aiFields.has('booking_reference')}>
-              <Input value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
-            </AiField>
-          </div>
-        </div>
-        <div className="fld-grid eed-accrow grid grid--2">
-          <div>
-            <Label>{t('event.phone')}</Label>
-            <AiField active={aiFields.has('phone')}>
-              <Input value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+351 …" />
-            </AiField>
-          </div>
-          <div>
-            <Label>E-mail</Label>
-            <AiField active={aiFields.has('email')}>
-              <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="-" />
-            </AiField>
-          </div>
-        </div>
-      </Accordion>
-
-      <Accordion title={t('event.docs_notes')} badge={docCount}>
-        <AiField active={aiFields.has('documents')}>
-          <DocumentsField
-            value={form.documents}
-            onChange={(docs) => setField('documents', docs)}
-            onUploadingChange={setUploading}
-            tripId={tripId}
-            bare
-          />
-        </AiField>
-        <div className="eed-accrow">
-          <Label>{t('event.notes')}</Label>
-          <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
-        </div>
-      </Accordion>
+function HotelFields(p) {
+  return (
+    <>
+      <HotelIdentity {...p} />
+      <HotelDates {...p} />
+      <HotelMoney {...p} />
+      <HotelCancel {...p} />
+      <HotelBooking {...p} />
+      <DocsNotesBlock {...p} />
     </>
   );
 }
 
+// Ступень мастера = подмножество тех же блоков; порядок объявлен здесь, а не в
+// карте ступеней (та говорит СОСТАВ, раскладка - дело формы).
+function HotelStep({ blocks, ...p }) {
+  const has = (b) => blocks.includes(b);
+  return (
+    <>
+      {has('identity') && <HotelIdentity {...p} />}
+      {has('dates') && <HotelDates {...p} />}
+      {has('booking') && <HotelBooking bare {...p} />}
+      {has('cancel') && <HotelCancel {...p} />}
+      {has('money') && <HotelMoney {...p} />}
+      {has('docs') && <DocsNotesBlock bare {...p} />}
+    </>
+  );
+}
+
+// ── Переезд: блоки полей ────────────────────────────────────────────────────
+// Плечо переезда - ОДНА карточка (`TransferLegCard`), и в мастере она отдаёт
+// ступеням свои секции (`sections`), а не режется на копии.
 function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
-  const { t } = useI18nFormat();
   const color = TYPE_META.transfer.color;
-  const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
       {!isEdit && <LayoverToggle form={form} setForm={setForm} />}
@@ -1833,51 +1967,80 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       {form.hasLayovers ? (
         <SegmentsEditor form={form} setForm={setForm} fromVisit={fromVisit} toVisit={toVisit} setTime={setTime} color={color} aiSegFields={aiSegFields} setAiSegFields={setAiSegFields} issues={issues} onTouch={onTouch} />
       ) : (
-        <TransferLegCard
-          leg={form}
-          patch={(p) => Object.entries(p).forEach(([k, v]) => setField(k, v))}
-          aiHas={(f) => aiFields.has(f)}
-          vf={(name) => name}
-          onTimeMissing={(which, v) => setTime(which === 'dep' ? 'start' : 'end', v)}
-          legNumber={null}
-          isMulti={false}
-          fromName={fromVisit?.city_name || '-'}
-          toName={toVisit?.city_name || '-'}
-          toCityEditable={false}
-          startTz={startTz}
-          endTz={endTz}
-          issues={issues}
-          color={color}
-          t={t}
-        />
+        <TransferDirectLeg form={form} setField={setField} aiFields={aiFields} fromVisit={fromVisit} toVisit={toVisit} startTz={startTz} endTz={endTz} setTime={setTime} issues={issues} />
       )}
 
       {/* Booking link — shared across the whole transfer (not per leg; the mockup
           keeps only № брони on each card). Kept so the field is not dropped. */}
       <div style={{ marginTop: 14 }}>
-        <BookingUrlField
-          value={form.booking_url}
-          onChange={(e) => setField('booking_url', e.target.value)}
-          aiActive={aiFields.has('booking_url')}
-          t={t}
-        />
+        <TransferBookingUrl form={form} setField={setField} aiFields={aiFields} />
       </div>
 
-      <Accordion title={t('event.docs_notes')} badge={docCount}>
-        <AiField active={aiFields.has('documents')}>
-          <DocumentsField
-            value={form.documents}
-            onChange={(docs) => setField('documents', docs)}
-            onUploadingChange={setUploading}
-            tripId={tripId}
-            bare
-          />
-        </AiField>
-        <div className="eed-accrow">
-          <Label>{t('event.notes')}</Label>
-          <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
-        </div>
-      </Accordion>
+      <DocsNotesBlock form={form} setField={setField} aiFields={aiFields} setUploading={setUploading} tripId={tripId} />
+    </>
+  );
+}
+
+// Прямое плечо: адаптер формы к общей карточке (у сегмента те же поля лежат в
+// своём объекте, поэтому карточка работает на `leg` + `patch`, а не на форме).
+function TransferDirectLeg({ form, setField, aiFields, fromVisit, toVisit, startTz, endTz, setTime, issues, sections }) {
+  const { t } = useI18nFormat();
+  return (
+    <TransferLegCard
+      leg={form}
+      patch={(p) => Object.entries(p).forEach(([k, v]) => setField(k, v))}
+      aiHas={(f) => aiFields.has(f)}
+      vf={(name) => name}
+      onTimeMissing={(which, v) => setTime(which === 'dep' ? 'start' : 'end', v)}
+      legNumber={null}
+      isMulti={false}
+      sections={sections}
+      fromName={fromVisit?.city_name || '-'}
+      toName={toVisit?.city_name || '-'}
+      toCityEditable={false}
+      startTz={startTz}
+      endTz={endTz}
+      issues={issues}
+      color={TYPE_META.transfer.color}
+      t={t}
+    />
+  );
+}
+
+function TransferBookingUrl({ form, setField, aiFields }) {
+  const { t } = useI18nFormat();
+  return (
+    <BookingUrlField
+      value={form.booking_url}
+      onChange={(e) => setField('booking_url', e.target.value)}
+      aiActive={aiFields.has('booking_url')}
+      t={t}
+    />
+  );
+}
+
+function TransferStep({ blocks, ...p }) {
+  const has = (b) => blocks.includes(b);
+  const legSections = [
+    ...(has('legPlaces') ? ['mode', 'places'] : []),
+    ...(has('legTime') ? ['time'] : []),
+    ...(has('legCarrier') ? ['carrier'] : []),
+    ...(has('legRef') ? ['ref'] : []),
+    ...(has('legPrice') ? ['price'] : []),
+  ];
+  return (
+    <>
+      {has('legMode') && <LayoverToggle form={p.form} setForm={p.setForm} />}
+      {has('segments') && (
+        <SegmentsEditor
+          form={p.form} setForm={p.setForm} fromVisit={p.fromVisit} toVisit={p.toVisit}
+          setTime={p.setTime} color={TYPE_META.transfer.color}
+          aiSegFields={p.aiSegFields} setAiSegFields={p.setAiSegFields} issues={p.issues} onTouch={p.onTouch}
+        />
+      )}
+      {legSections.length > 0 && <TransferDirectLeg {...p} sections={legSections} />}
+      {has('bookingUrl') && <TransferBookingUrl {...p} />}
+      {has('docs') && <DocsNotesBlock bare {...p} />}
     </>
   );
 }
@@ -1887,12 +2050,20 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
 // callback; the two call-sites (direct = flat form, layover = segment) adapt the
 // AI-highlight check (`aiHas`), the validation field name (`vf`), and the
 // time-missing key (`onTimeMissing`). No save-path changes — purely presentational.
+// `sections` (мастер создания) сужает карточку до секций одной ступени; по
+// умолчанию карточка полная, и сегмент цепочки всегда идёт целиком.
+const LEG_SECTIONS = ['mode', 'places', 'time', 'carrier', 'ref', 'price'];
 function TransferLegCard({
   leg, patch, aiHas, vf, onTimeMissing,
   legNumber, isMulti, open, onToggleOpen, onRemove,
   fromName, toName, toCityEditable, layoverCityPh,
-  startTz, endTz, issues, color, t,
+  startTz, endTz, issues, color, t, sections,
 }) {
+  const shown = sections && sections.length ? sections : LEG_SECTIONS;
+  const has = (s) => shown.includes(s);
+  // Верхний отступ несут только секции, у которых ВЫШЕ кто-то есть: на ступени
+  // мастера первая секция начинает тело, и лишний воздух над ней был бы виден.
+  const gapAbove = (s) => (shown[0] === s ? undefined : { marginTop: 14 });
   const stF = (name) => fieldState(issues, vf(name));
   const tk = TRANSPORT_OF(leg.transport_type);
   const TIcon = tk.Icon;
@@ -1906,11 +2077,16 @@ function TransferLegCard({
   // Accordion сам оборачивает его в `.acc__body` (паддинг/бордер), своей обёртки нет.
   const body = (
     <>
-        <div className="field__label" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
-        <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
+        {has('mode') && (
+          <>
+            <div className="field__label" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
+            <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
+          </>
+        )}
 
         {/* From / To — city (readonly endpoint, or layover picker) + address */}
-        <div className="fld-grid grid grid--2" style={{ marginTop: 14 }}>
+        {has('places') && (
+        <div className="fld-grid grid grid--2" style={gapAbove('places')}>
           <div>
             <div className="eed-fromto">{t('event.from')}</div>
             <div className="eed-accrow">
@@ -1957,10 +2133,13 @@ function TransferLegCard({
             </div>
           </div>
         </div>
+        )}
 
         {/* Departure & arrival — bordered block (dates + duration + overnight) */}
+        {has('time') && (
+        <>
         <DateRangeBlock
-          style={{ marginTop: 14 }}
+          style={gapAbove('time')}
           label={t('event.dep_arr')} accent={color} issues={issues}
           startLabel={t('event.departure')} startValue={leg.startLocal} onStart={(v) => patch({ startLocal: v })} onStartMissing={(v) => onTimeMissing('dep', v)} startVField={vf('start')} startTz={startTz} startAi={aiHas('startLocal')}
           endLabel={t('event.arrival')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz} endAi={aiHas('endLocal')}
@@ -1976,9 +2155,12 @@ function TransferLegCard({
             {t('event.overnight_label', { count: legSpan })}
           </Badge>
         )}
+        </>
+        )}
 
         {/* Carrier / flight no. */}
-        <div className="fld-grid grid grid--2" style={{ marginTop: 14 }}>
+        {has('carrier') && (
+        <div className="fld-grid grid grid--2" style={gapAbove('carrier')}>
           <div>
             <Label>{t('event.carrier')}</Label>
             <AiField active={aiHas('carrier')}>
@@ -1992,14 +2174,20 @@ function TransferLegCard({
             </AiField>
           </div>
         </div>
-        {/* Booking ref / price + currency */}
-        <div className="fld-grid eed-accrow grid grid--2">
+        )}
+        {/* Booking ref / price + currency — в паре они делят ряд, поодиночке
+            (ступень брони против ступени бюджета) занимают его целиком. */}
+        {(has('ref') || has('price')) && (
+        <div className={`fld-grid eed-accrow${has('ref') && has('price') ? ' grid grid--2' : ''}`}>
+          {has('ref') && (
           <div>
             <Label>{t('event.booking_ref')}</Label>
             <AiField active={aiHas('booking_reference')}>
               <Input value={leg.booking_reference} onChange={(e) => patch({ booking_reference: e.target.value })} placeholder="-" />
             </AiField>
           </div>
+          )}
+          {has('price') && (
           <div>
             <Label>{t('event.price')}</Label>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -2013,7 +2201,9 @@ function TransferLegCard({
               </span>
             </div>
           </div>
+          )}
         </div>
+        )}
     </>
   );
 
@@ -2331,15 +2521,10 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   );
 }
 
-function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
+// ── Активность: блоки полей ─────────────────────────────────────────────────
+function ActivityIdentity({ form, setField, setForm, issues, onTouch }) {
   const { t } = useI18nFormat();
-  const color = TYPE_META.activity.color;
   const st = (f) => fieldState(issues, f);
-  const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
-  // Start → end duration for the date-block hint — the same helper the transfer
-  // uses, so "end earlier than start" stays a blank hint here too instead of
-  // reading "0 мин".
-  const durMin = layoverMins(form.startLocal, form.endLocal);
   return (
     <>
       <div data-vfield="title">
@@ -2366,22 +2551,37 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
           placeholder="Rua do Norte 91, Lisboa"
         />
       </div>
+    </>
+  );
+}
 
-      {/* Тот же блок дат, что у отеля и переезда (§5 ТЗ). Раньше у активности
-          стояла СВОЯ сборка: одна общая дата + два голых `<input type="time">`,
-          из-за чего у неё был свой скин `.sd-timeinput` и нативные виджеты
-          времени, которые Chrome рисует по локали ОС. Модель не меняется -
-          `startLocal`/`endLocal` как были, просто теперь у каждого конца свой
-          полноценный выбор даты и времени, а не общая дата на двоих. */}
-      <DateRangeBlock
-        label={t('event.date_time')} accent={color} issues={issues}
-        midText={durMin != null ? fmtDur(durMin, t) : null}
-        startLabel={t('activity.start')} startValue={form.startLocal} onStart={(v) => setField('startLocal', v)} onStartMissing={(v) => setTime('start', v)} startVField="start" startTz={tz} startAi={aiFields.has('startLocal')}
-        endLabel={t('event.end')} endValue={form.endLocal} onEnd={(v) => setField('endLocal', v)} onEndMissing={(v) => setTime('end', v)} endVField="end" endTz={tz} endAi={aiFields.has('endLocal')}
-      />
+/* Тот же блок дат, что у отеля и переезда (§5 ТЗ). Раньше у активности
+   стояла СВОЯ сборка: одна общая дата + два голых `<input type="time">`,
+   из-за чего у неё был свой скин `.sd-timeinput` и нативные виджеты
+   времени, которые Chrome рисует по локали ОС. Модель не меняется -
+   `startLocal`/`endLocal` как были, просто теперь у каждого конца свой
+   полноценный выбор даты и времени, а не общая дата на двоих. */
+function ActivityDates({ form, setField, aiFields, tz, setTime, issues }) {
+  const { t } = useI18nFormat();
+  // Start → end duration for the date-block hint — the same helper the transfer
+  // uses, so "end earlier than start" stays a blank hint here too instead of
+  // reading "0 мин".
+  const durMin = layoverMins(form.startLocal, form.endLocal);
+  return (
+    <DateRangeBlock
+      label={t('event.date_time')} accent={TYPE_META.activity.color} issues={issues}
+      midText={durMin != null ? fmtDur(durMin, t) : null}
+      startLabel={t('activity.start')} startValue={form.startLocal} onStart={(v) => setField('startLocal', v)} onStartMissing={(v) => setTime('start', v)} startVField="start" startTz={tz} startAi={aiFields.has('startLocal')}
+      endLabel={t('event.end')} endValue={form.endLocal} onEnd={(v) => setField('endLocal', v)} onEndMissing={(v) => setTime('end', v)} endVField="end" endTz={tz} endAi={aiFields.has('endLocal')}
+    />
+  );
+}
 
-
-      <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
+function ActivityMoney({ form, setField }) {
+  const { t } = useI18nFormat();
+  return (
+    <>
+      <SectionHeader color={TYPE_META.activity.color}>{t('event.cost')}</SectionHeader>
       <div className="fld-grid grid grid--2">
         <div>
           <Label>{t('event.price')}</Label>
@@ -2392,20 +2592,29 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
           <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
         </div>
       </div>
+    </>
+  );
+}
 
-      <Accordion title={t('event.docs_notes')} badge={docCount}>
-        <DocumentsField
-          value={form.documents}
-          onChange={(docs) => setField('documents', docs)}
-          onUploadingChange={setUploading}
-          tripId={tripId}
-          bare
-        />
-        <div className="eed-accrow">
-          <Label>{t('event.notes')}</Label>
-          <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
-        </div>
-      </Accordion>
+function ActivityFields(p) {
+  return (
+    <>
+      <ActivityIdentity {...p} />
+      <ActivityDates {...p} />
+      <ActivityMoney {...p} />
+      <DocsNotesBlock {...p} aiFields={null} />
+    </>
+  );
+}
+
+function ActivityStep({ blocks, ...p }) {
+  const has = (b) => blocks.includes(b);
+  return (
+    <>
+      {has('identity') && <ActivityIdentity {...p} />}
+      {has('dates') && <ActivityDates {...p} />}
+      {has('money') && <ActivityMoney {...p} />}
+      {has('docs') && <DocsNotesBlock bare {...p} aiFields={null} />}
     </>
   );
 }
