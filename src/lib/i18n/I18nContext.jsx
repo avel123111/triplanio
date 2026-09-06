@@ -9,7 +9,7 @@ import { toast } from '@/components/ui/use-toast';
 import AppLoading from '@/design/AppLoading';
 import { hasLang, loadLocale, loadedLocale, zoneLoaded } from './dictionary';
 import { ZONE_NAMESPACES } from './zoneNamespaces';
-import { LANGUAGES, LANG_STORAGE_KEY, FALLBACK_LANG, detectLandingLang, clearLangParam, localeTag } from './translations';
+import { LANGUAGES, LANG_STORAGE_KEY, FALLBACK_LANG, detectLandingLang, langFromAddress, clearLangParam, localeTag } from './translations';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
   applyLuxonLocale,
@@ -79,6 +79,20 @@ const UNITS_STORAGE_KEY = 'travel-planner-units';
 const UNIT_SYSTEMS = ['metric', 'imperial'];
 
 function detectInitialLang(user) {
+  // ★★ АДРЕС СИЛЬНЕЕ ПРОФИЛЯ — И ЭТО НЕ ПРЕДПОЧТЕНИЕ, А ИНВАРИАНТ (TRIP-520).
+  //
+  // У четырёх публичных страниц язык назван АДРЕСОМ, и по каждому адресу лежит
+  // свой готовый файл. Профиль, победив адрес, разводит их молча: `/ru` рисуется
+  // русским файлом, через секунду приезжает сессия с профилем `es` — и текст
+  // становится испанским под русским адресом, русским `<html lang>`, русским
+  // canonical и русским hreflang. Поделиться увиденным после этого нельзя: по
+  // той же ссылке другой человек получит русский.
+  //
+  // Поэтому спрашиваем сначала адрес и только потом профиль. Там, где адрес про
+  // язык молчит (вход, приглашение, публичная поездка, экраны приложения),
+  // `langFromAddress` отдаёт null и всё остаётся ровно как было.
+  const fromAddress = langFromAddress();
+  if (fromAddress) return fromAddress;
   // A signed-in user's saved language wins; otherwise the landing language
   // (stored choice → browser → 'en'), shared with AuthContext via translations.js.
   if (user?.language && hasLang(user.language)) return user.language;
@@ -176,7 +190,18 @@ export function I18nProvider({ children }) {
 
   // Load+activate the active locale, then make it visible — a language switch
   // keeps the old language on screen until the new one is fully loaded.
+  // ★★ «ПРИМЕНИТЬ ЯЗЫК» ≠ «ЧЕЛОВЕК ВЫБРАЛ ЯЗЫК» (TRIP-520). Здесь только первое:
+  // экран переключается, и всё. `setLang` ниже — второе: он ещё и ЗАПОМИНАЕТ
+  // выбор (localStorage) и пишет его В ПРОФИЛЬ вошедшего (edge-запрос).
+  //
+  // Разделение несущее, а не косметическое. Язык страницы зоны переутверждается
+  // с адреса на КАЖДОЙ навигации внутри зоны (`SiteZone`), и позови мы там
+  // `setLang` — вышло бы две беды разом: запись профиля на каждый переход по
+  // ссылке и затёртый выбор посетителя. Человек выставил в приложении русский,
+  // открыл голый `triplanio.com` (он английский по построению) — и его русский
+  // молча заменился бы английским во всём аккаунте.
   const applyLang = useCallback(async (newLang) => {
+    if (!hasLang(newLang)) return;
     await activate(newLang);
     setLangState(newLang);
   }, [activate]);
@@ -281,13 +306,14 @@ export function I18nProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
+    applyLang,
     units,
     setUnits,
     t,
     languages: LANGUAGES,
     locale: localeTag(lang),
     dictFull,
-  }), [lang, setLang, units, setUnits, t, dictFull]);
+  }), [lang, setLang, applyLang, units, setUnits, t, dictFull]);
 
   // Gate the first paint until the active locale is ready. «Готов» теперь значит
   // «загружены словари ЗОНЫ» — шесть из 48 (`zoneNamespaces.js`): маркетинговой

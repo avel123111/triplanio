@@ -12,7 +12,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { detectLandingLang, LANG_STORAGE_KEY, FALLBACK_LANG } from './translations.js';
+import { detectLandingLang, langFromAddress, LANG_STORAGE_KEY, FALLBACK_LANG } from './translations.js';
 import { PRERENDERED_PAGES, PREFIXED_LANGS, withLangPath } from '../routePaths.js';
 
 /** Подменить окружение браузера: адрес, хранилище и язык браузера. */
@@ -92,4 +92,48 @@ test('без хранилища и без браузера ответ всё р�
   globalThis.localStorage = { getItem: () => { throw new Error('приватный режим'); }, setItem: () => {} };
   setNavigator(undefined);
   assert.equal(detectLandingLang('/login'), FALLBACK_LANG);
+});
+
+// ── Адрес против всего остального (прод-баг, замечен Pavel) ─────────────────
+//
+// Язык вошедшего берётся из профиля, и `I18nContext` переутверждал его при
+// каждом приезде сессии — через секунду после загрузки. Пока языкового адреса
+// не существовало, спорить было не с чем; с ним получилось так: открываешь
+// `/ru`, русский файл рисуется, приходит профиль `es` — и текст молча
+// становится испанским под русским адресом, русским `<html lang>`, русским
+// canonical и русским hreflang. Предикат ниже — та самая развилка, поэтому он
+// пинится отдельно от пятиступенчатого правила.
+
+test('★★ префикс адреса — прямое утверждение о языке', () => {
+  browser({ navLang: 'ru-RU', stored: 'es' });
+  for (const code of PREFIXED_LANGS) {
+    assert.equal(langFromAddress(withLangPath(code, '/')), code);
+    assert.equal(langFromAddress(withLangPath(code, '/d/europe-may-2027')), code);
+  }
+});
+
+test('★★ голый адрес испечённой страницы — это «английский»', () => {
+  browser({ navLang: 'ru-RU', stored: 'ru' });
+  for (const page of PRERENDERED_PAGES) {
+    assert.equal(langFromAddress(page), FALLBACK_LANG,
+      `${page}: под этим адресом лежит английский файл — экран обязан совпасть с ним`);
+  }
+});
+
+test('★★ где готового файла нет, адрес про язык МОЛЧИТ', () => {
+  browser({ navLang: 'ru-RU', stored: 'es' });
+  // null здесь несущий: он и есть разрешение спросить профиль, хранилище и
+  // браузер. Верни функция 'en' — вход, приглашение и публичная поездка стали
+  // бы английскими для всех, а выбор посетителя перестал бы что-либо значить.
+  for (const page of ['/login', '/reset-password', '/join/abc', '/public/trip/1', '/trips']) {
+    assert.equal(langFromAddress(page), null, `${page}: адрес не называет язык`);
+  }
+});
+
+test('★ голый адрес НЕ запоминается как выбор человека', () => {
+  // Иначе один заход на `triplanio.com` затирал бы русский язык аккаунта
+  // английским — молча и навсегда.
+  const store = browser({ navLang: 'ru-RU', stored: 'ru' });
+  assert.equal(detectLandingLang('/'), FALLBACK_LANG, 'страница обязана быть английской');
+  assert.equal(store.get(LANG_STORAGE_KEY), 'ru', 'выбор посетителя затёрт голым адресом');
 });

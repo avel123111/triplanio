@@ -6,7 +6,8 @@ import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
 import { isZonePage, splitLangPath, withLangPath, PREFIXED_LANGS, LOCALISED_PAGES } from '@/lib/routePaths';
-import { useZoneCta, isPlainLeftClick } from './zoneCta';
+import { langFromAddress } from '@/lib/i18n/translations';
+import { useZoneCta, isPlainLeftClick, zonePath } from './zoneCta';
 import { withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
@@ -78,13 +79,20 @@ export function LangSwitch({ value, onChange }) {
  * Язык страницы зоны и способ его сменить. ОДНА реализация на три страницы —
  * лендинг, демо и юр-документы раньше делали одинаковый `useI18n()` каждая.
  *
- * ★ У ИСПЕЧЁННОЙ СТРАНИЦЫ СМЕНА ЯЗЫКА — ЭТО ПЕРЕХОД, А НЕ СМЕНА СОСТОЯНИЯ
- * (TRIP-520). Язык такой страницы назван адресом, и по каждому адресу лежит
- * СВОЙ готовый файл. Останься переключатель сменой состояния — экран стал бы
- * испанским, а адрес и файл под ним английскими: перезагрузка молча вернула бы
- * английский, а поделиться увиденным стало бы нельзя. Поэтому здесь настоящий
- * переход документа: человек получает испанский файл, то есть ровно то, что
- * увидит по этой ссылке любой другой.
+ * ★ У ИСПЕЧЁННОЙ СТРАНИЦЫ СМЕНА ЯЗЫКА — ЭТО ПЕРЕХОД ПО АДРЕСУ, А НЕ СМЕНА
+ * СОСТОЯНИЯ (TRIP-520). Язык такой страницы назван адресом, и по каждому адресу
+ * лежит СВОЙ готовый файл. Останься переключатель сменой состояния — экран стал
+ * бы испанским, а адрес и файл под ним английскими: перезагрузка молча вернула
+ * бы английский, а поделиться увиденным стало бы нельзя.
+ *
+ * ★★ НО ПЕРЕХОД — РОУТЕРОМ, А НЕ ПЕРЕЗАГРУЗКОЙ ДОКУМЕНТА. Сначала здесь стоял
+ * `window.location.assign`, и это была ошибка ценой в две вещи сразу: человека
+ * ВЫБРАСЫВАЛО В НАЧАЛО СТРАНИЦЫ (новый документ — новая прокрутка), а между
+ * `setLang` и приездом документа экран уже показывал новый язык под СТАРЫМ
+ * адресом. Перезагрузка тут и не нужна: приложение умеет нарисовать любой язык
+ * на месте, а готовый файл важен только для ПЕРВОГО захода — для того, кто
+ * пришёл по ссылке, и для машины. Роутер меняет адрес, язык применяет
+ * `SiteZone` (адрес — источник правды), прокрутка остаётся на месте.
  *
  * `setLang` перед переходом зовётся НАМЕРЕННО и целиком: он же пишет язык в
  * профиль вошедшего (единая дверь `account/profile`). Обойди мы его — смена
@@ -97,18 +105,23 @@ export function LangSwitch({ value, onChange }) {
  */
 export function useZoneLang() {
   const { lang, setLang } = useI18n();
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
+  const navigate = useNavigate();
   const { path } = splitLangPath(pathname);
   const localised = LOCALISED_PAGES.includes(path);
 
   const switchLang = useCallback(async (next) => {
     if (!localised || next === lang) return setLang(next);
     await setLang(next);
-    // Метка кампании обязана пережить переход документа — она живёт В АДРЕСЕ
-    // (TRIP-514), и голый assign потерял бы её на первой же смене языка.
-    window.location.assign(withVisitCampaign(withLangPath(next, path)));
+    // Метка кампании живёт В АДРЕСЕ (TRIP-514) — переносим её на новый адрес
+    // руками, а `search`/`hash` сохраняем: якорь `#together` не должен теряться
+    // от смены языка.
+    const target = withVisitCampaign(withLangPath(next, path));
+    const [tPath, tQuery] = target.split('?');
+    const query = tQuery ? `?${tQuery}` : search;
+    navigate(`${tPath}${query}${hash}`);
     return undefined;
-  }, [localised, path, lang, setLang]);
+  }, [localised, path, lang, setLang, navigate, search, hash]);
 
   return { lang, setLang: switchLang };
 }
@@ -198,7 +211,12 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   // МЕСТО. До этого пункт с текстом «Посмотреть демо» висел на `menu_signin`,
   // то есть вёл на `/login`: одна и та же надпись на одной и той же странице
   // открывала два разных экрана, а демо с мобильного меню было недостижимо.
-  const menuDemo = useZoneCta('menu_demo', withVisitCampaign(DEMO_PATH));
+  // ★ ЧЕРЕЗ `zonePath`, КАК И ОБЕ КНОПКИ ЛЕНДИНГА (TRIP-520). Голый `DEMO_PATH`
+  // — это АНГЛИЙСКОЕ демо: с русского лендинга пункт меню уводил на английскую
+  // страницу, то есть язык терялся на первом же переходе внутри зоны. Ловится
+  // тестом `zoneLangLinks.test.js`: адрес переведённой страницы внутри зоны
+  // обязан строиться `zonePath`, а не литералом.
+  const menuDemo = useZoneCta('menu_demo', withVisitCampaign(zonePath(DEMO_PATH)));
   const menuSignin = useZoneCta('menu_signin');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -474,6 +492,32 @@ export function SiteZone({ children }) {
   useLightZone();
   const cssReady = useSiteCssLink(true);
   const { pathname, hash } = useLocation();
+  const { applyLang } = useI18n();
+  // Путь БЕЗ языкового префикса: им опознаётся «та же страница на другом языке».
+  const { path: barePath } = splitLangPath(pathname);
+
+  // ★★ АДРЕС — ИСТОЧНИК ПРАВДЫ О ЯЗЫКЕ ЗОНЫ, И ПЕРЕУТВЕРЖДАЕТСЯ ОН ЗДЕСЬ.
+  //
+  // `detectInitialLang` спрашивает адрес на СТАРТЕ и при приезде сессии, но
+  // внутри зоны адрес меняется и БЕЗ перезагрузки: переключатель языка,
+  // «Назад»/«Вперёд» браузера, любая внутренняя ссылка с префиксом. Без этого
+  // эффекта после «Назад» с `/es` на `/ru` адрес был бы русским, а текст
+  // остался бы испанским — тот же рассинхрон, только приехавший другим путём.
+  //
+  // Владелец ОДИН и стоит в оболочке зоны, а не на страницах: страницу можно
+  // забыть добавить, оболочку — нет, она общая для всех маршрутов зоны.
+  // Молчащий адрес (вход, приглашение) не трогаем: `langFromAddress` вернёт null.
+  // ★ ПРИМЕНЯЕМ, А НЕ ЗАПОМИНАЕМ. `applyLang` только переключает экран; `setLang`
+  // ещё и пишет выбор в хранилище и в профиль вошедшего. Позови мы здесь второе —
+  // получили бы edge-запись профиля на КАЖДЫЙ переход внутри зоны, а голый
+  // `triplanio.com` (английский по построению) молча затирал бы русский язык
+  // аккаунта. Запоминает только явный выбор: переключатель языка (`useZoneLang`)
+  // и первый заход по префиксному адресу (`detectLandingLang`).
+  useEffect(() => {
+    const want = langFromAddress(pathname);
+    if (want) applyLang(want);
+  }, [pathname, applyLang]);
+
   // ★ ПРОКРУТКА К ЯКОРЮ ВЕДЁМ САМИ, А НЕ ОТДАЁМ БРАУЗЕРУ (TRIP-511).
   //
   // Без хеша — к верху (смену маршрута роутер не прокручивает). С хешем раньше
@@ -528,7 +572,12 @@ export function SiteZone({ children }) {
       cancelAnimationFrame(raf);
       userScrollEvents.forEach((e) => window.removeEventListener(e, onUserScroll, opts));
     };
-  }, [pathname, hash]);
+    // ★ КЛЮЧ — ПУТЬ БЕЗ ЯЗЫКОВОГО ПРЕФИКСА (TRIP-520). `/ru` → `/es` это ТА ЖЕ
+    // страница на другом языке, а не переход на другую: сбрось мы тут прокрутку,
+    // человек, сменивший язык на середине лендинга, оказывался бы в его начале —
+    // ровно то, на что и жаловались. Настоящий переход (`/` → `/terms`) меняет
+    // путь и без префикса, поэтому он прокрутку сбрасывает как прежде.
+  }, [barePath, hash]);
 
   // ★ <html lang> ЗДЕСЬ БОЛЬШЕ НЕ ЖИВЁТ (TRIP-515). Владелец атрибута — слой i18n
   // (I18nContext), один на всё приложение и зону. Локальная копия здесь была
@@ -575,7 +624,23 @@ export function SiteZone({ children }) {
   //
   // Только у испечённых страниц: у входа и восстановления языковых адресов нет
   // (готового файла на язык у них нет и быть не может), и обещать их нельзя.
+  //
+  // ★★ СНАЧАЛА СНОСИМ ЧУЖИЕ, ПОТОМ СТАВИМ СВОИ (TRIP-520). У испечённой страницы
+  // эти теги УЖЕ ЛЕЖАТ В ФАЙЛЕ — выпечка сняла их с этого же эффекта. Добавь мы
+  // рядом свои, и в живом документе оказалось бы ДВА canonical и ВОСЕМЬ
+  // hreflang (замер: ровно так и было). Для краулера без JS это незаметно — он
+  // читает файл; но Googlebot JavaScript ВЫПОЛНЯЕТ, и два спорящих canonical он
+  // вправе не принять ни один. То есть в PR, который делается ради поиска, мы
+  // ломали бы ровно поиск.
+  //
+  // Отсюда и порядок: эффект — ЕДИНСТВЕННЫЙ владелец этих тегов, и он начинает с
+  // того, что снимает все существующие, кем бы они ни были поставлены. Это же
+  // чинит вторую половину: на НЕ-прод хосте (превью, дев) теги из файла остались
+  // бы висеть с прод-адресами и уводили бы краулера со стенда на живой сайт —
+  // ровно то, что запрещает правило выше. Теперь на не-проде их просто нет.
   useEffect(() => {
+    const stale = document.querySelectorAll('link[rel="canonical"], link[rel="alternate"][hreflang]');
+    stale.forEach((link) => link.remove());
     if (!isProdHost || !isZonePage(pathname)) return undefined;
     const { path } = splitLangPath(pathname);
     const links = [];

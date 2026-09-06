@@ -97,6 +97,38 @@ const SNAPSHOT = () => {
   const push = (sel) => document.querySelectorAll(sel).forEach((el) => head.push(el.outerHTML));
   push('link[rel="canonical"]');
   push('link[rel="alternate"][hreflang]');
+
+  // ★ САМАЯ БОЛЬШАЯ КАРТИНКА СТРАНИЦЫ ОБЪЯВЛЯЕТСЯ В ДОКУМЕНТЕ (TRIP-520).
+  //
+  // Фон героя — это `background-image` в CSS, а не картинка в разметке, поэтому
+  // браузер узнаёт о нём только РАЗОБРАВ 288 КБ стилей. Замер (мобильный
+  // троттлинг 4x CPU / 1.6 Мбит): LCP 10.3 с, LCP-элемент — `.hero-fill`; сам
+  // файл мобильного кадра весит 597 КБ, то есть три секунды только на скачивание,
+  // и начинаются они позже, чем могли бы.
+  //
+  // Объявление честно живёт ИМЕННО ЗДЕСЬ, а не в шаблоне: `index.html` один на
+  // все маршруты, и статический preload героя заставлял бы качать его на экранах
+  // приложения (ровно ловушка TRIP-328, из-за которой мы не предзагружаем
+  // шрифты). Испечённый файл — один на страницу, и на нём это утверждение верное.
+  //
+  // ★ ПУТИ НЕ ВЫПИСАНЫ РУКАМИ: они читаются с живой страницы из тех же
+  // custom properties, которыми фон и задан. Вторая копия пути разошлась бы с
+  // CSS на первой же замене фотографии — молча, потому что сверять её не с чем.
+  const hero = document.querySelector('.hero');
+  if (hero) {
+    const cs = getComputedStyle(hero);
+    // `image-set(url("a") 1x, url("b") 2x)` и `url("a")` — берём все адреса подряд.
+    const urls = (name) => [...cs.getPropertyValue(name).matchAll(/url\("?([^")]+)"?\)/g)].map((m) => m[1]);
+    const mob = urls('--hero-m');
+    const desk = urls('--hero-a');
+    // Порог 981px — тот же, что у `.hero-layer.la` в site.css (пинится тестом):
+    // на телефоне кадр мобильный, шире — десктопный, и качать надо ровно один.
+    if (mob[0]) head.push(`<link rel="preload" as="image" href="${mob[0]}" media="(max-width: 980px)" fetchpriority="high">`);
+    if (desk[0]) {
+      const srcset = desk.length > 1 ? ` imagesrcset="${desk[0]} 1x, ${desk[1]} 2x"` : '';
+      head.push(`<link rel="preload" as="image" href="${desk[0]}"${srcset} media="(min-width: 981px)" fetchpriority="high">`);
+    }
+  }
   // JSON-LD страницы (FAQPage и прочее) — общесайтовый блок уже в шаблоне.
   document.querySelectorAll('script[type="application/ld+json"]').forEach((el) => {
     if (!el.textContent.includes('"@graph"')) head.push(el.outerHTML);
