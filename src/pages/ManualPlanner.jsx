@@ -24,7 +24,7 @@ import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
-import { normalizeStep, stepEntryFrom, resolveBack } from '@/pages/create/stepUrl';
+import { normalizeStep, stepEntryFrom, resolveBack, nextStepState } from '@/pages/create/stepUrl';
 import FlowMap from '@/pages/create/FlowMap';
 import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
@@ -905,21 +905,24 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // ── Шаг визарда = АДРЕС, а не useState (TRIP-520) ──────────────────────────
   // `?step=` — единственный источник позиции; из этого браузерная / аппаратная /
-  // свайп-назад сами ходят по шагам. Писатель ОДИН (`setStep`), как `?lens=` на
-  // экране трипа. Дефолтный `home` в адрес не пишется.
+  // свайп-назад сами ходят по шагам. Пишет адрес ОДНА функция (`writeStep`), как
+  // `?lens=` на экране трипа. Дефолтный `home` в адрес не пишется.
   const [sp, setSearchParams] = useSearchParams();
   const location = useLocation();
   const step = normalizeStep(sp.get('step'), { citiesValid });
-  const setStep = (id, intent) => {
+  // ★ ЕДИНСТВЕННЫЙ писатель адреса шага. Все три места (переход, восстановление
+  // черновика, сброс) идут сюда, поэтому `state.depth` не теряется ни на одном
+  // `replace` — иначе «назад» снова путает шаг с выходом (`resolveBack`).
+  // `advance` = переход на новый шаг (push, глубина +1); restore/reset — replace
+  // в ту же запись с сохранением глубины. `state.from` — намерение для аналитики
+  // (на POP его не читаем).
+  const writeStep = (id, { intent, replace = false, advance = false } = {}) => {
     const next = new URLSearchParams(sp);
     if (id === 'home') next.delete('step'); else next.set('step', id);
-    // `state.from` — намерение писателя для аналитики; на POP его не читаем.
-    // `state.depth` — сколько шагов протолкнуто над входом во флоу: свойство
-    // ЗАПИСИ истории, поэтому «назад» отличает шаг от выхода даром (`resolveBack`),
-    // даже когда прыжок по рейлу вернул адрес на `home` (см. `requestBack`).
-    const depth = (location.state?.depth ?? 0) + 1;
-    setSearchParams(next, { replace: false, state: { from: intent, depth } });
+    setSearchParams(next, { replace, state: nextStepState(location.state, { intent, advance }) });
   };
+  // Переход между шагами (goNext / onJump) — единственный push-писатель.
+  const setStep = (id, intent) => writeStep(id, { intent, advance: true });
 
   // Restore from sessionStorage on mount - only for the current user
   useEffect(() => {
@@ -933,11 +936,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         // что сам факт записи почти всегда true и метрику бы обнулил.
         setResumed(saved.nodes?.length > 0 || (isAi && saved.aiMessages?.length > 1));
         // Адрес главнее хранилища: сохранённый шаг въезжает в URL только если в
-        // адресе шага ещё нет, и через replace (это восстановление, не переход).
+        // адресе шага ещё нет, и через replace (восстановление, не переход) —
+        // глубину текущей записи `writeStep` при этом сохраняет.
         if (saved.step && saved.step !== 'home' && !sp.get('step')) {
-          const next = new URLSearchParams(sp);
-          next.set('step', saved.step);
-          setSearchParams(next, { replace: true });
+          writeStep(saved.step, { replace: true });
         }
         if (saved.nodes?.length) setNodes(saved.nodes);
         if (saved.tripTitle) setTripTitle(saved.tripTitle);
@@ -1210,11 +1212,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // Reset draft and go back to step 1
   const resetToStart = () => {
-    // Возврат на шаг 1 через REPLACE (не setStep, тот пушит): «назад» не должен
-    // воскрешать только что стёртый шаг с пустым черновиком.
-    const cleared = new URLSearchParams(sp);
-    cleared.delete('step');
-    setSearchParams(cleared, { replace: true });
+    // Возврат на шаг 1 через REPLACE (тем же единственным писателем): «назад» не
+    // воскрешает стёртый шаг, а глубина СОХРАНЯЕТСЯ — сброс это действие внутри
+    // шага, а не навигация, поэтому «назад» после него остаётся шагом (и лейбл
+    // «Назад», а не ложный выход в никуда).
+    writeStep('home', { replace: true });
     setNodes([]);
     setStartDateRaw(defaultStartISO());
     setTripTitle('');
@@ -1621,7 +1623,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     <>
       {showFooter && (
         <div className="lp-f flow-foot">
-          {!isFirstStep && <Btn variant="secondary" onClick={requestBack} disabled={saving}>{t('planner.back')}</Btn>}
+          {/* Видимость футерной «Назад» — по ГЛУБИНЕ истории (как её действие),
+              а не по `isFirstStep` (адрес): иначе на прыжке рейлом на home кнопка
+              пряталась бы, хотя шаг назад есть. Тот же разлом «я в начале», что
+              порождал блокер 1. */}
+          {backDepth > 0 && <Btn variant="secondary" onClick={requestBack} disabled={saving}>{t('planner.back')}</Btn>}
           {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
               icon in the header) — nav actions all live in the action bar. It
               also shows on the AI entry step (step 1), where a conversation can

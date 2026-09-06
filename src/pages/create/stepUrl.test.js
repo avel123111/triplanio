@@ -15,11 +15,13 @@
  *   · `stepEntryFrom`: вернуть `intent` без белого списка → падает «мусорное намерение → direct»;
  *   · `normalizeStep`: снять `return` из гейта городов → падает «return без городов → cities»;
  *   · `resolveBack`: заменить `depth > 0` на `depth >= 0` → падает «на дне флоу это выход»;
- *   · `resolveBack`: игнорировать `enteredByPush` → падает «прямой заход уходит на /trips».
+ *   · `resolveBack`: игнорировать `enteredByPush` → падает «прямой заход уходит на /trips»;
+ *   · `nextStepState`: на `advance:false` вернуть `depth:0` → падает «replace теряет глубину»;
+ *   · `nextStepState`: на `advance:true` не прибавлять 1 → падает «переход не углубляет».
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeStep, stepEntryFrom, resolveBack } from './stepUrl.js';
+import { normalizeStep, stepEntryFrom, resolveBack, nextStepState } from './stepUrl.js';
 
 // ─── normalizeStep ───────────────────────────────────────────────────────────
 test('normalizeStep: канонические шаги проходят как есть', () => {
@@ -95,4 +97,18 @@ test('resolveBack: на дне флоу — выход, направление �
   assert.equal(resolveBack({ depth: 0, enteredByPush: true }), 'exit-history');
   assert.equal(resolveBack({ depth: 0, enteredByPush: false }), 'exit-trips');
   assert.equal(resolveBack({}), 'exit-trips'); // дефолты: дно, не push
+});
+
+// ─── nextStepState (глубину нельзя терять ни одному писателю) ─────────────────
+test('nextStepState: переход углубляет (+1), намерение переносится', () => {
+  assert.deepEqual(nextStepState(null, { intent: 'next', advance: true }), { from: 'next', depth: 1 });
+  assert.deepEqual(nextStepState({ depth: 3 }, { intent: 'jump', advance: true }), { from: 'jump', depth: 4 });
+});
+
+test('nextStepState: replace (restore/reset) СОХРАНЯЕТ глубину, не роняет в 0', () => {
+  // Ровно тот инвариант, что был нарушен: restore/reset писали `replace` без
+  // state, depth утекал в 0 и «назад» снова путал шаг с выходом.
+  assert.equal(nextStepState({ depth: 3 }).depth, 3);
+  assert.equal(nextStepState({ depth: 5 }, { advance: false }).depth, 5);
+  assert.equal(nextStepState(null).depth, 0); // дна нет — 0, как и было
 });

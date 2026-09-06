@@ -56,6 +56,23 @@ export function resolveBack({ depth = 0, enteredByPush = false } = {}) {
 }
 
 /**
+ * `state` следующей записи адреса. ★ ГЛУБИНА — СВОЙСТВО ЗАПИСИ, И ТЕРЯТЬ ЕЁ
+ * НЕЛЬЗЯ: адрес пишут три места (переход, восстановление черновика, сброс), и
+ * если хоть одно на `replace` не перенесёт `depth`, «назад» снова спутает шаг с
+ * выходом (`resolveBack` увидит ложное дно). Поэтому сборку `state` держит одна
+ * чистая функция, а все писатели зовут её.
+ *   · `advance` (переход на новый шаг, push) → глубина +1;
+ *   · иначе (restore / reset, replace в ТУ ЖЕ запись) → глубина сохраняется.
+ * @param {{ depth?: number } | null | undefined} prevState
+ * @param {{ intent?: string, advance?: boolean }} [opts]
+ * @returns {{ from: string | undefined, depth: number }}
+ */
+export function nextStepState(prevState, { intent, advance = false } = {}) {
+  const depth = prevState?.depth ?? 0;
+  return { from: intent, depth: advance ? depth + 1 : depth };
+}
+
+/**
  * Как попали на текущий шаг — для аналитики воронки (`from` в
  * `trip_creation_step_opened`).
  *
