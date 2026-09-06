@@ -39,7 +39,8 @@ import { join, dirname } from 'node:path';
 import { chromium } from 'playwright-core';
 
 import { serveDist } from './_serve.mjs';
-import { SHELL_FILE, fileFor, platformServedPrefixes } from './prerenderPaths.mjs';
+import { SHELL_FILE, fileFor } from './prerenderPaths.mjs';
+import { platformServedPrefixes } from './platformPaths.mjs';
 import { compose } from './composePage.mjs';
 import { prerenderedUrls } from '../../src/lib/routePaths.js';
 

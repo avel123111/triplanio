@@ -5,9 +5,14 @@
 // гарду, и самой выпечке. Живи он внутри `prerender.mjs`, каждый читатель тащил
 // бы за собой playwright — то есть браузер грузился бы там, где нужен список
 // строк. Зависимость здесь одна и чистая: перечень адресов.
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-
+//
+// ★★ И ОНА ОБЯЗАНА ОСТАТЬСЯ ЧИСТОЙ. Этот модуль импортирует `middleware.js`
+// (ему нужно имя оболочки для честной 404), а middleware исполняется на краю,
+// где модулей Node НЕТ. Стоило завести здесь `node:fs`, и выкладка упала уже
+// ПОСЛЕ успешной сборки: «The Edge Function "middleware" is referencing
+// unsupported modules: node:fs, node:url». Сборка при этом зелёная — увидеть это
+// можно только на платформе, поэтому инвариант закрыт тестом
+// (`edge-imports.test.mjs`). Всё, что читает файлы, живёт в `platformPaths.mjs`.
 import { prerenderedUrls } from '../../src/lib/routePaths.js';
 
 /**
@@ -35,27 +40,4 @@ export function fileFor(url) {
 /** Все документы выпечки — по файлу на адрес. @returns {string[]} */
 export function prerenderedDocPaths() {
   return prerenderedUrls().map(fileFor);
-}
-
-/**
- * Пути, которые на проде отдаёт ПЛАТФОРМА, а не каталог сборки.
- *
- * Источник — `vercel.json`: всякое переписывание, ведущее НЕ в оболочку SPA,
- * уводит запрос наружу (аналитика, прокси-функция). Плюс `/_vercel/` — его
- * платформа обслуживает сама, в конфиге его нет.
- *
- * Из шаблона источника берётся литеральный префикс до первого параметра:
- * `/ingest/static/:path(.*)` → `/ingest/static/`. Этого достаточно — нам нужно
- * лишь понять, наш ли это файл.
- *
- * @returns {string[]}
- */
-export function platformServedPrefixes() {
-  const config = JSON.parse(readFileSync(fileURLToPath(new URL('../../vercel.json', import.meta.url)), 'utf8'));
-  const fromConfig = (config.rewrites || [])
-    .filter((rule) => rule.destination !== `/${SHELL_FILE}`)
-    .map((rule) => rule.source.split('/:')[0])
-    .filter((prefix) => prefix && prefix !== '/')
-    .map((prefix) => `${prefix}/`);
-  return [...new Set([...fromConfig, '/_vercel/'])];
 }

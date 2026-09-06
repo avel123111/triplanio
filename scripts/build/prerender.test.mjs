@@ -15,7 +15,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { compose } from './composePage.mjs';
-import { fileFor, prerenderedDocPaths, platformServedPrefixes, SHELL_FILE } from './prerenderPaths.mjs';
+import { fileFor, prerenderedDocPaths, SHELL_FILE } from './prerenderPaths.mjs';
+import { platformServedPrefixes } from './platformPaths.mjs';
 import { prerenderedUrls } from '../../src/lib/routePaths.js';
 
 /** Шаблон в том виде, в каком его отдаёт сборка: заставка на месте, теги общие. */
