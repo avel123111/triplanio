@@ -43,7 +43,8 @@
     "check:site-dup": "node scripts/ci/check-site-primitive-dup.mjs",
     "check:proto": "node scripts/ci/compare-prototype.mjs",
     "check:destructive": "node scripts/ci/check-destructive-confirm.mjs",
-    "check:surfaces": "node scripts/ci/check-surface-behaviour.mjs"
+    "check:surfaces": "node scripts/ci/check-surface-behaviour.mjs",
+    "check:time": "node scripts/ci/check-time-arithmetic.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",
