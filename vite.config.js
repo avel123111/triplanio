@@ -172,7 +172,7 @@ export default defineConfig({
         // Список берётся из того же источника, что и сама выпечка, — второй
         // перечень адресов разъехался бы с первым на первой новой странице.
         const docs = ['index.html', 'app.html', ...prerenderedDocPaths()];
-        for (const [rel, strip] of [...docs.map((d) => [d, stripHtml]), ['site.css', stripCss]]) {
+        for (const [rel, strip] of [...docs.map((d) => [d, stripHtml]), ['site.css', stripCss], ['fonts.css', stripCss]]) {
           const file = join(out, rel);
           if (!existsSync(file)) continue;
           writeFileSync(file, strip(readFileSync(file, 'utf8')));

@@ -83,6 +83,14 @@
     <meta name="google-site-verification" content="Jtn6m7Y4ILNIefFuOmuzt63AyuQohMoUmxVg8kJyiow" />
     <meta name="impact-site-verification" value="75cd6594-dce5-4983-9116-8ad4086f84a6" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- ★★ ЛИЦА ШРИФТОВ — ПЕРВЫМИ И БЛОКИРУЮЩЕ (TRIP-520).
+         Их нужно объявить ДО первого кадра, иначе текст успевает нарисоваться
+         системной гарнитурой и перенабирается, когда лица приедут. Отдельной
+         таблицей, а не внутри стилей приложения: те у испечённых страниц
+         неблокирующие, и шрифты вместе с ними откладывались на полсекунды
+         ПОСЛЕ отрисовки (замер: кадр 1812 мс, запрос за шрифтом 2525 мс).
+         Файл общий на оба слоя — разбор в его шапке. -->
+    <link rel="stylesheet" href="/fonts.css" />
     <title>Triplanio — Your whole trip. One beautiful plan.</title>
     <!-- ★ ОДИН текст на три тега: description / og:description / twitter:description.
          Две формулировки одного и того же разъезжаются на первой правке — а поиск
@@ -156,7 +164,7 @@
          статический <link rel=preload as=font> здесь оказывается «unused» на части роутов →
          варнинг "was preloaded but not used" (ловушка TRIP-202); ручной список ещё и молча
          протухает при смене типографики (так появился мёртвый preload Exo 2 после TRIP-410).
-         Корректность и раннюю отрисовку дают сами @font-face (src/design/fonts.css):
+         Корректность и раннюю отрисовку дают сами @font-face (public/fonts.css):
          font-display:swap (текст сразу в fallback, без FOIT) + unicode-range (грузится только
          нужный сабсет). В этом SPA HEAD-preload шрифтов — нетто-вредный микро-опт: LCP задаёт
          fallback-кадр, а лишние высокоприоритетные woff2 отнимают полосу у критичного бандла. -->
