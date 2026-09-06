@@ -27,7 +27,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
 import { guestEntryPath } from '@/lib/authEntry';
-import { withLangPath, DEFAULT_LANG } from '@/lib/routePaths';
+import { withLangPath } from '@/lib/routePaths';
 
 /** Куда ведёт CTA уже вошедшего. Одно место на всю зону.
  *
@@ -83,8 +83,24 @@ export function isPlainLeftClick(e) {
  * @returns {string}
  */
 export function useZonePath(path) {
-  const { routeLocale } = useI18n();
-  return withLangPath(routeLocale ?? DEFAULT_LANG, path);
+  const { routeLocale, lang } = useI18n();
+  // ★★ НЕТ ЛОКАЛИ У АДРЕСА — БЕРЁМ ЯЗЫК, КОТОРЫЙ ЧЕЛОВЕК СЕЙЧАС ВИДИТ, А НЕ
+  // АНГЛИЙСКИЙ ПО УМОЛЧАНИЮ (TRIP-520).
+  //
+  // Локаль есть только у переведённых страниц (`localeOf` → лендинг и демо). У
+  // юр-документов её нет и быть не может — они английские по решению TRIP-465
+  // §7, — но ОБВЯЗКА у них переведена и язык там честно берётся из профиля или
+  // из выбора посетителя. Фолбэк на `DEFAULT_LANG` этот язык терял, и терял
+  // молча, ровно на выходе:
+  //
+  //     /ru  →  «Terms»  →  /terms (обвязка русская)  →  логотип  →  /  (английский)
+  //
+  // То есть тот самый дефект, ради которого заведён `zonePath`, оставался на
+  // единственном пути, где язык лежит НЕ в адресе. `lang` — уже сложенный слоями
+  // ответ (`адрес ?? профиль ?? посетитель`), поэтому здесь он и нужен: на
+  // переведённой странице верхний слой всё равно победит через `routeLocale`, а
+  // вне её ссылка наследует язык экрана.
+  return withLangPath(routeLocale ?? lang, path);
 }
 
 /**
