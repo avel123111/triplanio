@@ -47,6 +47,44 @@ import { prerenderedUrls } from '../../src/lib/routePaths.js';
 const PROD_HOST = 'www.triplanio.com';
 const PORT = 5099;
 
+/**
+ * ★ ГДЕ ВЗЯТЬ БРАУЗЕР В СБОРОЧНОМ КОНТЕЙНЕРЕ (TRIP-520).
+ *
+ * Фронт собирается НА СТОРОНЕ VERCEL — так решено в TRIP-134: часть переменных
+ * помечена Sensitive и приезжает только там, собери мы локально с `--prebuilt`,
+ * в бандл уехали бы пустые `VITE_*` и белый экран. Значит и выпечка идёт в их
+ * контейнере.
+ *
+ * ПЕРВАЯ ПОПЫТКА БЫЛА НЕВЕРНОЙ и стоила красной сборки: `playwright install
+ * chromium` там отрабатывает (114 МБ качаются), а запуск падает —
+ * `libnspr4.so: cannot open shared object file`. Образ Vercel — Amazon Linux, в
+ * нём нет системных библиотек, которые нужны обычной сборке Chromium, и
+ * доставить их в сборку нечем.
+ *
+ * Поэтому браузер берётся из `@sparticuz/chromium` — сборки, сделанной ровно под
+ * эту платформу: она везёт свои библиотеки с собой и не зависит от того, что
+ * оказалось в образе.
+ *
+ * Порядок поиска — от явного к общему:
+ *   1. `PRERENDER_CHROMIUM` — путь назван снаружи (наш dev-контейнер);
+ *   2. `@sparticuz/chromium` — серверless-сборка, ею живёт CI;
+ *   3. то, что найдёт сам playwright — обычная машина разработчика.
+ */
+async function resolveBrowser() {
+  if (process.env.PRERENDER_CHROMIUM) {
+    return { executablePath: process.env.PRERENDER_CHROMIUM, extraArgs: [] };
+  }
+  // Выбор по СРЕДЕ, а не «попробуй и посмотри»: серверless-сборка собрана под
+  // Amazon Linux и на обычной машине разработчика не запустится, а браузер
+  // playwright — наоборот. Гадание здесь дало бы разное поведение у разных
+  // людей на одном и том же коде.
+  if (process.env.VERCEL) {
+    const { default: serverless } = await import('@sparticuz/chromium');
+    return { executablePath: await serverless.executablePath(), extraArgs: serverless.args };
+  }
+  return { executablePath: undefined, extraArgs: [] };
+}
+
 /** Снять со страницы всё, что должно попасть в файл. */
 const SNAPSHOT = () => {
   const head = [];
@@ -84,12 +122,20 @@ export async function prerender(outDir) {
   // из уже испечённого лендинга и утаскивала в свою шапку его canonical и
   // его список языков (замер: у `/terms` появлялись hreflang лендинга).
   const srv = await serveDist(outDir, PORT, (p) => missed.push(p), SHELL_FILE);
+  const { executablePath, extraArgs } = await resolveBrowser();
   const browser = await chromium.launch({
-    // Путь называется снаружи там, где браузер положен заранее (наш
-    // dev-контейнер); в сборке Vercel его ставит `ensure-chromium.mjs`, и
-    // playwright находит его сам.
-    ...(process.env.PRERENDER_CHROMIUM ? { executablePath: process.env.PRERENDER_CHROMIUM } : {}),
-    args: [`--host-resolver-rules=MAP ${PROD_HOST}:80 127.0.0.1:${PORT}`, '--no-sandbox'],
+    ...(executablePath ? { executablePath } : {}),
+    args: [...extraArgs, `--host-resolver-rules=MAP ${PROD_HOST}:80 127.0.0.1:${PORT}`, '--no-sandbox'],
+  }).catch((e) => {
+    // Падаем громко и с адресом проблемы: молчаливый пропуск выпечки означал бы
+    // прод, в котором публичные страницы снова пусты для машин, — и никто бы
+    // об этом не узнал. Аварийный клапан назван прямо, чтобы красную выкладку
+    // можно было разблокировать без отката.
+    throw new Error(
+      `prerender: браузер не запустился — ${e.message}\n`
+      + '  Выпечка обязательна: без неё публичные страницы уезжают в прод пустыми для поисковиков.\n'
+      + '  Разблокировать выкладку, не откатывая PR: переменная сборки SKIP_PRERENDER=1 (осознанно и временно).',
+    );
   });
   const started = Date.now();
   try {
