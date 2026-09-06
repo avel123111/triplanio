@@ -5,6 +5,7 @@ import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 import { callerStep } from '../_shared/tripAccess.ts';
 import { clearsStep } from '../_shared/tripStep.ts';
+import { envTag } from '../_shared/envTag.ts';
 
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/group-chat';
 
@@ -119,11 +120,18 @@ Deno.serve(withHandler('callTriplanioAi', async (req, corsHeaders) => {
     // на dev-вопрос уходил в прод-проект и умирал там с 404 «Chat not found» —
     // dev-чат с ассистентом не работал ни дня, а сгенерированные (и оплаченные)
     // ответы выбрасывались (TRIP-296).
+    //
+    // `env` — та же метка окружения, что у конверта notify и остальных вызовов
+    // n8n (`_shared/envTag.ts`, секрет SENTRY_ENVIRONMENT). Здесь окружение до
+    // сих пор читалось ТОЛЬКО из формы `domain`, то есть ветвиться по нему
+    // воркфлоу мог лишь разбором адреса; теперь у всех вызовов один предикат.
+    // `domain` остаётся: по нему n8n собирает адрес колбэка.
     const payload = {
       message_id: messageId,
       chat_id: msg.chat_id,
       trip_id: msg.trip_id,
       domain: Deno.env.get('SUPABASE_URL'),
+      env: envTag(),
       user_message: msg.text || '',
       requested_by: {
         user_id: user.id,
