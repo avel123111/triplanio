@@ -22,11 +22,18 @@ import { displayName } from '@/lib/displayName';
  *   isPro         - boolean; renders the PRO badge by the avatar
  *   isDark        - boolean; picks sun/moon icon
  *   onToggleTheme - () => void
+ *   confirmLeave  - optional async gate (TRIP-520); when set, Profile / Logout /
+ *                   the bell's exits ask before leaving. Absent → direct action.
+ *
+ * @param {{ user?: any, isPro?: boolean, isDark?: boolean, onToggleTheme: () => void,
+ *           confirmLeave?: () => Promise<boolean> }} p
  */
-export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
+export default function HeaderActions({ user, isPro, isDark, onToggleTheme, confirmLeave }) {
   const t = useT();
   const nav = useNavigate();
   const { logout } = useAuth();
+  // Обернуть действие гейтом ухода, если он передан (иначе — само действие).
+  const guard = (fn) => (confirmLeave ? async () => { if (await confirmLeave()) fn(); } : fn);
   return (
     <div className="row row--g4">
       {/* ★TRIP-344: сторону этим двум кнопкам задаёт не ступень, а контекстное
@@ -42,10 +49,11 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
         ariaLabel={t('nav.toggle_theme')}
         onClick={onToggleTheme}
       />
-      <NotificationsBell />
+      <NotificationsBell confirmLeave={confirmLeave} />
       {/* Клик по профилю → канон-меню (ActionMenu): «Профиль» ведёт на аккаунт-экран
-          (тот же адрес, что раньше открывал аватар), «Выйти» — logout из AuthContext
-          (прямое действие, без confirm — как кнопка выхода в ScreenAccount). */}
+          (тот же адрес, что раньше открывал аватар), «Выйти» — logout из AuthContext.
+          Оба пункта проходят через `guard`: во флоу создания (TRIP-520) — с
+          конфирмом ухода, на остальных экранах (без `confirmLeave`) — напрямую. */}
       <ActionMenu
         align="end"
         title={t('nav.account')}
@@ -61,8 +69,8 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
           </button>
         )}
         items={[
-          { icon: 'user', label: t('nav.profile'), onSelect: () => nav('/settings') },
-          { icon: 'logout', label: t('auth.logout'), onSelect: () => logout() },
+          { icon: 'user', label: t('nav.profile'), onSelect: guard(() => nav('/settings')) },
+          { icon: 'logout', label: t('auth.logout'), onSelect: guard(() => logout()) },
         ]}
       />
     </div>

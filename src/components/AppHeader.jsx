@@ -66,6 +66,9 @@ export function BrandSlot({ onClick, title, back = false }) {
  *   backTitle — tooltip / aria-label for the back button
  *   title     — optional trip title (enables the trip block)
  *   meta      — optional trip meta node (e.g. dates · days · cities)
+ *   confirmLeave — optional async gate (TRIP-520): when set, the brand/logo click
+ *                  and the utility-cluster exits ask before leaving. Without it
+ *                  the header behaves exactly as before (only the planner passes it).
  */
 /**
  * ⚠️ Аннотация обязательна: без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ и делает
@@ -90,7 +93,8 @@ export function BrandSlot({ onClick, title, back = false }) {
  *
  * @param {{ user?: any, isPro?: boolean, isDark?: boolean, onToggleTheme: () => void,
  *           onBrand?: () => void, onBack?: () => void, backTitle?: string,
- *           title?: any, meta?: any, isTrip?: boolean }} p
+ *           title?: any, meta?: any, isTrip?: boolean,
+ *           confirmLeave?: () => Promise<boolean> }} p
  */
 export default function AppHeader({
   user,
@@ -103,10 +107,14 @@ export default function AppHeader({
   title,
   meta,
   isTrip = false,
+  confirmLeave,
 }) {
   const nav = useNavigate();
   const t = useT();
-  const goBrand = onBrand || (() => nav('/trips'));
+  // TRIP-520: с `confirmLeave` знак бренда сначала спрашивает (гейт сам решает,
+  // есть ли что терять), затем уходит. Без пропа — прямой уход, как раньше.
+  const rawBrand = onBrand || (() => nav('/trips'));
+  const goBrand = confirmLeave ? async () => { if (await confirmLeave()) rawBrand(); } : rawBrand;
   const hasTrip = title != null || meta != null;
 
   return (
@@ -142,7 +150,7 @@ export default function AppHeader({
       </div>
 
       <div className="app-header__right">
-        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
+        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} confirmLeave={confirmLeave} />
       </div>
     </header>
   );

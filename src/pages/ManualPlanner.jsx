@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, useNavigationType } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { tripShellQuery, tripContentQuery } from '@/lib/invokeTripFn';
@@ -24,6 +24,7 @@ import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
+import { normalizeStep, stepEntryFrom } from '@/pages/create/stepUrl';
 import FlowMap from '@/pages/create/FlowMap';
 import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
@@ -39,6 +40,11 @@ import {
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
+
+// Monotonic clock for measuring a plan call's duration (n8n + LLM). performance
+// where available, Date otherwise — a plain elapsed number for analytics.
+const nowMs = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+const elapsedMs = (startedAt) => Math.round(nowMs() - (startedAt ?? nowMs()));
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
 function daysBetweenISO(a, b) {
@@ -705,40 +711,13 @@ function Stat({ label, value, hint, warn }) {
   );
 }
 
-function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
-  const nav = useNavigate();
+function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, error }) {
   const t = useT();
   const { lang } = useI18n();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = computeAutoTitle(home, cities, t);
-  const displayTitle = tripTitle || autoTitle;
-
-  if (savedOk) {
-    return (
-      <EmptyState
-        icon="check"
-        kind="success"
-        title={t('planner.created_title')}
-        body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
-        action={(
-          <>
-            {/* Экран успеха ведёт в СЕКЦИЮ РЕДАКТОРА, а не на обзор: маршрут только
-                что собран, и следующий шаг — брони, то есть ровно то, чем занят
-                редактор. `?lens=` пишем адресом — он и есть источник истины для
-                секции (единственный писатель `setLens` живёт в TripView и пишет
-                туда же).
-                `state.from` — канал «как сюда попали», НЕ часть адреса: по нему
-                оболочка один раз проигрывает вход (рейл выезжает). Именно
-                состояние навигации, а не параметр в URL и не глобал: оно не
-                переживает перезагрузку — ровно то, что нужно одноразовой
-                анимации, и закладка/копипаст ссылки её не тащат. */}
-            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
-            <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
-          </>
-        )}
-      />
-    );
-  }
+  // Экран успеха живёт не здесь, а ранним return в ManualPlanner (TRIP-520): он
+  // терминален и не должен зависеть от того, на каком шаге стоит адрес.
 
   return (
     <div className="col col--g6 pl-review">
@@ -862,7 +841,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const isOverLimit = isBlocked;
 
   // ── Wizard state ─────────────────────────────────────────────────────────
-  const [step, setStep]             = useState('home');
+  // NB: `step` больше НЕ состояние — это адрес (`?step=`, ниже, TRIP-520).
   const [startDate, setStartDateRaw] = useState(defaultStartISO()); // YYYY-MM-DD, trip start; prefilled +1 month
   // ★ МАРШРУТ — ОДИН СПИСОК УЗЛОВ, КАК В РЕДАКТОРЕ (TRIP-484 §4). Было три
   // переменные: `home` (старт), `cities` (список) и `end` (`null | город |
@@ -879,6 +858,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [savedTripId, setSavedTripId] = useState(null);
   const [error, setError]           = useState(null);
   const [restored, setRestored]     = useState(false);
+  // Черновик существовал в sessionStorage на монтировании (возврат к брошенному).
+  const [resumed, setResumed]       = useState(false);
   /* Композер города открыт — шаг не завершён. «Далее» с открытым композером
      уводило бы с шага, бросив наполовину введённый город: он нигде не
      сохранён и просто исчезал. Факт приходит из шага одним каналом
@@ -908,6 +889,33 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // so follow-up messages refine the draft.
   const [aiMessages, setAiMessages]         = useState(() => (isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []));
 
+  // ★ МАРШРУТ — ВЫВОД ИЗ СПИСКА УЗЛОВ (перенесено к началу: нормализация шага из
+  // адреса читает `citiesValid`, а он выводится из городов). Карта, ревью и
+  // сохранение читают ЭТИ узлы — второго источника правды по маршруту нет.
+  const home = startOf(nodes);
+  const endNode = endOf(nodes);
+  // Города для карты и ревью — всё, кроме якорей. «Останусь» отдельным узлом не
+  // лежит, поэтому и вычитать из списка нечего: последний город остаётся городом.
+  const cities = cityNodesOf(nodes);
+  const lastCity = cities[cities.length - 1] || null;
+  /* Финиш — ЭТО УЗЕЛ `end`, и другого его вида не бывает. Нет узла — маршрут
+     кончается последним городом («останусь»), и рисовать нечего. */
+  const finishCity = endNode;
+  const citiesValid = cities.length > 0 && cities.every((c) => c.city_name && c.latitude != null);
+
+  // ── Шаг визарда = АДРЕС, а не useState (TRIP-520) ──────────────────────────
+  // `?step=` — единственный источник позиции; из этого браузерная / аппаратная /
+  // свайп-назад сами ходят по шагам. Писатель ОДИН (`setStep`), как `?lens=` на
+  // экране трипа. Дефолтный `home` в адрес не пишется.
+  const [sp, setSearchParams] = useSearchParams();
+  const step = normalizeStep(sp.get('step'), { citiesValid });
+  const setStep = (id, intent) => {
+    const next = new URLSearchParams(sp);
+    if (id === 'home') next.delete('step'); else next.set('step', id);
+    // `state.from` — намерение писателя для аналитики; на POP его не читаем.
+    setSearchParams(next, { replace: false, state: { from: intent } });
+  };
+
   // Restore from sessionStorage on mount - only for the current user
   useEffect(() => {
     try {
@@ -915,7 +923,14 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const raw = sessionStorage.getItem(key);
       if (raw) {
         const saved = JSON.parse(raw);
-        if (saved.step) setStep(saved.step);
+        setResumed(true);
+        // Адрес главнее хранилища: сохранённый шаг въезжает в URL только если в
+        // адресе шага ещё нет, и через replace (это восстановление, не переход).
+        if (saved.step && saved.step !== 'home' && !sp.get('step')) {
+          const next = new URLSearchParams(sp);
+          next.set('step', saved.step);
+          setSearchParams(next, { replace: true });
+        }
         if (saved.nodes?.length) setNodes(saved.nodes);
         if (saved.tripTitle) setTripTitle(saved.tripTitle);
         if (saved.startDate) setStartDateRaw(saved.startDate);
@@ -934,6 +949,43 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, nodes, tripTitle, startDate, cover, aiState, aiMessages }));
     } catch {}
   }, [step, nodes, tripTitle, startDate, cover, aiState, aiMessages, restored, user?.id]);
+
+  // ── Аналитика воронки создания (TRIP-520) ──────────────────────────────────
+  // Вход в мастер живёт ЗДЕСЬ, а не на клике по карточке метода: там фри-юзер на
+  // кэпе давал событие, а планировщик не открывался, и со второй двери (ссылка,
+  // история, возврат к черновику) событие не рождалось вовсе.
+  const location = useLocation();
+  const navType = useNavigationType();
+  // Признак «вошли в мастер PUSH-ом» — тип навигации НА МОНТИРОВАНИИ (useRef берёт
+  // значение первого рендера). Нужен `requestBack` ниже; объявлен здесь, до любых
+  // ранних return, чтобы порядок хуков не зависел от ветки. Счётчик своих пушей не
+  // подошёл бы: на первом шаге он дал бы nav('/trips') PUSH-ом, и следующий
+  // аппаратный «назад» вернул бы человека обратно во флоу.
+  const enteredByPush = useRef(navType === 'PUSH').current;
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!restored || startedRef.current) return;
+    startedRef.current = true;
+    track('trip_creation_started', { method, resumed });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restored]);
+
+  // Открытие шага — ОДНА дверь (смена адреса): без Ф1 писателей было бы четыре и
+  // четвёртого забыли бы. Гард от двойного огня на восстановлении — пара
+  // `step + location.key`; шлём только после `restored` и на НОРМАЛИЗОВАННОМ шаге.
+  const stepSeenRef = useRef({ key: null, fired: false });
+  useEffect(() => {
+    if (!restored) return;
+    const evKey = `${step}|${location.key}`;
+    if (stepSeenRef.current.key === evKey) return;
+    const isFirst = !stepSeenRef.current.fired;
+    stepSeenRef.current = { key: evKey, fired: true };
+    track('trip_creation_step_opened', {
+      method, step,
+      from: stepEntryFrom({ isFirst, navType, intent: location.state?.from }),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, restored, location.key]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
   // Empty/invalid values are IGNORED - the trip start is required and can't be
@@ -1065,11 +1117,16 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       return data;
     },
     onMutate: (vars) => {
+      // `refine` — черновик уже был (повторный прогон), а не первая генерация.
+      const refine = aiState === 'draft';
+      const startedAt = nowMs();
+      track('ai_plan_requested', { refine });
       setAiState('generating'); setError(null);
       // The prompt becomes an outgoing chat message (the composer clears itself).
       setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'user', text: vars.promptText }]);
+      return { refine, startedAt };
     },
-    onSuccess: async (data) => {
+    onSuccess: async (data, _vars, ctx) => {
       const out = data?.output || {};
       const full = await applyAiDraft(out.draft || {});
       // The bot's reply = its text + a DISPLAY-ONLY snapshot of the itinerary it
@@ -1082,18 +1139,28 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       };
       setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '', draft }]);
       setAiState('draft');
+      track('ai_plan_returned', {
+        result: 'ok', refine: ctx?.refine,
+        city_count: (full.cities || []).length, duration_ms: elapsedMs(ctx?.startedAt),
+      });
     },
-    onError: (err) => {
+    onError: (err, _vars, ctx) => {
       setAiState(cities.length ? 'draft' : 'prompt');
       // TRIP-111: серверный rate-limit генераций → доменная копия; прочие отказы
       // словит errorText по машинному `code` (серверную прозу не показываем).
-      const description = err?.context?.status === 429
+      const rateLimited = err?.context?.status === 429;
+      const description = rateLimited
         ? t('ai_plan.error_rate_limited')
         : errorText(t, err?.code);
       // A bot bubble closes the turn so the outgoing message isn't left hanging; the
       // toast still carries the specific reason. Text is from i18n (never raw server prose).
       setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', kind: 'error' }]);
       toast({ title: t('ai_plan.error_plan_title'), description, variant: 'destructive' });
+      // duration отличает `error` от таймаута: вызов платный (n8n + LLM).
+      track('ai_plan_returned', {
+        result: rateLimited ? 'rate_limited' : 'error', refine: ctx?.refine,
+        city_count: 0, duration_ms: elapsedMs(ctx?.startedAt),
+      });
     },
   });
   const onGenerate = (promptText) => { if (promptText) planMut.mutate({ promptText }); };
@@ -1123,17 +1190,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   };
   const goNext = () => {
     const next = stepAt(visibleSteps.findIndex(s => s.id === step), +1);
-    if (next) setStep(next.id);
+    if (next) setStep(next.id, 'next');
   };
-  const goPrev = () => {
-    const i = visibleSteps.findIndex(s => s.id === step);
-    const prev = i > 0 ? stepAt(i, -1) : null;
-    if (prev) setStep(prev.id);
-  };
+  // `goPrev` удалён (TRIP-520): шаг назад делает история браузера (`nav(-1)` в
+  // `requestBack`), а пройденная ступень уже лежит записью — своего кода нет.
 
   // Reset draft and go back to step 1
   const resetToStart = () => {
-    setStep('home');
+    // Возврат на шаг 1 через REPLACE (не setStep, тот пушит): «назад» не должен
+    // воскрешать только что стёртый шаг с пустым черновиком.
+    const cleared = new URLSearchParams(sp);
+    cleared.delete('step');
+    setSearchParams(cleared, { replace: true });
     setNodes([]);
     setStartDateRaw(defaultStartISO());
     setTripTitle('');
@@ -1148,20 +1216,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
   };
 
-  // ★ ВСЁ, ЧЕМ ПОЛЬЗУЕТСЯ ОСТАЛЬНОЙ ЭКРАН, — ВЫВОД ИЗ СПИСКА, А НЕ СОСТОЯНИЕ.
-  // Так «маршрут» остаётся одним объектом: карта, ревью и сохранение читают одни
-  // и те же узлы, а не три переменные, которые обязаны сойтись.
-  const home = startOf(nodes);
-  const endNode = endOf(nodes);
-  // Города для карты и ревью — всё, кроме якорей. «Останусь» отдельным узлом не
-  // лежит, поэтому и вычитать из списка нечего: последний город остаётся городом.
-  const cities = cityNodesOf(nodes);
-  const lastCity = cities[cities.length - 1] || null;
-  /* Финиш — ЭТО УЗЕЛ `end`, и другого его вида не бывает. Нет узла — маршрут
-     кончается последним городом («останусь»), и рисовать нечего: ни пина, ни
-     ряда, ни бейджа. Отдельного признака у этого состояния нет намеренно —
-     признак и был тем, что заводил второй вид финиша. */
-  const finishCity = endNode;
+  // Маршрут (home/endNode/cities/finishCity/citiesValid) выведен из `nodes` выше,
+  // у деривации шага. Автозаголовок читает те же узлы.
   const autoTitle = computeAutoTitle(home, cities, t);
 
   // ── Ручки записи маршрута ──────────────────────────────────────────────────
@@ -1321,6 +1377,44 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     }
   };
 
+  // ── Экран успеха — ТЕРМИНАЛЬНОЕ состояние, не шаг (TRIP-520) ────────────────
+  // Раньше успех рисовал StepReview, то есть жил только на шаге `review`; с
+  // шагами в истории «назад» после сохранения попал бы на `cities` — и форма
+  // «Создать» ожила бы над уже созданным трипом. Ранний return делает `savedOk`
+  // независимым от шага и старше лимит-гейта (тот и так guard-ит `!savedOk`).
+  if (savedOk) {
+    const displayTitle = tripTitle || autoTitle;
+    const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
+    return (
+      <div className="flow-page">
+        <AppHeader
+          user={user}
+          isPro={isPro}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          onBack={() => nav('/trips')}
+          backTitle={t('notif.to_collection')}
+        />
+        <div className="grow row row--j-center">
+          <EmptyState
+            icon="check"
+            kind="success"
+            title={t('planner.created_title')}
+            body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
+            action={(
+              <>
+                {/* Ведёт в СЕКЦИЮ РЕДАКТОРА (маршрут только собран, дальше брони);
+                    `?lens=` пишем адресом, `state.from` — одноразовый вход. */}
+                <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
+                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
+              </>
+            )}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // ── Limit guard ───────────────────────────────────────────────────────────
   // The guard gates ENTERING / continuing creation while a free user is at the
   // cap — it must NOT override the terminal success screen. Saving the trip
@@ -1375,7 +1469,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // identical to the old per-step logic.
   const stepIdx = Math.max(0, visibleSteps.findIndex((s) => s.id === step));
   const isFirstStep = stepIdx === 0;
-  const citiesValid = cities.length > 0 && cities.every((c) => c.city_name && c.latitude != null);
+  // `citiesValid` выведен выше, у деривации шага (нужен нормализации адреса).
   const hasDraftData = !!home?.city_name || cities.length > 0 || !!finishCity?.city_name;
 
   // Reset asks for confirmation only when there's something to lose.
@@ -1390,6 +1484,26 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       if (!ok) return;
     }
     resetToStart();
+  };
+
+  // ── Одна «назад» на все двери (TRIP-520) ───────────────────────────────────
+  // Переписка с ботом — тоже работа, и она стоила денег: без второго слагаемого
+  // неудачная генерация «работой» не считается.
+  const hasWork = hasDraftData || (isAi && aiMessages.length > 1);
+  // Уход из флоу спрашивает, переход между шагами — нет. Один гейт на все девять
+  // дверей; механика конфирма — та же, что у `requestReset`.
+  const confirmLeave = async () => !hasWork || await confirm({
+    title: t('planner.leave_confirm_title'),
+    description: t('planner.leave_confirm_desc'),
+    variant: 'destructive',
+  });
+  // Кнопки «назад» (шапка/футер/круглая на телефоне) идут сюда. Шаг назад отдан
+  // истории; на выходе из флоу — конфирм (если есть что терять).
+  const requestBack = async () => {
+    if (savedOk) return nav('/trips');
+    if (!isFirstStep) return nav(-1);
+    if (!(await confirmLeave())) return;
+    return enteredByPush ? nav(-1) : nav('/trips');
   };
 
   let primaryLabel = t('planner.next');
@@ -1455,8 +1569,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             tripTitle={tripTitle}
             setTripTitle={setTripTitle}
             saving={saving}
-            savedOk={savedOk}
-            savedTripId={savedTripId}
             error={error}
           />
         )}
@@ -1489,7 +1601,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     <>
       {showFooter && (
         <div className="lp-f flow-foot">
-          {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
+          {!isFirstStep && <Btn variant="secondary" onClick={requestBack} disabled={saving}>{t('planner.back')}</Btn>}
           {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
               icon in the header) — nav actions all live in the action bar. It
               also shows on the AI entry step (step 1), where a conversation can
@@ -1510,9 +1622,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         isPro={isPro}
         isDark={isDark}
         onToggleTheme={toggleTheme}
-        onBack={() => nav('/trips')}
+        onBack={requestBack}
         backTitle={t('notif.to_collection')}
         title={isAi ? t('planner.step_home_ai') : t('trips.new')}
+        confirmLeave={confirmLeave}
       />
 
       {/* Раскладку «карта во всю площадь + панель поверх / шит на телефоне»
@@ -1537,7 +1650,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                 steps={visibleSteps}
                 current={stepIdx}
                 accent={isAi ? 'var(--ai)' : 'var(--brand)'}
-                onJump={(i) => setStep(visibleSteps[i].id)}
+                onJump={(i) => setStep(visibleSteps[i].id, 'jump')}
               />
             </div>
           </div>
@@ -1558,7 +1671,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               round
               tone="outline"
               ariaLabel={t('notif.to_collection')}
-              onClick={() => nav('/trips')}
+              onClick={requestBack}
             />
             <FlowMap
               view={view}
