@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { zoneHome } from '@/components/site/zoneCta';
-import { useI18n, useT } from '@/lib/i18n/I18nContext';
+import { useT } from '@/lib/i18n/I18nContext';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta, useZoneLang,
 } from '@/components/site/SiteChrome';
 import { SiteSummary, SiteCta } from '@/components/site/SiteTrip';
 import { useReveal } from '@/components/site/useReveal';
@@ -69,7 +69,7 @@ const CalBar = ({ day }) => (day.bar2
 );
 
 export default function DemoTrip() {
-  const { lang, setLang } = useI18n();
+  const { lang, setLang } = useZoneLang();
   const t = useT();
   const cssReady = useSiteCss();
 

@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useZoneCta } from '@/components/site/zoneCta';
+import { useZoneCta, zonePath } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
 import { useJsonLd, faqPageLd } from '@/components/site/jsonLd';
 import { withVisitCampaign } from '@/lib/analytics';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT } from '@/lib/i18n/I18nContext';
 import worldMapUrl from './world-map.svg?url';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta, useZoneLang,
 } from '@/components/site/SiteChrome';
 import { useReveal } from '@/components/site/useReveal';
 import { SiteCta } from '@/components/site/SiteTrip';
@@ -247,7 +247,7 @@ function Hero() {
   // тем же событием `cta_clicked`, что и финальный CTA `final_demo`:
   // единственное отличие — метка места `hero_demo` (верх воронки против низа).
   const cta = useZoneCta('hero');
-  const demo = useZoneCta('hero_demo', withVisitCampaign(DEMO_PATH));
+  const demo = useZoneCta('hero_demo', withVisitCampaign(zonePath(DEMO_PATH)));
   // Один текст героя на обе платформы (TRIP-510): десктоп и телефон делят одни
   // ключи `landing.hero.*`, различия раскладки живут только в CSS `@media`,
   // поэтому DOM единый — без ветки по брейкпоинту.
@@ -573,7 +573,7 @@ function FinalCta() {
   // Единственный CTA зоны, ведущий НЕ в продукт, — отсюда явный адрес. Метку
   // кампании визита он несёт так же, как остальные, и идёт через роутер, а не
   // голым <a href>, который её теряет (гард 2ad).
-  const demo = useZoneCta('final_demo', withVisitCampaign(DEMO_PATH));
+  const demo = useZoneCta('final_demo', withVisitCampaign(zonePath(DEMO_PATH)));
   return (
     <SiteCta
       secondary={(
@@ -951,7 +951,7 @@ function Recognize() {
 
 /* ── Main LandingPage ── */
 export default function LandingPage() {
-  const { lang, setLang } = useI18n();
+  const { lang, setLang } = useZoneLang();
   const t = useT();
 
   const cssReady = useSiteCss();

@@ -49,6 +49,22 @@ export const ZONE_PAGES = [
 export const PRERENDERED_PAGES = ['/', DEMO_PATH, '/terms', '/privacy'];
 
 /**
+ * ★ ИСПЕЧЁННАЯ ≠ ПЕРЕВЕДЁННАЯ. Языковые адреса есть только у этих двух.
+ *
+ * Юридические документы английские ПО РЕШЕНИЮ (TRIP-465, §7 хендоффа): договор
+ * правится целиком как текст, а не по строкам через `t()`, и его проза лежит
+ * английской разметкой в `pages/legal/*.en.html`. Дай мы им `/ru/terms`, и
+ * получилось бы худшее из возможного: три РАЗНЫХ адреса с ОДНИМ английским
+ * текстом (для поисковика — дубли, конкурирующие между собой), список языковых
+ * версий, обещающий русскую страницу и отдающий английскую, и `lang="ru"` на
+ * английской прозе — ровно та причина, по которой встроенный переводчик
+ * предлагает перевод и ломает DOM (TRIP-515).
+ *
+ * Печём мы их всё равно: готовый HTML нужен ботам независимо от числа языков.
+ */
+export const LOCALISED_PAGES = ['/', DEMO_PATH];
+
+/**
  * ★ ЯЗЫК ЖИВЁТ В АДРЕСЕ, И АНГЛИЙСКИЙ ЖИВЁТ БЕЗ ПРЕФИКСА (TRIP-520).
  *
  * `/` — канонический английский адрес, `/es/…` и `/ru/…` — самостоятельные
@@ -130,7 +146,7 @@ export function isZoneRoute(pathname) {
   // (их содержимое зависит от того, кто открыл). Ссылки из языковой страницы в
   // функциональную несут язык параметром `?lang=` — тем же, которым он уже
   // ездит в рекламных ссылках, а не вторым механизмом.
-  if (lang) return PRERENDERED_PAGES.includes(path) || path.startsWith('/d/');
+  if (lang) return LOCALISED_PAGES.includes(path) || path.startsWith('/d/');
   return ZONE_PAGES.includes(path) || path.startsWith('/d/');
 }
 
@@ -146,7 +162,7 @@ export function isZoneRoute(pathname) {
  */
 export function isZonePage(pathname) {
   const { lang, path } = splitLangPath(pathname);
-  return lang ? PRERENDERED_PAGES.includes(path) : ZONE_PAGES.includes(path);
+  return lang ? LOCALISED_PAGES.includes(path) : ZONE_PAGES.includes(path);
 }
 
 /**
@@ -158,7 +174,7 @@ export function isZonePage(pathname) {
 export function prerenderedUrls() {
   return PRERENDERED_PAGES.flatMap((path) => [
     path,
-    ...PREFIXED_LANGS.map((lang) => withLangPath(lang, path)),
+    ...(LOCALISED_PAGES.includes(path) ? PREFIXED_LANGS.map((lang) => withLangPath(lang, path)) : []),
   ]);
 }
 

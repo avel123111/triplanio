@@ -12,6 +12,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { PREFIXED_LANGS } from './routePaths.js';
 import { zoneSurface } from './zoneSurface.js';
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
@@ -69,5 +70,17 @@ test('★ каждый маршрут внутри SiteZone в App.jsx имее�
       zoneSurface(concrete), 'app',
       `${p} — маршрут зоны, а метки у него нет: события уедут в общую кучу с приложением`,
     );
+  }
+});
+
+test('языковой префикс не меняет вид поверхности', () => {
+  // Язык — не вид страницы. Не снимай зона префикс, и вся испанская и русская
+  // часть воронки уехала бы в `app`: события есть, а поверхности у них нет.
+  for (const lang of PREFIXED_LANGS) {
+    assert.equal(zoneSurface(`/${lang}`), 'landing');
+    assert.equal(zoneSurface(`/${lang}/`), 'landing');
+    assert.equal(zoneSurface(`/${lang}/terms`), 'legal');
+    assert.equal(zoneSurface(`/${lang}/privacy`), 'legal');
+    assert.equal(zoneSurface(`/${lang}/d/europe-may-2027`), 'demo');
   }
 });

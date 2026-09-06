@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  APP_ROUTES, ZONE_PAGES, PRERENDERED_PAGES, PREFIXED_LANGS,
+  APP_ROUTES, ZONE_PAGES, PRERENDERED_PAGES, LOCALISED_PAGES, PREFIXED_LANGS,
   isZonePage, isZoneRoute, splitLangPath, withLangPath, prerenderedUrls,
 } from './routePaths.js';
 import { LANGUAGES } from './i18n/translations.js';
@@ -92,7 +92,7 @@ test('разбор и сборка адреса с языком — обратн
   assert.deepEqual(splitLangPath('/en/terms'), { lang: null, path: '/en/terms' }, 'английский префиксом не является');
   assert.deepEqual(splitLangPath('/estonia'), { lang: null, path: '/estonia' });
 
-  for (const path of PRERENDERED_PAGES) {
+  for (const path of LOCALISED_PAGES) {
     assert.equal(withLangPath('en', path), path, 'английский адрес обязан остаться без префикса');
     for (const lang of PREFIXED_LANGS) {
       const url = withLangPath(lang, path);
@@ -101,17 +101,24 @@ test('разбор и сборка адреса с языком — обратн
   }
 });
 
-test('языковые адреса испечённых страниц — страницы зоны, чужие под префиксом — нет', () => {
+test('языковые адреса ПЕРЕВЕДЁННЫХ страниц — страницы зоны, чужие под префиксом — нет', () => {
   for (const lang of PREFIXED_LANGS) {
-    for (const path of PRERENDERED_PAGES) {
+    for (const path of LOCALISED_PAGES) {
       const url = withLangPath(lang, path);
       assert.equal(isZonePage(url), true, `${url} — страница зоны`);
       assert.equal(isZoneRoute(url), true, `${url} — адрес зоны`);
     }
-    // ★ Под префиксом живут ТОЛЬКО испечённые страницы: у входа готового файла
-    // на язык нет, и обещать его адресом нельзя.
+    // ★ Под префиксом живут ТОЛЬКО ПЕРЕВЕДЁННЫЕ страницы. У входа готового файла
+    // на язык нет и быть не может; у юр-документов текст английский по решению —
+    // `/ru/terms` обещал бы русскую страницу и отдавал английскую.
     assert.equal(isZonePage(`/${lang}/login`), false, `/${lang}/login не должен существовать`);
     assert.equal(isZoneRoute(`/${lang}/login`), false);
+    for (const legal of ['/terms', '/privacy']) {
+      assert.equal(PRERENDERED_PAGES.includes(legal), true, `${legal} обязан печься`);
+      assert.equal(LOCALISED_PAGES.includes(legal), false, `${legal} переводом не является`);
+      assert.equal(isZonePage(`/${lang}${legal}`), false, `/${lang}${legal} обещал бы перевод, которого нет`);
+      assert.equal(isZoneRoute(`/${lang}${legal}`), false);
+    }
     // Чужой демо-слаг под префиксом ведёт в зону (за её 404), но страницей не является.
     assert.equal(isZoneRoute(`/${lang}/d/opechatka`), true);
     assert.equal(isZonePage(`/${lang}/d/opechatka`), false);
@@ -120,7 +127,11 @@ test('языковые адреса испечённых страниц — ст
 
 test('prerenderedUrls перечисляет каждую испечённую страницу на каждом языке', () => {
   const urls = prerenderedUrls();
-  assert.equal(urls.length, PRERENDERED_PAGES.length * (PREFIXED_LANGS.length + 1));
+  assert.equal(urls.length, PRERENDERED_PAGES.length + LOCALISED_PAGES.length * PREFIXED_LANGS.length);
+  // Каждая переведённая страница обязана быть в выпечке на каждом языке.
+  for (const path of LOCALISED_PAGES) {
+    for (const lang of PREFIXED_LANGS) assert.ok(urls.includes(withLangPath(lang, path)), `${path} на ${lang} не печётся`);
+  }
   assert.equal(new Set(urls).size, urls.length, 'в списке выпечки есть повтор');
   for (const url of urls) {
     assert.equal(isZonePage(url), true, `${url} печётся, но страницей зоны не считается`);

@@ -26,6 +26,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
 import { guestEntryPath } from '@/lib/authEntry';
+import { splitLangPath, withLangPath } from '@/lib/routePaths';
 
 /** Куда ведёт CTA уже вошедшего. Одно место на всю зону.
  *
@@ -59,8 +60,29 @@ export function isPlainLeftClick(e) {
  */
 let home;
 export function zoneHome() {
-  home ??= withVisitCampaign(`${window.location.origin}/`);
+  home ??= withVisitCampaign(`${window.location.origin}${zonePath('/')}`);
   return home;
+}
+
+/**
+ * Внутренний адрес зоны НА ТОМ ЖЕ ЯЗЫКЕ, что открытая страница (TRIP-520).
+ *
+ * Язык испечённой страницы живёт в адресе, поэтому ссылка «домой» и ссылка на
+ * демо с испанского лендинга обязаны вести на испанские адреса. Возьми они
+ * голый путь — и переход внутри зоны молча ронял бы посетителя на английскую
+ * версию, то есть язык терялся бы на первом же клике.
+ *
+ * Префикс берётся из `window.location`, а не из состояния i18n, и это НАМЕРЕННО:
+ * источник правды о языке испечённой страницы — адрес, а состояние — его
+ * следствие. Читать следствие вместо причины значит завести второй ответ на
+ * тот же вопрос.
+ *
+ * @param {string} path путь без языкового префикса
+ * @returns {string}
+ */
+export function zonePath(path) {
+  const { lang } = splitLangPath(window.location.pathname);
+  return withLangPath(lang ?? 'en', path);
 }
 
 /**

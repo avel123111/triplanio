@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, createContext, useCallback } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useT } from '@/lib/i18n/I18nContext';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useLightZone } from '@/lib/ThemeContext';
 import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
-import { isZonePage } from '@/lib/routePaths';
+import { isZonePage, splitLangPath, withLangPath, PREFIXED_LANGS, LOCALISED_PAGES } from '@/lib/routePaths';
 import { useZoneCta, isPlainLeftClick } from './zoneCta';
 import { withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
@@ -72,6 +72,45 @@ export function LangSwitch({ value, onChange }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Язык страницы зоны и способ его сменить. ОДНА реализация на три страницы —
+ * лендинг, демо и юр-документы раньше делали одинаковый `useI18n()` каждая.
+ *
+ * ★ У ИСПЕЧЁННОЙ СТРАНИЦЫ СМЕНА ЯЗЫКА — ЭТО ПЕРЕХОД, А НЕ СМЕНА СОСТОЯНИЯ
+ * (TRIP-520). Язык такой страницы назван адресом, и по каждому адресу лежит
+ * СВОЙ готовый файл. Останься переключатель сменой состояния — экран стал бы
+ * испанским, а адрес и файл под ним английскими: перезагрузка молча вернула бы
+ * английский, а поделиться увиденным стало бы нельзя. Поэтому здесь настоящий
+ * переход документа: человек получает испанский файл, то есть ровно то, что
+ * увидит по этой ссылке любой другой.
+ *
+ * `setLang` перед переходом зовётся НАМЕРЕННО и целиком: он же пишет язык в
+ * профиль вошедшего (единая дверь `account/profile`). Обойди мы его — смена
+ * языка на лендинге перестала бы доезжать до аккаунта, и это заметил бы только
+ * тот, кто потом откроет приложение.
+ *
+ * На страницах БЕЗ готового файла (вход, приглашение, публичная поездка) ничего
+ * не меняется: там язык решает посетитель, и переключатель остаётся сменой
+ * состояния.
+ */
+export function useZoneLang() {
+  const { lang, setLang } = useI18n();
+  const { pathname } = useLocation();
+  const { path } = splitLangPath(pathname);
+  const localised = LOCALISED_PAGES.includes(path);
+
+  const switchLang = useCallback(async (next) => {
+    if (!localised || next === lang) return setLang(next);
+    await setLang(next);
+    // Метка кампании обязана пережить переход документа — она живёт В АДРЕСЕ
+    // (TRIP-514), и голый assign потерял бы её на первой же смене языка.
+    window.location.assign(withVisitCampaign(withLangPath(next, path)));
+    return undefined;
+  }, [localised, path, lang, setLang]);
+
+  return { lang, setLang: switchLang };
 }
 
 const NAV = [
@@ -525,13 +564,36 @@ export function SiteZone({ children }) {
   // `/public/trip/*` и `/join/*`: у них в адресе одноразовый токен, индексация
   // запрещена заголовком `X-Robots-Tag` из `vercel.json`, и канонизировать то,
   // что запрещено индексировать, незачем.
+  //
+  // ★ РЯДОМ С CANONICAL — СПИСОК ЯЗЫКОВЫХ ВЕРСИЙ (TRIP-520). Пока язык жил в
+  // состоянии приложения, связывать было нечего, и `hreflang` здесь сознательно
+  // отсутствовал. Теперь у каждой испечённой страницы три адреса, и без этого
+  // списка поисковик видит три РАЗНЫЕ страницы вместо трёх версий одной: они
+  // конкурируют друг с другом, а испанцу в выдаче показывается английская.
+  // `x-default` — тот же бесперфиксный адрес: он и есть ответ на «язык
+  // посетителя нам неизвестен».
+  //
+  // Только у испечённых страниц: у входа и восстановления языковых адресов нет
+  // (готового файла на язык у них нет и быть не может), и обещать их нельзя.
   useEffect(() => {
     if (!isProdHost || !isZonePage(pathname)) return undefined;
-    const link = document.createElement('link');
-    link.rel = 'canonical';
-    link.href = CANONICAL_ORIGIN + pathname;
-    document.head.appendChild(link);
-    return () => { link.remove(); };
+    const { path } = splitLangPath(pathname);
+    const links = [];
+    const add = (rel, href, hreflang) => {
+      const link = document.createElement('link');
+      link.rel = rel;
+      link.href = CANONICAL_ORIGIN + href;
+      if (hreflang) link.hreflang = hreflang;
+      document.head.appendChild(link);
+      links.push(link);
+    };
+    add('canonical', pathname);
+    if (LOCALISED_PAGES.includes(path)) {
+      add('alternate', path, 'en');
+      for (const code of PREFIXED_LANGS) add('alternate', withLangPath(code, path), code);
+      add('alternate', path, 'x-default');
+    }
+    return () => links.forEach((link) => link.remove());
   }, [pathname]);
 
   return <ZoneCssCtx.Provider value={cssReady}>{children}</ZoneCssCtx.Provider>;

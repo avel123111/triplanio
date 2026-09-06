@@ -34,7 +34,7 @@ import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { APP_ROUTES, isZoneRoute } from '@/lib/routePaths';
+import { APP_ROUTES, isZoneRoute, splitLangPath } from '@/lib/routePaths';
 import { initialAuthView } from '@/lib/authEntry';
 import { rememberPostLogin } from '@/lib/postLoginPath';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
@@ -92,7 +92,9 @@ const Login = lazy(() => import('@/pages/Login'));
 // /new-trip|/plan-trip-ai → trip_creation_started) send NOTHING here, so we don't
 // double-bill the free-tier quota. Only screens WITHOUT their own event get one.
 // Returns null → no event for this route.
-function screenOpenEvent(pathname, search) {
+function screenOpenEvent(raw, search) {
+  // Экран один и тот же на всех языках — префикс к виду экрана не относится.
+  const { path: pathname } = splitLangPath(raw);
   if (pathname === '/') return { event: 'landing_viewed' };
   // `view` — КАКУЮ ИЗ ФОРМ человек увидел, а не только «дошёл до входа». Экран
   // входа несёт вход, регистрацию и восстановление, и без этого поля «увидел
@@ -282,12 +284,26 @@ const AuthenticatedApp = () => {
   // Состав зоны — в `routePaths.js`: тот же список отвечает на вопрос «есть ли
   // по этому адресу страница» для `canonical` в `SiteZone`.
   const inZone = isZoneRoute(path);
+  // Язык испечённой страницы живёт в адресе; сопоставлять таблицу маршрутов
+  // надо с путём БЕЗ него (см. комментарий у <Routes location> ниже).
+  const { lang: zoneLang, path: zoneBarePath } = splitLangPath(path);
 
   if (inZone) {
     return (
       <SiteZone>
         <Suspense fallback={<AppLoading silent />}>
-          <Routes>
+          {/* ★ ЯЗЫКОВОЙ ПРЕФИКС СНИМАЕТСЯ ПЕРЕД СОПОСТАВЛЕНИЕМ, А НЕ ДУБЛИРУЕТ
+              ТАБЛИЦУ (TRIP-520). `/es/terms` и `/terms` — одна и та же страница
+              на разных языках, и различает их ТОЛЬКО язык. Заведи мы вторую
+              таблицу под префикс — пара «адрес → экран» существовала бы в двух
+              местах, и новая страница зоны приезжала бы на английском, а на
+              испанском отдавала 404. Молча: ни один гард такого не видит.
+
+              Поэтому таблица одна, а `<Routes location>` получает путь БЕЗ
+              префикса. Настоящий адрес при этом никуда не девается: `useLocation`
+              внутри страниц отдаёт его как есть — им живут canonical, список
+              языковых версий и внутренние ссылки зоны. */}
+          <Routes location={zoneLang ? zoneBarePath : undefined}>
             <Route path="/" element={<LandingPage />} />
             {/* /reset-password приходит из письма восстановления: его токен
                 создаёт сессию, поэтому экран тот же, что и вход. */}
