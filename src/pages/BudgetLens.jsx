@@ -635,7 +635,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const nav = useNavigate();
   const { openProUpsell } = useProUpsell();
   // isOwner — ступень owner лестницы (строго created_by), решено в TripView.
-  const ownerName = resolveOwnerName({ trip, members, selfUser: user, deletedLabel: t('common.deleted_user') });
+  const ownerName = resolveOwnerName({ members, selfUser: user, deletedLabel: t('common.deleted_user') });
   const onProRefusal = () => openProUpsell({
     role: proRole(isOwner),
     source: 'feature',
