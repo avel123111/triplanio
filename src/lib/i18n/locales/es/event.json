@@ -54,8 +54,6 @@
   "departure": "Salida",
   "docs_notes": "Documentos y notas",
   "documents": "Documentos",
-  "dur_h": "{h} h",
-  "dur_m": "{m} min",
   "end": "Fin",
   "err_layover_city": "Indica la ciudad de escala para cada tramo de la ruta",
   "expand": "desplegar",

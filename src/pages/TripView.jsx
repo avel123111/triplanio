@@ -10,6 +10,7 @@ import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
 import PageNotFound from '@/lib/PageNotFound';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
+import { durationMinutes, formatMinutes, transferDuration } from '@/lib/time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { useTripProStatus } from '@/lib/subscription';
@@ -62,28 +63,6 @@ import { pluralize } from '@/lib/i18n/format';
 // картой оно было ещё одним списком, который надо не забыть.
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-
-// Stored datetimes are naive wall-clock, local to each endpoint city. For a
-// transfer across timezones, pass fromTz/toTz (CityVisit.timezone) so the
-// duration reflects real elapsed time; same-city events omit them (naive diff).
-function formatDuration(t, start, end, fromTz, toTz) {
-  const s = parseNaive(start);
-  const e = parseNaive(end);
-  if (!s || !e) return null;
-  let mins = null;
-  if (fromTz && toTz && fromTz !== toTz) {
-    const dep = s.setZone(fromTz, { keepLocalTime: true });
-    const arr = e.setZone(toTz, { keepLocalTime: true });
-    if (dep.isValid && arr.isValid) mins = Math.round((arr.toMillis() - dep.toMillis()) / 60000);
-  }
-  if (mins === null) mins = Math.round(e.diff(s, 'minutes').minutes);
-  if (mins <= 0) return null;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h === 0) return t('trip.dur_m', { m });
-  if (m === 0) return t('trip.dur_h', { h });
-  return t('trip.dur_hm', { h, m });
-}
 
 function cityForVisit(visitId, visits) {
   const v = visits.find(v => v.id === visitId);
@@ -186,7 +165,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       cur: a.currency,
       category: a.category,
       address: a.location_address,
-      duration: a.end_datetime ? formatDuration(t, a.start_datetime, a.end_datetime) : null,
+      duration: formatMinutes(durationMinutes(a.start_datetime, a.end_datetime), t),
       // Naive clock end (HH:mm) — used by the calendar week-view to size blocks
       // by real duration instead of a fixed guess. `endDate` is the DAY of that
       // end: without it an interval crossing midnight cannot be drawn (HH:mm
@@ -222,8 +201,8 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       date: eventDate,
       time: formatNaive(tr.start_datetime, 'HH:mm'),
       title: tr.carrier || (isPlane ? t('trip.tl_flight') : t('trip.tl_transfer')),
-      from: cityForVisit(tr.from_city_visit_id, visits) || tr.from_address,
-      to: cityForVisit(tr.to_city_visit_id, visits) || tr.to_address,
+      from: fromVisit?.city_name || tr.from_address,
+      to: toVisit?.city_name || tr.to_address,
       from_address: tr.from_address || null,
       to_address: tr.to_address || null,
       kind,
@@ -232,7 +211,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       price: tr.price,
       cur: tr.currency,
       platformUrl: tr.booking_url,
-      duration: tr.end_datetime ? formatDuration(t, tr.start_datetime, tr.end_datetime, visits.find(v => v.id === tr.from_city_visit_id)?.timezone, visits.find(v => v.id === tr.to_city_visit_id)?.timezone) : null,
+      duration: transferDuration(tr, fromVisit, toVisit, t),
       endTime: tr.end_datetime ? formatNaive(tr.end_datetime, 'HH:mm') : null,
       // Day of arrival — a night flight ends on the NEXT day, and the calendar
       // draws it in both (see `lib/calendar-spans.js`).
@@ -1117,7 +1096,7 @@ export default function TripView() {
   const openProInfo = () => openProUpsell({
     role: proRole(isOwner),
     source: 'menu',
-    ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
+    ownerName: resolveOwnerName({ members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
     onUpgrade: openUpgrade,
   });
   const [shareOpen, setShareOpen] = useState(false);
@@ -1337,7 +1316,7 @@ export default function TripView() {
           role: proRole(isOwner),
           source: 'feature',
           feature: t('budget.title'),
-          ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
+          ownerName: resolveOwnerName({ members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
           onUpgrade: openUpgrade,
         })}
       />
@@ -1352,7 +1331,7 @@ export default function TripView() {
           role: proRole(isOwner),
           source: 'feature',
           feature: t('budget.title'),
-          ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
+          ownerName: resolveOwnerName({ members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
           onUpgrade: openUpgrade,
         })}
       />

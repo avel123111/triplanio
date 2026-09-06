@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useZoneCta } from '@/components/site/zoneCta';
+import { useZoneCta, useZonePath } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
-import { useJsonLd, faqPageLd } from '@/components/site/jsonLd';
+import { useJsonLd, faqPageLd, softwareAppLd } from '@/components/site/jsonLd';
 import { withVisitCampaign } from '@/lib/analytics';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT } from '@/lib/i18n/I18nContext';
 import worldMapUrl from './world-map.svg?url';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta, useZoneLang, CANONICAL_ORIGIN,
 } from '@/components/site/SiteChrome';
 import { useReveal } from '@/components/site/useReveal';
 import { SiteCta } from '@/components/site/SiteTrip';
@@ -21,95 +20,39 @@ import { SiteCta } from '@/components/site/SiteTrip';
 
 
 /**
- * Hero three-layer photo composite (TRIP-460 §10, ported from the prototype's
- * own IIFE). The DESKTOP hero is a single flat-lay photo fitted BY HEIGHT so
- * the phone in it holds a fixed share of the viewport height on any monitor;
- * hovering the phone cross-fades to the "screen on" frame. That geometry is
- * measured off the fixed desktop frames (desk-flatlay / desk-app, 3400×1914)
- * and lives in the `FRAME` data object — those images do not change. The
- * MOBILE frame (the one Pavel swaps later) is a plain CSS `cover` layer with
- * NO JS geometry, so replacing /site/hero-mobile.webp never touches FRAME.
+ * Hero cross-fade: наведение на телефон переключает кадр «экран включён».
+ *
+ * ★★ ГЕОМЕТРИЯ ЗДЕСЬ БОЛЬШЕ НЕ СЧИТАЕТСЯ (TRIP-520). Раньше этот хук мерил
+ * секцию, считал размер и положение кадра и писал их В РАЗМЕТКУ. Это работало,
+ * пока страницу рисовал только браузер человека. С приходом выпечки стало
+ * дефектом: сборка снимает страницу в окне 1280x720, и готовый файл уносил
+ * пиксели ТОГО окна. На любом другом окне кадр был неверным до прихода бандла,
+ * а потом прыгал — замер на 1440: 1465x825 -> 1811x1019, скачок 24%. Ровно это
+ * и видно как «картинка дёргается при открытии».
+ *
+ * Величина, которая есть чистая функция размеров секции, обязана жить в CSS —
+ * там она верна с ПЕРВОГО кадра и на любом окне, и пересчитывать её некому.
+ * Формулы и разбор — у `--hero-fw`/`--hero-fh` в `site.css`; ресайз, поворот
+ * экрана и `fonts.ready` больше не нужны, каскад справляется сам.
+ *
+ * Здесь остаётся то, чего CSS действительно не умеет: `:hover` на невидимой
+ * зоне должен подсвечивать ДРУГОЙ элемент (слой кадра), а не себя.
  */
 function useHeroFrame(ready) {
   useEffect(() => {
     if (!ready) return undefined;
     const hero = document.querySelector('.hero');
-    if (!hero) return undefined;
-    const bg = hero.querySelector('.hero-bg');
-    const la = hero.querySelector('.hero-layer.la');
-    const lb = hero.querySelector('.hero-layer.lb');
-    const hot = hero.querySelector('.hero-hot');
-    if (!bg || !la || !lb || !hot) return undefined;
+    const hot = hero?.querySelector('.hero-hot');
+    if (!hero || !hot) return undefined;
 
-    // Phone measured off the 3400×1914 frame (x 1461..1957, y 365..1485):
-    // cx/cy = phone centre in frame fractions; box = its extent for the hot zone.
-    const FRAME = { ar: 3400 / 1914, zoom: 1.08, cx: 0.5026, cy: 0.4833, box: [0.4297, 0.1907, 0.5756, 0.7759] };
-    const A = FRAME, B = FRAME;
-    const TX = 0.68, TY = 0.452; // where the phone centre lands inside the viewport
-    const mq = window.matchMedia(ZONE_BELOW_DESKTOP_MQ);
-
-    const apply = (el, w, h, l, t) => {
-      el.style.backgroundSize = `${w.toFixed(1)}px ${h.toFixed(1)}px`;
-      el.style.backgroundPosition = `${l.toFixed(1)}px ${t.toFixed(1)}px`;
-      let m = '';
-      if (t > 2) {
-        const fv = Math.min(200, Math.max(110, t));
-        m = `linear-gradient(180deg,rgba(0,0,0,0) ${t.toFixed(0)}px,rgba(0,0,0,1) ${(t + fv).toFixed(0)}px)`;
-      } else if (l > 2) {
-        const fh = Math.min(220, Math.max(90, l));
-        m = `linear-gradient(90deg,rgba(0,0,0,0) ${l.toFixed(0)}px,rgba(0,0,0,1) ${(l + fh).toFixed(0)}px)`;
-      }
-      el.style.webkitMaskImage = m;
-      el.style.maskImage = m;
-    };
-
-    const place = () => {
-      const mob = mq.matches;
-      hero.classList.toggle('is-mob', mob);
-      if (mob) {
-        [la, lb].forEach((el) => {
-          el.style.backgroundSize = '';
-          el.style.backgroundPosition = '';
-          el.style.webkitMaskImage = '';
-          el.style.maskImage = '';
-        });
-        hot.style.display = 'none';
-        hero.classList.remove('is-zoom');
-        return;
-      }
-      const cw = bg.clientWidth, ch = bg.clientHeight;
-      if (!cw || !ch) return;
-      const fit = (el, c) => {
-        const h = ch * c.zoom, w = h * c.ar;
-        const l = cw * TX - w * c.cx;
-        const t = ch * TY - h * c.cy;
-        apply(el, w, h, l, t);
-        return { w, h, l, t };
-      };
-      const g = fit(la, A);
-      fit(lb, B);
-      const b = A.box;
-      hot.style.display = 'block';
-      hot.style.left = `${(g.l + g.w * b[0]).toFixed(1)}px`;
-      hot.style.top = `${(g.t + g.h * b[1]).toFixed(1)}px`;
-      hot.style.width = `${(g.w * (b[2] - b[0])).toFixed(1)}px`;
-      hot.style.height = `${(g.h * (b[3] - b[1])).toFixed(1)}px`;
-    };
-
-    const onEnter = () => { if (!mq.matches) hero.classList.add('is-zoom'); };
+    const onEnter = () => hero.classList.add('is-zoom');
     const onLeave = () => hero.classList.remove('is-zoom');
     hot.addEventListener('pointerenter', onEnter);
     hot.addEventListener('pointerleave', onLeave);
-    place();
-    window.addEventListener('resize', place, { passive: true });
-    window.addEventListener('orientationchange', place);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
-
     return () => {
       hot.removeEventListener('pointerenter', onEnter);
       hot.removeEventListener('pointerleave', onLeave);
-      window.removeEventListener('resize', place);
-      window.removeEventListener('orientationchange', place);
+      hero.classList.remove('is-zoom');
     };
   }, [ready]);
 }
@@ -247,7 +190,7 @@ function Hero() {
   // тем же событием `cta_clicked`, что и финальный CTA `final_demo`:
   // единственное отличие — метка места `hero_demo` (верх воронки против низа).
   const cta = useZoneCta('hero');
-  const demo = useZoneCta('hero_demo', withVisitCampaign(DEMO_PATH));
+  const demo = useZoneCta('hero_demo', withVisitCampaign(useZonePath(DEMO_PATH)));
   // Один текст героя на обе платформы (TRIP-510): десктоп и телефон делят одни
   // ключи `landing.hero.*`, различия раскладки живут только в CSS `@media`,
   // поэтому DOM единый — без ветки по брейкпоинту.
@@ -573,7 +516,7 @@ function FinalCta() {
   // Единственный CTA зоны, ведущий НЕ в продукт, — отсюда явный адрес. Метку
   // кампании визита он несёт так же, как остальные, и идёт через роутер, а не
   // голым <a href>, который её теряет (гард 2ad).
-  const demo = useZoneCta('final_demo', withVisitCampaign(DEMO_PATH));
+  const demo = useZoneCta('final_demo', withVisitCampaign(useZonePath(DEMO_PATH)));
   return (
     <SiteCta
       secondary={(
@@ -600,6 +543,14 @@ function Faq() {
     { q: t('landing.faq.q6'), a: t('landing.faq.a6') },
   ];
   useJsonLd(faqPageLd(faq));
+  // Что мы такое — машине. Имя и описание берутся ИЗ ТЕХ ЖЕ строк, которыми
+  // подписан документ (`useDocumentMeta` выше): разметка обязана совпадать с
+  // видимым, а два независимо набранных описания расходятся на первой правке.
+  useJsonLd(softwareAppLd({
+    name: 'Triplanio',
+    description: t('landing.meta.description'),
+    url: `${CANONICAL_ORIGIN}/`,
+  }));
 
   return (
     <section className="faq-sec sheet-pane section-pad" data-hdr="light" id="faq">
@@ -951,7 +902,7 @@ function Recognize() {
 
 /* ── Main LandingPage ── */
 export default function LandingPage() {
-  const { lang, setLang } = useI18n();
+  const { lang, setLang } = useZoneLang();
   const t = useT();
 
   const cssReady = useSiteCss();

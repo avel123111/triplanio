@@ -14,6 +14,19 @@
 //   2. его FAQ расходится с FAQ на самой странице. Ровно та причина, по которой
 //      в PR #1036 шесть блоков FAQ схлопнули в один источник: пока источников
 //      два, правку видит только один из них, и никто не краснеет.
+//   3. его ссылки перестают быть ССЫЛКАМИ. Формат `llms.txt` — markdown, и
+//      «ссылка» там ровно одна: `[имя](адрес)`. Голый URL после двоеточия
+//      человеку читается, а парсеру — нет: замер PSI 06.09.2026 (обе платформы,
+//      раздел «Навигация агентов») — «llms.txt не следует рекомендациям: похоже,
+//      файл не содержит ни одной ссылки», при том что восемь адресов в нём
+//      лежали. Единственная проваленная проверка этой категории.
+//   4. он называет ЯЗЫКИ, которых у сайта уже нет (или молчит о новом). Состав
+//      адресов держит цепочка `LOCALISED_PAGES` → `prerenderedUrls()` →
+//      `sitemap.xml` → этот файл, и она замкнута в обе стороны на каждом звене
+//      (TRIP-520). Но ПРОЗА про языки — «English, Spanish and Russian», ярлык
+//      «(Spanish)» у ссылки — не пришпилена ничем, а именно её движок ответов и
+//      цитирует. Четвёртый язык дописал бы себе строку со ссылкой (её требует
+//      цепочка) и оставил бы соседнее предложение врущим — молча.
 // Цены гейтом не покрыты по построению — их истина живёт в Stripe, а не в
 // репозитории; это названо вслух в PR как принятая цена.
 import { test } from 'node:test';
@@ -21,6 +34,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { LANGUAGES } from '../../src/lib/i18n/translations.js';
+import { PREFIXED_LANGS, localeOf } from '../../src/lib/routePaths.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -28,19 +43,44 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 const LLMS = read('public/llms.txt');
 const LANDING_EN = JSON.parse(read('src/lib/i18n/locales/en/landing.json'));
 
+// Английские имена языков не выписываем: у `LANGUAGES` метки РОДНЫЕ («Español»),
+// а файл написан по-английски. Берём их у платформы — тем же `Intl.DisplayNames`,
+// которым в приложении локализуются страны (`fmtCountry`).
+const languageName = new Intl.DisplayNames(['en'], { type: 'language' });
+/** Все markdown-ссылки на наш сайт: `[текст](адрес)`. */
+const LINKS = [...LLMS.matchAll(/\[([^\]]+)\]\((https:\/\/www\.triplanio\.com[^)]*)\)/g)]
+  .map((m) => ({ text: m[1], url: m[2] }));
+
+/** Секция файла по её заголовку `## <name>` — до следующего заголовка. */
+function section(name) {
+  const at = LLMS.indexOf(`## ${name}\n`);
+  assert.notEqual(at, -1, `в llms.txt нет раздела «${name}»`);
+  const rest = LLMS.slice(at + 3 + name.length);
+  const end = rest.indexOf('\n## ');
+  return end === -1 ? rest : rest.slice(0, end);
+}
+
 test('обещанные адреса = адреса из sitemap.xml, в обе стороны', () => {
   const inMap = new Set(
     [...read('public/sitemap.xml').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]),
   );
-  const inFile = new Set(
-    [...LLMS.matchAll(/https:\/\/www\.triplanio\.com\/\S*/g)].map((m) => m[0].replace(/[.,)]$/, '')),
-  );
+  // ★ Считаем ТОЛЬКО markdown-ссылки, а не всякий текст, похожий на адрес.
+  // Обещание краулеру — это ссылка; голый URL в прозе ею не является (см. п. 3
+  // в шапке). Так проверка «адрес обещан» заодно держит и сам формат.
+  const inFile = new Set(LINKS.map(({ url }) => url));
 
   for (const url of inMap) {
-    assert.ok(inFile.has(url), `${url} обещан краулеру в sitemap.xml, но в llms.txt его нет`);
+    assert.ok(inFile.has(url), `${url} обещан краулеру в sitemap.xml, но ССЫЛКИ на него в llms.txt нет`);
   }
   for (const url of inFile) {
     assert.ok(inMap.has(url), `${url} назван в llms.txt, но в sitemap.xml его нет — ведём агента на адрес, который сами не признаём`);
+  }
+  // И ни одного нашего адреса МИМО ссылки — кроме прозы про сам сайт, где голый
+  // адрес уместен и на который ссылка есть тут же, в списке.
+  const prose = LLMS.replace(/\[[^\]]+\]\([^)]*\)/g, '');
+  for (const [bare] of prose.matchAll(/https:\/\/www\.triplanio\.com\/\S*/g)) {
+    const url = bare.replace(/[.,)]+$/, '');
+    assert.ok(inFile.has(url), `${url} упомянут в llms.txt текстом, но ссылки на него нет — для парсера такого адреса не существует`);
   }
 });
 
@@ -79,4 +119,53 @@ test('цены названы и в той валюте, в которой их 
     assert.ok(LLMS.includes(amount), `в llms.txt нет цены «${amount}»`);
   }
   assert.doesNotMatch(LLMS, /\$\d/, 'цена в долларах: живой каталог прода берёт EUR');
+});
+
+
+test('раздел «Languages» называет РОВНО те языки, что есть у сайта', () => {
+  // Языки живут в двух списках, и оба здесь нужны: `LANGUAGES` — что вообще
+  // умеет интерфейс, `PREFIXED_LANGS` — у кого есть свой адрес. Английский в
+  // первом и не во втором: он канонический и живёт без префикса.
+  const langs = section('Languages');
+  for (const { code } of LANGUAGES) {
+    assert.match(langs, new RegExp(`\\b${languageName.of(code)}\\b`),
+      `язык ${code} у сайта есть, а раздел «Languages» его не называет`);
+  }
+  for (const lang of PREFIXED_LANGS) {
+    assert.ok(langs.includes(`/${lang}/`),
+      `префикс /${lang}/ существует, а раздел «Languages» о нём молчит`);
+  }
+  // И обратная сторона: не обещать префикс, которого нет. Ищем любой `/xx/` в
+  // обратных кавычках — так в этом разделе записаны именно префиксы.
+  for (const [, seg] of langs.matchAll(/`\/([a-z]{2})\/`/g)) {
+    assert.ok(PREFIXED_LANGS.includes(seg),
+      `раздел «Languages» обещает префикс /${seg}/, которого у сайта нет`);
+  }
+});
+
+test('★ ссылки записаны ССЫЛКАМИ — иначе для парсера файл пуст', () => {
+  // Формат `llms.txt` — markdown, и ссылка в нём ровно одна: `[имя](адрес)`.
+  // Голый URL после двоеточия читает человек, но не парсер: PSI 06.09.2026
+  // отвечал «файл не содержит ни одной ссылки» на файл с восемью адресами.
+  assert.ok(LINKS.length > 0, 'в llms.txt не осталось ни одной markdown-ссылки');
+  assert.match(LLMS, /^# \S/m, 'у llms.txt пропал заголовок H1 — без него файл не разбирается');
+});
+
+test('у каждой ссылки назван язык, который называет её адрес', () => {
+  // Язык в подписи — утверждение, и решать его обязан ТОТ ЖЕ предикат, что
+  // решает язык в приложении (`localeOf`), а не глаз редактора. У юр-документов
+  // языкового адреса нет (TRIP-465 §7) — у них и упоминания языка быть не
+  // должно, иначе файл обещает версии, которых не существует.
+  for (const { text, url } of LINKS) {
+    const locale = localeOf(new URL(url).pathname);
+    if (locale) {
+      assert.ok(text.includes(languageName.of(locale)),
+        `${url} — адрес называет язык ${locale}, а подпись ссылки «${text}» его не называет`);
+    } else {
+      for (const { code } of LANGUAGES) {
+        assert.ok(!text.includes(languageName.of(code)),
+          `${url} — у этого адреса языковой версии нет, а подпись «${text}» обещает ${languageName.of(code)}`);
+      }
+    }
+  }
 });

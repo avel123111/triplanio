@@ -549,7 +549,7 @@ export default function SettingsLens({ tripId, trip, members = [], isPro, isProT
   const [chatWidget, setChatWidget] = useState(() => trip?.details?.display?.chat_widget !== false);
   // Pro-апселл — единый app-level хост (TRIP-225), открывается императивно.
   const { openProUpsell } = useProUpsell();
-  const ownerName = resolveOwnerName({ trip, members, profiles, selfUser: user, deletedLabel: t('common.deleted_user') });
+  const ownerName = resolveOwnerName({ members, profiles, selfUser: user, deletedLabel: t('common.deleted_user') });
   // Owner upgrade from Settings shows the SAME 3 offers as the sidebar / AI-block
   // (per-trip + monthly + yearly). No hidePerTrip here: Pro.jsx already hides the
   // per-trip offer for non-owners (tripOwner check), so the flag only created an

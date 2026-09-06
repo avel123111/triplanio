@@ -14,9 +14,10 @@
  * (~443 КБ распакованного, Replay+tracing) тянулся синхронным ребром к первому
  * рендеру, на критический путь лендинга. Теперь модуль верхом синхронного кода
  * НЕ содержит: он отдаёт лёгкий фасад `Sentry.captureException`, а сам
- * `@sentry/react` приезжает динамическим `import()` на `requestIdleCallback`
- * ПОСЛЕ рендера. Форма экспорта (`initSentry`, `{ Sentry }` с `.captureException`)
- * не изменилась — четыре вызывающих файла не тронуты.
+ * `@sentry/react` приезжает динамическим `import()` через `afterPaint` —
+ * ПОСЛЕ того, как страница показана (TRIP-520). Форма экспорта (`initSentry`,
+ * `{ Sentry }` с `.captureException`) не изменилась — четыре вызывающих файла
+ * не тронуты.
  *
  * ★ ЗАХВАТ С НУЛЕВОЙ МИЛЛИСЕКУНДЫ. Между стартом и приездом SDK ошибку терять
  * нельзя (требование «must run before the first render» из `main.jsx`). Поэтому
@@ -48,6 +49,8 @@
 // module loads under `node --test` too (the pure queue below is unit-tested
 // there). The heavy `import('@sentry/react')` lives inside a function, never at
 // module scope, so importing this file pulls in ZERO SDK bytes.
+import { afterPaint } from './afterPaint.js';
+
 const DSN = import.meta.env?.VITE_SENTRY_DSN;
 const ENVIRONMENT = import.meta.env?.VITE_SENTRY_ENVIRONMENT || import.meta.env?.MODE;
 // Injected at build time from VERCEL_GIT_COMMIT_SHA (see vite.config.js `define`).
@@ -220,10 +223,9 @@ export function initSentry() {
   // раньше рендера), закрывает окно «ошибка до приезда SDK».
   window.addEventListener('error', onGlobalError);
   window.addEventListener('unhandledrejection', onUnhandledRejection);
-  // Полный SDK — на простое, после рендера. `requestIdleCallback` с таймаутом
-  // (образец в SiteChrome.jsx), фолбэк на setTimeout для движков без него.
-  const schedule = typeof window.requestIdleCallback === 'function'
-    ? (cb) => window.requestIdleCallback(cb, { timeout: 2000 })
-    : (cb) => setTimeout(cb, 0);
-  schedule(loadRealSentry);
+  // Полный SDK — после того, как страница показана (`afterPaint`). Здесь был
+  // свой `requestIdleCallback(..., { timeout: 2000 })`, и на телефоне этот
+  // дедлайн срабатывал ВСЕГДА (простоя в первые секунды нет), приземляя 92 КБ
+  // ровно в окно первой отрисовки. Разбор с числами — в шапке `afterPaint.js`.
+  afterPaint(loadRealSentry);
 }

@@ -18,7 +18,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Card, FileRow, Severity, useToast } from '@/design/index';
 import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
-import { utcToLocalInput } from '@/lib/time';
+import { utcToLocalInput, durationMinutes, formatMinutes, transferDuration } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate, TRIP_CONTENT_KEY, TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { uploadTripFiles, uploadErrorText, persistEntityDocuments } from '@/lib/documentMutations';
@@ -337,18 +337,6 @@ function HotelBody({ entity, docs = [] }) {
   );
 }
 
-// Departure→arrival duration for the view rail (naive-time, same keys as edit fmtDur).
-function transferDur(startIso, endIso, t) {
-  const s = parseNaive(startIso), e = parseNaive(endIso);
-  if (!s || !e) return '';
-  const m = Math.max(0, Math.round(e.diff(s, 'minutes').minutes));
-  const h = Math.floor(m / 60), mm = m % 60;
-  const parts = [];
-  if (h) parts.push(t('event.dur_h', { h }));
-  if (mm || !h) parts.push(t('event.dur_m', { m: mm }));
-  return parts.join(' ');
-}
-
 // Transfer view — canonical rail (dots + dashed connector + carrier avatar) with
 // eyebrow type/night chips; cost/booking-details/docs/notes reuse the hotel .hv-*
 // cards. Renders its own docs+notes, so EventViewSections skips the shared ones.
@@ -360,7 +348,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const span = entity.day_span ?? 0;
   const night = span > 0;
   const typeCap = t(entity.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer');
-  const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
+  const dur = transferDuration(entity, fromVisit, toVisit, t);
   const carrier = entity.carrier || '';
   const priceText = fmtPrice(entity.price, entity.currency);
   const hasDetails = entity.booking_reference || carrier || entity.flight_number;
@@ -480,7 +468,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
 // date summary (start · duration · end), meeting-point card, cost card, docs+notes.
 function ActivityBody({ entity, docs = [] }) {
   const { t } = useI18n();
-  const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
+  const dur = formatMinutes(durationMinutes(entity.start_datetime, entity.end_datetime), t);
   const priceText = fmtPrice(entity.price, entity.currency);
   const notes = entity.notes;
   return (

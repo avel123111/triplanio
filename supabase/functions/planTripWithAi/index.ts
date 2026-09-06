@@ -5,7 +5,8 @@
  *
  * The N8N_SECRET bearer token lives only as a Supabase secret. The frontend
  * never sees it. n8n stores its own conversation history keyed by sessionId
- * (Postgres on the n8n side), so we just forward { sessionId, prompt, language }.
+ * (Postgres on the n8n side), so we just forward { sessionId, prompt, language }
+ * plus `env` (метка окружения, как в конверте notify).
  *
  * POST body: { sessionId: string, prompt: string, language?: string }
  */
@@ -14,6 +15,7 @@ import { withHandler } from '../_shared/http.ts';
 import { requireUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
+import { envTag } from '../_shared/envTag.ts';
 
 // TRIP-111: лимит генераций ИИ-планировщика. Вешается на САМ вызов генерации
 // (не на сохранение трипа), поэтому закрывает и delete+recreate, и спам без
@@ -49,7 +51,11 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
       // trip_planner ai_usage_events row to the caller (it reads runData.Webhook
       // body, same as trip_parser reads `kind`). trip_id stays null — no trip
       // exists yet at generation time (this is a pre-save preview).
-      body: JSON.stringify({ sessionId, prompt, language, userId: user.id }),
+      //
+      // `env` — та же метка окружения, что у конверта notify (`_shared/envTag.ts`,
+      // секрет SENTRY_ENVIRONMENT): инстанс n8n ОДИН на dev и prod, поэтому без
+      // неё воркфлоу не может отличить, из какого проекта пришёл прогон.
+      body: JSON.stringify({ sessionId, prompt, language, userId: user.id, env: envTag() }),
     });
 
     if (!res.ok) {

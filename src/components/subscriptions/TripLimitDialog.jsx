@@ -7,6 +7,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isActiveTripCapReached } from '@/lib/limits';
 import { goPro } from '@/lib/goPro';
+import { track } from '@/lib/analytics';
 
 /**
  * Trip-limit modal (Variant D) - shown for the IN-APP "new trip" action when a
@@ -66,6 +67,18 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
       onOpenChange(false);
     }
   }, [open, state, onProceed, onOpenChange]);
+
+  // TRIP-520: показ блокировки = впечатление пейволла (Revenue funnel), форма
+  // пропов как у ProUpsellProvider. Реф-гард — чтобы ререндер не считал повтор.
+  const paywallSeenRef = useRef(false);
+  useEffect(() => {
+    if (!open) { paywallSeenRef.current = false; return; }
+    if (state.status !== 'ready') return;
+    if (!isActiveTripCapReached(state.isPro, state.activeCount)) return;
+    if (paywallSeenRef.current) return;
+    paywallSeenRef.current = true;
+    track('paywall_viewed', { feature: 'trip_limit', mode: 'upgrade' });
+  }, [open, state]);
 
   if (open && state.status !== 'ready') {
     return (

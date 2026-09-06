@@ -7,6 +7,7 @@ import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
+import { withLeaveGuard } from '@/lib/withLeaveGuard';
 
 /**
  * Right-hand utility cluster of the unified <AppHeader>: theme toggle ·
@@ -22,8 +23,13 @@ import { displayName } from '@/lib/displayName';
  *   isPro         - boolean; renders the PRO badge by the avatar
  *   isDark        - boolean; picks sun/moon icon
  *   onToggleTheme - () => void
+ *   confirmLeave  - optional async gate (TRIP-520); when set, Profile / Logout /
+ *                   the bell's exits ask before leaving. Absent → direct action.
+ *
+ * @param {{ user?: any, isPro?: boolean, isDark?: boolean, onToggleTheme: () => void,
+ *           confirmLeave?: () => Promise<boolean> }} p
  */
-export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
+export default function HeaderActions({ user, isPro, isDark, onToggleTheme, confirmLeave }) {
   const t = useT();
   const nav = useNavigate();
   const { logout } = useAuth();
@@ -42,10 +48,11 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
         ariaLabel={t('nav.toggle_theme')}
         onClick={onToggleTheme}
       />
-      <NotificationsBell />
+      <NotificationsBell confirmLeave={confirmLeave} />
       {/* Клик по профилю → канон-меню (ActionMenu): «Профиль» ведёт на аккаунт-экран
-          (тот же адрес, что раньше открывал аватар), «Выйти» — logout из AuthContext
-          (прямое действие, без confirm — как кнопка выхода в ScreenAccount). */}
+          (тот же адрес, что раньше открывал аватар), «Выйти» — logout из AuthContext.
+          Оба пункта проходят через `guard`: во флоу создания (TRIP-520) — с
+          конфирмом ухода, на остальных экранах (без `confirmLeave`) — напрямую. */}
       <ActionMenu
         align="end"
         title={t('nav.account')}
@@ -61,8 +68,8 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
           </button>
         )}
         items={[
-          { icon: 'user', label: t('nav.profile'), onSelect: () => nav('/settings') },
-          { icon: 'logout', label: t('auth.logout'), onSelect: () => logout() },
+          { icon: 'user', label: t('nav.profile'), onSelect: withLeaveGuard(confirmLeave, () => nav('/settings')) },
+          { icon: 'logout', label: t('auth.logout'), onSelect: withLeaveGuard(confirmLeave, () => logout()) },
         ]}
       />
     </div>

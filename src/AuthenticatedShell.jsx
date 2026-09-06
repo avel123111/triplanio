@@ -86,7 +86,7 @@ export default function AuthenticatedShell() {
           получении ответа про авторизацию. */}
       <Route path="/trips" element={<Trips />} />
       <Route path="/stats" element={<Statistics />} />
-      <Route path="/new-trip" element={<ManualPlanner />} />
+      <Route path="/new-trip" element={<ManualPlanner key="manual" />} />
       <Route path="/trip/:tripId" element={<TripView />} />
       {/* TRIP-349: редактор стал секцией (сегодня ?lens=route). Роут оставлен РЕДИРЕКТОМ -
           по нему живут закладки, история браузера и ссылки в уже отправленных
@@ -96,7 +96,11 @@ export default function AuthenticatedShell() {
       <Route path="/inbox" element={<Inbox />} />
       <Route path="/pro" element={<Pro />} />
 
-      <Route path="/plan-trip-ai" element={<ManualPlanner initialMethod="ai" />} />
+      {/* `key` на обеих дверях: без него React переиспользует ТОТ ЖЕ экземпляр
+          `ManualPlanner` при переходе между дверями (тип элемента один, меняется
+          только проп), и эффект восстановления черновика — деп `user?.id` — второй
+          раз не бежит. На этом стоит увод чужого черновика на его дверь. */}
+      <Route path="/plan-trip-ai" element={<ManualPlanner key="ai" initialMethod="ai" />} />
 
       <Route path="*" element={<PageNotFound />} />
       </Routes>

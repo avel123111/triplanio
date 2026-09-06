@@ -35,6 +35,8 @@
   "home_desc": "This is your home: the start point and (usually) the return point. From it Triplanio shows transfers and ticket prices.",
   "home_title": "Where do you set off?",
   "last_city_fallback": "the last city",
+  "leave_confirm_desc": "Your draft is saved - you can come back to it later.",
+  "leave_confirm_title": "Leave without finishing?",
   "limit_desc_post": ". Wait for the current one to end or upgrade to Pro.",
   "limit_desc_pre": "The Free plan allows only",
   "limit_desc_strong": "1 active trip",

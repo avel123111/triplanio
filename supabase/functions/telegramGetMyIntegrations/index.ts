@@ -39,19 +39,20 @@ Deno.serve(withHandler('telegramGetMyIntegrations', async (req, corsHeaders) => 
 
     const tripIds = [...new Set(list.map((r) => r.trip_id))];
 
-    // 2. Trip titles + cover + creator (cover feeds the account UI's trip row
-    // thumbnail; creator derives the owner role).
+    // 2. Trip titles + cover (cover feeds the account UI's trip row thumbnail).
     const { data: trips } = await supabaseAdmin
       .from('trips')
-      .select('id, title, created_by, cover_image_url')
+      .select('id, title, cover_image_url')
       .in('id', tripIds);
     const tripsById: Record<string, {
-      id: string; title: string; created_by: string;
+      id: string; title: string;
       cover_image_url: string | null;
     }> = {};
     for (const tr of trips ?? []) tripsById[tr.id] = tr;
 
-    // 3. Caller's membership role for the trips they don't own.
+    // 3. Caller's membership role. The owner is a real active trip_members row
+    // (`role='owner'`, TRIP-516/517), so its role comes from the row like any
+    // other member — no `trips.created_by` branch.
     const { data: members } = await supabaseAdmin
       .from('trip_members')
       .select('trip_id, role')
@@ -70,7 +71,7 @@ Deno.serve(withHandler('telegramGetMyIntegrations', async (req, corsHeaders) => 
           trip_id: r.trip_id,
           trip_title: tr.title ?? '',
           cover_image_url: tr.cover_image_url ?? null,
-          role: tr.created_by === user.id ? 'owner' : (roleByTrip[r.trip_id] || 'viewer'),
+          role: roleByTrip[r.trip_id] || 'viewer',
           telegram_chat_id: r.telegram_chat_id,
           telegram_username: r.telegram_username,
           telegram_first_name: r.telegram_first_name,

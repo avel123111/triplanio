@@ -745,19 +745,6 @@ export function weekdayLong(iso, loc) {
   return _WEEKDAYS_LONG[d.getDay()];
 }
 
-// ----- Transfer card helpers -----
-function _addDuration(time, dur) {
-  if (!time || !dur) return null;
-  const [h, m] = time.split(":").map(Number);
-  const hm = dur.match(/(\d+)ч/);
-  const mm = dur.match(/(\d+)м/);
-  const dh = hm ? +hm[1] : 0;
-  const dm = mm ? +mm[1] : 0;
-  let nh = h + dh, nm = m + dm;
-  nh += Math.floor(nm / 60); nm %= 60; nh %= 24;
-  return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
-}
-
 // ── Per-event color / icon / label (shared by desktop + mobile renderers) ──────
 function _evMeta(e) {
   if (e.type === "flight" || e.type === "transfer") {
@@ -808,11 +795,13 @@ export function StreamEventRow({ e, onClick }) {
   const price = e.price != null ? fmt(e.price, e.cur) : null;
 
   if (e.type === "flight" || e.type === "transfer") {
-    // Prefer the explicit end time from the data model (e.endTime is derived
-    // from end_datetime in buildEventStream). _addDuration only parses Cyrillic
-    // "Nч/Nм" duration strings, so on en/es locales (or a missing duration) it
-    // added zero and the arrival time collapsed to the departure time.
-    const arrive = e.endTime || e.arrive_time || _addDuration(e.time, e.duration) || "—";
+    // Время прибытия — из МОДЕЛИ (`e.endTime` выводится из `end_datetime` в
+    // buildEventStream), и другого источника у него быть не может. Прежний
+    // фолбэк выводил его, разбирая обратно уже ОТФОРМАТИРОВАННУЮ подпись
+    // длительности, и только по кириллическим «Nч/Nм» — то есть на en/es
+    // прибавлял ноль, а сработать не мог в принципе: подпись существует ровно
+    // тогда, когда есть `endTime`.
+    const arrive = e.endTime || "—";
     const small = [e.carrier, e.duration].filter(Boolean).join(" · ");
     return (
       <div className="tl3-ev tl3-ev--tr">

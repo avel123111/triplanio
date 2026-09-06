@@ -13,6 +13,7 @@ import { successToast } from '@/lib/successToast';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
+import { draftPath } from '@/lib/planner-draft';
 
 /**
  * Global "create / copy trip" flow.
@@ -115,8 +116,12 @@ export function CreateTripProvider({ children }) {
 
   // Run the limit gate for a concrete method. TripLimitDialog self-fetches the
   // authoritative count and auto-proceeds when the user is under the cap.
+  // TRIP-520: `trip_creation_started` НЕ здесь. На кэпе у фри-юзера этот клик
+  // давал событие, а планировщик не открывался (лимит-гейт разворачивал), и со
+  // второй двери (ссылка / история / возврат к черновику) события не было вовсе.
+  // Теперь оно едет на монтировании ManualPlanner — там, где вход действительно
+  // состоялся. `paywall_viewed` при кэпе шлёт сам TripLimitDialog.
   const startCreate = useCallback((pick) => {
-    track('trip_creation_started', { method: pick });
     setPending({ kind: 'create', pick });
     setLimitOpen(true);
   }, []);
@@ -177,7 +182,7 @@ export function CreateTripProvider({ children }) {
     setPending(null);
     if (!p) return;
     if (p.kind === 'copy') { doCopy(p.tripId); return; }
-    nav(p.pick === 'ai' ? '/plan-trip-ai' : '/new-trip');
+    nav(draftPath(p.pick));
   }, [nav, pending, doCopy]);
 
   const value = useMemo(

@@ -20,14 +20,11 @@
 // и решает по pathname внутри. Это самый устойчивый вариант: список путей ниже
 // нельзя рассинхронизировать с конфигом, потому что конфига нет.
 
-// Адрес демо берётся ИЗ ТОЙ ЖЕ константы, что и маршрут, лендинг и карта сайта
-// (`DEMO_PATH`) — модуль намеренно без зависимостей ровно ради таких импортов.
-// Раньше здесь стоял префикс `/d/`, и это была ошибка в обе стороны: слаг
-// оказывался вписан ЧЕТВЁРТЫМ местом, а бот получал 200 и индексируемое превью
-// на ЛЮБОЙ `/d/…`, включая опечатку и мёртвую ссылку, — при том что человеку по
-// тому же адресу отдаётся 404 (маршрут точный, см. `demoPath.js`).
-import { DEMO_PATH } from './src/pages/Demo/demoPath.js';
-import { isKnownPath } from './src/lib/routePaths.js';
+// Адреса демо здесь больше нет: с TRIP-520 демо приезжает готовым файлом со
+// своими og-тегами, и заглушка ему не нужна (см. `previewFor`).
+import {
+  isKnownPath, LOCALISED_PAGES, PREFIXED_LANGS, withLangPath, SHELL_FILE,
+} from './src/lib/routePaths.js';
 
 // ★ ТОЛЬКО КРАУЛЕРЫ ПРЕВЬЮ. Поисковиков здесь НЕТ, и это несущее.
 //
@@ -137,24 +134,15 @@ function previewFor(pathname) {
       noindex: true, // share-токен в адресе
     });
   }
-  if (pathname === DEMO_PATH) {
-    return page({
-      title: 'Demo trip — Triplanio',
-      description: 'A live example of a Triplanio trip: the route on a map, a day-by-day timeline, the budget, documents and the Telegram assistant.',
-    });
-  }
-  if (pathname === '/terms') {
-    return page({
-      title: 'Terms of Service — Triplanio',
-      description: 'The agreement between you and Triplanio: what the Service does, what you may do with it, and how it can end.',
-    });
-  }
-  if (pathname === '/privacy') {
-    return page({
-      title: 'Privacy Policy — Triplanio',
-      description: 'What personal data the Service collects, why, how long it is kept, and what rights you have over it.',
-    });
-  }
+  // ★ ДЕМО И ЮР-СТРАНИЦ ЗДЕСЬ БОЛЬШЕ НЕТ (TRIP-520). Они приезжают готовыми
+  // файлами, и og-теги в них СВОИ — выведены из настоящего заголовка страницы
+  // при выпечке. Заглушка была нужна ровно потому, что файла не было; оставь мы
+  // её, у одной страницы стало бы два описания в двух местах, и первое же
+  // изменение текста разошлось бы молча.
+  //
+  // Осталось то, что испечь нельзя по построению: приглашение и публичная
+  // поездка. У них в адресе одноразовый токен, содержимое своё у каждой ссылки,
+  // и `noindex` в этой самой заглушке — единственная защита от индексации.
   return null;
 }
 
@@ -184,11 +172,39 @@ async function notFound(request) {
     'cache-control': 'public, max-age=0, must-revalidate',
   };
   try {
-    const shell = await fetch(new URL('/index.html', request.url));
+    // ★ ОБОЛОЧКА, А НЕ `index.html`: с приходом выпечки по `index.html` лежит
+    // ЛЕНДИНГ (TRIP-520). Отдай мы его — на битом адресе человек увидел бы
+    // главную страницу под статусом 404, то есть ровно ту подмену, ради
+    // устранения которой этот ответ и существует.
+    const shell = await fetch(new URL(`/${SHELL_FILE}`, request.url));
     return new Response(await shell.text(), { status: 404, headers });
   } catch {
     return new Response('<!doctype html><meta name="robots" content="noindex"><title>404</title>Not found', { status: 404, headers });
   }
+}
+
+/**
+ * `?lang=es` на бесперфиксном адресе переведённой страницы → её ИСПАНСКИЙ АДРЕС.
+ *
+ * Параметром язык форсят рекламные ссылки (TRIP-511/487), и до выпечки это был
+ * единственный способ приземлить испанскую кампанию на испанский экран. Теперь у
+ * испанской страницы есть свой файл, и оставь мы прежнее поведение — платный
+ * посетитель получал бы АНГЛИЙСКИЙ файл, который через полторы секунды
+ * перерисовывался бы в испанский. Переезд отдаёт нужный файл сразу.
+ *
+ * Только на переведённых страницах и только на бесперфиксных: `?lang=` на входе
+ * и публичной поездке работает как работал — там языкового адреса нет.
+ * Временный (307), а не постоянный: адрес назначения зависит от параметра, и
+ * закреплять такую пару в кэше браузера нельзя.
+ */
+function localeRedirect(href, pathname) {
+  if (!LOCALISED_PAGES.includes(pathname)) return undefined;
+  const url = new URL(href);
+  const lang = url.searchParams.get('lang');
+  if (!PREFIXED_LANGS.includes(lang)) return undefined;
+  url.searchParams.delete('lang');
+  url.pathname = withLangPath(lang, pathname);
+  return new Response(null, { status: 307, headers: { location: url.pathname + url.search + url.hash } });
 }
 
 export default function middleware(request) {
@@ -199,6 +215,8 @@ export default function middleware(request) {
     // сперва про User-Agent, и краулер превью проскочит мимо проверки и получит
     // 200 там, где человеку отдаётся 404.
     if (!isKnownPath(pathname)) return notFound(request);
+    const langRedirect = localeRedirect(request.url, pathname);
+    if (langRedirect) return langRedirect;
     const ua = request.headers.get('user-agent') || '';
     // На токен-адресе заглушку получает любой бот (она несёт `noindex`), на
     // остальных — только краулер превью: поисковику там нужно приложение.

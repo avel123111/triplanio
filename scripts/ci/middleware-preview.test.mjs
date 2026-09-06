@@ -19,6 +19,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import middleware from '../../middleware.js';
 import { DEMO_PATH } from '../../src/pages/Demo/demoPath.js';
+import { PRERENDERED_PAGES, LOCALISED_PAGES, PREFIXED_LANGS, withLangPath } from '../../src/lib/routePaths.js';
 
 const BOT = 'TelegramBot (like TwitterBot)';
 /** Поисковики — они выполняют JS и обязаны получить ПРИЛОЖЕНИЕ, а не заглушку. */
@@ -51,13 +52,20 @@ test('★ живой человек получает приложение на �
 
 /* ── бот получает превью там, где мы его объявили ────────────────────────── */
 
-test('бот получает СВОЁ превью на каждой из пяти поверхностей', async () => {
+test('бот получает СВОЁ превью там, где готового файла нет и быть не может', async () => {
+  // ★ ПОВЕРХНОСТЕЙ ОСТАЛОСЬ ДВЕ (TRIP-520). Демо и юр-страницы уехали отсюда не
+  // потому, что превью им не нужно, а потому, что оно у них теперь СВОЁ: эти
+  // страницы приезжают готовыми файлами, og-теги в которых выведены из
+  // настоящего заголовка при выпечке. Заглушка рядом с файлом означала бы два
+  // описания одной страницы в двух местах — и первое же изменение текста
+  // разошлось бы молча. Проверку, что замена на месте, держит `prerender.test.mjs`.
+  //
+  // Здесь остаётся то, что испечь нельзя по построению: у приглашения и
+  // публичной поездки содержимое своё у КАЖДОЙ ссылки, а в адресе одноразовый
+  // токен.
   const cases = [
     ['/join/tok123', 'invited'],
     ['/public/trip/00000000-0000-0000-0000-000000000000', 'A trip on Triplanio'],
-    [DEMO_PATH, 'Demo trip'],
-    ['/terms', 'Terms of Service'],
-    ['/privacy', 'Privacy Policy'],
   ];
   for (const [path, marker] of cases) {
     const res = ask(path, BOT);
@@ -81,8 +89,10 @@ test('★★★ адрес с одноразовым токеном закрыт
   for (const p of ['/join/tok123', '/public/trip/abc']) {
     assert.match(await bodyOf(ask(p, BOT)), /robots" content="noindex"/, `${p} обязан быть noindex`);
   }
+  // Индексируемые страницы заглушки больше не получают вовсе — у них свой файл.
   for (const p of [DEMO_PATH, '/terms', '/privacy']) {
-    assert.match(await bodyOf(ask(p, BOT)), /robots" content="index,follow"/, `${p} обязан индексироваться`);
+    assert.equal(ask(p, BOT), undefined, `${p} обязан отдаваться готовым файлом, а не заглушкой`);
+    assert.equal(PRERENDERED_PAGES.includes(p), true, `${p} перестал печься — тогда заглушку убирать было нельзя`);
   }
 });
 
@@ -163,7 +173,8 @@ test('★★ демо — ТОЧНЫЙ адрес: несуществующий 
     assert.equal(res?.status, 404, p);
     assert.equal(res.headers.get('x-robots-tag'), 'noindex', `${p}: 404 обязан нести запрет индексации`);
   }
-  assert.ok(ask(DEMO_PATH, BOT), 'канонический адрес превью получает');
+  // Канонический адрес заглушки больше не получает — у него свой готовый файл.
+  assert.equal(ask(DEMO_PATH, BOT), undefined, 'у демо теперь свой файл, заглушка ему не нужна');
 });
 
 test('адрес демо берётся из общей константы, а не переписан здесь', () => {
@@ -180,4 +191,42 @@ test('пустой User-Agent — это не бот: отдаём прилож�
 test('битый запрос не роняет страницу — превью не имеет права быть точкой отказа', () => {
   assert.doesNotThrow(() => middleware({ url: 'не-адрес', headers: { get: () => BOT } }));
   assert.doesNotThrow(() => middleware({ url: 'https://x/y', headers: null }));
+});
+
+/* ── рекламная ссылка приземляется на СВОЙ файл, а не на английский ───────── */
+
+test('★ ?lang= на переведённой странице уводит на её языковой адрес', () => {
+  // До выпечки язык из параметра применялся уже в браузере — это был
+  // единственный способ. Теперь у испанской страницы есть свой файл, и оставь мы
+  // прежнее поведение, платный посетитель получал бы АНГЛИЙСКИЙ файл, который
+  // через полторы секунды перерисовывался бы в испанский.
+  for (const lang of PREFIXED_LANGS) {
+    for (const path of LOCALISED_PAGES) {
+      const res = ask(`${path}?lang=${lang}`, HUMAN);
+      assert.ok(res, `${path}?lang=${lang}: переезда нет`);
+      assert.equal(res.status, 307, 'переезд обязан быть временным — адрес зависит от параметра');
+      assert.equal(res.headers.get('location'), withLangPath(lang, path), `${path}?lang=${lang}`);
+    }
+  }
+});
+
+test('★ метка кампании переживает переезд по языку', () => {
+  // Метка живёт В АДРЕСЕ (TRIP-514). Потеряй её переезд — и весь платный трафик
+  // на языковую страницу стал бы неатрибутированным, молча.
+  const res = ask('/?lang=es&camp_source=google&camp_campaign=es_launch', HUMAN);
+  const loc = res.headers.get('location');
+  assert.match(loc, /^\/es\?/, `ушли не на испанский адрес: ${loc}`);
+  assert.match(loc, /camp_source=google/, 'метка кампании потеряна');
+  assert.match(loc, /camp_campaign=es_launch/, 'метка кампании потеряна');
+  assert.doesNotMatch(loc, /lang=/, 'параметр языка остался и снова сработает на новом адресе');
+});
+
+test('?lang= НЕ трогает страницы без языкового адреса и мусорные значения', () => {
+  // У входа и публичной поездки готового файла на язык нет — там параметр
+  // работает как работал, уже в браузере.
+  for (const p of ['/login?lang=es', '/public/trip/abc?lang=ru', '/terms?lang=ru']) {
+    assert.equal(ask(p, HUMAN), undefined, `${p} не должен никуда переезжать`);
+  }
+  assert.equal(ask('/?lang=de', HUMAN), undefined, 'неизвестный язык не должен порождать переезд');
+  assert.equal(ask('/?lang=en', HUMAN), undefined, 'английский живёт без префикса — переезжать некуда');
 });

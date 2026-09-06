@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { invokeFn } from '@/lib/invokeFn';
 import { track, setRefTripId } from '@/lib/analytics';
-import { zoneHome } from '@/components/site/zoneCta';
+import { useZoneHome } from '@/components/site/zoneCta';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import {
   SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
@@ -16,7 +16,7 @@ import { transferKind } from '@/lib/transport';
 import { sortVisits } from '@/lib/validation';
 import { localizeVisits } from '@/lib/trip-cities';
 import { tripStats, tripDateSpan } from '@/lib/trip-stats';
-import { formatDuration } from '@/lib/time';
+import { transferDuration } from '@/lib/time';
 import { formatDateRange } from '@/lib/trip-dates';
 
 // Prototype v5.7 carried the cover inline; the fallback is a repo asset
@@ -30,8 +30,8 @@ const COVER_FALLBACK = '/covers/fallback.webp';
 // off SITE carries the marks ON THE ADDRESS — a visitor here arrived on a marked
 // share link, exactly the new person the mark exists for (TRIP-329). The click
 // itself no longer replaces the document: `useBrandNav` (SiteChrome) routes it,
-// so the in-memory snapshot survives too.
-const SITE = zoneHome();
+// so the in-memory snapshot survives too. Считается в рендере (`useZoneHome`), а
+// не константой модуля: у адресов зоны есть язык, а он меняется без перезагрузки.
 
 const Ic = ({ id }) => <svg aria-hidden="true"><use href={`#${id}`} /></svg>;
 
@@ -50,6 +50,7 @@ const FlagGlyph = () => <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#
 
 export default function PublicTrip() {
   const { lang, setLang } = useI18n();
+  const site = useZoneHome();
   const { t, fmtDate, plural, fmtDistance, fmtCountry } = useI18nFormat();
   const cssReady = useSiteCss();
   // The public reader follows the landing: light-only, restored on exit.
@@ -148,7 +149,7 @@ export default function PublicTrip() {
     return {
       icon: transferKind(type).icon,
       label: t(`public.mode_${type}`) || type,
-      dur: formatDuration(tr.start_datetime, tr.end_datetime, fromV?.timezone, toV?.timezone),
+      dur: transferDuration(tr, fromV, toV, t),
     };
   };
 
@@ -251,7 +252,7 @@ export default function PublicTrip() {
           здесь. Без него три пункта бургера указывали на несуществующие на этой
           странице якоря — клик не делал ничего. Механизм для этого у `SiteHeader`
           был с самого начала, его просто никто не передал. */}
-      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref={SITE} navBase={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref={site} navBase={site} />
 
       <main className="pt">
         <SiteHero
@@ -347,17 +348,18 @@ export default function PublicTrip() {
         <SiteCta />
       </main>
 
-      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+      <SiteFooter lang={lang} setLang={setLang} brandHref={site} />
     </>
   );
 }
 
 function Shell({ lang, setLang, children }) {
+  const site = useZoneHome();
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="full" brandHref={SITE} navBase={SITE} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" brandHref={site} navBase={site} />
       <main className="pt">{children}</main>
-      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+      <SiteFooter lang={lang} setLang={setLang} brandHref={site} />
     </>
   );
 }
