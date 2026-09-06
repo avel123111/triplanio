@@ -80,7 +80,16 @@ export default function Legal({ doc = 'terms' }) {
       <SiteHeader lang={lang} setLang={setLang} variant="minimal" brandHref={site} />
 
       <main>
-        <section className="doc" id="doc" data-hdr="light">
+        {/* ★ ЯЗЫК ОБЪЯВЛЯЕТ ТОТ, ЧЕЙ ЭТО ТЕКСТ (TRIP-520). Юр-документ английский
+            по решению TRIP-465 §7 — целиком, включая заголовок, лид и оглавление,
+            — а `<html lang>` держит слой i18n и ставит туда язык ОБВЯЗКИ: у
+            русскоязычного посетителя на `/terms` там честно `ru`. Без этой строки
+            получалось `lang="ru"` на английской прозе: скринридер читает её
+            русскими правилами, а встроенный переводчик видит повод предложить
+            перевод и переписать DOM (ровно то, чем TRIP-515 обосновывает отказ от
+            адресов `/ru/terms`). Шапка и подвал переведены и остаются под
+            документным языком — поэтому признак висит на секции, а не выше. */}
+        <section className="doc" id="doc" data-hdr="light" lang="en">
           <div className="wrap">
             <div className="doc-head">
               <span className="brow">{LEGAL_UI.eyebrow}</span>
