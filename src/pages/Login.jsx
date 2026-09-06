@@ -8,8 +8,10 @@ import { reportAuthError } from '@/lib/reportDataError';
 import { authErrorText, oauthRedirectError, stripOauthError } from '@/lib/authErrorText';
 import { authFlowResult } from '@/lib/authFlowCode';
 import { postLoginPath } from '@/lib/postLoginPath';
+import { postLoginNavStep } from '@/lib/postLoginNav';
 import { initialAuthView, LOGIN_PATH, RECOVERY_PATH } from '@/lib/authEntry';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useAuth } from '@/lib/AuthContext';
 import { useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
 import { setRemember as setRememberFlag } from '@/api/authStorage';
@@ -39,6 +41,10 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 // requestPasswordReset смотрит только на хост, query ему безразличен.
 const postLoginHref = () => withVisitCampaign(postLoginPath());
 const postLoginRedirectTo = () => withVisitCampaign(window.location.origin + postLoginPath());
+
+// Потолок ожидания бутстрапа профиля на экране входа — см. эффект-страховку в
+// компоненте. Число здесь, а не в теле эффекта, по образцу SEND_COOLDOWN_MS.
+const BOOTSTRAP_WAIT_MS = 8_000;
 
 /* floor-exempt: dsshare +30 — неавторизованная зона живёт на СВОЕЙ ДС (site.css
    §AUTH), а не на app-DS из src/design: перенос логина/join с компонентов
@@ -228,6 +234,11 @@ function AuthError({ children }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Login() {
   const { t, lang, setLang } = useI18n();
+  // Состояние бутстрапа профиля. Экран входа живёт В ЗОНЕ (`isZoneRoute`), а
+  // зонная ветка App.jsx стоит ДО гейта `isLoadingAuth` — поэтому во время
+  // бутстрапа страница НЕ подменяется спиннером и этот компонент остаётся
+  // смонтированным. На этом и держится ожидание ниже.
+  const { isAuthenticated, isLoadingAuth, authChecked, user } = useAuth();
 
   // Адрес, по которому экран открыли, — ОДИН снимок на оба решения ниже
   // (маршрут восстановления и стартовый вид). Ветку «рендер без `window`»
@@ -261,6 +272,8 @@ export default function Login() {
   const [remember, setRemember]   = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState(null);
+  // Уход со страницы ОТЛОЖЕН до конца бутстрапа профиля — см. эффект ниже.
+  const [navPending, setNavPending] = useState(false);
   const [sentEmail, setSentEmail] = useState('');
   const [resendLeft, setResendLeft] = useState(0);       // seconds left on the resend cooldown
   const [resendFlow, setResendFlow] = useState('reset'); // which send to repeat: 'reset' | 'signup'
@@ -309,6 +322,60 @@ export default function Login() {
       if (session) window.location.href = postLoginHref();
     });
   }, [isRecoveryRoute]);
+
+  // ── Уход со страницы ждёт бутстрап профиля ──────────────────────────────────
+  // Вход и загрузка профиля — ДВЕ независимые вещи, и раньше они гонялись.
+  // Успешный вход отсюда немедленно делал `window.location.href`, а `AuthContext`
+  // в этот момент только начинал: `getMe` → строки нет → `account/register`, два
+  // последовательных edge-вызова, ~700 мс при платформенном поле ~350–400 мс на
+  // вызов. `user_signed_up` и рекламные конверсии стоят ПОСЛЕ них обоих.
+  //
+  // Документ умирал раньше. Строку сервер создавал (метки в базе корректны), а
+  // ответ `created: true` возвращать было некуда — до отправки события дело не
+  // доходило. Следующий документ видел готовый профиль, ветку создания не
+  // выполнял, и событие не уходило уже НИКОГДА: условие `if (profileCreated)`
+  // второй раз выполниться не может. Замер на проде 05–06.09.2026: 5 регистраций
+  // с `utm_source=chatgpt` в `users`, 3 события в PostHog. У пропавших при этом
+  // весь остальной поток событий на месте и с верными `camp_*` — терялось ровно
+  // одно событие, а не метки.
+  //
+  // Поэтому навигация теперь ждёт, пока `AuthContext` закончит. Ждём ИМЕННО
+  // спада `isLoadingAuth`, а не «`authChecked` уже true»: до входа `authChecked`
+  // как правило УЖЕ true (INITIAL_SESSION без сессии), и без отметки о начале
+  // бутстрапа эффект сработал бы на устаревшем состоянии в тот же кадр.
+  //
+  // На провале бутстрапа уходим ТОЖЕ — поведение остаётся ровно сегодняшним
+  // (человека уносило на postLoginHref и возвращало на /login), чтобы правка на
+  // критическом пути входа не завела новую ветку, в которой можно застрять.
+  //
+  // ★ Событие отправляется в том же синхронном блоке, где выставляются
+  // `user`/`isAuthenticated` (`track` идёт строкой ниже сеттеров), поэтому к
+  // моменту, когда React отрисует нас с новым состоянием, `capture` уже вызван,
+  // и его доставку добивает собственный unload-флаш posthog-js. Не переносить
+  // сеттеры и отправку в разные тики.
+  const bootstrapSeenRef = useRef(false);
+  useEffect(() => {
+    const step = postLoginNavStep({
+      navPending,
+      isLoadingAuth,
+      isAuthenticated,
+      hasUser: Boolean(user),
+      authChecked,
+      bootstrapSeen: bootstrapSeenRef.current,
+    });
+    if (step === 'bootstrapping') bootstrapSeenRef.current = true;
+    if (step === 'go') window.location.href = postLoginHref();
+  }, [navPending, isLoadingAuth, isAuthenticated, user, authChecked]);
+
+  // Страховка от зависания на экране входа. Бутстрап всегда заканчивается либо
+  // успехом, либо `catch`, так что штатно она не срабатывает — но цена ошибки
+  // здесь «человек залип на логине после успешного входа», поэтому предохранитель
+  // стоит. Уходит туда же, куда ушёл бы без всей этой правки.
+  useEffect(() => {
+    if (!navPending) return;
+    const id = setTimeout(() => { window.location.href = postLoginHref(); }, BOOTSTRAP_WAIT_MS);
+    return () => clearTimeout(id);
+  }, [navPending]);
 
   // The auth screen is light-only by design (white form + photo brand panel).
   // A dark theme stored from the authed app sets [data-theme=dark] on <html>,
@@ -465,7 +532,8 @@ export default function Login() {
       // page stays mounted on /login - redirect explicitly (same as email login
       // and the Google redirect flow's redirectTo). Keep isLoading=true so the
       // buttons don't flash re-enabled before the navigation tears the page down.
-      window.location.href = postLoginHref();
+      // Сам уход — по готовности бутстрапа, а не немедленно (эффект выше).
+      setNavPending(true);
     } catch (err) {
       reportAuthError(err, 'id_token');
       setError(authErrorText(t, err));
@@ -565,7 +633,10 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { reportAuthError(error, 'signin'); setError(authErrorText(t, error)); setIsLoading(false); return; }
     track('user_logged_in', { method: 'email' });
-    window.location.href = postLoginHref();
+    // Уход — по готовности бутстрапа, а не немедленно (эффект выше): на этом
+    // пути тоже рождается первая регистрация — подтверждённая почта открывает
+    // приложение впервые именно здесь.
+    setNavPending(true);
   };
 
   const handleSignup = async (e) => {
