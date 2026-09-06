@@ -711,8 +711,39 @@ html[data-reveal] .rv-l.in,html[data-reveal] .rv-r.in{opacity:1;transform:none}
   --hero-a:image-set(url("/hero/desk-flatlay.webp") 1x, url("/hero/desk-flatlay@2x.webp") 2x);
   --hero-b:-webkit-image-set(url("/hero/desk-app.webp") 1x, url("/hero/desk-app@2x.webp") 2x);
   --hero-b:image-set(url("/hero/desk-app.webp") 1x, url("/hero/desk-app@2x.webp") 2x);
-  --hero-m:url("/site/hero-mobile.webp");
+  /* visual-diff-exempt: .hero --hero-m — у мобильного кадра появились варианты по плотности (1x/2x/3x), как у десктопных; сам кадр 3x не изменён, TRIP-520
+     ★ У МОБИЛЬНОГО КАДРА ТЕПЕРЬ ЕСТЬ ВАРИАНТЫ ПО ПЛОТНОСТИ — как у десктопных
+     выше (TRIP-520). Он был единственным кадром БЕЗ них: один файл 3200px и
+     583 КБ доставался любому телефону, включая обычный (не Retina) и тот, где
+     он вчетверо крупнее нужного. Раскладка просит не больше 1000 CSS-px
+     (`--fw` ниже), поэтому 1x=1000, 2x=2000, 3x=3200 — мастер без изменений.
+     Замер: 104 / 302 / 583 КБ. Телефон с плотностью 2 (их большинство) берёт
+     302 вместо 583.
+     ⚠️ Оценка PageSpeed от этого НЕ вырастет: Lighthouse эмулирует плотность
+     2.625 и берёт 3x. Её двигает только вес самого мастера — это решение о
+     качестве фотографии, и оно за Pavel. */
+  --hero-m:-webkit-image-set(url("/site/hero-mobile.webp") 1x, url("/site/hero-mobile@2x.webp") 2x, url("/site/hero-mobile@3x.webp") 3x);
+  --hero-m:image-set(url("/site/hero-mobile.webp") 1x, url("/site/hero-mobile@2x.webp") 2x, url("/site/hero-mobile@3x.webp") 3x);
   --hero-veil:236,246,253;          /* цвет светлой вуали поверх фотографии */
+  /* ★★ ГЕОМЕТРИЯ ДЕСКТОПНОГО КАДРА — ЗДЕСЬ, А НЕ В JAVASCRIPT (TRIP-520).
+     Кадр 3400x1914 ставится так, чтобы телефон на фотографии встал в одну и ту
+     же точку экрана на любом окне. Это чистая функция от размеров секции, и
+     считать её скриптом не нужно — CSS умеет ровно это.
+     Высота кадра = 108% высоты секции, ширина следует из пропорции 3400/1914.
+     Смещение: `68%` у background-position означает 0.68*(секция - кадр), а нам
+     нужно 0.68*секция - 0.5026*кадр — отсюда добавка 0.1774 ширины кадра
+     (0.68-0.5026). По вертикали так же: 0.452 против 0.4833.
+     ЗАЧЕМ ЭТО ПЕРЕЕХАЛО. Скрипт считал те же числа и писал их в разметку, а
+     выпечка снимала страницу в окне 1280x720 — и готовый файл уносил ПИКСЕЛИ
+     ТОГО ОКНА. На любом другом окне кадр рисовался неверно, пока не приедет
+     бандл, и прыгал (замер на 1440: 1465x825 -> 1811x1019, скачок 24%). В CSS
+     прыгать нечему: величина верна с первого кадра. */
+  /* visual-diff-exempt: .hero --hero-ch — величина кадра переехала из JS в CSS, рисуемый размер тот же (сверено на 5 окнах), TRIP-520
+     visual-diff-exempt: .hero --hero-fh — то же
+     visual-diff-exempt: .hero --hero-fw — то же */
+  --hero-ch:calc(100svh + var(--sheet-r));
+  --hero-fh:calc(var(--hero-ch) * 1.08);
+  --hero-fw:calc(var(--hero-fh) * 1.77638);
   background:#7FA9C4;color:var(--ink);overflow:hidden;
   padding-bottom:var(--sheet-r);
   /* ровно один экран: белая «простыня» следующей секции начинается на самом сгибе */
@@ -740,7 +771,7 @@ html[data-reveal] .rv-l.in,html[data-reveal] .rv-r.in{opacity:1;transform:none}
 }
 
 /* Кадр по умолчанию — МОБИЛЬНЫЙ, десктопный подключается медиазапросом. Обратный
-   порядок (десктоп по умолчанию + .hero.is-mob от JS) заставлял телефон качать
+   порядок (десктоп по умолчанию + класс от JS) заставлял телефон качать
    десктопный кадр: класс приходит после первого рендера, запрос успевает уйти. */
 @media (min-width:981px){
   .hero-fill{background-image:var(--hero-a);filter:blur(54px) brightness(1.02) saturate(1.02);transform:scale(1.04)}
@@ -804,16 +835,31 @@ html[data-reveal] .rv-l.in,html[data-reveal] .rv-r.in{opacity:1;transform:none}
 @media (min-width:981px){
   .hero-layer.la{background-image:var(--hero-a)}
   .hero-layer.la,.hero-layer.lb{
-    background-size:var(--hero-frame-size,cover);
-    background-position:var(--hero-frame-pos,center);
-    -webkit-mask:var(--hero-frame-mask,none);mask:var(--hero-frame-mask,none)}
+    background-size:var(--hero-fw) var(--hero-fh);
+    background-position:calc(68% + var(--hero-fw) * .1774) calc(45.2% - var(--hero-fh) * .0313);
+    /* visual-diff-exempt: .hero-layer {@media (min-width:981px)} --hero-edge — левая кромка кадра стала величиной CSS вместо расчёта в JS, TRIP-520
+       visual-diff-exempt: .la {@media (min-width:981px)} --hero-edge — то же
+       visual-diff-exempt: .lb {@media (min-width:981px)} --hero-edge — то же
+       Проявление у ЛЕВОЙ КРОМКИ кадра — там, где иначе виден шов с размытой
+       подложкой. Сход длится столько же, сколько сам отступ кромки от края
+       секции, но не длиннее 220px. Правило вырождается САМО: кромка ушла за
+       левый край (узкие высокие окна) — отступ ноль, схода нет, ровно как и
+       должно быть, потому что прятать нечего.
+       `68%` внутри градиента — доля ШИРИНЫ СЕКЦИИ; это другая величина, чем
+       `68%` в background-position выше, поэтому кромка тут пишется целиком. */
+    --hero-edge:max(0px, 68% - var(--hero-fw) * .5026);
+    -webkit-mask:linear-gradient(90deg,transparent var(--hero-edge),
+      #000 calc(var(--hero-edge) + min(var(--hero-edge), 220px)));
+    mask:linear-gradient(90deg,transparent var(--hero-edge),
+      #000 calc(var(--hero-edge) + min(var(--hero-edge), 220px)))}
 }
 
 .hero-layer.lb{opacity:0;transition:opacity .5s var(--ease-out);will-change:opacity}
 
 /* кадр наведения объявлен только для десктопа: на мобиле он не нужен и не должен
    даже запрашиваться. display:none из JS для этого не годится — он ставится после
-   первого рендера, запрос успевает уйти. Порог 981px = ровно тот, где JS включает is-mob. */
+   первого рендера, запрос успевает уйти. Порог 981px — тот же, что у геометрии
+   кадра выше; с TRIP-520 его знает только CSS, класса от JS больше нет. */
 @media (min-width:981px){.hero-layer.lb{background-image:var(--hero-b)}}
 
 .hero.is-zoom .hero-layer.lb{opacity:1}
@@ -847,8 +893,10 @@ html[data-reveal] .rv-l.in,html[data-reveal] .rv-r.in{opacity:1;transform:none}
 
 @media (min-width:981px){
   .hero-hot{display:block;
-    left:var(--hero-hot-x,0);top:var(--hero-hot-y,0);
-    width:var(--hero-hot-w,0);height:var(--hero-hot-h,0)}
+    left:calc(68% - var(--hero-fw) * .0729);
+    top:calc(45.2% - var(--hero-fh) * .2926);
+    width:calc(var(--hero-fw) * .1459);
+    height:calc(var(--hero-fh) * .5852)}
 }
 
 

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useZoneCta, useZonePath } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
 import { useJsonLd, faqPageLd, softwareAppLd } from '@/components/site/jsonLd';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -21,102 +20,39 @@ import { SiteCta } from '@/components/site/SiteTrip';
 
 
 /**
- * Hero three-layer photo composite (TRIP-460 §10, ported from the prototype's
- * own IIFE). The DESKTOP hero is a single flat-lay photo fitted BY HEIGHT so
- * the phone in it holds a fixed share of the viewport height on any monitor;
- * hovering the phone cross-fades to the "screen on" frame. That geometry is
- * measured off the fixed desktop frames (desk-flatlay / desk-app, 3400×1914)
- * and lives in the `FRAME` data object — those images do not change. The
- * MOBILE frame (the one Pavel swaps later) is a plain CSS `cover` layer with
- * NO JS geometry, so replacing /site/hero-mobile.webp never touches FRAME.
+ * Hero cross-fade: наведение на телефон переключает кадр «экран включён».
+ *
+ * ★★ ГЕОМЕТРИЯ ЗДЕСЬ БОЛЬШЕ НЕ СЧИТАЕТСЯ (TRIP-520). Раньше этот хук мерил
+ * секцию, считал размер и положение кадра и писал их В РАЗМЕТКУ. Это работало,
+ * пока страницу рисовал только браузер человека. С приходом выпечки стало
+ * дефектом: сборка снимает страницу в окне 1280x720, и готовый файл уносил
+ * пиксели ТОГО окна. На любом другом окне кадр был неверным до прихода бандла,
+ * а потом прыгал — замер на 1440: 1465x825 -> 1811x1019, скачок 24%. Ровно это
+ * и видно как «картинка дёргается при открытии».
+ *
+ * Величина, которая есть чистая функция размеров секции, обязана жить в CSS —
+ * там она верна с ПЕРВОГО кадра и на любом окне, и пересчитывать её некому.
+ * Формулы и разбор — у `--hero-fw`/`--hero-fh` в `site.css`; ресайз, поворот
+ * экрана и `fonts.ready` больше не нужны, каскад справляется сам.
+ *
+ * Здесь остаётся то, чего CSS действительно не умеет: `:hover` на невидимой
+ * зоне должен подсвечивать ДРУГОЙ элемент (слой кадра), а не себя.
  */
 function useHeroFrame(ready) {
   useEffect(() => {
     if (!ready) return undefined;
     const hero = document.querySelector('.hero');
-    if (!hero) return undefined;
-    const bg = hero.querySelector('.hero-bg');
-    const la = hero.querySelector('.hero-layer.la');
-    const lb = hero.querySelector('.hero-layer.lb');
-    const hot = hero.querySelector('.hero-hot');
-    if (!bg || !la || !lb || !hot) return undefined;
+    const hot = hero?.querySelector('.hero-hot');
+    if (!hero || !hot) return undefined;
 
-    // Phone measured off the 3400×1914 frame (x 1461..1957, y 365..1485):
-    // cx/cy = phone centre in frame fractions; box = its extent for the hot zone.
-    const FRAME = { ar: 3400 / 1914, zoom: 1.08, cx: 0.5026, cy: 0.4833, box: [0.4297, 0.1907, 0.5756, 0.7759] };
-    const A = FRAME, B = FRAME;
-    const TX = 0.68, TY = 0.452; // where the phone centre lands inside the viewport
-    const mq = window.matchMedia(ZONE_BELOW_DESKTOP_MQ);
-
-    // ★★ JS ПОСТАВЛЯЕТ ЧИСЛА, РЕШАЕТ CSS (TRIP-520).
-    //
-    // Раньше эти же величины писались инлайновыми стилями прямо на слои кадра, и
-    // инлайн сильнее любого правила. Пока страницу рисовал только браузер
-    // человека, это было безобидно. С приходом готовых файлов стало дефектом:
-    // выпечка снимает страницу в ДЕСКТОПНОМ окне (другого на сервере нет), и
-    // десктопные пиксели уезжали в файл, который достаётся всем. Телефон рисовал
-    // кадр героя по десктопным координатам, пока не догрузится бандл и не сотрёт
-    // их (замер: около 9.6 с на мобильном троттлинге).
-    //
-    // Теперь величины едут в CSS-переменных на `.hero`, а объявления живут в
-    // `site.css` ВНУТРИ десктопного медиазапроса. Телефон эти переменные просто
-    // не читает — каскад решает сам, и решать правильно ему ничто не мешает.
-    // Вырезать что-либо из готового файла для этого не нужно.
-    const setVars = (vars) => Object.entries(vars).forEach(([k, v]) => (
-      v === null ? hero.style.removeProperty(k) : hero.style.setProperty(k, v)
-    ));
-    const FRAME_VARS = ['--hero-frame-size', '--hero-frame-pos', '--hero-frame-mask',
-      '--hero-hot-x', '--hero-hot-y', '--hero-hot-w', '--hero-hot-h'];
-
-    const place = () => {
-      const mob = mq.matches;
-      hero.classList.toggle('is-mob', mob);
-      if (mob) {
-        // Мобильный кадр целиком в CSS — снимаем величины, чтобы в разметке не
-        // оставалось чисел, которые на этом экране ничего не значат.
-        setVars(Object.fromEntries(FRAME_VARS.map((k) => [k, null])));
-        hero.classList.remove('is-zoom');
-        return;
-      }
-      const cw = bg.clientWidth, ch = bg.clientHeight;
-      if (!cw || !ch) return;
-      const h = ch * A.zoom, w = h * A.ar;
-      const l = cw * TX - w * A.cx;
-      const t = ch * TY - h * A.cy;
-      let mask = 'none';
-      if (t > 2) {
-        const fv = Math.min(200, Math.max(110, t));
-        mask = `linear-gradient(180deg,rgba(0,0,0,0) ${t.toFixed(0)}px,rgba(0,0,0,1) ${(t + fv).toFixed(0)}px)`;
-      } else if (l > 2) {
-        const fh = Math.min(220, Math.max(90, l));
-        mask = `linear-gradient(90deg,rgba(0,0,0,0) ${l.toFixed(0)}px,rgba(0,0,0,1) ${(l + fh).toFixed(0)}px)`;
-      }
-      const b = B.box;
-      setVars({
-        '--hero-frame-size': `${w.toFixed(1)}px ${h.toFixed(1)}px`,
-        '--hero-frame-pos': `${l.toFixed(1)}px ${t.toFixed(1)}px`,
-        '--hero-frame-mask': mask,
-        '--hero-hot-x': `${(l + w * b[0]).toFixed(1)}px`,
-        '--hero-hot-y': `${(t + h * b[1]).toFixed(1)}px`,
-        '--hero-hot-w': `${(w * (b[2] - b[0])).toFixed(1)}px`,
-        '--hero-hot-h': `${(h * (b[3] - b[1])).toFixed(1)}px`,
-      });
-    };
-
-    const onEnter = () => { if (!mq.matches) hero.classList.add('is-zoom'); };
+    const onEnter = () => hero.classList.add('is-zoom');
     const onLeave = () => hero.classList.remove('is-zoom');
     hot.addEventListener('pointerenter', onEnter);
     hot.addEventListener('pointerleave', onLeave);
-    place();
-    window.addEventListener('resize', place, { passive: true });
-    window.addEventListener('orientationchange', place);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
-
     return () => {
       hot.removeEventListener('pointerenter', onEnter);
       hot.removeEventListener('pointerleave', onLeave);
-      window.removeEventListener('resize', place);
-      window.removeEventListener('orientationchange', place);
+      hero.classList.remove('is-zoom');
     };
   }, [ready]);
 }
