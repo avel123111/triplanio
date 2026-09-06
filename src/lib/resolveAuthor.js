@@ -31,20 +31,24 @@ import { displayName } from './displayName.js';
 /**
  * The trip owner's display name, resolved through the SAME identity ladder as
  * everyone else (live profile → invite snapshot). Collapses the copy that sat
- * inline in TripView/BudgetLens/SettingsLens as
- * `members.find(m => m.user_id === trip.created_by)?.user_full_name || ''`.
- * `profiles` is optional: without it the ladder falls back to the name snapshot
- * — exactly the previous behaviour. Empty string when there is no owner name to
- * show (it feeds the "PRO by {owner}" upsell copy, which reads fine without one).
- * @param {{ trip?: any, members?: any, profiles?: any, selfUser?: any, deletedLabel?: any }} a
+ * inline in TripView/BudgetLens/SettingsLens.
+ *
+ * The owner is a real `trip_members` row (`role='owner'`, TRIP-516/517), so it
+ * is found by its role in the SAME list every other people-surface reads — not
+ * by a `trips.created_by` lookup. (Ownership authority still lives on
+ * `created_by` via the access ladder / `resolveMyRole`; this is the membership
+ * axis — who to render — and it comes from the row.)
+ * `profiles` is optional: without it the ladder falls back to the name snapshot.
+ * Empty string when there is no owner name to show (it feeds the "PRO by {owner}"
+ * upsell copy, which reads fine without one).
+ * @param {{ members?: any, profiles?: any, selfUser?: any, deletedLabel?: any }} a
  */
-export function resolveOwnerName({ trip, members, profiles, selfUser, deletedLabel } = {}) {
-  const ownerId = trip?.created_by;
-  if (!ownerId) return '';
-  const owner = (members || []).find((m) => m.user_id === ownerId);
+export function resolveOwnerName({ members, profiles, selfUser, deletedLabel } = {}) {
+  const owner = (members || []).find((m) => m.role === 'owner');
+  if (!owner) return '';
   return resolveAuthor({
-    userId: ownerId,
-    nameSnapshot: owner?.user_full_name,
+    userId: owner.user_id,
+    nameSnapshot: owner.user_full_name,
     member: owner,
     profiles,
     selfUser,

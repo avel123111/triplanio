@@ -243,7 +243,6 @@ test('no botId means the bot branch never fires', () => {
 
 test('resolveOwnerName resolves the owner through the live profile', () => {
   const name = resolveOwnerName({
-    trip: { created_by: 'o1' },
     members: [{ id: 'm1', user_id: 'o1', role: 'owner', user_full_name: 'Snapshot' }],
     profiles: { o1: { id: 'o1', full_name: 'Live Owner', email: 'o@e.com', is_deleted: false } },
     ...opts,
@@ -253,14 +252,15 @@ test('resolveOwnerName resolves the owner through the live profile', () => {
 
 test('resolveOwnerName falls back to the snapshot with no profiles', () => {
   const name = resolveOwnerName({
-    trip: { created_by: 'o1' },
     members: [{ id: 'm1', user_id: 'o1', role: 'owner', user_full_name: 'Snapshot Owner' }],
   });
   assert.equal(name, 'Snapshot Owner');
 });
 
-test('resolveOwnerName returns empty string when there is no owner', () => {
-  assert.equal(resolveOwnerName({ trip: {}, members: [] }), '');
+test('resolveOwnerName returns empty string when there is no owner row', () => {
+  // A member list without an owner row (only viewers) yields no name.
+  assert.equal(resolveOwnerName({ members: [{ id: 'm2', user_id: 'v1', role: 'viewer' }] }), '');
+  assert.equal(resolveOwnerName({ members: [] }), '');
   assert.equal(resolveOwnerName(), '');
 });
 

@@ -18,7 +18,7 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { EmitIds } from './emit.ts';
-import { bookingAddedRecipientIds, memberLeftRecipientIds } from './emitResolverRules.ts';
+import { recipientsExcept } from './emitResolverRules.ts';
 
 export type Row = Record<string, unknown> | null;
 export type EmitData = {
@@ -79,10 +79,13 @@ async function loadMemberByTripUser(db: SupabaseClient, tripId: unknown, userId:
   return data ?? null;
 }
 
-async function loadActiveAdminIds(db: SupabaseClient, tripId: unknown): Promise<unknown[]> {
+// Владелец+админы — активные строки членства с ролью owner/admin. Владелец теперь
+// обычная строка (`role='owner'`, TRIP-516/517), поэтому приходит своей строкой, а
+// не инъекцией `created_by`; при этом обычные viewer-участники сюда не попадают.
+async function loadActiveOwnerAdminIds(db: SupabaseClient, tripId: unknown): Promise<unknown[]> {
   if (typeof tripId !== 'string' || !tripId) return [];
   const { data } = await db.from('trip_members').select('user_id')
-    .eq('trip_id', tripId).eq('role', 'admin').eq('status', 'active');
+    .eq('trip_id', tripId).in('role', ['owner', 'admin']).eq('status', 'active');
   return (data ?? []).map((r) => (r as { user_id: unknown }).user_id);
 }
 
@@ -180,15 +183,14 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // Участник вышел сам — адресаты = владелец + активные админы, без ушедшего.
+  // Владелец и админы приходят строками членства (owner+admin), без ветки
+  // `created_by` (TRIP-517).
   trip_member_left: async (db, ids, snapshot) => {
-    const [core, adminIds] = await Promise.all([
+    const [core, ownerAdminIds] = await Promise.all([
       tripActorMember(db, ids, snapshot),
-      loadActiveAdminIds(db, ids.trip_id),
+      loadActiveOwnerAdminIds(db, ids.trip_id),
     ]);
-    const recipients = await loadUsers(
-      db,
-      memberLeftRecipientIds(core.trip?.created_by, adminIds, ids.actor_id),
-    );
+    const recipients = await loadUsers(db, recipientsExcept(ownerAdminIds, ids.actor_id));
     return { ...core, recipients };
   },
 
@@ -198,18 +200,16 @@ export const RESOLVERS: Record<string, Resolver> = {
   pro_payment_failed: proResolver,
   trip_pro_activated: tripProResolver,
 
-  // Бронь добавлена (все 4 вида) — адресаты = владелец + активные участники, без
-  // автора. `kind` едет id-слотом (в данных трипа/актора его нет). member не нужен.
+  // Бронь добавлена (все 4 вида) — адресаты = все активные участники (владелец
+  // среди них своей строкой, TRIP-517), без автора. `kind` едет id-слотом (в
+  // данных трипа/актора его нет). member не нужен.
   booking_added: async (db, ids) => {
     const [trip, actor, memberIds] = await Promise.all([
       loadTrip(db, ids.trip_id),
       loadUser(db, ids.actor_id),
       loadActiveMemberIds(db, ids.trip_id),
     ]);
-    const recipients = await loadUsers(
-      db,
-      bookingAddedRecipientIds(trip?.created_by, memberIds, ids.actor_id),
-    );
+    const recipients = await loadUsers(db, recipientsExcept(memberIds, ids.actor_id));
     return { trip, actor, member: null, recipients, kind: typeof ids.kind === 'string' && ids.kind ? ids.kind : null };
   },
 

@@ -1117,7 +1117,7 @@ export default function TripView() {
   const openProInfo = () => openProUpsell({
     role: proRole(isOwner),
     source: 'menu',
-    ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
+    ownerName: resolveOwnerName({ members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
     onUpgrade: openUpgrade,
   });
   const [shareOpen, setShareOpen] = useState(false);
@@ -1337,7 +1337,7 @@ export default function TripView() {
           role: proRole(isOwner),
           source: 'feature',
           feature: t('budget.title'),
-          ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
+          ownerName: resolveOwnerName({ members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
           onUpgrade: openUpgrade,
         })}
       />
@@ -1352,7 +1352,7 @@ export default function TripView() {
           role: proRole(isOwner),
           source: 'feature',
           feature: t('budget.title'),
-          ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
+          ownerName: resolveOwnerName({ members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
           onUpgrade: openUpgrade,
         })}
       />

@@ -94,7 +94,10 @@ Deno.serve(withHandler('getPublicTrip', async (req, corsHeaders) => {
     const profiles = await fetchTripProfiles(admin, { members: memberRows });
     const profileById = new Map(profiles.map((p) => [p.id, p]));
 
-    const ownerProfile = trip.created_by ? profileById.get(trip.created_by) : undefined;
+    // Owner identity comes from its trip_members row (role='owner', TRIP-516/517)
+    // — the SAME source as the travellers list below, not a trips.created_by lookup.
+    const ownerRow = memberRows.find((m) => m.role === 'owner');
+    const ownerProfile = ownerRow?.user_id ? profileById.get(ownerRow.user_id) : undefined;
     // Name via the shared ladder (real full_name → Title-cased e-mail local-part),
     // the SAME one every in-app screen uses — an account with no full_name reads as
     // "Test8", not as nothing. The raw e-mail never leaves (only the derived name).
