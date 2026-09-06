@@ -485,6 +485,14 @@ function buildInitialForm(kind, entity, ctx) {
   return emptyServiceForm(defCur, initialServiceKind || 'car_rental');
 }
 
+// Докрутка к спорному полю — одна на оба гейта формы («Создать» и «Дальше»
+// мастера): та же цель `[data-vfield]`, что метит валидация, и та же докрутка,
+// что у панели сводки (`ValidationUI`).
+function scrollToField(field) {
+  if (!field) return;
+  document.querySelector(`[data-vfield="${CSS.escape(field)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Main component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -840,14 +848,20 @@ export default function EventEditDialog({
     () => issuesToShow(issues, { isEdit, submitted, aiParsed }),
     [issues, isEdit, submitted, aiParsed],
   );
+  // Первая претензия ЭТОЙ ступени: она и держит «Дальше», и говорит, куда
+  // докрутить. Предикат один — разложенный по двум местам, он разъедется.
+  const stepError = useMemo(
+    () => (step ? issues.find((i) => i.level === 'error' && stepOwnsField(step, i.field)) : null),
+    [step, issues],
+  );
   // Гейт «Дальше» — ТОТ ЖЕ предикат, что держит «Создать» (`canSave`), сужённый
   // до полей ступени: блокируют только коды порядка дат и «дата без времени».
   // Иначе у формы стало бы два разных ответа на вопрос «что мешает сохранить».
   const stepBlocked = useMemo(() => {
     if (!step) return false;
-    if (issues.some((i) => i.level === 'error' && stepOwnsField(step, i.field))) return true;
+    if (stepError) return true;
     return Object.entries(timeMissing).some(([k, v]) => v && stepOwnsTimeKey(step, k));
-  }, [step, issues, timeMissing]);
+  }, [step, stepError, timeMissing]);
 
   const goNext = () => {
     // Уходя со ступени, помечаем её поля тронутыми: непустое имя ступень
@@ -857,8 +871,7 @@ export default function EventEditDialog({
     if (stepBlocked) {
       // Показываем претензии ЭТОЙ ступени, а не общий `submitted`: тот раскрыл
       // бы советы и по ступеням, до которых ещё не дошли.
-      const f = issues.find((i) => i.level === 'error' && stepOwnsField(step, i.field))?.field;
-      if (f) document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      scrollToField(stepError?.field);
       return;
     }
     setStepIdx(stepAt + 1);
@@ -870,8 +883,7 @@ export default function EventEditDialog({
   const handleSaveClick = () => {
     if (!canSave) {
       setSubmitted(true);
-      const f = issues.find((i) => i.field)?.field;
-      if (f) document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      scrollToField(issues.find((i) => i.field)?.field);
       return;
     }
     // A valid CREATE of a real booking (services are opened, not "booked").
@@ -1374,20 +1386,7 @@ export default function EventEditDialog({
                 ? <ActivityStep blocks={step.blocks} {...fieldProps} />
                 : <ActivityFields {...fieldProps} />
               )}
-              {currentKind === 'service' && (
-                <ServiceFields
-                  form={form}
-                  setField={setField}
-                  setForm={setForm}
-                  aiFields={aiFields}
-                  setTime={setTime}
-                  issues={displayIssues}
-                  onTouch={markTouched}
-                  isEdit={isEdit}
-                  setUploading={setUploading}
-                  tripId={tripId}
-                />
-              )}
+              {currentKind === 'service' && <ServiceFields {...fieldProps} isEdit={isEdit} />}
 
               {/* Summary panel: revealed on edit-open, save attempt or AI parse. Click row -> field.
                   В мастере сводка стоит на последней ступени: на промежуточной она
@@ -1897,11 +1896,14 @@ function HotelBooking({ form, setField, aiFields, bare = false }) {
   );
 }
 
-// Файлы и заметка - один блок на все виды: поля у них одни и те же, и разошлись
-// бы они ровно в тот день, когда правку внесут в одну из копий.
-function DocsNotesBlock({ form, setField, aiFields, setUploading, tripId, bare = false }) {
+// Файлы и заметка — ДВА РАЗНЫХ блока, и это не косметика.
+// Документ — это ПОДТВЕРЖДЕНИЕ брони: без брони прикладывать нечего, поэтому в
+// мастере файлы живут на ступени брони и вместе с ней исчезают. Заметка — про
+// само событие («въезд после 22:00»), она нужна всегда и потому стоит на первой
+// ступени, рядом с названием. Полотно правки, как и раньше, показывает оба в
+// одном аккордеоне: там ступеней нет, и делить их не по чему.
+function DocsField({ form, setField, aiFields, setUploading, tripId, bare = false }) {
   const { t } = useI18nFormat();
-  const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   const docs = (
     <DocumentsField
       value={form.documents}
@@ -1911,19 +1913,31 @@ function DocsNotesBlock({ form, setField, aiFields, setUploading, tripId, bare =
       bare
     />
   );
-  const body = (
-    <>
-      {aiFields ? <AiField active={aiFields.has('documents')}>{docs}</AiField> : docs}
-      <div className="eed-accrow">
-        <Label>{t('event.notes')}</Label>
-        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
-      </div>
-    </>
-  );
+  const body = aiFields ? <AiField active={aiFields.has('documents')}>{docs}</AiField> : docs;
   // Без аккордеона (ступень мастера) секцию всё равно надо назвать: иначе
-  // дропзона висит сразу за ценой и читается как её продолжение.
-  if (bare) return <><SectionHeader>{t('event.docs_notes')}</SectionHeader>{body}</>;
-  return <Accordion title={t('event.docs_notes')} badge={docCount}>{body}</Accordion>;
+  // дропзона висит сразу за соседним полем и читается как его продолжение.
+  return bare ? <><SectionHeader>{t('event.documents')}</SectionHeader>{body}</> : body;
+}
+
+function NotesField({ form, setField, bare = false }) {
+  const { t } = useI18nFormat();
+  return (
+    <div className={bare ? undefined : 'eed-accrow'}>
+      <Label>{t('event.notes')}</Label>
+      <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
+    </div>
+  );
+}
+
+function DocsNotesBlock(p) {
+  const { t } = useI18nFormat();
+  const docCount = Array.isArray(p.form.documents) ? p.form.documents.length : 0;
+  return (
+    <Accordion title={t('event.docs_notes')} badge={docCount}>
+      <DocsField {...p} />
+      <NotesField {...p} />
+    </Accordion>
+  );
 }
 
 function HotelFields(p) {
@@ -1949,8 +1963,9 @@ function HotelStep({ blocks, ...p }) {
       {has('dates') && <HotelDates {...p} />}
       {has('booking') && <HotelBooking bare {...p} />}
       {has('cancel') && <HotelCancel {...p} />}
+      {has('docs') && <DocsField bare {...p} />}
       {has('money') && <HotelMoney {...p} />}
-      {has('docs') && <DocsNotesBlock bare {...p} />}
+      {has('notes') && <NotesField bare {...p} />}
     </>
   );
 }
@@ -2030,17 +2045,12 @@ function TransferStep({ blocks, ...p }) {
   ];
   return (
     <>
-      {has('legMode') && <LayoverToggle form={p.form} setForm={p.setForm} />}
-      {has('segments') && (
-        <SegmentsEditor
-          form={p.form} setForm={p.setForm} fromVisit={p.fromVisit} toVisit={p.toVisit}
-          setTime={p.setTime} color={TYPE_META.transfer.color}
-          aiSegFields={p.aiSegFields} setAiSegFields={p.setAiSegFields} issues={p.issues} onTouch={p.onTouch}
-        />
-      )}
+      {has('legMode') && <LayoverToggle {...p} />}
+      {has('segments') && <SegmentsEditor {...p} color={TYPE_META.transfer.color} />}
       {legSections.length > 0 && <TransferDirectLeg {...p} sections={legSections} />}
       {has('bookingUrl') && <TransferBookingUrl {...p} />}
-      {has('docs') && <DocsNotesBlock bare {...p} />}
+      {has('docs') && <DocsField bare {...p} />}
+      {has('notes') && <NotesField bare {...p} />}
     </>
   );
 }
@@ -2059,7 +2069,7 @@ function TransferLegCard({
   fromName, toName, toCityEditable, layoverCityPh,
   startTz, endTz, issues, color, t, sections,
 }) {
-  const shown = sections && sections.length ? sections : LEG_SECTIONS;
+  const shown = sections?.length ? sections : LEG_SECTIONS;
   const has = (s) => shown.includes(s);
   // Верхний отступ несут только секции, у которых ВЫШЕ кто-то есть: на ступени
   // мастера первая секция начинает тело, и лишний воздух над ней был бы виден.
@@ -2581,7 +2591,7 @@ function ActivityMoney({ form, setField }) {
   const { t } = useI18nFormat();
   return (
     <>
-      <SectionHeader color={TYPE_META.activity.color}>{t('event.cost')}</SectionHeader>
+      <SectionHeader>{t('event.cost')}</SectionHeader>
       <div className="fld-grid grid grid--2">
         <div>
           <Label>{t('event.price')}</Label>
@@ -2613,8 +2623,9 @@ function ActivityStep({ blocks, ...p }) {
     <>
       {has('identity') && <ActivityIdentity {...p} />}
       {has('dates') && <ActivityDates {...p} />}
+      {has('docs') && <DocsField bare {...p} aiFields={null} />}
       {has('money') && <ActivityMoney {...p} />}
-      {has('docs') && <DocsNotesBlock bare {...p} aiFields={null} />}
+      {has('notes') && <NotesField bare {...p} />}
     </>
   );
 }
@@ -2731,18 +2742,17 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
   // открывается на месяце соседнего конца.
   const dateAnchor = useDateAnchor();
   const { t } = useI18nFormat();
-  const color = TYPE_META.service.color;
   const st = (f) => fieldState(issues, f);
   return (
     <>
-      <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>
+      <SectionHeader>{t('event.car_section')}</SectionHeader>
       <div data-vfield="name">
         <Label field="name">{t('event.company_name')}</Label>
         <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_car_example')} />
         <FieldError issues={issues} field="name" />
       </div>
 
-      <SectionHeader color={color}>{t('event.pickup')}</SectionHeader>
+      <SectionHeader>{t('event.pickup')}</SectionHeader>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         <div data-vfield="pickupAddress">
           {/* Одна подпись: обязательность зависит от создания/редактирования, но
@@ -2782,7 +2792,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         </div>
       </div>
 
-      <SectionHeader color={color}>{t('event.return_section')}</SectionHeader>
+      <SectionHeader>{t('event.return_section')}</SectionHeader>
       <SwitchRow
         on={!!form.return_different_location}
         onChange={(v) => setField('return_different_location', !!v)}
@@ -2825,7 +2835,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         </div>
       </div>
 
-      <SectionHeader color={color}>{t('event.finance_booking')}</SectionHeader>
+      <SectionHeader>{t('event.finance_booking')}</SectionHeader>
       <div className="fld-grid grid grid--2">
         <div>
           <Label>{t('event.price')}</Label>
@@ -2849,7 +2859,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         </div>
       </div>
 
-      <SectionHeader color={color}>{t('event.docs_notes')}</SectionHeader>
+      <SectionHeader>{t('event.docs_notes')}</SectionHeader>
       <DocumentsField
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}

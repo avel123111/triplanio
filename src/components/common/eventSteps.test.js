@@ -10,7 +10,8 @@
  * ⚠️ КАЖДАЯ ПРОВЕРКА УВИДЕНА КРАСНОЙ. Мутации, которыми это сделано:
  *   · `eventSteps`: отдать ступень брони безусловно — падает «брони нет при OFF»;
  *   · `eventSteps`: пометить ступень дат `optional: true` — падает «даты не пропускаются»;
- *   · `eventSteps` (layover): вернуть ветку прямого переезда — падает «пересадки идут тремя ступенями»;
+ *   · `eventSteps` (layover): дать цепочке ступень бюджета — падает «у цепочки её НЕТ»;
+ *   · `eventSteps`: положить `docs` в ступень бюджета — падает «бюджет — только деньги»;
  *   · `supportsBooked`: пустить активность — падает «у активности тумблера нет»;
  *   · `stepOwnsField`: убрать ветку `segFields` — падает «цепочка держит свои токены»;
  *   · `stepOwnsTimeKey`: сверять только точное совпадение — падает «seg0-dep принадлежит цепочке»;
@@ -68,11 +69,31 @@ test('дата бесплатной отмены висит на ступени 
   assert.equal(stepOwnsTimeKey(stepOf('hotel', { booked: true }, 'when'), 'freeCancel'), false);
 });
 
+// ─── Ступень называется тем, что внутри ──────────────────────────────────────
+
+test('заметка — на первой ступени, документы — на броне, бюджет — только деньги', () => {
+  const steps = eventSteps('hotel', { booked: true });
+  const byId = Object.fromEntries(steps.map((s) => [s.id, s.blocks]));
+  assert.ok(byId.main.includes('notes'), 'заметка про событие, она нужна и без брони');
+  assert.ok(byId.booking.includes('docs'), 'документ — подтверждение брони');
+  assert.equal(byId.main.includes('docs'), false);
+  // ★ Главное: в «Бюджете» не должно быть НИЧЕГО, кроме денег — ни дропзоны,
+  // ни заметки. Ступень с чужим содержимым врёт своим названием.
+  assert.deepEqual(byId.budget, ['money']);
+});
+
+test('без брони документов нет ни на одной ступени', () => {
+  for (const kind of ['hotel', 'transfer', 'activity']) {
+    const blocks = eventSteps(kind).flatMap((s) => s.blocks);
+    assert.equal(blocks.includes('docs'), false, kind);
+  }
+});
+
 // ─── Пересадки: цепочка одной ступенью, и она держит ВСЕ свои токены ─────────
 
-test('пересадки идут тремя ступенями, цепочка — одна', () => {
-  assert.deepEqual(ids('transfer', { hasLayovers: true }), ['main', 'when', 'budget']);
-  assert.deepEqual(ids('transfer', { hasLayovers: true, booked: true }), ['main', 'when', 'budget']);
+test('у цепочки пересадок ступени бюджета НЕТ — деньги там посегментные', () => {
+  assert.deepEqual(ids('transfer', { hasLayovers: true }), ['main', 'when']);
+  assert.deepEqual(ids('transfer', { hasLayovers: true, booked: true }), ['main', 'when', 'booking']);
   assert.deepEqual(stepOf('transfer', { hasLayovers: true }, 'when').blocks, ['segments']);
 });
 
@@ -84,19 +105,21 @@ test('ступень цепочки держит посегментные ток
   assert.equal(stepOwnsField(when, 'start'), false, 'плоские токены прямого переезда — не её');
 });
 
-test('ссылка на бронь появляется в общей ступени цепочки только при тумблере', () => {
-  assert.deepEqual(stepOf('transfer', { hasLayovers: true }, 'budget').blocks, ['docs']);
-  assert.deepEqual(stepOf('transfer', { hasLayovers: true, booked: true }, 'budget').blocks, ['bookingUrl', 'docs']);
+test('общее у цепочки — ссылка на бронь и файлы, и только при тумблере', () => {
+  assert.equal(stepOf('transfer', { hasLayovers: true }, 'booking'), undefined);
+  assert.deepEqual(stepOf('transfer', { hasLayovers: true, booked: true }, 'booking').blocks, ['bookingUrl', 'docs']);
 });
 
 // ─── «Пропустить» против «Дальше» ────────────────────────────────────────────
 
 test('ступень пуста, пока по её ключам ничего не введено', () => {
   const budget = stepOf('activity', {}, 'budget');
-  assert.equal(isStepEmpty(budget, { price: '', documents: [], notes: '' }), true);
-  assert.equal(isStepEmpty(budget, { price: '', documents: [], notes: '   ' }), true, 'пробелы — это пусто');
-  assert.equal(isStepEmpty(budget, { price: '12', documents: [], notes: '' }), false);
-  assert.equal(isStepEmpty(budget, { price: '', documents: [{ url: 'x' }], notes: '' }), false);
+  assert.equal(isStepEmpty(budget, { price: '' }), true);
+  assert.equal(isStepEmpty(budget, { price: '   ' }), true, 'пробелы — это пусто');
+  assert.equal(isStepEmpty(budget, { price: '12' }), false);
+  const booking = stepOf('hotel', { booked: true }, 'booking');
+  assert.equal(isStepEmpty(booking, { documents: [] }), true);
+  assert.equal(isStepEmpty(booking, { documents: [{ url: 'x' }] }), false, 'приложенный файл — это заполнено');
 });
 
 test('валюта не делает ступень заполненной — она приходит дефолтом трипа', () => {

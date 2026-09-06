@@ -24,10 +24,19 @@ export const supportsBooked = (kind) => kind === 'hotel' || kind === 'transfer';
 /** Виды, идущие мастером. Всё остальное (`service`) рисует полотно. */
 export const supportsWizard = (kind) => kind === 'hotel' || kind === 'transfer' || kind === 'activity';
 
-const BUDGET_VALUES = ['price', 'documents', 'notes'];
-
 /**
  * Ступени хода для вида.
+ *
+ * ★ ГДЕ ЧТО ЛЕЖИТ, И ПОЧЕМУ ИМЕННО ТАМ. Ступень называется тем, что внутри, и
+ * это правило, а не вкус: «Бюджет» с дропзоной внутри врёт названием.
+ *   • ЗАМЕТКА — про само событие («въезд после 22:00»), нужна всегда → первая
+ *     ступень, рядом с названием.
+ *   • ДОКУМЕНТ — ПОДТВЕРЖДЕНИЕ брони. Пока брони нет, прикладывать нечего →
+ *     ступень «Бронь», и вместе с ней исчезает при выключенном тумблере.
+ *   • БЮДЖЕТ — только деньги: цена, валюта, статус оплаты.
+ *   • У ЦЕПОЧКИ ПЕРЕСАДОК СТУПЕНИ «БЮДЖЕТ» НЕТ ВОВСЕ: цены там посегментные
+ *     (так их и пишет `saveLayoverChain`), и общей ступени про деньги сказать
+ *     нечего — она стояла бы пустой под своим же названием.
  *
  * Ступень = { id, labelKey, blocks, fields, timeKeys, values, optional }:
  *  • `blocks`   - имена блоков полей, которые рисует форма (её реестр);
@@ -44,17 +53,17 @@ const BUDGET_VALUES = ['price', 'documents', 'notes'];
 export function eventSteps(kind, { booked = false, hasLayovers = false } = {}) {
   if (kind === 'hotel') {
     return [
-      { id: 'main', labelKey: 'event.step_hotel', blocks: ['identity'], fields: ['name'] },
+      { id: 'main', labelKey: 'event.step_hotel', blocks: ['identity', 'notes'], fields: ['name'] },
       { id: 'when', labelKey: 'event.step_stay', blocks: ['dates'], fields: ['checkIn', 'checkOut'], timeKeys: ['checkIn', 'checkOut'] },
       ...(booked ? [{
         id: 'booking',
         labelKey: 'event.step_booking',
-        blocks: ['booking', 'cancel'],
+        blocks: ['booking', 'cancel', 'docs'],
         timeKeys: ['freeCancel'],
-        values: ['booking_url', 'booking_reference', 'phone', 'email', 'free_cancellation'],
+        values: ['booking_url', 'booking_reference', 'phone', 'email', 'free_cancellation', 'documents'],
         optional: true,
       }] : []),
-      { id: 'budget', labelKey: 'event.step_budget', blocks: ['money', 'docs'], values: [...BUDGET_VALUES, 'payment_status'], optional: true },
+      { id: 'budget', labelKey: 'event.step_budget', blocks: ['money'], values: ['price', 'payment_status'], optional: true },
     ].map(withDefaults);
   }
 
@@ -62,42 +71,42 @@ export function eventSteps(kind, { booked = false, hasLayovers = false } = {}) {
     // Пересадки: сегмент - цельная сущность (транспорт + два адреса + два
     // времени + перевозчик + цена), резать её по ступеням нельзя, а «ступень на
     // сегмент» гнала бы число ступеней прямо под рейлом прогресса. Поэтому
-    // цепочка идёт одной ступенью-списком (карточки свёрнуты, открыта одна).
+    // цепочка идёт одной ступенью-списком (карточки свёрнуты, открыта одна),
+    // и деньги остаются в ней же — своей ступени про бюджет у цепочки нет.
     if (hasLayovers) {
       return [
-        { id: 'main', labelKey: 'event.step_route', blocks: ['legMode'] },
+        { id: 'main', labelKey: 'event.step_route', blocks: ['legMode', 'notes'] },
         { id: 'when', labelKey: 'event.step_segments', blocks: ['segments'], segFields: true },
-        {
-          id: 'budget',
-          labelKey: 'event.step_budget',
-          // Цены при пересадках живут ВНУТРИ карточек сегментов (так их и пишет
-          // `saveLayoverChain`), поэтому общая ступень денег несёт только то, что
-          // у цепочки общее: ссылку на бронь, файлы и заметку.
-          blocks: [...(booked ? ['bookingUrl'] : []), 'docs'],
-          values: ['booking_url', 'documents', 'notes'],
+        ...(booked ? [{
+          id: 'booking',
+          labelKey: 'event.step_booking',
+          // Общее у цепочки — ссылка на бронь и файлы; номера рейсов и цены
+          // живут в карточках сегментов.
+          blocks: ['bookingUrl', 'docs'],
+          values: ['booking_url', 'documents'],
           optional: true,
-        },
+        }] : []),
       ].map(withDefaults);
     }
     return [
-      { id: 'main', labelKey: 'event.step_transport', blocks: ['legMode', 'legPlaces'] },
+      { id: 'main', labelKey: 'event.step_transport', blocks: ['legMode', 'legPlaces', 'notes'] },
       { id: 'when', labelKey: 'event.step_time', blocks: ['legTime'], fields: ['start', 'end'], timeKeys: ['start', 'end'] },
       ...(booked ? [{
         id: 'booking',
         labelKey: 'event.step_booking',
-        blocks: ['legCarrier', 'legRef', 'bookingUrl'],
-        values: ['carrier', 'flight_number', 'booking_reference', 'booking_url'],
+        blocks: ['legCarrier', 'legRef', 'bookingUrl', 'docs'],
+        values: ['carrier', 'flight_number', 'booking_reference', 'booking_url', 'documents'],
         optional: true,
       }] : []),
-      { id: 'budget', labelKey: 'event.step_budget', blocks: ['legPrice', 'docs'], values: BUDGET_VALUES, optional: true },
+      { id: 'budget', labelKey: 'event.step_budget', blocks: ['legPrice'], values: ['price'], optional: true },
     ].map(withDefaults);
   }
 
   // activity
   return [
-    { id: 'main', labelKey: 'event.step_activity', blocks: ['identity'], fields: ['title'] },
+    { id: 'main', labelKey: 'event.step_activity', blocks: ['identity', 'notes'], fields: ['title'] },
     { id: 'when', labelKey: 'event.step_when', blocks: ['dates'], fields: ['start', 'end'], timeKeys: ['start', 'end'] },
-    { id: 'budget', labelKey: 'event.step_budget', blocks: ['money', 'docs'], values: BUDGET_VALUES, optional: true },
+    { id: 'budget', labelKey: 'event.step_budget', blocks: ['money'], values: ['price'], optional: true },
   ].map(withDefaults);
 }
 
