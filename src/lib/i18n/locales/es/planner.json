@@ -35,6 +35,8 @@
   "home_desc": "Esta es tu casa: el punto de partida y (normalmente) de regreso. Desde aquí Triplanio muestra los transportes y el precio de los billetes.",
   "home_title": "¿Desde dónde sales?",
   "last_city_fallback": "la última ciudad",
+  "leave_confirm_desc": "El borrador se guarda; podrás continuar más tarde.",
+  "leave_confirm_title": "¿Salir sin terminar?",
   "limit_desc_post": ". Espera a que termine el actual o pásate a Pro.",
   "limit_desc_pre": "El plan Free permite solo",
   "limit_desc_strong": "1 viaje activo",

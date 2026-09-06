@@ -16,7 +16,7 @@ import { transferKind } from '@/lib/transport';
 import { sortVisits } from '@/lib/validation';
 import { localizeVisits } from '@/lib/trip-cities';
 import { tripStats, tripDateSpan } from '@/lib/trip-stats';
-import { formatDuration } from '@/lib/time';
+import { transferDuration } from '@/lib/time';
 import { formatDateRange } from '@/lib/trip-dates';
 
 // Prototype v5.7 carried the cover inline; the fallback is a repo asset
@@ -149,7 +149,7 @@ export default function PublicTrip() {
     return {
       icon: transferKind(type).icon,
       label: t(`public.mode_${type}`) || type,
-      dur: formatDuration(tr.start_datetime, tr.end_datetime, fromV?.timezone, toV?.timezone),
+      dur: transferDuration(tr, fromV, toV, t),
     };
   };
 

@@ -7,7 +7,8 @@
  * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
  * profiles - id → { full_name, avatar_url, … } from the SAME payload, so names
- *   land with the rows; covers the owner, who has no trip_members row (TRIP-230)
+ *   land with the rows; the owner is a real trip_members row too (role='owner',
+ *   TRIP-516/517), so its profile resolves like any other member's.
  */
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

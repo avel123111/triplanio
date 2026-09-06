@@ -54,8 +54,6 @@
   "departure": "Departure",
   "docs_notes": "Documents & notes",
   "documents": "Documents",
-  "dur_h": "{h} h",
-  "dur_m": "{m} min",
   "end": "End",
   "err_layover_city": "Set the layover city for each leg of the route",
   "expand": "expand",
