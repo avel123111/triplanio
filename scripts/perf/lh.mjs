@@ -81,6 +81,7 @@
 //              --vs=KEY=VALUE[,KEY=VALUE]  — собрать ВТОРУЮ сборку с этим
 //                окружением и напечатать дельту «контроль → HEAD».
 //                Для страниц под выпечкой контроль — `--vs=SKIP_PRERENDER=1`.
+//              --desktop  — десктопный пресет вместо мобильного.
 //              --no-build  — повторить замер на УЖЕ собранном `dist` (разбор,
 //                не приёмка). С `--vs` несовместим и отвергается: вариант — это
 //                вторая СБОРКА, а не второй прогон.
@@ -98,6 +99,8 @@ import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { launch } from 'chrome-launcher';
 import lighthouse from 'lighthouse';
+
+import desktopConfig from 'lighthouse/core/config/desktop-config.js';
 
 import { SHELL_FILE } from '../build/prerenderPaths.mjs';
 
@@ -119,6 +122,11 @@ const VS = arg('vs', '');
 // сборки вариант `--vs` смысла не имеет, а «стенд собирает сам» остаётся
 // умолчанием (см. шапку). Нужен, когда одну и ту же сборку смотрят несколько раз.
 const NO_BUILD = process.argv.includes('--no-build');
+// ★ ДЕСКТОП МЕРИТЬ ТОЖЕ (TRIP-520). Стенд знал только мобильный пресет, и это
+// стоило слепого пятна: правки первого кадра трогают ОБА слоя раскладки, а
+// проверялся один. Пресет — штатный `desktop-config` Lighthouse, тот же, что у
+// вкладки «Ordenador» в PageSpeed.
+const DESKTOP = process.argv.includes('--desktop');
 
 // Собираем dist ЗДЕСЬ, с гарантированным окружением (см. докблок «★ СТЕНД
 // СОБИРАЕТ dist САМ»). `??=` — явно заданный env (реальный DSN/Supabase) побеждает
@@ -255,7 +263,7 @@ async function measureBuilt(chrome, label) {
   const server = makeServer(files);
   await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
   const url = `http://127.0.0.1:${server.address().port}${PATHNAME}`;
-  console.log(`\nСтенд [${label}]: ${url}  ·  прогонов: ${RUNS}  ·  br=q11 · 304 on`);
+  console.log(`\nСтенд [${label}]: ${url}  ·  ${DESKTOP ? 'ДЕСКТОП' : 'мобайл'} ·  прогонов: ${RUNS}  ·  br=q11 · 304 on`);
   const runs = [];
   try {
     for (let i = 0; i < RUNS; i++) {
@@ -270,7 +278,7 @@ async function measureBuilt(chrome, label) {
           '*posthog*', '*i.posthog.com*', '*sentry*', '*sentry.io*',
           '*google*', '*gstatic*', '*doubleclick*', '*vercel-insights*', '*vercel-scripts*',
         ],
-      });
+      }, DESKTOP ? desktopConfig : undefined);
       const m = {
         score: Math.round(lhr.categories.performance.score * 100),
         fcp: lhr.audits['first-contentful-paint'].numericValue,
