@@ -1215,8 +1215,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     // Возврат на шаг 1 через REPLACE (тем же единственным писателем): «назад» не
     // воскрешает стёртый шаг, а глубина СОХРАНЯЕТСЯ — сброс это действие внутри
     // шага, а не навигация, поэтому «назад» после него остаётся шагом (и лейбл
-    // «Назад», а не ложный выход в никуда).
-    writeStep('home', { replace: true });
+    // «Назад», а не ложный выход в никуда). `intent:'reset'` — чтобы аналитика
+    // не слила сброс с восстановлением (оба REPLACE-ом).
+    writeStep('home', { replace: true, intent: 'reset' });
     setNodes([]);
     setStartDateRaw(defaultStartISO());
     setTripTitle('');

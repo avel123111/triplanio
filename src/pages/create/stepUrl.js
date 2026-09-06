@@ -78,21 +78,27 @@ export function nextStepState(prevState, { intent, advance = false } = {}) {
  *
  *   · первый рендер            → `direct`;
  *   · `POP` (назад/вперёд)     → `back`;
- *   · `REPLACE`                → `restore` (восстановление черновика в адрес);
+ *   · `REPLACE`                → `reset`, если так пометил писатель, иначе
+ *                                `restore` (восстановление черновика в адрес);
  *   · `PUSH`                   → намерение писателя (`next` / `jump`), иначе `direct`.
+ *
+ * Сброс и восстановление оба пишут адрес `REPLACE`-ом, но это РАЗНЫЕ входы в шаг
+ * (в воронке их нельзя сливать), поэтому сброс помечает запись `intent:'reset'`,
+ * а обычный `REPLACE` без пометки остаётся восстановлением.
  *
  * ⚠️ НА `POP` НАМЕРЕНИЕ ИЗ `state` БРАТЬ НЕЛЬЗЯ. React Router отдаёт `state` ТОЙ
  * записи, куда вернулись: на возврате в `cities` там лежит `next`, с которым
  * туда пришли впервые. Возврат опознаётся только типом навигации, поэтому ветка
- * `POP` стоит ВЫШЕ чтения `intent`.
+ * `POP` стоит ВЫШЕ чтения `intent`. (На `REPLACE` записи новые, поэтому там
+ * читать `intent` безопасно.)
  *
  * @param {{ isFirst?: boolean, navType?: 'POP' | 'PUSH' | 'REPLACE', intent?: string }} [opts]
- * @returns {'direct' | 'next' | 'back' | 'jump' | 'restore'}
+ * @returns {'direct' | 'next' | 'back' | 'jump' | 'restore' | 'reset'}
  */
 export function stepEntryFrom({ isFirst = false, navType, intent } = {}) {
   if (isFirst) return 'direct';
   if (navType === 'POP') return 'back';
-  if (navType === 'REPLACE') return 'restore';
+  if (navType === 'REPLACE') return intent === 'reset' ? 'reset' : 'restore';
   if (intent === 'next' || intent === 'jump') return intent;
   return 'direct';
 }

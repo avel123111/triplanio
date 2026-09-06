@@ -17,7 +17,8 @@
  *   · `resolveBack`: заменить `depth > 0` на `depth >= 0` → падает «на дне флоу это выход»;
  *   · `resolveBack`: игнорировать `enteredByPush` → падает «прямой заход уходит на /trips»;
  *   · `nextStepState`: на `advance:false` вернуть `depth:0` → падает «replace теряет глубину»;
- *   · `nextStepState`: на `advance:true` не прибавлять 1 → падает «переход не углубляет».
+ *   · `nextStepState`: на `advance:true` не прибавлять 1 → падает «переход не углубляет»;
+ *   · `stepEntryFrom`: на REPLACE всегда `restore` → падает «помеченный сброс = reset».
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -68,9 +69,11 @@ test('stepEntryFrom: POP = back и ИГНОРИРУЕТ intent из state', () =
   assert.equal(stepEntryFrom({ navType: 'POP', intent: 'next' }), 'back');
 });
 
-test('stepEntryFrom: REPLACE = restore', () => {
+test('stepEntryFrom: REPLACE = restore, но помеченный сброс = reset', () => {
   assert.equal(stepEntryFrom({ navType: 'REPLACE' }), 'restore');
-  assert.equal(stepEntryFrom({ navType: 'REPLACE', intent: 'next' }), 'restore');
+  assert.equal(stepEntryFrom({ navType: 'REPLACE', intent: 'next' }), 'restore'); // чужое намерение не читаем
+  // сброс и восстановление оба REPLACE-ом — различает только пометка писателя
+  assert.equal(stepEntryFrom({ navType: 'REPLACE', intent: 'reset' }), 'reset');
 });
 
 test('stepEntryFrom: PUSH берёт намерение писателя из белого списка', () => {
