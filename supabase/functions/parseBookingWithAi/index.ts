@@ -4,7 +4,7 @@
  * Front-end → this function → n8n webhook → returns parsed booking data.
  *
  * The browser uploads the booking file(s) to Supabase Storage and sends us the
- * signed URLs. We forward { kind, fileUrls, text } to n8n, which downloads the
+ * signed URLs. We forward { kind, fileUrls, text, env } to n8n, which downloads the
  * files, runs the LLM (prompts + schemas live inside the n8n workflow, keyed by
  * `kind`) and returns structured JSON per the hotel / transfer schema.
  *
@@ -20,6 +20,7 @@ import { requireTripPro } from '../_shared/proGate.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
+import { envTag } from '../_shared/envTag.ts';
 
 // TRIP-111: распознавание броней — дорогой вызов (файлы + LLM). 10/час на юзера.
 const PARSER_RATE_LIMIT = 10;
@@ -99,7 +100,10 @@ Deno.serve(withHandler('parseBookingWithAi', async (req, corsHeaders) => {
     const res = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${n8nJwt}` },
-      body: JSON.stringify({ kind, fileUrls, text: text ?? '', user_id: user.id, trip_id }),
+      // `env` — та же метка окружения, что у конверта notify (`_shared/envTag.ts`,
+      // секрет SENTRY_ENVIRONMENT): инстанс n8n ОДИН на dev и prod, поэтому без
+      // неё воркфлоу не может отличить, из какого проекта пришёл прогон.
+      body: JSON.stringify({ kind, fileUrls, text: text ?? '', user_id: user.id, trip_id, env: envTag() }),
     });
 
     if (!res.ok) {
