@@ -16,7 +16,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { APP_ROUTES, ZONE_PAGES, isZonePage, isZoneRoute } from './routePaths.js';
+import {
+  APP_ROUTES, ZONE_PAGES, PRERENDERED_PAGES, PREFIXED_LANGS,
+  isZonePage, isZoneRoute, splitLangPath, withLangPath, prerenderedUrls,
+} from './routePaths.js';
+import { LANGUAGES } from './i18n/translations.js';
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -59,6 +63,67 @@ test('предикаты: страница зоны, адрес зоны и вс
   for (const p of ['/no-such-page', '/trips', '/trip/123', '/settings']) {
     assert.equal(isZoneRoute(p), false, `${p} — не зона`);
     assert.equal(isZonePage(p), false, `${p} — не страница зоны`);
+  }
+});
+
+test('PREFIXED_LANGS не разошёлся с настоящим списком языков', () => {
+  const codes = LANGUAGES.map((l) => l.code);
+  for (const lang of PREFIXED_LANGS) {
+    assert.ok(codes.includes(lang), `${lang} несёт префикс в адресе, но такого языка в LANGUAGES нет`);
+  }
+  // ★ Английский обязан остаться БЕЗ префикса: он канонический, и второй его
+  // адрес (`/en/`) сделал бы каждую страницу дублем самой себя.
+  assert.equal(PREFIXED_LANGS.includes('en'), false, 'английский получил префикс — у страницы стало два адреса');
+  // Каждый неанглийский язык обязан БЫТЬ в списке, иначе его страницы не
+  // существует вовсе, а переключатель молча ведёт в 404.
+  for (const code of codes) {
+    if (code !== 'en') assert.ok(PREFIXED_LANGS.includes(code), `язык ${code} есть в LANGUAGES, но адреса у него нет`);
+  }
+});
+
+test('разбор и сборка адреса с языком — обратные друг другу', () => {
+  assert.deepEqual(splitLangPath('/'), { lang: null, path: '/' });
+  assert.deepEqual(splitLangPath('/terms'), { lang: null, path: '/terms' });
+  assert.deepEqual(splitLangPath('/es'), { lang: 'es', path: '/' }, 'голый /es — это главная своего языка, а не 404');
+  assert.deepEqual(splitLangPath('/es/'), { lang: 'es', path: '/' });
+  assert.deepEqual(splitLangPath('/ru/terms'), { lang: 'ru', path: '/terms' });
+  assert.deepEqual(splitLangPath(DEMO_PATH), { lang: null, path: DEMO_PATH });
+  // Не язык, а просто первый сегмент похожей длины.
+  assert.deepEqual(splitLangPath('/en/terms'), { lang: null, path: '/en/terms' }, 'английский префиксом не является');
+  assert.deepEqual(splitLangPath('/estonia'), { lang: null, path: '/estonia' });
+
+  for (const path of PRERENDERED_PAGES) {
+    assert.equal(withLangPath('en', path), path, 'английский адрес обязан остаться без префикса');
+    for (const lang of PREFIXED_LANGS) {
+      const url = withLangPath(lang, path);
+      assert.deepEqual(splitLangPath(url), { lang, path }, `${url} разбирается не в то, из чего собран`);
+    }
+  }
+});
+
+test('языковые адреса испечённых страниц — страницы зоны, чужие под префиксом — нет', () => {
+  for (const lang of PREFIXED_LANGS) {
+    for (const path of PRERENDERED_PAGES) {
+      const url = withLangPath(lang, path);
+      assert.equal(isZonePage(url), true, `${url} — страница зоны`);
+      assert.equal(isZoneRoute(url), true, `${url} — адрес зоны`);
+    }
+    // ★ Под префиксом живут ТОЛЬКО испечённые страницы: у входа готового файла
+    // на язык нет, и обещать его адресом нельзя.
+    assert.equal(isZonePage(`/${lang}/login`), false, `/${lang}/login не должен существовать`);
+    assert.equal(isZoneRoute(`/${lang}/login`), false);
+    // Чужой демо-слаг под префиксом ведёт в зону (за её 404), но страницей не является.
+    assert.equal(isZoneRoute(`/${lang}/d/opechatka`), true);
+    assert.equal(isZonePage(`/${lang}/d/opechatka`), false);
+  }
+});
+
+test('prerenderedUrls перечисляет каждую испечённую страницу на каждом языке', () => {
+  const urls = prerenderedUrls();
+  assert.equal(urls.length, PRERENDERED_PAGES.length * (PREFIXED_LANGS.length + 1));
+  assert.equal(new Set(urls).size, urls.length, 'в списке выпечки есть повтор');
+  for (const url of urls) {
+    assert.equal(isZonePage(url), true, `${url} печётся, но страницей зоны не считается`);
   }
 });
 

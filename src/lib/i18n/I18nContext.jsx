@@ -9,7 +9,7 @@ import { toast } from '@/components/ui/use-toast';
 import AppLoading from '@/design/AppLoading';
 import { hasLang, loadLocale } from './dictionary';
 import { ZONE_NAMESPACES } from './zoneNamespaces';
-import { LANGUAGES, LANG_STORAGE_KEY, detectLandingLang, clearLangParam, localeTag } from './translations';
+import { LANGUAGES, LANG_STORAGE_KEY, FALLBACK_LANG, detectLandingLang, clearLangParam, localeTag } from './translations';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
   applyLuxonLocale,
@@ -59,7 +59,7 @@ const I18nContext = createContext({
 // so it is always loaded alongside whatever language is active. 'en' matches the
 // Tolgee project's base language, so a missing key resolves the same way here and
 // in Tolgee (and never shows Russian to an en/es user).
-const FALLBACK_LANG = 'en';
+// FALLBACK_LANG живёт в `translations.js` — там же, где список языков.
 
 // Resolve a dotted address `namespace.bareKey` against a nested locale dict
 // ({ namespace: { bareKey: value } }). Split on the FIRST dot only: the namespace

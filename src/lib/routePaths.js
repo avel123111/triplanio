@@ -35,6 +35,69 @@ export const ZONE_PAGES = [
 ];
 
 /**
+ * ★ СТРАНИЦЫ, КОТОРЫЕ ПЕЧЁТСЯ ГОТОВЫМИ НА СБОРКЕ (TRIP-520).
+ *
+ * Признак у них один и он же — критерий: содержимое НЕ зависит от того, кто
+ * открыл. У остальных страниц зоны зависит — вход рисует форму под состояние
+ * сессии, приглашение и публичная поездка тянут свои данные по токену, — и
+ * испечь их нечем.
+ *
+ * Из этого списка выводятся ТРИ вещи, и ни одна не выписана вторым местом:
+ * что обходит выпечка (`scripts/build/prerender.mjs`), что лежит в карте сайта
+ * и что проверяет гард `check:prerender`.
+ */
+export const PRERENDERED_PAGES = ['/', DEMO_PATH, '/terms', '/privacy'];
+
+/**
+ * ★ ЯЗЫК ЖИВЁТ В АДРЕСЕ, И АНГЛИЙСКИЙ ЖИВЁТ БЕЗ ПРЕФИКСА (TRIP-520).
+ *
+ * `/` — канонический английский адрес, `/es/…` и `/ru/…` — самостоятельные
+ * страницы своих языков. Английский без префикса не «привилегия», а следствие:
+ * это адрес, на который ведут ВСЕ уже существующие ссылки на нас — проверка
+ * Google, карта сайта, `llms.txt`, теги соцсетей, чужие упоминания. Заведи мы
+ * `/en/`, и та же страница получила бы два адреса: поисковик считает их
+ * дублями и делит вес, а переключатель языка перестаёт знать, какой из них
+ * настоящий. `/en/*` поэтому не существует как страница — платформа отвечает на
+ * него постоянным переездом на бесперфиксный адрес (`vercel.json`).
+ *
+ * Список ЛИТЕРАЛОМ, а не выводом из `LANGUAGES`: обратный импорт замкнул бы
+ * цикл (`translations` → `routePaths` → `translations`), а этот модуль обязан
+ * открываться голым `node --test` и его же читает edge-middleware. Разъехаться
+ * с настоящим списком языков не даёт `routePaths.test.js` — та же связка
+ * «литерал + тест», которой живёт пре-пейнт скрипт в `index.html`.
+ */
+export const PREFIXED_LANGS = ['es', 'ru'];
+
+/**
+ * Разобрать адрес на язык и путь без языка.
+ *
+ * Голый префикс (`/es`) и префикс со слэшем (`/es/`) — ОДИН адрес, главная
+ * своего языка: иначе `/es` провалилось бы в 404, а именно так эту ссылку и
+ * набирают руками.
+ *
+ * @param {string} pathname
+ * @returns {{ lang: 'es'|'ru'|null, path: string }} `lang` = null у английского
+ */
+export function splitLangPath(pathname) {
+  const seg = pathname.split('/')[1];
+  if (!PREFIXED_LANGS.includes(seg)) return { lang: null, path: pathname };
+  const rest = pathname.slice(seg.length + 1);
+  return { lang: seg, path: rest === '' ? '/' : rest };
+}
+
+/**
+ * Собрать адрес страницы на нужном языке. Обратная к `splitLangPath`.
+ *
+ * @param {string} lang  код языка; английский (и любой беспрефиксный) отдаёт путь как есть
+ * @param {string} path  путь БЕЗ языкового префикса
+ * @returns {string}
+ */
+export function withLangPath(lang, path) {
+  if (!PREFIXED_LANGS.includes(lang)) return path;
+  return path === '/' ? `/${lang}` : `/${lang}${path}`;
+}
+
+/**
  * Маршруты приложения — шаблоны react-router (с параметрами).
  * Состав = таблица маршрутов в `AuthenticatedShell.jsx`.
  */
@@ -61,7 +124,14 @@ export const APP_ROUTES = [
  * @returns {boolean}
  */
 export function isZoneRoute(pathname) {
-  return ZONE_PAGES.includes(pathname) || pathname.startsWith('/d/');
+  const { lang, path } = splitLangPath(pathname);
+  // Под языковым префиксом живут ТОЛЬКО испечённые страницы: префикс — это имя
+  // готового файла, а у входа и приглашения такого файла нет и быть не может
+  // (их содержимое зависит от того, кто открыл). Ссылки из языковой страницы в
+  // функциональную несут язык параметром `?lang=` — тем же, которым он уже
+  // ездит в рекламных ссылках, а не вторым механизмом.
+  if (lang) return PRERENDERED_PAGES.includes(path) || path.startsWith('/d/');
+  return ZONE_PAGES.includes(path) || path.startsWith('/d/');
 }
 
 /**
@@ -75,7 +145,21 @@ export function isZoneRoute(pathname) {
  * @returns {boolean}
  */
 export function isZonePage(pathname) {
-  return ZONE_PAGES.includes(pathname);
+  const { lang, path } = splitLangPath(pathname);
+  return lang ? PRERENDERED_PAGES.includes(path) : ZONE_PAGES.includes(path);
+}
+
+/**
+ * Все адреса, которые печёт сборка и перечисляет карта сайта: испечённые
+ * страницы × языки. Английский без префикса, поэтому первым идёт он сам.
+ *
+ * @returns {string[]}
+ */
+export function prerenderedUrls() {
+  return PRERENDERED_PAGES.flatMap((path) => [
+    path,
+    ...PREFIXED_LANGS.map((lang) => withLangPath(lang, path)),
+  ]);
 }
 
 /**
