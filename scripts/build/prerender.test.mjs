@@ -30,6 +30,7 @@ const TEMPLATE = `<!doctype html>
     <meta property="og:image" content="https://www.triplanio.com/og-cover.jpg" />
     <meta name="twitter:title" content="Triplanio — общий заголовок" />
     <meta name="twitter:description" content="общее описание" />
+    <link rel="stylesheet" crossorigin href="/assets/index-abc123.css">
     <style id="splash-css">.splash{opacity:1}</style>
   </head>
   <body>
@@ -54,6 +55,21 @@ test('★ заставка снимается — иначе готовый ка
   // Снялась именно заставка, а не половина документа заодно.
   assert.match(html, /<div id="root">/);
   assert.match(html, /<script type="module"/);
+});
+
+test('★★ стили приложения не держат первый кадр готовой страницы', () => {
+  // Выпечка перенесла показ содержимого на критический путь. Оставь мы там же
+  // 172 КБ стилей ПРИЛОЖЕНИЯ — и готовая страница оказалась бы МЕДЛЕННЕЕ пустой
+  // коробки, которую она заменила (замер: FCP 9.2 против 6.3 с, оценка 48
+  // против 56 на мобильном профиле; десктоп 85 против 91).
+  const html = compose(TEMPLATE, SNAP);
+  assert.match(html, /href="\/assets\/index-abc123\.css"[^>]*media="print"/,
+    'таблица приложения по-прежнему блокирует первый кадр');
+  assert.match(html, /<noscript><link rel="stylesheet"[^>]*\/assets\/index-abc123\.css"[^>]*><\/noscript>/,
+    'без JS таблица приложения не приедет вовсе');
+  // Стиль ЗОНЫ, наоборот, обязан блокировать: он и рисует эту страницу.
+  assert.match(html, /<link id="site-css" rel="stylesheet" href="\/site\.css" \/>/);
+  assert.equal(/id="site-css"[^>]*media="print"/.test(html), false, 'сняли с пути не ту таблицу');
 });
 
 test('★★ узел, помеченный `data-no-prerender`, в файл не едет — вместе с потомками', () => {
