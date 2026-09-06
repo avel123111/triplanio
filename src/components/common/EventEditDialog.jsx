@@ -119,7 +119,7 @@ import { refusalError } from '@/lib/refusalError';
 import { resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { localToUtc, utcToLocalInput } from '@/lib/time';
+import { localToUtc, utcToLocalInput, durationMinutes, formatMinutes } from '@/lib/time';
 import { endAfterStart, relinkChain, seedChain } from '@/lib/dateRange';
 import { validateEntity, transferAiCityAdvisories, issuesToShow, isFieldRequired } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldState } from '@/components/common/ValidationUI';
@@ -527,12 +527,15 @@ export default function EventEditDialog({
   const baseMeta = TYPE_META[currentKind] || TYPE_META.hotel;
   const tripId = tripIdProp || entity?.trip_id || visit?.trip_id || fromVisit?.trip_id;
 
-  // Timezones - kept for compatibility but the time helpers ignore them
-  // since the app now stores naive wall-clock values. Still passed to the
-  // TimezoneHint component so the hint label shows the right city.
+  // Пояса концов. Форматтеры одиночного времени их игнорируют (хранение
+  // настенное), а вот РАССТОЯНИЕ между концами без них считать нельзя — им
+  // питается `durationMinutes` в карточке плеча, ими же подписан `TimezoneHint`.
+  // Пояса переезда идут СЫРЫМИ, без `|| 'UTC'`: 'UTC' в этом коде означает
+  // «пояса не знаем» (TimezoneHint его намеренно не показывает), и подставить
+  // его в вычитание значит выдумать смещение вместо честной настенной разности.
   const tz = visit?.timezone || 'UTC';
-  const startTz = fromVisit?.timezone || 'UTC';
-  const endTz = toVisit?.timezone || 'UTC';
+  const startTz = fromVisit?.timezone || null;
+  const endTz = toVisit?.timezone || null;
 
   const [form, setForm] = useState(() =>
     buildInitialForm(initialKind || 'hotel', entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency, initialServiceKind })
@@ -1896,9 +1899,10 @@ function TransferLegCard({
   const stF = (name) => fieldState(issues, vf(name));
   const tk = TRANSPORT_OF(leg.transport_type);
   const TIcon = tk.Icon;
-  // Within-leg duration (departure → arrival) for the date-block hint —
-  // same "minutes between two ISO locals, non-negative or null" as the layover gap.
-  const durMin = layoverMins(leg.startLocal, leg.endLocal);
+  // Длительность плеча для подписи дейт-блока. Пояса — те же, что подписывает
+  // `TimezoneHint` двумя строками ниже: концы плеча стоят на разных настенных
+  // шкалах, и вычитать их без поясов значит показать разницу цифр, а не времени.
+  const durMin = durationMinutes(leg.startLocal, leg.endLocal, startTz, endTz);
   const legSpan = daySpanLocal(leg.startLocal, leg.endLocal);
   const isOpen = isMulti ? open : true;
 
@@ -1964,7 +1968,7 @@ function TransferLegCard({
           label={t('event.dep_arr')} accent={color} issues={issues}
           startLabel={t('event.departure')} startValue={leg.startLocal} onStart={(v) => patch({ startLocal: v })} onStartMissing={(v) => onTimeMissing('dep', v)} startVField={vf('start')} startTz={startTz} startAi={aiHas('startLocal')}
           endLabel={t('event.arrival')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz} endAi={aiHas('endLocal')}
-          midText={durMin != null ? fmtDur(durMin, t) : null}
+          midText={formatMinutes(durMin, t)}
         />
         {/* Day span — DERIVED from the dates, not a user toggle. day_span is a pure
             function of (arrival day − departure day): the number recompute_trip reads
@@ -2109,20 +2113,6 @@ const fmtLocalDate = (local) => {
   if (!local) return '';
   const [y, mo, da] = String(local).slice(0, 10).split('-');
   return (y && mo && da) ? `${da}.${mo}.${y}` : '';
-};
-const layoverMins = (arr, dep) => {
-  if (!arr || !dep) return null;
-  const a = DateTime.fromISO(arr), d = DateTime.fromISO(dep);
-  if (!a.isValid || !d.isValid) return null;
-  const m = Math.round(d.diff(a, 'minutes').minutes);
-  return m >= 0 ? m : null;
-};
-const fmtDur = (m, t) => {
-  const h = Math.floor(m / 60), mm = m % 60;
-  const parts = [];
-  if (h) parts.push(t('event.dur_h', { h }));
-  if (mm || !h) parts.push(t('event.dur_m', { m: mm }));
-  return parts.join(' ');
 };
 // Date-range block (TRIP-176 design): bordered block + 3-column summary card
 // (start cell · arrow + duration/nights · end cell). Each cell is a clickable
@@ -2278,8 +2268,10 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
         const open = isOpen(seg, i);
         const layCity = seg.toCity?.city_name || '…';
         const layDate = fmtLocalDate(seg.endLocal);
-        const layMins = isLast ? null : layoverMins(seg.endLocal, segs[i + 1]?.startLocal);
-        const layDur = layMins != null ? fmtDur(layMins, t) : '';
+        // Ожидание на пересадке — БЕЗ поясов намеренно: оба конца настенные в
+        // ОДНОМ городе (прилетел и улетел), и второй шкалы тут не возникает.
+        const layMins = isLast ? null : durationMinutes(seg.endLocal, segs[i + 1]?.startLocal);
+        const layDur = formatMinutes(layMins, t);
         return (
           <React.Fragment key={seg.id}>
             <TransferLegCard
@@ -2297,8 +2289,8 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
               toName={toName}
               toCityEditable={!isLast}
               layoverCityPh={t('event.layover_city_ph')}
-              startTz={undefined}
-              endTz={undefined}
+              startTz={isFirst ? fromVisit?.timezone : segs[i - 1].toCity?.timezone}
+              endTz={isLast ? toVisit?.timezone : seg.toCity?.timezone}
               issues={issues}
               color={color}
               t={t}
@@ -2339,7 +2331,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
   // Start → end duration for the date-block hint — the same helper the transfer
   // uses, so "end earlier than start" stays a blank hint here too instead of
   // reading "0 мин".
-  const durMin = layoverMins(form.startLocal, form.endLocal);
+  const durMin = durationMinutes(form.startLocal, form.endLocal);
   return (
     <>
       <div data-vfield="title">
@@ -2375,7 +2367,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
           полноценный выбор даты и времени, а не общая дата на двоих. */}
       <DateRangeBlock
         label={t('event.date_time')} accent={color} issues={issues}
-        midText={durMin != null ? fmtDur(durMin, t) : null}
+        midText={formatMinutes(durMin, t)}
         startLabel={t('activity.start')} startValue={form.startLocal} onStart={(v) => setField('startLocal', v)} onStartMissing={(v) => setTime('start', v)} startVField="start" startTz={tz} startAi={aiFields.has('startLocal')}
         endLabel={t('event.end')} endValue={form.endLocal} onEnd={(v) => setField('endLocal', v)} onEndMissing={(v) => setTime('end', v)} endVField="end" endTz={tz} endAi={aiFields.has('endLocal')}
       />
