@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useZoneCta, zonePath } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { ZONE_BELOW_DESKTOP_MQ } from '@/components/site/zoneBreakpoint';
-import { useJsonLd, faqPageLd } from '@/components/site/jsonLd';
+import { useJsonLd, faqPageLd, softwareAppLd } from '@/components/site/jsonLd';
 import { withVisitCampaign } from '@/lib/analytics';
 import { useT } from '@/lib/i18n/I18nContext';
 import worldMapUrl from './world-map.svg?url';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta, useZoneLang,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta, useZoneLang, CANONICAL_ORIGIN,
 } from '@/components/site/SiteChrome';
 import { useReveal } from '@/components/site/useReveal';
 import { SiteCta } from '@/components/site/SiteTrip';
@@ -600,6 +600,14 @@ function Faq() {
     { q: t('landing.faq.q6'), a: t('landing.faq.a6') },
   ];
   useJsonLd(faqPageLd(faq));
+  // Что мы такое — машине. Имя и описание берутся ИЗ ТЕХ ЖЕ строк, которыми
+  // подписан документ (`useDocumentMeta` выше): разметка обязана совпадать с
+  // видимым, а два независимо набранных описания расходятся на первой правке.
+  useJsonLd(softwareAppLd({
+    name: 'Triplanio',
+    description: t('landing.meta.description'),
+    url: `${CANONICAL_ORIGIN}/`,
+  }));
 
   return (
     <section className="faq-sec sheet-pane section-pad" data-hdr="light" id="faq">

@@ -138,12 +138,19 @@ test('prerenderedUrls перечисляет каждую испечённую �
   }
 });
 
-test('каждый адрес из sitemap.xml — существующая страница зоны', () => {
+test('sitemap.xml перечисляет РОВНО то, что печёт сборка', () => {
   const locs = [...read('public/sitemap.xml').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
   assert.ok(locs.length >= 4, 'карта сайта внезапно опустела');
   for (const path of locs) {
     assert.equal(isZonePage(path), true, `${path} обещан краулеру в sitemap.xml, но страницей зоны не считается`);
   }
+  // ★ Состав, а не только «каждый существует». Карта и выпечка отвечают на один
+  // вопрос — «какие у нас есть публичные страницы», — и разойтись им нельзя ни в
+  // какую сторону: лишний адрес обещает краулеру то, чего нет, недостающий
+  // прячет готовую страницу. Хвостовой слэш нормализуем: `/es/` и `/es` — один
+  // адрес (см. `splitLangPath`).
+  const norm = (p) => (p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p);
+  assert.deepEqual(locs.map(norm).sort(), prerenderedUrls().map(norm).sort());
 });
 
 test('ZONE_PAGES не разошёлся с таблицей маршрутов зоны в App.jsx', () => {

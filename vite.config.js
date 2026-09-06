@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { stripCss, stripHtml } from './scripts/build/strip-comments.mjs'
+import { prerenderedDocPaths, SHELL_FILE } from './scripts/build/prerenderPaths.mjs'
 
 // Source-map upload runs only on builds that have the auth token (i.e. Vercel CI).
 // Local `npm run build` has no token → plugin is skipped and no maps are emitted.
@@ -96,10 +97,65 @@ export default defineConfig({
             if (!html.includes(marker)) throw new Error(`inline-splash: в index.html нет ${marker}`);
             html = html.replace(marker, block);
           };
-          put('<!--splash:style-->', `<style>\n${read('splash.css')}\n</style>`);
+          // ★ У СТИЛЕЙ ЗАСТАВКИ ЕСТЬ ИМЯ — его читает выпечка (TRIP-520).
+          // Испечённая страница показывает содержимое сразу, ждать ей нечего, и
+          // заставка на ней была бы не щитом на время загрузки, а искусственной
+          // задержкой в 700 мс перед готовым кадром. Значит её надо снять, и
+          // снять ТОЧНО. Разметку опознаёт её собственный `id="splash"`, а у
+          // блока стилей своего имени не было — теперь есть.
+          // Маркером-комментарием это быть НЕ МОЖЕТ: Vite вырезает из документа
+          // все комментарии на сборке (проверено — в `dist/index.html` их ноль),
+          // то есть маркер не дожил бы до выпечки, а заставка молча осталась бы
+          // в каждом готовом файле.
+          put('<!--splash:style-->', `<style id="splash-css">\n${read('splash.css')}\n</style>`);
           put('<!--splash:markup-->', read('splash.html'));
           return html;
         },
+      },
+    },
+    // ★ ВЫПЕЧКА ПУБЛИЧНЫХ СТРАНИЦ (TRIP-520). Стоит ПЕРЕД чисткой комментариев
+    // намеренно и в обе стороны: снятие заставки опирается на маркеры-комментарии
+    // (их чистка съела бы), а сами испечённые файлы обязаны попасть под ту же
+    // чистку — иначе докблоки шапки уехали бы в прод восемью копиями вместо
+    // одной. Пропускается флагом: локальная сборка ради проверки бандла не
+    // должна ждать браузер.
+    {
+      name: 'prerender-public-pages',
+      apply: 'build',
+      async closeBundle() {
+        if (process.env.SKIP_PRERENDER) return;
+        const { prerender } = await import('./scripts/build/prerender.mjs');
+        await prerender(fileURLToPath(new URL('./dist', import.meta.url)));
+      },
+    },
+    // ★ ЛОКАЛЬНОЕ ПРЕВЬЮ ВЕДЁТ СЕБЯ КАК ПРОД (TRIP-520). `vite preview` — SPA-сервер:
+    // на неизвестный адрес он отдаёт `index.html`, а по нему теперь лежит
+    // ИСПЕЧЁННЫЙ ЛЕНДИНГ. То есть `/trips`, `/kit/...` и любой экран приложения
+    // локально открывались бы лендингом, хотя на проде их отдаёт оболочка
+    // (`vercel.json`). Приёмка, которая смотрит на превью, проверяла бы не то,
+    // что уедет в прод, — а это худший вид зелёного.
+    {
+      name: 'preview-serves-shell',
+      // `apply` НЕ задан: превью-сервер собирает свой набор плагинов, и с
+      // `apply:'build'` хук не вызывается вовсе (проверено — лог из него не
+      // печатался ни разу). Обработчик регистрируется СРАЗУ, а не через
+      // возвращаемую функцию: та ставит его ПОСЛЕ внутренних, а SPA-фолбэк Vite
+      // отвечает раньше и до нас управление не доходит.
+      configurePreviewServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const url = (req.url || '').split('?')[0];
+          const isDoc = !req.headers.accept?.includes('application/json')
+            && !url.slice(url.lastIndexOf('/')).includes('.');
+          const out = fileURLToPath(new URL('./dist', import.meta.url));
+          // Испечённый адрес отдаёт свой файл, всё остальное — оболочку.
+          if (!isDoc) return next();
+          const own = join(out, url.replace(/^\/+|\/+$/g, ''), 'index.html');
+          const file = url === '/' ? join(out, 'index.html') : (existsSync(own) ? own : join(out, SHELL_FILE));
+          if (!existsSync(file)) return next();
+          res.setHeader('content-type', 'text/html');
+          res.end(readFileSync(file));
+          return undefined;
+        });
       },
     },
     // Комментарии не уезжают в браузер. Vite чистит всё, что проходит через
@@ -112,7 +168,11 @@ export default defineConfig({
       apply: 'build',
       closeBundle() {
         const out = fileURLToPath(new URL('./dist', import.meta.url));
-        for (const [rel, strip] of [['index.html', stripHtml], ['site.css', stripCss]]) {
+        // Документов теперь много: оболочка SPA и по файлу на испечённый адрес.
+        // Список берётся из того же источника, что и сама выпечка, — второй
+        // перечень адресов разъехался бы с первым на первой новой странице.
+        const docs = ['index.html', 'app.html', ...prerenderedDocPaths()];
+        for (const [rel, strip] of [...docs.map((d) => [d, stripHtml]), ['site.css', stripCss]]) {
           const file = join(out, rel);
           if (!existsSync(file)) continue;
           writeFileSync(file, strip(readFileSync(file, 'utf8')));
@@ -122,10 +182,11 @@ export default defineConfig({
         // ненадобностью: инлайнового CSS в документе не существовало. С
         // приездом заставки (TRIP-478) он появился — и её докблоки уезжали бы
         // в прод целиком, ровно то, против чего заведён весь этот плагин.
-        const indexFile = join(out, 'index.html');
-        if (existsSync(indexFile)) {
-          const html = readFileSync(indexFile, 'utf8');
-          writeFileSync(indexFile, html.replace(
+        for (const rel of docs) {
+          const file = join(out, rel);
+          if (!existsSync(file)) continue;
+          const html = readFileSync(file, 'utf8');
+          writeFileSync(file, html.replace(
             /(<style[^>]*>)([\s\S]*?)(<\/style>)/g,
             (_, open, css, close) => open + stripCss(css).replace(/\n\s*\n/g, '\n').trim() + close,
           ));

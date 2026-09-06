@@ -1,0 +1,98 @@
+// Сборка файла испечённой страницы: шаблон сборки + снятое со страницы.
+//
+// Отдельно от самой выпечки, потому что это ЧИСТАЯ ФУНКЦИЯ — а значит у неё
+// может быть тест без браузера и без сборки. Здесь живут все решения о том, чем
+// готовый файл отличается от оболочки: язык, признак выпечки, og-теги,
+// объявление стилей, снятая заставка, содержимое. Ошибка в любом из них не
+// видна глазами и не роняет сборку — она просто уезжает в прод (`prerender.test.mjs`).
+
+/** Заменить (или дописать) одиночный тег в шапке шаблона. */
+function setTag(html, re, replacement) {
+  return re.test(html) ? html.replace(re, replacement) : html.replace('</head>', `  ${replacement}\n  </head>`);
+}
+
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * Вырезать элемент целиком — от открывающего тега до ЕГО закрывающего.
+ *
+ * Нежадное совпадение до первого `</div>` здесь не годится и это не
+ * теоретическая придирка: появись внутри заставки хоть один вложенный `div`, и
+ * такое совпадение оборвалось бы на нём — из документа уехала бы половина
+ * заставки, а вторая осталась бы поверх готового кадра. Считаем вложенность.
+ *
+ * @param {string} html
+ * @param {RegExp} openRe совпадение с открывающим тегом
+ * @param {string} tag имя тега
+ * @returns {string}
+ */
+function cutElement(html, openRe, tag) {
+  const m = html.match(openRe);
+  if (!m) return html;
+  const start = m.index;
+  const scan = new RegExp(`<${tag}\\b|</${tag}>`, 'g');
+  scan.lastIndex = start;
+  let depth = 0;
+  let hit;
+  while ((hit = scan.exec(html)) !== null) {
+    depth += hit[0][1] === '/' ? -1 : 1;
+    if (depth === 0) return html.slice(0, start) + html.slice(hit.index + hit[0].length);
+  }
+  throw new Error(`compose: у элемента ${tag} нет закрывающего тега — разметку надо перечитать`);
+}
+
+/**
+ * Собрать файл страницы: шаблон сборки + снятое со страницы.
+ *
+ * ★ og-теги выводятся ИЗ ЗАГОЛОВКА И ОПИСАНИЯ, а не берутся из шаблона. У
+ * шаблона они лендинговые и одни на всё, поэтому демо и юр-страницы до этого
+ * получали чужую карточку в мессенджерах — её чинил отдельный слой
+ * (`middleware.js`), который с приходом готовых файлов становится не нужен.
+ * Правило то же, что в `index.html`: один текст на три тега.
+ */
+export function compose(template, snap) {
+  let html = template;
+
+  // Язык и признак «этот документ уже испечён» — по нему пре-пейнт скрипт в
+  // index.html понимает, что пересчитывать язык не надо (иначе на английском
+  // файле оказался бы lang="ru" у русского браузера).
+  // ★ КЛАСС ЗОНЫ — ТОЖЕ В ФАЙЛ. Токены сайтовой темы объявлены на `html.site`, а
+  // класс вешает приложение (`useSiteCssLink`). Без него готовая страница до
+  // приезда бандла рисуется БЕЗ темы: замер — заголовок rgb(39,36,51) вместо
+  // rgb(19,50,78), фон прозрачный вместо белого. То есть первый кадр, ради
+  // которого всё и делалось, был бы не тот. Приложение потом добавит его
+  // повторно — операция идемпотентная.
+  html = html.replace(/<html([^>]*)>/, (m, attrs) => {
+    const cleaned = attrs.replace(/\slang="[^"]*"/, '').replace(/\sclass="[^"]*"/, '');
+    return `<html lang="${snap.lang}" class="site"${cleaned} data-prerendered>`;
+  });
+
+  html = setTag(html, /<title>[\s\S]*?<\/title>/, `<title>${esc(snap.title)}</title>`);
+  const meta = (attr, name, content) => setTag(
+    html,
+    new RegExp(`<meta ${attr}="${name}"[^>]*>`),
+    `<meta ${attr}="${name}" content="${esc(content)}" />`,
+  );
+  html = meta('name', 'description', snap.description);
+  html = meta('property', 'og:title', snap.title);
+  html = meta('property', 'og:description', snap.description);
+  html = meta('name', 'twitter:title', snap.title);
+  html = meta('name', 'twitter:description', snap.description);
+
+  // ★ СТИЛИ ОБЪЯВЛЕНЫ В ДОКУМЕНТЕ. Приложение подключает `site.css` само, уже
+  // после запуска, — замер: браузер узнавал о нём на 1699-й миллисекунде, хотя
+  // документ был у него на 99-й. Объявление в шапке снимает этот круг целиком.
+  // Кода менять не пришлось: `useSiteCssLink` уже умеет найти готовый `<link>`
+  // и не создавать второй.
+  html = html.replace('</head>', `  <link id="site-css" rel="stylesheet" href="/site.css" />\n${snap.head}  </head>`);
+
+  // Заставка снимается: показывать есть что сразу, а её минимум в 700 мс стал бы
+  // задержкой перед готовым кадром.
+  html = html.replace(/<style id="splash-css">[\s\S]*?<\/style>/, '');
+  html = cutElement(html, /<div[^>]*id="splash"[^>]*>/, 'div');
+  if (html.includes('id="splash"') || html.includes('id="splash-css"')) {
+    throw new Error('prerender: заставку снять не удалось — разметка изменилась, снятие надо перечитать');
+  }
+
+  return html.replace(/(<div id="root">)(<\/div>)/, (m, open, close) => open + snap.root + close);
+}

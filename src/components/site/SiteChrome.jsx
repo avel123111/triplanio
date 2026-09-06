@@ -458,7 +458,7 @@ const ZoneCssCtx = createContext(null);
  */
 /** Канонический хост зоны. Тот же, что в `public/sitemap.xml` — карта сайта и
  *  canonical обязаны называть одну страницу одним адресом, иначе они спорят. */
-const CANONICAL_ORIGIN = 'https://www.triplanio.com';
+export const CANONICAL_ORIGIN = 'https://www.triplanio.com';
 
 export function SiteZone({ children }) {
   // ★ СВЕТЛУЮ ТЕМУ ДЕРЖИТ ОБОЛОЧКА, А НЕ СТРАНИЦА (TRIP-475).

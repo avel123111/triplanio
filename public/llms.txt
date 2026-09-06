@@ -4,7 +4,7 @@
 
 Triplanio is a web app for planning multi-city trips and sharing the costs of them. A trip holds its cities and dates, a day-by-day timeline, the route on a map, every booking, the budget in any currency, and the travel documents — all in one place, for one traveller or a whole group. An AI agent reads forwarded booking confirmations and files them into the trip; a Telegram assistant answers questions about the itinerary while you are on the road.
 
-This file is written for AI agents and answer engines: the site itself is a JavaScript application, so its pages carry no text until they are rendered. Everything below is the same content a person sees on https://www.triplanio.com/.
+This file is written for AI agents and answer engines. The public pages listed below are served as ready HTML — their text is in the document, no JavaScript needed — and everything here is the same content a person sees on https://www.triplanio.com/.
 
 ## What it does
 
@@ -60,10 +60,23 @@ It sends reminders about trip events, answers questions about your itinerary, sh
 
 Your data is encrypted in transit and at rest. Documents are visible only to you and the companions you invite. Public links show the plan — never your personal documents.
 
+## Languages
+
+The interface and the marketing pages are available in English, Spanish and
+Russian. The language is part of the address: English lives at the bare path,
+Spanish and Russian under `/es/` and `/ru/`. Every page below is the same
+content in the language its address names. The legal documents are English
+only — they are legal instruments, edited as whole texts rather than
+translated, so they have a single address each.
+
 ## Links
 
-- Home: https://www.triplanio.com/
-- Demo trip (a full example trip, no account needed): https://www.triplanio.com/d/europe-may-2027
+- Home (English): https://www.triplanio.com/
+- Home (Spanish): https://www.triplanio.com/es
+- Home (Russian): https://www.triplanio.com/ru
+- Demo trip, a full example trip, no account needed (English): https://www.triplanio.com/d/europe-may-2027
+- Demo trip (Spanish): https://www.triplanio.com/es/d/europe-may-2027
+- Demo trip (Russian): https://www.triplanio.com/ru/d/europe-may-2027
 - Terms of Service: https://www.triplanio.com/terms
 - Privacy Policy: https://www.triplanio.com/privacy
 

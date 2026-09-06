@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "vercel-build": "node scripts/build/ensure-chromium.mjs && vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "check:design": "node scripts/check-design-tokens.mjs",
@@ -42,6 +43,7 @@
     "check:confirm": "node scripts/ci/check-confirm-copy.mjs",
     "check:site-dup": "node scripts/ci/check-site-primitive-dup.mjs",
     "check:proto": "node scripts/ci/compare-prototype.mjs",
+    "check:prerender": "node scripts/ci/check-prerender.mjs",
     "check:destructive": "node scripts/ci/check-destructive-confirm.mjs",
     "check:surfaces": "node scripts/ci/check-surface-behaviour.mjs"
   },

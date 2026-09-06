@@ -195,6 +195,11 @@ const PASSTHROUGH_EXACT = ['/kit', '/index.html', '/email-preferences'];
  */
 const REDIRECT_SOURCES = ['/d/spain-may-27'];
 
+/** Префиксы, на которые платформа отвечает переездом (`vercel.json`). `/en/…`
+ *  страницей не является — английский живёт без префикса, — но и 404 ему
+ *  отдавать нельзя: человек по такой ссылке обязан приехать на страницу. */
+const REDIRECT_PREFIXES = ['/en/'];
+
 /** Совпадает ли адрес с шаблоном (`/trip/:tripId`). Свой матчер: предикат зовёт
  *  и edge-middleware, куда react-router не приезжает. */
 function matchesPattern(pathname, pattern) {
@@ -220,6 +225,7 @@ export function isKnownPath(pathname) {
   const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
   if (isZonePage(path) || isAppRoute(path)) return true;
   if (REDIRECT_SOURCES.includes(path) || PASSTHROUGH_EXACT.includes(path)) return true;
+  if (path === '/en' || REDIRECT_PREFIXES.some((prefix) => path.startsWith(prefix))) return true;
   if (PASSTHROUGH_PREFIXES.some((prefix) => path.startsWith(prefix))) return true;
   // Файлоподобное имя — статика, её судьбу решает платформа.
   return path.slice(path.lastIndexOf('/')).includes('.');

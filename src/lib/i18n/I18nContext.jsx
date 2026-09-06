@@ -7,7 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 // Файл напрямую, НЕ через `@/design/index`: тот импортирует `useT` отсюда,
 // и обращение через индекс замкнуло бы цикл. Разбор — в шапке AppLoading.jsx.
 import AppLoading from '@/design/AppLoading';
-import { hasLang, loadLocale } from './dictionary';
+import { hasLang, loadLocale, loadedLocale, zoneLoaded } from './dictionary';
 import { ZONE_NAMESPACES } from './zoneNamespaces';
 import { LANGUAGES, LANG_STORAGE_KEY, FALLBACK_LANG, detectLandingLang, clearLangParam, localeTag } from './translations';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
@@ -107,11 +107,25 @@ export function I18nProvider({ children }) {
   // the latest without being re-created. `ready` tracks WHICH locales are loaded
   // (to gate the first paint) and the active language. `loadingRef` holds the
   // in-flight load promise per locale so each is fetched at most once.
-  const [ready, setReady] = useState(() => new Set());
+  // ★ НАЧАЛЬНАЯ ГОТОВНОСТЬ ЧИТАЕТСЯ ИЗ КЭША, А НЕ ЖДЁТ ЭФФЕКТА (TRIP-520). На
+  // испечённой странице словарь зоны прогрет ещё до монтирования (`main.jsx`),
+  // и без этой строки первый кадр всё равно был бы ожиданием: готовый текст
+  // сменялся спиннером на 156 мс и возвращался.
+  const [ready, setReady] = useState(() => {
+    const initial = detectInitialLang(null);
+    const needed = initial === FALLBACK_LANG ? [initial] : [initial, FALLBACK_LANG];
+    return new Set(needed.every(zoneLoaded) ? [initial] : []);
+  });
   // Языки, у которых загружены ВСЕ словари. `ready` — «можно рисовать зону»,
   // `full` — «можно рисовать приложение»; это два разных вопроса.
   const [full, setFull] = useState(() => new Set());
-  const dictsRef = useRef({});
+  // Тот же кэш — источник самого словаря: иначе `ready` сказал бы «готово», а
+  // читать было бы нечего, и первый кадр вышел бы из сырых ключей.
+  // Тот же кэш — источник самого словаря: иначе `ready` сказал бы «готово», а
+  // читать было бы нечего, и первый кадр вышел бы из сырых ключей.
+  const dictsRef = useRef(Object.fromEntries(
+    LANGUAGES.map(({ code }) => [code, loadedLocale(code)]).filter(([, dict]) => dict),
+  ));
   const loadingRef = useRef({});
 
   // Load a language (and the fallback) exactly once into our dictionary. Only in
