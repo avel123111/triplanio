@@ -120,7 +120,19 @@ export function compose(template, snap) {
   // документ был у него на 99-й. Объявление в шапке снимает этот круг целиком.
   // Кода менять не пришлось: `useSiteCssLink` уже умеет найти готовый `<link>`
   // и не создавать второй.
-  html = html.replace('</head>', `  <link id="site-css" rel="stylesheet" href="/site.css" />\n${snap.head}  </head>`);
+  // ★★ ЛИЦА, КОТОРЫЕ СТРАНИЦА ТОЧНО ВОЗЬМЁТ, — В ОЧЕРЕДЬ СРАЗУ (TRIP-520).
+  //
+  // Список выведен из самой страницы: выпечка открыла её настоящим браузером и
+  // записала, какие `.woff2` тот запросил (`prerender.mjs`). Поэтому английская
+  // страница просит латиницу, русская — кириллицу, и обещание `preload` не
+  // врёт: лишних файлов в нём нет по построению.
+  //
+  // `crossorigin` обязателен даже для своего домена — без него браузер
+  // ПОВТОРНО скачает тот же файл, потому что запрос шрифта всегда анонимный.
+  const preload = (snap.fonts || []).map(
+    (href) => `  <link rel="preload" as="font" type="font/woff2" href="${esc(href)}" crossorigin />\n`,
+  ).join('');
+  html = html.replace('</head>', `${preload}  <link id="site-css" rel="stylesheet" href="/site.css" />\n${snap.head}  </head>`);
 
   // ★★ СТИЛИ ПРИЛОЖЕНИЯ НЕ ДЕРЖАТ ПЕРВЫЙ КАДР ГОТОВОЙ СТРАНИЦЫ (TRIP-520).
   //

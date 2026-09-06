@@ -208,13 +208,45 @@ export async function prerender(outDir) {
     for (const url of prerenderedUrls()) {
       const page = await ctx.newPage();
       const errors = [];
+      // ★★ КАКИЕ ЛИЦА ШРИФТОВ СТРАНИЦА ВЗЯЛА НА САМОМ ДЕЛЕ (TRIP-520).
+      //
+      // Объявить `@font-face` рано — мало: запрос за ФАЙЛОМ браузер шлёт только
+      // после раскладки, когда понял, что шрифт нужен. Замер на испечённом
+      // лендинге: кадр 3584 мс, шрифты запрошены 3549 мс, а ПРИЕХАЛИ 4468 мс —
+      // почти на секунду позже. Страница успевала нарисоваться системной
+      // гарнитурой и перенабиралась. Вёрстка при этом не двигалась, менялась
+      // сама гарнитура — это и видно как «шрифты дёргаются».
+      //
+      // Лечится `preload`: он ставит файл в очередь СРАЗУ, наравне со стилями.
+      // Но подсказка `preload` — обещание «это точно понадобится», и врать в ней
+      // нельзя: лишний файл сожжёт полосу у кадра героя. Угадывать не нужно —
+      // выпечка ОТКРЫВАЕТ страницу настоящим браузером и просто смотрит, что тот
+      // взял. Английская страница получит латиницу, русская — кириллицу, и
+      // список не разъедется с содержимым, потому что он из него и выведен.
+      // ★ ПОРЯДОК СОХРАНЯЕМ — ЭТО ПОРЯДОК РАСКЛАДКИ, А НЕ АЛФАВИТ. Браузер
+      // просит лица в том порядке, в каком они понадобились: сперва то, чем
+      // набран первый экран. `preload` выполняется в порядке объявления, и
+      // алфавитный список ставил заголовочное лицо последним — оно приезжало на
+      // 190 мс позже кадра и заголовок перенабирался. Слушаем ЗАПРОС, а не
+      // ответ: у ответов порядок уже сетевой.
+      const fonts = new Set();
+      page.on('request', (r) => {
+        const { pathname } = new URL(r.url());
+        if (pathname.endsWith('.woff2')) fonts.add(pathname);
+      });
       page.on('pageerror', (e) => errors.push(String(e)));
       await page.goto(`http://${PROD_HOST}${url}`, { waitUntil: 'load', timeout: 60_000 });
       await page.waitForFunction(
         () => (document.getElementById('root')?.innerText || '').trim().length > 300,
         { timeout: 30_000 },
       ).catch(() => { throw new Error(`prerender: ${url} не нарисовал содержимое`); });
-      const snap = await page.evaluate(SNAPSHOT);
+      // Запрос за файлом шрифта уходит ПОСЛЕ раскладки, поэтому к моменту, когда
+      // на странице появился текст, список ещё неполон (замер: 1 файл вместо
+      // трёх). Неполный `preload` хуже, чем никакого: один файл встанет в
+      // очередь рано, остальные — как раньше. Ждём, пока лица подтянутся.
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
+      await page.waitForTimeout(150);
+      const snap = { ...(await page.evaluate(SNAPSHOT)), fonts: [...fonts] };
       if (missed.length) throw new Error(`prerender: ${url} просил файлы, которых нет в сборке: ${[...new Set(missed)].slice(0, 5).join(', ')}`);
       if (errors.length) throw new Error(`prerender: ${url} упал с ошибкой — ${errors[0].slice(0, 300)}`);
       if (!snap.title) throw new Error(`prerender: у ${url} нет заголовка`);
@@ -222,7 +254,7 @@ export async function prerender(outDir) {
       const file = join(outDir, fileFor(url));
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, compose(template, snap));
-      console.log(`  ${url.padEnd(28)} ${String(snap.text.length).padStart(6)} знаков  lang=${snap.lang}`);
+      console.log(`  ${url.padEnd(28)} ${String(snap.text.length).padStart(6)} знаков  lang=${snap.lang}  шрифтов ${snap.fonts.length}`);
       await page.close();
     }
   } finally {
