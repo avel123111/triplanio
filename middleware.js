@@ -22,8 +22,9 @@
 
 // Адреса демо здесь больше нет: с TRIP-520 демо приезжает готовым файлом со
 // своими og-тегами, и заглушка ему не нужна (см. `previewFor`).
-import { isKnownPath, LOCALISED_PAGES, PREFIXED_LANGS, withLangPath } from './src/lib/routePaths.js';
-import { SHELL_FILE } from './scripts/build/prerenderPaths.mjs';
+import {
+  isKnownPath, LOCALISED_PAGES, PREFIXED_LANGS, withLangPath, SHELL_FILE,
+} from './src/lib/routePaths.js';
 
 // ★ ТОЛЬКО КРАУЛЕРЫ ПРЕВЬЮ. Поисковиков здесь НЕТ, и это несущее.
 //
