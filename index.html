@@ -201,14 +201,6 @@
          ПО НАЛИЧИЮ КАДРА, А НЕ ПО АДРЕСУ: тот же документ — шаблон и для
          оболочки SPA, и для юр-страниц, где героя нет; грузить им 104 КБ
          впустую нельзя. Проверка дешёвая и честная — есть элемент или нет. -->
-    <script>
-      (function () {
-        if (!document.querySelector('.hero-fill')) return;
-        var img = new Image();
-        img.onload = function () { document.documentElement.classList.add('hero-hi'); };
-        img.src = '/site/hero-mobile.webp';
-      })();
-    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

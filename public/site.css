@@ -786,6 +786,15 @@ html[data-reveal] .rv-l.in,html[data-reveal] .rv-r.in{opacity:1;transform:none}
      То есть цена выпечки в мобильном балле снята полностью, а первый кадр стал
      быстрее, чем был до неё.
 
+     ★★ БЕЗ ЕДИНОЙ СТРОКИ JAVASCRIPT, И ЭТО НЕСУЩЕЕ. Первая редакция поднимала
+     флаг скриптом и подменяла кадр правилом — и кадр оставался размытым везде,
+     где скрипт не отработал: у читателя без JS гарантированно, а на телефоне —
+     ещё и до срабатывания `onload`. Здесь оба кадра объявлены ОДНИМ значением:
+     полный слоем ВЫШЕ, мини-версия НИЖЕ. Пока полный едет, виден нижний слой;
+     приехал — перекрыл собой, потому что оба слоя раскладываются одинаково
+     (`cover`/`--fw` задаются рядом и действуют на всё значение). Ждать некому и
+     переключать нечего: это делает сам браузер.
+
      ПЕРЕСОЗДАТЬ МИНИ-ВЕРСИЮ (после смены фото): открыть страницу в браузере и
      выполнить — `const i=new Image(); i.src='/site/hero-mobile.webp'; await
      i.decode(); const c=document.createElement('canvas'); c.width=32;
@@ -794,8 +803,7 @@ html[data-reveal] .rv-l.in,html[data-reveal] .rv-r.in{opacity:1;transform:none}
      c.toDataURL('image/webp',0.8)` — и положить результат сюда. Ширина 32 px
      выбрана размером: под `blur(30px)` подложки и под белой вуалью разницы с
      полным кадром не видно, а весит она меньше килобайта. */
-  --hero-m:url("data:image/webp;base64,UklGRnoDAABXRUJQVlA4WAoAAAAwAAAAHwAAFgAASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZBTFBIFQAAAAEP0P+ICBBI2mx//+DnBSL6n4zlCwBWUDggbgEAAFAHAJ0BKiAAFwA+bSySRiQioaEoDVCADYlkAJ0yhHyfGKgCwnHgJmIwu7BFlDWsqXEYX2dxuWBiV9Js1c9cc7bbC0AA/vmpchMjLd3J9VpkX81+zIqAa7s8qa49FrCK91gk9llfg7gIBfv7cJxfZ0rzG8sfQE9+B3PHqXtragI5yLRfxW5D2elc138i83cjpzMe0cxoeuTOwuph2ry+VPF0FkNOyG57bEFARYQjUOykh5IeEbFQnZBXsn0AtI8PH6RE8yq8EfV4erFhsv/zZe0/f1RiRoe+G7ZfixQ6vmEmzNruNjZInfd+H7fH9xDh0IfYHX9Rkr5d1wF4/SLkhhHKMiHmi7lsezWa3q/7Rv/Wn0H5W/tG3y4xR6Xyq4aN3+2FqfNE4l/YhF7P/6sz6HwiHmu20pKWa6MTOrFl5Epdewod6NPwiKGJ1el79q7nVP/tYso+XiTXX/EsCFPfcJ49dLkdgtf+0dy9jWgAAA==");
-  --hero-m-full:url("/site/hero-mobile.webp");
+  --hero-m:url("/site/hero-mobile.webp"),url("data:image/webp;base64,UklGRnoDAABXRUJQVlA4WAoAAAAwAAAAHwAAFgAASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZBTFBIFQAAAAEP0P+ICBBI2mx//+DnBSL6n4zlCwBWUDggbgEAAFAHAJ0BKiAAFwA+bSySRiQioaEoDVCADYlkAJ0yhHyfGKgCwnHgJmIwu7BFlDWsqXEYX2dxuWBiV9Js1c9cc7bbC0AA/vmpchMjLd3J9VpkX81+zIqAa7s8qa49FrCK91gk9llfg7gIBfv7cJxfZ0rzG8sfQE9+B3PHqXtragI5yLRfxW5D2elc138i83cjpzMe0cxoeuTOwuph2ry+VPF0FkNOyG57bEFARYQjUOykh5IeEbFQnZBXsn0AtI8PH6RE8yq8EfV4erFhsv/zZe0/f1RiRoe+G7ZfixQ6vmEmzNruNjZInfd+H7fH9xDh0IfYHX9Rkr5d1wF4/SLkhhHKMiHmi7lsezWa3q/7Rv/Wn0H5W/tG3y4xR6Xyq4aN3+2FqfNE4l/YhF7P/6sz6HwiHmu20pKWa6MTOrFl5Epdewod6NPwiKGJ1el79q7nVP/tYso+XiTXX/EsCFPfcJ49dLkdgtf+0dy9jWgAAA==");
   --hero-veil:236,246,253;          /* цвет светлой вуали поверх фотографии */
   /* ★★ ГЕОМЕТРИЯ ДЕСКТОПНОГО КАДРА — ЗДЕСЬ, А НЕ В JAVASCRIPT (TRIP-520).
      Кадр 3400x1914 ставится так, чтобы телефон на фотографии встал в одну и ту
@@ -4050,14 +4058,3 @@ body.pt-open .mobile-menu a[href^="#"]{display:none}
   .doc-body section{page-break-inside:avoid}
 }
 
-/* Полное фото встало на место мини-версии — ТОТ ЖЕ элемент, поэтому LCP не
-   переезжает. Флаг поднимает скрипт в конце документа (`index.html`), и только
-   там, где кадр есть. Медиазапрос ограничивает правило мобильным кадром:
-   десктопные слои живут своей парой `--hero-a`/`--hero-b` выше и этой подмены
-   не касаются.
-   visual-diff-exempt: .hero-fill {@media (max-width:980px)} background-image — полный кадр подменяет встроенную мини-версию на том же элементе, TRIP-520
-   visual-diff-exempt: .hero-layer {@media (max-width:980px)} background-image — то же
-   visual-diff-exempt: .la {@media (max-width:980px)} background-image — то же */
-@media (max-width:980px){
-  html.hero-hi .hero-fill,html.hero-hi .hero-layer.la{background-image:var(--hero-m-full)}
-}
