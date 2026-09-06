@@ -74,11 +74,16 @@ async function resolveBrowser() {
   if (process.env.PRERENDER_CHROMIUM) {
     return { executablePath: process.env.PRERENDER_CHROMIUM, extraArgs: [] };
   }
-  // Выбор по СРЕДЕ, а не «попробуй и посмотри»: серверless-сборка собрана под
-  // Amazon Linux и на обычной машине разработчика не запустится, а браузер
-  // playwright — наоборот. Гадание здесь дало бы разное поведение у разных
-  // людей на одном и том же коде.
-  if (process.env.VERCEL) {
+  // Выбор по ПЛАТФОРМЕ, а не «попробуй и посмотри»: своя сборка — линуксовая, и
+  // на macOS её просто нет; браузер playwright, наоборот, стоит у разработчика и
+  // отсутствует в сборочных контейнерах. Гадание дало бы разное поведение у
+  // разных людей на одном и том же коде.
+  //
+  // Линукс здесь — это ВСЕ сборочные среды сразу: контейнер Vercel, раннер
+  // GitHub Actions (`npm run build` в гарде фронта) и dev-контейнер. Привяжи мы
+  // выбор к признаку одной из них (`process.env.VERCEL`), и остальные молча
+  // остались бы без браузера — CI покраснел бы там же, где и платформа.
+  if (process.platform === 'linux') {
     const { default: serverless } = await import('@sparticuz/chromium');
     return { executablePath: await serverless.executablePath(), extraArgs: serverless.args };
   }

@@ -53,7 +53,20 @@ jobs:
         run: npm run lint
       - name: Test
         run: npm test
+      # ★ СБОРКА ТЕПЕРЬ РИСУЕТ ПРИЛОЖЕНИЕ, А НЕ ТОЛЬКО СОБИРАЕТ ЕГО (TRIP-520):
+      # выпечка публичных страниц обходит их настоящим браузером. Значит шагу
+      # нужен рабочий конфиг — клиент Supabase создаётся на импорте и без адреса
+      # бросает ещё до первого кадра («supabaseUrl is required»), то есть сборка
+      # падала бы на пустой странице.
+      #
+      # Значения — ЗАГЛУШКИ, и это честно: гард проверяет, что приложение
+      # собирается и рисуется, а не то, ходит ли оно в настоящую базу. В базу оно
+      # здесь и не сходит — выпечка обрывает всю сеть наружу. Настоящие
+      # (Sensitive) переменные подставляет платформа во время своей сборки.
       - name: Build
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
         run: npm run build
       # TRIP-321 Ф10: REPORTER, not a gate — it always exits 0. Prints the numbers
       # every TRIP-321 PR must quote (families / classes / inline styles /
