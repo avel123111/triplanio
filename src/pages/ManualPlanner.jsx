@@ -25,6 +25,7 @@ import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
 import { normalizeStep, stepEntryFrom, resolveBack, nextStepState } from '@/pages/create/stepUrl';
+import { draftStorageKey, removeDraft } from '@/lib/planner-draft';
 import FlowMap from '@/pages/create/FlowMap';
 import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
@@ -66,13 +67,12 @@ const STEPS = [
   { id: 'review', num: 4, labelKey: 'planner.step_review' },
 ];
 
-// Storage key is user- and method-specific so the manual and AI drafts don't
-// leak into each other (the same flow component serves both routes).
-// `-v3-`: форма черновика сменилась снова — три переменные (`home`/`cities`/`end`)
-// стали ОДНИМ списком узлов с видом у каждого (`create/routeModel`, TRIP-484 §4).
-// Ключ поднимается, а не мигрируется: черновик живёт минуты, и мапперу старой
-// формы пришлось бы пережить обе, чтобы обслужить вкладку, открытую в обед.
-const storageKey = (userId, method = 'manual') => `triplanio-planner-v3-${method}-${userId || 'guest'}`;
+// Ключ черновика, предикат «есть ли работа» и стирание записи живут в
+// `@/lib/planner-draft` (там же — почему ключ собран из человека и ИМЕНИ
+// черновика, дверь при этом уехала в поле записи, и почему версия ключа
+// поднимается, а не мигрируется): читателей стало двое (визард и карточка
+// черновика на главной), а копия ключа расходится молча — карточка просто не
+// появится, ничего при этом не сломав.
 
 // Same physical city (external directory id / geonameid, else name — тёзки-города в
 // разных странах ≠ один город). Used by StepReturn to decide which return card looks
@@ -858,8 +858,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [savedTripId, setSavedTripId] = useState(null);
   const [error, setError]           = useState(null);
   const [restored, setRestored]     = useState(false);
-  // Черновик существовал в sessionStorage на монтировании (возврат к брошенному).
-  const [resumed, setResumed]       = useState(false);
   /* Композер города открыт — шаг не завершён. «Далее» с открытым композером
      уводило бы с шага, бросив наполовину введённый город: он нигде не
      сохранён и просто исчезал. Факт приходит из шага одним каналом
@@ -910,6 +908,22 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [sp, setSearchParams] = useSearchParams();
   const location = useLocation();
   const step = normalizeStep(sp.get('step'), { citiesValid });
+  /* ★ У ЧЕРНОВИКА ЕСТЬ ИМЯ, И ЕГО НАЗЫВАЕТ АДРЕС.
+     Пока черновик был одним слотом на дверь, «создать новое» было некуда
+     положить: планировщик писал в тот же слот и затирал начатое, а прикрыть это
+     вопросом «продолжить или заново» не выходило — у вопроса нет честного ответа
+     «какой из них», и вход по прямому адресу он не покрывал (дверью тот не
+     является, а от перезагрузки неотличим).
+     Теперь: `?draft=<id>` — правим этот; имени в адресе нет — заводим НОВЫЙ, и
+     соседние целы. Спрашивать стало не о чем, поэтому забыть покрыть дверь
+     больше нельзя по построению.
+     Имя берётся на ПЕРВОМ рендере (реф), чтобы запись в хранилище никогда не
+     ушла под `undefined` — эффект, который допишет имя в адрес, бежит позже. */
+  const draftIdRef = useRef('');
+  if (!draftIdRef.current) draftIdRef.current = sp.get('draft') || crypto.randomUUID();
+  const draftId = draftIdRef.current;
+  // Пришли ПО ИМЕНИ — значит продолжаем начатое (для аналитики воронки).
+  const resumed = useRef(!!sp.get('draft')).current;
   // ★ ЕДИНСТВЕННЫЙ писатель адреса шага. Все три места (переход, восстановление
   // черновика, сброс) идут сюда, поэтому `state.depth` не теряется ни на одном
   // `replace` — иначе «назад» снова путает шаг с выходом (`resolveBack`).
@@ -919,6 +933,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const writeStep = (id, { intent, replace = false, advance = false } = {}) => {
     const next = new URLSearchParams(sp);
     if (id === 'home') next.delete('step'); else next.set('step', id);
+    // Имя черновика едет в адресе ВСЕГДА: иначе перезагрузка или «назад» на
+    // запись без него завели бы второй черновик под тем же экраном.
+    next.set('draft', draftId);
     setSearchParams(next, { replace, state: nextStepState(location.state, { intent, advance }) });
   };
   // Переход между шагами (goNext / onJump) — единственный push-писатель.
@@ -926,20 +943,22 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // Restore from sessionStorage on mount - only for the current user
   useEffect(() => {
+    // Адрес за этот проход пишется РОВНО ОДИН раз: обе ветки ниже зовут одного и
+    // того же писателя, а `sp` между ними не обновляется — вторая записала бы
+    // ТЕКУЩИЙ (довосстановительный) шаг поверх восстановленного. Сегодня они
+    // исключают друг друга по построению (без `?draft=` имя свежее, записи под
+    // ним нет), но это свойство минтинга имени, а не этого эффекта.
+    let addressWritten = false;
     try {
-      const key = storageKey(user?.id, method);
-      const raw = sessionStorage.getItem(key);
+      const raw = sessionStorage.getItem(draftStorageKey(user?.id, draftId));
       if (raw) {
         const saved = JSON.parse(raw);
-        // «Возврат к черновику» = у записи есть СОДЕРЖИМОЕ. Планировщик пишет в
-        // хранилище на каждый заход (даже пустой `{step:'home',nodes:[]}`), так
-        // что сам факт записи почти всегда true и метрику бы обнулил.
-        setResumed(saved.nodes?.length > 0 || (isAi && saved.aiMessages?.length > 1));
         // Адрес главнее хранилища: сохранённый шаг въезжает в URL только если в
         // адресе шага ещё нет, и через replace (восстановление, не переход) —
         // глубину текущей записи `writeStep` при этом сохраняет.
         if (saved.step && saved.step !== 'home' && !sp.get('step')) {
-          writeStep(saved.step, { replace: true });
+          writeStep(saved.step, { replace: true });   // адрес получает и шаг, и имя
+          addressWritten = true;
         }
         if (saved.nodes?.length) setNodes(saved.nodes);
         if (saved.tripTitle) setTripTitle(saved.tripTitle);
@@ -949,6 +968,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         if (saved.aiMessages?.length && isAi) setAiMessages(saved.aiMessages);
       }
     } catch {}
+    // Имя черновика — в адрес, если его там ещё нет (тем же единственным
+    // писателем, replace: это не переход, а называние того, что уже открыто).
+    if (!addressWritten && !sp.get('draft')) writeStep(step, { replace: true });
     setRestored(true);
   }, [user?.id]); // re-run if user changes (e.g. account switch in same tab)
 
@@ -956,7 +978,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, nodes, tripTitle, startDate, cover, aiState, aiMessages }));
+      // `method` и `savedAt` — ПОЛЯ записи: дверь ушла из ключа вместе с приходом
+      // имени, а время нужно, чтобы карточки на главной шли свежими сверху.
+      sessionStorage.setItem(draftStorageKey(user?.id, draftId), JSON.stringify({
+        method, savedAt: Date.now(), step, nodes, tripTitle, startDate, cover, aiState, aiMessages,
+      }));
     } catch {}
   }, [step, nodes, tripTitle, startDate, cover, aiState, aiMessages, restored, user?.id]);
 
@@ -1229,7 +1255,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setAiMessages(isAi ? [{ id: 'welcome', role: 'assistant', kind: 'welcome' }] : []);
     setAiState(isAi ? 'prompt' : 'draft');
     setSessionId(crypto.randomUUID());
-    try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
+    removeDraft(user?.id, draftId);
   };
 
   // Маршрут (home/endNode/cities/finishCity/citiesValid) выведен из `nodes` выше,
@@ -1356,7 +1382,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // переезда" affordance. AI now returns a cities-only skeleton (no
       // activities) - both are added later in the trip view / Edit Mode.
 
-      sessionStorage.removeItem(storageKey(user?.id, method));
+      removeDraft(user?.id, draftId);
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);

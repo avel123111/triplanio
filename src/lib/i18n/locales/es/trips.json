@@ -6,6 +6,13 @@
   "brand_eyebrow": "Triplanio · Viajes",
   "choice_subtitle": "¿Cómo quieres empezar?",
   "cities_more": "· {count} más",
+  "draft_actions": "Acciones del borrador",
+  "draft_continue": "Seguir editando",
+  "draft_delete": "Eliminar borrador",
+  "draft_delete_confirm_desc": "El viaje que empezaste se borrará: no podrás volver a él.",
+  "draft_delete_confirm_title": "¿Eliminar el borrador?",
+  "draft_eyebrow": "Borrador",
+  "draft_untitled": "Viaje nuevo",
   "empty_heading": "Planea un viaje que no se desmorone en el camino",
   "empty_route_sub": "Ciudades, fechas y traslados se alinean en una sola ruta — y aparecen en tu mapa.",
   "empty_search_body": "Prueba otra búsqueda: buscamos en títulos, descripciones, ciudades y países",
@@ -28,5 +35,6 @@
   "start_manual": "Crear a mano",
   "start_with_ai": "Empezar con Triplanio",
   "tab_active": "Activos",
+  "tab_drafts": "Borradores",
   "tab_past": "Pasados"
 }

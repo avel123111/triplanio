@@ -6,6 +6,13 @@
   "brand_eyebrow": "Triplanio · Travel",
   "choice_subtitle": "How do you want to start?",
   "cities_more": "· {count} more",
+  "draft_actions": "Draft actions",
+  "draft_continue": "Continue editing",
+  "draft_delete": "Delete draft",
+  "draft_delete_confirm_desc": "The trip you started will be erased - you won't be able to come back to it.",
+  "draft_delete_confirm_title": "Delete the draft?",
+  "draft_eyebrow": "Draft",
+  "draft_untitled": "New trip",
   "empty_heading": "Plan a trip that won't fall apart on the road",
   "empty_route_sub": "Cities, dates and transfers line up into one route — and land on your map.",
   "empty_search_body": "Try a different query — we search titles, descriptions, cities and countries",
@@ -28,5 +35,6 @@
   "start_manual": "Build manually",
   "start_with_ai": "Start with Triplanio",
   "tab_active": "Active",
+  "tab_drafts": "Drafts",
   "tab_past": "Past"
 }

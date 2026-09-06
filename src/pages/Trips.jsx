@@ -17,11 +17,12 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import {
-  AvatarStack, Badge, Btn, Card, Col, Cover, EmptyState, Grow, Input, ListRow,
-  RoleBadge, Row, Skeleton, Tile, Trunc,
+  ActionMenu, AvatarStack, Badge, Btn, Card, Col, Cover, EmptyState, Grow, IconBtn, Input,
+  ListRow, RoleBadge, Row, Skeleton, Tile, Trunc,
 } from '../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import { uniqueTransitCities, uniqueCountryCodes, localizeVisits } from '@/lib/trip-cities';
+import { readDrafts, removeDraft } from '@/lib/planner-draft';
 import { homeStats, worldExplored, pastOnly } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
 import { cacheTripCards } from '@/lib/trip-data';
@@ -319,6 +320,75 @@ const TripCard = ({ trip, onClick }) => {
   );
 };
 
+// ─── Карточка черновика ──────────────────────────────────────────────────────
+// Начатое, но не сохранённое путешествие: пока человек не дошёл до «Создать»,
+// трипа не существует ни в БД, ни в списке — а работа уже есть, и до этой
+// карточки о ней не говорил никто.
+//
+// ⚠️ ЭТО НЕ `<Card as="button">`, В ОТЛИЧИЕ ОТ ПОСТЕРА ТРИПА. У черновика внутри
+// СВОИ органы — кнопка «Продолжить» и меню «…», — а кнопка внутри кнопки
+// невалидна: клик по меню всплыл бы на карточку и открыл визард вместо меню.
+// Поэтому карточка тут поверхность, а кликают её собственные кнопки.
+//
+// Скин — вариант той же семьи (`.tc--draft`), как `.tc--past` и `.tc--live`:
+// вариант переопределяет, своих под-классов под него не заводим.
+//
+// Дат нет намеренно — разбор в докблоке `@/lib/planner-draft`.
+//
+// floor-exempt: dsshare +7 — и карточка, и заголовок её группы ПОВТОРЯЮТ уже
+// существующие образцы, а не изобретают композицию из примитивов: карточка —
+// разметку постера трипа (`tc__bg` / `tc__scrim` / `tc__in`), заголовок — ту же
+// анатомию `.sec-head--group`, что у «Активных» и «Прошедших». Собрать третий
+// заголовок иначе, чем два соседних, — вот это и был бы дефект: три инструмента
+// на одну вещь. Цена — семь единиц доли ДС; настоящее лечение это вынести
+// заголовок группы в примитив ДС и перевести на него ВСЕ ТРИ секции, отдельной
+// задачей с апрувом. Апрув Pavel 06.09.2026.
+const DraftCard = ({ draft, onContinue, onDelete }) => {
+  const { t } = useI18n();
+  // Города и страны считает ТА ЖЕ пара хелперов, что у живой карточки, по тем же
+  // узлам: иначе список городов у черновика разошёлся бы с правилами остальных.
+  const flags = uniqueCountryCodes(draft.nodes).slice(0, 3);
+  return (
+    <Card pad="none" radius="lg" className="tc tc--draft">
+      <div className="tc__bg"><Cover fill image={draft.cover_image_url} /></div>
+      <div className="tc__scrim" />
+      <div className="tc__in">
+        {/* Чипа «черновик» тут нет намеренно: пунктирная рамка, название по
+            умолчанию и кнопка «Продолжить» уже говорят это трижды — четвёртый
+            раз был бы шумом. */}
+        <div className="tc__tags">
+          <ActionMenu
+            align="end"
+            title={t('trips.draft_actions')}
+            trigger={<IconBtn icon="more" tone="outline" ariaLabel={t('trips.draft_actions')} />}
+            items={[{ icon: 'trash', label: t('trips.draft_delete'), danger: true, onSelect: onDelete }]}
+          />
+        </div>
+
+        <div className="tc__spacer" />
+
+        {/* Состояние — НАД именем, отдельной строкой. Ручной черновик и AI-черновик
+            приходят с разными именами («Новая поездка» против придуманного ботом),
+            и без этой строки одна и та же вещь читалась бы двумя способами. */}
+        <div className="t-micro tc__eyebrow">{t('trips.draft_eyebrow')}</div>
+        <div className="tc__title">{draft.title || t('trips.draft_untitled')}</div>
+        <div className="tc__scope">
+          {flags.length > 0
+            ? flags.map(cc => <CountryFlag key={cc} code={cc} />)
+            : <Icon name="pin" />}
+          <span className="trunc">{scopeLabel(t, draft.nodes)}</span>
+        </div>
+
+        <div className="tc__foot">
+          <Btn variant="secondary" size="sm" iconRight="arrowR" onClick={onContinue}>
+            {t('trips.draft_continue')}
+          </Btn>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
 // ─── Строка прошедшего трипа ─────────────────────────────────────────────────
 // Канон `<ListRow>` вместо прежней семьи `.tr*` — та была ЧЕТВЁРТОЙ рукописной
 // копией строки списка в приложении. Приглушение и «спрятать второстепенное на
@@ -452,6 +522,37 @@ export default function Trips() {
   const nav       = useNavigate();
   const qc        = useQueryClient();
   const confirm   = useConfirm();
+
+  // ── Черновики визарда ──────────────────────────────────────────────────────
+  // Начатое и не сохранённое. Это НЕ трипы: их нет ни в БД, ни в счётчике
+  // «Активные», ни в лимите Free — карточка только напоминает и возвращает.
+  // Черновиков может быть сколько угодно — у каждого своё имя, карточка
+  // адресуется им. Хранилище не реактивно, поэтому читаем на монтировании и
+  // после собственного удаления; возврат из визарда — монтирование заново.
+  const [drafts, setDrafts] = useState(() => readDrafts(user?.id));
+  useEffect(() => { setDrafts(readDrafts(user?.id)); }, [user?.id]);
+
+  // «Продолжить» ведёт на БАЗОВЫЙ адрес двери, без шага: куда поставить
+  // человека, решает восстановление черновика в самом визарде (оно же пишет шаг
+  // в адрес). Назвать шаг и здесь значило бы завести этому решению второго
+  // автора — они разъедутся на первой же правке нормализации.
+  // Адрес называет ЧЕРНОВИК: `?draft=<id>` открывает именно его. Ни одна другая
+  // дверь имени не несёт, поэтому все они заводят новый и ничего не перезаписывают
+  // — спрашивать «продолжить или заново» не о чем.
+  const continueDraft = (d) => nav(`${d.method === 'ai' ? '/plan-trip-ai' : '/new-trip'}?draft=${encodeURIComponent(d.id)}`);
+
+  // Удаление спрашивает: черновик живёт вкладку, второго шанса у человека нет.
+  const deleteDraft = async (d) => {
+    const ok = await confirm({
+      title: t('trips.draft_delete_confirm_title'),
+      description: t('trips.draft_delete_confirm_desc'),
+      confirmLabel: t('trips.draft_delete'),
+      variant: 'destructive',
+    });
+    if (!ok) return;
+    removeDraft(user?.id, d.id);
+    setDrafts(readDrafts(user?.id));
+  };
 
   const { isDark, toggle: toggleTheme } = useTheme();
 
@@ -589,6 +690,11 @@ export default function Trips() {
   // «Идёт поиск» — ОДИН предикат на весь экран: от него зависит и фильтрация, и
   // то, рисуется ли секция вообще (см. рендер ниже).
   const searching = search.trim().length > 0;
+  // Под поиском черновиков нет: искать в ненаписанном названии нечего. Правило
+  // живёт ОДНОЙ строкой рядом с самим предикатом — иначе `!searching` пришлось
+  // бы держать двумя копиями в разметке (условие секции и сам список), и они
+  // разъехались бы на первой же правке.
+  const visibleDrafts = searching ? [] : drafts;
   const matches = (tr) => {
     const q = search.trim().toLowerCase();
     return !q || (haystackByTrip[tr.id] || '').includes(q);
@@ -680,6 +786,13 @@ export default function Trips() {
   // badge) via `isLoading`, and getTravelStats (hero: stat-bar/map/world) via
   // `statsLoaded`. Cached list wins — a background stats refetch never re-gates.
   const isLoadingData = isLoading || (hasTrips && !statsLoaded);
+  // Первая загрузка: списка трипов ещё нет, и страница показывает скелетон
+  // ЦЕЛИКОМ вместо приветствия. Условие было выписано двумя копиями подряд —
+  // сводим в предикат, иначе третий читатель (группа черновиков ниже) завёл бы
+  // третью. ⚠️ Похожее `!isLoadingData && allTrips.length === 0` у приглашения
+  // создать трип — ДРУГОЕ условие (загрузка КОНЧИЛАСЬ и трипов нет), а не ещё
+  // одна копия: сводить его сюда нельзя.
+  const firstLoad = isLoadingData && allTrips.length === 0;
   // Строка-счётчик «N trips · N countries · N cities» убрана (запрос Pavel);
   // при отсутствии трипов остаётся приветственный подзаголовок.
   const subText = hasTrips ? null : t('stats.home_sub_empty');
@@ -724,13 +837,13 @@ export default function Trips() {
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
         {/* Loading skeleton */}
-        {isLoadingData && allTrips.length === 0 && (
+        {firstLoad && (
           <HomeSkeleton />
         )}
 
         {/* Greeting + stats hero — shown for both empty and filled (not while the
             first-load skeleton is up). */}
-        {!(isLoadingData && allTrips.length === 0) && (
+        {!firstLoad && (
           <>
             <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} seed={user?.id} sub={subText} eyebrow={t('trips.brand_eyebrow')} />
             <StatHero
@@ -767,6 +880,42 @@ export default function Trips() {
               t={t}
               lang={lang}
             />
+          </>
+        )}
+
+        {/* ── Черновики ─────────────────────────────────────────────────────
+            ★ ГРУППА ЖИВЁТ НА УРОВНЕ СТРАНИЦЫ, А НЕ ВНУТРИ СЕКЦИЙ КОЛЛЕКЦИИ.
+            Всё, что ниже, показывается по условию `allTrips.length > 0`, то есть
+            построено на предпосылке «содержимое главной = ответ сервера».
+            Черновик — ЕДИНСТВЕННОЕ содержимое этой страницы, которого на сервере
+            нет вовсе. Стой группа там, её не увидел бы ровно тот, кому она нужнее
+            всех: новый человек с нулём трипов начал создавать, вышел — и попал бы
+            на пустой экран коллекции, где его работы нет.
+
+            Приглашение создать трип (`EmptyRoute`) при этом остаётся: ноль
+            путешествий — правда, и черновик её не отменяет. Он лишь добавляет
+            вторую правду, поэтому стоит НАД приглашением, а не вместо него.
+
+            Гейт `!firstLoad` — тот же, что у приветствия: пока страница показывает
+            скелетон целиком, группа не всплывает поверх него. */}
+        {!firstLoad && visibleDrafts.length > 0 && (
+          <>
+            <div className="sec-head sec-head--group">
+              <Icon name="edit" />
+              <span className="t-micro">{t('trips.tab_drafts')}</span>
+              <span className="t-micro num">{visibleDrafts.length}</span>
+              <i className="sec-head__rule" />
+            </div>
+            <div className="tc-grid">
+              {visibleDrafts.map(d => (
+                <DraftCard
+                  key={d.id}
+                  draft={d}
+                  onContinue={() => continueDraft(d)}
+                  onDelete={() => deleteDraft(d)}
+                />
+              ))}
+            </div>
           </>
         )}
 

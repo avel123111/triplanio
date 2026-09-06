@@ -6,6 +6,13 @@
   "brand_eyebrow": "Triplanio · Путешествия",
   "choice_subtitle": "Как хочешь начать?",
   "cities_more": "· ещё {count}",
+  "draft_actions": "Действия с черновиком",
+  "draft_continue": "Продолжить редактировать",
+  "draft_delete": "Удалить черновик",
+  "draft_delete_confirm_desc": "Начатое путешествие будет стёрто - вернуться к нему уже не получится.",
+  "draft_delete_confirm_title": "Удалить черновик?",
+  "draft_eyebrow": "Черновик",
+  "draft_untitled": "Новая поездка",
   "empty_heading": "Спланируй путешествие, которое не развалится в дороге",
   "empty_route_sub": "Города, даты и переезды выстроятся в одну линию — и появятся на твоей карте.",
   "empty_search_body": "Поправь запрос — ищем по названию, описанию, городам и странам",
@@ -28,5 +35,6 @@
   "start_manual": "Собрать вручную",
   "start_with_ai": "Начать с Triplanio",
   "tab_active": "Активные",
+  "tab_drafts": "Черновики",
   "tab_past": "Прошедшие"
 }
