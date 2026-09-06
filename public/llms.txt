@@ -71,13 +71,13 @@ translated, so they have a single address each.
 
 ## Links
 
-- Home (English): https://www.triplanio.com/
-- Home (Spanish): https://www.triplanio.com/es
-- Home (Russian): https://www.triplanio.com/ru
-- Demo trip, a full example trip, no account needed (English): https://www.triplanio.com/d/europe-may-2027
-- Demo trip (Spanish): https://www.triplanio.com/es/d/europe-may-2027
-- Demo trip (Russian): https://www.triplanio.com/ru/d/europe-may-2027
-- Terms of Service: https://www.triplanio.com/terms
-- Privacy Policy: https://www.triplanio.com/privacy
+- [Home, in English](https://www.triplanio.com/): what Triplanio does, who it is for and what it costs.
+- [Home, in Spanish](https://www.triplanio.com/es): the same page, in Spanish.
+- [Home, in Russian](https://www.triplanio.com/ru): the same page, in Russian.
+- [Demo trip, in English](https://www.triplanio.com/d/europe-may-2027): a full example trip anyone can open, no account needed.
+- [Demo trip, in Spanish](https://www.triplanio.com/es/d/europe-may-2027): the same trip, in Spanish.
+- [Demo trip, in Russian](https://www.triplanio.com/ru/d/europe-may-2027): the same trip, in Russian.
+- [Terms of Service](https://www.triplanio.com/terms): the agreement between Triplanio and the person using it.
+- [Privacy Policy](https://www.triplanio.com/privacy): what data is collected, why, and how to have it deleted.
 
 Contact: info@triplanio.com
