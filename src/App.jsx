@@ -26,7 +26,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { hideSplash } from '@/lib/splash';
 import { ThemeProvider } from '@/lib/ThemeContext';
-import { I18nProvider, useI18n } from '@/lib/i18n/I18nContext';
+import { I18nProvider, useI18n, useRouteLocale } from '@/lib/i18n/I18nContext';
 // ★ ПРЯМО ИЗ СВОИХ МОДУЛЕЙ, А НЕ ЧЕРЕЗ БАРРЕЛЬ `@/design/index` (TRIP-475).
 // Оба и так самостоятельные файлы; импорт через баррель тащил на лендинг весь
 // слой оверлеев (диалоги → шторки → vaul), который анониму не показывается.
@@ -34,7 +34,7 @@ import AppLoading from '@/design/AppLoading';
 import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
-import { APP_ROUTES, isZoneRoute } from '@/lib/routePaths';
+import { APP_ROUTES, isZoneRoute, splitLangPath } from '@/lib/routePaths';
 import { initialAuthView } from '@/lib/authEntry';
 import { rememberPostLogin } from '@/lib/postLoginPath';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
@@ -92,7 +92,9 @@ const Login = lazy(() => import('@/pages/Login'));
 // /new-trip|/plan-trip-ai → trip_creation_started) send NOTHING here, so we don't
 // double-bill the free-tier quota. Only screens WITHOUT their own event get one.
 // Returns null → no event for this route.
-function screenOpenEvent(pathname, search) {
+function screenOpenEvent(raw, search) {
+  // Экран один и тот же на всех языках — префикс к виду экрана не относится.
+  const { path: pathname } = splitLangPath(raw);
   if (pathname === '/') return { event: 'landing_viewed' };
   // `view` — КАКУЮ ИЗ ФОРМ человек увидел, а не только «дошёл до входа». Экран
   // входа несёт вход, регистрацию и восстановление, и без этого поля «увидел
@@ -139,7 +141,7 @@ function RedirectToLogin() {
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
-  const { dictFull } = useI18n();
+  const { dictFull, requestFullDict } = useI18n();
   const location = useLocation();
 
   // Fire the screen-open event on SPA navigation. Fires before the auth/route
@@ -162,6 +164,29 @@ const AuthenticatedApp = () => {
   useEffect(() => { hideSplash(); }, []);
 
   const path = location.pathname;
+
+  // ★ МАРШРУТ СООБЩАЕТ СВОЮ ЛОКАЛЬ СЛОЮ i18n — ОДНОЙ СТРОКОЙ И ОДИН РАЗ.
+  //
+  // Здесь, а не на страницах: `path` уже посчитан для маршрутизации, и это
+  // единственное место, через которое проходит ЛЮБОЙ адрес приложения. Стоит
+  // ДО всех ранних возвратов ниже — как и остальные хуки этого компонента.
+  // У адресов без языковых версий локаль `null`, поэтому вызов безобиден
+  // везде; поэтому же он в корне, а не в оболочке зоны: страницу можно забыть
+  // добавить, корень — нет.
+  useRouteLocale(path);
+
+  // ★ ВТОРАЯ ФАЗА СЛОВАРЯ ЗАПРАШИВАЕТСЯ ТАМ, ГДЕ ИЗВЕСТНО, ЧТО ОНА НУЖНА.
+  //
+  // Провайдер отпускает первый кадр после ШЕСТИ словарей зоны, остальные 42
+  // приезжают второй фазой. Раньше та фаза стартовала сразу за зонной — то есть
+  // 42 запроса уходили в окно первой отрисовки лендинга, которому они не нужны
+  // по построению. Ждать их обязано ровно то, что ими пользуется, и здесь —
+  // единственное место, через которое проходит любой адрес и где уже посчитано,
+  // зонный он или нет. Зона не просит: ей хватит фонового прогрева после показа
+  // страницы (`afterPaint` в провайдере). Вызов идемпотентен.
+  useEffect(() => {
+    if (!isZoneRoute(path)) requestFullDict();
+  }, [path, requestFullDict]);
 
   // Витрина: только вне прода. На проде роута нет вовсе - путь провалится в
   // общую маршрутизацию ниже и отдаст лендинг/404, как любой чужой адрес.
@@ -282,12 +307,34 @@ const AuthenticatedApp = () => {
   // Состав зоны — в `routePaths.js`: тот же список отвечает на вопрос «есть ли
   // по этому адресу страница» для `canonical` в `SiteZone`.
   const inZone = isZoneRoute(path);
+  // Язык испечённой страницы живёт в адресе; сопоставлять таблицу маршрутов
+  // надо с путём БЕЗ него (см. комментарий у <Routes location> ниже).
+  const { lang: zoneLang, path: zoneBarePath } = splitLangPath(path);
 
   if (inZone) {
     return (
       <SiteZone>
         <Suspense fallback={<AppLoading silent />}>
-          <Routes>
+          {/* ★ ЯЗЫКОВОЙ ПРЕФИКС СНИМАЕТСЯ ПЕРЕД СОПОСТАВЛЕНИЕМ, А НЕ ДУБЛИРУЕТ
+              ТАБЛИЦУ (TRIP-520). `/es/terms` и `/terms` — одна и та же страница
+              на разных языках, и различает их ТОЛЬКО язык. Заведи мы вторую
+              таблицу под префикс — пара «адрес → экран» существовала бы в двух
+              местах, и новая страница зоны приезжала бы на английском, а на
+              испанском отдавала 404. Молча: ни один гард такого не видит.
+
+              Поэтому таблица одна, а `<Routes location>` получает путь БЕЗ
+              префикса.
+
+              ★★ И ПЕРЕДАЁТСЯ ОН ОБЪЕКТОМ, А НЕ СТРОКОЙ. Строка здесь стоила
+              бага: `<Routes location="/">` заставляет react-router СОБРАТЬ
+              локацию из этой строки, то есть `useLocation()` внутри страниц
+              начинает отдавать `{pathname:'/', search:'', hash:''}` — без
+              строки запроса и без якоря. Замер: на `/ru#together` смена языка
+              уводила на `/` — якорь исчезал, потому что переключатель читал
+              пустой `hash` и добросовестно строил адрес без него. Тем же путём
+              терялась бы и любая `?`-строка, прочитанная страницей под
+              префиксом. Объект сохраняет всё, кроме подменённого пути. */}
+          <Routes location={zoneLang ? { ...location, pathname: zoneBarePath } : undefined}>
             <Route path="/" element={<LandingPage />} />
             {/* /reset-password приходит из письма восстановления: его токен
                 создаёт сессию, поэтому экран тот же, что и вход. */}

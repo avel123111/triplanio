@@ -44,6 +44,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { isZoneRoute, resolveDark } from './documentTheme.js';
+import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
 const ZONE = ['/', '/login', '/reset-password', '/terms', '/privacy', '/d/europe-may-2027',
   '/join/abc', '/public/trip/1fd33a2e?t=tok'];
@@ -113,4 +114,18 @@ test('★★★ ВЛАДЕЛЕЦ ОДИН: страница удержание �
   // переходе внутри зоны (страницы ленивые, оболочка — нет).
   assert.doesNotMatch(bodyOf(chromeSrc(), 'useSiteCss'), /useLightZone\(\)/,
     'useSiteCss() снова берёт удержание: два владельца на булевом флаге гасят друг друга');
+});
+
+test('★★ затравка темы видит языковой префикс — иначе `/ru` тёмная там, где `/` светлая', () => {
+  // `/ru` и `/es/...` — те же страницы зоны на своём языке (TRIP-520). Пока
+  // предикат сопоставлял СЫРОЙ путь, он отвечал «не зона» на каждый
+  // переведённый адрес, и посетитель с тёмной ОС получал на них тёмный
+  // документ — включая баннер согласия, который стоит на всех страницах зоны.
+  for (const p of ['/ru', '/es', '/ru/terms', '/es/privacy', `/ru${DEMO_PATH}`, '/ru/join/abc']) {
+    assert.equal(isZoneRoute(p), true, `${p} — страница зоны, а предикат сказал «нет»`);
+  }
+  // Обратная сторона: префикс не должен делать зоной то, что ей не является.
+  for (const p of ['/ru/trips', '/es/settings', '/trips']) {
+    assert.equal(isZoneRoute(p), false, `${p} — не зона, а предикат сказал «да»`);
+  }
 });

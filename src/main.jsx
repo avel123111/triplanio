@@ -94,4 +94,40 @@ if (!isProdHost) {
 // hide the bottom nav / sheet footer above it. Geometry-based, not focus-based.
 startKeyboardOpenWatch()
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+/**
+ * ★ НА ИСПЕЧЁННОЙ СТРАНИЦЕ REACT НЕ ЗАМЕНЯЕТ ГОТОВОЕ СОДЕРЖИМОЕ СПИННЕРОМ
+ * (TRIP-520).
+ *
+ * Слой i18n держит первый кадр, пока не приедут словари зоны
+ * (`I18nProvider`: `if (!ready.has(lang)) return <AppLoading/>`), и это верно для
+ * оболочки SPA — показывать там всё равно нечего. Но на готовой странице
+ * содержимое УЖЕ на экране: замер показал провал в 313 мс (текст → спиннер →
+ * текст), потому что React стирал контейнер и рисовал ожидание вместо готового
+ * кадра. Для человека это выглядит как мигающий баг, а не как загрузка.
+ *
+ * Поэтому здесь мы просто ждём словарь ДО монтирования: всё это время на экране
+ * висит испечённая страница — верная, полная и уже со стилями. Модульный кэш
+ * общий, поэтому провайдер тем же чанкам заново в сеть не пойдёт и своё
+ * ожидание проскочит без единого нарисованного кадра.
+ *
+ * Оболочку это не трогает: там признака нет, и порядок остаётся прежним.
+ */
+async function warmZoneDictionary() {
+  if (!document.documentElement.hasAttribute('data-prerendered')) return;
+  const [{ initialLang, FALLBACK_LANG }, { loadLocale }, { ZONE_NAMESPACES }] = await Promise.all([
+    import('@/lib/i18n/translations'),
+    import('@/lib/i18n/dictionary'),
+    import('@/lib/i18n/zoneNamespaces'),
+  ]);
+  // Та же функция, что даёт первый кадр провайдеру: разойдись они, словарь
+  // грелся бы под один язык, а рисовался бы другой — то есть ожиданием.
+  const lang = initialLang();
+  const langs = lang === FALLBACK_LANG ? [lang] : [lang, FALLBACK_LANG];
+  await Promise.all(langs.map((l) => loadLocale(l, ZONE_NAMESPACES)));
+}
+
+warmZoneDictionary()
+  // Не приехал словарь — это не повод не показать приложение: провайдер сам
+  // покажет ожидание и повторит загрузку, то есть поведение вернётся к прежнему.
+  .catch(() => {})
+  .then(() => ReactDOM.createRoot(document.getElementById('root')).render(<App />))

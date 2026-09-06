@@ -16,7 +16,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { APP_ROUTES, ZONE_PAGES, isZonePage, isZoneRoute } from './routePaths.js';
+import {
+  APP_ROUTES, ZONE_PAGES, PRERENDERED_PAGES, LOCALISED_PAGES, PREFIXED_LANGS, DEFAULT_LANG,
+  isZonePage, isZoneRoute, splitLangPath, withLangPath, prerenderedUrls, localeOf,
+} from './routePaths.js';
+import { LANGUAGES, FALLBACK_LANG } from './i18n/translations.js';
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -62,12 +66,117 @@ test('предикаты: страница зоны, адрес зоны и вс
   }
 });
 
-test('каждый адрес из sitemap.xml — существующая страница зоны', () => {
+test('PREFIXED_LANGS не разошёлся с настоящим списком языков', () => {
+  const codes = LANGUAGES.map((l) => l.code);
+  for (const lang of PREFIXED_LANGS) {
+    assert.ok(codes.includes(lang), `${lang} несёт префикс в адресе, но такого языка в LANGUAGES нет`);
+  }
+  // ★ Английский обязан остаться БЕЗ префикса: он канонический, и второй его
+  // адрес (`/en/`) сделал бы каждую страницу дублем самой себя.
+  assert.equal(PREFIXED_LANGS.includes('en'), false, 'английский получил префикс — у страницы стало два адреса');
+  // Каждый неанглийский язык обязан БЫТЬ в списке, иначе его страницы не
+  // существует вовсе, а переключатель молча ведёт в 404.
+  for (const code of codes) {
+    if (code !== 'en') assert.ok(PREFIXED_LANGS.includes(code), `язык ${code} есть в LANGUAGES, но адреса у него нет`);
+  }
+});
+
+test('DEFAULT_LANG не разошёлся с фолбэком языка', () => {
+  // Литерал здесь стоит, чтобы `routePaths.js` не импортировал `translations.js`
+  // (обратный импорт замкнул бы цикл и закрыл модулю дорогу в edge-middleware).
+  // Цена литерала — эта строка: два «английского по умолчанию» обязаны совпасть.
+  assert.equal(DEFAULT_LANG, FALLBACK_LANG);
+});
+
+test('★★ локаль адреса есть ровно у ПЕРЕВЕДЁННЫХ страниц, а не у испечённых', () => {
+  // Несущее различие: «испечена» и «переведена» — разные списки. У `/terms`
+  // готовый файл есть, а языкового адреса нет, и обещать язык нельзя: обвязка
+  // этих страниц переведена, и переутверждение с адреса откатывало бы выбор
+  // человека на каждом переходе между вкладками документов.
+  for (const page of LOCALISED_PAGES) {
+    assert.equal(localeOf(page), DEFAULT_LANG, `${page}: беспрефиксный адрес — язык по умолчанию`);
+    for (const code of PREFIXED_LANGS) {
+      assert.equal(localeOf(withLangPath(code, page)), code, `${withLangPath(code, page)}`);
+    }
+  }
+  for (const page of PRERENDERED_PAGES.filter((p) => !LOCALISED_PAGES.includes(p))) {
+    assert.equal(localeOf(page), null, `${page}: языковых версий нет — адрес про язык обязан молчать`);
+  }
+  for (const page of ['/login', '/join/abc', '/public/trip/1', '/trips', '/de']) {
+    assert.equal(localeOf(page), null, `${page}: адрес про язык обязан молчать`);
+  }
+});
+
+test('разбор и сборка адреса с языком — обратные друг другу', () => {
+  assert.deepEqual(splitLangPath('/'), { lang: null, path: '/' });
+  assert.deepEqual(splitLangPath('/terms'), { lang: null, path: '/terms' });
+  assert.deepEqual(splitLangPath('/es'), { lang: 'es', path: '/' }, 'голый /es — это главная своего языка, а не 404');
+  assert.deepEqual(splitLangPath('/es/'), { lang: 'es', path: '/' });
+  assert.deepEqual(splitLangPath('/ru/terms'), { lang: 'ru', path: '/terms' });
+  assert.deepEqual(splitLangPath(DEMO_PATH), { lang: null, path: DEMO_PATH });
+  // Не язык, а просто первый сегмент похожей длины.
+  assert.deepEqual(splitLangPath('/en/terms'), { lang: null, path: '/en/terms' }, 'английский префиксом не является');
+  assert.deepEqual(splitLangPath('/estonia'), { lang: null, path: '/estonia' });
+
+  for (const path of LOCALISED_PAGES) {
+    assert.equal(withLangPath('en', path), path, 'английский адрес обязан остаться без префикса');
+    for (const lang of PREFIXED_LANGS) {
+      const url = withLangPath(lang, path);
+      assert.deepEqual(splitLangPath(url), { lang, path }, `${url} разбирается не в то, из чего собран`);
+    }
+  }
+});
+
+test('языковые адреса ПЕРЕВЕДЁННЫХ страниц — страницы зоны, чужие под префиксом — нет', () => {
+  for (const lang of PREFIXED_LANGS) {
+    for (const path of LOCALISED_PAGES) {
+      const url = withLangPath(lang, path);
+      assert.equal(isZonePage(url), true, `${url} — страница зоны`);
+      assert.equal(isZoneRoute(url), true, `${url} — адрес зоны`);
+    }
+    // ★ Под префиксом живут ТОЛЬКО ПЕРЕВЕДЁННЫЕ страницы. У входа готового файла
+    // на язык нет и быть не может; у юр-документов текст английский по решению —
+    // `/ru/terms` обещал бы русскую страницу и отдавал английскую.
+    assert.equal(isZonePage(`/${lang}/login`), false, `/${lang}/login не должен существовать`);
+    assert.equal(isZoneRoute(`/${lang}/login`), false);
+    for (const legal of ['/terms', '/privacy']) {
+      assert.equal(PRERENDERED_PAGES.includes(legal), true, `${legal} обязан печься`);
+      assert.equal(LOCALISED_PAGES.includes(legal), false, `${legal} переводом не является`);
+      assert.equal(isZonePage(`/${lang}${legal}`), false, `/${lang}${legal} обещал бы перевод, которого нет`);
+      assert.equal(isZoneRoute(`/${lang}${legal}`), false);
+    }
+    // Чужой демо-слаг под префиксом ведёт в зону (за её 404), но страницей не является.
+    assert.equal(isZoneRoute(`/${lang}/d/opechatka`), true);
+    assert.equal(isZonePage(`/${lang}/d/opechatka`), false);
+  }
+});
+
+test('prerenderedUrls перечисляет каждую испечённую страницу на каждом языке', () => {
+  const urls = prerenderedUrls();
+  assert.equal(urls.length, PRERENDERED_PAGES.length + LOCALISED_PAGES.length * PREFIXED_LANGS.length);
+  // Каждая переведённая страница обязана быть в выпечке на каждом языке.
+  for (const path of LOCALISED_PAGES) {
+    for (const lang of PREFIXED_LANGS) assert.ok(urls.includes(withLangPath(lang, path)), `${path} на ${lang} не печётся`);
+  }
+  assert.equal(new Set(urls).size, urls.length, 'в списке выпечки есть повтор');
+  for (const url of urls) {
+    assert.equal(isZonePage(url), true, `${url} печётся, но страницей зоны не считается`);
+  }
+});
+
+test('sitemap.xml перечисляет РОВНО то, что печёт сборка', () => {
   const locs = [...read('public/sitemap.xml').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
   assert.ok(locs.length >= 4, 'карта сайта внезапно опустела');
   for (const path of locs) {
     assert.equal(isZonePage(path), true, `${path} обещан краулеру в sitemap.xml, но страницей зоны не считается`);
   }
+  // ★ Состав, а не только «каждый существует». Карта и выпечка отвечают на один
+  // вопрос — «какие у нас есть публичные страницы», — и разойтись им нельзя ни в
+  // какую сторону: лишний адрес обещает краулеру то, чего нет, недостающий
+  // прячет готовую страницу. Хвостовой слэш нормализуем: `/es/` и `/es` — один
+  // адрес (см. `splitLangPath`).
+  const norm = (p) => (p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p);
+  assert.deepEqual(locs.map(norm).sort(), prerenderedUrls().map(norm).sort());
 });
 
 test('ZONE_PAGES не разошёлся с таблицей маршрутов зоны в App.jsx', () => {

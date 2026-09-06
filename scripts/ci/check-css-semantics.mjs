@@ -495,7 +495,7 @@ const listCss = (ref) => {
     return existsSync(p) ? readFileSync(p, 'utf8') : '';
   };
   /* Загрузчики ищутся ПО ВСЕМУ ДЕРЕВУ, а не по периметру: `index.html` лежит в
-   * корне, и это единственная ссылка на `src/design/fonts.css`. Периметр
+   * корне, и это единственная ссылка на `public/fonts.css`. Периметр
    * отвечает на вопрос «чьи ЗНАЧЕНИЯ мы стережём», а не «кто может подключить»;
    * поймано тестом «ссылка из HTML — файл ЖИВОЙ», а не чтением кода. */
   const loaders = listTracked(ref).filter((p) => LOADER_RE.test(p)).map(read).join('\n');

@@ -169,7 +169,7 @@ const TYPO_WHITELIST = [
 // now live in site.css.)
 const WEIGHT_LH_ALLOW = [
   'src/design/app.css', 'src/index.css', 'public/site.css',
-  'src/design/fonts.css',
+  'public/fonts.css',
 ];
 
 // Files allowed to set inline JSX fontSize from a raw size token (var(--fs-*))
@@ -396,7 +396,7 @@ const TOKEN_SIZES = new Set(['9.5', '11', '12.5', '13', '14.5', '16', '16.5', '2
 // Files that legitimately DEFINE typography (token/canon/base rules) — not component text.
 // AppErrorBoundary = crash screen, intentionally token/CSS-free (must render even if
 // the design system fails to load) → exempt.
-const TYPO_COMP_ALLOW = ['src/index.css', 'src/design/app.css', 'src/design/fonts.css', 'src/components/AppErrorBoundary.jsx'];
+const TYPO_COMP_ALLOW = ['src/index.css', 'src/design/app.css', 'public/fonts.css', 'src/components/AppErrorBoundary.jsx'];
 const area = (f) => {
   const m = f.replace('src/', '').match(/^(design|pages\/[A-Za-z]+|components\/[a-z]+|lib\/[a-z]+|lib)/);
   return m ? m[1] : f.replace('src/', '');

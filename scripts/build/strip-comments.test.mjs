@@ -67,6 +67,10 @@ test('★★ шаг подключён к сборке — иначе функц
   // это можно только открыв исходный код страницы на проде.
   const cfg = readFileSync('vite.config.js', 'utf8');
   assert.match(cfg, /strip-shipped-comments/, 'плагин не объявлен');
-  assert.match(cfg, /\['index\.html', stripHtml\]/, 'index.html не чистится');
+  // Документов стало много (оболочка + по файлу на испечённый адрес, TRIP-520),
+  // поэтому чистятся они СПИСКОМ. Список берётся из того же источника, что и
+  // выпечка, — второй перечень адресов разъехался бы с первым молча.
+  assert.match(cfg, /prerenderedDocPaths\(\)/, 'испечённые страницы не попадают в чистку');
+  assert.match(cfg, /docs\.map\(\(d\) => \[d, stripHtml\]\)/, 'документы не чистятся');
   assert.match(cfg, /\['site\.css', stripCss\]/, 'site.css не чистится');
 });

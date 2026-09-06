@@ -42,6 +42,7 @@
     "check:confirm": "node scripts/ci/check-confirm-copy.mjs",
     "check:site-dup": "node scripts/ci/check-site-primitive-dup.mjs",
     "check:proto": "node scripts/ci/compare-prototype.mjs",
+    "check:prerender": "node scripts/ci/check-prerender.mjs",
     "check:destructive": "node scripts/ci/check-destructive-confirm.mjs",
     "check:surfaces": "node scripts/ci/check-surface-behaviour.mjs",
     "check:time": "node scripts/ci/check-time-arithmetic.mjs"
@@ -74,6 +75,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
+    "@sparticuz/chromium": "^149.0.0",
     "@types/node": "^22.13.5",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",

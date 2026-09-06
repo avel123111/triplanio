@@ -26,9 +26,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { SHELL_FILE } from '../build/prerenderPaths.mjs';
 
 const { rewrites } = JSON.parse(readFileSync('vercel.json', 'utf8'));
-const fallback = rewrites.filter((r) => r.destination === '/index.html');
+// ★ ФОЛБЭК ВЕДЁТ НА ОБОЛОЧКУ, А НЕ НА `index.html` (TRIP-520): по `index.html`
+// теперь лежит ИСПЕЧЁННЫЙ ЛЕНДИНГ. Веди фолбэк туда — и каждый экран приложения
+// начинал бы с разметки лендинга в контейнере, которую React тут же стирает:
+// лишние 55 КБ на КАЖДЫЙ адрес и чужой кадр в придачу.
+const fallback = rewrites.filter((r) => r.destination === `/${SHELL_FILE}`);
 
 test('SPA-фолбэк ровно один — иначе неизвестно, какой из них решает', () => {
   assert.equal(fallback.length, 1);
@@ -45,7 +50,7 @@ test('/assets/* мимо фолбэка, маршруты приложения �
 
   // Всё остальное рисует роутер, и это не должно пострадать.
   for (const path of ['', 'trips', 'trip/123', 'login', 'new-trip', 'terms',
-    'join/token', 'public/trip/x', 'd/europe-may-2027']) {
+    'join/token', 'public/trip/x', 'd/europe-may-2027', 'es', 'ru/d/europe-may-2027']) {
     assert.equal(re.test(path), true, `маршрут ${path || '/'} потерял фолбэк`);
   }
 });

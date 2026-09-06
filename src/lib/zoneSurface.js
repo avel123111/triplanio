@@ -20,6 +20,8 @@
 // аналитике глазами не видно, она обнаруживается кварталом позже по кривой
 // воронке.
 
+import { splitLangPath } from './routePaths.js';
+
 /** Значение поля `surface`, когда адрес не принадлежит зоне. */
 const OUTSIDE = 'app';
 
@@ -28,8 +30,12 @@ const OUTSIDE = 'app';
  * @returns {string} страница зоны: landing · demo · public · legal · auth · join,
  *   либо `app` для любого адреса внутри приложения.
  */
-export function zoneSurface(pathname) {
-  if (typeof pathname !== 'string' || !pathname) return OUTSIDE;
+export function zoneSurface(raw) {
+  if (typeof raw !== 'string' || !raw) return OUTSIDE;
+  // Языковой префикс — не вид страницы, а её язык (TRIP-520). `/es/terms` и
+  // `/terms` — одна и та же поверхность `legal`; не сними мы префикс, вся
+  // неанглийская зона уехала бы в `app` и воронка молча потеряла бы её.
+  const { path: pathname } = splitLangPath(raw);
   if (pathname === '/') return 'landing';
   if (pathname.startsWith('/d/')) return 'demo';
   if (pathname.startsWith('/public/trip/')) return 'public';

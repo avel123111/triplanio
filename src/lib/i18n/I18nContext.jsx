@@ -7,9 +7,14 @@ import { toast } from '@/components/ui/use-toast';
 // Файл напрямую, НЕ через `@/design/index`: тот импортирует `useT` отсюда,
 // и обращение через индекс замкнуло бы цикл. Разбор — в шапке AppLoading.jsx.
 import AppLoading from '@/design/AppLoading';
-import { hasLang, loadLocale } from './dictionary';
+import { afterPaint } from '@/lib/afterPaint';
+import { hasLang, loadLocale, loadedLocale, zoneLoaded } from './dictionary';
 import { ZONE_NAMESPACES } from './zoneNamespaces';
-import { LANGUAGES, LANG_STORAGE_KEY, detectLandingLang, clearLangParam, localeTag } from './translations';
+import {
+  LANGUAGES, FALLBACK_LANG, visitorLang, initialLang, rememberLang,
+  publishLang, clearLangParam, localeTag,
+} from './translations';
+import { localeOf, splitLangPath } from '@/lib/routePaths';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
   applyLuxonLocale,
@@ -26,6 +31,10 @@ const I18nContext = createContext({
   lang: 'en',
   /** @type {(next: string) => void} */
   setLang: () => {},
+  /** @type {(pathname: string) => void} */
+  applyRoute: () => {},
+  /** @type {'en'|'es'|'ru'|null} */
+  routeLocale: null,
   units: 'metric',
   // ⚠️ Тот же случай, что у `t` ниже, и он ПОВТОРИЛСЯ в этом же объекте: голая
   // заглушка объявляла функцию без параметров, а живой `setUnits('metric')`
@@ -53,13 +62,14 @@ const I18nContext = createContext({
   // Загружены ли ВСЕ словари активного языка. Первый кадр зоны его не ждёт
   // (ей хватает шести), а экраны приложения ждут — гейт в `App.jsx`.
   dictFull: false,
+  requestFullDict: () => {},
 });
 
 // Active locale falls back to this one (then to the raw key) for missing strings,
 // so it is always loaded alongside whatever language is active. 'en' matches the
 // Tolgee project's base language, so a missing key resolves the same way here and
 // in Tolgee (and never shows Russian to an en/es user).
-const FALLBACK_LANG = 'en';
+// FALLBACK_LANG живёт в `translations.js` — там же, где список языков.
 
 // Resolve a dotted address `namespace.bareKey` against a nested locale dict
 // ({ namespace: { bareKey: value } }). Split on the FIRST dot only: the namespace
@@ -78,13 +88,6 @@ function lookup(nsDict, key) {
 const UNITS_STORAGE_KEY = 'travel-planner-units';
 const UNIT_SYSTEMS = ['metric', 'imperial'];
 
-function detectInitialLang(user) {
-  // A signed-in user's saved language wins; otherwise the landing language
-  // (stored choice → browser → 'en'), shared with AuthContext via translations.js.
-  if (user?.language && hasLang(user.language)) return user.language;
-  return detectLandingLang();
-}
-
 // Distance unit system. Authoritative source = users.unit_system once signed in,
 // else localStorage, else 'metric'. Anonymous public-trip viewers fall back to
 // their own localStorage / default — never the trip owner's setting.
@@ -99,7 +102,31 @@ function detectInitialUnits(user) {
 
 export function I18nProvider({ children }) {
   const { user } = useAuth();
-  const [lang, setLangState] = useState(() => detectInitialLang(null));
+
+  // ★★ ЯЗЫК СКЛАДЫВАЕТСЯ ИЗ ТРЁХ СЛОЁВ, А НЕ ПЕРЕУТВЕРЖДАЕТСЯ ЭФФЕКТАМИ
+  // (TRIP-520). Разбор слоёв — в шапке `visitorLang` (translations.js):
+  //
+  //     цель = локаль маршрута ?? язык профиля ?? язык посетителя
+  //
+  // Это ВЫЧИСЛЕНИЕ, а не последовательность записей, и именно поэтому у языка
+  // больше нет утечек. Прежняя редакция вместо этого держала одно состояние и
+  // переписывала его отовсюду — с адреса при монтировании, с адреса на каждой
+  // навигации в зоне, с профиля при приезде сессии. Побеждал тот, кто написал
+  // последним, а «вернуть как было» не умел никто: вошедший с русским профилем
+  // открывал английский лендинг и уходил в приложение НАВСЕГДА английским.
+  // Со слоями возврат происходит сам: ушёл с адреса, у которого есть локаль, —
+  // слой перестал действовать, и ответ снова даёт профиль.
+  const [routeLocale, setRouteLocale] = useState(() => localeOf(
+    typeof window !== 'undefined' ? window.location.pathname : '/',
+  ));
+  const [visitor, setVisitor] = useState(() => visitorLang());
+  const profileLang = user?.language && hasLang(user.language) ? user.language : null;
+  const target = routeLocale ?? profileLang ?? visitor;
+
+  // `lang` — язык, КОТОРЫЙ УЖЕ МОЖНО РИСОВАТЬ: он догоняет `target` только после
+  // того, как приехал словарь. Без этого разрыва смена языка показывала бы кадр
+  // из сырых ключей.
+  const [lang, setLangState] = useState(() => initialLang());
   const [units, setUnitsState] = useState(() => detectInitialUnits(null));
 
   // Our baked dictionaries are the authoritative reader for NORMAL users:
@@ -107,12 +134,28 @@ export function I18nProvider({ children }) {
   // the latest without being re-created. `ready` tracks WHICH locales are loaded
   // (to gate the first paint) and the active language. `loadingRef` holds the
   // in-flight load promise per locale so each is fetched at most once.
-  const [ready, setReady] = useState(() => new Set());
+  // ★ НАЧАЛЬНАЯ ГОТОВНОСТЬ ЧИТАЕТСЯ ИЗ КЭША, А НЕ ЖДЁТ ЭФФЕКТА (TRIP-520). На
+  // испечённой странице словарь зоны прогрет ещё до монтирования (`main.jsx`),
+  // и без этой строки первый кадр всё равно был бы ожиданием: готовый текст
+  // сменялся спиннером на 156 мс и возвращался.
+  const [ready, setReady] = useState(() => {
+    const initial = initialLang();
+    const needed = initial === FALLBACK_LANG ? [initial] : [initial, FALLBACK_LANG];
+    return new Set(needed.every(zoneLoaded) ? [initial] : []);
+  });
   // Языки, у которых загружены ВСЕ словари. `ready` — «можно рисовать зону»,
   // `full` — «можно рисовать приложение»; это два разных вопроса.
   const [full, setFull] = useState(() => new Set());
-  const dictsRef = useRef({});
+  // Тот же кэш — источник самого словаря: иначе `ready` сказал бы «готово», а
+  // читать было бы нечего, и первый кадр вышел бы из сырых ключей.
+  const dictsRef = useRef(Object.fromEntries(
+    LANGUAGES.map(({ code }) => [code, loadedLocale(code)]).filter(([, dict]) => dict),
+  ));
   const loadingRef = useRef({});
+  // Запуск ВТОРОЙ фазы словаря (остальные 42), пока она ещё не начата.
+  const restRef = useRef(null);
+  // Полный словарь уже попросили — ждать показа страницы не нужно.
+  const wantFullRef = useRef(false);
 
   // Load a language (and the fallback) exactly once into our dictionary. Only in
   // an in-context editing session do we ALSO mirror it into Tolgee (so the observer
@@ -156,26 +199,80 @@ export function I18nProvider({ children }) {
     ensureTolgeeRunning();
     if (IN_CONTEXT) await tolgee.changeLanguage(target);
     setReady((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
-    const rest = fast ? ensureLoaded(target) : Promise.resolve();
-    await rest.then(() => setFull((prev) => (prev.has(target) ? prev : new Set(prev).add(target))));
+    const markFull = () => setFull((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
+    if (!fast) { markFull(); return; }
+
+    // ★ ОСТАЛЬНЫЕ 42 СЛОВАРЯ — ПО ТРЕБОВАНИЮ, А НЕ СРАЗУ ЗА ЗОННЫМИ.
+    //
+    // Догрузка стартовала сразу после зонной фазы, то есть 42 запроса уходили
+    // на ~1270 мс — ровно в окно первой отрисовки лендинга (замер PSI
+    // 06.09.2026: LCP 5.4 с, из них 2410 мс — занятый главный поток). Ждать их
+    // при этом некому: маркетинговой странице они не нужны по построению.
+    //
+    // Теперь у второй фазы ДВА повода начаться, и оба честные:
+    //   · её попросили — адрес не зонный, значит словарь нужен сейчас
+    //     (`requestFullDict`, зовёт корень роутера);
+    //   · страница показана — греем на будущее (`afterPaint`).
+    // Что случится первым, то и стартует; повтор дедуплицируется.
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      ensureLoaded(target).then(markFull);
+    };
+    restRef.current = start;
+    // ⚠️ Просьба может прийти РАНЬШЕ, чем эта фаза вообще существует: корень
+    // роутера монтируется и просит полный словарь, пока зонная фаза ещё едет,
+    // и `restRef` в тот момент пуст. Флаг это и закрывает — без него просьба
+    // терялась молча, а экран приложения ждал фонового прогрева (замер: с
+    // отключённым `afterPaint` словари на `/trips` не приезжали вовсе).
+    if (wantFullRef.current) start();
+    else afterPaint(start);
   }, [ensureLoaded]);
 
-  // Load+activate the active locale, then make it visible — a language switch
-  // keeps the old language on screen until the new one is fully loaded.
-  const applyLang = useCallback(async (newLang) => {
-    await activate(newLang);
-    setLangState(newLang);
-  }, [activate]);
+  // Кто-то ждёт полный словарь — начать вторую фазу немедленно. Идемпотентно;
+  // если фазы ещё нет, просьба запоминается и сработает, как только она будет.
+  const requestFullDict = useCallback(() => {
+    wantFullRef.current = true;
+    restRef.current?.();
+  }, []);
 
-  // Activate the initial locale on mount (detected browser/stored language). A
-  // signed-in user whose language differs triggers a follow-up load below.
-  // `?lang=` уже прочитан и сохранён внутри detectLandingLang — стираем его из
-  // адреса здесь, где язык применён (TRIP-511): иначе ручное переключение +
-  // перезагрузка молча откатывались бы обратно к языку из адреса.
+  // ★ ЦЕЛЬ МЕНЯЕТСЯ — ГРУЗИМ СЛОВАРЬ И ТОЛЬКО ПОТОМ ПОКАЗЫВАЕМ.
+  //
+  // Единственное место, где `lang` вообще меняется. Пока новый словарь едет, на
+  // экране остаётся прежний язык — смена языка не показывает кадра из сырых
+  // ключей. `fast` только на первом заходе: там ждём шесть словарей зоны, а
+  // остальные догружаем фоном; последующие смены идут полным путём, потому что
+  // случаются и на экранах приложения.
+  //
+  // `?lang=` стирается из адреса здесь же, где язык применён (TRIP-511): иначе
+  // ручное переключение + перезагрузка молча откатывались бы к языку из адреса.
+  const firstRun = useRef(true);
   useEffect(() => {
-    activate(detectInitialLang(null), { fast: true });
-    clearLangParam();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    let alive = true;
+    const fast = firstRun.current;
+    firstRun.current = false;
+    activate(target, { fast }).then(() => { if (alive) setLangState(target); });
+    if (fast) clearLangParam();
+    return () => { alive = false; };
+  }, [target, activate]);
+
+  // ★ ЧТО СКАЗАЛ МАРШРУТ — ЕДИНСТВЕННАЯ ДВЕРЬ ДЛЯ ВЕРХНЕГО СЛОЯ.
+  //
+  // Зовёт её один вызыватель — `useRouteLocale` ниже, из корня роутера. Провайдер
+  // стоит ВЫШЕ роутера (он нужен и до него), поэтому сам маршрут прочитать не
+  // может: факт приезжает сюда, а не вычитывается отсюда.
+  //
+  // Языковой ПРЕФИКС здесь ещё и запоминается на устройстве — как выбор
+  // человека: `/ru` это такое же прямое утверждение о языке, как клик по
+  // переключателю, и оно обязано доехать до входа, у которого языкового адреса
+  // нет. Беспрефиксный `/` не запоминается: он английский по построению файла, а
+  // не по выбору, и записью стёр бы настоящий выбор посетителя.
+  const applyRoute = useCallback((pathname) => {
+    setRouteLocale(localeOf(pathname));
+    const explicit = splitLangPath(pathname).lang;
+    if (explicit) setVisitor(rememberLang(explicit));
+  }, []);
 
   // Apply Luxon default locale on mount and whenever lang changes,
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.
@@ -191,10 +288,9 @@ export function I18nProvider({ children }) {
   // неверного-языка-кадра нет.
   useEffect(() => { document.documentElement.setAttribute('lang', lang); }, [lang]);
 
-  // Sync from user once authenticated
-  useEffect(() => {
-    if (user) applyLang(detectInitialLang(user));
-  }, [user?.language]); // eslint-disable-line
+  // Тот же язык — читателям ВНЕ дерева React (язык регистрации в AuthContext).
+  // Публикует один писатель, поэтому второй копии лестницы больше нет.
+  useEffect(() => { publishLang(lang); }, [lang]);
 
   useEffect(() => {
     if (user) setUnitsState(detectInitialUnits(user));
@@ -242,13 +338,20 @@ export function I18nProvider({ children }) {
     if (error || code) toast({ description: errorText(t, code), variant: 'destructive' });
   }, [user, t]);
 
+  // ★ «ЧЕЛОВЕК ВЫБРАЛ ЯЗЫК» — ЭТО ЗАПИСЬ В ДВА НИЖНИХ СЛОЯ, И БОЛЬШЕ НИЧЕГО.
+  //
+  // Экран переключится сам: слои пересчитаются, эффект выше догрузит словарь и
+  // покажет. Отдельного «применить язык» больше не существует — оно и было тем
+  // вторым способом менять язык, через который он утекал.
+  //
+  // На лендинге и демо у выбора есть ЕЩЁ и адрес (`useZoneLang` уводит на
+  // `/es`, `/ru`) — верхний слой; здесь мы про него ничего не знаем и знать не
+  // должны.
   const setLang = useCallback(async (newLang) => {
     if (!hasLang(newLang)) return;
-    await activate(newLang);
-    setLangState(newLang);
-    try { localStorage.setItem(LANG_STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
+    setVisitor(rememberLang(newLang));
     await persistProfile({ language: newLang });
-  }, [activate, persistProfile]);
+  }, [persistProfile]);
 
   const setUnits = useCallback(async (newUnits) => {
     if (!UNIT_SYSTEMS.includes(newUnits)) return;
@@ -267,13 +370,27 @@ export function I18nProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
+    applyRoute,
+    // ★ Локаль маршрута отдаётся наружу — из неё строятся ссылки внутри зоны.
+    //
+    // Своего источника у них быть не может: страницы зоны рисуются под
+    // ПОДМЕНЁННОЙ локацией (`<Routes location>` в App.jsx снимает языковой
+    // префикс, чтобы таблица маршрутов была одна), поэтому `useLocation()`
+    // внутри них префикса уже не видит. Прежний код обходил это чтением
+    // `window.location` — вторым, нереактивным ответом на тот же вопрос, и
+    // именно оно позволило закэшировать адрес главной на весь документ.
+    //
+    // Владелец факта один: сюда его кладёт `useRouteLocale` из корня роутера,
+    // где путь ещё настоящий.
+    routeLocale,
     units,
     setUnits,
     t,
     languages: LANGUAGES,
     locale: localeTag(lang),
     dictFull,
-  }), [lang, setLang, units, setUnits, t, dictFull]);
+    requestFullDict,
+  }), [lang, setLang, applyRoute, routeLocale, units, setUnits, t, dictFull, requestFullDict]);
 
   // Gate the first paint until the active locale is ready. «Готов» теперь значит
   // «загружены словари ЗОНЫ» — шесть из 48 (`zoneNamespaces.js`): маркетинговой
@@ -290,6 +407,24 @@ export function I18nProvider({ children }) {
 
 export function useI18n() {
   return useContext(I18nContext);
+}
+
+/**
+ * ★★ МОСТ «МАРШРУТ → ЯЗЫК». Один вызыватель, в корне роутера (`App.jsx`).
+ *
+ * Провайдер стоит ВЫШЕ роутера — он нужен и до него (экран загрузки, тосты), —
+ * поэтому сам прочитать маршрут не может. Факт о маршруте приезжает сюда одной
+ * дверью, а не выуживается из `window.location` теми, кому он понадобился.
+ *
+ * Владелец ОДИН и стоит в корне, а не на страницах: страницу можно забыть
+ * добавить, корень — нет. Адреса без локали (вход, приглашение, юр-документы,
+ * экраны приложения) отдают `null` — верхний слой на них просто не действует.
+ *
+ * @param {string} pathname текущий путь из роутера
+ */
+export function useRouteLocale(pathname) {
+  const { applyRoute } = useI18n();
+  useEffect(() => { applyRoute(pathname); }, [pathname, applyRoute]);
 }
 
 export function useT() {

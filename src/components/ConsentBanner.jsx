@@ -38,7 +38,18 @@ export default function ConsentBanner() {
   };
 
   return (
-    <div className="consent" role="region" aria-label={t('consent.title')}>
+    // ★ В ГОТОВЫЙ ФАЙЛ ЭТОТ УЗЕЛ НЕ ЕДЕТ (`data-no-prerender`, TRIP-520).
+    //
+    // Показываться или нет, решает хранилище браузера, а выпечка снимает
+    // страницу на сборочной машине, где хранилище ПУСТОЕ: баннер уезжал во все
+    // восемь публичных файлов и дальше показывался каждому — включая тех, кто
+    // согласие давно дал, — пока не догрузится бандл. Плюс его текст попадал в
+    // текст страницы, который читают поисковые роботы.
+    //
+    // Разбор контракта — в `scripts/build/composePage.mjs`. Живого поведения
+    // признак не касается: приложение рисует `#root` заново в любом случае, и
+    // человек увидит баннер ровно тогда же, когда и раньше.
+    <div className="consent" role="region" aria-label={t('consent.title')} data-no-prerender>
       <div className="consent__text">
         <p className="t-label consent__title">{t('consent.title')}</p>
         <p className="t-meta">

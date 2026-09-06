@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { zoneHome } from '@/components/site/zoneCta';
-import { useI18n, useT } from '@/lib/i18n/I18nContext';
+import { useZoneHome } from '@/components/site/zoneCta';
+import { useT } from '@/lib/i18n/I18nContext';
 import {
-  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta,
+  SiteHeader, SiteFooter, useSiteCss, useDocumentMeta, useZoneLang,
 } from '@/components/site/SiteChrome';
 import { SiteSummary, SiteCta } from '@/components/site/SiteTrip';
 import { useReveal } from '@/components/site/useReveal';
@@ -21,7 +21,6 @@ const COVER = '/covers/demo-spain.webp';
 
 // Адрес главной с меткой кампании визита — общий на всю зону (`zoneCta.js`);
 // три страницы держали три одинаковые константы.
-const SITE = zoneHome();
 
 // floor-exempt: inline +16 — демо-трип (out-of-scope витрина, как LandingPage/PublicTrip):
 // оставшиеся инлайны — ТОЛЬКО динамические цвета/CSS-вары фиктивного трипа из данных
@@ -69,7 +68,8 @@ const CalBar = ({ day }) => (day.bar2
 );
 
 export default function DemoTrip() {
-  const { lang, setLang } = useI18n();
+  const { lang, setLang } = useZoneLang();
+  const site = useZoneHome();
   const t = useT();
   const cssReady = useSiteCss();
 
@@ -93,7 +93,7 @@ export default function DemoTrip() {
 
   return (
     <>
-      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref={SITE} navItems={DEMO_NAV} />
+      <SiteHeader lang={lang} setLang={setLang} variant="full" themed brandHref={site} navItems={DEMO_NAV} />
 
       <main className="demo">
         {/* ── Hero ─────────────────────────────────────────────── */}
@@ -447,7 +447,7 @@ export default function DemoTrip() {
         <DemoCta />
       </main>
 
-      <SiteFooter lang={lang} setLang={setLang} brandHref={SITE} />
+      <SiteFooter lang={lang} setLang={setLang} brandHref={site} />
     </>
   );
 }
