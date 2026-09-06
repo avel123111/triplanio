@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useContext, createContext, useCallback } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { afterPaint } from '@/lib/afterPaint';
 import { useLightZone } from '@/lib/ThemeContext';
 import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
@@ -440,13 +441,18 @@ let zonePrefetched = false;
 function prefetchZoneNeighbours() {
   if (zonePrefetched || typeof window === 'undefined') return;
   zonePrefetched = true;
-  const run = () => {
+  // ПОСЛЕ показа страницы (`afterPaint`), а не «через 2 секунды». Здесь стоял
+  // свой `requestIdleCallback(..., { timeout: 2000 })`, и на телефоне дедлайн
+  // срабатывал всегда: DemoTrip тянет за собой MapView/markers/MapControl/
+  // geoDistance/trip-cities/luxon (≈58 КБ), и всё это приезжало на 1538–1583 мс,
+  // то есть в окно первой отрисовки лендинга. Разбор — в шапке `afterPaint.js`.
+  // Смысл предзагрузки от этого не страдает: она нужна ДО КЛИКА, а клика раньше
+  // `load` не бывает.
+  afterPaint(() => {
     // Ошибку глотаем намеренно: предзагрузка — ускорение, а не функция.
     import('@/pages/Demo/DemoTrip').catch(() => {});
     import('@/pages/Legal').catch(() => {});
-  };
-  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(run, { timeout: 2000 });
-  else setTimeout(run, 800);
+  });
 }
 
 const ZoneCssCtx = createContext(null);

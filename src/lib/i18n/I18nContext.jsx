@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 // Файл напрямую, НЕ через `@/design/index`: тот импортирует `useT` отсюда,
 // и обращение через индекс замкнуло бы цикл. Разбор — в шапке AppLoading.jsx.
 import AppLoading from '@/design/AppLoading';
+import { afterPaint } from '@/lib/afterPaint';
 import { hasLang, loadLocale, loadedLocale, zoneLoaded } from './dictionary';
 import { ZONE_NAMESPACES } from './zoneNamespaces';
 import {
@@ -61,6 +62,7 @@ const I18nContext = createContext({
   // Загружены ли ВСЕ словари активного языка. Первый кадр зоны его не ждёт
   // (ей хватает шести), а экраны приложения ждут — гейт в `App.jsx`.
   dictFull: false,
+  requestFullDict: () => {},
 });
 
 // Active locale falls back to this one (then to the raw key) for missing strings,
@@ -150,6 +152,10 @@ export function I18nProvider({ children }) {
     LANGUAGES.map(({ code }) => [code, loadedLocale(code)]).filter(([, dict]) => dict),
   ));
   const loadingRef = useRef({});
+  // Запуск ВТОРОЙ фазы словаря (остальные 42), пока она ещё не начата.
+  const restRef = useRef(null);
+  // Полный словарь уже попросили — ждать показа страницы не нужно.
+  const wantFullRef = useRef(false);
 
   // Load a language (and the fallback) exactly once into our dictionary. Only in
   // an in-context editing session do we ALSO mirror it into Tolgee (so the observer
@@ -193,9 +199,43 @@ export function I18nProvider({ children }) {
     ensureTolgeeRunning();
     if (IN_CONTEXT) await tolgee.changeLanguage(target);
     setReady((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
-    const rest = fast ? ensureLoaded(target) : Promise.resolve();
-    await rest.then(() => setFull((prev) => (prev.has(target) ? prev : new Set(prev).add(target))));
+    const markFull = () => setFull((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
+    if (!fast) { markFull(); return; }
+
+    // ★ ОСТАЛЬНЫЕ 42 СЛОВАРЯ — ПО ТРЕБОВАНИЮ, А НЕ СРАЗУ ЗА ЗОННЫМИ.
+    //
+    // Догрузка стартовала сразу после зонной фазы, то есть 42 запроса уходили
+    // на ~1270 мс — ровно в окно первой отрисовки лендинга (замер PSI
+    // 06.09.2026: LCP 5.4 с, из них 2410 мс — занятый главный поток). Ждать их
+    // при этом некому: маркетинговой странице они не нужны по построению.
+    //
+    // Теперь у второй фазы ДВА повода начаться, и оба честные:
+    //   · её попросили — адрес не зонный, значит словарь нужен сейчас
+    //     (`requestFullDict`, зовёт корень роутера);
+    //   · страница показана — греем на будущее (`afterPaint`).
+    // Что случится первым, то и стартует; повтор дедуплицируется.
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      ensureLoaded(target).then(markFull);
+    };
+    restRef.current = start;
+    // ⚠️ Просьба может прийти РАНЬШЕ, чем эта фаза вообще существует: корень
+    // роутера монтируется и просит полный словарь, пока зонная фаза ещё едет,
+    // и `restRef` в тот момент пуст. Флаг это и закрывает — без него просьба
+    // терялась молча, а экран приложения ждал фонового прогрева (замер: с
+    // отключённым `afterPaint` словари на `/trips` не приезжали вовсе).
+    if (wantFullRef.current) start();
+    else afterPaint(start);
   }, [ensureLoaded]);
+
+  // Кто-то ждёт полный словарь — начать вторую фазу немедленно. Идемпотентно;
+  // если фазы ещё нет, просьба запоминается и сработает, как только она будет.
+  const requestFullDict = useCallback(() => {
+    wantFullRef.current = true;
+    restRef.current?.();
+  }, []);
 
   // ★ ЦЕЛЬ МЕНЯЕТСЯ — ГРУЗИМ СЛОВАРЬ И ТОЛЬКО ПОТОМ ПОКАЗЫВАЕМ.
   //
@@ -349,7 +389,8 @@ export function I18nProvider({ children }) {
     languages: LANGUAGES,
     locale: localeTag(lang),
     dictFull,
-  }), [lang, setLang, applyRoute, routeLocale, units, setUnits, t, dictFull]);
+    requestFullDict,
+  }), [lang, setLang, applyRoute, routeLocale, units, setUnits, t, dictFull, requestFullDict]);
 
   // Gate the first paint until the active locale is ready. «Готов» теперь значит
   // «загружены словари ЗОНЫ» — шесть из 48 (`zoneNamespaces.js`): маркетинговой

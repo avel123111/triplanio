@@ -1,4 +1,5 @@
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
+import { splitLangPath } from './routePaths.js';
 
 /**
  * Тема ДОКУМЕНТА — один модуль на оба факта, из которых она складывается:
@@ -42,6 +43,11 @@ const PREFIX = ['/join/', '/public/trip/'];
 
 /** @param {string} pathname */
 export function isZoneRoute(pathname) {
-  const p = (pathname || '/').replace(/\/+$/, '') || '/';
-  return EXACT.has(p) || PREFIX.some((x) => (pathname || '').startsWith(x));
+  // Языковой префикс снимается ПЕРЕД сопоставлением: `/ru` и `/es/d/...` — те же
+  // страницы зоны на своём языке (TRIP-520). Без этого затравка отвечала «нет»
+  // на каждый переведённый адрес, и посетитель с тёмной ОС получал на `/ru`
+  // тёмный документ там, где на `/` получал светлый.
+  const { path } = splitLangPath(pathname || '/');
+  const p = path.replace(/\/+$/, '') || '/';
+  return EXACT.has(p) || PREFIX.some((x) => path.startsWith(x));
 }

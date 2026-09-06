@@ -48,6 +48,8 @@
 // module loads under `node --test` too (the pure queue below is unit-tested
 // there). The heavy `import('@sentry/react')` lives inside a function, never at
 // module scope, so importing this file pulls in ZERO SDK bytes.
+import { afterPaint } from './afterPaint.js';
+
 const DSN = import.meta.env?.VITE_SENTRY_DSN;
 const ENVIRONMENT = import.meta.env?.VITE_SENTRY_ENVIRONMENT || import.meta.env?.MODE;
 // Injected at build time from VERCEL_GIT_COMMIT_SHA (see vite.config.js `define`).
@@ -220,10 +222,9 @@ export function initSentry() {
   // раньше рендера), закрывает окно «ошибка до приезда SDK».
   window.addEventListener('error', onGlobalError);
   window.addEventListener('unhandledrejection', onUnhandledRejection);
-  // Полный SDK — на простое, после рендера. `requestIdleCallback` с таймаутом
-  // (образец в SiteChrome.jsx), фолбэк на setTimeout для движков без него.
-  const schedule = typeof window.requestIdleCallback === 'function'
-    ? (cb) => window.requestIdleCallback(cb, { timeout: 2000 })
-    : (cb) => setTimeout(cb, 0);
-  schedule(loadRealSentry);
+  // Полный SDK — после того, как страница показана (`afterPaint`). Здесь был
+  // свой `requestIdleCallback(..., { timeout: 2000 })`, и на телефоне этот
+  // дедлайн срабатывал ВСЕГДА (простоя в первые секунды нет), приземляя 92 КБ
+  // ровно в окно первой отрисовки. Разбор с числами — в шапке `afterPaint.js`.
+  afterPaint(loadRealSentry);
 }
