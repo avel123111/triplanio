@@ -15,7 +15,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { compose } from './composePage.mjs';
-import { fileFor, prerenderedDocPaths, SHELL_FILE } from './prerenderPaths.mjs';
+import { fileFor, prerenderedDocPaths, platformServedPrefixes, SHELL_FILE } from './prerenderPaths.mjs';
 import { prerenderedUrls } from '../../src/lib/routePaths.js';
 
 /** Шаблон в том виде, в каком его отдаёт сборка: заставка на месте, теги общие. */
@@ -127,4 +127,25 @@ test('файл адреса: каталог + index.html, чтобы /es и /es/
   assert.notEqual(SHELL_FILE, 'index.html');
   assert.equal(prerenderedDocPaths().length, prerenderedUrls().length);
   assert.equal(new Set(prerenderedDocPaths()).size, prerenderedUrls().length, 'два адреса метят в один файл');
+});
+
+test('★ пути, которые отдаёт платформа, выведены из vercel.json, а не выписаны руками', () => {
+  // Найдено красной сборкой на платформе: PostHog просит
+  // `/ingest/array/<токен>/config.js`, на проде это переписывание НАРУЖУ, а в
+  // каталоге сборки такого файла нет. Выпечка считала его нашим, не находила и
+  // роняла сборку — причём только там, где задан токен, то есть локально это не
+  // воспроизводилось. Список обязан выводиться из конфига: второй перечень
+  // разойдётся с первым на первом же новом внешнем сервисе.
+  const prefixes = platformServedPrefixes();
+  for (const need of ['/ingest/', '/api/', '/_vercel/']) {
+    assert.ok(prefixes.includes(need), `${need} обязан считаться платформенным`);
+  }
+  // ★ И НИ В КОЕМ СЛУЧАЕ НЕ КОРЕНЬ: SPA-фолбэк — тоже переписывание, но ведёт в
+  // НАШУ оболочку. Попади он сюда, платформенным стал бы каждый адрес, вся сеть
+  // страницы оборвалась бы и выпечка рисовала бы пустоту — молча и «зелено».
+  assert.equal(prefixes.includes('/'), false, 'корень объявлен платформенным — выпечка ослепнет');
+  for (const prefix of prefixes) {
+    assert.match(prefix, /^\/.+\/$/, `${prefix}: префикс обязан быть путём со слэшем на конце`);
+    assert.equal(prefix.includes(':'), false, `${prefix}: в префикс уехал параметр шаблона`);
+  }
 });

@@ -39,7 +39,7 @@ import { join, dirname } from 'node:path';
 import { chromium } from 'playwright-core';
 
 import { serveDist } from './_serve.mjs';
-import { SHELL_FILE, fileFor } from './prerenderPaths.mjs';
+import { SHELL_FILE, fileFor, platformServedPrefixes } from './prerenderPaths.mjs';
 import { compose } from './composePage.mjs';
 import { prerenderedUrls } from '../../src/lib/routePaths.js';
 
@@ -148,13 +148,24 @@ export async function prerender(outDir) {
     // Всё, что не наш origin, обрывается: карта, база, аналитика на сборке не
     // нужны, а без этого демо печётся 15 секунд вместо трёх и зависит от сети.
     //
-    // `/_vercel/*` — тоже наружу, хоть и на нашем адресе: эти файлы отдаёт
-    // ПЛАТФОРМА, в каталоге сборки их нет. Пока сервер выпечки подменял
-    // недостающий скрипт html-фолбэком, это выглядело как «Unexpected token '<'»
-    // на демо-странице — то есть ошибка приезжала не туда, где причина.
+    // ★ «НАШ АДРЕС» ≠ «ЛЕЖИТ В СБОРКЕ». Часть путей на нашем же домене отдаёт
+    // ПЛАТФОРМА, а не каталог сборки: приёмник аналитики (`/ingest/*`),
+    // прокси-функция (`/api/*`), веб-аналитика Vercel (`/_vercel/*`). В `dist`
+    // их нет и быть не должно. Пока сервер выпечки подменял такой запрос
+    // html-фолбэком, это выглядело как «Unexpected token '<'» в случайном месте;
+    // когда фолбэк убрали — как «просил файлы, которых нет в сборке», и сборка
+    // краснела на ровном месте (замер: PostHog просит
+    // `/ingest/array/<токен>/config.js`, и только там, где токен задан, — то
+    // есть на платформе и не локально).
+    //
+    // Список НЕ выписан руками: он выводится из самого `vercel.json`, где эти
+    // переписывания и объявлены. Второй перечень разошёлся бы с первым на первом
+    // же новом внешнем сервисе — и снова красной сборкой.
+    const platformPaths = platformServedPrefixes();
     await ctx.route('**/*', (route) => {
-      const url = route.request().url();
-      const ours = url.includes(PROD_HOST) && !url.includes('/_vercel/');
+      const url = new URL(route.request().url());
+      const ours = url.host === PROD_HOST
+        && !platformPaths.some((prefix) => url.pathname.startsWith(prefix));
       return ours ? route.continue() : route.abort();
     });
 
