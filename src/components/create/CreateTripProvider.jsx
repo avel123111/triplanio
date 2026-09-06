@@ -13,6 +13,7 @@ import { successToast } from '@/lib/successToast';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
+import { draftPath } from '@/lib/planner-draft';
 
 /**
  * Global "create / copy trip" flow.
@@ -181,7 +182,7 @@ export function CreateTripProvider({ children }) {
     setPending(null);
     if (!p) return;
     if (p.kind === 'copy') { doCopy(p.tripId); return; }
-    nav(p.pick === 'ai' ? '/plan-trip-ai' : '/new-trip');
+    nav(draftPath(p.pick));
   }, [nav, pending, doCopy]);
 
   const value = useMemo(

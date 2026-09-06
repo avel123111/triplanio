@@ -25,7 +25,7 @@ import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
 import { normalizeStep, stepEntryFrom, resolveBack, nextStepState } from '@/pages/create/stepUrl';
-import { draftStorageKey, removeDraft } from '@/lib/planner-draft';
+import { draftStorageKey, removeDraft, draftHref, draftDoorMismatch, parseDraft } from '@/lib/planner-draft';
 import FlowMap from '@/pages/create/FlowMap';
 import { MapShell } from '@/design/index';
 import PanelAi from '@/pages/create/PanelAi';
@@ -951,8 +951,20 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     let addressWritten = false;
     try {
       const raw = sessionStorage.getItem(draftStorageKey(user?.id, draftId));
-      if (raw) {
-        const saved = JSON.parse(raw);
+      const saved = parseDraft(raw);
+      /* ★ ЗАПИСЬ ПРАВИТ ТОЛЬКО СВОЯ ДВЕРЬ.
+         Ручная дверь восстановила бы всё, кроме переписки (она под `isAi`), и
+         следующей же записью сохранила бы `aiMessages: []` — переписка ИИ
+         уничтожена беззвучно. Поэтому при несовпадении уходим на дверь самой
+         записи, ничего не прочитав и не записав: `restored` остаётся false, а
+         значит эффект записи не побежит. Роуты обеих дверей несут разный `key`,
+         иначе React переиспользовал бы тот же компонент и этот эффект (деп
+         `user?.id`) второй раз бы не сработал. */
+      if (draftDoorMismatch(saved, method)) {
+        nav(draftHref(draftId, saved.method), { replace: true });
+        return;
+      }
+      if (saved) {
         // Адрес главнее хранилища: сохранённый шаг въезжает в URL только если в
         // адресе шага ещё нет, и через replace (восстановление, не переход) —
         // глубину текущей записи `writeStep` при этом сохраняет.

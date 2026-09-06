@@ -22,6 +22,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   draftKeyPrefix, draftStorageKey, draftHasWork, draftToCard, parseDraft, readDrafts, removeDraft,
+  draftPath, draftHref, draftDoorMismatch,
 } from './planner-draft.js';
 
 /** Хранилище в памяти — тот же контракт, что у `sessionStorage`, включая перечисление. */
@@ -155,4 +156,38 @@ test('removeDraft: без имени не трогает ничего', () => {
   const st = memStorage({ [draftStorageKey('u1', 'a')]: rec() });
   removeDraft('u1', '', st);
   assert.equal(readDrafts('u1', st).length, 1);
+});
+
+// ─── дверь черновика ─────────────────────────────────────────────────────────
+/* ⚠️ Мутации, которыми эти четыре проверки увидены красными:
+ *   · `draftPath`: вернуть '/new-trip' всегда → падает «дверь ИИ ведёт на свой адрес»;
+ *   · `draftHref`: выкинуть `encodeURIComponent` → падает «имя экранируется»;
+ *   · `draftDoorMismatch`: сравнить сырые `saved.method !== routeMethod` → падает
+ *     «запись без поля двери принадлежит ручной» (мусор нормализуется в обе стороны);
+ *   · `draftDoorMismatch`: вернуть `true` на пустой записи → падает «нет записи —
+ *     нет и несовпадения» (иначе чистый заход увело бы с двери в никуда). */
+test('draftPath / draftHref: у каждой двери свой адрес, имя экранируется', () => {
+  assert.equal(draftPath('ai'), '/plan-trip-ai');
+  assert.equal(draftPath('manual'), '/new-trip');
+  assert.equal(draftPath(undefined), '/new-trip');
+  assert.equal(draftHref('a b', 'ai'), '/plan-trip-ai?draft=a%20b');
+  assert.equal(draftHref('x', 'manual'), '/new-trip?draft=x');
+});
+
+test('draftDoorMismatch: чужая дверь опознаётся — иначе ручная стёрла бы переписку ИИ', () => {
+  assert.equal(draftDoorMismatch({ method: 'ai' }, 'manual'), true);
+  assert.equal(draftDoorMismatch({ method: 'manual' }, 'ai'), true);
+  assert.equal(draftDoorMismatch({ method: 'ai' }, 'ai'), false);
+  assert.equal(draftDoorMismatch({ method: 'manual' }, 'manual'), false);
+});
+
+test('draftDoorMismatch: запись без двери и с мусором — ручная, как и у карточки', () => {
+  assert.equal(draftDoorMismatch({}, 'manual'), false);
+  assert.equal(draftDoorMismatch({ method: 'нечто' }, 'manual'), false);
+  assert.equal(draftDoorMismatch({}, 'ai'), true);
+});
+
+test('draftDoorMismatch: записи нет — уводить некуда', () => {
+  assert.equal(draftDoorMismatch(null, 'ai'), false);
+  assert.equal(draftDoorMismatch(undefined, 'manual'), false);
 });

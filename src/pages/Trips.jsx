@@ -22,7 +22,7 @@ import {
 } from '../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import { uniqueTransitCities, uniqueCountryCodes, localizeVisits } from '@/lib/trip-cities';
-import { readDrafts, removeDraft } from '@/lib/planner-draft';
+import { readDrafts, removeDraft, draftHref } from '@/lib/planner-draft';
 import { homeStats, worldExplored, pastOnly } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
 import { cacheTripCards } from '@/lib/trip-data';
@@ -539,7 +539,7 @@ export default function Trips() {
   // Адрес называет ЧЕРНОВИК: `?draft=<id>` открывает именно его. Ни одна другая
   // дверь имени не несёт, поэтому все они заводят новый и ничего не перезаписывают
   // — спрашивать «продолжить или заново» не о чем.
-  const continueDraft = (d) => nav(`${d.method === 'ai' ? '/plan-trip-ai' : '/new-trip'}?draft=${encodeURIComponent(d.id)}`);
+  const continueDraft = (d) => nav(draftHref(d.id, d.method));
 
   // Удаление спрашивает: черновик живёт вкладку, второго шанса у человека нет.
   const deleteDraft = async (d) => {
