@@ -1537,7 +1537,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           может забыть его повторить. */}
       {savedOk ? (
         <EmptyState
-          icon="check"
+          art="trip-created"
           kind="success"
           title={t('planner.created_title')}
           body={t('planner.created_desc', { title: tripTitle || autoTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
