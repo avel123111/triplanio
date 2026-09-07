@@ -141,7 +141,7 @@
      пустого состояния · герой ленты. Владелец берёт ступень, <Illustration>
      размера не знает. floor-exempt: tokens +3 — --art-tile/--art-state/--art-hero: три литерала в трёх владельцах становятся шкалой под картины пустых состояний по экранам, апрув Pavel (TRIP-532)
      visual-diff-exempt: :root --art-tile — новый токен: плитка-картина карточки выбора (TRIP-532)
-     visual-diff-exempt: :root --art-state — новый токен: картина пустого состояния / герой на телефоне (TRIP-532)
+     visual-diff-exempt: :root --art-state — новый токен: картина пустого состояния (TRIP-532)
      visual-diff-exempt: :root --art-hero — новый токен: герой ленты /trips (TRIP-532) */
   --art-tile: 96px; --art-state: 200px; --art-hero: 300px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
@@ -355,6 +355,15 @@
 /* На телефоне контрол крупнее: 44px - минимальная цель нажатия (WCAG 2.5.5).
    Единственная ступень токена, и она здесь, а не в пяти @media по классам. */
 @media (max-width: 640px) { :root { --ctl-h: 44px; } }
+/* Ступени картин на телефоне (TRIP-532) — та же форма, что у `--ctl-h`: ступень
+   одна на всех, значение своё для ширины. Сцена пустого состояния 200 → 140:
+   в шите на полу-детенте картина 200 + текст + две кнопки не влезали в полосу
+   (кнопки за краем, скролл 100px). Герой 300 → 200: на телефоне он стоит над
+   текстом ленты /trips, и это его собственная ступень, а не «сцена» — раньше
+   `.eroute__fig` брал 200 через `--art-state`, и уменьшение сцены задело бы его.
+   visual-diff-exempt: :root {@media (max-width: 640px)} --art-state — ступень сцены на телефоне (TRIP-532)
+   visual-diff-exempt: :root {@media (max-width: 640px)} --art-hero — ступень героя на телефоне (TRIP-532) */
+@media (max-width: 640px) { :root { --art-state: 140px; --art-hero: 200px; } }
 
 /* Dark theme */
 :root[data-theme="dark"] {
@@ -4440,7 +4449,7 @@ button.input[data-empty] { color: var(--muted-2); }
 .eroute__create { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 640px) {
   .eroute { padding: 28px 18px 24px; grid-template-columns: 1fr; text-align: center; justify-items: center; }
-  .eroute__fig { grid-column: 1; grid-row: 1; height: var(--art-state); margin-bottom: var(--sp-7); }
+  .eroute__fig { grid-column: 1; grid-row: 1; margin-bottom: var(--sp-7); }
   .eroute__body { grid-row: 2; }
   .eroute__create { grid-template-columns: 1fr; }
 }
@@ -5068,8 +5077,9 @@ button.input[data-empty] { color: var(--muted-2); }
    только рост. Без этого композиция прижата к шапке, а высота панели копится
    пустотой снизу (десктоп 350px). Правило у ПОВЕРХНОСТИ, как `.dlg .empty-state`
    и `.sheet .empty-state`: экран (`.flow-lp-b`) в примитив не дотягивается.
-   Действует только в флекс-колонке тела шага; на телефоне тот же центр даёт
-   верхний детент шита (визард поднимает его на успехе).
+   Действует только в флекс-колонке тела шага. В шите на полу-детенте
+   композиция влезает целиком за счёт телефонной ступени сцены (`--art-state`
+   140) и сжатого ритма `.peek-sheet .empty-state` — детент не трогается.
    visual-diff-exempt: .empty-state flex — состояние в теле панели шелла занимает его целиком, центр по вертикали (TRIP-532)
    visual-diff-exempt: .peek-sheet__body flex — тот же ключ по первому подлежащему составного правила; само тело шита `flex: none` не меняется (TRIP-532) */
 .mapshell__body .empty-state, .peek-sheet__body .empty-state { flex: 1; }
@@ -10748,9 +10758,13 @@ a.doc-row__n:hover{ color: var(--brand); }
    тело диалога — сжимаем ритм под диалог; тон/структуру/типографику не трогаем.
    visual-diff-exempt: .empty-state padding — паддинг пустого состояния как контента модалки (TRIP-302)
    visual-diff-exempt: .dlg padding — тот же паддинг, приписан .dlg по правилу .dlg .empty-state (TRIP-302)
-   visual-diff-exempt: .sheet padding — тот же паддинг, приписан .sheet по правилу .sheet .empty-state (TRIP-302) */
+   visual-diff-exempt: .sheet padding — тот же паддинг, приписан .sheet по правилу .sheet .empty-state (TRIP-302)
+   TRIP-532: шит-панель карты (`.peek-sheet`) — та же поверхность на телефоне,
+   что `.sheet`: полноэкранный 48px ставил «Путешествие создано» за край полосы.
+   visual-diff-exempt: .peek-sheet padding — тот же паддинг, приписан .peek-sheet по правилу .peek-sheet .empty-state (TRIP-532) */
 .dlg .empty-state,
-.sheet .empty-state { padding: var(--sp-8) var(--sp-8) var(--sp-4); }
+.sheet .empty-state,
+.peek-sheet .empty-state { padding: var(--sp-8) var(--sp-8) var(--sp-4); }
 
 /* TRIP-343 PR-2: тон-brand пустого нотиса на `<Card tone="brand" radius="md">`.
    ⚠ ОБЛИК СВЕДЁН К КАНОНУ (решение Pavel, апрув по скрину «было светлее → стало
