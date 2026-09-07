@@ -10,15 +10,22 @@
  * drawer'е. Один и тот же элемент, два поведения.
  *
  * ★ С TRIP-520 оболочка — ЭЛЕМЕНТ РАСКЛАДКИ РОУТЕРА (layout route) на три
- * адреса: `/new-trip`, `/plan-trip-ai`, `/trip/:tripId`. Визард создания — это
- * экран трипа, у которого трипа ещё нет: тот же рейл (с одним бренд-слотом, пока
- * пунктов не из чего собрать), та же шапка, тот же шелл карты. Экран под
- * оболочкой ничего из этого не рисует — он публикует факты и рендерит своё
+ * адреса: `/new-trip`, `/plan-trip-ai`, `/trip/:tripId`. Визард создания живёт в
+ * той же оболочке, что и трип: та же шапка, тот же шелл карты, та же карта. Экран
+ * под оболочкой ничего из этого не рисует — он публикует факты и рендерит своё
  * содержимое в слоты (контракт — `TripShellContext.jsx`). Поэтому на переходе
- * «создан → маршрут» не размонтируется ничего общего: рейл, шапка, панель над
- * картой и сама карта живут дальше и меняют содержимое, а не рождаются заново.
- * Это единственный способ сделать такой переход плавным: анимация есть только у
- * живого элемента, а не у пары «старый снесён / новый смонтирован».
+ * «создан → маршрут» не размонтируется ничего общего: шапка, панель над картой и
+ * карта живут дальше и меняют содержимое, а не рождаются заново. Это единственный
+ * способ сделать такой переход плавным: анимация есть только у живого элемента,
+ * а не у пары «старый снесён / новый смонтирован».
+ *
+ * ★★ РЕЙЛ — СЛОЙ НАД ВСЕМ, И В ВИЗАРДЕ ЕГО НЕТ. Логотип, выход и меню
+ * принадлежат рейлу; в визарде он убран за левую кромку (шапка визарда — во всю
+ * ширину, со своей кнопкой «назад»), а на переходе в трип ВЫЕЗЖАЕТ. Полоса,
+ * которую он закрывает, — одно число `--rail-inset` (0 в визарде, ширина рейла в
+ * трипе): по нему едут сам рейл (transform), отступ шапки (padding), панель и
+ * тумблер шелла карты (left) и камера (доезд отступа) — одним темпом поверхности.
+ * Холст карты не меняет размер ни на кадр: рейл лежит над ним, как панель и шит.
  *
  * Три слота DOM - потому что позиция в DOM у них несущая, а не косметическая:
  *   main           - тело секции (сюда рендерится `<Outlet/>`); в секции с
@@ -44,21 +51,31 @@
  * (та же грабля разобрана в шапке EditLens.jsx). Гард читает маркеры из
  * ДОБАВЛЕННЫХ строк диффа, поэтому файл значения не имеет.
  *
- * Вход из создания трипа: въезжают ПУНКТЫ рейла (сам рейл стоит с первого
- * кадра визарда), заголовок шапки проступает. Апрув Pavel (TRIP-520).
- * visual-diff-exempt: .app-side animation — рейл больше не въезжает целиком: он стоит и в визарде, въезжают его пункты
+ * Вход из создания трипа: рейл выезжает, шапка отодвигается, заголовок проступает.
+ * Апрув Pavel (TRIP-520).
+ * visual-diff-exempt: .app-side animation — рейл больше не анимируется кейфреймом: его положение — транзишн по полосе `--rail-inset`
  * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — то же
- * visual-diff-exempt: .trip-shell[data-entering=create] animation — у составного селектора входа теперь два читателя (пункты рейла railIn, заголовок шапки fadeIn)
- * visual-diff-exempt: .app-side__nav animation — пункты рейла въезжают при приходе из создания трипа
- * visual-diff-exempt: .app-side__nav {@media (prefers-reduced-motion: reduce)} animation — тот же вход гасится при снижении движения
+ * visual-diff-exempt: .trip-shell[data-entering=create] animation — вход оболочки: остаётся только проступание заголовка шапки
+ * visual-diff-exempt: .app-side transform — рейл убран за кромку в визарде и выезжает на полосу `--rail-inset`
+ * visual-diff-exempt: .app-side transition — выезд рейла в темп поверхности
+ * visual-diff-exempt: .app-side visibility — убранный рейл вне таба и дерева доступности
+ * visual-diff-exempt: .trip-shell[data-mode=create] visibility — то же со стороны оболочки
+ * visual-diff-exempt: .app-side z-index — рейл лежит над шапкой и контентом (шапка теперь во всю ширину)
+ * visual-diff-exempt: .trip-body z-index — тот же ключ со стороны родителя (составной селектор)
+ * visual-diff-exempt: .app-header grid-column — шапка во всю ширину сетки: полосу рейла она отдаёт отступом
+ * visual-diff-exempt: .trip-body grid-column — тот же ключ со стороны родителя (составной селектор)
+ * visual-diff-exempt: .app-header--trip padding-left — отступ шапки под рейл едет по `--rail-inset`
+ * visual-diff-exempt: .trip-content[data-bleed] --mapshell-inset-left — полоса рейла уходит шеллу карты числом от оболочки, не переменной CSS
+ * visual-diff-exempt: .trip-body --mapshell-inset-left — то же (составной селектор)
+ * visual-diff-exempt: .mapshell__panel transition — панель отодвигается на полосу рейла тем же темпом
  * visual-diff-exempt: .app-header__trip animation — заголовок шапки проступает при приходе из создания трипа
  * visual-diff-exempt: .app-header__trip {@media (prefers-reduced-motion: reduce)} animation — то же при снижении движения
- * visual-diff-exempt: .trip-body transition — шапка на телефоне въезжает сверху при приходе из создания (составной селектор)
+ * visual-diff-exempt: .trip-body transition — шапка едет: на телефоне въезжает сверху, на десктопе отодвигает отступ под рейл (составной селектор)
  * visual-diff-exempt: .app-header transition — то же со стороны шапки
  * visual-diff-exempt: .trip-body {@media (max-width: 640px)} transform — шапка на телефоне в визарде убрана за верхний край (составной селектор)
  * visual-diff-exempt: .app-header {@media (max-width: 640px)} transform — то же со стороны шапки
  * visual-diff-exempt: .trip-shell[data-mode=create][data-surface] {@media (max-width: 640px)} transform — то же со стороны оболочки
- * visual-diff-exempt: .app-header z-index — шапка лежит над контентом в общей ячейке сетки, как рейл
+ * visual-diff-exempt: .app-header z-index — шапка лежит над контентом в общей ячейке сетки
  * visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-row — секция с картой на телефоне лежит и под шапкой: холст одной высоты в визарде и трипе
  * visual-diff-exempt: .trip-content[data-bleed] {@media (max-width: 640px)} grid-row — то же (составной селектор)
  */
@@ -143,7 +160,7 @@ export default function TripShell() {
   // оболочка объявляет `data-entering`, а CSS решает, что с ним делать. Факт
   // выводится из СМЕНЫ РЕЖИМА у живой оболочки (`create` → `trip`), а не из
   // `location.state`: оболочка теперь одна на оба экрана и сама видит переход.
-  // Читатели: пункты рейла (въезжают) и заголовок шапки (проступает). Нижний док
+  // Читатель: заголовок шапки (проступает); рейл едет транзишном по полосе. Нижний док
   // читателем НЕ является намеренно: он монтируется на десятке других границ, и
   // вход у него безусловный и свой (обоснование — у его правила в app.css).
   const [entering, setEntering] = useState(/** @type {string | null} */ (null));
@@ -229,23 +246,33 @@ export default function TripShell() {
   // карта. На телефоне контент лежит и под ШАПКОЙ (обе строки сетки): холст тогда
   // одной высоты в визарде (шапки там нет) и в трипе — переезд без `resize()`,
   // шапка въезжает сверху над холстом. Разбор — у `.trip-content[data-bleed]`.
-  const bleed = !!surface;
+  // Визард без поверхности (экран лимита) на десктопе тоже в край: рейла в
+  // визарде нет, и колонке под него нечего держать.
+  const bleed = !!surface || (!isTrip && !isPhone);
   // Полоса шапки, закрытая над холстом, — ЧИСЛОМ шеллу карты: он ставит её
   // камере и своей раскладке из одного источника. На десктопе шапка стоит в своей
   // строке сетки, над холстом ничего не закрыто; на телефоне закрыта её высота,
   // кроме визарда, где шапки нет (ту же величину камера доводит на переходе).
   const [headerPx] = useState(() => cssPx('var(--header-h)'));
   const insetTop = isPhone && isTrip ? headerPx : 0;
+  // Полоса РЕЙЛА — та же логика по горизонтали. В визарде рейла нет: он убран за
+  // левую кромку, полоса 0; в трипе полоса = его ширина. Одно число ставится на
+  // корень оболочки переменной `--rail-inset` (по ней едут сам рейл, отступ
+  // шапки) и уходит шеллу карты (панель, тумблер, камера). На переходе всё это
+  // едет одним темпом: рейл выезжает, панель отодвигается, камера доводит кадр.
+  const [railPx] = useState(() => cssPx('var(--rail-w)'));
+  const insetLeft = !isPhone && isTrip ? railPx : 0;
+  const shellStyle = useMemo(() => ({ ...MOTION_STYLE, '--rail-inset': `${insetLeft}px` }), [insetLeft]);
 
   return (
     <ShellProvider value={host}>
     <TripAccessProvider step={step}>
-    <div className="trip-shell" data-mode={mode} data-surface={surface ? '' : undefined} data-entering={entering || undefined} style={MOTION_STYLE} ref={shellSlot}>
+    <div className="trip-shell" data-mode={mode} data-surface={surface ? '' : undefined} data-entering={entering || undefined} style={shellStyle} ref={shellSlot}>
       <div className="trip-body">
         {/* Рейл и шит собирают состав САМИ — из фактов (аддоны + ступень), одной
             функцией `menuSections`. Отдельного «идёт загрузка» у меню больше нет:
             известен факт — пункт живой, неизвестен — место под него. В визарде
-            трипа нет — рейл стоит с одним бренд-слотом (выход с конфирмом). */}
+            рейл убран за кромку (CSS по `--rail-inset`) и выезжает на переходе. */}
         <TripSidebar
           tripId={tripId}
           addons={addons}
@@ -287,10 +314,10 @@ export default function TripShell() {
           isPro={isProActive(user)}
           isDark={isDark}
           onToggleTheme={toggleTheme}
-          // Кнопка «назад» — только на телефоне: на остальных ширинах выход
-          // из трипа живёт в бренд-слоте рейла, и вторая кнопка была бы
+          // Кнопка «назад» — где нет рейла: на телефоне и в визарде. В трипе на
+          // десктопе выход живёт в бренд-слоте рейла, и вторая кнопка была бы
           // дублем того же действия.
-          onBack={isPhone ? goBack : undefined}
+          onBack={isPhone || !isTrip ? goBack : undefined}
           backTitle={backTitle}
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
           meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
@@ -308,6 +335,7 @@ export default function TripShell() {
               <MapShell
                 map={(view) => <SurfaceHost view={view} />}
                 insetTop={insetTop}
+                insetLeft={insetLeft}
                 onSlot={registerSlot}
                 {...surface}
               />

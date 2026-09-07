@@ -1295,10 +1295,12 @@ h4,
      знака в рейле. Линия выглядит так же, инвариант держится. */
   box-shadow: inset 0 -1px 0 var(--line);
 }
-/* Внутри трипа шапка живёт во ВТОРОЙ колонке (правее рейла), поэтому её первый
-   элемент — заголовок трипа — должен встать туда же, где вне трипа стоит
-   вордмарк: на зазор от слота, а не в край. */
-.app-header--trip { padding-left: var(--sp-6); }
+/* Внутри трипа шапка — во всю ширину сетки, а рейл лежит НАД её левым краем:
+   полосу рейла она отдаёт отступом (`--rail-inset`, публикует оболочка: 0 в
+   визарде, ширина рейла в трипе), и её первый элемент — заголовок — встаёт на
+   зазор от бренд-слота рейла, а не в край. Транзишн отступа — у правила
+   оболочки (`.trip-body > .app-header`), там же, где въезд шапки на телефоне. */
+.app-header--trip { padding-left: calc(var(--rail-inset, 0px) + var(--sp-6)); }
 /* Вне трипа поля слева НЕТ намеренно (ширина бренд-слота = отступ). Но когда
    первым элементом идёт круглая «назад», слота перед ней нет — и кнопка
    прижималась к самому краю экрана (п.1 visual-fixes). Такому хедеру даём левый
@@ -4886,8 +4888,9 @@ button.input[data-empty] { color: var(--muted-2); }
    правый край панели уходит внутрь карты, а не двоит отступ. */
 .mapshell__panel {
   /* Левый край — за полосой, которую хост объявил закрытой НЕ панелью (рейл трипа
-     над холстом, `--mapshell-inset-left` на `.trip-content[data-bleed]`); вне такой
-     оболочки переменной нет, и панель стоит у края.
+     над холстом, `--mapshell-inset-left` ставит сам шелл из числа хоста); без
+     полосы панель стоит у края. Едет транзишном: на переходе визард → трип
+     полоса растёт с нуля до ширины рейла.
      visual-diff-exempt: .mapshell__panel left — панель встаёт правее рейла, когда хост объявил `--mapshell-inset-left`; без него 0, как было
      visual-diff-exempt: .mapshell__toggle left — тумблер едет за панелью на ту же величину
      visual-diff-exempt: .mapshell__panel[data-collapsed] left — у свёрнутой панели тумблер стоит у края рейла, а не холста (ключ гарда — по первому подлежащему правила) */
@@ -4895,7 +4898,7 @@ button.input[data-empty] { color: var(--muted-2); }
   width: var(--mapshell-panel-w);
   display: flex; padding: var(--sp-7); padding-right: 0;
   z-index: 2;
-  transition: transform var(--surface-settle, .32s) var(--surface-ease, ease);
+  transition: transform var(--surface-settle, .32s) var(--surface-ease, ease), left var(--surface-settle, .32s) var(--surface-ease, ease);
 }
 /* Коробка слоя поверх панели — та же, что у карточки панели (тот же воздух,
    тот же правый край, уходящий под карту). */
@@ -6909,7 +6912,7 @@ button.input[data-empty] { color: var(--muted-2); }
   grid-template-rows: var(--header-h) minmax(0, 1fr);
 }
 .trip-body > .app-side { grid-column: 1; grid-row: 1 / -1; }
-.trip-body > .app-header { grid-column: 2; grid-row: 1; }
+.trip-body > .app-header { grid-column: 1 / -1; grid-row: 1; }
 .trip-body > .trip-content { grid-column: 2; grid-row: 2; }
 /* `isolation` — контент трипа владеет своими слоями (контракт слоёв TRIP-466):
    панели MapShell несут свои z-index (2/3), и без корня они сравнивались бы с
@@ -6941,46 +6944,38 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .trip-body --mapshell-inset-left — то же
    visual-diff-exempt: .app-side z-index — рейл лежит над контентом в общей ячейке сетки
    visual-diff-exempt: .trip-body z-index — тот же ключ со стороны родителя (составной селектор) */
-.trip-body > .trip-content[data-bleed] { grid-column: 1 / -1; --mapshell-inset-left: var(--rail-w); }
-.trip-body > .app-side { z-index: 1; }
+.trip-body > .trip-content[data-bleed] { grid-column: 1 / -1; }
+/* ★ РЕЙЛ — СЛОЙ, И В ВИЗАРДЕ ЕГО НЕТ (TRIP-520). Полосу, которую он закрывает,
+   оболочка публикует числом `--rail-inset` (0 в визарде, --rail-w в трипе; см.
+   TripShell). Рейл стоит на этой полосе: при нуле он целиком за левой кромкой,
+   и на переходе в трип ВЫЕЗЖАЕТ транзишном — тем же темпом, каким шапка
+   отодвигает свой отступ, панель шелла карты уезжает правее, а камера доводит
+   кадр. Ни один размер холста при этом не меняется. Убранный рейл — `visibility:
+   hidden` (вне таба и дерева доступности); в транзишне свойство дискретно: при
+   уходе ждёт конца движения, при въезде включается сразу. Над шапкой (шапка
+   теперь во всю ширину сетки) и над контентом — z-index 2. */
+.trip-body > .app-side {
+  z-index: 2;
+  transform: translateX(calc(var(--rail-inset) - var(--rail-w)));
+  transition: transform var(--surface-settle) var(--surface-ease), visibility var(--surface-settle);
+}
+.trip-shell[data-mode="create"] .app-side { visibility: hidden; }
 
 /* ---- Вход оболочки: пришли из создания трипа ----
-   Оболочка объявляет ФАКТ (`data-entering="create"`, ставит TripShell по
-   `location.state`), а что именно едет — решает ширина. Выше 640 это РЕЙЛ: он
-   выезжает из-за левой кромки НАД холстом карты (секция с картой лежит под
-   рейлом, см. `data-bleed` выше), а камера за тот же темп доезжает на его
-   ширину (`useMapInsets`) — два движения одного темпа, раскладка при этом
-   ФИНАЛЬНА с первого кадра.
-   ★ ЕДЕТ ТОЛЬКО САМ РЕЙЛ, КОЛОНКА НЕ АНИМИРУЕТСЯ, И ЭТО НЕСУЩЕЕ. Анимация
-   `grid-template-columns` меняла бы ширину слота карты покадрово, а каждый такой
-   кадр — переаллокация GL-буфера mapbox: ровно то, ради чего холст карты не
-   меняет размер НИКОГДА, а свободное окно уводит сдвигом (см. lib/mapShellInsets.js).
-   Здесь двигается один `transform` на композиторе, слот карты не трогается вовсе.
-   Темп и кривую публикует сама оболочка (--surface-settle / --surface-ease из
-   lib/surfaceMotion.js) — тот же темп, которым едут шит и камера.
-   Ниже 640 рейла нет (`display: none` в медиазапросе), там въезжает нижний док. */
-@keyframes railIn { from { transform: translateX(-100%); } to { transform: none; } }
-/* Фолбэков у переменных тут НЕТ намеренно: обе публикует сам `.trip-shell`, то
-   есть элемент из первой половины этого же селектора — значение достижимо
-   всегда, а написанный фолбэк был бы мёртвой веткой `var()`, которую следующий
-   примет за работающую (та же ловушка, что разобрана у входа нижнего дока). */
-/* Въезжают ПУНКТЫ рейла, а не рейл: с TRIP-520 оболочка одна на визард и трип,
-   и рейл (с бренд-слотом) стоит на месте с первого кадра визарда — появиться на
-   переходе может только то, чего в визарде не было. Заголовок трипа в шапке
-   проступает тем же темпом (`fadeIn` — общий кейфрейм файла). */
-.trip-shell[data-entering="create"] .app-side__nav {
-  animation: railIn var(--surface-settle) var(--surface-ease) both;
-}
+   Оболочка объявляет ФАКТ (`data-entering="create"`, ставит TripShell по смене
+   режима create → trip). Рейл, шапка, панель и камера едут по `--rail-inset`
+   транзишнами (см. выше) — здесь только то, чему нужен старт с нуля: заголовок
+   трипа в шапке проступает (`fadeIn` — общий кейфрейм файла) тем же темпом.
+   Фолбэков у переменных тут НЕТ намеренно: обе публикует сам `.trip-shell`. */
 .trip-shell[data-entering="create"] .app-header__trip {
   animation: fadeIn var(--surface-settle) var(--surface-ease) both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .trip-shell[data-entering="create"] .app-side__nav,
   .trip-shell[data-entering="create"] .app-header__trip { animation: none; }
 }
 /* Шапка — над контентом в общей ячейке сетки, как рейл: на телефоне секция с
    картой лежит и под ней (ниже, в медиазапросе). Транзишн — её въезд там же. */
-.trip-body > .app-header { z-index: 1; transition: transform var(--surface-settle) var(--surface-ease); }
+.trip-body > .app-header { z-index: 1; transition: transform var(--surface-settle) var(--surface-ease), padding-left var(--surface-settle) var(--surface-ease); }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
    Used OUTSIDE the structure editor (timeline / calendar / budget / overview).

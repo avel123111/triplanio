@@ -67,6 +67,7 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  *   panelLabel: string,
  *   onSlot?: (name: string, el: HTMLElement | null) => void,
  *   insetTop?: number,
+ *   insetLeft?: number,
  *   overlayActive?: boolean,
  *   detents?: number[],
  *   detent?: number,
@@ -113,6 +114,13 @@ export function MapShell({
   // чтением CSS: одна величина ставится и камере, и CSS-переменной раскладки
   // (`--mapshell-inset-top`), второго источника нет.
   insetTop = 0,
+  // Полоса, закрытая над холстом СЛЕВА хостом (рейл трипа над картой). Тоже
+  // числом: панель встаёт правее неё (`--mapshell-inset-left`), камера получает
+  // её в закрытое. На переходе визард → трип полоса растёт 0 → рейл, панель
+  // едет транзишном `left`, камера — своим доездом, тем же темпом. Замером с
+  // DOM это не взять: положение панели в транзишне меняется, а ResizeObserver
+  // видит только размер.
+  insetLeft = 0,
   // ЛОГИЧЕСКОЕ «слой открыт» для КАМЕРЫ — отдельно от слоя (рендера).
   // Рендер живёт дольше: уходящий слой доигрывает анимацию ещё ~240 мс, и если бы
   // камера читала `!!panelOverlay`, отступ менялся бы на 240 мс ПОЗЖЕ закрытия —
@@ -161,11 +169,11 @@ export function MapShell({
   // это отдаётся коробками `null` в `view` — она ничего не трогает; замер приезжает
   // синхронным ре-рендером ДО отрисовки кадра, и первая настоящая величина
   // ставится без движения.
-  const [panelPx, setPanelPx] = useState(/** @type {number | null} */ (null));
-  // Левый край панели от края холста: всё левее неё закрыто НЕ панелью (рейл
-  // трипа лежит над холстом в секциях с картой) и остаётся закрытым, когда
-  // панель свёрнута. Меряется вместе с правым краем, одной функцией.
-  const [panelOffsetPx, setPanelOffsetPx] = useState(0);
+  const [panelW, setPanelW] = useState(/** @type {number | null} */ (null));
+  // Правый край панели от края холста = полоса хоста слева + ширина панели.
+  // Левее панели закрыто НЕ панелью (рейл трипа над холстом), и это остаётся
+  // закрытым, когда панель свёрнута (`offsetPx`).
+  const panelPx = panelW === null ? null : insetLeft + panelW;
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -177,7 +185,8 @@ export function MapShell({
 
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
-  // число разъехалось бы с ней на первой же правке раскладки.
+  // число разъехалось бы с ней на первой же правке раскладки. Положение
+  // панели, напротив, приходит числом от хоста (`insetLeft`).
   // Живой сдвиг холста — мимо React (разбор у пропа `onHeightLive` шита).
   // Пока идёт жест, темп нулевой: холст уже там, где палец. На осадке темп
   // возвращается, и остаток пути доезжает той же кривой, что и шит.
@@ -193,15 +202,12 @@ export function MapShell({
   }, []);
 
   const measurePanel = useCallback(() => {
-    const root = rootRef.current, el = panelRef.current;
-    if (!root || !el) { setPanelPx(0); setPanelOffsetPx(0); return; }
-    const r = el.getBoundingClientRect(), b = root.getBoundingClientRect();
-    setPanelPx(Math.max(0, Math.round(r.right - b.left)));
-    setPanelOffsetPx(Math.max(0, Math.round(r.left - b.left)));
+    const el = panelRef.current;
+    setPanelW(el ? Math.max(0, Math.round(el.getBoundingClientRect().width)) : 0);
   }, []);
 
   useLayoutEffect(() => {
-    if (isPhone) { setPanelPx(0); setPanelOffsetPx(0); return undefined; }
+    if (isPhone) { setPanelW(0); return undefined; }
     measurePanel();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measurePanel) : null;
     if (ro && panelRef.current) ro.observe(panelRef.current);
@@ -228,8 +234,8 @@ export function MapShell({
   // уезжает `transform`-ом — её ширина не меняется, и «померить свёрнутую» дало
   // бы правильный ответ по случайности. Про свёрнутость знает правило.
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx: panelPx ?? 0, offsetPx: panelOffsetPx, topPx: insetTop, statusPx, overlayOpen: overlayActive, collapsed }),
-    [isPhone, sheetPx, capPx, panelPx, panelOffsetPx, insetTop, statusPx, overlayActive, collapsed],
+    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx: panelPx ?? 0, offsetPx: insetLeft, topPx: insetTop, statusPx, overlayOpen: overlayActive, collapsed }),
+    [isPhone, sheetPx, capPx, panelPx, insetLeft, insetTop, statusPx, overlayActive, collapsed],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
@@ -256,6 +262,8 @@ export function MapShell({
     '--mapshell-bottom': `${box.slotBottom}px`,
     // Закрытая сверху полоса — раскладке (контролы над картой встают под ней).
     '--mapshell-inset-top': `${insetTop}px`,
+    // Закрытая слева полоса — раскладке (панель и тумблер встают правее неё).
+    '--mapshell-inset-left': `${insetLeft}px`,
     // ★ СКОЛЬКО ХОЛСТ УЕЗЖАЕТ ВВЕРХ. Половина закрытой шитом высоты: тогда центр
     // ХОЛСТА (а к нему пришпилен вид) встаёт ровно в центр СВОБОДНОГО окна, а
     // низ холста остаётся под шитом — полосе фона взяться неоткуда. Размер
@@ -268,7 +276,7 @@ export function MapShell({
     '--mapshell-attrib': `${box.shift + ATTRIB_AIR}px`,
     '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
     '--surface-ease': SURFACE_EASE_CSS,
-  }), [box, insetTop]);
+  }), [box, insetTop, insetLeft]);
 
   // Шапка панели — узел ШЕЛЛА и на десктопе, и в шите: ссылка на слот у него.
   const head = <div className="mapshell__head" ref={slot('panelHead')} />;
