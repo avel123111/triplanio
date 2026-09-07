@@ -48,8 +48,8 @@
  * кадра визарда), заголовок шапки проступает. Апрув Pavel (TRIP-520).
  * visual-diff-exempt: .app-side animation — рейл больше не въезжает целиком: он стоит и в визарде, въезжают его пункты
  * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — то же
- * visual-diff-exempt: .trip-shell[data-entering=create] animation — вторая единица наблюдения того же правила (селектор из двух частей)
- * visual-diff-exempt: .trip-shell[data-entering=create] {@media (prefers-reduced-motion: reduce)} animation — то же при снижении движения
+ * visual-diff-exempt: .trip-shell[data-entering=create] animation — у составного селектора входа теперь два читателя (пункты рейла railIn, заголовок шапки fadeIn)
+ * visual-diff-exempt: .trip-shell[data-entering=create] {@media (prefers-reduced-motion: reduce)} animation — оба входа гасятся при снижении движения
  * visual-diff-exempt: .app-side__nav animation — пункты рейла въезжают при приходе из создания трипа
  * visual-diff-exempt: .app-side__nav {@media (prefers-reduced-motion: reduce)} animation — тот же вход гасится при снижении движения
  * visual-diff-exempt: .app-header__trip animation — заголовок шапки проступает при приходе из создания трипа
@@ -59,10 +59,8 @@
  * visual-diff-exempt: .trip-body {@media (max-width: 640px)} transform — шапка на телефоне в визарде убрана за верхний край (составной селектор)
  * visual-diff-exempt: .app-header {@media (max-width: 640px)} transform — то же со стороны шапки
  * visual-diff-exempt: .trip-shell[data-mode=create][data-surface] {@media (max-width: 640px)} transform — то же со стороны оболочки
- * visual-diff-exempt: .trip-body z-index — шапка лежит над контентом в общей ячейке сетки, как рейл
- * visual-diff-exempt: .app-header z-index — то же со стороны шапки
+ * visual-diff-exempt: .app-header z-index — шапка лежит над контентом в общей ячейке сетки, как рейл
  * visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-row — секция с картой на телефоне лежит и под шапкой: холст одной высоты в визарде и трипе
- * visual-diff-exempt: .trip-content {@media (max-width: 640px)} grid-row — то же со стороны контента
  * visual-diff-exempt: .trip-content[data-bleed] {@media (max-width: 640px)} grid-row — то же (составной селектор)
  */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';

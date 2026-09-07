@@ -4478,9 +4478,8 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .flow-map overflow — то же
    visual-diff-exempt: .flow-map__canvas position — то же
    visual-diff-exempt: .flow-map__canvas inset — то же
-   visual-diff-exempt: .flow-map__canvas opacity — то же
    visual-diff-exempt: .flow-map__canvas transition — то же
-   visual-diff-exempt: .flow-map__canvas.is-revealed opacity — то же
+   visual-diff-exempt: .is-revealed opacity — то же (состояние открытого холста карты визарда)
    visual-diff-exempt: .flow-map__cover position — то же
    visual-diff-exempt: .flow-map__cover inset — то же
    visual-diff-exempt: .flow-map__cover display — то же
@@ -10677,7 +10676,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Верх — под полосой, закрытой над холстом (шапка трипа на телефоне лежит над
    картой, `--mapshell-inset-top` публикует шелл карты; вне шелла её нет — ноль).
    Едет тем же темпом, что и шапка.
-   visual-diff-exempt: .map-ctl top — прибавлена закрытая сверху полоса (вне шелла значение то же)
    visual-diff-exempt: .map-ctl transition — плашка едет вместе с въезжающей шапкой */
 .map-ctl { position: absolute; right: 14px; top: calc(var(--mapshell-inset-top, 0px) + 13px); z-index: 3; display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-btn); transition: top var(--surface-settle, .32s) var(--surface-ease, ease); }
 /* Живая обратная связь на нажатие пальцем (примитив её не несёт). */

@@ -33,10 +33,10 @@ function useTripMenu({ tripId, addons, isPro, proResolved }) {
     // рейл стоит с одним бренд-слотом, пункты приезжают вместе с трипом.
     lensItems: tripId ? menuSections('lens', addons, myStep) : [],
     mgmtItems: tripId ? menuSections('manage', addons, myStep) : [],
-    canShare: clearsStep(myStep, 'participant'),
+    canShare: !!tripId && clearsStep(myStep, 'participant'),
     // Апселл показывается только когда статус Pro РАЗРЕШЁН: иначе пункт моргает
-    // на Pro-трипе, пока едет ответ.
-    showUpgrade: proResolved && !isPro,
+    // на Pro-трипе, пока едет ответ. Без трипа апселлить нечего.
+    showUpgrade: !!tripId && proResolved && !isPro,
     // Считаем чат только когда линза чата доступна (TRIP-208 Ф2-2b): бейдж
     // рисуется под видимым пунктом, поэтому трип без чата держит ноль подписок
     // вместо живой, которая всё равно ничего не покажет.
