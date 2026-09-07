@@ -198,6 +198,11 @@ export default function TripShell({
   // Секция сама владеет своим скроллом (карта, чат, редактор): тело без
   // паддинга и без скролла, поверхность в край.
   const flush = sectionById(section)?.flush === true;
+  // Секция с картой лежит ПОД рейлом: контент занимает обе колонки сетки, рейл
+  // лежит над ним, а полосу рейла объявляет камере закрытой площадью уже сама
+  // карта. Холст тогда одной ширины в визарде и в трипе — переезд инстанса без
+  // `resize()`. Разбор целиком — у `.trip-content[data-bleed]` в app.css.
+  const bleed = sectionById(section)?.bleed === true;
 
   const goBack = () => nav(backTo);
   const backTitle = t('trip.back');
@@ -258,7 +263,7 @@ export default function TripShell({
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
           meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
         />
-        <div className="trip-content">
+        <div className="trip-content" data-bleed={bleed || undefined}>
           <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
             {children}
           </main>

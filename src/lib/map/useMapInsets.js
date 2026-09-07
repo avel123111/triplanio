@@ -1,6 +1,7 @@
 // @ts-check
 import { useEffect, useRef } from 'react';
 import { NO_INSETS, getMapInsets, padUnchanged, setMapInsets } from './insets';
+import { hasFramed } from './framed';
 import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
 
 /**
@@ -8,12 +9,15 @@ import { SURFACE_SETTLE_MS, surfaceEasing } from '@/lib/surfaceMotion';
  *
  * ★ Три правила обращения, и на каждом легко ошибиться:
  *   1. объявить отступ ДО первого кадрирования;
- *   2. на ПЕРВОМ применении поставить его без анимации (базовая точка отсчёта);
+ *   2. на ПЕРВОМ применении поставить его скачком — но только СВЕЖЕЙ карте:
+ *      живая, уже кадрированная, доезжает тем же темпом, что и поверхность;
  *   3. снимать отступ РОВНО на размонтировании.
  *
  * Правило 3 — самое коварное: сложи уборку с применением в один эффект, и React
  * позовёт её перед каждым перезапуском, то есть на каждой смене отступа —
- * отступ рывком уйдёт в ноль.
+ * объявленная площадь будет сниматься и ставиться заново на ровном месте. Пока
+ * уборка ещё и командовала камере (`padding: 0`), это был прямой рывок; команду
+ * убрали, правило осталось — разбор у самой уборки ниже.
  *
  * ★★ КАРТА ПОД НОВОЕ ОКНО ПОДСТРАИВАЕТСЯ, НО МАРШРУТ НЕ ПЕРЕКАДРИРУЕТ. Это две
  * РАЗНЫЕ вещи, и их легко склеить в одну — так тут и было:
@@ -70,8 +74,19 @@ export function useMapInsets(mapRef, { ready, insets, fitInsets = null, focusing
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
+    // ★ ТРИ СОСТОЯНИЯ ОТСТУПА, И ДВА ИЗ НИХ ПОХОЖИ ТОЛЬКО ВНЕШНЕ:
+    //   `null`      — поверхность ЕЩЁ НЕ ИЗМЕРЕНА (MapShell до замера панели):
+    //                 не трогаем ни камеру, ни хранилище — первую настоящую
+    //                 величину поставит следующий проход. Нулём это применять
+    //                 нельзя: камера встала бы в заведомо неверное место и через
+    //                 кадр ехала бы из него (разбор у `panelPx` в MapShell);
+    //   `undefined` — у поверхности отступов НЕТ (карта без панели: обзор,
+    //                 публичный трип): это честный ноль, и он применяется;
+    //   коробка     — измеренная закрытая площадь.
+    if (insets === null) return undefined;
+    const want = insets ?? NO_INSETS;
     liveRef.current = map;
-    setMapInsets(map, insets, fitInsets || insets);
+    setMapInsets(map, want, fitInsets || want);
     const focusDriven = focusing || wasFocusing.current;
     wasFocusing.current = focusing;
     if (focusDriven) return undefined;
@@ -82,7 +97,20 @@ export function useMapInsets(mapRef, { ready, insets, fitInsets = null, focusing
     // это ровно заливка с круглым вырезом.
     if (!seenRef.current) {
       seenRef.current = true;
-      try { map.easeTo({ padding: getMapInsets(map), duration: 0 }); } catch { /* ignore */ }
+      // ★ Скачок — только у карты, которую ещё ни разу не кадрировали (тот же
+      // закон, что у фита: `framed.js`). Инстанс один на приложение и переживает
+      // смену экранов, а этот эффект бежит заново на каждом маунте: живая,
+      // уже кадрированная карта получала бы новую закрытую площадь встык
+      // (визард → трип: рейл добавляет 70 px). Живая карта ДОЕЗЖАЕТ тем же
+      // темпом, каким въезжает поверхность, закрывшая площадь; свежая —
+      // ставится сразу, анимировать ей не из чего.
+      const pad = getMapInsets(map);
+      const live = hasFramed(map) && !padUnchanged(map, pad);
+      try {
+        map.easeTo(live
+          ? { padding: pad, duration: SURFACE_SETTLE_MS, easing: surfaceEasing }
+          : { padding: pad, duration: 0 });
+      } catch { /* ignore */ }
       return undefined;
     }
     // ★★★ ОТСТУП, РАВНЫЙ ТЕКУЩЕМУ, НЕ ЕДЕТ — ЕГО НЕЛЬЗЯ И ПОСЫЛАТЬ. Любая
@@ -115,11 +143,17 @@ export function useMapInsets(mapRef, { ready, insets, fitInsets = null, focusing
   // Уборка — ОТДЕЛЬНЫМ эффектом с пустыми зависимостями (правило 3 выше).
   // Инстанс карты общий и живёт дольше экрана: не снять отступ значит отрезать
   // полосу у следующего.
+  // Уборка чистит ХРАНИЛИЩЕ, но не трогает КАМЕРУ. Раньше здесь стоял
+  // `easeTo({ padding: 0, duration: 0 })`, и на смене экранов живая карта на
+  // кадр проваливалась в нулевой отступ, а следующая поверхность ехала уже из
+  // нуля (замер: 620 → 20 → 539 → 690 при незагруженных тайлах). Каждая
+  // поверхность объявляет свой отступ сама на маунте (в т.ч. честный ноль —
+  // см. `undefined` выше), поэтому сбрасывать за неё нечего: живая камера
+  // доезжает из того места, где стояла, тем же темпом, что и поверхность.
   useEffect(() => () => {
     const map = liveRef.current;
     if (!map) return;
     setMapInsets(map, null);
-    try { map.easeTo({ padding: NO_INSETS, duration: 0 }); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

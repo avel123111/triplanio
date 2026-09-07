@@ -21,7 +21,7 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import TripShareFlow from '@/components/trips/TripShareFlow';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, BookingWarning, TimelineEmptyDay, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, BookingWarning, TimelineEmptyDay, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, sameCity } from '@/lib/validation';
@@ -307,81 +307,6 @@ function RightRailSkeleton() {
 // осиротевшими (их бы потребовал снести гард 2n).
 // visual-diff-exempt: .ts-grid {@media (max-width: 640px)} grid-template-columns — правило снесённой раскладки редактора, разметки под него не осталось
 // visual-diff-exempt: .ts-col-right {@media (max-width: 640px)} display — то же, вторая половина того же мёртвого правила
-//
-// Скелетон структурного редактора — ОДИН на обе фазы загрузки (shell и content).
-//
-// ★ РИСУЕТ ТУ ЖЕ РАСКЛАДКУ, ЧТО И САМ РЕДАКТОР, — ОБЩИЙ <MapShell>. До этого он
-// был СИРОТОЙ: размечен под `.ts-grid` / `.ts-leftscroll`, то есть под две
-// колонки, снесённые в TRIP-422 вместе со второй рукописной копией раскладки.
-// Правил у этих имён не осталось (`.ts-grid` вычислялся `display: block`), и
-// кадр загрузки выходил не «редактор без данных», а другой экран: ряды во всю
-// ширину и карты нет вовсе. Ни один гард этого не видел — 2n ловит осиротевшее
-// ПРАВИЛО, а тут осиротела РАЗМЕТКА, обратное направление.
-//
-// Карту тут отдаём ПУСТЫМ слотом, а не живой поверхностью: инстанс mapbox один
-// на всё приложение (MapProvider), и двух живых поверхностей одновременно быть
-// не может. Слот и без канваса красит подложку (`--map-backdrop`) — ровно то,
-// что видно, пока не пришли тайлы.
-//
-// ★ ДЕТЕНТ И СВОРАЧИВАНИЕ ОБЪЯВЛЕНЫ ЯВНО, И ЭТО НЕ УКРАШЕНИЕ. Оба состояния
-// принадлежат ВИДЖЕТУ, а не данным в нём, поэтому кадр загрузки обязан открыть
-// его там же, где откроет редактор. Промолчав, скелетон брал дефолт примитива
-// (детент 0 = 15%) и на телефоне показывал шит полоской, которая прыгала на 68%
-// в момент приезда content'а, — то есть ровно тот шов, который эта задача
-// убирает на десктопе. Кнопка сворачивания на шве по той же причине: без
-// `onCollapsedChange` шелл её не рисует вовсе, и она «выщёлкивалась» бы при
-// смене скелетона на редактор.
-function EditSkeleton() {
-  const { t } = useI18n();
-  const [detent, setDetent] = useState(1);
-  const [collapsed, setCollapsed] = useState(false);
-  return (
-    <MapShell
-      /* Тот же ключ, что у готовой секции (`trip.sidebar_route`): скелетон и
-         экран обязаны называться одинаково, иначе подпись меняется на глазах
-         в момент загрузки. */
-      panelLabel={t('trip.sidebar_route')}
-      map={null}
-      detent={detent}
-      onDetentChange={setDetent}
-      collapsed={collapsed}
-      onCollapsedChange={setCollapsed}
-      collapseLabel={t('tse.route_hide')}
-      expandLabel={t('tse.route_show')}
-      panelHeader={(
-        <div className="col col--g2">
-          <Skeleton w={160} h={26} r={6} />
-          <Skeleton w={210} h={12} r={5} />
-        </div>
-      )}
-      panel={(
-        <div className="te-panefade">
-          {/* Граница реюза проведена по КОРОБКЕ и РИТМУ, и она намеренная.
-              `.te-panefade` (обёртка выше) берём ОСОЗНАННО: это коробка тела
-              виджета — отступы, скролл и появление, — и именно от неё отступы
-              кадра загрузки совпадают с рабочими. А вот РИТМ РЯДОВ собран общими
-              утилитами, а не `.te-table` / `.te-seamwrap`: те держат сетку колонок
-              редактора и зазоры его списка, то есть приватное устройство того,
-              чего в скелетоне нет. Дотянувшись туда, он ломался бы от каждой
-              правки редактора — ровно так он и осиротел в прошлый раз. */}
-          <div className="col col--g3">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} radius="md" className="row row--g6">
-                <Skeleton w={36} h={36} r={'var(--r-sm)'} />
-                <div className="grow col col--g2">
-                  <Skeleton w="50%" h={14} r={5} />
-                  <Skeleton w="30%" h={11} r={5} />
-                </div>
-                <Skeleton w={90} h={30} r={'var(--r-pill)'} />
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-    />
-  );
-}
-
 // Build a sorted array of all days between start and end (inclusive), 'yyyy-MM-dd'
 function buildDayList(startIso, endIso) {
   const days = [];
@@ -1581,14 +1506,15 @@ export default function TripView() {
               ★ Гейт стал строже по ОХВАТУ, а не по правилу: с TRIP-459 маршрут
               смотрят все, поэтому падение content'а теперь разворачивает в
               retry и наблюдателя — у него это единственный экран с картой. */}
+          {/* Загрузку секция держит САМА: `EditLens` монтируется сразу и рисует
+              свою оболочку с живой картой, а скелетон занимает только панель,
+              пока нет content. Отдельного скелетона со второй оболочкой здесь
+              больше нет — он парковал инстанс карты на время загрузки (разбор в
+              EditLens у `loading`). Гейт остаётся один: отказ content → retry. */}
           {shownLens === 'route' && (
-            (shellLoading || editGate === 'loading')
-              // ОДИН скелетон редактора (обе колонки: маршрут + карта), тот же в
-              // фазе shell и в фазе content — не размонтируется, не прыгает (TRIP-337).
-              ? <EditSkeleton />
-              : editGate === 'ok'
-                ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
-                : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
+            (!shellLoading && editGate === 'error')
+              ? <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
+              : <EditLens tripId={tripId} shell={shellData} content={contentData} />
           )}
           {shownLens === 'settings' && (
             <SettingsLens

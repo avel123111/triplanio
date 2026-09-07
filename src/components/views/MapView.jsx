@@ -5,7 +5,8 @@ import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, 
 import { createHotelBadgeEl, createClusterBubbleEl, cityPoints } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
-import { fitHeightSig } from '@/lib/map/insets';
+import { fitAir, fitHeightSig } from '@/lib/map/insets';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useMapInsets } from '@/lib/map/useMapInsets';
 import { useCityMarkers } from '@/lib/map/useCityMarkers';
 import { useCityBadge } from '@/lib/map/useCityBadge';
@@ -234,6 +235,10 @@ export default function MapView({
   useEffect(() => { hoveredHotelIdRef.current = hoveredHotelId != null ? String(hoveredHotelId) : null; }, [hoveredHotelId]);
 
   const [projection, setProjection] = useState(initialProjection);
+  // Воздух кадра маршрута — общий закон `fitAir` (разбор у него же, в
+  // `lib/map/insets.js`): с визардом создания эта карта делит один инстанс на
+  // одном маршруте, и с разным воздухом камера на входе в редактор ехала всегда.
+  const air = fitAir(useIsPhone());
   // Internal toggles (driven by the on-map control buttons). Seeded from props and
   // re-synced if the prop changes (e.g. the app theme), but the buttons can override.
   const [mapScheme, setMapScheme] = useState(colorScheme);
@@ -461,7 +466,7 @@ export default function MapView({
       drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
       applyMarkerVisibility(markersRef.current, orderIndexById, -1, false);
       if (canFit && leaving && ordered.length > 0) {
-        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
+        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: air, maxZoom: 8, animate: true });
       }
       return undefined;
     }
@@ -611,7 +616,7 @@ export default function MapView({
     } else if (hadFocusRef.current) {
       hadFocusRef.current = false;
       if (canFit && ordered.length > 0) {
-        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
+        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: air, maxZoom: 8 });
       }
     }
   }, [ready, canFit, focusSig, revealActiveId]);
@@ -644,12 +649,12 @@ export default function MapView({
         // по нему, живая карта резала кадр встык при КАЖДОЙ смене экрана с картой
         // (заметнее всего на переходе из создания трипа в редактор: холст тот же,
         // маршрут тот же, а камера дёргается). Факт живёт на инстансе — `framed.js`.
-        if (hasFramed(map)) calmFit(map, pts, { padding: 60, maxZoom: 8 });
-        else fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 });
+        if (hasFramed(map)) calmFit(map, pts, { padding: air, maxZoom: 8 });
+        else fitToPoints(map, pts, { padding: air, maxZoom: 8, duration: 0 });
       } else if (revealActiveId == null) {
-        calmFit(map, pts, { padding: 60, maxZoom: 8 }); // non-public: adaptive calm tempo
+        calmFit(map, pts, { padding: air, maxZoom: 8 }); // non-public: adaptive calm tempo
       } else {
-        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 650 }); // public reveal: its own tempo
+        fitToPoints(map, pts, { padding: air, maxZoom: 8, duration: 650 }); // public reveal: its own tempo
       }
       fittedSigRef.current = fitSignature;
       markFramed(map);

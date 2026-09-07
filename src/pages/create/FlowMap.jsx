@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { calmFit } from '@/lib/map/camera';
 import { markFramed } from '@/lib/map/framed';
-import { fitHeightSig, getMapInsets } from '@/lib/map/insets';
+import { fitAir, fitHeightSig, getMapInsets } from '@/lib/map/insets';
 import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { PHONE_MAX_W } from '@/hooks/use-mobile';
 import { useMapInsets } from '@/lib/map/useMapInsets';
@@ -43,10 +43,6 @@ function buildLegs(home, cities, finishCity) {
 // даёт шар МЕНЬШЕ свободного окна — вокруг него видно дымку и космос. Замер по
 // пикселям: канвас во весь экран телефона — 22.9 % дымки и все четыре угла вне
 // планеты; слот, равный свободному окну, — ни одной точки рамки вне планеты.
-
-function fitPaddingFor(w) {
-  return w > PHONE_MAX_W ? { top: 48, right: 48, bottom: 48, left: 48 } : { top: 32, right: 40, bottom: 32, left: 40 };
-}
 
 /**
  * ПОЛОСА, КОТОРУЮ У НИЗА СВОБОДНОГО ОКНА ЗАНИМАЕТ НАША ЖЕ ПИЛЮЛЯ
@@ -283,7 +279,8 @@ export default function FlowMap({
     if (canFit) {
       // ВОЗДУХ кадра, и только он: закрытую площадь карта знает сама
       // (`lib/map/insets.js`), поэтому складывать её здесь не нужно и нельзя.
-      const air = fitPaddingFor(winW);
+      // Сам воздух — общий закон `fitAir`: тот же, что у карты трипа.
+      const air = fitAir(winW <= PHONE_MAX_W);
       if (fitPositions.length) {
         // Route: re-frame ONLY when the route geometry / viewport actually changed
         // (fitKey) — a step change rebuilds pins above but leaves fitKey alone, so
@@ -326,7 +323,7 @@ export default function FlowMap({
     return undefined;
     // fitKey → re-frame (route geometry + viewport size, so it also covers resize).
     // Пересборку пинов делает `useCityMarkers` по ptsKey — здесь его нет.
-    // winW/winH читаются внутри (fitPaddingFor / startGlobeView) — перечислены для
+    // winW/winH читаются внутри (fitAir / startGlobeView) — перечислены для
     // честности exhaustive-deps, хотя fitKey их и так несёт.
   }, [ready, canFit, fitKey, winW, winH]);
 

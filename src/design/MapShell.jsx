@@ -46,7 +46,9 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  */
 
 /**
- * `map` — узел ИЛИ функция `(view) => node`, где `view` = `{ camera, fit }`.
+ * `map` — узел ИЛИ функция `(view) => node`, где `view` = `{ camera, fit }`; пока
+ * поверхность не измерена, обе коробки — `null` (разбор — у `panelPx` ниже):
+ * «не измерено» карта отличает от «отступов нет» (`undefined`, карта без шелла).
  * ДВЕ коробки, по одной на роль: `camera` — чем сдвигаем камеру, `fit` — во что
  * вписываем маршрут. На телефоне первая нулевая (вид уводит сдвиг холста), и
  * без второй фит вписывал бы маршрут во весь холст, то есть наполовину под шит.
@@ -116,7 +118,21 @@ export function MapShell({
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
   const [capPx, setCapPx] = useState(0);
-  const [panelPx, setPanelPx] = useState(0);
+  // ★ «НЕ ИЗМЕРЕНО» ≠ «НОЛЬ». Ширина панели известна только после раскладки
+  // (`useLayoutEffect` ниже), а первый рендер шелла идёт до неё. Пока здесь стоял
+  // ноль, карта на первом же кадре получала отступ 0 (маршрут центрировался ПОД
+  // панелью), а через кадр — измеренные ~620 px, и `useMapInsets` честно ЕХАЛ из
+  // одного в другое: 700 мс пана по незагруженным тайлам на каждом входе в
+  // редактор («карта дёргается, справа пустая полоса»). Замер: pad 620 → 0 → 48 →
+  // 406 → 599 → 620, tiles:false всю дорогу. До замера отступ НЕИЗВЕСТЕН, и карте
+  // это отдаётся коробками `null` в `view` — она ничего не трогает; замер приезжает
+  // синхронным ре-рендером ДО отрисовки кадра, и первая настоящая величина
+  // ставится без движения.
+  const [panelPx, setPanelPx] = useState(/** @type {number | null} */ (null));
+  // Левый край панели от края холста: всё левее неё закрыто НЕ панелью (рейл
+  // трипа лежит над холстом в секциях с картой) и остаётся закрытым, когда
+  // панель свёрнута. Меряется вместе с правым краем, одной функцией.
+  const [panelOffsetPx, setPanelOffsetPx] = useState(0);
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -145,13 +161,14 @@ export function MapShell({
 
   const measurePanel = useCallback(() => {
     const root = rootRef.current, el = panelRef.current;
-    if (!root || !el) { setPanelPx(0); return; }
+    if (!root || !el) { setPanelPx(0); setPanelOffsetPx(0); return; }
     const r = el.getBoundingClientRect(), b = root.getBoundingClientRect();
     setPanelPx(Math.max(0, Math.round(r.right - b.left)));
+    setPanelOffsetPx(Math.max(0, Math.round(r.left - b.left)));
   }, []);
 
   useLayoutEffect(() => {
-    if (isPhone) { setPanelPx(0); return undefined; }
+    if (isPhone) { setPanelPx(0); setPanelOffsetPx(0); return undefined; }
     measurePanel();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measurePanel) : null;
     if (ro && panelRef.current) ro.observe(panelRef.current);
@@ -167,8 +184,8 @@ export function MapShell({
   // уезжает `transform`-ом — её ширина не меняется, и «померить свёрнутую» дало
   // бы правильный ответ по случайности. Про свёрнутость знает правило.
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx, overlayOpen: overlayActive, collapsed }),
-    [isPhone, sheetPx, capPx, panelPx, overlayActive, collapsed],
+    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx: panelPx ?? 0, offsetPx: panelOffsetPx, overlayOpen: overlayActive, collapsed }),
+    [isPhone, sheetPx, capPx, panelPx, panelOffsetPx, overlayActive, collapsed],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
@@ -186,7 +203,10 @@ export function MapShell({
   // вписывать») — маршрут вписывался во весь холст, и обе точки оказывались за
   // кромкой шита. Ни один гард такого не видит: пропа нет, значение просто
   // `null`. Один объект делает пропуск невозможным.
-  const view = useMemo(() => ({ camera: box.camera, fit: box.fit }), [box]);
+  // До замера панели коробки НЕИЗВЕСТНЫ (`null`), а не нулевые — см. `panelPx`.
+  // `null` (не измерено) и `undefined` (у поверхности отступов нет вовсе, как у
+  // карты без шелла) карта различает: первое ждёт, второе — честный ноль.
+  const view = useMemo(() => (panelPx === null ? { camera: null, fit: null } : { camera: box.camera, fit: box.fit }), [box, panelPx]);
 
   const rootStyle = useMemo(() => ({
     '--mapshell-bottom': `${box.slotBottom}px`,

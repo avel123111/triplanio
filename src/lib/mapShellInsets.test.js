@@ -95,3 +95,12 @@ test('★★ ПОТОЛОК СДВИГА — ВТОРОЙ СВЕРХУ ДЕТЕ�
 test('★ без потолка сдвиг идёт по самому шиту (потолок не объявлен — не выдумываем)', () => {
   assert.equal(mapShellInsets({ phone: true, sheetPx: 702 }).shift, 351);
 });
+
+test('★ ПОЛОСА ЛЕВЕЕ ПАНЕЛИ (рейл над холстом) ЗАКРЫТА ВСЕГДА — сворачивание открывает только панель', () => {
+  const open = mapShellInsets({ panelPx: 690, offsetPx: 70 });
+  assert.equal(open.camera.left, 690, 'открытая панель: закрыто до её правого края');
+  const collapsed = mapShellInsets({ panelPx: 690, offsetPx: 70, collapsed: true });
+  assert.equal(collapsed.camera.left, 70, 'свёрнутая: закрыт только рейл');
+  assert.equal(collapsed.fit.left, 70);
+  assert.equal(mapShellInsets({ panelPx: 620, collapsed: true }).camera.left, 0, 'без рейла свёрнутая не закрывает ничего');
+});
