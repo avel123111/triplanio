@@ -220,7 +220,7 @@ import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { tripDuration } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } from '../design/index';
+import { Badge, Btn, Chip, Card, MapShell, Skeleton, Tile, PageHead, Tooltip, useToast } from '../design/index';
 import { Row, Trunc } from '../design/Layout';
 import CityAdder from '@/components/cities/CityAdder';
 import { CityAnchorRow } from '@/pages/create/anchors';
@@ -618,6 +618,9 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const liveHotels = useMemo(() => (content?.hotels || []), [content]);
   const liveActivities = useMemo(() => (content?.activities || []), [content]);
   const liveTransfers = useMemo(() => (content?.transfers || []), [content]);
+  // Города для КАРТЫ, пока драфта ещё нет (content едет): тот же построитель, что
+  // и у драфта, без переездов — карте нужны точки и порядок, а не зазоры дней.
+  const shellNodes = useMemo(() => (shell ? buildDraft(shell, [], lang).nodes : []), [shell, lang]);
   // While creating a transfer, draw a synthetic leg on the map (shaped by the
   // picked transport type) so the route appears instantly, before saving.
   const mapTransfers = useMemo(() => {
@@ -882,17 +885,30 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   //   он же не пускает сюда по прямому адресу - resolveSection подменит
   //   недоступную секцию дефолтной.
   // Осталась ОДНА собственная проверка: без content драфт не построить.
-  if (!draft) return null;
+  //
+  // ★ КАРТА ПРИНАДЛЕЖИТ СЕКЦИИ, А ПАНЕЛЬ — ДАННЫМ. Пока драфта нет, секция всё
+  // равно рисует СВОЮ оболочку (`MapShell` + живой `MapView`), а скелетон
+  // занимает только панель. Раньше на загрузке стоял отдельный скелетон со
+  // своим `MapShell` и пустым слотом карты (TripView), то есть у секции было
+  // две оболочки, сменявшие друг друга по состоянию загрузки, — и инстанс
+  // карты (один на приложение, MapProvider) на это время парковался за экран.
+  // На переходе «создал трип → открыть трип» это выглядело так: карта
+  // исчезает и через секунду появляется. Одна оболочка на секцию закрывает
+  // это по построению: слот карты существует с первого кадра секции, прогрет
+  // кэш или нет. Города карта берёт из shell (пины и кадр — сразу), редактор
+  // ждёт content.
+  const loading = !draft;
+  const nodes = draft ? draft.nodes : shellNodes;
 
-  const ordered = sortVisits(draft.nodes);
+  const ordered = sortVisits(nodes);
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
-  const cityCount = uniqueCityCount(draft.nodes);
-  const dateRange = formatTripRange(draft.nodes, '-');
+  const cityCount = uniqueCityCount(nodes);
+  const dateRange = formatTripRange(nodes, '-');
   const endDate = seq[seq.length - 1]?.end_date;
   // Trip length via the ONE shared helper (tripDuration().days = nights+1 =
   // calendar days), the same source the trip header / Overview / public trip use.
   // Was an inline nights count rendered with the day-word — off by one from them.
-  const tripDays = tripDuration(null, draft.nodes).days;
+  const tripDays = tripDuration(null, nodes).days;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
@@ -945,7 +961,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const adjPairs = new Set();
   for (let k = 0; k < ordered.length - 1; k++) adjPairs.add(`${ordered[k].id}>${ordered[k + 1].id}`);
   const outOfPlanTransfers = liveTransfers.filter((tr) => !adjPairs.has(`${tr.from_city_visit_id}>${tr.to_city_visit_id}`));
-  const nodeName = (id) => draft.nodes.find((n) => n.id === id)?.city_name || '?';
+  const nodeName = (id) => nodes.find((n) => n.id === id)?.city_name || '?';
 
   // Left-column panel (in-place, replaces the old modals). null → city list.
   // Adding a city no longer opens a panel — it happens inline in the route list
@@ -1035,7 +1051,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // Map camera focus following the open panel: city/hotel/activity → that city;
   // transfer → both cities. Falsy → whole-route auto-fit stays in charge.
   const coordOf = (n) => (n && n.latitude != null && n.longitude != null ? [n.longitude, n.latitude] : null);
-  const byId = (id) => draft.nodes.find((n) => n.id === id);
+  const byId = (id) => nodes.find((n) => n.id === id);
   let mapFocus = null;
   if (leftPanel?.type === 'city') {
     const p = coordOf(byId(leftPanel.id)); if (p) mapFocus = [p];
@@ -1120,7 +1136,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // с карты в список ничего не приходило.
   // Приоритет бейджа: наведение → зафиксированный клик по карте → открытая панель.
   const badgeId = hoveredNodeId || mapPickId || selectedNodeId;
-  const badgeNode = draft.nodes.find((n) => n.id === badgeId) || null;
+  const badgeNode = nodes.find((n) => n.id === badgeId) || null;
   // CTA показываем ТОЛЬКО когда бейдж — это зафиксированный на карте выбор (ещё не
   // открытый). Наведение на другой город уводит бейдж на него → CTA гаснет; на сам
   // выбранный — badgeId === mapPickId, CTA держится (без мигания при ховере пина).
@@ -1176,7 +1192,17 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   //
   // Теперь: карта во всю свободную площадь, редактор — плавающий виджет слева со
   // сворачиванием, на телефоне тот же виджет уезжает в шит с тремя детентами.
-  const routeHead = (
+  // Скелетон панели — ТОЛЬКО панели: оболочка и карта выше живые. Ритм рядов
+  // собран общими утилитами, а не `.te-table`/`.te-seamwrap` (приватное
+  // устройство редактора, от правок которого скелетон уже сиротел однажды);
+  // коробку тела даёт та же `.te-panefade`, что и у рабочей панели, поэтому
+  // отступы кадра загрузки совпадают с рабочими.
+  const routeHead = loading ? (
+    <div className="col col--g2">
+      <Skeleton w={160} h={26} r={6} />
+      <Skeleton w={210} h={12} r={5} />
+    </div>
+  ) : (
     <PageHead
       /* Воздух снизу даёт слот шапки шелла — модификатор снимает собственный
          отступ примитива, иначе они складываются. */
@@ -1198,7 +1224,22 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
 
   // Тело виджета: список маршрута ЛИБО панель, подменяющая его («добавить
   // город»). Ключ на обёртке перезапускает анимацию появления при смене.
-  const routeBody = (
+  const routeBody = loading ? (
+    <div className="te-panefade">
+      <div className="col col--g3">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} radius="md" className="row row--g6">
+            <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+            <div className="grow col col--g2">
+              <Skeleton w="50%" h={14} r={5} />
+              <Skeleton w="30%" h={11} r={5} />
+            </div>
+            <Skeleton w={90} h={30} r={'var(--r-pill)'} />
+          </Card>
+        ))}
+      </div>
+    </div>
+  ) : (
     <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1}
       onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade">
       {(!isSheet && !useDrawer && leftPanelEl) || (
@@ -1322,7 +1363,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   return (
     <MapShell
       map={(view) => (
-            <MapView view={view} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls={['projection', 'theme', 'se']} initialProjection="globe"
+            <MapView view={view} visits={nodes} transfers={mapTransfers} showStartEnd mapControls={['projection', 'theme', 'se']} initialProjection="globe"
               /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
                  «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
               cooperativeGestures={false}
