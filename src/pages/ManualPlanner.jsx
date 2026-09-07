@@ -71,7 +71,9 @@ const STEPS = [
 const NO_TRANSFERS = Object.freeze([]);
 const MAP_CONTROLS = Object.freeze(['projection', 'theme']);
 
-// Верхний детент шита — индекс в трио шелла `[0.15, 0.68, 1]` (MapShell).
+// Детенты шита — индексы в трио шелла `[0.15, 0.68, 1]` (MapShell): шаги идут
+// на среднем, успех поднимает на верхний.
+const SHEET_MID = 1;
 const SHEET_TOP = 2;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -809,8 +811,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // Детент шита и свёрнутость панели — состояние ЭКРАНА, а не шелла: шаг может
   // осознанно опустить шит (например, когда просит выбрать город на карте).
-  // Шаги идут на среднем детенте, успех поднимает шит на верхний (SHEET_TOP).
-  const [detent, setDetent] = useState(1);
+  const [detent, setDetent] = useState(SHEET_MID);
   const [collapsed, setCollapsed] = useState(false);
 
   const isPro = isProActive(user);

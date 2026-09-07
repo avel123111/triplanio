@@ -4542,7 +4542,8 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .flow-lp-b display — колонка содержимого шага
    visual-diff-exempt: .flow-lp-b flex-direction — то же
    visual-diff-exempt: .flow-lp-b gap — ритм между блоками шага */
-.flow-lp-b { position: relative; min-height: 100%; padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; } /* design-token-exempt: значения не новые — те же, что были у .lp-b, правило переехало вместе с разметкой *//* FlowProgress (TRIP-337) — счётчик-прогресс create-флоу на ДС. Раскладка несут
+.flow-lp-b { position: relative; min-height: 100%; padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; } /* design-token-exempt: значения не новые — те же, что были у .lp-b, правило переехало вместе с разметкой */
+/* FlowProgress (TRIP-337) — счётчик-прогресс create-флоу на ДС. Раскладка несут
    .row/.col в разметке; здесь — только облик, которого у примитивов нет. Акцент
    шага приходит КАНАЛОМ --fp-accent (brand для ручного флоу, ai для ИИ), как тинт
    у Tile: цвет выбирается в рантайме, но переменной, не хардкодом. Полоска шагов —
