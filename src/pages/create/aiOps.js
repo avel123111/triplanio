@@ -31,6 +31,7 @@
 import {
   makeNode, insertNode, withNights, recomputeDates, isAnchorNode, cityNodesOf, endOf, refOf,
 } from './routeModel.js';
+import { isYmd } from '../../lib/time.js';
 
 const CITY = { city_name: 'string', city_name_en: 'string', country: 'string?', country_code: 'string' };
 
@@ -41,7 +42,8 @@ const CITY = { city_name: 'string', city_name_en: 'string', country: 'string?', 
    дата старта везде `startDate`, город везде `city_name…`, узел везде `ref`. */
 
 /**
- * Словарь операций. `fields` — форма (тип каждого поля; `?` = необязательное),
+ * Словарь операций. `fields` — форма (тип каждого поля; `?` = необязательное;
+ * имена типов — те же, что у `FieldSpec` бэка: `string`/`number`/`date`),
  * `city` — операция несёт город и потребляет один резолв, `doc` — строка для
  * промпта. Имена полей города те же, что модель отдавала и раньше.
  * @type {Record<string, { fields: Record<string, string>, city?: boolean, doc: string }>}
@@ -52,7 +54,7 @@ export const OPS = {
     doc: 'set_route — построить маршрут с нуля. ТОЛЬКО когда в драфте нет ни одного города. nodes: список {kind: start|transit|end, city_name, city_name_en, country, country_code, nights}. У start/end ночей нет.',
   },
   add_city: {
-    fields: { ...CITY, nights: 'int?', after: 'ref?' },
+    fields: { ...CITY, nights: 'number?', after: 'ref?' },
     city: true,
     doc: 'add_city — добавить город. nights по умолчанию 3; after: ref узла, после которого вставить (без after — в конец, перед финишем).',
   },
@@ -70,7 +72,7 @@ export const OPS = {
     doc: 'move_city — переставить город после узла after; без after — в начало маршрута.',
   },
   set_nights: {
-    fields: { ref: 'ref', nights: 'int' },
+    fields: { ref: 'ref', nights: 'number' },
     doc: 'set_nights — задать число ночей в городе (0 = проездом, пересадка).',
   },
   set_start: {
@@ -107,9 +109,8 @@ export const REASONS = /** @type {const} */ ({
   anchor: 'anchor',
 });
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const isDate = (v) => typeof v === 'string' && DATE_RE.test(v) && !Number.isNaN(Date.parse(v));
-const isInt = (v) => Number.isInteger(v) && v >= 0;
+const isDate = (v) => isYmd(v) && !Number.isNaN(Date.parse(v));
+const isCount = (v) => Number.isInteger(v) && v >= 0;
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isRef = (v) => typeof v === 'string' || typeof v === 'number';
 
@@ -120,7 +121,7 @@ function fieldOk(type, v) {
   if (v == null || v === '') return optional;
   if (t === 'string') return isStr(v);
   if (t === 'date') return isDate(v);
-  if (t === 'int') return isInt(v);
+  if (t === 'number') return isCount(v);
   if (t === 'ref') return isRef(v);
   if (t === 'nodes') return Array.isArray(v) && v.every((n) => n && isStr(n.city_name) && ['start', 'transit', 'end'].includes(n.kind));
   return false;
@@ -330,7 +331,7 @@ export function applyOps(state, ops, { cities = [], today }) {
 const JSON_TYPES = {
   string: { type: 'string' },
   date: { type: 'string', description: 'YYYY-MM-DD' },
-  int: { type: 'integer', minimum: 0 },
+  number: { type: 'integer', minimum: 0 },
   ref: { type: 'string' },
 };
 

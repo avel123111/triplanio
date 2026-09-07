@@ -62,3 +62,40 @@ export function layoutDates(nodes, baseISO) {
     return { ...n, start_date: startD, end_date: endD, nights, gap, position: i };
   });
 }
+
+// ─── Даты узла для показа (переехали из ManualPlanner, TRIP-527: ряд маршрута
+// рисуют три экрана, и строку дат им даёт одно место) ─────────────────────────
+
+export function ymdLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const da = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${da}`;
+}
+
+export function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return ymdLocal(d);
+}
+
+export function shortDateLabel(iso, locale = 'ru') {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return '';
+  try {
+    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(d);
+  } catch {
+    return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(d);
+  }
+}
+
+// City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
+// null when the trip start isn't set yet. Shared by the city row and the map
+// tooltip so both read identically.
+export function cityDateRange(city, lang) {
+  const nights = +city.nights || 0;
+  const start = city.startDate ? shortDateLabel(city.startDate, lang) : null;
+  const end = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
+  return start ? (end ? `${start} – ${end}` : start) : null;
+}

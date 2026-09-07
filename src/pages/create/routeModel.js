@@ -186,7 +186,7 @@ export const refOf = (node) => String(node?.id);
  */
 export function toDraftPayload(nodes, startDate, title) {
   return {
-    startDate: startDate || '',
+    startDate: startDate || null,
     title: title || '',
     nodes: (nodes || []).filter((n) => n.city_name).map((n) => ({
       ref: refOf(n),

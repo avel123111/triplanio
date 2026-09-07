@@ -16,12 +16,12 @@
  * POST body: { sessionId: string, prompt: string, language?: string, draft?: Draft }
  */
 
-import { jsonError, withHandler } from '../_shared/http.ts';
+import { jsonError, refusalResponse, withHandler } from '../_shared/http.ts';
 import { requireUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt, n8nWebhookUrl } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 import { envTag } from '../_shared/envTag.ts';
-import { normalizeDraft } from './draft.ts';
+import { isRefusal, normalizeDraft } from './draft.ts';
 
 // TRIP-111: лимит генераций ИИ-планировщика. Вешается на САМ вызов генерации
 // (не на сохранение трипа), поэтому закрывает и delete+recreate, и спам без
@@ -36,16 +36,15 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
 
     const { sessionId, prompt, language, draft: rawDraft } = await req.json();
     if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400, headers: corsHeaders });
-    const parsed = normalizeDraft(rawDraft);
-    if (!parsed.ok) return jsonError(400, parsed.error, 'INVALID_INPUT', corsHeaders);
+    // Форма драфта — общий шов валидации (`draft.ts` → `validateFields`), отказ
+    // едет тем же `refusalResponse`, что у записи (400 INVALID_INPUT).
+    const draft = normalizeDraft(rawDraft);
+    if (isRefusal(draft)) return refusalResponse(draft, corsHeaders);
 
     // Rate-limit ПЕРЕД дорогим LLM-вызовом (TRIP-111). Общий примитив
     // rate_limit_hits (bucket=ai_trip_planner, key=user_id).
     if (await aiFlowLimited('ai_trip_planner', user.id, PLANNER_RATE_LIMIT, PLANNER_RATE_WINDOW)) {
-      return Response.json(
-        { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
-        { status: 429, headers: corsHeaders },
-      );
+      return jsonError(429, 'Rate limit exceeded', 'RATE_LIMITED', corsHeaders);
     }
 
     const n8nSecret = Deno.env.get('N8N_SECRET');
@@ -65,7 +64,7 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
       // `env` — та же метка окружения, что у конверта notify (`_shared/envTag.ts`,
       // секрет SENTRY_ENVIRONMENT): инстанс n8n ОДИН на dev и prod, поэтому без
       // неё воркфлоу не может отличить, из какого проекта пришёл прогон.
-      body: JSON.stringify({ sessionId, prompt, language, draft: parsed.draft, userId: user.id, env: envTag() }),
+      body: JSON.stringify({ sessionId, prompt, language, draft, userId: user.id, env: envTag() }),
     });
 
     if (!res.ok) {

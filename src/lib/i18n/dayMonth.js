@@ -1,3 +1,4 @@
+import { isYmd } from '../time.js';
 // «День + короткий месяц»: 5 авг. · 5 Aug · 5 ago.
 //
 // ОТДЕЛЬНЫМ модулем и БЕЗ ЕДИНОГО ИМПОРТА — чтобы его брал `node --test`: соседний
@@ -21,11 +22,10 @@
 // 42 значения, включая переходы месяца и года) — расхождений ноль. Закреплено
 // `dayMonth.test.js`: там лежат ЭТАЛОНЫ, снятые с luxon до правки.
 
-const SHORT_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 export function dayMonth(value, timezone, localeTag) {
   if (!value) return '';
   const iso = String(value);
-  const dateOnly = SHORT_DATE_ONLY.test(iso);
+  const dateOnly = isYmd(iso);
   const d = new Date(dateOnly ? `${iso}T00:00:00Z` : iso);
   if (Number.isNaN(d.getTime())) return '';
   const zone = dateOnly || !timezone || timezone === 'utc' ? 'UTC' : timezone;

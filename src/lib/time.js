@@ -19,6 +19,14 @@ import { parseNaive } from './naive-time.js';
  * «пояса тут не нужны вообще» и рождало очередную наивную копию длительности.
  */
 
+/**
+ * Календарная дата `YYYY-MM-DD` без времени — единственный предикат формы на
+ * фронте (копии regex жили в `aiOps` и `i18n/dayMonth`). Форма, не календарь:
+ * `2026-02-31` пройдёт, реальность даты проверяет тот, кому она важна.
+ * @param {unknown} v
+ */
+export const isYmd = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
 // Convert datetime-local string ("yyyy-MM-dd'T'HH:mm") → ISO with trailing Z,
 // preserving wall-clock digits (no UTC offset math).
 export function localToUtc(localDateTime, _ianaTz) {
