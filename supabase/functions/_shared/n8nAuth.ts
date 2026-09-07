@@ -17,6 +17,20 @@
 
 import { corsFor } from './cors.ts';
 
+/**
+ * ЕДИНСТВЕННЫЙ адрес инстанса n8n (он один на dev и prod; окружение едет
+ * меткой `env` в теле, см. `envTag`). Домен `n8n.triplanio.com` — тот же
+ * инстанс, что railway `n8n-production-d1214`, но адрес у нас один и он здесь:
+ * до унификации хост лежал четырьмя копиями (notify, parse-booking,
+ * group-chat, ai-trip-planner), и смена домена значила бы четыре правки.
+ */
+const N8N_BASE = 'https://n8n.triplanio.com';
+
+/** Адрес вебхука n8n по пути: `n8nWebhookUrl('notify/invite_created')`. */
+export function n8nWebhookUrl(path: string): string {
+  return `${N8N_BASE}/webhook/${path.replace(/^\/+/, '')}`;
+}
+
 function b64url(input: Uint8Array | string): string {
   const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input;
   let bin = '';
