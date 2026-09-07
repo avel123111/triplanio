@@ -771,6 +771,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
 .head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-display — Geologica clamp(28–40)/800/1.05, tabular (карьер .head h1) */
 .t-title,
+.eroute h3,   /* TRIP-532: заголовок ленты-героя /trips — Title, не Heading (Pavel) */
 .sec-head h2.t-title,   /* шапка раздела: `.sec-head h2` ниже по файлу тянет ЛЮБОЙ h2 на канон heading и перебивает класс на самом элементе (равная специфичность, правило позже) — составной селектор возвращает слово разметке.
    Заголовок «N путешествий» на главной просили title, а получал heading именно из-за этого:
    visual-diff-exempt: .sec-head font-family — h2 с классом .t-title теперь получает свой канон (title), а не heading шапки раздела
@@ -798,7 +799,6 @@ h1,
 .fork-state b,   /* TRIP-287: инспектор канонов — заголовок состояния поиска → t-heading (h2 макета) */
 .statbar .v,   /* TRIP-278: инспектор канонов — числа статбара Title→Heading (h2 макета) */
 h2,
-.eroute h3,
 .acct-hero__av,
 .acct-hero__name,
 .sec-head h2,
@@ -4320,7 +4320,7 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .choice-card__arr transition — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532)
    visual-diff-exempt: .choice-card:hover transform — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532) */
 .choice-card--vis { gap: var(--sp-6); padding: var(--sp-6) var(--sp-7) var(--sp-6) var(--sp-6); }
-.choice-card__vis { flex: none; width: 96px; height: 96px; border-radius: var(--r-md); background: var(--hl-soft); overflow: hidden; display: grid; place-items: center; }
+.choice-card__vis { flex: none; width: 96px; height: 96px; border-radius: var(--r-btn); background: var(--hl-soft); overflow: hidden; display: grid; place-items: center; }
 .choice-card--ai .choice-card__vis { background: var(--ai-gradient-soft); }
 .choice-card__vis img { width: 100%; height: 100%; object-fit: contain; padding: 9%; box-sizing: border-box; display: block; }
 .choice-card--col { flex-direction: column; align-items: stretch; gap: var(--sp-6); padding: var(--sp-5) var(--sp-5) var(--sp-7); }
@@ -4351,7 +4351,7 @@ button.input[data-empty] { color: var(--muted-2); }
    держит колонка. Орбы-градиенты фона сняты: на широкой карточке они
    разъезжались на разные края и в тёмной теме читались пятнами.
    Reuses .choice-card for the manual/AI pair (the ONE canonical choice card).
-   floor-exempt: layout +5 — choice-card__vis / choice-card--vis / choice-card--col / eroute__fig / eroute__body: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора + рамка героя; предложены в плане TRIP-532, Pavel в той же сессии прислал картинки и решения (1:1 · две рядом), рельса снята (−8 классов)
+   floor-exempt: layout +6 — choice-card__vis / choice-card--vis / choice-card--col / eroute__fig / eroute__body / empty-state__art: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора + рамка героя; предложены в плане TRIP-532, Pavel в той же сессии прислал картинки и решения (1:1 · две рядом), рельса снята (−8 классов)
    visual-diff-exempt: .eroute__create {@media (max-width: 640px)} grid-template-columns — одна колонка стала базой, мобильная ступень схлопнута (TRIP-532)
    visual-diff-exempt: .eroute display — flex → grid: у героя своя колонка, текст и карточки в первой (TRIP-532)
    visual-diff-exempt: .eroute flex-direction — снято вместе с flex (TRIP-532)
@@ -4361,6 +4361,8 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .eroute justify-content — группа «текст | герой» по центру широкой карточки (TRIP-532)
    visual-diff-exempt: .eroute h3 max-width — потолок 22ch снят: ширину держит колонка 560px, заголовок переносился при половине свободной ширины (TRIP-532)
    visual-diff-exempt: .eroute p max-width — то же для подзаголовка, 46ch снят (TRIP-532)
+   visual-diff-exempt: .eroute h3 font-size — заголовок ленты-героя переведён с Heading на Title (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 line-height — то же: канон Title (TRIP-532)
    visual-diff-exempt: .eroute {@media (max-width: 640px)} grid-template-columns — одна колонка на телефоне (TRIP-532)
    visual-diff-exempt: .eroute {@media (max-width: 640px)} text-align — герой над текстом, всё по центру (TRIP-532)
    visual-diff-exempt: .eroute {@media (max-width: 640px)} justify-items — то же: карточки и герой по центру колонки (TRIP-532)
@@ -10643,6 +10645,12 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 48px 24px; text-align: center; color: var(--muted); }
 .empty-state > .tile { margin-bottom: 16px; }
+/* Картина вместо плитки (TRIP-532, проп `art`): первый потребитель — экран «Путешествие
+   создано» (StepReview). Дальше — свои картины у пустых состояний по экранам и одна
+   дефолтная (план Pavel). Размер задаёт этот владелец, у <Illustration> класса нет. */
+.empty-state__art { margin-bottom: var(--sp-7); }
+.empty-state__art img { height: 200px; width: auto; }
+.empty-state--boxed .empty-state__art img { height: 120px; }
 .empty-state__t { color: var(--ink); margin-bottom: 6px; }
 .empty-state__b { max-width: 340px; }
 /* Действий может быть два (открыть трип / вернуться к списку) - раньше такая
