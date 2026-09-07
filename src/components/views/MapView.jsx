@@ -235,10 +235,9 @@ export default function MapView({
   useEffect(() => { hoveredHotelIdRef.current = hoveredHotelId != null ? String(hoveredHotelId) : null; }, [hoveredHotelId]);
 
   const [projection, setProjection] = useState(initialProjection);
-  // Воздух кадра маршрута — общий закон с визардом создания (`fitAir`): обе
-  // поверхности кадрируют один инстанс на одном маршруте, и с разным воздухом
-  // камера на входе в редактор ехала всегда. Режим — единственная граница
-  // раскладки приложения.
+  // Воздух кадра маршрута — общий закон `fitAir` (разбор у него же, в
+  // `lib/map/insets.js`): с визардом создания эта карта делит один инстанс на
+  // одном маршруте, и с разным воздухом камера на входе в редактор ехала всегда.
   const air = fitAir(useIsPhone());
   // Internal toggles (driven by the on-map control buttons). Seeded from props and
   // re-synced if the prop changes (e.g. the app theme), but the buttons can override.

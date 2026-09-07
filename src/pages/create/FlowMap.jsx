@@ -44,8 +44,6 @@ function buildLegs(home, cities, finishCity) {
 // пикселям: канвас во весь экран телефона — 22.9 % дымки и все четыре угла вне
 // планеты; слот, равный свободному окну, — ни одной точки рамки вне планеты.
 
-// Воздух кадра — общий закон `fitAir` (lib/map/insets): тот же, что у карты трипа.
-
 /**
  * ПОЛОСА, КОТОРУЮ У НИЗА СВОБОДНОГО ОКНА ЗАНИМАЕТ НАША ЖЕ ПИЛЮЛЯ
  * «N городов · M ночей» (`.flow-map__stat`).
@@ -281,6 +279,7 @@ export default function FlowMap({
     if (canFit) {
       // ВОЗДУХ кадра, и только он: закрытую площадь карта знает сама
       // (`lib/map/insets.js`), поэтому складывать её здесь не нужно и нельзя.
+      // Сам воздух — общий закон `fitAir`: тот же, что у карты трипа.
       const air = fitAir(winW <= PHONE_MAX_W);
       if (fitPositions.length) {
         // Route: re-frame ONLY when the route geometry / viewport actually changed
