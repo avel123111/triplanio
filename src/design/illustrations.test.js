@@ -9,13 +9,13 @@
  *   3. каждый литерал `<Illustration name="…"` в `src/**` есть в реестре —
  *      опечатка в имени сегодня рендерит `null` без единого предупреждения.
  *
- * Реестр и JSX читаются ТЕКСТОМ (не import): `node --test` не парсит JSX-модули
- * ДС (приём из Cover.test.js / Layout.test.js). Реестр — чистый JS, его можно
- * импортировать напрямую.
+ * Разметка читается ТЕКСТОМ (не import): `node --test` не парсит JSX-модули ДС
+ * (приём из Cover.test.js / Layout.test.js). Реестр — чистый JS, его берём
+ * импортом.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ILLUSTRATIONS } from './illustrations.js';
@@ -24,7 +24,7 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const PUBLIC = join(ROOT, 'public');
 const SRC = join(ROOT, 'src');
 
-/** Размер холста из заголовка WebP: VP8X (расширенный, с альфой) или VP8L (lossless). */
+/** Размер холста из заголовка WebP: VP8X (расширенный, с альфой), VP8L (lossless), VP8 (lossy). */
 function webpSize(file) {
   const b = readFileSync(file);
   assert.equal(b.toString('latin1', 8, 12), 'WEBP', `${file}: не WebP`);
@@ -38,26 +38,25 @@ function webpSize(file) {
   assert.fail(`${file}: неизвестный чанк WebP ${chunk}`);
 }
 
-function* walk(dir) {
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) yield* walk(p);
-    else if (/\.jsx?$/.test(name) && !/\.test\.jsx?$/.test(name)) yield p; // тесты (этот файл) — не разметка
-  }
+/** Файлы разметки `src/**`: сами тесты (включая этот) разметкой не считаются. */
+function jsFiles(dir) {
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.jsx?$/.test(e.name) && !/\.test\.jsx?$/.test(e.name))
+    .map((e) => join(e.parentPath ?? e.path, e.name));
 }
 
 test('★ Illustration: у каждой записи реестра есть файл, и его размер равен w/h записи', () => {
-  for (const [name, it] of Object.entries(ILLUSTRATIONS)) {
-    assert.match(it.src, /^\/images\/[a-z0-9-]+\.webp$/, `${name}: путь вне /images/ или не WebP`);
-    const file = join(PUBLIC, it.src);
-    assert.ok(statSync(file).isFile(), `${name}: нет файла ${it.src}`);
-    assert.deepEqual(webpSize(file), { w: it.w, h: it.h }, `${name}: w/h в реестре ≠ размеру файла`);
+  for (const [name, pic] of Object.entries(ILLUSTRATIONS)) {
+    assert.match(pic.src, /^\/images\/[a-z0-9-]+\.webp$/, `${name}: путь вне /images/ или не WebP`);
+    const file = join(PUBLIC, pic.src);
+    assert.ok(existsSync(file), `${name}: нет файла ${pic.src}`);
+    assert.deepEqual(webpSize(file), { w: pic.w, h: pic.h }, `${name}: w/h в реестре ≠ размеру файла`);
   }
 });
 
 test('★ Illustration: каждый литерал name="…" в src/** есть в реестре', () => {
   const missing = [];
-  for (const file of walk(SRC)) {
+  for (const file of jsFiles(SRC)) {
     const text = readFileSync(file, 'utf8');
     for (const m of text.matchAll(/<Illustration\b[^>]*\bname="([^"]+)"/g)) {
       if (!ILLUSTRATIONS[m[1]]) missing.push(`${file.slice(ROOT.length)}: ${m[1]}`);
