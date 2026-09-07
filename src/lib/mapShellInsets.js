@@ -14,7 +14,7 @@
  * холста), а каждый кадр ресайза — переаллокация GL-буфера. Тянет «подогнать
  * холст под свободное окно» — значит правило ниже прочитано не до конца.
  *
- * @param {{ phone?: boolean, sheetPx?: number, capPx?: number, panelPx?: number, overlayOpen?: boolean, collapsed?: boolean }} [p]
+ * @param {{ phone?: boolean, sheetPx?: number, capPx?: number, panelPx?: number, offsetPx?: number, overlayOpen?: boolean, collapsed?: boolean }} [p]
  *   `capPx` — высота ВТОРОГО СВЕРХУ детента (её знает шит). Выше неё сдвигать
  *   холст незачем: верхний детент закрывает экран целиком, и всё, что мы там
  *   двигаем, никто не видит — а движение при этом видно на подходе к нему.
@@ -46,7 +46,7 @@
  *
  * @returns {{ slotBottom: number, camera: any, fit: any, shift: number }}
  */
-export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx = 0, overlayOpen = false, collapsed = false } = {}) {
+export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx = 0, offsetPx = 0, overlayOpen = false, collapsed = false } = {}) {
   // Из DOM приходят 0, NaN и отрицательные (первый кадр, размонтирование) —
   // такое обязано выродиться в «карта во всю площадь», а не в отрицательный слот.
   const px = (v) => (Number.isFinite(v) && v > 0 ? Math.round(/** @type {number} */ (v)) : 0);
@@ -73,8 +73,11 @@ export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx 
   // одна (panelPx). Оба сигнала булевы → сдвиг мгновенный, без замера.
   const leftClosed = overlayOpen || !collapsed;
   // Десктоп: панель лежит ПОВЕРХ целого холста — там сдвиг камеры и расчёт
-  // кадра это одно и то же.
-  const box = { ...none, left: leftClosed ? px(panelPx) : 0 };
+  // кадра это одно и то же. `panelPx` — правый край панели от левого края холста
+  // (включает всё, что стоит левее панели); `offsetPx` — её левый край, то есть
+  // полоса, закрытая НЕ панелью (рейл трипа над холстом). Свёрнутая панель
+  // открывает только себя: полоса до неё закрыта по-прежнему.
+  const box = { ...none, left: leftClosed ? px(panelPx) : px(offsetPx) };
   return { slotBottom: 0, camera: box, fit: box, shift: 0 };
 }
 

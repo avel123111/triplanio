@@ -129,6 +129,24 @@ export function fitHeightSig(box) {
 
 export const MIN_FREE_WINDOW = 80;
 
+/**
+ * ВОЗДУХ КАДРА МАРШРУТА — ОДИН ЗАКОН НА ВСЕ ПОВЕРХНОСТИ С КАРТОЙ.
+ *
+ * ★ Жил литералом в двух местах: у визарда создания (`fitPaddingFor`, 48/32–40)
+ * и у карты трипа (`padding: 60` в четырёх фитах `MapView`). Обе поверхности
+ * делят ОДИН инстанс карты и сменяют друг друга на одном маршруте («создал трип →
+ * открыть трип»), а цели камеры у них не совпадали — поэтому `calmFit` на входе
+ * в редактор всегда ехал, минимум 420 мс, и на глаз это «карта дёргается».
+ * Число здесь одно, режим раскладки решает вызыватель (`useIsPhone` /
+ * `PHONE_MAX_W` — единственная граница раскладки, TRIP-349): модуль чистый,
+ * хук сюда не тянем.
+ * @param {boolean} phone
+ * @returns {Box}
+ */
+export function fitAir(phone) {
+  return phone ? { top: 32, right: 40, bottom: 32, left: 40 } : { top: 48, right: 48, bottom: 48, left: 48 };
+}
+
 /** Свободное окно в px — остаток канваса после закрытой площади. @param {number} W @param {number} H @param {Box} insets */
 function freeWindow(W, H, insets) {
   return { w: (W || 0) - insets.left - insets.right, h: (H || 0) - insets.top - insets.bottom };

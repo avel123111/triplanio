@@ -4846,7 +4846,13 @@ button.input[data-empty] { color: var(--muted-2); }
 /* Плавающая колонка слева с воздухом по трём сторонам; `padding-right: 0` —
    правый край панели уходит внутрь карты, а не двоит отступ. */
 .mapshell__panel {
-  position: absolute; top: 0; left: 0; bottom: 0;
+  /* Левый край — за полосой, которую хост объявил закрытой НЕ панелью (рейл трипа
+     над холстом, `--mapshell-inset-left` на `.trip-content[data-bleed]`); вне такой
+     оболочки переменной нет, и панель стоит у края.
+     visual-diff-exempt: .mapshell__panel left — панель встаёт правее рейла, когда хост объявил `--mapshell-inset-left`; без него 0, как было
+     visual-diff-exempt: .mapshell__toggle left — тумблер едет за панелью на ту же величину
+     visual-diff-exempt: .mapshell__panel[data-collapsed] left — у свёрнутой панели тумблер стоит у края рейла, а не холста (ключ гарда — по первому подлежащему правила) */
+  position: absolute; top: 0; left: var(--mapshell-inset-left, 0px); bottom: 0;
   width: var(--mapshell-panel-w);
   display: flex; padding: var(--sp-7); padding-right: 0;
   z-index: 2;
@@ -4920,12 +4926,12 @@ button.input[data-empty] { color: var(--muted-2); }
    .btn`) нельзя — это ровно то, что считает метрика «экран дотянулся в примитив».
    visual-diff-exempt: .mapshell__toggle border-radius — узел стал обёрткой, тени нужен контур кнопки */
 .mapshell__toggle {
-  position: absolute; top: 50%; left: var(--mapshell-panel-w);
+  position: absolute; top: 50%; left: calc(var(--mapshell-inset-left, 0px) + var(--mapshell-panel-w));
   transform: translate(-50%, -50%); z-index: 3;
   box-shadow: var(--sh-1); border-radius: var(--r-btn);
   transition: left var(--surface-settle, .32s) var(--surface-ease, ease);
 }
-.mapshell__panel[data-collapsed] ~ .mapshell__toggle { left: 0; transform: translate(6px, -50%); }
+.mapshell__panel[data-collapsed] ~ .mapshell__toggle { left: var(--mapshell-inset-left, 0px); transform: translate(6px, -50%); }
 
 /* ── Пикер обложки (<CoverPicker>) и его посадка в планнере ───────────────────
    Кадр обложки, лента слайдов, стрелки, кнопка загрузки и лента миниатюр — это
@@ -6862,12 +6868,46 @@ button.input[data-empty] { color: var(--muted-2); }
 .trip-body > .app-side { grid-column: 1; grid-row: 1 / -1; }
 .trip-body > .app-header { grid-column: 2; grid-row: 1; }
 .trip-body > .trip-content { grid-column: 2; grid-row: 2; }
-.trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+/* `isolation` — контент трипа владеет своими слоями (контракт слоёв TRIP-466):
+   панели MapShell несут свои z-index (2/3), и без корня они сравнивались бы с
+   рейлом напрямую — свёрнутая панель выглядывала бы ЛЕВЕЕ рейла. Корень делает
+   рейл (z-index 1 в сетке) старше всего контента целиком.
+   visual-diff-exempt: .trip-content isolation — контент трипа стал стековым корнем: рейл над ним лежит целиком */
+.trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; isolation: isolate; }
+
+/* ---- Секция с картой лежит ПОД рейлом (`data-bleed`, ставит TripShell по реестру
+   секций) ----
+   Холст карты — единственное, что рейл резал: в визарде холст во всю ширину, в
+   трипе — на ширину рейла уже, и на переходе он менял размер одним кадром; въезд
+   рейла в пустую колонку поверх этого читался как дёрганье. Панель и шит холст
+   не режут — лежат над ним и объявляют камере закрытую площадь. Рейл теперь
+   такой же: контент занимает обе колонки, рейл — над ним (z-index в общей
+   ячейке), панель MapShell встаёт правее рейла, и закрытая площадь включает
+   рейл сама (MapShell меряет `panel.right − root.left`). Холст одной ширины в
+   визарде и трипе — переезд инстанса без `resize()`. Тумблер панели едет за
+   ней на ту же величину; свёрнутая панель уходит под рейл, тумблер — к его краю.
+   Правила только для десктопа по построению: на ≤640 рейла нет, панель — шит.
+   ★ ОБОЛОЧКА НЕ ТЯНЕТСЯ В ПРИМИТИВ. Сдвиг панели правее рейла объявляется
+   переменной `--mapshell-inset-left` НА ОБОЛОЧКЕ, а читает её сам MapShell
+   (правила у `.mapshell__panel`/`.mapshell__toggle`) — тот же путь, что у
+   `--surface-settle`: хост публикует факт, примитив решает, что с ним делать.
+   Фолбэк у переменной законный: вне секции под рейлом её не объявляет никто.
+   visual-diff-exempt: .trip-content[data-bleed] grid-column — секция с картой занимает обе колонки сетки (новое состояние оболочки)
+   visual-diff-exempt: .trip-content[data-bleed] --mapshell-inset-left — оболочка объявляет примитиву полосу рейла
+   visual-diff-exempt: .trip-body grid-column — тот же ключ со стороны родителя (составной селектор)
+   visual-diff-exempt: .trip-body --mapshell-inset-left — то же
+   visual-diff-exempt: .app-side z-index — рейл лежит над контентом в общей ячейке сетки
+   visual-diff-exempt: .trip-body z-index — тот же ключ со стороны родителя (составной селектор) */
+.trip-body > .trip-content[data-bleed] { grid-column: 1 / -1; --mapshell-inset-left: var(--rail-w); }
+.trip-body > .app-side { z-index: 1; }
 
 /* ---- Вход оболочки: пришли из создания трипа ----
    Оболочка объявляет ФАКТ (`data-entering="create"`, ставит TripShell по
    `location.state`), а что именно едет — решает ширина. Выше 640 это РЕЙЛ: он
-   выезжает из-за левой кромки, раскладка при этом ФИНАЛЬНА с первого кадра.
+   выезжает из-за левой кромки НАД холстом карты (секция с картой лежит под
+   рейлом, см. `data-bleed` выше), а камера за тот же темп доезжает на его
+   ширину (`useMapInsets`) — два движения одного темпа, раскладка при этом
+   ФИНАЛЬНА с первого кадра.
    ★ ЕДЕТ ТОЛЬКО САМ РЕЙЛ, КОЛОНКА НЕ АНИМИРУЕТСЯ, И ЭТО НЕСУЩЕЕ. Анимация
    `grid-template-columns` меняла бы ширину слота карты покадрово, а каждый такой
    кадр — переаллокация GL-буфера mapbox: ровно то, ради чего холст карты не
