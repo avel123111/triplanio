@@ -1,35 +1,48 @@
 /**
  * planTripWithAi
  *
- * Front-end → this function → n8n webhook → returns draft + ai_comment.
+ * Front-end → this function → n8n webhook (v2) → returns { ops, ai_comment }.
+ *
+ * TRIP-527: драфт маршрута живёт на фронте и приезжает сюда каждой репликой
+ * (`draft`), модель отвечает ОПЕРАЦИЯМИ над ним, а не маршрутом целиком;
+ * применяет их фронт (`src/pages/create/aiOps.js`). Edge словаря операций не
+ * знает: он пробрасывает драфт как есть, проверив только форму и размер на
+ * границе доверия (`draft.ts`) — ввод пользователя уходит в платный LLM-вызов.
  *
  * The N8N_SECRET bearer token lives only as a Supabase secret. The frontend
  * never sees it. n8n stores its own conversation history keyed by sessionId
- * (Postgres on the n8n side), so we just forward { sessionId, prompt, language }
- * plus `env` (метка окружения, как в конверте notify).
+ * (Postgres on the n8n side); `env` — метка окружения, как в конверте notify.
  *
- * POST body: { sessionId: string, prompt: string, language?: string }
+ * POST body: { sessionId: string, prompt: string, language?: string, draft?: Draft }
  */
 
-import { withHandler } from '../_shared/http.ts';
+import { jsonError, withHandler } from '../_shared/http.ts';
 import { requireUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 import { envTag } from '../_shared/envTag.ts';
+import { normalizeDraft } from './draft.ts';
 
 // TRIP-111: лимит генераций ИИ-планировщика. Вешается на САМ вызов генерации
 // (не на сохранение трипа), поэтому закрывает и delete+recreate, и спам без
-// сохранения. 10 генераций в час на пользователя.
-const PLANNER_RATE_LIMIT = 10;
+// сохранения. 20 генераций в час на пользователя (TRIP-527: реплика стала
+// дешевле и короче — операции, а не маршрут целиком; разговор без операций
+// тоже вызов).
+const PLANNER_RATE_LIMIT = 20;
 const PLANNER_RATE_WINDOW = 3600;
 
-const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/ai-trip-planner';
+// v2 (TRIP-527): контракт «драфт → операции». v1 (`/ai-trip-planner`) остаётся
+// живым, пока фронт с полной заменой не уехал с прода; после мерджа в main —
+// в архив.
+const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/ai-trip-planner-v2';
 
 Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
     const user = await requireUser(req);
 
-    const { sessionId, prompt, language } = await req.json();
+    const { sessionId, prompt, language, draft: rawDraft } = await req.json();
     if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400, headers: corsHeaders });
+    const parsed = normalizeDraft(rawDraft);
+    if (!parsed.ok) return jsonError(400, parsed.error, 'INVALID_INPUT', corsHeaders);
 
     // Rate-limit ПЕРЕД дорогим LLM-вызовом (TRIP-111). Общий примитив
     // rate_limit_hits (bucket=ai_trip_planner, key=user_id).
@@ -55,7 +68,7 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
       // `env` — та же метка окружения, что у конверта notify (`_shared/envTag.ts`,
       // секрет SENTRY_ENVIRONMENT): инстанс n8n ОДИН на dev и prod, поэтому без
       // неё воркфлоу не может отличить, из какого проекта пришёл прогон.
-      body: JSON.stringify({ sessionId, prompt, language, userId: user.id, env: envTag() }),
+      body: JSON.stringify({ sessionId, prompt, language, draft: parsed.draft, userId: user.id, env: envTag() }),
     });
 
     if (!res.ok) {

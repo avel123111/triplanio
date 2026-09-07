@@ -36,8 +36,9 @@ import CityPicker from '@/components/cities/CityPicker';
 import { resolveCity } from '@/components/cities/resolveCity';
 import {
   startOf, endOf, cityNodesOf, hasExplicitEnd, isAnchorNode,
-  insertNode, withNights, recomputeDates, toCitiesPayload, makeNode,
+  insertNode, withNights, recomputeDates, toCitiesPayload, toDraftPayload, makeNode,
 } from '@/pages/create/routeModel';
+import { applyOps, citiesInOps } from '@/pages/create/aiOps';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
@@ -46,15 +47,6 @@ import { useConfirm } from '@/components/common/ConfirmProvider';
 // where available, Date otherwise — a plain elapsed number for analytics.
 const nowMs = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 const elapsedMs = (startedAt) => Math.round(nowMs() - (startedAt ?? nowMs()));
-
-// Whole days between two ISO date strings (b - a). 0 on bad input.
-function daysBetweenISO(a, b) {
-  if (!a || !b) return 0;
-  const da = new Date(a + 'T00:00:00');
-  const db = new Date(b + 'T00:00:00');
-  if (isNaN(da) || isNaN(db)) return 0;
-  return Math.round((db - da) / 86400000);
-}
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 // Unified create-flow steps. The "Транспорт" step was removed - transfers are
@@ -1053,18 +1045,23 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setNodes(ns => (ns.length === 0 ? ns : recomputeDates(ns, dateStr)));
   };
 
-  // ── AI draft → shared skeleton ─────────────────────────────────────────────
-  // The AI returns a cities-only skeleton (no activities, no transfers) where
-  // each city carries kind ∈ {start, transit, end}. We honour `kind` so the AI
-  // route fills the SAME slots the manual flow uses: start → home (origin),
-  // transit → the editable cities list, end → the return leg. From there the
-  // user edits it like any manual trip; dates are re-anchored via recomputeDates.
+  // ── ИИ правит черновик ОПЕРАЦИЯМИ (TRIP-527) ──────────────────────────────
+  // Драфт живёт здесь и уходит в модель каждой репликой как данность; модель
+  // отвечает списком операций над ним (или только текстом), применяет их чистый
+  // `aiOps.applyOps` поверх той же модели маршрута, что у ручных шагов. Полной
+  // замены `setNodes(resolved)` больше нет — «поменяй один город» больше не
+  // пересобирает всё.
+  //
+  // ⚠️ СОСТОЯНИЕ ДЛЯ ПРИМЕНЕНИЯ БЕРЁТСЯ ИЗ РЕФА, а не из замыкания колбэка:
+  // `useMutation` зовёт onSuccess с опциями ТОГО рендера, где вызвали mutate,
+  // а операции применяются к тому, что на экране СЕЙЧАС. Три величины уезжают
+  // одним объектом, потому что применятор меняет их вместе (даты городов
+  // выводятся из startDate).
+  const draftRef = useRef({ nodes, startDate, title: tripTitle });
+  draftRef.current = { nodes, startDate, title: tripTitle };
 
-  // Resolve one AI city into the planner shape (coords + timezone). Shared by
-  // start / transit / end so the directory lookup lives in one place.
   // Shape one AI city into the planner shape (coords + timezone) from an already
-  // resolved `best` (or null). Geocoding is now batched in applyAiDraft via
-  // resolveCities (TRIP-145 P2), so this is pure shaping — no network here.
+  // resolved gazetteer row `best`. Pure shaping — no network here.
   const shapeAiCity = (c, idx, best) => resolveCity({
     id: Date.now() + idx,
     external_city_id: best?.external_city_id || null,
@@ -1081,84 +1078,31 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     longitude: best?.longitude ?? null,
   }, lang);
   /* ⚠️ ДОВОДКА (имя страны из кода + таймзона из координат) НЕ ПИШЕТСЯ ЗДЕСЬ, а
-     идёт общим шагом `cities/resolveCity` — тем же, что у пикеров. Своя копия
-     жила тут ровно потому, что справочник отдаёт СТРОКУ, а не готовый узел; две
-     копии одного шага и разъезжаются молча. Нерезолвнутый город (ИИ назвал,
-     справочник не нашёл) остаётся без таймзоны, а не получает выдуманный UTC —
-     за это отвечает сам шаг. */
+     идёт общим шагом `cities/resolveCity` — тем же, что у пикеров. Нерезолвнутый
+     город (ИИ назвал, справочник не нашёл) остаётся без таймзоны и координат,
+     как при ручном вводе, и краснеет на шаге 2 — а не получает выдуманный UTC. */
 
-  const applyAiDraft = async (d) => {
-    const dc = Array.isArray(d?.cities) ? d.cities : [];
-    // Partition by kind. Missing/unknown kind defaults to transit. Only the
-    // first start / last end are honoured (a trip has one origin + one return).
-    const startSrc = dc.find((c) => c?.kind === 'start') || null;
-    const endSrc = [...dc].reverse().find((c) => c?.kind === 'end') || null;
-    const transitSrc = dc.filter((c) => c && c.kind !== 'start' && c.kind !== 'end');
-
-    // Resolve ALL cities in ONE `search_gazetteer_batch` RPC (TRIP-214): the
-    // gazetteer resolves the whole list server-side in a single round-trip/plan,
-    // replacing the old per-city Promise.all burst (no concurrency limit → pool
-    // storm on a long AI route). Order: [start?, end?, ...transit].
-    const order = [];
-    if (startSrc) order.push(startSrc);
-    if (endSrc) order.push(endSrc);
-    transitSrc.forEach((c) => order.push(c));
-    // Resolve by English name + country_code: the gazetteer matches the English
-    // name first (small towns that miss in Cyrillic still resolve) and keeps
-    // same-country matches. The Russian city_name from the AI is what we
-    // display/save.
+  // Города из операций → ОДИН батч газеттира (TRIP-214), в порядке потребления
+  // применятором (`citiesInOps` и `applyOps` обходят операции одинаково, это
+  // запинено тестом). Не нашёлся — `null`, применятор возьмёт имя из операции.
+  const resolveOpCities = async (ops) => {
+    const want = citiesInOps(ops);
+    if (want.length === 0) return [];
     const lists = await resolveCities(
-      order.map((c) => ({
-        city_name: c.city_name,
-        name_en: c.city_name_en,
-        country: c.country,
-        country_code: c.country_code,
-      })),
+      want.map((c) => ({ city_name: c.city_name, name_en: c.city_name_en, country: c.country, country_code: c.country_code })),
       lang || 'ru',
     );
-    let oi = 0;
-    const startCity = startSrc ? shapeAiCity(startSrc, 0, lists[oi++]?.[0] || null) : null;
-    const endCity = endSrc ? shapeAiCity(endSrc, 1, lists[oi++]?.[0] || null) : null;
-    const transitResolved = [];
-    for (let i = 0; i < transitSrc.length; i++) {
-      const c = transitSrc[i];
-      const base = shapeAiCity(c, i + 2, lists[oi++]?.[0] || null);
-      const nights = c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1;
-      transitResolved.push({ ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) });
-    }
-
-    // ★ ЧЕРНОВИК ИИ СОБИРАЕТСЯ В ТОТ ЖЕ СПИСОК, что и ручной маршрут — одной
-    // фабрикой и одними правилами вставки. Прежде он раскладывался по трём
-    // переменным, то есть был четвёртым местом, знающим форму маршрута.
-    const anchor = transitResolved[0]?.startDate || defaultStartISO();
-    let draftNodes = [];
-    if (startCity?.city_name) draftNodes = insertNode(draftNodes, makeNode(startCity, 'start')) || draftNodes;
-    for (const c of transitResolved) {
-      // Ночи ведёт ВИД: ноль ночей от ИИ — это пересадка, и вид ей ставит модель.
-      const node = withNights(makeNode(c, 'transit', { nights: c.nights }), c.nights);
-      draftNodes = insertNode(draftNodes, node) || draftNodes;
-    }
-    // Финиш — только если ИИ дал его ЯВНО отдельным узлом `kind:'end'`. Не дал —
-    // узла не выдумываем: конец маршрута выберут на шаге возврата, а пока его не
-    // выбрали, маршрут кончается последним городом («останусь»).
-    if (endCity?.city_name) draftNodes = insertNode(draftNodes, makeNode(endCity, 'end')) || draftNodes;
-    const resolvedNodes = recomputeDates(draftNodes, anchor);
-    setNodes(resolvedNodes);
-    setStartDateRaw(anchor);
-
-    const resolvedHome = startOf(resolvedNodes);
-    const resolvedCities = cityNodesOf(resolvedNodes);
-
-    if (d?.title) setTripTitle(d.title);
-    // Return the resolved draft so the caller can snapshot it into the chat message
-    // (each assistant turn shows the itinerary it proposed).
-    return { home: resolvedHome, cities: resolvedCities, end: endOf(resolvedNodes), title: d?.title || '' };
+    return want.map((c, i) => (lists[i]?.[0] ? shapeAiCity(c, i, lists[i][0]) : null));
   };
 
   const planMut = useMutation({
     mutationFn: async ({ promptText }) => {
+      const draft = draftRef.current;
       const { data, error: fnErr, code } = await invokeFn('planTripWithAi', {
-        body: { sessionId, prompt: promptText, language: lang || 'ru' },
+        body: {
+          sessionId, prompt: promptText, language: lang || 'ru',
+          draft: toDraftPayload(draft.nodes, draft.startDate, draft.title),
+        },
       });
       if (fnErr) {
         // Attach the machine `code` and throw the ORIGINAL error: invokeFn stamped
@@ -1182,20 +1126,25 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     },
     onSuccess: async (data, _vars, ctx) => {
       const out = data?.output || {};
-      const full = await applyAiDraft(out.draft || {});
-      // The bot's reply = its text + a DISPLAY-ONLY snapshot of the itinerary it
-      // proposed (name / country / nights only — not the full resolved city objects
-      // with coords/tz/ids), so a multi-turn transcript in sessionStorage stays small.
-      const draft = {
-        home: full.home ? { city_name: full.home.city_name, country_code: full.home.country_code } : null,
-        cities: (full.cities || []).map((c) => ({ id: c.id, city_name: c.city_name, country: c.country, nights: c.nights })),
-        end: full.end ? { city_name: full.end.city_name, country: full.end.country, country_code: full.end.country_code } : null,
-      };
-      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '', draft }]);
-      setAiState('draft');
+      const ops = Array.isArray(out.ops) ? out.ops : [];
+      const resolved = await resolveOpCities(ops);
+      const r = applyOps(draftRef.current, ops, { cities: resolved, today: ymdLocal(new Date()) });
+      setNodes(r.nodes);
+      setStartDateRaw(r.startDate);
+      setTripTitle(r.title);
+      // Ответ бота = его текст + строки «что сделал»/«не смог». Снимка маршрута
+      // в сообщении нет: маршрут в ленте один и живой (`PanelAi`, от `nodes`).
+      setAiMessages((m) => [...m, {
+        id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '',
+        applied: r.applied, rejected: r.rejected,
+      }]);
+      // «Далее» открыто, когда в маршруте есть город — независимо от того, был
+      // ли последний ответ с операциями или просто разговором.
+      const cityCount = cityNodesOf(r.nodes).length;
+      setAiState(cityCount ? 'draft' : 'prompt');
       track('ai_plan_returned', {
-        result: 'ok', refine: ctx?.refine,
-        city_count: (full.cities || []).length, duration_ms: elapsedMs(ctx?.startedAt),
+        result: 'ok', refine: ctx?.refine, city_count: cityCount, duration_ms: elapsedMs(ctx?.startedAt),
+        ops_applied: r.applied.length, ops_rejected: r.rejected.length, comment_only: ops.length === 0,
       });
     },
     onError: (err, _vars, ctx) => {
@@ -1607,7 +1556,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       ) : (
         <>
           {step === 'home' && (isAi ? (
-            <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
+            <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} nodes={nodes} />
           ) : (
             <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
           ))}
@@ -1648,7 +1597,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // для того и заведён: он стоит СНАРУЖИ скролла и держит док снизу.
   // На AI-шаге кнопок шага нет (`showFooter === false`) — «Далее» слита в сам
   // композер, — поэтому слот занимает он один, а не они вдвоём.
-  const FOOTER = (step === 'home' && isAi) ? (
+  // После сохранения слот пуст: успех владеет своими действиями (см. `showFooter`).
+  const FOOTER = (step === 'home' && isAi && !savedOk) ? (
     <ChatComposer
       className="chat-composer--ai"
       hideMention
@@ -1673,10 +1623,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               порождал блокер 1. */}
           {backDepth > 0 && <Btn variant="secondary" onClick={requestBack} disabled={saving}>{t('planner.back')}</Btn>}
           {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
-              icon in the header) — nav actions all live in the action bar. It
-              also shows on the AI entry step (step 1), where a conversation can
-              already have built a draft to clear. */}
-          {(!isFirstStep || (isAi && step === 'home')) && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+              icon in the header) — nav actions all live in the action bar. На
+              AI-шаге футера нет (его место занимает композер), там сброс стоит
+              в шапке панели рядом с прогрессом. */}
+          {!isFirstStep && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
           <div className="flow-foot__spacer grow" />
           <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
         </div>
@@ -1723,6 +1673,13 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                 onJump={savedOk ? undefined : (i) => setStep(visibleSteps[i].id, 'jump')}
               />
             </div>
+            {/* Сброс на AI-шаге (TRIP-527): футер здесь занят композером, а
+                переписка уже могла собрать маршрут, который хочется стереть.
+                Та же ручка `requestReset` (с подтверждением), что у футера
+                остальных шагов — второго сброса нет. */}
+            {isAi && step === 'home' && !savedOk && (
+              <IconBtn icon="refresh" tone="outline" ariaLabel={t('planner.reset')} onClick={requestReset} disabled={saving} />
+            )}
           </div>
         )}
         panelFooter={FOOTER}
