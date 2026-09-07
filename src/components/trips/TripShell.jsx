@@ -57,13 +57,14 @@
  * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — то же
  * visual-diff-exempt: .trip-shell[data-entering=create] animation — вход оболочки: остаётся только проступание заголовка шапки
  * visual-diff-exempt: .app-side transform — рейл убран за кромку в визарде и выезжает на полосу `--rail-inset`
+ * visual-diff-exempt: .trip-body transform — тот же ключ со стороны родителя (составной селектор)
+ * visual-diff-exempt: from {@keyframes railIn} transform — кейфрейм выезда снят: рейл едет транзишном по полосе
+ * visual-diff-exempt: to {@keyframes railIn} transform — то же
  * visual-diff-exempt: .app-side transition — выезд рейла в темп поверхности
  * visual-diff-exempt: .app-side visibility — убранный рейл вне таба и дерева доступности
  * visual-diff-exempt: .trip-shell[data-mode=create] visibility — то же со стороны оболочки
  * visual-diff-exempt: .app-side z-index — рейл лежит над шапкой и контентом (шапка теперь во всю ширину)
- * visual-diff-exempt: .trip-body z-index — тот же ключ со стороны родителя (составной селектор)
  * visual-diff-exempt: .app-header grid-column — шапка во всю ширину сетки: полосу рейла она отдаёт отступом
- * visual-diff-exempt: .trip-body grid-column — тот же ключ со стороны родителя (составной селектор)
  * visual-diff-exempt: .app-header--trip padding-left — отступ шапки под рейл едет по `--rail-inset`
  * visual-diff-exempt: .trip-content[data-bleed] --mapshell-inset-left — полоса рейла уходит шеллу карты числом от оболочки, не переменной CSS
  * visual-diff-exempt: .trip-body --mapshell-inset-left — то же (составной селектор)
