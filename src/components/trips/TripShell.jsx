@@ -198,6 +198,17 @@ export default function TripShell({
   // Секция сама владеет своим скроллом (карта, чат, редактор): тело без
   // паддинга и без скролла, поверхность в край.
   const flush = sectionById(section)?.flush === true;
+  // ★ СЕКЦИЯ С КАРТОЙ ЛЕЖИТ ПОД РЕЙЛОМ (`bleed`). Холст карты — единственное,
+  // что рейл резал как колонка сетки: у визарда холст во всю ширину, у трипа на
+  // ширину рейла уже, и на переходе холст менял размер за один кадр — а любое
+  // движение поверх такого кадра читается как дёрганье (въезд рейла в пустую
+  // колонку). Панель и шит устроены иначе: они лежат НАД холстом и объявляют
+  // камере закрытую площадь. Рейл становится таким же: контент секции с картой
+  // занимает обе колонки сетки, рейл лежит над ним, панель `MapShell` встаёт
+  // правее рейла, и закрытая площадь (`panel.right − root.left`) включает рейл
+  // сама. Холст одной ширины в визарде и трипе — переезд без `resize()`, а
+  // камера доезжает на ширину рейла тем же темпом, что рейл въезжает.
+  const bleed = sectionById(section)?.bleed === true;
 
   const goBack = () => nav(backTo);
   const backTitle = t('trip.back');
@@ -258,7 +269,7 @@ export default function TripShell({
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
           meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
         />
-        <div className="trip-content">
+        <div className="trip-content" data-bleed={bleed || undefined}>
           <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
             {children}
           </main>
