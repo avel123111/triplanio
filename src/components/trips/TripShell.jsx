@@ -113,7 +113,6 @@ const MOTION_STYLE = {
   '--surface-ease': SURFACE_EASE_CSS,
 };
 
-const NO_FACTS = /** @type {import('./TripShellContext').ShellFacts} */ ({ mode: 'trip' });
 
 // Хост карты — ЕДИНСТВЕННЫЙ подписчик стора пропов карты: наведение на ряд
 // маршрута перерисовывает его и карту, но не рейл и не шапку.
@@ -154,7 +153,13 @@ export default function TripShell() {
   const mainRef = useRef(/** @type {HTMLElement | null} */ (null));
   const host = useMemo(() => ({ setFacts: setFactsState, cbs, setSurface, mapProps, slots, mainRef }), [mapProps, slots]);
 
-  const { mode, tripId = null, addons, section = DEFAULT_SECTION, step = null, isPro, proResolved = true, title, meta, loading = false, backTitle: factBackTitle } = facts || NO_FACTS;
+  // ★ РЕЖИМ ДО ПЕРВОЙ ПУБЛИКАЦИИ — ИЗ АДРЕСА, а не «трип по умолчанию». Экран
+  // публикует факты в layout-эффекте, то есть ПОСЛЕ первого рендера оболочки, и
+  // пока дефолтом стоял «трип», визард на первом кадре получал рейл на месте, а
+  // на втором — его уезд: «меню появляется и сразу исчезает». Адрес роутер знал
+  // до монтирования обоих, по нему и различаем зону.
+  const routeMode = loc.pathname.startsWith('/trip/') ? 'trip' : 'create';
+  const { mode = routeMode, tripId = null, addons, section = DEFAULT_SECTION, step = null, isPro, proResolved = true, title, meta, loading = false, backTitle: factBackTitle } = facts || {};
   const isTrip = mode === 'trip';
 
   // «КАК СЮДА ПОПАЛИ» — ФАКТ НА ОБОЛОЧКЕ, а не анимация, прописанная в детали:
