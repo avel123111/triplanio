@@ -479,7 +479,6 @@ export const CardHeader = ({ title, subtitle, action }) => (
 // примитива. Новый тон = новая строка, как у SEV_ICON выше.
 const EMPTY_TONE = { empty: "brand", error: "danger", success: "success", warning: "warning" };
 
-/** @param {{ icon?: string, title?: any, body?: any, action?: any, kind?: string, boxed?: boolean, iconStyle?: any }} p */
 // `art` — имя из реестра иллюстраций (TRIP-532): картина вместо плитки-иконки.
 // Первый потребитель — «Путешествие создано» (StepReview); дальше пустые состояния
 // получают свои картины по экранам, `icon` остаётся фолбэком. `kind`/`iconStyle`
