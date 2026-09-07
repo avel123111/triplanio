@@ -167,6 +167,31 @@ const cityIdentity = (c) => ({
 });
 
 /**
+ * Драфт для модели ИИ (TRIP-527): та же проекция узлов, что видит человек, плюс
+ * `ref` — ключ, по которому модель ссылается на узел в операциях (`aiOps`).
+ * Ряды без города (пустые строки шага 2) наружу не едут: ссылаться на них не на
+ * что. Координат и таймзон здесь нет — модели они не нужны, а промпт короче.
+ * @param {RouteNode[]} nodes
+ * @param {string} startDate
+ * @param {string} title
+ */
+export function toDraftPayload(nodes, startDate, title) {
+  return {
+    startDate: startDate || '',
+    title: title || '',
+    nodes: (nodes || []).filter((n) => n.city_name).map((n) => ({
+      ref: String(n.id),
+      kind: n.kind,
+      city_name: n.city_name,
+      city_name_en: n.city_name_en || '',
+      country_code: n.country_code || '',
+      nights: n.nights ?? null,
+      geonameid: n.geonameid ?? null,
+    })),
+  };
+}
+
+/**
  * Полезная нагрузка создания трипа. Проекция ПОИМЁННАЯ: лишние поля модели
  * (`id`, `startDate`, `prevNights`) наружу не текут.
  *
