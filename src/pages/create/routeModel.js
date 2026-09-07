@@ -168,6 +168,14 @@ const cityIdentity = (c) => ({
 });
 
 /**
+ * Идентификатор узла в контракте с моделью ИИ (TRIP-527) — строка, чтобы не
+ * зависеть от типа `id`. Живёт здесь, рядом с проекцией, которая его выдаёт:
+ * применятор (`aiOps`) ищет узел ТЕМ ЖЕ правилом, и второй копии «ref = id
+ * строкой» в проекте быть не должно.
+ */
+export const refOf = (node) => String(node?.id);
+
+/**
  * Драфт для модели ИИ (TRIP-527): та же проекция узлов, что видит человек, плюс
  * `ref` — ключ, по которому модель ссылается на узел в операциях (`aiOps`).
  * Ряды без города (пустые строки шага 2) наружу не едут: ссылаться на них не на
@@ -181,7 +189,7 @@ export function toDraftPayload(nodes, startDate, title) {
     startDate: startDate || '',
     title: title || '',
     nodes: (nodes || []).filter((n) => n.city_name).map((n) => ({
-      ref: String(n.id),
+      ref: refOf(n),
       kind: n.kind,
       city_name: n.city_name,
       city_name_en: n.city_name_en || '',

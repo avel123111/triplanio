@@ -71,10 +71,13 @@ export const PROTECTED_KEYS = [
   'notif.tpl_trip_pro_activated_msg',
   'notif.tpl_trip_pro_activated_title',
 
-  // (2b) Строки «что сделал» / «не смог» ИИ-планировщика (TRIP-527): ключ
-  // собирается из имени операции применятора (`t(`ai_plan.did_${op}`)` в
-  // `PanelAi`, причины отказа — через карту), литералом в src не встречается
-  // ни один. Семья защищена целиком: словарь операций — `create/aiOps.js`.
+  // (2b) Строки «что сделал» / «не смог» ИИ-планировщика (TRIP-527). Пять из
+  // них (`did_remove_city`, `did_move_city`, `did_set_start`, `did_set_end`,
+  // `did_clear_end`) собираются шаблоном `t(`ai_plan.did_${op}`)` в `PanelAi` и
+  // литералом в src не встречаются вовсе. Защищена вся семья, а не эти пять:
+  // имена приходят из словаря операций (`create/aiOps.js`), и делить их на
+  // «видные грепу» и «невидимые» значит завести второй список, который разъедется
+  // при первой же правке словаря.
   'ai_plan.did_set_route',
   'ai_plan.did_add_city',
   'ai_plan.did_add_city_after',

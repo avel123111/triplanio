@@ -1096,9 +1096,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   const planMut = useMutation({
     mutationFn: async ({ promptText }) => {
-      const { nodes: ns, startDate: sd, title } = draftRef.current;
+      const draft = draftRef.current;
       const { data, error: fnErr, code } = await invokeFn('planTripWithAi', {
-        body: { sessionId, prompt: promptText, language: lang || 'ru', draft: toDraftPayload(ns, sd, title) },
+        body: {
+          sessionId, prompt: promptText, language: lang || 'ru',
+          draft: toDraftPayload(draft.nodes, draft.startDate, draft.title),
+        },
       });
       if (fnErr) {
         // Attach the machine `code` and throw the ORIGINAL error: invokeFn stamped

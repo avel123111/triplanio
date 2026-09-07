@@ -17,9 +17,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  OPS, REASONS, applyOps, citiesInOps, opShapeError, opsJsonSchema, opsPromptLines, refOf,
+  OPS, REASONS, applyOps, citiesInOps, opShapeError, opsJsonSchema, opsPromptLines,
 } from './aiOps.js';
-import { makeNode, toDraftPayload, cityNodesOf } from './routeModel.js';
+import { makeNode, toDraftPayload, cityNodesOf, refOf } from './routeModel.js';
 
 const TODAY = '2026-09-07';
 const gaz = (name, extra = {}) => ({
@@ -109,6 +109,16 @@ test('remove_city убирает узел, в том числе якорь; не
   assert.deepEqual(names(r.nodes), ['Рим']);
   assert.deepEqual(r.applied.map((a) => a.city), ['Неаполь', 'Москва']);
   assert.deepEqual(r.rejected, [{ op: 'remove_city', reason: REASONS.unknown_ref }]);
+});
+
+test('add_city после узла сообщает имя якоря, а после финиша — без «после»: строка не врёт', () => {
+  const base = [stop('Рим'), stop('Милан'), anchor('Москва', 'end')];
+  const mid = applyOps(st(base), [{ op: 'add_city', ...city('Неаполь'), after: 'Рим' }], { today: TODAY });
+  assert.deepEqual(names(mid.nodes), ['Рим', 'Неаполь', 'Милан', 'Москва']);
+  assert.deepEqual(mid.applied, [{ op: 'add_city', city: 'Неаполь', after: 'Рим' }]);
+  const tail = applyOps(st(base), [{ op: 'add_city', ...city('Неаполь'), after: 'Москва' }], { today: TODAY });
+  assert.deepEqual(names(tail.nodes), ['Рим', 'Милан', 'Неаполь', 'Москва'], 'финиш остаётся последним');
+  assert.deepEqual(tail.applied, [{ op: 'add_city', city: 'Неаполь' }], 'не «добавил Неаполь после Неаполя»');
 });
 
 test('move_city: после узла, в начало (после старта), якорь не двигается', () => {

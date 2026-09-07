@@ -29,11 +29,8 @@
  * `toDraftPayload`). Модель эхом возвращает его как есть.
  */
 import {
-  makeNode, insertNode, withNights, recomputeDates, isAnchorNode, cityNodesOf, endOf,
+  makeNode, insertNode, withNights, recomputeDates, isAnchorNode, cityNodesOf, endOf, refOf,
 } from './routeModel.js';
-
-/** Идентификатор узла в контракте с моделью — строка, чтобы не зависеть от типа `id`. */
-export const refOf = (node) => String(node?.id);
 
 const CITY = { city_name: 'string', city_name_en: 'string', country: 'string?', country_code: 'string' };
 
@@ -168,6 +165,13 @@ export function citiesInOps(ops) {
 
 const findIdx = (nodes, ref) => nodes.findIndex((n) => refOf(n) === String(ref));
 
+/**
+ * Городской узел из операции: ночи ведёт `withNights` (ноль ночей = пересадка),
+ * по умолчанию три. Ночи узлу выдаёт ТОЛЬКО эта дорога — `makeNode` их здесь не
+ * получает, иначе `withNights` тут же перезапишет и число, и вид.
+ */
+const cityNode = (city, nights) => withNights(makeNode(city, 'transit'), nights ?? 3);
+
 /** Вставка после узла с индексом `idx`, но никогда после финиша. */
 function insertAfter(nodes, idx, node) {
   const arr = nodes.slice();
@@ -210,9 +214,7 @@ export function applyOps(state, ops, { cities = [], today }) {
         let count = 0;
         for (const r of resolved) {
           const kind = /** @type {import('./routeModel.js').NodeKind} */ (r.kind);
-          const node = kind === 'transit'
-            ? withNights(makeNode(r.city, 'transit', { nights: r.nights }), r.nights ?? 3)
-            : makeNode(r.city, kind);
+          const node = kind === 'transit' ? cityNode(r.city, r.nights) : makeNode(r.city, kind);
           const ins = insertNode(next, node);
           if (!ins) continue; // второй якорь молча не заводится (как в редакторе)
           next = ins;
@@ -229,14 +231,16 @@ export function applyOps(state, ops, { cities = [], today }) {
       }
       case 'add_city': {
         const city = nextCity(op);
-        const node = op.nights != null
-          ? withNights(makeNode(city, 'transit', { nights: op.nights }), op.nights)
-          : makeNode(city, 'transit');
+        const node = cityNode(city, op.nights);
         if (op.after != null) {
           const idx = findIdx(nodes, op.after);
           if (idx === -1) { reject(op, REASONS.unknown_ref); break; }
+          // Имя якоря снимаем ДО вставки: при after=финиш вставка ложится ПЕРЕД
+          // ним, и `nodes[idx]` после сплайса — уже новый город. Ставить «после
+          // финиша» нельзя, поэтому такой случай для человека = обычное «добавил».
+          const anchor = nodes[idx].kind === 'end' ? null : nodes[idx].city_name;
           nodes = insertAfter(nodes, idx, node);
-          applied.push({ op: 'add_city', city: city.city_name, after: nodes[idx].city_name });
+          applied.push(anchor ? { op: 'add_city', city: city.city_name, after: anchor } : { op: 'add_city', city: city.city_name });
         } else {
           nodes = insertNode(nodes, node) || nodes;
           applied.push({ op: 'add_city', city: city.city_name });
@@ -339,8 +343,8 @@ export function opsJsonSchema() {
   const props = { op: { type: 'string', enum: Object.keys(OPS) } };
   for (const spec of Object.values(OPS)) {
     for (const [name, type] of Object.entries(spec.fields)) {
+      if (props[name]) continue; // одно имя на один смысл: первая операция задаёт форму поля
       const t = type.replace(/\?$/, '');
-      if (props[name]) continue;
       props[name] = t === 'nodes'
         ? {
           type: 'array',
