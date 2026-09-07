@@ -36,7 +36,7 @@
 // который сборщик разобрать не может. Внутри лежат РЕАЛИЗАЦИИ автозахвата
 // кликов, тепловых карт, rage/dead-кликов, web-vitals, автоперехвата исключений,
 // опросов и записи сессий — то есть ровно то, что мы ниже в `init` выключаем
-// руками (`autocapture:false`, `enable_heatmaps:false`, `capture_performance:false`,
+// руками (`autocapture:false`, `enable_heatmaps:false`, `web_vitals:false`,
 // `disable_session_recording:true`, `disable_surveys:true`). Мы платили 118 КБ за
 // код, которому сами запретили запускаться, и платил их КАЖДЫЙ анонимный
 // посетитель лендинга: замер — главный чанк 951 532 → 833 875 байт, brotli
@@ -60,6 +60,7 @@ import posthog from 'posthog-js/dist/module.slim.js';
 // нашего /ingest по требованию, здесь только контроллер, решающий когда его звать.
 import { SessionReplayExtensions } from 'posthog-js/dist/extension-bundles';
 import { analyticsEnabledHere, isLocalhost, isProdHost } from '@/lib/analyticsEnv';
+import { keepEdgeBodiesOnly } from './replayNetworkMask.js';
 
 const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
 
@@ -126,7 +127,14 @@ export function boot(client) {
     // `$pageview`: наши события, выстрелившие до нажатия, отброшены безвозвратно.
     // `capture_pageleave` включается сам (`'if_capture_pageview'`) — без него нет
     // отказов.
-    capture_performance: false,
+    //
+    // Сетевые запросы В РЕПЛЕЙ (вкладка Network): без `network_timing` рекордер
+    // не видит fetch/XHR вовсе, и упавшее сохранение в записи выглядит как «нажал
+    // и ничего». Web Vitals остаются выключенными — это отдельный продукт.
+    capture_performance: { network_timing: true, web_vitals: false },
+    // Консоль в реплей — явно, а не «как решит проект»: текст ошибки рядом с
+    // кадром, на котором она случилась, и есть половина диагноза.
+    enable_recording_console_log: true,
     // Адрес уезжает в событие БЕЗ фрагмента. После OAuth-редиректа Supabase
     // кладёт в `#` пару access/refresh-токенов, и `$current_url` +
     // `$session_entry_url` увозили их в аналитику как обычную строку (замер
@@ -158,22 +166,38 @@ export function boot(client) {
     // не должна включать сбор мыше-движений без нашего ведома (TRIP-328).
     enable_heatmaps: false,
     person_profiles: 'identified_only',
-    // The privacy FLOOR of a replay — same reason as `enable_heatmaps` above
-    // (TRIP-328): the project's masking settings only move the DEFAULTS of these
-    // three, so a click in the PostHog UI can lower them, an explicit value here
-    // cannot. WHICH sessions are recorded is policy and lives in the UI; WHAT a
-    // recording may contain is safety and lives here.
-    // Text is masked whole-sale (`*`) because most of what our screens show
-    // belongs to OTHER people — a trip's members, their emails, the chat, file
-    // names — who never saw our banner. An unmask-list would be a denylist: the
-    // screen that forgets to join it leaks silently. `.avatar` is blocked on top,
-    // since text masking does not touch images and a member's photo is their face
-    // (it rides in as an inline `background-image`); one selector, because
-    // <Avatar> is the single door onto every avatar in the product.
+    // ЧТО ЗАПИСЬ МОЖЕТ СОДЕРЖАТЬ — решается здесь, а не в UI PostHog: настройки
+    // проекта двигают только ДЕФОЛТЫ этих ключей, явное значение в коде клик в
+    // интерфейсе не опустит (TRIP-328). КАКИЕ сессии писать — политика, она в UI.
+    //
+    // Запись видна целиком, маскируются только ЧУЖИЕ персональные данные — люди,
+    // которые нашего баннера не видели: имя и почта участника, автор и текст
+    // чата, фото. Всё остальное (заметки, брони, ошибки, тосты, диалоги) — данные
+    // самого записываемого, он на запись согласился. Раньше стоял `'*'` — весь
+    // экран звёздочками, и упавшее сохранение переезда в реплее прочитать было
+    // нельзя (замер 07.09: два `transfer_added` без единого запроса к серверу и
+    // ноль видимого текста).
+    // Селекторы — существующие классы элементов, где эти данные рендерятся:
+    // `.mn`/`.me` — имя/почта в примитиве <Person> (ДС, одна дверь на всех
+    // экранах трипа), `.mbrow__name`/`.mbrow__email` — ряд участника на экране
+    // «Участники», `.chat-name`/`.chat-bubble` — автор и текст сообщения.
+    // `.avatar` блокируется целиком: текстовая маска картинок не трогает, а фото
+    // участника — его лицо; один селектор, потому что <Avatar> — единственная
+    // дверь на все аватары в продукте.
     session_recording: {
-      maskTextSelector: '*',
-      maskAllInputs: true,
+      maskTextSelector: '.mn, .me, .mbrow__name, .mbrow__email, .chat-name, .chat-bubble',
+      // Ввод виден (иначе не видно, ЧТО человек печатал перед ошибкой); пароль —
+      // единственное поле, чьё содержимое маскируется всегда.
+      maskAllInputs: false,
+      maskInputOptions: { password: true },
       blockSelector: '.avatar',
+      // Тела запросов пишутся, заголовки — нет: в заголовке едет Bearer-JWT
+      // Supabase, и ни одного случая, где он нужен для разбора записи.
+      recordHeaders: false,
+      recordBody: true,
+      // Родной хук SDK на каждый пойманный запрос: тела остаются ТОЛЬКО у наших
+      // edge-вызовов (same-origin `/api/<fn>`) — почему, см. replayNetworkMask.js.
+      maskCapturedNetworkRequestFn: (data) => keepEdgeBodiesOnly(data, window.location.origin),
     },
     __extensionClasses: { ...SessionReplayExtensions },
   });
