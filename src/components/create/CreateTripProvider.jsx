@@ -112,10 +112,10 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       open={true}
       onOpenChange={(o) => { if (!o) onClose(); }}
     >
-      {/* Пара «две рядом» (решение Pavel, TRIP-532): канон-сетка `.grid--2`, карточки
-          колонкой с картиной сверху. На ≤640 сетка сама складывается в столбец, а
-          `.choice-card--col` возвращается к строке — см. app.css. */}
-      <div className="grid grid--2 grid--g6">
+      {/* Пара «две рядом» (решение Pavel, TRIP-532): канон-сетка `.grid--split` — у неё
+          своя ступень «одна колонка ≤880», карточка про сетку не знает и на той же
+          ступени возвращается к строке (`.choice-card--col`, app.css). */}
+      <div className="grid grid--split grid--g6">
         <ChoiceCard variant="man" art="create-manual" col title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
         <ChoiceCard variant="ai" art="create-ai" col title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
       </div>
