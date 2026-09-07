@@ -36,9 +36,21 @@ test('ровно одна дверь записи профиля во всём s
   );
 });
 
-test('дверь сверяет кэш по ОТВЕТУ шва, а не повторным чтением', () => {
+// Форма ответа шва зависит от флагов действия (`mutate.ts`): с `returnChain` /
+// `returnExpenses` — конверт `{ row, cities, transfers, expenses }`, без них —
+// ГОЛАЯ записанная строка. Первая редакция двери читала `data.row` у действия
+// без флагов, получала `undefined` и молча оставляла кэш прежним (тест на
+// текст `data.row` был зелёным и доказывал не то свойство). Поэтому пинятся
+// ОБЕ стороны контракта: у `account/profile` флагов нет ⇔ дверь кладёт в
+// `user` сам `data`, а не `data.row`.
+test('дверь сверяет кэш по ОТВЕТУ шва — голой строке действия без флагов', () => {
+  const spec = readFileSync('supabase/functions/_shared/resources/account.ts', 'utf8');
+  const profile = spec.slice(spec.indexOf('profile: {'), spec.indexOf('register: {'));
+  assert.doesNotMatch(profile, /returnChain|returnExpenses/, 'account/profile обзавёлся флагом дочитывания — ответ стал конвертом, дверь обязана читать `data.row`');
+
   const src = readFileSync('src/lib/AuthContext.jsx', 'utf8');
   const body = src.slice(src.indexOf('const updateProfile'), src.indexOf('const logout'));
-  assert.match(body, /setUser\([\s\S]*?data\.row/, 'updateProfile обязан класть `row` ответа в `user`');
+  assert.match(body, /setUser\([\s\S]*?\.\.\.data\s*\}/, 'updateProfile обязан класть голую строку ответа (`...data`) в `user`');
+  assert.doesNotMatch(body, /data\.row/, 'у account/profile нет флагов дочитывания — `data.row` там undefined');
   assert.doesNotMatch(body, /checkUserAuth|loadUserProfile/, 'запись профиля не должна перечитывать профиль вторым кругом');
 });

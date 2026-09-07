@@ -317,11 +317,19 @@ export const AuthProvider = ({ children }) => {
   // слоя посетителя и перекрывал выбор до перезагрузки страницы.
   //
   // Поэтому запись идёт через владельца: шов `account/profile` (upsert по
-  // актору) возвращает `row` — ПОЛНУЮ обновлённую строку `users` той же формы,
-  // что читает `getMe` (`select('*')`), и кэш сверяется по ОТВЕТУ сервера, как
+  // актору) возвращает ПОЛНУЮ обновлённую строку `users` той же формы, что
+  // читает `getMe` (`select('*')`), и кэш сверяется по ОТВЕТУ сервера, как
   // брони (`reconcileBookingWrite`, TRIP-484): не повторным чтением и не
   // догадкой. Один круг, честное состояние; `checkUserAuth` остаётся для того,
   // что меняется МИМО клиента (вебхук Stripe → право).
+  //
+  // ★ Форма ответа — ГОЛАЯ строка, не конверт. Конверт `{ row, cities,
+  // transfers, expenses }` шов строит только у действий с `returnChain` /
+  // `returnExpenses` (`mutate.ts`); у `account/profile` флагов нет. Первая
+  // редакция читала `data.row`, получала `undefined`, `{...prev, ...undefined}`
+  // отдавал прежний профиль — и язык «менялся» лишь от случайного
+  // перечитывания через ~10 с (замер на превью, TRIP-520). Обе стороны
+  // контракта пинит `profileWriter.test.js`.
   //
   // Отказ приезжает машинным `code` (контракт TRIP-400) — показ решает
   // вызыватель (инлайн в форме / тост в настройках). Аноним (нет `user`) сюда
@@ -335,7 +343,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = useCallback(async (patch) => {
     const { data, error, code } = await invokeFn('account/profile', { body: patch });
     if (error || code) return { error, code };
-    setUser((prev) => (prev ? { ...prev, ...data.row } : prev));
+    setUser((prev) => (prev ? { ...prev, ...data } : prev));
     return { error: null, code: null };
   }, []);
 
