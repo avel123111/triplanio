@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints, fitPadding } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
@@ -102,10 +102,10 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *                        onHotelHover через `?.()`
  * Обязательны только `visits` и `transfers` - их читают без фолбэка
  * (`sortVisits(visits)`, `transfers.forEach`), рисовать нечего. `visits: null` —
- * маршрут ещё НЕИЗВЕСТЕН (секция ждёт ответ двери): пинов и линий нет, камера не
- * трогается, холст под обложкой; пустой массив — маршрут известен и ПУСТ
- * (стартовый глобус). `visits: null`
- * законен и значит «маршрут ещё неизвестен» (см. `known`).
+ * маршрут ещё НЕИЗВЕСТЕН (секция ждёт ответ двери): карта держит последний
+ * известный маршрут (пины, линии, камера не трогаются; на свежем маунте — ничего
+ * не рисует, холст под обложкой); пустой массив — маршрут известен и ПУСТ
+ * (стартовый глобус). См. `known`.
  * ⚠️ `onCityClick` стоит РЯДОМ с `onCityHover` под одним и тем же `if (cb)`, и
  * ДВА живых вызывателя его не передают вовсе (`PublicTrip`, `RouteMapCard`):
  * пометить его обязательным значило бы уронить их в тот момент, когда они
@@ -131,8 +131,8 @@ export default function MapView({
   // это ЕДИНСТВЕННЫЙ сигнал, что окно поехало, — отступы камеры там всегда
   // нулевые, и без него подстройка под новый размер на телефоне не случилась бы
   // вовсе.
-  visits,
-  transfers,
+  visits: visitsProp,
+  transfers: transfersProp,
   showStartEnd = true,
   colorScheme = 'LIGHT',
   onCityClick,
@@ -360,18 +360,30 @@ export default function MapView({
   }, []);
 
   // ★ `visits === null` — МАРШРУТ НЕИЗВЕСТЕН (данные экрана ещё едут), и это не
-  // «пустой маршрут»: пустой ставит стартовый глобус, неизвестный камеру не
-  // трогает вовсе (иначе редактор на медленной двери показывал бы глобус, а через
-  // секунду улетал к маршруту). Тот же контракт, что у `view`: null = ждать.
-  const known = Array.isArray(visits);
+  // «пустой маршрут»: пустой ставит стартовый глобус, неизвестный НЕ ТРОГАЕТ
+  // НИЧЕГО — ни камеру (иначе редактор на медленной двери показывал бы глобус, а
+  // через секунду улетал к маршруту), ни пины и линии: карта держит ПОСЛЕДНИЙ
+  // ИЗВЕСТНЫЙ маршрут, пока не приедет новый. Инстанс и этот компонент живут
+  // через смену экрана (визард → редактор в одной оболочке), и на этой смене
+  // редактор публикует `null` на время своей двери (~0.5 с): читать его как
+  // «пусто» значило снять пины и линии с только что нарисованного маршрута и
+  // вернуть их тем же набором — карта МОРГАЛА. Свежий маунт без известного
+  // маршрута ничего не рисует, как и раньше. Тот же контракт, что у `view`:
+  // null = ждать. Переезды едут вместе с городами — иначе на время ожидания
+  // линии меняли бы облик (сплошная ↔ пунктир).
+  const known = Array.isArray(visitsProp);
+  const heldRef = useRef({ visits: [], transfers: [] });
+  useLayoutEffect(() => {
+    if (known) heldRef.current = { visits: visitsProp, transfers: transfersProp };
+  }, [known, visitsProp, transfersProp]);
+  const { visits, transfers } = known ? { visits: visitsProp, transfers: transfersProp } : heldRef.current;
   const ordered = useMemo(() => {
-    if (!known) return [];
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
     // Свёрнутый вид — ОТРЕЗОК МАРШРУТА между городами-назначениями (`transitSpan`,
     // единственное место, где это правило записано): уходят не только якоря, но и
     // транзитные точки по дороге из дома и обратно.
     return showSE ? all : transitSpan(all);
-  }, [known, visits, showSE]);
+  }, [visits, showSE]);
 
   const visitsSignature = useMemo(
     () => ordered.map((v) => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|'),
