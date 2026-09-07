@@ -46,7 +46,9 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  */
 
 /**
- * `map` — узел ИЛИ функция `(view) => node`, где `view` = `{ camera, fit }`.
+ * `map` — узел ИЛИ функция `(view) => node`, где `view` = `{ camera, fit }` либо
+ * `null`, пока поверхность не измерена (разбор — у `panelPx` ниже): читать его
+ * обязательно через `view?.`, иначе первый же рендер падает.
  * ДВЕ коробки, по одной на роль: `camera` — чем сдвигаем камеру, `fit` — во что
  * вписываем маршрут. На телефоне первая нулевая (вид уводит сдвиг холста), и
  * без второй фит вписывал бы маршрут во весь холст, то есть наполовину под шит.
@@ -116,7 +118,17 @@ export function MapShell({
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
   const [capPx, setCapPx] = useState(0);
-  const [panelPx, setPanelPx] = useState(0);
+  // ★ «НЕ ИЗМЕРЕНО» ≠ «НОЛЬ». Ширина панели известна только после раскладки
+  // (`useLayoutEffect` ниже), а первый рендер шелла идёт до неё. Пока здесь стоял
+  // ноль, карта на первом же кадре получала отступ 0 (маршрут центрировался ПОД
+  // панелью), а через кадр — измеренные ~620 px, и `useMapInsets` честно ЕХАЛ из
+  // одного в другое: 700 мс пана по незагруженным тайлам на каждом входе в
+  // редактор («карта дёргается, справа пустая полоса»). Замер: pad 620 → 0 → 48 →
+  // 406 → 599 → 620, tiles:false всю дорогу. До замера отступ НЕИЗВЕСТЕН, и карте
+  // это отдаётся как `view = null` — она ничего не трогает; замер приезжает
+  // синхронным ре-рендером ДО отрисовки кадра, и первая настоящая величина
+  // ставится без движения.
+  const [panelPx, setPanelPx] = useState(/** @type {number | null} */ (null));
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -167,7 +179,7 @@ export function MapShell({
   // уезжает `transform`-ом — её ширина не меняется, и «померить свёрнутую» дало
   // бы правильный ответ по случайности. Про свёрнутость знает правило.
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx, overlayOpen: overlayActive, collapsed }),
+    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx: panelPx ?? 0, overlayOpen: overlayActive, collapsed }),
     [isPhone, sheetPx, capPx, panelPx, overlayActive, collapsed],
   );
 
@@ -186,7 +198,8 @@ export function MapShell({
   // вписывать») — маршрут вписывался во весь холст, и обе точки оказывались за
   // кромкой шита. Ни один гард такого не видит: пропа нет, значение просто
   // `null`. Один объект делает пропуск невозможным.
-  const view = useMemo(() => ({ camera: box.camera, fit: box.fit }), [box]);
+  // До замера панели вида НЕТ (`null`), а не «вид с нулевым отступом» — см. `panelPx`.
+  const view = useMemo(() => (panelPx === null ? null : { camera: box.camera, fit: box.fit }), [box, panelPx]);
 
   const rootStyle = useMemo(() => ({
     '--mapshell-bottom': `${box.slotBottom}px`,

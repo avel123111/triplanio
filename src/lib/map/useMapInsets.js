@@ -70,6 +70,12 @@ export function useMapInsets(mapRef, { ready, insets, fitInsets = null, focusing
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
+    // ★ НЕИЗВЕСТНЫЙ отступ (`null`/`undefined`: поверхность ещё не измерена) —
+    // не ноль. Применить его нулём значило бы поставить камеру в заведомо
+    // неверное место и через кадр ехать из него в измеренное (разбор у
+    // `panelPx` в MapShell). Не трогаем ни камеру, ни хранилище: первую
+    // настоящую величину поставит следующий проход, и без движения.
+    if (insets == null) return undefined;
     liveRef.current = map;
     setMapInsets(map, insets, fitInsets || insets);
     const focusDriven = focusing || wasFocusing.current;
