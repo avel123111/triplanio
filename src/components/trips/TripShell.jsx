@@ -135,14 +135,17 @@ export default function TripShell() {
   // ── Что опубликовал экран (контракт — TripShellContext.jsx) ─────────────────
   const [facts, setFactsState] = useState(/** @type {import('./TripShellContext').ShellFacts | null} */ (null));
   const [surface, setSurface] = useState(/** @type {import('./TripShellContext').SurfaceConfig | null} */ (null));
-  const [slots, setSlots] = useState(/** @type {Record<string, HTMLElement | null>} */ ({}));
   const cbs = useRef(/** @type {import('./TripShellContext').ShellCallbacks} */ ({}));
   const mapProps = useMemo(() => createStore(null), []);
-  // Слот регистрируется callback-ref'ом: узел приезжает на маунте (`el`) и
-  // снимается на анмаунте (`null`); одинаковое значение состояние не трогает.
+  // Узлы слотов — СТОР, не состояние оболочки: регистрация узла (шелл карты
+  // смонтировался) перерисовывает только сами слоты, а оболочка, `host` и хуки
+  // публикации экрана этого не видят. Слот регистрируется callback-ref'ом: узел
+  // приезжает на маунте (`el`), снимается на анмаунте (`null`).
+  const slots = useMemo(() => createStore(/** @type {Record<string, HTMLElement | null>} */ ({})), []);
   const registerSlot = useCallback((name, el) => {
-    setSlots((cur) => (cur[name] === el ? cur : { ...cur, [name]: el }));
-  }, []);
+    const cur = slots.get();
+    if (cur[name] !== el) slots.set({ ...cur, [name]: el });
+  }, [slots]);
   const shellSlot = useCallback((el) => registerSlot('shell', el), [registerSlot]);
   const contentSlot = useCallback((el) => registerSlot('content', el), [registerSlot]);
   // Тело - постоянный скролл-контейнер (сама оболочка не скроллится): секции
@@ -152,6 +155,7 @@ export default function TripShell() {
   // узел состоянием приехал бы ре-рендером, и эффект с депами по данным до
   // следующей смены данных смотрел бы в null.
   const mainRef = useRef(/** @type {HTMLElement | null} */ (null));
+  // Стабилен на всё время жизни оболочки (см. `ShellHost` в контракте).
   const host = useMemo(() => ({ setFacts: setFactsState, cbs, setSurface, mapProps, slots, mainRef }), [mapProps, slots]);
 
   // ★ РЕЖИМ ДО ПЕРВОЙ ПУБЛИКАЦИИ — ИЗ СОВПАДЕНИЯ РОУТА, а не «трип по умолчанию».

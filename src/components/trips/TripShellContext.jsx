@@ -99,12 +99,16 @@ export function createStore(initial) {
 
 /**
  * Значение контекста собирает `TripShell`; экраны видят его целиком.
+ * Объект СТАБИЛЕН на всё время жизни оболочки: всё, что меняется, лежит в нём
+ * сторами/рефами, а не значениями, поэтому хуки экрана с `host` в зависимостях
+ * не переигрываются от чужих событий (регистрация узла слота шеллом карты не
+ * трогает публикацию фактов).
  * @typedef {{
  *   setFacts: (f: ShellFacts | null) => void,
  *   cbs: { current: ShellCallbacks },
  *   setSurface: (c: SurfaceConfig | null) => void,
  *   mapProps: ReturnType<typeof createStore>,
- *   slots: Record<string, HTMLElement | null>,
+ *   slots: ReturnType<typeof createStore>,
  *   mainRef: { current: HTMLElement | null },
  * }} ShellHost
  */
@@ -168,7 +172,8 @@ export function useShellMapProps() {
 /**
  * Слот оболочки: содержимое рендерится порталом в узел, который держит
  * `TripShell`/`MapShell`. Пока узла нет (шелл карты ещё не смонтирован),
- * не рендерится ничего — узел приезжает синхронным ре-рендером в том же коммите.
+ * не рендерится ничего — узел приезжает в том же коммите (ref ставится в фазе
+ * мутации, стор оповещает слот синхронно, до отрисовки).
  *
  * Имена слотов: `panelHead` · `panelBody` · `panelFoot` · `panelOverlay` ·
  * `status` (полоса статуса над низом карты) · `mapOverlay` (плавающие контролы
@@ -178,6 +183,9 @@ export function useShellMapProps() {
  */
 export function ShellSlot({ name, children }) {
   const host = useShellHost();
-  const el = host?.slots[name] || null;
+  // Узлы слотов — стор: на регистрацию узла перерисовывается ТОЛЬКО слот, а не
+  // оболочка и не экран.
+  const slots = useSyncExternalStore(host.slots.subscribe, host.slots.get, host.slots.get);
+  const el = slots[name] || null;
   return el ? createPortal(children, el) : null;
 }
