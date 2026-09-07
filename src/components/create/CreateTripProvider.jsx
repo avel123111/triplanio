@@ -61,7 +61,17 @@ export const useCreateTrip = () => useContext(CreateTripContext);
 // `--sm` в планировщике. `col` — колонка (картина сверху, текст снизу) для пары
 // «две рядом» в диалоге; на ≤640 CSS сам возвращает строку, чтобы шторка не
 // росла в две высокие карточки.
-/** @param {{ variant?: 'man' | 'ai', icon?: string, title: any, sub?: any, onClick?: any, art?: string, col?: boolean }} p */
+/**
+ * @param {{
+ *   variant?: 'man' | 'ai',
+ *   icon?: string,            // иконка плитки; читается только БЕЗ `art`
+ *   title: React.ReactNode,
+ *   sub?: React.ReactNode,
+ *   onClick?: () => void,
+ *   art?: string,             // имя из ILLUSTRATIONS; включает плитку с картиной
+ *   col?: boolean,            // колонка вместо строки; действует только с `art`
+ * }} p
+ */
 export function ChoiceCard({ variant = 'man', icon, title, sub, onClick, art, col }) {
   const isAi = variant === 'ai';
   const cls = ['choice-card', isAi && 'choice-card--ai', art && 'choice-card--vis', art && col && 'choice-card--col']
