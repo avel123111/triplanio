@@ -7,6 +7,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { computeTripRange, currentCityVisit, formatDateRange, tripPhase, tripProgress } from '@/lib/trip-dates';
 import { naiveDayKey } from '@/lib/naive-time';
 import { DateTime } from 'luxon';
+import { cityUnderPin } from '@/lib/map/markers';
 
 // Кадр поездки на Обзоре: карта во всю ширину, панель состояния в левом верхнем
 // углу (низ кадра занимает атрибуция mapbox).
@@ -115,8 +116,8 @@ export default function TripFrame({
             hoveredVisitId={hoveredId}
             selectedVisitId={selectedId}
             cityBadge={cityBadge}
-            onCityHover={(pts) => setHoveredId(pts ? (pts[0]?.id ?? null) : null)}
-            onCityClick={(pts) => { const v = pts?.[0]; if (v) setSelectedId((cur) => (cur === v.id ? null : v.id)); }}
+            onCityHover={(pts) => setHoveredId(cityUnderPin(pts)?.id ?? null)}
+            onCityClick={(pts) => { const v = cityUnderPin(pts); if (v) setSelectedId((cur) => (cur === v.id ? null : v.id)); }}
             onMapClick={() => setSelectedId(null)}
           />
         ) : (

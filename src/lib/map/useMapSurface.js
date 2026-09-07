@@ -8,7 +8,7 @@ import { useSharedMap } from './MapProvider';
 // The instance is never created/destroyed here: it's acquired (its element moved
 // into `containerRef`) on mount and parked back on unmount, so camera, tiles,
 // sources and route layers persist across screens. This hook owns the bits that
-// were copy-pasted between MapView and FlowMap — acquire/release, ready-seeding
+// were copy-pasted between MapView and the planner map (merged into MapView, TRIP-520) — acquire/release, ready-seeding
 // (no spinner flash on revisit), day/night + projection re-assert, the resize on
 // re-show, and this screen's marker cleanup on unmount (route LINE layers are
 // deliberately left on the instance so reopening the same route doesn't rebuild

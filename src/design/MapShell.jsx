@@ -40,9 +40,10 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  *
  *   <MapShell
  *     map={(view) => <MapView view={view} … />}
- *     panel={<RoutePanel/>} panelLabel="Маршрут"
+ *     panelLabel="Маршрут" onSlot={registerSlot}
  *     detents={[0.15, 0.68, 1]} detent={i} onDetentChange={setI}
  *   />
+ *   …и экран: <ShellSlot name="panelBody"><RoutePanel/></ShellSlot>
  */
 
 /**
@@ -55,13 +56,18 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  * Одним объектом, а не двумя аргументами: позиционные уже стоили дефекта —
  * экран forwardил первый и молча терял второй, и ни один гард этого не видит.
  *
+ * ★ СЛОТЫ (TRIP-520). Содержимое панели шелл больше не получает пропами: он
+ * держит УЗЛЫ (шапка панели, тело, футер, слой над панелью, статус-полоса,
+ * площадь над картой) и отдаёт их хосту через `onSlot(name, el)`, а экран
+ * рендерит в них порталом (`ShellSlot`). Так шелл живёт дольше экрана: на
+ * переходе визард → маршрут узлы те же, меняется только их содержимое.
+ *
  * @param {{
  *   map: any,
- *   panel?: any,
- *   panelHeader?: any,
- *   panelFooter?: any,
  *   panelLabel: string,
- *   panelOverlay?: any,
+ *   onSlot?: (name: string, el: HTMLElement | null) => void,
+ *   insetTop?: number,
+ *   insetLeft?: number,
  *   overlayActive?: boolean,
  *   detents?: number[],
  *   detent?: number,
@@ -71,7 +77,6 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  *   collapseLabel?: string,
  *   expandLabel?: string,
  *   className?: string,
- *   children?: any,
  * }} p
  */
 /** Воздух между атрибуцией mapbox и кромкой шита (px). */
@@ -79,25 +84,44 @@ const ATTRIB_AIR = 10;
 
 export function MapShell({
   map,
-  panel,
-  // Шапка панели — то, что видно, когда шит опущен на нижний детент (и что на
-  // десктопе стоит над телом). Шелл обязан знать про неё отдельно: опущенный
-  // шит без шапки — безымянная полоска, по которой не понять, что под ней.
-  //
-  // Воздух вокруг шапки даёт ШЕЛЛ (`.mapshell__head`), а не экран: это геометрия
-  // его коробки, и экран, повторяющий её у себя, разъезжается с ней на первой же
-  // правке.
-  panelHeader = null,
-  // Панель действий (кнопки шага): на виду при любом скролле тела, поэтому
-  // слот отдельный, а не «последний ребёнок» содержимого.
-  panelFooter = null,
   panelLabel,
-  // Слой ПОВЕРХ панели во всю её высоту — ящик города/события у редактора.
-  // Живёт здесь, а не в `children`: `children` лежат поверх ВСЕГО шелла (карты
-  // в том числе), а ящик обязан закрывать ровно панель и не трогать карту —
-  // по ней в этот момент продолжают кликать.
-  panelOverlay = null,
-  // ЛОГИЧЕСКОЕ «слой открыт» для КАМЕРЫ — отдельно от `panelOverlay` (рендера).
+  // Слоты (см. шапку файла):
+  //   panelHead    — шапка панели: то, что видно, когда шит опущен на нижний
+  //                  детент (и что на десктопе стоит над телом). Опущенный шит
+  //                  без шапки — безымянная полоска. Воздух вокруг шапки даёт
+  //                  ШЕЛЛ (`.mapshell__head`), а не экран: это геометрия его
+  //                  коробки, и экран, повторяющий её, разъезжается с ней на
+  //                  первой же правке.
+  //   panelBody    — скроллящееся тело панели.
+  //   panelFoot    — панель действий (кнопки шага): на виду при любом скролле
+  //                  тела, поэтому слот отдельный, а не «последний ребёнок».
+  //   panelOverlay — слой ПОВЕРХ панели во всю её высоту (ящик города/события у
+  //                  редактора). Закрывает ровно панель и не трогает карту — по
+  //                  ней в этот момент продолжают кликать. Соседствует с
+  //                  колонкой панели, а не лежит в ней: сворачивание маршрута
+  //                  (`transform`/`inert` на колонке) его не прячет.
+  //   status       — полоса статуса у низа свободного окна (пилюля «N городов ·
+  //                  M ночей»). Шелл МЕРЯЕТ её и отдаёт кадру как закрытое
+  //                  снизу: раньше карта мерила пилюлю сама, дотягиваясь в
+  //                  чужой класс, и нижний город кадра уезжал под неё, пока
+  //                  замер не поставили (393×852: пин 225..254 против пилюли
+  //                  248..279).
+  //   mapOverlay   — площадь над картой для плавающих контролов экрана (круглая
+  //                  «назад» на телефоне).
+  onSlot,
+  // Полоса, закрытая над холстом СВЕРХУ хостом (шапка трипа на телефоне лежит
+  // над картой — холст одной высоты в визарде и в трипе). Числом от хоста, а не
+  // чтением CSS: одна величина ставится и камере, и CSS-переменной раскладки
+  // (`--mapshell-inset-top`), второго источника нет.
+  insetTop = 0,
+  // Полоса, закрытая над холстом СЛЕВА хостом (рейл трипа над картой). Тоже
+  // числом: панель встаёт правее неё (`--mapshell-inset-left`), камера получает
+  // её в закрытое. На переходе визард → трип полоса растёт 0 → рейл, панель
+  // едет транзишном `left`, камера — своим доездом, тем же темпом. Замером с
+  // DOM это не взять: положение панели в транзишне меняется, а ResizeObserver
+  // видит только размер.
+  insetLeft = 0,
+  // ЛОГИЧЕСКОЕ «слой открыт» для КАМЕРЫ — отдельно от слоя (рендера).
   // Рендер живёт дольше: уходящий слой доигрывает анимацию ещё ~240 мс, и если бы
   // камера читала `!!panelOverlay`, отступ менялся бы на 240 мс ПОЗЖЕ закрытия —
   // уже после окна focus-driven — и обрывал бы летящий `calmFit`. Экран отдаёт
@@ -111,13 +135,30 @@ export function MapShell({
   collapseLabel = '',
   expandLabel = '',
   className = '',
-  children,
 }) {
   const isPhone = useIsPhone();
   const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
+  const statusRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
   const [capPx, setCapPx] = useState(0);
+  // Высота полосы статуса — замером (ResizeObserver), а не числом: она сложена
+  // из строки и её отступа в CSS, и переписанная сюда константа разъехалась бы с
+  // ними молча на первой же правке типографики.
+  const [statusPx, setStatusPx] = useState(0);
+  // Слот-узлы отдаём хосту callback-ref'ами. Рефы стабильны на имя: новая
+  // функция на каждый рендер заставила бы React снимать и ставить узел заново.
+  const slotRefs = useRef(/** @type {Record<string, (el: HTMLElement | null) => void>} */ ({}));
+  const onSlotRef = useRef(onSlot);
+  onSlotRef.current = onSlot;
+  const slot = (name) => {
+    if (!slotRefs.current[name]) slotRefs.current[name] = (el) => onSlotRef.current?.(name, el);
+    return slotRefs.current[name];
+  };
+  // Слот статуса меряется здесь же — ссылка одна, стабильная (см. `slot`).
+  const statusSlot = useCallback((/** @type {HTMLElement | null} */ el) => { statusRef.current = el; onSlotRef.current?.('status', el); }, []);
+  const insetTopRef = useRef(insetTop);
+  insetTopRef.current = insetTop;
   // ★ «НЕ ИЗМЕРЕНО» ≠ «НОЛЬ». Ширина панели известна только после раскладки
   // (`useLayoutEffect` ниже), а первый рендер шелла идёт до неё. Пока здесь стоял
   // ноль, карта на первом же кадре получала отступ 0 (маршрут центрировался ПОД
@@ -128,11 +169,11 @@ export function MapShell({
   // это отдаётся коробками `null` в `view` — она ничего не трогает; замер приезжает
   // синхронным ре-рендером ДО отрисовки кадра, и первая настоящая величина
   // ставится без движения.
-  const [panelPx, setPanelPx] = useState(/** @type {number | null} */ (null));
-  // Левый край панели от края холста: всё левее неё закрыто НЕ панелью (рейл
-  // трипа лежит над холстом в секциях с картой) и остаётся закрытым, когда
-  // панель свёрнута. Меряется вместе с правым краем, одной функцией.
-  const [panelOffsetPx, setPanelOffsetPx] = useState(0);
+  const [panelW, setPanelW] = useState(/** @type {number | null} */ (null));
+  // Правый край панели от края холста = полоса хоста слева + ширина панели.
+  // Левее панели закрыто НЕ панелью (рейл трипа над холстом), и это остаётся
+  // закрытым, когда панель свёрнута (`offsetPx`).
+  const panelPx = panelW === null ? null : insetLeft + panelW;
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -144,7 +185,8 @@ export function MapShell({
 
   // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
   // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
-  // число разъехалось бы с ней на первой же правке раскладки.
+  // число разъехалось бы с ней на первой же правке раскладки. Положение
+  // панели, напротив, приходит числом от хоста (`insetLeft`).
   // Живой сдвиг холста — мимо React (разбор у пропа `onHeightLive` шита).
   // Пока идёт жест, темп нулевой: холст уже там, где палец. На осадке темп
   // возвращается, и остаток пути доезжает той же кривой, что и шит.
@@ -154,27 +196,35 @@ export function MapShell({
     root.style.setProperty('--surface-settle', phase === 'end' ? `${SURFACE_SETTLE_MS}ms` : '0ms');
     // Тем же правилом, что и на осадке: одна формула на оба пути, иначе они
     // разъедутся на первой же правке (`mapShellInsets`).
-    const { shift } = mapShellInsets({ phone: true, sheetPx: px, capPx: cap });
+    const { shift } = mapShellInsets({ phone: true, sheetPx: px, capPx: cap, topPx: insetTopRef.current });
     root.style.setProperty('--mapshell-shift', `${shift}px`);
     root.style.setProperty('--mapshell-attrib', `${shift + ATTRIB_AIR}px`);
   }, []);
 
   const measurePanel = useCallback(() => {
-    const root = rootRef.current, el = panelRef.current;
-    if (!root || !el) { setPanelPx(0); setPanelOffsetPx(0); return; }
-    const r = el.getBoundingClientRect(), b = root.getBoundingClientRect();
-    setPanelPx(Math.max(0, Math.round(r.right - b.left)));
-    setPanelOffsetPx(Math.max(0, Math.round(r.left - b.left)));
+    const el = panelRef.current;
+    setPanelW(el ? Math.max(0, Math.round(el.getBoundingClientRect().width)) : 0);
   }, []);
 
   useLayoutEffect(() => {
-    if (isPhone) { setPanelPx(0); setPanelOffsetPx(0); return undefined; }
+    if (isPhone) { setPanelW(0); return undefined; }
     measurePanel();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measurePanel) : null;
     if (ro && panelRef.current) ro.observe(panelRef.current);
     window.addEventListener('resize', measurePanel);
     return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measurePanel); };
   }, [isPhone, measurePanel]);
+
+  // Полоса статуса: ноль, пока слот пуст (пилюли нет, ноль ночей).
+  useLayoutEffect(() => {
+    const el = statusRef.current;
+    if (!el) return undefined;
+    const measure = () => setStatusPx(Math.round(el.getBoundingClientRect().height));
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (ro) ro.observe(el);
+    return () => { if (ro) ro.disconnect(); };
+  }, []);
 
   // Закрытая площадь — чистая функция (закрыта тестами): у правила «карта
   // кадрируется по свободному окну» нет скриншота, а его поломка не роняет ни
@@ -184,8 +234,8 @@ export function MapShell({
   // уезжает `transform`-ом — её ширина не меняется, и «померить свёрнутую» дало
   // бы правильный ответ по случайности. Про свёрнутость знает правило.
   const box = useMemo(
-    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx: panelPx ?? 0, offsetPx: panelOffsetPx, overlayOpen: overlayActive, collapsed }),
-    [isPhone, sheetPx, capPx, panelPx, panelOffsetPx, overlayActive, collapsed],
+    () => mapShellInsets({ phone: isPhone, sheetPx, capPx, panelPx: panelPx ?? 0, offsetPx: insetLeft, topPx: insetTop, statusPx, overlayOpen: overlayActive, collapsed }),
+    [isPhone, sheetPx, capPx, panelPx, insetLeft, insetTop, statusPx, overlayActive, collapsed],
   );
 
   // Нижняя граница свободного окна едет в CSS-переменной НА КОРНЕ шелла: одно
@@ -210,6 +260,10 @@ export function MapShell({
 
   const rootStyle = useMemo(() => ({
     '--mapshell-bottom': `${box.slotBottom}px`,
+    // Закрытая сверху полоса — раскладке (контролы над картой встают под ней).
+    '--mapshell-inset-top': `${insetTop}px`,
+    // Закрытая слева полоса — раскладке (панель и тумблер встают правее неё).
+    '--mapshell-inset-left': `${insetLeft}px`,
     // ★ СКОЛЬКО ХОЛСТ УЕЗЖАЕТ ВВЕРХ. Половина закрытой шитом высоты: тогда центр
     // ХОЛСТА (а к нему пришпилен вид) встаёт ровно в центр СВОБОДНОГО окна, а
     // низ холста остаётся под шитом — полосе фона взяться неоткуда. Размер
@@ -222,25 +276,30 @@ export function MapShell({
     '--mapshell-attrib': `${box.shift + ATTRIB_AIR}px`,
     '--surface-settle': `${SURFACE_SETTLE_MS}ms`,
     '--surface-ease': SURFACE_EASE_CSS,
-  }), [box]);
+  }), [box, insetTop, insetLeft]);
+
+  // Шапка панели — узел ШЕЛЛА и на десктопе, и в шите: ссылка на слот у него.
+  const head = <div className="mapshell__head" ref={slot('panelHead')} />;
+  const foot = <div ref={slot('panelFoot')} />;
 
   return (
     <div className={['mapshell', className].filter(Boolean).join(' ')} ref={rootRef} style={rootStyle}>
-      <div className="mapshell__map">{typeof map === 'function' ? map(view) : map}</div>
+      {/* Слот карты — и площадь для плавающих контролов экрана: они лежат в нём
+          соседями узла карты, поверх неё. */}
+      <div className="mapshell__map" ref={slot('mapOverlay')}>{typeof map === 'function' ? map(view) : map}</div>
 
-      {panel && (isPhone ? (
+      {isPhone ? (
         <PeekSheet
           detents={detents}
           detent={detent}
           onDetentChange={onDetentChange}
           onHeightChange={applySheetPx}
           onHeightLive={onSheetLive}
-          header={panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
-          footer={panelFooter}
+          onBodyRef={slot('panelBody')}
+          header={head}
+          footer={foot}
           label={panelLabel}
-        >
-          {panel}
-        </PeekSheet>
+        />
       ) : (
         <>
           <aside
@@ -261,9 +320,9 @@ export function MapShell({
                 роль играет поверхность шита (фон + скругление + тень). Экран
                 отдаёт содержимое, а не рисует себе карточку заново. */}
             <Card pad="none" radius="btn" raised className="mapshell__card">
-              {panelHeader ? <div className="mapshell__head">{panelHeader}</div> : null}
-              <div className="mapshell__body scrollbar-thin">{panel}</div>
-              {panelFooter}
+              {head}
+              <div className="mapshell__body scrollbar-thin" ref={slot('panelBody')} />
+              {foot}
             </Card>
           </aside>
           {/* Шов панели и карты — место, где живёт «свернуть/раскрыть»: он
@@ -299,13 +358,15 @@ export function MapShell({
           {/* Слой города/события — НЕЗАВИСИМ от колонки панели (TRIP-195 доводка):
               он сосед `.mapshell__panel`, а не её потомок, поэтому сворачивание
               маршрута (`transform`/`inert` на колонке) его НЕ прячет и НЕ выносит
-              из таба. Открыт маршрут — слой ложится поверх него; свёрнут — тот же
-              слой открывается сам по себе. Коробка та же (левый столбец шелла). */}
-          {panelOverlay ? <div className="mapshell__overlay">{panelOverlay}</div> : null}
+              из таба. Коробка та же (левый столбец шелла). Пустой слот раскладка
+              не показывает (`:empty`), чтобы он не ловил клики над панелью. */}
+          <div className="mapshell__overlay" ref={slot('panelOverlay')} />
         </>
-      ))}
+      )}
 
-      {children}
+      {/* Полоса статуса у низа свободного окна — над шитом на телефоне, у низа
+          холста на десктопе. Меряется в закрытое кадру (см. `statusPx`). */}
+      <div className="mapshell__status t-meta" ref={statusSlot} />
     </div>
   );
 }

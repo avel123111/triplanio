@@ -404,7 +404,7 @@ async function removeAvatarObject(url) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ScreenAccount() {
-  const { user, checkUserAuth, logout } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   const { t } = useI18nFormat();
   const { lang, setLang, units, setUnits } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -459,7 +459,7 @@ export default function ScreenAccount() {
 
   // Hero identity (name + avatar gradient/initials) reflects the SAVED profile,
   // not the in-progress edit — the draft lives in the input only and is applied
-  // on Save (checkUserAuth then refreshes `user`).
+  // on Save (`updateProfile` refreshes `user` from the write's response).
   const avatarName = displayName(user?.email, user?.full_name);
   const avatarInitials = avatarName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
   // Colour by the stable account id (not the name), so this hero matches the
@@ -471,7 +471,7 @@ export default function ScreenAccount() {
 
   // Save stays disabled until something actually changed (mirrors trip Settings).
   // Avatar is deliberately NOT part of this: upload/remove persist immediately
-  // on their own (DB write + checkUserAuth), so the Save button never governs the
+  // on their own (`updateProfile`), so the Save button never governs the
   // avatar — including it here made the button blink active→inactive for the
   // moment between the optimistic setAvatarUrl and `user` refreshing. Save only
   // governs the display name.
@@ -515,23 +515,21 @@ export default function ScreenAccount() {
   const handleSave = async () => {
     setSaving(true);
     setErrorMsg(null);
-    // Запись профиля идёт единой дверью (шов account/profile), не прямым REST в
-    // users. Отказ приезжает машинным `code` в КОРНЕ результата (не в data);
-    // пользователю показываем локализованный текст через errorText, НЕ серверную
-    // прозу (контракт ошибок TRIP-400).
+    // Запись профиля — через владельца кэша (`updateProfile` в AuthContext): он
+    // сам обновляет `user` из ответа шва `account/profile`. Отказ приезжает
+    // машинным `code`; пользователю показываем локализованный текст через
+    // errorText, НЕ серверную прозу (контракт ошибок TRIP-400).
     try {
-      const { error, code } = await invokeFn('account/profile', {
-        body: { full_name: fullName, avatar_url: avatarUrl || null },
-      });
+      const { error, code } = await updateProfile({ full_name: fullName, avatar_url: avatarUrl || null });
       if (error || code) {
         setErrorMsg(errorText(t, code));
       } else {
-        await checkUserAuth?.();
         successToast(t, 'account_saved');
       }
     } finally {
-      // invokeFn по контракту не бросает (отказ приходит значением), но finally
-      // держит кнопку от залипания в «Сохранение…» при неожиданном throw из SDK.
+      // updateProfile по контракту не бросает (отказ приходит значением), но
+      // finally держит кнопку от залипания в «Сохранение…» при неожиданном
+      // throw из SDK.
       setSaving(false);
     }
   };
@@ -568,7 +566,7 @@ export default function ScreenAccount() {
         .upload(path, file);
       if (uploadErr) { report(uploadErr, { surface: 'storage', source: 'upload_avatar' }); throw uploadErr; }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      const { error, code } = await invokeFn('account/profile', { body: { avatar_url: publicUrl } });
+      const { error, code } = await updateProfile({ avatar_url: publicUrl });
       if (error || code) {
         setErrorMsg(errorText(t, code));
         // Профиль на новый объект не переключился — метём только что залитую
@@ -579,7 +577,6 @@ export default function ScreenAccount() {
       setAvatarUrl(publicUrl);
       // Старый объект больше не адресуется профилем — сносим best-effort.
       await removeAvatarObject(prevUrl);
-      await checkUserAuth?.();
     } catch (e) {
       // Сбой загрузки байтов в Storage (не edge) — кода нет, показываем общий
       // текст, не прозу клиента/сервера.
@@ -595,7 +592,7 @@ export default function ScreenAccount() {
     setErrorMsg(null);
     const prev = avatarUrl;
     setAvatarUrl(''); // optimistic
-    const { error, code } = await invokeFn('account/profile', { body: { avatar_url: null } });
+    const { error, code } = await updateProfile({ avatar_url: null });
     if (error || code) {
       setAvatarUrl(prev);
       setErrorMsg(errorText(t, code));
@@ -603,7 +600,6 @@ export default function ScreenAccount() {
     }
     // Байты — best-effort прямо в Storage (own-folder DELETE policy).
     await removeAvatarObject(prev);
-    await checkUserAuth?.();
   };
 
   const handleManageSubscription = async () => {

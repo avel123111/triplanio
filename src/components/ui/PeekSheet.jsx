@@ -105,6 +105,7 @@ function isMine(node) {
  *   detents?: number[],
  *   onHeightChange?: (px: number, capPx: number) => void,
  *   onHeightLive?: (px: number, phase: 'move' | 'end', capPx: number) => void,
+ *   onBodyRef?: (el: HTMLElement | null) => void,
  *   label: string,
  *   className?: string,
  * }} p
@@ -124,12 +125,17 @@ export function PeekSheet({
   // содержимого шита. Читатель у него один — CSS-переменная сдвига холста, а
   // сдвиг это `transform`: ни ресайза, ни команд камере.
   onHeightLive,
+  // Узел тела наружу (слот шелла карты, TRIP-520): экран рендерит в него
+  // порталом, а сам скроллер остаётся один — этот. Стабильная ссылка обязательна:
+  // новая функция на каждый рендер снимала бы и ставила узел заново.
+  onBodyRef = null,
   label,
   className = '',
 }) {
   const sheetRef = useRef(null);
   const headRef = useRef(null);
   const bodyRef = useRef(null);
+  const setBody = useCallback((el) => { bodyRef.current = el; onBodyRef?.(el); }, [onBodyRef]);
   const footRef = useRef(null);
   const drag = useRef(null);
   // Полоса шапки (грип + header + док + safe-area) и высота вьюпорта — обе
@@ -428,7 +434,7 @@ export function PeekSheet({
           экрана). Листовые оверлеи выше маршрута (Toaster/ConsentBanner/Tooltip)
           такой границы не имеют — их и оборачиваем. */}
       <div ref={headRef} className="peek-sheet__head" data-peek-head>{header}</div>
-      <div ref={bodyRef} className="peek-sheet__body">{children}</div>
+      <div ref={setBody} className="peek-sheet__body">{children}</div>
       {footer && <div ref={footRef} className="peek-sheet__foot">{footer}</div>}
     </div>,
     document.body,

@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints, fitPadding } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
 import { createHotelBadgeEl, createClusterBubbleEl, cityPoints } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
-import { fitAir, fitHeightSig } from '@/lib/map/insets';
+import { fitAir, fitHeightSig, getMapInsets } from '@/lib/map/insets';
+import { GLOBE_START_CENTER, startGlobeZoom } from '@/lib/map/globeStart';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { useMapInsets } from '@/lib/map/useMapInsets';
 import { useCityMarkers } from '@/lib/map/useCityMarkers';
@@ -99,10 +100,12 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *   вызов под гардом     onCityHover `if (cb) cb(…)`
  *                        onCityClick `if (cb) cb(g.data)` · onHotelClick /
  *                        onHotelHover через `?.()`
- *   children             оверлейный хром родителя; `{children}` от `undefined`
- *                        рендерит пустоту, и ровно так карту зовёт редактор в проде
  * Обязательны только `visits` и `transfers` - их читают без фолбэка
- * (`sortVisits(visits)`, `transfers.forEach`), рисовать нечего.
+ * (`sortVisits(visits)`, `transfers.forEach`), рисовать нечего. `visits: null` —
+ * маршрут ещё НЕИЗВЕСТЕН (секция ждёт ответ двери): карта держит последний
+ * известный маршрут (пины, линии, камера не трогаются; на свежем маунте — ничего
+ * не рисует, холст под обложкой); пустой массив — маршрут известен и ПУСТ
+ * (стартовый глобус). См. `known`.
  * ⚠️ `onCityClick` стоит РЯДОМ с `onCityHover` под одним и тем же `if (cb)`, и
  * ДВА живых вызывателя его не передают вовсе (`PublicTrip`, `RouteMapCard`):
  * пометить его обязательным значило бы уронить их в тот момент, когда они
@@ -114,8 +117,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           mapControls?: string[], initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
  *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
  *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
- *           onMapClick?: any, cooperativeGestures?: boolean,
- *           children?: any }} p
+ *           onMapClick?: any, cooperativeGestures?: boolean }} p
  */
 export default function MapView({
   // Закрытая панелью площадь (отступы вьюпорта) — приезжает от `<MapShell>`.
@@ -129,8 +131,8 @@ export default function MapView({
   // это ЕДИНСТВЕННЫЙ сигнал, что окно поехало, — отступы камеры там всегда
   // нулевые, и без него подстройка под новый размер на телефоне не случилась бы
   // вовсе.
-  visits,
-  transfers,
+  visits: visitsProp,
+  transfers: transfersProp,
   showStartEnd = true,
   colorScheme = 'LIGHT',
   onCityClick,
@@ -209,13 +211,14 @@ export default function MapView({
   // ctrl+scroll") for as long as this surface owns the singleton; restored on
   // unmount so other screens keep it. Defaults to the singleton's setting (on).
   cooperativeGestures = true,
-  children,
 }) {
   const containerRef = useRef(null);
   const markersRef = useRef([]);
   const hotelMarkersRef = useRef([]);
   const prevHideRouteRef = useRef(false);
   const fittedSigRef = useRef('');
+  // Подпись окна, под которую поставлен пустой глобус ('' = сейчас на карте маршрут).
+  const emptySigRef = useRef('');
   // Clustering state (TRIP-141), all imperative so move/zoom never re-renders:
   //   hotelRenderRef    — id → { kind:'badge'|'cluster', el, clusterId } for the
   //                       CURRENT viewport (powers list↔map hover/select)
@@ -235,6 +238,24 @@ export default function MapView({
   useEffect(() => { hoveredHotelIdRef.current = hoveredHotelId != null ? String(hoveredHotelId) : null; }, [hoveredHotelId]);
 
   const [projection, setProjection] = useState(initialProjection);
+  // ★ ОБЛОЖКА ДО ПЕРВОГО КАДРА. Инстанс карты ОБЩИЙ, и на входе он ещё показывает
+  // камеру и подложку прошлого экрана (далёкая монохромная карта главной).
+  // Открыть его по `ready` (стиль загружен) значило бы показать чужой кадр на
+  // такт, пока наша камера не встала, — «далёкое серое → мой маршрут» рывком.
+  // Поэтому холст закрыт, пока камера НЕ ПОСТАВЛЕНА ЭТИМ экраном (`framed`
+  // переворачивается в эффекте кадрирования). Ждём именно камеру, а НЕ 'idle'
+  // mapbox: тот дожидается ВСЕХ тайлов вида, а у целого глобуса их столько, что
+  // это секунды; тайлы доезжают на уже открытой карте, как на любом экране.
+  const [framed, setFramed] = useState(false);
+  // Размер окна — подпись ПУСТОГО глобуса: его диаметр считается от высоты
+  // холста (`startGlobeZoom`), и на смену размера окна шар обязан пересчитаться.
+  const [winSig, setWinSig] = useState(() => (typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : ''));
+  useEffect(() => {
+    let raf = 0;
+    const onResize = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setWinSig(`${window.innerWidth}x${window.innerHeight}`)); };
+    window.addEventListener('resize', onResize);
+    return () => { window.removeEventListener('resize', onResize); cancelAnimationFrame(raf); };
+  }, []);
   // Воздух кадра маршрута — общий закон `fitAir` (разбор у него же, в
   // `lib/map/insets.js`): с визардом создания эта карта делит один инстанс на
   // одном маршруте, и с разным воздухом камера на входе в редактор ехала всегда.
@@ -338,6 +359,24 @@ export default function MapView({
     }
   }, []);
 
+  // ★ `visits === null` — МАРШРУТ НЕИЗВЕСТЕН (данные экрана ещё едут), и это не
+  // «пустой маршрут»: пустой ставит стартовый глобус, неизвестный НЕ ТРОГАЕТ
+  // НИЧЕГО — ни камеру (иначе редактор на медленной двери показывал бы глобус, а
+  // через секунду улетал к маршруту), ни пины и линии: карта держит ПОСЛЕДНИЙ
+  // ИЗВЕСТНЫЙ маршрут, пока не приедет новый. Инстанс и этот компонент живут
+  // через смену экрана (визард → редактор в одной оболочке), и на этой смене
+  // редактор публикует `null` на время своей двери (~0.5 с): читать его как
+  // «пусто» значило снять пины и линии с только что нарисованного маршрута и
+  // вернуть их тем же набором — карта МОРГАЛА. Свежий маунт без известного
+  // маршрута ничего не рисует, как и раньше. Тот же контракт, что у `view`:
+  // null = ждать. Переезды едут вместе с городами — иначе на время ожидания
+  // линии меняли бы облик (сплошная ↔ пунктир).
+  const known = Array.isArray(visitsProp);
+  const heldRef = useRef({ visits: [], transfers: [] });
+  useLayoutEffect(() => {
+    if (known) heldRef.current = { visits: visitsProp, transfers: transfersProp };
+  }, [known, visitsProp, transfersProp]);
+  const { visits, transfers } = known ? { visits: visitsProp, transfers: transfersProp } : heldRef.current;
   const ordered = useMemo(() => {
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
     // Свёрнутый вид — ОТРЕЗОК МАРШРУТА между городами-назначениями (`transitSpan`,
@@ -640,6 +679,39 @@ export default function MapView({
     // Fit only once the slot is MEASURED (canFit) — never into a zero-size
     // container (fit is deferred; the effect re-runs when canFit flips). Markers/
     // lines above still draw on `ready`, so the map is never blank. (TRIP-202)
+    if (!known) return undefined;
+    if (canFit && ordered.length === 0) {
+      // ★ ПУСТОЙ МАРШРУТ — НЕЙТРАЛЬНЫЙ СТАРТОВЫЙ ГЛОБУС, а не «камера где была»
+      // (планировщик до первого города; сюда же возвращает RESET черновика). Шар
+      // встаёт по центру холста и сайзится от него (`lib/map/globeStart.js`, там
+      // же разбор и тест: у правила «какого размера шар» нет ни скриншота в CI,
+      // ни гарда, и его уже дважды ломали). Подпись — РАЗМЕР ОКНА, а не свободное
+      // окно: шар считается от холста, смена детента для него не событие — иначе
+      // он прыгал бы на каждой осадке шита («автофокус на пустом глобусе»).
+      // Возврат из маршрута (сброс) едет плавно, свежий маунт/ресайз — встык (его
+      // прячет обложка).
+      if (emptySigRef.current !== winSig) {
+        const el = map.getContainer?.();
+        const insets = getMapInsets(map);
+        const start = {
+          center: GLOBE_START_CENTER,
+          zoom: startGlobeZoom({ W: el?.clientWidth || 0, H: el?.clientHeight || 0, insets, air }),
+          padding: insets,
+        };
+        try {
+          if (fittedSigRef.current) map.easeTo({ ...start, duration: 600 });
+          else map.jumpTo(start);
+        } catch { /* ignore */ }
+        emptySigRef.current = winSig;
+        // Глобус — тоже поставленная камера: первый город потом ПРИЕЗЖАЕТ из него
+        // (calmFit), а не встаёт встык, как на карте, которую ещё не кадрировали.
+        markFramed(map);
+      }
+      fittedSigRef.current = '';
+      setFramed(true);
+      return undefined;
+    }
+    emptySigRef.current = '';
     if (canFit && ordered.length > 0 && fittedSigRef.current !== fitSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
@@ -659,12 +731,16 @@ export default function MapView({
       fittedSigRef.current = fitSignature;
       markFramed(map);
     }
+    // Камера поставлена этим экраном — холст можно открыть (см. `framed`).
+    // Идемпотентно: на неизменённом значении React рендер не запускает.
+    if (canFit) setFramed(true);
 
     return undefined;
     // `transfers` больше не в deps: фит зависит от набора визитов, не переездов
     // (линии рисует отдельный эффект). focusSig/revealActiveId читаются внутри как
     // и раньше — их смена приходит вместе с ре-рендером visitsSignature/фокуса.
-  }, [ready, canFit, ordered, fitSignature, hideRoute]);
+    // `winSig` — подпись пустого глобуса (см. ветку выше).
+  }, [ready, canFit, known, ordered, fitSignature, hideRoute, winSig]);
 
   // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
   // Owns the hotel markers while the overlay is open: builds a moveend listener
@@ -854,15 +930,20 @@ export default function MapView({
     return undefined;
   }, [ready, selectedLegKey, ordered, transferKindByPair, visitsSignature, hideRoute]);
 
+  // Открываем холст, когда стиль загружен И камера поставлена этим экраном.
+  const revealed = ready && framed;
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: ready ? 1 : 0, transition: 'opacity .3s ease' }} />
-      {!ready && (
+      <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: revealed ? 1 : 0, transition: 'opacity .3s ease' }} />
+      {!revealed && (
+        /* Спиннер — только пока грузится стиль; на тёплом инстансе обложка
+           глухая: прячет чужой кадр до нашей камеры, спиннером не моргает и
+           тайлов не ждёт. */
         <div className="t-body" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--muted)', background: 'var(--surface)', zIndex: 2 }}>
-          {error ? `Map error: ${error}` : <div className="spin spin--ring spin--lg spin--ink" />}
+          {error ? `Map error: ${error}` : (!ready && <div className="spin spin--ring spin--lg spin--ink" />)}
         </div>
       )}
-      {mapControls.length > 0 && ready && (
+      {mapControls.length > 0 && revealed && (
         <MapControls
           controls={mapControls}
           projection={projection}
@@ -873,7 +954,6 @@ export default function MapView({
           onToggleSE={() => setShowSE((v) => !v)}
         />
       )}
-      {children}
     </div>
   );
 }
