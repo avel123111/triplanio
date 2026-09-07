@@ -15,7 +15,7 @@ import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 // (.chat-reply / .chat-run), NOT a wrapping gap — a wrapping gap stacked on top of
 // them read as double spacing.
 //   props: aiMessages[], onGenerate(promptText) — direct props, like its sibling
-//   flow panels (FlowMap / FlowProgress / StepHome), not a ctx bag.
+//   flow panels (FlowProgress / StepHome), not a ctx bag.
 // =====================================================================
 
 // Anchor row (start / finish) — the AI-tinted node tile + city name + a meta label

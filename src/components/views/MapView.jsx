@@ -100,10 +100,11 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *   вызов под гардом     onCityHover `if (cb) cb(…)`
  *                        onCityClick `if (cb) cb(g.data)` · onHotelClick /
  *                        onHotelHover через `?.()`
- *   children             оверлейный хром родителя; `{children}` от `undefined`
- *                        рендерит пустоту, и ровно так карту зовёт редактор в проде
  * Обязательны только `visits` и `transfers` - их читают без фолбэка
- * (`sortVisits(visits)`, `transfers.forEach`), рисовать нечего. `visits: null`
+ * (`sortVisits(visits)`, `transfers.forEach`), рисовать нечего. `visits: null` —
+ * маршрут ещё НЕИЗВЕСТЕН (секция ждёт ответ двери): пинов и линий нет, камера не
+ * трогается, холст под обложкой; пустой массив — маршрут известен и ПУСТ
+ * (стартовый глобус). `visits: null`
  * законен и значит «маршрут ещё неизвестен» (см. `known`).
  * ⚠️ `onCityClick` стоит РЯДОМ с `onCityHover` под одним и тем же `if (cb)`, и
  * ДВА живых вызывателя его не передают вовсе (`PublicTrip`, `RouteMapCard`):
@@ -116,8 +117,7 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *           mapControls?: string[], initialProjection?: string, basemapTheme?: string, hideRoute?: boolean,
  *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
  *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
- *           onMapClick?: any, cooperativeGestures?: boolean,
- *           children?: any }} p
+ *           onMapClick?: any, cooperativeGestures?: boolean }} p
  */
 export default function MapView({
   // Закрытая панелью площадь (отступы вьюпорта) — приезжает от `<MapShell>`.
@@ -211,7 +211,6 @@ export default function MapView({
   // ctrl+scroll") for as long as this surface owns the singleton; restored on
   // unmount so other screens keep it. Defaults to the singleton's setting (on).
   cooperativeGestures = true,
-  children,
 }) {
   const containerRef = useRef(null);
   const markersRef = useRef([]);
@@ -943,7 +942,6 @@ export default function MapView({
           onToggleSE={() => setShowSE((v) => !v)}
         />
       )}
-      {children}
     </div>
   );
 }

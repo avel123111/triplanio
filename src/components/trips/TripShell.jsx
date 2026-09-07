@@ -78,10 +78,11 @@
  * visual-diff-exempt: .trip-shell[data-mode=create][data-surface] {@media (max-width: 640px)} transform — то же со стороны оболочки
  * visual-diff-exempt: .app-header z-index — шапка лежит над контентом в общей ячейке сетки
  * visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-row — секция с картой на телефоне лежит и под шапкой: холст одной высоты в визарде и трипе
- * visual-diff-exempt: .trip-content[data-bleed] {@media (max-width: 640px)} grid-row — то же (составной селектор)
+ * visual-diff-exempt: .trip-content {@media (max-width: 640px)} grid-row — то же (составной селектор)
+ * visual-diff-exempt: .trip-shell[data-surface] {@media (max-width: 640px)} grid-row — то же со стороны оболочки
  */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import { TripAccessProvider } from '@/components/trips/TripAccessContext';
@@ -153,12 +154,13 @@ export default function TripShell() {
   const mainRef = useRef(/** @type {HTMLElement | null} */ (null));
   const host = useMemo(() => ({ setFacts: setFactsState, cbs, setSurface, mapProps, slots, mainRef }), [mapProps, slots]);
 
-  // ★ РЕЖИМ ДО ПЕРВОЙ ПУБЛИКАЦИИ — ИЗ АДРЕСА, а не «трип по умолчанию». Экран
-  // публикует факты в layout-эффекте, то есть ПОСЛЕ первого рендера оболочки, и
-  // пока дефолтом стоял «трип», визард на первом кадре получал рейл на месте, а
-  // на втором — его уезд: «меню появляется и сразу исчезает». Адрес роутер знал
-  // до монтирования обоих, по нему и различаем зону.
-  const routeMode = loc.pathname.startsWith('/trip/') ? 'trip' : 'create';
+  // ★ РЕЖИМ ДО ПЕРВОЙ ПУБЛИКАЦИИ — ИЗ СОВПАДЕНИЯ РОУТА, а не «трип по умолчанию».
+  // Экран публикует факты в layout-эффекте, то есть ПОСЛЕ первого рендера
+  // оболочки, и пока дефолтом стоял «трип», визард на первом кадре получал рейл
+  // на месте, а на втором — его уезд: «меню появляется и сразу исчезает». Роутер
+  // уже сопоставил адрес до монтирования обоих: у адреса трипа есть параметр
+  // `tripId` (элемент раскладки видит параметры дочерних роутов), у визарда — нет.
+  const routeMode = useParams().tripId ? 'trip' : 'create';
   const { mode = routeMode, tripId = null, addons, section = DEFAULT_SECTION, step = null, isPro, proResolved = true, title, meta, loading = false, backTitle: factBackTitle } = facts || {};
   const isTrip = mode === 'trip';
 
@@ -252,9 +254,10 @@ export default function TripShell() {
   // карта. На телефоне контент лежит и под ШАПКОЙ (обе строки сетки): холст тогда
   // одной высоты в визарде (шапки там нет) и в трипе — переезд без `resize()`,
   // шапка въезжает сверху над холстом. Разбор — у `.trip-content[data-bleed]`.
-  // Визард без поверхности (экран лимита) на десктопе тоже в край: рейла в
-  // визарде нет, и колонке под него нечего держать.
-  const bleed = !!surface || (!isTrip && !isPhone);
+  // Визард — всегда в край, и без поверхности (экран лимита): рейла в визарде
+  // нет, и колонке под него нечего держать. Строки сетки на телефоне (контент под
+  // шапкой) — отдельный факт, `data-surface`: под шапку ложится только холст.
+  const bleed = !!surface || !isTrip;
   // Полоса шапки, закрытая над холстом, — ЧИСЛОМ шеллу карты: он ставит её
   // камере и своей раскладке из одного источника. На десктопе шапка стоит в своей
   // строке сетки, над холстом ничего не закрыто; на телефоне закрыта её высота,

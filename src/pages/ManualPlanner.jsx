@@ -27,6 +27,7 @@ import { normalizeStep, stepEntryFrom, resolveBack, nextStepState } from '@/page
 import { draftStorageKey, removeDraft, draftHref, draftDoorMismatch, parseDraft } from '@/lib/planner-draft';
 import { ShellSlot, useShellFacts, useShellSurface } from '@/components/trips/TripShellContext';
 import { sameCity } from '@/lib/validation';
+import { cityUnderPin } from '@/lib/map/markers';
 import PanelAi from '@/pages/create/PanelAi';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { CityAnchorRow } from '@/pages/create/anchors';
@@ -500,7 +501,7 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
               key={n.id}
               ref={setRowRef(n.id)}
               /* Ряд без координат ховер карты не забирает: показывать нечего,
-                 пина у него нет (тот же предикат, по которому FlowMap его и не
+                 пина у него нет (тот же предикат, по которому карта его и не
                  рисует). Въезд во время перетаскивания пропускаем — FLIP возит
                  ряды под удержанным пальцем и иначе дёргал бы подсветку. */
               onMouseEnter={onHover ? () => { if (!draggingId && n.latitude != null) onHover(rowId); } : undefined}
@@ -1521,8 +1522,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // Двусторонняя связка с рядами шага: карта отдаёт узлы под пином, ряды
       // держат id. Повторный клик по тому же пину снимает выбор; клик по пустой
       // карте — тоже (общее поведение всех карт).
-      onCityHover: (pts) => setHoveredMapId(pts ? String(pts[0]?.id) : null),
-      onCityClick: (pts) => { const id = String(pts?.[0]?.id); if (pts?.length) setSelectedMapId((cur) => (cur === id ? null : id)); },
+      onCityHover: (pts) => { const v = cityUnderPin(pts); setHoveredMapId(v ? String(v.id) : null); },
+      onCityClick: (pts) => { const v = cityUnderPin(pts); if (v) setSelectedMapId((cur) => (cur === String(v.id) ? null : String(v.id))); },
       onMapClick: () => setSelectedMapId(null),
     },
   );

@@ -224,6 +224,8 @@ import { Badge, Btn, Chip, Card, Skeleton, Tile, PageHead, Tooltip, useToast } f
 import { Row, Trunc } from '../design/Layout';
 import CityAdder from '@/components/cities/CityAdder';
 import { CityAnchorRow } from '@/pages/create/anchors';
+import { isAnchorNode } from '@/pages/create/routeModel';
+import { cityUnderPin } from '@/lib/map/markers';
 import { useTheme } from '@/lib/ThemeContext';
 import EventDrawerHost from '@/components/common/EventDrawerHost';
 import { ShellSlot, useShellSurface } from '@/components/trips/TripShellContext';
@@ -260,11 +262,9 @@ const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(
 // reproduces exactly what's stored, so editor = timeline = DB.
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
-const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
-// Кого адресует пин: маркер отдаёт ВСЕ узлы своей точки, а имеем мы в виду город —
-// якорь (старт/финиш) стоит той же точкой и в выбор не идёт, пока рядом есть город.
-// Один предикат на клик и на наведение: две копии расходятся молча.
-const cityUnderPin = (pts) => (pts || []).find((n) => !isAnchor(n)) || (pts || [])[0] || null;
+// Якорь маршрута — общий предикат модели маршрута (`routeModel`), кого адресует
+// пин — общий предикат карт (`lib/map/markers`): по одной копии на репо.
+const isAnchor = isAnchorNode;
 // A city added in the editor but not yet persisted carries a 'tmp-…' id (no real uuid
 // until add_city inserts it). A LIVE transfer write to such a city fails the
 // uuid type, so transfer creation is gated until the new city is persisted.

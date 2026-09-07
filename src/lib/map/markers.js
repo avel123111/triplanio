@@ -1,5 +1,5 @@
 // Unified map-marker rendering for every Mapbox surface (trip MapView + create
-// FlowMap). Both screens feed simple {lng,lat,label,kind} descriptors and get an
+// планировщик до TRIP-520). All surfaces feed simple {lng,lat,label,kind} descriptors and get an
 // identical-looking pin; the things that legitimately differ per screen — the
 // click behaviour, the label text and the selected state — are passed in as
 // data/options, not branched inside the renderer. Change the pin's look here once
@@ -141,6 +141,14 @@ export function markerZoomSizeExpr(s = 1, weight = 1) {
 // Правило одно на все поверхности, которые рисуют МАРШРУТ ТРИПА: линза
 // «Маршрут»/редактор и карта share-карточки (у планировщика свой источник и
 // свои роли — он сюда не ходит).
+/**
+ * Кого адресует пин: маркер отдаёт ВСЕ визиты своей точки, а имеем мы в виду
+ * город — якорь (старт/финиш) стоит той же точкой и в выбор не идёт, пока рядом
+ * есть город. Один предикат на клик и наведение на всех картах: копии расходятся.
+ * @param {Array<any>|null|undefined} pts визиты под пином
+ */
+export const cityUnderPin = (pts) => (pts || []).find((v) => v?.kind !== 'start' && v?.kind !== 'end') || (pts || [])[0] || null;
+
 /** @param {Array<any>} ordered — визиты в порядке маршрута */
 export function cityPoints(ordered) {
   let transitNo = 0;
@@ -157,7 +165,7 @@ export function cityPoints(ordered) {
 // none — e.g. the stats map, which never reads it). It is the ONE source the
 // shared marker builder tags onto `data-mids` so the selection/hover toggle can
 // address a pin without a rebuild — replacing the old per-screen `data-vids`
-// (MapView, from visit.id) / `data-mid` (FlowMap, from the raw id) split.
+// (MapView, from visit.id) / `data-mid` (planner map, from the raw id) split.
 // `precision` = coordinate rounding for the "same place" test (5 dp ≈ ~1 m).
 export function groupByLocation(points, precision = 5) {
   const groups = new Map();
