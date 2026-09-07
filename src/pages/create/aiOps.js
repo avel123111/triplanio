@@ -37,6 +37,12 @@ export const refOf = (node) => String(node?.id);
 
 const CITY = { city_name: 'string', city_name_en: 'string', country: 'string?', country_code: 'string' };
 
+/* ⚠️ ОДНО ИМЯ НА ОДИН СМЫСЛ. Поля всех операций лежат в схеме парсера плоско,
+   и модель выбирает имя по смыслу, а не по операции: пока дата старта у
+   `set_route` звалась `startDate`, а у `set_start_date` — `date`, модель на
+   прогоне отдала `set_start_date {startDate}` (замер 07.09.2026, 2 из 2). Поэтому
+   дата старта везде `startDate`, город везде `city_name…`, узел везде `ref`. */
+
 /**
  * Словарь операций. `fields` — форма (тип каждого поля; `?` = необязательное),
  * `city` — операция несёт город и потребляет один резолв, `doc` — строка для
@@ -85,8 +91,8 @@ export const OPS = {
     doc: 'clear_end — убрать возвращение: маршрут кончается последним городом.',
   },
   set_start_date: {
-    fields: { date: 'date' },
-    doc: 'set_start_date — дата начала поездки (YYYY-MM-DD, не раньше сегодня).',
+    fields: { startDate: 'date' },
+    doc: 'set_start_date — дата начала поездки: startDate (YYYY-MM-DD, не раньше сегодня).',
   },
   set_title: {
     fields: { title: 'string' },
@@ -296,9 +302,9 @@ export function applyOps(state, ops, { cities = [], today }) {
         break;
       }
       case 'set_start_date': {
-        if (op.date < today) { reject(op, REASONS.past_date); break; }
-        startDate = op.date;
-        applied.push({ op: 'set_start_date', date: op.date });
+        if (op.startDate < today) { reject(op, REASONS.past_date); break; }
+        startDate = op.startDate;
+        applied.push({ op: 'set_start_date', date: op.startDate });
         break;
       }
       case 'set_title': {

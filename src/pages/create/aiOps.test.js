@@ -154,10 +154,10 @@ test('set_start/set_end вставляют якорь, повтор — заме
 
 test('★ set_start_date: прошлая дата — отказ; будущая — все даты городов переезжают', () => {
   const base = [stop('Рим', 2), stop('Милан', 1)];
-  const past = applyOps(st(base), [{ op: 'set_start_date', date: '2026-01-01' }], { today: TODAY });
+  const past = applyOps(st(base), [{ op: 'set_start_date', startDate: '2026-01-01' }], { today: TODAY });
   assert.deepEqual(past.rejected, [{ op: 'set_start_date', reason: REASONS.past_date }]);
   assert.equal(past.startDate, '2026-10-01');
-  const ok = applyOps(st(base), [{ op: 'set_start_date', date: '2026-11-10' }], { today: TODAY });
+  const ok = applyOps(st(base), [{ op: 'set_start_date', startDate: '2026-11-10' }], { today: TODAY });
   assert.equal(ok.startDate, '2026-11-10');
   assert.equal(ok.nodes[0].startDate, '2026-11-10');
   assert.equal(ok.nodes[1].startDate, '2026-11-12');
@@ -191,7 +191,7 @@ test('★★ три круга правок не пересобирают нет
   let state = st([rome, milan]);
   state = { ...state, ...applyOps(state, [{ op: 'add_city', ...city('Неаполь'), nights: 2 }], { today: TODAY }) };
   state = { ...state, ...applyOps(state, [{ op: 'set_nights', ref: 'm1', nights: 4 }], { today: TODAY }) };
-  state = { ...state, ...applyOps(state, [{ op: 'set_start_date', date: '2026-12-01' }], { today: TODAY }) };
+  state = { ...state, ...applyOps(state, [{ op: 'set_start_date', startDate: '2026-12-01' }], { today: TODAY }) };
   const r = state.nodes.find((n) => n.id === 'r1');
   assert.equal(r.geonameid, rome.geonameid);
   assert.equal(r.latitude, rome.latitude);
@@ -235,6 +235,13 @@ test('★ схема парсера покрывает словарь: enum = в
   }
   assert.deepEqual(schema.required, ['ai_comment', 'ops']);
   assert.equal(item.properties.nodes.items.properties.kind.enum.length, 3);
+});
+
+test('★ одно имя на один смысл: дата старта у set_route и set_start_date называется одинаково', () => {
+  const schema = opsJsonSchema();
+  assert.ok(schema.properties.ops.items.properties.startDate, 'startDate в схеме');
+  assert.equal(schema.properties.ops.items.properties.date, undefined, 'второго имени для даты старта нет');
+  assert.equal(opShapeError({ op: 'set_start_date', startDate: '2026-10-16' }), null);
 });
 
 test('у каждой операции есть строка для промпта, и форма проверяется словарём', () => {
