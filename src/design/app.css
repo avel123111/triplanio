@@ -137,6 +137,13 @@
 
   /* Radii (Lumo names + legacy aliases) */
   --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-xs:4px; --r-pill:999px;
+  /* Размеры иллюстраций (TRIP-532): плитка-картина карточки выбора · картина
+     пустого состояния · герой ленты. Владелец берёт ступень, <Illustration>
+     размера не знает. floor-exempt: tokens +3 — --art-tile/--art-state/--art-hero: три литерала в трёх владельцах становятся шкалой под картины пустых состояний по экранам, апрув Pavel (TRIP-532)
+     visual-diff-exempt: :root --art-tile — новый токен: плитка-картина карточки выбора (TRIP-532)
+     visual-diff-exempt: :root --art-state — новый токен: картина пустого состояния (TRIP-532)
+     visual-diff-exempt: :root --art-hero — новый токен: герой ленты /trips (TRIP-532) */
+  --art-tile: 96px; --art-state: 200px; --art-hero: 300px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
      controls derive from --r-btn directly, so every control outer shape shares
      one radius. The segment track uses it as-is; its inner buttons are
@@ -348,6 +355,15 @@
 /* На телефоне контрол крупнее: 44px - минимальная цель нажатия (WCAG 2.5.5).
    Единственная ступень токена, и она здесь, а не в пяти @media по классам. */
 @media (max-width: 640px) { :root { --ctl-h: 44px; } }
+/* Ступени картин на телефоне (TRIP-532) — та же форма, что у `--ctl-h`: ступень
+   одна на всех, значение своё для ширины. Сцена пустого состояния 200 → 140:
+   в шите на полу-детенте картина 200 + текст + две кнопки не влезали в полосу
+   (кнопки за краем, скролл 100px). Герой 300 → 200: на телефоне он стоит над
+   текстом ленты /trips, и это его собственная ступень, а не «сцена» — раньше
+   `.eroute__fig` брал 200 через `--art-state`, и уменьшение сцены задело бы его.
+   visual-diff-exempt: :root {@media (max-width: 640px)} --art-state — ступень сцены на телефоне (TRIP-532)
+   visual-diff-exempt: :root {@media (max-width: 640px)} --art-hero — ступень героя на телефоне (TRIP-532) */
+@media (max-width: 640px) { :root { --art-state: 140px; --art-hero: 200px; } }
 
 /* Dark theme */
 :root[data-theme="dark"] {
@@ -771,6 +787,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
 .head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-display — Geologica clamp(28–40)/800/1.05, tabular (карьер .head h1) */
 .t-title,
+.card.eroute h3,   /* TRIP-532: заголовок ленты-героя /trips — Title, не Heading (Pavel). Составной селектор: `.card h3` в группе Heading ниже по файлу перебивал голый `.eroute h3` при равной специфичности — замер на превью */
 .sec-head h2.t-title,   /* шапка раздела: `.sec-head h2` ниже по файлу тянет ЛЮБОЙ h2 на канон heading и перебивает класс на самом элементе (равная специфичность, правило позже) — составной селектор возвращает слово разметке.
    Заголовок «N путешествий» на главной просили title, а получал heading именно из-за этого:
    visual-diff-exempt: .sec-head font-family — h2 с классом .t-title теперь получает свой канон (title), а не heading шапки раздела
@@ -798,7 +815,6 @@ h1,
 .fork-state b,   /* TRIP-287: инспектор канонов — заголовок состояния поиска → t-heading (h2 макета) */
 .statbar .v,   /* TRIP-278: инспектор канонов — числа статбара Title→Heading (h2 макета) */
 h2,
-.eroute h3,
 .acct-hero__av,
 .acct-hero__name,
 .sec-head h2,
@@ -4288,9 +4304,6 @@ button.input[data-empty] { color: var(--muted-2); }
 .choice-card__tx { min-width: 0; }
 .choice-card__ttl { color: var(--ink); }
 .choice-card__sub { color: var(--muted); margin-top: 2px; }
-.choice-card__arr { margin-left: auto; flex: none; color: var(--muted-2); transition: color .2s, transform .2s; }
-.choice-card:hover .choice-card__arr { color: var(--brand); transform: translateX(3px); }
-.choice-card--ai:hover .choice-card__arr { color: var(--ai); }
 /* Заметный ховер всего блока (запрос Pavel): рамка --line-hover уже от .card--interactive,
    добавляем тинт --brand-soft + тень --sh-2 (реюз токенов /kit), без движения:
    visual-diff-exempt: .choice-card:hover {@media (hover: hover) and (pointer: fine)} background — тинт фона на ховере
@@ -4309,35 +4322,141 @@ button.input[data-empty] { color: var(--muted-2); }
      --on     выбрана
      --sm     плотный шаг для списка, а не для пары крупных карточек */
 .choice-card--on { border-color: var(--brand); background: var(--brand-soft); }
+
+/* Картина в плитке (TRIP-532): `art` у ChoiceCard кладёт в ТУ ЖЕ плитку `__ic`
+   иллюстрацию вместо иконки; `--art` делает её квадратом под картинку 1:1
+   (любая другая пропорция давала поля по бокам либо обрезку). Отступ внутри —
+   9% от плитки, растёт вместе с ней. Тон AI у картины мягкий: насыщенный
+   градиент плитки-иконки спорил с картиной. Отступы и зазор карточки — базовые
+   `.choice-card`, своих у варианта с картиной нет. `--col` — колонка (картина
+   сверху, во всю ширину) для пары «две рядом» в диалоге.
+   visual-diff-exempt: .choice-card__arr flex — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532)
+   visual-diff-exempt: .choice-card__arr margin-left — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532)
+   visual-diff-exempt: .choice-card__arr transform — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532)
+   visual-diff-exempt: .choice-card__arr transition — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532)
+   visual-diff-exempt: .choice-card__ic--ai background — мягкий AI-тон у плитки с КАРТИНОЙ (составное `.choice-card__ic--art.choice-card__ic--ai`), плитка с иконкой прежняя (TRIP-532)
+   visual-diff-exempt: .choice-card:hover transform — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532) */
+.choice-card__ic--art { width: var(--art-tile); height: var(--art-tile); overflow: hidden; }
+.choice-card__ic--art.choice-card__ic--ai { background: var(--ai-gradient-soft); }
+.choice-card__ic--art img { width: 100%; height: 100%; object-fit: contain; padding: 9%; box-sizing: border-box; display: block; }
+.choice-card--col { flex-direction: column; align-items: stretch; }
+.choice-card--col .choice-card__ic--art { width: 100%; height: auto; aspect-ratio: 1 / 1; }
+/* Колонка возвращается к строке на ТОЙ ЖЕ ступени, где канон `.grid--split`
+   складывается в один столбец (≤880): две высокие карточки друг под другом
+   растянули бы окно и шторку. Ступень — у сетки, карточка про сетку не знает. */
+@media (max-width: 880px) {
+  .choice-card--col { flex-direction: row; align-items: center; }
+  .choice-card--col .choice-card__ic--art { width: var(--art-tile); height: var(--art-tile); aspect-ratio: auto; }
+}
 /* Радиус 10 (--r-btn) у ПЛОТНОГО списочного варианта — планировщик (возврат,
    reverse-geo кандидаты) просил более тугой угол, чем 24 крупных навигационных
    карточек NewTripDialog (те несут `.choice-card` без `--sm`, их не трогает). */
 .choice-card--sm { padding: 12px 14px; gap: 10px; border-radius: var(--r-btn); }
 
-/* Empty Trips · "Маршрут" (no trips yet) — itinerary-rail hero + choice pair.
-   New element (approved 2026-06-20). Bound to existing Lumo tokens, mobile-first.
-   Reuses .choice-card for the manual/AI pair (the ONE canonical choice card). */
+/* Empty Trips · «Маршрут» (no trips yet) — герой + пара выбора (TRIP-532).
+   Сетка в две колонки: текст и пара карточек слева, ОДИН Боно справа на месте
+   бывшей рельсы маршрута (рельса снята вместе с 8 классами). Персонаж вне
+   карточек намеренно: два Боно рядом читались дублями, Боно внутри карточки
+   спорил с текстом. На ≤640 колонка одна, герой над текстом, всё по центру.
+   ★ /trips на десктопе во всю ширину, карточка растягивается до ~1600px: это
+   ЛЕНТА-герой — слева один блок (`__body`: заголовок, подзаголовок, пара
+   карточек), справа Боно вровень с блоком, группа по центру с потолком 780px.
+   Две предыдущие формы отвергнуты на Vercel-превью (Pavel): карточки друг под
+   другом на 560px = «пункты меню» и герой в углу; карточки колонками с плитками
+   по 330px = иллюстрации съедают текст. Блок обязан быть ОДНИМ элементом сетки:
+   три отдельные строки получали лишнюю высоту героя и разъезжались. Пара —
+   `CreateChoicePair` со своей канон-сеткой, у ленты своей раскладки пары нет.
+   Орбы-градиенты фона и пятно под героем сняты: на широкой карточке орбы
+   разъезжались на разные края и в тёмной теме читались пятнами; с ними ушли
+   `position/overflow` карточки и `z-index` у текста — они держали слои над орбами.
+   floor-exempt: layout +1 — eroute__fig / eroute__body / empty-state__art / choice-card__ic--art / choice-card--col при снятых 8 классах рельсы, eroute__create и стрелке: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора, апрув Pavel (TRIP-532)
+   visual-diff-exempt: .eroute h3 max-width — потолок ширины даёт колонка сетки, свой не нужен (TRIP-532)
+   visual-diff-exempt: .eroute h3 position — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute h3 z-index — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute p max-width — потолок ширины даёт колонка сетки, свой не нужен (TRIP-532)
+   visual-diff-exempt: .eroute p position — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute p z-index — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute__create {@media (max-width: 640px)} grid-template-columns — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create display — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create gap — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create grid-template-columns — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create max-width — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create position — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create width — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create z-index — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute h3 font-family — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 font-size — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 font-variant-numeric — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 font-weight — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 letter-spacing — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 line-height — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute__rail svg display — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail svg height — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail svg overflow — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail svg width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail animation — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail margin-bottom — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail max-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail position — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail stroke-dasharray — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail z-index — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute {@media (max-width: 640px)} grid-template-columns — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute {@media (max-width: 640px)} text-align — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute column-gap — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute display — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute flex-direction — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute grid-template-columns — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute justify-content — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute margin-top — отступ карточки из инлайна `style={{marginTop:28}}` в класс, на шкале (TRIP-282/532)
+   visual-diff-exempt: .eroute overflow — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute position — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute text-align — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .radd-plus fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd-plus stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd-plus stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd-plus stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd stroke-dasharray — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rfill fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash animation — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash stroke-dasharray — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rnode fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rnode stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rnode stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rplane fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: to {@keyframes erouteDash} stroke-dashoffset — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532) */
 .eroute {
-  position: relative; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; text-align: center;
+  display: grid; grid-template-columns: minmax(0, 780px) auto; justify-content: center; column-gap: var(--sp-8); align-items: center; text-align: left;
+  margin-top: var(--sp-8);
   padding: 34px 30px 30px;
 }
-.eroute__rail { position: relative; z-index: 1; width: 100%; max-width: 560px; margin-bottom: 22px; }
-.eroute__rail svg { display: block; width: 100%; height: auto; overflow: visible; }
-.eroute__rail .rl { fill: none; stroke: var(--line-strong); stroke-width: 2.5; stroke-linecap: round; }
-.eroute__rail .rl-dash { fill: none; stroke: color-mix(in srgb, var(--brand) 55%, transparent); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 1 9; animation: erouteDash 16s linear infinite; }
-@keyframes erouteDash { to { stroke-dashoffset: -200; } }
-.eroute__rail .rnode { fill: var(--surface); stroke: var(--brand); stroke-width: 3; }
-.eroute__rail .rfill { fill: var(--brand); }
-.eroute__rail .rplane { fill: var(--brand); }
-.eroute__rail .radd { fill: var(--surface); stroke: var(--ai); stroke-width: 2.5; stroke-dasharray: 3.5 3.5; }
-.eroute__rail .radd-plus { fill: none; stroke: var(--ai); stroke-width: 2.4; stroke-linecap: round; }
-.eroute h3 { position: relative; z-index: 1; color: var(--ink); max-width: 22ch; }
-.eroute p { position: relative; z-index: 1; margin: 9px 0 22px; color: var(--muted); max-width: 46ch; }
-.eroute__create { position: relative; z-index: 1; width: 100%; max-width: 640px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* Явные строки у обоих детей: герой стоит в DOM первым (ради ≤640, где он
+   сверху), и без `grid-row: 1` автоплейсмент уводил блок текста во вторую строку. */
+.eroute__body { grid-column: 1; grid-row: 1; min-width: 0; }
+/* Герой — <Illustration>, свой класс ей не нужен: рамку задаёт этот владелец. */
+.eroute__fig { grid-column: 2; grid-row: 1; height: var(--art-hero); display: flex; align-items: flex-end; justify-content: center; }
+.eroute__fig img { height: 100%; width: auto; }
+.eroute h3 { color: var(--ink); }
+.eroute p { margin: 9px 0 22px; color: var(--muted); }
 @media (max-width: 640px) {
-  .eroute { padding: 28px 18px 24px; }
-  .eroute__create { grid-template-columns: 1fr; }
+  .eroute { padding: 28px 18px 24px; grid-template-columns: 1fr; text-align: center; }
+  .eroute__fig { grid-column: 1; grid-row: 1; margin-bottom: var(--sp-7); }
+  .eroute__body { grid-row: 2; }
 }
 
 /* Active-tab empty · "только прошлые" — past trips exist but none active.
@@ -4958,6 +5077,17 @@ button.input[data-empty] { color: var(--muted-2); }
 [data-theme="dark"] .mapshell__card,
 [data-theme="dark"] .peek-sheet { background: var(--bg); }
 .mapshell__body { flex: 1; min-height: 0; overflow-y: auto; }
+/* Состояние в теле панели («Путешествие создано» в визарде) занимает тело
+   целиком: `.empty-state` сам центрирует содержимое по вертикали, ему нужен
+   только рост. Без этого композиция прижата к шапке, а высота панели копится
+   пустотой снизу (десктоп 350px). Правило у ПОВЕРХНОСТИ, как `.dlg .empty-state`
+   и `.sheet .empty-state`: экран (`.flow-lp-b`) в примитив не дотягивается.
+   Действует только в флекс-колонке тела шага. В шите на полу-детенте
+   композиция влезает целиком за счёт телефонной ступени сцены (`--art-state`
+   140) и сжатого ритма `.peek-sheet .empty-state` — детент не трогается.
+   visual-diff-exempt: .empty-state flex — состояние в теле панели шелла занимает его целиком, центр по вертикали (TRIP-532)
+   visual-diff-exempt: .peek-sheet__body flex — тот же ключ по первому подлежащему составного правила; само тело шита `flex: none` не меняется (TRIP-532) */
+.mapshell__body .empty-state, .peek-sheet__body .empty-state { flex: 1; }
 .mapshell__panel[data-collapsed] { transform: translateX(-101%); pointer-events: none; }
 /* Кнопка «свернуть/раскрыть» стоит НА ШВЕ: она едет вместе с панелью, поэтому
    её сдвиг — та же переменная ширины, что у колонки. */
@@ -10612,6 +10742,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 48px 24px; text-align: center; color: var(--muted); }
 .empty-state > .tile { margin-bottom: 16px; }
+/* Картина вместо плитки (TRIP-532, проп `art`): первый потребитель — экран «Путешествие
+   создано» (StepReview). Дальше — свои картины у пустых состояний по экранам и одна
+   дефолтная (план Pavel). Размер задаёт этот владелец, у <Illustration> класса нет. */
+.empty-state__art { margin-bottom: var(--sp-7); }
+.empty-state__art img { height: var(--art-state); width: auto; }
 .empty-state__t { color: var(--ink); margin-bottom: 6px; }
 .empty-state__b { max-width: 340px; }
 /* Действий может быть два (открыть трип / вернуться к списку) - раньше такая
@@ -10628,9 +10763,13 @@ a.doc-row__n:hover{ color: var(--brand); }
    тело диалога — сжимаем ритм под диалог; тон/структуру/типографику не трогаем.
    visual-diff-exempt: .empty-state padding — паддинг пустого состояния как контента модалки (TRIP-302)
    visual-diff-exempt: .dlg padding — тот же паддинг, приписан .dlg по правилу .dlg .empty-state (TRIP-302)
-   visual-diff-exempt: .sheet padding — тот же паддинг, приписан .sheet по правилу .sheet .empty-state (TRIP-302) */
+   visual-diff-exempt: .sheet padding — тот же паддинг, приписан .sheet по правилу .sheet .empty-state (TRIP-302)
+   TRIP-532: шит-панель карты (`.peek-sheet`) — та же поверхность на телефоне,
+   что `.sheet`: полноэкранный 48px ставил «Путешествие создано» за край полосы.
+   visual-diff-exempt: .peek-sheet padding — тот же паддинг, приписан .peek-sheet по правилу .peek-sheet .empty-state (TRIP-532) */
 .dlg .empty-state,
-.sheet .empty-state { padding: var(--sp-8) var(--sp-8) var(--sp-4); }
+.sheet .empty-state,
+.peek-sheet .empty-state { padding: var(--sp-8) var(--sp-8) var(--sp-4); }
 
 /* TRIP-343 PR-2: тон-brand пустого нотиса на `<Card tone="brand" radius="md">`.
    ⚠ ОБЛИК СВЕДЁН К КАНОНУ (решение Pavel, апрув по скрину «было светлее → стало

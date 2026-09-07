@@ -2,6 +2,7 @@ import React from 'react';
 import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Icon } from './icons';
 import { Tile } from './Tile';
+import { Illustration } from './Illustration';
 import { Tooltip } from './Tooltip';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
@@ -64,6 +65,7 @@ export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
 export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
 export { Cover, COVER_FALLBACK } from './Cover';
+export { Illustration } from './Illustration';
 export { Carousel } from './Carousel';
 export { Skeleton } from './Skeleton';
 export { default as AppLoading } from './AppLoading';
@@ -477,15 +479,23 @@ export const CardHeader = ({ title, subtitle, action }) => (
 // примитива. Новый тон = новая строка, как у SEV_ICON выше.
 const EMPTY_TONE = { empty: "brand", error: "danger", success: "success", warning: "warning" };
 
-/** @param {{ icon?: string, title?: any, body?: any, action?: any, kind?: string, boxed?: boolean, iconStyle?: any }} p */
-export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle }) => (
+// `art` — имя из реестра иллюстраций (TRIP-532): картина вместо плитки-иконки.
+// Первый потребитель — «Путешествие создано» (StepReview); дальше пустые состояния
+// получают свои картины по экранам, `icon` остаётся фолбэком. `kind`/`iconStyle`
+// красят только плитку-иконку: у картины тон свой.
+/** @param {{ icon?: string, title?: any, body?: any, action?: any, kind?: string, boxed?: boolean, iconStyle?: any, art?: string }} p */
+export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle, art }) => (
   <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>
-    <div
-      className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${EMPTY_TONE[kind] || "brand"}`}
-      style={iconStyle}
-    >
-      <Icon name={icon} size={boxed ? 21 : 28} />
-    </div>
+    {art ? (
+      <div className="empty-state__art"><Illustration name={art} /></div>
+    ) : (
+      <div
+        className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${EMPTY_TONE[kind] || "brand"}`}
+        style={iconStyle}
+      >
+        <Icon name={icon} size={boxed ? 21 : 28} />
+      </div>
+    )}
     <h3 className="empty-state__t">{title}</h3>
     <div className="t-body empty-state__b">{body}</div>
     {action && <div className="empty-state__act">{action}</div>}
