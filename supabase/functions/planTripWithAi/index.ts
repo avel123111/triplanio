@@ -16,7 +16,7 @@
  * POST body: { sessionId: string, prompt: string, language?: string, draft?: Draft }
  */
 
-import { withHandler } from '../_shared/http.ts';
+import { jsonError, withHandler } from '../_shared/http.ts';
 import { requireUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
@@ -42,7 +42,7 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
     const { sessionId, prompt, language, draft: rawDraft } = await req.json();
     if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400, headers: corsHeaders });
     const parsed = normalizeDraft(rawDraft);
-    if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400, headers: corsHeaders });
+    if (!parsed.ok) return jsonError(400, parsed.error, 'INVALID_INPUT', corsHeaders);
 
     // Rate-limit ПЕРЕД дорогим LLM-вызовом (TRIP-111). Общий примитив
     // rate_limit_hits (bucket=ai_trip_planner, key=user_id).
