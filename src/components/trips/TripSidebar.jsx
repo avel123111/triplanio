@@ -29,8 +29,10 @@ function useTripMenu({ tripId, addons, isPro, proResolved }) {
     // ступени нет, `menuSections` сама отдаёт места под неизвестные пункты.
     // Отдельного «идёт загрузка» здесь БОЛЬШЕ НЕТ и быть не должно — именно флаг
     // перебивал уже известный состав и заставлял меню перестраиваться на глазах.
-    lensItems: menuSections('lens', addons, myStep),
-    mgmtItems: menuSections('manage', addons, myStep),
+    // Нет трипа — нет меню (визард создания живёт в той же оболочке, TRIP-520):
+    // рейл стоит с одним бренд-слотом, пункты приезжают вместе с трипом.
+    lensItems: tripId ? menuSections('lens', addons, myStep) : [],
+    mgmtItems: tripId ? menuSections('manage', addons, myStep) : [],
     canShare: clearsStep(myStep, 'participant'),
     // Апселл показывается только когда статус Pro РАЗРЕШЁН: иначе пункт моргает
     // на Pro-трипе, пока едет ответ.

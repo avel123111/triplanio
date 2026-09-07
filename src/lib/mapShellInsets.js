@@ -14,7 +14,14 @@
  * холста), а каждый кадр ресайза — переаллокация GL-буфера. Тянет «подогнать
  * холст под свободное окно» — значит правило ниже прочитано не до конца.
  *
- * @param {{ phone?: boolean, sheetPx?: number, capPx?: number, panelPx?: number, offsetPx?: number, overlayOpen?: boolean, collapsed?: boolean }} [p]
+ * @param {{ phone?: boolean, sheetPx?: number, capPx?: number, panelPx?: number, offsetPx?: number, topPx?: number, statusPx?: number, overlayOpen?: boolean, collapsed?: boolean }} [p]
+ *   `topPx` — полоса, закрытая над холстом СВЕРХУ (шапка трипа на телефоне лежит
+ *   над картой: холст одной высоты в визарде и в трипе, TRIP-520). На телефоне
+ *   она входит в сдвиг холста — центр встаёт в центр окна «между шапкой и
+ *   шитом»; на десктопе — в отступ камеры.
+ *   `statusPx` — полоса статуса шелла над низом свободного окна (пилюля
+ *   «N городов · M ночей» планировщика). Она закрывает только КАДР (`fit`):
+ *   камеру ради неё не сдвигают, а нижний город кадра под неё не кладут.
  *   `capPx` — высота ВТОРОГО СВЕРХУ детента (её знает шит). Выше неё сдвигать
  *   холст незачем: верхний детент закрывает экран целиком, и всё, что мы там
  *   двигаем, никто не видит — а движение при этом видно на подходе к нему.
@@ -46,39 +53,29 @@
  *
  * @returns {{ slotBottom: number, camera: any, fit: any, shift: number }}
  */
-export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx = 0, offsetPx = 0, overlayOpen = false, collapsed = false } = {}) {
-  // Из DOM приходят 0, NaN и отрицательные (первый кадр, размонтирование) —
-  // такое обязано выродиться в «карта во всю площадь», а не в отрицательный слот.
+export function mapShellInsets({ phone = false, sheetPx = 0, capPx = 0, panelPx = 0, offsetPx = 0, topPx = 0, statusPx = 0, overlayOpen = false, collapsed = false } = {}) {
   const px = (v) => (Number.isFinite(v) && v > 0 ? Math.round(/** @type {number} */ (v)) : 0);
   const none = { top: 0, right: 0, bottom: 0, left: 0 };
-  // Режимы не смешиваются: шит живёт в портале и на переходе десктоп↔телефон
-  // успевает подержать прошлое значение — прочитать его значит отрезать полосу
-  // по призраку.
+  const top = px(topPx);
+  const status = px(statusPx);
   if (phone) {
-    // ★ СДВИГ СЧИТАЕТСЯ ЗДЕСЬ, А НЕ У ЧИТАТЕЛЯ, и это не педантизм: посчитанный
-    // на стороне шелла «просто по высоте шита» он оставался ненулевым при
-    // переходе в десктоп (шит размонтирован, последнее значение осталось) — и
-    // холст держался сдвинутым до перезагрузки страницы. Правило одно, ветка
-    // «телефон» одна, десктоп получает ноль по построению.
     const capped = px(capPx) > 0 ? Math.min(px(sheetPx), px(capPx)) : px(sheetPx);
-    const half = Math.round(capped / 2);
+    // Холст уезжает вверх на ПОЛОВИНУ РАЗНИЦЫ закрытого снизу (шит) и сверху
+    // (шапка): тогда центр холста встаёт ровно в центр свободного окна. Закрытое
+    // сверху и снизу после сдвига РАВНО по построению — коробка кадра симметрична,
+    // округление выбирает одно число на обе стороны.
+    const shift = Math.round((capped - top) / 2);
+    const closed = top + shift;
     return {
       slotBottom: px(sheetPx),
       camera: none,
-      fit: { ...none, top: half, bottom: half },
-      shift: half,
+      fit: { ...none, top: closed, bottom: closed + status },
+      shift,
     };
   }
-  // Колонка слева закрыта, если раскрыта панель ИЛИ открыт слой — ширина у обоих
-  // одна (panelPx). Оба сигнала булевы → сдвиг мгновенный, без замера.
   const leftClosed = overlayOpen || !collapsed;
-  // Десктоп: панель лежит ПОВЕРХ целого холста — там сдвиг камеры и расчёт
-  // кадра это одно и то же. `panelPx` — правый край панели от левого края холста
-  // (включает всё, что стоит левее панели); `offsetPx` — её левый край, то есть
-  // полоса, закрытая НЕ панелью (рейл трипа над холстом). Свёрнутая панель
-  // открывает только себя: полоса до неё закрыта по-прежнему.
-  const box = { ...none, left: leftClosed ? px(panelPx) : px(offsetPx) };
-  return { slotBottom: 0, camera: box, fit: box, shift: 0 };
+  const box = { ...none, top, left: leftClosed ? px(panelPx) : px(offsetPx) };
+  return { slotBottom: 0, camera: box, fit: { ...box, bottom: box.bottom + status }, shift: 0 };
 }
 
 export default mapShellInsets;

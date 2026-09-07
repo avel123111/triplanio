@@ -4384,17 +4384,9 @@ button.input[data-empty] { color: var(--muted-2); }
    framed white .lp panel (right) holding the progress header → scroll body →
    sticky footer. Reuses .lp / .lp-b / .lp-f and the same 14px inset / 16px
    radius framing as .ts-leftbox / .ts-map. */
-/* NB: do NOT name this `.flow-root` — that collides with the global `.flow-root`
-   BFC utility (`display: flow-root`), which overrode `display:flex` here and
-   collapsed the whole grid (empty strip + dead scroll). */
-.flow-page {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-  background: var(--bg, var(--wash));
-}
+/* Своей страницы-оболочки у визарда больше нет (`.flow-page` снята, TRIP-520):
+   он живёт в оболочке трипа `.trip-shell` — тот же фикс-шелл 100dvh без
+   документного скролла, те же рейл и шапка. */
 /* Floating round "back" control on the map (canon layout, reused on other
    screens): white surface circle (icon-btn--outline) top-left, over the map.
    Hidden by default; shown on the mobile shell where the app header is removed. */
@@ -4457,22 +4449,71 @@ button.input[data-empty] { color: var(--muted-2); }
 .flow-prog__seg--now { background: var(--fp-accent, var(--brand)); }
 .flow-prog__seg--done { background: var(--success); }
 .flow-prog__seg[role="button"] { cursor: pointer; }
-/* FlowMap — сама карта и оверлеи поверх неё (лоадер-подложка + плавающая
-   пилюля «города · ночи»). Раньше всё это стояло сырыми инлайнами. --fp-* тут не
-   при чём; reveal карты — состояние .is-revealed, не инлайн-opacity. */
-.flow-map { position: absolute; inset: 0; overflow: hidden; }
-.flow-map__canvas { position: absolute; inset: 0; opacity: 0; transition: opacity .3s ease; }
-.flow-map__canvas.is-revealed { opacity: 1; }
-.flow-map__cover { position: absolute; inset: 0; display: grid; place-items: center; background: var(--surface); z-index: 2; }
-/* ★ НИЗ ОТСЧИТЫВАЕТСЯ ОТ ШИТА, А НЕ ОТ НИЗА КАНВАСА. Канвас теперь во всю высоту
-   шелла и уходит ПОД шит целиком, поэтому честные 14px от собственного низа
-   приходятся на площадь под шитом — пилюля оказывалась на нём. Высоту шита
-   публикует сам шелл (`--mapshell-bottom`, `lib/mapShellInsets.js`); второй
-   записи этого числа здесь нет намеренно. На десктопе шита нет, переменная = 0,
-   и отступ остаётся прежним.
-   visual-diff-exempt: .flow-map__stat bottom — прибавлен сдвиг холста (на десктопе значение то же) */
-.flow-map__stat { position: absolute; right: 14px; bottom: calc(var(--mapshell-bottom, 0px) + 14px); display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
-.flow-map__stat-hl { color: var(--ink-2); }
+/* Полоса статуса шелла карты (`.mapshell__status`, слот) — сама пилюля: слот
+   несёт облик (поверхность, пилюля, `t-meta`), экран кладёт в него текст.
+   ★ НИЗ ОТСЧИТЫВАЕТСЯ ОТ ШИТА, А НЕ ОТ НИЗА КАНВАСА. Канвас во всю высоту шелла
+   и уходит ПОД шит целиком, поэтому честные 14px от собственного низа приходятся
+   на площадь под шитом. Высоту шита публикует сам шелл (`--mapshell-bottom`,
+   `lib/mapShellInsets.js`); второй записи этого числа здесь нет. На десктопе
+   шита нет, переменная = 0. Пустой слот не рисуется — иначе он ловил бы клики
+   и мерился бы ненулевой полосой.
+   visual-diff-exempt: .mapshell__status position — слот статуса шелла (был .flow-map__stat у карты визарда)
+   visual-diff-exempt: .mapshell__status right — то же
+   visual-diff-exempt: .mapshell__status bottom — то же
+   visual-diff-exempt: .mapshell__status z-index — то же
+   visual-diff-exempt: .mapshell__status:empty display — пустой слот не рисуется
+   visual-diff-exempt: .mapshell__status display — облик пилюли (был .flow-map__stat)
+   visual-diff-exempt: .mapshell__status align-items — то же
+   visual-diff-exempt: .mapshell__status gap — то же
+   visual-diff-exempt: .mapshell__status padding — то же
+   visual-diff-exempt: .mapshell__status background — то же
+   visual-diff-exempt: .mapshell__status border — то же
+   visual-diff-exempt: .mapshell__status border-radius — то же
+   visual-diff-exempt: .mapshell__status color — то же
+   visual-diff-exempt: .mapshell__status box-shadow — то же
+   visual-diff-exempt: .mapshell__status b color — числа пилюли (был .flow-map__stat-hl)
+   visual-diff-exempt: .mapshell__status b font-weight — числа пилюли: тот же вес, что у текста (элемент выбран ради семантики, не облика)
+   visual-diff-exempt: .flow-map position — класс снят: карта визарда стала общим MapView
+   visual-diff-exempt: .flow-map inset — то же
+   visual-diff-exempt: .flow-map overflow — то же
+   visual-diff-exempt: .flow-map__canvas position — то же
+   visual-diff-exempt: .flow-map__canvas inset — то же
+   visual-diff-exempt: .flow-map__canvas opacity — то же
+   visual-diff-exempt: .flow-map__canvas transition — то же
+   visual-diff-exempt: .flow-map__canvas.is-revealed opacity — то же
+   visual-diff-exempt: .flow-map__cover position — то же
+   visual-diff-exempt: .flow-map__cover inset — то же
+   visual-diff-exempt: .flow-map__cover display — то же
+   visual-diff-exempt: .flow-map__cover place-items — то же
+   visual-diff-exempt: .flow-map__cover background — то же
+   visual-diff-exempt: .flow-map__cover z-index — то же
+   visual-diff-exempt: .flow-map__stat position — пилюля переехала в слот статуса шелла
+   visual-diff-exempt: .flow-map__stat right — то же
+   visual-diff-exempt: .flow-map__stat bottom — то же
+   visual-diff-exempt: .flow-map__stat display — то же
+   visual-diff-exempt: .flow-map__stat align-items — то же
+   visual-diff-exempt: .flow-map__stat gap — то же
+   visual-diff-exempt: .flow-map__stat padding — то же
+   visual-diff-exempt: .flow-map__stat background — то же
+   visual-diff-exempt: .flow-map__stat border — то же
+   visual-diff-exempt: .flow-map__stat border-radius — то же
+   visual-diff-exempt: .flow-map__stat color — то же
+   visual-diff-exempt: .flow-map__stat box-shadow — то же
+   visual-diff-exempt: .flow-map__stat-hl color — то же
+   visual-diff-exempt: .flow-page display — страница визарда снята: он живёт в оболочке трипа
+   visual-diff-exempt: .flow-page flex-direction — то же
+   visual-diff-exempt: .flow-page height — то же
+   visual-diff-exempt: .flow-page overflow — то же
+   visual-diff-exempt: .flow-page background — то же
+   visual-diff-exempt: .flow-page {@media (max-width: 640px)} height — то же
+   visual-diff-exempt: .flow-page {@media (max-width: 640px)} min-height — то же
+   visual-diff-exempt: .flow-page {@media (max-width: 640px)} overflow — то же
+   visual-diff-exempt: .flow-page {@media (max-width: 640px)} overscroll-behavior — то же
+   visual-diff-exempt: .flow-page {@media (max-width: 640px)} display — то же (составной селектор с шапкой)
+   visual-diff-exempt: .app-header {@media (max-width: 640px)} display — шапка визарда на телефоне больше не снимается, а уезжает (правило у оболочки) */
+.mapshell__status { position: absolute; right: 14px; bottom: calc(var(--mapshell-bottom, 0px) + 14px); z-index: 3; display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) var(--sp-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); box-shadow: var(--sh-1); }
+.mapshell__status:empty { display: none; }
+.mapshell__status b { color: var(--ink-2); font-weight: inherit; }
 /* Section sub-heading — the missing mid-tier between the title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…).
    ★ ВЕРХНИЙ ОТСТУП НЕСЁТ САМ ЗАГОЛОВОК, а не то, что стоит перед ним. Его не
@@ -4549,9 +4590,10 @@ button.input[data-empty] { color: var(--muted-2); }
    that overlaps the map with a rounded top + grabber. The sheet carries its own
    sticky progress header, an internally-scrolling body (.lp-b) and a sticky action
    bar (.lp-f) — the map no longer scrolls away and the footer never detaches.
-   iOS safety kept from the previous model: .flow-page is a 100dvh flex column with
-   overflow:hidden (the document has nothing to scroll, so the toolbar/keyboard
-   cannot shove the static header around), NO position:fixed and NO <body> lock.
+   iOS safety kept from the previous model: the trip shell (.trip-shell) is a 100dvh
+   flex column with overflow:hidden (the document has nothing to scroll, so the
+   toolbar/keyboard cannot shove the static header around), NO position:fixed and
+   NO <body> lock.
    The SINGLE scroller is now the sheet body (.lp-b), not the whole grid — this is
    the intended resolution of the old "тело само себе скроллер" open question. */
 /* ★ ТА ЖЕ ГРАНИЦА, ЧТО У ВСЕГО ПРИЛОЖЕНИЯ. Здесь стояло 960, а панель→шит у
@@ -4569,13 +4611,10 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .flow-foot {@media (max-width: 640px)} flex — то же
    visual-diff-exempt: .flow-foot {@media (max-width: 640px)} padding-bottom — то же */
 @media (max-width: 640px) {
-  /* Shell sized to exactly 100dvh with overflow:hidden — the proven .app-shell
-     pattern: the document has nothing to scroll, so the iOS toolbar/keyboard
-     cannot shove the static header. No <body> position:fixed lock. */
-  .flow-page { height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none; }
-  /* App header removed on the phone shell (Pavel 2026-08-18): the map is the top
-     band, so navigation collapses to the floating round "back" control on it. */
-  .flow-page > .app-header { display: none; }
+  /* Шапка на телефоне в визарде убрана (Pavel 2026-08-18): карта — верхняя
+     полоса, навигация схлопнута в круглую «назад» над ней. Правило самой шапки —
+     у оболочки трипа (`.trip-shell[data-mode="create"]` ниже по файлу): она
+     уезжает за верхний край, а не снимается, и въезжает обратно на переходе в трип. */
   /* grid (not inline-flex): keeps the base `.icon-btn` place-items:center so the
      arrow stays centred; inline-flex would drop it to the top-left corner. */
   .map-back { display: grid; }
@@ -4868,6 +4907,10 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__overlay right — правый край выражен шириной (слой съехал из колонки в шелл, коробка та же)
    visual-diff-exempt: .mapshell__overlay width — ширина колонки минус её левый воздух (правый край на том же --mapshell-panel-w) */
 .mapshell__overlay { position: absolute; top: var(--sp-7); bottom: var(--sp-7); left: var(--sp-7); width: calc(var(--mapshell-panel-w) - var(--sp-7)); display: flex; z-index: 3; }
+/* Слот слоя всегда в дереве (в него рендерят порталом); пустой — не рисуется,
+   иначе он ловил бы клики над панелью.
+   visual-diff-exempt: .mapshell__overlay:empty display — пустой слот слоя не рисуется */
+.mapshell__overlay:empty { display: none; }
 /* Стопка панелей: слои ЗАПОЛНЯЮТ коробку слоя абсолютом и лежат друг на друге
    (порядок в DOM = порядок по глубине, поздний — сверху). Для одного слоя это
    тот же прямоугольник, что и flex:1 раньше (коробка позиционирована), поэтому
@@ -5091,8 +5134,8 @@ button.input[data-empty] { color: var(--muted-2); }
    унификация, а переезд инлайнов в CSS под новым словарём. Второй заход собрал
    его из готового: обложка - постер карточки трипа (.tc с /trips), цифры -
    .statbar, отступ содержимого - вложенный .card, ряд - .row со ступенью, пара
-   «значение + ярлык» - .v/.k статбара, предупреждение - .wrn, оболочки
-   экранов-состояний - .flow-page самого планировщика.
+   «значение + ярлык» - .v/.k статбара, предупреждение - .wrn, оболочка
+   экранов-состояний - общая оболочка трипа (.trip-shell).
    Своего у превью осталось ОДНО имя - ряд точки маршрута. Рельс рисует сам ряд
    (::before), а не отдельный элемент в контейнере: так не нужны ни класс на
    контейнер, ни div-подложка, а линия обрезается у первой и последней точки
@@ -6921,12 +6964,23 @@ button.input[data-empty] { color: var(--muted-2); }
    есть элемент из первой половины этого же селектора — значение достижимо
    всегда, а написанный фолбэк был бы мёртвой веткой `var()`, которую следующий
    примет за работающую (та же ловушка, что разобрана у входа нижнего дока). */
-.trip-shell[data-entering="create"] .app-side {
+/* Въезжают ПУНКТЫ рейла, а не рейл: с TRIP-520 оболочка одна на визард и трип,
+   и рейл (с бренд-слотом) стоит на месте с первого кадра визарда — появиться на
+   переходе может только то, чего в визарде не было. Заголовок трипа в шапке
+   проступает тем же темпом (`fadeIn` — общий кейфрейм файла). */
+.trip-shell[data-entering="create"] .app-side__nav {
   animation: railIn var(--surface-settle) var(--surface-ease) both;
 }
-@media (prefers-reduced-motion: reduce) {
-  .trip-shell[data-entering="create"] .app-side { animation: none; }
+.trip-shell[data-entering="create"] .app-header__trip {
+  animation: fadeIn var(--surface-settle) var(--surface-ease) both;
 }
+@media (prefers-reduced-motion: reduce) {
+  .trip-shell[data-entering="create"] .app-side__nav,
+  .trip-shell[data-entering="create"] .app-header__trip { animation: none; }
+}
+/* Шапка — над контентом в общей ячейке сетки, как рейл: на телефоне секция с
+   картой лежит и под ней (ниже, в медиазапросе). Транзишн — её въезд там же. */
+.trip-body > .app-header { z-index: 1; transition: transform var(--surface-settle) var(--surface-ease); }
 
 /* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
    Used OUTSIDE the structure editor (timeline / calendar / budget / overview).
@@ -7000,6 +7054,17 @@ button.input[data-empty] { color: var(--muted-2); }
   .trip-body > .app-header,
   .trip-body > .trip-content { grid-column: 1; }
   .trip-shell .app-side { display: none; }
+  /* ★ СЕКЦИЯ С КАРТОЙ ЛЕЖИТ И ПОД ШАПКОЙ (TRIP-520). В визарде шапки на телефоне
+     нет (Pavel 2026-08-18), в трипе есть; будь холст в своей строке сетки, на
+     переходе он менял бы высоту на шапку — ресайз, который двигает мир на
+     половину дельты. Поэтому контент занимает обе строки, шапка лежит над ним
+     (z-index выше), а закрытую ею полосу камере объявляет оболочка числом
+     (`insetTop` у MapShell). В визарде шапка уезжает за верхний край и на
+     переходе въезжает обратно тем же темпом, каким доезжает камера. Рейла на
+     этой ширине нет, поэтому `data-surface` здесь — единственный признак,
+     отличающий визард с картой от его же экрана лимита (там шапка нужна). */
+  .trip-body > .trip-content[data-bleed] { grid-row: 1 / -1; }
+  .trip-shell[data-mode="create"][data-surface] .trip-body > .app-header { transform: translateY(-100%); }
   /* Рейла на телефоне нет, значит слева от шапки ничего не стоит — зазор от
      края ей нужен свой, а не тот, что задан под соседство с рейлом. */
   .app-header--trip { padding-left: var(--sp-7); }
@@ -10609,7 +10674,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .map-ctl left — единый угол вправо, плашка была слева (TRIP-337, апрув Pavel)
    visual-diff-exempt: .map-ctl right — единый угол вправо (TRIP-337, апрув Pavel)
    visual-diff-exempt: .map-ctl flex-direction — плашка колонкой на всех поверхностях (TRIP-337, апрув Pavel) */
-.map-ctl { position: absolute; right: 14px; top: 13px; z-index: 3; display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-btn); }
+/* Верх — под полосой, закрытой над холстом (шапка трипа на телефоне лежит над
+   картой, `--mapshell-inset-top` публикует шелл карты; вне шелла её нет — ноль).
+   Едет тем же темпом, что и шапка.
+   visual-diff-exempt: .map-ctl top — прибавлена закрытая сверху полоса (вне шелла значение то же)
+   visual-diff-exempt: .map-ctl transition — плашка едет вместе с въезжающей шапкой */
+.map-ctl { position: absolute; right: 14px; top: calc(var(--mapshell-inset-top, 0px) + 13px); z-index: 3; display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-btn); transition: top var(--surface-settle, .32s) var(--surface-ease, ease); }
 /* Живая обратная связь на нажатие пальцем (примитив её не несёт). */
 .map-ctl button:active { transform: scale(.92); }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }

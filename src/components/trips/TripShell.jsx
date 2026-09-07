@@ -1,5 +1,5 @@
 /**
- * TripShell - оболочка ЛЮБОГО экрана трипа.
+ * TripShell - оболочка ЛЮБОГО экрана трипа, включая создание трипа.
  *
  * До TRIP-349 оболочки было ДВЕ, собранные руками врозь: `.trip-shell/.trip-body/
  * .trip-content` у экранов трипа и `.ts-screen/.ts-sidecol/.ts-drawer` у
@@ -9,23 +9,34 @@
  * заново - трип-экраны получили канон-шит меню, редактор остался на выезжающем
  * drawer'е. Один и тот же элемент, два поведения.
  *
- * Поэтому оболочка тут КОМПОНЕНТ, а не узор для копирования: у неё один хозяин,
- * и разъехаться ей больше негде.
+ * ★ С TRIP-520 оболочка — ЭЛЕМЕНТ РАСКЛАДКИ РОУТЕРА (layout route) на три
+ * адреса: `/new-trip`, `/plan-trip-ai`, `/trip/:tripId`. Визард создания — это
+ * экран трипа, у которого трипа ещё нет: тот же рейл (с одним бренд-слотом, пока
+ * пунктов не из чего собрать), та же шапка, тот же шелл карты. Экран под
+ * оболочкой ничего из этого не рисует — он публикует факты и рендерит своё
+ * содержимое в слоты (контракт — `TripShellContext.jsx`). Поэтому на переходе
+ * «создан → маршрут» не размонтируется ничего общего: рейл, шапка, панель над
+ * картой и сама карта живут дальше и меняют содержимое, а не рождаются заново.
+ * Это единственный способ сделать такой переход плавным: анимация есть только у
+ * живого элемента, а не у пары «старый снесён / новый смонтирован».
  *
- * Три слота - потому что позиция в DOM у них несущая, а не косметическая:
- *   children       - тело секции, внутри скроллящегося <main>
- *   drawer         - внутри `.trip-content` ПОСЛЕ <main>: EventDrawerHost
+ * Три слота DOM - потому что позиция в DOM у них несущая, а не косметическая:
+ *   main           - тело секции (сюда рендерится `<Outlet/>`); в секции с
+ *                    картой здесь же стоит шелл карты, а тело экрана пусто
+ *   `content`      - внутри `.trip-content` ПОСЛЕ <main>: EventDrawerHost
  *                    позиционируется абсолютом относительно `.trip-content`
  *                    (уже ниже шапки и правее меню) и НЕ должен скроллиться с
  *                    содержимым, поэтому он сосед <main>, а не его потомок
- *   overlays       - внутри `.trip-shell` после `.trip-body`: диалоги, шиты,
+ *   `shell`        - внутри `.trip-shell` после `.trip-body`: диалоги, шиты,
  *                    плавающий виджет чата
  *
  * Кнопка «назад» ВЫВОДИТСЯ здесь, а не приходит пропом. Проп-колбэк - это
  * узаконенная точка расхождения: шов гарантирует КНОПКУ, но не ДЕЙСТВИЕ, и
  * именно так стрелка с любой линзы выкидывала из трипа целиком на `/trips`.
  * Правило одно: дефолтная секция ведёт на список трипов, любая другая - на
- * дефолтную секцию этого же трипа (TRIP-349 п.3).
+ * дефолтную секцию этого же трипа (TRIP-349 п.3). Визард — исключение по
+ * построению: у него «назад» — шаг истории с конфирмом ухода, и это его
+ * собственное действие (`onBack` в колбэках фактов).
  *
  * ── Объявление изменений для гарда 2p (визуальный дифф CSS) ──────────────────
  * Маркеры лежат ЗДЕСЬ, а не в app.css: внутри CSS многострочный блок с
@@ -33,29 +44,47 @@
  * (та же грабля разобрана в шапке EditLens.jsx). Гард читает маркеры из
  * ДОБАВЛЕННЫХ строк диффа, поэтому файл значения не имеет.
  *
- * Вход оболочки при приходе из создания трипа: выезжает рейл. Апрув Pavel.
- * visual-diff-exempt: .app-side animation — рейл выезжает при приходе из создания трипа, апрув Pavel
- * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — тот же вход гасится при снижении движения
+ * Вход из создания трипа: въезжают ПУНКТЫ рейла (сам рейл стоит с первого
+ * кадра визарда), заголовок шапки проступает. Апрув Pavel (TRIP-520).
+ * visual-diff-exempt: .app-side animation — рейл больше не въезжает целиком: он стоит и в визарде, въезжают его пункты
+ * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — то же
  * visual-diff-exempt: .trip-shell[data-entering=create] animation — вторая единица наблюдения того же правила (селектор из двух частей)
  * visual-diff-exempt: .trip-shell[data-entering=create] {@media (prefers-reduced-motion: reduce)} animation — то же при снижении движения
- * visual-diff-exempt: from {@keyframes railIn} transform — кейфрейм выезда рейла из-за левой кромки
- * visual-diff-exempt: to {@keyframes railIn} transform — то же, конечное состояние
+ * visual-diff-exempt: .app-side__nav animation — пункты рейла въезжают при приходе из создания трипа
+ * visual-diff-exempt: .app-side__nav {@media (prefers-reduced-motion: reduce)} animation — тот же вход гасится при снижении движения
+ * visual-diff-exempt: .app-header__trip animation — заголовок шапки проступает при приходе из создания трипа
+ * visual-diff-exempt: .app-header__trip {@media (prefers-reduced-motion: reduce)} animation — то же при снижении движения
+ * visual-diff-exempt: .trip-body transition — шапка на телефоне въезжает сверху при приходе из создания (составной селектор)
+ * visual-diff-exempt: .app-header transition — то же со стороны шапки
+ * visual-diff-exempt: .trip-body {@media (max-width: 640px)} transform — шапка на телефоне в визарде убрана за верхний край (составной селектор)
+ * visual-diff-exempt: .app-header {@media (max-width: 640px)} transform — то же со стороны шапки
+ * visual-diff-exempt: .trip-shell[data-mode=create][data-surface] {@media (max-width: 640px)} transform — то же со стороны оболочки
+ * visual-diff-exempt: .trip-body z-index — шапка лежит над контентом в общей ячейке сетки, как рейл
+ * visual-diff-exempt: .app-header z-index — то же со стороны шапки
+ * visual-diff-exempt: .trip-body {@media (max-width: 640px)} grid-row — секция с картой на телефоне лежит и под шапкой: холст одной высоты в визарде и трипе
+ * visual-diff-exempt: .trip-content {@media (max-width: 640px)} grid-row — то же со стороны контента
+ * visual-diff-exempt: .trip-content[data-bleed] {@media (max-width: 640px)} grid-row — то же (составной селектор)
  */
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
+import { TripAccessProvider } from '@/components/trips/TripAccessContext';
+import { ShellProvider, createStore, useShellMapProps } from '@/components/trips/TripShellContext';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import MapView from '@/components/views/MapView';
 import { useMobileNav } from '@/components/MobileBottomNav';
 import { DEFAULT_SECTION, sectionById, isSectionAvailable } from '@/lib/tripMenu';
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { useAuth } from '@/lib/AuthContext';
-import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { isProActive } from '@/lib/subscription';
-import { Skeleton } from '@/design/index';
+import { withLeaveGuard } from '@/lib/withLeaveGuard';
+import { cssPx } from '@/lib/cssPx';
+import { MapShell, Skeleton } from '@/design/index';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 
 // Темп входа берётся из ОБЩЕГО контракта движения (`lib/surfaceMotion.js`), а не
@@ -69,92 +98,80 @@ const MOTION_STYLE = {
   '--surface-ease': SURFACE_EASE_CSS,
 };
 
-export default function TripShell({
-  tripId,
-  // Обвязке нужен НЕ трип, а два факта состава меню: включённые аддоны (сюда) и
-  // ступень (из контекста доступа). Проп `trip` тут был лишней зависимостью —
-  // рейл читал из него ровно `details.addons`.
-  addons,
-  section = DEFAULT_SECTION,
-  isPro,
-  proResolved = true,
-  title,
-  meta,
-  onNavigate,
-  onShare,
-  onProUpsell,
-  bodyRef,
-  loading = false,
-  children,
-  drawer = null,
-  overlays = null,
-}) {
+const NO_FACTS = /** @type {import('./TripShellContext').ShellFacts} */ ({ mode: 'trip' });
+
+// Хост карты — ЕДИНСТВЕННЫЙ подписчик стора пропов карты: наведение на ряд
+// маршрута перерисовывает его и карту, но не рейл и не шапку.
+function SurfaceHost({ view }) {
+  const props = useShellMapProps();
+  return props ? <MapView view={view} {...props} /> : null;
+}
+
+export default function TripShell() {
   const t = useT();
   const nav = useNavigate();
   const loc = useLocation();
   const { user } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPhone = useIsPhone();
-  // Ступень доступа — из единого канала права, не пропом (см. useTripMenu).
-  const { step: myStep } = useTripAccess();
   const [sideOpen, setSideOpen] = useState(false);
   const { setTripNav } = useMobileNav();
 
+  // ── Что опубликовал экран (контракт — TripShellContext.jsx) ─────────────────
+  const [facts, setFactsState] = useState(/** @type {import('./TripShellContext').ShellFacts | null} */ (null));
+  const [surface, setSurface] = useState(/** @type {import('./TripShellContext').SurfaceConfig | null} */ (null));
+  const [slots, setSlots] = useState(/** @type {Record<string, HTMLElement | null>} */ ({}));
+  const cbs = useRef(/** @type {import('./TripShellContext').ShellCallbacks} */ ({}));
+  const mapProps = useMemo(() => createStore(null), []);
+  // Слот регистрируется callback-ref'ом: узел приезжает на маунте (`el`) и
+  // снимается на анмаунте (`null`); одинаковое значение состояние не трогает.
+  const registerSlot = useCallback((name, el) => {
+    setSlots((cur) => (cur[name] === el ? cur : { ...cur, [name]: el }));
+  }, []);
+  const shellSlot = useCallback((el) => registerSlot('shell', el), [registerSlot]);
+  const contentSlot = useCallback((el) => registerSlot('content', el), [registerSlot]);
+  // Тело - постоянный скролл-контейнер (сама оболочка не скроллится): секции
+  // читают его как слот `main` (рейл городов ленты следит за его скроллом).
+  const mainRef = useRef(/** @type {HTMLElement | null} */ (null));
+  const mainSlot = useCallback((el) => { mainRef.current = el; registerSlot('main', el); }, [registerSlot]);
+  const host = useMemo(() => ({ setFacts: setFactsState, cbs, setSurface, mapProps, slots }), [mapProps, slots]);
+
+  const { mode, tripId = null, addons, section = DEFAULT_SECTION, step = null, isPro, proResolved = true, title, meta, loading = false, backTitle: factBackTitle } = facts || NO_FACTS;
+  const isTrip = mode === 'trip';
+
   // «КАК СЮДА ПОПАЛИ» — ФАКТ НА ОБОЛОЧКЕ, а не анимация, прописанная в детали:
-  // оболочка объявляет `data-entering`, а CSS решает, что с ним делать.
-  //
-  // Сегодня единственный читатель этого факта — РЕЙЛ: он появляется только на
-  // этом переходе, поэтому и въезд у него условный. Нижний док читателем НЕ
-  // является намеренно: он монтируется на десятке других границ, и вход у него
-  // безусловный и свой (обоснование — у его правила в app.css). Раскладки эти
-  // двое не делят: рейла ниже 640 нет вовсе, дока выше 640 нет вовсе, — то есть
-  // одновременно они не едут никогда и общий темп им не нужен.
-  //
-  // Читаем ОДИН РАЗ, на маунте (`useState` с инициализатором), и по двум причинам:
-  //   • `location.state` живёт, пока живёт запись истории, — без снимка вход
-  //     переигрывался бы при каждом ререндере этой же локации;
-  //   • `!loading` — вход играем только когда оболочке УЖЕ ЕСТЬ ЧТО ПОКАЗАТЬ.
-  //     Изначально условие защищало от ДВУХ выездов подряд: рейл менял
-  //     реализацию на границе загрузки (скелетон → живой TripSidebar), то есть
-  //     монтировался дважды, а CSS-анимация играет на каждом маунте. С переходом
-  //     обвязки на один круг (PR 955) скелетона рейла больше нет и второго
-  //     маунта тоже — но условие остаётся осмысленным: въезд поверх ещё
-  //     незаполненной шапки читался бы как отдельный, второй переход. На пути из
-  //     создания кэш прогрет (ManualPlanner), и ветка всегда тёплая.
-  const [entering, setEntering] = useState(() => (loc.state?.from === 'create' && !loading ? 'create' : null));
+  // оболочка объявляет `data-entering`, а CSS решает, что с ним делать. Факт
+  // выводится из СМЕНЫ РЕЖИМА у живой оболочки (`create` → `trip`), а не из
+  // `location.state`: оболочка теперь одна на оба экрана и сама видит переход.
+  // Читатели: пункты рейла (въезжают) и заголовок шапки (проступает). Нижний док
+  // читателем НЕ является намеренно: он монтируется на десятке других границ, и
+  // вход у него безусловный и свой (обоснование — у его правила в app.css).
+  const [entering, setEntering] = useState(/** @type {string | null} */ (null));
+  const prevModeRef = useRef(mode);
+  useLayoutEffect(() => {
+    if (prevModeRef.current === 'create' && mode === 'trip') setEntering('create');
+    prevModeRef.current = mode;
+  }, [mode]);
   // ★ ФЛАГ СНИМАЕТСЯ ПОСЛЕ ОСАДКИ, И ЭТО НЕ УБОРКА РАДИ УБОРКИ. `data-entering`
   // читается как СОСТОЯНИЕ («сейчас входим»), а без снятия он оставался бы на
   // оболочке до размонтирования — то есть означал бы «когда-то входили». Сегодня
   // разницы не видно: единственный читатель — CSS-анимация, а она играет один раз
   // на маунт элемента. Но следующий, кто повесит на этот атрибут правило,
   // ожидающее временного состояния, получит вечное — и узнает об этом не сразу.
-  // Ловушка снимается здесь, а не комментарием.
   useEffect(() => {
     if (!entering) return undefined;
     const id = setTimeout(() => setEntering(null), SURFACE_SETTLE_MS);
     return () => clearTimeout(id);
   }, [entering]);
 
-  // Тело - постоянный скролл-контейнер (сама оболочка не скроллится), поэтому
-  // при смене секции его надо вернуть наверх. Свой ref, если снаружи не дали:
-  // ленте он нужен для рейла городов, остальным секциям - нет.
-  const ownBodyRef = useRef(null);
-  const mainRef = bodyRef || ownBodyRef;
-  useEffect(() => { if (mainRef.current) mainRef.current.scrollTop = 0; }, [section, mainRef]);
+  // При смене секции тело возвращается наверх.
+  useEffect(() => { if (mainRef.current) mainRef.current.scrollTop = 0; }, [section]);
 
   // Мост к мобильному доку. Раньше это был ГЛОБАЛ `window.__navigate`, который
   // TripView вешал на window, а док дёргал, - при том что рядом уже стоял
   // контекст, через который тот же док получал «+» и «Ещё». Два канала на одну
   // работу, один из них мутируемый глобал. Регистрирует оболочка: у неё на
   // руках и текущая секция, и переход, и открытие меню.
-  //
-  // Колбэк держим в ref, а зависимости - только по ЗНАЧЕНИЯМ: вызыватель даёт
-  // свежую стрелку на каждый рендер, и эффект на ней перерегистрировал бы док
-  // каждый раз. «+» ехал этим же каналом (`openAdd`), но с TRIP-350 «+»-меню
-  // питается отдельным `addActions` (экран регистрирует его сам), поэтому здесь
-  // остался только переход между секциями.
-  const navCbs = useRef({ onNavigate });
-  navCbs.current = { onNavigate };
   // Значение флага — ПРИЧИНА (строка), поэтому приводим к булеву, а не сверяем
   // с true: `=== true` тихо вернул бы false на любой живой причине.
   const hidesDock = !!sectionById(section)?.hidesDock;
@@ -165,56 +182,70 @@ export default function TripShell({
   // здесь, где на руках tripId и роль, и передаём числом в регистрацию дока —
   // сам док (`MobileBottomNav`) живёт выше `TripShell` и tripId не знает. Чат
   // считаем только когда линза чата доступна, иначе — ноль подписок.
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', addons, myStep) });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', addons, step) });
   const inappUnread = useUnreadNotificationCount();
   const moreBadge = chatUnread + inappUnread;
   // useLayoutEffect, а не useEffect: пассивный эффект выполняется ПОСЛЕ отрисовки,
   // и док успевал показать один кадр общего варианта («Поездки · + · Профиль»)
   // поверх открывшегося трипа - а тап, попавший в этот кадр, открывал создание
   // трипа вместо добавления в трип. Раньше вариант решался синхронно по адресу.
+  // В визарде регистрации нет: дока на его адресах не бывает, а трипа — тоже.
   useLayoutEffect(() => {
+    if (!isTrip) return undefined;
     const mine = {
       current: section,
-      onNavigate: (id) => navCbs.current.onNavigate?.(id),
+      onNavigate: (id) => cbs.current.onNavigate?.(id),
       openMenu: () => setSideOpen(true),
       hidesDock,
       moreBadge,
     };
     setTripNav(mine);
-    // Снимаем ТОЛЬКО свою регистрацию: когда экранов с оболочкой станет два
-    // (редактор во втором PR), порядок «размонтировался старый после того, как
-    // смонтировался новый» иначе оставил бы док в общем варианте при живом трипе.
+    // Снимаем ТОЛЬКО свою регистрацию: порядок «размонтировался старый после
+    // того, как смонтировался новый» иначе оставил бы док в общем варианте.
     return () => setTripNav((cur) => (cur === mine ? null : cur));
-  }, [setTripNav, section, hidesDock, moreBadge]);
+  }, [setTripNav, isTrip, section, hidesDock, moreBadge]);
 
-  // Состояние меню теперь ЧИСТО ТЕЛЕФОННОЕ: выезжающего ящика нет, шит открывается
+  // Состояние меню ЧИСТО ТЕЛЕФОННОЕ: выезжающего ящика нет, шит открывается
   // только под `isPhone`. Не сбросив флаг на уходе с телефона, мы оставили бы его
   // висеть - и шит сам собой открылся бы при возврате на узкую ширину.
   useEffect(() => { if (!isPhone) setSideOpen(false); }, [isPhone]);
 
   // Дефолтная секция - «вверх» из трипа, любая другая - «вверх» в трип.
-  const backTo = section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`;
+  // Визард отдаёт своё действие целиком (шаг истории + конфирм ухода внутри),
+  // поэтому гейт ухода здесь ставится только на выведенный переход.
+  const confirmLeave = cbs.current.confirmLeave;
+  const goBack = cbs.current.onBack
+    || withLeaveGuard(confirmLeave, () => nav(section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`));
+  const backTitle = factBackTitle || t('trip.back');
+  const onNavigate = (id) => cbs.current.onNavigate?.(id);
+  const onShare = cbs.current.onShare;
+  const onProUpsell = cbs.current.onProUpsell;
 
   // Секция сама владеет своим скроллом (карта, чат, редактор): тело без
-  // паддинга и без скролла, поверхность в край.
-  const flush = sectionById(section)?.flush === true;
+  // паддинга и без скролла, поверхность в край. Поверхность с картой — всегда.
+  const flush = !!surface || sectionById(section)?.flush === true;
   // Секция с картой лежит ПОД рейлом: контент занимает обе колонки сетки, рейл
   // лежит над ним, а полосу рейла объявляет камере закрытой площадью уже сама
-  // карта. Холст тогда одной ширины в визарде и в трипе — переезд инстанса без
-  // `resize()`. Разбор целиком — у `.trip-content[data-bleed]` в app.css.
-  const bleed = sectionById(section)?.bleed === true;
-
-  const goBack = () => nav(backTo);
-  const backTitle = t('trip.back');
+  // карта. На телефоне контент лежит и под ШАПКОЙ (обе строки сетки): холст тогда
+  // одной высоты в визарде (шапки там нет) и в трипе — переезд без `resize()`,
+  // шапка въезжает сверху над холстом. Разбор — у `.trip-content[data-bleed]`.
+  const bleed = !!surface;
+  // Полоса шапки, закрытая над холстом, — ЧИСЛОМ шеллу карты: он ставит её
+  // камере и своей раскладке из одного источника. На десктопе шапка стоит в своей
+  // строке сетки, над холстом ничего не закрыто; на телефоне закрыта её высота,
+  // кроме визарда, где шапки нет (ту же величину камера доводит на переходе).
+  const [headerPx] = useState(() => cssPx('var(--header-h)'));
+  const insetTop = isPhone && isTrip ? headerPx : 0;
 
   return (
-    <div className="trip-shell" data-entering={entering || undefined} style={MOTION_STYLE}>
+    <ShellProvider value={host}>
+    <TripAccessProvider step={step}>
+    <div className="trip-shell" data-mode={mode} data-surface={surface ? '' : undefined} data-entering={entering || undefined} style={MOTION_STYLE} ref={shellSlot}>
       <div className="trip-body">
         {/* Рейл и шит собирают состав САМИ — из фактов (аддоны + ступень), одной
             функцией `menuSections`. Отдельного «идёт загрузка» у меню больше нет:
-            известен факт — пункт живой, неизвестен — место под него. Поэтому и шит
-            телефона монтируется всегда: если факты уже на руках (переход с главной),
-            «Ещё» открывает ГОТОВОЕ меню, а не заглушки. */}
+            известен факт — пункт живой, неизвестен — место под него. В визарде
+            трипа нет — рейл стоит с одним бренд-слотом (выход с конфирмом). */}
         <TripSidebar
           tripId={tripId}
           addons={addons}
@@ -222,14 +253,14 @@ export default function TripShell({
           isPro={isPro}
           proResolved={proResolved}
           onProUpsell={onProUpsell}
-          onNavigate={(id) => onNavigate?.(id)}
+          onNavigate={onNavigate}
           onShare={onShare}
           onBack={goBack}
           backTitle={backTitle}
         />
         {/* Телефоны: то же меню канон-шитом из мобильного дока. Рейла на
             этой ширине нет (CSS), выезжающего ящика больше нет нигде. */}
-        {(
+        {isTrip && (
           <TripSidebarSheet
             tripId={tripId}
             addons={addons}
@@ -238,7 +269,7 @@ export default function TripShell({
             proResolved={proResolved}
             open={isPhone && sideOpen}
             onOpenChange={setSideOpen}
-            onNavigate={(id) => { setSideOpen(false); onNavigate?.(id); }}
+            onNavigate={(id) => { setSideOpen(false); onNavigate(id); }}
             onShare={onShare && (() => { setSideOpen(false); onShare(); })}
             onProUpsell={onProUpsell && (() => { setSideOpen(false); onProUpsell(); })}
             user={user}
@@ -248,7 +279,8 @@ export default function TripShell({
         {/* Шапка — СОСЕД контента, а не его потомок: к `.trip-content` абсолютом
             привязан хост выдвижных панелей (EventDrawerHost), и внутри шапки он
             поехал бы из-под неё. Сетка ставит её правой верхней ячейкой, на одну
-            линию с бренд-слотом рейла. */}
+            линию с бренд-слотом рейла. Бренд-слот в шапке не рисуется (`isTrip`)
+            и в визарде: он стоит в рейле, второй был бы дублем на том же месте. */}
         <AppHeader
           isTrip
           user={user}
@@ -262,15 +294,40 @@ export default function TripShell({
           backTitle={backTitle}
           title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
           meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
+          confirmLeave={confirmLeave}
         />
-        <div className="trip-content" data-bleed={bleed || undefined}>
-          <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
-            {children}
+        <div className="trip-content" data-bleed={bleed || undefined} ref={contentSlot}>
+          <main ref={mainSlot} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
+            {/* Шелл карты ЖИВЁТ ЗДЕСЬ, пока хоть один экран объявляет поверхность:
+                на переходе визард → маршрут он не размонтируется, а меняет
+                содержимое слотов. Карта внутри — один `MapView` на оба экрана. */}
+            {surface && (
+              <MapShell
+                map={(view) => <SurfaceHost view={view} />}
+                insetTop={insetTop}
+                onSlot={registerSlot}
+                panelLabel={surface.panelLabel}
+                detents={surface.detents}
+                detent={surface.detent}
+                onDetentChange={surface.onDetentChange}
+                collapsed={surface.collapsed}
+                onCollapsedChange={surface.onCollapsedChange}
+                collapseLabel={surface.collapseLabel}
+                expandLabel={surface.expandLabel}
+                overlayActive={surface.overlayActive}
+              />
+            )}
+            {/* Граница ошибок экрана: падение одного адреса показывает фолбэк в теле,
+                оболочка (рейл, шапка) и док остаются живыми. Ключ по адресу —
+                уход с упавшего экрана снимает фолбэк. */}
+            <ErrorBoundary key={loc.pathname} region={`route:${loc.pathname}`}>
+              <Outlet />
+            </ErrorBoundary>
           </main>
-          {drawer}
         </div>
       </div>
-      {overlays}
     </div>
+    </TripAccessProvider>
+    </ShellProvider>
   );
 }

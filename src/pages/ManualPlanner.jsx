@@ -20,14 +20,13 @@ import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, us
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
-import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
 import { normalizeStep, stepEntryFrom, resolveBack, nextStepState } from '@/pages/create/stepUrl';
 import { draftStorageKey, removeDraft, draftHref, draftDoorMismatch, parseDraft } from '@/lib/planner-draft';
-import FlowMap from '@/pages/create/FlowMap';
-import { MapShell } from '@/design/index';
+import { ShellSlot, useShellFacts, useShellSurface } from '@/components/trips/TripShellContext';
+import { sameCity } from '@/lib/validation';
 import PanelAi from '@/pages/create/PanelAi';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { CityAnchorRow } from '@/pages/create/anchors';
@@ -74,15 +73,10 @@ const STEPS = [
 // черновика на главной), а копия ключа расходится молча — карточка просто не
 // появится, ничего при этом не сломав.
 
-// Same physical city (external directory id / geonameid, else name — тёзки-города в
-// разных странах ≠ один город). Used by StepReturn to decide which return card looks
-// active (cosmetic only — not part of the finish derive).
-function sameCity(a, b) {
-  if (!a?.city_name || !b?.city_name) return false;
-  if (a.external_city_id != null && b.external_city_id != null) return a.external_city_id === b.external_city_id;
-  if (a.geonameid != null && b.geonameid != null) return a.geonameid === b.geonameid;
-  return a.city_name === b.city_name;
-}
+// Стабильные ссылки для пропов карты: новый массив на каждый рендер заставлял бы
+// карту перестраивать линии и контролы на каждом нажатии в шаге.
+const NO_TRANSFERS = Object.freeze([]);
+const MAP_CONTROLS = Object.freeze(['projection', 'theme']);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -823,13 +817,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const isPro = isProActive(user);
-  const { isDark, toggle: toggleTheme } = useTheme();
+  const { isDark } = useTheme();
 
-  // NB: no <body> scroll-lock here. The planner shell (.flow-page) is a 100dvh
-  // overflow:hidden root — the same fixed-shell pattern as .app-shell on every
-  // other screen — so the document never scrolls and the static header stays put,
-  // including when the keyboard opens. A body position:fixed lock (tried earlier)
-  // was what made the header fly up on keyboard, so it was removed.
+  // NB: no <body> scroll-lock here. Оболочка трипа (`.trip-shell`) — фикс-шелл
+  // 100dvh с overflow:hidden: документ не скроллится, шапка стоит и при открытой
+  // клавиатуре. A body position:fixed lock (tried earlier) was what made the
+  // header fly up on keyboard, so it was removed.
 
   // 'manual' | 'ai' - only the entry screen differs; from the skeleton onward
   // both methods share the same steps.
@@ -872,7 +865,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const onComposingChange = useCallback((open) => setComposingCount((c) => c + (open ? 1 : -1)), []);
   const composing = composingCount > 0;
   // Map ↔ list linking (Map-lens parity, TRIP-337): the pin/list row hovered or
-  // selected. Ids match FlowMap's marker ids ('home' | city.id | 'finish').
+  // selected. Ids — id узлов маршрута (ими же карта адресует пины).
   const [hoveredMapId, setHoveredMapId]   = useState(null);
   const [selectedMapId, setSelectedMapId] = useState(null);
 
@@ -1297,16 +1290,17 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // локальный флаг шага, а не факт маршрута.
   const clearFinishNode = () => setNodes(ns => recomputeDates(clearFinish(ns), startDate));
 
-  // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed the same
-  // way FlowMap tags its pins ('home' | city.id | 'finish'). A city's date range is
-  // start..start+nights (single day for a 0-night waypoint); anchors show name only.
+  // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed by NODE
+  // id — тем же, которым карта (`MapView`, общий с трипом) адресует пины. Даты — у
+  // городов (start..start+nights, один день у пересадки); якоря — только имя.
   const mapPointById = useMemo(() => {
     const m = {};
-    if (home?.latitude != null) m.home = { lng: home.longitude, lat: home.latitude, countryCode: home.country_code, name: home.city_name, dates: null };
-    cities.forEach((c) => { if (c.latitude != null) m[String(c.id)] = { lng: c.longitude, lat: c.latitude, countryCode: c.country_code, name: c.city_name, dates: cityDateRange(c, lang) }; });
-    if (finishCity?.latitude != null) m.finish = { lng: finishCity.longitude, lat: finishCity.latitude, countryCode: finishCity.country_code, name: finishCity.city_name, dates: null };
+    nodes.forEach((n) => {
+      if (n.latitude == null) return;
+      m[String(n.id)] = { lng: n.longitude, lat: n.latitude, countryCode: n.country_code, name: n.city_name, dates: isAnchorNode(n) ? null : cityDateRange(n, lang) };
+    });
     return m;
-  }, [home, cities, finishCity, lang]);
+  }, [nodes, lang]);
   // The tooltip follows the hovered pin/row, otherwise the selected one.
   const activeMapId = hoveredMapId || selectedMapId;
   const cityBadge = activeMapId ? mapPointById[activeMapId] || null : null;
@@ -1441,61 +1435,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     }
   };
 
-  // ── Экран успеха — ТЕРМИНАЛЬНОЕ состояние, не шаг (TRIP-520) ────────────────
-  // `savedOk` живёт в памяти визарда, а не в адресе: пока визард смонтирован,
-  // «назад» по записям шагов меняет `?step=`, но рисуется по-прежнему успех —
-  // форма «Создать» над созданным трипом не оживает ни на одном шаге. Рисуется
-  // он В ТОЙ ЖЕ ОБОЛОЧКЕ, что и шаги (карта + панель/шит + прогресс): успех —
-  // финал флоу, а не отдельная страница; своя обвязка (AppHeader на пустом
-  // листе) была регрессом облика. Ниже он входит в BODY, а не ранним return.
-
-  // ── Limit guard ───────────────────────────────────────────────────────────
-  // The guard gates ENTERING / continuing creation while a free user is at the
-  // cap — it must NOT override the terminal success screen. Saving the trip
-  // raises the active count and invalidates the limit cache (see above), so the
-  // refetch flips isOverLimit→true a moment after savedOk. Without `!savedOk`
-  // the success screen would be replaced by the "limit reached" blocker a second
-  // after it appears. savedOk can only be true if the user was UNDER the limit
-  // at save time (the blocker returns before the form), so suppressing it here is
-  // safe by construction.
-  if (!isPro && checkingLimit && !savedOk) {
-    return (
-      // Оболочка маршрута - та же .flow-page, что у самого планировщика ниже.
-      <div className="flow-page row row--j-center">
-        <div className="spin spin--ring spin--xl" />
-      </div>
-    );
-  }
-
-  if (isOverLimit && !savedOk) {
-    return (
-      <div className="flow-page">
-        <AppHeader
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          onBack={() => nav('/trips')}
-          backTitle={t('notif.to_collection')}
-        />
-        <div className="grow row row--j-center">
-          <EmptyState
-            icon="lock"
-            kind="warning"
-            title={t('planner.limit_title')}
-            body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
-            action={(
-              <>
-                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
-                <Btn variant="primary" onClick={() => goPro(nav, { hidePerTrip: true, from: 'paywall', feature: 'trip_limit' })}>{t('sub.go_pro')}</Btn>
-              </>
-            )}
-          />
-        </div>
-      </div>
-    );
-  }
-
   // ── Footer (single, lifted out of the steps) ───────────────────────────────
   // One Back / Reset / Next|Save bar pinned to the bottom of the right card,
   // driven by a per-step descriptor. The step bodies no longer carry their own
@@ -1548,6 +1487,93 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     return action === 'exit-history' ? nav(-1) : nav('/trips');
   };
 
+  // ── Оболочка (TripShell, TRIP-520) ──────────────────────────────────────────
+  // Визард — экран трипа, у которого трипа ещё нет: шапку, рейл и шелл карты
+  // рисует общая оболочка, сюда уходят факты. «Назад» — своё действие визарда
+  // (шаг истории с конфирмом ухода внутри), поэтому едет колбэком целиком.
+  // Экран лимита/проверки лимита поверхности не объявляет — карты там нет.
+  const blocked = !savedOk && (isOverLimit || (!isPro && checkingLimit));
+  useShellFacts(
+    { mode: 'create', title: isAi ? t('planner.step_home_ai') : t('trips.new'), backTitle: blocked ? t('notif.to_collection') : backLabel },
+    { onBack: blocked ? () => nav('/trips') : requestBack, confirmLeave },
+  );
+  // Поверхность карты: конфиг шелла (детент/свёрнутость — состояние ЭКРАНА: шаг
+  // может осознанно опустить шит) и пропы общего `MapView`. Узлы маршрута едут в
+  // карту КАК ЕСТЬ (тот же вид, что у визитов трипа: `kind`/координаты/id), без
+  // переездов — все плечи пунктирные, транспорт добавляется уже в трипе.
+  useShellSurface(
+    blocked ? null : {
+      panelLabel: t('trips.new'),
+      detent, onDetentChange: setDetent,
+      collapsed, onCollapsedChange: setCollapsed,
+      collapseLabel: t('common.panel_collapse'), expandLabel: t('common.panel_expand'),
+    },
+    {
+      visits: nodes, transfers: NO_TRANSFERS,
+      // Контролы поверх карты: проекция + тема. Старт-финиша здесь НЕТ (решение
+      // Pavel): в создании маршрута дом и финиш — то, что пользователь прямо сейчас
+      // выбирает, прятать их нечем и незачем. Открывается на глобусе (TRIP-337).
+      mapControls: MAP_CONTROLS, initialProjection: 'globe',
+      // Карта — основная поверхность экрана: гейта «двумя пальцами» тут нет.
+      cooperativeGestures: false,
+      colorScheme: isDark ? 'DARK' : 'LIGHT',
+      hoveredVisitId: hoveredMapId, selectedVisitId: selectedMapId, cityBadge,
+      // Двусторонняя связка с рядами шага: карта отдаёт узлы под пином, ряды
+      // держат id. Повторный клик по тому же пину снимает выбор; клик по пустой
+      // карте — тоже (общее поведение всех карт).
+      onCityHover: (pts) => setHoveredMapId(pts ? String(pts[0]?.id) : null),
+      onCityClick: (pts) => { const id = String(pts?.[0]?.id); if (pts?.length) setSelectedMapId((cur) => (cur === id ? null : id)); },
+      onMapClick: () => setSelectedMapId(null),
+    },
+  );
+
+  // ── Экран успеха — ТЕРМИНАЛЬНОЕ состояние, не шаг (TRIP-520) ────────────────
+  // `savedOk` живёт в памяти визарда, а не в адресе: пока визард смонтирован,
+  // «назад» по записям шагов меняет `?step=`, но рисуется по-прежнему успех —
+  // форма «Создать» над созданным трипом не оживает ни на одном шаге. Рисуется
+  // он В ТОЙ ЖЕ ОБОЛОЧКЕ, что и шаги (карта + панель/шит + прогресс): успех —
+  // финал флоу, а не отдельная страница; своя обвязка (AppHeader на пустом
+  // листе) была регрессом облика. Ниже он входит в BODY, а не ранним return.
+
+  // ── Limit guard ───────────────────────────────────────────────────────────
+  // The guard gates ENTERING / continuing creation while a free user is at the
+  // cap — it must NOT override the terminal success screen. Saving the trip
+  // raises the active count and invalidates the limit cache (see above), so the
+  // refetch flips isOverLimit→true a moment after savedOk. Without `!savedOk`
+  // the success screen would be replaced by the "limit reached" blocker a second
+  // after it appears. savedOk can only be true if the user was UNDER the limit
+  // at save time (the blocker returns before the form), so suppressing it here is
+  // safe by construction.
+  // Шапка и рейл здесь — от оболочки (факты опубликованы выше); экран рисует
+  // только своё содержимое в теле.
+  if (!isPro && checkingLimit && !savedOk) {
+    return (
+      <div className="row row--j-center">
+        <div className="spin spin--ring spin--xl" />
+      </div>
+    );
+  }
+
+  if (isOverLimit && !savedOk) {
+    return (
+        <div className="row row--j-center">
+          <EmptyState
+            icon="lock"
+            kind="warning"
+            title={t('planner.limit_title')}
+            body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
+            action={(
+              <>
+                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
+                <Btn variant="primary" onClick={() => goPro(nav, { hidePerTrip: true, from: 'paywall', feature: 'trip_limit' })}>{t('sub.go_pro')}</Btn>
+              </>
+            )}
+          />
+        </div>
+    );
+  }
+
+
   let primaryLabel = t('planner.next');
   let primaryAction = goNext;
   let primaryDisabled = false;
@@ -1595,11 +1621,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           action={(
             <>
               {/* Ведёт в СЕКЦИЮ РЕДАКТОРА (маршрут только собран, дальше брони);
-                  `?lens=` пишем адресом, `state.from` — одноразовый вход. Чанк
-                  TripView и его запросы прогреты при сохранении, а переход идёт
-                  транзишном роутера — визард стоит, пока трип не готов, карта
-                  переезжает между слотами без пересоздания. */}
-              <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
+                  `?lens=` пишем адресом. Чанк TripView и его запросы прогреты при
+                  сохранении, переход идёт транзишном роутера в ТОЙ ЖЕ оболочке:
+                  рейл, шапка, панель и карта живут дальше, а вход оболочка
+                  распознаёт сама по смене режима (`data-entering`). */}
+              <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`)}>{t('planner.open_trip')}</Btn>
               <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
             </>
           )}
@@ -1684,89 +1710,54 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     </>
   );
 
+  // ★ ВСЁ СОДЕРЖИМОЕ — В СЛОТЫ ОБОЛОЧКИ. Своей разметки страницы у визарда нет:
+  // шапка/рейл/шелл карты — у `TripShell`, карта — общий `MapView` (пропы
+  // опубликованы выше). Здесь только то, что принадлежит шагу: прогресс в шапке
+  // панели, тело, футер с действиями, круглая «назад» над картой (телефон, где
+  // шапки нет) и пилюля статуса.
   return (
-    <div className="flow-page">
-      {/* Header */}
-      <AppHeader
-        user={user}
-        isPro={isPro}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={requestBack}
-        backTitle={backLabel}
-        title={isAi ? t('planner.step_home_ai') : t('trips.new')}
-        confirmLeave={confirmLeave}
-      />
-
-      {/* Раскладку «карта во всю площадь + панель поверх / шит на телефоне»
-          держит примитив <MapShell>: он же считает, сколько места закрыто, и
-          отдаёт это карте отступами камеры. Своих `.flow-grid/-mapcol/-editcol`
-          у шага больше нет — они были третьей копией одной и той же раскладки. */}
-      <MapShell
-        panelLabel={t('trips.new')}
-        detent={detent}
-        onDetentChange={setDetent}
-        collapsed={collapsed}
-        onCollapsedChange={setCollapsed}
-        collapseLabel={t('common.panel_collapse')}
-        expandLabel={t('common.panel_expand')}
-        panelHeader={(
-          <div className="flow-lp-h">
-            {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
-                "next" hint wraps INSIDE this column instead of overflowing and
-                shoving the reset control off the narrow mobile sheet header. */}
-            <div className="grow--fit">
-              <FlowProgress
-                steps={visibleSteps}
-                current={savedOk ? visibleSteps.length - 1 : stepIdx}
-                accent={isAi ? 'var(--ai)' : 'var(--brand)'}
-                onJump={savedOk ? undefined : (i) => setStep(visibleSteps[i].id, 'jump')}
-              />
-            </div>
+    <>
+      <ShellSlot name="panelHead">
+        <div className="flow-lp-h">
+          {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
+              "next" hint wraps INSIDE this column instead of overflowing and
+              shoving the reset control off the narrow mobile sheet header. */}
+          <div className="grow--fit">
+            <FlowProgress
+              steps={visibleSteps}
+              current={savedOk ? visibleSteps.length - 1 : stepIdx}
+              accent={isAi ? 'var(--ai)' : 'var(--brand)'}
+              onJump={savedOk ? undefined : (i) => setStep(visibleSteps[i].id, 'jump')}
+            />
           </div>
-        )}
-        panelFooter={FOOTER}
-        panel={BODY}
-        // Закрытая площадь приезжает камере отступом вьюпорта там, где она
-        // режет ширину (десктоп); на телефоне шит режет высоту, и её забирает
-        // сам слот — разбор в `mapShellInsets`.
-        map={(view) => (
+        </div>
+      </ShellSlot>
+      <ShellSlot name="panelBody">{BODY}</ShellSlot>
+      <ShellSlot name="panelFoot">{FOOTER}</ShellSlot>
+      <ShellSlot name="mapOverlay">
+        {/* Floating round back control — shown only on the phone shell (the app
+            header is off-screen there); the canon `.map-back` position/visibility
+            live in CSS. */}
+        <IconBtn
+          className="map-back"
+          icon="back"
+          round
+          tone="outline"
+          ariaLabel={backLabel}
+          onClick={requestBack}
+        />
+      </ShellSlot>
+      {/* Пилюля «N городов · M ночей» — в полосе статуса шелла: он её меряет и
+          отдаёт кадру как закрытое снизу, чтобы нижний город не уезжал под неё. */}
+      <ShellSlot name="status">
+        {totalNights > 0 && (
           <>
-            {/* Floating round back control — shown only on the phone shell (the app
-                header is removed there); the canon `.map-back` position/visibility
-                live in CSS. */}
-            <IconBtn
-              className="map-back"
-              icon="back"
-              round
-              tone="outline"
-              ariaLabel={backLabel}
-              onClick={requestBack}
-            />
-            <FlowMap
-              view={view}
-              colorScheme={isDark ? 'DARK' : 'LIGHT'}
-              home={home}
-              cities={cities}
-              // Always pass the finish city (it feeds the camera framing). DRAW the
-              // finish pin + leg when it's ALREADY DECIDED — the AI put it in the draft,
-              // or the user picked it — so a known finish shows immediately (incl. on
-              /* Финиш — это узел, и рисуется он ровно тогда, когда узел есть.
-                 Прежние `drawFinish`/`isStay` были следствием молчаливого дефолта
-                 «домой» и второго вида финиша: одному надо было не рисовать линию
-                 заранее, другому — не рисовать пин поверх города. Ни того, ни
-                 другого больше нет. */
-              finishCity={finishCity}
-              hoveredId={hoveredMapId}
-              selectedId={selectedMapId}
-              cityBadge={cityBadge}
-              onCityHover={setHoveredMapId}
-              onCityClick={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
-              onMapClick={() => setSelectedMapId(null)}
-            />
+            <b>{cities.length}</b> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
+            <span className="muted-2">·</span>
+            <b>{totalNights}</b> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
           </>
         )}
-      />
-    </div>
+      </ShellSlot>
+    </>
   );
 }
