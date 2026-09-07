@@ -81,9 +81,46 @@ test('нативный просмотр страницы не выключен �
 });
 
 test('пол приватности записи объявлен в коде, а не только в UI', () => {
-  assert.match(SRC, /maskTextSelector:\s*'\*'/, 'текст маскируется целиком');
-  assert.match(SRC, /maskAllInputs:\s*true/);
+  // Запись видна целиком, маскируются только ЧУЖИЕ персональные данные: имя и
+  // почта участника (<Person> и ряд экрана «Участники»), автор и текст чата.
+  const maskedSelectors = (SRC.match(/maskTextSelector:\s*'([^']+)'/)?.[1] ?? '').split(/\s*,\s*/);
+  for (const cls of ['.mn', '.me', '.mbrow__name', '.mbrow__email', '.chat-name', '.chat-bubble']) {
+    assert.ok(maskedSelectors.includes(cls), `${cls} обязан быть в maskTextSelector`);
+  }
+  assert.doesNotMatch(SRC, /maskTextSelector:\s*'\*'/, "'*' прячет и ошибку, ради которой запись смотрят");
+  assert.match(SRC, /maskAllInputs:\s*false/, 'ввод виден — иначе не видно, что печатали перед ошибкой');
+  assert.match(SRC, /maskInputOptions:\s*\{\s*password:\s*true\s*\}/, 'пароль маскируется всегда');
   assert.match(SRC, /blockSelector:\s*'\.avatar'/, 'аватары — фото людей, текстовая маскировка их не трогает');
+  assert.match(SRC, /recordHeaders:\s*false/, 'в заголовке едет Bearer-JWT Supabase');
   assert.match(SRC, /disable_capture_url_hashes:\s*true/,
     'фрагмент адреса несёт токены Supabase после OAuth-редиректа');
+});
+
+test('сеть и консоль пишутся в реплей, тела — только у наших edge-вызовов', async () => {
+  assert.match(SRC, /capture_performance:\s*\{\s*network_timing:\s*true/, 'без network_timing рекордер не видит fetch/XHR');
+  assert.match(SRC, /enable_recording_console_log:\s*true/);
+  assert.match(SRC, /recordBody:\s*true/);
+  assert.match(SRC, /maskCapturedNetworkRequestFn:\s*\(data\)\s*=>\s*keepEdgeBodiesOnly\(data,\s*window\.location\.origin\)/,
+    'родной хук SDK, а не своя обёртка над fetch');
+
+  // Поведение хука — на чистой функции, без DOM (posthog.js в node не грузится).
+  const { keepEdgeBodiesOnly } = await import('./replayNetworkMask.js');
+  const ORIGIN = 'https://www.triplanio.com';
+  const mask = (name) => keepEdgeBodiesOnly({ name, requestBody: '{"a":1}', responseBody: '{"error":"x"}' }, ORIGIN);
+  const edge = mask('https://www.triplanio.com/api/trip-booking/transfer');
+  assert.equal(edge.responseBody, '{"error":"x"}', 'тело ответа edge-вызова остаётся — там причина отказа');
+  assert.equal(edge.requestBody, '{"a":1}');
+  assert.equal(mask('/api/getMe').responseBody, '{"error":"x"}', 'относительный /api/ — наш вызов');
+  for (const name of [
+    'https://tizscxrpuopobgcxbekf.supabase.co/auth/v1/token?grant_type=refresh_token', // токены
+    'https://www.triplanio.com/ingest/e/', // сам PostHog
+    'https://api.mapbox.com/styles/v1/x', // чужой хост
+    'https://evil.example/api/getMe', // наш путь на чужом origin
+    '/api/../auth/v1/token', // относительный путь резолвится и нормализуется
+    'not a url',
+  ]) {
+    const foreign = mask(name);
+    assert.equal(foreign.requestBody, null, `${name}: тело запроса снято`);
+    assert.equal(foreign.responseBody, null, `${name}: тело ответа снято`);
+  }
 });

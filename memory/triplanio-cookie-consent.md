@@ -53,6 +53,17 @@ Google Consent Mode (`gtag('consent','update')`, только при запис�
   (гард 2j, правило B), `isReady()` = `ph.__loaded`, `onConsent(record)`,
   `tagEnv()`. Реплей поднимается только в `onConsent` на грант
   (`disable_session_recording:true` в init), масочный пол — в коде.
+  **Что запись содержит (07.09.2026):** видно ВСЁ, маскируются только ЧУЖИЕ
+  персональные данные через родной `maskTextSelector` по существующим классам —
+  `.mn`/`.me` (<Person>), `.mbrow__name`/`.mbrow__email` (экран «Участники»),
+  `.chat-name`/`.chat-bubble`; `.avatar` блокируется; ввод виден
+  (`maskAllInputs:false`, пароль — `maskInputOptions`). Сеть и консоль пишутся
+  в реплей (`capture_performance.network_timing`, `enable_recording_console_log`),
+  тела запросов — ТОЛЬКО у same-origin `/api/<fn>` (родной хук
+  `maskCapturedNetworkRequestFn` → чистая `replayNetworkMask.js`, под
+  `node --test`), заголовки не пишутся (Bearer-JWT). Прежний `'*'` — не
+  возвращать: два `transfer_added` без запроса к серверу в записи были
+  нечитаемы. Sentry Replay по-прежнему `maskAllText` (дубль, отдельный вопрос).
 - `src/lib/consent.js` — владелец записи: `getConsent` / `setConsent` /
   `applyConsent` / `openConsentBanner` / `subscribeConsentOpen`.
 - `src/lib/consent-record.js` — чистый разбор записи (версия, срок 12 мес, битый
