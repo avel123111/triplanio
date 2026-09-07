@@ -716,8 +716,9 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
   const { lang } = useI18n();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = computeAutoTitle(home, cities, t);
-  // Экран успеха живёт не здесь, а ранним return в ManualPlanner (TRIP-520): он
-  // терминален и не должен зависеть от того, на каком шаге стоит адрес.
+  // Экран успеха живёт не здесь, а развилкой по `savedOk` в теле панели
+  // ManualPlanner (TRIP-520): он терминален и не должен зависеть от того, на
+  // каком шаге стоит адрес.
 
   return (
     <div className="col col--g6 pl-review">
@@ -1028,7 +1029,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // `step + location.key`; шлём только когда флоу открыт и на НОРМАЛИЗОВАННОМ шаге.
   const stepSeenRef = useRef({ key: null, fired: false });
   useEffect(() => {
-    if (!flowOpen) return;
+    if (!flowOpen || savedOk) return; // после сохранения смена адреса — не открытие шага
     const evKey = `${step}|${location.key}`;
     if (stepSeenRef.current.key === evKey) return;
     const isFirst = !stepSeenRef.current.fired;
@@ -1273,6 +1274,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // Маршрут (home/endNode/cities/finishCity/citiesValid) выведен из `nodes` выше,
   // у деривации шага. Автозаголовок читает те же узлы.
   const autoTitle = computeAutoTitle(home, cities, t);
+  const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
 
   // ── Ручки записи маршрута ──────────────────────────────────────────────────
   // Шаги 1 и 3 пишут в ТОТ ЖЕ список, что шаг 2. Своих переменных у них больше
@@ -1420,6 +1422,14 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // ходил всегда. `prefetchQuery` ошибку не пробрасывает.
       qc.prefetchQuery(tripShellQuery(trip.id));
       qc.prefetchQuery(tripContentQuery(trip.id));
+      // Тот же прогрев — для КОДА экрана: TripView едет отдельным чанком
+      // (TRIP-445), и без этого первый вход в трип за сессию ждал бы его под
+      // Suspense. Vite склеивает динамические импорты одного модуля в один чанк.
+      // Ошибку глотаем намеренно (как в `prefetchZoneNeighbours` сайтовой зоны):
+      // предзагрузка — ускорение, а не функция, и упавший чанк обязан молчать
+      // здесь, а не всплывать необработанным реджектом — за экран отвечает
+      // Suspense самого TripView.
+      import('@/pages/TripView').catch(() => {});
     } catch (err) {
       console.error('Failed to save trip:', err);
       track('trip_create_failed', { method, reason: err?.message || 'unknown' });
@@ -1432,42 +1442,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   };
 
   // ── Экран успеха — ТЕРМИНАЛЬНОЕ состояние, не шаг (TRIP-520) ────────────────
-  // Раньше успех рисовал StepReview, то есть жил только на шаге `review`; с
-  // шагами в истории «назад» после сохранения попал бы на `cities` — и форма
-  // «Создать» ожила бы над уже созданным трипом. Ранний return делает `savedOk`
-  // независимым от шага и старше лимит-гейта (тот и так guard-ит `!savedOk`).
-  if (savedOk) {
-    const displayTitle = tripTitle || autoTitle;
-    const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
-    return (
-      <div className="flow-page">
-        <AppHeader
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          onBack={() => nav('/trips')}
-          backTitle={t('notif.to_collection')}
-        />
-        <div className="grow row row--j-center">
-          <EmptyState
-            icon="check"
-            kind="success"
-            title={t('planner.created_title')}
-            body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
-            action={(
-              <>
-                {/* Ведёт в СЕКЦИЮ РЕДАКТОРА (маршрут только собран, дальше брони);
-                    `?lens=` пишем адресом, `state.from` — одноразовый вход. */}
-                <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
-                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
-              </>
-            )}
-          />
-        </div>
-      </div>
-    );
-  }
+  // `savedOk` живёт в памяти визарда, а не в адресе: пока визард смонтирован,
+  // «назад» по записям шагов меняет `?step=`, но рисуется по-прежнему успех —
+  // форма «Создать» над созданным трипом не оживает ни на одном шаге. Рисуется
+  // он В ТОЙ ЖЕ ОБОЛОЧКЕ, что и шаги (карта + панель/шит + прогресс): успех —
+  // финал флоу, а не отдельная страница; своя обвязка (AppHeader на пустом
+  // листе) была регрессом облика. Ниже он входит в BODY, а не ранним return.
 
   // ── Limit guard ───────────────────────────────────────────────────────────
   // The guard gates ENTERING / continuing creation while a free user is at the
@@ -1543,7 +1523,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // ── Одна «назад» на все двери (TRIP-520) ───────────────────────────────────
   // Переписка с ботом — тоже работа, и она стоила денег: без второго слагаемого
   // неудачная генерация «работой» не считается.
-  const hasWork = hasDraftData || (isAi && aiMessages.length > 1);
+  // После сохранения терять нечего: уход из флоу не спрашивает.
+  const hasWork = !savedOk && (hasDraftData || (isAi && aiMessages.length > 1));
   // Уход из флоу спрашивает, переход между шагами — нет. Один гейт на все девять
   // дверей; механика конфирма — та же, что у `requestReset`.
   const confirmLeave = async () => !hasWork || await confirm({
@@ -1553,14 +1534,14 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   });
   // Глубина текущей записи истории решает, «назад» это шаг или выход (а не
   // `isFirstStep`: он врёт после прыжка по рейлу на home и на прямом заходе по
-  // `?step=`). savedOk сюда не попадает — экран успеха отрисован ранним return
-  // выше, у него своя «назад» на `/trips`.
-  const backDepth = location.state?.depth ?? 0;
+  // `?step=`). `savedOk` глушит глубину: у успеха «назад» всегда выход на `/trips`.
+  const backDepth = savedOk ? 0 : (location.state?.depth ?? 0);
   // Тултип/aria стрелки честны к тому, что она делает: на дне флоу — выход «К
   // коллекции», глубже — «Назад» (шаг). Иначе скринридер объявлял бы «К
   // коллекции» для кнопки, делающей шаг назад (item 5 ревью).
   const backLabel = backDepth > 0 ? t('planner.back') : t('notif.to_collection');
   const requestBack = async () => {
+    if (savedOk) return nav('/trips');
     const action = resolveBack({ depth: backDepth, enteredByPush });
     if (action === 'step') return nav(-1);          // шаг назад внутри флоу, без конфирма
     if (!(await confirmLeave())) return;             // выход — спрашиваем, если есть что терять
@@ -1590,8 +1571,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     primaryLabel = saving ? t('planner.saving_btn') : t('planner.save_trip');
     primaryAction = handleSave;
     primaryDisabled = saving;
-    if (savedOk) showFooter = false; // the success screen owns its own actions
   }
+  if (savedOk) showFooter = false; // успех владеет своими действиями, шаг адреса не важен
 
   // ── Main render ───────────────────────────────────────────────────────────
   // Содержимое панели разложено по слотам шелла: ШАПКА (прогресс) всегда на
@@ -1602,38 +1583,62 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     // `.flow-lp-b` — типографский контекст шага (ритм заголовков/подзаголовков),
     // а не раскладка: раскладку и скролл держит тело шелла.
     <div className="flow-lp-b">
-        {step === 'home' && (isAi ? (
-          <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
-        ) : (
-          <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
-        ))}
-        {step === 'cities' && (
-          <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={onComposingChange} />
-        )}
-        {step === 'return' && (
-          <StepReturn
-            home={home}
-            lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
-            endNode={endNode}
-            onFinishHome={() => setFinishCity(home)}
-            onFinishCity={setFinishCity}
-            onClearFinish={clearFinishNode}
-          />
-        )}
-        {step === 'review' && (
-          <StepReview
-            home={home}
-            cities={cities}
-            finishCity={finishCity}
-            cover={cover}
-            setCover={setCover}
-            tripTitle={tripTitle}
-            setTripTitle={setTripTitle}
-            saving={saving}
-            error={error}
-          />
-        )}
-
+      {/* Успех ЗАМЕЩАЕТ шаг, а не встаёт над ним, поэтому шаги — вторая ветка
+          одной развилки: условие `savedOk` названо ОДИН раз, и ни один шаг не
+          может забыть его повторить. */}
+      {savedOk ? (
+        <EmptyState
+          icon="check"
+          kind="success"
+          title={t('planner.created_title')}
+          body={t('planner.created_desc', { title: tripTitle || autoTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
+          action={(
+            <>
+              {/* Ведёт в СЕКЦИЮ РЕДАКТОРА (маршрут только собран, дальше брони);
+                  `?lens=` пишем адресом, `state.from` — одноразовый вход. Чанк
+                  TripView и его запросы прогреты при сохранении, а переход идёт
+                  транзишном роутера — визард стоит, пока трип не готов, карта
+                  переезжает между слотами без пересоздания. */}
+              <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
+              <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
+            </>
+          )}
+        />
+      ) : (
+        <>
+          {step === 'home' && (isAi ? (
+            <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
+          ) : (
+            <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
+          ))}
+          {step === 'cities' && (
+            <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={onComposingChange} />
+          )}
+          {step === 'return' && (
+            <StepReturn
+              home={home}
+              lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
+              endNode={endNode}
+              onFinishHome={() => setFinishCity(home)}
+              onFinishCity={setFinishCity}
+              onClearFinish={clearFinishNode}
+            />
+          )}
+          {step === 'review' && (
+            <StepReview
+              home={home}
+              cities={cities}
+              finishCity={finishCity}
+              cover={cover}
+              setCover={setCover}
+              tripTitle={tripTitle}
+              setTripTitle={setTripTitle}
+              saving={saving}
+              error={error}
+            />
+          )}
+        </>
+      )}
     </div>
   );
   // ★ КОМПОЗЕР — В СЛОТЕ ДЕЙСТВИЙ, А НЕ В ТЕЛЕ. Тело виджета СКРОЛЛИТСЯ, и всё,
@@ -1713,9 +1718,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <div className="grow--fit">
               <FlowProgress
                 steps={visibleSteps}
-                current={stepIdx}
+                current={savedOk ? visibleSteps.length - 1 : stepIdx}
                 accent={isAi ? 'var(--ai)' : 'var(--brand)'}
-                onJump={(i) => setStep(visibleSteps[i].id, 'jump')}
+                onJump={savedOk ? undefined : (i) => setStep(visibleSteps[i].id, 'jump')}
               />
             </div>
           </div>
