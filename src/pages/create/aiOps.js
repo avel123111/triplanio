@@ -209,9 +209,10 @@ export function applyOps(state, ops, { cities = [], today }) {
         let next = [];
         let count = 0;
         for (const r of resolved) {
-          const node = r.kind === 'transit'
+          const kind = /** @type {import('./routeModel.js').NodeKind} */ (r.kind);
+          const node = kind === 'transit'
             ? withNights(makeNode(r.city, 'transit', { nights: r.nights }), r.nights ?? 3)
-            : makeNode(r.city, r.kind);
+            : makeNode(r.city, kind);
           const ins = insertNode(next, node);
           if (!ins) continue; // второй якорь молча не заводится (как в редакторе)
           next = ins;

@@ -81,6 +81,7 @@ const chainOf = (nodes) => (nodes || []).filter((n) => n.nights != null);
  * Якорей не касается: у старта и финиша ночей нет вовсе, и степпера у них нет.
  * @param {RouteNode} node
  * @param {number} nights
+ * @returns {RouteNode}
  */
 export function withNights(node, nights) {
   if (isAnchorNode(node)) return node;

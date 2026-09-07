@@ -71,6 +71,28 @@ export const PROTECTED_KEYS = [
   'notif.tpl_trip_pro_activated_msg',
   'notif.tpl_trip_pro_activated_title',
 
+  // (2b) Строки «что сделал» / «не смог» ИИ-планировщика (TRIP-527): ключ
+  // собирается из имени операции применятора (`t(`ai_plan.did_${op}`)` в
+  // `PanelAi`, причины отказа — через карту), литералом в src не встречается
+  // ни один. Семья защищена целиком: словарь операций — `create/aiOps.js`.
+  'ai_plan.did_set_route',
+  'ai_plan.did_add_city',
+  'ai_plan.did_add_city_after',
+  'ai_plan.did_replace_city',
+  'ai_plan.did_remove_city',
+  'ai_plan.did_move_city',
+  'ai_plan.did_set_nights',
+  'ai_plan.did_set_start',
+  'ai_plan.did_set_end',
+  'ai_plan.did_clear_end',
+  'ai_plan.did_set_start_date',
+  'ai_plan.did_set_title',
+  'ai_plan.fail_unknown_ref',
+  'ai_plan.fail_route_not_empty',
+  'ai_plan.fail_past_date',
+  'ai_plan.fail_anchor',
+  'ai_plan.fail_invalid',
+
   // (3) Финальный CTA неавторизованной зоны (TRIP-445). Один компонент
   // `SiteTrip.SiteCta` обслуживает лендинг, демо и публичную поездку, а текст
   // берёт префиксом: `t(`${ns}.eyebrow`)`, где `ns` = 'landing.fin' или
