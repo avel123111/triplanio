@@ -18,7 +18,7 @@
 
 import { jsonError, withHandler } from '../_shared/http.ts';
 import { requireUser } from '../_shared/supabaseAdmin.ts';
-import { signN8nJwt } from '../_shared/n8nAuth.ts';
+import { signN8nJwt, n8nWebhookUrl } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 import { envTag } from '../_shared/envTag.ts';
 import { normalizeDraft } from './draft.ts';
@@ -30,11 +30,6 @@ import { normalizeDraft } from './draft.ts';
 // тоже вызов, и живой диалог с правками легко уходит за 20).
 const PLANNER_RATE_LIMIT = 50;
 const PLANNER_RATE_WINDOW = 3600;
-
-// v2 (TRIP-527): контракт «драфт → операции». v1 (`/ai-trip-planner`) остаётся
-// живым, пока фронт с полной заменой не уехал с прода; после мерджа в main —
-// в архив.
-const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/ai-trip-planner-v2';
 
 Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
     const user = await requireUser(req);
@@ -57,7 +52,9 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
     if (!n8nSecret) return Response.json({ error: 'N8N_SECRET not configured' }, { status: 500, headers: corsHeaders });
 
     const n8nJwt = await signN8nJwt(n8nSecret);
-    const res = await fetch(N8N_WEBHOOK_URL, {
+    // v2 (TRIP-527): контракт «драфт → операции». v1 (`ai-trip-planner`) живёт,
+    // пока прод-фронт с полной заменой не уехал; после мерджа в main — в архив.
+    const res = await fetch(n8nWebhookUrl('ai-trip-planner-v2'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${n8nJwt}` },
       // userId is forwarded so the AI Usage Logger poller can attribute the

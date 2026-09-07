@@ -41,3 +41,5 @@ n8n видны в `net._http_response`.
 по `LISTEN` на канал, триггера которого в `pg_trigger` нет; живые
 `LISTEN` с существующим триггером не трогать. На проде n8n-триггеров больше
 нет; `pg_stat_activity` по `application_name='Supavisor'` — норма 0–2.
+
+**Адрес n8n — одна дверь** `n8nWebhookUrl(path)` в `_shared/n8nAuth.ts` (база `https://n8n.triplanio.com`, тот же инстанс, что railway `n8n-production-d1214`); все исходящие вызовы edge (notify, parse-booking, group-chat, ai-trip-planner-v2) идут через неё, хост в функциях не объявляется.
