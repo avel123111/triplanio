@@ -71,6 +71,9 @@ const STEPS = [
 const NO_TRANSFERS = Object.freeze([]);
 const MAP_CONTROLS = Object.freeze(['projection', 'theme']);
 
+// Верхний детент шита — индекс в трио шелла `[0.15, 0.68, 1]` (MapShell).
+const SHEET_TOP = 2;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 // Local YYYY-MM-DD (NOT toISOString - that converts to UTC and, in positive
@@ -806,6 +809,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // Детент шита и свёрнутость панели — состояние ЭКРАНА, а не шелла: шаг может
   // осознанно опустить шит (например, когда просит выбрать город на карте).
+  // Шаги идут на среднем детенте, успех поднимает шит на верхний (SHEET_TOP).
   const [detent, setDetent] = useState(1);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -1350,6 +1354,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       track('trip_created', { method, city_count: citiesPayload.length, trip_id: trip.id });
       setSavedOk(true);
       setSavedTripId(trip.id);
+      // Успех — экран, а не шаг у карты: на полу-детенте (0.68) картина, текст и
+      // две кнопки не влезали в полосу шита, и до кнопок приходилось скроллить.
+      // Уменьшать картину ради этого нельзя — ступень `--art-state` читает и
+      // герой /trips на телефоне (200 → 140 делало его мелким). Шит наверх, а
+      // центр по вертикали даёт тело панели (`.mapshell__body .empty-state`).
+      setDetent(SHEET_TOP);
       // ★ ПРОГРЕВ КЭША — В МОМЕНТ СОЗДАНИЯ, А НЕ В МОМЕНТ НАЖАТИЯ. Экран успеха
       // человек читает секунду-другую; это и есть окно, в которое влезают оба
       // запроса трипа. К нажатию «Открыть трип» записи уже в кэше и свежие

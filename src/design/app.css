@@ -4363,7 +4363,6 @@ button.input[data-empty] { color: var(--muted-2); }
    разъезжались на разные края и в тёмной теме читались пятнами.
    Reuses .choice-card for the manual/AI pair (the ONE canonical choice card).
    floor-exempt: layout +6 — choice-card__vis / choice-card--vis / choice-card--col / eroute__fig / eroute__body / empty-state__art: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора + рамка героя; предложены в плане TRIP-532, Pavel в той же сессии прислал картинки и решения (1:1 · две рядом), рельса снята (−8 классов)
-   visual-diff-exempt: .eroute__create {@media (max-width: 640px)} grid-template-columns — одна колонка стала базой, мобильная ступень схлопнута (TRIP-532)
    visual-diff-exempt: .eroute display — flex → grid: у героя своя колонка, текст и карточки в первой (TRIP-532)
    visual-diff-exempt: .eroute flex-direction — снято вместе с flex (TRIP-532)
    visual-diff-exempt: .eroute text-align — герой справа, текст выравнивается по левому краю своей колонки (TRIP-532)
@@ -4381,7 +4380,6 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .eroute {@media (max-width: 640px)} grid-template-columns — одна колонка на телефоне (TRIP-532)
    visual-diff-exempt: .eroute {@media (max-width: 640px)} text-align — герой над текстом, всё по центру (TRIP-532)
    visual-diff-exempt: .eroute {@media (max-width: 640px)} justify-items — то же: карточки и герой по центру колонки (TRIP-532)
-   visual-diff-exempt: .eroute__create grid-template-columns — карточки друг под другом в текстовой колонке (TRIP-532)
    visual-diff-exempt: .eroute__create max-width — ширину даёт колонка, не собственный потолок (TRIP-532)
    visual-diff-exempt: .eroute__rail svg display — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .eroute__rail svg height — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
@@ -4544,8 +4542,7 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .flow-lp-b display — колонка содержимого шага
    visual-diff-exempt: .flow-lp-b flex-direction — то же
    visual-diff-exempt: .flow-lp-b gap — ритм между блоками шага */
-.flow-lp-b { position: relative; min-height: 100%; padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; } /* design-token-exempt: значения не новые — те же, что были у .lp-b, правило переехало вместе с разметкой */
-/* FlowProgress (TRIP-337) — счётчик-прогресс create-флоу на ДС. Раскладка несут
+.flow-lp-b { position: relative; min-height: 100%; padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; } /* design-token-exempt: значения не новые — те же, что были у .lp-b, правило переехало вместе с разметкой *//* FlowProgress (TRIP-337) — счётчик-прогресс create-флоу на ДС. Раскладка несут
    .row/.col в разметке; здесь — только облик, которого у примитивов нет. Акцент
    шага приходит КАНАЛОМ --fp-accent (brand для ручного флоу, ai для ИИ), как тинт
    у Tile: цвет выбирается в рантайме, но переменной, не хардкодом. Полоска шагов —
@@ -5065,6 +5062,16 @@ button.input[data-empty] { color: var(--muted-2); }
 [data-theme="dark"] .mapshell__card,
 [data-theme="dark"] .peek-sheet { background: var(--bg); }
 .mapshell__body { flex: 1; min-height: 0; overflow-y: auto; }
+/* Состояние в теле панели («Путешествие создано» в визарде) занимает тело
+   целиком: `.empty-state` сам центрирует содержимое по вертикали, ему нужен
+   только рост. Без этого композиция прижата к шапке, а высота панели копится
+   пустотой снизу (десктоп 350px). Правило у ПОВЕРХНОСТИ, как `.dlg .empty-state`
+   и `.sheet .empty-state`: экран (`.flow-lp-b`) в примитив не дотягивается.
+   Действует только в флекс-колонке тела шага; на телефоне тот же центр даёт
+   верхний детент шита (визард поднимает его на успехе).
+   visual-diff-exempt: .empty-state flex — состояние в теле панели шелла занимает его целиком, центр по вертикали (TRIP-532)
+   visual-diff-exempt: .peek-sheet__body flex — тот же ключ по первому подлежащему составного правила; само тело шита `flex: none` не меняется (TRIP-532) */
+.mapshell__body .empty-state, .peek-sheet__body .empty-state { flex: 1; }
 .mapshell__panel[data-collapsed] { transform: translateX(-101%); pointer-events: none; }
 /* Кнопка «свернуть/раскрыть» стоит НА ШВЕ: она едет вместе с панелью, поэтому
    её сдвиг — та же переменная ширины, что у колонки. */
