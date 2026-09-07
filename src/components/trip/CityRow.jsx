@@ -1,4 +1,5 @@
 import React from 'react';
+import CountryFlag from '@/components/common/CountryFlag';
 
 // ─── CityRow ────────────────────────────────────────────────────────────────
 // Shared, presentational city-row SKELETON used by BOTH the create-flow planner
@@ -24,7 +25,9 @@ import React from 'react';
 //   grip          ReactNode — the grip element WITH its own handlers (the host
 //                 keeps onClick-stop + keyboard reorder so they never drift).
 //   lead          ReactNode — the number / flag / waypoint node before the city.
-//   name,country  city name + (optional) country shown on the .te-cityline.
+//   name,country  city name + (optional) country shown on the .te-cityline;
+//   countryCode   ISO-2 — флажок перед именем страны (TRIP-527: страна в ряду
+//                 читается флагом на всех экранах, где ряд её показывает).
 //   conf          ReactNode — optional conflict badge (editor) on the cityline.
 //   dates         ReactNode|string — the .te-dts line (range / layover / hint).
 //   children      trailing action cells (planner: stepper + delete, wrapped in
@@ -64,7 +67,7 @@ import React from 'react';
  *
  * @param {{ variant?: 'planner'|'editor', dragging?: boolean, pressing?: boolean,
  *           invalid?: boolean, onArm?: any, onClick?: any, grip: any, lead: any,
- *           name?: any, country?: any, conf?: any, dates?: any,
+ *           name?: any, country?: any, countryCode?: string, conf?: any, dates?: any,
  *           className?: string, children: any }} p
  */
 export default function CityRow({
@@ -78,6 +81,7 @@ export default function CityRow({
   lead,
   name,
   country,
+  countryCode,
   conf,
   dates,
   className = '',
@@ -99,7 +103,7 @@ export default function CityRow({
       <div className="te-citycell">
         <div className="row row--g3 te-cityline">
           <span className="trunc te-cityname">{name}</span>
-          {country ? <span className="te-country">{country}</span> : null}
+          {country ? <span className="te-country">{countryCode ? <><CountryFlag code={countryCode} /> </> : null}{country}</span> : null}
           {conf || null}
         </div>
         {dates ? <div className="row row--g3 te-dts">{dates}</div> : null}

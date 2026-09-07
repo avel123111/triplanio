@@ -2,6 +2,7 @@ import React from 'react';
 import { Icon } from '../../design/icons';
 import { Card, Tile } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
+import CountryFlag from '@/components/common/CountryFlag';
 
 // ─── CityAnchorRow ────────────────────────────────────────────────────────────
 // ЯКОРЬ МАРШРУТА — ОДИН РЯД НА ОБА ЭКРАНА (TRIP-484 §4).
@@ -58,7 +59,7 @@ export function CityAnchorRow({ label, city, editable = false, addLabel, meta, o
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>
         <div className="row row--g3 te-cityline">
           <span className="trunc te-cityname">{city?.city_name || <span className="muted">{t('planner.not_set')}</span>}</span>
-          {city?.country && <span className="muted t-meta">{city.country}</span>}
+          {city?.country && <span className="muted t-meta">{city.country_code ? <><CountryFlag code={city.country_code} /> </> : null}{city.country}</span>}
         </div>
         {meta ? <div className="row row--g3 te-dts">{meta}</div> : null}
       </div>
