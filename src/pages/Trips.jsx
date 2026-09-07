@@ -17,7 +17,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import {
-  ActionMenu, AvatarStack, Badge, Btn, Card, Col, Cover, EmptyState, Grow, IconBtn, Input,
+  ActionMenu, AvatarStack, Badge, Btn, Card, Col, Cover, EmptyState, Grow, IconBtn, Illustration, Input,
   ListRow, RoleBadge, Row, Skeleton, Tile, Trunc,
 } from '../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
@@ -431,22 +431,16 @@ function EmptyRoute({ onManual, onAi }) {
     <Card radius="card" className="eroute" style={{ marginTop: 28 }}>
       <span style={{ ..._ORB, width: 300, height: 300, background: 'var(--brand-grad)', top: -150, right: -60, opacity: 0.12 }} />
       <span style={{ ..._ORB, width: 170, height: 170, background: 'var(--ai-gradient)', top: -30, right: '26%', opacity: 0.10 }} />
-      <div className="eroute__rail">
-        <svg viewBox="0 0 560 64" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-          <path className="rl" d="M30 36 H330" />
-          <path className="rl-dash" d="M330 36 H512" />
-          <circle className="rnode" cx="30" cy="36" r="7" /><circle className="rfill" cx="30" cy="36" r="2.6" />
-          <circle className="rnode" cx="180" cy="36" r="7" /><circle className="rfill" cx="180" cy="36" r="2.6" />
-          <circle className="rnode" cx="330" cy="36" r="7" /><circle className="rfill" cx="330" cy="36" r="2.6" />
-          <path className="rplane" d="M249 30 l16 6 -16 6 4 -6 z" />
-          <circle className="radd" cx="512" cy="36" r="10" /><path className="radd-plus" d="M512 31 v10 M507 36 h10" />
-        </svg>
-      </div>
+      {/* Герой — Боно на чемодане (TRIP-532), на месте бывшей рельсы маршрута:
+          один персонаж ВНЕ карточек, карточки остаются парой равных. Поза без
+          направления намеренно: на десктопе он справа от карточек, на телефоне
+          над ними по центру, и жест «в сторону» указывал бы в пустоту. */}
+      <div className="eroute__fig"><Illustration name="bono-ready" /></div>
       <h3>{t('trips.empty_heading')}</h3>
       <p>{t('trips.empty_route_sub')}</p>
       <div className="eroute__create">
-        <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
-        <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+        <ChoiceCard variant="man" art="create-manual" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
+        <ChoiceCard variant="ai" art="create-ai" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
       </div>
     </Card>
   );

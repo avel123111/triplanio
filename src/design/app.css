@@ -4307,35 +4307,107 @@ button.input[data-empty] { color: var(--muted-2); }
      --on     выбрана
      --sm     плотный шаг для списка, а не для пары крупных карточек */
 .choice-card--on { border-color: var(--brand); background: var(--brand-soft); }
+
+/* Плитка-картина (TRIP-532): `art` у ChoiceCard заменяет плитку с иконкой на
+   квадрат под иллюстрацию 1:1 (реестр `illustrations.js`). Квадрат намеренно:
+   картинка 1:1, и любая другая пропорция плитки давала поля по бокам либо
+   обрезку. Отступ внутри — 9% от плитки, растёт вместе с ней. Подложка —
+   тот же тон, что у плитки-иконки (--hl-soft / AI-градиент, мягкий: насыщенный
+   спорил с картиной). `--col` — колонка для пары «две рядом» в диалоге; на ≤640
+   возвращается к строке и растягивается на всю сетку, иначе шторка росла в две
+   высокие карточки.
+   visual-diff-exempt: .choice-card--ai background — мягкий AI-градиент под картиной варианта «с ИИ» (правило .choice-card--ai .choice-card__vis, TRIP-532) */
+.choice-card--vis { gap: var(--sp-6); padding: var(--sp-6) var(--sp-7) var(--sp-6) var(--sp-6); }
+.choice-card__vis { flex: none; width: 96px; height: 96px; border-radius: var(--r-md); background: var(--hl-soft); overflow: hidden; display: grid; place-items: center; }
+.choice-card--ai .choice-card__vis { background: var(--ai-gradient-soft); }
+.choice-card__vis img { width: 100%; height: 100%; object-fit: contain; padding: 9%; box-sizing: border-box; display: block; }
+.choice-card--col { flex-direction: column; align-items: stretch; gap: var(--sp-6); padding: var(--sp-5) var(--sp-5) var(--sp-7); }
+.choice-card--col .choice-card__vis { width: 100%; height: auto; aspect-ratio: 1 / 1; }
+@media (max-width: 640px) {
+  .choice-card--col { grid-column: 1 / -1; flex-direction: row; align-items: center; padding: var(--sp-6) var(--sp-7) var(--sp-6) var(--sp-6); }
+  .choice-card--col .choice-card__vis { width: 88px; height: 88px; aspect-ratio: auto; }
+  .choice-card__vis { width: 88px; height: 88px; }
+}
 /* Радиус 10 (--r-btn) у ПЛОТНОГО списочного варианта — планировщик (возврат,
    reverse-geo кандидаты) просил более тугой угол, чем 24 крупных навигационных
    карточек NewTripDialog (те несут `.choice-card` без `--sm`, их не трогает). */
 .choice-card--sm { padding: 12px 14px; gap: 10px; border-radius: var(--r-btn); }
 
-/* Empty Trips · "Маршрут" (no trips yet) — itinerary-rail hero + choice pair.
-   New element (approved 2026-06-20). Bound to existing Lumo tokens, mobile-first.
-   Reuses .choice-card for the manual/AI pair (the ONE canonical choice card). */
+/* Empty Trips · «Маршрут» (no trips yet) — герой + пара выбора (TRIP-532).
+   Раскладка в две колонки: текст и две РАВНЫЕ карточки слева, ОДИН Боно справа
+   на месте бывшей рельсы маршрута (рельса снята вместе с 8 классами). Персонаж
+   вне карточек намеренно: два Боно рядом читались дублями, Боно внутри карточки
+   спорил с текстом. На ≤640 колонка одна, герой над текстом, всё по центру.
+   Reuses .choice-card for the manual/AI pair (the ONE canonical choice card).
+   floor-exempt: layout +4 — choice-card__vis / choice-card--vis / choice-card--col / eroute__fig: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора + рамка героя; предложены в плане TRIP-532, Pavel в той же сессии прислал картинки и решения (1:1 · две рядом), рельса снята (−8 классов)
+   visual-diff-exempt: .eroute__create {@media (max-width: 640px)} grid-template-columns — одна колонка стала базой, мобильная ступень схлопнута (TRIP-532)
+   visual-diff-exempt: .eroute display — flex → grid: у героя своя колонка, текст и карточки в первой (TRIP-532)
+   visual-diff-exempt: .eroute flex-direction — снято вместе с flex (TRIP-532)
+   visual-diff-exempt: .eroute text-align — герой справа, текст выравнивается по левому краю своей колонки (TRIP-532)
+   visual-diff-exempt: .eroute grid-template-columns — текст 1fr + герой auto (TRIP-532)
+   visual-diff-exempt: .eroute column-gap — зазор текст↔герой (TRIP-532)
+   visual-diff-exempt: .eroute {@media (max-width: 640px)} grid-template-columns — одна колонка на телефоне (TRIP-532)
+   visual-diff-exempt: .eroute {@media (max-width: 640px)} text-align — герой над текстом, всё по центру (TRIP-532)
+   visual-diff-exempt: .eroute {@media (max-width: 640px)} justify-items — то же: карточки и герой по центру колонки (TRIP-532)
+   visual-diff-exempt: .eroute__create grid-template-columns — карточки друг под другом в текстовой колонке (TRIP-532)
+   visual-diff-exempt: .eroute__create max-width — ширину даёт колонка, не собственный потолок (TRIP-532)
+   visual-diff-exempt: .eroute__rail svg display — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail svg height — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail svg overflow — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail svg width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail animation — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail margin-bottom — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail max-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail position — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail stroke-dasharray — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute__rail z-index — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd-plus fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd-plus stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd-plus stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd-plus stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd stroke-dasharray — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rfill fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash animation — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash stroke-dasharray — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl-dash stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rl stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rnode fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rnode stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rnode stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .rplane fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: to {@keyframes erouteDash} stroke-dashoffset — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532) */
 .eroute {
   position: relative; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; text-align: center;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--sp-8); align-items: center; text-align: left;
   padding: 34px 30px 30px;
 }
-.eroute__rail { position: relative; z-index: 1; width: 100%; max-width: 560px; margin-bottom: 22px; }
-.eroute__rail svg { display: block; width: 100%; height: auto; overflow: visible; }
-.eroute__rail .rl { fill: none; stroke: var(--line-strong); stroke-width: 2.5; stroke-linecap: round; }
-.eroute__rail .rl-dash { fill: none; stroke: color-mix(in srgb, var(--brand) 55%, transparent); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 1 9; animation: erouteDash 16s linear infinite; }
-@keyframes erouteDash { to { stroke-dashoffset: -200; } }
-.eroute__rail .rnode { fill: var(--surface); stroke: var(--brand); stroke-width: 3; }
-.eroute__rail .rfill { fill: var(--brand); }
-.eroute__rail .rplane { fill: var(--brand); }
-.eroute__rail .radd { fill: var(--surface); stroke: var(--ai); stroke-width: 2.5; stroke-dasharray: 3.5 3.5; }
-.eroute__rail .radd-plus { fill: none; stroke: var(--ai); stroke-width: 2.4; stroke-linecap: round; }
+/* Герой занимает правую колонку на все три строки (h3 / p / пара). Абсолютные
+   орбы фона в сетке не участвуют. Картинка — <Illustration>, свой класс ей не
+   нужен: рамку задаёт этот владелец. Подложка-«пятно» под лапами — ::before без
+   z-index намеренно: она не полноразмерная и лежит под картинкой по порядку. */
+.eroute__fig { grid-column: 2; grid-row: 1 / span 3; align-self: end; position: relative; height: 262px; display: flex; align-items: flex-end; justify-content: center; }
+.eroute__fig img { position: relative; z-index: 1; height: 100%; width: auto; filter: drop-shadow(0 14px 18px rgba(20,18,40,.18)); }
+.eroute__fig::before { content: ''; position: absolute; left: 50%; bottom: -14px; width: 118%; height: 64px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, var(--brand-soft-12) 0, transparent 100%); }
 .eroute h3 { position: relative; z-index: 1; color: var(--ink); max-width: 22ch; }
 .eroute p { position: relative; z-index: 1; margin: 9px 0 22px; color: var(--muted); max-width: 46ch; }
-.eroute__create { position: relative; z-index: 1; width: 100%; max-width: 640px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.eroute__create { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: 1fr; gap: 14px; }
 @media (max-width: 640px) {
-  .eroute { padding: 28px 18px 24px; }
-  .eroute__create { grid-template-columns: 1fr; }
+  .eroute { padding: 28px 18px 24px; grid-template-columns: 1fr; text-align: center; justify-items: center; }
+  .eroute__fig { grid-column: 1; grid-row: 1; height: 170px; margin-bottom: var(--sp-7); }
 }
 
 /* Active-tab empty · "только прошлые" — past trips exist but none active.

@@ -64,6 +64,8 @@ export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
 export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
 export { Cover, COVER_FALLBACK } from './Cover';
+export { Illustration } from './Illustration';
+export { ILLUSTRATIONS } from './illustrations';
 export { Carousel } from './Carousel';
 export { Skeleton } from './Skeleton';
 export { default as AppLoading } from './AppLoading';

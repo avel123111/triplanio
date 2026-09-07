@@ -7,7 +7,7 @@ import { refusalError } from '@/lib/refusalError';
 import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Card, Dialog, useToast } from '@/design/index';
+import { Card, Dialog, Illustration, useToast } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -56,19 +56,31 @@ const CreateTripContext = createContext({
 export const useCreateTrip = () => useContext(CreateTripContext);
 
 // ─── Trip-creation choice card (shared: empty screen + new-trip dialog) ───────
-export function ChoiceCard({ variant = 'man', icon, title, sub, onClick }) {
+// `art` — имя из реестра иллюстраций (TRIP-532): плитка с картиной вместо плитки
+// с иконкой. Без `art` карточка прежняя (иконка `icon`), так живут варианты
+// `--sm` в планировщике. `col` — колонка (картина сверху, текст снизу) для пары
+// «две рядом» в диалоге; на ≤640 CSS сам возвращает строку, чтобы шторка не
+// росла в две высокие карточки.
+/** @param {{ variant?: 'man' | 'ai', icon?: string, title: any, sub?: any, onClick?: any, art?: string, col?: boolean }} p */
+export function ChoiceCard({ variant = 'man', icon, title, sub, onClick, art, col }) {
   const isAi = variant === 'ai';
+  const cls = ['choice-card', isAi && 'choice-card--ai', art && 'choice-card--vis', art && col && 'choice-card--col']
+    .filter(Boolean).join(' ');
   return (
     <Card
       as="button"
       radius="md"
       interactive
       onClick={onClick}
-      className={`choice-card${isAi ? ' choice-card--ai' : ''}`}
+      className={cls}
     >
-      <div className={`choice-card__ic${isAi ? ' choice-card__ic--ai' : ''}`}>
-        <Icon name={icon} size={23} />
-      </div>
+      {art ? (
+        <div className="choice-card__vis"><Illustration name={art} /></div>
+      ) : (
+        <div className={`choice-card__ic${isAi ? ' choice-card__ic--ai' : ''}`}>
+          <Icon name={icon} size={23} />
+        </div>
+      )}
       <div className="choice-card__tx">
         <div className="choice-card__ttl">{title}</div>
         <div className="choice-card__sub">{sub}</div>
@@ -91,9 +103,12 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       open={true}
       onOpenChange={(o) => { if (!o) onClose(); }}
     >
-      <div className="col col--g6">
-        <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
-        <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+      {/* Пара «две рядом» (решение Pavel, TRIP-532): канон-сетка `.grid--2`, карточки
+          колонкой с картиной сверху. На ≤640 сетка сама складывается в столбец, а
+          `.choice-card--col` возвращается к строке — см. app.css. */}
+      <div className="grid grid--2 grid--g6">
+        <ChoiceCard variant="man" art="create-manual" col title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
+        <ChoiceCard variant="ai" art="create-ai" col title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
       </div>
     </Dialog>
   );
