@@ -4323,32 +4323,30 @@ button.input[data-empty] { color: var(--muted-2); }
      --sm     плотный шаг для списка, а не для пары крупных карточек */
 .choice-card--on { border-color: var(--brand); background: var(--brand-soft); }
 
-/* Плитка-картина (TRIP-532): `art` у ChoiceCard заменяет плитку с иконкой на
-   квадрат под иллюстрацию 1:1 (реестр `illustrations.js`). Квадрат намеренно:
-   картинка 1:1, и любая другая пропорция плитки давала поля по бокам либо
-   обрезку. Отступ внутри — 9% от плитки, растёт вместе с ней. Подложка —
-   тот же тон, что у плитки-иконки (--hl-soft / AI-градиент, мягкий: насыщенный
-   спорил с картиной). `--col` — колонка для пары «две рядом» в диалоге; на ≤640
-   возвращается к строке и растягивается на всю сетку, иначе шторка росла в две
-   высокие карточки.
-   visual-diff-exempt: .choice-card--ai background — мягкий AI-градиент под картиной варианта «с ИИ» (правило .choice-card--ai .choice-card__vis, TRIP-532)
-   visual-diff-exempt: .choice-card__arr flex — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532)
-   visual-diff-exempt: .choice-card__arr margin-left — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532)
-   visual-diff-exempt: .choice-card__arr transform — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532)
-   visual-diff-exempt: .choice-card__arr transition — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532)
-   visual-diff-exempt: .choice-card:hover transform — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532) */
-.choice-card--vis { gap: var(--sp-6); padding: var(--sp-6) var(--sp-7) var(--sp-6) var(--sp-6); }
-.choice-card__vis { flex: none; width: var(--art-tile); height: var(--art-tile); border-radius: var(--r-btn); background: var(--hl-soft); overflow: hidden; display: grid; place-items: center; }
-.choice-card--ai .choice-card__vis { background: var(--ai-gradient-soft); }
-.choice-card__vis img { width: 100%; height: 100%; object-fit: contain; padding: 9%; box-sizing: border-box; display: block; }
-.choice-card--col { flex-direction: column; align-items: stretch; gap: var(--sp-6); padding: var(--sp-5) var(--sp-5) var(--sp-7); }
-.choice-card--col .choice-card__vis { width: 100%; height: auto; aspect-ratio: 1 / 1; }
+/* Картина в плитке (TRIP-532): `art` у ChoiceCard кладёт в ТУ ЖЕ плитку `__ic`
+   иллюстрацию вместо иконки; `--art` делает её квадратом под картинку 1:1
+   (любая другая пропорция давала поля по бокам либо обрезку). Отступ внутри —
+   9% от плитки, растёт вместе с ней. Тон AI у картины мягкий: насыщенный
+   градиент плитки-иконки спорил с картиной. Отступы и зазор карточки — базовые
+   `.choice-card`, своих у варианта с картиной нет. `--col` — колонка (картина
+   сверху, во всю ширину) для пары «две рядом» в диалоге.
+   visual-diff-exempt: .choice-card__arr flex — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532)
+   visual-diff-exempt: .choice-card__arr margin-left — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532)
+   visual-diff-exempt: .choice-card__arr transform — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532)
+   visual-diff-exempt: .choice-card__arr transition — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532)
+   visual-diff-exempt: .choice-card__ic--ai background — мягкий AI-тон у плитки с КАРТИНОЙ (составное `.choice-card__ic--art.choice-card__ic--ai`), плитка с иконкой прежняя (TRIP-532)
+   visual-diff-exempt: .choice-card:hover transform — стрелка «→» снята вместе с разметкой (Pavel, TRIP-532) */
+.choice-card__ic--art { width: var(--art-tile); height: var(--art-tile); overflow: hidden; }
+.choice-card__ic--art.choice-card__ic--ai { background: var(--ai-gradient-soft); }
+.choice-card__ic--art img { width: 100%; height: 100%; object-fit: contain; padding: 9%; box-sizing: border-box; display: block; }
+.choice-card--col { flex-direction: column; align-items: stretch; }
+.choice-card--col .choice-card__ic--art { width: 100%; height: auto; aspect-ratio: 1 / 1; }
 /* Колонка возвращается к строке на ТОЙ ЖЕ ступени, где канон `.grid--split`
    складывается в один столбец (≤880): две высокие карточки друг под другом
    растянули бы окно и шторку. Ступень — у сетки, карточка про сетку не знает. */
 @media (max-width: 880px) {
-  .choice-card--col { flex-direction: row; align-items: center; padding: var(--sp-6) var(--sp-7) var(--sp-6) var(--sp-6); }
-  .choice-card--col .choice-card__vis { width: var(--art-tile); height: var(--art-tile); aspect-ratio: auto; }
+  .choice-card--col { flex-direction: row; align-items: center; }
+  .choice-card--col .choice-card__ic--art { width: var(--art-tile); height: var(--art-tile); aspect-ratio: auto; }
 }
 /* Радиус 10 (--r-btn) у ПЛОТНОГО списочного варианта — планировщик (возврат,
    reverse-geo кандидаты) просил более тугой угол, чем 24 крупных навигационных
@@ -4356,40 +4354,44 @@ button.input[data-empty] { color: var(--muted-2); }
 .choice-card--sm { padding: 12px 14px; gap: 10px; border-radius: var(--r-btn); }
 
 /* Empty Trips · «Маршрут» (no trips yet) — герой + пара выбора (TRIP-532).
-   Раскладка в две колонки: текст и две РАВНЫЕ карточки слева, ОДИН Боно справа
-   на месте бывшей рельсы маршрута (рельса снята вместе с 8 классами). Персонаж
-   вне карточек намеренно: два Боно рядом читались дублями, Боно внутри карточки
+   Сетка в две колонки: текст и пара карточек слева, ОДИН Боно справа на месте
+   бывшей рельсы маршрута (рельса снята вместе с 8 классами). Персонаж вне
+   карточек намеренно: два Боно рядом читались дублями, Боно внутри карточки
    спорил с текстом. На ≤640 колонка одна, герой над текстом, всё по центру.
    ★ /trips на десктопе во всю ширину, карточка растягивается до ~1600px: это
-   ЛЕНТА-герой — слева один блок (`__body`: заголовок, подзаголовок, пара карточек
-   РЯДОМ строками), справа Боно вровень с блоком, группа по центру с потолком
-   780px. Две предыдущие формы отвергнуты на Vercel-превью (Pavel): карточки
-   друг под другом на 560px = «пункты меню» и герой в углу; карточки колонками с
-   плитками по 330px = иллюстрации съедают текст. Блок обязан быть ОДНИМ
-   элементом сетки: три отдельные строки получали лишнюю высоту героя и
-   разъезжались. Заголовку и подзаголовку свой потолок ширины не нужен — их
-   держит колонка. Орбы-градиенты фона сняты: на широкой карточке они
-   разъезжались на разные края и в тёмной теме читались пятнами.
-   Reuses .choice-card for the manual/AI pair (the ONE canonical choice card).
-   floor-exempt: layout +6 — choice-card__vis / choice-card--vis / choice-card--col / eroute__fig / eroute__body / empty-state__art: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора + рамка героя; предложены в плане TRIP-532, Pavel в той же сессии прислал картинки и решения (1:1 · две рядом), рельса снята (−8 классов)
-   visual-diff-exempt: .eroute display — flex → grid: у героя своя колонка, текст и карточки в первой (TRIP-532)
-   visual-diff-exempt: .eroute flex-direction — снято вместе с flex (TRIP-532)
-   visual-diff-exempt: .eroute text-align — герой справа, текст выравнивается по левому краю своей колонки (TRIP-532)
-   visual-diff-exempt: .eroute grid-template-columns — текст 1fr + герой auto (TRIP-532)
-   visual-diff-exempt: .eroute column-gap — зазор текст↔герой (TRIP-532)
-   visual-diff-exempt: .eroute justify-content — группа «текст | герой» по центру широкой карточки (TRIP-532)
-   visual-diff-exempt: .eroute h3 max-width — потолок 22ch снят: ширину держит колонка 560px, заголовок переносился при половине свободной ширины (TRIP-532)
-   visual-diff-exempt: .eroute p max-width — то же для подзаголовка, 46ch снят (TRIP-532)
-   visual-diff-exempt: .eroute h3 font-size — заголовок ленты-героя переведён с Heading на Title (Pavel, TRIP-532)
-   visual-diff-exempt: .eroute h3 line-height — то же: канон Title (TRIP-532)
-   visual-diff-exempt: .eroute h3 font-family — заголовок ленты: канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (TRIP-532)
-   visual-diff-exempt: .eroute h3 font-variant-numeric — заголовок ленты: канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (TRIP-532)
-   visual-diff-exempt: .eroute h3 font-weight — заголовок ленты: канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (TRIP-532)
-   visual-diff-exempt: .eroute h3 letter-spacing — заголовок ленты: канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (TRIP-532)
-   visual-diff-exempt: .eroute {@media (max-width: 640px)} grid-template-columns — одна колонка на телефоне (TRIP-532)
-   visual-diff-exempt: .eroute {@media (max-width: 640px)} text-align — герой над текстом, всё по центру (TRIP-532)
-   visual-diff-exempt: .eroute {@media (max-width: 640px)} justify-items — то же: карточки и герой по центру колонки (TRIP-532)
-   visual-diff-exempt: .eroute__create max-width — ширину даёт колонка, не собственный потолок (TRIP-532)
+   ЛЕНТА-герой — слева один блок (`__body`: заголовок, подзаголовок, пара
+   карточек), справа Боно вровень с блоком, группа по центру с потолком 780px.
+   Две предыдущие формы отвергнуты на Vercel-превью (Pavel): карточки друг под
+   другом на 560px = «пункты меню» и герой в углу; карточки колонками с плитками
+   по 330px = иллюстрации съедают текст. Блок обязан быть ОДНИМ элементом сетки:
+   три отдельные строки получали лишнюю высоту героя и разъезжались. Пара —
+   `CreateChoicePair` со своей канон-сеткой, у ленты своей раскладки пары нет.
+   Орбы-градиенты фона и пятно под героем сняты: на широкой карточке орбы
+   разъезжались на разные края и в тёмной теме читались пятнами; с ними ушли
+   `position/overflow` карточки и `z-index` у текста — они держали слои над орбами.
+   floor-exempt: layout +1 — eroute__fig / eroute__body / empty-state__art / choice-card__ic--art / choice-card--col при снятых 8 классах рельсы, eroute__create и стрелке: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора, апрув Pavel (TRIP-532)
+   visual-diff-exempt: .eroute h3 max-width — потолок ширины даёт колонка сетки, свой не нужен (TRIP-532)
+   visual-diff-exempt: .eroute h3 position — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute h3 z-index — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute p max-width — потолок ширины даёт колонка сетки, свой не нужен (TRIP-532)
+   visual-diff-exempt: .eroute p position — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute p z-index — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute__create {@media (max-width: 640px)} grid-template-columns — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create display — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create gap — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create grid-template-columns — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create max-width — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create position — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create width — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .eroute__create z-index — пара едет на канон-сетку `.grid--split grid--g6` внутри CreateChoicePair; своей раскладки у ленты нет (gap 14→12, колонки канона) (TRIP-532)
+   visual-diff-exempt: .radd-plus stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .radd-plus stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute h3 font-family — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 font-size — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 font-variant-numeric — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 font-weight — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 letter-spacing — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
+   visual-diff-exempt: .eroute h3 line-height — заголовок ленты — канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (Pavel, TRIP-532)
    visual-diff-exempt: .eroute__rail svg display — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .eroute__rail svg height — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .eroute__rail svg overflow — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
@@ -4405,10 +4407,19 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .eroute__rail stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .eroute__rail width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .eroute__rail z-index — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
+   visual-diff-exempt: .eroute {@media (max-width: 640px)} grid-template-columns — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute {@media (max-width: 640px)} text-align — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute column-gap — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute display — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute flex-direction — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute grid-template-columns — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute justify-content — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
+   visual-diff-exempt: .eroute margin-top — отступ карточки из инлайна `style={{marginTop:28}}` в класс, на шкале (TRIP-282/532)
+   visual-diff-exempt: .eroute overflow — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute position — слои над орбами сняты вместе с орбами (TRIP-532)
+   visual-diff-exempt: .eroute text-align — лента-герой: grid «текст+пара | герой» вместо флекс-колонки по центру (TRIP-532)
    visual-diff-exempt: .radd-plus fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .radd-plus stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
-   visual-diff-exempt: .radd-plus stroke-linecap — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
-   visual-diff-exempt: .radd-plus stroke-width — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .radd fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .radd stroke — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: .radd stroke-dasharray — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
@@ -4430,28 +4441,22 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .rplane fill — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532)
    visual-diff-exempt: to {@keyframes erouteDash} stroke-dashoffset — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532) */
 .eroute {
-  position: relative; overflow: hidden;
-  display: grid; grid-template-columns: minmax(0, 780px) auto; justify-content: center; column-gap: calc(3 * var(--sp-8)); align-items: center; text-align: left;
+  display: grid; grid-template-columns: minmax(0, 780px) auto; justify-content: center; column-gap: var(--sp-8); align-items: center; text-align: left;
+  margin-top: var(--sp-8);
   padding: 34px 30px 30px;
 }
 /* Явные строки у обоих детей: герой стоит в DOM первым (ради ≤640, где он
    сверху), и без `grid-row: 1` автоплейсмент уводил блок текста во вторую строку. */
-.eroute__body { grid-column: 1; grid-row: 1; position: relative; z-index: 1; min-width: 0; }
-/* Герой занимает правую колонку на все три строки (h3 / p / пара). Абсолютные
-   орбы фона в сетке не участвуют. Картинка — <Illustration>, свой класс ей не
-   нужен: рамку задаёт этот владелец. Подложка-«пятно» под лапами — ::before без
-   z-index намеренно: она не полноразмерная и лежит под картинкой по порядку. */
-.eroute__fig { grid-column: 2; grid-row: 1; position: relative; height: var(--art-hero); display: flex; align-items: flex-end; justify-content: center; }
-.eroute__fig img { position: relative; z-index: 1; height: 100%; width: auto; }
-.eroute__fig::before { content: ''; position: absolute; left: 50%; bottom: -14px; width: 118%; height: 64px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, var(--brand-soft-12) 0, transparent 100%); }
-.eroute h3 { position: relative; z-index: 1; color: var(--ink); }
-.eroute p { position: relative; z-index: 1; margin: 9px 0 22px; color: var(--muted); }
-.eroute__create { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.eroute__body { grid-column: 1; grid-row: 1; min-width: 0; }
+/* Герой — <Illustration>, свой класс ей не нужен: рамку задаёт этот владелец. */
+.eroute__fig { grid-column: 2; grid-row: 1; height: var(--art-hero); display: flex; align-items: flex-end; justify-content: center; }
+.eroute__fig img { height: 100%; width: auto; }
+.eroute h3 { color: var(--ink); }
+.eroute p { margin: 9px 0 22px; color: var(--muted); }
 @media (max-width: 640px) {
-  .eroute { padding: 28px 18px 24px; grid-template-columns: 1fr; text-align: center; justify-items: center; }
+  .eroute { padding: 28px 18px 24px; grid-template-columns: 1fr; text-align: center; }
   .eroute__fig { grid-column: 1; grid-row: 1; margin-bottom: var(--sp-7); }
   .eroute__body { grid-row: 2; }
-  .eroute__create { grid-template-columns: 1fr; }
 }
 
 /* Active-tab empty · "только прошлые" — past trips exist but none active.

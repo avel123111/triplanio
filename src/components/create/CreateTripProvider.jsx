@@ -74,8 +74,10 @@ export const useCreateTrip = () => useContext(CreateTripContext);
  */
 export function ChoiceCard({ variant = 'man', icon, title, sub, onClick, art, col }) {
   const isAi = variant === 'ai';
-  const cls = ['choice-card', isAi && 'choice-card--ai', art && 'choice-card--vis', art && col && 'choice-card--col']
-    .filter(Boolean).join(' ');
+  const cls = ['choice-card', isAi && 'choice-card--ai', art && col && 'choice-card--col'].filter(Boolean).join(' ');
+  // Плитка ОДНА (`__ic`), содержимое разное: иконка или картина (`--art` задаёт
+  // квадрат под неё). Второй класс плитки под картину дублировал бы фон и тон.
+  const tile = ['choice-card__ic', isAi && 'choice-card__ic--ai', art && 'choice-card__ic--art'].filter(Boolean).join(' ');
   return (
     <Card
       as="button"
@@ -84,13 +86,9 @@ export function ChoiceCard({ variant = 'man', icon, title, sub, onClick, art, co
       onClick={onClick}
       className={cls}
     >
-      {art ? (
-        <div className="choice-card__vis"><Illustration name={art} /></div>
-      ) : (
-        <div className={`choice-card__ic${isAi ? ' choice-card__ic--ai' : ''}`}>
-          <Icon name={icon} size={23} />
-        </div>
-      )}
+      <div className={tile}>
+        {art ? <Illustration name={art} /> : <Icon name={icon} size={23} />}
+      </div>
       <div className="choice-card__tx">
         <div className="choice-card__ttl">{title}</div>
         <div className="choice-card__sub">{sub}</div>
@@ -100,18 +98,19 @@ export function ChoiceCard({ variant = 'man', icon, title, sub, onClick, art, co
 }
 
 // ─── Пара способов создания (TRIP-532) ────────────────────────────────────────
-// ЕДИНСТВЕННОЕ место, где живут два способа: их ключи, картины и порядок. Диалог
-// и пустой экран /trips рисуют одну и ту же пару, отличие — только раскладка
-// (`col`), которую задаёт вызыватель вместе с сеткой. Две копии молча
-// разъезжались бы при первой правке (апрув Pavel на общий элемент).
+// ЕДИНСТВЕННОЕ место, где живут два способа: их ключи, картины, порядок И
+// раскладка — канон-сетка `.grid--split grid--g6` (две колонки, одна ≤880).
+// Диалог и пустой экран /trips рисуют ровно этот элемент; своя сетка у экрана
+// была бы второй раскладкой той же пары. `col` — карточки колонкой (картина
+// сверху) для диалога; на ступени сетки карточка сама возвращается к строке.
 /** @param {{ col?: boolean, onManual: () => void, onAi: () => void }} p */
 export function CreateChoicePair({ col, onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <>
+    <div className="grid grid--split grid--g6">
       <ChoiceCard variant="man" art="create-manual" col={col} title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
       <ChoiceCard variant="ai" art="create-ai" col={col} title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
-    </>
+    </div>
   );
 }
 
@@ -124,16 +123,11 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       subtitle={t('trips.choice_subtitle')}
       icon="plane"
       iconTone="activity"
-      size="sm"
       open={true}
       onOpenChange={(o) => { if (!o) onClose(); }}
     >
-      {/* Пара «две рядом» (решение Pavel, TRIP-532): канон-сетка `.grid--split` — у неё
-          своя ступень «одна колонка ≤880», карточка про сетку не знает и на той же
-          ступени возвращается к строке (`.choice-card--col`, app.css). */}
-      <div className="grid grid--split grid--g6">
-        <CreateChoicePair col onManual={onManual} onAi={onAi} />
-      </div>
+      {/* Пара «две рядом» (решение Pavel, TRIP-532); сетка и её ступень — у самой пары. */}
+      <CreateChoicePair col onManual={onManual} onAi={onAi} />
     </Dialog>
   );
 }

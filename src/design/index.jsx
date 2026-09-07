@@ -66,7 +66,6 @@ export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
 export { Cover, COVER_FALLBACK } from './Cover';
 export { Illustration } from './Illustration';
-export { ILLUSTRATIONS } from './illustrations';
 export { Carousel } from './Carousel';
 export { Skeleton } from './Skeleton';
 export { default as AppLoading } from './AppLoading';
@@ -483,7 +482,8 @@ const EMPTY_TONE = { empty: "brand", error: "danger", success: "success", warnin
 /** @param {{ icon?: string, title?: any, body?: any, action?: any, kind?: string, boxed?: boolean, iconStyle?: any }} p */
 // `art` — имя из реестра иллюстраций (TRIP-532): картина вместо плитки-иконки.
 // Первый потребитель — «Путешествие создано» (StepReview); дальше пустые состояния
-// получают свои картины по экранам, `icon` остаётся фолбэком.
+// получают свои картины по экранам, `icon` остаётся фолбэком. `kind`/`iconStyle`
+// красят только плитку-иконку: у картины тон свой.
 /** @param {{ icon?: string, title?: any, body?: any, action?: any, kind?: string, boxed?: boolean, iconStyle?: any, art?: string }} p */
 export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle, art }) => (
   <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>

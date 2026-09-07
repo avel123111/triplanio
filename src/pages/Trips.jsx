@@ -427,7 +427,7 @@ const PastTripRow = ({ trip, onClick }) => (
 function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <Card radius="card" className="eroute" style={{ marginTop: 28 }}>
+    <Card radius="card" className="eroute">
       {/* Герой — Боно на чемодане (TRIP-532), на месте бывшей рельсы маршрута:
           один персонаж ВНЕ карточек, карточки остаются парой равных. Поза без
           направления намеренно: на десктопе он справа от карточек, на телефоне
@@ -438,9 +438,7 @@ function EmptyRoute({ onManual, onAi }) {
       <div className="eroute__body">
         <h3>{t('trips.empty_heading')}</h3>
         <p>{t('trips.empty_route_sub')}</p>
-        <div className="eroute__create">
-          <CreateChoicePair onManual={onManual} onAi={onAi} />
-        </div>
+        <CreateChoicePair onManual={onManual} onAi={onAi} />
       </div>
     </Card>
   );
