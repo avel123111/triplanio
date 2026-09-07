@@ -21,7 +21,7 @@ export const ILLUSTRATIONS = Object.freeze({
   /** Выбор способа: «Начать с Triplanio» — сообщение и ответ Боно с черновиком маршрута. */
   'create-ai':     { src: '/images/create-ai.webp',     w: 384, h: 384 },
   /** Герой пустого экрана «Мои путешествия»: Боно на чемодане, «собрался, жду». */
-  'bono-ready':    { src: '/images/bono-ready.webp',    w: 326, h: 600 },
+  'bono-ready':    { src: '/images/bono-ready.webp',    w: 325, h: 600 },
   /** Экран «Путешествие создано» (StepReview): Боно машет лапой, чемодан с галочкой. */
   'trip-created':  { src: '/images/trip-created.webp',  w: 480, h: 480 },
 });

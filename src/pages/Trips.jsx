@@ -35,7 +35,7 @@ import {
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { track } from '@/lib/analytics';
 
-import { useCreateTrip, ChoiceCard } from '@/components/create/CreateTripProvider';
+import { useCreateTrip, CreateChoicePair } from '@/components/create/CreateTripProvider';
 import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import AppHeader from '@/components/AppHeader';
 
@@ -439,8 +439,7 @@ function EmptyRoute({ onManual, onAi }) {
         <h3>{t('trips.empty_heading')}</h3>
         <p>{t('trips.empty_route_sub')}</p>
         <div className="eroute__create">
-          <ChoiceCard variant="man" art="create-manual" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
-          <ChoiceCard variant="ai" art="create-ai" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+          <CreateChoicePair onManual={onManual} onAi={onAi} />
         </div>
       </div>
     </Card>

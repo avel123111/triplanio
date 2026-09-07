@@ -137,6 +137,13 @@
 
   /* Radii (Lumo names + legacy aliases) */
   --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-xs:4px; --r-pill:999px;
+  /* Размеры иллюстраций (TRIP-532): плитка-картина карточки выбора · картина
+     пустого состояния · герой ленты. Владелец берёт ступень, <Illustration>
+     размера не знает. floor-exempt: tokens +3 — --art-tile/--art-state/--art-hero: три литерала в трёх владельцах становятся шкалой под картины пустых состояний по экранам, апрув Pavel (TRIP-532)
+     visual-diff-exempt: :root --art-tile — новый токен: плитка-картина карточки выбора (TRIP-532)
+     visual-diff-exempt: :root --art-state — новый токен: картина пустого состояния / герой на телефоне (TRIP-532)
+     visual-diff-exempt: :root --art-hero — новый токен: герой ленты /trips (TRIP-532) */
+  --art-tile: 96px; --art-state: 200px; --art-hero: 300px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
      controls derive from --r-btn directly, so every control outer shape shares
      one radius. The segment track uses it as-is; its inner buttons are
@@ -4320,7 +4327,7 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .choice-card__arr transition — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532)
    visual-diff-exempt: .choice-card:hover transform — стрелка «→» из карточек выбора снята вместе с разметкой (Pavel, TRIP-532) */
 .choice-card--vis { gap: var(--sp-6); padding: var(--sp-6) var(--sp-7) var(--sp-6) var(--sp-6); }
-.choice-card__vis { flex: none; width: 96px; height: 96px; border-radius: var(--r-btn); background: var(--hl-soft); overflow: hidden; display: grid; place-items: center; }
+.choice-card__vis { flex: none; width: var(--art-tile); height: var(--art-tile); border-radius: var(--r-btn); background: var(--hl-soft); overflow: hidden; display: grid; place-items: center; }
 .choice-card--ai .choice-card__vis { background: var(--ai-gradient-soft); }
 .choice-card__vis img { width: 100%; height: 100%; object-fit: contain; padding: 9%; box-sizing: border-box; display: block; }
 .choice-card--col { flex-direction: column; align-items: stretch; gap: var(--sp-6); padding: var(--sp-5) var(--sp-5) var(--sp-7); }
@@ -4330,7 +4337,7 @@ button.input[data-empty] { color: var(--muted-2); }
    растянули бы окно и шторку. Ступень — у сетки, карточка про сетку не знает. */
 @media (max-width: 880px) {
   .choice-card--col { flex-direction: row; align-items: center; padding: var(--sp-6) var(--sp-7) var(--sp-6) var(--sp-6); }
-  .choice-card--col .choice-card__vis { width: 96px; height: 96px; aspect-ratio: auto; }
+  .choice-card--col .choice-card__vis { width: var(--art-tile); height: var(--art-tile); aspect-ratio: auto; }
 }
 /* Радиус 10 (--r-btn) у ПЛОТНОГО списочного варианта — планировщик (возврат,
    reverse-geo кандидаты) просил более тугой угол, чем 24 крупных навигационных
@@ -4425,7 +4432,7 @@ button.input[data-empty] { color: var(--muted-2); }
    орбы фона в сетке не участвуют. Картинка — <Illustration>, свой класс ей не
    нужен: рамку задаёт этот владелец. Подложка-«пятно» под лапами — ::before без
    z-index намеренно: она не полноразмерная и лежит под картинкой по порядку. */
-.eroute__fig { grid-column: 2; grid-row: 1; position: relative; height: 300px; display: flex; align-items: flex-end; justify-content: center; }
+.eroute__fig { grid-column: 2; grid-row: 1; position: relative; height: var(--art-hero); display: flex; align-items: flex-end; justify-content: center; }
 .eroute__fig img { position: relative; z-index: 1; height: 100%; width: auto; }
 .eroute__fig::before { content: ''; position: absolute; left: 50%; bottom: -14px; width: 118%; height: 64px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, var(--brand-soft-12) 0, transparent 100%); }
 .eroute h3 { position: relative; z-index: 1; color: var(--ink); }
@@ -4433,7 +4440,7 @@ button.input[data-empty] { color: var(--muted-2); }
 .eroute__create { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 640px) {
   .eroute { padding: 28px 18px 24px; grid-template-columns: 1fr; text-align: center; justify-items: center; }
-  .eroute__fig { grid-column: 1; grid-row: 1; height: 170px; margin-bottom: var(--sp-7); }
+  .eroute__fig { grid-column: 1; grid-row: 1; height: var(--art-state); margin-bottom: var(--sp-7); }
   .eroute__body { grid-row: 2; }
   .eroute__create { grid-template-columns: 1fr; }
 }
@@ -10655,8 +10662,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    создано» (StepReview). Дальше — свои картины у пустых состояний по экранам и одна
    дефолтная (план Pavel). Размер задаёт этот владелец, у <Illustration> класса нет. */
 .empty-state__art { margin-bottom: var(--sp-7); }
-.empty-state__art img { height: 200px; width: auto; }
-.empty-state--boxed .empty-state__art img { height: 120px; }
+.empty-state__art img { height: var(--art-state); width: auto; }
 .empty-state__t { color: var(--ink); margin-bottom: 6px; }
 .empty-state__b { max-width: 340px; }
 /* Действий может быть два (открыть трип / вернуться к списку) - раньше такая

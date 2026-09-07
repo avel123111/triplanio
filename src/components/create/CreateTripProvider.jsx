@@ -99,6 +99,22 @@ export function ChoiceCard({ variant = 'man', icon, title, sub, onClick, art, co
   );
 }
 
+// ─── Пара способов создания (TRIP-532) ────────────────────────────────────────
+// ЕДИНСТВЕННОЕ место, где живут два способа: их ключи, картины и порядок. Диалог
+// и пустой экран /trips рисуют одну и ту же пару, отличие — только раскладка
+// (`col`), которую задаёт вызыватель вместе с сеткой. Две копии молча
+// разъезжались бы при первой правке (апрув Pavel на общий элемент).
+/** @param {{ col?: boolean, onManual: () => void, onAi: () => void }} p */
+export function CreateChoicePair({ col, onManual, onAi }) {
+  const { t } = useI18n();
+  return (
+    <>
+      <ChoiceCard variant="man" art="create-manual" col={col} title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
+      <ChoiceCard variant="ai" art="create-ai" col={col} title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+    </>
+  );
+}
+
 // ─── New Trip Dialog (manual / AI choice) ─────────────────────────────────────
 function NewTripDialog({ onClose, onManual, onAi }) {
   const { t } = useI18n();
@@ -116,8 +132,7 @@ function NewTripDialog({ onClose, onManual, onAi }) {
           своя ступень «одна колонка ≤880», карточка про сетку не знает и на той же
           ступени возвращается к строке (`.choice-card--col`, app.css). */}
       <div className="grid grid--split grid--g6">
-        <ChoiceCard variant="man" art="create-manual" col title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
-        <ChoiceCard variant="ai" art="create-ai" col title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+        <CreateChoicePair col onManual={onManual} onAi={onAi} />
       </div>
     </Dialog>
   );
