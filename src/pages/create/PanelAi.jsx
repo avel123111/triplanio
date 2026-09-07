@@ -1,11 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Avatar, Card, Chip, Col, Row, Tile } from '../../design/index';
+import { Avatar, Badge, Card, Chip, Col, Row, Tile } from '../../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
-import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { pluralize } from '@/lib/i18n/format';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { startOf, endOf, cityNodesOf } from '@/pages/create/routeModel';
+import { addDays, cityDateRange, shortDateLabel } from '@/lib/tripDates';
 
 // =====================================================================
 // AI ENTRY PANEL — the CONVERSATION (transcript only). The composer is pinned by
@@ -22,83 +24,90 @@ import { startOf, endOf, cityNodesOf } from '@/pages/create/routeModel';
 // СНИМОК маршрута, который он предложил. С переходом на операции снимок стал
 // бы враньём: после «поставь 4 ночи в Лиссабоне» правдив только текущий
 // `nodes`, а не то, что бот предлагал два хода назад. Поэтому в сообщении —
-// текст и строки «что сделал», а маршрут рисуется ОДИН раз, под лентой, от
-// тех же узлов, что видит карта и шаг 2. Второго источника правды по маршруту
-// в ленте больше нет.
+// только текст бота, а маршрут рисуется ОДИН раз, под лентой, от тех же узлов,
+// что видит карта и шаг 2. Строк «что сделал / не смог» под текстом нет: бот
+// сам говорит, что сделал, а отказ применятора уходит в телеметрию вызывателя
+// (бот про валидатор не знает, «не смог» под его «сделал» — противоречие).
 // =====================================================================
 
-// Anchor row (start / finish) — the AI-tinted node tile + city name + a meta label
-// on the right. The tint travels as CSS channels on the inline style (the sanctioned
-// call-site входная точка тона для `.te-row__node`); shared by start and finish so
-// the inline lives ONCE, not once per anchor.
-function AnchorRow({ code, name, label }) {
+// ─── Маршрут под лентой: свой ряд, не ряд шага 2 ────────────────────────────
+// Слева номер (у старта/финиша — плитка с флажком в AI-тоне), затем название
+// города и под ним флаг со страной; справа даты и число ночей (у якорей — дата
+// и подпись «Старт»/«Финиш»). Собран из утилит и носителей, которые уже есть
+// (`te-row__num`, `te-cityname`, `col--a-end`, `num`, `t-meta`) — своих классов
+// у ряда нет. Ритм: внутри ряда строки прижаты (`g1`), между рядами — линия и
+// воздух (`.pl-ai-draft > * + *` в app.css): иначе подпись страны ряда N стояла
+// ближе к названию ряда N+1, чем к своему названию.
+function RouteRow({ lead, name, code, country, top, bottom }) {
   return (
-    <div className="row row--g4">
-      <Tile as="span" round className="te-row__node" style={{ '--hl-soft': 'var(--ai-soft)', '--hl-ink': 'var(--ai-ink)' }}>
-        {code ? <CountryFlag code={code} /> : <Icon name="flag" size={11} />}
-      </Tile>
-      <span className="te-cityname trunc grow">{name}</span>
-      <span className="muted t-meta">{label}</span>
-    </div>
+    <Row gap="g4" align="a-center">
+      {lead}
+      <Col gap="g1" className="grow--fit">
+        <span className="te-cityname trunc">{name}</span>
+        {(code || country) && (
+          <Row as="span" gap="g2" className="muted t-meta trunc">{code ? <CountryFlag code={code} /> : null}{country}</Row>
+        )}
+      </Col>
+      <Col gap="g1" align="a-end">
+        {top ? <span className="num t-meta">{top}</span> : null}
+        {bottom ? <span className="muted num t-meta">{bottom}</span> : null}
+      </Col>
+    </Row>
   );
 }
 
-// The live itinerary (start → cities → finish) from the planner's own nodes —
-// reusing the editor's name/number primitives + CountryFlag; no new classes.
+// Плитка якоря: AI-тон каналами на `.te-row__node` — узаконенная точка входа
+// тона на call-site; инлайн живёт ОДИН раз на оба якоря.
+const anchorLead = (
+  <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'var(--ai-soft)', '--hl-ink': 'var(--ai-ink)' }}>
+    <Icon name="flag" size={11} />
+  </Tile>
+);
+
+// Живой маршрут (старт → города → финиш) от узлов планировщика — тех же, что
+// видит карта и шаг 2; снимка из сообщения нет.
 function DraftItinerary({ nodes }) {
   const t = useT();
+  const { lang } = useI18n();
   const home = startOf(nodes);
   const cities = cityNodesOf(nodes);
   const end = endOf(nodes);
   if (!home?.city_name && cities.length === 0 && !end?.city_name) return null;
+  const first = cities[0];
+  const last = cities[cities.length - 1];
+  const startLabel = first?.startDate ? shortDateLabel(first.startDate, lang) : null;
+  const endLabel = last?.startDate ? shortDateLabel(addDays(last.startDate, +last.nights || 0), lang) : null;
+  let num = 0; // нумеруются только города посещения, пересадка номера не получает
   return (
-    <div className="col col--g3 pl-ai-draft">
-      {home?.city_name && <AnchorRow code={home.country_code} name={home.city_name} label={t('ai_plan.start')} />}
-      {cities.map((c, i) => (
-        <div key={c.id} className="row row--g4">
-          <Tile as="span" round className="te-row__num">{i + 1}</Tile>
-          <span className="te-cityname trunc grow">{c.city_name}{c.country ? <span className="muted t-meta"> {c.country}</span> : null}</span>
-          <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
-        </div>
-      ))}
-      {end?.city_name && <AnchorRow code={end.country_code} name={end.city_name} label={t('planner.sub_finish')} />}
-    </div>
-  );
-}
-
-// Причины отказа применятора → ключ строки. Две технические причины (незнакомая
-// операция, битая форма) для человека одно и то же: «непонятная инструкция».
-const FAIL_KEY = {
-  unknown_ref: 'ai_plan.fail_unknown_ref',
-  route_not_empty: 'ai_plan.fail_route_not_empty',
-  past_date: 'ai_plan.fail_past_date',
-  anchor: 'ai_plan.fail_anchor',
-};
-
-// Строки «что сделал» / «не смог» под текстом бота. Ключи составные
-// (`ai_plan.did_<op>`), семья защищена в гарде 2x (`PROTECTED_KEYS`), потому
-// что литералом в коде не встречается ни один из них.
-function OpLines({ applied = [], rejected = [] }) {
-  const t = useT();
-  const { fmtDate } = useI18nFormat();
-  if (!applied.length && !rejected.length) return null;
-  const line = (a) => {
-    if (a.op === 'set_route') return t('ai_plan.did_set_route', { n: a.count });
-    if (a.op === 'add_city') return a.after ? t('ai_plan.did_add_city_after', { city: a.city, after: a.after }) : t('ai_plan.did_add_city', { city: a.city });
-    if (a.op === 'replace_city') return t('ai_plan.did_replace_city', { from: a.from, to: a.to });
-    if (a.op === 'set_nights') return t('ai_plan.did_set_nights', { city: a.city, n: a.nights });
-    if (a.op === 'set_start_date') return t('ai_plan.did_set_start_date', { date: fmtDate(a.date) });
-    if (a.op === 'set_title') return t('ai_plan.did_set_title', { title: a.title });
-    return t(`ai_plan.did_${a.op}`, { city: a.city });
-  };
-  return (
-    <Col gap="g2" className="pl-ai-draft">
-      {applied.map((a, i) => (
-        <Row as="span" gap="g4" key={`a${i}`} className="t-meta"><Icon name="check" size={12} /> {line(a)}</Row>
-      ))}
-      {rejected.map((r, i) => (
-        <Row as="span" gap="g4" key={`r${i}`} className="t-meta muted"><Icon name="warning" size={12} /> {t(FAIL_KEY[r.reason] || 'ai_plan.fail_invalid')}</Row>
-      ))}
+    <Col gap="g3" className="pl-ai-draft">
+      {home?.city_name && (
+        <RouteRow lead={anchorLead} name={home.city_name} code={home.country_code} country={home.country} top={startLabel} bottom={t('ai_plan.start')} />
+      )}
+      {cities.map((c) => {
+        const nights = +c.nights || 0;
+        // Как на шаге 2: пересадка (`kind === 'waypoint'`) — пунктирная плитка
+        // переезда и бейдж вместо ночей, номера не получает; город без координат
+        // (ИИ назвал, справочник не нашёл) — плитка с предупреждением.
+        const isWaypoint = c.kind === 'waypoint';
+        const invalid = !!c.city_name && c.latitude == null;
+        const lead = isWaypoint
+          ? <Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>
+          : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{++num}</Tile>;
+        return (
+          <RouteRow
+            key={c.id}
+            lead={lead}
+            name={c.city_name}
+            code={c.country_code}
+            country={c.country}
+            top={cityDateRange(c, lang)}
+            bottom={isWaypoint ? <Badge size="tiny">{t('tse.layover')}</Badge> : `${nights} ${pluralize(t, nights, 'view.nights', lang)}`}
+          />
+        );
+      })}
+      {end?.city_name && (
+        <RouteRow lead={anchorLead} name={end.city_name} code={end.country_code} country={end.country} top={endLabel} bottom={t('ai_plan.end')} />
+      )}
     </Col>
   );
 }
@@ -160,7 +169,6 @@ export default function PanelAi({ aiMessages = [], onGenerate, nodes = [] }) {
         return (
           <BotMessage key={m.id}>
             {m.text ? <div className="chat-reply__text"><ChatMarkdown text={m.text} linkClassName="cm-a cm-a--brand" /></div> : null}
-            <OpLines applied={m.applied} rejected={m.rejected} />
           </BotMessage>
         );
       })}

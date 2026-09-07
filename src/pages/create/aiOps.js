@@ -99,7 +99,12 @@ export const OPS = {
   },
 };
 
-/** Причины отказа — фиксированный набор, у каждой своя строка перевода. */
+/**
+ * Причины отказа — фиксированный набор. Человеку они больше не показываются
+ * (строк `ai_plan.fail_*` нет с TRIP-527: дописывать отказ под чужим текстом
+ * бота нечестно) — причина уезжает в телеметрию вызывателя, где по ней и видно
+ * расхождение «бот сказал, что сделал» ↔ «применятор не смог».
+ */
 export const REASONS = /** @type {const} */ ({
   unknown_op: 'unknown_op',
   bad_shape: 'bad_shape',
@@ -110,6 +115,8 @@ export const REASONS = /** @type {const} */ ({
 });
 
 const isDate = (v) => isYmd(v) && !Number.isNaN(Date.parse(v));
+// `number` в словаре — это всегда ЧИСЛО НОЧЕЙ: целое и неотрицательное. Имя типа
+// общее с `FieldSpec` бэка, предикат строже — дробных ночей в маршруте не бывает.
 const isCount = (v) => Number.isInteger(v) && v >= 0;
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isRef = (v) => typeof v === 'string' || typeof v === 'number';
@@ -355,7 +362,7 @@ export function opsJsonSchema() {
             properties: {
               kind: { type: 'string', enum: ['start', 'transit', 'end'] },
               ...Object.fromEntries(Object.keys(CITY).map((k) => [k, JSON_TYPES.string])),
-              nights: JSON_TYPES.int,
+              nights: JSON_TYPES.number,
             },
           },
         }

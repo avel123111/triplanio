@@ -254,6 +254,13 @@ test('★ одно имя на один смысл: дата старта у set
   assert.equal(opShapeError({ op: 'set_start_date', startDate: '2026-10-16' }), null);
 });
 
+test('★ схема парсера: у узла set_route есть nights (вложенная копия не отстаёт от словаря типов)', () => {
+  // Увидено красным: переименование JSON_TYPES.int → number оставило вложенного
+  // читателя, и `nights` молча выпадал из схемы (undefined не сериализуется).
+  const item = opsJsonSchema().properties.ops.items;
+  assert.deepEqual(item.properties.nodes.items.properties.nights, { type: 'integer', minimum: 0 });
+});
+
 test('у каждой операции есть строка для промпта, и форма проверяется словарём', () => {
   assert.equal(opsPromptLines().length, Object.keys(OPS).length);
   assert.equal(opShapeError({ op: 'set_nights', ref: 'a', nights: 2 }), null);

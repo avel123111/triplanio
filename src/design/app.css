@@ -4810,6 +4810,11 @@ button.input[data-empty] { color: var(--muted-2); }
    внутри flush-родителя). Пространство `pl` уже существует (`.pl-revrow`). */
 /* The itinerary list inside an AI chat reply — a small gap off the reply text. */
 .pl-ai-draft { margin-top: var(--sp-5); }
+/* Ряды маршрута под лентой ИИ: между рядами волосяная линия и воздух, чтобы
+   двухстрочный ряд читался как один (внутри строки прижаты, см. PanelAi).
+   visual-diff-exempt: .pl-ai-draft > * + * border-top — разделитель рядов маршрута под лентой
+   visual-diff-exempt: .pl-ai-draft > * + * padding-top — воздух над рядом после разделителя */
+.pl-ai-draft > * + * { border-top: 1px solid var(--line); padding-top: var(--sp-3); }
 /* Quick-start chips under the welcome message — a small gap below it. The empty
    `.chat-run__av` spacer (32px) + row gap aligns them with the message body. */
 .pl-ai-chips { margin-top: var(--sp-4); }
@@ -6652,6 +6657,16 @@ button.input[data-empty] { color: var(--muted-2); }
     .te-end { padding: 9px 12px; }
     /* visual-diff-move: te-row__node -> tile — плитка-узел маршрута на <Tile> (ступень 28, тон каналом из инлайна call-site) */
     .te-row__node { --tile: 28px; flex-shrink: 0; }
+    /* Узел пересадки: тон `transfer` плитки, но не заливкой, а пунктирным
+       контуром — форма «точка без ночёвки». Одно правило вместо инлайна на
+       вызывателях (TRIP-282); первый носитель — маршрут под лентой ИИ.
+       visual-diff-exempt: .te-row__node background — пунктирный узел пересадки: значение из инлайна вызывателей, класс общий
+       visual-diff-exempt: .te-row__node border — то же, инлайн → правило на союзе .te-row__node.tile--transfer
+       visual-diff-exempt: .te-row__node color — то же
+       visual-diff-exempt: .tile--transfer background — союз с .te-row__node: заливка → контур, только внутри ряда маршрута
+       visual-diff-exempt: .tile--transfer border — то же
+       visual-diff-exempt: .tile--transfer color — то же, ink → сам цвет линии (как в инлайне) */
+    .te-row__node.tile--transfer { background: transparent; color: var(--ev-transfer); border: 1px dashed var(--ev-transfer); }
     .te-endlabel { display: block; margin-bottom: 1px; }
     /* TRIP-337: тег «ПЕРЕСАДКА» = DS <Badge size="tiny">; приватный .te-wptag снят.
        Тон переезда несёт эта scoped-строка (единственный .badge внутри .te-dts —
@@ -10605,6 +10620,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 /* visual-diff-move: nonext -> card card--r-lg */
 .nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+/* На телефоне пустой виджет «следующий трип» не показываем (Pavel, TRIP-527):
+   экрану тесно, а карточка «ничего не запланировано» с кнопкой дублирует FAB.
+   Порог тот же, что у остального телефонного облика (640).
+   visual-diff-exempt: .nonext {@media (max-width: 640px)} display — пустой виджет скрыт на телефоне */
+@media (max-width: 640px) { .nonext { display: none; } }
 /* visual-diff-move: .nonext .ic -> tile — плитка-иконка на <Tile> (ступень+тон brand по дефолту)
    visual-diff-exempt: .nonext display — grid дочернего .ic всплыл как flex карточки (огрубление 2p: .nonext .tile держит grid базы, иконка центрируется — проверено рендером) */
 .nonext .tile { --tile: 46px; --tile-ic: 23px; --tile-r: var(--r-btn); }

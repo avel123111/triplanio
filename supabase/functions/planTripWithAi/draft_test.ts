@@ -51,6 +51,7 @@ Deno.test('не объект, кривая дата, неизвестный kind
   assertEquals(isRefusal(normalizeDraft([])), true);
   assertEquals(isRefusal(normalizeDraft({ startDate: '01.10.2026', nodes: [] })), true);
   assertEquals(isRefusal(normalizeDraft({ nodes: [{ kind: 'transit', city_name: 'x' }] })), true);
+  assertEquals(isRefusal(normalizeDraft({ nodes: [node('')] })), true, 'пустой ref — не ссылка');
   assertEquals(isRefusal(normalizeDraft({ nodes: [node('1', { nights: '3' })] })), true);
   assertEquals(isRefusal(normalizeDraft({ nodes: 'x' })), true);
   assertEquals(isRefusal(normalizeDraft({ title: 'x' })), true);

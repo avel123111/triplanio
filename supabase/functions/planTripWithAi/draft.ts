@@ -31,7 +31,9 @@ export const MAX_NODES = 60;
 export const MAX_STR = 300;
 
 const NODE_FIELDS: Record<string, FieldSpec> = {
-  ref: { type: 'string', required: true, max: MAX_STR },
+  // Пустой `ref` — не ссылка: модели не на что ссылаться, а применятор ищет узел
+  // по строке. Форма (`string`, кэп) — движком, непустота — хуком домена.
+  ref: { type: 'string', required: true, max: MAX_STR, validate: (v) => (String(v).trim() ? null : bad('Field "draft.nodes[].ref" must not be empty')) },
   kind: { type: 'string', required: true, enum: ['start', 'transit', 'waypoint', 'end'] },
   city_name: { type: 'string', max: MAX_STR },
   city_name_en: { type: 'string', max: MAX_STR },
@@ -90,5 +92,10 @@ export function normalizeDraft(input: unknown): Draft | null | Refusal {
   };
 }
 
+/**
+ * Отдельный предикат, а не привычное шву `'status' in r`: `normalizeDraft`
+ * возвращает ТРИ исхода (драфт, `null` «драфта не было», отказ), и `in` по
+ * `null` падает — сузить объединение им нельзя.
+ */
 export const isRefusal = (r: unknown): r is Refusal =>
   !!r && typeof r === 'object' && 'status' in r && 'code' in r;

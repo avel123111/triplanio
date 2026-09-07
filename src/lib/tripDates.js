@@ -66,6 +66,8 @@ export function layoutDates(nodes, baseISO) {
 // ─── Даты узла для показа (переехали из ManualPlanner, TRIP-527: ряд маршрута
 // рисуют три экрана, и строку дат им даёт одно место) ─────────────────────────
 
+// Local YYYY-MM-DD (NOT toISOString - that converts to UTC and, in positive
+// timezones, shifts the date back a day, which broke the ±1-day stepper).
 export function ymdLocal(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');

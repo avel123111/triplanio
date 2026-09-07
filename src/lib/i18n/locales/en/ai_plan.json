@@ -10,6 +10,5 @@
   "prompt_placeholder_refine": "E.g., 4 nights in Lisbon, Marseille instead of Cannes…",
   "start": "Start",
   "start_badge": "Start",
-  "status_waiting": "Tell me where you want to go, when and for how long. I'll build the route city by city and we'll tune it here — or just ask me about the trip.",
-  "unit_nights_short": "n."
+  "status_waiting": "Tell me where you want to go, when and for how long. I'll build the route city by city and we'll tune it here — or just ask me about the trip."
 }

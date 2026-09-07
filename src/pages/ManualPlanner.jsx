@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation, useNavigationType } from 'react-router-dom';
 import { track } from '@/lib/analytics';
+import { Sentry } from '@/lib/sentry';
 import { invokeFn } from '@/lib/invokeFn';
 import { tripShellQuery, tripContentQuery } from '@/lib/invokeTripFn';
 import { refusalError } from '@/lib/refusalError';
@@ -41,6 +42,7 @@ import {
 import { applyOps, citiesInOps } from '@/pages/create/aiOps';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { addDays, cityDateRange, shortDateLabel, ymdLocal } from '@/lib/tripDates';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 
 // Monotonic clock for measuring a plan call's duration (n8n + LLM). performance
@@ -73,31 +75,8 @@ const MAP_CONTROLS = Object.freeze(['projection', 'theme']);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Local YYYY-MM-DD (NOT toISOString - that converts to UTC and, in positive
-// timezones, shifts the date back a day, which broke the ±1-day stepper).
-function ymdLocal(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const da = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${da}`;
-}
-
-function addDays(dateStr, days) {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return ymdLocal(d);
-}
-
-function shortDateLabel(iso, locale = 'ru') {
-  if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d)) return '';
-  try {
-    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(d);
-  } catch {
-    return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(d);
-  }
-}
+// Календарная арифметика показа (`ymdLocal` / `addDays` / `shortDateLabel` /
+// `cityDateRange`) живёт в `@/lib/tripDates` — её читают три экрана.
 
 // Default trip start = one month ahead of today (local), YYYY-MM-DD.
 function defaultStartISO() {
@@ -120,17 +99,6 @@ function computeAutoTitle(home, cities, t) {
 // ряду и плитка вида в шторке разойтись не могут.
 // Прежний предикат `isPlannerWaypoint(city)` был вторым толкованием того же
 // факта и удалён вместе с моделью, которая его требовала.
-
-// City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
-// null when the trip start isn't set yet. Shared by the city row and the map
-// tooltip so both read identically.
-function cityDateRange(city, lang) {
-  const nights = +city.nights || 0;
-  const start = city.startDate ? shortDateLabel(city.startDate, lang) : null;
-  const end = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
-  return start ? (end ? `${start} – ${end}` : start) : null;
-}
-
 
 // CityPicker + CityAnchorRow live in ./create/anchors (shared by the planner
 // steps and the AI panel — one picker/anchor, no circular import).
@@ -204,6 +172,7 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
       lead={lead}
       name={node.city_name}
       country={node.country}
+      countryCode={node.country_code}
       dates={dates}
     >
       {/* Степпер ночей — ЕДИНСТВЕННАЯ ручка вида в ряду: ноль ночей и есть
@@ -1126,12 +1095,19 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       setNodes(r.nodes);
       setStartDateRaw(r.startDate);
       setTripTitle(r.title);
-      // Ответ бота = его текст + строки «что сделал»/«не смог». Снимка маршрута
-      // в сообщении нет: маршрут в ленте один и живой (`PanelAi`, от `nodes`).
-      setAiMessages((m) => [...m, {
-        id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '',
-        applied: r.applied, rejected: r.rejected,
-      }]);
+      // Ответ бота = его текст. Снимка маршрута в сообщении нет: маршрут в
+      // ленте один и живой (`PanelAi`, от `nodes`).
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '' }]);
+      // Отказ применятора — расхождение с тем, что бот назвал сделанным. Человеку
+      // под чужим текстом его не дописываем (TRIP-527, разбор с Pavel): это
+      // сигнал для нас — в PostHog и в Sentry, с причинами и операциями.
+      if (r.rejected.length) {
+        track('ai_ops_rejected', { reasons: r.rejected.map((x) => `${x.op}:${x.reason}`) });
+        Sentry.captureException(new Error('ai planner: ops rejected by applicator'), {
+          tags: { feature: 'ai_planner' },
+          contexts: { ops: { rejected: r.rejected, count: ops.length } },
+        });
+      }
       // «Далее» открыто, когда в маршруте есть город — независимо от того, был
       // ли последний ответ с операциями или просто разговором.
       const cityCount = cityNodesOf(r.nodes).length;
