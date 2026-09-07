@@ -306,6 +306,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ★ ЕДИНСТВЕННАЯ ДВЕРЬ ЗАПИСИ ПРОФИЛЯ — У ВЛАДЕЛЬЦА КЭША `user`.
+  //
+  // Прод-дефект (TRIP-520): у профиля был один читатель-кэш (`user` здесь) и
+  // четыре независимых писателя (имя, аватар ×2, язык/единицы), каждый из
+  // которых сам должен был ПОМНИТЬ дёрнуть `checkUserAuth()` после записи.
+  // Трое помнили, четвёртый нет — и смена языка залогиненным «ничего не
+  // делала»: слой профиля (`user.language`) стоял выше только что записанного
+  // слоя посетителя и перекрывал выбор до перезагрузки страницы.
+  //
+  // Поэтому запись идёт через владельца: шов `account/profile` (upsert по
+  // актору) возвращает `row` — ПОЛНУЮ обновлённую строку `users` той же формы,
+  // что читает `getMe` (`select('*')`), и кэш сверяется по ОТВЕТУ сервера, как
+  // брони (`reconcileBookingWrite`, TRIP-484): не повторным чтением и не
+  // догадкой. Один круг, честное состояние; `checkUserAuth` остаётся для того,
+  // что меняется МИМО клиента (вебхук Stripe → право).
+  //
+  // Отказ приезжает машинным `code` (контракт TRIP-400) — показ решает
+  // вызыватель (инлайн в форме / тост в настройках). Аноним (нет `user`) сюда
+  // не ходит: шов требует `self`. Выход из аккаунта во время записи не
+  // воскрешает профиль (`prev` = null → остаётся null).
+  const updateProfile = async (patch) => {
+    const { data, error, code } = await invokeFn('account/profile', { body: patch });
+    if (error || code) return { error, code };
+    setUser((prev) => (prev ? { ...prev, ...data.row } : prev));
+    return { error: null, code: null };
+  };
+
   const logout = async (shouldRedirect = true) => {
     // Flag the logout so the SIGNED_OUT listener holds the spinner instead of
     // rendering the landing. Show the spinner immediately, then sign out and
@@ -338,6 +365,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       navigateToLogin,
       checkUserAuth,
+      updateProfile,
       checkAppState: checkUserAuth,     // alias for interface compatibility
     }}>
       {children}
