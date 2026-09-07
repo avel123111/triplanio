@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }) => {
     // Set from `data.created` of account/register when THIS call created the row.
     let profileCreated = false;
     try {
-      // A silent refresh (checkUserAuth after a profile save / avatar change /
+      // A silent refresh (checkUserAuth on the window-focus re-sync / the
       // Stripe-return entitlement poll) updates `user` in place WITHOUT flipping
       // isLoadingAuth. The whole authenticated tree is gated on isLoadingAuth in
       // App.jsx, so toggling it here unmounts+remounts the entire app — a visible
@@ -290,9 +290,10 @@ export const AuthProvider = ({ children }) => {
     } finally {
       // Release the in-flight guard. It exists only to dedupe CONCURRENT loads
       // (SIGNED_IN + INITIAL_SESSION firing together on page load). If it stayed
-      // pinned to the user id forever, a later checkUserAuth() - e.g. right after
-      // saving the profile - would early-return and never re-fetch, so the updated
-      // name never reached the context and looked like it "didn't save".
+      // pinned to the user id forever, a later checkUserAuth() - e.g. the window-
+      // focus re-sync or the Stripe-return entitlement poll - would early-return
+      // and never re-fetch, so the changed row never reached the context and the
+      // screen kept showing the stale one.
       loadingForRef.current = null;
     }
   };
@@ -326,12 +327,17 @@ export const AuthProvider = ({ children }) => {
   // вызыватель (инлайн в форме / тост в настройках). Аноним (нет `user`) сюда
   // не ходит: шов требует `self`. Выход из аккаунта во время записи не
   // воскрешает профиль (`prev` = null → остаётся null).
-  const updateProfile = async (patch) => {
+  //
+  // Идентичность СТАБИЛЬНА (`useCallback`, замыкает только стабильный `setUser`):
+  // дверь стоит в зависимостях `persistProfile → setLang/setUnits → value`
+  // i18n-контекста, и новая функция на каждый рендер провайдера пересоздавала
+  // бы контекст i18n — перерисовку всех потребителей `t()`, то есть приложения.
+  const updateProfile = useCallback(async (patch) => {
     const { data, error, code } = await invokeFn('account/profile', { body: patch });
     if (error || code) return { error, code };
     setUser((prev) => (prev ? { ...prev, ...data.row } : prev));
     return { error: null, code: null };
-  };
+  }, []);
 
   const logout = async (shouldRedirect = true) => {
     // Flag the logout so the SIGNED_OUT listener holds the spinner instead of

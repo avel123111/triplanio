@@ -527,8 +527,9 @@ export default function ScreenAccount() {
         successToast(t, 'account_saved');
       }
     } finally {
-      // updateProfile по контракту не бросает (отказ приходит значением), но finally
-      // держит кнопку от залипания в «Сохранение…» при неожиданном throw из SDK.
+      // updateProfile по контракту не бросает (отказ приходит значением), но
+      // finally держит кнопку от залипания в «Сохранение…» при неожиданном
+      // throw из SDK.
       setSaving(false);
     }
   };
