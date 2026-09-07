@@ -1,5 +1,5 @@
 // Shared route-line drawing for every Mapbox surface (trip MapView + create
-// FlowMap). The two screens build their legs from different data (visits+
+// планировщик до TRIP-520). Экраны строят плечи из разных данных (visits+
 // transfers vs home/cities/transport) and render different markers, but the
 // line geometry rule is identical: no transport → dashed straight; flight →
 // solid geodesic arc; road → solid straight, upgraded to real Mapbox road

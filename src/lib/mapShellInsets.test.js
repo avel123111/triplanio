@@ -104,3 +104,29 @@ test('★ ПОЛОСА ЛЕВЕЕ ПАНЕЛИ (рейл над холстом) 
   assert.equal(collapsed.fit.left, 70);
   assert.equal(mapShellInsets({ panelPx: 620, collapsed: true }).camera.left, 0, 'без рейла свёрнутая не закрывает ничего');
 });
+
+test('★ ШАПКА НАД ХОЛСТОМ (телефон): сдвиг — половина РАЗНИЦЫ шита и шапки, кадр симметричен', () => {
+  // Шапка трипа лежит над картой, чтобы холст был одной высоты в визарде (шапки
+  // нет) и в трипе; закрытое сверху и снизу после сдвига равно по построению.
+  const r = mapShellInsets({ phone: true, sheetPx: 480, topPx: 60 });
+  assert.equal(r.shift, 210);
+  assert.deepEqual(r.fit, { ...NONE, top: 270, bottom: 270 });
+  assert.deepEqual(r.camera, NONE, 'камеру на телефоне не двигают и ради шапки');
+  // Без шита шапка одна: холст уезжает ВНИЗ на её половину, чтобы центр совпал с центром окна.
+  assert.equal(mapShellInsets({ phone: true, topPx: 60 }).shift, -30);
+});
+
+test('★ ПОЛОСА СТАТУСА закрывает только КАДР снизу — камеру не трогает', () => {
+  const d = mapShellInsets({ panelPx: 550, statusPx: 40 });
+  assert.deepEqual(d.camera, { ...NONE, left: 550 });
+  assert.deepEqual(d.fit, { ...NONE, left: 550, bottom: 40 });
+  const p = mapShellInsets({ phone: true, sheetPx: 480, statusPx: 40 });
+  assert.equal(p.fit.bottom, 240 + 40);
+  assert.equal(p.fit.top, 240);
+  assert.equal(p.shift, 240, 'сдвиг холста от статуса не зависит');
+});
+
+test('★ ШАПКА НАД ХОЛСТОМ (десктоп) — отступ камеры и кадра сверху', () => {
+  assert.deepEqual(mapShellInsets({ panelPx: 550, topPx: 60 }),
+    { slotBottom: 0, camera: { ...NONE, top: 60, left: 550 }, fit: { ...NONE, top: 60, left: 550 }, shift: 0 });
+});

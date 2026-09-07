@@ -16,7 +16,7 @@ import { startOf, endOf, cityNodesOf } from '@/pages/create/routeModel';
 // (.chat-reply / .chat-run), NOT a wrapping gap — a wrapping gap stacked on top of
 // them read as double spacing.
 //   props: aiMessages[], onGenerate(promptText), nodes[] — direct props, like its
-//   sibling flow panels (FlowMap / FlowProgress / StepHome), not a ctx bag.
+//   sibling flow panels (FlowProgress / StepHome), not a ctx bag.
 //
 // ★ МАРШРУТ В ЛЕНТЕ ОДИН И ЖИВОЙ (TRIP-527). Раньше каждый ответ бота нёс
 // СНИМОК маршрута, который он предложил. С переходом на операции снимок стал
