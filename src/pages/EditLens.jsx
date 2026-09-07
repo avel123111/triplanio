@@ -261,6 +261,10 @@ const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
+// Кого адресует пин: маркер отдаёт ВСЕ узлы своей точки, а имеем мы в виду город —
+// якорь (старт/финиш) стоит той же точкой и в выбор не идёт, пока рядом есть город.
+// Один предикат на клик и на наведение: две копии расходятся молча.
+const cityUnderPin = (pts) => (pts || []).find((n) => !isAnchor(n)) || (pts || [])[0] || null;
 // A city added in the editor but not yet persisted carries a 'tmp-…' id (no real uuid
 // until add_city inserts it). A LIVE transfer write to such a city fails the
 // uuid type, so transfer creation is gated until the new city is persisted.
@@ -1378,7 +1382,9 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       overlayActive: useDrawer,
     },
     {
-      visits: nodes, transfers: mapTransfers, showStartEnd: true,
+      // Пока shell не приехал, маршрут НЕИЗВЕСТЕН (`null`), а не пуст: пустой
+      // ставил бы стартовый глобус, чтобы через секунду улететь к маршруту.
+      visits: shell ? nodes : null, transfers: mapTransfers, showStartEnd: true,
       mapControls: EDIT_MAP_CONTROLS, initialProjection: 'globe',
       /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
          «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
@@ -1387,7 +1393,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       /* Двухшаговый клик (как в планировщике): маркер ФИКСИРУЕТ город
          (бейдж + CTA), а зум/панель — уже по CTA (см. cityBadge.onAction).
          Повторный клик по тому же снимает выбор. */
-      onCityClick: (pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) setMapPickId((cur) => (cur === v.id ? null : v.id)); },
+      onCityClick: (pts) => { const v = cityUnderPin(pts); if (v) setMapPickId((cur) => (cur === v.id ? null : v.id)); },
       /* Клик по ПУСТОЙ карте снимает выбор на карте и открытую панель — как
          в планировщике. Пины гасят свой клик сами. В hotel-pick не трогаем:
          там картой владеет оверлей отелей (его бейджи всплывают до 'click'). */
@@ -1395,7 +1401,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
       selectedVisitId: mapPickId || selectedNodeId,
       hoveredVisitId: hoveredNodeId,
       cityBadge,
-      onCityHover: (pts) => setHoveredNodeId(pts ? ((pts || []).find((x) => !isAnchor(x)) || pts[0])?.id ?? null : null),
+      onCityHover: (pts) => setHoveredNodeId(pts ? cityUnderPin(pts)?.id ?? null : null),
       selectedLegKey,
       hideRoute: isHotelPick,
       hotelPins,

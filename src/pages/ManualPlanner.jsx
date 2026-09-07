@@ -1545,34 +1545,34 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // at save time (the blocker returns before the form), so suppressing it here is
   // safe by construction.
   // Шапка и рейл здесь — от оболочки (факты опубликованы выше); экран рисует
-  // только своё содержимое в теле.
-  if (!isPro && checkingLimit && !savedOk) {
+  // только своё содержимое в теле. Условие — тот же `blocked`, которым снята
+  // поверхность: ответ про лимит ещё едет — спиннер, приехал и лимит выбран —
+  // заглушка (порядок ветвей тот же, что был у двух отдельных return'ов).
+  if (blocked) {
+    if (!isPro && checkingLimit) {
+      return (
+        <div className="row row--j-center">
+          <div className="spin spin--ring spin--xl" />
+        </div>
+      );
+    }
     return (
       <div className="row row--j-center">
-        <div className="spin spin--ring spin--xl" />
+        <EmptyState
+          icon="lock"
+          kind="warning"
+          title={t('planner.limit_title')}
+          body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
+          action={(
+            <>
+              <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
+              <Btn variant="primary" onClick={() => goPro(nav, { hidePerTrip: true, from: 'paywall', feature: 'trip_limit' })}>{t('sub.go_pro')}</Btn>
+            </>
+          )}
+        />
       </div>
     );
   }
-
-  if (isOverLimit && !savedOk) {
-    return (
-        <div className="row row--j-center">
-          <EmptyState
-            icon="lock"
-            kind="warning"
-            title={t('planner.limit_title')}
-            body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
-            action={(
-              <>
-                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
-                <Btn variant="primary" onClick={() => goPro(nav, { hidePerTrip: true, from: 'paywall', feature: 'trip_limit' })}>{t('sub.go_pro')}</Btn>
-              </>
-            )}
-          />
-        </div>
-    );
-  }
-
 
   let primaryLabel = t('planner.next');
   let primaryAction = goNext;

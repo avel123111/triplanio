@@ -148,7 +148,7 @@ export function MapShell({
     return slotRefs.current[name];
   };
   // Слот статуса меряется здесь же — ссылка одна, стабильная (см. `slot`).
-  const statusSlot = useMemo(() => (/** @type {HTMLElement | null} */ el) => { statusRef.current = el; onSlotRef.current?.('status', el); }, []);
+  const statusSlot = useCallback((/** @type {HTMLElement | null} */ el) => { statusRef.current = el; onSlotRef.current?.('status', el); }, []);
   const insetTopRef = useRef(insetTop);
   insetTopRef.current = insetTop;
   // ★ «НЕ ИЗМЕРЕНО» ≠ «НОЛЬ». Ширина панели известна только после раскладки

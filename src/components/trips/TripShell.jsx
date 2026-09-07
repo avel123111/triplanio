@@ -128,10 +128,13 @@ export default function TripShell() {
   const shellSlot = useCallback((el) => registerSlot('shell', el), [registerSlot]);
   const contentSlot = useCallback((el) => registerSlot('content', el), [registerSlot]);
   // Тело - постоянный скролл-контейнер (сама оболочка не скроллится): секции
-  // читают его как слот `main` (рейл городов ленты следит за его скроллом).
+  // получают его РЕФОМ (`host.mainRef`, рейл городов ленты следит за скроллом).
+  // Реф, а не узел состоянием: узел ставится в фазе мутации коммита, то есть
+  // ДО эффектов секции, смонтированной тем же коммитом — эффект видит его сразу;
+  // узел состоянием приехал бы ре-рендером, и эффект с депами по данным до
+  // следующей смены данных смотрел бы в null.
   const mainRef = useRef(/** @type {HTMLElement | null} */ (null));
-  const mainSlot = useCallback((el) => { mainRef.current = el; registerSlot('main', el); }, [registerSlot]);
-  const host = useMemo(() => ({ setFacts: setFactsState, cbs, setSurface, mapProps, slots }), [mapProps, slots]);
+  const host = useMemo(() => ({ setFacts: setFactsState, cbs, setSurface, mapProps, slots, mainRef }), [mapProps, slots]);
 
   const { mode, tripId = null, addons, section = DEFAULT_SECTION, step = null, isPro, proResolved = true, title, meta, loading = false, backTitle: factBackTitle } = facts || NO_FACTS;
   const isTrip = mode === 'trip';
@@ -294,24 +297,19 @@ export default function TripShell() {
           confirmLeave={confirmLeave}
         />
         <div className="trip-content" data-bleed={bleed || undefined} ref={contentSlot}>
-          <main ref={mainSlot} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
+          <main ref={mainRef} className={'trip-screen-body' + (flush ? ' trip-screen-body--flush' : '')}>
             {/* Шелл карты ЖИВЁТ ЗДЕСЬ, пока хоть один экран объявляет поверхность:
                 на переходе визард → маршрут он не размонтируется, а меняет
                 содержимое слотов. Карта внутри — один `MapView` на оба экрана. */}
             {surface && (
+              /* Конфиг поверхности И ЕСТЬ пропы шелла карты (один список ключей —
+                 `SURFACE_KEYS` в контракте), поэтому едет спредом: переписанный
+                 сюда третий список тех же имён разъехался бы с ними молча. */
               <MapShell
                 map={(view) => <SurfaceHost view={view} />}
                 insetTop={insetTop}
                 onSlot={registerSlot}
-                panelLabel={surface.panelLabel}
-                detents={surface.detents}
-                detent={surface.detent}
-                onDetentChange={surface.onDetentChange}
-                collapsed={surface.collapsed}
-                onCollapsedChange={surface.onCollapsedChange}
-                collapseLabel={surface.collapseLabel}
-                expandLabel={surface.expandLabel}
-                overlayActive={surface.overlayActive}
+                {...surface}
               />
             )}
             {/* Граница ошибок экрана: падение одного адреса показывает фолбэк в теле,

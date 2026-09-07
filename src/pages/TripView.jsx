@@ -1162,9 +1162,8 @@ export default function TripView() {
     { mode: 'trip', tripId, addons: menuAddons, section: shownLens, step: myStep, isPro: tripIsPro, proResolved: tripProResolved, title: trip?.title, meta: heroSub, loading: shellLoading },
     { onNavigate: setLens, onShare: () => setShareOpen(true), onProUpsell: openProInfo },
   );
-  // Скроллер тела — у оболочки; рейл городов ленты следит за ним через слот.
-  const screenBodyRef = useRef(null);
-  screenBodyRef.current = useShellHost()?.slots.main || null;
+  // Скроллер тела — у оболочки (реф хоста): рейл городов ленты следит за ним.
+  const screenBodyRef = useShellHost()?.mainRef ?? null;
 
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // not_found = no such trip / broken-or-typo'd id (404). Show the neutral "doesn't
@@ -1229,7 +1228,7 @@ export default function TripView() {
     </EventDrawerHost>
   );
 
-  // Слот `overlays`: диалоги, шиты и плавающий виджет — внутри оболочки, но вне
+  // Слот `shell`: диалоги, шиты и плавающий виджет — внутри оболочки, но вне
   // колонок, ровно как было.
   const overlays = (
     <>

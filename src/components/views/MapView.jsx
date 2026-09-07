@@ -103,7 +103,8 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
  *   children             оверлейный хром родителя; `{children}` от `undefined`
  *                        рендерит пустоту, и ровно так карту зовёт редактор в проде
  * Обязательны только `visits` и `transfers` - их читают без фолбэка
- * (`sortVisits(visits)`, `transfers.forEach`), рисовать нечего.
+ * (`sortVisits(visits)`, `transfers.forEach`), рисовать нечего. `visits: null`
+ * законен и значит «маршрут ещё неизвестен» (см. `known`).
  * ⚠️ `onCityClick` стоит РЯДОМ с `onCityHover` под одним и тем же `if (cb)`, и
  * ДВА живых вызывателя его не передают вовсе (`PublicTrip`, `RouteMapCard`):
  * пометить его обязательным значило бы уронить их в тот момент, когда они
@@ -359,13 +360,19 @@ export default function MapView({
     }
   }, []);
 
+  // ★ `visits === null` — МАРШРУТ НЕИЗВЕСТЕН (данные экрана ещё едут), и это не
+  // «пустой маршрут»: пустой ставит стартовый глобус, неизвестный камеру не
+  // трогает вовсе (иначе редактор на медленной двери показывал бы глобус, а через
+  // секунду улетал к маршруту). Тот же контракт, что у `view`: null = ждать.
+  const known = Array.isArray(visits);
   const ordered = useMemo(() => {
+    if (!known) return [];
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
     // Свёрнутый вид — ОТРЕЗОК МАРШРУТА между городами-назначениями (`transitSpan`,
     // единственное место, где это правило записано): уходят не только якоря, но и
     // транзитные точки по дороге из дома и обратно.
     return showSE ? all : transitSpan(all);
-  }, [visits, showSE]);
+  }, [known, visits, showSE]);
 
   const visitsSignature = useMemo(
     () => ordered.map((v) => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|'),
@@ -661,6 +668,7 @@ export default function MapView({
     // Fit only once the slot is MEASURED (canFit) — never into a zero-size
     // container (fit is deferred; the effect re-runs when canFit flips). Markers/
     // lines above still draw on `ready`, so the map is never blank. (TRIP-202)
+    if (!known) return undefined;
     if (canFit && ordered.length === 0) {
       // ★ ПУСТОЙ МАРШРУТ — НЕЙТРАЛЬНЫЙ СТАРТОВЫЙ ГЛОБУС, а не «камера где была»
       // (планировщик до первого города; сюда же возвращает RESET черновика). Шар
@@ -680,7 +688,8 @@ export default function MapView({
           padding: insets,
         };
         try {
-          if (fittedSigRef.current) map.easeTo({ ...start, duration: 600 }); else map.jumpTo(start);
+          if (fittedSigRef.current) map.easeTo({ ...start, duration: 600 });
+          else map.jumpTo(start);
         } catch { /* ignore */ }
         emptySigRef.current = winSig;
         // Глобус — тоже поставленная камера: первый город потом ПРИЕЗЖАЕТ из него
@@ -720,7 +729,7 @@ export default function MapView({
     // (линии рисует отдельный эффект). focusSig/revealActiveId читаются внутри как
     // и раньше — их смена приходит вместе с ре-рендером visitsSignature/фокуса.
     // `winSig` — подпись пустого глобуса (см. ветку выше).
-  }, [ready, canFit, ordered, fitSignature, hideRoute, winSig]);
+  }, [ready, canFit, known, ordered, fitSignature, hideRoute, winSig]);
 
   // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
   // Owns the hotel markers while the overlay is open: builds a moveend listener

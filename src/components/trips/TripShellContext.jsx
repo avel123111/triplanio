@@ -105,6 +105,7 @@ export function createStore(initial) {
  *   setSurface: (c: SurfaceConfig | null) => void,
  *   mapProps: ReturnType<typeof createStore>,
  *   slots: Record<string, HTMLElement | null>,
+ *   mainRef: { current: HTMLElement | null },
  * }} ShellHost
  */
 const ShellCtx = createContext(/** @type {ShellHost | null} */ (null));
@@ -169,7 +170,7 @@ export function useShellMapProps() {
  * Имена слотов: `panelHead` · `panelBody` · `panelFoot` · `panelOverlay` ·
  * `status` (полоса статуса над низом карты) · `mapOverlay` (плавающие контролы
  * над картой) · `content` (ящик у `.trip-content`) · `shell` (оверлеи у
- * `.trip-shell`) · `main` (скроллер тела секции — читается, а не заполняется).
+ * `.trip-shell`). Скроллер тела секции — не слот, а реф `host.mainRef`.
  * @param {{ name: string, children?: any }} p
  */
 export function ShellSlot({ name, children }) {
