@@ -771,7 +771,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
 .head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V2: .t-display — Geologica clamp(28–40)/800/1.05, tabular (карьер .head h1) */
 .t-title,
-.eroute h3,   /* TRIP-532: заголовок ленты-героя /trips — Title, не Heading (Pavel) */
+.card.eroute h3,   /* TRIP-532: заголовок ленты-героя /trips — Title, не Heading (Pavel). Составной селектор: `.card h3` в группе Heading ниже по файлу перебивал голый `.eroute h3` при равной специфичности — замер на превью */
 .sec-head h2.t-title,   /* шапка раздела: `.sec-head h2` ниже по файлу тянет ЛЮБОЙ h2 на канон heading и перебивает класс на самом элементе (равная специфичность, правило позже) — составной селектор возвращает слово разметке.
    Заголовок «N путешествий» на главной просили title, а получал heading именно из-за этого:
    visual-diff-exempt: .sec-head font-family — h2 с классом .t-title теперь получает свой канон (title), а не heading шапки раздела
@@ -4363,6 +4363,10 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .eroute p max-width — то же для подзаголовка, 46ch снят (TRIP-532)
    visual-diff-exempt: .eroute h3 font-size — заголовок ленты-героя переведён с Heading на Title (Pavel, TRIP-532)
    visual-diff-exempt: .eroute h3 line-height — то же: канон Title (TRIP-532)
+   visual-diff-exempt: .eroute h3 font-family — заголовок ленты: канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (TRIP-532)
+   visual-diff-exempt: .eroute h3 font-variant-numeric — заголовок ленты: канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (TRIP-532)
+   visual-diff-exempt: .eroute h3 font-weight — заголовок ленты: канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (TRIP-532)
+   visual-diff-exempt: .eroute h3 letter-spacing — заголовок ленты: канон Title через составной `.card.eroute h3`, голый `.eroute h3` каноном больше не является (TRIP-532)
    visual-diff-exempt: .eroute {@media (max-width: 640px)} grid-template-columns — одна колонка на телефоне (TRIP-532)
    visual-diff-exempt: .eroute {@media (max-width: 640px)} text-align — герой над текстом, всё по центру (TRIP-532)
    visual-diff-exempt: .eroute {@media (max-width: 640px)} justify-items — то же: карточки и герой по центру колонки (TRIP-532)
