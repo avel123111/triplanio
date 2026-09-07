@@ -4340,14 +4340,18 @@ button.input[data-empty] { color: var(--muted-2); }
    на месте бывшей рельсы маршрута (рельса снята вместе с 8 классами). Персонаж
    вне карточек намеренно: два Боно рядом читались дублями, Боно внутри карточки
    спорил с текстом. На ≤640 колонка одна, герой над текстом, всё по центру.
-   ★ /trips на десктопе во всю ширину, карточка растягивается до ~1600px: колонка
-   текста ограничена 560px и вся группа «текст | герой» центрируется, иначе
-   карточки выбора растягивались на метр, а герой прижимался к правому краю
-   (замер на Vercel-превью, Pavel). Заголовку и подзаголовку свой потолок ширины
-   больше не нужен — их держит колонка. Орбы-градиенты фона сняты: на широкой
-   карточке они разъезжались на разные края и в тёмной теме читались пятнами.
+   ★ /trips на десктопе во всю ширину, карточка растягивается до ~1600px: это
+   ЛЕНТА-герой — слева один блок (`__body`: заголовок, подзаголовок, пара карточек
+   РЯДОМ строками), справа Боно вровень с блоком, группа по центру с потолком
+   780px. Две предыдущие формы отвергнуты на Vercel-превью (Pavel): карточки
+   друг под другом на 560px = «пункты меню» и герой в углу; карточки колонками с
+   плитками по 330px = иллюстрации съедают текст. Блок обязан быть ОДНИМ
+   элементом сетки: три отдельные строки получали лишнюю высоту героя и
+   разъезжались. Заголовку и подзаголовку свой потолок ширины не нужен — их
+   держит колонка. Орбы-градиенты фона сняты: на широкой карточке они
+   разъезжались на разные края и в тёмной теме читались пятнами.
    Reuses .choice-card for the manual/AI pair (the ONE canonical choice card).
-   floor-exempt: layout +4 — choice-card__vis / choice-card--vis / choice-card--col / eroute__fig: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора + рамка героя; предложены в плане TRIP-532, Pavel в той же сессии прислал картинки и решения (1:1 · две рядом), рельса снята (−8 классов)
+   floor-exempt: layout +5 — choice-card__vis / choice-card--vis / choice-card--col / eroute__fig / eroute__body: слот картины и колонка у ЕДИНСТВЕННОЙ карточки выбора + рамка героя; предложены в плане TRIP-532, Pavel в той же сессии прислал картинки и решения (1:1 · две рядом), рельса снята (−8 классов)
    visual-diff-exempt: .eroute__create {@media (max-width: 640px)} grid-template-columns — одна колонка стала базой, мобильная ступень схлопнута (TRIP-532)
    visual-diff-exempt: .eroute display — flex → grid: у героя своя колонка, текст и карточки в первой (TRIP-532)
    visual-diff-exempt: .eroute flex-direction — снято вместе с flex (TRIP-532)
@@ -4403,22 +4407,27 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: to {@keyframes erouteDash} stroke-dashoffset — рельса маршрута снята целиком вместе с разметкой, на её месте герой (TRIP-532) */
 .eroute {
   position: relative; overflow: hidden;
-  display: grid; grid-template-columns: minmax(0, 560px) auto; justify-content: center; column-gap: calc(2 * var(--sp-8)); align-items: center; text-align: left;
+  display: grid; grid-template-columns: minmax(0, 780px) auto; justify-content: center; column-gap: calc(3 * var(--sp-8)); align-items: center; text-align: left;
   padding: 34px 30px 30px;
 }
+/* Явные строки у обоих детей: герой стоит в DOM первым (ради ≤640, где он
+   сверху), и без `grid-row: 1` автоплейсмент уводил блок текста во вторую строку. */
+.eroute__body { grid-column: 1; grid-row: 1; position: relative; z-index: 1; min-width: 0; }
 /* Герой занимает правую колонку на все три строки (h3 / p / пара). Абсолютные
    орбы фона в сетке не участвуют. Картинка — <Illustration>, свой класс ей не
    нужен: рамку задаёт этот владелец. Подложка-«пятно» под лапами — ::before без
    z-index намеренно: она не полноразмерная и лежит под картинкой по порядку. */
-.eroute__fig { grid-column: 2; grid-row: 1 / span 3; align-self: end; position: relative; height: 262px; display: flex; align-items: flex-end; justify-content: center; }
-.eroute__fig img { position: relative; z-index: 1; height: 100%; width: auto; filter: drop-shadow(0 14px 18px rgba(20,18,40,.18)); }
+.eroute__fig { grid-column: 2; grid-row: 1; position: relative; height: 300px; display: flex; align-items: flex-end; justify-content: center; }
+.eroute__fig img { position: relative; z-index: 1; height: 100%; width: auto; }
 .eroute__fig::before { content: ''; position: absolute; left: 50%; bottom: -14px; width: 118%; height: 64px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, var(--brand-soft-12) 0, transparent 100%); }
 .eroute h3 { position: relative; z-index: 1; color: var(--ink); }
 .eroute p { position: relative; z-index: 1; margin: 9px 0 22px; color: var(--muted); }
-.eroute__create { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: 1fr; gap: 14px; }
+.eroute__create { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 640px) {
   .eroute { padding: 28px 18px 24px; grid-template-columns: 1fr; text-align: center; justify-items: center; }
   .eroute__fig { grid-column: 1; grid-row: 1; height: 170px; margin-bottom: var(--sp-7); }
+  .eroute__body { grid-row: 2; }
+  .eroute__create { grid-template-columns: 1fr; }
 }
 
 /* Active-tab empty · "только прошлые" — past trips exist but none active.

@@ -433,11 +433,15 @@ function EmptyRoute({ onManual, onAi }) {
           направления намеренно: на десктопе он справа от карточек, на телефоне
           над ними по центру, и жест «в сторону» указывал бы в пустоту. */}
       <div className="eroute__fig"><Illustration name="bono-ready" /></div>
-      <h3>{t('trips.empty_heading')}</h3>
-      <p>{t('trips.empty_route_sub')}</p>
-      <div className="eroute__create">
-        <ChoiceCard variant="man" art="create-manual" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
-        <ChoiceCard variant="ai" art="create-ai" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+      {/* Текст и пара — ОДИН элемент сетки: иначе грид раздавал лишнюю высоту
+          героя трём строкам, и заголовок с подзаголовком разъезжались. */}
+      <div className="eroute__body">
+        <h3>{t('trips.empty_heading')}</h3>
+        <p>{t('trips.empty_route_sub')}</p>
+        <div className="eroute__create">
+          <ChoiceCard variant="man" art="create-manual" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
+          <ChoiceCard variant="ai" art="create-ai" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+        </div>
       </div>
     </Card>
   );
