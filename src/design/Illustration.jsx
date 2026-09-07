@@ -16,14 +16,13 @@ import { ILLUSTRATIONS } from './illustrations';
 //
 // Неизвестное имя = ошибка автора, а не состояние UI: рендерим ничего, а
 // литералы `name="…"` по всему `src/` сверяет с реестром `illustrations.test.js`.
-/** @param {{ name: string, alt?: string, className?: string }} p */
-export const Illustration = ({ name, alt = '', className }) => {
+// Ни `className`, ни `style` у примитива нет: единственный законный способ
+// повлиять на картинку — правило владельца по потомку. `loading="lazy"` тоже
+// нет: все сегодняшние потребители стоят над сгибом (герой /trips, экран
+// успеха), и ленивая загрузка только откладывала бы их первый кадр.
+/** @param {{ name: string, alt?: string }} p */
+export const Illustration = ({ name, alt = '' }) => {
   const pic = ILLUSTRATIONS[name];
   if (!pic) return null;
-  return (
-    <img
-      src={pic.src} width={pic.w} height={pic.h} alt={alt}
-      loading="lazy" decoding="async" className={className}
-    />
-  );
+  return <img src={pic.src} width={pic.w} height={pic.h} alt={alt} decoding="async" />;
 };
