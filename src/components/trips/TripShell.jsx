@@ -49,7 +49,6 @@
  * visual-diff-exempt: .app-side animation — рейл больше не въезжает целиком: он стоит и в визарде, въезжают его пункты
  * visual-diff-exempt: .app-side {@media (prefers-reduced-motion: reduce)} animation — то же
  * visual-diff-exempt: .trip-shell[data-entering=create] animation — у составного селектора входа теперь два читателя (пункты рейла railIn, заголовок шапки fadeIn)
- * visual-diff-exempt: .trip-shell[data-entering=create] {@media (prefers-reduced-motion: reduce)} animation — оба входа гасятся при снижении движения
  * visual-diff-exempt: .app-side__nav animation — пункты рейла въезжают при приходе из создания трипа
  * visual-diff-exempt: .app-side__nav {@media (prefers-reduced-motion: reduce)} animation — тот же вход гасится при снижении движения
  * visual-diff-exempt: .app-header__trip animation — заголовок шапки проступает при приходе из создания трипа

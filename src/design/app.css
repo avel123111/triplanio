@@ -4478,6 +4478,7 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .flow-map overflow — то же
    visual-diff-exempt: .flow-map__canvas position — то же
    visual-diff-exempt: .flow-map__canvas inset — то же
+   visual-diff-exempt: .flow-map__canvas opacity — то же
    visual-diff-exempt: .flow-map__canvas transition — то же
    visual-diff-exempt: .is-revealed opacity — то же (состояние открытого холста карты визарда)
    visual-diff-exempt: .flow-map__cover position — то же
