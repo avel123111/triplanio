@@ -95,7 +95,6 @@ export function ChoiceCard({ variant = 'man', icon, title, sub, onClick, art, co
         <div className="choice-card__ttl">{title}</div>
         <div className="choice-card__sub">{sub}</div>
       </div>
-      <span className="choice-card__arr"><Icon name="arrowR" size={20} /></span>
     </Card>
   );
 }

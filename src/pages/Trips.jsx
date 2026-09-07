@@ -422,15 +422,12 @@ const PastTripRow = ({ trip, onClick }) => (
 );
 
 // ─── Empty collection · "Маршрут" — Bono hero + manual/AI choices ─────────────
-// Decorative orbs are inline-styled (no shared `.blob` class in this stylesheet);
-// the hero illustration + copy + choice pair sit above them (z-index 1).
-const _ORB = /** @type {React.CSSProperties} */ ({ position: 'absolute', borderRadius: '50%', filter: 'blur(12px)', pointerEvents: 'none', zIndex: 0 });
+// Фоновых орбов больше нет (TRIP-532): на широкой карточке /trips они
+// разъезжались на разные края и в тёмной теме читались пятнами.
 function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
   return (
     <Card radius="card" className="eroute" style={{ marginTop: 28 }}>
-      <span style={{ ..._ORB, width: 300, height: 300, background: 'var(--brand-grad)', top: -150, right: -60, opacity: 0.12 }} />
-      <span style={{ ..._ORB, width: 170, height: 170, background: 'var(--ai-gradient)', top: -30, right: '26%', opacity: 0.10 }} />
       {/* Герой — Боно на чемодане (TRIP-532), на месте бывшей рельсы маршрута:
           один персонаж ВНЕ карточек, карточки остаются парой равных. Поза без
           направления намеренно: на десктопе он справа от карточек, на телефоне
