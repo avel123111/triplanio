@@ -421,9 +421,9 @@ const PastTripRow = ({ trip, onClick }) => (
   />
 );
 
-// ─── Empty collection · "Маршрут" — itinerary-rail hero + manual/AI choices ─────
+// ─── Empty collection · "Маршрут" — Bono hero + manual/AI choices ─────────────
 // Decorative orbs are inline-styled (no shared `.blob` class in this stylesheet);
-// the rail illustration + copy + choice pair sit above them (z-index 1).
+// the hero illustration + copy + choice pair sit above them (z-index 1).
 const _ORB = /** @type {React.CSSProperties} */ ({ position: 'absolute', borderRadius: '50%', filter: 'blur(12px)', pointerEvents: 'none', zIndex: 0 });
 function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
