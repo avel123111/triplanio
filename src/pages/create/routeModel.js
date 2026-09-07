@@ -81,6 +81,7 @@ const chainOf = (nodes) => (nodes || []).filter((n) => n.nights != null);
  * Якорей не касается: у старта и финиша ночей нет вовсе, и степпера у них нет.
  * @param {RouteNode} node
  * @param {number} nights
+ * @returns {RouteNode}
  */
 export function withNights(node, nights) {
   if (isAnchorNode(node)) return node;
@@ -165,6 +166,39 @@ const cityIdentity = (c) => ({
   longitude: c.longitude || null,
   timezone: c.timezone || null,
 });
+
+/**
+ * Идентификатор узла в контракте с моделью ИИ (TRIP-527) — строка, чтобы не
+ * зависеть от типа `id`. Живёт здесь, рядом с проекцией, которая его выдаёт:
+ * применятор (`aiOps`) ищет узел ТЕМ ЖЕ правилом, и второй копии «ref = id
+ * строкой» в проекте быть не должно.
+ */
+export const refOf = (node) => String(node?.id);
+
+/**
+ * Драфт для модели ИИ (TRIP-527): та же проекция узлов, что видит человек, плюс
+ * `ref` — ключ, по которому модель ссылается на узел в операциях (`aiOps`).
+ * Ряды без города (пустые строки шага 2) наружу не едут: ссылаться на них не на
+ * что. Координат и таймзон здесь нет — модели они не нужны, а промпт короче.
+ * @param {RouteNode[]} nodes
+ * @param {string} startDate
+ * @param {string} title
+ */
+export function toDraftPayload(nodes, startDate, title) {
+  return {
+    startDate: startDate || '',
+    title: title || '',
+    nodes: (nodes || []).filter((n) => n.city_name).map((n) => ({
+      ref: refOf(n),
+      kind: n.kind,
+      city_name: n.city_name,
+      city_name_en: n.city_name_en || '',
+      country_code: n.country_code || '',
+      nights: n.nights ?? null,
+      geonameid: n.geonameid ?? null,
+    })),
+  };
+}
 
 /**
  * Полезная нагрузка создания трипа. Проекция ПОИМЁННАЯ: лишние поля модели

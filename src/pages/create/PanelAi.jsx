@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Avatar, Card, Chip, Tile } from '../../design/index';
+import { Avatar, Card, Chip, Col, Row, Tile } from '../../design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
-import { useT } from '@/lib/i18n/I18nContext';
+import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
+import { startOf, endOf, cityNodesOf } from '@/pages/create/routeModel';
 
 // =====================================================================
 // AI ENTRY PANEL — the CONVERSATION (transcript only). The composer is pinned by
@@ -14,8 +15,16 @@ import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 // the trip chat). Vertical rhythm comes from the chat's own per-message margins
 // (.chat-reply / .chat-run), NOT a wrapping gap — a wrapping gap stacked on top of
 // them read as double spacing.
-//   props: aiMessages[], onGenerate(promptText) — direct props, like its sibling
-//   flow panels (FlowProgress / StepHome), not a ctx bag.
+//   props: aiMessages[], onGenerate(promptText), nodes[] — direct props, like its
+//   sibling flow panels (FlowProgress / StepHome), not a ctx bag.
+//
+// ★ МАРШРУТ В ЛЕНТЕ ОДИН И ЖИВОЙ (TRIP-527). Раньше каждый ответ бота нёс
+// СНИМОК маршрута, который он предложил. С переходом на операции снимок стал
+// бы враньём: после «поставь 4 ночи в Лиссабоне» правдив только текущий
+// `nodes`, а не то, что бот предлагал два хода назад. Поэтому в сообщении —
+// текст и строки «что сделал», а маршрут рисуется ОДИН раз, под лентой, от
+// тех же узлов, что видит карта и шаг 2. Второго источника правды по маршруту
+// в ленте больше нет.
 // =====================================================================
 
 // Anchor row (start / finish) — the AI-tinted node tile + city name + a meta label
@@ -34,13 +43,13 @@ function AnchorRow({ code, name, label }) {
   );
 }
 
-// The itinerary the bot proposed on a turn — a light list (start → cities → finish),
+// The live itinerary (start → cities → finish) from the planner's own nodes —
 // reusing the editor's name/number primitives + CountryFlag; no new classes.
-function DraftItinerary({ draft }) {
+function DraftItinerary({ nodes }) {
   const t = useT();
-  const home = draft?.home;
-  const cities = draft?.cities || [];
-  const end = draft?.end;
+  const home = startOf(nodes);
+  const cities = cityNodesOf(nodes);
+  const end = endOf(nodes);
   if (!home?.city_name && cities.length === 0 && !end?.city_name) return null;
   return (
     <div className="col col--g3 pl-ai-draft">
@@ -52,9 +61,45 @@ function DraftItinerary({ draft }) {
           <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
         </div>
       ))}
-      {/* Финиш-узел из ответа ИИ (kind:'end') — тот же примитив, что и старт. */}
       {end?.city_name && <AnchorRow code={end.country_code} name={end.city_name} label={t('planner.sub_finish')} />}
     </div>
+  );
+}
+
+// Причины отказа применятора → ключ строки. Две технические причины (незнакомая
+// операция, битая форма) для человека одно и то же: «непонятная инструкция».
+const FAIL_KEY = {
+  unknown_ref: 'ai_plan.fail_unknown_ref',
+  route_not_empty: 'ai_plan.fail_route_not_empty',
+  past_date: 'ai_plan.fail_past_date',
+  anchor: 'ai_plan.fail_anchor',
+};
+
+// Строки «что сделал» / «не смог» под текстом бота. Ключи составные
+// (`ai_plan.did_<op>`), семья защищена в гарде 2x (`PROTECTED_KEYS`), потому
+// что литералом в коде не встречается ни один из них.
+function OpLines({ applied = [], rejected = [] }) {
+  const t = useT();
+  const { fmtDate } = useI18nFormat();
+  if (!applied.length && !rejected.length) return null;
+  const line = (a) => {
+    if (a.op === 'set_route') return t('ai_plan.did_set_route', { n: a.count });
+    if (a.op === 'add_city') return a.after ? t('ai_plan.did_add_city_after', { city: a.city, after: a.after }) : t('ai_plan.did_add_city', { city: a.city });
+    if (a.op === 'replace_city') return t('ai_plan.did_replace_city', { from: a.from, to: a.to });
+    if (a.op === 'set_nights') return t('ai_plan.did_set_nights', { city: a.city, n: a.nights });
+    if (a.op === 'set_start_date') return t('ai_plan.did_set_start_date', { date: fmtDate(a.date) });
+    if (a.op === 'set_title') return t('ai_plan.did_set_title', { title: a.title });
+    return t(`ai_plan.did_${a.op}`, { city: a.city });
+  };
+  return (
+    <Col gap="g2" className="pl-ai-draft">
+      {applied.map((a, i) => (
+        <Row as="span" gap="g4" key={`a${i}`} className="t-meta"><Icon name="check" size={12} /> {line(a)}</Row>
+      ))}
+      {rejected.map((r, i) => (
+        <Row as="span" gap="g4" key={`r${i}`} className="t-meta muted"><Icon name="warning" size={12} /> {t(FAIL_KEY[r.reason] || 'ai_plan.fail_invalid')}</Row>
+      ))}
+    </Col>
   );
 }
 
@@ -90,7 +135,7 @@ function UserMessage({ text }) {
   );
 }
 
-export default function PanelAi({ aiMessages = [], onGenerate }) {
+export default function PanelAi({ aiMessages = [], onGenerate, nodes = [] }) {
   const t = useT();
 
   // Auto-scroll the transcript to the newest message (the panel body is the scroller).
@@ -115,7 +160,7 @@ export default function PanelAi({ aiMessages = [], onGenerate }) {
         return (
           <BotMessage key={m.id}>
             {m.text ? <div className="chat-reply__text"><ChatMarkdown text={m.text} linkClassName="cm-a cm-a--brand" /></div> : null}
-            <DraftItinerary draft={m.draft} />
+            <OpLines applied={m.applied} rejected={m.rejected} />
           </BotMessage>
         );
       })}
@@ -129,6 +174,16 @@ export default function PanelAi({ aiMessages = [], onGenerate }) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Живой маршрут — последний в ленте, у композера: тот же список узлов,
+          что на карте и на шаге 2, а не снимок из сообщения. Отступ слева тот
+          же, что у чипов (пустой аватар-спейсер), чтобы стоять в колонке текста. */}
+      {cityNodesOf(nodes).length > 0 && (
+        <Row gap="g6" align="a-start">
+          <div className="chat-run__av" aria-hidden="true" />
+          <Col className="grow--fit"><DraftItinerary nodes={nodes} /></Col>
+        </Row>
       )}
 
       <div ref={endRef} />

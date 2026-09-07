@@ -1,13 +1,12 @@
 import { HttpError, readJson, refusalResponse, withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { PRO_REQUIRED, requireTripPro } from '../_shared/proGate.ts';
-import { signN8nJwt } from '../_shared/n8nAuth.ts';
+import { signN8nJwt, n8nWebhookUrl } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 import { callerStep } from '../_shared/tripAccess.ts';
 import { clearsStep } from '../_shared/tripStep.ts';
 import { envTag } from '../_shared/envTag.ts';
 
-const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/group-chat';
 
 // TRIP-111: групповой ИИ-чат — Pro-фича. 30 обращений в час на трип (общий ресурс).
 const CHAT_RATE_LIMIT = 30;
@@ -143,7 +142,7 @@ Deno.serve(withHandler('callTriplanioAi', async (req, corsHeaders) => {
     if (!n8nSecret) return Response.json({ error: 'N8N_SECRET not configured' }, { status: 500, headers: corsHeaders });
 
     const n8nJwt = await signN8nJwt(n8nSecret);
-    const res = await fetch(N8N_WEBHOOK_URL, {
+    const res = await fetch(n8nWebhookUrl('group-chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${n8nJwt}` },
       body: JSON.stringify({ payload }),
