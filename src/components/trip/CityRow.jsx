@@ -1,5 +1,5 @@
 import React from 'react';
-import CountryFlag from '@/components/common/CountryFlag';
+import { Country } from '@/design/index';
 
 // ─── CityRow ────────────────────────────────────────────────────────────────
 // Shared, presentational city-row SKELETON used by BOTH the create-flow planner
@@ -103,7 +103,7 @@ export default function CityRow({
       <div className="te-citycell">
         <div className="row row--g3 te-cityline">
           <span className="trunc te-cityname">{name}</span>
-          {country ? <span className="te-country">{countryCode ? <><CountryFlag code={countryCode} /> </> : null}{country}</span> : null}
+          <Country code={countryCode} name={country} />
           {conf || null}
         </div>
         {dates ? <div className="row row--g3 te-dts">{dates}</div> : null}

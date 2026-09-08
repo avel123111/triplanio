@@ -6541,7 +6541,10 @@ button.input[data-empty] { color: var(--muted-2); }
        бы дефолтные 10px у `.row` (было 7px).
        `min-width: 0` остаётся приватным: у `.row` такой ручки нет. */
     .te-cityline { min-width: 0; }
-    .te-country { color: var(--muted); white-space: nowrap; flex: none; }
+    /* Носитель элемента ДС `Country` (флаг + имя страны) — один на пять
+       поверхностей; обрез многоточием переехал сюда с `trunc`/`.lp-country`
+       вызывателей, чтобы длинная страна резалась одинаково везде. */
+    .te-country { color: var(--muted); white-space: nowrap; flex: none; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; }
     /* visual-diff-move: te-dts -> row row--g3 */
     .te-dts { color: var(--muted); margin-top: 1px; min-width: 0; }
     .te-grip { color: var(--muted-2); opacity: .4; cursor: grab; display: grid; place-items: center; transition: opacity .12s; touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -6792,8 +6795,16 @@ button.input[data-empty] { color: var(--muted-2); }
    3 строки в .lp-ti (тип·маршрут / название / страна) + слева .lp-ic с номером
    города или иконкой пересадки. Старый .lp-hero/.lph-* (был только в CityPanel)
    заменён на канон, общий с остальными драйверами. */
-.lp-country { display: inline-flex; align-items: center; gap: .4em; color: var(--ink-2); min-width: 0; max-width: 100%; }
-.lp-country .cflag { flex: none; }
+/* `.lp-country` снят: страну в шапке панели рисует элемент ДС `Country` на
+   носителе `.te-country` (TRIP-527). Флаг и имя там идут строкой с пробелом, а
+   не флексом с зазором, цвет — muted, как у остальных четырёх поверхностей.
+   visual-diff-exempt: .lp-country display — класс снят, элемент ДС Country на .te-country (inline вместо inline-flex)
+   visual-diff-exempt: .lp-country align-items — то же
+   visual-diff-exempt: .lp-country gap — то же (пробел вместо зазора .4em)
+   visual-diff-exempt: .lp-country color — то же (ink-2 → muted, как у четырёх других поверхностей)
+   visual-diff-exempt: .lp-country min-width — то же
+   visual-diff-exempt: .lp-country max-width — то же
+   visual-diff-exempt: .lp-country flex — то же (правило .lp-country .cflag; у самого флага flex задан) */
 
 /* ★ ХРОМ ПАНЕЛИ — ТЕ ЖЕ ЧЕТЫРЕ РЕШЕНИЯ, ЧТО У ОКНА. `.lp-h/.lp-b/.lp-f` — вторая
    реализация той же анатомии «шапка / тело / футер»: у окна события она РАБОТАЕТ

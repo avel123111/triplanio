@@ -60,7 +60,13 @@ v2`** (`mnLYKZCMpvepHwag`, путь `ai-trip-planner-v2`). Модель отве
   мест: шаг 2, лента ИИ, `EditLens`). Даты — `tripDates.cityDateRange` →
   `shortDateLabel` = канон `dayMonth` (день-первый во всех локалях; своя
   `Intl`-копия с обратным порядком в en снята), арифметика — luxon `toDT`.
-  Число ночей/городов — `pluralize`, не тернарии `n < 5`.
+  Число ночей/городов — `pluralize`, не тернарии `n < 5`. Страна у города —
+  элемент ДС `Country` (`src/design/Country.jsx`: флаг + имя, имя из `name`
+  либо из кода через `fmtCountry`; носитель — существующий `.te-country`,
+  `.lp-country` снят) на всех пяти поверхностях: `CityRow`, `CityAnchorRow`,
+  `RouteRow`, `CityPanel`, список «города рядом». Подписи «Старт»/«Финиш» —
+  только `ai_plan.start`/`ai_plan.end` (`planner.sub_start`/`sub_finish`/
+  мёртвый `sub_return` сняты из JSON и Tolgee).
   ★Отвергнуто Pavel и не возвращать: маршрут ОТДЕЛЬНЫМ экраном
   от чата (док «последняя реплика + переключатель», вкладки, две области с
   независимой прокруткой над композером) — «никто никогда не разберётся»,

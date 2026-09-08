@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Avatar, Badge, Card, Chip, Col, Row, Tile } from '../../design/index';
-import CountryFlag from '@/components/common/CountryFlag';
+import { Avatar, Badge, Card, Chip, Col, Country, Row, Tile } from '../../design/index';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize } from '@/lib/i18n/format';
@@ -34,8 +33,8 @@ import { addDays, cityDateRange, shortDateLabel } from '@/lib/tripDates';
 // Слева номер (у старта/финиша — плитка с флажком в AI-тоне), затем название
 // города и под ним флаг со страной; справа даты и число ночей (у якорей — дата
 // и подпись «Старт»/«Финиш»). Собран из утилит и носителей, которые уже есть
-// (`te-row__num`, `te-cityname`, `col--a-end`, `num`, `t-meta`; страна — тем же
-// `<CountryFlag/> {country}`, что у ряда шага 2 и якорей) — своих классов
+// (`te-row__num`, `te-cityname`, `col--a-end`, `num`, `t-meta`; страна — тот же
+// элемент `Country`, что у ряда шага 2 и якорей) — своих классов
 // у ряда нет. Ритм: внутри ряда строки прижаты (`g1`), между рядами — линия и
 // воздух (`.pl-ai-draft > * + *` в app.css): иначе подпись страны ряда N стояла
 // ближе к названию ряда N+1, чем к своему названию.
@@ -45,7 +44,7 @@ function RouteRow({ lead, name, code, country, top, bottom }) {
       {lead}
       <Col gap="g1" className="grow--fit">
         <span className="te-cityname trunc">{name}</span>
-        {country && <span className="muted t-meta trunc"><CountryFlag code={code} /> {country}</span>}
+        <Country code={code} name={country} />
       </Col>
       <Col gap="g1" align="a-end">
         {top ? <span className="num t-meta">{top}</span> : null}

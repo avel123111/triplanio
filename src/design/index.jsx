@@ -45,6 +45,7 @@ import { FieldRequired } from './Input';
 // `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
 // (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
 export { Row, Col, Grid, Trunc, Grow } from './Layout';
+export { Country } from './Country';
 export { PageHead } from './PageHead';
 export { Stat, STAT_TONES } from './Stat';
 export { ListRow, AddRow, LISTROW_VARIANTS } from './ListRow';

@@ -14,10 +14,9 @@ import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActi
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { resolveCities, nearbyCities } from '@/lib/geo';
-import CountryFlag from '@/components/common/CountryFlag';
 import { haversineKm } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, Country, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -298,7 +297,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 </div>
                 <div className="grow--fit">
                   <div className="t-subheading">{c.city_name}</div>
-                  <div className="muted t-meta"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
+                  <div className="muted t-meta"><Country code={c.country_code} name={c.country} /> · {distLabel}</div>
                 </div>
                 {selected && (
                   <span className="tile tile--sm tile--solid tile--brand tile--round">
@@ -727,27 +726,26 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (finishCity?.city_name ? 1 : 0) })}</div>
           <div className="col col--g1">
             {home?.city_name && (
-              <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
+              <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('ai_plan.start')}`} muted />
             )}
-            {cities.map((c, i) => {
-              // Финиша-города не бывает: конец маршрута — это отдельный узел
-              // (рисуется ниже) либо его нет вовсе. Город списка всегда город.
-              const isFin = false;
+            {/* Финиша-города не бывает: конец маршрута — отдельный узел (ниже)
+                либо его нет вовсе. Номер — тот же `visitNumberOf`, что у шага 2
+                и ленты ИИ: пересадка номера не получает, у неё значок переезда. */}
+            {cities.map((c) => {
+              const wp = c.kind === 'waypoint';
+              const stay = wp ? t('tse.layover') : `${c.nights} ${pluralize(t, c.nights, 'view.nights', lang)}`;
               return (
                 <ReviewRow
                   key={c.id}
-                  num={isFin ? undefined : i + 1}
-                  icon={isFin ? 'flag' : undefined}
+                  num={wp ? undefined : visitNumberOf(cities, c)}
+                  icon={wp ? 'arrowSwap' : undefined}
                   name={c.city_name}
-                  sub={isFin
-                    ? `${c.country || '-'} · ${t('planner.sub_finish')}`
-                    : `${c.country || '-'} · ${c.nights} ${pluralize(t, c.nights, 'view.nights', lang)}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
-                  muted={isFin}
+                  sub={`${c.country || '-'} · ${stay}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
                 />
               );
             })}
             {finishCity?.city_name && (
-              <ReviewRow icon="flag" name={finishCity.city_name} sub={`${finishCity.country || ''} · ${t('planner.sub_finish')}`} muted />
+              <ReviewRow icon="flag" name={finishCity.city_name} sub={`${finishCity.country || ''} · ${t('ai_plan.end')}`} muted />
             )}
           </div>
         </div>

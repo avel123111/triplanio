@@ -93,6 +93,10 @@ const LINES = [
   ['clean', '<Chip>x</Chip>'],
   ['clean', '<Chip variant="tone" square sm avatars on icon="plane" iconRight="chevD" count={3} onClick={() => {}} title="t" disabled>x</Chip>'],
   ['clean', '<Chip variant="placeholder" icon="plus" />'],
+  // Country: страна кодом (имя локализует сам) или уже локализованным именем;
+  // чужой оси у него нет — `tone` ошибка типа.
+  ['clean', '<Country code="it" />'],
+  ['clean', '<Country code="it" name="Italia" />'],
   ['clean', '<Avatar name="A" size="sm" />'],
   ['clean', '<Field label="L"><span>x</span></Field>'],
   ['clean', '<FileRow name="a.pdf" />'],
@@ -115,6 +119,7 @@ const LINES = [
   ['clean', '<span>{tt("a.b", { n: 1 })}</span>'],
   // ── обязательное осталось обязательным / неверное значение краснеет ───────
   ['error', '<Icon size={20} />'],
+  ['error', '<Country tone="brand" />'],
   ['error', '<FileRow href="/x" />'],
   ['error', '<StreamEventRow onClick={() => {}} />'],
   ['error', '<Icon name={5} />'],
@@ -177,7 +182,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Tile, Toggle, CoverPicker, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Country, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Tile, Toggle, CoverPicker, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",
