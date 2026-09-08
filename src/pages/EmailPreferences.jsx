@@ -231,7 +231,7 @@ export default function EmailPreferences() {
           задан АТРИБУТАМИ, а не стилем: это его собственная величина, а не
           оформление — инлайн здесь был бы храповиком 2l на ровном месте. */}
       <Row gap="g3" inline>
-        <a href={home} aria-label="Triplanio">
+        <a href={home} aria-label={t('nav.aria_home')}>
           <img src="/triplanio-logo.svg" alt="" width="34" height="34" />
         </a>
         <span className="t-subheading">Triplanio</span>{/* i18n-ignore — имя бренда */}
