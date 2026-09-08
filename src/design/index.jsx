@@ -3,6 +3,7 @@ import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } fro
 import { Icon } from './icons';
 import { Tile } from './Tile';
 import { Illustration } from './Illustration';
+import { ILLUSTRATIONS } from './illustrations';
 import { Tooltip } from './Tooltip';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
@@ -88,25 +89,12 @@ import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — �
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
-// The Triplanio AI assistant's face. It used to live in its own component
-// (TriplanioAvatar) so the bot's avatar drifted from every other avatar; now it
-// is the `kind="ai"` variant, one robot for the stream, the assistant reply, the
-// mention popup and the "typing" pill. Sized in % so it fills whatever the
-// container hands `.avatar` (32 in a chat run, 22 at size="sm").
-const AI_ROBOT = (
-  <svg width="62%" height="62%" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    {/* antenna */}
-    <path d="M24 7V12" stroke="white" strokeWidth="3" strokeLinecap="round" />
-    <circle cx="24" cy="6" r="2.6" fill="white" />
-    {/* head */}
-    <rect x="9" y="13" width="30" height="26" rx="9" fill="white" />
-    {/* eyes */}
-    <circle cx="18.5" cy="25" r="3" fill="var(--ai)" />
-    <circle cx="29.5" cy="25" r="3" fill="var(--ai)" />
-    {/* smile */}
-    <path d="M19 32 Q24 35.5 29 32" stroke="var(--ai)" strokeWidth="2.6" strokeLinecap="round" fill="none" />
-  </svg>
-);
+// The Triplanio AI assistant's face is the `kind="ai"` variant — ONE face for the
+// planner feed, the trip chat stream, the assistant reply, the mention popup and
+// the "typing" pill (it used to be its own TriplanioAvatar and drifted). The
+// picture is Bono from the illustrations registry (`bono-avatar`), drawn the
+// same way a member's photo is (cover background), so the box is whatever the
+// container hands `.avatar` (38 in a chat run, 22 at size="sm").
 /** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, seed?: string, className?: string, style?: any }} p */
 export const Avatar = ({ name = "?", size, kind, photo, deleted, seed, className = "", style: styleProp }) => {
   const t = useT();
@@ -114,22 +102,20 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, seed, className
   if (deleted) {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "sm" ? 12 : 15} /></div>;
   }
-  if (kind === "ai") {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp} aria-label="Triplanio">{AI_ROBOT}</div>; // i18n-ignore — «Triplanio» бренд, не переводится
-  }
   if (kind === "placeholder") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
   }
+  const pic = kind === "ai" ? ILLUSTRATIONS['bono-avatar'].src : photo;
   // Colour is keyed by `seed` (a stable identity id from resolveAuthor), NOT the
   // display name — the same person must keep one colour whatever their current
   // label is. Falls back to the name only when no seed was handed in (e.g. the
   // /kit demos, which have ids for nobody).
-  const style = photo
-    ? { backgroundImage: `url(${photo})`, backgroundSize: "cover", backgroundPosition: "center", ...styleProp }
+  const style = pic
+    ? { backgroundImage: `url(${pic})`, backgroundSize: "cover", backgroundPosition: "center", ...styleProp }
     : { background: avatarGradient(seed || name), ...styleProp };
   return (
-    <div className={`avatar ${size ? "avatar--" + size : ""} ${className}`} style={style}>
-      {!photo && initials}
+    <div className={`avatar ${size ? "avatar--" + size : ""} ${className}`} style={style} aria-label={kind === "ai" ? "Triplanio" : undefined}>{/* i18n-ignore — «Triplanio» бренд, не переводится */}
+      {!pic && initials}
     </div>
   );
 };

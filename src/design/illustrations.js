@@ -24,4 +24,8 @@ export const ILLUSTRATIONS = Object.freeze({
   'bono-ready':    { src: '/images/bono-ready.webp',    w: 336, h: 600 },
   /** Экран «Путешествие создано» (StepReview): Боно машет лапой, чемодан с галочкой. */
   'trip-created':  { src: '/images/trip-created.webp',  w: 480, h: 480 },
+  /** Аватар бота во всех чатах (`<Avatar kind="ai">`): портрет Боно в очках-авиаторах
+   *  на градиенте — круг без внешнего ободка (обод срезан: у `.avatar` своя рамка).
+   *  128 = 3× от 38 px ленты; 6 КБ. */
+  'bono-avatar':   { src: '/images/bono-avatar.webp',   w: 128, h: 128 },
 });
