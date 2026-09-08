@@ -42,7 +42,10 @@ export async function searchCities(query, lang) {
 // round-trip, one plan, one pooled connection (TRIP-214). This replaces the old
 // `Promise.all(items.map(rpc))`, which fired N concurrent search_gazetteer calls
 // with no concurrency limit and could storm the shared connection pool on a
-// long AI route. Returns an array aligned to `items`, each a (0- or 1-length)
+// long AI route. An item carrying `geonameid` (TRIP-524 — the AI planner picked
+// the city itself with the gazetteer tool) is taken BY KEY server-side, with no
+// search and no ranking; everything else searches by name exactly as before, so
+// there is still ONE door and one round-trip either way. Returns an array aligned to `items`, each a (0- or 1-length)
 // list so callers pick result[0] as before. The displayed/saved name stays the
 // caller's — we supply geonameid + coords + the name_i18n snapshot.
 export async function resolveCities(items, lang) {
@@ -54,31 +57,6 @@ export async function resolveCities(items, lang) {
   });
   if (error) { report(error, { surface: 'data', source: 'gazetteer_batch' }); return items.map(() => []); }
   return expandBatchRows(data, items.length, lk);
-}
-
-// door-exempt: rpcGazetteer +1 — четвёртая дверь ТОГО ЖЕ справочника (вход по
-// ключу вместо имени), §4.B эпика TRIP-374 её и разрешает; цель гарда 2r поднята
-// 3 → 4 в том же PR. ⚠️ ЦЕЛЬ ЭПИКА МЕНЯЕТСЯ — нужен апрув Pavel (мерж PR = апрув).
-//
-// Gazetteer rows BY KEY (TRIP-524) — `gaz_by_ids`, not a search.
-//
-// The AI planner may already have picked the city itself: with the
-// `gazetteerSearch` tool it sees the candidates (region, population, coords),
-// chooses the one that fits its route and hands back the `geonameid`. Once the
-// key is known there is nothing left to rank, so this door does no matching at
-// all — it projects the rows through the same `gaz_project`/`mapGazCity` shape a
-// search returns, so a keyed city behaves exactly like a searched one downstream.
-//
-// Returns rows for the ids that EXIST, in input order, capped at the RPC's 200 —
-// an unknown (or over-the-cap) id simply has no row, so the caller keys the result
-// by `geonameid` and searches by name for the rest; positional alignment would be
-// a lie the moment one id is missing. [] on error, like the other doors.
-export async function citiesByIds(ids, lang) {
-  if (!Array.isArray(ids) || ids.length === 0) return [];
-  const lk = normLang(lang);
-  const { data, error } = await supabase.rpc('gaz_by_ids', { _ids: ids, _lang: lk });
-  if (error) { report(error, { surface: 'data', source: 'gazetteer_by_ids' }); return []; }
-  return (data || []).map((g) => mapGazCity(g, lk));
 }
 
 // Reverse geocode lat/lon → the nearest gazetteer cities (TRIP-226, inhouse).

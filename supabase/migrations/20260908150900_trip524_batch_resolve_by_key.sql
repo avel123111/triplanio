@@ -1,0 +1,93 @@
+-- TRIP-524 — ключ справочника становится ПОЛЕМ существующего резолва, а не
+-- второй дверью.
+--
+-- ★ ЧТО ИСПРАВЛЯЕТСЯ. Миграция 20260908124528 завела `gaz_by_ids` — отдельный
+-- клиентский вход в справочник «по ключу». Гард 2r справедливо покраснел: у
+-- справочника уже ЕСТЬ клиентский вход для этой задачи — `search_gazetteer_batch`
+-- («резолвни мне вот эти города»), и вопрос «искать по имени или взять по ключу»
+-- это не другой ВИД ДОСТУПА, а другая ТОЧНОСТЬ ЗАПРОСА. Второй вход заставлял
+-- вызывателя разбирать список на две дороги, сводить ответы картой и курсором и
+-- поднимать цель гарда — три следствия из одной лишней двери.
+--
+-- КАК СЕЙЧАС. Элемент `items` дополнительно принимает `id`:
+--   { q, q_en, cc, id? }
+-- `id` есть и такой город в справочнике существует → строка берётся ПО КЛЮЧУ,
+-- поиск не запускается вовсе. `id` нет или он выдуман → те же две ветки поиска,
+-- что и раньше (локализованное имя → английский фолбэк, скоуп по стране).
+-- Выравнивание по `ord` и кэп 50 записей не меняются, `expandBatchRows` на
+-- фронте ничего про ключ не знает.
+--
+-- ⚠️ ПРОВЕРКА СУЩЕСТВОВАНИЯ КЛЮЧА ДЕЛАЕТСЯ В `inp`, А НЕ В ВЕТКАХ. Иначе
+-- пришлось бы гейтить поиск условием «ключ не сработал», а это значит выполнить
+-- поиск и выбросить результат: два вызова `search_gazetteer_core` на каждый
+-- город (замер TRIP-491: поиск — самая дорогая часть справочника). Здесь ключ
+-- один раз резолвится точечным обращением по первичному ключу, и дальше
+-- `i.id is null` гейтит ветки поиска бесплатно.
+--
+-- ⚠️ `id` ПРИХОДИТ ИЗ jsonb ОТ КЛИЕНТА, поэтому каст защищённый (`~ '^\d+$'`):
+-- прямой `::bigint` на «Portland» уронил бы резолв всего батча ошибкой 22P02,
+-- а не просто не нашёл бы город.
+--
+-- ddl-guard: allow-destructive — TRIP-524: перегрузка снимается и тут же
+-- пересоздаётся в той же транзакции (сигнатура не меняется, меняется тело), а
+-- `gaz_by_ids` удаляется как несостоявшаяся вторая дверь: она прожила в dev
+-- несколько часов, читателей в репозитории не имеет, в prod не уезжала.
+drop function if exists public.search_gazetteer_batch(jsonb, text, integer);
+
+create function public.search_gazetteer_batch(items jsonb, lang text default 'en'::text, lim integer default 1)
+ returns table(ord integer, geonameid bigint, display text, subtitle text, country_code text, population bigint, feature_code text, lat double precision, lng double precision, name_i18n jsonb)
+ language sql
+ stable security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+  with inp as (
+    select e.ord::int                                     as ord,
+           coalesce(e.item->>'q', '')                     as q,
+           coalesce(e.item->>'q_en', '')                  as q_en,
+           upper(coalesce(e.item->>'cc', ''))             as cc,
+           coalesce(nullif(e.item->>'lang', ''), lang)    as ilang,
+           -- Ключ = СУЩЕСТВУЮЩИЙ geonameid либо NULL. Выдуманный ключ здесь же
+           -- превращается в NULL, и город честно уходит в поиск по имени.
+           (select g.geonameid
+              from public.geo_gazetteer g
+             where e.item->>'id' ~ '^\d+$'
+               and g.geonameid = (e.item->>'id')::bigint) as id
+    from jsonb_array_elements(coalesce(items, '[]'::jsonb)) with ordinality as e(item, ord)
+    where e.ord <= 50
+  )
+  select i.ord, c.geonameid, c.display, c.subtitle, c.country_code,
+         c.population, c.feature_code, c.lat, c.lng, c.name_i18n
+  from inp i
+  cross join lateral (
+    select r.geonameid, r.display, r.subtitle, r.country_code,
+           r.population, r.feature_code, r.lat, r.lng, r.name_i18n
+    from (
+      -- src -1 = ключ: точный город, ранжировать нечего.
+      select g.geonameid, p.display, p.subtitle, g.country_code,
+             g.population, g.feature_code, g.lat, g.lng, p.name_i18n,
+             -1 as src, 1::bigint as rn
+      from public.geo_gazetteer g
+      cross join lateral public.gaz_project(g.geonameid, i.ilang) p
+      where g.geonameid = i.id
+      union all
+      -- src 0 = локализованное имя (язык юзера); src 1 = английское (фолбэк).
+      -- core скоупим по стране города (i.cc): кандидаты только из неё.
+      select sc.*, 0 as src, row_number() over () as rn
+      from public.search_gazetteer_core(i.q, i.ilang, 10, i.cc) sc
+      where i.id is null and i.q <> ''
+      union all
+      select sc.*, 1 as src, row_number() over () as rn
+      from public.search_gazetteer_core(i.q_en, 'en', 10, i.cc) sc
+      where i.id is null and i.q_en <> '' and i.q_en <> i.q
+    ) r
+    order by r.src, r.rn
+    limit greatest(1, least(coalesce(lim, 1), 10))
+  ) c;
+$function$;
+
+revoke all on function public.search_gazetteer_batch(jsonb, text, integer) from public, anon, authenticated;
+grant execute on function public.search_gazetteer_batch(jsonb, text, integer) to anon, authenticated;
+
+-- Несостоявшаяся вторая дверь. Единственным её читателем был `citiesByIds`,
+-- который этой же правкой удаляется с фронта.
+drop function if exists public.gaz_by_ids(bigint[], text);

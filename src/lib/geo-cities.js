@@ -37,6 +37,12 @@ export function mapGazCity(g, lk) {
 // rescues small foreign towns that lack a localized alt-name. `cc` keeps the
 // server-side same-country preference. `lk` is the normalized app locale used
 // for both free-text (string) inputs and objects.
+//
+// TRIP-524: an item may also carry `id` — the `geonameid` the AI planner picked
+// itself with the gazetteer tool. It is the SAME question ("resolve this city"),
+// asked more precisely: with a key the RPC takes the row directly and runs no
+// search at all; without one (or with a key no longer in the gazetteer) it falls
+// back to the name search, so callers never branch on it.
 export function buildResolvePayload(items, lk) {
   return items.map((it) => {
     const isStr = typeof it === 'string';
@@ -44,7 +50,8 @@ export function buildResolvePayload(items, lk) {
     const cc = isStr ? '' : (it.country_code || '').trim().toUpperCase();
     // `it.q` = passthrough for an already-shaped query object (rare caller).
     const q = isStr ? it : (it.city_name || it.q || '');
-    return { q, q_en: nameEn, cc, lang: lk };
+    const id = isStr ? '' : (it.geonameid ?? it.id ?? '');
+    return { q, q_en: nameEn, cc, lang: lk, id: id === null ? '' : String(id) };
   });
 }
 

@@ -13,7 +13,7 @@ import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
-import { resolveCities, citiesByIds, nearbyCities } from '@/lib/geo';
+import { resolveCities, nearbyCities } from '@/lib/geo';
 import { haversineKm } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, Country, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
@@ -1052,42 +1052,21 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
      город (ИИ назвал, справочник не нашёл) остаётся без таймзоны и координат,
      как при ручном вводе, и краснеет на шаге 2 — а не получает выдуманный UTC. */
 
-  // Города из операций → газеттир ОДНИМ заходом на дорогу (дорог две, см. ниже;
-  // в частом случае работает одна), в порядке потребления применятором
-  // (`citiesInOps` и `applyOps` обходят операции одинаково, это запинено тестом).
-  // Не нашёлся — `null`, применятор возьмёт имя из операции.
+  // Города из операций → ОДИН заход в газеттир, в порядке потребления
+  // применятором (`citiesInOps` и `applyOps` обходят операции одинаково, это
+  // запинено тестом). Не нашёлся — `null`, применятор возьмёт имя из операции.
   //
-  // ★ ДВЕ ДОРОГИ, И ЭТО НЕ ДУБЛЬ: у города МОЖЕТ БЫТЬ КЛЮЧ (TRIP-524). Модель
-  // ходит в справочник инструментом, ВИДИТ кандидатов вместе с регионом и
-  // населением и выбирает того, кто вяжется с соседями по маршруту, — выбор по
-  // контексту резолверу недоступен по построению (он видит одно имя и страну,
-  // без маршрута). Поэтому ключ = готовый ответ, и город с ключом идёт `gaz_by_ids`
-  // БЕЗ поиска и ранжирования; поиском (TRIP-214/159) идут только города без
-  // ключа. Пока инструмент не подключён, ключей нет и дорога ровно одна — старая.
+  // ★ ГОРОД МОЖЕТ ПРИЕХАТЬ С КЛЮЧОМ (TRIP-524), и это НЕ вторая дорога: ключ —
+  // просто самая точная форма того же вопроса «резолвни этот город». Дверь одна
+  // (`resolveCities`), и она сама берёт строку по ключу вместо поиска, когда
+  // ключ есть. Модель выбирает город инструментом справочника, ВИДЯ кандидатов
+  // вместе с регионом и координатами, — выбор по контексту маршрута резолверу
+  // недоступен по построению: он видит одно имя и страну.
   const resolveOpCities = async (ops) => {
     const want = citiesInOps(ops);
     if (want.length === 0) return [];
-    const lk = lang || 'ru';
-
-    // Дорога ключа. Пустой список в справочник не едет — это забота самой двери,
-    // поэтому пока ключей нет, заход остаётся ровно один, поисковый.
-    const ids = [...new Set(want.map((c) => c.geonameid).filter(Boolean))];
-    const byKey = new Map((await citiesByIds(ids, lk)).map((r) => [Number(r.geonameid), r]));
-
-    // Дорога поиска: города без ключа И с ключом, которого в справочнике не
-    // оказалось (модель его выдумала) — одним батчем, как раньше. Форму города
-    // дверь читает как есть (`city_name` + `city_name_en`), пересобирать нечего.
-    const rest = want.filter((c) => !byKey.has(c.geonameid));
-    const lists = await resolveCities(rest, lk);
-
-    // Курсор по ответу поиска: `rest` идёт в порядке `want`, и кого туда взяли,
-    // решает ТОТ ЖЕ предикат `byKey.has` — разъедься эти два условия, города
-    // молча съехали бы на соседей.
-    let k = 0;
-    return want.map((c, i) => {
-      const best = byKey.has(c.geonameid) ? byKey.get(c.geonameid) : lists[k++]?.[0];
-      return best ? shapeAiCity(c, i, best) : null;
-    });
+    const lists = await resolveCities(want, lang || 'ru');
+    return want.map((c, i) => (lists[i]?.[0] ? shapeAiCity(c, i, lists[i][0]) : null));
   };
 
   const planMut = useMutation({

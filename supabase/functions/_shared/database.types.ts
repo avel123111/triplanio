@@ -2415,20 +2415,6 @@ export type Database = {
         }
         Returns: string
       }
-      gaz_by_ids: {
-        Args: { _ids: number[]; _lang?: string }
-        Returns: {
-          country_code: string
-          display: string
-          feature_code: string
-          geonameid: number
-          lat: number
-          lng: number
-          name_i18n: Json
-          population: number
-          subtitle: string
-        }[]
-      }
       gaz_project: {
         Args: { _geonameid: number; _lang?: string }
         Returns: {
