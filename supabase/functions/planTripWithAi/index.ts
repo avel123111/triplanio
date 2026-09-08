@@ -7,21 +7,22 @@
  * (`draft`), модель отвечает ОПЕРАЦИЯМИ над ним, а не маршрутом целиком;
  * применяет их фронт (`src/pages/create/aiOps.js`). Edge словаря операций не
  * знает: он пробрасывает драфт как есть, проверив только форму и размер на
- * границе доверия (`draft.ts`) — ввод пользователя уходит в платный LLM-вызов.
+ * границе доверия (`request.ts` → `draft.ts`) — и текст реплики, и драфт уходят
+ * в платный LLM-вызов, поэтому у обоих есть потолок.
  *
  * The N8N_SECRET bearer token lives only as a Supabase secret. The frontend
  * never sees it. n8n stores its own conversation history keyed by sessionId
  * (Postgres on the n8n side); `env` — метка окружения, как в конверте notify.
  *
- * POST body: { sessionId: string, prompt: string, language?: string, draft?: Draft }
+ * POST body: { sessionId: uuid, prompt: string (<= long_text), language?: string, draft?: Draft }
  */
 
-import { jsonError, refusalResponse, withHandler } from '../_shared/http.ts';
+import { jsonError, readJson, refusalResponse, withHandler } from '../_shared/http.ts';
 import { requireUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt, n8nWebhookUrl } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 import { envTag } from '../_shared/envTag.ts';
-import { normalizeDraft } from './draft.ts';
+import { normalizeRequest } from './request.ts';
 
 // TRIP-111: лимит генераций ИИ-планировщика. Вешается на САМ вызов генерации
 // (не на сохранение трипа), поэтому закрывает и delete+recreate, и спам без
@@ -34,13 +35,13 @@ const PLANNER_RATE_WINDOW = 3600;
 Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
     const user = await requireUser(req);
 
-    const { sessionId, prompt, language, draft: rawDraft } = await req.json();
-    if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400, headers: corsHeaders });
-    // Форма драфта — общий шов валидации (`draft.ts` → `validateFields`), отказ
-    // едет тем же `refusalResponse`, что у записи (400 INVALID_INPUT).
-    const parsed = normalizeDraft(rawDraft);
+    // Тело — ОДНОЙ дверью: `readJson` (кривой JSON = 400 INVALID_BODY, не 500) +
+    // `normalizeRequest` (форма реплики И драфта общим движком `validateFields`).
+    // Отказ едет тем же `refusalResponse`, что у шва записи (400 INVALID_INPUT);
+    // своих проверок полей у хендлера нет.
+    const parsed = normalizeRequest(await readJson(req));
     if ('status' in parsed) return refusalResponse(parsed, corsHeaders);
-    const { draft } = parsed;
+    const { sessionId, prompt, language, draft } = parsed;
 
     // Rate-limit ПЕРЕД дорогим LLM-вызовом (TRIP-111). Общий примитив
     // rate_limit_hits (bucket=ai_trip_planner, key=user_id).
@@ -49,7 +50,7 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
     }
 
     const n8nSecret = Deno.env.get('N8N_SECRET');
-    if (!n8nSecret) return Response.json({ error: 'N8N_SECRET not configured' }, { status: 500, headers: corsHeaders });
+    if (!n8nSecret) return jsonError(500, 'N8N_SECRET not configured', undefined, corsHeaders);
 
     const n8nJwt = await signN8nJwt(n8nSecret);
     // v2 (TRIP-527): контракт «драфт → операции». v1 (`ai-trip-planner`) живёт,
@@ -71,7 +72,7 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       console.error('n8n error:', res.status, errText);
-      return Response.json({ error: 'AI webhook failed' }, { status: 502, headers: corsHeaders });
+      return jsonError(502, 'AI webhook failed', undefined, corsHeaders);
     }
 
     const data = await res.json();

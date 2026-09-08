@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import {
   OPS, REASONS, applyOps, citiesInOps, opShapeError, opsJsonSchema, opsPromptLines,
 } from './aiOps.js';
-import { makeNode, toDraftPayload, cityNodesOf, refOf } from './routeModel.js';
+import { makeNode, toDraftPayload, cityNodesOf, refOf, endOf } from './routeModel.js';
 
 const TODAY = '2026-09-07';
 const gaz = (name, extra = {}) => ({
@@ -52,7 +52,7 @@ test('set_route на пустом драфте строит маршрут: ст
   assert.equal(r.startDate, '2026-10-03');
   assert.equal(r.nodes[1].startDate, '2026-10-03');
   assert.equal(r.nodes[2].startDate, '2026-10-06', 'даты города выведены цепочкой');
-  assert.deepEqual(r.applied, [{ op: 'set_route', count: 2 }]);
+  assert.deepEqual(r.applied, [{ op: 'set_route' }]);
   assert.deepEqual(r.rejected, []);
 });
 
@@ -76,7 +76,7 @@ test('add_city без after встаёт перед финишем с 3 ноча
   const r = applyOps(st([anchor('Москва', 'start'), stop('Рим'), anchor('Москва', 'end')]), [{ op: 'add_city', ...city('Милан') }], { today: TODAY });
   assert.deepEqual(names(r.nodes), ['Москва', 'Рим', 'Милан', 'Москва']);
   assert.equal(r.nodes[2].nights, 3);
-  assert.deepEqual(r.applied, [{ op: 'add_city', city: 'Милан' }]);
+  assert.deepEqual(r.applied, [{ op: 'add_city' }]);
 });
 
 test('add_city с after — сразу после узла; неизвестный after — отказ', () => {
@@ -84,7 +84,7 @@ test('add_city с after — сразу после узла; неизвестны
   const ok = applyOps(st(base), [{ op: 'add_city', ...city('Флоренция'), nights: 1, after: 'Рим' }], { today: TODAY });
   assert.deepEqual(names(ok.nodes), ['Рим', 'Флоренция', 'Неаполь']);
   assert.equal(ok.nodes[1].nights, 1);
-  assert.deepEqual(ok.applied, [{ op: 'add_city', city: 'Флоренция', after: 'Рим' }]);
+  assert.deepEqual(ok.applied, [{ op: 'add_city' }]);
   const bad = applyOps(st(base), [{ op: 'add_city', ...city('Флоренция'), after: 'Париж' }], { today: TODAY });
   assert.deepEqual(names(bad.nodes), ['Рим', 'Неаполь']);
   assert.deepEqual(bad.rejected, [{ op: 'add_city', reason: REASONS.unknown_ref }]);
@@ -100,25 +100,36 @@ test('★ replace_city сохраняет id, место и ночи, меняе
   assert.deepEqual(names(r.nodes), ['Рим', 'Марсель', 'Ницца']);
   assert.equal(r.nodes[1].id, 'c1');
   assert.equal(r.nodes[1].nights, 2);
-  assert.deepEqual(r.applied, [{ op: 'replace_city', from: 'Канны', to: 'Марсель' }]);
+  assert.deepEqual(r.applied, [{ op: 'replace_city' }]);
 });
 
 test('remove_city убирает узел, в том числе якорь; неизвестный ref — отказ', () => {
   const base = [anchor('Москва', 'start'), stop('Рим'), stop('Неаполь')];
   const r = applyOps(st(base), [{ op: 'remove_city', ref: 'Неаполь' }, { op: 'remove_city', ref: 'Москва' }, { op: 'remove_city', ref: 'x' }], { today: TODAY });
   assert.deepEqual(names(r.nodes), ['Рим']);
-  assert.deepEqual(r.applied.map((a) => a.city), ['Неаполь', 'Москва']);
+  assert.deepEqual(r.applied, [{ op: 'remove_city' }, { op: 'remove_city' }], 'две записи протокола на два снятых узла');
   assert.deepEqual(r.rejected, [{ op: 'remove_city', reason: REASONS.unknown_ref }]);
 });
 
-test('add_city после узла сообщает имя якоря, а после финиша — без «после»: строка не врёт', () => {
+test('★ add_city с after=финиш кладёт город ПЕРЕД ним: финиш остаётся последним', () => {
   const base = [stop('Рим'), stop('Милан'), anchor('Москва', 'end')];
   const mid = applyOps(st(base), [{ op: 'add_city', ...city('Неаполь'), after: 'Рим' }], { today: TODAY });
   assert.deepEqual(names(mid.nodes), ['Рим', 'Неаполь', 'Милан', 'Москва']);
-  assert.deepEqual(mid.applied, [{ op: 'add_city', city: 'Неаполь', after: 'Рим' }]);
   const tail = applyOps(st(base), [{ op: 'add_city', ...city('Неаполь'), after: 'Москва' }], { today: TODAY });
   assert.deepEqual(names(tail.nodes), ['Рим', 'Милан', 'Неаполь', 'Москва'], 'финиш остаётся последним');
-  assert.deepEqual(tail.applied, [{ op: 'add_city', city: 'Неаполь' }], 'не «добавил Неаполь после Неаполя»');
+  assert.equal(endOf(tail.nodes).city_name, 'Москва');
+});
+
+test('★ протокол применения = ИМЕНА операций, без словесных подробностей: правда о маршруте одна — `nodes`', () => {
+  // Увидено красным: пока в `applied` лежали `city`/`after`/`from`/`to`, у факта
+  // «что стало с маршрутом» было два представления, а читатель у второго исчез
+  // вместе со строками «что сделал» (TRIP-527).
+  const r = applyOps(st([stop('Рим'), stop('Милан')]), [
+    { op: 'add_city', ...city('Неаполь'), after: 'Рим' },
+    { op: 'set_nights', ref: 'Милан', nights: 4 },
+  ], { today: TODAY });
+  assert.deepEqual(r.applied, [{ op: 'add_city' }, { op: 'set_nights' }]);
+  for (const a of r.applied) assert.deepEqual(Object.keys(a), ['op']);
 });
 
 test('move_city: после узла, в начало (после старта), якорь не двигается', () => {

@@ -1,12 +1,13 @@
+// @ts-check
 import React, { useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
 import { Avatar, Badge, Card, Chip, Col, Country, Row, Tile } from '../../design/index';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { pluralize } from '@/lib/i18n/format';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { startOf, endOf, cityNodesOf, visitNumberOf } from '@/pages/create/routeModel';
-import { addDays, cityDateRange, shortDateLabel } from '@/lib/tripDates';
+import { addDays, cityDateRange } from '@/lib/tripDates';
 
 // =====================================================================
 // AI ENTRY PANEL — the CONVERSATION (transcript only). The composer is pinned by
@@ -40,7 +41,7 @@ import { addDays, cityDateRange, shortDateLabel } from '@/lib/tripDates';
 // ближе к названию ряда N+1, чем к своему названию.
 function RouteRow({ lead, name, code, country, top, bottom }) {
   return (
-    <Row gap="g4" align="a-center">
+    <Row gap="g4">
       {lead}
       <Col gap="g1" className="grow--fit">
         <span className="te-cityname trunc">{name}</span>
@@ -62,14 +63,16 @@ const anchorLead = <Tile as="span" tone="ai" className="te-row__node"><Icon name
 function DraftItinerary({ nodes }) {
   const t = useT();
   const { lang } = useI18n();
+  // «12 окт.» — общая дверь формата (`formatDayMonth` за `fmtDate`), не своя копия.
+  const { fmtDate } = useI18nFormat();
   const home = startOf(nodes);
   const cities = cityNodesOf(nodes);
   const end = endOf(nodes);
   if (!home?.city_name && cities.length === 0 && !end?.city_name) return null;
   const first = cities[0];
   const last = cities[cities.length - 1];
-  const startLabel = first?.startDate ? shortDateLabel(first.startDate, lang) : null;
-  const endLabel = last?.startDate ? shortDateLabel(addDays(last.startDate, +last.nights || 0), lang) : null;
+  const startLabel = first?.startDate ? fmtDate(first.startDate) : null;
+  const endLabel = last?.startDate ? fmtDate(addDays(last.startDate, +last.nights || 0)) : null;
   return (
     <Col gap="g3" className="pl-ai-draft">
       {home?.city_name && (

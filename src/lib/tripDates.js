@@ -26,8 +26,7 @@
 // reproduces the stored dates exactly.
 
 import { DateTime } from 'luxon';
-import { dayMonth } from './i18n/dayMonth.js';
-import { localeTag } from './i18n/translations.js';
+import { formatDayMonth } from './i18n/format.js';
 
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
@@ -67,12 +66,8 @@ export function layoutDates(nodes, baseISO) {
 
 // ─── Даты узла для показа (переехали из ManualPlanner, TRIP-527: ряд маршрута
 // рисуют три экрана, и строку дат им даёт одно место). Арифметика — та же
-// luxon-дверь, что у `layoutDates` выше; формат — канон `dayMonth`.
-// ★ Зовём его НАПРЯМУЮ, а не обёрткой `formatDayMonth` из `format.js`, хотя
-// тело у них одно: `format.js` импортирует `./translations` БЕЗ расширения, а
-// такой путь не резолвится под голым Node — этим же модулем ходят тесты
-// (`tripDates.test.js`, `routeModel.test.js`). Поэтому перевод языка в
-// locale-тег делаем здесь, тем же `localeTag`, что и обёртка.
+// luxon-дверь, что у `layoutDates` выше; формат — ОБЩАЯ дверь `formatDayMonth`
+// (та же, что за `useI18nFormat().fmtDate`), второго имени у формата нет.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Локальная календарная дата `YYYY-MM-DD` момента `d` (не `toISOString`: тот
@@ -82,16 +77,15 @@ export const ymdLocal = (d) => DateTime.fromJSDate(d).toISODate();
 /** `YYYY-MM-DD` + N дней — той же UTC-арифметикой, что цепочка дат выше. */
 export const addDays = (dateStr, days) => toDT(dateStr).plus({ days }).toISODate();
 
-/** «12 окт.» — канон `dayMonth` (день впереди в любой локали; дата без времени
- *  читается как календарный день, не как момент в UTC). */
-export const shortDateLabel = (iso, lang) => dayMonth(iso, undefined, localeTag(lang));
-
 // City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
 // null when the trip start isn't set yet. Shared by the city row and the map
-// tooltip so both read identically.
+// tooltip so both read identically. Формат — `formatDayMonth`: у компонентов та
+// же дверь зовётся `fmtDate` из `useI18nFormat()`, здесь модуль без хуков и
+// язык приезжает параметром.
 export function cityDateRange(city, lang) {
   const nights = +city.nights || 0;
-  const start = city.startDate ? shortDateLabel(city.startDate, lang) : null;
-  const end = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
+  const label = (iso) => formatDayMonth(iso, undefined, lang);
+  const start = city.startDate ? label(city.startDate) : null;
+  const end = (city.startDate && nights) ? label(addDays(city.startDate, nights)) : null;
   return start ? (end ? `${start} – ${end}` : start) : null;
 }

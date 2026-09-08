@@ -1,8 +1,8 @@
 // Localization formatters for dynamic data: countries, currencies, plurals,
 // Luxon dates. Lightweight wrappers around Intl.* + Luxon - call from React via
 // useI18nFormat() (see I18nContext).
-import { localeTag } from './translations';
-import { dayMonth } from './dayMonth';
+import { localeTag } from './translations.js';
+import { dayMonth } from './dayMonth.js';
 
 // ---- Active language (module-level) ---------------------------------------
 // Mirror of the current UI language so module-level helpers (formatters defined

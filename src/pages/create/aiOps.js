@@ -196,8 +196,14 @@ function insertAfter(nodes, idx, node) {
  * @param {any[]} ops
  * @param {{ cities?: any[], today: string }} ctx  `cities` выровнены с `citiesInOps(ops)`;
  *   `today` — YYYY-MM-DD, порог для дат (передаётся снаружи ради тестов).
+ * ★ `applied`/`rejected` — ПРОТОКОЛ ДЛЯ ТЕЛЕМЕТРИИ, не материал для текста.
+ * Обе строки несут ровно имя операции (у отказа ещё причину): с TRIP-527 строк
+ * «сделал / не смог» под ответом бота нет, и единственные читатели — счётчики
+ * `ai_plan_returned` и конверт Sentry. Подробности («после какого города
+ * вставлено», «с чего на что заменено») здесь не собираются: их правда — это
+ * `nodes`, а вторая, словесная копия того же факта разъезжается молча.
  * @returns {{ nodes: any[], startDate: string, title: string,
- *             applied: Array<Record<string, any>>, rejected: Array<{ op: string, reason: string }> }}
+ *             applied: Array<{ op: string }>, rejected: Array<{ op: string, reason: string }> }}
  */
 export function applyOps(state, ops, { cities = [], today }) {
   let nodes = (state.nodes || []).slice();
@@ -207,6 +213,7 @@ export function applyOps(state, ops, { cities = [], today }) {
   let ci = 0; // курсор по резолвленным городам — тот же порядок, что у citiesInOps
   const nextCity = (raw) => cities[ci++] || pickCity(raw);
   const reject = (op, reason) => rejected.push({ op: op?.op || '?', reason });
+  const apply = (op) => applied.push({ op });
 
   for (const op of ops || []) {
     const shape = opShapeError(op);
@@ -219,14 +226,12 @@ export function applyOps(state, ops, { cities = [], today }) {
         const resolved = op.nodes.map((n) => ({ kind: n.kind, nights: n.nights, city: nextCity(n) }));
         if (cityNodesOf(nodes).length > 0) { reject(op, REASONS.route_not_empty); break; }
         let next = [];
-        let count = 0;
         for (const r of resolved) {
           const kind = /** @type {import('./routeModel.js').NodeKind} */ (r.kind);
           const node = kind === 'transit' ? cityNode(r.city, r.nights) : makeNode(r.city, kind);
           const ins = insertNode(next, node);
           if (!ins) continue; // второй якорь молча не заводится (как в редакторе)
           next = ins;
-          if (!isAnchorNode(node)) count++;
         }
         nodes = next;
         if (isStr(op.title)) title = op.title.trim();
@@ -234,7 +239,7 @@ export function applyOps(state, ops, { cities = [], today }) {
           if (op.startDate >= today) startDate = op.startDate;
           else rejected.push({ op: 'set_start_date', reason: REASONS.past_date });
         }
-        applied.push({ op: 'set_route', count });
+        apply('set_route');
         break;
       }
       case 'add_city': {
@@ -243,16 +248,13 @@ export function applyOps(state, ops, { cities = [], today }) {
         if (op.after != null) {
           const idx = findIdx(nodes, op.after);
           if (idx === -1) { reject(op, REASONS.unknown_ref); break; }
-          // Имя якоря снимаем ДО вставки: при after=финиш вставка ложится ПЕРЕД
-          // ним, и `nodes[idx]` после сплайса — уже новый город. Ставить «после
-          // финиша» нельзя, поэтому такой случай для человека = обычное «добавил».
-          const anchor = nodes[idx].kind === 'end' ? null : nodes[idx].city_name;
+          // `after` = финиш: вставка ложится ПЕРЕД ним — финиш остаётся последним
+          // (правило вставки редактора, `insertAfter` его и держит).
           nodes = insertAfter(nodes, idx, node);
-          applied.push(anchor ? { op: 'add_city', city: city.city_name, after: anchor } : { op: 'add_city', city: city.city_name });
         } else {
           nodes = insertNode(nodes, node) || nodes;
-          applied.push({ op: 'add_city', city: city.city_name });
         }
+        apply('add_city');
         break;
       }
       case 'replace_city': {
@@ -262,14 +264,14 @@ export function applyOps(state, ops, { cities = [], today }) {
         const old = nodes[idx];
         // Место, id, вид и ночи — прежние; меняется только сам город.
         nodes[idx] = makeNode(city, old.kind, { id: old.id, nights: old.nights ?? undefined });
-        applied.push({ op: 'replace_city', from: old.city_name, to: city.city_name });
+        apply('replace_city');
         break;
       }
       case 'remove_city': {
         const idx = findIdx(nodes, op.ref);
         if (idx === -1) { reject(op, REASONS.unknown_ref); break; }
-        const [gone] = nodes.splice(idx, 1);
-        applied.push({ op: 'remove_city', city: gone.city_name });
+        nodes.splice(idx, 1);
+        apply('remove_city');
         break;
       }
       case 'move_city': {
@@ -286,7 +288,7 @@ export function applyOps(state, ops, { cities = [], today }) {
           const startAt = nodes.findIndex((n) => n.kind === 'start');
           nodes.splice(startAt + 1, 0, node);
         }
-        applied.push({ op: 'move_city', city: node.city_name });
+        apply('move_city');
         break;
       }
       case 'set_nights': {
@@ -294,7 +296,7 @@ export function applyOps(state, ops, { cities = [], today }) {
         if (idx === -1) { reject(op, REASONS.unknown_ref); break; }
         if (isAnchorNode(nodes[idx])) { reject(op, REASONS.anchor); break; }
         nodes[idx] = withNights(nodes[idx], op.nights);
-        applied.push({ op: 'set_nights', city: nodes[idx].city_name, nights: op.nights });
+        apply('set_nights');
         break;
       }
       case 'set_start':
@@ -304,25 +306,25 @@ export function applyOps(state, ops, { cities = [], today }) {
         const idx = nodes.findIndex((n) => n.kind === kind);
         if (idx === -1) nodes = insertNode(nodes, makeNode(city, kind)) || nodes;
         else nodes[idx] = makeNode(city, kind, { id: nodes[idx].id });
-        applied.push({ op: op.op, city: city.city_name });
+        apply(op.op);
         break;
       }
       case 'clear_end': {
         const end = endOf(nodes);
         if (!end) { reject(op, REASONS.unknown_ref); break; }
         nodes = nodes.filter((n) => n !== end);
-        applied.push({ op: 'clear_end' });
+        apply('clear_end');
         break;
       }
       case 'set_start_date': {
         if (op.startDate < today) { reject(op, REASONS.past_date); break; }
         startDate = op.startDate;
-        applied.push({ op: 'set_start_date', date: op.startDate });
+        apply('set_start_date');
         break;
       }
       case 'set_title': {
         title = op.title.trim();
-        applied.push({ op: 'set_title', title });
+        apply('set_title');
         break;
       }
       default:

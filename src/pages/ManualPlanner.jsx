@@ -41,7 +41,7 @@ import {
 import { applyOps, citiesInOps } from '@/pages/create/aiOps';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { addDays, cityDateRange, shortDateLabel, ymdLocal } from '@/lib/tripDates';
+import { addDays, cityDateRange, ymdLocal } from '@/lib/tripDates';
 import { pluralize } from '@/lib/i18n/format';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 
@@ -75,8 +75,9 @@ const MAP_CONTROLS = Object.freeze(['projection', 'theme']);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Календарная арифметика показа (`ymdLocal` / `addDays` / `shortDateLabel` /
-// `cityDateRange`) живёт в `@/lib/tripDates` — её читают три экрана.
+// Календарная арифметика показа (`ymdLocal` / `addDays` / `cityDateRange`)
+// живёт в `@/lib/tripDates` — её читают три экрана; формат даты — общая дверь
+// `fmtDate` из `useI18nFormat()`.
 
 // Default trip start = one month ahead of today (local), YYYY-MM-DD.
 function defaultStartISO() {
@@ -671,6 +672,8 @@ function Stat({ label, value, hint, warn }) {
 function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, error }) {
   const t = useT();
   const { lang } = useI18n();
+  // «12 окт.» — общая дверь формата (`formatDayMonth` за `fmtDate`), не своя копия.
+  const { fmtDate } = useI18nFormat();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = computeAutoTitle(home, cities, t);
   // Экран успеха живёт не здесь, а развилкой по `savedOk` в теле панели
@@ -710,7 +713,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
           <div className="s">
             <Stat
               label={t('event.start')}
-              value={cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}
+              value={cities[0]?.startDate ? fmtDate(cities[0].startDate) : '—'}
               warn={!cities[0]?.startDate ? t('planner.date_required_hint') : null}
             />
           </div>
@@ -740,7 +743,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
                   num={wp ? undefined : visitNumberOf(cities, c)}
                   icon={wp ? 'arrowSwap' : undefined}
                   name={c.city_name}
-                  sub={`${c.country || '-'} · ${stay}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
+                  sub={`${c.country || '-'} · ${stay}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${fmtDate(c.startDate)}` : ''}`}
                 />
               );
             })}

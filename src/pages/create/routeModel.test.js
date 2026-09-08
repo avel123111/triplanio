@@ -25,7 +25,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   insertNode, withNights, recomputeDates, makeNode,
-  startOf, endOf, hasExplicitEnd, isAnchorNode, toCitiesPayload, cityNodesOf, visitNumberOf,
+  startOf, endOf, hasExplicitEnd, isAnchorNode, toCitiesPayload, cityNodesOf, visitNumberOf, visitNumbers,
 } from './routeModel.js';
 
 const city = (name, extra = {}) => ({
@@ -213,4 +213,19 @@ test('★ visitNumberOf: номер получают только города �
   assert.equal(visitNumberOf(nodes, nodes[3]), 2, 'пересадка номер не потребляет');
   assert.equal(visitNumberOf(nodes, nodes[2]), 0, 'у пересадки номера нет');
   assert.equal(visitNumberOf(nodes, nodes[0]), 0, 'у якоря номера нет');
+});
+
+test('★ visitNumbers: карта = то же правило, что и функция — её берёт редактор вместо своего счётчика', () => {
+  // Увидено красным: пока у редактора был свой цикл по `kind === 'transit'`,
+  // одно правило нумерации жило двумя выражениями (TRIP-527).
+  const gaz = (name) => ({ city_name: name, city_name_en: name, country_code: 'IT', geonameid: name.length, latitude: 1, longitude: 2 });
+  const nodes = [
+    makeNode(gaz('Madrid'), 'start', { id: 's' }),
+    makeNode(gaz('Rome'), 'transit', { id: 'a', nights: 2 }),
+    makeNode(gaz('Pisa'), 'waypoint', { id: 'w', nights: 0 }),
+    makeNode(gaz('Bologna'), 'transit', { id: 'b', nights: 1 }),
+    makeNode(gaz('Madrid'), 'end', { id: 'e' }),
+  ];
+  assert.deepEqual(visitNumbers(nodes), { a: 1, b: 2 }, 'якорей и пересадок в карте нет вовсе');
+  for (const n of nodes) assert.equal(visitNumberOf(nodes, n), visitNumbers(nodes)[String(n.id)] || 0);
 });
