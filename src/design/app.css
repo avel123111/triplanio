@@ -5074,9 +5074,14 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__card border-start-start-radius — то же про левые скругления
    visual-diff-exempt: .mapshell__card border-end-start-radius — то же */
 .mapshell__aside {
+  /* НАСКОЛЬКО КОЛОНКА ЗАЕЗЖАЕТ ПОД ПАНЕЛЬ — одно число, и его читают все, кому
+     заезд важен: и геометрия коробки, и отступы содержимого ниже. Врозь они
+     разъезжаются молча — ровно это и случилось: заезд съел левый отступ, и
+     текст встал в 6 px от видимой кромки вместо 16. */
+  --tuck: var(--r-btn);
   position: absolute; top: calc(var(--sp-7) * 3); bottom: calc(var(--sp-7) * 3);
-  left: calc(var(--mapshell-inset-left, 0px) + var(--mapshell-panel-w) - var(--r-btn));
-  width: calc(var(--mapshell-aside-w) + var(--r-btn));
+  left: calc(var(--mapshell-inset-left, 0px) + var(--mapshell-panel-w) - var(--tuck));
+  width: calc(var(--mapshell-aside-w) + var(--tuck));
   display: flex; z-index: 1;
   transition: left var(--surface-settle, .32s) var(--surface-ease, ease);
 }
@@ -5086,8 +5091,16 @@ button.input[data-empty] { color: var(--muted-2); }
    `.flow-lp-b`, которая держит его у панели, и каждый следующий жилец
    изобретал бы отступы заново. У самой панели правило ничего не меняет —
    селектор скоупнут на колонку.
-   visual-diff-exempt: .mapshell__body padding — воздух вокруг содержимого ВТОРОЙ колонки (правило скоупнуто на неё; у панели воздух по-прежнему от экрана) */
+   visual-diff-exempt: .mapshell__body padding — воздух вокруг содержимого ВТОРОЙ колонки (правило скоупнуто на неё; у панели воздух по-прежнему от экрана)
+   visual-diff-exempt: .mapshell__head padding-left — то же для шапки колонки: отступ считается от ВИДИМОЙ кромки
+   visual-diff-exempt: .mapshell__body padding-left — то же для тела колонки */
 .mapshell__aside .mapshell__body { padding: var(--sp-6) var(--sp-7); }
+/* ★ ОТСТУП СЧИТАЕТСЯ ОТ ВИДИМОЙ КРОМКИ, А НЕ ОТ КРАЯ КОРОБКИ. Слева у колонки
+   спрятано под панелью ровно `--tuck`, поэтому честные 16 px превращались бы в
+   6 — и текст упирался бы в шов. Компенсация живёт рядом с самим заездом и
+   читает то же число. */
+.mapshell__aside .mapshell__head,
+.mapshell__aside .mapshell__body { padding-left: calc(var(--sp-7) + var(--tuck)); }
 
 .mapshell__overlay {
   position: absolute; top: var(--sp-7); bottom: var(--sp-7);
