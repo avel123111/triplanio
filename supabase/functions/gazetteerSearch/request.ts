@@ -22,29 +22,27 @@
  * теста не подгрузить) — та же конвенция, что `mutateRules.ts` ↔ `mutate.ts`.
  */
 
-import { bad, type FieldSpec, type Refusal, validateEach, validateFields } from '../_shared/mutateRules.ts';
+import { CITY_NAME_FIELDS, bad, type FieldSpec, type Refusal, validateEach, validateFields } from '../_shared/mutateRules.ts';
 
 /** = потолок батча `search_gazetteer_batch` (`where e.ord <= 50`). */
 export const MAX_CITIES = 50;
 /** = окно `search_gazetteer_core`; просить больше нечего. */
 export const MAX_LIMIT = 10;
-/** = домен `public.short_text`, как у драфта (`planTripWithAi/draft.ts`). */
-const MAX_STR = 300;
-
+// Тройка «город словами» — ОБЩАЯ спека шва (`CITY_NAME_FIELDS`), та же, что у
+// узла драфта: кэпы и форма кода страны объявлены один раз на все границы, куда
+// ИИ приносит город. Здесь к ней добавляется только ОБЯЗАТЕЛЬНОСТЬ имени —
+// свойство этой границы, а не поля: искать по пустой строке нечего (у драфта
+// узел-заготовка без имени законен).
+//
+// Про `country_code`: для резолва это ЖЁСТКИЙ скоуп, а не подсказка — кандидаты
+// берутся только из этой страны (TRIP-159). Поля нет = искать по всему миру.
 const CITY_FIELDS: Record<string, FieldSpec> = {
-  // Имя города так, как его назвала модель. Пустое имя искать нечего.
+  ...CITY_NAME_FIELDS,
   city_name: {
-    type: 'string',
+    ...CITY_NAME_FIELDS.city_name,
     required: true,
-    max: MAX_STR,
     validate: (v) => (String(v).trim() ? null : bad('Field "cities[].city_name" must not be empty')),
   },
-  // Английское имя — второй заход резолва (у справочника есть alt-names, и
-  // локализованное имя покрывает шире, а английское спасает мелкие иностранные).
-  city_name_en: { type: 'string', max: MAX_STR },
-  // ISO 3166-1 alpha-2. Для резолва это ЖЁСТКИЙ скоуп, а не подсказка: кандидаты
-  // берутся только из этой страны (TRIP-159). Пустая строка = искать по всему миру.
-  country_code: { type: 'string', max: 2 },
 };
 
 const eachCity = validateEach(CITY_FIELDS, 'cities');

@@ -175,8 +175,9 @@ export const FUNCTIONS = {
   // is_trip_creator убрана (TRIP-425 добор): осиротела после дропа политик
   // trip_members_* — 0 вызывателей (src/**, functions/**, pg_policy, тела функций),
   // EXECUTE снят у anon/authenticated/PUBLIC → internal (IF3).
-  publicExec: ['is_trip_participant', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', 'gaz_by_ids', '_can_access_trip_file', '_can_write_trip_file'],
+  publicExec: ['is_trip_participant', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
+    'gaz_by_ids',
     '_can_edit_trip',
     // get_trip_owner_profiles убрана (TRIP-425): мёртвая — 0 вызовов в src/**,
     // functions/**, RLS-политиках и телах функций (сверено pg_policy +
@@ -208,7 +209,10 @@ export const FUNCTIONS = {
   // проекция `gaz_project`, те же данные, что у поиска по строке, — просто
   // адресация по geonameid. Нужен, чтобы `geonameid`, пришедший от ИИ-агента,
   // ПРОВЕРЯЛСЯ походом в справочник, а не принимался на слово; без него проверка
-  // выродилась бы обратно в поиск по имени. Per-user данных нет, как и у соседей.
+  // выродилась бы обратно в поиск по имени. Per-user данных нет, как и у соседей,
+  // но лежит он в `authExec`, а не рядом с ними: `anon` у соседей оправдан живым
+  // typeahead с лендинга, а сюда анонимный вызыватель не придёт — путь
+  // ИИ-планировщика под логином.
   // (geocode_*/link_pending_invites убраны из client-вызываемых в гигиене
   // TRIP-120 — REVOKE authenticated EXECUTE, теперь internal; см. миграцию
   // 20260705180000_trip120_hygiene_revoke_vestigial_execute.)

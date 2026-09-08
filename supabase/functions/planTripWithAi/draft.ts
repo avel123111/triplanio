@@ -15,29 +15,32 @@
  * даты, своих `str()`/`num()` и своего словаря типов здесь нет.
  *
  * Кэп строки = домен `short_text` в БД (300): у драфта своего хранилища нет, но
- * второе число для «короткой строки» в проекте не заводится.
+ * второе число для «короткой строки» в проекте не заводится — оно живёт в шве
+ * (`SHORT_TEXT`), как и спека тройки «город словами» (`CITY_NAME_FIELDS`).
  */
 
 import {
+  CITY_NAME_FIELDS,
   type FieldSpec,
   type Refusal,
+  SHORT_TEXT,
   bad,
   validateEach,
   validateFields,
 } from '../_shared/mutateRules.ts';
 
 export const MAX_NODES = 60;
-/** = `public.short_text` (`char_length(value) <= 300`). */
-export const MAX_STR = 300;
+/** Кэп строки узла — общий `SHORT_TEXT` шва (= домен `public.short_text`). */
+export const MAX_STR = SHORT_TEXT;
 
 const NODE_FIELDS: Record<string, FieldSpec> = {
   // Пустой `ref` — не ссылка: модели не на что ссылаться, а применятор ищет узел
   // по строке. Форма (`string`, кэп) — движком, непустота — хуком домена.
   ref: { type: 'string', required: true, max: MAX_STR, validate: (v) => (String(v).trim() ? null : bad('Field "draft.nodes[].ref" must not be empty')) },
   kind: { type: 'string', required: true, enum: ['start', 'transit', 'waypoint', 'end'] },
-  city_name: { type: 'string', max: MAX_STR },
-  city_name_en: { type: 'string', max: MAX_STR },
-  country_code: { type: 'string', max: 2 }, // ISO 3166-1 alpha-2
+  // Тройка «город словами» — ОБЩАЯ спека шва (та же, что у инструмента
+  // справочника): кэпы и форма кода страны объявлены один раз.
+  ...CITY_NAME_FIELDS,
   nights: { type: 'number', min: 0, nullable: true },
   geonameid: { type: 'number', nullable: true },
 };

@@ -47,6 +47,7 @@ Deno.test('★ потолок строки = домен short_text: 300 прох
   assertEquals(isRefusal(normalizeDraft({ title: 'a'.repeat(MAX_STR + 1), nodes: [] })), true);
   assertEquals(isRefusal(normalizeDraft({ nodes: [node('1', { city_name: 'x'.repeat(MAX_STR + 1) })] })), true);
   assertEquals(isRefusal(normalizeDraft({ nodes: [node('1', { country_code: 'ITA' })] })), true, 'код страны — ISO alpha-2');
+  assertEquals(isRefusal(normalizeDraft({ nodes: [node('1', { country_code: 'I' })] })), true, 'один символ — не код страны');
 });
 
 Deno.test('не объект, кривая дата, неизвестный kind, нет ref, строка вместо числа, нет nodes — отказ', () => {

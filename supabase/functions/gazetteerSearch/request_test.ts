@@ -43,6 +43,10 @@ Deno.test('★ отказ — контракт общего шва, а не св
   assertEquals(refused(normalizeRequest({ cities: [{ city_name: '  ' }] })), { status: 400, code: 'INVALID_INPUT' }, 'пробелы — не имя');
   assertEquals(refused(normalizeRequest({ cities: [{ city_name_en: 'Rome' }] })), { status: 400, code: 'INVALID_INPUT' }, 'имя обязательно');
   assertEquals(refused(normalizeRequest(body({ cities: [{ city_name: 'Рим', country_code: 'ITA' }] }))), { status: 400, code: 'INVALID_INPUT' }, 'страна — alpha-2');
+  // Увидено красным: кэп `max: 2` пропускал односимвольный код, а он молча уводит
+  // скоуп в пустоту — кандидатов нет, и ошибка выглядит как «города не существует».
+  assertEquals(refused(normalizeRequest(body({ cities: [{ city_name: 'Рим', country_code: 'I' }] }))), { status: 400, code: 'INVALID_INPUT' }, 'один символ — не код страны');
+  assertEquals(refused(normalizeRequest(body({ cities: [{ city_name: 'Рим', country_code: '1;' }] }))), { status: 400, code: 'INVALID_INPUT' }, 'две не-буквы — не код страны');
   const many = Array.from({ length: MAX_CITIES + 1 }, () => ({ city_name: 'Рим' }));
   assertEquals(refused(normalizeRequest({ cities: many })), { status: 400, code: 'INVALID_INPUT' }, 'потолок батча = потолок RPC');
   assertEquals(isRefusal(normalizeRequest({ cities: Array.from({ length: MAX_CITIES }, () => ({ city_name: 'Рим' })) })), false);

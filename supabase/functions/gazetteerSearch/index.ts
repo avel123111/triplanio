@@ -26,6 +26,7 @@
  */
 
 import { readJson, refusalResponse, withHandler } from '../_shared/http.ts';
+import { unwrapDbResult } from '../_shared/mutateRules.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { normalizeRequest, toRpcItems } from './request.ts';
@@ -42,6 +43,7 @@ const toCandidate = (r: Record<string, unknown>) => ({
   latitude: r.lat,
   longitude: r.lng,
 });
+type Candidate = ReturnType<typeof toCandidate>;
 
 Deno.serve(withHandler('gazetteerSearch', async (req, corsHeaders) => {
   const denied = requireN8nSecret(req);
@@ -51,32 +53,24 @@ Deno.serve(withHandler('gazetteerSearch', async (req, corsHeaders) => {
   if ('status' in parsed) return refusalResponse(parsed, corsHeaders);
   const { cities, language, limit } = parsed;
 
-  const { data, error } = await supabaseAdmin.rpc('search_gazetteer_batch', {
+  // `supabase-js` не бросает — ошибка приезжает значением, и распаковывает её ТА
+  // ЖЕ дверь, что у шва записи (`unwrapDbResult`): сбой справочника это инцидент
+  // (500 + Sentry через `withHandler`), а не пустая выдача — «ничего не нашлось»
+  // и «база не ответила» для агента разные ответы.
+  const rows = unwrapDbResult(await supabaseAdmin.rpc('search_gazetteer_batch', {
     items: toRpcItems(cities),
     lang: language,
     lim: limit,
-  });
-  // `supabase-js` не бросает — ошибка приезжает значением; сбой справочника это
-  // инцидент (500 + Sentry через withHandler), а не пустая выдача: «ничего не
-  // нашлось» и «база не ответила» для агента разные ответы.
-  if (error) throw error;
+  })) as Record<string, unknown>[] | null;
 
   // Выдача выравнивается по ВХОДУ (`ord` 1:1, как у резолва фронта): агент
   // читает результат позиционно и не сопоставляет города по именам заново.
-  const byOrd = new Map<number, ReturnType<typeof toCandidate>[]>();
-  for (const row of (data || []) as Record<string, unknown>[]) {
-    const ord = Number(row.ord);
-    const list = byOrd.get(ord) || [];
-    list.push(toCandidate(row));
-    byOrd.set(ord, list);
-  }
+  // Поэтому ответ СТРОИТСЯ из входного списка, а строки лишь раскладываются по
+  // своим позициям — выравнивание получается по построению, а не сверкой.
+  // Пустой список = города с таким именем в этой стране нет. Агент вправе
+  // попробовать другое написание или другой город — это его ход, не наш.
+  const results = cities.map((c) => ({ city_name: c.city_name, candidates: [] as Candidate[] }));
+  for (const row of rows || []) results[Number(row.ord) - 1]?.candidates.push(toCandidate(row));
 
-  return Response.json({
-    results: cities.map((c, i) => ({
-      city_name: c.city_name,
-      // Пустой список = города с таким именем в этой стране нет. Агент вправе
-      // попробовать другое написание или другой город — это его ход, не наш.
-      candidates: byOrd.get(i + 1) || [],
-    })),
-  }, { headers: corsHeaders });
+  return Response.json({ results }, { headers: corsHeaders });
 }));

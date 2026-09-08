@@ -53,12 +53,14 @@ as $function$
   limit 200;
 $function$;
 
--- Гранты как у соседних входов справочника (`nearest_cities`,
--- `search_gazetteer_batch`): сначала снять с PUBLIC, затем выдать поимённо.
--- REVOKE именно FROM PUBLIC, а не FROM anon: грант на PUBLIC наследуют все роли,
--- и ревок с одной роли его не снимает (TRIP-49).
+-- Гранты УЖЕ соседних входов справочника, и это не копия «как у всех», а
+-- least-privilege: `anon` у соседей оправдан живым typeahead с лендинга, а сюда
+-- анонимный вызыватель не придёт никогда — путь ИИ-планировщика под логином.
+-- Остаётся `authenticated`: им фронт будет ПРОВЕРЯТЬ `geonameid`, пришедший от
+-- модели (следующий шаг фазы). REVOKE именно FROM PUBLIC, а не FROM anon: грант
+-- на PUBLIC наследуют все роли, и ревок с одной роли его не снимает (TRIP-49).
 revoke all on function public.gaz_by_ids(bigint[], text) from public;
-grant execute on function public.gaz_by_ids(bigint[], text) to anon, authenticated;
+grant execute on function public.gaz_by_ids(bigint[], text) to authenticated;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
